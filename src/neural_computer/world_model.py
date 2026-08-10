@@ -3448,16 +3448,47 @@ class ExternalTransitionRouteMemory:
         if not isinstance(slot_id, int) or isinstance(slot_id, bool) or slot_id < 0:
             raise ValueError("transition route-memory slot ID is invalid")
 
-    def _normalize(self, query: torch.Tensor) -> torch.Tensor:
+    def _normalize(
+        self,
+        query: torch.Tensor,
+        query_mask: torch.Tensor | None = None,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         _validate_tensor(
             query,
             name="transition route-memory query",
             ndim=1,
             width=self.width,
         )
-        return torch.nn.functional.normalize(
-            query.detach().to(device="cpu", dtype=torch.float32), dim=0
-        ).contiguous()
+        if query_mask is None:
+            mask = torch.ones(self.width, dtype=torch.bool)
+        else:
+            if not isinstance(query_mask, torch.Tensor):
+                raise TypeError("transition route-memory query mask must be a tensor")
+            if query_mask.ndim != 1 or query_mask.shape[0] != self.width:
+                raise ValueError("transition route-memory query mask has the wrong shape")
+            if query_mask.dtype != torch.bool:
+                raise TypeError("transition route-memory query mask must be boolean")
+            mask = query_mask.detach().to(device="cpu", dtype=torch.bool).contiguous()
+        if not bool(mask.any()):
+            raise ValueError("transition route-memory query mask must retain evidence")
+        values = query.detach().to(device="cpu", dtype=torch.float32).contiguous()
+        values = torch.where(mask, values, torch.zeros_like(values))
+        norm = torch.linalg.vector_norm(values)
+        if float(norm) <= 1e-12:
+            raise ValueError("transition route-memory observed query must be non-zero")
+        return torch.nn.functional.normalize(values, dim=0).contiguous(), mask
+
+    @staticmethod
+    def _masked_similarity(
+        prototype: torch.Tensor,
+        query: torch.Tensor,
+        query_mask: torch.Tensor,
+    ) -> float:
+        projected = torch.where(query_mask, prototype, torch.zeros_like(prototype))
+        norm = torch.linalg.vector_norm(projected)
+        if float(norm) <= 1e-12:
+            return -1.0
+        return float((torch.nn.functional.normalize(projected, dim=0) @ query).detach())
 
     @property
     def slot_ids(self) -> tuple[int, ...]:
@@ -3507,7 +3538,7 @@ class ExternalTransitionRouteMemory:
         self._validate_slot_id(slot_id)
         if slot_id not in self._prototypes:
             raise KeyError(f"unknown transition route-memory slot: {slot_id}")
-        normalized = self._normalize(query)
+        normalized, _ = self._normalize(query)
         prototypes = self._prototypes[slot_id]
         counts = self._counts[slot_id]
         if not prototypes:
@@ -3547,10 +3578,16 @@ class ExternalTransitionRouteMemory:
         slot_ids: Sequence[int],
         *,
         minimum_score: float,
+        query_mask: torch.Tensor | None = None,
     ) -> ExternalTransitionRouteQueryProposal:
-        """Return a max-prototype cosine proposal over stable slot IDs."""
+        """Return a max-prototype cosine proposal over stable slot IDs.
 
-        normalized = self._normalize(query)
+        ``query_mask`` is an optional learned-evidence presence mask.  Missing
+        dimensions are excluded from both sides of the cosine comparison, so
+        a sparse observation is not treated as a zero-valued identity.
+        """
+
+        normalized, observed_mask = self._normalize(query, query_mask)
         if not -1.0 <= minimum_score <= 1.0 or not math.isfinite(minimum_score):
             raise ValueError("transition route-memory proposal floor is invalid")
         eligible = tuple(int(slot_id) for slot_id in slot_ids)
@@ -3571,7 +3608,10 @@ class ExternalTransitionRouteMemory:
             prototypes = self._prototypes.get(slot_id, ())
             scores.append(
                 max(
-                    (float(prototype @ normalized) for prototype in prototypes),
+                    (
+                        self._masked_similarity(prototype, normalized, observed_mask)
+                        for prototype in prototypes
+                    ),
                     default=-1.0,
                 )
             )

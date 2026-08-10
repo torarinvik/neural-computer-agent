@@ -214,6 +214,28 @@ def test_transition_route_memory_is_slot_local_bounded_and_persistent() -> None:
     assert "next_state" not in restored.state_payload()
 
 
+def test_transition_route_memory_scores_partial_queries_without_mutating_state() -> None:
+    memory = ExternalTransitionRouteMemory(4, merge_cosine=0.99)
+    memory.register_slot(10, prototype=torch.tensor([1.0, 0.0, 0.0, 0.0]))
+    memory.register_slot(20, prototype=torch.tensor([0.0, 1.0, 0.0, 0.0]))
+    before = memory.digest()
+    proposal = memory.propose(
+        torch.tensor([0.95, 0.0, 17.0, -23.0]),
+        (10, 20),
+        minimum_score=0.8,
+        query_mask=torch.tensor([True, False, False, False]),
+    )
+    assert proposal.selected_slot_id == 10
+    assert memory.digest() == before
+    with pytest.raises(ValueError, match="retain evidence"):
+        memory.propose(
+            torch.ones(4),
+            (10, 20),
+            minimum_score=0.8,
+            query_mask=torch.zeros(4, dtype=torch.bool),
+        )
+
+
 def test_transition_route_query_can_use_slot_local_prototype_memory() -> None:
     memory = ExternalTransitionRouteMemory(4)
     query = ExternalTransitionRouteQuery(

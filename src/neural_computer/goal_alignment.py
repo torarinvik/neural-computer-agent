@@ -49,6 +49,9 @@ EXTERNAL_GOAL_REPRESENTATION_ALIGNMENT_IDENTITY_QUARANTINE_SCHEMA = (
 EXTERNAL_GOAL_REPRESENTATION_ALIGNMENT_IDENTITY_RESOLUTION_SCHEMA = (
     "neural-computer.external-goal-representation-alignment-identity-resolution.v1"
 )
+EXTERNAL_GOAL_REPRESENTATION_ALIGNMENT_IDENTITY_ANCHOR_SCHEMA = (
+    "neural-computer.external-goal-representation-alignment-identity-anchor.v1"
+)
 
 _ALIGNMENT_TYPES = (
     ExternalGoalRepresentationAlignmentStatistics,
@@ -269,6 +272,63 @@ class ExternalGoalRepresentationIdentityResolutionReceipt:
         return self
 
 
+@dataclass(frozen=True)
+class ExternalGoalRepresentationIdentityAnchorReceipt:
+    """Verifier-gated identity update selected from an opaque anchor query."""
+
+    accepted: bool
+    selected_slot_id: int | None
+    eligible_slot_ids: tuple[int, ...]
+    score: float | None
+    margin: float | None
+    anchor_update_stored: bool
+    attempted_count: int
+    resolved_count: int
+    remaining_count: int
+    verifier_accepted: bool
+    source_digest: str
+    destination_digest: str
+    reason: str
+    schema: str = EXTERNAL_GOAL_REPRESENTATION_ALIGNMENT_IDENTITY_ANCHOR_SCHEMA
+
+    def validate(self) -> ExternalGoalRepresentationIdentityAnchorReceipt:
+        if self.schema != EXTERNAL_GOAL_REPRESENTATION_ALIGNMENT_IDENTITY_ANCHOR_SCHEMA:
+            raise ValueError("unsupported goal alignment identity-anchor schema")
+        if len(set(self.eligible_slot_ids)) != len(self.eligible_slot_ids):
+            raise ValueError("goal alignment identity-anchor slots are duplicated")
+        if any(
+            not isinstance(slot_id, int) or isinstance(slot_id, bool) or slot_id < 0
+            for slot_id in self.eligible_slot_ids
+        ):
+            raise ValueError("goal alignment identity-anchor slot ID is invalid")
+        if self.selected_slot_id is not None and self.selected_slot_id not in self.eligible_slot_ids:
+            raise ValueError("goal alignment identity-anchor selection is ineligible")
+        if self.score is not None and not math.isfinite(self.score):
+            raise ValueError("goal alignment identity-anchor score is invalid")
+        if self.margin is not None and (
+            self.margin < 0.0 or not math.isfinite(self.margin)
+        ):
+            raise ValueError("goal alignment identity-anchor margin is invalid")
+        if min(self.attempted_count, self.resolved_count, self.remaining_count) < 0:
+            raise ValueError("goal alignment identity-anchor counts are invalid")
+        if self.resolved_count > self.attempted_count:
+            raise ValueError("goal alignment identity-anchor over-consumed evidence")
+        if self.accepted and self.selected_slot_id is None:
+            raise ValueError("accepted goal alignment identity-anchor has no slot")
+        if not isinstance(self.anchor_update_stored, bool) or not isinstance(
+            self.verifier_accepted, bool
+        ):
+            raise TypeError("goal alignment identity-anchor decisions are invalid")
+        for name, value in (
+            ("source_digest", self.source_digest),
+            ("destination_digest", self.destination_digest),
+            ("reason", self.reason),
+        ):
+            if not isinstance(value, str) or not value:
+                raise ValueError(f"goal alignment identity-anchor {name} is missing")
+        return self
+
+
 def _signature_digest(signature: torch.Tensor) -> str:
     digest = hashlib.sha256()
     detached = signature.detach().cpu().contiguous()
@@ -390,6 +450,23 @@ class ExternalGoalRepresentationAlignmentBank(nn.Module):
             raise ValueError("goal alignment identity signature must be finite")
         if float(torch.linalg.vector_norm(signature)) <= 1e-12:
             raise ValueError("goal alignment identity signature must be non-zero")
+
+    def _validate_identity_signature_mask(
+        self,
+        signature_mask: torch.Tensor | None,
+    ) -> None:
+        if signature_mask is None:
+            return
+        if self.identity_memory is None:
+            raise ValueError("identity signature mask supplied to a disabled identity bank")
+        if not isinstance(signature_mask, torch.Tensor):
+            raise TypeError("goal alignment identity signature mask must be a tensor")
+        if signature_mask.ndim != 1 or signature_mask.shape[0] != self.identity_width:
+            raise ValueError("goal alignment identity signature mask has the wrong shape")
+        if signature_mask.dtype != torch.bool:
+            raise TypeError("goal alignment identity signature mask must be boolean")
+        if not bool(signature_mask.any()):
+            raise ValueError("goal alignment identity signature mask must retain evidence")
 
     @staticmethod
     def _clone_adapter(adapter: nn.Module) -> nn.Module:
@@ -681,6 +758,7 @@ class ExternalGoalRepresentationAlignmentBank(nn.Module):
         signature: torch.Tensor,
         source: torch.Tensor,
         *,
+        signature_mask: torch.Tensor | None = None,
         minimum_score: float | None = None,
         minimum_margin: float | None = None,
     ) -> ExternalGoalRepresentationAlignmentRouteResult:
@@ -689,6 +767,43 @@ class ExternalGoalRepresentationAlignmentBank(nn.Module):
         if self.identity_memory is None:
             raise RuntimeError("signature routing is disabled for this alignment bank")
         self._validate_identity_signature(signature)
+        self._validate_identity_signature_mask(signature_mask)
+        proposal = self.propose_identity_slot(
+            signature,
+            signature_mask=signature_mask,
+            minimum_score=minimum_score,
+            minimum_margin=minimum_margin,
+        )
+        selected = proposal.selected_slot_id
+        reason = proposal.reason
+        aligned = None
+        if selected is not None:
+            index = self._slot_ids.index(selected)
+            aligned = self.adapters[index](source)
+            reason = "slot-local signature route passed score and margin floors"
+        return ExternalGoalRepresentationAlignmentRouteResult(
+            selected_slot_id=selected,
+            eligible_slot_ids=proposal.eligible_slot_ids,
+            scores=proposal.scores,
+            margin=proposal.margin,
+            aligned=aligned,
+            reason=reason,
+        ).validate()
+
+    def propose_identity_slot(
+        self,
+        signature: torch.Tensor,
+        *,
+        signature_mask: torch.Tensor | None = None,
+        minimum_score: float | None = None,
+        minimum_margin: float | None = None,
+    ) -> ExternalTransitionRouteQueryProposal:
+        """Select an opaque identity slot without applying an alignment."""
+
+        if self.identity_memory is None:
+            raise RuntimeError("signature routing is disabled for this alignment bank")
+        self._validate_identity_signature(signature)
+        self._validate_identity_signature_mask(signature_mask)
         score_floor = (
             self.identity_min_score if minimum_score is None else float(minimum_score)
         )
@@ -703,23 +818,21 @@ class ExternalGoalRepresentationAlignmentBank(nn.Module):
             signature,
             self.slot_ids,
             minimum_score=score_floor,
+            query_mask=signature_mask,
         )
         selected = proposal.selected_slot_id
-        reason = proposal.reason
         if selected is not None and proposal.margin is not None and proposal.margin < margin_floor:
             selected = None
-            reason = "signature route margin was below the ambiguity floor"
-        aligned = None
-        if selected is not None:
-            index = self._slot_ids.index(selected)
-            aligned = self.adapters[index](source)
-            reason = "slot-local signature route passed score and margin floors"
-        return ExternalGoalRepresentationAlignmentRouteResult(
+        reason = (
+            "signature route margin was below the ambiguity floor"
+            if selected is None and proposal.selected_slot_id is not None
+            else proposal.reason
+        )
+        return ExternalTransitionRouteQueryProposal(
             selected_slot_id=selected,
-            eligible_slot_ids=proposal.eligible_slot_ids,
             scores=proposal.scores,
+            eligible_slot_ids=proposal.eligible_slot_ids,
             margin=proposal.margin,
-            aligned=aligned,
             reason=reason,
         ).validate()
 
@@ -785,6 +898,28 @@ class ExternalGoalRepresentationAlignmentBank(nn.Module):
             reason="ambiguous identity signature retained outside active prototypes",
         ).validate()
 
+    def _consume_identity_quarantine(
+        self,
+        anchor_slot_id: int,
+    ) -> tuple[int, int, int]:
+        attempted = sum(
+            anchor_slot_id in item["candidate_slot_ids"]
+            for item in self._identity_quarantine
+        )
+        unresolved: list[dict[str, Any]] = []
+        resolved = 0
+        for item in self._identity_quarantine:
+            if anchor_slot_id not in item["candidate_slot_ids"]:
+                unresolved.append(item)
+                continue
+            signature = torch.tensor(item["signature"], dtype=torch.float32)
+            if self.identity_memory.observe(anchor_slot_id, signature):
+                resolved += 1
+            else:
+                unresolved.append(item)
+        self._identity_quarantine = unresolved
+        return attempted, resolved, len(unresolved)
+
     def resolve_identity_quarantine(
         self,
         anchor_slot_id: int,
@@ -818,25 +953,14 @@ class ExternalGoalRepresentationAlignmentBank(nn.Module):
                 destination_digest=source_digest,
                 reason="verifier rejected identity anchor; deferred signatures retained",
             ).validate()
-        unresolved: list[dict[str, Any]] = []
-        resolved = 0
-        for item in self._identity_quarantine:
-            if anchor_slot_id not in item["candidate_slot_ids"]:
-                unresolved.append(item)
-                continue
-            signature = torch.tensor(item["signature"], dtype=torch.float32)
-            if self.identity_memory.observe(anchor_slot_id, signature):
-                resolved += 1
-            else:
-                unresolved.append(item)
-        self._identity_quarantine = unresolved
+        _, resolved, remaining = self._consume_identity_quarantine(anchor_slot_id)
         destination_digest = self.digest()
         return ExternalGoalRepresentationIdentityResolutionReceipt(
             accepted=resolved > 0,
             anchor_slot_id=anchor_slot_id,
             attempted_count=attempted,
             resolved_count=resolved,
-            remaining_count=len(unresolved),
+            remaining_count=remaining,
             verifier_accepted=True,
             source_digest=source_digest,
             destination_digest=destination_digest,
@@ -844,6 +968,113 @@ class ExternalGoalRepresentationAlignmentBank(nn.Module):
                 "verifier-accepted anchor resolved deferred identity signatures"
                 if resolved > 0
                 else "no deferred identity signatures could be resolved for anchor"
+            ),
+        ).validate()
+
+    def accept_identity_anchor(
+        self,
+        signature: torch.Tensor,
+        *,
+        signature_mask: torch.Tensor | None = None,
+        verifier_accepted: bool,
+        minimum_score: float | None = None,
+        minimum_margin: float | None = None,
+    ) -> ExternalGoalRepresentationIdentityAnchorReceipt:
+        """Select and learn an identity anchor without a caller slot ID.
+
+        The proposal is read-only.  The external verifier may accept or reject
+        that proposal, but it never supplies a semantic/frontend ID.  Partial
+        anchors can route safely; only full anchors are added as new identity
+        prototypes, while accepted full anchors also consume matching deferred
+        evidence.
+        """
+
+        if self.identity_memory is None:
+            raise RuntimeError("signature routing is disabled for this alignment bank")
+        self._validate_identity_signature(signature)
+        self._validate_identity_signature_mask(signature_mask)
+        if not isinstance(verifier_accepted, bool):
+            raise TypeError("identity anchor verifier decision must be boolean")
+        source_digest = self.digest()
+        proposal = self.propose_identity_slot(
+            signature,
+            signature_mask=signature_mask,
+            minimum_score=minimum_score,
+            minimum_margin=minimum_margin,
+        )
+        selected = proposal.selected_slot_id
+        score = None
+        if selected is not None:
+            index = proposal.eligible_slot_ids.index(selected)
+            score = float(proposal.scores[index])
+        if selected is None:
+            return ExternalGoalRepresentationIdentityAnchorReceipt(
+                accepted=False,
+                selected_slot_id=None,
+                eligible_slot_ids=proposal.eligible_slot_ids,
+                score=None,
+                margin=proposal.margin,
+                anchor_update_stored=False,
+                attempted_count=0,
+                resolved_count=0,
+                remaining_count=self.identity_quarantined_count,
+                verifier_accepted=verifier_accepted,
+                source_digest=source_digest,
+                destination_digest=source_digest,
+                reason=(
+                    "anchor proposal refused before verifier decision"
+                    if verifier_accepted
+                    else "verifier rejected anchor because no safe slot proposal existed"
+                ),
+            ).validate()
+        attempted = sum(
+            selected in item["candidate_slot_ids"]
+            for item in self._identity_quarantine
+        )
+        if not verifier_accepted:
+            return ExternalGoalRepresentationIdentityAnchorReceipt(
+                accepted=False,
+                selected_slot_id=selected,
+                eligible_slot_ids=proposal.eligible_slot_ids,
+                score=score,
+                margin=proposal.margin,
+                anchor_update_stored=False,
+                attempted_count=attempted,
+                resolved_count=0,
+                remaining_count=self.identity_quarantined_count,
+                verifier_accepted=False,
+                source_digest=source_digest,
+                destination_digest=source_digest,
+                reason="verifier rejected proposed identity anchor; state unchanged",
+            ).validate()
+        full_mask = signature_mask is None or bool(signature_mask.all())
+        anchor_update_stored = full_mask and self.identity_memory.observe(selected, signature)
+        resolved = 0
+        remaining = self.identity_quarantined_count
+        if full_mask:
+            _, resolved, remaining = self._consume_identity_quarantine(selected)
+        destination_digest = self.digest()
+        return ExternalGoalRepresentationIdentityAnchorReceipt(
+            accepted=anchor_update_stored or resolved > 0,
+            selected_slot_id=selected,
+            eligible_slot_ids=proposal.eligible_slot_ids,
+            score=score,
+            margin=proposal.margin,
+            anchor_update_stored=anchor_update_stored,
+            attempted_count=attempted,
+            resolved_count=resolved,
+            remaining_count=remaining,
+            verifier_accepted=True,
+            source_digest=source_digest,
+            destination_digest=destination_digest,
+            reason=(
+                "verifier-accepted anchor updated identity and resolved deferred evidence"
+                if anchor_update_stored and resolved > 0
+                else "verifier-accepted full anchor updated identity prototypes"
+                if anchor_update_stored
+                else "verifier-accepted partial anchor routed without prototype mutation"
+                if not full_mask
+                else "verifier-accepted anchor made no state change"
             ),
         ).validate()
 

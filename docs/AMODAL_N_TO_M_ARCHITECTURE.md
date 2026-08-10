@@ -7274,3 +7274,30 @@ test combines this boundary with gradual drift, missing windows, repeated
 route reversals, and anchor selection without caller-supplied slot IDs.
 Evidence and accounting are archived in
 `session_records/sequence_working_memory_2026-08-02/external_goal_representation_alignment_delayed_identity_promoted_2026-08-10/`.
+
+## Caller-free identity under drift and partial evidence (2026-08-10)
+
+Identity routing now accepts an optional learned-evidence mask. Missing
+dimensions are excluded from both query and prototype sides of the cosine
+comparison, so sparse evidence is not interpreted as a zero-valued identity.
+The bank also exposes a verifier-gated anchor operation that selects the
+opaque slot itself; callers provide only the verifier's accept/reject outcome,
+not a frontend or slot ID. Full accepted anchors may update bounded identity
+prototypes and resolve quarantine; partial anchors route but remain read-only
+until a complete anchor exists.
+
+Across seeds `85001`, `85002`, `85003`, and `85004`, two alignments survived 16
+gradual drift phases with 15 arrival-order reversals per run. Each run routed
+all 32 windows correctly, including 24 masked windows, and reached `1.0`
+mastery for both affine and nonlinear alignments. Persistence was exact, the
+controller/model/verifier stayed frozen, and replay was zero.
+
+This promotes bounded replay-free verifier-gated identity retention under
+gradual and reversible drift, partial learned evidence, and caller-free anchor
+selection. It does not establish semantic open-world identity discovery,
+autonomous verifier design, unrestricted memory growth, or general continual
+learning. The next pressure point is a learned masked-prototype or evidence
+accumulator that can improve from repeated partial windows without storing
+unrecoverable zero-filled identity vectors. Evidence and accounting are
+archived in
+`session_records/sequence_working_memory_2026-08-02/external_goal_representation_alignment_drift_missing_reversal_promoted_2026-08-10/`.

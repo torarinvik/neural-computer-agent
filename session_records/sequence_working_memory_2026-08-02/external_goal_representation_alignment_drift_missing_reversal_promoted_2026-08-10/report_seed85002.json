@@ -1,0 +1,1367 @@
+{
+  "schema": "neural-computer.external-goal-representation-alignment-drift-missing-reversal.v1",
+  "claim_boundary": "bounded replay-free verifier-gated identity retention under gradual and reversible drift with partial learned evidence; not semantic open-world identity, unrestricted memory growth, or general continual learning",
+  "seed": 85002,
+  "configuration": {
+    "capacity": 2,
+    "identity_width": 8,
+    "identity_min_score": 0.55,
+    "identity_min_margin": 0.04,
+    "identity_quarantine_capacity": 2,
+    "drift_phases": 16,
+    "drift_amplitude": 0.16,
+    "runtime_frontend_ids_used_for_routing": false,
+    "runtime_frontend_ids_used_for_identity_updates": false
+  },
+  "gates": {
+    "both_frontends_admitted": true,
+    "deferred_ambiguous_evidence_retained": true,
+    "rejected_anchor_preserves_state": true,
+    "accepted_anchor_resolves_without_caller_slot_id": true,
+    "repeated_order_reversals_exercised": true,
+    "missing_evidence_exercised": true,
+    "all_drift_routes_correct": true,
+    "all_anchor_proposals_safe": true,
+    "full_anchors_updated_without_ids": true,
+    "affine_mastery_after_drift": true,
+    "nonlinear_mastery_after_drift": true,
+    "exact_final_persistence": true,
+    "restored_affine_route": true,
+    "restored_nonlinear_route": true,
+    "verifier_memory_unchanged": true,
+    "model_unchanged": true,
+    "controller_frozen": true,
+    "verifier_replay_zero": true,
+    "alignment_replay_zero": true
+  },
+  "promoted": true,
+  "metrics": {
+    "route_accuracy": 1.0,
+    "partial_query_count": 24,
+    "full_anchor_count": 8,
+    "anchor_updates": 8,
+    "reversal_count": 15,
+    "accepted_anchor": {
+      "accepted": true,
+      "selected_slot_id": 0,
+      "eligible_slot_ids": [
+        0,
+        1
+      ],
+      "score": 1.0,
+      "margin": 0.35113775730133057,
+      "anchor_update_stored": true,
+      "attempted_count": 2,
+      "resolved_count": 2,
+      "remaining_count": 0,
+      "verifier_accepted": true,
+      "source_digest": "bfc9306311e623eea14c15c229750599d97eb3eae3bccc5253fd6256a68fadfe",
+      "destination_digest": "27d4cbee3df31008262822e577ec77fa254ded168d5679eb724431ec262c9154",
+      "reason": "verifier-accepted anchor updated identity and resolved deferred evidence",
+      "schema": "neural-computer.external-goal-representation-alignment-identity-anchor.v1"
+    },
+    "affine_route": {
+      "selected_slot_id": 0,
+      "eligible_slot_ids": [
+        0,
+        1
+      ],
+      "scores": [
+        0.9998985528945923,
+        0.6550666093826294
+      ],
+      "margin": 0.3448319435119629,
+      "reason": "slot-local signature route passed score and margin floors"
+    },
+    "nonlinear_route": {
+      "selected_slot_id": 1,
+      "eligible_slot_ids": [
+        0,
+        1
+      ],
+      "scores": [
+        0.9080626964569092,
+        0.9996523261070251
+      ],
+      "margin": 0.09158962965011597,
+      "reason": "slot-local signature route passed score and margin floors"
+    },
+    "affine_mastery": {
+      "mastery": 1.0,
+      "successful_trials": 120,
+      "trial_count": 120,
+      "expanded_nodes": 44640,
+      "mean_latency_seconds": 0.008993007633641052
+    },
+    "nonlinear_mastery": {
+      "mastery": 1.0,
+      "successful_trials": 120,
+      "trial_count": 120,
+      "expanded_nodes": 44640,
+      "mean_latency_seconds": 0.009308759693036942
+    },
+    "ordered_queries": [
+      {
+        "phase": 0,
+        "name": "affine",
+        "expected_slot": 0,
+        "mask_present_count": 8,
+        "route": {
+          "selected_slot_id": 0,
+          "eligible_slot_ids": [
+            0,
+            1
+          ],
+          "scores": [
+            1.0,
+            0.6488622426986694
+          ],
+          "margin": 0.35113775730133057,
+          "reason": "slot-local signature route passed score and margin floors"
+        },
+        "anchor": {
+          "accepted": true,
+          "selected_slot_id": 0,
+          "eligible_slot_ids": [
+            0,
+            1
+          ],
+          "score": 1.0,
+          "margin": 0.35113775730133057,
+          "anchor_update_stored": true,
+          "attempted_count": 0,
+          "resolved_count": 0,
+          "remaining_count": 0,
+          "verifier_accepted": true,
+          "source_digest": "27d4cbee3df31008262822e577ec77fa254ded168d5679eb724431ec262c9154",
+          "destination_digest": "3ab4545c04f638ae41d5ab6b983c921fbcd3b1a3edd92d362b369d17a7ff8942",
+          "reason": "verifier-accepted full anchor updated identity prototypes",
+          "schema": "neural-computer.external-goal-representation-alignment-identity-anchor.v1"
+        }
+      },
+      {
+        "phase": 0,
+        "name": "nonlinear",
+        "expected_slot": 1,
+        "mask_present_count": 8,
+        "route": {
+          "selected_slot_id": 1,
+          "eligible_slot_ids": [
+            0,
+            1
+          ],
+          "scores": [
+            0.9079820513725281,
+            1.0000001192092896
+          ],
+          "margin": 0.09201806783676147,
+          "reason": "slot-local signature route passed score and margin floors"
+        },
+        "anchor": {
+          "accepted": true,
+          "selected_slot_id": 1,
+          "eligible_slot_ids": [
+            0,
+            1
+          ],
+          "score": 1.0000001192092896,
+          "margin": 0.09201806783676147,
+          "anchor_update_stored": true,
+          "attempted_count": 0,
+          "resolved_count": 0,
+          "remaining_count": 0,
+          "verifier_accepted": true,
+          "source_digest": "3ab4545c04f638ae41d5ab6b983c921fbcd3b1a3edd92d362b369d17a7ff8942",
+          "destination_digest": "aae011871115b4d15aef83227b86bd46e6aede85262cb4e2301deb74b5a01009",
+          "reason": "verifier-accepted full anchor updated identity prototypes",
+          "schema": "neural-computer.external-goal-representation-alignment-identity-anchor.v1"
+        }
+      },
+      {
+        "phase": 1,
+        "name": "nonlinear",
+        "expected_slot": 1,
+        "mask_present_count": 6,
+        "route": {
+          "selected_slot_id": 1,
+          "eligible_slot_ids": [
+            0,
+            1
+          ],
+          "scores": [
+            0.9419119954109192,
+            0.9997329711914062
+          ],
+          "margin": 0.05782097578048706,
+          "reason": "slot-local signature route passed score and margin floors"
+        },
+        "anchor": {
+          "accepted": false,
+          "selected_slot_id": 1,
+          "eligible_slot_ids": [
+            0,
+            1
+          ],
+          "score": 0.9997329711914062,
+          "margin": 0.05782097578048706,
+          "anchor_update_stored": false,
+          "attempted_count": 0,
+          "resolved_count": 0,
+          "remaining_count": 0,
+          "verifier_accepted": true,
+          "source_digest": "aae011871115b4d15aef83227b86bd46e6aede85262cb4e2301deb74b5a01009",
+          "destination_digest": "aae011871115b4d15aef83227b86bd46e6aede85262cb4e2301deb74b5a01009",
+          "reason": "verifier-accepted partial anchor routed without prototype mutation",
+          "schema": "neural-computer.external-goal-representation-alignment-identity-anchor.v1"
+        }
+      },
+      {
+        "phase": 1,
+        "name": "affine",
+        "expected_slot": 0,
+        "mask_present_count": 6,
+        "route": {
+          "selected_slot_id": 0,
+          "eligible_slot_ids": [
+            0,
+            1
+          ],
+          "scores": [
+            0.9991771578788757,
+            0.7744957208633423
+          ],
+          "margin": 0.22468143701553345,
+          "reason": "slot-local signature route passed score and margin floors"
+        },
+        "anchor": {
+          "accepted": false,
+          "selected_slot_id": 0,
+          "eligible_slot_ids": [
+            0,
+            1
+          ],
+          "score": 0.9991771578788757,
+          "margin": 0.22468143701553345,
+          "anchor_update_stored": false,
+          "attempted_count": 0,
+          "resolved_count": 0,
+          "remaining_count": 0,
+          "verifier_accepted": true,
+          "source_digest": "aae011871115b4d15aef83227b86bd46e6aede85262cb4e2301deb74b5a01009",
+          "destination_digest": "aae011871115b4d15aef83227b86bd46e6aede85262cb4e2301deb74b5a01009",
+          "reason": "verifier-accepted partial anchor routed without prototype mutation",
+          "schema": "neural-computer.external-goal-representation-alignment-identity-anchor.v1"
+        }
+      },
+      {
+        "phase": 2,
+        "name": "affine",
+        "expected_slot": 0,
+        "mask_present_count": 6,
+        "route": {
+          "selected_slot_id": 0,
+          "eligible_slot_ids": [
+            0,
+            1
+          ],
+          "scores": [
+            0.9946112036705017,
+            0.41193804144859314
+          ],
+          "margin": 0.582673192024231,
+          "reason": "slot-local signature route passed score and margin floors"
+        },
+        "anchor": {
+          "accepted": false,
+          "selected_slot_id": 0,
+          "eligible_slot_ids": [
+            0,
+            1
+          ],
+          "score": 0.9946112036705017,
+          "margin": 0.582673192024231,
+          "anchor_update_stored": false,
+          "attempted_count": 0,
+          "resolved_count": 0,
+          "remaining_count": 0,
+          "verifier_accepted": true,
+          "source_digest": "aae011871115b4d15aef83227b86bd46e6aede85262cb4e2301deb74b5a01009",
+          "destination_digest": "aae011871115b4d15aef83227b86bd46e6aede85262cb4e2301deb74b5a01009",
+          "reason": "verifier-accepted partial anchor routed without prototype mutation",
+          "schema": "neural-computer.external-goal-representation-alignment-identity-anchor.v1"
+        }
+      },
+      {
+        "phase": 2,
+        "name": "nonlinear",
+        "expected_slot": 1,
+        "mask_present_count": 6,
+        "route": {
+          "selected_slot_id": 1,
+          "eligible_slot_ids": [
+            0,
+            1
+          ],
+          "scores": [
+            0.8066979646682739,
+            0.9976403713226318
+          ],
+          "margin": 0.1909424066543579,
+          "reason": "slot-local signature route passed score and margin floors"
+        },
+        "anchor": {
+          "accepted": false,
+          "selected_slot_id": 1,
+          "eligible_slot_ids": [
+            0,
+            1
+          ],
+          "score": 0.9976403713226318,
+          "margin": 0.1909424066543579,
+          "anchor_update_stored": false,
+          "attempted_count": 0,
+          "resolved_count": 0,
+          "remaining_count": 0,
+          "verifier_accepted": true,
+          "source_digest": "aae011871115b4d15aef83227b86bd46e6aede85262cb4e2301deb74b5a01009",
+          "destination_digest": "aae011871115b4d15aef83227b86bd46e6aede85262cb4e2301deb74b5a01009",
+          "reason": "verifier-accepted partial anchor routed without prototype mutation",
+          "schema": "neural-computer.external-goal-representation-alignment-identity-anchor.v1"
+        }
+      },
+      {
+        "phase": 3,
+        "name": "nonlinear",
+        "expected_slot": 1,
+        "mask_present_count": 6,
+        "route": {
+          "selected_slot_id": 1,
+          "eligible_slot_ids": [
+            0,
+            1
+          ],
+          "scores": [
+            0.8934935331344604,
+            0.9979194402694702
+          ],
+          "margin": 0.10442590713500977,
+          "reason": "slot-local signature route passed score and margin floors"
+        },
+        "anchor": {
+          "accepted": false,
+          "selected_slot_id": 1,
+          "eligible_slot_ids": [
+            0,
+            1
+          ],
+          "score": 0.9979194402694702,
+          "margin": 0.10442590713500977,
+          "anchor_update_stored": false,
+          "attempted_count": 0,
+          "resolved_count": 0,
+          "remaining_count": 0,
+          "verifier_accepted": true,
+          "source_digest": "aae011871115b4d15aef83227b86bd46e6aede85262cb4e2301deb74b5a01009",
+          "destination_digest": "aae011871115b4d15aef83227b86bd46e6aede85262cb4e2301deb74b5a01009",
+          "reason": "verifier-accepted partial anchor routed without prototype mutation",
+          "schema": "neural-computer.external-goal-representation-alignment-identity-anchor.v1"
+        }
+      },
+      {
+        "phase": 3,
+        "name": "affine",
+        "expected_slot": 0,
+        "mask_present_count": 6,
+        "route": {
+          "selected_slot_id": 0,
+          "eligible_slot_ids": [
+            0,
+            1
+          ],
+          "scores": [
+            0.9950634241104126,
+            0.6586316227912903
+          ],
+          "margin": 0.3364318013191223,
+          "reason": "slot-local signature route passed score and margin floors"
+        },
+        "anchor": {
+          "accepted": false,
+          "selected_slot_id": 0,
+          "eligible_slot_ids": [
+            0,
+            1
+          ],
+          "score": 0.9950634241104126,
+          "margin": 0.3364318013191223,
+          "anchor_update_stored": false,
+          "attempted_count": 0,
+          "resolved_count": 0,
+          "remaining_count": 0,
+          "verifier_accepted": true,
+          "source_digest": "aae011871115b4d15aef83227b86bd46e6aede85262cb4e2301deb74b5a01009",
+          "destination_digest": "aae011871115b4d15aef83227b86bd46e6aede85262cb4e2301deb74b5a01009",
+          "reason": "verifier-accepted partial anchor routed without prototype mutation",
+          "schema": "neural-computer.external-goal-representation-alignment-identity-anchor.v1"
+        }
+      },
+      {
+        "phase": 4,
+        "name": "affine",
+        "expected_slot": 0,
+        "mask_present_count": 8,
+        "route": {
+          "selected_slot_id": 0,
+          "eligible_slot_ids": [
+            0,
+            1
+          ],
+          "scores": [
+            0.9871288537979126,
+            0.654125452041626
+          ],
+          "margin": 0.3330034017562866,
+          "reason": "slot-local signature route passed score and margin floors"
+        },
+        "anchor": {
+          "accepted": true,
+          "selected_slot_id": 0,
+          "eligible_slot_ids": [
+            0,
+            1
+          ],
+          "score": 0.9871288537979126,
+          "margin": 0.3330034017562866,
+          "anchor_update_stored": true,
+          "attempted_count": 0,
+          "resolved_count": 0,
+          "remaining_count": 0,
+          "verifier_accepted": true,
+          "source_digest": "aae011871115b4d15aef83227b86bd46e6aede85262cb4e2301deb74b5a01009",
+          "destination_digest": "8668036b0b61a5b2715b2325da09fca13f2147940a8d662a3086d3bcee1244eb",
+          "reason": "verifier-accepted full anchor updated identity prototypes",
+          "schema": "neural-computer.external-goal-representation-alignment-identity-anchor.v1"
+        }
+      },
+      {
+        "phase": 4,
+        "name": "nonlinear",
+        "expected_slot": 1,
+        "mask_present_count": 8,
+        "route": {
+          "selected_slot_id": 1,
+          "eligible_slot_ids": [
+            0,
+            1
+          ],
+          "scores": [
+            0.8675079941749573,
+            0.9947226047515869
+          ],
+          "margin": 0.12721461057662964,
+          "reason": "slot-local signature route passed score and margin floors"
+        },
+        "anchor": {
+          "accepted": true,
+          "selected_slot_id": 1,
+          "eligible_slot_ids": [
+            0,
+            1
+          ],
+          "score": 0.9947226047515869,
+          "margin": 0.12721461057662964,
+          "anchor_update_stored": true,
+          "attempted_count": 0,
+          "resolved_count": 0,
+          "remaining_count": 0,
+          "verifier_accepted": true,
+          "source_digest": "8668036b0b61a5b2715b2325da09fca13f2147940a8d662a3086d3bcee1244eb",
+          "destination_digest": "9cfd71d7e83013822326714ce19d3f8134039d365b4fd886c53fcf77823ad990",
+          "reason": "verifier-accepted full anchor updated identity prototypes",
+          "schema": "neural-computer.external-goal-representation-alignment-identity-anchor.v1"
+        }
+      },
+      {
+        "phase": 5,
+        "name": "nonlinear",
+        "expected_slot": 1,
+        "mask_present_count": 6,
+        "route": {
+          "selected_slot_id": 1,
+          "eligible_slot_ids": [
+            0,
+            1
+          ],
+          "scores": [
+            0.8228048086166382,
+            0.9986217617988586
+          ],
+          "margin": 0.17581695318222046,
+          "reason": "slot-local signature route passed score and margin floors"
+        },
+        "anchor": {
+          "accepted": false,
+          "selected_slot_id": 1,
+          "eligible_slot_ids": [
+            0,
+            1
+          ],
+          "score": 0.9986217617988586,
+          "margin": 0.17581695318222046,
+          "anchor_update_stored": false,
+          "attempted_count": 0,
+          "resolved_count": 0,
+          "remaining_count": 0,
+          "verifier_accepted": true,
+          "source_digest": "9cfd71d7e83013822326714ce19d3f8134039d365b4fd886c53fcf77823ad990",
+          "destination_digest": "9cfd71d7e83013822326714ce19d3f8134039d365b4fd886c53fcf77823ad990",
+          "reason": "verifier-accepted partial anchor routed without prototype mutation",
+          "schema": "neural-computer.external-goal-representation-alignment-identity-anchor.v1"
+        }
+      },
+      {
+        "phase": 5,
+        "name": "affine",
+        "expected_slot": 0,
+        "mask_present_count": 6,
+        "route": {
+          "selected_slot_id": 0,
+          "eligible_slot_ids": [
+            0,
+            1
+          ],
+          "scores": [
+            0.9974818825721741,
+            0.5369588136672974
+          ],
+          "margin": 0.4605230689048767,
+          "reason": "slot-local signature route passed score and margin floors"
+        },
+        "anchor": {
+          "accepted": false,
+          "selected_slot_id": 0,
+          "eligible_slot_ids": [
+            0,
+            1
+          ],
+          "score": 0.9974818825721741,
+          "margin": 0.4605230689048767,
+          "anchor_update_stored": false,
+          "attempted_count": 0,
+          "resolved_count": 0,
+          "remaining_count": 0,
+          "verifier_accepted": true,
+          "source_digest": "9cfd71d7e83013822326714ce19d3f8134039d365b4fd886c53fcf77823ad990",
+          "destination_digest": "9cfd71d7e83013822326714ce19d3f8134039d365b4fd886c53fcf77823ad990",
+          "reason": "verifier-accepted partial anchor routed without prototype mutation",
+          "schema": "neural-computer.external-goal-representation-alignment-identity-anchor.v1"
+        }
+      },
+      {
+        "phase": 6,
+        "name": "affine",
+        "expected_slot": 0,
+        "mask_present_count": 6,
+        "route": {
+          "selected_slot_id": 0,
+          "eligible_slot_ids": [
+            0,
+            1
+          ],
+          "scores": [
+            0.9994229078292847,
+            0.6199027895927429
+          ],
+          "margin": 0.37952011823654175,
+          "reason": "slot-local signature route passed score and margin floors"
+        },
+        "anchor": {
+          "accepted": false,
+          "selected_slot_id": 0,
+          "eligible_slot_ids": [
+            0,
+            1
+          ],
+          "score": 0.9994229078292847,
+          "margin": 0.37952011823654175,
+          "anchor_update_stored": false,
+          "attempted_count": 0,
+          "resolved_count": 0,
+          "remaining_count": 0,
+          "verifier_accepted": true,
+          "source_digest": "9cfd71d7e83013822326714ce19d3f8134039d365b4fd886c53fcf77823ad990",
+          "destination_digest": "9cfd71d7e83013822326714ce19d3f8134039d365b4fd886c53fcf77823ad990",
+          "reason": "verifier-accepted partial anchor routed without prototype mutation",
+          "schema": "neural-computer.external-goal-representation-alignment-identity-anchor.v1"
+        }
+      },
+      {
+        "phase": 6,
+        "name": "nonlinear",
+        "expected_slot": 1,
+        "mask_present_count": 6,
+        "route": {
+          "selected_slot_id": 1,
+          "eligible_slot_ids": [
+            0,
+            1
+          ],
+          "scores": [
+            0.8923829793930054,
+            0.999862015247345
+          ],
+          "margin": 0.1074790358543396,
+          "reason": "slot-local signature route passed score and margin floors"
+        },
+        "anchor": {
+          "accepted": false,
+          "selected_slot_id": 1,
+          "eligible_slot_ids": [
+            0,
+            1
+          ],
+          "score": 0.999862015247345,
+          "margin": 0.1074790358543396,
+          "anchor_update_stored": false,
+          "attempted_count": 0,
+          "resolved_count": 0,
+          "remaining_count": 0,
+          "verifier_accepted": true,
+          "source_digest": "9cfd71d7e83013822326714ce19d3f8134039d365b4fd886c53fcf77823ad990",
+          "destination_digest": "9cfd71d7e83013822326714ce19d3f8134039d365b4fd886c53fcf77823ad990",
+          "reason": "verifier-accepted partial anchor routed without prototype mutation",
+          "schema": "neural-computer.external-goal-representation-alignment-identity-anchor.v1"
+        }
+      },
+      {
+        "phase": 7,
+        "name": "nonlinear",
+        "expected_slot": 1,
+        "mask_present_count": 6,
+        "route": {
+          "selected_slot_id": 1,
+          "eligible_slot_ids": [
+            0,
+            1
+          ],
+          "scores": [
+            0.8632724285125732,
+            0.9999697208404541
+          ],
+          "margin": 0.13669729232788086,
+          "reason": "slot-local signature route passed score and margin floors"
+        },
+        "anchor": {
+          "accepted": false,
+          "selected_slot_id": 1,
+          "eligible_slot_ids": [
+            0,
+            1
+          ],
+          "score": 0.9999697208404541,
+          "margin": 0.13669729232788086,
+          "anchor_update_stored": false,
+          "attempted_count": 0,
+          "resolved_count": 0,
+          "remaining_count": 0,
+          "verifier_accepted": true,
+          "source_digest": "9cfd71d7e83013822326714ce19d3f8134039d365b4fd886c53fcf77823ad990",
+          "destination_digest": "9cfd71d7e83013822326714ce19d3f8134039d365b4fd886c53fcf77823ad990",
+          "reason": "verifier-accepted partial anchor routed without prototype mutation",
+          "schema": "neural-computer.external-goal-representation-alignment-identity-anchor.v1"
+        }
+      },
+      {
+        "phase": 7,
+        "name": "affine",
+        "expected_slot": 0,
+        "mask_present_count": 6,
+        "route": {
+          "selected_slot_id": 0,
+          "eligible_slot_ids": [
+            0,
+            1
+          ],
+          "scores": [
+            1.0,
+            0.5656558275222778
+          ],
+          "margin": 0.43434417247772217,
+          "reason": "slot-local signature route passed score and margin floors"
+        },
+        "anchor": {
+          "accepted": false,
+          "selected_slot_id": 0,
+          "eligible_slot_ids": [
+            0,
+            1
+          ],
+          "score": 1.0,
+          "margin": 0.43434417247772217,
+          "anchor_update_stored": false,
+          "attempted_count": 0,
+          "resolved_count": 0,
+          "remaining_count": 0,
+          "verifier_accepted": true,
+          "source_digest": "9cfd71d7e83013822326714ce19d3f8134039d365b4fd886c53fcf77823ad990",
+          "destination_digest": "9cfd71d7e83013822326714ce19d3f8134039d365b4fd886c53fcf77823ad990",
+          "reason": "verifier-accepted partial anchor routed without prototype mutation",
+          "schema": "neural-computer.external-goal-representation-alignment-identity-anchor.v1"
+        }
+      },
+      {
+        "phase": 8,
+        "name": "affine",
+        "expected_slot": 0,
+        "mask_present_count": 8,
+        "route": {
+          "selected_slot_id": 0,
+          "eligible_slot_ids": [
+            0,
+            1
+          ],
+          "scores": [
+            0.9991966485977173,
+            0.6268572807312012
+          ],
+          "margin": 0.3723393678665161,
+          "reason": "slot-local signature route passed score and margin floors"
+        },
+        "anchor": {
+          "accepted": true,
+          "selected_slot_id": 0,
+          "eligible_slot_ids": [
+            0,
+            1
+          ],
+          "score": 0.9991966485977173,
+          "margin": 0.3723393678665161,
+          "anchor_update_stored": true,
+          "attempted_count": 0,
+          "resolved_count": 0,
+          "remaining_count": 0,
+          "verifier_accepted": true,
+          "source_digest": "9cfd71d7e83013822326714ce19d3f8134039d365b4fd886c53fcf77823ad990",
+          "destination_digest": "d39da42a0655a1727bbb203abc286a0353ed98a3682b8b42895ae335934be59e",
+          "reason": "verifier-accepted full anchor updated identity prototypes",
+          "schema": "neural-computer.external-goal-representation-alignment-identity-anchor.v1"
+        }
+      },
+      {
+        "phase": 8,
+        "name": "nonlinear",
+        "expected_slot": 1,
+        "mask_present_count": 8,
+        "route": {
+          "selected_slot_id": 1,
+          "eligible_slot_ids": [
+            0,
+            1
+          ],
+          "scores": [
+            0.9079820513725281,
+            0.9994136691093445
+          ],
+          "margin": 0.0914316177368164,
+          "reason": "slot-local signature route passed score and margin floors"
+        },
+        "anchor": {
+          "accepted": true,
+          "selected_slot_id": 1,
+          "eligible_slot_ids": [
+            0,
+            1
+          ],
+          "score": 0.9994136691093445,
+          "margin": 0.0914316177368164,
+          "anchor_update_stored": true,
+          "attempted_count": 0,
+          "resolved_count": 0,
+          "remaining_count": 0,
+          "verifier_accepted": true,
+          "source_digest": "d39da42a0655a1727bbb203abc286a0353ed98a3682b8b42895ae335934be59e",
+          "destination_digest": "18a680b26be157acb851a9f308d7e7172acbfe6631cb1689e309698f3c4bcf93",
+          "reason": "verifier-accepted full anchor updated identity prototypes",
+          "schema": "neural-computer.external-goal-representation-alignment-identity-anchor.v1"
+        }
+      },
+      {
+        "phase": 9,
+        "name": "nonlinear",
+        "expected_slot": 1,
+        "mask_present_count": 6,
+        "route": {
+          "selected_slot_id": 1,
+          "eligible_slot_ids": [
+            0,
+            1
+          ],
+          "scores": [
+            0.9534863233566284,
+            0.9989507794380188
+          ],
+          "margin": 0.04546445608139038,
+          "reason": "slot-local signature route passed score and margin floors"
+        },
+        "anchor": {
+          "accepted": false,
+          "selected_slot_id": 1,
+          "eligible_slot_ids": [
+            0,
+            1
+          ],
+          "score": 0.9989507794380188,
+          "margin": 0.04546445608139038,
+          "anchor_update_stored": false,
+          "attempted_count": 0,
+          "resolved_count": 0,
+          "remaining_count": 0,
+          "verifier_accepted": true,
+          "source_digest": "18a680b26be157acb851a9f308d7e7172acbfe6631cb1689e309698f3c4bcf93",
+          "destination_digest": "18a680b26be157acb851a9f308d7e7172acbfe6631cb1689e309698f3c4bcf93",
+          "reason": "verifier-accepted partial anchor routed without prototype mutation",
+          "schema": "neural-computer.external-goal-representation-alignment-identity-anchor.v1"
+        }
+      },
+      {
+        "phase": 9,
+        "name": "affine",
+        "expected_slot": 0,
+        "mask_present_count": 6,
+        "route": {
+          "selected_slot_id": 0,
+          "eligible_slot_ids": [
+            0,
+            1
+          ],
+          "scores": [
+            0.9974446892738342,
+            0.7354164123535156
+          ],
+          "margin": 0.2620282769203186,
+          "reason": "slot-local signature route passed score and margin floors"
+        },
+        "anchor": {
+          "accepted": false,
+          "selected_slot_id": 0,
+          "eligible_slot_ids": [
+            0,
+            1
+          ],
+          "score": 0.9974446892738342,
+          "margin": 0.2620282769203186,
+          "anchor_update_stored": false,
+          "attempted_count": 0,
+          "resolved_count": 0,
+          "remaining_count": 0,
+          "verifier_accepted": true,
+          "source_digest": "18a680b26be157acb851a9f308d7e7172acbfe6631cb1689e309698f3c4bcf93",
+          "destination_digest": "18a680b26be157acb851a9f308d7e7172acbfe6631cb1689e309698f3c4bcf93",
+          "reason": "verifier-accepted partial anchor routed without prototype mutation",
+          "schema": "neural-computer.external-goal-representation-alignment-identity-anchor.v1"
+        }
+      },
+      {
+        "phase": 10,
+        "name": "affine",
+        "expected_slot": 0,
+        "mask_present_count": 6,
+        "route": {
+          "selected_slot_id": 0,
+          "eligible_slot_ids": [
+            0,
+            1
+          ],
+          "scores": [
+            0.9890011548995972,
+            0.3675563335418701
+          ],
+          "margin": 0.621444821357727,
+          "reason": "slot-local signature route passed score and margin floors"
+        },
+        "anchor": {
+          "accepted": false,
+          "selected_slot_id": 0,
+          "eligible_slot_ids": [
+            0,
+            1
+          ],
+          "score": 0.9890011548995972,
+          "margin": 0.621444821357727,
+          "anchor_update_stored": false,
+          "attempted_count": 0,
+          "resolved_count": 0,
+          "remaining_count": 0,
+          "verifier_accepted": true,
+          "source_digest": "18a680b26be157acb851a9f308d7e7172acbfe6631cb1689e309698f3c4bcf93",
+          "destination_digest": "18a680b26be157acb851a9f308d7e7172acbfe6631cb1689e309698f3c4bcf93",
+          "reason": "verifier-accepted partial anchor routed without prototype mutation",
+          "schema": "neural-computer.external-goal-representation-alignment-identity-anchor.v1"
+        }
+      },
+      {
+        "phase": 10,
+        "name": "nonlinear",
+        "expected_slot": 1,
+        "mask_present_count": 6,
+        "route": {
+          "selected_slot_id": 1,
+          "eligible_slot_ids": [
+            0,
+            1
+          ],
+          "scores": [
+            0.8797649145126343,
+            0.9935935735702515
+          ],
+          "margin": 0.11382865905761719,
+          "reason": "slot-local signature route passed score and margin floors"
+        },
+        "anchor": {
+          "accepted": false,
+          "selected_slot_id": 1,
+          "eligible_slot_ids": [
+            0,
+            1
+          ],
+          "score": 0.9935935735702515,
+          "margin": 0.11382865905761719,
+          "anchor_update_stored": false,
+          "attempted_count": 0,
+          "resolved_count": 0,
+          "remaining_count": 0,
+          "verifier_accepted": true,
+          "source_digest": "18a680b26be157acb851a9f308d7e7172acbfe6631cb1689e309698f3c4bcf93",
+          "destination_digest": "18a680b26be157acb851a9f308d7e7172acbfe6631cb1689e309698f3c4bcf93",
+          "reason": "verifier-accepted partial anchor routed without prototype mutation",
+          "schema": "neural-computer.external-goal-representation-alignment-identity-anchor.v1"
+        }
+      },
+      {
+        "phase": 11,
+        "name": "nonlinear",
+        "expected_slot": 1,
+        "mask_present_count": 6,
+        "route": {
+          "selected_slot_id": 1,
+          "eligible_slot_ids": [
+            0,
+            1
+          ],
+          "scores": [
+            0.9384928345680237,
+            0.9951953887939453
+          ],
+          "margin": 0.05670255422592163,
+          "reason": "slot-local signature route passed score and margin floors"
+        },
+        "anchor": {
+          "accepted": false,
+          "selected_slot_id": 1,
+          "eligible_slot_ids": [
+            0,
+            1
+          ],
+          "score": 0.9951953887939453,
+          "margin": 0.05670255422592163,
+          "anchor_update_stored": false,
+          "attempted_count": 0,
+          "resolved_count": 0,
+          "remaining_count": 0,
+          "verifier_accepted": true,
+          "source_digest": "18a680b26be157acb851a9f308d7e7172acbfe6631cb1689e309698f3c4bcf93",
+          "destination_digest": "18a680b26be157acb851a9f308d7e7172acbfe6631cb1689e309698f3c4bcf93",
+          "reason": "verifier-accepted partial anchor routed without prototype mutation",
+          "schema": "neural-computer.external-goal-representation-alignment-identity-anchor.v1"
+        }
+      },
+      {
+        "phase": 11,
+        "name": "affine",
+        "expected_slot": 0,
+        "mask_present_count": 6,
+        "route": {
+          "selected_slot_id": 0,
+          "eligible_slot_ids": [
+            0,
+            1
+          ],
+          "scores": [
+            0.9918408989906311,
+            0.6383122205734253
+          ],
+          "margin": 0.3535286784172058,
+          "reason": "slot-local signature route passed score and margin floors"
+        },
+        "anchor": {
+          "accepted": false,
+          "selected_slot_id": 0,
+          "eligible_slot_ids": [
+            0,
+            1
+          ],
+          "score": 0.9918408989906311,
+          "margin": 0.3535286784172058,
+          "anchor_update_stored": false,
+          "attempted_count": 0,
+          "resolved_count": 0,
+          "remaining_count": 0,
+          "verifier_accepted": true,
+          "source_digest": "18a680b26be157acb851a9f308d7e7172acbfe6631cb1689e309698f3c4bcf93",
+          "destination_digest": "18a680b26be157acb851a9f308d7e7172acbfe6631cb1689e309698f3c4bcf93",
+          "reason": "verifier-accepted partial anchor routed without prototype mutation",
+          "schema": "neural-computer.external-goal-representation-alignment-identity-anchor.v1"
+        }
+      },
+      {
+        "phase": 12,
+        "name": "affine",
+        "expected_slot": 0,
+        "mask_present_count": 8,
+        "route": {
+          "selected_slot_id": 0,
+          "eligible_slot_ids": [
+            0,
+            1
+          ],
+          "scores": [
+            0.9827064871788025,
+            0.6114139556884766
+          ],
+          "margin": 0.3712925314903259,
+          "reason": "slot-local signature route passed score and margin floors"
+        },
+        "anchor": {
+          "accepted": true,
+          "selected_slot_id": 0,
+          "eligible_slot_ids": [
+            0,
+            1
+          ],
+          "score": 0.9827064871788025,
+          "margin": 0.3712925314903259,
+          "anchor_update_stored": true,
+          "attempted_count": 0,
+          "resolved_count": 0,
+          "remaining_count": 0,
+          "verifier_accepted": true,
+          "source_digest": "18a680b26be157acb851a9f308d7e7172acbfe6631cb1689e309698f3c4bcf93",
+          "destination_digest": "89d6cca616cd5e4695a2ee5a320340992f5f627fa20a9cad3d66801b1aa7cd2e",
+          "reason": "verifier-accepted full anchor updated identity prototypes",
+          "schema": "neural-computer.external-goal-representation-alignment-identity-anchor.v1"
+        }
+      },
+      {
+        "phase": 12,
+        "name": "nonlinear",
+        "expected_slot": 1,
+        "mask_present_count": 8,
+        "route": {
+          "selected_slot_id": 1,
+          "eligible_slot_ids": [
+            0,
+            1
+          ],
+          "scores": [
+            0.9450275897979736,
+            0.9881600141525269
+          ],
+          "margin": 0.04313242435455322,
+          "reason": "slot-local signature route passed score and margin floors"
+        },
+        "anchor": {
+          "accepted": true,
+          "selected_slot_id": 1,
+          "eligible_slot_ids": [
+            0,
+            1
+          ],
+          "score": 0.9881600141525269,
+          "margin": 0.04313242435455322,
+          "anchor_update_stored": true,
+          "attempted_count": 0,
+          "resolved_count": 0,
+          "remaining_count": 0,
+          "verifier_accepted": true,
+          "source_digest": "89d6cca616cd5e4695a2ee5a320340992f5f627fa20a9cad3d66801b1aa7cd2e",
+          "destination_digest": "1c719359b99117111b897bac2ec809a1f771ad0fec166064df00272dcd375cae",
+          "reason": "verifier-accepted full anchor updated identity prototypes",
+          "schema": "neural-computer.external-goal-representation-alignment-identity-anchor.v1"
+        }
+      },
+      {
+        "phase": 13,
+        "name": "nonlinear",
+        "expected_slot": 1,
+        "mask_present_count": 6,
+        "route": {
+          "selected_slot_id": 1,
+          "eligible_slot_ids": [
+            0,
+            1
+          ],
+          "scores": [
+            0.9120867252349854,
+            0.9941600561141968
+          ],
+          "margin": 0.08207333087921143,
+          "reason": "slot-local signature route passed score and margin floors"
+        },
+        "anchor": {
+          "accepted": false,
+          "selected_slot_id": 1,
+          "eligible_slot_ids": [
+            0,
+            1
+          ],
+          "score": 0.9941600561141968,
+          "margin": 0.08207333087921143,
+          "anchor_update_stored": false,
+          "attempted_count": 0,
+          "resolved_count": 0,
+          "remaining_count": 0,
+          "verifier_accepted": true,
+          "source_digest": "1c719359b99117111b897bac2ec809a1f771ad0fec166064df00272dcd375cae",
+          "destination_digest": "1c719359b99117111b897bac2ec809a1f771ad0fec166064df00272dcd375cae",
+          "reason": "verifier-accepted partial anchor routed without prototype mutation",
+          "schema": "neural-computer.external-goal-representation-alignment-identity-anchor.v1"
+        }
+      },
+      {
+        "phase": 13,
+        "name": "affine",
+        "expected_slot": 0,
+        "mask_present_count": 6,
+        "route": {
+          "selected_slot_id": 0,
+          "eligible_slot_ids": [
+            0,
+            1
+          ],
+          "scores": [
+            0.9948475360870361,
+            0.5839896202087402
+          ],
+          "margin": 0.4108579158782959,
+          "reason": "slot-local signature route passed score and margin floors"
+        },
+        "anchor": {
+          "accepted": false,
+          "selected_slot_id": 0,
+          "eligible_slot_ids": [
+            0,
+            1
+          ],
+          "score": 0.9948475360870361,
+          "margin": 0.4108579158782959,
+          "anchor_update_stored": false,
+          "attempted_count": 0,
+          "resolved_count": 0,
+          "remaining_count": 0,
+          "verifier_accepted": true,
+          "source_digest": "1c719359b99117111b897bac2ec809a1f771ad0fec166064df00272dcd375cae",
+          "destination_digest": "1c719359b99117111b897bac2ec809a1f771ad0fec166064df00272dcd375cae",
+          "reason": "verifier-accepted partial anchor routed without prototype mutation",
+          "schema": "neural-computer.external-goal-representation-alignment-identity-anchor.v1"
+        }
+      },
+      {
+        "phase": 14,
+        "name": "affine",
+        "expected_slot": 0,
+        "mask_present_count": 6,
+        "route": {
+          "selected_slot_id": 0,
+          "eligible_slot_ids": [
+            0,
+            1
+          ],
+          "scores": [
+            0.9975284337997437,
+            0.6414484977722168
+          ],
+          "margin": 0.35607993602752686,
+          "reason": "slot-local signature route passed score and margin floors"
+        },
+        "anchor": {
+          "accepted": false,
+          "selected_slot_id": 0,
+          "eligible_slot_ids": [
+            0,
+            1
+          ],
+          "score": 0.9975284337997437,
+          "margin": 0.35607993602752686,
+          "anchor_update_stored": false,
+          "attempted_count": 0,
+          "resolved_count": 0,
+          "remaining_count": 0,
+          "verifier_accepted": true,
+          "source_digest": "1c719359b99117111b897bac2ec809a1f771ad0fec166064df00272dcd375cae",
+          "destination_digest": "1c719359b99117111b897bac2ec809a1f771ad0fec166064df00272dcd375cae",
+          "reason": "verifier-accepted partial anchor routed without prototype mutation",
+          "schema": "neural-computer.external-goal-representation-alignment-identity-anchor.v1"
+        }
+      },
+      {
+        "phase": 14,
+        "name": "nonlinear",
+        "expected_slot": 1,
+        "mask_present_count": 6,
+        "route": {
+          "selected_slot_id": 1,
+          "eligible_slot_ids": [
+            0,
+            1
+          ],
+          "scores": [
+            0.9259063005447388,
+            0.9988932609558105
+          ],
+          "margin": 0.07298696041107178,
+          "reason": "slot-local signature route passed score and margin floors"
+        },
+        "anchor": {
+          "accepted": false,
+          "selected_slot_id": 1,
+          "eligible_slot_ids": [
+            0,
+            1
+          ],
+          "score": 0.9988932609558105,
+          "margin": 0.07298696041107178,
+          "anchor_update_stored": false,
+          "attempted_count": 0,
+          "resolved_count": 0,
+          "remaining_count": 0,
+          "verifier_accepted": true,
+          "source_digest": "1c719359b99117111b897bac2ec809a1f771ad0fec166064df00272dcd375cae",
+          "destination_digest": "1c719359b99117111b897bac2ec809a1f771ad0fec166064df00272dcd375cae",
+          "reason": "verifier-accepted partial anchor routed without prototype mutation",
+          "schema": "neural-computer.external-goal-representation-alignment-identity-anchor.v1"
+        }
+      },
+      {
+        "phase": 15,
+        "name": "nonlinear",
+        "expected_slot": 1,
+        "mask_present_count": 6,
+        "route": {
+          "selected_slot_id": 1,
+          "eligible_slot_ids": [
+            0,
+            1
+          ],
+          "scores": [
+            0.8938452005386353,
+            0.9995983242988586
+          ],
+          "margin": 0.10575312376022339,
+          "reason": "slot-local signature route passed score and margin floors"
+        },
+        "anchor": {
+          "accepted": false,
+          "selected_slot_id": 1,
+          "eligible_slot_ids": [
+            0,
+            1
+          ],
+          "score": 0.9995983242988586,
+          "margin": 0.10575312376022339,
+          "anchor_update_stored": false,
+          "attempted_count": 0,
+          "resolved_count": 0,
+          "remaining_count": 0,
+          "verifier_accepted": true,
+          "source_digest": "1c719359b99117111b897bac2ec809a1f771ad0fec166064df00272dcd375cae",
+          "destination_digest": "1c719359b99117111b897bac2ec809a1f771ad0fec166064df00272dcd375cae",
+          "reason": "verifier-accepted partial anchor routed without prototype mutation",
+          "schema": "neural-computer.external-goal-representation-alignment-identity-anchor.v1"
+        }
+      },
+      {
+        "phase": 15,
+        "name": "affine",
+        "expected_slot": 0,
+        "mask_present_count": 6,
+        "route": {
+          "selected_slot_id": 0,
+          "eligible_slot_ids": [
+            0,
+            1
+          ],
+          "scores": [
+            0.9987783432006836,
+            0.5946007966995239
+          ],
+          "margin": 0.40417754650115967,
+          "reason": "slot-local signature route passed score and margin floors"
+        },
+        "anchor": {
+          "accepted": false,
+          "selected_slot_id": 0,
+          "eligible_slot_ids": [
+            0,
+            1
+          ],
+          "score": 0.9987783432006836,
+          "margin": 0.40417754650115967,
+          "anchor_update_stored": false,
+          "attempted_count": 0,
+          "resolved_count": 0,
+          "remaining_count": 0,
+          "verifier_accepted": true,
+          "source_digest": "1c719359b99117111b897bac2ec809a1f771ad0fec166064df00272dcd375cae",
+          "destination_digest": "1c719359b99117111b897bac2ec809a1f771ad0fec166064df00272dcd375cae",
+          "reason": "verifier-accepted partial anchor routed without prototype mutation",
+          "schema": "neural-computer.external-goal-representation-alignment-identity-anchor.v1"
+        }
+      }
+    ],
+    "restored_affine_route": {
+      "selected_slot_id": 0,
+      "eligible_slot_ids": [
+        0,
+        1
+      ],
+      "scores": [
+        0.9999994039535522,
+        0.6520510911941528
+      ],
+      "margin": 0.3479483127593994,
+      "reason": "slot-local signature route passed score and margin floors"
+    },
+    "restored_nonlinear_route": {
+      "selected_slot_id": 1,
+      "eligible_slot_ids": [
+        0,
+        1
+      ],
+      "scores": [
+        0.9079820513725281,
+        0.9999872446060181
+      ],
+      "margin": 0.09200519323348999,
+      "reason": "slot-local signature route passed score and margin floors"
+    },
+    "final_active_slots": [
+      0,
+      1
+    ],
+    "final_identity_quarantine_count": 0
+  },
+  "accounting": {
+    "unique_verifier_outcomes": 648,
+    "unique_alignment_pairs": 96,
+    "heldout_alignment_pairs": 96,
+    "unique_identity_queries": 32,
+    "partial_identity_queries": 24,
+    "full_identity_anchor_updates": 8,
+    "transition_rows_consumed_once": 123,
+    "verifier_statistics_updates": 1,
+    "old_verifier_replay": 0,
+    "old_alignment_replay": 0,
+    "controller_optimizer_updates": 0,
+    "wall_seconds": 2.3444971250137314
+  }
+}

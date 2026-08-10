@@ -242,3 +242,76 @@ def test_alignment_bank_defers_overlapping_identity_and_resolves_from_later_anch
     assert bank.identity_quarantined_count == 0
     evicted = bank.evict_verified(second_receipt.slot_id, lambda candidate: candidate.active_count == 1)
     assert evicted.accepted
+
+
+def test_alignment_bank_routes_partial_evidence_and_selects_anchor_without_slot_id() -> None:
+    bank = ExternalGoalRepresentationAlignmentBank(
+        1,
+        capacity=2,
+        identity_width=3,
+        identity_min_score=0.6,
+        identity_min_margin=0.2,
+        identity_quarantine_capacity=1,
+    )
+    first, source, target = _adapter(0.0)
+    second, second_source, second_target = _adapter(1.0)
+    assert bank.admit_verified(
+        "opaque-a",
+        first,
+        source,
+        target,
+        prediction_tolerance=1e-3,
+        identity_signature=torch.tensor([1.0, 0.0, 0.0]),
+    ).accepted
+    assert bank.admit_verified(
+        "opaque-b",
+        second,
+        second_source,
+        second_target,
+        prediction_tolerance=1e-3,
+        identity_signature=torch.tensor([0.0, 1.0, 0.0]),
+    ).accepted
+
+    before = bank.digest()
+    partial_a = bank.route_by_signature(
+        torch.tensor([0.9, 0.0, 123.0]),
+        source,
+        signature_mask=torch.tensor([True, False, False]),
+    )
+    partial_b = bank.route_by_signature(
+        torch.tensor([0.0, 0.8, -99.0]),
+        second_source,
+        signature_mask=torch.tensor([False, True, False]),
+    )
+    assert partial_a.selected_slot_id == 0
+    assert partial_b.selected_slot_id == 1
+    assert bank.digest() == before
+
+    deferred = bank.defer_identity_signature(torch.tensor([1.0, 1.0, 0.0]))
+    assert deferred.accepted
+    rejected = bank.accept_identity_anchor(
+        torch.tensor([0.98, 0.02, 42.0]),
+        signature_mask=torch.tensor([True, True, False]),
+        verifier_accepted=False,
+    )
+    assert not rejected.accepted and rejected.selected_slot_id == 0
+    assert bank.identity_quarantined_count == 1
+
+    partial_anchor = bank.accept_identity_anchor(
+        torch.tensor([0.99, 0.01, 42.0]),
+        signature_mask=torch.tensor([True, True, False]),
+        verifier_accepted=True,
+    )
+    assert not partial_anchor.accepted
+    assert not partial_anchor.anchor_update_stored
+    assert bank.identity_quarantined_count == 1
+
+    resolved = bank.accept_identity_anchor(
+        torch.tensor([1.0, 0.0, 0.0]),
+        verifier_accepted=True,
+    )
+    assert resolved.accepted
+    assert resolved.selected_slot_id == 0
+    assert resolved.anchor_update_stored
+    assert resolved.resolved_count == 1
+    assert bank.identity_quarantined_count == 0
