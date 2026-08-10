@@ -13,6 +13,7 @@ from torch import nn
 from .world_model import (
     EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY,
     EXTERNAL_TRANSITION_NONLINEAR_MODEL_FAMILY,
+    EXTERNAL_TRANSITION_RANDOM_FEATURE_MODEL_FAMILY,
     ExternalTransitionContextEncoder,
     ExternalTransitionMemory,
     ExternalTransitionModel,
@@ -59,6 +60,9 @@ class ExternalFactoredTransitionModel(nn.Module):
         residual_model_family: str = EXTERNAL_TRANSITION_NONLINEAR_MODEL_FAMILY,
         residual_hidden_width: int | None = None,
         residual_learning_rate: float = 0.01,
+        residual_ridge: float = 1e-5,
+        residual_random_feature_width: int = 128,
+        residual_random_feature_seed: int = 0,
     ) -> None:
         super().__init__()
         if min(state_width, intention_width, context_width, hidden_width) < 1:
@@ -78,15 +82,23 @@ class ExternalFactoredTransitionModel(nn.Module):
             raise ValueError("factored residual hidden width must be positive")
         if residual_learning_rate <= 0.0:
             raise ValueError("factored residual learning rate must be positive")
+        if residual_ridge <= 0.0:
+            raise ValueError("factored residual ridge must be positive")
+        if residual_random_feature_width < 1:
+            raise ValueError("factored residual random-feature width must be positive")
         if residual_model_family not in {
             EXTERNAL_TRANSITION_NONLINEAR_MODEL_FAMILY,
             EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY,
+            EXTERNAL_TRANSITION_RANDOM_FEATURE_MODEL_FAMILY,
         }:
             raise ValueError("unsupported factored residual model family")
         self.residual_mode = str(residual_mode)
         self.residual_model_family = str(residual_model_family)
         self.residual_hidden_width = int(residual_hidden_width)
         self.residual_learning_rate = float(residual_learning_rate)
+        self.residual_ridge = float(residual_ridge)
+        self.residual_random_feature_width = int(residual_random_feature_width)
+        self.residual_random_feature_seed = int(residual_random_feature_seed)
         self.base = ExternalTransitionModel(
             self.state_width,
             self.intention_width,
@@ -109,6 +121,10 @@ class ExternalFactoredTransitionModel(nn.Module):
                 hidden_width=self.residual_hidden_width,
                 model_family=self.residual_model_family,
                 matching_tolerance=1e-6,
+                affine_ridge=self.residual_ridge,
+                adaptation_learning_rate=self.residual_learning_rate,
+                random_feature_width=self.residual_random_feature_width,
+                random_feature_seed=self.residual_random_feature_seed,
             )
         )
 
@@ -123,6 +139,9 @@ class ExternalFactoredTransitionModel(nn.Module):
             "residual_model_family": self.residual_model_family,
             "residual_hidden_width": self.residual_hidden_width,
             "residual_learning_rate": self.residual_learning_rate,
+            "residual_ridge": self.residual_ridge,
+            "residual_random_feature_width": self.residual_random_feature_width,
+            "residual_random_feature_seed": self.residual_random_feature_seed,
             "representation": "frozen_shared_base_plus_opaque_context_residual_v2",
             "behavior": "derived_by_external_search_not_stored_policy_v1",
             "base": self.base.configuration(),
@@ -399,6 +418,13 @@ class ExternalFactoredTransitionModel(nn.Module):
             residual_learning_rate=float(
                 configuration.get("residual_learning_rate", 0.01)
             ),
+            residual_ridge=float(configuration.get("residual_ridge", 1e-5)),
+            residual_random_feature_width=int(
+                configuration.get("residual_random_feature_width", 128)
+            ),
+            residual_random_feature_seed=int(
+                configuration.get("residual_random_feature_seed", 0)
+            ),
         )
         cls._load_state(model.base, base_state)
         residual_store_state = {
@@ -585,6 +611,9 @@ class ExternalFactoredTransitionRouter:
     def _route_existing(
         self,
         observation: ExternalTransitionObservation,
+        *,
+        match_tolerance: float | None = None,
+        match_margin: float | None = None,
     ) -> tuple[int, float, float] | None:
         if not self._contexts:
             return None
@@ -604,7 +633,11 @@ class ExternalFactoredTransitionRouter:
         margin = (
             float("inf") if len(ordering) == 1 else errors[ordering[1]] - errors[best]
         )
-        if errors[best] > self.match_tolerance or margin < self.match_margin:
+        tolerance = self.match_tolerance if match_tolerance is None else match_tolerance
+        margin_floor = self.match_margin if match_margin is None else match_margin
+        if tolerance < 0.0 or margin_floor < 0.0:
+            raise ValueError("factored route tolerances cannot be negative")
+        if errors[best] > tolerance or margin < margin_floor:
             return None
         return self._slot_ids[best], errors[best], margin
 
@@ -691,6 +724,9 @@ class ExternalFactoredTransitionRouter:
     def route_bundle(
         self,
         observations: Sequence[ExternalTransitionObservation],
+        *,
+        match_tolerance: float | None = None,
+        match_margin: float | None = None,
     ) -> FactoredTransitionRouteResult:
         """Route an opaque evidence bundle as one atomic stream transaction.
 
@@ -713,7 +749,11 @@ class ExternalFactoredTransitionRouter:
                 intention_width=self.model.intention_width,
             )
         merged = self._merge(cloned)
-        matched = self._route_existing(merged)
+        matched = self._route_existing(
+            merged,
+            match_tolerance=match_tolerance,
+            match_margin=match_margin,
+        )
         if matched is not None:
             slot_id, _error, _margin = matched
             return FactoredTransitionRouteResult(

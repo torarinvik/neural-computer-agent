@@ -1,0 +1,113 @@
+{
+  "schema": "neural-computer.external-factored-nonlinear-drift.v1",
+  "seed": 81024,
+  "configuration": {
+    "base_rows": 40,
+    "online_rows": 34,
+    "target_train_rows": 20,
+    "target_heldout_rows": 4,
+    "drift_update_rows": 6,
+    "drift_heldout_rows": 4,
+    "base_updates": 2000,
+    "residual_updates_per_transaction": 1000,
+    "residual_model_family": "random_feature_sufficient_statistics_v1",
+    "residual_random_feature_width": 128,
+    "residual_ridge": 1e-05,
+    "prediction_tolerance": 0.1,
+    "claim": "partial-evidence-nonlinear-factual-drift-retention-v1"
+  },
+  "metrics": {
+    "base_loss": 2.771936919998552e-07,
+    "base_only_target_heldout_mse": 0.021601976826786995,
+    "base_only_drift_heldout_mse": 0.013408588245511055,
+    "learned_drift_heldout_mse": 0.0006432466325350106,
+    "retained_target_mse_after_drift": 0.023305868729948997,
+    "fresh_target_training_mse": 1.435710772490495e-09,
+    "fresh_target_heldout_mse": 0.004493356682360172,
+    "source_route_status": "staged",
+    "target_route_status": "staged",
+    "alternating_routes": [
+      0,
+      1,
+      0,
+      1,
+      0,
+      1
+    ],
+    "restored_routes": [
+      0,
+      1
+    ],
+    "source_promotion": {
+      "accepted": true,
+      "slot_id": 0,
+      "heldout_error": 0.00013022293569520116,
+      "reason": "candidate passed factual and retention probes",
+      "schema": "neural-computer.external-factored-transition-promotion.v1"
+    },
+    "target_promotion": {
+      "accepted": true,
+      "slot_id": 1,
+      "heldout_error": 0.0006865718169137836,
+      "reason": "candidate passed factual and retention probes",
+      "schema": "neural-computer.external-factored-transition-promotion.v1"
+    },
+    "drift_promotion": {
+      "accepted": true,
+      "slot_id": 1,
+      "heldout_error": 0.0006432466907426715,
+      "reason": "bound residual passed factual and retention probes",
+      "schema": "neural-computer.external-factored-transition-promotion.v1"
+    },
+    "rejected_update": {
+      "accepted": false,
+      "slot_id": null,
+      "heldout_error": 3.986684560775757,
+      "reason": "bound residual failed factual or retention probe",
+      "schema": "neural-computer.external-factored-transition-promotion.v1"
+    },
+    "model_digest_changed_by_drift": true
+  },
+  "gates": {
+    "source_promoted": true,
+    "target_promoted": true,
+    "partial_target_evidence": true,
+    "nonlinear_drift_evidence_is_partial": true,
+    "heldout_source_quality": true,
+    "heldout_target_quality_before_drift": true,
+    "drift_promoted": true,
+    "drift_heldout_quality": true,
+    "prior_target_retained_after_drift": true,
+    "alternating_routes_correct": true,
+    "rejected_corrupted_drift": true,
+    "rejection_did_not_mutate_model": true,
+    "base_unchanged": true,
+    "controller_unchanged": true,
+    "context_encoder_unchanged": true,
+    "exact_persistence": true,
+    "restored_routes_correct": true,
+    "learned_beats_base_only": true,
+    "fresh_control_measured": true
+  },
+  "accounting": {
+    "base_optimizer_updates": 2000,
+    "fresh_control_optimizer_updates": 2000,
+    "residual_optimizer_updates": 0,
+    "residual_statistics_updates": 3,
+    "controller_optimizer_updates": 0,
+    "context_encoder_optimizer_updates": 0,
+    "old_regime_replay_during_target_and_drift": 0,
+    "base_pretraining_rows": 40,
+    "target_online_rows": 20,
+    "drift_update_rows": 6,
+    "drift_heldout_rows": 4,
+    "wall_seconds": 2.5819304999895394
+  },
+  "digests": {
+    "base": "be84a354d39d7404da3779f1b51104368041fd8eb35776392dd20aa346de2d54",
+    "controller": "83ad009e0eafd45283165dd8f96b1ac128a899a0d06b541fdf7a079c325029d5",
+    "context_encoder": "52c8429db688ce4a4f6dab241597e2a019f0aeb2c9f91df93d7b59efa35bad06",
+    "router": "22a545cc1c2a666cb57dcaefb60040e5d178ab3eac33c6d83f2fc41c5488bd07"
+  },
+  "promoted": true
+}

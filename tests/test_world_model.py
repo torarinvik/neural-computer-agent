@@ -5,6 +5,7 @@ import torch
 
 from neural_computer import (
     EXTERNAL_FACTORED_TRANSITION_LEARNED_RESIDUAL_MODE,
+    EXTERNAL_TRANSITION_RANDOM_FEATURE_MODEL_FAMILY,
     ExternalContextAddressResolver,
     ExternalContextualEvidenceCalibrator,
     ExternalFactoredTransitionModel,
@@ -1960,6 +1961,45 @@ def test_learned_factored_residual_generalizes_while_base_stays_frozen() -> None
             context.unsqueeze(0).expand(heldout.state.shape[0], -1),
         ),
     )
+
+
+def test_factored_random_feature_residual_is_replay_free_and_persistent() -> None:
+    model = ExternalFactoredTransitionModel(
+        1,
+        1,
+        2,
+        hidden_width=8,
+        residual_mode=EXTERNAL_FACTORED_TRANSITION_LEARNED_RESIDUAL_MODE,
+        residual_model_family=EXTERNAL_TRANSITION_RANDOM_FEATURE_MODEL_FAMILY,
+        residual_random_feature_width=32,
+        residual_random_feature_seed=17,
+        residual_ridge=0.01,
+    )
+    for parameter in model.base.parameters():
+        parameter.data.zero_()
+    model.freeze_base()
+    base_before = model.base.digest()
+    context = torch.tensor([1.0, 0.0])
+    first = ExternalTransitionObservation(
+        state=torch.tensor([[-1.0], [0.0]]),
+        intention=torch.ones(2, 1),
+        next_state=torch.tensor([[-0.5], [0.5]]),
+    )
+    second = ExternalTransitionObservation(
+        state=torch.tensor([[0.5], [1.0]]),
+        intention=torch.ones(2, 1),
+        next_state=torch.tensor([[1.0], [1.5]]),
+    )
+    assert model.fit_residual(first, context=context, updates=100)[1] == 1
+    assert model.fit_residual(second, context=context, updates=100)[1] == 1
+    assert model.residual_bank is not None
+    assert model.residual_bank.models[0].sample_count.item() == 4
+    assert model.base.digest() == base_before
+
+    restored = ExternalFactoredTransitionModel.from_payload(model.state_payload())
+    assert restored.digest() == model.digest()
+    assert restored.residual_bank is not None
+    assert restored.residual_bank.models[0].sample_count.item() == 4
 
 
 def test_factored_router_stages_promotes_and_reuses_opaque_context() -> None:

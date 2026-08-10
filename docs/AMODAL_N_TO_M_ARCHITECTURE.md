@@ -6379,3 +6379,32 @@ genuinely nonlinear, partially observed, and drifting dynamics while keeping
 the independent gate and fresh-control comparison. A model that only fits a
 small affine fixture is not yet the general factual learner required by the
 architecture.
+
+## Replay-free nonlinear drift retention (2026-08-10)
+
+The factored residual boundary now also accepts the replay-free random-feature
+sufficient-statistics family. Its feature projection is frozen; adaptation
+updates only external normal-equation statistics, so the controller, shared
+base, and context encoder remain unchanged and each new transition is consumed
+once. The random-feature width, seed, ridge, and learning-family selection are
+persisted as part of the external model contract.
+
+The pressure test in `experiments/external_factored_nonlinear_drift/` presents
+an opaque nonlinear source regime, a partially observed nonlinear target, and
+a later drift on the already-bound target slot. Five seeds promoted the source,
+target, and drift slots; each passed independent held-out gates, retained the
+prior target behavior, routed alternating source/target bundles as
+`[0, 1, 0, 1, 0, 1]`, rejected a corrupted drift update without mutation, and
+round-tripped exact state. Drift held-out MSE beat the frozen-base-only control
+on every seed, with no old-regime replay and no controller updates.
+
+This is a promoted bounded result, not general continual learning. The basis
+is fixed and finite, the evidence is smooth synthetic data, and the route
+tolerance is an explicitly calibrated post-promotion read setting. The
+optimizer-based nonlinear MLP variant was rejected under the same sparse
+no-replay pressure because it did not reliably beat the frozen-base control;
+that negative result supports retaining additive sufficient-statistics memory
+as the current replay-free default for this boundary.
+
+Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_factored_nonlinear_drift_promoted_2026-08-10/`.
