@@ -1211,6 +1211,9 @@ class PolicyFreeAmodalRuntime:
     inference time.  Thus a new regime can add facts or residuals without
     overwriting a stored action preference.  If the planner owns a model bank,
     it retrieves the best factual slot before any caller-owned adaptation.
+    Optional candidate entry tensors are passed to the planner's external
+    value model, keeping growing memory files outside the controller while
+    allowing their signed factual deltas to change the searched intention.
     """
 
     schema = POLICY_FREE_RUNTIME_SCHEMA
@@ -1314,6 +1317,8 @@ class PolicyFreeAmodalRuntime:
         beam_width: int | None = None,
         transition_context: torch.Tensor | None = None,
         intention_costs: torch.Tensor | None = None,
+        candidate_entries: torch.Tensor | None = None,
+        entry_value_weight: float = 0.0,
         step_cost_weight: float = 0.0,
         goal_progress_weight: float = 0.0,
         elapsed: torch.Tensor | float = 1.0,
@@ -1366,6 +1371,8 @@ class PolicyFreeAmodalRuntime:
                 horizon=horizon,
                 beam_width=beam_width,
                 intention_costs=intention_costs,
+                candidate_entries=candidate_entries,
+                entry_value_weight=entry_value_weight,
                 step_cost_weight=step_cost_weight,
             )
             planning = selection.planning
@@ -1379,6 +1386,8 @@ class PolicyFreeAmodalRuntime:
                 beam_width=beam_width,
                 transition_context=transition_context,
                 intention_costs=intention_costs,
+                candidate_entries=candidate_entries,
+                entry_value_weight=entry_value_weight,
                 step_cost_weight=step_cost_weight,
                 goal_progress_weight=goal_progress_weight,
             )

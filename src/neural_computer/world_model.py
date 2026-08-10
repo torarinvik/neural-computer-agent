@@ -35,6 +35,7 @@ from .memory import (
 )
 from .representation import (
     DEFAULT_INTENTION_SPACE_ID,
+    DEFAULT_MEMORY_VALUE_SPACE_ID,
     DEFAULT_STATE_SPACE_ID,
 )
 from .representation import (
@@ -10290,8 +10291,10 @@ class ExternalModelBasedPlanner:
         *,
         beam_width: int = 4,
         goal_evaluator: ExternalGoalEvaluator | None = None,
+        entry_value_model: nn.Module | None = None,
         state_space_id: str = DEFAULT_STATE_SPACE_ID,
         intention_space_id: str = DEFAULT_INTENTION_SPACE_ID,
+        entry_space_id: str = DEFAULT_MEMORY_VALUE_SPACE_ID,
     ) -> None:
         if not isinstance(model, nn.Module) or not all(
             isinstance(getattr(model, name, None), int)
@@ -10307,17 +10310,32 @@ class ExternalModelBasedPlanner:
             raise ValueError(
                 "goal evaluator width must match transition model state width"
             )
+        if entry_value_model is not None:
+            if not isinstance(entry_value_model, nn.Module) or not all(
+                isinstance(getattr(entry_value_model, name, None), int)
+                for name in ("state_width", "entry_width")
+            ):
+                raise TypeError(
+                    "entry value model must expose integer state_width and entry_width"
+                )
+            if entry_value_model.state_width != model.state_width:
+                raise ValueError(
+                    "entry value model state width must match transition model"
+                )
         for name, value in (
             ("state_space_id", state_space_id),
             ("intention_space_id", intention_space_id),
+            ("entry_space_id", entry_space_id),
         ):
             if not isinstance(value, str) or not value.strip():
                 raise ValueError(f"planner {name} must be non-empty")
         self.model = model
         self.beam_width = int(beam_width)
         self.goal_evaluator = goal_evaluator
+        self.entry_value_model = entry_value_model
         self.state_space_id = state_space_id.strip()
         self.intention_space_id = intention_space_id.strip()
+        self.entry_space_id = entry_space_id.strip()
 
     def configuration(self) -> dict[str, int | str]:
         return {
@@ -10333,9 +10351,25 @@ class ExternalModelBasedPlanner:
             "policy": "none_behavior_derived_at_inference_v1",
             "heuristic": "caller_opt_in_goal_progress_v1",
             "cost_input": "optional_nonnegative_opaque_intention_costs_v1",
+            "entry_value": (
+                "none"
+                if self.entry_value_model is None
+                else "external_opaque_entry_value_v1"
+            ),
+            "entry_value_model_schema": (
+                "none"
+                if self.entry_value_model is None
+                else str(getattr(self.entry_value_model, "schema", "unversioned"))
+            ),
+            "entry_width": (
+                0
+                if self.entry_value_model is None
+                else self.entry_value_model.entry_width
+            ),
             "representation_space_schema": EXTERNAL_REPRESENTATION_SPACE_SCHEMA,
             "state_space_id": self.state_space_id,
             "intention_space_id": self.intention_space_id,
+            "entry_space_id": self.entry_space_id,
         }
 
     def _predict(
@@ -10350,6 +10384,22 @@ class ExternalModelBasedPlanner:
         if not callable(predictor):
             raise TypeError("transition model does not expose contextual prediction")
         return predictor(state, intention, context)
+
+    def _entry_value(
+        self,
+        state: torch.Tensor,
+        entry: torch.Tensor,
+    ) -> torch.Tensor:
+        if self.entry_value_model is None:
+            raise RuntimeError("planner has no external entry value model")
+        value = self.entry_value_model(state, entry)
+        if value.ndim == 2 and value.shape[1] == 1:
+            value = value.squeeze(1)
+        if value.ndim != 1 or value.shape[0] != state.shape[0]:
+            raise ValueError("entry value model must return one scalar per row")
+        if not bool(torch.isfinite(value).all()):
+            raise ValueError("entry value model returned non-finite values")
+        return value
 
     @torch.no_grad()
     def rollout_error(
@@ -10418,6 +10468,8 @@ class ExternalModelBasedPlanner:
         beam_width: int | None = None,
         transition_context: torch.Tensor | None = None,
         intention_costs: torch.Tensor | None = None,
+        candidate_entries: torch.Tensor | None = None,
+        entry_value_weight: float = 0.0,
         step_cost_weight: float = 0.0,
         goal_progress_weight: float = 0.0,
     ) -> ModelBasedPlanningResult:
@@ -10437,9 +10489,17 @@ class ExternalModelBasedPlanner:
         evaluator as an intermediate search heuristic.  This is useful for
         horizons where terminal-only beam search would prune every useful
         prefix; it is disabled by default because latent-space progress is
-        not universally meaningful.
+        not universally meaningful.  When ``entry_value_weight`` is positive,
+        an external entry-value model scores each candidate entry at the
+        predicted terminal state.  The value is subtracted from the search
+        score, so an opaque signed delta can reverse a factual preference
+        without changing the transition model or controller.
         """
 
+        if not math.isfinite(float(entry_value_weight)) or entry_value_weight < 0.0:
+            raise ValueError(
+                "planner entry value weight must be finite and non-negative"
+            )
         if not math.isfinite(float(step_cost_weight)) or step_cost_weight < 0.0:
             raise ValueError("planner step_cost_weight must be finite and non-negative")
         if not math.isfinite(float(goal_progress_weight)) or goal_progress_weight < 0.0:
@@ -10497,6 +10557,38 @@ class ExternalModelBasedPlanner:
             raise ValueError("per-batch candidate intentions have the wrong batch")
         if candidates.shape[1] < 1:
             raise ValueError("planner requires at least one candidate intention")
+        candidate_entry_values: torch.Tensor | None = None
+        if candidate_entries is not None:
+            if self.entry_value_model is None:
+                raise ValueError(
+                    "candidate entries require an external entry value model"
+                )
+            _validate_tensor(
+                candidate_entries,
+                name="candidate_entries",
+                ndim=2 if candidate_entries.ndim == 2 else 3,
+                width=self.entry_value_model.entry_width,
+            )
+            if candidate_entries.ndim == 2:
+                if candidate_entries.shape[0] != candidates.shape[1]:
+                    raise ValueError("candidate entries do not match candidate count")
+                candidate_entry_values = candidate_entries.unsqueeze(0).expand(
+                    state.shape[0], -1, -1
+                )
+            elif candidate_entries.shape[0] == state.shape[0] and (
+                candidate_entries.shape[1] == candidates.shape[1]
+            ):
+                candidate_entry_values = candidate_entries
+            else:
+                raise ValueError("per-batch candidate entries have the wrong shape")
+        elif entry_value_weight > 0.0:
+            raise ValueError(
+                "positive entry value weight requires candidate entries"
+            )
+        if entry_value_weight > 0.0 and self.entry_value_model is None:
+            raise ValueError(
+                "positive entry value weight requires an external entry value model"
+            )
         candidate_costs: torch.Tensor | None = None
         if intention_costs is not None:
             if intention_costs.ndim not in (1, 2):
@@ -10597,6 +10689,19 @@ class ExternalModelBasedPlanner:
                             self.goal_evaluator(state_queries, goal_queries)
                         ).reshape(parent_count, candidate_count, -1)
                         terminal_scores = -success_probability.max(dim=-1).values
+                    if (
+                        entry_value_weight > 0.0
+                        and candidate_entry_values is not None
+                        and _step == horizon - 1
+                    ):
+                        row_entries = candidate_entry_values[row]
+                        entry_scores = self._entry_value(
+                            next_states.reshape(-1, self.model.state_width),
+                            row_entries.repeat(parent_count, 1),
+                        ).reshape(parent_count, candidate_count)
+                        terminal_scores = terminal_scores - (
+                            entry_value_weight * entry_scores
+                        )
                     expanded: list[
                         tuple[
                             torch.Tensor,
@@ -10747,6 +10852,8 @@ class ExternalModelBasedPlanner:
         horizon: int,
         beam_width: int | None = None,
         intention_costs: torch.Tensor | None = None,
+        candidate_entries: torch.Tensor | None = None,
+        entry_value_weight: float = 0.0,
         step_cost_weight: float = 0.0,
     ) -> GoalConditionedModelSelection:
         """Select the model whose factual rollout best reaches the goal.
@@ -10757,7 +10864,9 @@ class ExternalModelBasedPlanner:
         are passed through to each factual rollout so model selection can
         optimize the same goal-plus-lifetime-cost objective. Stable logical
         addresses are returned so physical bank reorganization cannot stale
-        the selection.
+        the selection. Optional candidate entries and their external value
+        model are passed through unchanged, allowing the same signed-delta
+        objective to select a factual model and derive behavior.
         """
 
         if not isinstance(bank, ExternalTransitionModelBank):
@@ -10793,6 +10902,8 @@ class ExternalModelBasedPlanner:
                     beam_width=beam_width,
                     transition_context=context.unsqueeze(0),
                     intention_costs=intention_costs,
+                    candidate_entries=candidate_entries,
+                    entry_value_weight=entry_value_weight,
                     step_cost_weight=step_cost_weight,
                 )
             )

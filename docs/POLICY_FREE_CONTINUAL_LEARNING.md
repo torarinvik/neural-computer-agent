@@ -479,7 +479,29 @@ trains only on positive entries, freezes the model, and evaluates negative
 entries with zero target updates. Entry shuffling breaks the prediction,
 exact oddness and persistence hold, and the signed model beats a matched
 unfactorized control on the contradictory target. This is a real reusable
-signed-delta boundary, but not yet live multimodal search integration,
-arbitrary value learning, or general continual learning. The next step is to
-connect signed entries to model-based search and test them across changing
-external regimes without replay.
+signed-delta boundary. `ExternalModelBasedPlanner` and
+`PolicyFreeAmodalRuntime` now accept runtime-sized opaque candidate-entry
+tensors and an explicit entry-value weight, so the external value model can
+change the searched intention without adding a controller or protocol branch.
+The planner still leaves arbitrary value learning, changing-regime transfer,
+and general continual learning unqualified; the next pressure test is this
+live search path across contradictory external regimes without replay.
+
+## Live signed-entry search (2026-08-10)
+
+The planner/runtime seam is now executable rather than merely representational.
+`ExternalModelBasedPlanner` accepts a versioned external entry-value model,
+runtime-sized `candidate_entries`, and an explicit nonnegative value weight.
+At each terminal expansion it evaluates the predicted state with the matching
+opaque entry and subtracts that factual value from the search score. The
+transition model, controller, and decoders remain unchanged; bank-backed
+model selection passes the same boundary through each factual slot.
+
+The promoted three-seed audit under
+`session_records/sequence_working_memory_2026-08-02/signed_entry_search_promoted_2026-08-10/`
+trains only on positive entries, freezes the external value model, and flips
+the selected intention when the external entry assignment is reversed. A
+matched planner with no entry-value model is polarity-insensitive. This
+promotes live signed-delta search, not arbitrary value learning or general
+continual learning. The next pressure is persistent entry growth and
+changing-regime search with independent held-out factual verification.

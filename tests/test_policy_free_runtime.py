@@ -8,6 +8,7 @@ from neural_computer import (
     ControllerFeedback,
     ExternalControllerStateAdapter,
     ExternalModelBasedPlanner,
+    ExternalSignedEntryValueModel,
     PolicyFreeAmodalRuntime,
 )
 
@@ -79,6 +80,60 @@ def test_policy_free_runtime_decodes_planner_intention_not_controller_preference
     assert torch.allclose(output.decoded["echo"], output.intention.payload)
     assert policy_free.configuration()["behavior"] == (
         "factual_model_search_no_stored_policy_v1"
+    )
+
+
+def test_policy_free_runtime_passes_external_entries_into_factual_search() -> None:
+    torch.manual_seed(13)
+    controller = AmodalCognitiveController(
+        width=4,
+        workspace_slots=2,
+        intention_width=2,
+        feedback_width=3,
+        event_window_capacity=4,
+    )
+    runtime = AmodalControllerRuntime(controller)
+    state = runtime.initial_state(1, device="cpu")
+    feedback = _feedback()
+    event = [AmodalEvent(torch.randn(1, 4))]
+    preview, _ = runtime.step_events(event, state, feedback)
+    goal = preview.controller.state_representation.detach().clone()
+    intentions = torch.tensor(
+        [[1.0, 0.0], [0.0, 1.0], [-1.0, 0.0], [0.0, -1.0]]
+    )
+    entries = torch.tensor(
+        [[1.0, 0.0], [-1.0, 0.0], [-1.0, 0.0], [-1.0, 0.0]]
+    )
+    entry_model = ExternalSignedEntryValueModel(12, 2, hidden_width=4)
+    with torch.no_grad():
+        for parameter in entry_model.state_network.parameters():
+            parameter.zero_()
+        entry_model.entry_projection.weight.zero_()
+        entry_model.entry_projection.weight[0, 0] = 1.0
+    policy_free = PolicyFreeAmodalRuntime(
+        runtime,
+        ExternalModelBasedPlanner(
+            _AdditiveFactualModel(),
+            beam_width=4,
+            entry_value_model=entry_model,
+        ),
+    )
+
+    output, _ = policy_free.step_events(
+        event,
+        state,
+        feedback,
+        goal,
+        intentions,
+        candidate_entries=entries,
+        entry_value_weight=1.0,
+        horizon=1,
+        beam_width=4,
+    )
+
+    assert torch.allclose(output.intention.payload, intentions[0:1])
+    assert policy_free.configuration()["planner"]["entry_value"] == (
+        "external_opaque_entry_value_v1"
     )
 
 

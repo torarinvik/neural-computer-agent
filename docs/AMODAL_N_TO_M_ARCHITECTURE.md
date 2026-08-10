@@ -8084,6 +8084,28 @@ trains only on positive entries, freezes the model, and transfers to held-out
 negative entries with zero target updates. The boundary is reusable across
 modalities because it consumes learned state and entry tensors, not raw
 formats or hand-assigned semantics. It is not yet arbitrary value learning,
-live multimodal search integration, unrestricted memory growth, or general
-continual learning. The next pressure test is to connect signed entries to
-factual model-based search across changing external regimes without replay.
+unrestricted memory growth, or general continual learning. The live
+`ExternalModelBasedPlanner` seam now accepts runtime-sized opaque
+`candidate_entries` and an explicit entry-value weight, so the external model
+can alter searched behavior without changing the controller, transition model,
+or decoder protocol. The next pressure test is this search path across
+changing external regimes without replay.
+
+## Live signed-entry search (2026-08-10)
+
+The external value contract now reaches factual behavior derivation.
+`ExternalModelBasedPlanner` accepts a versioned external entry-value model,
+runtime-sized `candidate_entries`, and an explicit nonnegative value weight.
+For each terminal expansion it evaluates the predicted learned state with the
+matching opaque entry and subtracts that factual value from the search score.
+The controller, transition model, and decoders are unchanged; bank-backed
+model selection forwards the same boundary through each factual slot.
+
+The promoted three-seed audit under
+`session_records/sequence_working_memory_2026-08-02/signed_entry_search_promoted_2026-08-10/`
+trains only on positive entries, freezes the value model, and reverses the
+selected intention when only the external entry assignment reverses. The
+matched no-entry planner remains polarity-insensitive. This promotes live
+signed-delta search, not arbitrary value learning or general continual
+learning. The next pressure is persistent entry growth and changing-regime
+search with independent held-out factual verification.

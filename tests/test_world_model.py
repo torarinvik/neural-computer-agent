@@ -1072,6 +1072,68 @@ def test_planner_derives_behavior_by_search_and_accepts_variable_candidates() ->
     assert shorter.intentions[0, 0, 0].item() == 2.0
 
 
+def test_planner_derives_signed_external_entry_value_into_behavior() -> None:
+    transition_model = _AdditiveTransitionModel()
+    entry_model = ExternalSignedEntryValueModel(1, 1, hidden_width=4)
+    with torch.no_grad():
+        for parameter in entry_model.state_network.parameters():
+            parameter.zero_()
+        entry_model.entry_projection.weight.fill_(1.0)
+    planner = ExternalModelBasedPlanner(
+        transition_model,
+        beam_width=2,
+        entry_value_model=entry_model,
+    )
+    state = torch.zeros(1, 1)
+    goal = torch.zeros(1, 1)
+    intentions = torch.tensor([[-1.0], [1.0]])
+    entries = torch.tensor([[-1.0], [1.0]])
+    transition_digest = transition_model.digest()
+    entry_digest = entry_model.digest()
+
+    positive = planner.plan(
+        state,
+        goal,
+        intentions,
+        candidate_entries=entries,
+        entry_value_weight=1.0,
+        horizon=1,
+    )
+    reversed_entries = planner.plan(
+        state,
+        goal,
+        intentions,
+        candidate_entries=-entries,
+        entry_value_weight=1.0,
+        horizon=1,
+    )
+
+    assert positive.intentions[0, 0, 0].item() == 1.0
+    assert reversed_entries.intentions[0, 0, 0].item() == -1.0
+    assert planner.configuration()["entry_value"] == (
+        "external_opaque_entry_value_v1"
+    )
+    assert transition_model.digest() == transition_digest
+    assert entry_model.digest() == entry_digest
+
+    with pytest.raises(ValueError, match="candidate entries"):
+        planner.plan(
+            state,
+            goal,
+            intentions,
+            entry_value_weight=1.0,
+            horizon=1,
+        )
+    with pytest.raises(ValueError, match="external entry value model"):
+        ExternalModelBasedPlanner(transition_model).plan(
+            state,
+            goal,
+            intentions,
+            candidate_entries=entries,
+            horizon=1,
+        )
+
+
 def test_planner_can_opt_into_goal_progress_heuristic_for_long_horizons() -> None:
     planner = ExternalModelBasedPlanner(_AdditiveTransitionModel(), beam_width=4)
     state = torch.zeros(1, 1)
