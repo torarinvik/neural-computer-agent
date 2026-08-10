@@ -203,6 +203,33 @@ def test_external_outcome_program_router_appends_and_round_trips() -> None:
     assert router.action_mask(restored).tolist() == [[True, True, False]]
 
 
+def test_external_outcome_program_router_can_activate_a_conservative_new_route() -> None:
+    router = ExternalOutcomeProgramRouter(
+        feature_width=2,
+        program_capacity=3,
+        initial_programs=2,
+    )
+    state = router.initial_state(1)
+    policy = state.credit.policy.clone()
+    policy[..., 0] = 2.0
+    policy[..., 1] = -0.5
+    state = ExternalOutcomeProgramRouterState(
+        credit=ExternalOutcomeCreditState(
+            policy=policy,
+            eligibility=state.credit.eligibility,
+            baseline=state.credit.baseline,
+            decisions=state.credit.decisions,
+            feedbacks=state.credit.feedbacks,
+        ),
+        active_programs=state.active_programs,
+    )
+
+    conservative = router.append_program(state, initialization="conservative")
+
+    assert torch.all(conservative.credit.policy[..., 2] < -0.5)
+    assert torch.equal(conservative.credit.policy[..., :2], policy[..., :2])
+
+
 def test_external_outcome_program_router_growth_is_transactional_and_retains_policy() -> None:
     router = ExternalOutcomeProgramRouter(
         feature_width=3,

@@ -1033,3 +1033,24 @@ computation, or general continual learning. The required next experiment is a
 held-out Brain Workshop file-acquisition audit with a fresh-file challenger,
 no-agent and shuffled-outcome controls, zero controller updates, and complete
 prefix retention.
+
+## Promoted executable-file admission and external route cells (2026-08-10)
+
+The executable-memory contract has now passed a three-seed outcome-only audit
+(`23001`, `23002`, `23003`). A candidate file is appended transactionally only
+after a stable verifier suffix of at least `32` scalar outcomes clears the
+threshold; corrupted candidates are rejected as no-ops. The controller and
+interpreter are frozen, and no replayed verifier rows are retained.
+
+The target route is held in a separate opaque external cell from the mastered
+source route. This is an important correction to the naive “append another
+column to one shared policy” design: that design produced measurable route
+interference. External cells preserve earlier routes and can grow outside the
+controller while the cell selector remains part of replaceable memory-side
+state.
+
+The promotion shows bounded verifier-gated executable-file admission and
+retention, not program synthesis, arbitrary new computation, unrestricted
+memory growth, or general continual learning. The next pressure is to generate
+candidate files from scalar outcomes and test the same contract on a larger
+non-synthetic Brain Workshop family stream.

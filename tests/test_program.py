@@ -131,3 +131,19 @@ def test_sequence_program_memory_payload_round_trip_preserves_files_and_router_s
         first.digest(),
         second.digest(),
     ]
+
+
+def test_program_admission_requires_a_real_stable_run() -> None:
+    artifact = _artifact()
+    memory = ExternalSequenceProgramMemory(5)
+    receipt = memory.admit_verified_artifact(
+        artifact,
+        [0.1, 1.0, 1.0],
+        threshold=0.8,
+        min_observations=3,
+        min_stable_observations=3,
+    )
+
+    assert not receipt.accepted
+    assert receipt.slot is None
+    assert memory.file_count == 0

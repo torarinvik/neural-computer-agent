@@ -919,14 +919,44 @@ class ExternalOutcomeProgramRouter(nn.Module):
     def append_program(
         self,
         state: ExternalOutcomeProgramRouterState,
+        *,
+        initialization: str = "neutral",
+        conservative_margin: float = 1.0,
     ) -> ExternalOutcomeProgramRouterState:
-        """Activate one newly admitted program without resizing the policy."""
+        """Activate one admitted program without resizing the policy.
+
+        ``neutral`` preserves the historical zero-initialized route.  The
+        ``conservative`` prior starts the new route below every currently
+        active route for each opaque feature row.  This prevents a newly
+        admitted file from winning old contexts merely because its untouched
+        logit is zero; scalar verifier outcomes can still raise it during
+        subsequent external learning.
+        """
 
         self._validate_state(state)
         if state.active_programs >= self.program_capacity:
             raise OverflowError("program router capacity is exhausted")
+        if initialization not in {"neutral", "conservative"}:
+            raise ValueError("program initialization must be neutral or conservative")
+        if not math.isfinite(float(conservative_margin)) or conservative_margin < 0.0:
+            raise ValueError("conservative program margin must be finite and nonnegative")
+        credit = state.credit
+        if initialization == "conservative":
+            active_policy = credit.policy[..., : state.active_programs]
+            new_policy = active_policy.amin(dim=-1, keepdim=True) - float(
+                conservative_margin
+            )
+            policy = credit.policy.clone()
+            policy[..., state.active_programs : state.active_programs + 1] = new_policy
+            credit = ExternalOutcomeCreditState(
+                policy=policy,
+                eligibility=credit.eligibility,
+                baseline=credit.baseline,
+                decisions=credit.decisions,
+                feedbacks=credit.feedbacks,
+            )
         next_state = ExternalOutcomeProgramRouterState(
-            credit=state.credit,
+            credit=credit,
             active_programs=state.active_programs + 1,
         )
         self._validate_state(next_state)

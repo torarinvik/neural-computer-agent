@@ -202,7 +202,9 @@ def _evaluate(
     relation: torch.Tensor,
     phase_count: int,
     tolerance: float,
+    expected_memory: ExternalSequenceProgramMemory | None = None,
 ) -> float:
+    verifier_memory = memory if expected_memory is None else expected_memory
     scores: list[float] = []
     with torch.no_grad():
         state = router.begin_episode(state)
@@ -217,7 +219,7 @@ def _evaluate(
                 actual = _execute_program(machine, memory, actual, selected)
                 expected = _execute_program(
                     machine,
-                    memory,
+                    verifier_memory,
                     expected,
                     int(hidden[:, phase].item()),
                 )
@@ -259,6 +261,7 @@ def _train_stream(
     tolerance: float,
     feedback_override: torch.Tensor | None = None,
     protected_programs: int | None = None,
+    expected_memory: ExternalSequenceProgramMemory | None = None,
 ) -> tuple[
     ExternalOutcomeProgramRouterState,
     object,
@@ -303,7 +306,7 @@ def _train_stream(
             for phase in range(phase_count):
                 expected = _execute_program(
                     machine,
-                    memory,
+                    memory if expected_memory is None else expected_memory,
                     expected,
                     int(hidden[:, phase].item()),
                 )
@@ -342,6 +345,7 @@ def _train_stream(
                             relation=eval_relation,
                             phase_count=phase_count,
                             tolerance=tolerance,
+                            expected_memory=expected_memory,
                         ),
                     }
                 )

@@ -686,6 +686,7 @@ class ExternalSequenceProgramMemory(nn.Module):
         *,
         threshold: float = 0.8,
         min_observations: int = 1,
+        min_stable_observations: int = 1,
         protect: bool = False,
     ) -> ExternalProgramAdmissionReceipt:
         """Stage and atomically admit one file after scalar verification.
@@ -706,6 +707,7 @@ class ExternalSequenceProgramMemory(nn.Module):
             outcomes,
             threshold=threshold,
             min_observations=min_observations,
+            min_stable_observations=min_stable_observations,
         )
         if not receipt.accepted:
             return receipt

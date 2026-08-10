@@ -8703,3 +8703,34 @@ computation acquisition, unrestricted growth, or general continual learning.
 The next causal audit remains outcome-only acquisition of genuinely new files
 on held-out Brain Workshop families, comparing staged warm candidates with a
 matched fresh-file control and measuring complete-prefix retention.
+
+## Outcome-only executable-file admission and context-separated retention (2026-08-10)
+
+The first causal pressure test of this boundary is now promoted across three
+seeds in
+`session_records/sequence_working_memory_2026-08-02/external_program_file_admission_promoted_2026-08-10/`.
+Two opaque files are mastered, a third candidate is admitted only after an
+ordered scalar verifier stream contains a stable suffix of at least `32`
+outcomes, and a corrupted candidate is rejected without mutating the bank.
+The controller and interpreter remain frozen; the learner sees only opaque
+events, sampled choices, exact propensities, and scalar outcomes.
+
+The new target is retained in a separate external route cell rather than
+being appended into one global policy. This follows a negative control: the
+single-policy append caused the new route to interfere with an older context.
+Cell separation keeps both routes independently selectable while preserving
+the one-controller boundary and allowing external memory to grow.
+
+Across seeds, warm target exact-sequence accuracy is `0.7917--0.8750`, matched
+fresh accuracy is `0.8083--0.8708`, and source retention is
+`0.9167--0.9292`. Shuffled-outcome controls are `0.0708--0.1417`; wrong-file
+controls are `0.1583--0.3458`. All admission, protection, retention,
+selection, persistence, frozen-controller, zero-replay, and zero-controller-
+update gates pass.
+
+This promotes bounded verifier-gated admission of a portable executable file
+and context-separated external route retention. It does not establish
+program synthesis, arbitrary new computation acquisition, unrestricted memory
+growth, or general continual learning. The next decisive test is outcome-only
+candidate generation on a larger, genuinely non-synthetic Brain Workshop
+family stream.

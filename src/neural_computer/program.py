@@ -224,6 +224,7 @@ def evaluate_external_program_admission(
     *,
     threshold: float = 0.8,
     min_observations: int = 1,
+    min_stable_observations: int = 1,
 ) -> ExternalProgramAdmissionReceipt:
     """Evaluate a staged file using only an ordered scalar outcome stream.
 
@@ -238,6 +239,10 @@ def evaluate_external_program_admission(
         raise ValueError("program admission threshold must lie in [0, 1]")
     if min_observations < 1:
         raise ValueError("program admission needs positive minimum observations")
+    if min_stable_observations < 1:
+        raise ValueError(
+            "program admission needs positive minimum stable observations"
+        )
     values = torch.as_tensor(outcomes, dtype=torch.float64).reshape(-1)
     if values.numel() == 0:
         return ExternalProgramAdmissionReceipt(
@@ -265,7 +270,10 @@ def evaluate_external_program_admission(
         ).validate()
     stable_prefix: int | None = None
     for index in range(values.numel()):
-        if bool(torch.all(values[index:] >= threshold)):
+        if (
+            values.numel() - index >= min_stable_observations
+            and bool(torch.all(values[index:] >= threshold))
+        ):
             stable_prefix = index + 1
             break
     if stable_prefix is None:
