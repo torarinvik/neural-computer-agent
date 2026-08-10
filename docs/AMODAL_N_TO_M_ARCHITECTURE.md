@@ -7398,6 +7398,29 @@ pressure point is mask-aware consolidation and capacity policy across more
 than two unseen masks. Evidence and accounting are archived in
 `session_records/sequence_working_memory_2026-08-02/external_goal_representation_alignment_masked_growth_promoted_2026-08-10/`.
 
+## Bounded masked-memory maintenance stream (2026-08-10)
+
+Route memory now exposes an adapter to the replaceable opaque capacity
+planner. The planner sees only normalized prototype keys, learned evidence
+masks, generic support, and protection/availability facts; its proposal is
+side-effect-free. Verifier-gated growth, replacement, and consolidation remain
+the only commit paths.
+
+Across seeds `85401`, `85402`, `85403`, and `85404`, a 28-step stream grew one
+slot from two to five rows, learned four differently masked patterns, traversed
+forward and reverse order three times, and survived rejected/accepted
+replacement and consolidation followed by re-admission and reload. Affine
+mastery was `1.0`; nonlinear mastery was `0.9833`–`1.0`; replay-buffer reuse
+was zero.
+
+This promotes bounded online maintenance under changed masks and reversal,
+with an advisory untrained planner. It does not establish a trained capacity
+policy, autonomous retention/compression, unbounded memory, semantic
+open-world identity, or general continual learning. The next pressure point is
+online planner learning from verifier utility and transfer to longer
+interfering streams without replay. Evidence and accounting are archived in
+`session_records/sequence_working_memory_2026-08-02/external_goal_representation_alignment_masked_maintenance_stream_promoted_2026-08-10/`.
+
 ## Verifier-gated multi-mask identity-memory consolidation (2026-08-10)
 
 External route memory now supports copy-on-write consolidation of selected

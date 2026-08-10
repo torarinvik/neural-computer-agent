@@ -1,0 +1,230 @@
+{
+  "schema": "neural-computer.external-goal-representation-alignment-masked-maintenance-stream.v1",
+  "claim_boundary": "bounded online external-memory maintenance with four changed masks, forward/reverse observation order, verifier-gated growth, replacement, and consolidation; the capacity planner is advisory and untrained, so this is not autonomous maintenance policy or general continual learning",
+  "seed": 85403,
+  "configuration": {
+    "initial_max_prototypes_per_slot": 2,
+    "grown_max_prototypes_per_slot": 5,
+    "mask_count": 4,
+    "online_reversal_rounds": 3,
+    "runtime_frontend_ids_used_for_updates": false
+  },
+  "gates": {
+    "both_frontends_admitted": true,
+    "rejected_growth_preserves_state": true,
+    "accepted_growth_passes_retention": true,
+    "planner_is_side_effect_free": true,
+    "four_mask_patterns_inserted": true,
+    "forward_reverse_stream_routes": true,
+    "rejected_replacement_preserves_state": true,
+    "accepted_replacement_passes_retention": true,
+    "rejected_consolidation_preserves_state": true,
+    "accepted_consolidation_passes_retention": true,
+    "all_post_consolidation_routes": true,
+    "reversal_re_admission": true,
+    "final_reverse_stream_routes": true,
+    "full_affine_route_retained": true,
+    "nonlinear_route_retained": true,
+    "restored_affine_route": true,
+    "restored_replacement_route": true,
+    "affine_mastery_after_stream": true,
+    "nonlinear_mastery_after_stream": true,
+    "exact_final_persistence": true,
+    "verifier_memory_unchanged": true,
+    "model_unchanged": true,
+    "controller_frozen": true,
+    "planner_frozen": true,
+    "verifier_replay_zero": true,
+    "alignment_replay_zero": true
+  },
+  "promoted": true,
+  "metrics": {
+    "planner_plan_before_maintenance": {
+      "action": "grow",
+      "action_index": 3,
+      "eviction_index": null,
+      "pair": null,
+      "score": 0.02485542744398117
+    },
+    "rejected_growth": {
+      "accepted": false,
+      "source_capacity": 2,
+      "destination_capacity": 2,
+      "prototype_count": 2,
+      "source_digest": "ab6fb57c3da51512e7a12f7cb8946a13ab4d3f7ad581aa89a91dc6f5e352fca9",
+      "destination_digest": "ab6fb57c3da51512e7a12f7cb8946a13ab4d3f7ad581aa89a91dc6f5e352fca9",
+      "reason": "verifier retention probe rejected route-memory growth",
+      "schema": "neural-computer.external-transition-route-memory-growth.v1"
+    },
+    "accepted_growth": {
+      "accepted": true,
+      "source_capacity": 2,
+      "destination_capacity": 5,
+      "prototype_count": 2,
+      "source_digest": "ab6fb57c3da51512e7a12f7cb8946a13ab4d3f7ad581aa89a91dc6f5e352fca9",
+      "destination_digest": "ef0811c96ec3205edf9c08d0ba0df2a097712a34b346b1f09ea6ee9a3e6c2177",
+      "reason": "retention-verified route-memory capacity growth committed",
+      "schema": "neural-computer.external-transition-route-memory-growth.v1"
+    },
+    "rejected_replacement": {
+      "accepted": false,
+      "selected_slot_id": 0,
+      "eligible_slot_ids": [
+        0,
+        1
+      ],
+      "score": 0.986090362071991,
+      "margin": 0.26732152700424194,
+      "anchor_update_stored": false,
+      "attempted_count": 0,
+      "resolved_count": 0,
+      "remaining_count": 0,
+      "verifier_accepted": true,
+      "source_digest": "261c3bad6a0d60950f5be61f027d2450ee5d1cada1f7a2234f2eafa91b7a3c5e",
+      "destination_digest": "261c3bad6a0d60950f5be61f027d2450ee5d1cada1f7a2234f2eafa91b7a3c5e",
+      "reason": "verifier-accepted anchor made no state change",
+      "schema": "neural-computer.external-goal-representation-alignment-identity-anchor.v1"
+    },
+    "accepted_replacement": {
+      "accepted": true,
+      "selected_slot_id": 0,
+      "eligible_slot_ids": [
+        0,
+        1
+      ],
+      "score": 0.986090362071991,
+      "margin": 0.26732152700424194,
+      "anchor_update_stored": true,
+      "attempted_count": 0,
+      "resolved_count": 0,
+      "remaining_count": 0,
+      "verifier_accepted": true,
+      "source_digest": "261c3bad6a0d60950f5be61f027d2450ee5d1cada1f7a2234f2eafa91b7a3c5e",
+      "destination_digest": "74ce7369837d7043d027e1eb8afe8e22c818dc1e426e741147409d0b9d8cabeb",
+      "reason": "verifier-accepted anchor updated identity prototypes",
+      "schema": "neural-computer.external-goal-representation-alignment-identity-anchor.v1"
+    },
+    "rejected_consolidation": {
+      "accepted": false,
+      "slot_id": 0,
+      "merged_indices": [
+        1,
+        2
+      ],
+      "source_prototype_count": 5,
+      "destination_prototype_count": 5,
+      "source_digest": "aaa824ad68909d210347dac1e5b8d4112b3c8b6bd40127fe33b12e727bbdfef2",
+      "destination_digest": "aaa824ad68909d210347dac1e5b8d4112b3c8b6bd40127fe33b12e727bbdfef2",
+      "reason": "verifier retention probe rejected route-memory consolidation",
+      "schema": "neural-computer.external-transition-route-memory-consolidation.v1"
+    },
+    "accepted_consolidation": {
+      "accepted": true,
+      "slot_id": 0,
+      "merged_indices": [
+        1,
+        2
+      ],
+      "source_prototype_count": 5,
+      "destination_prototype_count": 4,
+      "source_digest": "aaa824ad68909d210347dac1e5b8d4112b3c8b6bd40127fe33b12e727bbdfef2",
+      "destination_digest": "6229bc618d38a32116fe4bd10ab08f0b6573493ea7f98853f92b866ea7a15c68",
+      "reason": "retention-verified route-memory consolidation committed",
+      "schema": "neural-computer.external-transition-route-memory-consolidation.v1"
+    },
+    "retained_affine_route": {
+      "selected_slot_id": 0,
+      "eligible_slot_ids": [
+        0,
+        1
+      ],
+      "scores": [
+        0.9752233624458313,
+        0.6491361260414124
+      ],
+      "margin": 0.32608723640441895,
+      "reason": "slot-local signature route passed score and margin floors"
+    },
+    "retained_nonlinear_route": {
+      "selected_slot_id": 1,
+      "eligible_slot_ids": [
+        0,
+        1
+      ],
+      "scores": [
+        0.718768835067749,
+        1.0
+      ],
+      "margin": 0.281231164932251,
+      "reason": "slot-local signature route passed score and margin floors"
+    },
+    "affine_route": {
+      "selected_slot_id": 0,
+      "eligible_slot_ids": [
+        0,
+        1
+      ],
+      "scores": [
+        0.9741217494010925,
+        0.6522557139396667
+      ],
+      "margin": 0.3218660354614258,
+      "reason": "slot-local signature route passed score and margin floors"
+    },
+    "nonlinear_route": {
+      "selected_slot_id": 1,
+      "eligible_slot_ids": [
+        0,
+        1
+      ],
+      "scores": [
+        0.7143340706825256,
+        0.9995479583740234
+      ],
+      "margin": 0.2852138876914978,
+      "reason": "slot-local signature route passed score and margin floors"
+    },
+    "affine_mastery": {
+      "mastery": 1.0,
+      "successful_trials": 120,
+      "trial_count": 120,
+      "expanded_nodes": 44640,
+      "mean_latency_seconds": 0.007642964268840539
+    },
+    "nonlinear_mastery": {
+      "mastery": 0.9833333333333333,
+      "successful_trials": 118,
+      "trial_count": 120,
+      "expanded_nodes": 44640,
+      "mean_latency_seconds": 0.007194757632775387
+    },
+    "prototype_counts": {
+      "0": 4,
+      "1": 1
+    },
+    "masked_prototype_count": 3,
+    "restored_masked_prototype_count": 3,
+    "stream_steps": 28,
+    "active_slots": [
+      0,
+      1
+    ]
+  },
+  "accounting": {
+    "unique_verifier_outcomes": 648,
+    "unique_alignment_pairs": 96,
+    "heldout_alignment_pairs": 96,
+    "unique_masked_patterns": 5,
+    "online_logical_observations": 24,
+    "replayed_examples": 0,
+    "identity_memory_growth_operations": 2,
+    "identity_memory_replacement_operations": 2,
+    "identity_memory_consolidation_operations": 2,
+    "identity_anchor_operations": 34,
+    "transition_rows_consumed_once": 123,
+    "verifier_statistics_updates": 1,
+    "controller_optimizer_updates": 0,
+    "planner_optimizer_updates": 0,
+    "wall_seconds": 1.9283689170260914
+  }
+}
