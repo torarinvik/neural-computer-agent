@@ -8102,10 +8102,11 @@ runtime-sized proposal and can record post-search outcomes without updating
 the controller or entry-value model.
 
 This establishes the files-like memory lifecycle, not unrestricted growth or
-learned compression. The proposal is currently an ordered opaque entry set;
-callers must provide candidate intentions in matching order. The next
-pressure is an explicit versioned intention↔entry binding store, then
-retention-safe consolidation and compression across changing regimes.
+learned compression. `ExternalEntryBindingRepertoire` now stores
+intention↔entry pairs atomically, and policy-free runtime proposals return both
+tensors from one external record rather than joining two independently ordered
+lists. The next pressure is retention-safe consolidation and compression
+across changing regimes with held-out factual retention as the gate.
 
 ## Live signed-entry search (2026-08-10)
 

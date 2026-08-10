@@ -17,6 +17,7 @@ from typing import Any
 import torch
 
 from .representation import (
+    DEFAULT_INTENTION_SPACE_ID,
     DEFAULT_MEMORY_VALUE_SPACE_ID,
     validate_representation_space_id,
 )
@@ -25,6 +26,18 @@ EXTERNAL_ENTRY_OBSERVATION_SCHEMA = "neural-computer.external-entry-observation.
 EXTERNAL_ENTRY_PROPOSAL_SCHEMA = "neural-computer.external-entry-proposal.v1"
 EXTERNAL_ENTRY_ADMISSION_SCHEMA = "neural-computer.external-entry-admission.v1"
 EXTERNAL_ENTRY_REPERTOIRE_SCHEMA = "neural-computer.external-entry-repertoire.v1"
+EXTERNAL_ENTRY_BINDING_OBSERVATION_SCHEMA = (
+    "neural-computer.external-entry-binding-observation.v1"
+)
+EXTERNAL_ENTRY_BINDING_PROPOSAL_SCHEMA = (
+    "neural-computer.external-entry-binding-proposal.v1"
+)
+EXTERNAL_ENTRY_BINDING_ADMISSION_SCHEMA = (
+    "neural-computer.external-entry-binding-admission.v1"
+)
+EXTERNAL_ENTRY_BINDING_REPERTOIRE_SCHEMA = (
+    "neural-computer.external-entry-binding-repertoire.v1"
+)
 
 
 def _validate_tensor(
@@ -687,12 +700,461 @@ class ExternalEntryRepertoire:
         ).validate()
 
 
+@dataclass(frozen=True)
+class ExternalEntryBindingObservationReceipt:
+    """Auditable result of recording an intention-entry pair."""
+
+    entry_indices: tuple[int, ...]
+    added: tuple[bool, ...]
+    outcome_observed: bool
+    version: int
+    record_count: int
+    content_digest: str
+    schema: str = EXTERNAL_ENTRY_BINDING_OBSERVATION_SCHEMA
+
+    def validate(self) -> ExternalEntryBindingObservationReceipt:
+        if self.schema != EXTERNAL_ENTRY_BINDING_OBSERVATION_SCHEMA:
+            raise ValueError("unsupported external-entry binding observation schema")
+        if not self.entry_indices or len(self.entry_indices) != len(self.added):
+            raise ValueError("external-entry binding observation rows are misaligned")
+        if any(not isinstance(index, int) or index < 0 for index in self.entry_indices):
+            raise ValueError("external-entry binding observation index is invalid")
+        if not isinstance(self.version, int) or self.version < 0:
+            raise ValueError("external-entry binding observation version is invalid")
+        if not isinstance(self.record_count, int) or self.record_count < 1:
+            raise ValueError("external-entry binding observation count is invalid")
+        if any(index >= self.record_count for index in self.entry_indices):
+            raise ValueError("external-entry binding observation index is out of range")
+        if not isinstance(self.content_digest, str) or not self.content_digest:
+            raise ValueError("external-entry binding observation digest is missing")
+        return self
+
+
+@dataclass(frozen=True)
+class ExternalEntryBindingProposal:
+    """Atomic intention-entry candidates retrieved from external memory."""
+
+    intentions: torch.Tensor
+    entries: torch.Tensor
+    source_indices: tuple[int, ...]
+    propensities: torch.Tensor
+    version: int
+    schema: str = EXTERNAL_ENTRY_BINDING_PROPOSAL_SCHEMA
+
+    def validate(
+        self,
+        *,
+        intention_width: int,
+        entry_width: int,
+    ) -> ExternalEntryBindingProposal:
+        if self.schema != EXTERNAL_ENTRY_BINDING_PROPOSAL_SCHEMA:
+            raise ValueError("unsupported external-entry binding proposal schema")
+        _validate_tensor(
+            self.intentions,
+            name="external-entry binding intentions",
+            ndim=2,
+            width=intention_width,
+        )
+        _validate_tensor(
+            self.entries,
+            name="external-entry binding entries",
+            ndim=2,
+            width=entry_width,
+        )
+        count = self.intentions.shape[0]
+        if count < 1 or self.entries.shape[0] != count:
+            raise ValueError("external-entry binding proposal rows are misaligned")
+        if len(self.source_indices) != count or len(set(self.source_indices)) != count:
+            raise ValueError("external-entry binding proposal indices are invalid")
+        if any(index < 0 for index in self.source_indices):
+            raise ValueError("external-entry binding proposal source index is invalid")
+        if self.propensities.shape != (count,):
+            raise ValueError("external-entry binding proposal propensities are misaligned")
+        if not bool(torch.isfinite(self.propensities).all()) or bool(
+            torch.any(self.propensities <= 0.0) | torch.any(self.propensities > 1.0)
+        ):
+            raise ValueError("external-entry binding proposal propensities are invalid")
+        if not isinstance(self.version, int) or self.version < 0:
+            raise ValueError("external-entry binding proposal version is invalid")
+        return self
+
+
+@dataclass(frozen=True)
+class ExternalEntryBindingAdmissionReceipt:
+    """Verifier-gated copy-on-write admission result for a pair."""
+
+    accepted: bool
+    entry_index: int | None
+    source_record_count: int
+    destination_record_count: int
+    source_digest: str
+    candidate_digest: str
+    destination_digest: str
+    reason: str
+    version: int
+    schema: str = EXTERNAL_ENTRY_BINDING_ADMISSION_SCHEMA
+
+    def validate(self) -> ExternalEntryBindingAdmissionReceipt:
+        if self.schema != EXTERNAL_ENTRY_BINDING_ADMISSION_SCHEMA:
+            raise ValueError("unsupported external-entry binding admission schema")
+        if min(self.source_record_count, self.destination_record_count) < 0:
+            raise ValueError("external-entry binding admission counts are invalid")
+        if self.accepted:
+            if self.entry_index != self.source_record_count:
+                raise ValueError("accepted external-entry binding index is invalid")
+            if self.destination_record_count != self.source_record_count + 1:
+                raise ValueError("accepted external-entry binding count is invalid")
+        elif self.entry_index is not None:
+            raise ValueError("rejected external-entry binding has an index")
+        if not isinstance(self.version, int) or self.version < 0:
+            raise ValueError("external-entry binding admission version is invalid")
+        for name, value in (
+            ("source_digest", self.source_digest),
+            ("candidate_digest", self.candidate_digest),
+            ("destination_digest", self.destination_digest),
+            ("reason", self.reason),
+        ):
+            if not isinstance(value, str) or not value:
+                raise ValueError(f"external-entry binding admission {name} is missing")
+        return self
+
+
+class ExternalEntryBindingRepertoire:
+    """Append-only memory of atomically bound opaque intention-entry pairs.
+
+    Binding is stored outside the controller.  The proposal returns both
+    tensors from one record, eliminating positional joins between independent
+    repertoires.  Pair admission uses the same held-out, retention-safe
+    transaction as the standalone entry repertoire.
+    """
+
+    schema = EXTERNAL_ENTRY_BINDING_REPERTOIRE_SCHEMA
+
+    def __init__(
+        self,
+        intention_width: int,
+        entry_width: int,
+        *,
+        merge_cosine: float = 0.999,
+        intention_space_id: str = DEFAULT_INTENTION_SPACE_ID,
+        entry_space_id: str = DEFAULT_MEMORY_VALUE_SPACE_ID,
+    ) -> None:
+        if not isinstance(intention_width, int) or intention_width < 1:
+            raise ValueError("external-entry binding intention width must be positive")
+        if not isinstance(entry_width, int) or entry_width < 1:
+            raise ValueError("external-entry binding entry width must be positive")
+        self.intention_width = int(intention_width)
+        self.entry_width = int(entry_width)
+        self.merge_cosine = float(merge_cosine)
+        if not -1.0 <= self.merge_cosine <= 1.0 or not math.isfinite(
+            self.merge_cosine
+        ):
+            raise ValueError("external-entry binding merge cosine is invalid")
+        self.intention_space_id = validate_representation_space_id(
+            intention_space_id,
+            name="intention_space_id",
+        )
+        self.entry_space_id = validate_representation_space_id(
+            entry_space_id,
+            name="entry_space_id",
+        )
+        self._store = ExternalEntryRepertoire(
+            self.intention_width + self.entry_width,
+            merge_cosine=self.merge_cosine,
+            entry_space_id=(
+                f"{self.intention_space_id}+{self.entry_space_id}"
+            ),
+        )
+
+    @property
+    def record_count(self) -> int:
+        return self._store.record_count
+
+    @property
+    def version(self) -> int:
+        return self._store.version
+
+    def configuration(self) -> dict[str, int | float | str]:
+        return {
+            "schema": self.schema,
+            "intention_width": self.intention_width,
+            "entry_width": self.entry_width,
+            "merge_cosine": self.merge_cosine,
+            "intention_space_id": self.intention_space_id,
+            "entry_space_id": self.entry_space_id,
+            "storage": "append_only_atomic_opaque_intention_entry_binding_v1",
+            "learning": "outcome_sufficient_statistics_without_replay_v1",
+        }
+
+    def _validate_pairs(
+        self,
+        intentions: torch.Tensor,
+        entries: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        if intentions.ndim == 1:
+            intentions = intentions.unsqueeze(0)
+        if entries.ndim == 1:
+            entries = entries.unsqueeze(0)
+        _validate_tensor(
+            intentions,
+            name="observed binding intention",
+            ndim=2,
+            width=self.intention_width,
+        )
+        _validate_tensor(
+            entries,
+            name="observed binding entry",
+            ndim=2,
+            width=self.entry_width,
+        )
+        if intentions.shape[0] != entries.shape[0]:
+            raise ValueError("binding intentions and entries have different batches")
+        if intentions.shape[0] < 1:
+            raise ValueError("external-entry binding observation cannot be empty")
+        return (
+            intentions.detach().to(device="cpu", dtype=torch.float32).contiguous(),
+            entries.detach().to(device="cpu", dtype=torch.float32).contiguous(),
+        )
+
+    def _joined(self, intentions: torch.Tensor, entries: torch.Tensor) -> torch.Tensor:
+        return torch.cat((intentions, entries), dim=-1)
+
+    def statistics(self) -> dict[str, torch.Tensor]:
+        stats = self._store.statistics()
+        joined = stats.pop("entries")
+        stats["intentions"] = joined[:, : self.intention_width]
+        stats["entries"] = joined[:, self.intention_width :]
+        return stats
+
+    def validate_state(self) -> None:
+        self._store.validate_state()
+        stats = self.statistics()
+        if stats["intentions"].shape[1] != self.intention_width:
+            raise ValueError("external-entry binding intention state is invalid")
+        if stats["entries"].shape[1] != self.entry_width:
+            raise ValueError("external-entry binding entry state is invalid")
+
+    @staticmethod
+    def _digest_payload(payload: Mapping[str, Any]) -> str:
+        digest = hashlib.sha256()
+        for name in sorted(payload):
+            if name == "sha256":
+                continue
+            value = payload[name]
+            digest.update(name.encode("utf-8"))
+            if isinstance(value, Mapping):
+                digest.update(ExternalEntryBindingRepertoire._digest_payload(value).encode())
+            elif isinstance(value, torch.Tensor):
+                tensor = value.detach().cpu().contiguous()
+                digest.update(str(tensor.dtype).encode("utf-8"))
+                digest.update(repr(tuple(tensor.shape)).encode("utf-8"))
+                digest.update(tensor.numpy().tobytes())
+            else:
+                digest.update(repr(value).encode("utf-8"))
+        return digest.hexdigest()
+
+    def payload_without_digest(self) -> dict[str, Any]:
+        self.validate_state()
+        return {
+            "schema": self.schema,
+            "configuration": self.configuration(),
+            "version": self.version,
+            "store": self._store.payload(),
+        }
+
+    def payload(self) -> dict[str, Any]:
+        payload = self.payload_without_digest()
+        payload["sha256"] = self._digest_payload(payload)
+        return payload
+
+    def content_digest(self) -> str:
+        return self._digest_payload(self.payload_without_digest())
+
+    @classmethod
+    def from_payload(
+        cls,
+        payload: Mapping[str, Any],
+    ) -> ExternalEntryBindingRepertoire:
+        if not isinstance(payload, Mapping) or payload.get("schema") != cls.schema:
+            raise ValueError("unsupported external-entry binding payload")
+        if payload.get("sha256") != cls._digest_payload(payload):
+            raise ValueError("external-entry binding checksum mismatch")
+        configuration = payload.get("configuration")
+        store_payload = payload.get("store")
+        version = payload.get("version")
+        if not isinstance(configuration, Mapping) or not isinstance(store_payload, Mapping):
+            raise TypeError("external-entry binding payload is incomplete")
+        if not isinstance(version, int) or version < 0:
+            raise ValueError("external-entry binding payload version is invalid")
+        repertoire = cls(
+            int(configuration["intention_width"]),
+            int(configuration["entry_width"]),
+            merge_cosine=float(configuration["merge_cosine"]),
+            intention_space_id=str(configuration["intention_space_id"]),
+            entry_space_id=str(configuration["entry_space_id"]),
+        )
+        repertoire._store = ExternalEntryRepertoire.from_payload(store_payload)
+        if repertoire.version != version:
+            raise ValueError("external-entry binding payload versions differ")
+        if repertoire.configuration() != {
+            key: configuration[key]
+            for key in repertoire.configuration()
+            if key in configuration
+        }:
+            raise ValueError("external-entry binding payload configuration differs")
+        repertoire.validate_state()
+        return repertoire
+
+    def _prefix_digest(self, count: int) -> str:
+        return self._store._prefix_digest(count)
+
+    def _copy_from(self, other: ExternalEntryBindingRepertoire) -> None:
+        if not isinstance(other, ExternalEntryBindingRepertoire):
+            raise TypeError("external-entry binding replacement must use same type")
+        self._store = ExternalEntryRepertoire.from_payload(other._store.payload())
+
+    def observe(
+        self,
+        intentions: torch.Tensor,
+        entries: torch.Tensor,
+        *,
+        utility: torch.Tensor | float | None = None,
+        propensity: torch.Tensor | float | None = None,
+        timestamp: torch.Tensor | int | None = None,
+    ) -> ExternalEntryBindingObservationReceipt:
+        normalized_intentions, normalized_entries = self._validate_pairs(
+            intentions,
+            entries,
+        )
+        receipt = self._store.observe(
+            self._joined(normalized_intentions, normalized_entries),
+            utility=utility,
+            propensity=propensity,
+            timestamp=timestamp,
+        )
+        return ExternalEntryBindingObservationReceipt(
+            entry_indices=receipt.entry_indices,
+            added=receipt.added,
+            outcome_observed=receipt.outcome_observed,
+            version=receipt.version,
+            record_count=receipt.record_count,
+            content_digest=self.content_digest(),
+        ).validate()
+
+    def propose(
+        self,
+        *,
+        max_candidates: int | None = None,
+        device: torch.device | str | None = None,
+        dtype: torch.dtype = torch.float32,
+    ) -> ExternalEntryBindingProposal:
+        proposal = self._store.propose(
+            max_candidates=max_candidates,
+            device=device,
+            dtype=dtype,
+        )
+        return ExternalEntryBindingProposal(
+            intentions=proposal.entries[:, : self.intention_width],
+            entries=proposal.entries[:, self.intention_width :],
+            source_indices=proposal.source_indices,
+            propensities=proposal.propensities,
+            version=proposal.version,
+        ).validate(
+            intention_width=self.intention_width,
+            entry_width=self.entry_width,
+        )
+
+    def admit_verified(
+        self,
+        intention: torch.Tensor,
+        entry: torch.Tensor,
+        verifier: Callable[[ExternalEntryBindingRepertoire], bool],
+        *,
+        reason: str = "caller_owned_heldout_verifier",
+    ) -> ExternalEntryBindingAdmissionReceipt:
+        if not callable(verifier):
+            raise TypeError("external-entry binding verifier must be callable")
+        if not isinstance(reason, str) or not reason:
+            raise ValueError("external-entry binding admission reason is missing")
+        normalized_intention, normalized_entry = self._validate_pairs(intention, entry)
+        if normalized_intention.shape[0] != 1:
+            raise ValueError("external-entry binding admission accepts one pair")
+        candidate_intention = normalized_intention[0]
+        candidate_entry = normalized_entry[0]
+        candidate_pair = self._joined(normalized_intention, normalized_entry)[0]
+        source_count = self.record_count
+        source_digest = self.content_digest()
+        if self._store._find_entry(candidate_pair) is not None:
+            return ExternalEntryBindingAdmissionReceipt(
+                accepted=False,
+                entry_index=None,
+                source_record_count=source_count,
+                destination_record_count=source_count,
+                source_digest=source_digest,
+                candidate_digest=source_digest,
+                destination_digest=source_digest,
+                reason="intention-entry pair already exists",
+                version=self.version,
+            ).validate()
+
+        candidate = ExternalEntryBindingRepertoire.from_payload(self.payload())
+        candidate.observe(candidate_intention, candidate_entry)
+        candidate_digest = candidate.content_digest()
+        accepted = bool(verifier(candidate))
+        prefix_unchanged = candidate._prefix_digest(source_count) == self._prefix_digest(
+            source_count
+        )
+        shape_unchanged = candidate.record_count == source_count + 1
+        staged_proposal = candidate.propose()
+        staged = torch.cat(
+            (staged_proposal.intentions[-1], staged_proposal.entries[-1]),
+            dim=0,
+        )
+        staged_unchanged = shape_unchanged and torch.equal(
+            staged,
+            candidate_pair,
+        )
+        accepted = accepted and prefix_unchanged and shape_unchanged and staged_unchanged
+        if accepted:
+            self._copy_from(candidate)
+            return ExternalEntryBindingAdmissionReceipt(
+                accepted=True,
+                entry_index=source_count,
+                source_record_count=source_count,
+                destination_record_count=self.record_count,
+                source_digest=source_digest,
+                candidate_digest=candidate_digest,
+                destination_digest=self.content_digest(),
+                reason=reason,
+                version=self.version,
+            ).validate()
+        return ExternalEntryBindingAdmissionReceipt(
+            accepted=False,
+            entry_index=None,
+            source_record_count=source_count,
+            destination_record_count=source_count,
+            source_digest=source_digest,
+            candidate_digest=candidate_digest,
+            destination_digest=source_digest,
+            reason="heldout verifier rejected or mutated retained binding state",
+            version=self.version,
+        ).validate()
+
+
 __all__ = [
     "EXTERNAL_ENTRY_ADMISSION_SCHEMA",
+    "EXTERNAL_ENTRY_BINDING_ADMISSION_SCHEMA",
+    "EXTERNAL_ENTRY_BINDING_OBSERVATION_SCHEMA",
+    "EXTERNAL_ENTRY_BINDING_PROPOSAL_SCHEMA",
+    "EXTERNAL_ENTRY_BINDING_REPERTOIRE_SCHEMA",
     "EXTERNAL_ENTRY_OBSERVATION_SCHEMA",
     "EXTERNAL_ENTRY_PROPOSAL_SCHEMA",
     "EXTERNAL_ENTRY_REPERTOIRE_SCHEMA",
     "ExternalEntryAdmissionReceipt",
+    "ExternalEntryBindingAdmissionReceipt",
+    "ExternalEntryBindingObservationReceipt",
+    "ExternalEntryBindingProposal",
+    "ExternalEntryBindingRepertoire",
     "ExternalEntryObservationReceipt",
     "ExternalEntryProposal",
     "ExternalEntryRepertoire",

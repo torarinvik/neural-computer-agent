@@ -517,7 +517,8 @@ runtime-sized proposal and record post-search outcomes without updating the
 controller or entry-value model.
 
 This is a real memory lifecycle, not unrestricted memory growth or learned
-compression. The current proposal is an ordered opaque entry set, so callers
-must still provide candidate intentions in the matching order. The next
-pressure is an explicit versioned intention↔entry binding store, followed by
-retention-safe consolidation and compression across changing regimes.
+compression. `ExternalEntryBindingRepertoire` now stores intention↔entry pairs
+atomically and `PolicyFreeAmodalRuntime` can propose both tensors from one
+record, eliminating positional joins between independent repertoires. The
+next pressure is retention-safe consolidation and compression across changing
+regimes, with held-out factual retention as the admission gate.

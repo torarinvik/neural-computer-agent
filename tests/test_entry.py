@@ -1,7 +1,10 @@
 import pytest
 import torch
 
-from neural_computer import ExternalEntryRepertoire
+from neural_computer import (
+    ExternalEntryBindingRepertoire,
+    ExternalEntryRepertoire,
+)
 
 
 def test_external_entry_repertoire_grows_proposes_and_persists() -> None:
@@ -84,3 +87,45 @@ def test_external_entry_repertoire_keeps_opposite_polarities_distinct() -> None:
     assert repertoire.record_count == 3
     proposal = repertoire.propose()
     assert torch.equal(proposal.entries, torch.tensor([[1.0], [-1.0], [0.0]]))
+
+
+def test_external_entry_binding_repertoire_keeps_pairs_atomic() -> None:
+    repertoire = ExternalEntryBindingRepertoire(2, 1)
+    first = repertoire.observe(
+        torch.tensor([[1.0, 0.0], [0.0, 1.0]]),
+        torch.tensor([[1.0], [-1.0]]),
+        utility=torch.tensor([1.0, 0.0]),
+    )
+    assert first.added == (True, True)
+    proposal = repertoire.propose()
+    assert torch.equal(
+        proposal.intentions,
+        torch.tensor([[1.0, 0.0], [0.0, 1.0]]),
+    )
+    assert torch.equal(proposal.entries, torch.tensor([[1.0], [-1.0]]))
+
+    candidate_intention = torch.tensor([0.5, 0.5])
+    candidate_entry = torch.tensor([1.0])
+    accepted = repertoire.admit_verified(
+        candidate_intention,
+        candidate_entry,
+        lambda candidate: bool(
+            candidate.observe(
+                candidate_intention,
+                candidate_entry,
+                utility=1.0,
+            ).outcome_observed
+        ),
+    )
+    assert accepted.accepted
+    assert accepted.entry_index == 2
+    assert repertoire.record_count == 3
+
+    restored = ExternalEntryBindingRepertoire.from_payload(repertoire.payload())
+    assert restored.content_digest() == repertoire.content_digest()
+    corrupt = repertoire.payload()
+    corrupt["store"] = dict(corrupt["store"])
+    corrupt["store"]["entries"] = corrupt["store"]["entries"].clone()
+    corrupt["store"]["entries"][0, 0] += 0.1
+    with pytest.raises(ValueError, match="checksum"):
+        ExternalEntryBindingRepertoire.from_payload(corrupt)

@@ -21,6 +21,9 @@ from .controller import (
     ControllerState,
 )
 from .entry import (
+    ExternalEntryBindingObservationReceipt,
+    ExternalEntryBindingProposal,
+    ExternalEntryBindingRepertoire,
     ExternalEntryObservationReceipt,
     ExternalEntryProposal,
     ExternalEntryRepertoire,
@@ -1205,6 +1208,7 @@ class PolicyFreeRuntimeOutput:
     selected_slot_id: int | None
     proposal: ExternalIntentionProposal | None = None
     entry_proposal: ExternalEntryProposal | None = None
+    binding_proposal: ExternalEntryBindingProposal | None = None
     schema: str = POLICY_FREE_RUNTIME_SCHEMA
 
 
@@ -1232,6 +1236,7 @@ class PolicyFreeAmodalRuntime:
         state_adapter: ExternalControllerStateAdapter | None = None,
         intention_repertoire: ExternalIntentionRepertoire | None = None,
         entry_repertoire: ExternalEntryRepertoire | None = None,
+        entry_binding_repertoire: ExternalEntryBindingRepertoire | None = None,
         include_exploration_seed: bool = False,
     ) -> None:
         if not isinstance(runtime, AmodalControllerRuntime):
@@ -1261,6 +1266,16 @@ class PolicyFreeAmodalRuntime:
                 )
             if entry_repertoire.width != entry_value_model.entry_width:
                 raise ValueError("entry repertoire width does not match planner")
+        if entry_binding_repertoire is not None:
+            entry_value_model = planner.entry_value_model
+            if entry_value_model is None:
+                raise ValueError(
+                    "entry binding repertoire requires an external entry value model"
+                )
+            if entry_binding_repertoire.intention_width != runtime.intention_width:
+                raise ValueError("entry binding intention width does not match runtime")
+            if entry_binding_repertoire.entry_width != entry_value_model.entry_width:
+                raise ValueError("entry binding entry width does not match planner")
         if not isinstance(include_exploration_seed, bool):
             raise TypeError("policy-free exploration-seed flag must be boolean")
         self.runtime = runtime
@@ -1268,6 +1283,7 @@ class PolicyFreeAmodalRuntime:
         self.state_adapter = selected_adapter
         self.intention_repertoire = intention_repertoire
         self.entry_repertoire = entry_repertoire
+        self.entry_binding_repertoire = entry_binding_repertoire
         self.include_exploration_seed = include_exploration_seed
 
     @property
@@ -1302,6 +1318,11 @@ class PolicyFreeAmodalRuntime:
                 None
                 if self.entry_repertoire is None
                 else self.entry_repertoire.configuration()
+            ),
+            "entry_binding_repertoire": (
+                None
+                if self.entry_binding_repertoire is None
+                else self.entry_binding_repertoire.configuration()
             ),
             "include_exploration_seed": self.include_exploration_seed,
         }
@@ -1339,6 +1360,27 @@ class PolicyFreeAmodalRuntime:
         if self.entry_repertoire is None:
             raise RuntimeError("policy-free runtime has no entry repertoire")
         return self.entry_repertoire.observe(
+            entry,
+            utility=utility,
+            propensity=propensity,
+            timestamp=timestamp,
+        )
+
+    def observe_entry_binding(
+        self,
+        intention: torch.Tensor,
+        entry: torch.Tensor,
+        *,
+        utility: torch.Tensor | float | None = None,
+        propensity: torch.Tensor | float | None = None,
+        timestamp: torch.Tensor | int | None = None,
+    ) -> ExternalEntryBindingObservationReceipt:
+        """Commit an atomic intention-entry outcome to external memory."""
+
+        if self.entry_binding_repertoire is None:
+            raise RuntimeError("policy-free runtime has no entry binding repertoire")
+        return self.entry_binding_repertoire.observe(
+            intention,
             entry,
             utility=utility,
             propensity=propensity,
@@ -1386,6 +1428,25 @@ class PolicyFreeAmodalRuntime:
         model_state = self.state_adapter(controller_output)
         proposal = None
         entry_proposal = None
+        binding_proposal = None
+        if (
+            self.entry_binding_repertoire is not None
+            and candidate_intentions is None
+            and candidate_entries is None
+        ):
+            binding_proposal = self.entry_binding_repertoire.propose(
+                device=model_state.device,
+                dtype=model_state.dtype,
+            )
+            candidate_intentions = binding_proposal.intentions
+            candidate_entries = binding_proposal.entries
+        elif (
+            self.entry_binding_repertoire is not None
+            and (candidate_intentions is None or candidate_entries is None)
+        ):
+            raise ValueError(
+                "entry binding repertoire requires both candidate intentions and entries"
+            )
         if candidate_intentions is None:
             if self.intention_repertoire is None:
                 raise ValueError(
@@ -1454,6 +1515,7 @@ class PolicyFreeAmodalRuntime:
                 selected_slot_id=selected_slot_id,
                 proposal=proposal,
                 entry_proposal=entry_proposal,
+                binding_proposal=binding_proposal,
             ),
             next_state,
         )

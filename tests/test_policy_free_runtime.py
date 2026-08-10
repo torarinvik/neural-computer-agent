@@ -7,6 +7,7 @@ from neural_computer import (
     AmodalEvent,
     ControllerFeedback,
     ExternalControllerStateAdapter,
+    ExternalEntryBindingRepertoire,
     ExternalEntryRepertoire,
     ExternalModelBasedPlanner,
     ExternalSignedEntryValueModel,
@@ -194,6 +195,71 @@ def test_policy_free_runtime_retrieves_entries_from_external_repertoire() -> Non
     assert torch.allclose(output.intention.payload, intentions[0:1])
     receipt = policy_free.observe_entry(
         output.entry_proposal.entries[0],
+        utility=1.0,
+        propensity=0.25,
+    )
+    assert receipt.outcome_observed
+
+
+def test_policy_free_runtime_retrieves_atomic_intention_entry_bindings() -> None:
+    torch.manual_seed(15)
+    controller = AmodalCognitiveController(
+        width=4,
+        workspace_slots=2,
+        intention_width=2,
+        feedback_width=3,
+        event_window_capacity=4,
+    )
+    runtime = AmodalControllerRuntime(controller)
+    state = runtime.initial_state(1, device="cpu")
+    feedback = _feedback()
+    event = [AmodalEvent(torch.randn(1, 4))]
+    preview, _ = runtime.step_events(event, state, feedback)
+    goal = preview.controller.state_representation.detach().clone()
+    bindings = ExternalEntryBindingRepertoire(2, 2)
+    bindings.observe(
+        torch.tensor(
+            [[1.0, 0.0], [0.0, 1.0], [-1.0, 0.0], [0.0, -1.0]]
+        ),
+        torch.tensor(
+            [[1.0, 0.0], [-1.0, 0.0], [0.0, 1.0], [0.0, -1.0]]
+        ),
+    )
+    entry_model = ExternalSignedEntryValueModel(12, 2, hidden_width=4)
+    with torch.no_grad():
+        for parameter in entry_model.state_network.parameters():
+            parameter.zero_()
+        entry_model.entry_projection.weight.zero_()
+        entry_model.entry_projection.weight[0, 0] = 1.0
+    policy_free = PolicyFreeAmodalRuntime(
+        runtime,
+        ExternalModelBasedPlanner(
+            _AdditiveFactualModel(),
+            beam_width=4,
+            entry_value_model=entry_model,
+        ),
+        entry_binding_repertoire=bindings,
+    )
+
+    output, _ = policy_free.step_events(
+        event,
+        state,
+        feedback,
+        goal,
+        entry_value_weight=1.0,
+        horizon=1,
+        beam_width=4,
+    )
+
+    assert output.binding_proposal is not None
+    assert output.binding_proposal.source_indices == (0, 1, 2, 3)
+    assert torch.allclose(
+        output.intention.payload,
+        output.binding_proposal.intentions[0:1],
+    )
+    receipt = policy_free.observe_entry_binding(
+        output.binding_proposal.intentions[0],
+        output.binding_proposal.entries[0],
         utility=1.0,
         propensity=0.25,
     )
