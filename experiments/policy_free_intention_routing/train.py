@@ -32,6 +32,7 @@ from neural_computer import (
 )
 
 ROUTING_EXPLORATION_BONUS = 0.75
+VERSIONED_CONTEXT_PROFILE_SCALE = 20.0
 DELAY_STEPS = 3
 REVERSAL_DELAY_STEPS = 4
 MAX_UPDATES = 240
@@ -80,6 +81,10 @@ MULTI_STAGE_MASK_SCHEDULE = (
         OVERLAP_SUCCESSOR_CONTEXT_MASK.clone(),
     ),
 )
+VERSIONED_MULTI_STAGE_MASK_SCHEDULE = tuple(
+    (1 + index * 20, mask.clone())
+    for index, (_, mask) in enumerate(MULTI_STAGE_MASK_SCHEDULE)
+)
 
 
 def _mask_label(context_mask: torch.Tensor | None) -> str:
@@ -100,7 +105,13 @@ def _mask_configuration(
 ]:
     """Return source/successor/reversal masks and an optional successor schedule."""
 
-    valid_curricula = {"complementary", "overlapping", "gradual", "multi_stage"}
+    valid_curricula = {
+        "complementary",
+        "overlapping",
+        "gradual",
+        "multi_stage",
+        "versioned_multi_stage",
+    }
     if mask_curriculum not in valid_curricula:
         raise ValueError(f"unsupported mask curriculum: {mask_curriculum}")
     if not masked_context:
@@ -127,8 +138,13 @@ def _mask_configuration(
             (GRADUAL_MASK_SWITCH_UPDATE, OVERLAP_SUCCESSOR_CONTEXT_MASK.clone()),
         )
     else:
+        selected_schedule = (
+            VERSIONED_MULTI_STAGE_MASK_SCHEDULE
+            if mask_curriculum == "versioned_multi_stage"
+            else MULTI_STAGE_MASK_SCHEDULE
+        )
         successor_schedule = tuple(
-            (start, mask.clone()) for start, mask in MULTI_STAGE_MASK_SCHEDULE
+            (start, mask.clone()) for start, mask in selected_schedule
         )
     return (
         SOURCE_CONTEXT_MASK.clone(),
@@ -161,6 +177,7 @@ def _digest_state(state: ExternalRoutedIntentionMemoryState) -> str:
             "retention_context_observed_masses",
             state.retention_context_observed_masses,
         ),
+        ("retention_context_mask_profiles", state.retention_context_mask_profiles),
         ("routing_keys", state.routing_keys),
         ("routing_bias", state.routing_bias),
         ("routing_baseline", state.routing_baseline),
@@ -262,6 +279,9 @@ def _single_cell_state(
         retention_context_observed_masses=state.retention_context_observed_masses[
             cell_index : cell_index + 1
         ].clone(),
+        retention_context_mask_profiles=state.retention_context_mask_profiles[
+            cell_index : cell_index + 1
+        ].clone(),
     )
 
 
@@ -276,6 +296,7 @@ def _new_policy(
     route_query_adapter: ExternalControllerTrajectoryQueryAdapter | None = None,
     unqualified_cell_probability: float = 0.0,
     context_masking: bool = False,
+    context_mask_profile_scale: float = 6.0,
 ) -> tuple[PolicyFreeAmodalRuntime, ExternalOutcomeIntentionRouter, ExternalRoutedIntentionMemoryState]:
     torch.manual_seed(seed)
     memory = ExternalOutcomeIntentionMemory(
@@ -296,6 +317,7 @@ def _new_policy(
         mastery_threshold=mastery_threshold,
         min_mastery_feedbacks=min_mastery_feedbacks,
         unqualified_cell_probability=unqualified_cell_probability,
+        context_mask_profile_scale=context_mask_profile_scale,
     )
     policy = PolicyFreeAmodalRuntime(
         reference.runtime,
@@ -328,6 +350,7 @@ def _train_regime(
     random_seed: int,
     stop_at_mastery: bool = True,
     mastery_cell: int | None = None,
+    fork_on_mask_change: bool = False,
 ) -> tuple[ExternalRoutedIntentionMemoryState, dict[str, object]]:
     if mastery_cell is not None and not 0 <= mastery_cell < state.cells.baseline.shape[0]:
         raise ValueError("mastery cell is out of range")
@@ -339,6 +362,8 @@ def _train_regime(
     observed_outcomes: list[float] = []
     search_expansions = 0
     updates = 0
+    tracked_mastery_cell = mastery_cell
+    context_variant_forks: list[dict[str, int]] = []
     planner_context = context if goal_context is None else goal_context
     if context_mask is not None and context_mask_schedule is not None:
         raise ValueError("context_mask and context_mask_schedule are mutually exclusive")
@@ -352,6 +377,10 @@ def _train_regime(
             if scheduled_mask.shape != context.shape[-1:] or scheduled_mask.dtype != torch.bool:
                 raise ValueError("scheduled context masks must match the context")
             previous_start = start
+    if fork_on_mask_change and context_mask_schedule is None:
+        raise ValueError("context-variant forks require a context mask schedule")
+    if fork_on_mask_change and tracked_mastery_cell is None:
+        raise ValueError("context-variant forks require a tracked mastery cell")
 
     def active_context_mask(update: int) -> torch.Tensor | None:
         if context_mask_schedule is None:
@@ -375,6 +404,29 @@ def _train_regime(
         )
 
     for updates in range(1, max_updates + 1):
+        if (
+            fork_on_mask_change
+            and context_mask_schedule is not None
+            and updates in {start for start, _ in context_mask_schedule[1:]}
+        ):
+            while pending:
+                apply_pending()
+            assert tracked_mastery_cell is not None
+            source_cell = tracked_mastery_cell
+            state = router.protect(state, [source_cell])
+            state, tracked_mastery_cell = router.append_cell(
+                state,
+                source_cell=source_cell,
+                copy_route=False,
+                context_mask=active_context_mask(updates),
+            )
+            context_variant_forks.append(
+                {
+                    "update": updates,
+                    "source_cell": source_cell,
+                    "new_cell": tracked_mastery_cell,
+                }
+            )
         current_context_mask = active_context_mask(updates)
         mask_labels[_mask_label(current_context_mask)] += 1
         runtime_context_mask = (
@@ -432,8 +484,8 @@ def _train_regime(
             router.mean(state, context, context_mask=runtime_context_mask)[0], target
         )
         deterministic_score = float(
-            mean_scores[mastery_cell].item()
-            if mastery_cell is not None
+            mean_scores[tracked_mastery_cell].item()
+            if tracked_mastery_cell is not None
             else mean_scores.max().item()
         )
         if (
@@ -441,6 +493,11 @@ def _train_regime(
             and not reward_shuffled
             and not action_shuffled
             and not noise_fraction
+            and (
+                not fork_on_mask_change
+                or context_mask_schedule is None
+                or updates >= context_mask_schedule[-1][0]
+            )
             and deterministic_score >= base.MASTERY_THRESHOLD
         ):
             while pending:
@@ -449,8 +506,8 @@ def _train_regime(
                 router.mean(state, context, context_mask=runtime_context_mask)[0], target
             )
             settled_score = float(
-                settled_scores[mastery_cell].item()
-                if mastery_cell is not None
+                settled_scores[tracked_mastery_cell].item()
+                if tracked_mastery_cell is not None
                 else settled_scores.max().item()
             )
             if settled_score >= base.MASTERY_THRESHOLD:
@@ -461,16 +518,22 @@ def _train_regime(
     means = router.mean(state, context, context_mask=runtime_context_mask)[0]
     mean_scores = base._utility(means, target)
     scored_cell = (
-        mastery_cell
-        if mastery_cell is not None
+        tracked_mastery_cell
+        if tracked_mastery_cell is not None
         else int(mean_scores.argmax().item())
     )
     selected_counts = Counter(selected)
     report = {
         "updates": updates,
-        "deterministic_best_score": float(mean_scores.max().item()),
-        "deterministic_best_cell": int(mean_scores.argmax().item()),
-        "mastery_cell": mastery_cell,
+        "deterministic_best_score": float(
+            mean_scores[scored_cell].item()
+            if tracked_mastery_cell is not None
+            else mean_scores.max().item()
+        ),
+        "deterministic_best_cell": int(
+            scored_cell if tracked_mastery_cell is not None else mean_scores.argmax().item()
+        ),
+        "mastery_cell": tracked_mastery_cell,
         "mastery_cell_score": float(mean_scores[scored_cell].item()),
         "selected_cell_counts": {str(k): v for k, v in sorted(selected_counts.items())},
         "selected_cell_fraction": {
@@ -485,6 +548,7 @@ def _train_regime(
         "mean_outcome": sum(observed_outcomes) / max(1, len(observed_outcomes)),
         "context_mask_patterns": dict(sorted(mask_labels.items())),
         "final_context_mask": _mask_label(active_context_mask(updates)),
+        "context_variant_forks": context_variant_forks,
         "feedbacks": int(state.routing_feedbacks.sum().item()),
         "routing_decisions": state.routing_decisions.tolist(),
         "search_expansions": search_expansions,
@@ -651,6 +715,12 @@ def run(
         seed=seed + 7000,
         cell_count=1,
         context_masking=masked_context,
+        unqualified_cell_probability=(0.25 if mask_curriculum == "versioned_multi_stage" else 0.0),
+        context_mask_profile_scale=(
+            VERSIONED_CONTEXT_PROFILE_SCALE
+            if mask_curriculum == "versioned_multi_stage"
+            else 0.0
+        ),
     )
     (
         source_mask,
@@ -664,6 +734,7 @@ def run(
     successor_training_mask = (
         None if successor_mask_schedule is not None else successor_mask
     )
+    versioned_mask_growth = mask_curriculum == "versioned_multi_stage"
     matched_fresh_state = _single_cell_state(state, 0)
     matched_fresh_initial_digest = _digest_state(matched_fresh_state)
 
@@ -705,8 +776,13 @@ def run(
         max_updates=MAX_UPDATES,
         delay=DELAY_STEPS,
         random_seed=seed + 2,
-        stop_at_mastery=successor_mask_schedule is None,
+        stop_at_mastery=(successor_mask_schedule is None or versioned_mask_growth),
+        mastery_cell=successor_cell,
+        fork_on_mask_change=versioned_mask_growth,
     )
+    if successor["mastery_cell"] is None:
+        raise AssertionError("successor training did not report its tracked cell")
+    successor_cell = int(successor["mastery_cell"])
     successor_snapshot = _cell_snapshot(state, successor_cell)
     successor_auto_protected = bool(state.cells.protected[successor_cell])
     state, successor_retention_verification = _heldout_retention_verification(
@@ -765,6 +841,10 @@ def run(
         seed=seed + 12000,
         cell_count=1,
         context_masking=masked_context,
+        unqualified_cell_probability=(0.25 if versioned_mask_growth else 0.0),
+        context_mask_profile_scale=(
+            VERSIONED_CONTEXT_PROFILE_SCALE if versioned_mask_growth else 0.0
+        ),
     )
     fresh_state = matched_fresh_state
     fresh_state, fresh = _train_regime(
@@ -781,7 +861,9 @@ def run(
         max_updates=MAX_UPDATES,
         delay=0,
         random_seed=seed + 5,
-        stop_at_mastery=successor_mask_schedule is None,
+        stop_at_mastery=(successor_mask_schedule is None or versioned_mask_growth),
+        mastery_cell=0 if versioned_mask_growth else None,
+        fork_on_mask_change=versioned_mask_growth,
     )
 
     _, shuffled_router, shuffled_state = _new_policy(
@@ -921,7 +1003,12 @@ def run(
         "protected_cells_unchanged_by_later_learning": protected_retention,
         "source_retention_verifier_passed": source_retention_verification["accepted"],
         "successor_retention_verifier_passed": successor_retention_verification["accepted"],
-        "append_only_external_growth": state.cells.baseline.shape[0] == 3,
+        "append_only_external_growth": (
+            state.cells.baseline.shape[0]
+            == (3 + len(successor_mask_schedule) - 1)
+            if versioned_mask_growth and successor_mask_schedule is not None
+            else state.cells.baseline.shape[0] == 3
+        ),
         "exact_routed_memory_persistence": _digest_state(persistence) == _digest_state(state),
         "controller_frozen": controller_digest == base._digest_module(controller),
         "state_adapter_frozen": adapter_digest == base._digest_module(reference_policy.state_adapter),
@@ -1073,7 +1160,13 @@ def main() -> None:
     )
     parser.add_argument(
         "--mask-curriculum",
-        choices=("complementary", "overlapping", "gradual", "multi_stage"),
+        choices=(
+            "complementary",
+            "overlapping",
+            "gradual",
+            "multi_stage",
+            "versioned_multi_stage",
+        ),
         default="complementary",
         help="observation-mask schedule used with --masked-context",
     )

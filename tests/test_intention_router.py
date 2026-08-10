@@ -1,9 +1,12 @@
+from dataclasses import replace
+
 import torch
 
 from neural_computer import (
     EXTERNAL_ROUTED_INTENTION_MEMORY_SCHEMA_V1,
     EXTERNAL_ROUTED_INTENTION_MEMORY_SCHEMA_V2,
     EXTERNAL_ROUTED_INTENTION_MEMORY_SCHEMA_V3,
+    EXTERNAL_ROUTED_INTENTION_MEMORY_SCHEMA_V4,
     ExternalOutcomeIntentionGenerator,
     ExternalOutcomeIntentionMemory,
     ExternalOutcomeIntentionRouter,
@@ -289,6 +292,10 @@ def test_router_tracks_partial_retention_without_learning_missing_dimensions() -
         torch.tensor([1.0, 0.0, 1.0, 0.0]),
     )
     assert torch.equal(
+        state.retention_context_mask_profiles[selected],
+        torch.tensor([0.25, 0.0, 0.25, 0.0]),
+    )
+    assert torch.equal(
         state.retention_context_prototypes[selected],
         torch.tensor([1.0, 0.0, 3.0, 0.0]),
     )
@@ -297,6 +304,10 @@ def test_router_tracks_partial_retention_without_learning_missing_dimensions() -
     assert torch.equal(
         restored.retention_context_observed_masses,
         state.retention_context_observed_masses,
+    )
+    assert torch.equal(
+        restored.retention_context_mask_profiles,
+        state.retention_context_mask_profiles,
     )
 
     legacy = dict(payload)
@@ -307,6 +318,16 @@ def test_router_tracks_partial_retention_without_learning_missing_dimensions() -
         migrated.retention_context_observed_masses,
         state.retention_context_masses.unsqueeze(-1).expand_as(
             state.retention_context_observed_masses
+        ),
+    )
+    v4_payload = dict(payload)
+    v4_payload["schema"] = EXTERNAL_ROUTED_INTENTION_MEMORY_SCHEMA_V4
+    v4_payload.pop("retention_context_mask_profiles")
+    v4_migrated = router.state_from_payload(v4_payload)
+    assert torch.equal(
+        v4_migrated.retention_context_mask_profiles,
+        (state.retention_context_observed_masses > 0.0).to(
+            dtype=state.retention_context_mask_profiles.dtype
         ),
     )
 
@@ -347,6 +368,53 @@ def test_masked_copy_on_write_neutralizes_source_unobserved_dimensions() -> None
     )
     assert torch.equal(state.routing_keys[child, [0, 2]], source_routing_key[[0, 2]])
     assert torch.equal(state.routing_keys[child, [1, 3]], torch.zeros(2))
+    state, exposed_child = router.append_cell(
+        state,
+        source_cell=0,
+        context_mask=torch.tensor([True, True, True, False]),
+    )
+    assert torch.equal(
+        state.cells.input_weights[exposed_child, :, 1],
+        source_input_weights[:, 1],
+    )
+    assert torch.equal(
+        state.cells.input_weights[exposed_child, :, 3],
+        torch.zeros(8),
+    )
+
+
+def test_context_mask_profile_routes_to_matching_evidence_variant() -> None:
+    memory = ExternalOutcomeIntentionMemory(
+        ExternalOutcomeIntentionGenerator(
+            context_width=4,
+            intention_width=2,
+            hidden_width=8,
+            context_masking=True,
+        )
+    )
+    router = ExternalOutcomeIntentionRouter(
+        memory,
+        exploration_bonus=0.0,
+        unqualified_cell_probability=0.0,
+        context_mask_profile_scale=6.0,
+    )
+    state = router.initial_state(2)
+    state = replace(
+        state,
+        routing_keys=torch.zeros_like(state.routing_keys),
+        retention_context_mask_profiles=torch.tensor(
+            [[1.0, 0.0, 1.0, 0.0], [0.0, 1.0, 0.0, 1.0]]
+        ),
+    )
+    proposal = router.propose(
+        state,
+        torch.zeros(1, 4),
+        context_mask=torch.tensor([[True, False, True, False]]),
+    )
+
+    assert float(proposal.route_probabilities[0, 0]) > float(
+        proposal.route_probabilities[0, 1]
+    )
 
 
 def test_masked_reversal_quarantines_instead_of_mutating_protected_cell() -> None:

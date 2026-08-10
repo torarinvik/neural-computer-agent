@@ -20,11 +20,14 @@ EXTERNAL_ROUTED_INTENTION_MEMORY_SCHEMA_V1 = (
 EXTERNAL_ROUTED_INTENTION_MEMORY_SCHEMA_V2 = (
     "neural-computer.external-routed-intention-memory.v2"
 )
-EXTERNAL_ROUTED_INTENTION_MEMORY_SCHEMA = (
-    "neural-computer.external-routed-intention-memory.v4"
-)
 EXTERNAL_ROUTED_INTENTION_MEMORY_SCHEMA_V3 = (
     "neural-computer.external-routed-intention-memory.v3"
+)
+EXTERNAL_ROUTED_INTENTION_MEMORY_SCHEMA_V4 = (
+    "neural-computer.external-routed-intention-memory.v4"
+)
+EXTERNAL_ROUTED_INTENTION_MEMORY_SCHEMA = (
+    "neural-computer.external-routed-intention-memory.v5"
 )
 EXTERNAL_ROUTED_INTENTION_PROPOSAL_SCHEMA = (
     "neural-computer.external-routed-intention-proposal.v1"
@@ -53,6 +56,7 @@ class ExternalRoutedIntentionMemoryState:
     retention_context_prototypes: torch.Tensor
     retention_context_masses: torch.Tensor
     retention_context_observed_masses: torch.Tensor
+    retention_context_mask_profiles: torch.Tensor
 
     def validate(
         self,
@@ -89,6 +93,7 @@ class ExternalRoutedIntentionMemoryState:
             "retention_context_prototypes": (cell_count, context_width),
             "retention_context_masses": (cell_count,),
             "retention_context_observed_masses": (cell_count, context_width),
+            "retention_context_mask_profiles": (cell_count, context_width),
         }
         tensors = {
             "routing_keys": self.routing_keys,
@@ -105,6 +110,7 @@ class ExternalRoutedIntentionMemoryState:
             "retention_context_prototypes": self.retention_context_prototypes,
             "retention_context_masses": self.retention_context_masses,
             "retention_context_observed_masses": self.retention_context_observed_masses,
+            "retention_context_mask_profiles": self.retention_context_mask_profiles,
         }
         for name, value in tensors.items():
             if value.shape != expected[name]:
@@ -120,6 +126,7 @@ class ExternalRoutedIntentionMemoryState:
             "retention_context_prototypes",
             "retention_context_masses",
             "retention_context_observed_masses",
+            "retention_context_mask_profiles",
         ):
             if not bool(torch.isfinite(tensors[name]).all()):
                 raise ValueError(f"routed intention {name} must be finite")
@@ -158,6 +165,11 @@ class ExternalRoutedIntentionMemoryState:
             raise ValueError(
                 "routed intention observed context masses cannot be negative"
             )
+        if bool(
+            (self.retention_context_mask_profiles < 0.0).any()
+            or (self.retention_context_mask_profiles > 1.0).any()
+        ):
+            raise ValueError("routed intention context mask profiles must lie in [0, 1]")
 
 
 @dataclass(frozen=True)
@@ -341,6 +353,8 @@ class ExternalOutcomeIntentionRouter:
         verified_context_coverage_scale: float = 6.0,
         reversal_context_coverage_threshold: float = 0.75,
         masked_reversal_quarantine_scale: float = 6.0,
+        context_mask_profile_rate: float = 0.25,
+        context_mask_profile_scale: float = 0.0,
     ) -> None:
         if not isinstance(memory, ExternalOutcomeIntentionMemory):
             raise TypeError("intention router requires external intention memory")
@@ -379,6 +393,10 @@ class ExternalOutcomeIntentionRouter:
             raise ValueError("intention router reversal context coverage threshold is invalid")
         if not math.isfinite(masked_reversal_quarantine_scale) or masked_reversal_quarantine_scale < 0.0:
             raise ValueError("intention router masked reversal quarantine scale is invalid")
+        if not 0.0 < context_mask_profile_rate <= 1.0:
+            raise ValueError("intention router context mask profile rate is invalid")
+        if not math.isfinite(context_mask_profile_scale) or context_mask_profile_scale < 0.0:
+            raise ValueError("intention router context mask profile scale is invalid")
         self.memory = memory
         self.initial_learning_rate = float(initial_learning_rate)
         self.initial_baseline_rate = float(initial_baseline_rate)
@@ -398,6 +416,8 @@ class ExternalOutcomeIntentionRouter:
             reversal_context_coverage_threshold
         )
         self.masked_reversal_quarantine_scale = float(masked_reversal_quarantine_scale)
+        self.context_mask_profile_rate = float(context_mask_profile_rate)
+        self.context_mask_profile_scale = float(context_mask_profile_scale)
 
     @property
     def context_width(self) -> int:
@@ -447,6 +467,8 @@ class ExternalOutcomeIntentionRouter:
                 "verified_context_coverage_scale": self.verified_context_coverage_scale,
                 "reversal_context_coverage_threshold": self.reversal_context_coverage_threshold,
                 "masked_reversal_quarantine_scale": self.masked_reversal_quarantine_scale,
+                "context_mask_profile_rate": self.context_mask_profile_rate,
+                "context_mask_profile_scale": self.context_mask_profile_scale,
                 "heldout_gate": "verifier_prefix_minimum_copy_on_write_v1",
             },
             "protection": "verified_cell_freezes_content_and_route_until_reversal_v1",
@@ -498,6 +520,9 @@ class ExternalOutcomeIntentionRouter:
             ),
             retention_context_masses=torch.zeros(cell_count, device=device, dtype=dtype),
             retention_context_observed_masses=torch.zeros(
+                cell_count, self.context_width, device=device, dtype=dtype
+            ),
+            retention_context_mask_profiles=torch.zeros(
                 cell_count, self.context_width, device=device, dtype=dtype
             ),
         )
@@ -589,6 +614,17 @@ class ExternalOutcomeIntentionRouter:
         ).to(dtype=torch.float32).sum(dim=-1)
         return covered_width / query_width.unsqueeze(-1)
 
+    @staticmethod
+    def _context_mask_profile_compatibility(
+        masks: torch.Tensor,
+        profiles: torch.Tensor,
+    ) -> torch.Tensor:
+        """Score how well each persistent evidence profile matches each query."""
+
+        return 1.0 - (
+            masks.to(dtype=profiles.dtype).unsqueeze(1) - profiles.unsqueeze(0)
+        ).abs().mean(dim=-1)
+
     def _validate_context(
         self,
         context: torch.Tensor,
@@ -671,6 +707,18 @@ class ExternalOutcomeIntentionRouter:
                         self.masked_reversal_quarantine_scale
                         * quarantined.unsqueeze(0)
                     ) / self.temperature
+        if self.memory.generator.context_masking and self.context_mask_profile_scale > 0.0:
+            profile_active = state.retention_context_mask_profiles.sum(dim=-1) > 0.0
+            if bool(profile_active.any()):
+                profile_compatibility = self._context_mask_profile_compatibility(
+                    mask,
+                    state.retention_context_mask_profiles,
+                ).to(dtype=context.dtype)
+                logits = logits + (
+                    self.context_mask_profile_scale
+                    * torch.log(profile_compatibility.clamp_min(1e-3))
+                    * profile_active.to(dtype=context.dtype).unsqueeze(0)
+                ) / self.temperature
         base_probabilities = torch.softmax(logits, dim=-1)
         unqualified = (
             ~state.cells.protected
@@ -832,6 +880,7 @@ class ExternalOutcomeIntentionRouter:
             retention_context_prototypes,
             retention_context_masses,
             retention_context_observed_masses,
+            retention_context_mask_profiles,
         ) = self._update_retention(
             state,
             proposal.selected_cells,
@@ -880,6 +929,7 @@ class ExternalOutcomeIntentionRouter:
             retention_context_prototypes=retention_context_prototypes,
             retention_context_masses=retention_context_masses,
             retention_context_observed_masses=retention_context_observed_masses,
+            retention_context_mask_profiles=retention_context_mask_profiles,
         )
         self._validate_state(next_state)
         return next_state
@@ -903,6 +953,7 @@ class ExternalOutcomeIntentionRouter:
         torch.Tensor,
         torch.Tensor,
         torch.Tensor,
+        torch.Tensor,
     ]:
         """Update stable-prefix mastery and hysteretic reversal state."""
 
@@ -916,12 +967,20 @@ class ExternalOutcomeIntentionRouter:
         context_prototypes = state.retention_context_prototypes.clone()
         context_masses = state.retention_context_masses.clone()
         context_observed_masses = state.retention_context_observed_masses.clone()
+        context_mask_profiles = state.retention_context_mask_profiles.clone()
         active = present & (selected_cells >= 0)
         for batch_index in torch.nonzero(active, as_tuple=False).flatten().tolist():
             cell_index = int(selected_cells[batch_index].item())
             value = float(outcome[batch_index].item())
             context = contexts[batch_index]
             context_mask = context_masks[batch_index]
+            if not bool(protected[cell_index]):
+                context_mask_profiles[cell_index] = (
+                    (1.0 - self.context_mask_profile_rate)
+                    * context_mask_profiles[cell_index]
+                    + self.context_mask_profile_rate
+                    * context_mask.to(dtype=context_mask_profiles.dtype)
+                )
             mass = float(context_masses[cell_index].item())
             if bool(protected[cell_index]) and mass > 0.0:
                 if self.memory.generator.context_masking:
@@ -1004,6 +1063,7 @@ class ExternalOutcomeIntentionRouter:
             context_prototypes,
             context_masses,
             context_observed_masses,
+            context_mask_profiles,
         )
 
     def _validate_state_and_proposal(
@@ -1028,12 +1088,20 @@ class ExternalOutcomeIntentionRouter:
         *,
         source_cell: int | None = None,
         copy_route: bool = True,
+        context_mask: torch.Tensor | None = None,
     ) -> tuple[ExternalRoutedIntentionMemoryState, int]:
         """Append content and a fresh/transfer route address copy-on-write."""
 
         self._validate_state(state)
         if not isinstance(copy_route, bool):
             raise TypeError("intention router copy_route must be boolean")
+        if source_cell is not None and not 0 <= source_cell < state.routing_keys.shape[0]:
+            raise ValueError("intention router source cell is out of range")
+        if context_mask is not None:
+            if context_mask.shape != (self.context_width,) or context_mask.dtype != torch.bool:
+                raise ValueError("intention router append context mask must be boolean [width]")
+            if context_mask.device != state.routing_keys.device:
+                raise ValueError("intention router append context mask is on the wrong device")
         next_cells, new_index = self.memory.append_cell(
             state.cells,
             source_cell=source_cell,
@@ -1042,16 +1110,20 @@ class ExternalOutcomeIntentionRouter:
         dtype = state.routing_keys.dtype
         source_observed_dimensions: torch.Tensor | None = None
         if source_cell is not None and self.memory.generator.context_masking:
+            source_profile = state.retention_context_mask_profiles[source_cell]
             observed_masses = state.retention_context_observed_masses[source_cell]
-            if bool((observed_masses > 0.0).any()):
+            source_observed_dimensions = source_profile > 0.0
+            if not bool(source_observed_dimensions.any()):
                 source_observed_dimensions = observed_masses > 0.0
-                input_weights = next_cells.input_weights.clone()
-                input_weights[new_index, :, : self.context_width][
-                    :, ~source_observed_dimensions
-                ] = 0.0
-                next_cells = replace(next_cells, input_weights=input_weights)
-        if source_cell is not None and not 0 <= source_cell < state.routing_keys.shape[0]:
-            raise ValueError("intention router source cell is out of range")
+            input_weights = next_cells.input_weights.clone()
+            unavailable = ~source_observed_dimensions
+            if context_mask is not None:
+                unavailable = unavailable & ~context_mask
+            input_weights[new_index, :, : self.context_width][:, unavailable] = 0.0
+            input_weights[new_index, :, self.context_width : 2 * self.context_width][
+                :, unavailable
+            ] = 0.0
+            next_cells = replace(next_cells, input_weights=input_weights)
         if source_cell is None:
             new_key = self.initial_routing_scale * torch.randn(
                 1, self.routing_feature_width, device=device, dtype=dtype
@@ -1139,6 +1211,13 @@ class ExternalOutcomeIntentionRouter:
             retention_context_observed_masses=torch.cat(
                 (
                     state.retention_context_observed_masses,
+                    torch.zeros(1, self.context_width, device=device, dtype=dtype),
+                ),
+                dim=0,
+            ),
+            retention_context_mask_profiles=torch.cat(
+                (
+                    state.retention_context_mask_profiles,
                     torch.zeros(1, self.context_width, device=device, dtype=dtype),
                 ),
                 dim=0,
@@ -1260,6 +1339,7 @@ class ExternalOutcomeIntentionRouter:
             context_prototypes = state.retention_context_prototypes.clone()
             context_masses = state.retention_context_masses.clone()
             context_observed_masses = state.retention_context_observed_masses.clone()
+            context_mask_profiles = state.retention_context_mask_profiles.clone()
             if mass <= 0.0:
                 observed_weights = verifier_masks.to(dtype=verifier_contexts.dtype)
                 observed_totals = observed_weights.sum(dim=0)
@@ -1271,6 +1351,9 @@ class ExternalOutcomeIntentionRouter:
                 )
                 context_masses[cell_index] = float(len(values))
                 context_observed_masses[cell_index] = observed_totals
+                context_mask_profiles[cell_index] = verifier_masks.to(
+                    dtype=context_mask_profiles.dtype
+                ).mean(dim=0)
             next_state = replace(
                 state,
                 cells=cells,
@@ -1279,6 +1362,7 @@ class ExternalOutcomeIntentionRouter:
                 retention_context_prototypes=context_prototypes,
                 retention_context_masses=context_masses,
                 retention_context_observed_masses=context_observed_masses,
+                retention_context_mask_profiles=context_mask_profiles,
             )
             reason = "heldout_prefix_floor_passed"
         else:
@@ -1345,6 +1429,7 @@ class ExternalOutcomeIntentionRouter:
             "retention_context_prototypes": state.retention_context_prototypes.detach().cpu().clone(),
             "retention_context_masses": state.retention_context_masses.detach().cpu().clone(),
             "retention_context_observed_masses": state.retention_context_observed_masses.detach().cpu().clone(),
+            "retention_context_mask_profiles": state.retention_context_mask_profiles.detach().cpu().clone(),
         }
 
     def state_from_payload(
@@ -1354,6 +1439,7 @@ class ExternalOutcomeIntentionRouter:
         schema = payload.get("schema")
         if schema not in (
             self.schema,
+            EXTERNAL_ROUTED_INTENTION_MEMORY_SCHEMA_V4,
             EXTERNAL_ROUTED_INTENTION_MEMORY_SCHEMA_V3,
             EXTERNAL_ROUTED_INTENTION_MEMORY_SCHEMA_V2,
             EXTERNAL_ROUTED_INTENTION_MEMORY_SCHEMA_V1,
@@ -1412,6 +1498,9 @@ class ExternalOutcomeIntentionRouter:
                     "retention_context_observed_masses": torch.zeros(
                         cell_count, self.context_width, device=device, dtype=dtype
                     ),
+                    "retention_context_mask_profiles": torch.zeros(
+                        cell_count, self.context_width, device=device, dtype=dtype
+                    ),
                 }
             )
         else:
@@ -1425,6 +1514,7 @@ class ExternalOutcomeIntentionRouter:
                 "retention_context_prototypes",
                 "retention_context_masses",
                 "retention_context_observed_masses",
+                "retention_context_mask_profiles",
             )
             for name in retention_names:
                 value = payload.get(name)
@@ -1446,6 +1536,25 @@ class ExternalOutcomeIntentionRouter:
                         raise TypeError(
                             "routed intention payload field "
                             "'retention_context_observed_masses' must be a tensor"
+                        )
+                if name == "retention_context_mask_profiles" and value is None:
+                    device = cells.input_weights.device
+                    dtype = cells.input_weights.dtype
+                    if schema == EXTERNAL_ROUTED_INTENTION_MEMORY_SCHEMA_V4:
+                        value = (
+                            values["retention_context_observed_masses"] > 0.0
+                        ).to(dtype=dtype)
+                    elif schema in (
+                        EXTERNAL_ROUTED_INTENTION_MEMORY_SCHEMA_V2,
+                        EXTERNAL_ROUTED_INTENTION_MEMORY_SCHEMA_V3,
+                    ):
+                        value = (
+                            values["retention_context_masses"] > 0.0
+                        ).to(dtype=dtype).unsqueeze(-1).expand(-1, self.context_width).clone()
+                    else:
+                        raise TypeError(
+                            "routed intention payload field "
+                            "'retention_context_mask_profiles' must be a tensor"
                         )
                 if not isinstance(value, torch.Tensor):
                     raise TypeError(

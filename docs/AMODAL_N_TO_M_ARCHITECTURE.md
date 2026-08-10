@@ -8533,3 +8533,30 @@ and the seven-stage mask-drift curriculum is archived in
 Both reject sequential mutation of one nonlinear cell across evidence
 distributions. The next architectural boundary is versioned or factored
 reusable computation across those distributions.
+
+## Context-versioned external memory boundary (2026-08-10)
+
+The next implementation increment adds a persistent evidence profile to each
+masked external cell. The profile is an opaque per-dimension observation EMA,
+not a hand-assigned semantic coordinate. It is versioned in routed-memory v5,
+survives append, delayed feedback, held-out verification, and tensor-only
+reload, and migrates v4 files from their observed-mass support.
+
+Profile compatibility is an optional routing prior. A context-version fork
+freezes the superseded cell, copies the reusable content basis, starts a fresh
+route address, and exposes only newly observed dimensions to the child. This
+separates content transfer from address transfer and prevents the old cell from
+drifting as evidence changes. The controller remains frozen; all updates stay
+in external memory.
+
+The versioned multi-stage pressure test is deliberately not promoted. Across
+seeds `85301` and `85302`, source and successor retention, exact persistence,
+frozen-core, corruption, missing-evidence, and shuffled-outcome controls pass,
+but warm successor acquisition ties the matched fresh control at `121/121`
+updates and one noisy reversal control fails. The complete reports and
+accounting are archived under
+`session_records/policy_free_intention_masked_routing_versioned_rejected_2026-08-10/`.
+This isolates the next bottleneck: stable sample-efficient content transfer
+through a sequence of evidence versions, not merely safe storage or routing.
+The already-promoted overlapping-mask result remains unchanged because the
+new profile prior is opt-in for legacy regimes.

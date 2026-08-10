@@ -1283,5 +1283,15 @@ The seven-stage mask-drift curriculum is also rejected in
 the single cell does not remain stable when evidence distributions change
 sequentially. The next architectural step is versioned or factored reusable
 computation across those distributions.
+
+The router now also supports an opt-in context-versioned memory boundary. Each
+masked cell persists an opaque observation-mask profile, and a fork can freeze
+the superseded cell, copy its reusable content, and learn a fresh route address
+for the new evidence distribution. Routed-memory v5 persists this profile and
+migrates the prior v4 support state. This is a safer foundation for continual
+learning, but its versioned multi-stage audit is rejected for promotion: both
+seeds preserve retention and persistence, yet neither produces a replicated
+warm-over-fresh speedup. See
+`session_records/policy_free_intention_masked_routing_versioned_rejected_2026-08-10/`.
 Arbitrary missing-stream reasoning, unrestricted growth, compression, and
 general continual learning remain unqualified.
