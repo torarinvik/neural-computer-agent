@@ -1,0 +1,40 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "route_memory_open_world_compression",
+  "status": "promoted",
+  "claim_boundary": "Four-seed replay-free discovery and compression of unseeded noisy duplicate route evidence in one persistent memory; not arbitrary semantic equivalence or general continual learning.",
+  "seeds": [86001, 86002, 86003, 86004],
+  "configuration": {
+    "latent_lifetimes_per_seed": 50,
+    "attempt_budget_per_seed": 1000,
+    "reversal_after_latent_lifetime": 25,
+    "initial_capacity": 4,
+    "seeded_duplicate_pairs": 0,
+    "planner_schema": "neural-computer.opaque-capacity-planner.v4",
+    "pair_similarity_prior": 0.5
+  },
+  "accounting_per_seed": {
+    "unique_verifier_bits": [266, 262, 691, 274],
+    "unique_logical_lifetimes": 50,
+    "optimizer_updates": [266, 262, 691, 274],
+    "replayed_examples": 0,
+    "controller_updates": 0
+  },
+  "results": {
+    "completed_latent_lifetimes": [50, 50, 50, 50],
+    "discovered_compressions": [50, 50, 50, 50],
+    "minimum_prefix_retention": [1.0, 1.0, 1.0, 1.0],
+    "full_final_retention": true,
+    "fresh_completed_latent_lifetimes": [0, 1, 0, 1],
+    "all_gates_passed": true
+  },
+  "controls": {
+    "frozen_controller_digest": true,
+    "fresh_planner_stream": true,
+    "coordinate_reversal": true,
+    "zero_seeded_duplicate_pairs": true,
+    "generic_relation_prior": true,
+    "replay": false
+  },
+  "next_test": "Vary the latent equivalence transformation and noise distribution, include unrelated high-similarity distractors, and measure false consolidation plus transfer to unseen transformation families."
+}

@@ -1,0 +1,66 @@
+{
+  "schema": "neural-computer.route-memory-open-world-compression.v1",
+  "claim_boundary": "one persistent route-memory stream that discovers and compresses unseeded redundant evidence under verifier-gated maintenance, reversal, and growth cost; not universal continual learning or unrestricted memory growth",
+  "seed": 86002,
+  "configuration": {
+    "stream_steps": 1000,
+    "reversal_step": 25,
+    "initial_capacity": 4,
+    "latent_cycles": 50,
+    "seeded_duplicate_pairs": 0,
+    "minimum_score": 0.72,
+    "update": "centered_single_verifier_utility_policy_gradient_v1"
+  },
+  "gates": {
+    "persistent_utility_retained_or_improved": true,
+    "stable_prefix_retention": true,
+    "trained_beats_fresh": true,
+    "growth_cost_is_observed": true,
+    "compression_is_observed": true,
+    "unseeded_discovery": true,
+    "reversal_stream_completed": true,
+    "controller_frozen": true,
+    "replay_zero": true,
+    "one_update_per_unique_utility": true
+  },
+  "promoted": true,
+  "metrics": {
+    "first_window_utility": 0.4485,
+    "last_window_utility": 0.8535,
+    "trained_committed_transactions": 200,
+    "fresh_committed_transactions": 7,
+    "trained_completed_cycles": 50,
+    "fresh_completed_cycles": 1,
+    "trained_attempts": 262,
+    "fresh_attempts": 1000,
+    "trained_growth_events": 50,
+    "trained_compression_events": 50,
+    "trained_cumulative_utility": 172.50000000000048,
+    "fresh_cumulative_utility": 5.900000000000001,
+    "fresh_growth_events": 2,
+    "trained_final_capacity": 54,
+    "trained_final_prototype_count": 53,
+    "trained_action_counts": {
+      "admit": 100,
+      "evict": 3,
+      "consolidate": 102,
+      "grow": 57
+    },
+    "fresh_action_counts": {
+      "admit": 4,
+      "evict": 0,
+      "consolidate": 1,
+      "grow": 995
+    },
+    "minimum_prefix_retention": 1.0,
+    "full_final_retention": true
+  },
+  "accounting": {
+    "unique_verifier_utilities": 262,
+    "unique_logical_lifetimes": 50,
+    "optimizer_updates": 262,
+    "replayed_examples": 0,
+    "controller_updates": 0,
+    "wall_seconds": 13.6366911669611
+  }
+}

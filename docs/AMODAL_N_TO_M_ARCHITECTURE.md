@@ -7567,3 +7567,28 @@ beyond the two seeded pairs, compared against a fixed-capacity non-compressing
 controller using retention-adjusted utility. Evidence and accounting are
 archived in
 `session_records/sequence_working_memory_2026-08-02/route_memory_persistent_compression_promoted_2026-08-10/`.
+
+## Open-world redundancy discovery without seeded duplicate pairs (2026-08-10)
+
+The persistent memory stream now begins with mastered anchors and one
+distractor, with zero duplicate pairs preloaded. For each of 50 latent
+lifetimes, one route is introduced and a noisy second observation arrives
+later. The planner must preserve both, discover the generic relational
+similarity, and select verifier-gated consolidation before advancing. A
+coordinate reversal occurs after lifetime 25.
+
+Across seeds `86001`, `86002`, `86003`, and `86004`, all 50 lifetimes
+completed and all 50 were compressed. Trained runs used 262–691 unique online
+verifier utilities; fresh controls completed zero or one lifetime. Sampled
+prefix and full-final retention were `1.0` in every run, with a frozen
+controller and zero replay. The planner uses a generic key-similarity prior
+to make pair exploration tractable; policy actions and selectors still adapt
+from verifier utility.
+
+This promotes bounded open-world redundancy discovery and compression. It does
+not establish arbitrary semantic equivalence, unrestricted growth, universal
+continual learning, or autonomous verifier design. The next pressure point is
+false-consolidation control under unrelated high-similarity distractors and
+transfer to unseen equivalence transformations. Evidence and accounting are
+archived in
+`session_records/sequence_working_memory_2026-08-02/route_memory_open_world_compression_promoted_2026-08-10/`.

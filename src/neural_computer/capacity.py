@@ -16,7 +16,7 @@ from torch import nn
 
 from .memory import MemoryCandidates
 
-CAPACITY_PLANNER_SCHEMA = "neural-computer.opaque-capacity-planner.v3"
+CAPACITY_PLANNER_SCHEMA = "neural-computer.opaque-capacity-planner.v4"
 ADMISSION_ACTIONS = ("admit", "evict", "consolidate", "grow")
 
 
@@ -62,15 +62,19 @@ class OpaqueCapacityPlanner(nn.Module):
         width: int,
         hidden: int = 64,
         learning_rate: float = 1e-2,
+        pair_similarity_prior: float = 0.5,
     ) -> None:
         super().__init__()
         if min(width, hidden) < 1:
             raise ValueError("capacity planner widths must be positive")
         if learning_rate <= 0.0 or not math.isfinite(learning_rate):
             raise ValueError("capacity planner learning rate must be positive")
+        if pair_similarity_prior < 0.0 or not math.isfinite(pair_similarity_prior):
+            raise ValueError("capacity planner pair similarity prior is invalid")
         self.width = int(width)
         self.hidden = int(hidden)
         self.learning_rate = float(learning_rate)
+        self.pair_similarity_prior = float(pair_similarity_prior)
         row_width = 2 * self.width + 2
         incoming_width = 2 * self.width
         self.row_width = row_width
@@ -102,6 +106,7 @@ class OpaqueCapacityPlanner(nn.Module):
             "width": self.width,
             "hidden": self.hidden,
             "learning_rate": self.learning_rate,
+            "pair_similarity_prior": self.pair_similarity_prior,
             "actions": ADMISSION_ACTIONS,
             "row_features": "key_value_strength_relative_age",
             "pair_relations": (
@@ -264,7 +269,7 @@ class OpaqueCapacityPlanner(nn.Module):
         )
         pair_scores = self.pair_network(
             torch.cat((pair_relations, metadata_relations, incoming_pair_relations), dim=-1)
-        ).squeeze(-1)
+        ).squeeze(-1) + self.pair_similarity_prior * pair_relations[..., 0]
         valid_evictions = occupied & ~protected
         valid_pairs = occupied[:, :, None] & occupied[:, None, :]
         diagonal = torch.eye(capacity, dtype=torch.bool, device=bank.keys.device)
