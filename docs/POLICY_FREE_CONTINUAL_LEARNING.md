@@ -183,3 +183,30 @@ when to evict, discovered arbitrary identities, handled unrestricted drift, or
 achieved general continual learning. The next step is an outcome-trained
 retention/admission challenger with simultaneous provisional identities and
 adversarial contradiction controls.
+
+## Outcome-trained lifecycle proposals (2026-08-10)
+
+The anonymous binding memory now separates three concerns cleanly: provisional
+evidence collection, learned proposal ranking, and verifier-authorized commit.
+`ExternalStreamBindingLifecyclePolicy` is a replaceable external learner. It
+receives opaque prototype vectors plus generic lifecycle telemetry, records its
+selection propensity, and updates from one scalar verifier outcome without
+replaying the source evidence. It can learn to hold when every provisional
+candidate is contradictory.
+
+The commit path is atomic: one provisional identity and one live identity are
+swapped on a copy, then the complete retained state is verified before commit.
+Rejection leaves the original state unchanged. This is materially closer to a
+growing file-like memory behind a fixed compute substrate than a policy adapter
+inside the controller; the controller never receives the lifecycle decision or
+raw modality data.
+
+The two-seed lifecycle audit (`2401`, `2402`) used five anonymous streams,
+three simultaneous provisional identities, fresh and outcome-shuffled controls,
+contradiction/hold evaluation, exact policy persistence, and zero replay. The
+trained policy reached `1.0` safe-replacement and `1.0` contradiction/hold
+accuracy on both seeds, while fresh controls reached `0.125`/`0.1667` and
+shuffled controls `0.125`/`0.2083`. The result promotes outcome-trained
+proposal ranking and atomic retention safety only. Learned verifier design,
+autonomous eviction policy, unrestricted growth, and general continual
+learning remain open.

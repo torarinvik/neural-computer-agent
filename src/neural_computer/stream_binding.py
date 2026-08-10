@@ -40,6 +40,15 @@ EXTERNAL_STREAM_BINDING_PROMOTION_SCHEMA = (
 EXTERNAL_STREAM_BINDING_RETIREMENT_SCHEMA = (
     "neural-computer.external-stream-binding-retirement.v1"
 )
+EXTERNAL_STREAM_BINDING_REPLACEMENT_SCHEMA = (
+    "neural-computer.external-stream-binding-replacement.v1"
+)
+EXTERNAL_STREAM_BINDING_LIFECYCLE_POLICY_SCHEMA = (
+    "neural-computer.external-stream-binding-lifecycle-policy.v1"
+)
+EXTERNAL_STREAM_BINDING_LIFECYCLE_PROPOSAL_SCHEMA = (
+    "neural-computer.external-stream-binding-lifecycle-proposal.v1"
+)
 EXTERNAL_LEARNED_MULTI_STREAM_ROUTER_SCHEMA = (
     "neural-computer.external-learned-multi-stream-router.v2"
 )
@@ -240,6 +249,109 @@ class ExternalStreamBindingRetirementReceipt:
 
 
 @dataclass(frozen=True)
+class ExternalStreamBindingReplacementReceipt:
+    """Atomic replacement of one live track by one provisional track."""
+
+    accepted: bool
+    provisional_id: int
+    retired_track_id: int
+    track_id: int | None
+    reason: str
+    observation_count: int
+    schema: str = EXTERNAL_STREAM_BINDING_REPLACEMENT_SCHEMA
+
+    def validate(self) -> ExternalStreamBindingReplacementReceipt:
+        if self.schema != EXTERNAL_STREAM_BINDING_REPLACEMENT_SCHEMA:
+            raise ValueError("unsupported stream-binding replacement schema")
+        for name, value in (
+            ("provisional ID", self.provisional_id),
+            ("retired track ID", self.retired_track_id),
+        ):
+            if (
+                not isinstance(value, int)
+                or isinstance(value, bool)
+                or value < 0
+            ):
+                raise ValueError(f"stream-binding {name} is invalid")
+        if self.track_id is not None and (
+            not isinstance(self.track_id, int)
+            or isinstance(self.track_id, bool)
+            or self.track_id < 0
+        ):
+            raise ValueError("stream-binding replacement track ID is invalid")
+        if not isinstance(self.reason, str) or not self.reason:
+            raise ValueError("stream-binding replacement reason is missing")
+        if self.observation_count < 0:
+            raise ValueError("stream-binding replacement observation count is invalid")
+        if self.accepted and self.track_id is None:
+            raise ValueError("accepted stream-binding replacement needs a track ID")
+        return self
+
+
+@dataclass(frozen=True)
+class ExternalStreamBindingLifecycleProposal:
+    """A policy-only proposal over legal anonymous replacement candidates."""
+
+    selected_provisional_id: int | None
+    selected_track_id: int | None
+    scores: torch.Tensor
+    hold_score: float
+    eligible_pairs: tuple[tuple[int, int], ...]
+    features: torch.Tensor
+    selected_probability: float
+    selected_propensity: float
+    selection_mode: str
+    reason: str
+    schema: str = EXTERNAL_STREAM_BINDING_LIFECYCLE_PROPOSAL_SCHEMA
+
+    def validate(self, *, feature_width: int) -> ExternalStreamBindingLifecycleProposal:
+        if self.schema != EXTERNAL_STREAM_BINDING_LIFECYCLE_PROPOSAL_SCHEMA:
+            raise ValueError("unsupported stream-binding lifecycle proposal schema")
+        if self.scores.ndim != 1 or self.scores.shape[0] != len(self.eligible_pairs):
+            raise ValueError("stream-binding lifecycle scores are misaligned")
+        if (
+            self.features.ndim != 2
+            or self.features.shape[0] != len(self.eligible_pairs)
+            or self.features.shape[1] != feature_width
+        ):
+            raise ValueError("stream-binding lifecycle features are misaligned")
+        if not bool(torch.isfinite(self.scores).all()) or not bool(
+            torch.isfinite(self.features).all()
+        ):
+            raise ValueError("stream-binding lifecycle proposal is non-finite")
+        if not math.isfinite(self.hold_score):
+            raise ValueError("stream-binding lifecycle hold score is invalid")
+        if len(set(self.eligible_pairs)) != len(self.eligible_pairs):
+            raise ValueError("stream-binding lifecycle candidates are duplicated")
+        if any(
+            not isinstance(provisional_id, int)
+            or isinstance(provisional_id, bool)
+            or provisional_id < 0
+            or not isinstance(track_id, int)
+            or isinstance(track_id, bool)
+            or track_id < 0
+            for provisional_id, track_id in self.eligible_pairs
+        ):
+            raise ValueError("stream-binding lifecycle candidate ID is invalid")
+        selected = (self.selected_provisional_id, self.selected_track_id)
+        if (self.selected_provisional_id is None) != (
+            self.selected_track_id is None
+        ):
+            raise ValueError("stream-binding lifecycle selection is incomplete")
+        if self.selected_provisional_id is not None and selected not in self.eligible_pairs:
+            raise ValueError("stream-binding lifecycle selection is ineligible")
+        if not math.isfinite(self.selected_probability) or not 0.0 <= self.selected_probability <= 1.0:
+            raise ValueError("stream-binding lifecycle probability is invalid")
+        if not math.isfinite(self.selected_propensity) or not 0.0 < self.selected_propensity <= 1.0:
+            raise ValueError("stream-binding lifecycle propensity is invalid")
+        if self.selection_mode not in {"greedy", "sampled", "hold"}:
+            raise ValueError("stream-binding lifecycle selection mode is invalid")
+        if not isinstance(self.reason, str) or not self.reason:
+            raise ValueError("stream-binding lifecycle proposal reason is missing")
+        return self
+
+
+@dataclass(frozen=True)
 class ExternalLearnedMultiStreamTransitionResult:
     """Binding plus factual routing for one unlabelled transition arrival."""
 
@@ -266,6 +378,227 @@ class ExternalLearnedMultiStreamTransitionResult:
                 context_width=context_width,
             )
         return self
+
+
+class ExternalStreamBindingLifecyclePolicy(torch.nn.Module):
+    """Learn which anonymous replacement proposal is worth verifying.
+
+    The policy sees only opaque prototype vectors and generic lifecycle
+    telemetry. It proposes a legal pair; a scalar verifier outcome remains the
+    authority that can commit the copy-on-write replacement. The policy is
+    therefore replaceable external memory infrastructure, not a new reasoning
+    branch in the controller.
+    """
+
+    schema = EXTERNAL_STREAM_BINDING_LIFECYCLE_POLICY_SCHEMA
+    feature_width_extra = 11
+
+    def __init__(
+        self,
+        context_width: int,
+        *,
+        hidden_width: int = 32,
+        learning_rate: float = 1e-2,
+        temperature: float = 1.0,
+    ) -> None:
+        super().__init__()
+        if context_width < 1 or hidden_width < 1:
+            raise ValueError("stream-binding lifecycle policy widths must be positive")
+        if learning_rate <= 0.0 or not math.isfinite(learning_rate):
+            raise ValueError("stream-binding lifecycle policy learning rate is invalid")
+        if temperature <= 0.0 or not math.isfinite(temperature):
+            raise ValueError("stream-binding lifecycle policy temperature is invalid")
+        self.context_width = int(context_width)
+        self.hidden_width = int(hidden_width)
+        self.learning_rate = float(learning_rate)
+        self.temperature = float(temperature)
+        self.feature_width = 2 * self.context_width + self.feature_width_extra
+        self.network = torch.nn.Sequential(
+            torch.nn.Linear(self.feature_width, self.hidden_width),
+            torch.nn.GELU(),
+            torch.nn.Linear(self.hidden_width, 1),
+        )
+        self.hold_bias = torch.nn.Parameter(torch.tensor(-1.0))
+
+    def configuration(self) -> dict[str, int | float | str]:
+        return {
+            "schema": self.schema,
+            "context_width": self.context_width,
+            "hidden_width": self.hidden_width,
+            "learning_rate": self.learning_rate,
+            "temperature": self.temperature,
+            "inputs": "opaque_prototypes_reliability_delay_age_similarity_v1",
+            "output": "replacement_candidate_acceptance_score_v1",
+            "updates": "single_scalar_verifier_outcome_no_replay_v1",
+        }
+
+    @torch.no_grad()
+    def propose(
+        self,
+        memory: ExternalOnlineStreamBindingMemory,
+        *,
+        sample: bool = False,
+        generator: torch.Generator | None = None,
+    ) -> ExternalStreamBindingLifecycleProposal:
+        pairs, features = memory.lifecycle_candidate_features()
+        if not pairs:
+            return ExternalStreamBindingLifecycleProposal(
+                selected_provisional_id=None,
+                selected_track_id=None,
+                scores=features.new_empty((0,)),
+                hold_score=float(self.hold_bias),
+                eligible_pairs=(),
+                features=features,
+                selected_probability=1.0,
+                selected_propensity=1.0,
+                selection_mode="hold",
+                reason="no legal provisional replacement candidates",
+            ).validate(feature_width=self.feature_width)
+        scores = self.network(features).squeeze(-1)
+        hold_score = self.hold_bias.to(scores)
+        all_scores = torch.cat((scores, hold_score.reshape(1)))
+        probabilities = torch.softmax(all_scores / self.temperature, dim=0)
+        if sample:
+            selected_index = int(
+                torch.multinomial(
+                    probabilities,
+                    num_samples=1,
+                    generator=generator,
+                )[0]
+            )
+            selection_mode = "sampled"
+            propensity = float(probabilities[selected_index])
+        else:
+            selected_index = int(torch.argmax(all_scores))
+            selection_mode = "greedy"
+            propensity = 1.0
+        selected_provisional_id: int | None
+        selected_track_id: int | None
+        if selected_index == len(pairs):
+            selected_provisional_id = None
+            selected_track_id = None
+            selection_mode = "hold"
+        else:
+            selected_provisional_id, selected_track_id = pairs[selected_index]
+        return ExternalStreamBindingLifecycleProposal(
+            selected_provisional_id=selected_provisional_id,
+            selected_track_id=selected_track_id,
+            scores=scores.detach().clone(),
+            hold_score=float(hold_score),
+            eligible_pairs=tuple(pairs),
+            features=features.detach().clone(),
+            selected_probability=float(probabilities[selected_index]),
+            selected_propensity=propensity,
+            selection_mode=selection_mode,
+            reason="learned lifecycle score selected a replacement candidate",
+        ).validate(feature_width=self.feature_width)
+
+    def adaptation_step(
+        self,
+        proposal: ExternalStreamBindingLifecycleProposal,
+        verifier_outcome: torch.Tensor | float,
+        *,
+        optimizer: torch.optim.Optimizer | None = None,
+    ) -> float:
+        """Consume one scalar outcome without retaining the source evidence."""
+
+        proposal.validate(feature_width=self.feature_width)
+        if isinstance(verifier_outcome, torch.Tensor):
+            values = verifier_outcome.detach().reshape(-1)
+            if values.numel() != 1:
+                raise ValueError("stream-binding lifecycle outcomes must be scalar")
+            outcome = float(values[0])
+        else:
+            outcome = float(verifier_outcome)
+        if not math.isfinite(outcome) or not 0.0 <= outcome <= 1.0:
+            raise ValueError("stream-binding lifecycle outcomes must lie in [0, 1]")
+        if proposal.selected_provisional_id is None:
+            logits = self.hold_bias.reshape(1)
+            selected_index = None
+        else:
+            selected_index = proposal.eligible_pairs.index(
+                (proposal.selected_provisional_id, proposal.selected_track_id)
+            )
+            logits = self.network(proposal.features)[selected_index : selected_index + 1, 0]
+        target = torch.tensor(
+            [outcome],
+            device=logits.device,
+            dtype=logits.dtype,
+        )
+        loss = torch.nn.functional.binary_cross_entropy_with_logits(
+            logits,
+            target,
+        )
+        # An exploratory outcome is weighted by its exact logging propensity;
+        # greedy deployment has propensity one by construction.
+        loss = loss / max(proposal.selected_propensity, 1e-3)
+        selected_optimizer = optimizer
+        if selected_optimizer is None:
+            selected_optimizer = torch.optim.SGD(
+                self.parameters(),
+                lr=self.learning_rate,
+            )
+        selected_optimizer.zero_grad()
+        loss.backward()
+        selected_optimizer.step()
+        return float(loss.detach())
+
+    def state_payload(self) -> dict[str, object]:
+        state = {
+            name: value.detach().cpu().clone()
+            for name, value in self.state_dict().items()
+        }
+        digest = hashlib.sha256()
+        digest.update(repr(self.configuration()).encode("utf-8"))
+        for name, value in state.items():
+            digest.update(name.encode("utf-8"))
+            digest.update(str(value.dtype).encode("utf-8"))
+            digest.update(repr(tuple(value.shape)).encode("utf-8"))
+            digest.update(value.contiguous().numpy().tobytes())
+        return {
+            "schema": self.schema,
+            "configuration": self.configuration(),
+            "state": state,
+            "sha256": digest.hexdigest(),
+        }
+
+    def digest(self) -> str:
+        return str(self.state_payload()["sha256"])
+
+    @classmethod
+    def from_payload(
+        cls,
+        payload: Mapping[str, Any],
+    ) -> ExternalStreamBindingLifecyclePolicy:
+        if not isinstance(payload, Mapping) or payload.get("schema") != cls.schema:
+            raise ValueError("unsupported stream-binding lifecycle policy payload")
+        configuration = payload.get("configuration")
+        state = payload.get("state")
+        if not isinstance(configuration, Mapping) or not isinstance(state, Mapping):
+            raise TypeError("stream-binding lifecycle policy payload is incomplete")
+        policy = cls(
+            int(configuration["context_width"]),
+            hidden_width=int(configuration["hidden_width"]),
+            learning_rate=float(configuration["learning_rate"]),
+            temperature=float(configuration["temperature"]),
+        )
+        current = policy.state_dict()
+        if tuple(state) != tuple(current):
+            raise ValueError("stream-binding lifecycle policy state names differ")
+        normalized: dict[str, torch.Tensor] = {}
+        for name, expected in current.items():
+            value = state[name]
+            if not isinstance(value, torch.Tensor):
+                raise TypeError("stream-binding lifecycle policy state is not a tensor")
+            if value.shape != expected.shape or value.dtype != expected.dtype:
+                raise ValueError("stream-binding lifecycle policy state is incompatible")
+            if not bool(torch.isfinite(value).all()):
+                raise ValueError("stream-binding lifecycle policy state is not finite")
+            normalized[name] = value.detach().clone()
+        policy.load_state_dict(normalized, strict=True)
+        if payload.get("sha256") != policy.digest():
+            raise ValueError("stream-binding lifecycle policy checksum mismatch")
+        return policy
 
 
 class ExternalOnlineStreamBindingMemory:
@@ -780,6 +1113,199 @@ class ExternalOnlineStreamBindingMemory:
             "reliability": self._reliability(entry),
         }
 
+    def lifecycle_candidate_features(
+        self,
+    ) -> tuple[tuple[tuple[int, int], ...], torch.Tensor]:
+        """Return opaque, permutation-stable features for legal replacements."""
+
+        if self.stream_count < self.max_streams or not self._provisional:
+            return (), torch.empty((0, 2 * self.stream_key_width + 11))
+        pairs: list[tuple[int, int]] = []
+        features: list[torch.Tensor] = []
+        for provisional_id in sorted(self._provisional):
+            provisional = self._provisional[provisional_id]
+            provisional_delay = provisional["mean_delay"]
+            provisional_observations = int(
+                provisional["observations"].state.shape[0]
+            )
+            provisional_scalars = (
+                math.log1p(provisional_observations),
+                self._reliability(provisional),
+                0.0
+                if provisional_delay is None
+                else math.log1p(max(float(provisional_delay), 0.0)),
+                0.0 if provisional_delay is None else 1.0,
+                math.log1p(float(provisional["delay_count"])),
+            )
+            for track_id in sorted(self._tracks):
+                track = self._tracks[track_id]
+                track_delay = track["mean_delay"]
+                track_observations = int(track["observations"].state.shape[0])
+                provisional_key = _normalize_key(
+                    provisional["prototype"], width=self.stream_key_width
+                )
+                track_key = _normalize_key(
+                    track["prototype"], width=self.stream_key_width
+                )
+                similarity = float(torch.dot(provisional_key, track_key))
+                track_scalars = (
+                    math.log1p(track_observations),
+                    self._reliability(track),
+                    0.0
+                    if track_delay is None
+                    else math.log1p(max(float(track_delay), 0.0)),
+                    0.0 if track_delay is None else 1.0,
+                    math.log1p(float(track["delay_count"])),
+                )
+                features.append(
+                    torch.cat(
+                        (
+                            provisional_key,
+                            track_key,
+                            torch.tensor(
+                                provisional_scalars
+                                + track_scalars
+                                + (similarity,),
+                                dtype=torch.float32,
+                            ),
+                        )
+                    )
+                )
+                pairs.append((provisional_id, track_id))
+        return tuple(pairs), torch.stack(features)
+
+    def replace_verified_track_with_provisional(
+        self,
+        provisional_id: int,
+        track_id: int,
+        retention_probe: Callable[[ExternalOnlineStreamBindingMemory], bool],
+    ) -> ExternalStreamBindingReplacementReceipt:
+        """Atomically replace one live track with one provisional track."""
+
+        if provisional_id not in self._provisional:
+            return ExternalStreamBindingReplacementReceipt(
+                accepted=False,
+                provisional_id=provisional_id,
+                retired_track_id=track_id,
+                track_id=None,
+                reason="unknown_provisional",
+                observation_count=0,
+            ).validate()
+        if track_id not in self._tracks:
+            return ExternalStreamBindingReplacementReceipt(
+                accepted=False,
+                provisional_id=provisional_id,
+                retired_track_id=track_id,
+                track_id=None,
+                reason="unknown_track",
+                observation_count=0,
+            ).validate()
+        candidate = type(self).from_payload(self.state_payload())
+        entry = candidate._provisional.pop(provisional_id)
+        candidate._tracks.pop(track_id)
+        new_track_id = candidate._next_track_id
+        candidate._next_track_id += 1
+        candidate._tracks[new_track_id] = entry
+        observation_count = int(entry["observations"].state.shape[0])
+        if not bool(retention_probe(candidate)):
+            return ExternalStreamBindingReplacementReceipt(
+                accepted=False,
+                provisional_id=provisional_id,
+                retired_track_id=track_id,
+                track_id=None,
+                reason="retention_probe_rejected",
+                observation_count=observation_count,
+            ).validate()
+        self._tracks = candidate._tracks
+        self._provisional = candidate._provisional
+        self._next_track_id = candidate._next_track_id
+        self._next_provisional_id = candidate._next_provisional_id
+        return ExternalStreamBindingReplacementReceipt(
+            accepted=True,
+            provisional_id=provisional_id,
+            retired_track_id=track_id,
+            track_id=new_track_id,
+            reason="verified_atomic_replacement",
+            observation_count=observation_count,
+        ).validate()
+
+    def replace_on_verifier_outcome(
+        self,
+        provisional_id: int,
+        track_id: int,
+        verifier_outcome: torch.Tensor | float,
+        *,
+        acceptance_threshold: float = 1.0,
+    ) -> ExternalStreamBindingReplacementReceipt:
+        """Commit an evaluated proposal from one scalar verifier outcome.
+
+        The caller supplies only the deterministic verifier result. Candidate
+        selection and transaction construction remain inside the external
+        memory boundary; no caller-owned structural retention probe is needed
+        on this path.
+        """
+
+        if isinstance(verifier_outcome, torch.Tensor):
+            values = verifier_outcome.detach().reshape(-1)
+            if values.numel() != 1:
+                raise ValueError("stream-binding replacement outcomes must be scalar")
+            outcome = float(values[0])
+        else:
+            outcome = float(verifier_outcome)
+        if not math.isfinite(outcome) or not 0.0 <= outcome <= 1.0:
+            raise ValueError("stream-binding replacement outcomes must lie in [0, 1]")
+        if (
+            not math.isfinite(acceptance_threshold)
+            or not 0.0 <= acceptance_threshold <= 1.0
+        ):
+            raise ValueError("stream-binding replacement acceptance threshold is invalid")
+        if provisional_id not in self._provisional:
+            return ExternalStreamBindingReplacementReceipt(
+                accepted=False,
+                provisional_id=provisional_id,
+                retired_track_id=track_id,
+                track_id=None,
+                reason="unknown_provisional",
+                observation_count=0,
+            ).validate()
+        if track_id not in self._tracks:
+            return ExternalStreamBindingReplacementReceipt(
+                accepted=False,
+                provisional_id=provisional_id,
+                retired_track_id=track_id,
+                track_id=None,
+                reason="unknown_track",
+                observation_count=0,
+            ).validate()
+        candidate = type(self).from_payload(self.state_payload())
+        entry = candidate._provisional.pop(provisional_id)
+        candidate._tracks.pop(track_id)
+        new_track_id = candidate._next_track_id
+        candidate._next_track_id += 1
+        candidate._tracks[new_track_id] = entry
+        observation_count = int(entry["observations"].state.shape[0])
+        if outcome < acceptance_threshold:
+            return ExternalStreamBindingReplacementReceipt(
+                accepted=False,
+                provisional_id=provisional_id,
+                retired_track_id=track_id,
+                track_id=None,
+                reason="verifier_outcome_rejected",
+                observation_count=observation_count,
+            ).validate()
+        self._tracks = candidate._tracks
+        self._provisional = candidate._provisional
+        self._next_track_id = candidate._next_track_id
+        self._next_provisional_id = candidate._next_provisional_id
+        return ExternalStreamBindingReplacementReceipt(
+            accepted=True,
+            provisional_id=provisional_id,
+            retired_track_id=track_id,
+            track_id=new_track_id,
+            reason="verifier_outcome_accepted",
+            observation_count=observation_count,
+        ).validate()
+
     def promote_provisional_track(
         self,
         provisional_id: int,
@@ -1153,6 +1679,27 @@ class ExternalLearnedMultiStreamTransitionContextRouter:
 
         return self.binding.retire_verified_track(track_id, retention_probe)
 
+    def apply_lifecycle_proposal(
+        self,
+        proposal: ExternalStreamBindingLifecycleProposal,
+        verifier_outcome: torch.Tensor | float,
+        *,
+        acceptance_threshold: float = 1.0,
+    ) -> ExternalStreamBindingReplacementReceipt | None:
+        """Apply one policy-selected replacement from a scalar verifier result."""
+
+        proposal.validate(feature_width=self.binding.stream_key_width * 2 + 11)
+        if proposal.selected_provisional_id is None:
+            return None
+        if proposal.selected_track_id is None:
+            raise ValueError("lifecycle proposal is missing its selected track")
+        return self.binding.replace_on_verifier_outcome(
+            proposal.selected_provisional_id,
+            proposal.selected_track_id,
+            verifier_outcome,
+            acceptance_threshold=acceptance_threshold,
+        )
+
     def adaptation_step(
         self,
         result: ExternalLearnedMultiStreamTransitionResult,
@@ -1249,13 +1796,19 @@ class ExternalLearnedMultiStreamTransitionContextRouter:
 
 __all__ = [
     "EXTERNAL_LEARNED_MULTI_STREAM_ROUTER_SCHEMA",
+    "EXTERNAL_STREAM_BINDING_LIFECYCLE_POLICY_SCHEMA",
+    "EXTERNAL_STREAM_BINDING_LIFECYCLE_PROPOSAL_SCHEMA",
     "EXTERNAL_STREAM_BINDING_MEMORY_SCHEMA",
     "EXTERNAL_STREAM_BINDING_PROMOTION_SCHEMA",
+    "EXTERNAL_STREAM_BINDING_REPLACEMENT_SCHEMA",
     "EXTERNAL_STREAM_BINDING_RETIREMENT_SCHEMA",
     "ExternalLearnedMultiStreamTransitionContextRouter",
     "ExternalLearnedMultiStreamTransitionResult",
     "ExternalOnlineStreamBindingMemory",
+    "ExternalStreamBindingLifecyclePolicy",
+    "ExternalStreamBindingLifecycleProposal",
     "ExternalStreamBindingPromotionReceipt",
+    "ExternalStreamBindingReplacementReceipt",
     "ExternalStreamBindingResult",
     "ExternalStreamBindingRetirementReceipt",
 ]

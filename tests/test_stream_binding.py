@@ -3,12 +3,16 @@ from __future__ import annotations
 import torch
 
 from experiments.external_learned_stream_binding.train import run as run_pressure_test
+from experiments.external_learned_stream_binding_lifecycle.train import (
+    run as run_lifecycle_pressure_test,
+)
 from neural_computer import (
     EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY,
     ExternalLearnedMultiStreamTransitionContextRouter,
     ExternalMultiStreamTransitionContextRouter,
     ExternalOnlineStreamBindingMemory,
     ExternalOnlineTransitionContextRouter,
+    ExternalStreamBindingLifecyclePolicy,
     ExternalTransitionContextEncoder,
     ExternalTransitionModelBank,
     ExternalTransitionObservation,
@@ -250,3 +254,92 @@ def test_open_set_arrival_is_quarantined_until_retention_safe_admission() -> Non
 
     restored = ExternalOnlineStreamBindingMemory.from_payload(memory.state_payload())
     assert restored.digest() == memory.digest()
+
+
+def test_atomic_replacement_keeps_state_on_rejection() -> None:
+    encoder, observations = _fixture(504, stream_count=4)
+    memory = ExternalOnlineStreamBindingMemory(
+        encoder,
+        window_capacity=4,
+        max_streams=3,
+        provisional_capacity=2,
+        match_tolerance=0.55,
+        new_track_tolerance=0.7,
+        provisional_tolerance=0.7,
+        match_margin=0.05,
+    )
+    for stream in range(3):
+        assert memory.observe(_row(observations[stream], 0)).status == "new"
+    provisional = memory.observe(_row(observations[3], 0))
+    assert provisional.provisional_id is not None
+    pairs, features = memory.lifecycle_candidate_features()
+    assert len(pairs) == 3
+    assert features.shape == (3, 2 * encoder.context_width + 11)
+    before = memory.digest()
+    rejected_scalar = memory.replace_on_verifier_outcome(
+        provisional.provisional_id,
+        1,
+        0.0,
+    )
+    assert not rejected_scalar.accepted
+    assert rejected_scalar.reason == "verifier_outcome_rejected"
+    assert memory.digest() == before
+    rejected = memory.replace_verified_track_with_provisional(
+        provisional.provisional_id,
+        1,
+        lambda _: False,
+    )
+    assert not rejected.accepted
+    assert rejected.reason == "retention_probe_rejected"
+    assert memory.digest() == before
+    accepted = memory.replace_verified_track_with_provisional(
+        provisional.provisional_id,
+        1,
+        lambda candidate: candidate.stream_count == 3
+        and candidate.provisional_count == 0,
+    )
+    assert accepted.accepted
+    assert accepted.track_id is not None
+    assert memory.track_ids == (0, 2, accepted.track_id)
+    assert memory.provisional_ids == ()
+
+
+def test_lifecycle_policy_learns_from_outcome_and_persists() -> None:
+    encoder, observations = _fixture(505, stream_count=4)
+    memory = ExternalOnlineStreamBindingMemory(
+        encoder,
+        window_capacity=4,
+        max_streams=3,
+        provisional_capacity=2,
+        match_tolerance=0.55,
+        new_track_tolerance=0.7,
+        provisional_tolerance=0.7,
+        match_margin=0.05,
+    )
+    for stream in range(3):
+        assert memory.observe(_row(observations[stream], 0)).status == "new"
+    provisional = memory.observe(_row(observations[3], 0))
+    assert provisional.provisional_id is not None
+    policy = ExternalStreamBindingLifecyclePolicy(
+        encoder.context_width,
+        hidden_width=8,
+        learning_rate=0.02,
+    )
+    proposal = policy.propose(memory, sample=True, generator=torch.Generator().manual_seed(8))
+    assert proposal.selected_provisional_id == provisional.provisional_id
+    assert proposal.selected_track_id is not None
+    assert 0.0 < proposal.selected_propensity <= 1.0
+    before = policy.digest()
+    loss = policy.adaptation_step(proposal, 1.0)
+    assert loss >= 0.0
+    assert policy.digest() != before
+    restored = ExternalStreamBindingLifecyclePolicy.from_payload(policy.state_payload())
+    assert restored.digest() == policy.digest()
+
+
+def test_outcome_trained_lifecycle_pressure_test_passes() -> None:
+    report = run_lifecycle_pressure_test(2401)
+    assert report["promoted"] is True
+    assert report["gates"]["learned_safe_policy"] is True
+    assert report["gates"]["contradiction_prefers_hold"] is True
+    assert report["gates"]["outcome_shuffle_control_lower"] is True

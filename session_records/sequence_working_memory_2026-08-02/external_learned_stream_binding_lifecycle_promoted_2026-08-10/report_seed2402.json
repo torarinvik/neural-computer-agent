@@ -1,0 +1,473 @@
+{
+  "accounting": {
+    "controller_optimizer_updates": 0,
+    "deployment_optimizer_updates": 0,
+    "identity_optimizer_updates": 280,
+    "policy_optimizer_updates": 960,
+    "replayed_examples": 0,
+    "unique_logical_lifetimes": 4800,
+    "unique_verifier_bits": 960
+  },
+  "claim_boundary": "bounded outcome-trained anonymous replacement proposals with atomic retention verification; not learned verifier design, unrestricted growth, or general continual learning",
+  "configuration": {
+    "controller_optimizer_updates": 0,
+    "identity_updates": 280,
+    "policy_updates": 480,
+    "replayed_examples": 0,
+    "rows": 6,
+    "stream_keys_supplied_by_caller": false,
+    "streams": 5
+  },
+  "elapsed_seconds": 16.37397666700417,
+  "evaluation": {
+    "fresh_safe": {
+      "accuracy": 0.16666666666666666,
+      "correct": 4,
+      "episodes": 24,
+      "propensity_min": 1.0,
+      "proposals": [
+        [
+          2,
+          1
+        ],
+        [
+          2,
+          1
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          2,
+          1
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          2,
+          1
+        ],
+        [
+          1,
+          1
+        ],
+        [
+          1,
+          1
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          1,
+          1
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          1,
+          1
+        ],
+        [
+          1,
+          1
+        ],
+        [
+          1,
+          0
+        ],
+        [
+          1,
+          1
+        ],
+        [
+          1,
+          1
+        ],
+        [
+          1,
+          1
+        ],
+        [
+          1,
+          1
+        ],
+        [
+          1,
+          1
+        ],
+        [
+          1,
+          1
+        ],
+        [
+          2,
+          1
+        ]
+      ]
+    },
+    "learned_contradiction": {
+      "accuracy": 1.0,
+      "correct": 24,
+      "episodes": 24,
+      "propensity_min": 1.0,
+      "proposals": [
+        [
+          null,
+          null
+        ],
+        [
+          null,
+          null
+        ],
+        [
+          null,
+          null
+        ],
+        [
+          null,
+          null
+        ],
+        [
+          null,
+          null
+        ],
+        [
+          null,
+          null
+        ],
+        [
+          null,
+          null
+        ],
+        [
+          null,
+          null
+        ],
+        [
+          null,
+          null
+        ],
+        [
+          null,
+          null
+        ],
+        [
+          null,
+          null
+        ],
+        [
+          null,
+          null
+        ],
+        [
+          null,
+          null
+        ],
+        [
+          null,
+          null
+        ],
+        [
+          null,
+          null
+        ],
+        [
+          null,
+          null
+        ],
+        [
+          null,
+          null
+        ],
+        [
+          null,
+          null
+        ],
+        [
+          null,
+          null
+        ],
+        [
+          null,
+          null
+        ],
+        [
+          null,
+          null
+        ],
+        [
+          null,
+          null
+        ],
+        [
+          null,
+          null
+        ],
+        [
+          null,
+          null
+        ]
+      ]
+    },
+    "learned_safe": {
+      "accuracy": 1.0,
+      "correct": 24,
+      "episodes": 24,
+      "propensity_min": 1.0,
+      "proposals": [
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          1
+        ]
+      ]
+    },
+    "shuffled_outcome": {
+      "accuracy": 0.20833333333333334,
+      "correct": 5,
+      "episodes": 24,
+      "propensity_min": 1.0,
+      "proposals": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          1,
+          1
+        ],
+        [
+          1,
+          1
+        ],
+        [
+          1,
+          1
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          1,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          2,
+          0
+        ],
+        [
+          1,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          1,
+          0
+        ],
+        [
+          1,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          1,
+          1
+        ],
+        [
+          1,
+          1
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          1,
+          1
+        ],
+        [
+          1,
+          0
+        ],
+        [
+          0,
+          0
+        ]
+      ]
+    }
+  },
+  "gates": {
+    "atomic_rejection_safe": true,
+    "binding_encoder_frozen": true,
+    "contradiction_prefers_hold": true,
+    "controller_frozen_unchanged": true,
+    "identity_loss_converged": true,
+    "learned_beats_fresh": true,
+    "learned_safe_policy": true,
+    "multiple_provisional_identities": true,
+    "outcome_shuffle_control_lower": true,
+    "policy_persistence_exact": true,
+    "propensity_logged": true
+  },
+  "identity": {
+    "contrastive_loss": 0.0010282809380441904,
+    "encoder_digest": "8d723d740fdd5e2e174865836d129671d42bdce09686faa653ea1c2eaf8db70d",
+    "optimizer_updates": 280
+  },
+  "policy_training": {
+    "mean_loss": 1.7545390205719742,
+    "optimizer_updates": 480,
+    "replayed_examples": 0,
+    "verifier_accepts": 221
+  },
+  "promoted": true,
+  "schema": "neural-computer.external-stream-binding-lifecycle-pressure-test.v1",
+  "seed": 2402,
+  "shuffled_policy_training": {
+    "mean_loss": 5.151852121452491,
+    "optimizer_updates": 480,
+    "replayed_examples": 0,
+    "verifier_accepts": 251
+  }
+}

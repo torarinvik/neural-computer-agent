@@ -7784,3 +7784,36 @@ from scalar verifier outcomes, and reloads exactly. This qualifies the next
 bounded transport boundary only; it does not qualify open-set identity,
 general learned delay policy, unrestricted growth, or general continual
 learning.
+
+## Outcome-trained lifecycle policy for anonymous binding (2026-08-10)
+
+The replacement boundary now has a replaceable external lifecycle policy:
+`ExternalStreamBindingLifecyclePolicy` scores legal pairs of provisional and
+live tracks using only opaque prototype vectors and generic observation,
+reliability, delay, age, and similarity telemetry. It logs the exact selection
+propensity and consumes one scalar verifier outcome per update without replay.
+The policy may propose hold, which is essential when all provisional evidence
+is contradictory; it cannot commit a replacement by itself.
+
+`ExternalOnlineStreamBindingMemory.replace_verified_track_with_provisional`
+performs retirement and admission as one copy-on-write transaction. A rejected
+verifier outcome leaves both live and provisional state byte-stable. The
+controller and event encoder remain frozen, and the policy is persisted and
+checksummed independently so it can grow or be replaced without changing the
+controller interface.
+
+The replicated pressure test in
+`experiments/external_learned_stream_binding_lifecycle/` uses five anonymous
+streams, two live tracks, and three simultaneous provisional identities. Across
+seeds `2401` and `2402`, the learned policy achieved `1.0` safe-replacement
+accuracy and `1.0` contradiction/hold accuracy. Fresh policies scored `0.125`
+and `0.1667`; outcome-shuffled controls scored `0.125` and `0.2083`. Both runs
+passed propensity, atomic rejection, exact persistence, frozen-controller,
+and frozen-encoder gates with zero replay and zero controller updates.
+
+This promotes a narrow outcome-trained lifecycle proposal mechanism, not a
+learned verifier, autonomous eviction economics, unrestricted growth,
+arbitrary identity discovery, or general continual learning. The next pressure
+point is to couple the learned proposal policy to held-out factual model
+retention under real drift and delayed contradiction, then measure whether it
+reduces verified experience per newly retained capability.
