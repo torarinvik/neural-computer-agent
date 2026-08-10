@@ -2181,12 +2181,22 @@ def test_factored_router_owns_verified_growth_compression_and_stable_eviction() 
         retention_probe=lambda candidate: candidate.context_count == 2,
     )
     assert compressed.accepted
+    contextual_statistics = ExternalContextualTransitionEvidenceStatistics(1, 2)
+    for context in router.contexts:
+        contextual_statistics.observe(
+            torch.zeros(1, 1),
+            torch.zeros(1, 1),
+            torch.ones(1),
+            context,
+        )
+    router.evidence_evaluator = contextual_statistics
     evicted = router.evict_verified_id(
         0,
         lambda candidate: candidate.slot_ids in {(0, 1), (1,)},
     )
     assert evicted.accepted
     assert router.slot_ids == (1,)
+    assert contextual_statistics.context_count == 1
 
 
 def test_factored_router_auto_grows_on_verified_novel_bundle() -> None:
@@ -2440,11 +2450,20 @@ def test_contextual_evidence_statistics_isolate_and_persist_contexts() -> None:
     scores = statistics.score(prediction, observed, None, contexts)
     assert scores[0] < 0.0
     assert scores[1] > 0.0
+    statistics.evict_context(contexts[0])
+    assert statistics.context_count == 1
+    assert torch.equal(
+        statistics.score(prediction[1:], observed[1:], None, contexts[1:]),
+        scores[1:],
+    )
     restored = ExternalContextualTransitionEvidenceStatistics.from_payload(
         statistics.payload()
     )
     assert restored.digest() == statistics.digest()
-    assert torch.equal(restored.score(prediction, observed, None, contexts), scores)
+    assert torch.equal(
+        restored.score(prediction[1:], observed[1:], None, contexts[1:]),
+        scores[1:],
+    )
 
 
 def test_contextual_evidence_statistics_adapts_reversal_with_local_decay() -> None:

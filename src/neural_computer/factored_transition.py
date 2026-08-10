@@ -738,6 +738,7 @@ class ExternalFactoredTransitionRouter:
             raise ValueError("factored eviction requires a learned residual bank")
         if tuple(self._slot_ids) != self.model.residual_bank.slot_ids:
             raise RuntimeError("factored router and residual-bank slot addresses differ")
+        context = self._contexts[self._slot_ids.index(slot_id)].clone()
         receipt = self.model.residual_bank.evict_verified_id(
             slot_id,
             retention_probe,
@@ -753,6 +754,9 @@ class ExternalFactoredTransitionRouter:
             del self._contexts[index]
             if self.sparse_evidence is not None:
                 self.sparse_evidence.unregister_slot(slot_id)
+            evict_context = getattr(self.evidence_evaluator, "evict_context", None)
+            if callable(evict_context):
+                evict_context(context)
         return receipt
 
     def select_compression_verified(

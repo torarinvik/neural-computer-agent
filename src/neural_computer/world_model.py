@@ -7674,6 +7674,22 @@ class ExternalContextualTransitionEvidenceStatistics(nn.Module):
             indices.append(index)
         return torch.tensor(indices, dtype=torch.long, device=self.contexts.device)
 
+    def evict_context(self, context: torch.Tensor) -> None:
+        """Remove reliability state for one verified factual context."""
+
+        normalized = self._validate_context(context)
+        if normalized.shape[0] != 1 or not self.context_count:
+            return
+        distances = torch.linalg.vector_norm(self.contexts - normalized[0], dim=-1)
+        index = int(distances.argmin())
+        if float(distances[index]) > self.matching_tolerance:
+            return
+        keep = torch.ones(self.context_count, dtype=torch.bool, device=self.contexts.device)
+        keep[index] = False
+        self._buffers["contexts"] = self.contexts[keep].clone()
+        self._buffers["positive_counts"] = self.positive_counts[keep].clone()
+        self._buffers["negative_counts"] = self.negative_counts[keep].clone()
+
     def _validate_inputs(
         self,
         prediction: torch.Tensor,
