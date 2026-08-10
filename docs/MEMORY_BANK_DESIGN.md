@@ -5500,3 +5500,43 @@ length-extrapolation arm (train <=3, test 4) is running to rule out
 within-length interpolation.
 
 Probe 221 is `math_compose.py --iterate --worlds 2 --ignorance 0`.
+
+**F122 (probe 222). The dissociation is now complete and two-sided:
+diversity — the lever that has worked on every previous rung — is
+INERT on composition, while the interface is everything.** The 256-
+world arithmetic arm (60k updates, dim 128) closes the diversity axis
+on both grounds:
+
+| ground | worlds | trained programs | held programs | stranger |
+| --- | ---: | ---: | ---: | ---: |
+| math | 24 | 0.098-0.127 | ~chance | == own |
+| math | **256** | 0.0619 / 0.0528 | 0.0421 / 0.0439 | **== own** |
+| boolean | 64 | 0.0679-0.1454 | ~chance | == own |
+| boolean | **512** | 0.1371 | 0.0124 | **== own** |
+
+More worlds did not help either ground; on the arithmetic side it made
+fit WORSE (0.098-0.127 at 24 worlds down to 0.053-0.062 at 256), which
+is what spreading a fixed capacity over more separately-memorised
+functions looks like. Stranger-entry accuracy remains bit-identical to
+own-entry accuracy at every scale: reading never starts.
+
+Put beside F121 the pair is a clean dissociation, and it is the
+session's sharpest single statement:
+
+    scaling world diversity 10x       : chance -> chance
+    changing the program interface    : chance -> perfect (1.0000)
+
+F78's law is real but it governs a different axis. Diversity decides
+whether a model READS a rule or MEMORISES it, once the rule is
+expressible. It has nothing to say about whether COMPOSITES of rules
+are expressible at all — that is fixed by whether the architecture
+applies pieces one at a time. Adding worlds to a model that cannot
+compose just gives it more things to fail to compose.
+
+Standing rule this earns: before reaching for diversity (or capacity,
+or budget), check that the target function is expressible in the
+interface at all — the single-world, reading-off fit arm costs one run
+and answers it. F117 spent three arms on the wrong axis because that
+check came last instead of first.
+
+Probe 222 is `math_compose.py --worlds 256`, 2 seeds.
