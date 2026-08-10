@@ -5327,3 +5327,29 @@ does not, the next lever is the F78 one — world diversity — before
 any architectural change.
 
 Probe 217 is `math_compose.py`, 2 seeds.
+
+**F118 (probe 218). Two-channel salience: pooled +0.0947 (from
++0.0816), normal worlds reach top=food 1.000 — but the second channel
+never differentiates, and the cause is the COLLECTION policy, not the
+architecture.** Three seeds, per-channel polarity logged:
+
+    held-out +0.0811 / +0.0972 / +0.1058, pooled +0.0947
+    (F111 +0.0069, F113 +0.0816, oracle-value target +0.1234)
+    top=food: normal worlds 1.000 / 1.000 / 0.667 — saturated;
+              inverted worlds 0.021 / 0.062 / 0.000 — unmoved.
+
+In every seed exactly ONE polarity channel is alive (+-1, sign-split
+by twin as in F116) and the other sits near zero: the plane-2 channel
+never gets gradient. The reason is in the data: `--seek 0.85` steers
+collection toward the nearest PLANE-1 object, so trajectories almost
+never consume plane-2 objects — on inverted worlds the plane-2-food
+events that would teach "seek the other object" are nearly absent from
+training. The math ground's dissociation (F114: dense signal
+sign-splits, sparse signal collapses) recurs one level down: the
+architecture now has the slot for the second rule-piece, and the
+DATA never fills it.
+
+Fix queued: seek the two planes with equal probability during
+collection, leaving everything else fixed.
+
+Probe 218 is `game_slots.py --signed-entry` (2-channel), 3 seeds.
