@@ -2,7 +2,8 @@
 
 The controller is not a memory allocator.  This module is the narrow policy
 boundary that lets external memory learn when to grow, share equivalent
-content, compress a retained representation, or defer.  It deliberately
+content, compress a retained representation, evict a disposable slot, or
+defer.  It deliberately
 does not choose semantic slots, inspect raw modalities, or commit mutations:
 the caller supplies structural action availability and an independent
 verifier remains authoritative at the transaction boundary.
@@ -20,12 +21,14 @@ import torch
 from torch import nn
 
 EXTERNAL_MEMORY_MAINTENANCE_POLICY_SCHEMA = (
-    "neural-computer.external-memory-maintenance-policy.v1"
+    "neural-computer.external-memory-maintenance-policy.v2"
 )
 EXTERNAL_MEMORY_MAINTENANCE_PROPOSAL_SCHEMA = (
-    "neural-computer.external-memory-maintenance-proposal.v1"
+    "neural-computer.external-memory-maintenance-proposal.v2"
 )
-MAINTENANCE_ACTIONS = ("grow", "share", "compress", "defer")
+_LEGACY_POLICY_SCHEMA = "neural-computer.external-memory-maintenance-policy.v1"
+_LEGACY_ACTIONS = ("grow", "share", "compress", "defer")
+MAINTENANCE_ACTIONS = ("grow", "share", "compress", "evict", "defer")
 MAINTENANCE_FEATURE_WIDTH = 12
 
 
@@ -40,6 +43,20 @@ def _scalar(value: torch.Tensor | float, *, name: str) -> float:
     if not math.isfinite(result):
         raise ValueError(f"{name} must be finite")
     return result
+
+
+def _state_digest(
+    configuration: Mapping[str, Any],
+    state: Mapping[str, torch.Tensor],
+) -> str:
+    digest = hashlib.sha256()
+    digest.update(repr(dict(configuration)).encode("utf-8"))
+    for name, value in state.items():
+        digest.update(name.encode("utf-8"))
+        digest.update(str(value.dtype).encode("utf-8"))
+        digest.update(repr(tuple(value.shape)).encode("utf-8"))
+        digest.update(value.contiguous().numpy().tobytes())
+    return digest.hexdigest()
 
 
 @dataclass(frozen=True)
@@ -268,7 +285,10 @@ class ExternalMemoryMaintenancePolicy(nn.Module):
         cls,
         payload: Mapping[str, Any],
     ) -> ExternalMemoryMaintenancePolicy:
-        if not isinstance(payload, Mapping) or payload.get("schema") != cls.schema:
+        if not isinstance(payload, Mapping):
+            raise TypeError("external-memory maintenance policy payload is not a mapping")
+        payload_schema = payload.get("schema")
+        if payload_schema not in {cls.schema, _LEGACY_POLICY_SCHEMA}:
             raise ValueError("unsupported external-memory maintenance policy payload")
         configuration = payload.get("configuration")
         state = payload.get("state")
@@ -279,21 +299,42 @@ class ExternalMemoryMaintenancePolicy(nn.Module):
             learning_rate=float(configuration["learning_rate"]),
             temperature=float(configuration["temperature"]),
         )
-        if dict(configuration) != policy.configuration():
-            raise ValueError("external-memory maintenance policy configuration differs")
         current = policy.state_dict()
-        if set(state) != set(current):
-            raise ValueError("external-memory maintenance policy state names differ")
+        if payload_schema == cls.schema:
+            if dict(configuration) != policy.configuration():
+                raise ValueError(
+                    "external-memory maintenance policy configuration differs"
+                )
+            if set(state) != set(current):
+                raise ValueError(
+                    "external-memory maintenance policy state names differ"
+                )
+        else:
+            if tuple(configuration.get("actions", ())) != _LEGACY_ACTIONS:
+                raise ValueError("unsupported legacy maintenance action set")
+            if payload.get("sha256") != _state_digest(configuration, state):
+                raise ValueError("legacy maintenance policy checksum mismatch")
+            expected_names = set(current)
+            if set(state) != expected_names:
+                raise ValueError("legacy maintenance policy state names differ")
         normalized: dict[str, torch.Tensor] = {}
         for name, expected in current.items():
             value = state[name]
             if not isinstance(value, torch.Tensor):
                 raise TypeError("external-memory maintenance policy state is not tensor")
+            if payload_schema == _LEGACY_POLICY_SCHEMA and name == "network.2.weight":
+                if value.shape != (len(_LEGACY_ACTIONS), expected.shape[1]):
+                    raise ValueError("legacy maintenance policy output state is incompatible")
+                value = torch.cat((value, torch.zeros_like(expected[4:5])), dim=0)
+            elif payload_schema == _LEGACY_POLICY_SCHEMA and name == "network.2.bias":
+                if value.shape != (len(_LEGACY_ACTIONS),):
+                    raise ValueError("legacy maintenance policy output bias is incompatible")
+                value = torch.cat((value, torch.zeros_like(expected[4:5])), dim=0)
             if value.shape != expected.shape or value.dtype != expected.dtype:
                 raise ValueError("external-memory maintenance policy state is incompatible")
             normalized[name] = value.detach().clone()
         policy.load_state_dict(normalized, strict=True)
-        if payload.get("sha256") != policy.state_payload()["sha256"]:
+        if payload_schema == cls.schema and payload.get("sha256") != policy.state_payload()["sha256"]:
             raise ValueError("external-memory maintenance policy checksum mismatch")
         return policy
 

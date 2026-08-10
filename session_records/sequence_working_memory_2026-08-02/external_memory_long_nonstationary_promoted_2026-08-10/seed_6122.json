@@ -1,0 +1,112 @@
+{
+  "schema": "neural-computer.external-memory-long-nonstationary.v1",
+  "claim_boundary": "bounded replay-free repeated maintenance over one persistent external bank with real growth, sharing, compression, and eviction receipts; not unrestricted memory growth, learned verifier design, or general continual learning",
+  "seed": 6122,
+  "configuration": {
+    "train_steps": 640,
+    "eval_steps": 192,
+    "initial_capacity": 2,
+    "maximum_capacity": 4,
+    "actions": [
+      "grow",
+      "share",
+      "compress",
+      "evict",
+      "defer"
+    ],
+    "mastery_observations": 8,
+    "transaction": "persistent_copy_on_write_retention_verified_bank_v2",
+    "update": "one_scalar_utility_without_replay_v1"
+  },
+  "gates": {
+    "trained_beats_fresh": true,
+    "trained_online_beats_shuffled_verifier": true,
+    "trained_online_beats_action_shuffled": true,
+    "long_stream_retention": true,
+    "no_mastered_capability_evicted": true,
+    "repeated_growth_share_compress_evict": true,
+    "core_capabilities_acquired": true,
+    "real_transactions_observed": true,
+    "persistence_exact": true,
+    "controller_frozen": true,
+    "replay_zero": true,
+    "one_update_per_stream_utility": true
+  },
+  "promoted": true,
+  "metrics": {
+    "trained_eval_utility": 0.984375,
+    "fresh_eval_utility": 0.0,
+    "shuffled_verifier_eval_utility": 0.7291666666666666,
+    "action_shuffled_eval_utility": 0.0,
+    "trained_online_mean_utility": 0.996875,
+    "fresh_online_mean_utility": 0.0,
+    "online_gain_vs_fresh": 0.996875,
+    "online_transfer_ratio_vs_fresh": null,
+    "shuffled_verifier_online_mean_utility": 0.51875,
+    "action_shuffled_online_mean_utility": 0.9796875,
+    "trained_online_last_window_utility": 1.0,
+    "trained_online_stable_minimum": 0.96875,
+    "trained_stable_threshold_step": 64,
+    "trained_retention_floor": 0.9993267448153347,
+    "trained_action_counts": {
+      "grow": 2,
+      "share": 1,
+      "compress": 4,
+      "evict": 2,
+      "defer": 631
+    },
+    "trained_executed_action_counts": {
+      "grow": 2,
+      "share": 1,
+      "compress": 4,
+      "evict": 2,
+      "defer": 631
+    },
+    "trained_growth_events": 2,
+    "trained_share_events": 1,
+    "trained_compression_events": 4,
+    "trained_eviction_events": 2,
+    "trained_admissions": 5,
+    "trained_missed_novel_events": 0,
+    "trained_bytes_saved": 720,
+    "trained_mastered_concepts": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "trained_ever_mastered_concepts": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "fresh_mastered_concepts": [
+      0,
+      1
+    ],
+    "shuffled_mastered_concepts": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "action_shuffled_mastered_concepts": [
+      0,
+      1,
+      2,
+      3
+    ]
+  },
+  "accounting": {
+    "unique_verifier_utilities": 640,
+    "unique_logical_lifetimes": 640,
+    "optimizer_updates": 640,
+    "replayed_examples": 0,
+    "controller_updates": 0,
+    "stable_bits_to_threshold": 64,
+    "latency_ms_mean": 2.228037487293477,
+    "latency_ms_p95": 3.0303330277092755,
+    "wall_seconds": 7.009676375018898
+  }
+}

@@ -7938,3 +7938,26 @@ mutating-probe atomicity pass. The action-shuffled controls reach `0.25`,
 The next architectural pressure is a single long nonstationary stream with
 accumulating interference and repeated maintenance decisions, not independent
 reset scenarios.
+
+## Long nonstationary external-memory maintenance (2026-08-10)
+
+The maintenance contract has now been extended from four actions to a
+versioned five-action boundary: `grow`, `share`, `compress`, `evict`, and
+`defer`. `evict` is not an unverified delete; it addresses a stable logical
+slot and commits only when every mastered slot passes an independent held-out
+retention probe on a copy-on-write candidate.
+
+The long-stream audit in
+`session_records/sequence_working_memory_2026-08-02/external_memory_long_nonstationary_promoted_2026-08-10/`
+keeps one bank alive for `640` unique verifier utilities. Three seeds repeat
+real growth, factual sharing, compression, and eviction, acquire four recurring
+opaque capabilities, retain all mastered behavior above `0.9991`, and persist
+exactly with zero replay and zero controller updates. Trained online utility
+is `0.9953`, `0.9969`, and `0.9969`; shuffled-verifier controls reach only
+`0.5156`, `0.5328`, and `0.5188`.
+
+This promotes bounded repeated maintenance economics, not unrestricted memory
+growth, learned candidate discovery, arbitrary new computation, or general
+continual learning. The next pressure is to make candidate identity and
+equivalence discovery emerge from partial event streams rather than a
+predeclared schedule.

@@ -349,3 +349,26 @@ growth, or general continual learning. The next bottleneck is longer
 nonstationary operation where the memory must decide when to retain, replace,
 share, or compress under accumulating interference rather than independent
 micro-scenarios.
+
+## Long nonstationary maintenance stream (2026-08-10)
+
+The next rung keeps one bank alive for `640` unique verifier utilities instead
+of resetting it between scenarios. The versioned maintenance boundary now also
+contains `evict`, which uses stable logical slot IDs and a retention-gated
+copy-on-write transaction. Across seeds `6120`, `6121`, and `6122`, the stream
+repeats growth, equivalent-slot sharing, compression, and safe disposable-slot
+eviction while retaining four recurring opaque capabilities.
+
+The promoted archive is
+`session_records/sequence_working_memory_2026-08-02/external_memory_long_nonstationary_promoted_2026-08-10/`.
+Trained online utility is `0.9953`, `0.9969`, and `0.9969`, versus
+`0.5156`, `0.5328`, and `0.5188` for shuffled-verifier controls. Retention
+stays above `0.9991`, persistence is exact, replay is zero, and the controller
+is frozen. Final held-out utility is reported separately because repeated
+future opportunities can eventually repair a shuffled or action-shuffled
+policy; the result is a sample-efficiency gain, not unrestricted continual
+learning.
+
+The remaining pressure is to remove the predeclared candidate schedule and
+make candidate discovery, identity formation, and retention demand arise from
+partially observed multimodal experience while preserving the same economics.

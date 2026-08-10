@@ -25,8 +25,8 @@ FEATURE_WIDTH = 12
 TRAIN_STEPS = 320
 EVAL_STEPS = 96
 HIDDEN_WIDTH = 32
-TEMPERATURE = 0.8
-LEARNING_RATE = 0.025
+TEMPERATURE = 0.4
+LEARNING_RATE = 0.005
 
 
 def _digest(module: torch.nn.Module) -> str:
@@ -44,6 +44,7 @@ def _state(index: int) -> tuple[torch.Tensor, torch.Tensor, str]:
     regime = index % 4
     features = torch.zeros(FEATURE_WIDTH)
     mask = torch.ones(len(MAINTENANCE_ACTIONS), dtype=torch.bool)
+    mask[MAINTENANCE_ACTIONS.index("evict")] = False
     if regime == 0:
         features[[0, 1, 2, 10]] = torch.tensor([0.95, 0.95, 0.90, 0.95])
         target = "share"
@@ -133,7 +134,11 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
     gates = {
         "trained_beats_fresh": trained_eval > fresh_eval + 0.15,
         "trained_beats_shuffled_verifier": trained_eval > shuffled_eval + 0.10,
-        "all_actions_observed": all(value > 0 for value in trained["actions"].values()),
+        "all_legacy_actions_observed": all(
+            trained["actions"][action] > 0
+            for action in MAINTENANCE_ACTIONS
+            if action != "evict"
+        ),
         "controller_frozen": controller_digest == _digest(controller),
         "replay_zero": True,
         "one_update_per_unique_utility": trained["optimizer_updates"] == TRAIN_STEPS,
@@ -149,7 +154,9 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
         "configuration": {
             "train_steps": TRAIN_STEPS,
             "eval_steps": EVAL_STEPS,
-            "actions": MAINTENANCE_ACTIONS,
+            "actions": tuple(
+                action for action in MAINTENANCE_ACTIONS if action != "evict"
+            ),
             "update": "single_scalar_verifier_policy_gradient_without_replay_v1",
         },
         "gates": gates,

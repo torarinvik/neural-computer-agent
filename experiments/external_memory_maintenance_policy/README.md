@@ -23,6 +23,10 @@ The causal action-shuffled control replaces the learned choice with a random
 legal maintenance action while retaining the same scenarios and utility
 feedback.
 
+The long-stream rung is in `long_train.py`. It keeps one persistent bank alive
+through a nonstationary sequence and adds the versioned `evict` action for
+retention-gated replacement when the finite capacity is full.
+
 Run one seed from the repository root:
 
 ```bash

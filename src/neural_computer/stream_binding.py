@@ -2094,6 +2094,7 @@ class ExternalLearnedMultiStreamTransitionContextRouter:
         grow_available: bool = False,
         share_available: bool = False,
         compression_available: bool = False,
+        evict_available: bool = False,
         redundancy_pressure: float | None = None,
         compression_opportunity: float = 0.0,
         sample: bool = False,
@@ -2103,7 +2104,13 @@ class ExternalLearnedMultiStreamTransitionContextRouter:
 
         if not isinstance(policy, ExternalMemoryMaintenancePolicy):
             raise TypeError("maintenance policy must be external-memory policy")
-        structural = (grow_available, share_available, compression_available, True)
+        structural = (
+            grow_available,
+            share_available,
+            compression_available,
+            evict_available,
+            True,
+        )
         if not all(isinstance(value, bool) for value in structural):
             raise TypeError("maintenance action availability must be bool")
         action_mask = torch.tensor(structural, dtype=torch.bool)
@@ -2125,6 +2132,7 @@ class ExternalLearnedMultiStreamTransitionContextRouter:
         retention_probe: Callable[[Any], bool] | None = None,
         destination_capacity: int | None = None,
         share_pair: tuple[torch.Tensor, torch.Tensor] | None = None,
+        evict_slot_id: int | None = None,
         heldout: Sequence[ExternalTransitionObservation] = (),
         compression_dtype: torch.dtype | str = torch.float16,
     ) -> Any:
@@ -2132,8 +2140,9 @@ class ExternalLearnedMultiStreamTransitionContextRouter:
 
         The proposal chooses the operation; the caller supplies only legal
         structural evidence such as an independently discovered equivalent
-        pair, held-out observations, or a destination capacity.  ``defer``
-        is a successful no-op and never mutates either memory layer.
+        pair, held-out observations, a destination capacity, or a stable
+        logical slot ID. ``evict`` is retention-gated and ``defer`` is a
+        successful no-op that never mutates either memory layer.
         """
 
         proposal.validate()
@@ -2168,6 +2177,15 @@ class ExternalLearnedMultiStreamTransitionContextRouter:
             return self.router.bank.compress_and_commit_verified(
                 dtype=compression_dtype,
                 retention_probe=retention_probe,
+            )
+        if proposal.action == "evict":
+            if evict_slot_id is None:
+                raise ValueError("maintenance eviction needs a logical slot ID")
+            if retention_probe is None:
+                raise ValueError("maintenance eviction needs a retention probe")
+            return self.router.bank.evict_verified_id(
+                evict_slot_id,
+                retention_probe,
             )
         raise ValueError(f"unsupported maintenance action: {proposal.action}")
 
