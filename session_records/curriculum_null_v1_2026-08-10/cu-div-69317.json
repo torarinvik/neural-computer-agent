@@ -1,0 +1,237 @@
+{
+  "seed": 69317,
+  "modulus": 23,
+  "worlds": 256,
+  "held_worlds": 16,
+  "train_programs": 18,
+  "held_programs": 12,
+  "chance": 0.0435,
+  "held_out_worlds": {
+    "w3": {
+      "trained_programs": 0.0825,
+      "held_programs": 0.0482,
+      "withheld": 0.0521,
+      "stranger": 0.0482,
+      "swap_truth_with_own_entry": 0.0482
+    },
+    "w10": {
+      "trained_programs": 0.0573,
+      "held_programs": 0.0404,
+      "withheld": 0.0417,
+      "stranger": 0.0404,
+      "swap_truth_with_own_entry": 0.0391
+    },
+    "w11": {
+      "trained_programs": 0.0382,
+      "held_programs": 0.0521,
+      "withheld": 0.0495,
+      "stranger": 0.0521,
+      "swap_truth_with_own_entry": 0.0326
+    },
+    "w45": {
+      "trained_programs": 0.0694,
+      "held_programs": 0.0508,
+      "withheld": 0.0521,
+      "stranger": 0.0508,
+      "swap_truth_with_own_entry": 0.0469
+    },
+    "w60": {
+      "trained_programs": 0.0582,
+      "held_programs": 0.0456,
+      "withheld": 0.043,
+      "stranger": 0.0456,
+      "swap_truth_with_own_entry": 0.0404
+    },
+    "w94": {
+      "trained_programs": 0.0486,
+      "held_programs": 0.0547,
+      "withheld": 0.0612,
+      "stranger": 0.0547,
+      "swap_truth_with_own_entry": 0.0326
+    },
+    "w106": {
+      "trained_programs": 0.0599,
+      "held_programs": 0.0482,
+      "withheld": 0.0469,
+      "stranger": 0.0482,
+      "swap_truth_with_own_entry": 0.0391
+    },
+    "w118": {
+      "trained_programs": 0.0521,
+      "held_programs": 0.0508,
+      "withheld": 0.0508,
+      "stranger": 0.0508,
+      "swap_truth_with_own_entry": 0.0443
+    },
+    "w125": {
+      "trained_programs": 0.0365,
+      "held_programs": 0.0534,
+      "withheld": 0.0534,
+      "stranger": 0.0534,
+      "swap_truth_with_own_entry": 0.0482
+    },
+    "w137": {
+      "trained_programs": 0.0712,
+      "held_programs": 0.0469,
+      "withheld": 0.0508,
+      "stranger": 0.0469,
+      "swap_truth_with_own_entry": 0.0352
+    },
+    "w163": {
+      "trained_programs": 0.0417,
+      "held_programs": 0.0482,
+      "withheld": 0.0547,
+      "stranger": 0.0482,
+      "swap_truth_with_own_entry": 0.0443
+    },
+    "w171": {
+      "trained_programs": 0.0503,
+      "held_programs": 0.0339,
+      "withheld": 0.0326,
+      "stranger": 0.0339,
+      "swap_truth_with_own_entry": 0.0326
+    },
+    "w177": {
+      "trained_programs": 0.0477,
+      "held_programs": 0.0547,
+      "withheld": 0.0521,
+      "stranger": 0.0547,
+      "swap_truth_with_own_entry": 0.0469
+    },
+    "w215": {
+      "trained_programs": 0.0599,
+      "held_programs": 0.0378,
+      "withheld": 0.0417,
+      "stranger": 0.0378,
+      "swap_truth_with_own_entry": 0.0299
+    },
+    "w249": {
+      "trained_programs": 0.0373,
+      "held_programs": 0.0508,
+      "withheld": 0.0521,
+      "stranger": 0.0508,
+      "swap_truth_with_own_entry": 0.0404
+    },
+    "w254": {
+      "trained_programs": 0.0512,
+      "held_programs": 0.0612,
+      "withheld": 0.0573,
+      "stranger": 0.0612,
+      "swap_truth_with_own_entry": 0.0456
+    }
+  },
+  "trained_worlds": {
+    "w0": {
+      "trained_programs": 0.0573,
+      "held_programs": 0.0521,
+      "withheld": 0.0495,
+      "stranger": 0.0521,
+      "swap_truth_with_own_entry": 0.0508
+    },
+    "w1": {
+      "trained_programs": 0.0469,
+      "held_programs": 0.0495,
+      "withheld": 0.056,
+      "stranger": 0.0495,
+      "swap_truth_with_own_entry": 0.0365
+    },
+    "w2": {
+      "trained_programs": 0.0616,
+      "held_programs": 0.0521,
+      "withheld": 0.0534,
+      "stranger": 0.0521,
+      "swap_truth_with_own_entry": 0.0391
+    },
+    "w4": {
+      "trained_programs": 0.0434,
+      "held_programs": 0.0521,
+      "withheld": 0.0482,
+      "stranger": 0.0521,
+      "swap_truth_with_own_entry": 0.0521
+    },
+    "w5": {
+      "trained_programs": 0.0538,
+      "held_programs": 0.0299,
+      "withheld": 0.0286,
+      "stranger": 0.0299,
+      "swap_truth_with_own_entry": 0.0547
+    },
+    "w6": {
+      "trained_programs": 0.0582,
+      "held_programs": 0.0456,
+      "withheld": 0.043,
+      "stranger": 0.0456,
+      "swap_truth_with_own_entry": 0.0404
+    },
+    "w7": {
+      "trained_programs": 0.0495,
+      "held_programs": 0.0339,
+      "withheld": 0.0299,
+      "stranger": 0.0339,
+      "swap_truth_with_own_entry": 0.0612
+    },
+    "w8": {
+      "trained_programs": 0.0538,
+      "held_programs": 0.0469,
+      "withheld": 0.0534,
+      "stranger": 0.0469,
+      "swap_truth_with_own_entry": 0.0365
+    },
+    "w9": {
+      "trained_programs": 0.0477,
+      "held_programs": 0.0521,
+      "withheld": 0.0469,
+      "stranger": 0.0521,
+      "swap_truth_with_own_entry": 0.0443
+    },
+    "w12": {
+      "trained_programs": 0.0382,
+      "held_programs": 0.0495,
+      "withheld": 0.056,
+      "stranger": 0.0495,
+      "swap_truth_with_own_entry": 0.0482
+    },
+    "w13": {
+      "trained_programs": 0.0495,
+      "held_programs": 0.0469,
+      "withheld": 0.043,
+      "stranger": 0.0469,
+      "swap_truth_with_own_entry": 0.0456
+    },
+    "w14": {
+      "trained_programs": 0.053,
+      "held_programs": 0.056,
+      "withheld": 0.0547,
+      "stranger": 0.056,
+      "swap_truth_with_own_entry": 0.0352
+    },
+    "w15": {
+      "trained_programs": 0.0399,
+      "held_programs": 0.0339,
+      "withheld": 0.0234,
+      "stranger": 0.0339,
+      "swap_truth_with_own_entry": 0.0521
+    },
+    "w16": {
+      "trained_programs": 0.0477,
+      "held_programs": 0.043,
+      "withheld": 0.0391,
+      "stranger": 0.043,
+      "swap_truth_with_own_entry": 0.0352
+    },
+    "w17": {
+      "trained_programs": 0.0677,
+      "held_programs": 0.0456,
+      "withheld": 0.0495,
+      "stranger": 0.0456,
+      "swap_truth_with_own_entry": 0.0469
+    },
+    "w18": {
+      "trained_programs": 0.0399,
+      "held_programs": 0.0508,
+      "withheld": 0.0508,
+      "stranger": 0.0508,
+      "swap_truth_with_own_entry": 0.0352
+    }
+  }
+}

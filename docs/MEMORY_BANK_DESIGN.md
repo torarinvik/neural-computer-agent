@@ -5756,3 +5756,39 @@ did not name it until three cells of a 2x2 had come back at chance —
 the same lesson as F104 (a benchmark must be checked for what it lets
 a wrong mechanism score) applied to the generating function instead of
 the policy.
+
+**F127 (probe 227). The length curriculum is a null, 2 seeds: reading
+still never starts.** Ramping the maximum program length from 1 to 4
+over the first half of training — motivated by the measured fact that
+only 11% of updates land on length-1 programs and 67% on length>=3,
+and by F120's precondition that the ignorance objective is toothless
+while the model is bad:
+
+| arm (256 worlds, iterated, held-out worlds) | trained prog | held prog | stranger |
+| --- | ---: | ---: | ---: |
+| no curriculum | 0.0554 | 0.0422 | == own |
+| curriculum, seed 69316 | 0.0624 | 0.0423 | == own |
+| curriculum, seed 69317 | 0.0539 | 0.0486 | == own |
+
+Chance 0.0435. Stranger-entry accuracy remains identical to own-entry
+to four decimals in both seeds — the curriculum changes nothing about
+whether the entry is read.
+
+The hypothesis it tested was bootstrapping: establish reading on the
+single-application task where F114 proved it works, then extend to
+composites. The hypothesis is refuted for this implementation. What it
+does NOT rule out is that the curriculum never reached a regime where
+reading paid — at 256 worlds the length-1 sub-task still asks the
+entry to carry TWO piece-parameters, which is exactly the quantity the
+decomposition arms are now isolating. So this is a null on the fix,
+not on the diagnosis.
+
+Running tally of levers that do NOT move multi-world composition:
+world diversity 10x (F122), the iterated interface (F124), oracle
+entries (F126), and a length curriculum (F127) — with the single-world
+case sitting at 1.0000 throughout. Four independent failures to move
+one number is itself information: the constraint is not any of the
+knobs we know how to turn, which is why the next step is isolation
+rather than another fix.
+
+Probe 227 is `math_compose.py --curriculum 0.5`, 2 seeds.
