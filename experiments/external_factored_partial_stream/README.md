@@ -10,7 +10,10 @@ currently staged external candidate, and no old-regime rows are replayed.
 
 After acquisition, full and one-row partial revisits must route to the stable
 logical slots. Mixed-regime partial evidence must remain ambiguous and all
-read-only checks must leave the committed digest unchanged.
+read-only checks must leave the committed digest unchanged. A separate
+quarantine audit retains unresolved bundles without combining them, persists
+them, supports non-destructive peeking, and releases them only through an
+explicit caller action.
 
 This promotes bounded partial-stream factual acquisition, not general
 continual learning. The context encoder is frozen and the admission schedule

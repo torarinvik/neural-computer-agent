@@ -6470,3 +6470,19 @@ short-prefix context-identity problem: the context encoder is still frozen,
 the stream schedule is fixed, and open-world version formation under unseen
 missingness remains unqualified. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_factored_partial_stream_promoted_2026-08-10/`.
+
+## Unresolved-evidence quarantine (2026-08-10)
+
+The factored router now has an explicit bounded quarantine for evidence that
+cannot yet be safely routed. Quarantined bundles are copied as separate
+external records, persist through the router payload, can be inspected without
+mutation, and are released only by an explicit caller action. They never train
+or promote a candidate automatically. The five-seed recovery audit retained,
+reloaded, inspected, and released four contradictory one-row bundles per seed
+without merging their boundaries.
+
+This prevents the safety path for missing evidence from becoming a data-loss
+path. It still needs a learned resolver that can use later evidence to decide
+whether a quarantined bundle belongs to an existing version or a new one.
+Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_factored_quarantine_recovery_promoted_2026-08-10/`.

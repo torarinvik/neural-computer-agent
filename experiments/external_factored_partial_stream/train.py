@@ -207,6 +207,7 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
         admission_observations=ADMISSION_ROWS,
         max_contexts=CAPACITY,
         residual_adaptation_updates=RESIDUAL_UPDATES,
+        quarantine_capacity=8,
     )
 
     promotion_receipts: list[dict[str, object]] = []
@@ -251,6 +252,17 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
     before_reads = router.digest()
     empty = router.route_partial_bundle([])
     after_reads = router.digest()
+    quarantine_receipt = router.quarantine_partial_bundle(
+        _rows(streams[0])[:2] + _rows(streams[1])[:2]
+    )
+    quarantine_persisted = (
+        ExternalFactoredTransitionRouter.from_payload(
+            router.state_payload()
+        ).quarantined_bundles
+        == 4
+    )
+    quarantine_peek = router.peek_quarantine()
+    released = router.drain_quarantine()
     retained_errors = {
         regime: _bank_mse(router.model.residual_bank, heldout[regime], regime)
         for regime in range(REGIME_COUNT)
@@ -277,6 +289,12 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
         and contradictory.slot_id is None,
         "empty_partial_is_noop": empty.status == "ambiguous" and empty.slot_id is None,
         "read_only_digest_stable": before_reads == after_reads,
+        "quarantine_accepts_unresolved_evidence": quarantine_receipt.accepted
+        and router.quarantined_observations == 0,
+        "quarantine_preserves_bundle_boundaries": quarantine_persisted
+        and len(quarantine_peek) == 4
+        and len(released) == 4
+        and all(item.state.shape[0] == 1 for item in released),
         "base_unchanged": model.base.digest() == base_digest and model.base_frozen,
         "controller_unchanged": controller_digest == _digest_module(controller),
         "context_encoder_unchanged": encoder_digest == encoder.digest(),
@@ -303,6 +321,9 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
             "partial_reads": partial_reads,
             "contradictory_status": contradictory.status,
             "empty_status": empty.status,
+            "quarantine_receipt": quarantine_receipt.__dict__,
+            "quarantine_bundles_peeked": len(quarantine_peek),
+            "quarantine_bundles_released": len(released),
             "retained_heldout_mse": retained_errors,
             "slot_ids": list(router.slot_ids),
         },
