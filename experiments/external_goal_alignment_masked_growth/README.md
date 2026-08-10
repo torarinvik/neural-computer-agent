@@ -7,9 +7,9 @@ budget only after a copy-on-write candidate passes a retention probe.
 The controller, transition model, verifier statistics, and alignment adapters
 remain frozen. Two opaque alignment slots are admitted once. The identity
 memory starts with one prototype per slot, grows to three through the new
-verifier-gated API, and then learns two distinct partial observations under a
-shared evidence mask for one slot without replaying the original observations
-or replacing them. Cross-mask transfer remains a separate pressure test.
+verifier-gated API, and then learns two distinct partial observations under
+different evidence masks for one slot without replaying the original
+observations or replacing them.
 
 Run one seed with:
 

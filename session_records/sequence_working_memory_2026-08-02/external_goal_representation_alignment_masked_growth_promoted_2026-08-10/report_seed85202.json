@@ -7,7 +7,7 @@
     "grown_max_prototypes_per_slot": 3,
     "identity_min_score": 0.55,
     "identity_min_margin": 0.04,
-    "new_mask_matches_old_mask": true,
+    "new_mask_matches_old_mask": false,
     "runtime_frontend_ids_used_for_updates": false
   },
   "gates": {
@@ -76,15 +76,15 @@
         0,
         1
       ],
-      "score": 0.8764380216598511,
-      "margin": 0.37675702571868896,
+      "score": 0.9660004377365112,
+      "margin": 0.45419371128082275,
       "anchor_update_stored": true,
       "attempted_count": 0,
       "resolved_count": 0,
       "remaining_count": 0,
       "verifier_accepted": true,
       "source_digest": "ab889e0b729be91dac7397d3d28707b0ec553f4a42a61ee3ef868792582d0ab9",
-      "destination_digest": "494faa756e28c446161002eef9434f7605c8d963b34e0ce52c96aec4d0d7510c",
+      "destination_digest": "1f48b18d666091b2acc0eb98656821e61217cffd2553423237ffa95fdf49db8a",
       "reason": "verifier-accepted anchor updated identity prototypes",
       "schema": "neural-computer.external-goal-representation-alignment-identity-anchor.v1"
     },
@@ -135,9 +135,9 @@
       ],
       "scores": [
         1.0,
-        0.4996809959411621
+        0.5118067264556885
       ],
-      "margin": 0.5003190040588379,
+      "margin": 0.4881932735443115,
       "reason": "slot-local signature route passed score and margin floors"
     },
     "restored_new_masked_route": {
@@ -148,9 +148,9 @@
       ],
       "scores": [
         1.0,
-        0.4996809959411621
+        0.5118067264556885
       ],
-      "margin": 0.5003190040588379,
+      "margin": 0.4881932735443115,
       "reason": "slot-local signature route passed score and margin floors"
     },
     "affine_route": {
@@ -184,14 +184,14 @@
       "successful_trials": 120,
       "trial_count": 120,
       "expanded_nodes": 44640,
-      "mean_latency_seconds": 0.0073426125202483185
+      "mean_latency_seconds": 0.0061637694850408785
     },
     "nonlinear_mastery": {
       "mastery": 0.9916666666666667,
       "successful_trials": 119,
       "trial_count": 120,
       "expanded_nodes": 44640,
-      "mean_latency_seconds": 0.006719411828574569
+      "mean_latency_seconds": 0.006149420455039944
     },
     "prototype_counts": {
       "0": 3,
@@ -215,6 +215,6 @@
     "transition_rows_consumed_once": 123,
     "verifier_statistics_updates": 1,
     "controller_optimizer_updates": 0,
-    "wall_seconds": 1.7821910830098204
+    "wall_seconds": 1.5946325000259094
   }
 }

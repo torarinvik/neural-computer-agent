@@ -7,7 +7,7 @@
     "grown_max_prototypes_per_slot": 3,
     "identity_min_score": 0.55,
     "identity_min_margin": 0.04,
-    "new_mask_matches_old_mask": true,
+    "new_mask_matches_old_mask": false,
     "runtime_frontend_ids_used_for_updates": false
   },
   "gates": {
@@ -76,15 +76,15 @@
         0,
         1
       ],
-      "score": 0.8653609752655029,
-      "margin": 0.33620524406433105,
+      "score": 0.7738906145095825,
+      "margin": 0.32205361127853394,
       "anchor_update_stored": true,
       "attempted_count": 0,
       "resolved_count": 0,
       "remaining_count": 0,
       "verifier_accepted": true,
       "source_digest": "a5b8d49116eb881113f780f74916e4ea03e83742d6d1c61030242862169e44c2",
-      "destination_digest": "9b356e3df13f67c24667cb00acaf624cbc6d964836c71ae0a98f8cdbdc7068c1",
+      "destination_digest": "31bd9834a7b0b5264d73b1d36977ce8e6845b1f74c2f490b3489f6e1594a64ff",
       "reason": "verifier-accepted anchor updated identity prototypes",
       "schema": "neural-computer.external-goal-representation-alignment-identity-anchor.v1"
     },
@@ -134,10 +134,10 @@
         1
       ],
       "scores": [
-        1.0000001192092896,
-        0.5291557312011719
+        1.0,
+        0.4518370032310486
       ],
-      "margin": 0.4708443880081177,
+      "margin": 0.5481629967689514,
       "reason": "slot-local signature route passed score and margin floors"
     },
     "restored_new_masked_route": {
@@ -147,10 +147,10 @@
         1
       ],
       "scores": [
-        1.0000001192092896,
-        0.5291557312011719
+        1.0,
+        0.4518370032310486
       ],
-      "margin": 0.4708443880081177,
+      "margin": 0.5481629967689514,
       "reason": "slot-local signature route passed score and margin floors"
     },
     "affine_route": {
@@ -184,14 +184,14 @@
       "successful_trials": 120,
       "trial_count": 120,
       "expanded_nodes": 44640,
-      "mean_latency_seconds": 0.007123413913844464
+      "mean_latency_seconds": 0.006128591336406922
     },
     "nonlinear_mastery": {
       "mastery": 0.9916666666666667,
       "successful_trials": 119,
       "trial_count": 120,
       "expanded_nodes": 44640,
-      "mean_latency_seconds": 0.006905094064616909
+      "mean_latency_seconds": 0.006283368446262708
     },
     "prototype_counts": {
       "0": 3,
@@ -215,6 +215,6 @@
     "transition_rows_consumed_once": 123,
     "verifier_statistics_updates": 1,
     "controller_optimizer_updates": 0,
-    "wall_seconds": 1.7809654170414433
+    "wall_seconds": 1.6024964580428787
   }
 }

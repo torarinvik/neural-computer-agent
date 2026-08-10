@@ -7383,17 +7383,17 @@ are copied directly, so memory capacity can grow independently of controller,
 model, adapter, or verifier updates and without replaying old experiences.
 
 Across seeds `85201`, `85202`, `85203`, and `85204`, identity memory grew from
-one to three prototypes per slot. Two distinct partial observations were then
-appended for one slot under a shared mask while retaining both original full
-routes. Affine mastery was `1.0`; nonlinear mastery was `0.9917`–`1.0`. Exact
-persistence, frozen controller/model/verifier state, and zero replay passed in
-every run.
+one to three prototypes per slot. Two distinct partial observations with
+different masks were then appended for one slot while retaining both original
+full routes. Affine mastery was `1.0`; nonlinear mastery was `0.9917`–`1.0`.
+Exact persistence, frozen controller/model/verifier state, and zero replay
+passed in every run. A strict mask-overlap compatibility gate prevented false
+merges when the second mask shared only half of the union of observed
+dimensions.
 
-A cross-mask diagnostic was not promoted: the second partial pattern was not
-reliably novel in seeds `85202` and `85204`. This identifies mask-aware
-novelty/consolidation and unseen-mask transfer as the next implementation
-pressure point. The promoted result remains bounded external-memory growth,
-not autonomous retention policy, unbounded memory, semantic open-world
-identity, or general continual learning. Evidence and accounting are archived
-in
+This promotes bounded verifier-gated external-memory growth across changed
+partial evidence masks, not autonomous retention policy, unbounded memory,
+semantic open-world identity, or general continual learning. The next
+pressure point is mask-aware consolidation and capacity policy across more
+than two unseen masks. Evidence and accounting are archived in
 `session_records/sequence_working_memory_2026-08-02/external_goal_representation_alignment_masked_growth_promoted_2026-08-10/`.

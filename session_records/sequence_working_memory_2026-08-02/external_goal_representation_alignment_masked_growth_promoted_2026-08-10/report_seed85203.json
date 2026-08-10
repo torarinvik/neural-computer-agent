@@ -7,7 +7,7 @@
     "grown_max_prototypes_per_slot": 3,
     "identity_min_score": 0.55,
     "identity_min_margin": 0.04,
-    "new_mask_matches_old_mask": true,
+    "new_mask_matches_old_mask": false,
     "runtime_frontend_ids_used_for_updates": false
   },
   "gates": {
@@ -76,15 +76,15 @@
         0,
         1
       ],
-      "score": 0.8731502294540405,
-      "margin": 0.3827400207519531,
+      "score": 0.8394528031349182,
+      "margin": 0.3924924433231354,
       "anchor_update_stored": true,
       "attempted_count": 0,
       "resolved_count": 0,
       "remaining_count": 0,
       "verifier_accepted": true,
       "source_digest": "bb5b9e4e6b37df8568a41deff0e23ca5270ddca13001b4be6f3c00b65a407efc",
-      "destination_digest": "83df15410011ce7838f87f85d6ffc865cd62118d94c8865d735ec338a3f142c8",
+      "destination_digest": "7b2bbefec649acfdd7ebdd81bfd50ddd6a6facf5bcca77d7a67812c9f852f431",
       "reason": "verifier-accepted anchor updated identity prototypes",
       "schema": "neural-computer.external-goal-representation-alignment-identity-anchor.v1"
     },
@@ -135,9 +135,9 @@
       ],
       "scores": [
         1.0,
-        0.4904102087020874
+        0.44696035981178284
       ],
-      "margin": 0.5095897912979126,
+      "margin": 0.5530396699905396,
       "reason": "slot-local signature route passed score and margin floors"
     },
     "restored_new_masked_route": {
@@ -148,9 +148,9 @@
       ],
       "scores": [
         1.0,
-        0.4904102087020874
+        0.44696035981178284
       ],
-      "margin": 0.5095897912979126,
+      "margin": 0.5530396699905396,
       "reason": "slot-local signature route passed score and margin floors"
     },
     "affine_route": {
@@ -184,14 +184,14 @@
       "successful_trials": 120,
       "trial_count": 120,
       "expanded_nodes": 44640,
-      "mean_latency_seconds": 0.007204461442597676
+      "mean_latency_seconds": 0.00616360835992964
     },
     "nonlinear_mastery": {
       "mastery": 1.0,
       "successful_trials": 120,
       "trial_count": 120,
       "expanded_nodes": 44640,
-      "mean_latency_seconds": 0.006988642358434541
+      "mean_latency_seconds": 0.00624613324762322
     },
     "prototype_counts": {
       "0": 3,
@@ -215,6 +215,6 @@
     "transition_rows_consumed_once": 123,
     "verifier_statistics_updates": 1,
     "controller_optimizer_updates": 0,
-    "wall_seconds": 1.799752291990444
+    "wall_seconds": 1.6016042499686591
   }
 }

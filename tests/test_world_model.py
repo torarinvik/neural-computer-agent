@@ -356,6 +356,51 @@ def test_transition_route_memory_capacity_growth_is_atomic_and_replay_free() -> 
     assert restored.digest() == memory.digest()
 
 
+def test_transition_route_memory_requires_mask_overlap_for_merges() -> None:
+    boundary = ExternalTransitionRouteMemory(
+        4,
+        max_prototypes_per_slot=2,
+        merge_cosine=0.9,
+    )
+    boundary.register_slot(10, prototype=torch.tensor([1.0, 1.0, 0.0, 0.0]))
+    assert boundary.observe(
+        10,
+        torch.tensor([1.0, 1.0, 0.0, 9.0]),
+        query_mask=torch.tensor([True, True, True, False]),
+    )
+    assert boundary.prototype_count(10) == 2
+
+    memory = ExternalTransitionRouteMemory(
+        4,
+        max_prototypes_per_slot=3,
+        merge_cosine=0.9,
+    )
+    full = torch.tensor([1.0, 0.0, 0.0, 0.0])
+    first_partial = torch.tensor([0.0, 1.0, 0.0, 0.0])
+    second_partial = torch.tensor([0.0, 0.0, 0.0, 1.0])
+    first_mask = torch.tensor([True, True, True, False])
+    second_mask = torch.tensor([True, False, False, True])
+    memory.register_slot(10, prototype=full)
+    assert memory.observe(10, first_partial, query_mask=first_mask)
+    assert memory.prototype_count(10) == 2
+
+    # Repeated evidence with the same mask still merges into its prototype.
+    assert memory.observe(
+        10,
+        first_partial + torch.tensor([0.0, 0.01, 0.0, 0.0]),
+        query_mask=first_mask,
+    )
+    assert memory.prototype_count(10) == 2
+
+    # The two masks overlap on only one of four dimensions.  Their shared
+    # cosine is not sufficient to erase the fact that this is new coverage.
+    assert memory.observe(10, second_partial, query_mask=second_mask)
+    assert memory.prototype_count(10) == 3
+    restored = ExternalTransitionRouteMemory.from_payload(memory.state_payload())
+    assert restored.merge_mask_overlap == 0.75
+    assert restored.digest() == memory.digest()
+
+
 def test_transition_route_query_can_use_slot_local_prototype_memory() -> None:
     memory = ExternalTransitionRouteMemory(4)
     query = ExternalTransitionRouteQuery(

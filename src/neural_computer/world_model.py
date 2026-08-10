@@ -3510,6 +3510,7 @@ class ExternalTransitionRouteMemory:
         *,
         max_prototypes_per_slot: int = 4,
         merge_cosine: float = 0.98,
+        merge_mask_overlap: float = 0.75,
     ) -> None:
         if width < 1:
             raise ValueError("transition route-memory width must be positive")
@@ -3519,9 +3520,14 @@ class ExternalTransitionRouteMemory:
             )
         if not -1.0 <= merge_cosine <= 1.0 or not math.isfinite(merge_cosine):
             raise ValueError("transition route-memory merge cosine is invalid")
+        if not 0.0 < merge_mask_overlap <= 1.0 or not math.isfinite(
+            merge_mask_overlap
+        ):
+            raise ValueError("transition route-memory merge mask overlap is invalid")
         self.width = int(width)
         self.max_prototypes_per_slot = int(max_prototypes_per_slot)
         self.merge_cosine = float(merge_cosine)
+        self.merge_mask_overlap = float(merge_mask_overlap)
         self._prototypes: dict[int, list[torch.Tensor]] = {}
         self._prototype_masks: dict[int, list[torch.Tensor | None]] = {}
         self._counts: dict[int, list[int]] = {}
@@ -3595,6 +3601,21 @@ class ExternalTransitionRouteMemory:
                 @ torch.nn.functional.normalize(projected_query, dim=0)
             ).detach()
         )
+
+    @staticmethod
+    def _mask_overlap(
+        prototype_mask: torch.Tensor | None,
+        query_mask: torch.Tensor,
+    ) -> float:
+        """Return observed-dimension overlap over the union of two masks."""
+
+        if prototype_mask is None:
+            prototype_mask = torch.ones_like(query_mask)
+        intersection = torch.logical_and(prototype_mask, query_mask).sum()
+        union = torch.logical_or(prototype_mask, query_mask).sum()
+        if int(union) == 0:
+            return 0.0
+        return float((intersection / union).detach())
 
     @staticmethod
     def _merge_prototypes(
@@ -3715,7 +3736,14 @@ class ExternalTransitionRouteMemory:
             dtype=normalized.dtype,
         )
         nearest = int(similarities.argmax())
-        if float(similarities[nearest]) >= self.merge_cosine:
+        if (
+            float(similarities[nearest]) >= self.merge_cosine
+            and self._mask_overlap(
+                prototype_masks[nearest],
+                observed_mask,
+            )
+            > self.merge_mask_overlap
+        ):
             count = counts[nearest]
             merged, merged_mask = self._merge_prototypes(
                 prototypes[nearest],
@@ -3971,7 +3999,7 @@ class ExternalTransitionRouteMemory:
         ).validate()
 
     def configuration(self) -> dict[str, object]:
-        return {
+        configuration: dict[str, object] = {
             "schema": self.schema,
             "width": self.width,
             "max_prototypes_per_slot": self.max_prototypes_per_slot,
@@ -3979,6 +4007,11 @@ class ExternalTransitionRouteMemory:
             "behavior": "verified_slot_local_max_cosine_prototypes_v1",
             "raw_transition_rows": False,
         }
+        # Omitting the default preserves checksums for v1 payloads that did
+        # not yet serialize a mask-compatibility threshold.
+        if self.merge_mask_overlap != 0.75:
+            configuration["merge_mask_overlap"] = self.merge_mask_overlap
+        return configuration
 
     def state_payload(self) -> dict[str, object]:
         slots = {
@@ -4052,6 +4085,7 @@ class ExternalTransitionRouteMemory:
             int(configuration["width"]),
             max_prototypes_per_slot=int(configuration["max_prototypes_per_slot"]),
             merge_cosine=float(configuration["merge_cosine"]),
+            merge_mask_overlap=float(configuration.get("merge_mask_overlap", 0.75)),
         )
         for raw_slot_id, rows in slots.items():
             slot_id = int(raw_slot_id)

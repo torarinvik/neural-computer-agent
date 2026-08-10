@@ -5,6 +5,7 @@
   "seeds": [85201, 85202, 85203, 85204],
   "initial_max_prototypes_per_slot": 1,
   "grown_max_prototypes_per_slot": 3,
+  "new_mask_matches_old_mask": false,
   "unique_verifier_outcomes_per_seed": 648,
   "unique_alignment_pairs_per_seed": 96,
   "heldout_alignment_pairs_per_seed": 96,
@@ -18,11 +19,6 @@
   "nonlinear_mastery_by_seed": [0.9916666666666667, 0.9916666666666667, 1.0, 1.0],
   "controller_optimizer_updates_per_seed": 0,
   "transfer_ratio_against_fresh_learner": null,
-  "rejected_cross_mask_diagnostic": {
-    "status": "not_promoted",
-    "failed_seeds": [85202, 85204],
-    "reason": "second partial pattern was not reliably novel under a changed evidence mask"
-  },
-  "claim_boundary": "bounded verifier-gated external identity-memory capacity growth from one to three prototypes per slot, followed by two distinct masked-pattern insertions under a shared mask; not autonomous retention policy, unbounded growth, semantic open-world identity, or general continual learning",
-  "next_test": "learn mask-aware novelty and consolidation so multiple unseen masks can grow, compress, and retain old routes without replay"
+  "claim_boundary": "bounded verifier-gated external identity-memory capacity growth from one to three prototypes per slot, followed by two distinct masked-pattern insertions under different masks; not autonomous retention policy, unbounded growth, semantic open-world identity, or general continual learning",
+  "next_test": "learn mask-aware consolidation and capacity policy so multiple unseen masks can grow, compress, and retain old routes without replay"
 }

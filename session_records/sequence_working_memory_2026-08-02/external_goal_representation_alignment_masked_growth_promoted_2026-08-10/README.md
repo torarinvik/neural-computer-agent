@@ -3,8 +3,8 @@
 This four-seed audit starts external identity memory with one prototype per
 slot, rejects an unsafe capacity-growth transaction, then accepts growth from
 one to three prototypes per slot only after a copy-on-write retention probe.
-Two distinct masked observations are subsequently appended for one slot under
-the same partial-evidence mask; the original full identity remains intact.
+Two distinct masked observations with different partial-evidence masks are
+subsequently appended for one slot; the original full identity remains intact.
 
 All runtime updates use opaque anchor proposals. The controller, transition
 model, verifier statistics, and alignment adapters remain frozen. Persistence
@@ -19,11 +19,7 @@ Results across seeds `85201`–`85204`:
 - accepted growth retains both full routes and both partial routes;
 - final memory round-trips exactly; replay count is `0`.
 
-A cross-mask diagnostic was deliberately not promoted: changing the second
-partial observation to a different mask merged or failed to append in seeds
-`85202` and `85204`. This is evidence for the next bottleneck—mask-aware
-novelty/consolidation—not a reason to broaden the present claim.
-
-The result is bounded verifier-gated external-memory growth, not autonomous
-retention policy, unbounded memory, semantic open-world identity, or general
-continual learning.
+The mask-overlap compatibility gate prevented false merges when the second
+mask shared only half of the union of observed dimensions. The result is
+bounded verifier-gated external-memory growth, not autonomous retention policy,
+unbounded memory, semantic open-world identity, or general continual learning.

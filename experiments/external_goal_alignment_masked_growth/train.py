@@ -29,7 +29,7 @@ OLD_MASK = torch.tensor(
     dtype=torch.bool,
 )
 NEW_MASK = torch.tensor(
-    [False, True, True, False, True, True, True, True],
+    [True, False, True, True, True, True, False, True],
     dtype=torch.bool,
 )
 
