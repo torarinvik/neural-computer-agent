@@ -395,6 +395,8 @@ class ExternalOutcomeIntentionGenerator:
             device=device,
             dtype=dtype,
         )
+        if self.context_masking:
+            input_weights[:, :, self.context_width : 2 * self.context_width].zero_()
         output_weights = self.initial_parameter_scale * torch.randn(
             batch_size,
             self.intention_width,
@@ -812,6 +814,10 @@ class ExternalOutcomeIntentionGenerator:
             new_baseline = torch.full_like(state.baseline[:1], self.initial_baseline)
         else:
             new_input_weights = state.input_weights[source_row : source_row + 1].clone()
+            if self.context_masking:
+                new_input_weights[
+                    :, :, self.context_width : 2 * self.context_width
+                ].zero_()
             new_input_bias = state.input_bias[source_row : source_row + 1].clone()
             new_output_weights = state.output_weights[source_row : source_row + 1].clone()
             new_output_bias = state.output_bias[source_row : source_row + 1].clone()

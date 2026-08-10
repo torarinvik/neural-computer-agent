@@ -37,6 +37,11 @@ REVERSAL_DELAY_STEPS = 4
 MAX_UPDATES = 240
 REVERSAL_UPDATES = 260
 CONTROL_UPDATES = 160
+SOURCE_CONTEXT_MASK = torch.tensor(
+    [True, False, True, False, True, False, True, False, True, False, True, False]
+)
+SUCCESSOR_CONTEXT_MASK = ~SOURCE_CONTEXT_MASK
+REVERSAL_CONTEXT_MASK = SOURCE_CONTEXT_MASK.clone()
 
 
 def _digest_state(state: ExternalRoutedIntentionMemoryState) -> str:
@@ -58,6 +63,10 @@ def _digest_state(state: ExternalRoutedIntentionMemoryState) -> str:
         ("retention_mastered", state.retention_mastered),
         ("retention_context_prototypes", state.retention_context_prototypes),
         ("retention_context_masses", state.retention_context_masses),
+        (
+            "retention_context_observed_masses",
+            state.retention_context_observed_masses,
+        ),
         ("routing_keys", state.routing_keys),
         ("routing_bias", state.routing_bias),
         ("routing_baseline", state.routing_baseline),
@@ -156,6 +165,9 @@ def _single_cell_state(
         retention_context_masses=state.retention_context_masses[
             cell_index : cell_index + 1
         ].clone(),
+        retention_context_observed_masses=state.retention_context_observed_masses[
+            cell_index : cell_index + 1
+        ].clone(),
     )
 
 
@@ -169,6 +181,7 @@ def _new_policy(
     context_width: int = base.STATE_WIDTH,
     route_query_adapter: ExternalControllerTrajectoryQueryAdapter | None = None,
     unqualified_cell_probability: float = 0.0,
+    context_masking: bool = False,
 ) -> tuple[PolicyFreeAmodalRuntime, ExternalOutcomeIntentionRouter, ExternalRoutedIntentionMemoryState]:
     torch.manual_seed(seed)
     memory = ExternalOutcomeIntentionMemory(
@@ -180,6 +193,7 @@ def _new_policy(
             initial_baseline_rate=0.05,
             noise_scale=0.35,
             initial_parameter_scale=0.05,
+            context_masking=context_masking,
         )
     )
     router = ExternalOutcomeIntentionRouter(
@@ -208,6 +222,7 @@ def _train_regime(
     feedback,
     event,
     context: torch.Tensor,
+    context_mask: torch.Tensor | None = None,
     goal_context: torch.Tensor | None = None,
     target: torch.Tensor,
     max_updates: int,
@@ -230,6 +245,9 @@ def _train_regime(
     search_expansions = 0
     updates = 0
     planner_context = context if goal_context is None else goal_context
+    runtime_context_mask = (
+        None if context_mask is None else context_mask.unsqueeze(0)
+    )
 
     def apply_pending() -> None:
         nonlocal state
@@ -249,6 +267,7 @@ def _train_regime(
             horizon=base.HORIZON,
             beam_width=base.BEAM_WIDTH,
             intention_router_state=state,
+            intention_context_mask=runtime_context_mask,
         )
         proposal = output.intention_routing
         if proposal is None:
@@ -286,7 +305,9 @@ def _train_regime(
         if len(pending) > delay:
             apply_pending()
 
-        mean_scores = base._utility(router.mean(state, context)[0], target)
+        mean_scores = base._utility(
+            router.mean(state, context, context_mask=runtime_context_mask)[0], target
+        )
         deterministic_score = float(
             mean_scores[mastery_cell].item()
             if mastery_cell is not None
@@ -301,7 +322,9 @@ def _train_regime(
         ):
             while pending:
                 apply_pending()
-            settled_scores = base._utility(router.mean(state, context)[0], target)
+            settled_scores = base._utility(
+                router.mean(state, context, context_mask=runtime_context_mask)[0], target
+            )
             settled_score = float(
                 settled_scores[mastery_cell].item()
                 if mastery_cell is not None
@@ -312,7 +335,7 @@ def _train_regime(
     while pending:
         apply_pending()
 
-    means = router.mean(state, context)[0]
+    means = router.mean(state, context, context_mask=runtime_context_mask)[0]
     mean_scores = base._utility(means, target)
     scored_cell = (
         mastery_cell
@@ -354,10 +377,14 @@ def _missing_evidence_control(
     feedback,
     event,
     context: torch.Tensor,
+    context_mask: torch.Tensor | None = None,
     goal_context: torch.Tensor | None = None,
     target: torch.Tensor,
 ) -> dict[str, object]:
     before = _digest_state(state)
+    runtime_context_mask = (
+        None if context_mask is None else context_mask.unsqueeze(0)
+    )
     for _ in range(32):
         output, _ = policy.step_events(
             event,
@@ -370,6 +397,7 @@ def _missing_evidence_control(
             horizon=base.HORIZON,
             beam_width=base.BEAM_WIDTH,
             intention_router_state=state,
+            intention_context_mask=runtime_context_mask,
         )
         proposal = output.intention_routing
         if proposal is None:
@@ -394,8 +422,20 @@ def _corruption_probe(
     state: ExternalRoutedIntentionMemoryState,
     context: torch.Tensor,
     target: torch.Tensor,
+    context_mask: torch.Tensor | None = None,
 ) -> dict[str, object]:
-    clean_score = float(base._utility(router.mean(state, context)[:, 0], target).item())
+    clean_score = float(
+        base._utility(
+            router.mean(
+                state,
+                context,
+                context_mask=None
+                if context_mask is None
+                else context_mask.unsqueeze(0),
+            )[:, 0],
+            target,
+        ).item()
+    )
     corrupted_cells = replace(
         state.cells,
         output_weights=state.cells.output_weights.clone(),
@@ -405,7 +445,16 @@ def _corruption_probe(
     corrupted_cells.output_bias[0].zero_()
     corrupted = replace(state, cells=corrupted_cells)
     corrupted_score = float(
-        base._utility(router.mean(corrupted, context)[:, 0], target).item()
+        base._utility(
+            router.mean(
+                corrupted,
+                context,
+                context_mask=None
+                if context_mask is None
+                else context_mask.unsqueeze(0),
+            )[:, 0],
+            target,
+        ).item()
     )
     return {
         "clean_score": clean_score,
@@ -414,7 +463,12 @@ def _corruption_probe(
     }
 
 
-def run(seed: int, report_out: Path) -> dict[str, object]:
+def run(
+    seed: int,
+    report_out: Path,
+    *,
+    masked_context: bool = False,
+) -> dict[str, object]:
     begun = time.perf_counter()
     torch.set_num_threads(1)
     controller, reference_runtime, reference_policy, _, controller_state, feedback, events, contexts = (
@@ -426,7 +480,11 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
         reference=reference_policy,
         seed=seed + 7000,
         cell_count=1,
+        context_masking=masked_context,
     )
+    source_mask = SOURCE_CONTEXT_MASK if masked_context else None
+    successor_mask = SUCCESSOR_CONTEXT_MASK if masked_context else None
+    reversal_mask = REVERSAL_CONTEXT_MASK if masked_context else None
     matched_fresh_state = _single_cell_state(state, 0)
     matched_fresh_initial_digest = _digest_state(matched_fresh_state)
 
@@ -439,6 +497,7 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
         event=events["source"],
         context=contexts["source"],
         target=base.SOURCE_TARGET,
+        context_mask=source_mask,
         max_updates=MAX_UPDATES,
         delay=DELAY_STEPS,
         random_seed=seed + 1,
@@ -456,6 +515,7 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
         event=events["successor"],
         context=contexts["successor"],
         target=base.SUCCESSOR_TARGET,
+        context_mask=successor_mask,
         max_updates=MAX_UPDATES,
         delay=DELAY_STEPS,
         random_seed=seed + 2,
@@ -475,6 +535,7 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
         event=events["reversal"],
         context=contexts["reversal"],
         target=base.REVERSED_TARGET,
+        context_mask=reversal_mask,
         max_updates=60,
         delay=REVERSAL_DELAY_STEPS,
         random_seed=seed + 3,
@@ -497,6 +558,7 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
         event=events["reversal"],
         context=contexts["reversal"],
         target=base.REVERSED_TARGET,
+        context_mask=reversal_mask,
         max_updates=REVERSAL_UPDATES,
         delay=REVERSAL_DELAY_STEPS,
         noise_fraction=0.20,
@@ -508,6 +570,7 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
         reference=reference_policy,
         seed=seed + 12000,
         cell_count=1,
+        context_masking=masked_context,
     )
     fresh_state = matched_fresh_state
     fresh_state, fresh = _train_regime(
@@ -519,6 +582,7 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
         event=events["successor"],
         context=contexts["successor"],
         target=base.SUCCESSOR_TARGET,
+        context_mask=successor_mask,
         max_updates=MAX_UPDATES,
         delay=0,
         random_seed=seed + 5,
@@ -528,6 +592,7 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
         reference=reference_policy,
         seed=seed + 13000,
         cell_count=1,
+        context_masking=masked_context,
     )
     shuffled_policy = PolicyFreeAmodalRuntime(
         reference_runtime,
@@ -544,6 +609,7 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
         event=events["successor"],
         context=contexts["successor"],
         target=base.SUCCESSOR_TARGET,
+        context_mask=successor_mask,
         max_updates=CONTROL_UPDATES,
         delay=DELAY_STEPS,
         reward_shuffled=True,
@@ -555,6 +621,7 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
         reference=reference_policy,
         seed=seed + 14000,
         cell_count=1,
+        context_masking=masked_context,
     )
     action_policy = PolicyFreeAmodalRuntime(
         reference_runtime,
@@ -571,6 +638,7 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
         event=events["successor"],
         context=contexts["successor"],
         target=base.SUCCESSOR_TARGET,
+        context_mask=successor_mask,
         max_updates=CONTROL_UPDATES,
         delay=DELAY_STEPS,
         action_shuffled=True,
@@ -582,6 +650,7 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
         reference=reference_policy,
         seed=seed + 15000,
         cell_count=1,
+        context_masking=masked_context,
     )
     missing_policy = PolicyFreeAmodalRuntime(
         reference_runtime,
@@ -597,15 +666,38 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
         feedback=feedback,
         event=events["successor"],
         context=contexts["successor"],
+        context_mask=successor_mask,
         target=base.SUCCESSOR_TARGET,
     )
-    corruption = _corruption_probe(router, state, contexts["source"], base.SOURCE_TARGET)
+    corruption = _corruption_probe(
+        router,
+        state,
+        contexts["source"],
+        base.SOURCE_TARGET,
+        source_mask,
+    )
     protected_retention = _cell_matches(state, 0, source_snapshot) and _cell_matches(
         state,
         successor_cell,
         successor_snapshot,
     )
     persistence = router.state_from_payload(router.state_payload(state))
+    probe_output, _ = policy.step_events(
+        events["source"],
+        controller_state,
+        feedback,
+        base._goal(contexts["source"], base.SOURCE_TARGET),
+        horizon=base.HORIZON,
+        beam_width=base.BEAM_WIDTH,
+        intention_router_state=state,
+        intention_context_mask=None
+        if source_mask is None
+        else source_mask.unsqueeze(0),
+    )
+    probe_routing = probe_output.intention_routing
+    if probe_routing is None:
+        raise AssertionError("masked routing probe did not return a proposal")
+    masked_feature_width = probe_routing.candidates.features.shape[-1]
 
     gates = {
         "source_mastered_after_delayed_feedback": source["deterministic_best_score"] >= base.MASTERY_THRESHOLD,
@@ -637,11 +729,24 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
         "controller_frozen": controller_digest == base._digest_module(controller),
         "state_adapter_frozen": adapter_digest == base._digest_module(reference_policy.state_adapter),
         "zero_replayed_examples": True,
+        "masked_context_features_present": (
+            not masked_context or masked_feature_width == 2 * base.STATE_WIDTH + 1
+        ),
     }
     report = {
-        "schema": "neural-computer.policy-free-intention-routing.v1",
+        "schema": (
+            "neural-computer.policy-free-intention-masked-routing.v1"
+            if masked_context
+            else "neural-computer.policy-free-intention-routing.v1"
+        ),
         "claim_boundary": (
-            "bounded caller-free context-conditioned routing over protected and growing "
+            "bounded caller-free masked-context routing with explicit observation "
+            "channels, delayed/noisy scalar credit, sparse materialization, protected "
+            "growth, rollback, and matched successor transfer; arbitrary missing-stream "
+            "reasoning, unrestricted growth, compression, and general continual learning "
+            "remain unqualified."
+            if masked_context
+            else "bounded caller-free context-conditioned routing over protected and growing "
             "external intention cells with delayed scalar credit and matched fresh "
             "successor transfer; not general continual learning"
         ),
@@ -657,6 +762,14 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
             "runtime": policy.configuration(),
             "candidate_selection": "router_selected_intention_only_no_caller_cell_index_v1",
             "fresh_successor_control": "matched_caller_owned_fresh_append_state_v1",
+            "masked_context": masked_context,
+            "source_context_mask": None if source_mask is None else source_mask.tolist(),
+            "successor_context_mask": (
+                None if successor_mask is None else successor_mask.tolist()
+            ),
+            "reversal_context_mask": (
+                None if reversal_mask is None else reversal_mask.tolist()
+            ),
         },
         "gates": gates,
         "promoted": all(gates.values()),
@@ -727,8 +840,13 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--seed", type=int, default=85301)
     parser.add_argument("--report-out", type=Path, required=True)
+    parser.add_argument(
+        "--masked-context",
+        action="store_true",
+        help="use explicit complementary partial-context masks in external learning",
+    )
     args = parser.parse_args()
-    run(args.seed, args.report_out)
+    run(args.seed, args.report_out, masked_context=args.masked_context)
 
 
 if __name__ == "__main__":

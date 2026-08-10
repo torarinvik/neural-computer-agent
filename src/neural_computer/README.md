@@ -1264,3 +1264,9 @@ missing-stream cognition or general continual learning.
 The canonical policy-free runtime forwards this contract through
 `observe(..., intention_context_mask=...)`, so the controller remains frozen
 while the replaceable memory side receives the evidence mask.
+
+In masked router mode, route keys receive the same value/mask representation.
+Copy-on-write children keep reusable value weights but neutralize
+mask-specific weights. The complementary-mask audit is intentionally rejected
+because transfer is not yet stable across abrupt observation-pattern changes;
+see `session_records/policy_free_intention_masked_routing_2026-08-10/`.

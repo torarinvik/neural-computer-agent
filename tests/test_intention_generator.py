@@ -179,3 +179,23 @@ def test_masked_generator_keeps_missing_values_out_of_value_credit() -> None:
     restored = generator.state_from_payload(generator.state_payload(state))
     assert torch.equal(restored.input_weights, state.input_weights)
     assert restored.input_weights.shape[-1] == 9
+
+    learned_mask_weights = state.input_weights.clone()
+    learned_mask_weights[:, :, 4:8] = 1.0
+    state = ExternalOutcomeIntentionGeneratorState(
+        input_weights=learned_mask_weights,
+        input_bias=state.input_bias,
+        output_weights=state.output_weights,
+        output_bias=state.output_bias,
+        input_weight_eligibility=state.input_weight_eligibility,
+        input_bias_eligibility=state.input_bias_eligibility,
+        output_weight_eligibility=state.output_weight_eligibility,
+        output_bias_eligibility=state.output_bias_eligibility,
+        baseline=state.baseline,
+        decisions=state.decisions,
+        feedbacks=state.feedbacks,
+        protected=state.protected,
+    )
+    grown, new_cell = generator.append_cell(state, source_cell=0)
+    assert new_cell == 1
+    assert torch.equal(grown.input_weights[new_cell, :, 4:8], torch.zeros(8, 4))

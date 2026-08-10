@@ -278,6 +278,8 @@ def test_router_tracks_partial_retention_without_learning_missing_dimensions() -
         context_mask=mask,
         generator=torch.Generator().manual_seed(23),
     )
+    assert state.routing_keys.shape == (1, 8)
+    assert proposal.route_key_gradients.shape == (1, 1, 8)
     state = router.record_decision(state, proposal)
     state = router.apply_feedback(state, proposal, torch.ones(1))
     selected = int(proposal.selected_cells.item())

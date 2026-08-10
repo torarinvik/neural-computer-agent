@@ -60,7 +60,13 @@ class ExternalRoutedIntentionMemoryState:
         context_width: int,
         intention_width: int,
         hidden_width: int,
+        routing_feature_width: int | None = None,
     ) -> None:
+        expected_routing_feature_width = (
+            context_width if routing_feature_width is None else routing_feature_width
+        )
+        if expected_routing_feature_width < context_width:
+            raise ValueError("routed intention routing feature width is invalid")
         self.cells.validate(
             context_width=context_width,
             intention_width=intention_width,
@@ -69,7 +75,7 @@ class ExternalRoutedIntentionMemoryState:
         )
         cell_count = self.cells.baseline.shape[0]
         expected = {
-            "routing_keys": (cell_count, context_width),
+            "routing_keys": (cell_count, expected_routing_feature_width),
             "routing_bias": (cell_count,),
             "routing_baseline": (1,),
             "routing_decisions": (cell_count,),
@@ -177,6 +183,7 @@ class ExternalRoutedIntentionProposal:
         hidden_width: int,
         cell_count: int,
         batch: int | None = None,
+        routing_feature_width: int | None = None,
     ) -> ExternalRoutedIntentionProposal:
         if self.schema != EXTERNAL_ROUTED_INTENTION_PROPOSAL_SCHEMA:
             raise ValueError("unsupported routed intention proposal schema")
@@ -200,10 +207,17 @@ class ExternalRoutedIntentionProposal:
             raise ValueError("routed intention probabilities have the wrong shape")
         if self.route_log_propensities.shape != (candidate_batch,):
             raise ValueError("routed intention propensities have the wrong shape")
+        expected_routing_feature_width = (
+            context_width
+            if routing_feature_width is None
+            else routing_feature_width
+        )
+        if expected_routing_feature_width < context_width:
+            raise ValueError("routed intention proposal routing width is invalid")
         if self.route_key_gradients.shape != (
             candidate_batch,
             cell_count,
-            context_width,
+            expected_routing_feature_width,
         ):
             raise ValueError("routed intention key gradients have the wrong shape")
         if self.route_bias_gradients.shape != (candidate_batch, cell_count):
@@ -377,6 +391,14 @@ class ExternalOutcomeIntentionRouter:
         return self.memory.intention_width
 
     @property
+    def routing_feature_width(self) -> int:
+        return (
+            2 * self.context_width
+            if self.memory.generator.context_masking
+            else self.context_width
+        )
+
+    @property
     def hidden_width(self) -> int:
         return self.memory.hidden_width
 
@@ -384,7 +406,12 @@ class ExternalOutcomeIntentionRouter:
         return {
             "schema": self.schema,
             "memory": self.memory.configuration(),
-            "routing": "opaque_context_to_external_cell_mixture_then_sparse_materialization_v4",
+            "routing": (
+                "masked_opaque_context_and_observation_to_external_cell_mixture_v1"
+                if self.memory.generator.context_masking
+                else "opaque_context_to_external_cell_mixture_then_sparse_materialization_v4"
+            ),
+            "routing_feature_width": self.routing_feature_width,
             "credit": "outcome_only_route_score_gradient_v1",
             "temperature": self.temperature,
             "exploration_bonus": self.exploration_bonus,
@@ -417,10 +444,12 @@ class ExternalOutcomeIntentionRouter:
         cells = self.memory.initial_state(cell_count, device=device, dtype=dtype)
         routing_keys = self.initial_routing_scale * torch.randn(
             cell_count,
-            self.context_width,
+            self.routing_feature_width,
             device=device,
             dtype=dtype,
         )
+        if self.memory.generator.context_masking:
+            routing_keys[:, self.context_width :].zero_()
         state = ExternalRoutedIntentionMemoryState(
             cells=cells,
             routing_keys=routing_keys,
@@ -460,6 +489,7 @@ class ExternalOutcomeIntentionRouter:
             context_width=self.context_width,
             intention_width=self.intention_width,
             hidden_width=self.hidden_width,
+            routing_feature_width=self.routing_feature_width,
         )
 
     def _context_view(
@@ -480,6 +510,17 @@ class ExternalOutcomeIntentionRouter:
                 raise ValueError("intention router context mask is on the wrong device")
             mask = context_mask
         return context * mask.to(dtype=context.dtype), mask
+
+    def _routing_features(
+        self,
+        observed_context: torch.Tensor,
+        mask: torch.Tensor,
+    ) -> torch.Tensor:
+        if self.memory.generator.context_masking:
+            return torch.cat(
+                (observed_context, mask.to(dtype=observed_context.dtype)), dim=-1
+            )
+        return observed_context
 
     def _proposal_context_view(
         self,
@@ -550,6 +591,7 @@ class ExternalOutcomeIntentionRouter:
 
         self._validate_state(state)
         observed_context, mask = self._context_view(context, state, context_mask)
+        routing_features = self._routing_features(observed_context, mask)
         batch = context.shape[0]
         cell_count = state.cells.baseline.shape[0]
         exploration_bonus = self.exploration_bonus / torch.sqrt(
@@ -557,7 +599,7 @@ class ExternalOutcomeIntentionRouter:
         )
         exploration_bonus = exploration_bonus.unsqueeze(0).expand(batch, -1)
         logits = (
-            torch.einsum("bf,cf->bc", observed_context, state.routing_keys)
+            torch.einsum("bf,cf->bc", routing_features, state.routing_keys)
             + state.routing_bias.unsqueeze(0)
             + exploration_bonus
         ) / self.temperature
@@ -631,9 +673,7 @@ class ExternalOutcomeIntentionRouter:
             * (one_hot - base_probabilities)
             / self.temperature
         )
-        route_key_gradients = (
-            observed_context.unsqueeze(1) * route_bias_gradients.unsqueeze(-1)
-        )
+        route_key_gradients = routing_features.unsqueeze(1) * route_bias_gradients.unsqueeze(-1)
         route_propensities = probabilities[row_indices, selected_cells]
         proposal = ExternalRoutedIntentionProposal(
             candidates=candidates,
@@ -652,6 +692,7 @@ class ExternalOutcomeIntentionRouter:
             hidden_width=self.hidden_width,
             cell_count=cell_count,
             batch=batch,
+            routing_feature_width=self.routing_feature_width,
         )
 
     def record_decision(
@@ -911,6 +952,7 @@ class ExternalOutcomeIntentionRouter:
             intention_width=self.intention_width,
             hidden_width=self.hidden_width,
             cell_count=state.cells.baseline.shape[0],
+            routing_feature_width=self.routing_feature_width,
         )
         if proposal.selected_cells.device != state.routing_keys.device:
             raise ValueError("routed intention proposal is on the wrong device")
@@ -937,16 +979,22 @@ class ExternalOutcomeIntentionRouter:
             raise ValueError("intention router source cell is out of range")
         if source_cell is None:
             new_key = self.initial_routing_scale * torch.randn(
-                1, self.context_width, device=device, dtype=dtype
+                1, self.routing_feature_width, device=device, dtype=dtype
             )
+            if self.memory.generator.context_masking:
+                new_key[:, self.context_width :].zero_()
             new_bias = torch.zeros(1, device=device, dtype=dtype)
         elif copy_route:
             new_key = state.routing_keys[source_cell : source_cell + 1].clone()
+            if self.memory.generator.context_masking:
+                new_key[:, self.context_width :].zero_()
             new_bias = state.routing_bias[source_cell : source_cell + 1].clone()
         else:
             new_key = self.initial_routing_scale * torch.randn(
-                1, self.context_width, device=device, dtype=dtype
+                1, self.routing_feature_width, device=device, dtype=dtype
             )
+            if self.memory.generator.context_masking:
+                new_key[:, self.context_width :].zero_()
             new_bias = torch.zeros(1, device=device, dtype=dtype)
         next_state = replace(
             state,

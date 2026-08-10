@@ -8480,3 +8480,22 @@ retention with the required verifier-bit and replay accounting.
 same mask to whichever external generator, memory, or router is active. This
 keeps partial-evidence handling on the replaceable memory side while leaving
 the controller's canonical input/output contract unchanged.
+
+## Mask-aware external routing and transfer boundary (2026-08-10)
+
+The mask ABI now reaches the external address layer as well as the intention
+generator. In masked mode, a route key addresses
+`[observed_context, observation_mask]`; dense mode retains the original route
+width and state layout. New masked cells initialize their mask-specific route
+weights neutrally, and copy-on-write generator cells transfer the value pathway
+while resetting mask-specific input weights. This prevents an inherited source
+observation pattern from being silently treated as the successor's identity.
+
+The complementary-mask pressure test in
+`session_records/policy_free_intention_masked_routing_2026-08-10/` is rejected
+for promotion: frozen-core, explicit-mask, delayed/noisy, causal, corruption,
+persistence, and protected-retention gates pass, but only one of two seeds is
+faster than the matched-fresh successor. This is evidence for a real remaining
+bottleneck—reliable transfer across changing observation patterns—not evidence
+against the mask contract. The next rung is overlapping masks followed by a
+gradual mask curriculum; arbitrary missing-stream reasoning remains unclaimed.
