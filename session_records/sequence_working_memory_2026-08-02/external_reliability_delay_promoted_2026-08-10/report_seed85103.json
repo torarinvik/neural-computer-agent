@@ -1,0 +1,87 @@
+{
+  "schema": "neural-computer.external-reliability-delay.v1",
+  "seed": 85103,
+  "configuration": {
+    "calibration_rows": 128,
+    "route_rows": 8,
+    "match_tolerance": 0.02,
+    "corruption_delta": 0.12,
+    "reliability_threshold": 0.9,
+    "wait_training_rows": 64,
+    "committed_evidence_gate": true,
+    "controller_updates": 0,
+    "old_evidence_replay": 0
+  },
+  "metrics": {
+    "slot": 0,
+    "clean_statuses": [
+      "pending",
+      "pending",
+      "pending",
+      "matched",
+      "pending",
+      "pending",
+      "pending",
+      "matched"
+    ],
+    "corrupted_statuses": [
+      "pending",
+      "pending",
+      "pending",
+      "capacity",
+      "pending",
+      "pending",
+      "pending",
+      "capacity"
+    ],
+    "reversal_statuses": [
+      "pending",
+      "pending",
+      "pending",
+      "matched",
+      "pending",
+      "pending",
+      "pending",
+      "matched"
+    ],
+    "fresh_corrupted_statuses": [
+      "pending",
+      "pending",
+      "pending",
+      "matched",
+      "pending",
+      "pending",
+      "pending",
+      "matched"
+    ],
+    "delayed_wait_probability": 0.9996646642684937,
+    "immediate_wait_probability": 0.00033535363036207855,
+    "bank_digest_before": "13649127aaca9ad8d516df85e36c786b4e74a700bf415e03286fe34f946fe7eb",
+    "bank_digest_after": "13649127aaca9ad8d516df85e36c786b4e74a700bf415e03286fe34f946fe7eb",
+    "reliability_digest": "2632b9262857481423b56a4a9c3d78192f2b0c7a92a564e5ced935f3b89c3235",
+    "wait_digest": "4a9da2e02a5e80cf63fad3a928eb1281c84d76289e8d1caa89385f26ac9c2e7f"
+  },
+  "gates": {
+    "clean_reuses_committed_slot": true,
+    "learned_gate_vetoes_low_error_corruption": true,
+    "reversal_reuses_original_slot": true,
+    "fresh_gate_control_matches_corruption": true,
+    "historical_bank_unchanged": true,
+    "controller_frozen": true,
+    "reliability_persistence": true,
+    "wait_persistence": true,
+    "router_gate_persistence": true,
+    "learned_delay_waits": true,
+    "learned_absence_releases": true
+  },
+  "accounting": {
+    "unique_verifier_outcomes": 256,
+    "unique_logical_transition_lifetimes": 8,
+    "replayed_examples": 0,
+    "controller_optimizer_updates": 0,
+    "reliability_optimizer_updates": 0,
+    "wait_optimizer_updates": 0,
+    "external_sufficient_statistics_updates": 256
+  },
+  "elapsed_seconds": 0.020955834013875574
+}

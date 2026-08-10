@@ -6690,3 +6690,31 @@ identities.
 
 Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_partial_ambiguous_noisy_robust_rollout_verified_2026-08-10/`.
+
+## Separated learned reliability and delay state (2026-08-10)
+
+The next boundary is now promoted across three seeds. A replay-free
+`ExternalTransitionEvidenceStatistics` component consumes scalar verifier
+outcomes and is connected to an opt-in committed-slot veto. The veto is
+read-only with respect to factual memory: it may reject an evidence route, but
+cannot change a historical model, context key, or stable slot ID. A low-error
+corrupted revisit was inside the factual match tolerance, so a fresh
+gate-disabled control matched it; the learned gate rejected it without a bank
+write, and a later clean reversal reused the original slot.
+
+The same audit persisted `EventWaitStatistics` separately. It learned a high
+wait probability (`0.999665`) for delayed incomplete evidence and a low wait
+probability (`0.000335`) for fast absence. Each seed consumed 128 reliability
+and 128 wait outcomes once, with zero replay, zero controller updates, and
+exact persistence of both external states and the router configuration.
+
+This promotes a bounded separation of factual identity, learned evidence
+reliability, and learned delay policy. It does not establish unrestricted
+memory growth, multimodal reliability grounding, arbitrary new computation,
+or general continual learning. The next pressure test should make reliability
+and delay operate online during multiple concurrent nonlinear streams, with
+reversal and missingness interleaved rather than calibrated in a separate
+fixture.
+
+Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_reliability_delay_promoted_2026-08-10/`.

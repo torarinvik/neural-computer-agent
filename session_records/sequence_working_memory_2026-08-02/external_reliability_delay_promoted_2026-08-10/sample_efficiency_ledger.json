@@ -1,0 +1,33 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "external_reliability_delay",
+  "decision": "promote",
+  "claim_boundary": "three-seed replay-free separated reliability veto and delay policy with immutable factual identity; not general continual learning",
+  "seeds": [85101, 85102, 85103],
+  "accounting": {
+    "unique_verifier_outcomes_per_seed": 256,
+    "unique_logical_transition_lifetimes_per_seed": 8,
+    "reliability_sufficient_statistics_updates": 128,
+    "wait_sufficient_statistics_updates": 128,
+    "replayed_examples": 0,
+    "old_evidence_replay": 0,
+    "controller_optimizer_updates": 0,
+    "reliability_optimizer_updates": 0,
+    "wait_optimizer_updates": 0,
+    "factual_model_updates_after_source_fit": 0
+  },
+  "gates": {
+    "all_three_seeds_passed": true,
+    "clean_evidence_reuses_committed_slot": true,
+    "learned_gate_vetoes_low_error_corruption": true,
+    "fresh_gate_disabled_control_matches_corruption": true,
+    "reversal_reuses_original_slot": true,
+    "historical_bank_unchanged": true,
+    "controller_frozen": true,
+    "reliability_persistence": true,
+    "wait_persistence": true,
+    "router_gate_persistence": true,
+    "learned_delay_waits": true,
+    "learned_absence_releases": true
+  }
+}

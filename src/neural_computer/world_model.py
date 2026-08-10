@@ -5002,6 +5002,7 @@ class ExternalOnlineTransitionContextRouter:
         evidence_evaluator: nn.Module | None = None,
         evidence_threshold: float = 0.5,
         evidence_gate_min_evidence: int = 0,
+        committed_evidence_gate: bool = False,
         address_adapter: ExternalTransitionContextAddressAdapter | None = None,
         route_query: ExternalTransitionRouteQuery | None = None,
         sparse_evidence: ExternalSparseTransitionEvidenceIndex | None = None,
@@ -5078,6 +5079,8 @@ class ExternalOnlineTransitionContextRouter:
             raise ValueError("online evidence threshold must lie in (0, 1)")
         if evidence_gate_min_evidence < 0:
             raise ValueError("online evidence gate warm-up cannot be negative")
+        if not isinstance(committed_evidence_gate, bool):
+            raise TypeError("committed evidence gate must be boolean")
         if prior_selection_probe_updates < 0:
             raise ValueError("prior selection probe updates cannot be negative")
         if prior_selection_probe is None and prior_selection_probe_updates:
@@ -5153,6 +5156,7 @@ class ExternalOnlineTransitionContextRouter:
         self.evidence_evaluator = evidence_evaluator
         self.evidence_threshold = float(evidence_threshold)
         self.evidence_gate_min_evidence = int(evidence_gate_min_evidence)
+        self.committed_evidence_gate = committed_evidence_gate
         self.address_adapter = address_adapter
         self.route_query = route_query
         self.sparse_evidence = sparse_evidence
@@ -5295,6 +5299,7 @@ class ExternalOnlineTransitionContextRouter:
             "quarantine_capacity": self.quarantine_capacity,
             "evidence_threshold": self.evidence_threshold,
             "evidence_gate_min_evidence": self.evidence_gate_min_evidence,
+            "committed_evidence_gate": self.committed_evidence_gate,
             "address_adapter": (
                 None
                 if self.address_adapter is None
@@ -5537,8 +5542,16 @@ class ExternalOnlineTransitionContextRouter:
                 observation.intention,
                 context_batch,
             )
+            if self.committed_evidence_gate and not self._evidence_allows(
+                prediction,
+                observation.next_state,
+                context=context,
+            ):
+                continue
             error = self._robust_error(prediction, observation.next_state)
             candidates.append((error, index, context))
+        if not candidates:
+            return None
         route_query_vector: torch.Tensor | None = None
         if self.route_query is None:
             error, index, context = min(candidates, key=lambda item: (item[0], item[1]))
@@ -5602,6 +5615,80 @@ class ExternalOnlineTransitionContextRouter:
             context_batch,
         )
         return self._robust_error(prediction, observation.next_state)
+
+    def _evidence_probability(
+        self,
+        prediction: torch.Tensor,
+        observed: torch.Tensor,
+        *,
+        context: torch.Tensor | None = None,
+    ) -> float:
+        """Return verifier-calibrated reliability without changing identity.
+
+        Evidence evaluators are caller-owned external state.  This method is
+        deliberately read-only: it may veto a route, but it never updates a
+        model, context key, or slot address.  Context-aware calibrators opt in
+        through their explicit ``context_width`` contract; global evaluators
+        see only factual prediction/observation tensors.
+        """
+
+        if self.evidence_evaluator is None:
+            return 1.0
+        hits = torch.ones(
+            prediction.shape[0],
+            device=prediction.device,
+            dtype=prediction.dtype,
+        )
+        scorer = getattr(self.evidence_evaluator, "score", None)
+        with torch.no_grad():
+            if callable(scorer):
+                if context is not None and hasattr(
+                    self.evidence_evaluator, "context_width"
+                ):
+                    logits = scorer(
+                        prediction,
+                        observed,
+                        hits,
+                        context.unsqueeze(0)
+                        .expand(prediction.shape[0], -1)
+                        if context.ndim == 1
+                        else context,
+                    )
+                else:
+                    logits = scorer(prediction, observed, hits)
+            else:
+                logits = self.evidence_evaluator(prediction, observed, hits)
+            return float(torch.sigmoid(logits).mean())
+
+    def _evidence_allows(
+        self,
+        prediction: torch.Tensor,
+        observed: torch.Tensor,
+        *,
+        context: torch.Tensor | None = None,
+        candidate_evidence_count: int | None = None,
+    ) -> bool:
+        """Conservatively veto unreliable evidence after an explicit warm-up."""
+
+        if self.evidence_evaluator is None:
+            return True
+        if candidate_evidence_count is not None:
+            ready = candidate_evidence_count >= self.evidence_gate_min_evidence
+        else:
+            observed_count = getattr(
+                self.evidence_evaluator, "observation_count", None
+            )
+            ready = (
+                True
+                if observed_count is None
+                else int(observed_count) >= self.evidence_gate_min_evidence
+            )
+        if not ready:
+            return True
+        return (
+            self._evidence_probability(prediction, observed, context=context)
+            >= self.evidence_threshold
+        )
 
     def _robust_error(
         self,
@@ -5812,24 +5899,12 @@ class ExternalOnlineTransitionContextRouter:
                     .unsqueeze(0)
                     .expand(observation.state.shape[0], -1)
                 )
-                hits = torch.ones(
-                    observation.state.shape[0],
-                    device=prediction.device,
-                    dtype=prediction.dtype,
-                )
-                scorer = getattr(self.evidence_evaluator, "score", None)
-                with torch.no_grad():
-                    logits = (
-                        scorer(prediction, observation.next_state, hits, context)
-                        if callable(scorer)
-                        else self.evidence_evaluator(
-                            prediction,
-                            observation.next_state,
-                            hits,
-                        )
-                    )
-                    probability = float(torch.sigmoid(logits).mean())
-                if probability < self.evidence_threshold:
+                if not self._evidence_allows(
+                    prediction,
+                    observation.next_state,
+                    context=context,
+                    candidate_evidence_count=candidate.evidence_count,
+                ):
                     continue
             best_error = min(best_error, error)
         return best_error
@@ -5945,6 +6020,23 @@ class ExternalOnlineTransitionContextRouter:
         if sparse_match is not None and sparse_match.selected_slot_id is not None:
             index = self.bank.physical_index_for_slot_id(sparse_match.selected_slot_id)
             context = self.bank.context_at(index)
+            context_batch = context.to(bundle.state).unsqueeze(0).expand(
+                bundle.state.shape[0], -1
+            )
+            prediction = self.bank(
+                bundle.state,
+                bundle.intention,
+                context_batch,
+            )
+            if not self._evidence_allows(
+                prediction,
+                bundle.next_state,
+                context=context,
+            ):
+                sparse_match = None
+        if sparse_match is not None and sparse_match.selected_slot_id is not None:
+            index = self.bank.physical_index_for_slot_id(sparse_match.selected_slot_id)
+            context = self.bank.context_at(index)
             error = self._slot_error(index, bundle)
             self._pending.clear()
             self._set_active_slot(index)
@@ -5970,7 +6062,19 @@ class ExternalOnlineTransitionContextRouter:
         ):
             active_error = self._slot_error(self._active_slot, bundle)
             active_context = self.bank.context_at(self._active_slot)
-            if active_error <= self.continuation_tolerance:
+            context_batch = active_context.to(bundle.state).unsqueeze(0).expand(
+                bundle.state.shape[0], -1
+            )
+            active_prediction = self.bank(
+                bundle.state,
+                bundle.intention,
+                context_batch,
+            )
+            if active_error <= self.continuation_tolerance and self._evidence_allows(
+                active_prediction,
+                bundle.next_state,
+                context=active_context,
+            ):
                 index = self._active_slot
                 self._pending.clear()
                 self._conflict_windows = 0
@@ -6818,6 +6922,9 @@ class ExternalOnlineTransitionContextRouter:
             evidence_threshold=float(configuration.get("evidence_threshold", 0.5)),
             evidence_gate_min_evidence=int(
                 configuration.get("evidence_gate_min_evidence", 0)
+            ),
+            committed_evidence_gate=bool(
+                configuration.get("committed_evidence_gate", False)
             ),
             address_adapter=address_adapter,
             route_query=route_query,

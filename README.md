@@ -2589,3 +2589,13 @@ slot, preserved partial/ambiguous quarantine behavior, and kept recursive
 rollout error below `0.003`. This is bounded robust factual routing, not learned
 noise adaptation or general continual learning. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_partial_ambiguous_noisy_robust_rollout_verified_2026-08-10/`.
+
+The next boundary is now promoted across three seeds: replay-free scalar
+verifier outcomes teach a separate reliability gate to veto low-error
+corruption at a committed slot, while replay-free wait statistics learn that
+delayed incomplete evidence should be held and fast absence released. Clean
+revisits and reversals retain the original factual slot, the fresh gate-disabled
+control accepts the corruption, persistence is exact, and the controller and
+factual bank remain frozen. This is a bounded separated reliability/delay
+mechanism, not general continual learning. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_reliability_delay_promoted_2026-08-10/`.

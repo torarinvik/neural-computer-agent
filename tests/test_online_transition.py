@@ -8,6 +8,7 @@ from neural_computer import (
     ExternalOnlineTransitionContextRouter,
     ExternalRandomFeatureTransitionStatistics,
     ExternalTransitionContextEncoder,
+    ExternalTransitionEvidenceStatistics,
     ExternalTransitionModelBank,
     ExternalTransitionModelLifetimePolicy,
     ExternalTransitionObservation,
@@ -629,6 +630,78 @@ def test_router_robust_inlier_resolution_tolerates_sparse_noise_but_blocks_contr
     assert restored.configuration()["outlier_tolerance"] == pytest.approx(0.5)
     assert restored._best_slot(sparse_noise) is not None
     assert slot == 0
+
+
+def test_committed_reliability_gate_vetoes_corruption_without_mutating_identity() -> None:
+    torch.manual_seed(1510)
+    source = _affine_observation(8)
+    bank = ExternalTransitionModelBank(
+        2,
+        1,
+        4,
+        model_family="affine_sufficient_statistics_v1",
+        affine_ridge=1e-7,
+        capacity=1,
+    )
+    context = torch.tensor([1.0, 0.0, 0.0, 0.0])
+    index = bank.ensure_context(context)
+    bank.adaptation_step(
+        source,
+        context.unsqueeze(0).expand(source.state.shape[0], -1),
+        None,
+    )
+    before = bank.digest()
+
+    reliability = ExternalTransitionEvidenceStatistics(
+        2,
+        bin_count=8,
+        error_scale=0.1,
+        prior_count=0.01,
+    )
+    prediction = source.next_state
+    reliability.observe(
+        prediction,
+        prediction,
+        torch.ones(source.state.shape[0]),
+    )
+    reliability.observe(
+        prediction,
+        prediction + 3.0,
+        torch.zeros(source.state.shape[0]),
+    )
+
+    router = ExternalOnlineTransitionContextRouter(
+        bank,
+        ExternalTransitionContextEncoder(2, 1, hidden_width=8, context_width=4),
+        match_tolerance=1e-6,
+        match_margin=0.0,
+        admission_observations=2,
+        max_contexts=1,
+        evidence_evaluator=reliability,
+        evidence_threshold=0.9,
+        evidence_gate_min_evidence=1,
+        committed_evidence_gate=True,
+    )
+    corrupted = ExternalTransitionObservation(
+        state=source.state,
+        intention=source.intention,
+        next_state=source.next_state + 3.0,
+        confidence=source.confidence,
+    )
+
+    assert router._best_slot(source) is not None
+    assert router._best_slot(corrupted) is None
+    assert bank.digest() == before
+    assert index == 0
+
+    payload = router.state_payload()
+    restored = ExternalOnlineTransitionContextRouter.from_payload(
+        payload,
+        evidence_evaluator=reliability,
+    )
+    assert restored.configuration()["committed_evidence_gate"] is True
+    assert restored._best_slot(source) is not None
+    assert restored._best_slot(corrupted) is None
 
 
 def test_bank_selects_smallest_verified_model_family_without_mutating_candidates() -> None:
