@@ -1185,6 +1185,17 @@ epsilon mixture samples new files and records the selected probability per
 row. This supplies evidence to a future route learner without changing the
 controller or pretending that exploration itself is learned.
 
+The optional outcome-only route learner is now wired into the executable
+runtime. It applies delayed scalar feedback to an external eligibility/policy
+trace, then selects the next opaque file from the current learned trajectory;
+the controller and interpreter remain frozen. Router state is checkpointed,
+and one newly admitted file can be activated through an append-only transaction
+without resizing existing computation. The focused causal test shows the
+external route policy changes toward the rewarded file while the controller
+parameters remain unchanged. This remains bounded route adaptation over
+pre-admitted files, not arbitrary program acquisition or general continual
+learning.
+
 The controller-plus-file working state is also restartable. A versioned
 tensor-only checkpoint preserves the controller event window and workspace
 together with every logical file's recurrent register state, while executable

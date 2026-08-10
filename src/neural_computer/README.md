@@ -1462,6 +1462,13 @@ Route exploration is disabled by default. When enabled with
 `program_route_exploration`, the output also reports the exact selected-file
 propensity for delayed scalar credit.
 
+Pass an `ExternalOutcomeProgramRouter` to make route learning part of the
+runtime state machine. The previous scalar outcome updates only that external
+router before the next file selection; `activate_program()` appends one newly
+admitted file to the route capacity without resizing the controller. Router
+eligibility and policy state are included in the checksummed runtime
+checkpoint.
+
 `ExternalProgramRuntimeState.payload()` and `from_payload()` provide a
 versioned tensor-only pause/resume checkpoint for the controller working state
 and every isolated executable-file state. Executable artifacts and model

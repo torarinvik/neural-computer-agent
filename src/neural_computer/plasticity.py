@@ -1247,6 +1247,24 @@ class ExternalOutcomeProgramRouter(nn.Module):
     ) -> tuple[torch.Tensor, torch.Tensor]:
         """Sample an opaque program index and return its exact propensity."""
 
+        behavior = self.behavior_probabilities(
+            state,
+            features,
+            exploration=exploration,
+        )
+        choice = torch.multinomial(behavior, 1).squeeze(-1)
+        propensity = behavior.gather(1, choice.unsqueeze(-1)).squeeze(-1)
+        return choice, propensity
+
+    def behavior_probabilities(
+        self,
+        state: ExternalOutcomeProgramRouterState,
+        features: torch.Tensor,
+        *,
+        exploration: float = 0.1,
+    ) -> torch.Tensor:
+        """Return the exact behavior distribution used for route sampling."""
+
         if not 0.0 <= exploration <= 1.0:
             raise ValueError("program-router exploration must lie in [0, 1]")
         mask = self.action_mask(state)
@@ -1254,9 +1272,7 @@ class ExternalOutcomeProgramRouter(nn.Module):
         active_count = mask.sum(dim=-1, keepdim=True).to(probabilities.dtype)
         behavior = (1.0 - exploration) * probabilities
         behavior = behavior + exploration * mask.to(probabilities.dtype) / active_count
-        choice = torch.multinomial(behavior, 1).squeeze(-1)
-        propensity = behavior.gather(1, choice.unsqueeze(-1)).squeeze(-1)
-        return choice, propensity
+        return behavior
 
     def record_decision(
         self,

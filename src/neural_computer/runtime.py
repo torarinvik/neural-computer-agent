@@ -56,6 +56,12 @@ from .interface import (
     IntentEvent,
 )
 from .memory import MemoryBackend
+from .plasticity import (
+    EXTERNAL_OUTCOME_CREDIT_SCHEMA,
+    EXTERNAL_OUTCOME_PROGRAM_ROUTER_SCHEMA,
+    ExternalOutcomeProgramRouter,
+    ExternalOutcomeProgramRouterState,
+)
 from .policies import EventWaitPolicy, EventWaitStatistics
 from .program import ExternalProgramArtifact
 from .register import (
@@ -1333,6 +1339,7 @@ class ExternalProgramRuntimeState:
     controller: ControllerState
     program: ExternalRegisterState
     program_states: Mapping[int, ExternalRegisterState] = field(default_factory=dict)
+    program_router: ExternalOutcomeProgramRouterState | None = None
 
     def payload(self) -> dict[str, object]:
         """Return a versioned tensor-only checkpoint for pause/resume."""
@@ -1348,12 +1355,42 @@ class ExternalProgramRuntimeState:
                 }
                 for logical_id, state in sorted(self.program_states.items())
             ),
+            "program_router": (
+                None
+                if self.program_router is None
+                else {
+                    "schema": EXTERNAL_OUTCOME_PROGRAM_ROUTER_SCHEMA,
+                    "configuration": {
+                        "schema": EXTERNAL_OUTCOME_PROGRAM_ROUTER_SCHEMA,
+                        "feature_width": self.program_router.credit.policy.shape[1],
+                        "program_capacity": self.program_router.credit.policy.shape[2],
+                    },
+                    "active_programs": self.program_router.active_programs,
+                    "credit": {
+                        "schema": EXTERNAL_OUTCOME_CREDIT_SCHEMA,
+                        "configuration": {
+                            "feature_width": self.program_router.credit.policy.shape[1],
+                            "action_count": self.program_router.credit.policy.shape[2],
+                        },
+                        "policy": self.program_router.credit.policy.detach().cpu().clone(),
+                        "eligibility": self.program_router.credit.eligibility.detach().cpu().clone(),
+                        "baseline": self.program_router.credit.baseline.detach().cpu().clone(),
+                        "decisions": self.program_router.credit.decisions.detach().cpu().clone(),
+                        "feedbacks": self.program_router.credit.feedbacks.detach().cpu().clone(),
+                    },
+                }
+            ),
         }
         payload["sha256"] = _digest_runtime_state_payload(payload)
         return payload
 
     @classmethod
-    def from_payload(cls, payload: dict[str, object]) -> ExternalProgramRuntimeState:
+    def from_payload(
+        cls,
+        payload: dict[str, object],
+        *,
+        program_router: ExternalOutcomeProgramRouter | None = None,
+    ) -> ExternalProgramRuntimeState:
         """Restore external runtime state without loading executable files."""
 
         if not isinstance(payload, dict):
@@ -1384,10 +1421,22 @@ class ExternalProgramRuntimeState:
             if not isinstance(state_payload, dict):
                 raise TypeError("external program runtime program state is missing")
             program_states[logical_id] = ExternalRegisterState.from_payload(state_payload)
+        router_payload = unsigned.get("program_router")
+        if router_payload is None:
+            restored_router = None
+        elif program_router is None:
+            raise ValueError(
+                "restoring executable route state requires its route policy"
+            )
+        elif not isinstance(router_payload, dict):
+            raise TypeError("external program runtime route state is malformed")
+        else:
+            restored_router = program_router.state_from_payload(router_payload)
         return cls(
             controller=ControllerState.from_payload(controller),
             program=ExternalRegisterState.from_payload(program),
             program_states=program_states,
+            program_router=restored_router,
         )
 
 
@@ -1444,6 +1493,7 @@ class ExternalProgramAmodalRuntime(nn.Module):
             | None
         ) = None,
         program_route_exploration: float = 0.0,
+        program_router: ExternalOutcomeProgramRouter | None = None,
     ) -> None:
         super().__init__()
         if not isinstance(runtime, AmodalControllerRuntime):
@@ -1478,6 +1528,15 @@ class ExternalProgramAmodalRuntime(nn.Module):
                 raise ValueError("program memory instruction width does not match machine")
             if len(program_memory.programs) < 1:
                 raise ValueError("program memory must contain at least one artifact")
+        if program_router is not None:
+            if program_memory is None:
+                raise ValueError("program router requires external program memory")
+            if program_router.feature_width != machine.instruction_width:
+                raise ValueError("program router feature width does not match machine")
+            if program_router.initial_programs != program_memory.file_count:
+                raise ValueError(
+                    "program router initial programs must match program memory files"
+                )
         if program_query_adapter is not None and not isinstance(
             program_query_adapter,
             (ExternalControllerStateAdapter, ExternalControllerTrajectoryQueryAdapter),
@@ -1507,6 +1566,7 @@ class ExternalProgramAmodalRuntime(nn.Module):
             else None
         )
         self.program_route_exploration = float(program_route_exploration)
+        self.program_router = program_router
 
     def configuration(self) -> dict[str, object]:
         return {
@@ -1537,6 +1597,11 @@ class ExternalProgramAmodalRuntime(nn.Module):
                 if self.program_route_exploration == 0.0
                 else "epsilon_mixture_sampled_with_propensity_v1"
             ),
+            "program_router": (
+                None
+                if self.program_router is None
+                else self.program_router.configuration()
+            ),
             "controller_output": "diagnostic_only_v1",
             "decoder_input": "external_program_intention_v1",
         }
@@ -1560,6 +1625,15 @@ class ExternalProgramAmodalRuntime(nn.Module):
                 logical_id: program_state
                 for logical_id in self.program_memory.logical_slot_ids
             }
+        program_router = (
+            None
+            if self.program_router is None
+            else self.program_router.initial_state(
+                batch_size,
+                device=device,
+                dtype=dtype,
+            )
+        )
         return ExternalProgramRuntimeState(
             controller=self.runtime.initial_state(
                 batch_size,
@@ -1568,18 +1642,48 @@ class ExternalProgramAmodalRuntime(nn.Module):
             ),
             program=program_state,
             program_states=program_states,
+            program_router=program_router,
+        )
+
+    def activate_program(
+        self,
+        state: ExternalProgramRuntimeState,
+        *,
+        initialization: str = "conservative",
+    ) -> ExternalProgramRuntimeState:
+        """Activate one newly admitted file in the external route policy."""
+
+        if self.program_router is None or self.program_memory is None:
+            raise RuntimeError("external program runtime has no learned route policy")
+        if state.program_router is None:
+            raise RuntimeError("external program route state is missing")
+        if self.program_memory.file_count != state.program_router.active_programs + 1:
+            raise ValueError(
+                "activate_program requires exactly one newly admitted executable file"
+            )
+        next_router = self.program_router.append_program(
+            state.program_router,
+            initialization=initialization,
+        )
+        return ExternalProgramRuntimeState(
+            controller=state.controller,
+            program=state.program,
+            program_states=state.program_states,
+            program_router=next_router,
         )
 
     def _select_program(
         self,
         controller_output: ControllerOutput,
         controller_state: ControllerState,
+        program_router_state: ExternalOutcomeProgramRouterState | None,
     ) -> tuple[
         torch.Tensor,
         torch.Tensor,
         torch.Tensor | None,
         torch.Tensor | None,
         torch.Tensor | None,
+        ExternalOutcomeProgramRouterState | None,
     ]:
         if self.program is not None:
             batch_size = controller_output.state_representation.shape[0]
@@ -1599,6 +1703,7 @@ class ExternalProgramAmodalRuntime(nn.Module):
                 None,
                 None,
                 None,
+                program_router_state,
             )
         if self.program_memory is None or self.program_query_adapter is None:
             raise RuntimeError("external program runtime has no program source")
@@ -1609,6 +1714,47 @@ class ExternalProgramAmodalRuntime(nn.Module):
             query = self.program_query_adapter(controller_output, controller_state)
         else:
             query = self.program_query_adapter(controller_output)
+        if self.program_router is not None:
+            if program_router_state is None:
+                raise RuntimeError("external program route state is missing")
+            route_features = query.detach()
+            behavior = self.program_router.behavior_probabilities(
+                program_router_state,
+                route_features,
+                exploration=self.program_route_exploration,
+            )
+            if self.program_route_exploration:
+                selected = torch.multinomial(behavior, 1).squeeze(-1)
+                propensity = behavior.gather(
+                    1,
+                    selected.unsqueeze(-1),
+                ).squeeze(-1)
+            else:
+                selected = behavior.argmax(dim=-1)
+                propensity = torch.ones(
+                    selected.shape,
+                    device=selected.device,
+                    dtype=behavior.dtype,
+                )
+            next_router_state = self.program_router.record_decision(
+                program_router_state,
+                route_features,
+                selected,
+                propensity,
+            )
+            logical_ids = torch.tensor(
+                [self.program_memory.logical_slot_id(int(slot)) for slot in selected],
+                dtype=torch.long,
+                device=selected.device,
+            )
+            return (
+                logical_ids,
+                selected,
+                query,
+                behavior,
+                propensity,
+                next_router_state,
+            )
         route_weights = self.program_memory.route_weights(query)
         if type(self.program_memory).route_weights is ExternalSequenceProgramMemory.route_weights:
             probabilities = self.program_memory.route_probabilities(query)
@@ -1638,7 +1784,7 @@ class ExternalProgramAmodalRuntime(nn.Module):
             dtype=torch.long,
             device=selected.device,
         )
-        return logical_ids, selected, query, behavior, propensity
+        return logical_ids, selected, query, behavior, propensity, program_router_state
 
     @staticmethod
     def _merge_register_states(
@@ -1701,15 +1847,42 @@ class ExternalProgramAmodalRuntime(nn.Module):
             disable_workspace=disable_workspace,
             memory_scope=memory_scope,
         )
+        program_router_state = state.program_router
+        if self.program_router is not None:
+            if program_router_state is None:
+                raise RuntimeError("external program route state is missing")
+            feedback_present = feedback.has_feedback.reshape(-1).to(torch.bool)
+            feedback_reward = feedback.reward.reshape(-1)
+            if bool(
+                ((feedback_reward < 0.0) | (feedback_reward > 1.0))
+                .logical_and(feedback_present)
+                .any()
+            ):
+                raise ValueError(
+                    "program route feedback must lie in [0, 1] when present"
+                )
+            safe_reward = torch.where(
+                feedback_present,
+                feedback_reward,
+                torch.zeros_like(feedback_reward),
+            )
+            program_router_state = self.program_router.apply_feedback(
+                program_router_state,
+                safe_reward,
+                present=feedback_present,
+                terminal=feedback_present,
+            )
         (
             selected_logical_ids,
             selected_slots,
             program_route_query,
             program_route_probabilities,
             program_route_propensities,
+            program_router_state,
         ) = self._select_program(
             controller_output,
             next_controller,
+            program_router_state,
         )
         present = collection.present.any(dim=1)
         program_states = dict(state.program_states)
@@ -1847,6 +2020,7 @@ class ExternalProgramAmodalRuntime(nn.Module):
             controller=next_controller,
             program=snapshot.observed,
             program_states=program_states,
+            program_router=program_router_state,
         )
 
 

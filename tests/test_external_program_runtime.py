@@ -11,6 +11,7 @@ from neural_computer import (
     ExternalCapabilityRegisterMachine,
     ExternalControllerStateAdapter,
     ExternalControllerTrajectoryQueryAdapter,
+    ExternalOutcomeProgramRouter,
     ExternalProgramAmodalRuntime,
     ExternalProgramArtifact,
     ExternalProgramRuntimeState,
@@ -75,6 +76,19 @@ class _RecordingTrajectoryQueryAdapter(ExternalControllerTrajectoryQueryAdapter)
         )
 
 
+class _ConstantTrajectoryQueryAdapter(ExternalControllerTrajectoryQueryAdapter):
+    def __init__(self):
+        super().__init__(4, 5)
+
+    def forward(self, output, state):
+        return torch.ones(
+            output.state_representation.shape[0],
+            self.query_width,
+            device=output.state_representation.device,
+            dtype=output.state_representation.dtype,
+        )
+
+
 def _feedback(batch_size: int) -> ControllerFeedback:
     return ControllerFeedback(
         action=torch.zeros(batch_size, 3),
@@ -97,6 +111,7 @@ def _runtime(
     memory: ExternalSequenceProgramMemory | None = None,
     program_query_adapter=None,
     program_route_exploration: float = 0.0,
+    program_router: ExternalOutcomeProgramRouter | None = None,
 ):
     controller = AmodalCognitiveController(
         width=4,
@@ -122,6 +137,7 @@ def _runtime(
         program_memory=memory,
         program_query_adapter=program_query_adapter,
         program_route_exploration=program_route_exploration,
+        program_router=program_router,
     )
 
 
@@ -251,6 +267,93 @@ def test_external_program_runtime_exploration_reports_exact_route_propensity():
     ).squeeze(-1)
     torch.testing.assert_close(output.program_route_propensities, expected)
     assert bool(torch.all(output.program_route_propensities > 0.0))
+
+
+def test_external_program_runtime_learns_route_from_scalar_feedback_only():
+    torch.manual_seed(9034)
+    memory = _PartitionedProgramMemory()
+    memory.add_artifact(_artifact())
+    memory.add_artifact(_artifact())
+    router = ExternalOutcomeProgramRouter(
+        feature_width=5,
+        program_capacity=2,
+        initial_programs=2,
+        initial_learning_rate=0.2,
+        initial_trace_decay=0.0,
+        initial_baseline_rate=0.1,
+    )
+    _runtime_module, _machine, agent = _runtime(
+        memory=memory,
+        program_query_adapter=_ConstantTrajectoryQueryAdapter(),
+        program_route_exploration=0.2,
+        program_router=router,
+    )
+    state = agent.initial_state(1, device="cpu")
+    initial_policy = state.program_router.credit.policy.detach().clone()
+    feedback = _feedback(1)
+    for _ in range(128):
+        output, state = agent.step_events(
+            [AmodalEvent(torch.ones(1, 4))],
+            state,
+            feedback,
+        )
+        selected = output.selected_program_slots
+        assert selected is not None
+        feedback = ControllerFeedback(
+            action=torch.zeros(1, 3),
+            reward=(selected == 1).to(torch.float32),
+            propensity=torch.ones(1),
+            has_feedback=torch.ones(1, dtype=torch.bool),
+        )
+    _, state = agent.step_events(
+        [AmodalEvent(torch.ones(1, 4))],
+        state,
+        feedback,
+    )
+
+    assert state.program_router is not None
+    policy = state.program_router.credit.policy
+    assert not torch.equal(policy, initial_policy)
+    assert float(policy[..., 1].mean().detach()) > float(policy[..., 0].mean().detach())
+    assert state.program_router.credit.feedbacks.item() >= 128
+
+
+def test_external_program_runtime_router_state_round_trips_and_activates_growth():
+    torch.manual_seed(9035)
+    memory = _PartitionedProgramMemory()
+    memory.add_artifact(_artifact())
+    memory.add_artifact(_artifact())
+    router = ExternalOutcomeProgramRouter(
+        feature_width=5,
+        program_capacity=3,
+        initial_programs=2,
+    )
+    _runtime_module, _machine, agent = _runtime(
+        memory=memory,
+        program_query_adapter=_ConstantTrajectoryQueryAdapter(),
+        program_router=router,
+    )
+    state = agent.initial_state(1, device="cpu")
+    _, state = agent.step_events(
+        [AmodalEvent(torch.ones(1, 4))],
+        state,
+        _feedback(1),
+    )
+    restored = ExternalProgramRuntimeState.from_payload(
+        state.payload(),
+        program_router=router,
+    )
+    assert restored.program_router is not None
+    torch.testing.assert_close(
+        restored.program_router.credit.policy,
+        state.program_router.credit.policy,
+    )
+
+    memory.add_artifact(_artifact())
+    activated = agent.activate_program(restored)
+    assert activated.program_router is not None
+    assert activated.program_router.active_programs == 3
+    assert set(activated.program_states) == {0, 1}
 
 
 def test_external_program_runtime_supports_mixed_file_schedule_in_one_batch():

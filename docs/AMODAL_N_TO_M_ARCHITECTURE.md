@@ -8876,6 +8876,15 @@ behavior distribution and reports the selected probability per row. Existing
 custom route policies remain authoritative and their returned weights are
 normalized as the available propensity surface.
 
+The optional `ExternalOutcomeProgramRouter` is now integrated directly at this
+boundary. It receives only the detached opaque route query, applies the
+previous tick's scalar outcome before the next selection, records exact route
+propensity, and persists its eligibility/policy state inside the runtime
+checkpoint. `activate_program()` exposes one append-only admission step for a
+new executable file; controller width, interpreter parameters, and existing
+file states remain unchanged. This is outcome-driven route adaptation over
+admitted files, not learned program synthesis or arbitrary new computation.
+
 ## Durable controller-plus-file working state (2026-08-10)
 
 The runtime state boundary now has a versioned tensor-only checkpoint via
