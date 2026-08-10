@@ -60,6 +60,17 @@ parser.add_argument("--worlds", type=int, default=24)
 parser.add_argument("--held-worlds", type=int, default=6)
 parser.add_argument("--max-len", type=int, default=4)
 parser.add_argument(
+    "--train-max-len", type=int, default=0,
+    help="LENGTH EXTRAPOLATION split: train on every program of length "
+         "<= L and hold out every LONGER one. The default split holds "
+         "out half of the length-3/4 programs but trains on the other "
+         "half, so both lengths are represented in training and a model "
+         "could pass by interpolating within a length. This split "
+         "cannot be passed that way: a length-4 program is only "
+         "answerable by applying a piece one more time than was ever "
+         "demonstrated, which is the sharpest statement of the "
+         "puzzle-piece claim.")
+parser.add_argument(
     "--iterate", action="store_true",
     help="apply the program ONE PIECE AT A TIME through a shared step "
          "function over a recurrent latent, decoding only at the end. "
@@ -104,6 +115,13 @@ def all_programs() -> tuple[list, list]:
     for length in range(1, args.max_len + 1):
         for program in itertools.product((F, G), repeat=length):
             (short if length <= 2 else long).append(program)
+    if args.train_max_len:
+        short_by_len, long_by_len = [], []
+        for length in range(1, args.max_len + 1):
+            for program in itertools.product((F, G), repeat=length):
+                (short_by_len if length <= args.train_max_len
+                 else long_by_len).append(program)
+        return short_by_len, long_by_len
     order = torch.randperm(len(long), generator=generator).tolist()
     half = len(long) // 2
     held = [long[i] for i in order[:half]]
