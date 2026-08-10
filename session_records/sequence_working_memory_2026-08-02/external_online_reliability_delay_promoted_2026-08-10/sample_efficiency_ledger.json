@@ -1,0 +1,34 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "external_online_reliability_delay",
+  "decision": "promote",
+  "claim_boundary": "three-seed online interleaved reliability veto and delay state with immutable factual identity; not general continual learning",
+  "seeds": [85201, 85202, 85203],
+  "accounting": {
+    "unique_verifier_outcomes_per_seed": 84,
+    "unique_logical_transition_lifetimes_per_seed": 20,
+    "reliability_sufficient_statistics_updates": 10,
+    "wait_sufficient_statistics_updates": 64,
+    "replayed_examples": 0,
+    "old_regime_replay": 0,
+    "controller_optimizer_updates": 0,
+    "reliability_optimizer_updates": 0,
+    "wait_optimizer_updates": 0,
+    "factual_model_updates_after_source_fit": 0
+  },
+  "gates": {
+    "all_three_seeds_passed": true,
+    "gate_was_open_before_corruption": true,
+    "clean_interleaved_streams_route": true,
+    "online_gate_vetoes_corrupted_stream": true,
+    "fresh_gate_disabled_control_matches_corruption": true,
+    "interleaved_reversal_routes_to_original_slots": true,
+    "historical_bank_unchanged": true,
+    "controller_frozen": true,
+    "reliability_persistence": true,
+    "wait_persistence": true,
+    "router_persistence": true,
+    "learned_delay_waits": true,
+    "learned_absence_releases": true
+  }
+}

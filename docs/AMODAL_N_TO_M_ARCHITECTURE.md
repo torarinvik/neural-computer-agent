@@ -6718,3 +6718,28 @@ fixture.
 
 Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_reliability_delay_promoted_2026-08-10/`.
+
+## Online interleaved reliability and delay (2026-08-10)
+
+The separated boundary now learns online rather than from a separate
+calibration fixture. Two factual streams were interleaved across three seeds.
+After four clean verifier outcomes, the committed-slot reliability gate
+vetoed a low-error corrupted revisit in stream B; later clean observations
+from both streams routed back to their original stable slots. A fresh
+gate-disabled control matched the same corruption, establishing a causal
+reliability effect rather than a tolerance artifact.
+
+Incomplete timestamp evidence was updated in the same run. The wait policy
+learned a `0.999665` probability for delayed incomplete evidence and
+`0.000335` for fast absence. The controller and factual bank remained
+byte-stable, router and external-state persistence was exact, and replay and
+post-source factual model updates were zero across all seeds.
+
+This promotes bounded online interleaved reliability/delay state. It still
+does not establish learned multimodal grounding, unrestricted memory growth,
+arbitrary new computation, or general continual learning. The next pressure
+test should couple this state to candidate formation and capacity growth, not
+only committed-slot routing.
+
+Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_online_reliability_delay_promoted_2026-08-10/`.

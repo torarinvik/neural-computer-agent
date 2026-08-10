@@ -2599,3 +2599,12 @@ control accepts the corruption, persistence is exact, and the controller and
 factual bank remain frozen. This is a bounded separated reliability/delay
 mechanism, not general continual learning. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_reliability_delay_promoted_2026-08-10/`.
+
+The reliability/delay boundary then learned online during three-seed
+interleaved nonlinear streams. After a four-outcome warm-up, a low-error
+corrupted stream was vetoed while clean reversals returned to both original
+slots; the fresh gate-disabled control matched the corruption. Delay state was
+updated in the same run, with zero replay and byte-stable factual memory and
+controller. This remains a bounded online mechanism, not general continual
+learning. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_online_reliability_delay_promoted_2026-08-10/`.
