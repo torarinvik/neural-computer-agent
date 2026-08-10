@@ -6341,3 +6341,10 @@ observation and a caller-owned retention probe pass; the API deliberately
 does not permit the admitted row to serve as its own held-out gate. This is a
 reusable safety boundary, not yet a promoted claim about automatic online
 learning.
+
+For unbound input, `ExternalFactoredTransitionRouter.route_bundle` provides
+the safer atomic boundary: the full opaque evidence bundle is compared with
+all retained factual slots before novel evidence is staged. This avoids
+letting a single shared transition decide identity and avoids combining
+interleaved novel streams in one global pending window. Row-wise observation
+remains appropriate only after a caller has an established stream binding.

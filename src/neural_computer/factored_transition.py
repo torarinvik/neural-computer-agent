@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import hashlib
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -517,6 +517,50 @@ class ExternalFactoredTransitionRouter:
                 context=None,
                 pending_observations=self.pending_observations,
             ).validate(context_width=self.model.context_width)
+        return self._stage_candidate()
+
+    def route_bundle(
+        self,
+        observations: Sequence[ExternalTransitionObservation],
+    ) -> FactoredTransitionRouteResult:
+        """Route an opaque evidence bundle as one atomic stream transaction.
+
+        A bundle is scored against each retained factual slot before any
+        pending state is created.  This prevents a shared single transition
+        from deciding identity and prevents interleaved novel streams from
+        being merged into the router's row-wise pending buffer.
+        """
+
+        if self._candidate_model is not None:
+            raise RuntimeError("cannot route a bundle while a candidate is staged")
+        if self._pending:
+            raise RuntimeError("cannot route a bundle with pending row evidence")
+        if not observations:
+            raise ValueError("factored route bundle cannot be empty")
+        cloned = [self._clone_observation(item) for item in observations]
+        for item in cloned:
+            item.validate(
+                state_width=self.model.state_width,
+                intention_width=self.model.intention_width,
+            )
+        merged = self._merge(cloned)
+        matched = self._route_existing(merged)
+        if matched is not None:
+            slot_id, _error, _margin = matched
+            return FactoredTransitionRouteResult(
+                status="matched",
+                slot_id=slot_id,
+                context=self._contexts[self._slot_ids.index(slot_id)].clone(),
+                pending_observations=0,
+            ).validate(context_width=self.model.context_width)
+        if self.max_contexts is not None and len(self._contexts) >= self.max_contexts:
+            return FactoredTransitionRouteResult(
+                status="ambiguous",
+                slot_id=None,
+                context=None,
+                pending_observations=0,
+            ).validate(context_width=self.model.context_width)
+        self._pending = cloned
         return self._stage_candidate()
 
     def promote_staged_candidate(

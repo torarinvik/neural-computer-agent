@@ -1965,6 +1965,55 @@ def test_factored_router_stages_promotes_and_reuses_opaque_context() -> None:
     assert restored.slot_ids == (0,)
 
 
+def test_factored_router_routes_opaque_bundles_atomically() -> None:
+    model = ExternalFactoredTransitionModel(1, 1, 2, hidden_width=8)
+    model.freeze_base()
+    encoder = ExternalTransitionContextEncoder(1, 1, hidden_width=8, context_width=2)
+    router = ExternalFactoredTransitionRouter(
+        model,
+        encoder,
+        admission_observations=2,
+        match_tolerance=1e-6,
+        match_margin=0.0,
+    )
+    source_rows = [
+        ExternalTransitionObservation(
+            state=torch.tensor([[0.0]]),
+            intention=torch.tensor([[1.0]]),
+            next_state=torch.tensor([[1.0]]),
+        ),
+        ExternalTransitionObservation(
+            state=torch.tensor([[1.0]]),
+            intention=torch.tensor([[1.0]]),
+            next_state=torch.tensor([[2.0]]),
+        ),
+    ]
+    assert router.route_bundle(source_rows).status == "staged"
+    router.promote_staged_candidate(
+        source_rows[0],
+        lambda candidate: candidate.residual_record_count == 2,
+        prediction_tolerance=1e-6,
+    )
+
+    conflicting_rows = [
+        ExternalTransitionObservation(
+            state=torch.tensor([[0.0]]),
+            intention=torch.tensor([[1.0]]),
+            next_state=torch.tensor([[10.0]]),
+        ),
+        ExternalTransitionObservation(
+            state=torch.tensor([[1.0]]),
+            intention=torch.tensor([[1.0]]),
+            next_state=torch.tensor([[11.0]]),
+        ),
+    ]
+    staged = router.route_bundle(conflicting_rows)
+    assert staged.status == "staged"
+    assert staged.pending_observations == 0
+    assert router.candidate_active
+    assert router.pending_observations == 0
+
+
 def test_goal_evaluator_learns_scalar_verifier_without_latent_distance() -> None:
     torch.manual_seed(1203)
     evaluator = ExternalGoalEvaluator(2, hidden_width=16)
