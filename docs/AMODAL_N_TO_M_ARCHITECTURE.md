@@ -8903,3 +8903,26 @@ tensor corruption. This closes restart loss of active working context,
 but it is still persistence infrastructure: it does not prove that the
 controller acquires arbitrary procedures or retains them under unrestricted
 nonstationary learning.
+
+## Opaque goal-fragment memory and compositional destinations (2026-08-11)
+
+The policy-free factual boundary now includes the destination side of the
+CPU-plus-files split. `ExternalGoalFragmentMemory` is an independently
+versioned store of opaque target fragments. A fragment is a learned/verified
+state vector plus an opaque boolean applicability mask; the controller and
+planner never receive a semantic field name, task ID, or memory address.
+
+`ExternalGoalFragmentSet` supports runtime-sized `union` and `intersection`
+composition. Union searches for a state satisfying any fragment. Intersection
+searches for a state satisfying every fragment by scoring the worst masked
+fragment. The resulting destination is consumed by `ExternalModelBasedPlanner`
+and `PolicyFreeAmodalRuntime`; behavior remains derived from factual transition
+rollouts rather than stored as a task policy. Model-bank selection forwards the
+same composed destination to every candidate factual model.
+
+Admission is copy-on-write and verifier-owned. A failed retention probe leaves
+the live fragment store byte-stable, while accepted fragments checksum and
+reload independently of controller parameters. This makes the “replace only
+the differing puzzle piece” idea a real interface rather than a metaphor, but
+it does not yet claim learned goal discovery, open-ended fragment induction,
+or general continual learning.

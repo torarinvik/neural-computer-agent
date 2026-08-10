@@ -1476,3 +1476,14 @@ and every isolated executable-file state. Executable artifacts and model
 parameters remain separate resources; the checkpoint stores no raw modality,
 protocol, or verifier-private data, and its envelope checksum rejects silent
 tensor corruption.
+
+## Opaque goal-fragment memory
+
+`ExternalGoalFragmentMemory` stores destinations outside the fixed controller.
+Each `ExternalGoalFragmentSet` is a runtime-sized collection of opaque target
+vectors and learned/verified masks. The factual planner can compose them as a
+`union` (any fragment) or `intersection` (all fragments), so behavior is still
+derived by model-based search rather than retrieved as a task policy. The
+policy-free runtime can read fragments by external indices; addresses and
+composition metadata never enter the controller. Admission is copy-on-write,
+checksum-protected, and independently reloadable.

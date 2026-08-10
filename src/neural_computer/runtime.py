@@ -29,6 +29,10 @@ from .entry import (
     ExternalEntryProposal,
     ExternalEntryRepertoire,
 )
+from .goal_memory import (
+    ExternalGoalFragmentMemory,
+    ExternalGoalFragmentSet,
+)
 from .intention import (
     ExternalIntentionConsolidationReceipt,
     ExternalIntentionGenerationProposal,
@@ -2044,8 +2048,9 @@ class PolicyFreeRuntimeOutput:
     intention: IntentEvent
     decoded: dict[str, torch.Tensor]
     state: torch.Tensor
-    goal_state: torch.Tensor
+    goal_state: torch.Tensor | None
     selected_slot_id: int | None
+    goal_fragments: ExternalGoalFragmentSet | None = None
     proposal: ExternalIntentionProposal | None = None
     intention_generation: ExternalIntentionGenerationProposal | None = None
     intention_memory_generation: ExternalIntentionMemoryProposal | None = None
@@ -2084,6 +2089,7 @@ class PolicyFreeAmodalRuntime:
         route_query_adapter: ExternalControllerTrajectoryQueryAdapter | None = None,
         entry_repertoire: ExternalEntryRepertoire | None = None,
         entry_binding_repertoire: ExternalEntryBindingRepertoire | None = None,
+        goal_memory: ExternalGoalFragmentMemory | None = None,
         include_exploration_seed: bool = False,
     ) -> None:
         if not isinstance(runtime, AmodalControllerRuntime):
@@ -2171,6 +2177,8 @@ class PolicyFreeAmodalRuntime:
                 raise ValueError("entry binding intention width does not match runtime")
             if entry_binding_repertoire.entry_width != entry_value_model.entry_width:
                 raise ValueError("entry binding entry width does not match planner")
+        if goal_memory is not None and goal_memory.state_width != planner.model.state_width:
+            raise ValueError("goal-fragment memory width does not match planner state")
         if not isinstance(include_exploration_seed, bool):
             raise TypeError("policy-free exploration-seed flag must be boolean")
         self.runtime = runtime
@@ -2183,6 +2191,7 @@ class PolicyFreeAmodalRuntime:
         self.route_query_adapter = route_query_adapter
         self.entry_repertoire = entry_repertoire
         self.entry_binding_repertoire = entry_binding_repertoire
+        self.goal_memory = goal_memory
         self.include_exploration_seed = include_exploration_seed
 
     @property
@@ -2260,6 +2269,9 @@ class PolicyFreeAmodalRuntime:
                 None
                 if self.entry_binding_repertoire is None
                 else self.entry_binding_repertoire.configuration()
+            ),
+            "goal_memory": (
+                None if self.goal_memory is None else self.goal_memory.configuration()
             ),
             "include_exploration_seed": self.include_exploration_seed,
         }
@@ -2488,7 +2500,7 @@ class PolicyFreeAmodalRuntime:
         events: AmodalEventCollection | Sequence[AmodalEvent],
         state: ControllerState,
         feedback: ControllerFeedback,
-        goal_state: torch.Tensor,
+        goal_state: torch.Tensor | None,
         candidate_intentions: torch.Tensor | None = None,
         *,
         horizon: int,
@@ -2506,11 +2518,32 @@ class PolicyFreeAmodalRuntime:
         memory_write_override: torch.Tensor | None = None,
         memory_write_uniform: torch.Tensor | None = None,
         memory_write_gradient: bool = True,
+        goal_fragments: ExternalGoalFragmentSet | None = None,
+        goal_fragment_indices: Sequence[int] | torch.Tensor | None = None,
+        goal_composition: str = "union",
         generator_state: ExternalOutcomeIntentionGeneratorState | None = None,
         intention_memory_state: ExternalOutcomeIntentionGeneratorState | None = None,
         intention_router_state: ExternalRoutedIntentionMemoryState | None = None,
         intention_context_mask: torch.Tensor | None = None,
     ) -> tuple[PolicyFreeRuntimeOutput, ControllerState]:
+        if goal_fragments is not None and goal_fragment_indices is not None:
+            raise ValueError(
+                "policy-free runtime accepts goal fragments or goal memory indices, not both"
+            )
+        if goal_fragment_indices is not None:
+            if self.goal_memory is None:
+                raise ValueError("goal memory indices supplied without goal memory")
+            goal_fragments = self.goal_memory.propose(
+                goal_fragment_indices,
+                batch_size=state.hidden.shape[0],
+                composition=goal_composition,
+                device=state.event_window.payload.device,
+                dtype=state.event_window.payload.dtype,
+            )
+        if (goal_state is None) == (goal_fragments is None):
+            raise ValueError(
+                "policy-free runtime requires exactly one goal state or fragment set"
+            )
         collection = self.runtime.input_bus(events)
         controller_output, next_state = self.runtime.controller.step(
             collection,
@@ -2678,6 +2711,7 @@ class PolicyFreeAmodalRuntime:
                 candidate_entries=candidate_entries,
                 entry_value_weight=entry_value_weight,
                 step_cost_weight=step_cost_weight,
+                goal_fragments=goal_fragments,
             )
             planning = selection.planning
             selected_slot_id = selection.selected_slot_id
@@ -2694,6 +2728,7 @@ class PolicyFreeAmodalRuntime:
                 entry_value_weight=entry_value_weight,
                 step_cost_weight=step_cost_weight,
                 goal_progress_weight=goal_progress_weight,
+                goal_fragments=goal_fragments,
             )
             selected_slot_id = None
         planned_intention = IntentEvent(
@@ -2707,7 +2742,8 @@ class PolicyFreeAmodalRuntime:
                 intention=planned_intention,
                 decoded=self.runtime.output_bus(planned_intention),
                 state=model_state,
-                goal_state=goal_state.detach().clone(),
+                goal_state=(None if goal_state is None else goal_state.detach().clone()),
+                goal_fragments=goal_fragments,
                 selected_slot_id=selected_slot_id,
                 proposal=proposal,
                 intention_generation=intention_generation,

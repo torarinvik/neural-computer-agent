@@ -168,6 +168,15 @@ from .goal_alignment import (
     ExternalGoalRepresentationIdentityQuarantineReceipt,
     ExternalGoalRepresentationIdentityResolutionReceipt,
 )
+from .goal_memory import (
+    EXTERNAL_GOAL_FRAGMENT_ADMISSION_SCHEMA,
+    EXTERNAL_GOAL_FRAGMENT_MEMORY_SCHEMA,
+    EXTERNAL_GOAL_FRAGMENT_SCHEMA,
+    EXTERNAL_GOAL_FRAGMENT_SET_SCHEMA,
+    ExternalGoalFragmentAdmissionReceipt,
+    ExternalGoalFragmentMemory,
+    ExternalGoalFragmentSet,
+)
 from .growth import (
     GrowthLoadReceipt,
     compose_growth_artifacts,
@@ -654,6 +663,10 @@ __all__ = [
     "EXTERNAL_GOAL_CONDITIONED_MODEL_SELECTION_SCHEMA",
     "EXTERNAL_GOAL_EVALUATOR_SCHEMA",
     "EXTERNAL_GOAL_EVALUATOR_STATISTICS_SCHEMA",
+    "EXTERNAL_GOAL_FRAGMENT_ADMISSION_SCHEMA",
+    "EXTERNAL_GOAL_FRAGMENT_MEMORY_SCHEMA",
+    "EXTERNAL_GOAL_FRAGMENT_SCHEMA",
+    "EXTERNAL_GOAL_FRAGMENT_SET_SCHEMA",
     "EXTERNAL_GOAL_REPRESENTATION_ALIGNMENT_BANK_ADMISSION_SCHEMA",
     "EXTERNAL_GOAL_REPRESENTATION_ALIGNMENT_BANK_EVICTION_SCHEMA",
     "EXTERNAL_GOAL_REPRESENTATION_ALIGNMENT_BANK_GROWTH_SCHEMA",
@@ -885,6 +898,9 @@ __all__ = [
     "ExternalGoalConditionedMemoryRelevance",
     "ExternalGoalEvaluator",
     "ExternalGoalEvaluatorStatistics",
+    "ExternalGoalFragmentAdmissionReceipt",
+    "ExternalGoalFragmentMemory",
+    "ExternalGoalFragmentSet",
     "ExternalGoalRepresentationAlignmentBank",
     "ExternalGoalRepresentationAlignmentBankAdmissionReceipt",
     "ExternalGoalRepresentationAlignmentBankEvictionReceipt",

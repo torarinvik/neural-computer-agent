@@ -26,6 +26,7 @@ from torch import nn
 
 from .addressing import OpaqueCandidateGrowthRouter
 from .capacity import ADMISSION_ACTIONS, OpaqueCapacityPlannerAdapter
+from .goal_memory import ExternalGoalFragmentSet
 from .growth import compress_growth_artifact, decompress_growth_artifact
 from .memory import (
     AppendOnlyContentAddressedMemory,
@@ -10355,7 +10356,10 @@ class ExternalModelBasedPlanner:
             "schema": self.schema,
             "beam_width": self.beam_width,
             "search": "opaque_candidate_beam_rollout_v1",
-            "goal_input": "single_or_runtime_sized_opaque_goal_set_v1",
+            "goal_input": (
+                "opaque_state_targets_or_masked_goal_fragments_v1"
+            ),
+            "goal_composition": "union_or_intersection_masked_fragments_v1",
             "objective": (
                 "learned_verifier_terminal_match_v1"
                 if self.goal_evaluator is not None
@@ -10474,7 +10478,7 @@ class ExternalModelBasedPlanner:
     def plan(
         self,
         state: torch.Tensor,
-        goal_state: torch.Tensor,
+        goal_state: torch.Tensor | None,
         candidate_intentions: torch.Tensor,
         *,
         horizon: int,
@@ -10485,6 +10489,7 @@ class ExternalModelBasedPlanner:
         entry_value_weight: float = 0.0,
         step_cost_weight: float = 0.0,
         goal_progress_weight: float = 0.0,
+        goal_fragments: ExternalGoalFragmentSet | None = None,
     ) -> ModelBasedPlanningResult:
         """Return the lowest-scoring candidate sequence.
 
@@ -10526,22 +10531,35 @@ class ExternalModelBasedPlanner:
             ndim=2,
             width=self.model.state_width,
         )
-        if goal_state.ndim not in (2, 3):
-            raise ValueError("goal_state must be [batch,width] or [batch,goals,width]")
-        _validate_tensor(
-            goal_state,
-            name="goal_state",
-            ndim=goal_state.ndim,
-            width=self.model.state_width,
-        )
-        if goal_state.shape[0] != state.shape[0]:
-            raise ValueError("state and goal_state batches differ")
-        if goal_state.ndim == 2:
-            goals = goal_state.unsqueeze(1)
+        if (goal_state is None) == (goal_fragments is None):
+            raise ValueError("planner requires exactly one goal representation")
+        goals: torch.Tensor | None
+        if goal_fragments is not None:
+            goal_fragments.validate(
+                state_width=self.model.state_width,
+                batch=state.shape[0],
+            )
+            if self.goal_evaluator is not None:
+                raise ValueError(
+                    "learned goal evaluator does not support masked goal fragments"
+                )
+            goals = None
         else:
-            goals = goal_state
-        if goals.shape[1] < 1:
-            raise ValueError("planner requires at least one goal state")
+            if goal_state is None or goal_state.ndim not in (2, 3):
+                raise ValueError(
+                    "goal_state must be [batch,width] or [batch,goals,width]"
+                )
+            _validate_tensor(
+                goal_state,
+                name="goal_state",
+                ndim=goal_state.ndim,
+                width=self.model.state_width,
+            )
+            if goal_state.shape[0] != state.shape[0]:
+                raise ValueError("state and goal_state batches differ")
+            goals = goal_state.unsqueeze(1) if goal_state.ndim == 2 else goal_state
+            if goals.shape[1] < 1:
+                raise ValueError("planner requires at least one goal state")
         if transition_context is not None:
             context_width = getattr(self.model, "context_width", None)
             if not isinstance(context_width, int) or context_width < 1:
@@ -10677,34 +10695,53 @@ class ExternalModelBasedPlanner:
                         .unsqueeze(0)
                         .expand(parent_count * candidate_count, -1),
                     ).reshape(parent_count, candidate_count, -1)
-                    row_goals = goals[row]
-                    if self.goal_evaluator is None:
-                        goal_distances = (
+                    if goal_fragments is not None:
+                        row_values = goal_fragments.values[row]
+                        row_masks = goal_fragments.masks[row].to(
+                            dtype=next_states.dtype
+                        )
+                        fragment_distances = (
                             next_states.unsqueeze(2)
-                            - row_goals.unsqueeze(0).unsqueeze(0)
-                        ).square().mean(dim=-1)
-                        terminal_scores = goal_distances.min(dim=-1).values
+                            - row_values.unsqueeze(0).unsqueeze(0)
+                        ).square()
+                        fragment_distances = (
+                            fragment_distances * row_masks.unsqueeze(0).unsqueeze(0)
+                        ).sum(dim=-1) / row_masks.sum(dim=-1).clamp_min(1.0)
+                        if goal_fragments.composition == "union":
+                            terminal_scores = fragment_distances.min(dim=-1).values
+                        else:
+                            terminal_scores = fragment_distances.max(dim=-1).values
                     else:
-                        state_queries = (
-                            next_states.unsqueeze(2)
-                            .expand(-1, -1, row_goals.shape[0], -1)
-                            .reshape(-1, self.model.state_width)
-                        )
-                        goal_queries = (
-                            row_goals.unsqueeze(0)
-                            .unsqueeze(0)
-                            .expand(
-                                parent_count,
-                                candidate_count,
-                                -1,
-                                -1,
+                        if goals is None:
+                            raise RuntimeError("planner goal representation disappeared")
+                        row_goals = goals[row]
+                        if self.goal_evaluator is None:
+                            goal_distances = (
+                                next_states.unsqueeze(2)
+                                - row_goals.unsqueeze(0).unsqueeze(0)
+                            ).square().mean(dim=-1)
+                            terminal_scores = goal_distances.min(dim=-1).values
+                        else:
+                            state_queries = (
+                                next_states.unsqueeze(2)
+                                .expand(-1, -1, row_goals.shape[0], -1)
+                                .reshape(-1, self.model.state_width)
                             )
-                            .reshape(-1, self.model.state_width)
-                        )
-                        success_probability = torch.sigmoid(
-                            self.goal_evaluator(state_queries, goal_queries)
-                        ).reshape(parent_count, candidate_count, -1)
-                        terminal_scores = -success_probability.max(dim=-1).values
+                            goal_queries = (
+                                row_goals.unsqueeze(0)
+                                .unsqueeze(0)
+                                .expand(
+                                    parent_count,
+                                    candidate_count,
+                                    -1,
+                                    -1,
+                                )
+                                .reshape(-1, self.model.state_width)
+                            )
+                            success_probability = torch.sigmoid(
+                                self.goal_evaluator(state_queries, goal_queries)
+                            ).reshape(parent_count, candidate_count, -1)
+                            terminal_scores = -success_probability.max(dim=-1).values
                     if (
                         entry_value_weight > 0.0
                         and candidate_entry_values is not None
@@ -10871,7 +10908,7 @@ class ExternalModelBasedPlanner:
         self,
         bank: ExternalTransitionModelBank,
         state: torch.Tensor,
-        goal_state: torch.Tensor,
+        goal_state: torch.Tensor | None,
         candidate_intentions: torch.Tensor,
         *,
         horizon: int,
@@ -10880,6 +10917,7 @@ class ExternalModelBasedPlanner:
         candidate_entries: torch.Tensor | None = None,
         entry_value_weight: float = 0.0,
         step_cost_weight: float = 0.0,
+        goal_fragments: ExternalGoalFragmentSet | None = None,
     ) -> GoalConditionedModelSelection:
         """Select the model whose factual rollout best reaches the goal.
 
@@ -10911,8 +10949,12 @@ class ExternalModelBasedPlanner:
             raise ValueError(
                 "model bank intention representation space does not match planner"
             )
-        if state.shape[0] != 1 or goal_state.shape[0] != 1:
+        if state.shape[0] != 1:
             raise ValueError("goal-conditioned bank selection accepts one query row")
+        if goal_state is not None and goal_state.shape[0] != 1:
+            raise ValueError("goal-conditioned bank selection accepts one goal row")
+        if goal_fragments is not None and goal_fragments.values.shape[0] != 1:
+            raise ValueError("goal-conditioned bank selection accepts one fragment row")
         if bank.context_count < 1:
             raise ValueError("goal-conditioned bank selection needs one model")
         results: list[ModelBasedPlanningResult] = []
@@ -10930,6 +10972,7 @@ class ExternalModelBasedPlanner:
                     candidate_entries=candidate_entries,
                     entry_value_weight=entry_value_weight,
                     step_cost_weight=step_cost_weight,
+                    goal_fragments=goal_fragments,
                 )
             )
         scores = torch.stack([result.scores[0] for result in results])

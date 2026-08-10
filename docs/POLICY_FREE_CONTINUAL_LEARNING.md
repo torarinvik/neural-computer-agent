@@ -1211,3 +1211,31 @@ retention is not enough if temporal working state is shared accidentally. The
 next pressure remains a real nonstationary Brain Workshop acquisition stream,
 where this isolation must support new capability admission and maintenance
 without loss of earlier families.
+
+## Opaque goal-fragment memory and compositional destinations (2026-08-11)
+
+The exported architecture work exposed a missing half of the CPU-plus-files
+boundary: factual transition models were external, but destinations were still
+passed as caller-owned raw tensors. `ExternalGoalFragmentMemory` now stores
+versioned opaque destination fragments independently of the controller. Each
+fragment contains only a learned/verified target vector and a boolean mask; no
+coordinate is assigned a semantic name and no task identifier is persisted.
+
+`ExternalGoalFragmentSet` composes runtime-sized fragments by either `union`
+(satisfy any fragment) or `intersection` (satisfy every fragment). The factual
+planner scores masked fragment distance and derives the intention sequence at
+inference time. This directly implements the useful “replaced puzzle piece”
+formulation: a new destination can constrain only the small part that differs,
+while the transition model and controller remain shared. The memory supports
+copy-on-write held-out admission, checksum persistence, and true rejected
+write no-ops.
+
+`PolicyFreeAmodalRuntime` can now read fragments by opaque memory indices and
+pass the composed destination to either a single factual model or a factual
+model bank. The planner still has no stored task policy, and the controller
+still receives no goal address or composition metadata. This is a destination
+memory/composition contract, not evidence of learned goal discovery,
+unrestricted memory growth, or general continual learning. The next pressure
+is to learn or verify fragment admission from rendered experience and measure
+whether intersection fragments reduce acquisition cost on genuinely novel
+task families.
