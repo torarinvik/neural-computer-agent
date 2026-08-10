@@ -147,3 +147,127 @@ def test_program_admission_requires_a_real_stable_run() -> None:
     assert not receipt.accepted
     assert receipt.slot is None
     assert memory.file_count == 0
+
+
+def test_program_memory_lifecycle_preserves_logical_ids_and_protected_files() -> None:
+    memory = ExternalSequenceProgramMemory(5, content_addressing=True, hard_routing=True)
+    first = _artifact()
+    second = ExternalProgramArtifact(
+        codes=first.codes + 10.0,
+        interpreter_schema=first.interpreter_schema,
+        execution_schema=first.execution_schema,
+    )
+    duplicate = ExternalProgramArtifact(
+        codes=first.codes.clone(),
+        interpreter_schema=first.interpreter_schema,
+        execution_schema=first.execution_schema,
+        output_schema=first.output_schema,
+    )
+    memory.add_artifact(first)
+    memory.add_artifact(second)
+    memory.add_artifact(duplicate)
+    memory.protect_file(0)
+    source_digest = memory.digest()
+
+    protected = memory.evict_verified(
+        memory.logical_slot_id(0),
+        lambda candidate: True,
+    )
+    assert not protected.accepted
+    assert memory.digest() == source_digest
+
+    evicted = memory.evict_verified(
+        memory.logical_slot_id(1),
+        lambda candidate: candidate.logical_slot_ids == (0, 2),
+    )
+    assert evicted.accepted
+    assert memory.logical_slot_ids == (0, 2)
+    assert memory.is_file_protected(0)
+
+    consolidated = memory.consolidate_verified(
+        0,
+        2,
+        lambda survivor, candidate: survivor.digest() == candidate.digest(),
+        lambda candidate: candidate.logical_slot_ids == (0,),
+    )
+    assert consolidated.accepted
+    assert memory.file_count == 1
+    assert memory.logical_slot_ids == (0,)
+    assert memory.is_file_protected(0)
+
+
+def test_program_memory_rejects_non_equivalent_consolidation_without_writing() -> None:
+    memory = ExternalSequenceProgramMemory(5)
+    first = _artifact()
+    second = ExternalProgramArtifact(
+        codes=first.codes + 10.0,
+        interpreter_schema=first.interpreter_schema,
+        execution_schema=first.execution_schema,
+    )
+    memory.add_artifact(first)
+    memory.add_artifact(second)
+    before = memory.digest()
+
+    receipt = memory.consolidate_verified(
+        0,
+        1,
+        lambda survivor, candidate: False,
+        lambda candidate: True,
+    )
+
+    assert not receipt.accepted
+    assert memory.digest() == before
+    assert memory.logical_slot_ids == (0, 1)
+
+
+def test_program_memory_compression_is_checksumed_and_retention_gated() -> None:
+    memory = ExternalSequenceProgramMemory(5, content_addressing=True, hard_routing=True)
+    first = _artifact()
+    second = ExternalProgramArtifact(
+        codes=first.codes + 0.25,
+        interpreter_schema=first.interpreter_schema,
+        execution_schema=first.execution_schema,
+    )
+    memory.add_artifact(first)
+    memory.add_artifact(second)
+    memory.protect_file(0)
+    compressed = memory.compressed_payload(dtype=torch.float16)
+    restored = ExternalSequenceProgramMemory.from_compressed_payload(compressed)
+
+    assert restored.file_count == memory.file_count
+    assert restored.logical_slot_ids == memory.logical_slot_ids
+    assert restored.protection_mask().tolist() == [True, False]
+    assert torch.allclose(restored.artifact(0).codes, first.codes, atol=1e-3)
+    assert compressed["state"]["programs.0"].dtype == torch.float16
+
+    receipt = memory.compress_verified(
+        dtype=torch.float16,
+        retention_probe=lambda candidate: candidate.file_count == 2
+        and candidate.is_file_protected(0),
+    )
+    assert receipt.accepted
+    assert receipt.candidate_storage_bytes < receipt.source_storage_bytes
+    assert memory.file_count == 2
+
+
+def test_program_memory_migrates_legacy_payload_with_default_logical_ids() -> None:
+    memory = ExternalSequenceProgramMemory(5)
+    memory.add_artifact(_artifact())
+    payload = memory.payload()
+    legacy_configuration = dict(payload["configuration"])
+    legacy_configuration["schema"] = "neural-computer.external-sequence-program-memory.v1"
+    legacy_configuration.pop("logical_slot_ids")
+    legacy_configuration.pop("next_logical_slot_id")
+    legacy = dict(payload)
+    legacy["schema"] = "neural-computer.external-sequence-program-memory.v1"
+    legacy["configuration"] = legacy_configuration
+    legacy["sha256"] = memory._digest_components(
+        "neural-computer.external-sequence-program-memory.v1",
+        legacy_configuration,
+        payload["state"],
+    )
+
+    restored = ExternalSequenceProgramMemory.from_payload(legacy)
+
+    assert restored.logical_slot_ids == (0,)
+    assert restored.artifact(0).digest() == memory.artifact(0).digest()

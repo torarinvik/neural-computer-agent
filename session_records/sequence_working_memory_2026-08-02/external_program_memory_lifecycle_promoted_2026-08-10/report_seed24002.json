@@ -1,0 +1,142 @@
+{
+  "schema": "neural-computer.external-program-memory-lifecycle.v1",
+  "claim_boundary": "bounded verifier-gated eviction, equivalence consolidation, and durable compression for opaque executable external memory with a frozen controller; not unrestricted growth or general continual learning",
+  "seed": 24002,
+  "configuration": {
+    "program_count": 2,
+    "held_out_registers": 64,
+    "execution_tolerance": 1e-06,
+    "compression_tolerance": 0.02,
+    "learner_inputs": [
+      "opaque executable artifacts",
+      "scalar held-out verifier outcomes"
+    ]
+  },
+  "interpreter_final_loss": 6.666638879934857e-15,
+  "initial_logical_ids": [
+    0,
+    1,
+    2
+  ],
+  "final_logical_ids": [
+    0
+  ],
+  "protected_receipt": {
+    "schema": "neural-computer.external-program-memory-transaction.v1",
+    "accepted": false,
+    "operation": "evict",
+    "affected_slot_id": 0,
+    "source_file_count": 3,
+    "destination_file_count": 3,
+    "source_digest": "c38f434403ad87dc954558ad3676e696eaf91c0dfeb193d02a63ea12e768775b",
+    "candidate_digest": "c38f434403ad87dc954558ad3676e696eaf91c0dfeb193d02a63ea12e768775b",
+    "source_storage_bytes": 28224,
+    "candidate_storage_bytes": 28224,
+    "reason": "protected executable file cannot be evicted"
+  },
+  "eviction_receipt": {
+    "schema": "neural-computer.external-program-memory-transaction.v1",
+    "accepted": true,
+    "operation": "evict",
+    "affected_slot_id": 2,
+    "source_file_count": 3,
+    "destination_file_count": 2,
+    "source_digest": "c38f434403ad87dc954558ad3676e696eaf91c0dfeb193d02a63ea12e768775b",
+    "candidate_digest": "15d444e086b2ed5e574b30a2a063893777797cd01a1c1df4b2f855a287a4001f",
+    "source_storage_bytes": 28224,
+    "candidate_storage_bytes": 28128,
+    "reason": "retention-verified logical executable file eviction committed"
+  },
+  "wrong_consolidation_receipt": {
+    "schema": "neural-computer.external-program-memory-transaction.v1",
+    "accepted": false,
+    "operation": "consolidate",
+    "affected_slot_id": 2,
+    "source_file_count": 3,
+    "destination_file_count": 3,
+    "source_digest": "c38f434403ad87dc954558ad3676e696eaf91c0dfeb193d02a63ea12e768775b",
+    "candidate_digest": "c38f434403ad87dc954558ad3676e696eaf91c0dfeb193d02a63ea12e768775b",
+    "source_storage_bytes": 28224,
+    "candidate_storage_bytes": 28224,
+    "reason": "held-out executable functions are not equivalent"
+  },
+  "consolidation_receipt": {
+    "schema": "neural-computer.external-program-memory-transaction.v1",
+    "accepted": true,
+    "operation": "consolidate",
+    "affected_slot_id": 1,
+    "source_file_count": 2,
+    "destination_file_count": 1,
+    "source_digest": "15d444e086b2ed5e574b30a2a063893777797cd01a1c1df4b2f855a287a4001f",
+    "candidate_digest": "19e720cdd06111a3102f5f21cd9e699936aca1ea8329ce36b53d978ca9d43e48",
+    "source_storage_bytes": 28128,
+    "candidate_storage_bytes": 28032,
+    "reason": "held-out-equivalent executable files were consolidated"
+  },
+  "mutating_compression_receipt": {
+    "schema": "neural-computer.external-program-memory-transaction.v1",
+    "accepted": false,
+    "operation": "compress",
+    "affected_slot_id": null,
+    "source_file_count": 1,
+    "destination_file_count": 1,
+    "source_digest": "19e720cdd06111a3102f5f21cd9e699936aca1ea8329ce36b53d978ca9d43e48",
+    "candidate_digest": "19e720cdd06111a3102f5f21cd9e699936aca1ea8329ce36b53d978ca9d43e48",
+    "source_storage_bytes": 28032,
+    "candidate_storage_bytes": 28032,
+    "reason": "retention probe mutated the compressed candidate"
+  },
+  "compression_receipt": {
+    "schema": "neural-computer.external-program-memory-transaction.v1",
+    "accepted": true,
+    "operation": "compress",
+    "affected_slot_id": null,
+    "source_file_count": 1,
+    "destination_file_count": 1,
+    "source_digest": "19e720cdd06111a3102f5f21cd9e699936aca1ea8329ce36b53d978ca9d43e48",
+    "candidate_digest": "a7407f87a0259c0253e1a74d6d10cc41e4d40a1108beb2fea65b496dc40b11ab",
+    "source_storage_bytes": 28032,
+    "candidate_storage_bytes": 14016,
+    "reason": "storage-compressed executable memory committed after retention"
+  },
+  "runtime_smoke": {
+    "executed_file": "5d8dcd4d5d48a7a5c9216e7edaae150783d8f0d32b8bcf979d8d1a863c6203f3",
+    "decoded_shape": [
+      1,
+      1
+    ],
+    "controller_frozen": true
+  },
+  "probe_accounting": {
+    "retention": 320,
+    "equivalence": 128
+  },
+  "gates": {
+    "protected_eviction_rejected_without_write": true,
+    "unprotected_eviction_retained_survivor": true,
+    "non_equivalent_consolidation_rejected_without_write": true,
+    "equivalent_consolidation_compacted_files": true,
+    "logical_ids_survived_compaction": true,
+    "compressed_restore_retained_behavior": true,
+    "corrupt_compressed_payload_rejected": true,
+    "mutating_probe_rejected_without_write": true,
+    "durable_compression_reduced_storage": true,
+    "memory_persistence_exact": true,
+    "controller_runtime_seam": true,
+    "executor_frozen": true,
+    "zero_replayed_examples": true,
+    "zero_controller_optimizer_updates": true
+  },
+  "promoted": true,
+  "accounting": {
+    "unique_verifier_bits": 448,
+    "unique_logical_lifetimes": 3,
+    "optimizer_updates": 500,
+    "controller_optimizer_updates": 0,
+    "replayed_examples": 0,
+    "stable_bits_to_threshold": null,
+    "retention_on_mastered_primitives": 1.0,
+    "transfer_ratio_against_fresh": null,
+    "latency_seconds": 1.0934189580148086
+  }
+}

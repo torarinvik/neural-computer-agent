@@ -8783,3 +8783,33 @@ not evidence of open-ended program induction, unrestricted memory growth,
 Turing-complete acquisition, or general continual learning. The next decisive
 test is the same frontier on genuinely rendered Brain Workshop task families,
 where the verifier and target composition are not synthetic atom sequences.
+
+## Verifier-gated executable-memory lifecycle (2026-08-10)
+
+The external executable-file boundary now has a complete bounded lifecycle,
+not just append-only admission. `ExternalSequenceProgramMemory` assigns stable
+opaque logical file IDs at admission and retains them across physical
+compaction. Copy-on-write transactions support `evict_verified()` for
+unprotected files, `consolidate_verified()` for held-out-equivalent files,
+and `compress_verified()` for smaller durable representations. Every operation
+has a metadata-only, versioned `ExternalProgramMemoryTransactionReceipt`;
+rejected operations expose the unchanged live digest and cannot mutate the
+source bank.
+
+Equivalence and retention remain caller-owned verifier probes. The memory
+store does not interpret task labels, modalities, protocol actions, or raw
+verifier rows. Compression is decompressed and behavior-checked before
+commit, and corrupted envelopes are rejected by checksum. Logical IDs are
+memory-side bookkeeping and are never sent through the amodal controller or
+intention bus.
+
+The three-seed promotion is archived in
+`session_records/sequence_working_memory_2026-08-02/external_program_memory_lifecycle_promoted_2026-08-10/`.
+It passes protected-eviction no-op, non-equivalent consolidation rejection,
+equivalent-file consolidation, stable-ID retention, corruption and
+mutating-probe controls, durable float16 compression, exact persistence,
+canonical runtime traversal, frozen-controller/interpreter, zero-replay, and
+zero-controller-update gates. This promotes a bounded external-memory
+lifecycle contract. Learned maintenance-policy selection, unbounded growth,
+learned compression, arbitrary new computation, and general continual
+learning remain unqualified.

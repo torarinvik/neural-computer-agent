@@ -1405,3 +1405,21 @@ independent stable-prefix transaction, so failed hypotheses cannot overwrite
 protected external files. This establishes a bounded CPU-plus-files search
 seam, not arbitrary program induction, unrestricted growth, or general
 continual learning.
+
+## Verifier-gated executable-memory lifecycle
+
+`ExternalSequenceProgramMemory` now behaves like a versioned external file
+store rather than an append-only tensor list. Stable logical IDs survive
+physical removal. `evict_verified()` and `consolidate_verified()` build
+copy-on-write candidates and commit only after caller-owned held-out retention
+and equivalence probes pass. `compressed_payload()` and
+`compress_verified()` provide checksummed durable compression with a
+post-decompression behavior gate; the hot controller boundary remains
+unchanged.
+
+The three-seed promotion is archived at
+`session_records/sequence_working_memory_2026-08-02/external_program_memory_lifecycle_promoted_2026-08-10/`.
+It demonstrates safe bounded lifecycle management with a frozen controller,
+zero replay, and zero controller updates. It does not claim learned
+maintenance selection, learned compression, unrestricted growth, arbitrary
+new computation, or general continual learning.

@@ -14,7 +14,7 @@ interpreter, rather than adding another whole neural reasoning branch.
 from __future__ import annotations
 
 import hashlib
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 
 import torch
@@ -25,6 +25,7 @@ from .interface import IntentEvent
 from .program import (
     ExternalProgramAdmissionReceipt,
     ExternalProgramArtifact,
+    ExternalProgramMemoryTransactionReceipt,
     evaluate_external_program_admission,
 )
 
@@ -65,9 +66,40 @@ EXTERNAL_REGISTER_SHARED_OPERATOR_BASIS_MODE = (
     "factorized_shared_operator_basis"
 )
 EXTERNAL_SEQUENCE_MEMORY_SCHEMA = "neural-computer.external-sequence-memory.v1"
-EXTERNAL_SEQUENCE_PROGRAM_MEMORY_SCHEMA = (
+LEGACY_EXTERNAL_SEQUENCE_PROGRAM_MEMORY_SCHEMA = (
     "neural-computer.external-sequence-program-memory.v1"
 )
+EXTERNAL_SEQUENCE_PROGRAM_MEMORY_SCHEMA = (
+    "neural-computer.external-sequence-program-memory.v2"
+)
+EXTERNAL_SEQUENCE_PROGRAM_MEMORY_COMPRESSED_SCHEMA = (
+    "neural-computer.external-sequence-program-memory-compressed.v1"
+)
+
+
+def _digest_mapping(value: object) -> str:
+    """Checksum nested tensor metadata without retaining verifier rows."""
+
+    digest = hashlib.sha256()
+
+    def visit(item: object) -> None:
+        if isinstance(item, torch.Tensor):
+            tensor = item.detach().cpu().contiguous()
+            digest.update(str(tensor.dtype).encode("utf-8"))
+            digest.update(repr(tuple(tensor.shape)).encode("utf-8"))
+            digest.update(tensor.numpy().tobytes())
+        elif isinstance(item, Mapping):
+            for key in sorted(item):
+                digest.update(str(key).encode("utf-8"))
+                visit(item[key])
+        elif isinstance(item, (tuple, list)):
+            for child in item:
+                visit(child)
+        else:
+            digest.update(repr(item).encode("utf-8"))
+
+    visit(value)
+    return digest.hexdigest()
 
 
 EXTERNAL_REGISTER_ROLE_BINDING_SCHEMA = (
@@ -514,7 +546,13 @@ class ExternalSequenceMemory(nn.Module):
 
 
 class ExternalSequenceProgramMemory(nn.Module):
-    """Append-only opaque program data executed by one shared interpreter."""
+    """Versioned opaque program files executed by one shared interpreter.
+
+    Admission grows the bank, while copy-on-write lifecycle transactions can
+    safely retire equivalent or unneeded files and compress durable storage.
+    The controller sees only the selected executable tensor; logical file IDs
+    remain entirely on the external-memory side of the boundary.
+    """
 
     schema = EXTERNAL_SEQUENCE_PROGRAM_MEMORY_SCHEMA
 
@@ -542,6 +580,8 @@ class ExternalSequenceProgramMemory(nn.Module):
         self.slot_keys = nn.ParameterList()
         self._protected_slots: list[bool] = []
         self._output_schemas: list[str | None] = []
+        self._logical_slot_ids: list[int] = []
+        self._next_logical_slot_id = 0
         self.query_encoder = nn.GRU(
             self.instruction_width, self.router_hidden, batch_first=True
         )
@@ -583,12 +623,14 @@ class ExternalSequenceProgramMemory(nn.Module):
             "program_lengths": [int(program.shape[0]) for program in self.programs],
             "output_schemas": list(self._output_schemas),
             "protected_slots": list(self._protected_slots),
+            "logical_slot_ids": list(self._logical_slot_ids),
+            "next_logical_slot_id": self._next_logical_slot_id,
             "addressing": (
                 "immutable_opaque_program_content_v1"
                 if self.content_addressing
                 else "learned_slot_keys_v1"
             ),
-            "storage": "append_only_opaque_instruction_sequences_v1",
+            "storage": "copy_on_write_opaque_instruction_files_v2",
             "computation": "shared_register_interpreter_v1",
             "artifact_schema": "neural-computer.external-program-artifact.v1",
         }
@@ -652,6 +694,8 @@ class ExternalSequenceProgramMemory(nn.Module):
         self.slot_keys.append(key)
         self._protected_slots.append(False)
         self._output_schemas.append(None)
+        self._logical_slot_ids.append(self._next_logical_slot_id)
+        self._next_logical_slot_id += 1
         return len(self.programs) - 1
 
     @property
@@ -659,6 +703,29 @@ class ExternalSequenceProgramMemory(nn.Module):
         """Return the number of executable files in the external bank."""
 
         return len(self.programs)
+
+    @property
+    def logical_slot_ids(self) -> tuple[int, ...]:
+        """Return stable opaque IDs, independent of physical file positions."""
+
+        return tuple(self._logical_slot_ids)
+
+    def logical_slot_id(self, slot: int) -> int:
+        """Resolve one current physical position to its stable logical ID."""
+
+        if not 0 <= slot < self.file_count:
+            raise ValueError("sequence program memory file index is out of range")
+        return self._logical_slot_ids[slot]
+
+    def physical_index_for_logical_id(self, slot_id: int) -> int:
+        """Resolve a stable file ID without exposing it to the controller."""
+
+        if slot_id < 0:
+            raise ValueError("sequence program memory logical ID cannot be negative")
+        try:
+            return self._logical_slot_ids.index(int(slot_id))
+        except ValueError as error:
+            raise KeyError("sequence program memory logical ID is not retained") from error
 
     def protection_mask(self) -> torch.Tensor:
         """Return memory-side protection without exposing file semantics."""
@@ -723,6 +790,457 @@ class ExternalSequenceProgramMemory(nn.Module):
             stable_prefix_minimum=receipt.stable_prefix_minimum,
             reason="candidate verified and committed as an external file",
         ).validate()
+
+    def _state_storage_bytes(self) -> int:
+        return sum(
+            value.numel() * value.element_size()
+            for value in self.state_dict().values()
+        )
+
+    @staticmethod
+    def _tensor_mapping_storage_bytes(mapping: Mapping[str, torch.Tensor]) -> int:
+        return sum(value.numel() * value.element_size() for value in mapping.values())
+
+    @staticmethod
+    def _copy_shared_module_state(
+        source: ExternalSequenceProgramMemory,
+        target: ExternalSequenceProgramMemory,
+    ) -> None:
+        for name in (
+            "query_encoder",
+            "program_query",
+            "route_query_encoder",
+            "key_encoder",
+        ):
+            source_module = getattr(source, name)
+            target_module = getattr(target, name)
+            target_module.load_state_dict(source_module.state_dict(), strict=True)
+            source_parameters = dict(source_module.named_parameters())
+            for parameter_name, target_parameter in target_module.named_parameters():
+                target_parameter.requires_grad_(
+                    source_parameters[parameter_name].requires_grad
+                )
+
+    def _copy_selected_files(
+        self,
+        slots: Sequence[int],
+    ) -> ExternalSequenceProgramMemory:
+        selected = tuple(int(slot) for slot in slots)
+        if not selected:
+            raise ValueError("external program memory candidate cannot be empty")
+        if any(not 0 <= slot < self.file_count for slot in selected):
+            raise IndexError("external program memory candidate slot is out of range")
+        if len(set(selected)) != len(selected):
+            raise ValueError("external program memory candidate slots must be unique")
+        candidate = ExternalSequenceProgramMemory(
+            self.instruction_width,
+            router_hidden=self.router_hidden,
+            router_temperature=self.router_temperature,
+            hard_routing=self.hard_routing,
+            content_addressing=self.content_addressing,
+        )
+        for slot in selected:
+            new_slot = candidate.add_program(self.programs[slot].detach())
+            candidate._output_schemas[new_slot] = self._output_schemas[slot]
+            candidate._protected_slots[new_slot] = self._protected_slots[slot]
+            candidate._logical_slot_ids[new_slot] = self._logical_slot_ids[slot]
+            with torch.no_grad():
+                candidate.programs[new_slot].copy_(self.programs[slot])
+                candidate.address_programs[new_slot].copy_(
+                    self.address_programs[slot]
+                )
+                candidate.slot_keys[new_slot].copy_(self.slot_keys[slot])
+            candidate.programs[new_slot].requires_grad_(
+                self.programs[slot].requires_grad
+            )
+            candidate.slot_keys[new_slot].requires_grad_(
+                self.slot_keys[slot].requires_grad
+            )
+        candidate._next_logical_slot_id = self._next_logical_slot_id
+        self._copy_shared_module_state(self, candidate)
+        return candidate
+
+    def _commit_candidate(self, candidate: ExternalSequenceProgramMemory) -> None:
+        if not isinstance(candidate, ExternalSequenceProgramMemory):
+            raise TypeError("external program memory candidate has the wrong type")
+        if candidate.instruction_width != self.instruction_width:
+            raise ValueError("external program memory candidate width is incompatible")
+        if candidate.file_count < 1:
+            raise ValueError("external program memory candidate cannot be empty")
+        self.programs = candidate.programs
+        self.address_programs = candidate.address_programs
+        self.slot_keys = candidate.slot_keys
+        self._protected_slots = list(candidate._protected_slots)
+        self._output_schemas = list(candidate._output_schemas)
+        self._logical_slot_ids = list(candidate._logical_slot_ids)
+        self._next_logical_slot_id = candidate._next_logical_slot_id
+        self._copy_shared_module_state(candidate, self)
+
+    @staticmethod
+    def _transaction_receipt(
+        *,
+        accepted: bool,
+        operation: str,
+        affected_slot_id: int | None,
+        source_file_count: int,
+        destination_file_count: int,
+        source_digest: str,
+        candidate_digest: str,
+        source_storage_bytes: int,
+        candidate_storage_bytes: int,
+        reason: str,
+    ) -> ExternalProgramMemoryTransactionReceipt:
+        return ExternalProgramMemoryTransactionReceipt(
+            accepted=accepted,
+            operation=operation,
+            affected_slot_id=affected_slot_id,
+            source_file_count=source_file_count,
+            destination_file_count=destination_file_count,
+            source_digest=source_digest,
+            candidate_digest=candidate_digest,
+            source_storage_bytes=source_storage_bytes,
+            candidate_storage_bytes=candidate_storage_bytes,
+            reason=reason,
+        ).validate()
+
+    def _run_lifecycle_probe(
+        self,
+        candidate: ExternalSequenceProgramMemory,
+        retention_probe: Callable[[ExternalSequenceProgramMemory], bool],
+    ) -> tuple[bool, bool]:
+        if not callable(retention_probe):
+            raise TypeError("external program memory retention probe is invalid")
+        before = candidate.digest()
+        accepted = bool(retention_probe(candidate))
+        return accepted, candidate.digest() == before
+
+    def evict_verified(
+        self,
+        slot_id: int,
+        retention_probe: Callable[[ExternalSequenceProgramMemory], bool],
+    ) -> ExternalProgramMemoryTransactionReceipt:
+        """Remove one unprotected logical file after a held-out proof.
+
+        Physical indices may change, but surviving logical IDs remain stable.
+        The live bank is changed only after the copy-on-write candidate passes
+        the caller-owned retention probe and the probe itself is non-mutating.
+        """
+
+        index = self.physical_index_for_logical_id(slot_id)
+        source_digest = self.digest()
+        source_count = self.file_count
+        source_bytes = self._state_storage_bytes()
+        if self._protected_slots[index]:
+            return self._transaction_receipt(
+                accepted=False,
+                operation="evict",
+                affected_slot_id=slot_id,
+                source_file_count=source_count,
+                destination_file_count=source_count,
+                source_digest=source_digest,
+                candidate_digest=source_digest,
+                source_storage_bytes=source_bytes,
+                candidate_storage_bytes=source_bytes,
+                reason="protected executable file cannot be evicted",
+            )
+        if source_count <= 1:
+            return self._transaction_receipt(
+                accepted=False,
+                operation="evict",
+                affected_slot_id=slot_id,
+                source_file_count=source_count,
+                destination_file_count=source_count,
+                source_digest=source_digest,
+                candidate_digest=source_digest,
+                source_storage_bytes=source_bytes,
+                candidate_storage_bytes=source_bytes,
+                reason="external program memory must retain one file",
+            )
+        candidate = self._copy_selected_files(
+            [slot for slot in range(source_count) if slot != index]
+        )
+        accepted, probe_unchanged = self._run_lifecycle_probe(
+            candidate,
+            retention_probe,
+        )
+        candidate_digest = candidate.digest()
+        if not accepted or not probe_unchanged:
+            return self._transaction_receipt(
+                accepted=False,
+                operation="evict",
+                affected_slot_id=slot_id,
+                source_file_count=source_count,
+                destination_file_count=source_count,
+                source_digest=source_digest,
+                candidate_digest=source_digest,
+                source_storage_bytes=source_bytes,
+                candidate_storage_bytes=source_bytes,
+                reason=(
+                    "retention probe mutated the candidate"
+                    if not probe_unchanged
+                    else "post-eviction retention probe failed"
+                ),
+            )
+        candidate_bytes = candidate._state_storage_bytes()
+        self._commit_candidate(candidate)
+        return self._transaction_receipt(
+            accepted=True,
+            operation="evict",
+            affected_slot_id=slot_id,
+            source_file_count=source_count,
+            destination_file_count=self.file_count,
+            source_digest=source_digest,
+            candidate_digest=candidate_digest,
+            source_storage_bytes=source_bytes,
+            candidate_storage_bytes=candidate_bytes,
+            reason="retention-verified logical executable file eviction committed",
+        )
+
+    def consolidate_verified(
+        self,
+        survivor_slot_id: int,
+        duplicate_slot_id: int,
+        equivalence_probe: Callable[
+            [ExternalProgramArtifact, ExternalProgramArtifact], bool
+        ],
+        retention_probe: Callable[[ExternalSequenceProgramMemory], bool],
+    ) -> ExternalProgramMemoryTransactionReceipt:
+        """Drop an equivalent unprotected file without changing its survivor.
+
+        Equivalence is verified by a caller-owned held-out execution probe;
+        this store never interprets the program or the verifier. The survivor
+        keeps its logical ID and physical parameters, while the duplicate's
+        logical ID is retired only after retention passes.
+        """
+
+        survivor_index = self.physical_index_for_logical_id(survivor_slot_id)
+        duplicate_index = self.physical_index_for_logical_id(duplicate_slot_id)
+        if survivor_index == duplicate_index:
+            raise ValueError("executable consolidation needs two distinct files")
+        source_digest = self.digest()
+        source_count = self.file_count
+        source_bytes = self._state_storage_bytes()
+        if self._protected_slots[duplicate_index]:
+            return self._transaction_receipt(
+                accepted=False,
+                operation="consolidate",
+                affected_slot_id=duplicate_slot_id,
+                source_file_count=source_count,
+                destination_file_count=source_count,
+                source_digest=source_digest,
+                candidate_digest=source_digest,
+                source_storage_bytes=source_bytes,
+                candidate_storage_bytes=source_bytes,
+                reason="protected duplicate executable file cannot be consolidated",
+            )
+        if not callable(equivalence_probe):
+            raise TypeError("executable equivalence probe is invalid")
+        if not bool(
+            equivalence_probe(
+                self.artifact(survivor_index),
+                self.artifact(duplicate_index),
+            )
+        ):
+            return self._transaction_receipt(
+                accepted=False,
+                operation="consolidate",
+                affected_slot_id=duplicate_slot_id,
+                source_file_count=source_count,
+                destination_file_count=source_count,
+                source_digest=source_digest,
+                candidate_digest=source_digest,
+                source_storage_bytes=source_bytes,
+                candidate_storage_bytes=source_bytes,
+                reason="held-out executable functions are not equivalent",
+            )
+        candidate = self._copy_selected_files(
+            [slot for slot in range(source_count) if slot != duplicate_index]
+        )
+        accepted, probe_unchanged = self._run_lifecycle_probe(
+            candidate,
+            retention_probe,
+        )
+        candidate_digest = candidate.digest()
+        if not accepted or not probe_unchanged:
+            return self._transaction_receipt(
+                accepted=False,
+                operation="consolidate",
+                affected_slot_id=duplicate_slot_id,
+                source_file_count=source_count,
+                destination_file_count=source_count,
+                source_digest=source_digest,
+                candidate_digest=source_digest,
+                source_storage_bytes=source_bytes,
+                candidate_storage_bytes=source_bytes,
+                reason=(
+                    "retention probe mutated the candidate"
+                    if not probe_unchanged
+                    else "post-consolidation retention probe failed"
+                ),
+            )
+        candidate_bytes = candidate._state_storage_bytes()
+        self._commit_candidate(candidate)
+        return self._transaction_receipt(
+            accepted=True,
+            operation="consolidate",
+            affected_slot_id=duplicate_slot_id,
+            source_file_count=source_count,
+            destination_file_count=self.file_count,
+            source_digest=source_digest,
+            candidate_digest=candidate_digest,
+            source_storage_bytes=source_bytes,
+            candidate_storage_bytes=candidate_bytes,
+            reason="held-out-equivalent executable files were consolidated",
+        )
+
+    def compressed_payload(
+        self,
+        *,
+        dtype: torch.dtype | str = torch.float16,
+    ) -> dict[str, object]:
+        """Create a smaller durable representation of the complete file bank."""
+
+        from .growth import compress_growth_artifact
+
+        source = self.payload()
+        state = source["state"]
+        if not isinstance(state, dict):
+            raise TypeError("external program memory state is not a tensor mapping")
+        compressed_state = compress_growth_artifact(state, dtype=dtype)
+        payload: dict[str, object] = {
+            "schema": EXTERNAL_SEQUENCE_PROGRAM_MEMORY_COMPRESSED_SCHEMA,
+            "codec": str(dtype),
+            "source_schema": self.schema,
+            "configuration": source["configuration"],
+            "artifacts": source["artifacts"],
+            "output_schemas": source["output_schemas"],
+            "protected_slots": source["protected_slots"],
+            "state": compressed_state,
+            "source_sha256": source["sha256"],
+        }
+        payload["sha256"] = _digest_mapping(payload)
+        return payload
+
+    @classmethod
+    def from_compressed_payload(
+        cls,
+        payload: dict[str, object],
+    ) -> ExternalSequenceProgramMemory:
+        """Restore a compressed file-bank payload through the normal ABI."""
+
+        from .growth import decompress_growth_artifact
+
+        if not isinstance(payload, dict):
+            raise TypeError("compressed external program memory payload must be a dictionary")
+        if payload.get("schema") != EXTERNAL_SEQUENCE_PROGRAM_MEMORY_COMPRESSED_SCHEMA:
+            raise ValueError("unsupported compressed external program memory schema")
+        expected = payload.get("sha256")
+        unsigned = {key: value for key, value in payload.items() if key != "sha256"}
+        if not isinstance(expected, str) or expected != _digest_mapping(unsigned):
+            raise ValueError("compressed external program memory checksum mismatch")
+        source_schema = payload.get("source_schema")
+        configuration = payload.get("configuration")
+        artifacts = payload.get("artifacts")
+        output_schemas = payload.get("output_schemas")
+        protected_slots = payload.get("protected_slots")
+        state = payload.get("state")
+        source_sha256 = payload.get("source_sha256")
+        if source_schema != cls.schema:
+            raise ValueError("compressed external program memory source schema is incompatible")
+        if not isinstance(configuration, dict) or not isinstance(artifacts, list):
+            raise TypeError("compressed external program memory metadata is incomplete")
+        if not isinstance(output_schemas, list) or not isinstance(protected_slots, list):
+            raise TypeError("compressed external program memory slot metadata is invalid")
+        if not isinstance(state, dict) or not isinstance(source_sha256, str):
+            raise TypeError("compressed external program memory state is invalid")
+        if len(source_sha256) != 64:
+            raise ValueError("compressed external program memory source digest is malformed")
+        try:
+            int(source_sha256, 16)
+        except ValueError as error:
+            raise ValueError(
+                "compressed external program memory source digest is malformed"
+            ) from error
+        decompressed = decompress_growth_artifact(state)
+        restored = cls.from_payload(
+            {
+                "schema": cls.schema,
+                "configuration": configuration,
+                "artifacts": artifacts,
+                "output_schemas": output_schemas,
+                "protected_slots": protected_slots,
+                "state": decompressed,
+                "sha256": source_sha256,
+            },
+            verify_checksum=False,
+        )
+        return restored
+
+    def compress_verified(
+        self,
+        *,
+        dtype: torch.dtype | str = torch.float16,
+        retention_probe: Callable[[ExternalSequenceProgramMemory], bool],
+    ) -> ExternalProgramMemoryTransactionReceipt:
+        """Commit storage compression only after a non-mutating behavior probe."""
+
+        source_digest = self.digest()
+        source_count = self.file_count
+        source_bytes = self._state_storage_bytes()
+        compressed = self.compressed_payload(dtype=dtype)
+        candidate = self.from_compressed_payload(compressed)
+        accepted, probe_unchanged = self._run_lifecycle_probe(
+            candidate,
+            retention_probe,
+        )
+        candidate_digest = candidate.digest()
+        compressed_state = compressed.get("state")
+        if not isinstance(compressed_state, dict):
+            raise TypeError("compressed external program memory state is invalid")
+        candidate_bytes = self._tensor_mapping_storage_bytes(compressed_state)
+        if candidate_bytes >= source_bytes:
+            return self._transaction_receipt(
+                accepted=False,
+                operation="compress",
+                affected_slot_id=None,
+                source_file_count=source_count,
+                destination_file_count=source_count,
+                source_digest=source_digest,
+                candidate_digest=source_digest,
+                source_storage_bytes=source_bytes,
+                candidate_storage_bytes=source_bytes,
+                reason="compressed representation is not smaller than source storage",
+            )
+        if not accepted or not probe_unchanged:
+            return self._transaction_receipt(
+                accepted=False,
+                operation="compress",
+                affected_slot_id=None,
+                source_file_count=source_count,
+                destination_file_count=source_count,
+                source_digest=source_digest,
+                candidate_digest=source_digest,
+                source_storage_bytes=source_bytes,
+                candidate_storage_bytes=source_bytes,
+                reason=(
+                    "retention probe mutated the compressed candidate"
+                    if not probe_unchanged
+                    else "compressed candidate failed held-out retention"
+                ),
+            )
+        self._commit_candidate(candidate)
+        return self._transaction_receipt(
+            accepted=True,
+            operation="compress",
+            affected_slot_id=None,
+            source_file_count=source_count,
+            destination_file_count=self.file_count,
+            source_digest=source_digest,
+            candidate_digest=candidate_digest,
+            source_storage_bytes=source_bytes,
+            candidate_storage_bytes=candidate_bytes,
+            reason="storage-compressed executable memory committed after retention",
+        )
 
     def program_codes(
         self,
@@ -813,10 +1331,18 @@ class ExternalSequenceProgramMemory(nn.Module):
     def digest(self) -> str:
         """Return a checksum over the executable bank and file protection state."""
 
+        return self._digest_components(self.schema, self.configuration(), self.state_dict())
+
+    @staticmethod
+    def _digest_components(
+        schema: str,
+        configuration: Mapping[str, object],
+        state: Mapping[str, torch.Tensor],
+    ) -> str:
         digest = hashlib.sha256()
-        digest.update(self.schema.encode("utf-8"))
-        digest.update(repr(sorted(self.configuration().items())).encode("utf-8"))
-        for name, value in sorted(self.state_dict().items()):
+        digest.update(schema.encode("utf-8"))
+        digest.update(repr(sorted(configuration.items())).encode("utf-8"))
+        for name, value in sorted(state.items()):
             detached = value.detach().cpu().contiguous()
             digest.update(name.encode("utf-8"))
             digest.update(str(detached.dtype).encode("utf-8"))
@@ -843,12 +1369,26 @@ class ExternalSequenceProgramMemory(nn.Module):
         }
 
     @classmethod
-    def from_payload(cls, payload: dict[str, object]) -> ExternalSequenceProgramMemory:
-        """Restore and checksum one independently versioned external bank."""
+    def from_payload(
+        cls,
+        payload: dict[str, object],
+        *,
+        verify_checksum: bool = True,
+    ) -> ExternalSequenceProgramMemory:
+        """Restore one independently versioned external bank.
+
+        ``verify_checksum=False`` is private plumbing for a compressed payload:
+        the compressed envelope is verified before its dequantized state is
+        loaded, and quantization necessarily changes the uncompressed digest.
+        """
 
         if not isinstance(payload, dict):
             raise TypeError("sequence program memory payload must be a dictionary")
-        if payload.get("schema") != EXTERNAL_SEQUENCE_PROGRAM_MEMORY_SCHEMA:
+        payload_schema = payload.get("schema")
+        if payload_schema not in {
+            EXTERNAL_SEQUENCE_PROGRAM_MEMORY_SCHEMA,
+            LEGACY_EXTERNAL_SEQUENCE_PROGRAM_MEMORY_SCHEMA,
+        }:
             raise ValueError("unsupported sequence program memory schema")
         configuration = payload.get("configuration")
         artifacts = payload.get("artifacts")
@@ -890,12 +1430,43 @@ class ExternalSequenceProgramMemory(nn.Module):
             raise ValueError("sequence program memory output schemas have the wrong shape")
         memory._protected_slots = list(protected_slots)
         memory._output_schemas = list(output_schemas)
+        logical_slot_ids = configuration.get("logical_slot_ids")
+        if logical_slot_ids is None:
+            logical_slot_ids = list(range(memory.file_count))
+        if (
+            not isinstance(logical_slot_ids, list)
+            or len(logical_slot_ids) != memory.file_count
+            or any(not isinstance(value, int) or value < 0 for value in logical_slot_ids)
+            or len(set(logical_slot_ids)) != len(logical_slot_ids)
+        ):
+            raise ValueError("sequence program memory logical IDs have the wrong shape")
+        memory._logical_slot_ids = list(logical_slot_ids)
+        next_logical_slot_id = configuration.get(
+            "next_logical_slot_id",
+            max(memory._logical_slot_ids, default=-1) + 1,
+        )
+        if (
+            not isinstance(next_logical_slot_id, int)
+            or next_logical_slot_id <= max(memory._logical_slot_ids, default=-1)
+        ):
+            raise ValueError("sequence program memory next logical ID is invalid")
+        memory._next_logical_slot_id = next_logical_slot_id
         memory.load_state_dict(state, strict=True)
         if int(configuration.get("slot_count", -1)) != memory.file_count:
             raise ValueError("sequence program memory slot metadata mismatch")
-        expected = payload.get("sha256")
-        if not isinstance(expected, str) or expected != memory.digest():
-            raise ValueError("sequence program memory checksum mismatch")
+        if verify_checksum:
+            expected = payload.get("sha256")
+            current_digest = (
+                memory.digest()
+                if payload_schema == EXTERNAL_SEQUENCE_PROGRAM_MEMORY_SCHEMA
+                else memory._digest_components(
+                    LEGACY_EXTERNAL_SEQUENCE_PROGRAM_MEMORY_SCHEMA,
+                    configuration,
+                    state,
+                )
+            )
+            if not isinstance(expected, str) or expected != current_digest:
+                raise ValueError("sequence program memory checksum mismatch")
         return memory
 
 

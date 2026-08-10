@@ -18,6 +18,9 @@ EXTERNAL_PROGRAM_ARTIFACT_SCHEMA = "neural-computer.external-program-artifact.v1
 EXTERNAL_PROGRAM_ADMISSION_SCHEMA = (
     "neural-computer.external-program-admission.v1"
 )
+EXTERNAL_PROGRAM_MEMORY_TRANSACTION_SCHEMA = (
+    "neural-computer.external-program-memory-transaction.v1"
+)
 
 
 @dataclass(frozen=True)
@@ -218,6 +221,74 @@ class ExternalProgramAdmissionReceipt:
         }
 
 
+@dataclass(frozen=True)
+class ExternalProgramMemoryTransactionReceipt:
+    """Auditable result of a copy-on-write executable-memory maintenance step.
+
+    The receipt deliberately carries logical file identity and storage
+    accounting, but no task, modality, protocol, or verifier-row contents.
+    ``candidate_digest`` is the digest that would have been committed; a
+    rejected transaction must leave the live source digest unchanged.
+    """
+
+    accepted: bool
+    operation: str
+    affected_slot_id: int | None
+    source_file_count: int
+    destination_file_count: int
+    source_digest: str
+    candidate_digest: str
+    source_storage_bytes: int
+    candidate_storage_bytes: int
+    reason: str
+    schema: str = EXTERNAL_PROGRAM_MEMORY_TRANSACTION_SCHEMA
+
+    def validate(self) -> ExternalProgramMemoryTransactionReceipt:
+        if self.schema != EXTERNAL_PROGRAM_MEMORY_TRANSACTION_SCHEMA:
+            raise ValueError("unsupported external program memory transaction schema")
+        if self.operation not in {"evict", "consolidate", "compress"}:
+            raise ValueError("external program memory transaction operation is unknown")
+        for name, digest in (
+            ("source_digest", self.source_digest),
+            ("candidate_digest", self.candidate_digest),
+        ):
+            if len(digest) != 64:
+                raise ValueError(f"{name} is malformed")
+            try:
+                int(digest, 16)
+            except ValueError as error:
+                raise ValueError(f"{name} is malformed") from error
+        if self.affected_slot_id is not None and self.affected_slot_id < 0:
+            raise ValueError("affected logical slot ID cannot be negative")
+        if self.source_file_count < 1 or self.destination_file_count < 1:
+            raise ValueError("external program memory must retain one file")
+        if self.source_storage_bytes < 1 or self.candidate_storage_bytes < 1:
+            raise ValueError("external program memory storage accounting is invalid")
+        if not self.reason:
+            raise ValueError("external program memory transaction reason is required")
+        if not self.accepted and self.source_digest != self.candidate_digest:
+            raise ValueError("rejected transaction cannot expose a changed live digest")
+        return self
+
+    def payload(self) -> dict[str, object]:
+        """Return a metadata-only receipt without tensors or verifier rows."""
+
+        self.validate()
+        return {
+            "schema": self.schema,
+            "accepted": self.accepted,
+            "operation": self.operation,
+            "affected_slot_id": self.affected_slot_id,
+            "source_file_count": self.source_file_count,
+            "destination_file_count": self.destination_file_count,
+            "source_digest": self.source_digest,
+            "candidate_digest": self.candidate_digest,
+            "source_storage_bytes": self.source_storage_bytes,
+            "candidate_storage_bytes": self.candidate_storage_bytes,
+            "reason": self.reason,
+        }
+
+
 def evaluate_external_program_admission(
     artifact: ExternalProgramArtifact,
     outcomes: torch.Tensor | list[float] | tuple[float, ...],
@@ -300,7 +371,9 @@ def evaluate_external_program_admission(
 __all__ = [
     "EXTERNAL_PROGRAM_ADMISSION_SCHEMA",
     "EXTERNAL_PROGRAM_ARTIFACT_SCHEMA",
+    "EXTERNAL_PROGRAM_MEMORY_TRANSACTION_SCHEMA",
     "ExternalProgramAdmissionReceipt",
     "ExternalProgramArtifact",
+    "ExternalProgramMemoryTransactionReceipt",
     "evaluate_external_program_admission",
 ]

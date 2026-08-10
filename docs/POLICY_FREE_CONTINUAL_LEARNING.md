@@ -1099,3 +1099,32 @@ or general continual learning. The next required pressure test is to use the
 frontier against a non-synthetic Brain Workshop family stream and measure
 whether newly admitted executable files improve held-out learning curves
 without replay or loss of earlier families.
+
+## Verifier-gated executable-memory lifecycle (2026-08-10)
+
+The executable file store now supports a bounded memory lifecycle in addition
+to admission. Stable opaque logical IDs survive physical compaction, and
+copy-on-write transactions can evict an unprotected file, consolidate a
+held-out-equivalent duplicate, or compress durable storage. Each transaction
+returns a versioned metadata-only receipt with source/candidate digests and
+storage accounting. A rejected transaction must leave the live source digest
+unchanged.
+
+The promotion record is
+`session_records/sequence_working_memory_2026-08-02/external_program_memory_lifecycle_promoted_2026-08-10/`.
+Across three seeds, protected eviction and non-equivalent consolidation are
+rejected, equivalent duplicates are compacted, logical identity is retained,
+corrupted compressed payloads are rejected, and a deliberately mutating
+retention probe cannot commit. Decompressed float16 storage retains the
+held-out executable behavior and cuts durable state from `28,032` to `14,016`
+bytes. The controller and interpreter remain frozen, with zero replay and
+zero controller updates.
+
+This is an important reliability layer for “learn while frozen”: external
+memory can grow, age, consolidate, and shrink without silently destroying
+older capabilities. It is still not a learned maintenance policy, learned
+compression, unrestricted memory growth, arbitrary new computation, or
+general continual learning. The next high-ROI test is to make maintenance
+choice itself outcome-driven over a longer nonstationary Brain Workshop
+stream, charging the verifier and storage costs and comparing against a fresh
+memory control.
