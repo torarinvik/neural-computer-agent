@@ -9,6 +9,9 @@ from experiments.brainworkshop_canonical import (
     NBackVerifier,
     train_reward_only,
 )
+from experiments.brainworkshop_canonical.goal_fragment_staging import (
+    run_goal_fragment_staging_audit,
+)
 from neural_computer import (
     AdaptiveOnlineEpisodicRelationReader,
     RetentionPolicyConfig,
@@ -116,6 +119,24 @@ def test_reward_only_pilot_freezes_shared_controller_and_replays_nothing() -> No
     assert all(not parameter.requires_grad for parameter in agent.controller.parameters())
     assert any(parameter.requires_grad for parameter in agent.intent_adapter.parameters())
     assert len(agent.retention.payload()["records"]) == 0
+
+
+def test_goal_fragment_staging_uses_real_verifier_bits_without_controller_updates() -> None:
+    report = run_goal_fragment_staging_audit(
+        seed=17,
+        updates=2,
+        batch_size=3,
+        steps=4,
+        staging_lifetimes=2,
+    )
+
+    assert report.status == "staging_boundary_only"
+    assert report.unique_verifier_bits == 12
+    assert report.unique_logical_lifetimes == 6
+    assert report.optimizer_updates == 2
+    assert report.replayed_examples == 0
+    assert report.controller_unchanged
+    assert not report.missing_evidence_accepted
 
 
 def test_relation_reader_can_replace_gru_context_in_canonical_runner() -> None:
