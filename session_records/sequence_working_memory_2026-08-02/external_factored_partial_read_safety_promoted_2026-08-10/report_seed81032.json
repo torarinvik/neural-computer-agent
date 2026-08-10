@@ -1,0 +1,157 @@
+{
+  "schema": "neural-computer.external-factored-memory-lifecycle.v1",
+  "seed": 81032,
+  "configuration": {
+    "regime_count": 5,
+    "rows_per_regime": 24,
+    "train_rows": 20,
+    "initial_capacity": 2,
+    "grown_capacity": 4,
+    "residual_model_family": "random_feature_sufficient_statistics_v1",
+    "feature_width": 128,
+    "prediction_tolerance": 0.1,
+    "claim": "bounded-factored-memory-lifecycle-v1"
+  },
+  "metrics": {
+    "promotion_receipts": [
+      {
+        "accepted": true,
+        "slot_id": 0,
+        "heldout_error": 0.0018975818529725075,
+        "reason": "candidate passed factual and retention probes",
+        "schema": "neural-computer.external-factored-transition-promotion.v1"
+      },
+      {
+        "accepted": true,
+        "slot_id": 1,
+        "heldout_error": 0.0019345424370840192,
+        "reason": "candidate passed factual and retention probes",
+        "schema": "neural-computer.external-factored-transition-promotion.v1"
+      },
+      {
+        "accepted": true,
+        "slot_id": 2,
+        "heldout_error": 0.0015758824301883578,
+        "reason": "candidate passed factual and retention probes",
+        "schema": "neural-computer.external-factored-transition-promotion.v1"
+      },
+      {
+        "accepted": true,
+        "slot_id": 3,
+        "heldout_error": 0.0018029914936050773,
+        "reason": "candidate passed factual and retention probes",
+        "schema": "neural-computer.external-factored-transition-promotion.v1"
+      },
+      {
+        "accepted": true,
+        "slot_id": 4,
+        "heldout_error": 0.0013966801343485713,
+        "reason": "candidate passed factual and retention probes",
+        "schema": "neural-computer.external-factored-transition-promotion.v1"
+      }
+    ],
+    "growth_receipt": {
+      "accepted": true,
+      "source_capacity": 2,
+      "destination_capacity": 4,
+      "context_count": 2,
+      "content_digest_before": "36dc571436a17bace1aec575c380862917c0d52af11707c6b27795bff1b662d3",
+      "content_digest_after": "36dc571436a17bace1aec575c380862917c0d52af11707c6b27795bff1b662d3",
+      "reason": "retention-verified capacity growth committed",
+      "schema": "neural-computer.external-transition-model-growth.v1"
+    },
+    "eviction_receipt": {
+      "accepted": true,
+      "evicted_index": 1,
+      "source_context_count": 4,
+      "destination_context_count": 3,
+      "physical_models_before": 4,
+      "physical_models_after": 3,
+      "content_digest_before": "a99bb83d32fae03b5fcea569e0387aa2fb2eac151606ced578309e0dea934175",
+      "content_digest_after": "1aec62f2419c16e6cb772727d4018256c9a2bbd7385fde6221e3790baaef3c68",
+      "reason": "retention-verified logical model-slot eviction committed",
+      "evicted_slot_id": 1,
+      "schema": "neural-computer.external-transition-model-eviction.v1"
+    },
+    "compression_selection": {
+      "accepted": true,
+      "selected_codec": "float16_stats",
+      "receipts": [
+        "ExternalTransitionModelCompressionReceipt(accepted=True, codec='float16_stats', source_bytes=280656, compressed_bytes=278592, context_count=4, physical_models=4, candidate_digest='67b7662a25e5624a154496e30e10056faee78f98800826f194713c133d8aa78c', reason='compressed candidate passed retention probe', schema='neural-computer.external-transition-model-compression.v1')",
+        "ExternalTransitionModelCompressionReceipt(accepted=False, codec='torch.float16', source_bytes=280656, compressed_bytes=140344, context_count=4, physical_models=4, candidate_digest='bd212a313594498a78161d06c59bbfc97ee182399b2921e13e7ec9d66374f7f2', reason='compressed candidate failed retention probe', schema='neural-computer.external-transition-model-compression.v1')"
+      ],
+      "reason": "smallest retained compression candidate selected",
+      "schema": "neural-computer.external-transition-model-compression-selection.v1"
+    },
+    "routes_before_eviction": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "partial_routes": [
+      0,
+      3
+    ],
+    "contradictory_partial_status": "ambiguous",
+    "empty_partial_status": "ambiguous",
+    "routes_after_eviction": [
+      0,
+      2,
+      3
+    ],
+    "restored_routes": [
+      0,
+      2,
+      3,
+      4
+    ],
+    "final_slot_ids": [
+      0,
+      2,
+      3,
+      4
+    ],
+    "final_model_digest": "2774cf79b3c82abb6e84cfca1d918890dd5966ea93ce8c6aae973ea9f012b968"
+  },
+  "gates": {
+    "all_five_promoted": true,
+    "initial_capacity_blocked_novel_regime": true,
+    "growth_accepted": true,
+    "growth_retained_prior_slots": true,
+    "four_regimes_routed_before_eviction": true,
+    "partial_known_evidence_routes": true,
+    "contradictory_partial_evidence_is_ambiguous": true,
+    "empty_partial_evidence_is_noop": true,
+    "partial_reads_do_not_mutate": true,
+    "compression_selected": true,
+    "compression_roundtrip_retained": true,
+    "eviction_accepted": true,
+    "stable_ids_survived_middle_eviction": true,
+    "survivors_routed_after_eviction": true,
+    "new_slot_reused_capacity": true,
+    "stable_ids_persisted": true,
+    "base_unchanged": true,
+    "controller_unchanged": true,
+    "context_encoder_unchanged": true,
+    "no_old_regime_replay": true
+  },
+  "accounting": {
+    "base_optimizer_updates": 0,
+    "residual_optimizer_updates": 0,
+    "residual_statistics_updates": 5,
+    "controller_optimizer_updates": 0,
+    "context_encoder_optimizer_updates": 0,
+    "old_regime_replay": 0,
+    "unique_regime_rows": 100,
+    "heldout_rows_per_regime": 4,
+    "wall_seconds": 0.18047795799793676
+  },
+  "digests": {
+    "base": "5dc291a2783d524fdec132e7823c73e3b11904ce54072b0e280e1a260ca0945d",
+    "controller": "e24bafdb5c67e68c140d21242314897876c0d9f4c83f8e02b291a22eac438e40",
+    "context_encoder": "18d279683ccd8719aebd30e5cc59f67a8e2ec9ee1b553798e6c28618e0585279",
+    "router": "f7df0a695b888c2175ad221cf58950f5c43f4b6d1be9d272761dbb2b7735ecfe"
+  },
+  "promoted": true
+}

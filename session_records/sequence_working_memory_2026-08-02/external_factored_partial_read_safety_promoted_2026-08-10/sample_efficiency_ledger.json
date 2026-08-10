@@ -1,0 +1,31 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "external_factored_partial_read_safety_promoted_2026-08-10",
+  "claim": "bounded-factored-partial-contradictory-read-safety-v1",
+  "replicates": 5,
+  "seeds": [81031, 81032, 81033, 81034, 81035],
+  "stable_gates": {
+    "partial_known_evidence_routes": 5,
+    "contradictory_partial_evidence_is_ambiguous": 5,
+    "empty_partial_evidence_is_noop": 5,
+    "partial_reads_do_not_mutate": 5,
+    "all_five_promoted": 5,
+    "growth_accepted": 5,
+    "compression_roundtrip_retained": 5,
+    "eviction_accepted": 5,
+    "stable_ids_persisted": 5,
+    "base_unchanged": 5,
+    "controller_unchanged": 5,
+    "context_encoder_unchanged": 5,
+    "no_old_regime_replay": 5
+  },
+  "accounting": {
+    "partial_read_optimizer_updates_per_seed": 0,
+    "partial_read_memory_writes_per_seed": 0,
+    "partial_read_old_regime_replay_per_seed": 0,
+    "partial_read_rows_per_known_regime": 5,
+    "contradictory_rows": 4,
+    "empty_evidence_rows": 0
+  },
+  "boundary": "bounded read-only partial and contradictory evidence handling; no claim of automatic version formation or general continual learning"
+}

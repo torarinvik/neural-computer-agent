@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import math
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
@@ -861,6 +862,109 @@ class ExternalFactoredTransitionRouter:
             ).validate(context_width=self.model.context_width)
         self._pending = cloned
         return self._stage_candidate()
+
+    def route_partial_bundle(
+        self,
+        observations: Sequence[ExternalTransitionObservation],
+        *,
+        min_match_fraction: float = 1.0,
+        match_tolerance: float = 0.05,
+        contradiction_tolerance: float | None = None,
+        match_margin: float | None = None,
+    ) -> FactoredTransitionRouteResult:
+        """Read-route partial evidence without admitting a new memory slot.
+
+        This path is deliberately read-only.  It can match a known slot from
+        a subset of its expected evidence, but it never stages a candidate from
+        incomplete evidence.  A row that is far outside every candidate's
+        factual tolerance is treated as contradictory rather than being
+        averaged away by a majority of agreeing rows.  Empty evidence returns
+        ``ambiguous`` as an explicit no-op result.
+        """
+
+        if not 0.0 < min_match_fraction <= 1.0:
+            raise ValueError("partial route match fraction must lie in (0, 1]")
+        if match_tolerance < 0.0:
+            raise ValueError("partial route match tolerance cannot be negative")
+        contradiction_floor = (
+            match_tolerance
+            if contradiction_tolerance is None
+            else contradiction_tolerance
+        )
+        if contradiction_floor < match_tolerance:
+            raise ValueError(
+                "partial route contradiction tolerance cannot be below match tolerance"
+            )
+        if match_margin is not None and match_margin < 0.0:
+            raise ValueError("partial route match margin cannot be negative")
+        if self._candidate_model is not None or self._pending:
+            raise RuntimeError("cannot partial-route while factored evidence is staged")
+        if not observations or not self._contexts:
+            return FactoredTransitionRouteResult(
+                status="ambiguous",
+                slot_id=None,
+                context=None,
+                pending_observations=0,
+            ).validate(context_width=self.model.context_width)
+        cloned = [self._clone_observation(item) for item in observations]
+        for item in cloned:
+            item.validate(
+                state_width=self.model.state_width,
+                intention_width=self.model.intention_width,
+            )
+        merged = self._merge(cloned)
+        required_matches = max(1, math.ceil(merged.state.shape[0] * min_match_fraction))
+        eligible: list[tuple[int, float, float]] = []
+        for index, context in enumerate(self._contexts):
+            context_batch = context.to(merged.state).unsqueeze(0).expand(
+                merged.state.shape[0], -1
+            )
+            prediction = self.model.predict_with_context(
+                merged.state,
+                merged.intention,
+                context_batch,
+            )
+            errors = (prediction - merged.next_state).square().mean(dim=-1)
+            matched = int((errors <= match_tolerance).sum())
+            contradictory = bool(torch.any(errors > contradiction_floor))
+            if matched < required_matches or contradictory:
+                continue
+            eligible.append(
+                (
+                    self._slot_ids[index],
+                    float(errors.mean().detach()),
+                    float(errors.max().detach()),
+                )
+            )
+        if not eligible:
+            return FactoredTransitionRouteResult(
+                status="ambiguous",
+                slot_id=None,
+                context=None,
+                pending_observations=0,
+            ).validate(context_width=self.model.context_width)
+        eligible.sort(key=lambda value: (value[1], value[0]))
+        best_slot, best_error, _best_max = eligible[0]
+        margin = (
+            float("inf")
+            if len(eligible) == 1
+            else eligible[1][1] - best_error
+        )
+        margin_floor = self.match_margin if match_margin is None else match_margin
+        if margin < margin_floor:
+            return FactoredTransitionRouteResult(
+                status="ambiguous",
+                slot_id=None,
+                context=None,
+                pending_observations=0,
+            ).validate(context_width=self.model.context_width)
+        context_index = self._slot_ids.index(best_slot)
+        return FactoredTransitionRouteResult(
+            status="matched",
+            slot_id=best_slot,
+            context=self._contexts[context_index].clone(),
+            pending_observations=0,
+        ).validate(context_width=self.model.context_width)
 
     def promote_staged_candidate(
         self,

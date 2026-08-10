@@ -11,7 +11,9 @@ The test also selects and round-trips a storage-compressed residual-bank
 checkpoint. All promotions, growth, eviction, routing, and compression checks
 use independent held-out observations. No controller, base, or context encoder
 weights are updated, and no old-regime rows are replayed during new-regime
-adaptation.
+adaptation. Read-only partial routing also matches known regimes from a
+five-row subset, treats a mixed-regime contradictory bundle as ambiguous, and
+returns an explicit no-op for empty evidence without mutating memory.
 
 This is a bounded memory-lifecycle result. It does not establish automatic
 context discovery in open-ended environments, unrestricted capacity, learned

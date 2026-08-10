@@ -6434,3 +6434,22 @@ formation under missing, contradictory, and genuinely open-world evidence.
 
 Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_factored_memory_lifecycle_promoted_2026-08-10/`.
+
+## Partial and contradictory read safety (2026-08-10)
+
+The factored router now has a separate read-only `route_partial_bundle` path.
+It requires a configurable fraction of rows to agree with a known factual
+slot, applies an explicit contradiction floor, and never stages or writes a
+new slot. Empty evidence returns an explicit ambiguous no-op. This separates
+missing evidence from admission and prevents a contradictory mixture from
+being accepted merely because its mean error favors one existing version.
+
+Across five seeds, five-row partial reads routed known regimes correctly;
+mixed-regime evidence was ambiguous; empty evidence was a no-op; and the
+router digest remained unchanged. The result is archived in
+`session_records/sequence_working_memory_2026-08-02/external_factored_partial_read_safety_promoted_2026-08-10/`.
+
+This closes a read-safety gap, not the full version-formation problem. The
+system still needs a learned policy for when unresolved evidence should be
+quarantined, revisited, merged into an existing version, or promoted as a new
+version under genuinely missing streams and nonstationary context.

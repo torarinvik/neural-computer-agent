@@ -2058,6 +2058,26 @@ def test_factored_router_owns_verified_growth_compression_and_stable_eviction() 
     assert router.route_bundle(rows(target)).status == "staged"
     assert router.promote_staged_candidate(target_heldout, lambda _candidate: True).accepted
 
+    partial_digest = router.digest()
+    partial = router.route_partial_bundle(
+        rows(source)[:1],
+        match_tolerance=0.1,
+        contradiction_tolerance=0.1,
+        match_margin=0.0,
+    )
+    contradictory = router.route_partial_bundle(
+        rows(source)[:1] + rows(target)[:1],
+        min_match_fraction=0.5,
+        match_tolerance=0.1,
+        contradiction_tolerance=0.1,
+        match_margin=0.0,
+    )
+    empty = router.route_partial_bundle([])
+    assert partial.status == "matched" and partial.slot_id == 0
+    assert contradictory.status == "ambiguous"
+    assert empty.status == "ambiguous"
+    assert router.digest() == partial_digest
+
     compressed = router.select_compression_verified(
         ["float16_stats"],
         retention_probe=lambda candidate: candidate.context_count == 2,
