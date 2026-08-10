@@ -8253,3 +8253,29 @@ This promotes independent memory capacity and rollback safety, not learned
 cell routing, unrestricted growth, or general continual learning. The next
 architectural pressure is a learned opaque router that chooses among cells
 without a caller-provided lifecycle address.
+
+## Learned opaque external-cell routing (2026-08-10)
+
+The next boundary is implemented by `ExternalOutcomeIntentionRouter`. It keeps
+the controller-to-memory interface opaque while adding a memory-side
+context-conditioned route distribution over runtime-sized external cells.
+Unseen cells receive bounded exploration; the sampled cell emits the only
+candidate passed to the factual planner. A delayed scalar verifier outcome
+updates the selected cell's content and the route score using proposal-specific
+propensities. The controller is unchanged and never sees physical cell IDs,
+raw modality data, or protocol-shaped actions.
+
+The route proposal is independently versioned and serializable. It contains
+selected-cell provenance for delayed credit, but that provenance stays on the
+external memory side and is not a semantic field in the controller state.
+Append, protect, rollback, missing-evidence no-op, and tensor-only reload
+remain copy-on-write operations. This preserves the N-encoder -> one
+controller/memory -> M-decoder boundary while removing the previous caller
+address requirement.
+
+The replicated audit is archived under
+`session_records/policy_free_intention_routing_2026-08-10/`. It promotes
+caller-free bounded routing and rollback safety only. It does not establish
+unrestricted memory growth, compression, arbitrary new computation, or
+general continual learning; route overhead and long-horizon stable-prefix
+transfer are the next bottlenecks.

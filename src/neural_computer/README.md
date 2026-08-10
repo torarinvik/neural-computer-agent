@@ -1162,8 +1162,16 @@ to only the cell whose opaque intention was attempted. The promoted
 nonstationary audit in
 `session_records/policy_free_intention_memory_2026-08-10/` adds partial-context
 masking, noisy reversal, repeated growth, and transactional rejection of
-negative transfer. Learned cell routing and general continual learning remain
-open.
+negative transfer. `ExternalOutcomeIntentionRouter` now adds a replaceable
+memory-side context-to-cell route policy. The runtime receives only the
+selected opaque intention; route propensity and delayed scalar feedback remain
+in the external state, and append/protect/persistence semantics are preserved.
+The replicated audit in
+`session_records/policy_free_intention_routing_2026-08-10/` promotes caller-free
+bounded routing with shuffled, missing-evidence, corruption, frozen-core, and
+zero-replay controls. It does not claim unrestricted growth, compression,
+arbitrary new computation, or general continual learning; route-cost scaling
+and stable-prefix transfer remain open.
 
 `PolicyFreeAmodalRuntime` is the canonical integration seam for that generator.
 It proposes from the controller's opaque adapted state, leaves generator state

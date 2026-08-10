@@ -13,6 +13,7 @@ from neural_computer import (
     ExternalModelBasedPlanner,
     ExternalOutcomeIntentionGenerator,
     ExternalOutcomeIntentionMemory,
+    ExternalOutcomeIntentionRouter,
     ExternalSignedEntryValueModel,
     PolicyFreeAmodalRuntime,
 )
@@ -428,3 +429,67 @@ def test_policy_free_runtime_queries_memory_cells_independently_from_batch() -> 
     )
     assert int(memory_state.decisions.sum()) == 1
     assert int(memory_state.feedbacks.sum()) == 1
+
+
+def test_policy_free_runtime_uses_learned_router_without_caller_cell_selection() -> None:
+    torch.manual_seed(18)
+    controller = AmodalCognitiveController(
+        width=4,
+        workspace_slots=2,
+        intention_width=2,
+        feedback_width=3,
+        event_window_capacity=4,
+    )
+    runtime = AmodalControllerRuntime(controller)
+    state = runtime.initial_state(1, device="cpu")
+    feedback = _feedback()
+    event = [AmodalEvent(torch.randn(1, 4))]
+    preview, _ = runtime.step_events(event, state, feedback)
+    goal = preview.controller.state_representation.detach().clone()
+    goal[:, :2] += torch.tensor([0.5, 0.5])
+    memory = ExternalOutcomeIntentionMemory(
+        ExternalOutcomeIntentionGenerator(
+            context_width=12,
+            intention_width=2,
+            hidden_width=8,
+            noise_scale=0.4,
+        )
+    )
+    router = ExternalOutcomeIntentionRouter(memory, exploration_bonus=0.8)
+    routed_state = router.initial_state(3)
+    policy_free = PolicyFreeAmodalRuntime(
+        runtime,
+        ExternalModelBasedPlanner(_AdditiveFactualModel(), beam_width=4),
+        intention_router=router,
+    )
+
+    output, _ = policy_free.step_events(
+        event,
+        state,
+        feedback,
+        goal,
+        horizon=1,
+        beam_width=4,
+        intention_router_state=routed_state,
+    )
+
+    assert output.intention_routing is not None
+    assert output.intention_routing.candidates.intentions.shape == (1, 3, 2)
+    assert output.intention_routing.selected_intentions.shape == (1, 2)
+    assert output.planning.candidate_indices is not None
+    assert output.planning.candidate_indices.tolist() == [[0]]
+    assert policy_free.configuration()["candidate_intentions"] == (
+        "learned_opaque_intention_router_candidate_v1"
+    )
+    routed_state = policy_free.record_intention_routing_decision(
+        routed_state,
+        output.intention_routing,
+    )
+    routed_state = policy_free.apply_intention_routing_feedback(
+        routed_state,
+        output.intention_routing,
+        torch.ones(1),
+        terminal=torch.ones(1, dtype=torch.bool),
+    )
+    assert int(routed_state.routing_decisions.sum()) == 1
+    assert int(routed_state.routing_feedbacks.sum()) == 1

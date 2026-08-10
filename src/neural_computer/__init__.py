@@ -203,6 +203,13 @@ from .intention_memory import (
     ExternalIntentionMemoryProposal,
     ExternalOutcomeIntentionMemory,
 )
+from .intention_router import (
+    EXTERNAL_ROUTED_INTENTION_MEMORY_SCHEMA,
+    EXTERNAL_ROUTED_INTENTION_PROPOSAL_SCHEMA,
+    ExternalOutcomeIntentionRouter,
+    ExternalRoutedIntentionMemoryState,
+    ExternalRoutedIntentionProposal,
+)
 from .interface import (
     EVENT_SCHEMA,
     EVENT_WINDOW_SCHEMA,
@@ -647,6 +654,8 @@ __all__ = [
     "EXTERNAL_REGISTER_SHARED_STABLE_RELATIONAL_MODE",
     "EXTERNAL_REGISTER_STATE_SCHEMA",
     "EXTERNAL_REPRESENTATION_SPACE_SCHEMA",
+    "EXTERNAL_ROUTED_INTENTION_MEMORY_SCHEMA",
+    "EXTERNAL_ROUTED_INTENTION_PROPOSAL_SCHEMA",
     "EXTERNAL_SIGNED_ENTRY_VALUE_SCHEMA",
     "EXTERNAL_STREAM_BINDING_FACTUAL_CONSOLIDATION_SCHEMA",
     "EXTERNAL_STREAM_BINDING_FACTUAL_GROWTH_SCHEMA",
@@ -838,6 +847,7 @@ __all__ = [
     "ExternalOutcomeIntentionGenerator",
     "ExternalOutcomeIntentionGeneratorState",
     "ExternalOutcomeIntentionMemory",
+    "ExternalOutcomeIntentionRouter",
     "ExternalOutcomeProgramCapacityGrowthReceipt",
     "ExternalOutcomeProgramCellBank",
     "ExternalOutcomeProgramCellSelectionReceipt",
@@ -853,6 +863,8 @@ __all__ = [
     "ExternalRegisterComputeBasis",
     "ExternalRegisterInstruction",
     "ExternalRegisterState",
+    "ExternalRoutedIntentionMemoryState",
+    "ExternalRoutedIntentionProposal",
     "ExternalSequenceMemory",
     "ExternalSequenceOperatorMemory",
     "ExternalSequenceProgramMemory",

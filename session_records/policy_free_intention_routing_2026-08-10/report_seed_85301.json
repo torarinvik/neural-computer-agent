@@ -1,0 +1,391 @@
+{
+  "schema": "neural-computer.policy-free-intention-routing.v1",
+  "claim_boundary": "bounded caller-free context-conditioned routing over protected and growing external intention cells with delayed scalar credit; not general continual learning",
+  "seed": 85301,
+  "configuration": {
+    "controller_width": 4,
+    "state_width": 12,
+    "intention_width": 2,
+    "delay_steps": 3,
+    "reversal_delay_steps": 4,
+    "noise_fraction": 0.2,
+    "router": {
+      "schema": "neural-computer.external-routed-intention-memory.v1",
+      "memory": {
+        "schema": "neural-computer.external-outcome-intention-memory.v1",
+        "generator": {
+          "schema": "neural-computer.external-outcome-intention-generator.v1",
+          "context_width": 12,
+          "intention_width": 2,
+          "hidden_width": 32,
+          "feature_width": 13,
+          "initial_learning_rate": 0.03,
+          "initial_trace_decay": 0.0,
+          "initial_baseline_rate": 0.05,
+          "initial_baseline": 0.5,
+          "noise_scale": 0.35,
+          "initial_parameter_scale": 0.05,
+          "update_rule": "outcome_only_gaussian_score_credit_external_mlp_v1",
+          "state": "external_generator_cells_and_eligibility_v1",
+          "controller": "frozen_opaque_context_only_v1",
+          "persistence": "tensor_only_versioned_payload_v1"
+        },
+        "capacity": "independent_external_cells_runtime_variable_v1",
+        "proposal": "one_opaque_candidate_per_cell_and_context_v1",
+        "credit": "delayed_proposal_specific_gaussian_score_gradients_v1",
+        "controller": "frozen_opaque_context_only_v1",
+        "persistence": "generator_tensor_payload_v1"
+      },
+      "routing": "opaque_context_to_external_cell_softmax_v1",
+      "credit": "outcome_only_route_score_gradient_v1",
+      "temperature": 1.0,
+      "exploration_bonus": 0.75,
+      "initial_learning_rate": 0.1,
+      "initial_baseline_rate": 0.05,
+      "initial_baseline": 0.5,
+      "initial_routing_scale": 0.01,
+      "capacity": "append_only_external_cell_count_v1",
+      "controller": "frozen_opaque_context_only_v1"
+    },
+    "runtime": {
+      "schema": "neural-computer.policy-free-amodal-runtime.v1",
+      "behavior": "factual_model_search_no_stored_policy_v1",
+      "controller_intention": "diagnostic_only_not_decoded_v1",
+      "goal_input": "opaque_external_destination_state_or_goal_set_v1",
+      "candidate_intentions": "learned_opaque_intention_router_candidate_v1",
+      "retrieval": "caller_selected_factual_model_v1",
+      "runtime": {
+        "format": "neural-computer.amodal-runtime.v30",
+        "representation_space_schema": "neural-computer.external-representation-space.v1",
+        "event_space_id": "opaque-event-v1",
+        "state_space_id": "controller-state-v1",
+        "intention_space_id": "opaque-intention-v1",
+        "controller": {
+          "schema": "neural-computer.controller.v29",
+          "width": 4,
+          "workspace_slots": 2,
+          "intention_width": 2,
+          "feedback_width": 3,
+          "source_key_width": 0,
+          "event_window_capacity": 4,
+          "reliability_hidden": 32,
+          "memory_top_k": 1,
+          "execution_hidden": 16,
+          "execution_states": [
+            "wait",
+            "think",
+            "commit"
+          ],
+          "execution_transport_policy": true,
+          "execution_transport_features": 3,
+          "execution_timeout_policy": true,
+          "event_pair_attention": true,
+          "event_pair_relevance": true,
+          "event_address_relevance": true,
+          "memory_address": "latest_event_payload_residual_v2",
+          "memory_write_policy": "event_state_workspace_address_v1",
+          "memory_write_sampling": "bernoulli_straight_through_v1",
+          "memory_write_event_window": "latest_pair_context_match_max_v3",
+          "memory_write_event_match": "latest_prior_stable_content_cosine_and_max_v3",
+          "memory_value_feedback": "feedback_residual_v1",
+          "memory_value_stable": "event_feedback_residual_v1",
+          "memory_write_hidden": 8,
+          "event_feedback_relevance": true,
+          "event_feedback_source_relevance": true,
+          "source_credit_state": true,
+          "source_credit_decay": 0.9,
+          "source_credit_policy": false,
+          "source_credit_hidden": 8,
+          "source_credit_projection": "vector_to_trust_space",
+          "source_trust_binding": false,
+          "source_trust_binding_scale": 0.25,
+          "growth_register_widths": [],
+          "growth_prior_only_from": null,
+          "growth_recurrent_from": null,
+          "growth_gated": false,
+          "growth_from_intention": false,
+          "growth_gate_from_context": false,
+          "growth_boundary": "generic_register_chain_v1"
+        },
+        "input_bus": {
+          "schema": "neural-computer.input-bus.v1",
+          "event_width": 4
+        },
+        "encoder_names": [],
+        "decoder_names": [
+          "opaque_backend"
+        ],
+        "memory": null,
+        "wait_policy": null
+      },
+      "planner": {
+        "schema": "neural-computer.external-model-planner.v1",
+        "beam_width": 8,
+        "search": "opaque_candidate_beam_rollout_v1",
+        "goal_input": "single_or_runtime_sized_opaque_goal_set_v1",
+        "objective": "terminal_opaque_goal_state_match_v1",
+        "policy": "none_behavior_derived_at_inference_v1",
+        "heuristic": "caller_opt_in_goal_progress_v1",
+        "cost_input": "optional_nonnegative_opaque_intention_costs_v1",
+        "entry_value": "none",
+        "entry_value_model_schema": "none",
+        "entry_width": 0,
+        "representation_space_schema": "neural-computer.external-representation-space.v1",
+        "state_space_id": "opaque-state-v1",
+        "intention_space_id": "opaque-intention-v1",
+        "entry_space_id": "opaque-memory-value-v1"
+      },
+      "state_adapter": {
+        "schema": "neural-computer.external-controller-state-adapter.v1",
+        "controller_feature_width": 12,
+        "state_width": 12,
+        "hidden_width": 0,
+        "input": "opaque_controller_state_representation_v1",
+        "behavior": "replaceable_state_projection_not_policy_v1"
+      },
+      "intention_repertoire": null,
+      "intention_generator": null,
+      "intention_memory": null,
+      "intention_router": {
+        "schema": "neural-computer.external-routed-intention-memory.v1",
+        "memory": {
+          "schema": "neural-computer.external-outcome-intention-memory.v1",
+          "generator": {
+            "schema": "neural-computer.external-outcome-intention-generator.v1",
+            "context_width": 12,
+            "intention_width": 2,
+            "hidden_width": 32,
+            "feature_width": 13,
+            "initial_learning_rate": 0.03,
+            "initial_trace_decay": 0.0,
+            "initial_baseline_rate": 0.05,
+            "initial_baseline": 0.5,
+            "noise_scale": 0.35,
+            "initial_parameter_scale": 0.05,
+            "update_rule": "outcome_only_gaussian_score_credit_external_mlp_v1",
+            "state": "external_generator_cells_and_eligibility_v1",
+            "controller": "frozen_opaque_context_only_v1",
+            "persistence": "tensor_only_versioned_payload_v1"
+          },
+          "capacity": "independent_external_cells_runtime_variable_v1",
+          "proposal": "one_opaque_candidate_per_cell_and_context_v1",
+          "credit": "delayed_proposal_specific_gaussian_score_gradients_v1",
+          "controller": "frozen_opaque_context_only_v1",
+          "persistence": "generator_tensor_payload_v1"
+        },
+        "routing": "opaque_context_to_external_cell_softmax_v1",
+        "credit": "outcome_only_route_score_gradient_v1",
+        "temperature": 1.0,
+        "exploration_bonus": 0.75,
+        "initial_learning_rate": 0.1,
+        "initial_baseline_rate": 0.05,
+        "initial_baseline": 0.5,
+        "initial_routing_scale": 0.01,
+        "capacity": "append_only_external_cell_count_v1",
+        "controller": "frozen_opaque_context_only_v1"
+      },
+      "entry_repertoire": null,
+      "entry_binding_repertoire": null,
+      "include_exploration_seed": false
+    },
+    "candidate_selection": "router_selected_intention_only_no_caller_cell_index_v1"
+  },
+  "gates": {
+    "source_mastered_after_delayed_feedback": true,
+    "successor_mastered_by_caller_free_routing": true,
+    "successor_route_used_new_cell": true,
+    "negative_transfer_probe_detected": true,
+    "reversal_mastered_under_noise": true,
+    "fresh_successor_control_mastered": true,
+    "reward_shuffled_control_failed": true,
+    "action_shuffled_control_failed": true,
+    "missing_evidence_is_noop": true,
+    "memory_corruption_probe_detected": true,
+    "protected_cells_unchanged_by_later_learning": true,
+    "append_only_external_growth": true,
+    "exact_routed_memory_persistence": true,
+    "controller_frozen": true,
+    "state_adapter_frozen": true,
+    "zero_replayed_examples": true
+  },
+  "promoted": true,
+  "metrics": {
+    "source": {
+      "updates": 31,
+      "deterministic_best_score": 0.9519352912902832,
+      "deterministic_best_cell": 0,
+      "selected_cell_counts": {
+        "0": 31
+      },
+      "selected_cell_fraction": {
+        "0": 1.0
+      },
+      "mean_outcome": 0.46645272015443734,
+      "feedbacks": 31,
+      "routing_decisions": [
+        31
+      ],
+      "search_expansions": 31,
+      "wall_seconds": 0.18336962501052767
+    },
+    "successor": {
+      "updates": 35,
+      "deterministic_best_score": 0.9847264885902405,
+      "deterministic_best_cell": 1,
+      "selected_cell_counts": {
+        "0": 19,
+        "1": 16
+      },
+      "selected_cell_fraction": {
+        "0": 0.5428571428571428,
+        "1": 0.45714285714285713
+      },
+      "mean_outcome": 0.7498336464166642,
+      "feedbacks": 66,
+      "routing_decisions": [
+        50,
+        16
+      ],
+      "search_expansions": 35,
+      "wall_seconds": 0.20609429199248552
+    },
+    "inherited_reversal": {
+      "updates": 60,
+      "deterministic_best_score": 0.009524205699563026,
+      "deterministic_best_cell": 0,
+      "selected_cell_counts": {
+        "0": 23,
+        "1": 19,
+        "2": 18
+      },
+      "selected_cell_fraction": {
+        "0": 0.38333333333333336,
+        "1": 0.31666666666666665,
+        "2": 0.3
+      },
+      "mean_outcome": 0.01843191099148195,
+      "feedbacks": 126,
+      "routing_decisions": [
+        73,
+        35,
+        18
+      ],
+      "search_expansions": 60,
+      "wall_seconds": 0.3753965419600718
+    },
+    "reversal": {
+      "updates": 260,
+      "deterministic_best_score": 0.9188679456710815,
+      "deterministic_best_cell": 2,
+      "selected_cell_counts": {
+        "0": 54,
+        "1": 42,
+        "2": 164
+      },
+      "selected_cell_fraction": {
+        "0": 0.2076923076923077,
+        "1": 0.16153846153846155,
+        "2": 0.6307692307692307
+      },
+      "mean_outcome": 0.41560900748434226,
+      "feedbacks": 326,
+      "routing_decisions": [
+        104,
+        58,
+        164
+      ],
+      "search_expansions": 260,
+      "wall_seconds": 1.5665664579719305
+    },
+    "fresh_successor": {
+      "updates": 32,
+      "deterministic_best_score": 0.9725489020347595,
+      "deterministic_best_cell": 0,
+      "selected_cell_counts": {
+        "0": 32
+      },
+      "selected_cell_fraction": {
+        "0": 1.0
+      },
+      "mean_outcome": 0.42674070969223976,
+      "feedbacks": 32,
+      "routing_decisions": [
+        32
+      ],
+      "search_expansions": 32,
+      "wall_seconds": 0.19288250000681728
+    },
+    "reward_shuffled": {
+      "updates": 160,
+      "deterministic_best_score": 0.5790746212005615,
+      "deterministic_best_cell": 0,
+      "selected_cell_counts": {
+        "0": 160
+      },
+      "selected_cell_fraction": {
+        "0": 1.0
+      },
+      "mean_outcome": 0.5457223817706108,
+      "feedbacks": 160,
+      "routing_decisions": [
+        160
+      ],
+      "search_expansions": 160,
+      "wall_seconds": 0.9322752500302158
+    },
+    "action_shuffled": {
+      "updates": 160,
+      "deterministic_best_score": 0.26931512355804443,
+      "deterministic_best_cell": 0,
+      "selected_cell_counts": {
+        "0": 160
+      },
+      "selected_cell_fraction": {
+        "0": 1.0
+      },
+      "mean_outcome": 0.09310309831406982,
+      "feedbacks": 160,
+      "routing_decisions": [
+        160
+      ],
+      "search_expansions": 160,
+      "wall_seconds": 0.9843920409912243
+    },
+    "missing_evidence": {
+      "state_unchanged": true,
+      "routing_decisions": [
+        0
+      ],
+      "routing_feedbacks": [
+        0
+      ]
+    },
+    "memory_corruption": {
+      "clean_score": 0.9519352912902832,
+      "corrupted_score": 0.9514883160591125,
+      "corruption_detected": true
+    },
+    "reversal_cell": 2,
+    "final_routing_decisions": [
+      104,
+      58,
+      164
+    ],
+    "final_routing_feedbacks": [
+      104,
+      58,
+      164
+    ]
+  },
+  "accounting": {
+    "unique_verifier_bits": 418,
+    "control_outcome_bits": 320,
+    "unique_logical_lifetimes": 6,
+    "external_memory_updates": 738,
+    "optimizer_updates": 0,
+    "controller_optimizer_updates": 0,
+    "replayed_examples": 0,
+    "search_expansions": 738,
+    "wall_seconds": 4.628406959003769
+  }
+}

@@ -657,3 +657,32 @@ not learned routing or general continual learning. The next required step is
 to learn which opaque cell to attempt from context and history, rather than
 having the lifecycle caller supply the writable cell, then test open-ended
 growth and Brain Workshop transfer.
+
+## Learned opaque cell routing (2026-08-10)
+
+`ExternalOutcomeIntentionRouter` closes the caller-selected-cell gap. It wraps
+the independent-cell memory with a learned context-to-cell softmax, bounded
+unseen-cell exploration, delayed route-score credit, and per-cell decision and
+feedback counters. The runtime receives only the routed opaque intention; it
+does not receive or choose a cell index. The proposal retains the selected
+cell, route propensity, and route score gradients so a later scalar verifier
+outcome can credit both the emitted cell content and the route that selected
+it.
+
+The two-seed audit in
+`session_records/policy_free_intention_routing_2026-08-10/` uses one frozen
+controller, partial opaque context, delayed feedback, source/successor/reversal
+copy-on-write growth, protected cells, and a rollback of an inherited reversal
+that fails its probe. Both seeds automatically attempt the appended successor
+cell without a caller address, recover a fresh reversal under 20% verifier
+noise, pass reward-shuffled, action-shuffled, missing-evidence, corruption,
+persistence, frozen-core, and zero-replay gates, and retain protected cell
+content.
+
+This promotes caller-free bounded routing over external memory. It does not
+promote unrestricted growth, learned compression, arbitrary new computation,
+or general continual learning. Routing overhead currently removes the earlier
+warm-successor speed advantage in this audit, so the next high-ROI pressure is
+selective routing with a stable-prefix retention/transfer ledger: it must
+reduce route and verifier cost as the library grows while preserving all
+mastered cells, then scale to Brain Workshop working-memory tasks.
