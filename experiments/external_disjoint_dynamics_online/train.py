@@ -231,7 +231,14 @@ def _new_bank() -> ExternalTransitionModelBank:
     )
 
 
-def run(seed: int, report_out: Path) -> dict[str, object]:
+def run(
+    seed: int,
+    report_out: Path,
+    *,
+    sequence_repeats: int = 1,
+) -> dict[str, object]:
+    if sequence_repeats < 1:
+        raise ValueError("sequence repeats must be positive")
     begun = time.perf_counter()
     torch.manual_seed(seed)
     state_codes, intention_codes, observations = _fixture(seed)
@@ -316,7 +323,7 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
         max_contexts=len(REGIME_NAMES),
     )
 
-    sequence = (
+    base_sequence = (
         "source_a",
         "source_b",
         "target_c",
@@ -326,6 +333,7 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
         "target_d",
         "source_b",
     )
+    sequence = base_sequence * sequence_repeats
     optimizers: dict[int, torch.optim.Optimizer] = {}
     assignments: dict[str, set[int]] = defaultdict(set)
     route_counts: Counter[str] = Counter()
@@ -445,6 +453,10 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
         target_updates[name] < fresh_updates[name]
         for name in REGIME_NAMES[2:]
     )
+    extended_reuse = all(
+        target_reuses[name] >= (2 * sequence_repeats - 1)
+        for name in REGIME_NAMES[2:]
+    )
     wrong_context_error = _factual_error(
         bank,
         observations["target_c"],
@@ -469,6 +481,7 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
         "all_regimes_mastered": all_retained,
         "source_slots_byte_stable": all_stable,
         "warm_targets_faster_than_fresh": target_speed,
+        "extended_alternation_reuse": extended_reuse,
         "wrong_context_factual_control": wrong_context_error > LOSS_THRESHOLD,
         "old_slot_optimizer_updates_zero": old_slot_updates == 0,
         "persistence_exact": (
@@ -491,6 +504,7 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
             "match_margin": MATCH_MARGIN,
             "regime_labels_used_by_router": False,
             "policy": "none_external_disjoint_online_context_model_search_v1",
+            "sequence_repeats": sequence_repeats,
         },
         "gates": gates,
         "promoted": all(gates.values()),
@@ -548,8 +562,9 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--seed", type=int, default=70411)
     parser.add_argument("--report-out", type=Path, required=True)
+    parser.add_argument("--sequence-repeats", type=int, default=1)
     args = parser.parse_args()
-    run(args.seed, args.report_out)
+    run(args.seed, args.report_out, sequence_repeats=args.sequence_repeats)
 
 
 if __name__ == "__main__":

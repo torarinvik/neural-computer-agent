@@ -1,0 +1,46 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "external_disjoint_dynamics_long_alternation",
+  "entries": [
+    {
+      "seed": 70411,
+      "arm": "four-round-disjoint-alternation",
+      "unique_verifier_bits": 56,
+      "unique_logical_lifetimes": 56,
+      "optimizer_updates": 619,
+      "replayed_examples": 0,
+      "controller_updates": 0,
+      "stable_bits_to_threshold": 56,
+      "retention_on_mastered_primitives": 1.0,
+      "transfer_ratio_against_fresh": 0.782,
+      "promoted": true
+    },
+    {
+      "seed": 70412,
+      "arm": "four-round-disjoint-alternation",
+      "unique_verifier_bits": 56,
+      "unique_logical_lifetimes": 56,
+      "optimizer_updates": 601,
+      "replayed_examples": 0,
+      "controller_updates": 0,
+      "stable_bits_to_threshold": 56,
+      "retention_on_mastered_primitives": 1.0,
+      "transfer_ratio_against_fresh": 0.880,
+      "promoted": true
+    },
+    {
+      "seed": 70413,
+      "arm": "four-round-disjoint-alternation",
+      "unique_verifier_bits": 56,
+      "unique_logical_lifetimes": 56,
+      "optimizer_updates": 594,
+      "replayed_examples": 0,
+      "controller_updates": 0,
+      "stable_bits_to_threshold": 56,
+      "retention_on_mastered_primitives": 1.0,
+      "transfer_ratio_against_fresh": 0.905,
+      "promoted": true
+    }
+  ],
+  "claim_boundary": "bounded long-alternation routing and replay-free retention; not general continual learning"
+}

@@ -4800,6 +4800,25 @@ unbounded alternation, and compression/consolidation validated over longer
 horizons. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_disjoint_dynamics_online_promoted_2026-08-09/`.
 
+## Long alternating disjoint-dynamics retention (2026-08-10)
+
+The same four-regime fixture was then repeated four times in one stream. This
+adds no model-training replay after acquisition; it tests whether factual
+model selection remains stable as the active regime changes repeatedly. All
+three seeds passed: each novel regime was admitted once and then correctly
+routed seven times after admission, all four regimes retained `1.0` planner
+mastery, source slots stayed byte-stable, old-slot optimizer updates stayed at
+zero, and the controller remained frozen. Warm target fitting retained the
+same advantage over fresh fitting as the shorter audit: `36/32` versus
+`44/43`, `35/31` versus `40/35`, and `27/30` versus `30/33` across seeds
+`70411`, `70412`, and `70413`.
+
+This promotes longer-horizon routing stability for a bounded external factual
+model bank. It does not establish noisy or partial multimodal context
+discovery, unrestricted memory growth, learned consolidation/compression, or
+general continual learning. Reports and the accounting ledger are archived in
+`session_records/sequence_working_memory_2026-08-02/external_disjoint_dynamics_long_alternation_promoted_2026-08-10/`.
+
 ## Copy-on-write transfer challenger for disjoint compounding (2026-08-09)
 
 The exported session's next-step requirement was seed-widening on genuinely
