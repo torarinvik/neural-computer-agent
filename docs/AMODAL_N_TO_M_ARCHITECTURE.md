@@ -4545,6 +4545,26 @@ fixture is tiny, the horizon is finite, and cost/address learning across a
 growing bank remains open. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_irreversible_cost_planning_promoted_2026-08-10/`.
 
+## Multi-slot cost-aware factual retrieval (2026-08-10)
+
+The cost boundary now extends across three persistent factual slots with
+different opaque transition scales. For each of three opaque goal queries, the
+planner searched every slot over a three-step horizon without receiving a
+task/context label. A separately learned affine scalar-cost model supplied
+opaque intention costs to the same search.
+
+Across seeds `83321`, `83322`, and `83323`, cost-aware search reached all goals,
+selected stable slot IDs `[0, 1, 2]`, and reduced realized total route cost
+from `18` under terminal-only search to `9`. The controller, factual bank, and
+cost model remained unchanged during search; all `45` factual and `45` scalar
+cost rows were consumed once, with zero replay and exact persistence.
+
+This promotes bounded multi-slot factual retrieval and cost-aware planning.
+It does not establish learned address formation, nonlinear model growth,
+compression, unrestricted memory growth, or general continual learning.
+Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_multi_slot_cost_selection_promoted_2026-08-10/`.
+
 ## Append-only transition memory across disjoint dynamics (2026-08-09)
 
 The next two-seed rung adds `ExternalTransitionMemory`, an append-only factual
