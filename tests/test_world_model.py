@@ -18,6 +18,7 @@ from neural_computer import (
     ExternalTransitionModelLifetimePolicy,
     ExternalTransitionModelPriorSelectionReceipt,
     ExternalTransitionObservation,
+    ExternalTransitionRouteMemory,
     ExternalTransitionRouteQuery,
     OpaqueCandidateGrowthRouter,
 )
@@ -79,6 +80,67 @@ def test_transition_route_query_empty_bank_is_explicit() -> None:
     assert proposal.selected_slot_id is None
     assert proposal.scores.numel() == 0
     assert proposal.margin is None
+
+
+def test_transition_route_memory_is_slot_local_bounded_and_persistent() -> None:
+    memory = ExternalTransitionRouteMemory(
+        4,
+        max_prototypes_per_slot=2,
+        merge_cosine=0.99,
+    )
+    memory.register_slot(10, prototype=torch.tensor([1.0, 0.0, 0.0, 0.0]))
+    memory.register_slot(20, prototype=torch.tensor([0.0, 1.0, 0.0, 0.0]))
+    proposal = memory.propose(
+        torch.tensor([0.0, 0.9, 0.1, 0.0]),
+        (10, 20),
+        minimum_score=0.5,
+    )
+    assert proposal.selected_slot_id == 20
+    assert memory.observe(10, torch.tensor([0.0, 0.0, 1.0, 0.0]))
+    assert not memory.observe(10, torch.tensor([0.0, 0.0, 0.0, 1.0]))
+    assert memory.prototype_count(10) == 2
+
+    restored = ExternalTransitionRouteMemory.from_payload(memory.state_payload())
+    restored_proposal = restored.propose(
+        torch.tensor([0.0, 0.0, 0.9, 0.1]),
+        (10, 20),
+        minimum_score=0.5,
+    )
+    assert restored.digest() == memory.digest()
+    assert restored_proposal.selected_slot_id == 10
+    assert "next_state" not in restored.state_payload()
+
+
+def test_transition_route_query_can_use_slot_local_prototype_memory() -> None:
+    memory = ExternalTransitionRouteMemory(4)
+    query = ExternalTransitionRouteQuery(
+        4,
+        minimum_score=0.8,
+        route_memory=memory,
+    )
+    query.register_slot(10, route_key=torch.tensor([1.0, 0.0, 0.0, 0.0]))
+    query.register_slot(20, route_key=torch.tensor([0.0, 1.0, 0.0, 0.0]))
+    observation = ExternalTransitionObservation(
+        state=torch.randn(2, 2),
+        intention=torch.randn(2, 1),
+        next_state=torch.randn(2, 2),
+    )
+    proposal = query.propose_observation(
+        observation,
+        torch.randn(2, 4),
+        (10, 20),
+        fallback_query=torch.tensor([0.98, 0.02, 0.0, 0.0]),
+    )
+    restored = ExternalTransitionRouteQuery.from_payload(query.state_payload())
+    restored_proposal = restored.propose_observation(
+        observation,
+        torch.randn(2, 4),
+        (10, 20),
+        fallback_query=torch.tensor([0.98, 0.02, 0.0, 0.0]),
+    )
+    assert proposal.selected_slot_id == 10
+    assert restored_proposal.selected_slot_id == proposal.selected_slot_id
+    assert restored.digest() == query.digest()
 
 
 def test_learned_transition_route_query_is_persistent_and_opaque() -> None:
@@ -158,13 +220,26 @@ def test_transition_router_factual_fallback_survives_wrong_route_proposal() -> N
         encoder,
         match_tolerance=1e-6,
         match_margin=1e-6,
-        route_query=ExternalTransitionRouteQuery(4, minimum_score=-1.0),
+        route_query=ExternalTransitionRouteQuery(
+            4,
+            minimum_score=-1.0,
+            route_memory=ExternalTransitionRouteMemory(4),
+        ),
+    )
+    router.route_query.register_slot(  # type: ignore[union-attr]
+        bank.slot_id_at(first),
+        route_key=query_vector,
+    )
+    router.route_query.register_slot(  # type: ignore[union-attr]
+        bank.slot_id_at(second),
+        route_key=-query_vector,
     )
 
     selected = router._best_slot(observation)
 
     assert selected is not None
     assert selected[0] == second
+    assert router.route_query.route_memory.prototype_count(second) == 2  # type: ignore[union-attr]
 
 
 def test_transition_model_bank_marks_random_features_replay_free() -> None:

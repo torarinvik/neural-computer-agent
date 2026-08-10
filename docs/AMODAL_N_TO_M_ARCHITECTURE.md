@@ -5984,3 +5984,27 @@ compressed verifier-maintained route-constraint memory; more updates on the
 same window and threshold tuning would merely reinforce forgetting. Evidence
 is archived in
 `session_records/sequence_working_memory_2026-08-02/external_learned_nonlinear_learned_route_query_rejected_2026-08-10/`.
+
+## Slot-local prototype route memory (2026-08-10)
+
+The next boundary adds `ExternalTransitionRouteMemory`, a bounded external
+store of normalized opaque trajectory prototypes owned by stable logical
+slots. Verified matches may merge or append state only to the winning slot;
+the controller, shared route scorer, and historical slots remain untouched.
+The store contains no raw transition rows, persists independently, and is
+still only a proposal mechanism behind factual verification.
+
+Across seeds `82601`, `82602`, and `82603`, route-memory state restored
+exactly, corruption rejection and safe factual fallback passed, and prototype
+updates remained external with zero old-regime replay. However, route
+proposals failed the factual-winner diagnostic on every seed and revisit
+identity remained `0/6`. The untrained nonlinear context representation made
+distinct regimes look too similar, so the memory preserved insufficient
+information rather than inventing it.
+
+This retains slot-local prototype memory as the correct continual-state
+boundary but rejects it as a standalone route-capability gain. The next
+pressure test must make the representation stable or meta-learned before
+freezing it; threshold tuning and additional prototypes are not substitutes
+for missing identity information. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_transition_prototype_route_memory_rejected_2026-08-10/`.

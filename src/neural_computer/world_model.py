@@ -74,6 +74,9 @@ EXTERNAL_TRANSITION_CONTEXT_ADDRESS_ADAPTER_SCHEMA = (
 EXTERNAL_TRANSITION_ROUTE_QUERY_SCHEMA = (
     "neural-computer.external-transition-route-query.v1"
 )
+EXTERNAL_TRANSITION_ROUTE_MEMORY_SCHEMA = (
+    "neural-computer.external-transition-route-memory.v1"
+)
 EXTERNAL_ONLINE_TRANSITION_CONTEXT_ROUTER_SCHEMA = (
     "neural-computer.external-online-transition-context-router.v1"
 )
@@ -3241,6 +3244,311 @@ class ExternalTransitionRouteQueryProposal:
         return self
 
 
+class ExternalTransitionRouteMemory:
+    """Bounded slot-local prototypes for continual opaque route identity.
+
+    This is deliberately non-parametric external state.  A verified route
+    query may add or merge one normalized trajectory vector into only the
+    selected logical slot; no shared scorer is updated and no transition row
+    is retained.  The bounded prototype budget is a storage boundary, not a
+    correctness authority: proposal results still require factual model
+    verification in :class:`ExternalOnlineTransitionContextRouter`.
+    """
+
+    schema = EXTERNAL_TRANSITION_ROUTE_MEMORY_SCHEMA
+
+    def __init__(
+        self,
+        width: int,
+        *,
+        max_prototypes_per_slot: int = 4,
+        merge_cosine: float = 0.98,
+    ) -> None:
+        if width < 1:
+            raise ValueError("transition route-memory width must be positive")
+        if max_prototypes_per_slot < 1:
+            raise ValueError("transition route-memory prototype budget must be positive")
+        if not -1.0 <= merge_cosine <= 1.0 or not math.isfinite(merge_cosine):
+            raise ValueError("transition route-memory merge cosine is invalid")
+        self.width = int(width)
+        self.max_prototypes_per_slot = int(max_prototypes_per_slot)
+        self.merge_cosine = float(merge_cosine)
+        self._prototypes: dict[int, list[torch.Tensor]] = {}
+        self._counts: dict[int, list[int]] = {}
+        self._dropped_queries: dict[int, int] = {}
+        self._version = 0
+
+    @staticmethod
+    def _validate_slot_id(slot_id: int) -> None:
+        if not isinstance(slot_id, int) or isinstance(slot_id, bool) or slot_id < 0:
+            raise ValueError("transition route-memory slot ID is invalid")
+
+    def _normalize(self, query: torch.Tensor) -> torch.Tensor:
+        _validate_tensor(
+            query,
+            name="transition route-memory query",
+            ndim=1,
+            width=self.width,
+        )
+        return torch.nn.functional.normalize(
+            query.detach().to(device="cpu", dtype=torch.float32), dim=0
+        ).contiguous()
+
+    @property
+    def slot_ids(self) -> tuple[int, ...]:
+        return tuple(sorted(self._prototypes))
+
+    @property
+    def version(self) -> int:
+        return self._version
+
+    @property
+    def total_prototype_count(self) -> int:
+        return sum(len(prototypes) for prototypes in self._prototypes.values())
+
+    def register_slot(
+        self,
+        slot_id: int,
+        *,
+        prototype: torch.Tensor | None = None,
+    ) -> None:
+        """Register one logical slot, optionally with verified initial state."""
+
+        self._validate_slot_id(slot_id)
+        if slot_id not in self._prototypes:
+            self._prototypes[slot_id] = []
+            self._counts[slot_id] = []
+            self._dropped_queries[slot_id] = 0
+            self._version += 1
+        if prototype is not None and not self._prototypes[slot_id]:
+            self.observe(slot_id, prototype)
+
+    def unregister_slot(self, slot_id: int) -> None:
+        self._validate_slot_id(slot_id)
+        if slot_id not in self._prototypes:
+            return
+        del self._prototypes[slot_id]
+        del self._counts[slot_id]
+        del self._dropped_queries[slot_id]
+        self._version += 1
+
+    def observe(self, slot_id: int, query: torch.Tensor) -> bool:
+        """Store one verifier-approved opaque query in its owning slot.
+
+        Returns ``True`` when the query was stored or merged and ``False``
+        when the slot's bounded budget rejected a novel prototype.
+        """
+
+        self._validate_slot_id(slot_id)
+        if slot_id not in self._prototypes:
+            raise KeyError(f"unknown transition route-memory slot: {slot_id}")
+        normalized = self._normalize(query)
+        prototypes = self._prototypes[slot_id]
+        counts = self._counts[slot_id]
+        if not prototypes:
+            prototypes.append(normalized)
+            counts.append(1)
+            self._version += 1
+            return True
+        similarities = torch.stack(prototypes) @ normalized
+        nearest = int(similarities.argmax())
+        if float(similarities[nearest]) >= self.merge_cosine:
+            count = counts[nearest]
+            merged = torch.nn.functional.normalize(
+                (prototypes[nearest] * count + normalized) / (count + 1), dim=0
+            ).contiguous()
+            prototypes[nearest] = merged
+            counts[nearest] = count + 1
+            self._version += 1
+            return True
+        if len(prototypes) < self.max_prototypes_per_slot:
+            prototypes.append(normalized)
+            counts.append(1)
+            self._version += 1
+            return True
+        self._dropped_queries[slot_id] += 1
+        self._version += 1
+        return False
+
+    def prototype_count(self, slot_id: int) -> int:
+        self._validate_slot_id(slot_id)
+        if slot_id not in self._prototypes:
+            raise KeyError(f"unknown transition route-memory slot: {slot_id}")
+        return len(self._prototypes[slot_id])
+
+    def propose(
+        self,
+        query: torch.Tensor,
+        slot_ids: Sequence[int],
+        *,
+        minimum_score: float,
+    ) -> ExternalTransitionRouteQueryProposal:
+        """Return a max-prototype cosine proposal over stable slot IDs."""
+
+        normalized = self._normalize(query)
+        if not -1.0 <= minimum_score <= 1.0 or not math.isfinite(minimum_score):
+            raise ValueError("transition route-memory proposal floor is invalid")
+        eligible = tuple(int(slot_id) for slot_id in slot_ids)
+        if len(set(eligible)) != len(eligible):
+            raise ValueError("transition route-memory slot IDs are duplicated")
+        for slot_id in eligible:
+            self._validate_slot_id(slot_id)
+        if not eligible:
+            return ExternalTransitionRouteQueryProposal(
+                selected_slot_id=None,
+                scores=torch.empty(0, dtype=query.dtype, device=query.device),
+                eligible_slot_ids=(),
+                margin=None,
+                reason="no committed slots are available",
+            ).validate()
+        scores = []
+        for slot_id in eligible:
+            prototypes = self._prototypes.get(slot_id, ())
+            scores.append(
+                max(
+                    (float(prototype @ normalized) for prototype in prototypes),
+                    default=-1.0,
+                )
+            )
+        score_tensor = torch.tensor(
+            scores,
+            dtype=query.dtype,
+            device=query.device,
+        )
+        ordered = torch.argsort(score_tensor, descending=True, stable=True)
+        best = int(ordered[0])
+        margin = (
+            None
+            if len(eligible) == 1
+            else float((score_tensor[ordered[0]] - score_tensor[ordered[1]]).detach())
+        )
+        selected_slot_id = (
+            eligible[best] if float(score_tensor[best]) >= minimum_score else None
+        )
+        return ExternalTransitionRouteQueryProposal(
+            selected_slot_id=selected_slot_id,
+            scores=score_tensor,
+            eligible_slot_ids=eligible,
+            margin=margin,
+            reason=(
+                "slot-local prototype route proposal; factual verification required"
+                if selected_slot_id is not None
+                else "no slot-local prototype exceeded the proposal-quality floor"
+            ),
+        ).validate()
+
+    def configuration(self) -> dict[str, object]:
+        return {
+            "schema": self.schema,
+            "width": self.width,
+            "max_prototypes_per_slot": self.max_prototypes_per_slot,
+            "merge_cosine": self.merge_cosine,
+            "behavior": "verified_slot_local_max_cosine_prototypes_v1",
+            "raw_transition_rows": False,
+        }
+
+    def state_payload(self) -> dict[str, object]:
+        slots = {
+            str(slot_id): [
+                {
+                    "prototype": prototype.tolist(),
+                    "count": count,
+                }
+                for prototype, count in zip(
+                    self._prototypes[slot_id], self._counts[slot_id], strict=True
+                )
+            ]
+            for slot_id in sorted(self._prototypes)
+        }
+        dropped = {
+            str(slot_id): self._dropped_queries[slot_id]
+            for slot_id in sorted(self._dropped_queries)
+        }
+        payload: dict[str, object] = {
+            "schema": self.schema,
+            "configuration": self.configuration(),
+            "slots": slots,
+            "dropped_queries": dropped,
+            "version": self._version,
+            "sha256": "",
+        }
+        digest = hashlib.sha256()
+        digest.update(self.schema.encode("utf-8"))
+        digest.update(repr(self.configuration()).encode("utf-8"))
+        for slot_id in sorted(self._prototypes):
+            digest.update(str(slot_id).encode("utf-8"))
+            digest.update(str(self._dropped_queries[slot_id]).encode("utf-8"))
+            for prototype, count in zip(
+                self._prototypes[slot_id], self._counts[slot_id], strict=True
+            ):
+                digest.update(str(count).encode("utf-8"))
+                digest.update(prototype.contiguous().numpy().tobytes())
+        digest.update(str(self._version).encode("utf-8"))
+        payload["sha256"] = digest.hexdigest()
+        return payload
+
+    def digest(self) -> str:
+        return str(self.state_payload()["sha256"])
+
+    @classmethod
+    def from_payload(cls, payload: Mapping[str, Any]) -> ExternalTransitionRouteMemory:
+        if not isinstance(payload, Mapping) or payload.get("schema") != cls.schema:
+            raise ValueError("unsupported transition route-memory payload")
+        configuration = payload.get("configuration")
+        slots = payload.get("slots")
+        dropped = payload.get("dropped_queries", {})
+        if not isinstance(configuration, Mapping) or not isinstance(slots, Mapping):
+            raise TypeError("transition route-memory payload is incomplete")
+        if not isinstance(dropped, Mapping):
+            raise TypeError("transition route-memory dropped-query state is invalid")
+        memory = cls(
+            int(configuration["width"]),
+            max_prototypes_per_slot=int(configuration["max_prototypes_per_slot"]),
+            merge_cosine=float(configuration["merge_cosine"]),
+        )
+        for raw_slot_id, rows in slots.items():
+            slot_id = int(raw_slot_id)
+            memory.register_slot(slot_id)
+            if not isinstance(rows, list):
+                raise TypeError("transition route-memory slot rows are invalid")
+            if len(rows) > memory.max_prototypes_per_slot:
+                raise ValueError("transition route-memory slot exceeds prototype budget")
+            for row in rows:
+                if not isinstance(row, Mapping):
+                    raise TypeError("transition route-memory prototype row is invalid")
+                prototype = torch.tensor(row.get("prototype"), dtype=torch.float32)
+                _validate_tensor(
+                    prototype,
+                    name="transition route-memory stored prototype",
+                    ndim=1,
+                    width=memory.width,
+                )
+                if not torch.allclose(
+                    torch.linalg.vector_norm(prototype),
+                    torch.ones((), dtype=prototype.dtype),
+                    atol=1e-5,
+                    rtol=1e-5,
+                ):
+                    raise ValueError("transition route-memory prototype is not normalized")
+                normalized = prototype.detach().contiguous()
+                count = row.get("count")
+                if not isinstance(count, int) or isinstance(count, bool) or count < 1:
+                    raise ValueError("transition route-memory prototype count is invalid")
+                memory._prototypes[slot_id].append(normalized)
+                memory._counts[slot_id].append(count)
+            dropped_count = dropped.get(str(slot_id), 0)
+            if not isinstance(dropped_count, int) or isinstance(dropped_count, bool) or dropped_count < 0:
+                raise ValueError("transition route-memory dropped-query count is invalid")
+            memory._dropped_queries[slot_id] = dropped_count
+        version = payload.get("version", 0)
+        if not isinstance(version, int) or isinstance(version, bool) or version < 0:
+            raise ValueError("transition route-memory version is invalid")
+        memory._version = version
+        if payload.get("sha256") != memory.digest():
+            raise ValueError("transition route-memory checksum mismatch")
+        return memory
+
+
 class ExternalTransitionRouteQuery(nn.Module):
     """Versioned opaque-address proposal using cosine or learned scoring.
 
@@ -3260,6 +3568,7 @@ class ExternalTransitionRouteQuery(nn.Module):
         minimum_score: float = -1.0,
         route_width: int | None = None,
         learned_scorer: OpaqueCandidateGrowthRouter | None = None,
+        route_memory: ExternalTransitionRouteMemory | None = None,
     ) -> None:
         super().__init__()
         if context_width < 1:
@@ -3275,10 +3584,24 @@ class ExternalTransitionRouteQuery(nn.Module):
                 raise ValueError(
                     "learned route-query scorer width must match route width"
                 )
+        if route_memory is not None:
+            if not isinstance(route_memory, ExternalTransitionRouteMemory):
+                raise TypeError("transition route-query memory has an unsupported type")
+            if learned_scorer is not None:
+                raise ValueError(
+                    "transition route-query scorer and prototype memory are exclusive"
+                )
+            if route_width is None and route_memory.width != context_width:
+                raise ValueError(
+                    "non-context-width route memory requires an explicit route width"
+                )
+            if route_width is not None and route_memory.width != route_width:
+                raise ValueError("transition route-query memory width differs")
         self.context_width = int(context_width)
         self.minimum_score = float(minimum_score)
         self.route_width = None if route_width is None else int(route_width)
         self.learned_scorer = learned_scorer
+        self.route_memory = route_memory
         self._slot_adapters: dict[
             int, ExternalTransitionContextAddressAdapter
         ] = {}
@@ -3295,9 +3618,16 @@ class ExternalTransitionRouteQuery(nn.Module):
                 if self.learned_scorer is None
                 else self.learned_scorer.configuration()
             ),
+            "route_memory": (
+                None
+                if self.route_memory is None
+                else self.route_memory.configuration()
+            ),
             "metric": (
                 "learned_permutation_equivariant_pair_score_v1"
                 if self.learned_scorer is not None
+                else "verified_slot_local_prototype_cosine_v1"
+                if self.route_memory is not None
                 else "normalized_cosine_v1"
             ),
             "role": "proposal_only_factual_verification_required_v1",
@@ -3364,7 +3694,7 @@ class ExternalTransitionRouteQuery(nn.Module):
     def register_slot(
         self,
         slot_id: int,
-        address_adapter: ExternalTransitionContextAddressAdapter,
+        address_adapter: ExternalTransitionContextAddressAdapter | None = None,
         route_key: torch.Tensor | None = None,
     ) -> None:
         """Persist one immutable slot-local address view.
@@ -3377,6 +3707,11 @@ class ExternalTransitionRouteQuery(nn.Module):
 
         if not isinstance(slot_id, int) or isinstance(slot_id, bool) or slot_id < 0:
             raise ValueError("transition route-query slot ID is invalid")
+        if self.route_memory is not None:
+            self.route_memory.register_slot(slot_id, prototype=route_key)
+            return
+        if address_adapter is None:
+            raise ValueError("transition route-query adapter is required")
         if address_adapter.context_width != self.context_width:
             raise ValueError("transition route-query adapter width differs")
         if route_key is not None:
@@ -3401,6 +3736,15 @@ class ExternalTransitionRouteQuery(nn.Module):
             raise ValueError("transition route-query slot ID is invalid")
         self._slot_adapters.pop(slot_id, None)
         self._slot_route_keys.pop(slot_id, None)
+        if self.route_memory is not None:
+            self.route_memory.unregister_slot(slot_id)
+
+    def record_verified(self, slot_id: int, query: torch.Tensor) -> bool:
+        """Add only verifier-approved query state to slot-local route memory."""
+
+        if self.route_memory is None:
+            return False
+        return self.route_memory.observe(slot_id, query)
 
     def propose_observation(
         self,
@@ -3427,9 +3771,19 @@ class ExternalTransitionRouteQuery(nn.Module):
                 ndim=1,
                 width=(
                     self.route_width
-                    if self.learned_scorer is not None
+                    if self.learned_scorer is not None or self.route_memory is not None
                     else self.context_width
                 ),
+            )
+        if self.route_memory is not None:
+            if fallback_query is None:
+                raise ValueError(
+                    "prototype route memory requires a full-width fallback query"
+                )
+            return self.route_memory.propose(
+                fallback_query,
+                slot_ids,
+                minimum_score=self.minimum_score,
             )
         if self.learned_scorer is not None:
             if fallback_query is None or fallback_query.shape[0] != self.route_width:
@@ -3551,6 +3905,11 @@ class ExternalTransitionRouteQuery(nn.Module):
                 for slot_id, key in sorted(self._slot_route_keys.items())
             },
             "learned_scorer": self._learned_scorer_payload(),
+            "route_memory": (
+                None
+                if self.route_memory is None
+                else self.route_memory.state_payload()
+            ),
             "sha256": "",
         }
         digest = hashlib.sha256()
@@ -3565,6 +3924,9 @@ class ExternalTransitionRouteQuery(nn.Module):
         scorer_payload = payload["learned_scorer"]
         if isinstance(scorer_payload, Mapping):
             digest.update(str(scorer_payload["sha256"]).encode("utf-8"))
+        route_memory_payload = payload["route_memory"]
+        if isinstance(route_memory_payload, Mapping):
+            digest.update(str(route_memory_payload["sha256"]).encode("utf-8"))
         payload["sha256"] = digest.hexdigest()
         return payload
 
@@ -3642,6 +4004,11 @@ class ExternalTransitionRouteQuery(nn.Module):
         scorer_payload = payload.get("learned_scorer")
         if scorer_payload is not None and not isinstance(scorer_payload, Mapping):
             raise TypeError("transition route-query learned scorer is invalid")
+        route_memory_payload = payload.get("route_memory")
+        if route_memory_payload is not None and not isinstance(
+            route_memory_payload, Mapping
+        ):
+            raise TypeError("transition route-query memory is invalid")
         query = cls(
             int(configuration["context_width"]),
             minimum_score=float(configuration.get("minimum_score", -1.0)),
@@ -3654,6 +4021,11 @@ class ExternalTransitionRouteQuery(nn.Module):
                 None
                 if scorer_payload is None
                 else cls._learned_scorer_from_payload(scorer_payload)
+            ),
+            route_memory=(
+                None
+                if route_memory_payload is None
+                else ExternalTransitionRouteMemory.from_payload(route_memory_payload)
             ),
         )
         slot_adapters = payload.get("slot_adapters", {})
@@ -4438,13 +4810,20 @@ class ExternalOnlineTransitionContextRouter:
                 (prediction - observation.next_state).square().mean().detach()
             )
             candidates.append((error, index, context))
+        route_query_vector: torch.Tensor | None = None
         if self.route_query is None:
             error, index, context = min(candidates, key=lambda item: (item[0], item[1]))
         else:
             with torch.no_grad():
-                query = (
+                route_query_vector = (
                     self.context_encoder.trajectory_stats(observation)
-                    if self.route_query.route_width is not None
+                    if (
+                        self.route_query.learned_scorer is not None
+                        or (
+                            self.route_query.route_memory is not None
+                            and self.route_query.route_width is not None
+                        )
+                    )
                     else (
                         self.address_adapter.encode_observation(observation)
                         if self.address_adapter is not None
@@ -4455,7 +4834,7 @@ class ExternalOnlineTransitionContextRouter:
                 observation,
                 self.bank.contexts,
                 self.bank.slot_ids,
-                fallback_query=query,
+                fallback_query=route_query_vector,
             )
             factual_error, factual_index, _factual_context = min(
                 candidates,
@@ -4479,6 +4858,11 @@ class ExternalOnlineTransitionContextRouter:
         )
         if error > self.match_tolerance or margin < self.match_margin:
             return None
+        if self.route_query is not None and route_query_vector is not None:
+            self.route_query.record_verified(
+                self.bank.slot_id_at(index),
+                route_query_vector,
+            )
         return index, error, margin, context
 
     def _slot_error(

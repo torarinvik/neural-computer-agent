@@ -36,6 +36,7 @@ from neural_computer import (
     ExternalTransitionContextEncoder,
     ExternalTransitionModelBank,
     ExternalTransitionObservation,
+    ExternalTransitionRouteMemory,
     ExternalTransitionRouteQuery,
     OpaqueCandidateGrowthRouter,
     paired_counterfactual_ranking_loss,
@@ -58,6 +59,7 @@ GRADIENT_STEPS_PER_BUNDLE = 4
 ROUTE_QUERY_MINIMUM_SCORE = 0.80
 LEARNED_ROUTE_HIDDEN = 48
 LEARNED_ROUTE_UPDATES = 128
+ROUTE_MEMORY_PROTOTYPES = 4
 
 
 def _digest(module: torch.nn.Module) -> str:
@@ -146,7 +148,13 @@ def _route_diagnostic(
         return None
     fallback = (
         router.context_encoder.trajectory_stats(observation)
-        if router.route_query.route_width is not None
+        if (
+            router.route_query.learned_scorer is not None
+            or (
+                router.route_query.route_memory is not None
+                and router.route_query.route_width is not None
+            )
+        )
         else (
             router.address_adapter.encode_observation(observation)
             if router.address_adapter is not None
@@ -255,6 +263,8 @@ def run(
     route_query_minimum_score: float = ROUTE_QUERY_MINIMUM_SCORE,
     use_learned_route_query: bool = False,
     learned_route_updates: int = LEARNED_ROUTE_UPDATES,
+    use_prototype_route_memory: bool = False,
+    route_memory_prototypes: int = ROUTE_MEMORY_PROTOTYPES,
 ) -> dict[str, object]:
     begun = time.perf_counter()
     torch.set_num_threads(1)
@@ -297,6 +307,18 @@ def run(
         if use_learned_route_query
         else None
     )
+    prototype_route_memory = (
+        ExternalTransitionRouteMemory(
+            route_width,
+            max_prototypes_per_slot=route_memory_prototypes,
+        )
+        if use_prototype_route_memory
+        else None
+    )
+    if use_learned_route_query and use_prototype_route_memory:
+        raise ValueError(
+            "learned route scorer and prototype route memory are exclusive"
+        )
     router = ExternalOnlineTransitionContextRouter(
         bank,
         encoder,
@@ -316,10 +338,19 @@ def run(
                 minimum_score=(
                     0.5 if use_learned_route_query else route_query_minimum_score
                 ),
-                route_width=route_width if use_learned_route_query else None,
+                route_width=(
+                    route_width
+                    if use_learned_route_query or use_prototype_route_memory
+                    else None
+                ),
                 learned_scorer=learned_scorer,
+                route_memory=prototype_route_memory,
             )
-            if (use_route_query or use_learned_route_query)
+            if (
+                use_route_query
+                or use_learned_route_query
+                or use_prototype_route_memory
+            )
             else None
         ),
     )
@@ -547,15 +578,24 @@ def run(
             "promotion_threshold": PROMOTION_THRESHOLD,
             "match_tolerance": match_tolerance,
             "route_query": "cosine_proposal_with_factual_verification_v1"
-            if use_route_query and not use_learned_route_query
+            if use_route_query
+            and not use_learned_route_query
+            and not use_prototype_route_memory
             else (
                 "learned_counterfactual_route_query_v1"
                 if use_learned_route_query
-                else None
+                else (
+                    "verified_slot_local_prototype_route_memory_v1"
+                    if use_prototype_route_memory
+                    else None
+                )
             ),
             "route_query_minimum_score": route_query_floor,
             "learned_route_updates_per_regime": learned_route_updates
             if use_learned_route_query
+            else 0,
+            "route_memory_prototypes_per_slot": route_memory_prototypes
+            if use_prototype_route_memory
             else 0,
             "context_encoder_optimizer_updates": 0,
             "provisional_evidence_policy": "streaming_gradient",
@@ -584,6 +624,18 @@ def run(
             "address_adapter_optimizer_updates": router.address_adapter.version * 4,
             "model_optimizer_updates": optimizer_updates,
             "route_scorer_optimizer_updates": route_scorer_updates,
+            "route_memory_state_updates": (
+                router.route_query.route_memory.version
+                if router.route_query is not None
+                and router.route_query.route_memory is not None
+                else 0
+            ),
+            "route_memory_prototype_count": (
+                router.route_query.route_memory.total_prototype_count
+                if router.route_query is not None
+                and router.route_query.route_memory is not None
+                else 0
+            ),
             "route_scorer_unique_current_windows": max(0, REGIME_COUNT - 1)
             if use_learned_route_query
             else 0,
@@ -621,6 +673,12 @@ def main() -> None:
         default=ROUTE_QUERY_MINIMUM_SCORE,
     )
     parser.add_argument("--learned-route-query", action="store_true")
+    parser.add_argument("--prototype-route-memory", action="store_true")
+    parser.add_argument(
+        "--route-memory-prototypes",
+        type=int,
+        default=ROUTE_MEMORY_PROTOTYPES,
+    )
     parser.add_argument(
         "--learned-route-updates",
         type=int,
@@ -633,6 +691,12 @@ def main() -> None:
         raise SystemExit("--route-query-minimum-score must lie in [-1, 1]")
     if args.learned_route_updates < 1:
         raise SystemExit("--learned-route-updates must be positive")
+    if args.route_memory_prototypes < 1:
+        raise SystemExit("--route-memory-prototypes must be positive")
+    if args.learned_route_query and args.prototype_route_memory:
+        raise SystemExit(
+            "--learned-route-query and --prototype-route-memory are exclusive"
+        )
     run(
         args.seed,
         args.report_out,
@@ -641,6 +705,8 @@ def main() -> None:
         route_query_minimum_score=args.route_query_minimum_score,
         use_learned_route_query=args.learned_route_query,
         learned_route_updates=args.learned_route_updates,
+        use_prototype_route_memory=args.prototype_route_memory,
+        route_memory_prototypes=args.route_memory_prototypes,
     )
 
 
