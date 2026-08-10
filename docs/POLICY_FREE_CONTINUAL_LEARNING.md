@@ -523,3 +523,26 @@ record, eliminating positional joins between independent repertoires. The
 next pressure is retention-safe consolidation and compression across changing
 regimes, with stable logical IDs preserved through maintenance and held-out
 factual retention as the admission gate.
+
+## Retention-safe external binding consolidation (2026-08-10)
+
+`ExternalEntryBindingRepertoire.consolidate_verified` adds a copy-on-write
+maintenance transaction to the external memory boundary. It combines selected
+opaque intention↔entry records into one replacement pair while aggregating
+their outcome and exact-propensity sufficient statistics; no old examples are
+replayed and the controller remains untouched. A caller-owned held-out
+retention probe is authoritative, and a probe that rejects or mutates its
+candidate leaves the live state byte-stable.
+
+The transaction keeps stable logical IDs usable after physical compaction:
+one retired ID becomes the replacement address and the others resolve through
+checksummed aliases. Alias state, statistics, and versioned persistence are
+validated on reload. `PolicyFreeAmodalRuntime` exposes the same external
+operation without introducing a controller or protocol-specific branch.
+
+The current tests establish the memory invariant only. They do not establish
+learned equivalence discovery, autonomous maintenance economics, unrestricted
+growth, or general continual learning. The next pressure is a long
+nonstationary stream where candidate selection and retention decisions are
+learned from verifier outcomes and evaluated with stable-prefix retention and
+matched-fresh transfer accounting.

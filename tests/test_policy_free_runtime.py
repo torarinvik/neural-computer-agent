@@ -264,6 +264,14 @@ def test_policy_free_runtime_retrieves_atomic_intention_entry_bindings() -> None
         propensity=0.25,
     )
     assert receipt.outcome_observed
+    consolidation = policy_free.consolidate_entry_binding_verified(
+        (0, 1),
+        torch.tensor([0.5, 0.5]),
+        torch.tensor([0.5, 0.5]),
+        lambda candidate: candidate.logical_ids == (2, 3, 0),
+    )
+    assert consolidation.accepted
+    assert bindings.resolve_logical_id(1) == 0
 
 
 def test_policy_free_runtime_requires_model_state_width_to_match_adapter() -> None:

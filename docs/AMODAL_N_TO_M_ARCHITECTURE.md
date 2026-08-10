@@ -8109,6 +8109,30 @@ lists. The next pressure is retention-safe consolidation and compression
 across changing regimes with stable logical IDs preserved through maintenance
 and held-out factual retention as the gate.
 
+## Retention-safe external binding consolidation (2026-08-10)
+
+The files-like memory boundary now supports verifier-gated compaction without
+invalidating durable references. `ExternalEntryBindingRepertoire.consolidate_verified`
+builds a copy-on-write candidate, aggregates the retired records' outcome and
+propensity sufficient statistics without replay, and introduces one opaque
+replacement pair. A caller-owned held-out retention probe must accept the
+candidate without mutating it before the live repertoire changes.
+
+Stable logical IDs remain addressable after physical consolidation. One retired
+ID is retained as the replacement address and the other retired IDs resolve
+through checksummed aliases; aliases, record order, statistics, and the next-ID
+counter survive payload round-trips. `PolicyFreeAmodalRuntime` exposes the same
+operation while keeping maintenance outside the controller and decoder
+protocols. Unit coverage verifies successful aggregation, persisted alias
+resolution, and atomic rejection of a mutating retention probe.
+
+This promotes a retention-safe external-memory maintenance primitive, not
+learned semantic equivalence, autonomous eviction economics, unrestricted
+memory growth, or general continual learning. The next pressure is to train
+candidate discovery and retention decisions from verifier outcomes over a long
+nonstationary stream, then compare stable retention and transfer against a
+matched fresh learner.
+
 ## Live signed-entry search (2026-08-10)
 
 The external value contract now reaches factual behavior derivation.

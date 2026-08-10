@@ -132,3 +132,81 @@ def test_external_entry_binding_repertoire_keeps_pairs_atomic() -> None:
     corrupt["store"]["entries"][0, 0] += 0.1
     with pytest.raises(ValueError, match="checksum"):
         ExternalEntryBindingRepertoire.from_payload(corrupt)
+
+
+def test_external_entry_binding_consolidation_preserves_aliases_and_statistics() -> None:
+    repertoire = ExternalEntryBindingRepertoire(2, 1)
+    repertoire.observe(
+        torch.tensor(
+            [
+                [1.0, 0.0],
+                [0.0, 1.0],
+                [-1.0, 0.0],
+            ]
+        ),
+        torch.tensor([[1.0], [-1.0], [0.5]]),
+        utility=torch.tensor([1.0, 0.0, -1.0]),
+        propensity=torch.tensor([0.5, 1.0, 0.25]),
+        timestamp=torch.tensor([10, 20, 30]),
+    )
+    source_digest = repertoire.content_digest()
+
+    receipt = repertoire.consolidate_verified(
+        (0, 1),
+        torch.tensor([0.5, 0.5]),
+        torch.tensor([0.25]),
+        lambda candidate: (
+            candidate.logical_ids == (2, 0)
+            and candidate.resolve_logical_id(1) == 0
+            and candidate.physical_index_for_id(1) == 1
+            and candidate.propose().source_indices == (2, 0)
+            and candidate.statistics()["attempts"].tolist() == [1, 2]
+        ),
+    )
+
+    assert receipt.accepted
+    assert receipt.retired_ids == (0, 1)
+    assert receipt.replacement_id == 0
+    assert receipt.source_record_count == 3
+    assert receipt.destination_record_count == 2
+    assert repertoire.logical_ids == (2, 0)
+    assert repertoire.resolve_logical_id(1) == 0
+    assert repertoire.physical_index_for_id(1) == 1
+    assert repertoire.content_digest() == receipt.destination_digest
+    assert repertoire.content_digest() != source_digest
+
+    restored = ExternalEntryBindingRepertoire.from_payload(repertoire.payload())
+    assert restored.content_digest() == repertoire.content_digest()
+    assert restored.logical_ids == (2, 0)
+    assert restored.resolve_logical_id(1) == 0
+    assert restored.physical_index_for_id(1) == 1
+
+
+def test_external_entry_binding_consolidation_rejects_mutating_probe_atomically() -> None:
+    repertoire = ExternalEntryBindingRepertoire(2, 1)
+    repertoire.observe(
+        torch.tensor([[1.0, 0.0], [0.0, 1.0]]),
+        torch.tensor([[1.0], [-1.0]]),
+        utility=torch.tensor([1.0, 0.0]),
+    )
+    source_digest = repertoire.content_digest()
+
+    receipt = repertoire.consolidate_verified(
+        (0, 1),
+        torch.tensor([0.5, 0.5]),
+        torch.tensor([0.25]),
+        lambda candidate: bool(
+            candidate.observe(
+                torch.tensor([0.25, 0.75]),
+                torch.tensor([0.5]),
+                utility=1.0,
+            ).outcome_observed
+        ),
+    )
+
+    assert not receipt.accepted
+    assert receipt.replacement_id is None
+    assert receipt.destination_record_count == receipt.source_record_count == 2
+    assert repertoire.record_count == 2
+    assert repertoire.logical_ids == (0, 1)
+    assert repertoire.content_digest() == source_digest

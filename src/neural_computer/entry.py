@@ -38,6 +38,9 @@ EXTERNAL_ENTRY_BINDING_ADMISSION_SCHEMA = (
 EXTERNAL_ENTRY_BINDING_REPERTOIRE_SCHEMA = (
     "neural-computer.external-entry-binding-repertoire.v1"
 )
+EXTERNAL_ENTRY_BINDING_CONSOLIDATION_SCHEMA = (
+    "neural-computer.external-entry-binding-consolidation.v1"
+)
 
 
 def _validate_tensor(
@@ -387,11 +390,11 @@ class ExternalEntryRepertoire:
     @staticmethod
     def _digest_payload(payload: Mapping[str, Any]) -> str:
         digest = hashlib.sha256()
-        for name in sorted(payload):
+        for name in sorted(payload, key=str):
             if name == "sha256":
                 continue
             value = payload[name]
-            digest.update(name.encode("utf-8"))
+            digest.update(str(name).encode("utf-8"))
             if isinstance(value, torch.Tensor):
                 tensor = value.detach().cpu().contiguous()
                 digest.update(str(tensor.dtype).encode("utf-8"))
@@ -817,6 +820,53 @@ class ExternalEntryBindingAdmissionReceipt:
         return self
 
 
+@dataclass(frozen=True)
+class ExternalEntryBindingConsolidationReceipt:
+    """Retention-gated copy-on-write consolidation result."""
+
+    accepted: bool
+    retired_ids: tuple[int, ...]
+    replacement_id: int | None
+    source_record_count: int
+    destination_record_count: int
+    source_digest: str
+    candidate_digest: str
+    destination_digest: str
+    reason: str
+    version: int
+    schema: str = EXTERNAL_ENTRY_BINDING_CONSOLIDATION_SCHEMA
+
+    def validate(self) -> ExternalEntryBindingConsolidationReceipt:
+        if self.schema != EXTERNAL_ENTRY_BINDING_CONSOLIDATION_SCHEMA:
+            raise ValueError("unsupported external-entry binding consolidation schema")
+        if not self.retired_ids or len(set(self.retired_ids)) != len(self.retired_ids):
+            raise ValueError("external-entry binding retired IDs are invalid")
+        if any(not isinstance(value, int) or value < 0 for value in self.retired_ids):
+            raise ValueError("external-entry binding retired ID is invalid")
+        if self.accepted:
+            if self.replacement_id is None or self.replacement_id < 0:
+                raise ValueError("accepted consolidation has no replacement ID")
+            if self.destination_record_count != self.source_record_count - len(
+                self.retired_ids
+            ) + 1:
+                raise ValueError("accepted consolidation count is invalid")
+        elif self.replacement_id is not None:
+            raise ValueError("rejected consolidation has a replacement ID")
+        if min(self.source_record_count, self.destination_record_count) < 1:
+            raise ValueError("external-entry binding consolidation counts are invalid")
+        if not isinstance(self.version, int) or self.version < 0:
+            raise ValueError("external-entry binding consolidation version is invalid")
+        for name, value in (
+            ("source_digest", self.source_digest),
+            ("candidate_digest", self.candidate_digest),
+            ("destination_digest", self.destination_digest),
+            ("reason", self.reason),
+        ):
+            if not isinstance(value, str) or not value:
+                raise ValueError(f"external-entry binding consolidation {name} is missing")
+        return self
+
+
 class ExternalEntryBindingRepertoire:
     """Append-only memory of atomically bound opaque intention-entry pairs.
 
@@ -865,6 +915,7 @@ class ExternalEntryBindingRepertoire:
         )
         self._logical_ids: list[int] = []
         self._next_logical_id = 0
+        self._aliases: dict[int, int] = {}
 
     @property
     def record_count(self) -> int:
@@ -885,11 +936,26 @@ class ExternalEntryBindingRepertoire:
             raise IndexError("external-entry binding physical index is out of range")
         return self._logical_ids[index]
 
+    def resolve_logical_id(self, logical_id: int) -> int:
+        """Resolve a retired logical ID to its retained replacement."""
+
+        if not isinstance(logical_id, int) or logical_id < 0:
+            raise ValueError("external-entry binding logical ID is invalid")
+        seen: set[int] = set()
+        current = logical_id
+        while current in self._aliases:
+            if current in seen:
+                raise RuntimeError("external-entry binding alias cycle detected")
+            seen.add(current)
+            current = self._aliases[current]
+        return current
+
     def physical_index_for_id(self, logical_id: int) -> int:
         if not isinstance(logical_id, int) or logical_id < 0:
             raise ValueError("external-entry binding logical ID is invalid")
+        resolved = self.resolve_logical_id(logical_id)
         try:
-            return self._logical_ids.index(logical_id)
+            return self._logical_ids.index(resolved)
         except ValueError as error:
             raise KeyError(
                 f"unknown external-entry binding logical ID: {logical_id}"
@@ -964,15 +1030,30 @@ class ExternalEntryBindingRepertoire:
             raise ValueError("external-entry binding next logical ID is invalid")
         if self._next_logical_id <= max(self._logical_ids, default=-1):
             raise ValueError("external-entry binding next logical ID is stale")
+        if any(
+            not isinstance(source, int)
+            or source < 0
+            or not isinstance(destination, int)
+            or destination < 0
+            for source, destination in self._aliases.items()
+        ):
+            raise ValueError("external-entry binding aliases are invalid")
+        if set(self._aliases) & set(self._logical_ids):
+            raise ValueError("external-entry binding aliases shadow live IDs")
+        for source, destination in self._aliases.items():
+            if self.resolve_logical_id(destination) not in self._logical_ids:
+                raise ValueError("external-entry binding alias target is not live")
+            if source == destination:
+                raise ValueError("external-entry binding alias is self-referential")
 
     @staticmethod
     def _digest_payload(payload: Mapping[str, Any]) -> str:
         digest = hashlib.sha256()
-        for name in sorted(payload):
+        for name in sorted(payload, key=str):
             if name == "sha256":
                 continue
             value = payload[name]
-            digest.update(name.encode("utf-8"))
+            digest.update(str(name).encode("utf-8"))
             if isinstance(value, Mapping):
                 digest.update(ExternalEntryBindingRepertoire._digest_payload(value).encode())
             elif isinstance(value, torch.Tensor):
@@ -992,6 +1073,7 @@ class ExternalEntryBindingRepertoire:
             "version": self.version,
             "logical_ids": list(self._logical_ids),
             "next_logical_id": self._next_logical_id,
+            "aliases": dict(sorted(self._aliases.items())),
             "store": self._store.payload(),
         }
 
@@ -1017,6 +1099,7 @@ class ExternalEntryBindingRepertoire:
         version = payload.get("version")
         logical_ids = payload.get("logical_ids")
         next_logical_id = payload.get("next_logical_id")
+        aliases = payload.get("aliases", {})
         if not isinstance(configuration, Mapping) or not isinstance(store_payload, Mapping):
             raise TypeError("external-entry binding payload is incomplete")
         if not isinstance(version, int) or version < 0:
@@ -1027,6 +1110,18 @@ class ExternalEntryBindingRepertoire:
             raise ValueError("external-entry binding payload logical IDs are invalid")
         if not isinstance(next_logical_id, int) or next_logical_id < 0:
             raise ValueError("external-entry binding payload next logical ID is invalid")
+        if not isinstance(aliases, Mapping):
+            raise TypeError("external-entry binding payload aliases are invalid")
+        normalized_aliases: dict[int, int] = {}
+        for source, destination in aliases.items():
+            if (
+                not isinstance(source, int)
+                or isinstance(source, bool)
+                or not isinstance(destination, int)
+                or isinstance(destination, bool)
+            ):
+                raise TypeError("external-entry binding payload aliases are invalid")
+            normalized_aliases[int(source)] = int(destination)
         repertoire = cls(
             int(configuration["intention_width"]),
             int(configuration["entry_width"]),
@@ -1045,6 +1140,7 @@ class ExternalEntryBindingRepertoire:
             raise ValueError("external-entry binding payload configuration differs")
         repertoire._logical_ids = list(logical_ids)
         repertoire._next_logical_id = next_logical_id
+        repertoire._aliases = normalized_aliases
         repertoire.validate_state()
         return repertoire
 
@@ -1057,6 +1153,7 @@ class ExternalEntryBindingRepertoire:
         self._store = ExternalEntryRepertoire.from_payload(other._store.payload())
         self._logical_ids = list(other._logical_ids)
         self._next_logical_id = other._next_logical_id
+        self._aliases = dict(other._aliases)
 
     def observe(
         self,
@@ -1100,6 +1197,193 @@ class ExternalEntryBindingRepertoire:
             version=receipt.version,
             record_count=receipt.record_count,
             content_digest=self.content_digest(),
+        ).validate()
+
+    def _consolidation_candidate(
+        self,
+        retired_ids: tuple[int, ...],
+        replacement_intention: torch.Tensor,
+        replacement_entry: torch.Tensor,
+    ) -> tuple[ExternalEntryBindingRepertoire, int]:
+        if len(retired_ids) < 2:
+            raise ValueError("external-entry binding consolidation needs two records")
+        if len(set(retired_ids)) != len(retired_ids):
+            raise ValueError("external-entry binding consolidation IDs are duplicated")
+        if any(
+            not isinstance(logical_id, int)
+            or isinstance(logical_id, bool)
+            or logical_id < 0
+            for logical_id in retired_ids
+        ):
+            raise ValueError("external-entry binding consolidation ID is invalid")
+        if any(logical_id not in self._logical_ids for logical_id in retired_ids):
+            raise ValueError(
+                "external-entry binding consolidation can retire live IDs only"
+            )
+
+        normalized_intention, normalized_entry = self._validate_pairs(
+            replacement_intention,
+            replacement_entry,
+        )
+        if normalized_intention.shape[0] != 1:
+            raise ValueError("external-entry binding consolidation accepts one pair")
+        replacement_pair = self._joined(
+            normalized_intention,
+            normalized_entry,
+        )[0]
+        retired_indices = {
+            self._logical_ids.index(logical_id) for logical_id in retired_ids
+        }
+        retained_indices = [
+            index
+            for index in range(self.record_count)
+            if index not in retired_indices
+        ]
+        source_store = self._store
+        replacement_store = ExternalEntryRepertoire(
+            self.intention_width + self.entry_width,
+            merge_cosine=self.merge_cosine,
+            entry_space_id=(
+                f"{self.intention_space_id}+{self.entry_space_id}"
+            ),
+        )
+        retained_entries = [
+            source_store._entries[index].clone() for index in retained_indices
+        ]
+        replacement_store._entries = retained_entries
+        if replacement_store._find_entry(replacement_pair) is not None:
+            raise ValueError(
+                "external-entry binding consolidation replacement duplicates a retained pair"
+            )
+        replacement_store._entries.append(replacement_pair.clone())
+
+        def aggregate(values: list[int | float]) -> list[int | float]:
+            retained = [values[index] for index in retained_indices]
+            replacement = sum(values[index] for index in retired_indices)
+            return retained + [replacement]
+
+        replacement_store._attempts = [
+            int(value)
+            for value in aggregate(source_store._attempts)
+        ]
+        replacement_store._outcome_counts = [
+            int(value)
+            for value in aggregate(source_store._outcome_counts)
+        ]
+        replacement_store._utility_sums = [
+            float(value)
+            for value in aggregate(source_store._utility_sums)
+        ]
+        replacement_store._utility_square_sums = [
+            float(value)
+            for value in aggregate(source_store._utility_square_sums)
+        ]
+        replacement_store._propensity_sums = [
+            float(value)
+            for value in aggregate(source_store._propensity_sums)
+        ]
+        replacement_store._inverse_propensity_utility_sums = [
+            float(value)
+            for value in aggregate(source_store._inverse_propensity_utility_sums)
+        ]
+        latest_index = max(
+            retired_indices,
+            key=lambda index: (source_store._last_seen[index], index),
+        )
+        replacement_store._last_propensities = [
+            source_store._last_propensities[index] for index in retained_indices
+        ] + [source_store._last_propensities[latest_index]]
+        replacement_store._last_seen = [
+            source_store._last_seen[index] for index in retained_indices
+        ] + [
+            max(source_store._last_seen[index] for index in retired_indices)
+        ]
+        replacement_store._version = source_store.version + 1
+        replacement_store.validate_state()
+
+        candidate = ExternalEntryBindingRepertoire.from_payload(self.payload())
+        candidate._store = replacement_store
+        replacement_id = min(retired_ids)
+        candidate._logical_ids = [
+            self._logical_ids[index] for index in retained_indices
+        ] + [replacement_id]
+        candidate._aliases = {
+            source: (
+                replacement_id
+                if destination in retired_ids
+                else candidate.resolve_logical_id(destination)
+            )
+            for source, destination in self._aliases.items()
+        }
+        for logical_id in retired_ids:
+            if logical_id != replacement_id:
+                candidate._aliases[logical_id] = replacement_id
+        candidate._next_logical_id = max(
+            self._next_logical_id,
+            replacement_id + 1,
+        )
+        candidate.validate_state()
+        return candidate, replacement_id
+
+    def consolidate_verified(
+        self,
+        retired_ids: tuple[int, ...] | list[int],
+        replacement_intention: torch.Tensor,
+        replacement_entry: torch.Tensor,
+        retention_probe: Callable[[ExternalEntryBindingRepertoire], bool],
+        *,
+        reason: str = "caller_owned_heldout_retention_probe",
+    ) -> ExternalEntryBindingConsolidationReceipt:
+        """Consolidate records only after an isolated retention probe passes.
+
+        The live repertoire is untouched while the candidate is compacted and
+        probed.  Retired logical IDs resolve to the replacement ID, so callers
+        can keep durable references while physical storage changes.
+        """
+
+        if not callable(retention_probe):
+            raise TypeError("external-entry binding retention probe must be callable")
+        if not isinstance(reason, str) or not reason:
+            raise ValueError("external-entry binding consolidation reason is missing")
+        normalized_ids = tuple(retired_ids)
+        source_count = self.record_count
+        source_digest = self.content_digest()
+        candidate, replacement_id = self._consolidation_candidate(
+            normalized_ids,
+            replacement_intention,
+            replacement_entry,
+        )
+        candidate_digest = candidate.content_digest()
+        accepted = bool(retention_probe(candidate))
+        probe_unchanged = candidate.content_digest() == candidate_digest
+        accepted = accepted and probe_unchanged
+        if accepted:
+            self._copy_from(candidate)
+            return ExternalEntryBindingConsolidationReceipt(
+                accepted=True,
+                retired_ids=normalized_ids,
+                replacement_id=replacement_id,
+                source_record_count=source_count,
+                destination_record_count=self.record_count,
+                source_digest=source_digest,
+                candidate_digest=candidate_digest,
+                destination_digest=self.content_digest(),
+                reason=reason,
+                version=self.version,
+            ).validate()
+        return ExternalEntryBindingConsolidationReceipt(
+            accepted=False,
+            retired_ids=normalized_ids,
+            replacement_id=None,
+            source_record_count=source_count,
+            destination_record_count=source_count,
+            source_digest=source_digest,
+            candidate_digest=candidate_digest,
+            destination_digest=source_digest,
+            reason=(
+                "heldout retention probe rejected or mutated candidate binding state"
+            ),
+            version=self.version,
         ).validate()
 
     def propose(
@@ -1208,6 +1492,7 @@ class ExternalEntryBindingRepertoire:
 __all__ = [
     "EXTERNAL_ENTRY_ADMISSION_SCHEMA",
     "EXTERNAL_ENTRY_BINDING_ADMISSION_SCHEMA",
+    "EXTERNAL_ENTRY_BINDING_CONSOLIDATION_SCHEMA",
     "EXTERNAL_ENTRY_BINDING_OBSERVATION_SCHEMA",
     "EXTERNAL_ENTRY_BINDING_PROPOSAL_SCHEMA",
     "EXTERNAL_ENTRY_BINDING_REPERTOIRE_SCHEMA",
@@ -1216,6 +1501,7 @@ __all__ = [
     "EXTERNAL_ENTRY_REPERTOIRE_SCHEMA",
     "ExternalEntryAdmissionReceipt",
     "ExternalEntryBindingAdmissionReceipt",
+    "ExternalEntryBindingConsolidationReceipt",
     "ExternalEntryBindingObservationReceipt",
     "ExternalEntryBindingProposal",
     "ExternalEntryBindingRepertoire",

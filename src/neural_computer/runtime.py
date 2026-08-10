@@ -21,6 +21,7 @@ from .controller import (
     ControllerState,
 )
 from .entry import (
+    ExternalEntryBindingConsolidationReceipt,
     ExternalEntryBindingObservationReceipt,
     ExternalEntryBindingProposal,
     ExternalEntryBindingRepertoire,
@@ -1385,6 +1386,27 @@ class PolicyFreeAmodalRuntime:
             utility=utility,
             propensity=propensity,
             timestamp=timestamp,
+        )
+
+    def consolidate_entry_binding_verified(
+        self,
+        retired_ids: tuple[int, ...] | list[int],
+        replacement_intention: torch.Tensor,
+        replacement_entry: torch.Tensor,
+        retention_probe: Callable[[ExternalEntryBindingRepertoire], bool],
+        *,
+        reason: str = "caller_owned_heldout_retention_probe",
+    ) -> ExternalEntryBindingConsolidationReceipt:
+        """Run retention-safe external binding maintenance outside the controller."""
+
+        if self.entry_binding_repertoire is None:
+            raise RuntimeError("policy-free runtime has no entry binding repertoire")
+        return self.entry_binding_repertoire.consolidate_verified(
+            retired_ids,
+            replacement_intention,
+            replacement_entry,
+            retention_probe,
+            reason=reason,
         )
 
     def step_events(
