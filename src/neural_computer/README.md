@@ -1319,3 +1319,14 @@ The three-seed audit promotes bounded seven-stage sequential reuse with
 warm/fresh update counts `39/50`, `42/44`, and `34/55`; arbitrary distribution
 shift and general continual learning remain unqualified. See
 `session_records/policy_free_intention_masked_routing_adaptive_promoted_2026-08-10/`.
+
+The router also supports verifier-selected copy-or-fresh admission through
+`select_verified_transfer_prior`. It probes isolated inherited and fresh
+external cells with outcome-only evidence, verifies that the live source was
+not mutated, and returns a versioned selection receipt plus the chosen state.
+This prevents negative transfer from being deployed blindly while preserving
+the frozen controller and replaceable memory boundary. The three-seed novel
+challenger audit is archived in
+`session_records/policy_free_intention_novel_challenger_promoted_2026-08-10/`.
+It promotes bounded admission safety, not positive novel-task transfer or
+general continual learning.

@@ -10,6 +10,7 @@ from neural_computer import (
     ExternalOutcomeIntentionGenerator,
     ExternalOutcomeIntentionMemory,
     ExternalOutcomeIntentionRouter,
+    ExternalRoutedIntentionPriorSelectionReceipt,
 )
 
 
@@ -109,6 +110,61 @@ def test_router_explores_appended_cells_protects_content_and_reloads() -> None:
     migrated = router.state_from_payload(legacy_payload)
     assert migrated.retention_observations.shape == state.retention_observations.shape
     assert int(migrated.retention_observations.sum()) == 0
+
+
+def test_router_prior_challenger_isolated_and_selects_higher_verifier_score() -> None:
+    router, state = _router()
+    source_digest = router._state_digest(state)
+
+    def probe(
+        transfer_router,
+        transfer_state,
+        transfer_cell,
+        fresh_router,
+        fresh_state,
+        fresh_cell,
+    ):
+        assert transfer_cell == fresh_cell == 2
+        assert transfer_state.cells.baseline.shape == (3,)
+        assert fresh_state.cells.baseline.shape == (3,)
+        assert transfer_router is not router
+        assert fresh_router is not router
+        return 0.8, 0.2, transfer_state, fresh_state
+
+    receipt, selected_router, selected_state, selected_cell = (
+        router.select_verified_transfer_prior(state, 0, probe, probe_updates=5)
+    )
+
+    assert isinstance(receipt, ExternalRoutedIntentionPriorSelectionReceipt)
+    assert receipt.selected_initialization == "transfer"
+    assert receipt.transfer_probe_score == 0.8
+    assert receipt.fresh_probe_score == 0.2
+    assert receipt.probe_updates == 5
+    assert selected_cell == 2
+    assert selected_state.cells.baseline.shape == (3,)
+    assert router._state_digest(state) == source_digest
+    assert router.state_payload(state)["routing_keys"].shape == (2, 4)
+    assert selected_router.state_payload(selected_state)["routing_keys"].shape == (3, 4)
+
+
+def test_router_prior_challenger_can_reject_copy_and_select_fresh_state() -> None:
+    router, state = _router()
+    source_digest = router._state_digest(state)
+
+    def probe(*_args):
+        transfer_state = _args[1]
+        fresh_state = _args[4]
+        return 0.1, 0.9, transfer_state, fresh_state
+
+    receipt, selected_router, selected_state, selected_cell = (
+        router.select_verified_transfer_prior(state, 0, probe)
+    )
+
+    assert receipt.selected_initialization == "fresh"
+    assert selected_cell == receipt.fresh_cell == 2
+    assert selected_router is not router
+    assert selected_state.cells.baseline.shape == (3,)
+    assert router._state_digest(state) == source_digest
 
 
 def test_router_batches_sparse_union_and_credits_physical_cells() -> None:

@@ -1,0 +1,707 @@
+{
+  "schema": "neural-computer.policy-free-intention-novel-challenger.v1",
+  "claim_boundary": "bounded verifier-selected copy-or-fresh external intention admission for one unseen evidence combination and target after a known adaptive sequence; general distribution shift and unrestricted continual learning remain unqualified",
+  "seed": 85303,
+  "configuration": {
+    "novel_context_mask": [
+      true,
+      false,
+      true,
+      true,
+      false,
+      true,
+      true,
+      false,
+      false,
+      true,
+      false,
+      true
+    ],
+    "novel_target": [
+      -0.25,
+      0.3499999940395355
+    ],
+    "probe_updates": 12,
+    "max_continuation_updates": 240,
+    "known_curriculum": "adaptive_versioned_multi_stage",
+    "known_stage_min_updates": 4,
+    "candidate_selection": "outcome_only_isolated_copy_or_fresh_v1",
+    "replayed_examples": 0
+  },
+  "gates": {
+    "warm_known_sequence_mastered": true,
+    "fresh_known_sequence_mastered": true,
+    "warm_source_retained": true,
+    "fresh_source_retained": true,
+    "warm_known_successor_retained": true,
+    "fresh_known_successor_retained": true,
+    "copied_prior_rejected_on_novel_target": true,
+    "warm_novel_mastered": true,
+    "fresh_novel_mastered": true,
+    "warm_novel_retained": true,
+    "fresh_novel_retained": true,
+    "warm_reward_shuffled_control_not_sample_efficient": true,
+    "fresh_reward_shuffled_control_not_sample_efficient": true,
+    "warm_action_shuffled_control_not_sample_efficient": true,
+    "fresh_action_shuffled_control_not_sample_efficient": true,
+    "warm_missing_evidence_is_noop": true,
+    "fresh_missing_evidence_is_noop": true,
+    "warm_memory_corruption_detected": true,
+    "fresh_memory_corruption_detected": true,
+    "warm_novel_survived_reversal": true,
+    "fresh_novel_survived_reversal": true,
+    "challenger_did_not_mutate_warm_source": true,
+    "challenger_did_not_mutate_fresh_source": true,
+    "warm_persistence_exact": true,
+    "fresh_persistence_exact": true,
+    "controller_frozen": true,
+    "state_adapter_frozen": true,
+    "zero_replayed_examples": true
+  },
+  "promoted": true,
+  "metrics": {
+    "warm": {
+      "selected_initialization": "fresh",
+      "transfer_probe_score": 0.08358647674322128,
+      "fresh_probe_score": 0.956149697303772,
+      "total_updates": 19,
+      "continuation": {
+        "updates": 7,
+        "deterministic_best_score": 0.9816655516624451,
+        "deterministic_best_cell": 8,
+        "mastery_cell": 8,
+        "mastery_cell_score": 0.9816655516624451,
+        "selected_cell_counts": {
+          "8": 7
+        },
+        "selected_cell_fraction": {
+          "8": 1.0
+        },
+        "materialized_candidate_cells": {
+          "minimum": 1,
+          "maximum": 1,
+          "mean": 1.0
+        },
+        "mean_outcome": 0.6891373906816755,
+        "context_mask_patterns": {
+          "101101100101": 7
+        },
+        "final_context_mask": "101101100101",
+        "context_variant_forks": [],
+        "adaptive_stage_mastery": false,
+        "stage_index": 0,
+        "stage_count": 0,
+        "stage_mastery_complete": true,
+        "stage_mastery_records": [],
+        "stage_verifier_bits": 0,
+        "feedbacks": 89,
+        "routing_decisions": [
+          36,
+          4,
+          2,
+          3,
+          2,
+          2,
+          8,
+          2,
+          19
+        ],
+        "search_expansions": 7,
+        "wall_seconds": 0.033700832980684936
+      },
+      "retention": {
+        "accepted": true,
+        "deterministic_score": 0.9816655516624451,
+        "verifier_bits": 8,
+        "prefix_minimum": 0.9816655516624451,
+        "context_relevance_minimum": 0.9999999403953552,
+        "reason": "heldout_prefix_floor_passed"
+      },
+      "controls": {
+        "reward_shuffled": {
+          "updates": 160,
+          "deterministic_best_score": 0.5125157833099365,
+          "deterministic_best_cell": 0,
+          "mastery_cell": null,
+          "mastery_cell_score": 0.5125157833099365,
+          "selected_cell_counts": {
+            "0": 160
+          },
+          "selected_cell_fraction": {
+            "0": 1.0
+          },
+          "materialized_candidate_cells": {
+            "minimum": 1,
+            "maximum": 1,
+            "mean": 1.0
+          },
+          "mean_outcome": 0.47428039461374283,
+          "context_mask_patterns": {
+            "101101100101": 160
+          },
+          "final_context_mask": "101101100101",
+          "context_variant_forks": [],
+          "adaptive_stage_mastery": false,
+          "stage_index": 0,
+          "stage_count": 0,
+          "stage_mastery_complete": true,
+          "stage_mastery_records": [],
+          "stage_verifier_bits": 0,
+          "feedbacks": 160,
+          "routing_decisions": [
+            160
+          ],
+          "search_expansions": 160,
+          "wall_seconds": 0.6694730410235934,
+          "initial_score": 0.8009006977081299
+        },
+        "action_shuffled": {
+          "updates": 160,
+          "deterministic_best_score": 0.13550573587417603,
+          "deterministic_best_cell": 0,
+          "mastery_cell": null,
+          "mastery_cell_score": 0.13550573587417603,
+          "selected_cell_counts": {
+            "0": 160
+          },
+          "selected_cell_fraction": {
+            "0": 1.0
+          },
+          "materialized_candidate_cells": {
+            "minimum": 1,
+            "maximum": 1,
+            "mean": 1.0
+          },
+          "mean_outcome": 0.3755249644827581,
+          "context_mask_patterns": {
+            "101101100101": 160
+          },
+          "final_context_mask": "101101100101",
+          "context_variant_forks": [],
+          "adaptive_stage_mastery": false,
+          "stage_index": 0,
+          "stage_count": 0,
+          "stage_mastery_complete": true,
+          "stage_mastery_records": [],
+          "stage_verifier_bits": 0,
+          "feedbacks": 160,
+          "routing_decisions": [
+            160
+          ],
+          "search_expansions": 160,
+          "wall_seconds": 0.6484408749965951,
+          "initial_score": 0.7762729525566101
+        },
+        "missing_evidence": {
+          "state_unchanged": true,
+          "routing_decisions": [
+            0
+          ],
+          "routing_feedbacks": [
+            0
+          ]
+        }
+      },
+      "corruption": {
+        "clean_score": 0.9816655516624451,
+        "corrupted_score": 0.7935410737991333,
+        "corruption_detected": true
+      },
+      "reversal": {
+        "updates": 260,
+        "deterministic_best_score": 0.9336074590682983,
+        "deterministic_best_cell": 9,
+        "mastery_cell": 9,
+        "mastery_cell_score": 0.9336074590682983,
+        "selected_cell_counts": {
+          "6": 5,
+          "7": 1,
+          "9": 254
+        },
+        "selected_cell_fraction": {
+          "6": 0.019230769230769232,
+          "7": 0.0038461538461538464,
+          "9": 0.9769230769230769
+        },
+        "materialized_candidate_cells": {
+          "minimum": 1,
+          "maximum": 1,
+          "mean": 1.0
+        },
+        "mean_outcome": 0.6830117987397198,
+        "context_mask_patterns": {
+          "111110100101": 260
+        },
+        "final_context_mask": "111110100101",
+        "context_variant_forks": [],
+        "adaptive_stage_mastery": false,
+        "stage_index": 0,
+        "stage_count": 0,
+        "stage_mastery_complete": true,
+        "stage_mastery_records": [],
+        "stage_verifier_bits": 0,
+        "feedbacks": 349,
+        "routing_decisions": [
+          36,
+          4,
+          2,
+          3,
+          2,
+          2,
+          8,
+          2,
+          19,
+          254
+        ],
+        "search_expansions": 260,
+        "wall_seconds": 1.1558015829650685
+      },
+      "reversal_retention": {
+        "accepted": false,
+        "deterministic_score": 0.9336074590682983,
+        "verifier_bits": 8,
+        "prefix_minimum": 0.9336074590682983,
+        "context_relevance_minimum": 1.0,
+        "reason": "heldout_prefix_floor_failed"
+      },
+      "novel_after_reversal_retention": {
+        "accepted": true,
+        "deterministic_score": 0.9816655516624451,
+        "verifier_bits": 8,
+        "prefix_minimum": 0.9816655516624451,
+        "context_relevance_minimum": 0.9999999403953552,
+        "reason": "heldout_prefix_floor_passed"
+      }
+    },
+    "fresh": {
+      "selected_initialization": "fresh",
+      "transfer_probe_score": 0.15734390914440155,
+      "fresh_probe_score": 0.956149697303772,
+      "total_updates": 19,
+      "continuation": {
+        "updates": 7,
+        "deterministic_best_score": 0.9816655516624451,
+        "deterministic_best_cell": 8,
+        "mastery_cell": 8,
+        "mastery_cell_score": 0.9816655516624451,
+        "selected_cell_counts": {
+          "8": 7
+        },
+        "selected_cell_fraction": {
+          "8": 1.0
+        },
+        "materialized_candidate_cells": {
+          "minimum": 1,
+          "maximum": 1,
+          "mean": 1.0
+        },
+        "mean_outcome": 0.6891373906816755,
+        "context_mask_patterns": {
+          "101101100101": 7
+        },
+        "final_context_mask": "101101100101",
+        "context_variant_forks": [],
+        "adaptive_stage_mastery": false,
+        "stage_index": 0,
+        "stage_count": 0,
+        "stage_mastery_complete": true,
+        "stage_mastery_records": [],
+        "stage_verifier_bits": 0,
+        "feedbacks": 86,
+        "routing_decisions": [
+          23,
+          15,
+          4,
+          3,
+          4,
+          2,
+          3,
+          3,
+          19
+        ],
+        "search_expansions": 7,
+        "wall_seconds": 0.03233104199171066
+      },
+      "retention": {
+        "accepted": true,
+        "deterministic_score": 0.9816655516624451,
+        "verifier_bits": 8,
+        "prefix_minimum": 0.9816655516624451,
+        "context_relevance_minimum": 0.9999999403953552,
+        "reason": "heldout_prefix_floor_passed"
+      },
+      "controls": {
+        "reward_shuffled": {
+          "updates": 160,
+          "deterministic_best_score": 0.7307906746864319,
+          "deterministic_best_cell": 0,
+          "mastery_cell": null,
+          "mastery_cell_score": 0.7307906746864319,
+          "selected_cell_counts": {
+            "0": 160
+          },
+          "selected_cell_fraction": {
+            "0": 1.0
+          },
+          "materialized_candidate_cells": {
+            "minimum": 1,
+            "maximum": 1,
+            "mean": 1.0
+          },
+          "mean_outcome": 0.47428039461374283,
+          "context_mask_patterns": {
+            "101101100101": 160
+          },
+          "final_context_mask": "101101100101",
+          "context_variant_forks": [],
+          "adaptive_stage_mastery": false,
+          "stage_index": 0,
+          "stage_count": 0,
+          "stage_mastery_complete": true,
+          "stage_mastery_records": [],
+          "stage_verifier_bits": 0,
+          "feedbacks": 160,
+          "routing_decisions": [
+            160
+          ],
+          "search_expansions": 160,
+          "wall_seconds": 0.6412279999931343,
+          "initial_score": 0.8132733702659607
+        },
+        "action_shuffled": {
+          "updates": 160,
+          "deterministic_best_score": 0.9996143579483032,
+          "deterministic_best_cell": 0,
+          "mastery_cell": null,
+          "mastery_cell_score": 0.9996143579483032,
+          "selected_cell_counts": {
+            "0": 160
+          },
+          "selected_cell_fraction": {
+            "0": 1.0
+          },
+          "materialized_candidate_cells": {
+            "minimum": 1,
+            "maximum": 1,
+            "mean": 1.0
+          },
+          "mean_outcome": 0.3755249644827581,
+          "context_mask_patterns": {
+            "101101100101": 160
+          },
+          "final_context_mask": "101101100101",
+          "context_variant_forks": [],
+          "adaptive_stage_mastery": false,
+          "stage_index": 0,
+          "stage_count": 0,
+          "stage_mastery_complete": true,
+          "stage_mastery_records": [],
+          "stage_verifier_bits": 0,
+          "feedbacks": 160,
+          "routing_decisions": [
+            160
+          ],
+          "search_expansions": 160,
+          "wall_seconds": 0.6423464579856955,
+          "initial_score": 0.7813132405281067
+        },
+        "missing_evidence": {
+          "state_unchanged": true,
+          "routing_decisions": [
+            0
+          ],
+          "routing_feedbacks": [
+            0
+          ]
+        }
+      },
+      "corruption": {
+        "clean_score": 0.9816655516624451,
+        "corrupted_score": 0.7935410737991333,
+        "corruption_detected": true
+      },
+      "reversal": {
+        "updates": 260,
+        "deterministic_best_score": 0.8489927053451538,
+        "deterministic_best_cell": 9,
+        "mastery_cell": 9,
+        "mastery_cell_score": 0.8489927053451538,
+        "selected_cell_counts": {
+          "6": 1,
+          "7": 4,
+          "9": 255
+        },
+        "selected_cell_fraction": {
+          "6": 0.0038461538461538464,
+          "7": 0.015384615384615385,
+          "9": 0.9807692307692307
+        },
+        "materialized_candidate_cells": {
+          "minimum": 1,
+          "maximum": 1,
+          "mean": 1.0
+        },
+        "mean_outcome": 0.6886877573740023,
+        "context_mask_patterns": {
+          "111110100101": 260
+        },
+        "final_context_mask": "111110100101",
+        "context_variant_forks": [],
+        "adaptive_stage_mastery": false,
+        "stage_index": 0,
+        "stage_count": 0,
+        "stage_mastery_complete": true,
+        "stage_mastery_records": [],
+        "stage_verifier_bits": 0,
+        "feedbacks": 346,
+        "routing_decisions": [
+          23,
+          15,
+          4,
+          3,
+          4,
+          2,
+          3,
+          3,
+          19,
+          255
+        ],
+        "search_expansions": 260,
+        "wall_seconds": 1.1614217499736696
+      },
+      "reversal_retention": {
+        "accepted": false,
+        "deterministic_score": 0.8489927053451538,
+        "verifier_bits": 8,
+        "prefix_minimum": 0.8489927053451538,
+        "context_relevance_minimum": 1.0,
+        "reason": "heldout_prefix_floor_failed"
+      },
+      "novel_after_reversal_retention": {
+        "accepted": true,
+        "deterministic_score": 0.9816655516624451,
+        "verifier_bits": 8,
+        "prefix_minimum": 0.9816655516624451,
+        "context_relevance_minimum": 0.9999999403953552,
+        "reason": "heldout_prefix_floor_passed"
+      }
+    },
+    "warm_receipt": {
+      "selected_initialization": "fresh",
+      "source_cell": 7,
+      "transfer_cell": 8,
+      "fresh_cell": 8,
+      "transfer_probe_score": 0.08358647674322128,
+      "fresh_probe_score": 0.956149697303772,
+      "probe_updates": 12,
+      "source_state_digest": "f801c7676cf7a99fa13941e22da9175e66d315a371af9575074de531a7ac6c85",
+      "selected_state_digest": "5b36d9cf63daa0f7d49bf14ee062977bbe9eaadce2d1283645449d0b75da979d",
+      "reason": "fresh external intention state won the verifier challenger",
+      "schema": "neural-computer.external-routed-intention-prior-selection.v1"
+    },
+    "fresh_receipt": {
+      "selected_initialization": "fresh",
+      "source_cell": 7,
+      "transfer_cell": 8,
+      "fresh_cell": 8,
+      "transfer_probe_score": 0.15734390914440155,
+      "fresh_probe_score": 0.956149697303772,
+      "probe_updates": 12,
+      "source_state_digest": "8f9c02ac3b4ac99fcdd7b522298e027204dbcc188b69fddcec3321cd55451067",
+      "selected_state_digest": "357871a68e8248b73ecec7e2ceb57206a539408130e0139bb88a894a43b579c3",
+      "reason": "fresh external intention state won the verifier challenger",
+      "schema": "neural-computer.external-routed-intention-prior-selection.v1"
+    },
+    "warm_probe": {
+      "transfer": {
+        "updates": 12,
+        "deterministic_best_score": 0.08358647674322128,
+        "deterministic_best_cell": 8,
+        "mastery_cell": 8,
+        "mastery_cell_score": 0.08358647674322128,
+        "selected_cell_counts": {
+          "8": 12
+        },
+        "selected_cell_fraction": {
+          "8": 1.0
+        },
+        "materialized_candidate_cells": {
+          "minimum": 1,
+          "maximum": 1,
+          "mean": 1.0
+        },
+        "mean_outcome": 0.1108392405246074,
+        "context_mask_patterns": {
+          "101101100101": 12
+        },
+        "final_context_mask": "101101100101",
+        "context_variant_forks": [],
+        "adaptive_stage_mastery": false,
+        "stage_index": 0,
+        "stage_count": 0,
+        "stage_mastery_complete": true,
+        "stage_mastery_records": [],
+        "stage_verifier_bits": 0,
+        "feedbacks": 82,
+        "routing_decisions": [
+          36,
+          4,
+          2,
+          3,
+          2,
+          2,
+          8,
+          2,
+          12
+        ],
+        "search_expansions": 12,
+        "wall_seconds": 0.053726374986581504
+      },
+      "fresh": {
+        "updates": 12,
+        "deterministic_best_score": 0.956149697303772,
+        "deterministic_best_cell": 8,
+        "mastery_cell": 8,
+        "mastery_cell_score": 0.956149697303772,
+        "selected_cell_counts": {
+          "8": 12
+        },
+        "selected_cell_fraction": {
+          "8": 1.0
+        },
+        "materialized_candidate_cells": {
+          "minimum": 1,
+          "maximum": 1,
+          "mean": 1.0
+        },
+        "mean_outcome": 0.7638448029756546,
+        "context_mask_patterns": {
+          "101101100101": 12
+        },
+        "final_context_mask": "101101100101",
+        "context_variant_forks": [],
+        "adaptive_stage_mastery": false,
+        "stage_index": 0,
+        "stage_count": 0,
+        "stage_mastery_complete": true,
+        "stage_mastery_records": [],
+        "stage_verifier_bits": 0,
+        "feedbacks": 82,
+        "routing_decisions": [
+          36,
+          4,
+          2,
+          3,
+          2,
+          2,
+          8,
+          2,
+          12
+        ],
+        "search_expansions": 12,
+        "wall_seconds": 0.05425495799863711
+      }
+    },
+    "fresh_probe": {
+      "transfer": {
+        "updates": 12,
+        "deterministic_best_score": 0.15734390914440155,
+        "deterministic_best_cell": 8,
+        "mastery_cell": 8,
+        "mastery_cell_score": 0.15734390914440155,
+        "selected_cell_counts": {
+          "8": 12
+        },
+        "selected_cell_fraction": {
+          "8": 1.0
+        },
+        "materialized_candidate_cells": {
+          "minimum": 1,
+          "maximum": 1,
+          "mean": 1.0
+        },
+        "mean_outcome": 0.08228153904201463,
+        "context_mask_patterns": {
+          "101101100101": 12
+        },
+        "final_context_mask": "101101100101",
+        "context_variant_forks": [],
+        "adaptive_stage_mastery": false,
+        "stage_index": 0,
+        "stage_count": 0,
+        "stage_mastery_complete": true,
+        "stage_mastery_records": [],
+        "stage_verifier_bits": 0,
+        "feedbacks": 79,
+        "routing_decisions": [
+          23,
+          15,
+          4,
+          3,
+          4,
+          2,
+          3,
+          3,
+          12
+        ],
+        "search_expansions": 12,
+        "wall_seconds": 0.05390954198082909
+      },
+      "fresh": {
+        "updates": 12,
+        "deterministic_best_score": 0.956149697303772,
+        "deterministic_best_cell": 8,
+        "mastery_cell": 8,
+        "mastery_cell_score": 0.956149697303772,
+        "selected_cell_counts": {
+          "8": 12
+        },
+        "selected_cell_fraction": {
+          "8": 1.0
+        },
+        "materialized_candidate_cells": {
+          "minimum": 1,
+          "maximum": 1,
+          "mean": 1.0
+        },
+        "mean_outcome": 0.7638448029756546,
+        "context_mask_patterns": {
+          "101101100101": 12
+        },
+        "final_context_mask": "101101100101",
+        "context_variant_forks": [],
+        "adaptive_stage_mastery": false,
+        "stage_index": 0,
+        "stage_count": 0,
+        "stage_mastery_complete": true,
+        "stage_mastery_records": [],
+        "stage_verifier_bits": 0,
+        "feedbacks": 79,
+        "routing_decisions": [
+          23,
+          15,
+          4,
+          3,
+          4,
+          2,
+          3,
+          3,
+          12
+        ],
+        "search_expansions": 12,
+        "wall_seconds": 0.05187666695564985
+      }
+    }
+  },
+  "accounting": {
+    "warm_unique_verifier_bits": 401,
+    "fresh_unique_verifier_bits": 398,
+    "warm_control_outcome_bits": 320,
+    "fresh_control_outcome_bits": 320,
+    "warm_replayed_examples": 0,
+    "fresh_replayed_examples": 0,
+    "optimizer_updates": 0,
+    "controller_optimizer_updates": 0,
+    "wall_seconds": 6.107835500035435
+  }
+}

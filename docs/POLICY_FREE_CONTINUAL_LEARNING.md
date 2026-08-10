@@ -878,3 +878,29 @@ evidence curriculum. It does not establish arbitrary distribution shift,
 unrestricted growth, learned compression, arbitrary new computation, or
 general continual learning. The next pressure is novel mask ordering and
 unseen evidence combinations rather than another fixed schedule.
+
+## Verifier-selected copy-or-fresh admission (2026-08-10)
+
+The next boundary is negative-transfer safety on an unseen task. The external
+router now exposes `select_verified_transfer_prior`, an isolated transaction
+that creates a copy-on-write candidate inheriting a protected source cell and
+a fresh candidate with the same frozen controller and state adapter. A
+bounded outcome-only probe scores both branches; only the winning branch and
+its post-probe state are returned. The live source state is digest-checked and
+cannot be mutated by the challenger.
+
+The direct-copy novel-task baseline is negative transfer on all three seeds:
+warm adaptation takes `63/68/85` updates versus matched fresh `34/26/61`.
+The promotion-quality challenger rejects copied state in all six warm/fresh
+decisions, then all selected fresh branches master an unseen evidence mask and
+target at scores from `0.9802` to `0.9839`, with held-out retention and post-reversal retention. The
+audit also covers shuffled-outcome, missing-evidence, memory-corruption,
+exact-reload, frozen-core, and zero-replay controls. Reports are archived in
+`session_records/policy_free_intention_novel_challenger_promoted_2026-08-10/`.
+
+This promotes bounded verifier-selected copy-or-fresh external intention
+admission. It does not claim positive transfer on novel tasks, arbitrary new
+computation, unrestricted memory growth, compression, or general continual
+learning. The next high-ROI experiment is a probe that sometimes accepts a
+useful transfer prior on a genuinely novel combination, followed by learned
+cost-aware admission and retention across multiple unseen task families.

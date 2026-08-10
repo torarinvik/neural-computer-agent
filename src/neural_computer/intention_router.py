@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import copy
+import hashlib
 import math
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, replace
 
 import torch
@@ -34,6 +36,9 @@ EXTERNAL_ROUTED_INTENTION_PROPOSAL_SCHEMA = (
 )
 EXTERNAL_ROUTED_INTENTION_RETENTION_VERIFICATION_SCHEMA = (
     "neural-computer.external-routed-intention-retention-verification.v1"
+)
+EXTERNAL_ROUTED_INTENTION_PRIOR_SELECTION_SCHEMA = (
+    "neural-computer.external-routed-intention-prior-selection.v1"
 )
 
 
@@ -328,6 +333,56 @@ class ExternalRoutedRetentionVerification:
         return self
 
 
+@dataclass(frozen=True)
+class ExternalRoutedIntentionPriorSelectionReceipt:
+    """Auditable choice between copied and fresh external intention state."""
+
+    selected_initialization: str
+    source_cell: int
+    transfer_cell: int
+    fresh_cell: int
+    transfer_probe_score: float
+    fresh_probe_score: float
+    probe_updates: int
+    source_state_digest: str
+    selected_state_digest: str
+    reason: str
+    schema: str = EXTERNAL_ROUTED_INTENTION_PRIOR_SELECTION_SCHEMA
+
+    def validate(self) -> ExternalRoutedIntentionPriorSelectionReceipt:
+        if self.schema != EXTERNAL_ROUTED_INTENTION_PRIOR_SELECTION_SCHEMA:
+            raise ValueError("unsupported routed intention prior-selection schema")
+        if self.selected_initialization not in {"transfer", "fresh"}:
+            raise ValueError("routed intention prior selection is invalid")
+        for name, value in (
+            ("source_cell", self.source_cell),
+            ("transfer_cell", self.transfer_cell),
+            ("fresh_cell", self.fresh_cell),
+        ):
+            if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+                raise ValueError(f"routed intention prior {name} is invalid")
+        for name, value in (
+            ("transfer_probe_score", self.transfer_probe_score),
+            ("fresh_probe_score", self.fresh_probe_score),
+        ):
+            if not isinstance(value, (float, int)) or not math.isfinite(float(value)):
+                raise ValueError(f"routed intention prior {name} is invalid")
+        if (
+            not isinstance(self.probe_updates, int)
+            or isinstance(self.probe_updates, bool)
+            or self.probe_updates < 0
+        ):
+            raise ValueError("routed intention prior probe updates are invalid")
+        for name, value in (
+            ("source_state_digest", self.source_state_digest),
+            ("selected_state_digest", self.selected_state_digest),
+            ("reason", self.reason),
+        ):
+            if not isinstance(value, str) or not value:
+                raise ValueError(f"routed intention prior {name} is missing")
+        return self
+
+
 class ExternalOutcomeIntentionRouter:
     """Select external intention cells from opaque context and scalar outcomes."""
 
@@ -475,6 +530,28 @@ class ExternalOutcomeIntentionRouter:
             "capacity": "append_only_external_cell_count_v1",
             "controller": "frozen_opaque_context_only_v1",
         }
+
+    def _state_digest(self, state: ExternalRoutedIntentionMemoryState) -> str:
+        """Digest a routed state for isolated challenger transactions."""
+
+        payload = self.state_payload(state)
+        digest = hashlib.sha256()
+
+        def update(value: object, name: str) -> None:
+            digest.update(name.encode("utf-8"))
+            if isinstance(value, Mapping):
+                for child_name in sorted(value):
+                    update(value[child_name], f"{name}.{child_name}")
+            elif isinstance(value, torch.Tensor):
+                detached = value.detach().cpu().contiguous()
+                digest.update(str(detached.dtype).encode("ascii"))
+                digest.update(repr(tuple(detached.shape)).encode("ascii"))
+                digest.update(detached.numpy().tobytes())
+            else:
+                digest.update(repr(value).encode("utf-8"))
+
+        update(payload, "state")
+        return digest.hexdigest()
 
     def initial_state(
         self,
@@ -1223,6 +1300,116 @@ class ExternalOutcomeIntentionRouter:
         )
         self._validate_state(next_state)
         return next_state, new_index
+
+    def select_verified_transfer_prior(
+        self,
+        state: ExternalRoutedIntentionMemoryState,
+        source_cell: int,
+        probe: Callable[..., tuple[
+            float,
+            float,
+            ExternalRoutedIntentionMemoryState,
+            ExternalRoutedIntentionMemoryState,
+        ]],
+        *,
+        context_mask: torch.Tensor | None = None,
+        probe_updates: int = 0,
+    ) -> tuple[
+        ExternalRoutedIntentionPriorSelectionReceipt,
+        ExternalOutcomeIntentionRouter,
+        ExternalRoutedIntentionMemoryState,
+        int,
+    ]:
+        """Choose copied or fresh external state through isolated probes.
+
+        The live router and state are never passed to ``probe``. Two
+        copy-on-write branches are created: one inherits ``source_cell`` and
+        one starts with fresh external content. The caller supplies a bounded
+        verifier-only probe and returns each branch's post-probe state. Only
+        the selected branch is returned for explicit deployment, preventing
+        negative transfer from mutating mastered capabilities.
+        """
+
+        self._validate_state(state)
+        if not isinstance(source_cell, int) or isinstance(source_cell, bool):
+            raise TypeError("routed intention prior source cell must be an integer")
+        if not 0 <= source_cell < state.cells.baseline.shape[0]:
+            raise ValueError("routed intention prior source cell is out of range")
+        if not callable(probe):
+            raise TypeError("routed intention prior probe must be callable")
+        if (
+            not isinstance(probe_updates, int)
+            or isinstance(probe_updates, bool)
+            or probe_updates < 0
+        ):
+            raise ValueError("routed intention prior probe updates are invalid")
+
+        source_digest = self._state_digest(state)
+        transfer_router = copy.deepcopy(self)
+        transfer_state, transfer_cell = transfer_router.append_cell(
+            copy.deepcopy(state),
+            source_cell=source_cell,
+            copy_route=True,
+            context_mask=context_mask,
+        )
+        fresh_router = copy.deepcopy(self)
+        fresh_state, fresh_cell = fresh_router.append_cell(
+            copy.deepcopy(state),
+            source_cell=None,
+            copy_route=False,
+            context_mask=context_mask,
+        )
+        result = probe(
+            transfer_router,
+            transfer_state,
+            transfer_cell,
+            fresh_router,
+            fresh_state,
+            fresh_cell,
+        )
+        if not isinstance(result, (tuple, list)) or len(result) != 4:
+            raise TypeError(
+                "routed intention prior probe must return two scores and two states"
+            )
+        transfer_score, fresh_score, transfer_state, fresh_state = result
+        if not isinstance(transfer_state, ExternalRoutedIntentionMemoryState):
+            raise TypeError("routed intention transfer probe state is invalid")
+        if not isinstance(fresh_state, ExternalRoutedIntentionMemoryState):
+            raise TypeError("routed intention fresh probe state is invalid")
+        transfer_router._validate_state(transfer_state)
+        fresh_router._validate_state(fresh_state)
+        if not all(
+            isinstance(value, (float, int)) and math.isfinite(float(value))
+            for value in (transfer_score, fresh_score)
+        ):
+            raise ValueError("routed intention prior probe scores must be finite")
+        if self._state_digest(state) != source_digest:
+            raise RuntimeError("routed intention prior probe mutated the source state")
+        selected_initialization = (
+            "transfer" if float(transfer_score) >= float(fresh_score) else "fresh"
+        )
+        selected_router, selected_state, selected_cell = (
+            (transfer_router, transfer_state, transfer_cell)
+            if selected_initialization == "transfer"
+            else (fresh_router, fresh_state, fresh_cell)
+        )
+        receipt = ExternalRoutedIntentionPriorSelectionReceipt(
+            selected_initialization=selected_initialization,
+            source_cell=source_cell,
+            transfer_cell=transfer_cell,
+            fresh_cell=fresh_cell,
+            transfer_probe_score=float(transfer_score),
+            fresh_probe_score=float(fresh_score),
+            probe_updates=probe_updates,
+            source_state_digest=source_digest,
+            selected_state_digest=selected_router._state_digest(selected_state),
+            reason=(
+                "transferred external intention state won the verifier challenger"
+                if selected_initialization == "transfer"
+                else "fresh external intention state won the verifier challenger"
+            ),
+        ).validate()
+        return receipt, selected_router, selected_state, selected_cell
 
     def protect(
         self,

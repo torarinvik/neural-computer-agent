@@ -8585,3 +8585,22 @@ This isolates the next bottleneck: stable sample-efficient content transfer
 through a sequence of evidence versions, not merely safe storage or routing.
 The already-promoted overlapping-mask result remains unchanged because the
 new profile prior is opt-in for legacy regimes.
+
+## Verifier-selected external prior admission
+
+External memory is now able to treat a copied file as a hypothesis rather
+than an unconditional initialization. `ExternalOutcomeIntentionRouter` can
+create isolated transfer and fresh cells, run a caller-supplied bounded
+verifier-only probe, and return an auditable
+`ExternalRoutedIntentionPriorSelectionReceipt` with both scores, state
+digests, and the selected branch. The controller receives no protocol-shaped
+branch label; this remains entirely on the replaceable memory side of the
+amodal boundary.
+
+This transaction is the implementation of “CPU plus files” rollback safety:
+the CPU remains frozen, files can grow or fork, and a bad inherited file is
+discarded before deployment. The novel challenger audit rejects blind copying
+on all three seeds and preserves the mastered source and the later novel file
+through reversal. It establishes safe bounded prior selection, not a claim
+that the controller can invent arbitrary new computation or that transfer is
+always beneficial.
