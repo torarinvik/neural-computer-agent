@@ -7518,3 +7518,29 @@ single persistent route-memory stream with interference, reversal, and
 explicit growth/consolidation costs, evaluated by retention prefixes and
 transaction regret. Evidence and accounting are archived in
 `session_records/sequence_working_memory_2026-08-02/route_memory_planner_closed_loop_promoted_2026-08-10/`.
+
+## Persistent route-memory stream under interference and growth cost (2026-08-10)
+
+The learned maintenance policy was run against one evolving external memory
+rather than independent candidate banks. Mastered anchors, unprotected
+distractors, pressure events, and a mid-stream reversal were presented over
+300 events per seed. Accepted changes used the same copy-on-write,
+verifier-gated route-memory transactions; rejected proposals left the live
+store unchanged.
+
+Across seeds `85801`, `85802`, `85803`, and `85804`, trained streams committed
+`290`–`297` of 300 transactions, ended with utility `1.0`, grew 72–74 times,
+and preserved sampled-prefix and full-final retention at `1.0`. Each run used
+300 unique verifier utilities, 300 policy updates, zero replay, and a frozen
+controller. Fresh planners committed zero transactions in three controls and
+fewer than the trained planner in the fourth.
+
+This promotes persistent bounded memory maintenance under interference,
+reversal, and growth cost. It does not establish consolidation selection in
+every persistent stream, unrestricted memory growth, universal policy
+composition, autonomous verifier design, or general continual learning. The
+next pressure point is persistent consolidation opportunity plus explicit
+utility costs for growth, eviction, and compression, measured by
+retention-adjusted cumulative utility and transaction regret. Evidence and
+accounting are archived in
+`session_records/sequence_working_memory_2026-08-02/route_memory_persistent_stream_promoted_2026-08-10/`.

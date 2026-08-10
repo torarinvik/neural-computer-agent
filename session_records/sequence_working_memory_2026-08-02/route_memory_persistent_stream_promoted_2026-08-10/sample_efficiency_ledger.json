@@ -1,0 +1,39 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "route_memory_persistent_stream",
+  "status": "promoted",
+  "claim_boundary": "Four-seed replay-free online maintenance on one persistent route-memory stream with interference, reversal, and growth cost; not unrestricted memory or general continual learning.",
+  "seeds": [85801, 85802, 85803, 85804],
+  "configuration": {
+    "stream_steps_per_seed": 300,
+    "reversal_step": 150,
+    "initial_capacity": 4,
+    "planner_schema": "neural-computer.opaque-capacity-planner.v3",
+    "transaction": "copy_on_write_verifier_gated_route_memory_v1"
+  },
+  "accounting_per_seed": {
+    "unique_verifier_bits": 300,
+    "unique_logical_lifetimes": 300,
+    "optimizer_updates": 300,
+    "replayed_examples": 0,
+    "controller_updates": 0
+  },
+  "results": {
+    "first_window_utility": [0.9, 0.97, 0.91, 0.94],
+    "last_window_utility": [1.0, 1.0, 1.0, 1.0],
+    "committed_transactions": [290, 297, 291, 294],
+    "growth_events": [72, 74, 72, 73],
+    "minimum_prefix_retention": [1.0, 1.0, 1.0, 1.0],
+    "full_final_retention": true,
+    "all_gates_passed": true
+  },
+  "controls": {
+    "frozen_controller_digest": true,
+    "fresh_planner_stream": true,
+    "reversal_schedule": true,
+    "unprotected_interference": true,
+    "growth_cost": true,
+    "replay": false
+  },
+  "next_test": "Add persistent consolidation opportunities and explicit utility costs for growth, eviction, and compression; compare retention-adjusted cumulative utility and transaction regret."
+}

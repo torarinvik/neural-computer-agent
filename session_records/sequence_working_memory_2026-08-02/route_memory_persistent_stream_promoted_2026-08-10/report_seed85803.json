@@ -1,0 +1,55 @@
+{
+  "schema": "neural-computer.route-memory-persistent-stream.v1",
+  "claim_boundary": "one persistent route-memory stream with verifier-gated online maintenance, interference, reversal, and growth cost; not universal continual learning or unrestricted memory growth",
+  "seed": 85803,
+  "configuration": {
+    "stream_steps": 300,
+    "reversal_step": 150,
+    "initial_capacity": 4,
+    "minimum_score": 0.72,
+    "update": "centered_single_verifier_utility_policy_gradient_v1"
+  },
+  "gates": {
+    "persistent_utility_retained_or_improved": true,
+    "stable_prefix_retention": true,
+    "trained_beats_fresh": true,
+    "growth_cost_is_observed": true,
+    "reversal_stream_completed": true,
+    "controller_frozen": true,
+    "replay_zero": true,
+    "one_update_per_unique_utility": true
+  },
+  "promoted": true,
+  "metrics": {
+    "first_window_utility": 0.91,
+    "last_window_utility": 1.0,
+    "trained_committed_transactions": 291,
+    "fresh_committed_transactions": 0,
+    "trained_growth_events": 72,
+    "fresh_growth_events": 0,
+    "trained_final_capacity": 76,
+    "trained_final_prototype_count": 76,
+    "trained_action_counts": {
+      "admit": 72,
+      "evict": 150,
+      "consolidate": 0,
+      "grow": 78
+    },
+    "fresh_action_counts": {
+      "admit": 0,
+      "evict": 0,
+      "consolidate": 0,
+      "grow": 300
+    },
+    "minimum_prefix_retention": 1.0,
+    "full_final_retention": true
+  },
+  "accounting": {
+    "unique_verifier_utilities": 300,
+    "unique_logical_lifetimes": 300,
+    "optimizer_updates": 300,
+    "replayed_examples": 0,
+    "controller_updates": 0,
+    "wall_seconds": 19.24576258403249
+  }
+}
