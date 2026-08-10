@@ -5419,3 +5419,47 @@ rather than something to be learned. If held-out programs jump, the
 puzzle-piece mechanism is real and the interface was the whole story.
 
 Probe 219 is `math_compose.py --worlds 2 --ignorance 0`, 1 seed.
+
+**F120 (probe 220). Boolean composition fails the same way, and adds
+two diagnostics the arithmetic version could not: reading is entirely
+absent (stranger accuracy is BIT-IDENTICAL to own-entry accuracy), and
+world identity is irrelevant (trained worlds score the same as held-out
+worlds).** Pieces reduced to the minimum — XOR with a hidden mask,
+rotate by a hidden shift, over 8-bit vectors, non-commutative, 1785
+worlds available. Exact-match, chance 0.0039:
+
+| arm | trained programs | held programs | stranger | withheld |
+| --- | ---: | ---: | ---: | ---: |
+| 64 worlds, seed 69316 | 0.1454 | 0.0325 | **0.0322** | 0.0123 |
+| 64 worlds, seed 69317 | 0.0679 | 0.0029 | **0.0029** | 0.0034 |
+| 512 worlds, seed 69316 | 0.1371 | 0.0124 | **0.0124** | 0.0119 |
+
+Three readings, in order of what they rule out:
+
+  * **Stranger == own entry to 3-4 decimals in every arm.** A foreign
+    world's entry works exactly as well as the correct one: the plant
+    is not reading. This is not partial reading or weak reading; it is
+    none.
+  * **Trained worlds == held-out worlds** (0.1454 vs 0.1464; 0.1371 vs
+    0.1376). The model has learned nothing world-specific at all — it
+    has found one world-independent average function.
+  * **8x the world diversity changes nothing** (0.1371 vs 0.1454).
+    F78's lever, which has worked on every previous rung, is inert
+    here — confirming from a second direction that the constraint is
+    not diversity.
+
+Why the ignorance objective did not save it, which is the transferable
+lesson: the term penalises being ACCURATE WITHOUT the entry, and this
+model is not accurate with or without it (per-bit 0.55-0.62 against
+0.50 chance). The pressure to read only exists once something predicts
+well enough for the entry to matter. **The ignorance objective is
+toothless when the model is bad** — it fixed F106 precisely because
+the games model was already accurate on the twin-average.
+
+So the boolean ground reproduces F119 and localises it further: with
+one world (F119) the one-shot interface fits perfectly and cannot
+compose; with 64 worlds it cannot even fit, because every (world,
+program) pair is a separate function to memorise and there are 1152 of
+them. Both are the same defect at different scales.
+
+Probe 220 is `bool_compose.py`, 3 arms.
