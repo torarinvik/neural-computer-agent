@@ -8853,3 +8853,9 @@ of different capabilities at execution time. The runtime audit covers
 alternating routes, state non-interference, verified retirement, and reload of
 stable IDs. It is still a bounded runtime integrity result, not evidence of
 general program acquisition or general continual learning.
+
+Runtime schema v3 additionally supports mixed batch schedules. Each row may
+select a different logical file; the executor is invoked with a row mask per
+file, and the runtime merges only the resulting output rows while retaining
+the individual execution snapshots. This removes the prior requirement to
+partition a multi-family batch before the controller can run it.

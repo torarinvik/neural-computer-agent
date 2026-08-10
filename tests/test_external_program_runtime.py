@@ -37,6 +37,25 @@ class _AlternatingProgramMemory(ExternalSequenceProgramMemory):
         return weights
 
 
+class _PartitionedProgramMemory(ExternalSequenceProgramMemory):
+    def __init__(self):
+        super().__init__(5, content_addressing=True, hard_routing=True)
+
+    def route_weights(self, query):
+        if self.file_count != 2:
+            raise AssertionError("partitioned test memory requires two files")
+        weights = torch.zeros(
+            query.shape[0],
+            self.file_count,
+            dtype=query.dtype,
+            device=query.device,
+        )
+        weights[:, 0] = 1.0
+        weights[1::2, 0] = 0.0
+        weights[1::2, 1] = 1.0
+        return weights
+
+
 def _feedback(batch_size: int) -> ControllerFeedback:
     return ControllerFeedback(
         action=torch.zeros(batch_size, 3),
@@ -94,7 +113,7 @@ def test_external_program_runtime_routes_file_result_to_decoders_without_core_mu
         _feedback(2),
     )
 
-    assert output.schema == "neural-computer.external-program-runtime.v2"
+    assert output.schema == "neural-computer.external-program-runtime.v3"
     assert output.execution.program_digest is not None
     assert len(output.execution.program_digest) == 64
     assert len(output.execution.trace) == 3
@@ -125,6 +144,29 @@ def test_external_program_memory_selects_file_without_exposing_slot_to_controlle
         "opaque_content_routed_external_program_memory_v1"
     )
     assert "selected_program_slot" not in agent.configuration()["machine"]
+
+
+def test_external_program_runtime_supports_mixed_file_schedule_in_one_batch():
+    torch.manual_seed(9031)
+    memory = _PartitionedProgramMemory()
+    memory.add_artifact(_artifact())
+    memory.add_artifact(_artifact())
+    _runtime_module, _machine, agent = _runtime(memory=memory)
+    output, next_state = agent.step_events(
+        [AmodalEvent(torch.randn(2, 4))],
+        agent.initial_state(2, device="cpu"),
+        _feedback(2),
+    )
+
+    assert output.selected_program_slot is None
+    assert output.selected_program_logical_id is None
+    assert output.selected_program_slots.tolist() == [0, 1]
+    assert output.selected_program_logical_ids.tolist() == [0, 1]
+    assert len(output.execution_snapshots) == 2
+    assert output.execution.program_digest is None
+    assert next_state.program_states.keys() == {0, 1}
+    assert next_state.program_states[0].initialized.tolist() == [True, False]
+    assert next_state.program_states[1].initialized.tolist() == [False, True]
 
 
 def test_external_program_runtime_quiet_tick_does_not_grow_program_state():

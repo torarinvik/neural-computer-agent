@@ -1159,6 +1159,12 @@ files have run without inheriting their working state, while verified file
 retirement removes the corresponding state entry. Alternating-route and
 retirement/reload tests pass without changing controller parameters.
 
+The same runtime now handles mixed batch schedules: rows belonging to
+different external files are executed under row masks in one tick, and the
+per-file recurrent state bank is updated only for its assigned rows. This is
+important for measuring multiple Brain Workshop families together rather than
+silently forcing a single-family batch.
+
 This is a prerequisite for honest continual-learning measurements: content
 retention is not enough if temporal working state is shared accidentally. The
 next pressure remains a real nonstationary Brain Workshop acquisition stream,

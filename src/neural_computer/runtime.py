@@ -1294,7 +1294,7 @@ class ExternalControllerTrajectoryQueryAdapter(nn.Module):
         return query
 
 
-EXTERNAL_PROGRAM_RUNTIME_SCHEMA = "neural-computer.external-program-runtime.v2"
+EXTERNAL_PROGRAM_RUNTIME_SCHEMA = "neural-computer.external-program-runtime.v3"
 _STANDALONE_PROGRAM_STATE_KEY = -1
 
 
@@ -1324,6 +1324,9 @@ class ExternalProgramRuntimeOutput:
     decoded: dict[str, torch.Tensor]
     selected_program_slot: int | None
     selected_program_logical_id: int | None = None
+    selected_program_slots: torch.Tensor | None = None
+    selected_program_logical_ids: torch.Tensor | None = None
+    execution_snapshots: tuple[ExternalExecutionSnapshot, ...] = ()
     schema: str = EXTERNAL_PROGRAM_RUNTIME_SCHEMA
 
 
@@ -1458,26 +1461,72 @@ class ExternalProgramAmodalRuntime(nn.Module):
     def _select_program(
         self,
         controller_output: ControllerOutput,
-    ) -> tuple[ExternalProgramArtifact, int | None, int]:
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         if self.program is not None:
-            return self.program, None, _STANDALONE_PROGRAM_STATE_KEY
+            batch_size = controller_output.state_representation.shape[0]
+            return (
+                torch.full(
+                    (batch_size,),
+                    _STANDALONE_PROGRAM_STATE_KEY,
+                    dtype=torch.long,
+                    device=controller_output.state_representation.device,
+                ),
+                torch.full(
+                    (batch_size,),
+                    -1,
+                    dtype=torch.long,
+                    device=controller_output.state_representation.device,
+                ),
+            )
         if self.program_memory is None or self.program_query_adapter is None:
             raise RuntimeError("external program runtime has no program source")
         query = self.program_query_adapter(controller_output)
         selected = self.program_memory.route_weights(query).argmax(dim=-1)
-        if selected.numel() < 1 or not torch.all(selected == selected[0]):
-            raise ValueError(
-                "program-memory routing requires one program per batch; "
-                "partition mixed program schedules before execution"
-            )
-        slot = int(selected[0])
-        artifact = self.program_memory.artifact(slot)
-        artifact.validate_for(
-            instruction_width=self.machine.instruction_width,
-            interpreter_schema="neural-computer.external-register.v4",
-            execution_schema="neural-computer.external-register-read-execute.v1",
+        logical_ids = torch.tensor(
+            [self.program_memory.logical_slot_id(int(slot)) for slot in selected],
+            dtype=torch.long,
+            device=selected.device,
         )
-        return artifact, slot, self.program_memory.logical_slot_id(slot)
+        return logical_ids, selected
+
+    @staticmethod
+    def _merge_register_states(
+        snapshots: tuple[ExternalExecutionSnapshot, ...],
+        masks: tuple[torch.Tensor, ...],
+    ) -> ExternalRegisterState:
+        """Merge row-partitioned observations without merging file state."""
+
+        if not snapshots or len(snapshots) != len(masks):
+            raise ValueError("cannot merge an empty or misaligned execution batch")
+        merged = snapshots[0].observed
+        for snapshot, mask in zip(snapshots[1:], masks[1:], strict=True):
+            row = mask
+            merged = ExternalRegisterState(
+                register=torch.where(row.unsqueeze(-1), snapshot.observed.register, merged.register),
+                context=torch.where(row.unsqueeze(-1), snapshot.observed.context, merged.context),
+                initialized=torch.where(row, snapshot.observed.initialized, merged.initialized),
+                event_window=(
+                    torch.where(
+                        row[:, None, None],
+                        snapshot.observed.event_window,
+                        merged.event_window,
+                    )
+                    if snapshot.observed.event_window is not None
+                    and merged.event_window is not None
+                    else None
+                ),
+                event_window_mask=(
+                    torch.where(
+                        row[:, None],
+                        snapshot.observed.event_window_mask,
+                        merged.event_window_mask,
+                    )
+                    if snapshot.observed.event_window_mask is not None
+                    and merged.event_window_mask is not None
+                    else None
+                ),
+            )
+        return merged
 
     def step_events(
         self,
@@ -1501,25 +1550,93 @@ class ExternalProgramAmodalRuntime(nn.Module):
             disable_workspace=disable_workspace,
             memory_scope=memory_scope,
         )
-        artifact, selected_slot, logical_id = self._select_program(controller_output)
+        selected_logical_ids, selected_slots = self._select_program(controller_output)
         present = collection.present.any(dim=1)
         program_states = dict(state.program_states)
-        program_state = program_states.get(logical_id)
-        if program_state is None:
-            program_state = self.machine.initial_state(
-                present.shape[0],
-                device=present.device,
-                dtype=controller_output.state_representation.dtype,
+        snapshots: list[ExternalExecutionSnapshot] = []
+        masks: list[torch.Tensor] = []
+        for logical_id in torch.unique(selected_logical_ids, sorted=True).tolist():
+            logical_id = int(logical_id)
+            mask = present & (selected_logical_ids == logical_id)
+            if logical_id == _STANDALONE_PROGRAM_STATE_KEY:
+                if self.program is None:
+                    raise RuntimeError("standalone program state has no artifact")
+                artifact = self.program
+            else:
+                if self.program_memory is None:
+                    raise RuntimeError("memory program state has no program memory")
+                physical_slot = self.program_memory.physical_index_for_logical_id(
+                    logical_id
+                )
+                artifact = self.program_memory.artifact(physical_slot)
+            artifact.validate_for(
+                instruction_width=self.machine.instruction_width,
+                interpreter_schema="neural-computer.external-register.v4",
+                execution_schema="neural-computer.external-register-read-execute.v1",
             )
-        snapshot = self.machine.read_execute_artifact_snapshot(
-            event=controller_output.state_representation,
-            action=feedback.action,
-            outcome=feedback.reward,
-            intention=controller_output.intention,
-            state=program_state,
-            artifact=artifact,
-            present=present,
-        )
+            program_state = program_states.get(logical_id)
+            if program_state is None:
+                program_state = self.machine.initial_state(
+                    present.shape[0],
+                    device=present.device,
+                    dtype=controller_output.state_representation.dtype,
+                )
+            snapshot = self.machine.read_execute_artifact_snapshot(
+                event=controller_output.state_representation,
+                action=feedback.action,
+                outcome=feedback.reward,
+                intention=controller_output.intention,
+                state=program_state,
+                artifact=artifact,
+                present=mask,
+            )
+            snapshots.append(snapshot)
+            masks.append(selected_logical_ids == logical_id)
+            program_states[logical_id] = snapshot.observed
+        execution_snapshots = tuple(snapshots)
+        mask_tuple = tuple(masks)
+        if len(execution_snapshots) == 1:
+            snapshot = execution_snapshots[0]
+        else:
+            merged_observed = self._merge_register_states(
+                execution_snapshots,
+                mask_tuple,
+            )
+            merged_executed = execution_snapshots[0].executed
+            for candidate, mask in zip(execution_snapshots[1:], mask_tuple[1:], strict=True):
+                merged_executed = torch.where(
+                    mask.unsqueeze(-1), candidate.executed, merged_executed
+                )
+            trace: tuple[torch.Tensor, ...] = ()
+            trace_lengths = {len(candidate.trace) for candidate in execution_snapshots}
+            if len(trace_lengths) == 1:
+                trace_values: list[torch.Tensor] = []
+                for trace_index in range(len(execution_snapshots[0].trace)):
+                    value = execution_snapshots[0].trace[trace_index]
+                    for candidate, mask in zip(
+                        execution_snapshots[1:], mask_tuple[1:], strict=True
+                    ):
+                        value = torch.where(
+                            mask.unsqueeze(-1),
+                            candidate.trace[trace_index],
+                            value,
+                        )
+                    trace_values.append(value)
+                trace = tuple(trace_values)
+            snapshot = ExternalExecutionSnapshot(
+                observed=merged_observed,
+                executed=merged_executed,
+                trace=trace,
+            ).validate(
+                batch_size=present.shape[0],
+                register_width=self.machine.register_width,
+                context_width=self.machine.context_width,
+                event_width=self.machine.event_width,
+                event_window_size=self.machine.event_window_size,
+            )
+        logical_id = int(selected_logical_ids[0])
+        selected_slot = int(selected_slots[0])
+        uniform_selection = bool(torch.all(selected_logical_ids == logical_id))
         intention = IntentEvent(
             payload=self.machine.to_intention(snapshot.executed).payload,
             confidence=controller_output.intention.confidence,
@@ -1529,14 +1646,21 @@ class ExternalProgramAmodalRuntime(nn.Module):
             execution=snapshot,
             intention=intention,
             decoded=self.runtime.output_bus(intention),
-            selected_program_slot=selected_slot,
+            selected_program_slot=(
+                selected_slot
+                if uniform_selection and selected_slot >= 0
+                else None
+            ),
             selected_program_logical_id=(
                 None
-                if logical_id == _STANDALONE_PROGRAM_STATE_KEY
+                if not uniform_selection
+                or logical_id == _STANDALONE_PROGRAM_STATE_KEY
                 else logical_id
             ),
+            selected_program_slots=selected_slots.detach().clone(),
+            selected_program_logical_ids=selected_logical_ids.detach().clone(),
+            execution_snapshots=execution_snapshots,
         )
-        program_states[logical_id] = snapshot.observed
         if self.program_memory is not None:
             active_ids = set(self.program_memory.logical_slot_ids)
             program_states = {
