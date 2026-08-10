@@ -630,3 +630,30 @@ learners; shuffled outcomes failed. This promotes the runtime seam and
 external-memory training contract, not general continual learning. The next
 gate must challenge the seam with partial multimodal context, delayed or noisy
 outcomes, multiple competing memories, reversals, and repeated growth.
+
+## Independent-cell memory and negative-transfer rollback (2026-08-10)
+
+The first generator integration used one external state row per controller
+batch row. That was sufficient for a one-cell causal proof but did not provide
+memory-sized capacity: a batch of one could not query a growing set of files.
+`ExternalOutcomeIntentionMemory` separates those dimensions. It proposes one
+opaque candidate per external cell for each adapted controller context, and
+`ModelBasedPlanningResult.candidate_indices` preserves the exact candidate
+provenance needed for outcome credit. Proposal-specific score gradients are
+stored in the ephemeral proposal, so delayed outcomes remain aligned even when
+another cell changes before feedback arrives.
+
+The promoted audit is archived in
+`session_records/policy_free_intention_memory_2026-08-10/`. It masks half the
+opaque context, delays outcomes, adds verifier noise, grows three cells, and
+compacts redundant verified output records. A copied cell fails a reversal
+probe in both seeds; the candidate transaction is discarded, a fresh cell is
+grown, and reversal mastery returns while protected source and successor cells
+remain unchanged. This is the first explicit negative-transfer safeguard in
+the external learning boundary.
+
+The result promotes independent external capacity and transactional rollback,
+not learned routing or general continual learning. The next required step is
+to learn which opaque cell to attempt from context and history, rather than
+having the lifecycle caller supply the writable cell, then test open-ended
+growth and Brain Workshop transfer.

@@ -1155,6 +1155,16 @@ still bounded proposal generation—not arbitrary program induction or general
 continual learning. See `docs/POLICY_FREE_CONTINUAL_LEARNING.md` for the
 claim boundary and next experiment.
 
+`ExternalOutcomeIntentionMemory` is the memory-sized successor to that
+generator. It lets one controller context query a variable number of external
+cells, records planner candidate provenance, and applies delayed score credit
+to only the cell whose opaque intention was attempted. The promoted
+nonstationary audit in
+`session_records/policy_free_intention_memory_2026-08-10/` adds partial-context
+masking, noisy reversal, repeated growth, and transactional rejection of
+negative transfer. Learned cell routing and general continual learning remain
+open.
+
 `PolicyFreeAmodalRuntime` is the canonical integration seam for that generator.
 It proposes from the controller's opaque adapted state, leaves generator state
 mutation to explicit caller-side feedback methods, and can combine a

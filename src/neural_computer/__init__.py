@@ -197,6 +197,12 @@ from .intention import (
     ExternalOutcomeIntentionGenerator,
     ExternalOutcomeIntentionGeneratorState,
 )
+from .intention_memory import (
+    EXTERNAL_INTENTION_MEMORY_PROPOSAL_SCHEMA,
+    EXTERNAL_OUTCOME_INTENTION_MEMORY_SCHEMA,
+    ExternalIntentionMemoryProposal,
+    ExternalOutcomeIntentionMemory,
+)
 from .interface import (
     EVENT_SCHEMA,
     EVENT_WINDOW_SCHEMA,
@@ -602,6 +608,7 @@ __all__ = [
     "EXTERNAL_INTENTION_CONSOLIDATION_SCHEMA",
     "EXTERNAL_INTENTION_EXPLORATION_SCHEMA",
     "EXTERNAL_INTENTION_GENERATION_PROPOSAL_SCHEMA",
+    "EXTERNAL_INTENTION_MEMORY_PROPOSAL_SCHEMA",
     "EXTERNAL_INTENTION_OBSERVATION_SCHEMA",
     "EXTERNAL_INTENTION_PROPOSAL_SCHEMA",
     "EXTERNAL_INTENTION_REPERTOIRE_SCHEMA",
@@ -614,6 +621,7 @@ __all__ = [
     "EXTERNAL_ONLINE_TRANSITION_CONTEXT_ROUTER_SCHEMA",
     "EXTERNAL_OUTCOME_CREDIT_SCHEMA",
     "EXTERNAL_OUTCOME_INTENTION_GENERATOR_SCHEMA",
+    "EXTERNAL_OUTCOME_INTENTION_MEMORY_SCHEMA",
     "EXTERNAL_OUTCOME_PROGRAM_CAPACITY_GROWTH_SCHEMA",
     "EXTERNAL_OUTCOME_PROGRAM_CELL_BANK_SCHEMA",
     "EXTERNAL_OUTCOME_PROGRAM_PRIOR_SELECTION_SCHEMA",
@@ -807,6 +815,7 @@ __all__ = [
     "ExternalIntentionConsolidationReceipt",
     "ExternalIntentionExplorationProposal",
     "ExternalIntentionGenerationProposal",
+    "ExternalIntentionMemoryProposal",
     "ExternalIntentionObservationReceipt",
     "ExternalIntentionProposal",
     "ExternalIntentionRepertoire",
@@ -828,6 +837,7 @@ __all__ = [
     "ExternalOutcomeCreditState",
     "ExternalOutcomeIntentionGenerator",
     "ExternalOutcomeIntentionGeneratorState",
+    "ExternalOutcomeIntentionMemory",
     "ExternalOutcomeProgramCapacityGrowthReceipt",
     "ExternalOutcomeProgramCellBank",
     "ExternalOutcomeProgramCellSelectionReceipt",

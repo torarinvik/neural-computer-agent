@@ -12,6 +12,7 @@ from neural_computer import (
     ExternalIntentionRepertoire,
     ExternalModelBasedPlanner,
     ExternalOutcomeIntentionGenerator,
+    ExternalOutcomeIntentionMemory,
     ExternalSignedEntryValueModel,
     PolicyFreeAmodalRuntime,
 )
@@ -344,6 +345,8 @@ def test_policy_free_runtime_injects_external_generated_candidate_and_feedback()
     assert output.intention_generation is not None
     assert output.intention_generation.intentions.shape == (1, 2)
     assert output.planning.expanded_nodes > 0
+    assert output.planning.candidate_indices is not None
+    assert output.planning.candidate_indices.shape == (1, 1)
     assert policy_free.configuration()["candidate_intentions"] == (
         "external_verified_repertoire_plus_outcome_generator_v1"
     )
@@ -359,3 +362,69 @@ def test_policy_free_runtime_injects_external_generated_candidate_and_feedback()
     )
     assert generator_state.decisions.tolist() == [1]
     assert generator_state.feedbacks.tolist() == [1]
+
+
+def test_policy_free_runtime_queries_memory_cells_independently_from_batch() -> None:
+    torch.manual_seed(17)
+    controller = AmodalCognitiveController(
+        width=4,
+        workspace_slots=2,
+        intention_width=2,
+        feedback_width=3,
+        event_window_capacity=4,
+    )
+    runtime = AmodalControllerRuntime(controller)
+    state = runtime.initial_state(1, device="cpu")
+    feedback = _feedback()
+    event = [AmodalEvent(torch.randn(1, 4))]
+    preview, _ = runtime.step_events(event, state, feedback)
+    goal = preview.controller.state_representation.detach().clone()
+    goal[:, :2] += torch.tensor([0.5, 0.5])
+    memory = ExternalOutcomeIntentionMemory(
+        ExternalOutcomeIntentionGenerator(
+            context_width=12,
+            intention_width=2,
+            hidden_width=8,
+            noise_scale=0.4,
+        )
+    )
+    memory_state = memory.initial_state(3)
+    policy_free = PolicyFreeAmodalRuntime(
+        runtime,
+        ExternalModelBasedPlanner(_AdditiveFactualModel(), beam_width=4),
+        intention_memory=memory,
+    )
+
+    output, _ = policy_free.step_events(
+        event,
+        state,
+        feedback,
+        goal,
+        horizon=1,
+        beam_width=4,
+        intention_memory_state=memory_state,
+    )
+
+    assert output.intention_memory_generation is not None
+    assert output.intention_memory_generation.intentions.shape == (1, 3, 2)
+    assert output.planning.candidate_indices is not None
+    selected = output.planning.candidate_indices[:, 0]
+    assert selected.shape == (1,)
+    assert int(selected.item()) in (0, 1, 2)
+    assert policy_free.configuration()["candidate_intentions"] == (
+        "outcome_intention_memory_candidates_v1"
+    )
+    memory_state = policy_free.record_intention_memory_decision(
+        memory_state,
+        output.intention_memory_generation,
+        selected,
+    )
+    memory_state = policy_free.apply_intention_memory_feedback(
+        memory_state,
+        output.intention_memory_generation,
+        selected,
+        torch.ones(1),
+        terminal=torch.ones(1, dtype=torch.bool),
+    )
+    assert int(memory_state.decisions.sum()) == 1
+    assert int(memory_state.feedbacks.sum()) == 1

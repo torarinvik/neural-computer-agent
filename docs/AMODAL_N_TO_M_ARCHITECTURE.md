@@ -8227,3 +8227,29 @@ claim of general continual learning, unrestricted growth, or arbitrary new
 computation. The next architectural pressure test is a nonstationary stream
 with partial multimodal contexts, delayed/noisy outcomes, competing old
 candidates, reversal, and repeated append/protect/consolidate cycles.
+
+## Independent external intention-cell capacity (2026-08-10)
+
+The generator boundary now distinguishes controller batch from memory
+capacity. `ExternalOutcomeIntentionMemory` queries every external cell from
+each learned opaque controller context and returns a runtime-sized candidate
+tensor. The factual planner records the selected candidate index alongside its
+opaque intention, so delayed scalar feedback can update the exact external
+cell even when copied cells have identical initial content. The controller,
+event bus, and decoder interfaces are unchanged.
+
+The memory proposal carries its score gradients as ephemeral evidence. This
+keeps delayed feedback causal without replaying old examples or consulting
+unattempted candidate outcomes. Protected cells receive no parameter update;
+their stable content remains available for factual search and retention probes.
+
+The replicated nonstationary audit in
+`session_records/policy_free_intention_memory_2026-08-10/` masks partial
+context, delays and noises outcomes, performs repeated growth, and exercises
+verified repertoire compaction. An inherited reversal candidate is evaluated
+transactionally and rejected when it exhibits negative transfer; a fresh
+external cell then acquires the reversal while old cells remain byte-stable.
+This promotes independent memory capacity and rollback safety, not learned
+cell routing, unrestricted growth, or general continual learning. The next
+architectural pressure is a learned opaque router that chooses among cells
+without a caller-provided lifecycle address.

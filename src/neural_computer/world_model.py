@@ -10162,6 +10162,7 @@ class ModelBasedPlanningResult:
     predicted_states: torch.Tensor
     scores: torch.Tensor
     expanded_nodes: int
+    candidate_indices: torch.Tensor | None = None
     schema: str = EXTERNAL_MODEL_PLANNER_SCHEMA
 
     def validate(
@@ -10171,6 +10172,7 @@ class ModelBasedPlanningResult:
         horizon: int,
         state_width: int,
         intention_width: int,
+        candidate_count: int | None = None,
     ) -> ModelBasedPlanningResult:
         if self.schema != EXTERNAL_MODEL_PLANNER_SCHEMA:
             raise ValueError("unsupported planner-result schema")
@@ -10189,6 +10191,17 @@ class ModelBasedPlanningResult:
                 raise ValueError(f"planner {name} must be finite")
         if self.expanded_nodes < 1:
             raise ValueError("planner must expand at least one node")
+        if self.candidate_indices is not None:
+            if self.candidate_indices.shape != (batch, horizon):
+                raise ValueError("planner candidate indices have the wrong shape")
+            if self.candidate_indices.dtype not in (torch.int32, torch.int64):
+                raise TypeError("planner candidate indices must be integer")
+            if bool((self.candidate_indices < 0).any()):
+                raise ValueError("planner candidate indices cannot be negative")
+            if candidate_count is not None and bool(
+                (self.candidate_indices >= candidate_count).any()
+            ):
+                raise ValueError("planner candidate index exceeds candidate count")
         return self
 
 
@@ -10623,6 +10636,7 @@ class ExternalModelBasedPlanner:
         chosen_intentions: list[torch.Tensor] = []
         chosen_states: list[torch.Tensor] = []
         chosen_scores: list[torch.Tensor] = []
+        chosen_candidate_indices: list[list[int]] = []
         expanded_nodes = 0
         with torch.no_grad():
             for row in range(batch):
@@ -10634,11 +10648,13 @@ class ExternalModelBasedPlanner:
                         torch.Tensor,
                         list[torch.Tensor],
                         list[torch.Tensor],
+                        list[int],
                     ]
                 ] = [
                     (
                         torch.zeros((), device=state.device, dtype=state.dtype),
                         state[row],
+                        [],
                         [],
                         [],
                     )
@@ -10708,6 +10724,7 @@ class ExternalModelBasedPlanner:
                             torch.Tensor,
                             list[torch.Tensor],
                             list[torch.Tensor],
+                            list[int],
                         ]
                     ] = []
                     for parent_index, parent in enumerate(beams):
@@ -10734,6 +10751,7 @@ class ExternalModelBasedPlanner:
                                         *parent[3],
                                         next_states[parent_index, candidate_index],
                                     ],
+                                    [*parent[4], candidate_index],
                                 )
                             )
                     expanded.sort(key=lambda item: float(item[0]))
@@ -10742,18 +10760,25 @@ class ExternalModelBasedPlanner:
                 chosen_scores.append(best[0])
                 chosen_intentions.append(torch.stack(best[2]))
                 chosen_states.append(torch.stack(best[3]))
+                chosen_candidate_indices.append(best[4])
 
         result = ModelBasedPlanningResult(
             intentions=torch.stack(chosen_intentions),
             predicted_states=torch.stack(chosen_states),
             scores=torch.stack(chosen_scores),
             expanded_nodes=expanded_nodes,
+            candidate_indices=torch.tensor(
+                chosen_candidate_indices,
+                device=state.device,
+                dtype=torch.long,
+            ),
         )
         return result.validate(
             batch=batch,
             horizon=horizon,
             state_width=self.model.state_width,
             intention_width=self.model.intention_width,
+            candidate_count=candidates.shape[1],
         )
 
     @torch.no_grad()
