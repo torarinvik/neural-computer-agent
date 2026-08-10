@@ -8884,6 +8884,9 @@ checkpoint. `activate_program()` exposes one append-only admission step for a
 new executable file; controller width, interpreter parameters, and existing
 file states remain unchanged. This is outcome-driven route adaptation over
 admitted files, not learned program synthesis or arbitrary new computation.
+If the executable bank is evicted or compacted without a corresponding route
+policy migration, the runtime now fails closed instead of reinterpreting a
+physical action index as another logical file.
 
 ## Durable controller-plus-file working state (2026-08-10)
 

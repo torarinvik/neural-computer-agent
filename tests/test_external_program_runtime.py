@@ -356,6 +356,30 @@ def test_external_program_runtime_router_state_round_trips_and_activates_growth(
     assert set(activated.program_states) == {0, 1}
 
 
+def test_external_program_runtime_fails_closed_after_uncoordinated_file_eviction():
+    memory = _PartitionedProgramMemory()
+    memory.add_artifact(_artifact())
+    memory.add_artifact(_artifact())
+    router = ExternalOutcomeProgramRouter(
+        feature_width=5,
+        program_capacity=2,
+        initial_programs=2,
+    )
+    _runtime_module, _machine, agent = _runtime(
+        memory=memory,
+        program_query_adapter=_ConstantTrajectoryQueryAdapter(),
+        program_router=router,
+    )
+    state = agent.initial_state(1, device="cpu")
+    memory.evict_verified(1, lambda _candidate: True)
+    with pytest.raises(RuntimeError, match="out of sync"):
+        agent.step_events(
+            [AmodalEvent(torch.ones(1, 4))],
+            state,
+            _feedback(1),
+        )
+
+
 def test_external_program_runtime_supports_mixed_file_schedule_in_one_batch():
     torch.manual_seed(9031)
     memory = _PartitionedProgramMemory()

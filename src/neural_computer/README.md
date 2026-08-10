@@ -1467,7 +1467,8 @@ runtime state machine. The previous scalar outcome updates only that external
 router before the next file selection; `activate_program()` appends one newly
 admitted file to the route capacity without resizing the controller. Router
 eligibility and policy state are included in the checksummed runtime
-checkpoint.
+checkpoint. Eviction or compaction without an explicit route-policy migration
+is rejected at execution time rather than silently changing file meaning.
 
 `ExternalProgramRuntimeState.payload()` and `from_payload()` provide a
 versioned tensor-only pause/resume checkpoint for the controller working state

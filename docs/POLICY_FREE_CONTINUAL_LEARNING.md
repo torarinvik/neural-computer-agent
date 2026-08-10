@@ -1195,6 +1195,8 @@ external route policy changes toward the rewarded file while the controller
 parameters remain unchanged. This remains bounded route adaptation over
 pre-admitted files, not arbitrary program acquisition or general continual
 learning.
+The runtime also fails closed if file eviction or compaction leaves the
+append-only route policy out of sync, preventing silent address reassignment.
 
 The controller-plus-file working state is also restartable. A versioned
 tensor-only checkpoint preserves the controller event window and workspace

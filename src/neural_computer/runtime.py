@@ -1717,6 +1717,11 @@ class ExternalProgramAmodalRuntime(nn.Module):
         if self.program_router is not None:
             if program_router_state is None:
                 raise RuntimeError("external program route state is missing")
+            if self.program_memory.file_count != program_router_state.active_programs:
+                raise RuntimeError(
+                    "external program memory and route policy are out of sync; "
+                    "use activate_program or rebuild the route policy"
+                )
             route_features = query.detach()
             behavior = self.program_router.behavior_probabilities(
                 program_router_state,
