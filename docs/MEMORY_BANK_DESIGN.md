@@ -5841,3 +5841,49 @@ never been run — F121/F125 are arithmetic-only, so it is not yet known
 that the boolean ground reproduces the composition result at all.
 
 Probe 228 is `math_compose.py --iterate --oracle-entry --worlds 256`.
+
+**F129 (probe 229). The seek mixture at p=0.25 preserves reading but
+does not fix the asymmetry — so the games defect is not curable from
+the data side, and the trade-off between the two jobs of the
+collection policy is real and unfavourable.** Two seeds, everything
+else as F118:
+
+| seek-plane2 | held-out | entry effect | top=food normal | inverted |
+| ---: | ---: | ---: | ---: | ---: |
+| 0.00 (F118) | +0.0811/+0.0972/+0.1058 | +0.244..+0.295 | 0.667 | 0.000 |
+| **0.25 (F129)** | **+0.0614/+0.1030** | **+0.226/+0.291** | 0.417/0.500 | 0.083/0.062 |
+| 0.50 (F123) | -0.048/-0.047/-0.045 | +0.0001..+0.0005 | 0.042 | 0.042 |
+
+Reading survives at p=0.25 — that locates the collapse cliff between
+0.25 and 0.5 rather than anywhere below. But the trade is bad:
+inverted-world top=food rises only 0.000 -> 0.07, normal-world falls
+0.667 -> 0.46, and pooled held-out is flat to slightly down (+0.0822
+vs +0.0947). One polarity channel is still dominant per seed (max
+|tanh| 1.000 vs 0.318, and 0.224 vs 1.000).
+
+So all three points on this axis are now measured and none of them
+gives inverted worlds a working "seek". The data-side fix is refuted
+as a family, not just at one setting.
+
+**F130 (probe 230). The fix that follows, from an established finding
+rather than a new idea: TIE the salience channels (F73 slot
+symmetry).** The reason plane-2 needs its own data at all is that its
+salience channel has its own parameters. F73 measured that a
+slot-symmetric plant — shared value-embedding, shared MLP, shared
+head, distinguished only by positional embeddings — beat the
+unstructured version by 2.36x with the effect verified causal by a
+scramble control. Applying that here: ONE shared function scores each
+object slot from its own relative features (relative row, relative
+column, absence, L1 distance), and the entry supplies one SIGN per
+slot. Then whatever plane-1 visits teach about "an object this far
+away is worth this much" transfers to plane-2 by construction, and the
+only per-slot quantity that must be read is the sign — which F116
+already measured the entry to carry cleanly (+-1, sign-split by twin).
+
+Verified before launch: swapping the two objects in the state
+exchanges their feature vectors exactly, and an absent slot produces
+the zero-with-flag vector. 3 seeds running with plane-1-only
+collection retained, since F129 shows reading needs that asymmetry.
+
+Probe 229 is `--seek-plane2 0.25`, 2 seeds. Probe 230 is
+`--tied-salience`, 3 seeds.
