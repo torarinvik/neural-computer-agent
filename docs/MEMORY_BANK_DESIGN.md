@@ -6055,3 +6055,52 @@ then sees only (latent, bound parameter). If depth stops mattering,
 repeated re-extraction was the mechanism.
 
 Probe 234 is `bool_compose.py --iterate --oracle-entry --worlds 256`.
+
+**F135 (probe 235). SOLVED: binding the entry ONCE takes conditioned
+execution at depth from 0.5548 to 0.9983 per-bit — 0.9872 exact — on
+held-out worlds at 256 worlds and depth 4. The conjunction the bank
+thesis requires is achieved.** The single change from F134's failing
+configuration: instead of re-attending the entry at every step, decode
+it once into one explicit parameter vector per piece token, then step
+on (latent, bound parameter) with no further access to the entry.
+
+| boolean, 256 worlds, depth<=4, held-out worlds | per-bit | exact |
+| --- | ---: | ---: |
+| re-attend per step, oracle entry (F134) | 0.5548 | 0.0063 |
+| **bind once, oracle entry (F135)** | **0.9983** | **0.9872** |
+| bind once, oracle, STRANGER entry | 0.5474 | — |
+| bind once, LEARNED reader | 0.5283 | 0.0096 |
+| chance | 0.5000 | 0.0039 |
+
+Stranger entries stay at 0.547 while own entries reach 0.998, so the
+entire effect is causal on supplying the CORRECT world — this is not a
+model that learned the average world and stopped needing context.
+
+**The mechanism, and it is a real architectural principle rather than
+a tuning trick.** Attending the entry at each step means re-deriving
+the same (b, k) on every application; each derivation carries error,
+and the errors compound multiplicatively with depth — which is exactly
+why performance was fine at depth 1 (F131) and gone by depth 4
+(F120/F124/F134). An interpreter never does this: it binds arguments
+once on entry and then runs the loop over bound values. Doing the same
+removes depth as a factor entirely.
+
+This is the third instance of one pattern in this project, and the
+pattern is now worth stating as a design rule: **do the
+context-dependent work ONCE, then iterate something fixed.** F67 —
+store facts, derive behaviour by search, do not store a policy. F121 —
+apply one piece at a time through a shared step, do not learn the
+composite. F135 — bind the parameters once, do not re-read them per
+step. Each time, the failure was re-doing per-step what should have
+been done per-task.
+
+**What this leaves, stated exactly.** With the plant able to execute
+from bound context at depth, the ONLY remaining gap is the reader:
+with the learned reader, own-entry and stranger-entry accuracy are
+identical to four decimals (0.5283 vs 0.5283). So the target is now
+unambiguous in the way F110 made the games' target unambiguous — not
+"composition", not "depth", not "diversity", but: produce entries the
+plant can bind. The plant's side is done at 0.9983.
+
+Probe 235 is `bool_compose.py --iterate --bind-params`, oracle and
+learned-reader arms.
