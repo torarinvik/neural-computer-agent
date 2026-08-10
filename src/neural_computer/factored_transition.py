@@ -1074,6 +1074,40 @@ class ExternalFactoredTransitionRouter:
         self._quarantine.clear()
         return released
 
+    def resolve_quarantine(
+        self,
+        *,
+        min_match_fraction: float = 1.0,
+        match_tolerance: float = 0.05,
+        contradiction_tolerance: float | None = None,
+        match_margin: float | None = None,
+    ) -> tuple[int, ...]:
+        """Re-test quarantined bundles against committed factual versions.
+
+        Only bundles that independently match one existing slot are removed.
+        Unresolved and contradictory bundles remain quarantined, preserving
+        their boundaries for a later caller-owned admission decision.
+        """
+
+        if self._candidate_model is not None or self._pending:
+            raise RuntimeError("cannot resolve quarantine while factored evidence is staged")
+        resolved: list[int] = []
+        unresolved: list[ExternalTransitionObservation] = []
+        for item in self._quarantine:
+            result = self.route_partial_bundle(
+                (item,),
+                min_match_fraction=min_match_fraction,
+                match_tolerance=match_tolerance,
+                contradiction_tolerance=contradiction_tolerance,
+                match_margin=match_margin,
+            )
+            if result.status == "matched" and result.slot_id is not None:
+                resolved.append(result.slot_id)
+            else:
+                unresolved.append(item)
+        self._quarantine = unresolved
+        return tuple(resolved)
+
     def promote_staged_candidate(
         self,
         heldout: ExternalTransitionObservation,

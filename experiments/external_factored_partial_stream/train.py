@@ -262,6 +262,25 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
         == 4
     )
     quarantine_peek = router.peek_quarantine()
+    resolved_slots = router.resolve_quarantine(
+        match_tolerance=PREDICTION_TOLERANCE,
+        contradiction_tolerance=PREDICTION_TOLERANCE,
+        match_margin=0.0,
+    )
+    corrupted_quarantine_receipt = router.quarantine_partial_bundle(
+        (
+            ExternalTransitionObservation(
+                state=streams[0].state[:1],
+                intention=streams[0].intention[:1],
+                next_state=streams[0].next_state[:1] + 5.0,
+            ),
+        )
+    )
+    unresolved_slots = router.resolve_quarantine(
+        match_tolerance=PREDICTION_TOLERANCE,
+        contradiction_tolerance=PREDICTION_TOLERANCE,
+        match_margin=0.0,
+    )
     released = router.drain_quarantine()
     retained_errors = {
         regime: _bank_mse(router.model.residual_bank, heldout[regime], regime)
@@ -293,8 +312,12 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
         and router.quarantined_observations == 0,
         "quarantine_preserves_bundle_boundaries": quarantine_persisted
         and len(quarantine_peek) == 4
-        and len(released) == 4
+        and len(released) == 1
         and all(item.state.shape[0] == 1 for item in released),
+        "quarantine_resolves_known_slots": resolved_slots == (0, 0, 1, 1),
+        "quarantine_retains_corruption": corrupted_quarantine_receipt.accepted
+        and unresolved_slots == ()
+        and len(released) == 1,
         "base_unchanged": model.base.digest() == base_digest and model.base_frozen,
         "controller_unchanged": controller_digest == _digest_module(controller),
         "context_encoder_unchanged": encoder_digest == encoder.digest(),
@@ -324,6 +347,9 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
             "quarantine_receipt": quarantine_receipt.__dict__,
             "quarantine_bundles_peeked": len(quarantine_peek),
             "quarantine_bundles_released": len(released),
+            "quarantine_resolved_slots": resolved_slots,
+            "quarantine_unresolved_slots": unresolved_slots,
+            "corrupted_quarantine_receipt": corrupted_quarantine_receipt.__dict__,
             "retained_heldout_mse": retained_errors,
             "slot_ids": list(router.slot_ids),
         },

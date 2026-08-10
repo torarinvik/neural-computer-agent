@@ -1,0 +1,26 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "external_factored_quarantine_resolver_promoted_2026-08-10",
+  "claim": "bounded-factual-quarantine-resolution-v1",
+  "replicates": 5,
+  "seeds": [81041, 81042, 81043, 81044, 81045],
+  "stable_gates": {
+    "quarantine_resolves_known_slots": 5,
+    "quarantine_retains_corruption": 5,
+    "quarantine_preserves_bundle_boundaries": 5,
+    "all_regimes_promoted": 5,
+    "heldout_retention": 5,
+    "contradictory_partial_is_ambiguous": 5,
+    "read_only_digest_stable": 5,
+    "no_old_regime_replay": 5
+  },
+  "accounting": {
+    "resolver_optimizer_updates_per_seed": 0,
+    "resolver_model_writes_per_seed": 0,
+    "known_bundles_resolved_per_seed": 4,
+    "corrupted_bundles_retained_per_seed": 1,
+    "resolver_replay_per_seed": 0,
+    "fresh_control": "not measured; no positive-transfer claim"
+  },
+  "boundary": "bounded factual quarantine resolution; no claim of learned open-world resolver or general continual learning"
+}

@@ -1,0 +1,210 @@
+{
+  "schema": "neural-computer.external-factored-partial-stream.v1",
+  "seed": 81043,
+  "configuration": {
+    "regime_count": 4,
+    "rows_per_regime": 18,
+    "stream_rows": 14,
+    "admission_rows": 7,
+    "heldout_rows": 4,
+    "residual_model_family": "random_feature_sufficient_statistics_v1",
+    "feature_width": 128,
+    "prediction_tolerance": 0.1,
+    "claim": "bounded-replay-free-partial-stream-acquisition-v1"
+  },
+  "metrics": {
+    "promotion_receipts": [
+      {
+        "accepted": true,
+        "slot_id": 0,
+        "heldout_error": 0.0014800054486840963,
+        "reason": "candidate passed factual and retention probes",
+        "schema": "neural-computer.external-factored-transition-promotion.v1"
+      },
+      {
+        "accepted": true,
+        "slot_id": 1,
+        "heldout_error": 0.002979815937578678,
+        "reason": "candidate passed factual and retention probes",
+        "schema": "neural-computer.external-factored-transition-promotion.v1"
+      },
+      {
+        "accepted": true,
+        "slot_id": 2,
+        "heldout_error": 0.007243282627314329,
+        "reason": "candidate passed factual and retention probes",
+        "schema": "neural-computer.external-factored-transition-promotion.v1"
+      },
+      {
+        "accepted": true,
+        "slot_id": 3,
+        "heldout_error": 0.0016709762858226895,
+        "reason": "candidate passed factual and retention probes",
+        "schema": "neural-computer.external-factored-transition-promotion.v1"
+      }
+    ],
+    "stream_statuses": {
+      "0": [
+        "pending",
+        "pending",
+        "pending",
+        "pending",
+        "pending",
+        "pending",
+        "staged",
+        "staged",
+        "staged",
+        "staged",
+        "staged",
+        "staged",
+        "staged",
+        "staged"
+      ],
+      "1": [
+        "pending",
+        "pending",
+        "pending",
+        "pending",
+        "pending",
+        "pending",
+        "staged",
+        "staged",
+        "staged",
+        "staged",
+        "staged",
+        "staged",
+        "staged",
+        "staged"
+      ],
+      "2": [
+        "pending",
+        "pending",
+        "pending",
+        "pending",
+        "pending",
+        "pending",
+        "staged",
+        "staged",
+        "staged",
+        "staged",
+        "staged",
+        "staged",
+        "staged",
+        "staged"
+      ],
+      "3": [
+        "pending",
+        "pending",
+        "pending",
+        "pending",
+        "pending",
+        "pending",
+        "staged",
+        "staged",
+        "staged",
+        "staged",
+        "staged",
+        "staged",
+        "staged",
+        "staged"
+      ]
+    },
+    "alternating_routes": [
+      0,
+      1,
+      2,
+      3,
+      0,
+      3,
+      1,
+      2
+    ],
+    "partial_reads": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "contradictory_status": "ambiguous",
+    "empty_status": "ambiguous",
+    "quarantine_receipt": {
+      "accepted": true,
+      "rows_added": 4,
+      "total_rows": 4,
+      "capacity": 8,
+      "digest_before": "bcff7c423b5f4b09595c0ad78c95bb2875dac3a961c79211f96b0b81196d040c",
+      "digest_after": "b4c64294287bd922ff98aa157b21869bbeeca1779e4807fd3961580d02391d8f",
+      "reason": "unresolved evidence retained outside committed memory",
+      "schema": "neural-computer.external-factored-transition-quarantine.v1"
+    },
+    "quarantine_bundles_peeked": 4,
+    "quarantine_bundles_released": 1,
+    "quarantine_resolved_slots": [
+      0,
+      0,
+      1,
+      1
+    ],
+    "quarantine_unresolved_slots": [],
+    "corrupted_quarantine_receipt": {
+      "accepted": true,
+      "rows_added": 1,
+      "total_rows": 1,
+      "capacity": 8,
+      "digest_before": "bcff7c423b5f4b09595c0ad78c95bb2875dac3a961c79211f96b0b81196d040c",
+      "digest_after": "bf53aa2c67e1acc9f50c3cec8660f6fa50d3b7c5a0bb1570840056d07cc0580b",
+      "reason": "unresolved evidence retained outside committed memory",
+      "schema": "neural-computer.external-factored-transition-quarantine.v1"
+    },
+    "retained_heldout_mse": {
+      "0": 0.0014800054486840963,
+      "1": 0.002979815937578678,
+      "2": 0.007243282627314329,
+      "3": 0.0016709762858226895
+    },
+    "slot_ids": [
+      0,
+      1,
+      2,
+      3
+    ]
+  },
+  "gates": {
+    "all_regimes_promoted": true,
+    "prefix_admission_reached_stage_at_seven": true,
+    "later_stream_rows_updated_candidate": true,
+    "heldout_retention": true,
+    "alternating_routes_correct": true,
+    "partial_known_reads_correct": true,
+    "contradictory_partial_is_ambiguous": true,
+    "empty_partial_is_noop": true,
+    "read_only_digest_stable": true,
+    "quarantine_accepts_unresolved_evidence": true,
+    "quarantine_preserves_bundle_boundaries": true,
+    "quarantine_resolves_known_slots": true,
+    "quarantine_retains_corruption": true,
+    "base_unchanged": true,
+    "controller_unchanged": true,
+    "context_encoder_unchanged": true,
+    "no_old_regime_replay": true
+  },
+  "accounting": {
+    "base_optimizer_updates": 0,
+    "residual_optimizer_updates": 0,
+    "residual_statistics_updates": 4,
+    "controller_optimizer_updates": 0,
+    "context_encoder_optimizer_updates": 0,
+    "old_regime_replay": 0,
+    "unique_stream_rows": 56,
+    "admission_rows_per_regime": 7,
+    "heldout_rows_per_regime": 4,
+    "wall_seconds": 0.16732645797310397
+  },
+  "digests": {
+    "base": "5dc291a2783d524fdec132e7823c73e3b11904ce54072b0e280e1a260ca0945d",
+    "controller": "c862fc72c6d65aa3d4f6a86fee8def2eab32e3a19d13218fc7c91b601f6bd3f1",
+    "context_encoder": "add4b5b75a9efc8abcb401c8848a72e85d5da5173b0acf7d625b2de210dfcca8",
+    "router": "bcff7c423b5f4b09595c0ad78c95bb2875dac3a961c79211f96b0b81196d040c"
+  },
+  "promoted": true
+}

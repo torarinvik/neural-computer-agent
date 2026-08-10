@@ -6486,3 +6486,12 @@ path. It still needs a learned resolver that can use later evidence to decide
 whether a quarantined bundle belongs to an existing version or a new one.
 Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_factored_quarantine_recovery_promoted_2026-08-10/`.
+
+The first recovery policy is now implemented as a factual resolver: it
+re-tests each quarantined bundle independently against committed slots, removes
+only independently matched bundles, and leaves corrupted or unresolved
+bundles isolated. Five seeds resolved known bundles to `[0, 0, 1, 1]` and
+retained a corrupted bundle without any model write. This is a safe recovery
+primitive, not the learned open-world resolver still required by the
+architecture. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_factored_quarantine_resolver_promoted_2026-08-10/`.

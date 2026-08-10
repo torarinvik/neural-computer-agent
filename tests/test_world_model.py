@@ -2088,8 +2088,25 @@ def test_factored_router_owns_verified_growth_compression_and_stable_eviction() 
     assert restored_quarantine.quarantined_observations == 2
     assert restored_quarantine.quarantined_bundles == 2
     assert len(router.peek_quarantine()) == 2
+    assert router.resolve_quarantine(
+        match_tolerance=0.1,
+        contradiction_tolerance=0.1,
+        match_margin=0.0,
+    ) == (0, 1)
+    assert router.quarantined_observations == 0
+    corrupted = ExternalTransitionObservation(
+        state=source.state[:1],
+        intention=source.intention[:1],
+        next_state=source.next_state[:1] + 5.0,
+    )
+    assert router.quarantine_partial_bundle((corrupted,)).accepted
+    assert router.resolve_quarantine(
+        match_tolerance=0.1,
+        contradiction_tolerance=0.1,
+        match_margin=0.0,
+    ) == ()
     drained = router.drain_quarantine()
-    assert len(drained) == 2
+    assert len(drained) == 1
     assert all(item.state.shape[0] == 1 for item in drained)
     assert router.quarantined_observations == 0
 
