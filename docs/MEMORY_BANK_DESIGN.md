@@ -5463,3 +5463,40 @@ program) pair is a separate function to memorise and there are 1152 of
 them. Both are the same defect at different scales.
 
 Probe 220 is `bool_compose.py`, 3 arms.
+
+**F121 (probe 221). THE INTERFACE WAS THE WHOLE STORY. Applying pieces
+one at a time through a shared step function takes held-out program
+composition from CHANCE to PERFECT: 0.0794 -> 1.0000.** The exact F119
+setting — one world, ignorance off, 30k updates, dim 128 — with the
+single change that the plant carries a latent stepped once per program
+token instead of answering the whole program in one shot:
+
+| interface | trained programs | held-out programs |
+| --- | ---: | ---: |
+| one-shot (F119) | 1.0000 | 0.0794 (chance 0.0435) |
+| **iterated (F121)** | **1.0000** | **1.0000** |
+
+Same blocks, same parameter count, no intermediate supervision — the
+latent is never told what the intermediate value should be. The only
+difference is that the step function is SHARED across positions and
+program lengths, and that sharing is the entire compositional prior.
+
+What this establishes, stated carefully: a model asked to answer
+[f,g,f] in one shot learns eighteen opaque composite functions and
+generalises to none of them; the same model asked to apply one piece
+at a time learns TWO pieces and gets every arrangement for free. This
+is the puzzle-piece claim demonstrated rather than argued — and it is
+the F67 lesson (store facts, derive behaviour by search) one level up:
+do not learn the composite, learn the piece and iterate it.
+
+Caveats held open deliberately: (1) one seed — the effect is
+chance-to-ceiling so it is not a noise question, but replication is
+queued; (2) reading is absent from this arm by construction (one
+world), so the open question is whether the same interface lets the
+BANK ENTRY supply the pieces across many worlds — that is exactly what
+F120's failing 64-world setting will now re-test; (3) held-out
+programs here share their LENGTHS with trained ones, so a strict
+length-extrapolation arm (train <=3, test 4) is running to rule out
+within-length interpolation.
+
+Probe 221 is `math_compose.py --iterate --worlds 2 --ignorance 0`.
