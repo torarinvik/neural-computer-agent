@@ -26,8 +26,9 @@ rung promotes, rejects, or qualifies. Ordered by severity.
        F122, F124) has reading dead. Oracle-entry arms running: if
        execution works with a KNOWN world, reading is the sole
        constraint and the target is unambiguous.
-   (b) one seed on F121/F125 (chance-to-ceiling, so not a noise
-       question, but replication is queued);
+   (b) ~~one seed on F121/F125~~ CLOSED: seed 69317 replicates at
+       1.0000 / 1.0000; two seeds plus the length-extrapolation split
+       all at ceiling;
    (c) **carry it back to the games**: the beam search already applies
        a learned step repeatedly, so the games may already have the
        right interface — worth checking rather than assuming.
