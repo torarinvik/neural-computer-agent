@@ -5248,3 +5248,23 @@ more pairs (24 may under-span b-space), examples too few per entry.
 The math ground is cheap enough to sweep all three.
 
 Probe 214 is `math_twins.py`, 2 seeds.
+
+**F115 (probe 215). Math-ground sweep: the 0.4-0.5 own-entry plateau is
+rule-interpolation, not underfitting — and the diversity law (F78)
+reproduces in miniature.** Three axes, 2 seeds each: 3x updates
+(0.4300/0.4372 — flat), 2x examples per entry (0.5000/0.4954 — flat),
+2x pairs (0.2500/0.0898 — much WORSE). The pairs arm is the telling
+one: mod 16 admits only 15 distinct additive rules, so drawing 48
+pairs collapses to the same <=15 stems while holding out 8 of them —
+training diversity drops from ~9 rules to ~7 and reading degrades,
+exactly the F78 curve at 1/500th the scale. The plateau itself is the
+plant failing to INTERPOLATE to held-out b values in embedding space
+(any single example identifies b; twin accuracy stays 0.0000
+throughout, so reading the sign is never the problem). The math ground
+therefore reproduces both headline laws of the big battery — diversity
+drives reading, and dense supervision sign-splits — in two-minute runs.
+Caveat for future math probes: modulus bounds rule diversity; use a
+larger modulus or the multiplicative family before drawing conclusions
+that need many rules.
+
+Probe 215 is `math_twins.py` sweep, 2 seeds x 3 arms.
