@@ -1239,3 +1239,29 @@ unrestricted memory growth, or general continual learning. The next pressure
 is to learn or verify fragment admission from rendered experience and measure
 whether intersection fragments reduce acquisition cost on genuinely novel
 task families.
+
+## Outcome-only goal-fragment staging (2026-08-11)
+
+`ExternalGoalFragmentStager` closes the first part of that acquisition seam.
+A caller can propose an opaque destination candidate from a learned terminal
+state and feed the stager one fresh deterministic scalar verifier outcome at a
+time. The stager retains only the candidate tensor pair and sufficient
+statistics: eligible observation count, cumulative outcome, prefix mean, and
+the minimum stable prefix mean. It stores no event rows, outcomes, task IDs, or
+replayable trajectories.
+
+Admission remains two-phase and copy-on-write. A candidate must clear the
+configured stable prefix before `ExternalGoalFragmentMemory` is asked to run
+the independent held-out retention probe. A rejected candidate leaves both
+the durable memory and the staging state unchanged; an accepted candidate is
+removed from pending staging only after the durable fragment commits. The
+runtime exposes this as `observe_goal_fragment()` and
+`admit_goal_fragment_verified()`, with the controller, event bus, factual
+model, and decoders untouched.
+
+This is an implementation boundary and a replay-free acquisition pressure
+test, not a claim that Brain Workshop has learned arbitrary goals. The next
+experiment must derive candidates from real rendered Brain Workshop
+transitions, compare fresh versus inherited fragment proposals, and charge
+every verifier bit while auditing missing-evidence, shuffled-outcome,
+reversal, and complete-prefix retention controls.

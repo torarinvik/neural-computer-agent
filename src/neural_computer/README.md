@@ -137,6 +137,16 @@ reads from explicit calibration writes. The canonical Brain Workshop audit
 promotes three cue-conditioned short-lifetime slots without changing the
 controller; cue-absent task inference remains unqualified.
 
+`ExternalGoalFragmentStager` is the corresponding acquisition boundary for
+factual destinations. It stages an opaque learned-state target and updates
+only scalar sufficient statistics from fresh eligible verifier outcomes. A
+stable-prefix gate then passes the candidate through
+`ExternalGoalFragmentMemory`'s copy-on-write retention probe. The stager never
+stores verifier rows or replayable trajectories and cannot mutate the
+controller. This supports learn-while-frozen destination growth while leaving
+general goal discovery and unrestricted continual learning as open empirical
+questions.
+
 The canonical runner exposes the route table through a versioned
 `route_state_payload()` / `load_route_state_payload()` boundary. Reloading it
 validates slot count and context width and does not load or mutate controller

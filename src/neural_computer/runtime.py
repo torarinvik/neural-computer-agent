@@ -30,8 +30,12 @@ from .entry import (
     ExternalEntryRepertoire,
 )
 from .goal_memory import (
+    ExternalGoalFragmentCandidate,
     ExternalGoalFragmentMemory,
+    ExternalGoalFragmentObservationReceipt,
     ExternalGoalFragmentSet,
+    ExternalGoalFragmentStager,
+    ExternalGoalFragmentStagingAdmissionReceipt,
 )
 from .intention import (
     ExternalIntentionConsolidationReceipt,
@@ -94,7 +98,9 @@ POLICY_FREE_RUNTIME_SCHEMA = "neural-computer.policy-free-amodal-runtime.v1"
 class OpaqueProtocolDecoder(nn.Module):
     """Independent backend from an intention vector to protocol outputs."""
 
-    def __init__(self, intention_width: int, output_width: int, hidden: int = 0) -> None:
+    def __init__(
+        self, intention_width: int, output_width: int, hidden: int = 0
+    ) -> None:
         super().__init__()
         if min(intention_width, output_width) < 1 or hidden < 0:
             raise ValueError("decoder dimensions are invalid")
@@ -449,9 +455,7 @@ class AmodalEventWindowBuffer:
             learned_release = False
             if self.wait_policy is not None and not complete and not expired:
                 age = torch.tensor([max(0.0, current - timestamp)])
-                present_fraction = torch.tensor(
-                    [len(bucket) / len(self.stream_names)]
-                )
+                present_fraction = torch.tensor([len(bucket) / len(self.stream_names)])
                 complete_value = torch.tensor([float(complete)])
                 arrival_count = torch.tensor([float(self._arrival_count)])
                 arrival_delta = torch.tensor([max(0.0, current - timestamp)])
@@ -490,17 +494,45 @@ class AmodalEventWindowBuffer:
         duration_present = any(event.duration is not None for event in bucket.values())
         has_source_keys = source_event is not None
         has_durations = duration_present
-        source_width = source_event.source_key.shape[-1] if source_event is not None else 0
+        source_width = (
+            source_event.source_key.shape[-1] if source_event is not None else 0
+        )
         for name in self.stream_names:
             event = bucket.get(name)
             if event is None:
                 payloads.append(torch.zeros_like(template.payload))
                 present.append(False)
-                confidences.append(torch.zeros(batch, device=template.payload.device, dtype=template.payload.dtype))
-                timestamps.append(torch.full((batch,), timestamp, device=template.payload.device, dtype=template.payload.dtype))
-                durations.append(torch.zeros(batch, device=template.payload.device, dtype=template.payload.dtype))
+                confidences.append(
+                    torch.zeros(
+                        batch,
+                        device=template.payload.device,
+                        dtype=template.payload.dtype,
+                    )
+                )
+                timestamps.append(
+                    torch.full(
+                        (batch,),
+                        timestamp,
+                        device=template.payload.device,
+                        dtype=template.payload.dtype,
+                    )
+                )
+                durations.append(
+                    torch.zeros(
+                        batch,
+                        device=template.payload.device,
+                        dtype=template.payload.dtype,
+                    )
+                )
                 if has_source_keys:
-                    source_keys.append(torch.zeros(batch, source_width, device=template.payload.device, dtype=template.payload.dtype))
+                    source_keys.append(
+                        torch.zeros(
+                            batch,
+                            source_width,
+                            device=template.payload.device,
+                            dtype=template.payload.dtype,
+                        )
+                    )
                 continue
             event.validate(width=width)
             payloads.append(event.payload)
@@ -508,26 +540,42 @@ class AmodalEventWindowBuffer:
             confidences.append(
                 event.confidence.reshape(batch)
                 if event.confidence is not None
-                else torch.ones(batch, device=event.payload.device, dtype=event.payload.dtype)
+                else torch.ones(
+                    batch, device=event.payload.device, dtype=event.payload.dtype
+                )
             )
             timestamps.append(
                 event.timestamp.reshape(batch)
                 if event.timestamp is not None
-                else torch.full((batch,), timestamp, device=event.payload.device, dtype=event.payload.dtype)
+                else torch.full(
+                    (batch,),
+                    timestamp,
+                    device=event.payload.device,
+                    dtype=event.payload.dtype,
+                )
             )
             durations.append(
                 event.duration.reshape(batch)
                 if event.duration is not None
-                else torch.zeros(batch, device=event.payload.device, dtype=event.payload.dtype)
+                else torch.zeros(
+                    batch, device=event.payload.device, dtype=event.payload.dtype
+                )
             )
             if has_source_keys:
-                if event.source_key is None or event.source_key.shape[-1] != source_width:
-                    raise ValueError("source_key must be present consistently in a window")
+                if (
+                    event.source_key is None
+                    or event.source_key.shape[-1] != source_width
+                ):
+                    raise ValueError(
+                        "source_key must be present consistently in a window"
+                    )
                 source_keys.append(event.source_key.reshape(batch, source_width))
 
         collection = AmodalEventCollection(
             payload=torch.stack(payloads, dim=1),
-            present=torch.tensor(present, dtype=torch.bool, device=template.payload.device).expand(batch, -1),
+            present=torch.tensor(
+                present, dtype=torch.bool, device=template.payload.device
+            ).expand(batch, -1),
             confidence=torch.stack(confidences, dim=1),
             source_key=torch.stack(source_keys, dim=1) if has_source_keys else None,
             timestamp=torch.stack(timestamps, dim=1),
@@ -535,10 +583,16 @@ class AmodalEventWindowBuffer:
         ).validate(width=width)
         return AmodalEventWindow(timestamp, collection, complete=complete)
 
-    def pending_status(self, current_timestamp: float | None = None) -> tuple[AmodalEventWindowStatus, ...]:
+    def pending_status(
+        self, current_timestamp: float | None = None
+    ) -> tuple[AmodalEventWindowStatus, ...]:
         if not self._pending:
             return ()
-        now = max(self._pending) if current_timestamp is None else float(current_timestamp)
+        now = (
+            max(self._pending)
+            if current_timestamp is None
+            else float(current_timestamp)
+        )
         return tuple(
             AmodalEventWindowStatus(
                 timestamp=timestamp,
@@ -657,7 +711,11 @@ class AmodalControllerRuntime(nn.Module):
                 if name not in self.encoders:
                     raise KeyError(f"no encoder registered for stream {name!r}")
                 encoded = self.encoders[name](source)
-                event = encoded if isinstance(encoded, AmodalEvent) else AmodalEvent(encoded)
+                event = (
+                    encoded
+                    if isinstance(encoded, AmodalEvent)
+                    else AmodalEvent(encoded)
+                )
             events.append(event.validate(width=self.event_width))
         return self.input_bus(events)
 
@@ -903,7 +961,9 @@ class AmodalControllerRuntime(nn.Module):
             and self.state_space_id == candidate.state_space_id
             and self.intention_space_id == candidate.intention_space_id
         ):
-            raise ValueError("runtime migration does not replace a representation space")
+            raise ValueError(
+                "runtime migration does not replace a representation space"
+            )
         source_digest = self._controller_digest(self)
         target_digest = self._controller_digest(candidate)
         max_intention_difference = 0.0
@@ -969,11 +1029,14 @@ class AmodalControllerRuntime(nn.Module):
                     max_continuation_difference,
                     self._migration_difference(source_value, target_value),
                 )
-        accepted = max(
-            max_intention_difference,
-            max_execution_difference,
-            max_continuation_difference,
-        ) <= prediction_tolerance
+        accepted = (
+            max(
+                max_intention_difference,
+                max_execution_difference,
+                max_continuation_difference,
+            )
+            <= prediction_tolerance
+        )
         if accepted and retention_probe is not None:
             if not callable(retention_probe):
                 raise TypeError("runtime migration retention probe is invalid")
@@ -1042,7 +1105,9 @@ class AmodalControllerRuntime(nn.Module):
             components["wait_policy"] = self.wait_policy.state_dict()
         return components
 
-    def checkpoint_payload(self, *, provenance: Mapping[str, object] | None = None) -> dict[str, object]:
+    def checkpoint_payload(
+        self, *, provenance: Mapping[str, object] | None = None
+    ) -> dict[str, object]:
         return {
             "format": RUNTIME_FORMAT,
             "event_schema": EVENT_SCHEMA,
@@ -1066,7 +1131,9 @@ class AmodalControllerRuntime(nn.Module):
         expected = set(self.component_state_dicts())
         actual = set(components)
         if actual != expected:
-            raise ValueError(f"component set mismatch: expected {sorted(expected)}, got {sorted(actual)}")
+            raise ValueError(
+                f"component set mismatch: expected {sorted(expected)}, got {sorted(actual)}"
+            )
         controller_result = self.controller.load_state_dict(
             components["controller"], strict=not allow_missing_execution
         )
@@ -1095,9 +1162,7 @@ class AmodalControllerRuntime(nn.Module):
             old_write_bias = components["controller"].get("memory_write.bias")
             if old_write_bias is not None:
                 with torch.no_grad():
-                    self.controller.memory_write_policy[-1].bias.copy_(
-                        old_write_bias
-                    )
+                    self.controller.memory_write_policy[-1].bias.copy_(old_write_bias)
         if allow_missing_execution:
             non_execution_unexpected = [
                 key
@@ -1281,8 +1346,13 @@ class ExternalControllerTrajectoryQueryAdapter(nn.Module):
         state: ControllerState,
     ) -> torch.Tensor:
         representation = output.state_representation
-        if representation.ndim != 2 or representation.shape[1] != self.controller_feature_width:
-            raise ValueError("trajectory-query controller representation has the wrong shape")
+        if (
+            representation.ndim != 2
+            or representation.shape[1] != self.controller_feature_width
+        ):
+            raise ValueError(
+                "trajectory-query controller representation has the wrong shape"
+            )
         payload = state.event_window.payload
         present = state.event_window.present
         if payload.ndim != 3 or payload.shape[2] != self.event_feature_width:
@@ -1376,11 +1446,21 @@ class ExternalProgramRuntimeState:
                             "feature_width": self.program_router.credit.policy.shape[1],
                             "action_count": self.program_router.credit.policy.shape[2],
                         },
-                        "policy": self.program_router.credit.policy.detach().cpu().clone(),
-                        "eligibility": self.program_router.credit.eligibility.detach().cpu().clone(),
-                        "baseline": self.program_router.credit.baseline.detach().cpu().clone(),
-                        "decisions": self.program_router.credit.decisions.detach().cpu().clone(),
-                        "feedbacks": self.program_router.credit.feedbacks.detach().cpu().clone(),
+                        "policy": self.program_router.credit.policy.detach()
+                        .cpu()
+                        .clone(),
+                        "eligibility": self.program_router.credit.eligibility.detach()
+                        .cpu()
+                        .clone(),
+                        "baseline": self.program_router.credit.baseline.detach()
+                        .cpu()
+                        .clone(),
+                        "decisions": self.program_router.credit.decisions.detach()
+                        .cpu()
+                        .clone(),
+                        "feedbacks": self.program_router.credit.feedbacks.detach()
+                        .cpu()
+                        .clone(),
                     },
                 }
             ),
@@ -1398,12 +1478,16 @@ class ExternalProgramRuntimeState:
         """Restore external runtime state without loading executable files."""
 
         if not isinstance(payload, dict):
-            raise TypeError("external program runtime state payload must be a dictionary")
+            raise TypeError(
+                "external program runtime state payload must be a dictionary"
+            )
         if payload.get("schema") != EXTERNAL_PROGRAM_RUNTIME_STATE_SCHEMA:
             raise ValueError("unsupported external program runtime state schema")
         expected_digest = payload.get("sha256")
         unsigned = {key: value for key, value in payload.items() if key != "sha256"}
-        if not isinstance(expected_digest, str) or expected_digest != _digest_runtime_state_payload(unsigned):
+        if not isinstance(
+            expected_digest, str
+        ) or expected_digest != _digest_runtime_state_payload(unsigned):
             raise ValueError("external program runtime state checksum mismatch")
         controller = unsigned.get("controller")
         program = unsigned.get("program")
@@ -1411,7 +1495,9 @@ class ExternalProgramRuntimeState:
         if not isinstance(controller, dict) or not isinstance(program, dict):
             raise TypeError("external program runtime state payload is incomplete")
         if not isinstance(records, (tuple, list)):
-            raise TypeError("external program runtime program states must be a sequence")
+            raise TypeError(
+                "external program runtime program states must be a sequence"
+            )
         program_states: dict[int, ExternalRegisterState] = {}
         for record in records:
             if not isinstance(record, dict):
@@ -1424,7 +1510,9 @@ class ExternalProgramRuntimeState:
                 raise ValueError("external program runtime logical IDs must be unique")
             if not isinstance(state_payload, dict):
                 raise TypeError("external program runtime program state is missing")
-            program_states[logical_id] = ExternalRegisterState.from_payload(state_payload)
+            program_states[logical_id] = ExternalRegisterState.from_payload(
+                state_payload
+            )
         router_payload = unsigned.get("program_router")
         if router_payload is None:
             restored_router = None
@@ -1529,7 +1617,9 @@ class ExternalProgramAmodalRuntime(nn.Module):
             )
         if program_memory is not None:
             if program_memory.instruction_width != machine.instruction_width:
-                raise ValueError("program memory instruction width does not match machine")
+                raise ValueError(
+                    "program memory instruction width does not match machine"
+                )
             if len(program_memory.programs) < 1:
                 raise ValueError("program memory must contain at least one artifact")
         if program_router is not None:
@@ -1553,10 +1643,13 @@ class ExternalProgramAmodalRuntime(nn.Module):
                 else program_query_adapter.query_width
             )
             if (
-                program_query_adapter.controller_feature_width != controller_feature_width
+                program_query_adapter.controller_feature_width
+                != controller_feature_width
                 or adapter_width != machine.instruction_width
             ):
-                raise ValueError("program query adapter does not match controller or machine")
+                raise ValueError(
+                    "program query adapter does not match controller or machine"
+                )
         self.runtime = runtime
         self.machine = machine
         self.program = program
@@ -1765,7 +1858,10 @@ class ExternalProgramAmodalRuntime(nn.Module):
                 next_router_state,
             )
         route_weights = self.program_memory.route_weights(query)
-        if type(self.program_memory).route_weights is ExternalSequenceProgramMemory.route_weights:
+        if (
+            type(self.program_memory).route_weights
+            is ExternalSequenceProgramMemory.route_weights
+        ):
             probabilities = self.program_memory.route_probabilities(query)
         else:
             # A replaceable memory-side route policy may override the route
@@ -1774,10 +1870,14 @@ class ExternalProgramAmodalRuntime(nn.Module):
             # only honest propensity surface available at this boundary.
             probabilities = route_weights.detach()
         probabilities = probabilities.clamp_min(0.0)
-        probabilities = probabilities / probabilities.sum(dim=-1, keepdim=True).clamp_min(1e-12)
+        probabilities = probabilities / probabilities.sum(
+            dim=-1, keepdim=True
+        ).clamp_min(1e-12)
         if self.program_route_exploration:
             behavior = (1.0 - self.program_route_exploration) * probabilities
-            behavior = behavior + self.program_route_exploration / probabilities.shape[1]
+            behavior = (
+                behavior + self.program_route_exploration / probabilities.shape[1]
+            )
             selected = torch.multinomial(behavior, 1).squeeze(-1)
             propensity = behavior.gather(1, selected.unsqueeze(-1)).squeeze(-1)
         else:
@@ -1808,9 +1908,15 @@ class ExternalProgramAmodalRuntime(nn.Module):
         for snapshot, mask in zip(snapshots[1:], masks[1:], strict=True):
             row = mask
             merged = ExternalRegisterState(
-                register=torch.where(row.unsqueeze(-1), snapshot.observed.register, merged.register),
-                context=torch.where(row.unsqueeze(-1), snapshot.observed.context, merged.context),
-                initialized=torch.where(row, snapshot.observed.initialized, merged.initialized),
+                register=torch.where(
+                    row.unsqueeze(-1), snapshot.observed.register, merged.register
+                ),
+                context=torch.where(
+                    row.unsqueeze(-1), snapshot.observed.context, merged.context
+                ),
+                initialized=torch.where(
+                    row, snapshot.observed.initialized, merged.initialized
+                ),
                 event_window=(
                     torch.where(
                         row[:, None, None],
@@ -1945,7 +2051,9 @@ class ExternalProgramAmodalRuntime(nn.Module):
                 mask_tuple,
             )
             merged_executed = execution_snapshots[0].executed
-            for candidate, mask in zip(execution_snapshots[1:], mask_tuple[1:], strict=True):
+            for candidate, mask in zip(
+                execution_snapshots[1:], mask_tuple[1:], strict=True
+            ):
                 merged_executed = torch.where(
                     mask.unsqueeze(-1), candidate.executed, merged_executed
                 )
@@ -1989,14 +2097,11 @@ class ExternalProgramAmodalRuntime(nn.Module):
             intention=intention,
             decoded=self.runtime.output_bus(intention),
             selected_program_slot=(
-                selected_slot
-                if uniform_selection and selected_slot >= 0
-                else None
+                selected_slot if uniform_selection and selected_slot >= 0 else None
             ),
             selected_program_logical_id=(
                 None
-                if not uniform_selection
-                or logical_id == _STANDALONE_PROGRAM_STATE_KEY
+                if not uniform_selection or logical_id == _STANDALONE_PROGRAM_STATE_KEY
                 else logical_id
             ),
             selected_program_slots=selected_slots.detach().clone(),
@@ -2021,9 +2126,7 @@ class ExternalProgramAmodalRuntime(nn.Module):
         if self.program_memory is not None:
             active_ids = set(self.program_memory.logical_slot_ids)
             program_states = {
-                key: value
-                for key, value in program_states.items()
-                if key in active_ids
+                key: value for key, value in program_states.items() if key in active_ids
             }
         return output, ExternalProgramRuntimeState(
             controller=next_controller,
@@ -2090,6 +2193,7 @@ class PolicyFreeAmodalRuntime:
         entry_repertoire: ExternalEntryRepertoire | None = None,
         entry_binding_repertoire: ExternalEntryBindingRepertoire | None = None,
         goal_memory: ExternalGoalFragmentMemory | None = None,
+        goal_stager: ExternalGoalFragmentStager | None = None,
         include_exploration_seed: bool = False,
     ) -> None:
         if not isinstance(runtime, AmodalControllerRuntime):
@@ -2102,11 +2206,17 @@ class PolicyFreeAmodalRuntime:
             planner.model.state_width,
         )
         if selected_adapter.controller_feature_width != expected_input_width:
-            raise ValueError("policy-free state adapter input width does not match controller")
+            raise ValueError(
+                "policy-free state adapter input width does not match controller"
+            )
         if selected_adapter.state_width != planner.model.state_width:
-            raise ValueError("policy-free state adapter output width does not match planner")
+            raise ValueError(
+                "policy-free state adapter output width does not match planner"
+            )
         if planner.model.intention_width != runtime.intention_width:
-            raise ValueError("policy-free planner intention width does not match runtime")
+            raise ValueError(
+                "policy-free planner intention width does not match runtime"
+            )
         if intention_repertoire is not None and (
             intention_repertoire.width != runtime.intention_width
         ):
@@ -2123,8 +2233,7 @@ class PolicyFreeAmodalRuntime:
                 "policy-free runtime accepts either a generator or intention memory"
             )
         if intention_router is not None and (
-            intention_generator is not None
-            or intention_memory is not None
+            intention_generator is not None or intention_memory is not None
         ):
             raise ValueError(
                 "policy-free runtime accepts one external intention-memory source"
@@ -2148,15 +2257,21 @@ class PolicyFreeAmodalRuntime:
             raise TypeError("route query adapter has the wrong type")
         if route_query_adapter is not None and intention_router is None:
             raise ValueError("route query adapter requires an intention router")
-        if route_query_adapter is None and intention_router is not None and (
-            intention_router.context_width != planner.model.state_width
+        if (
+            route_query_adapter is None
+            and intention_router is not None
+            and (intention_router.context_width != planner.model.state_width)
         ):
             raise ValueError(
                 "intention router context width requires a route query adapter"
             )
-        if route_query_adapter is not None and intention_router is not None and (
-            route_query_adapter.controller_width != runtime.controller.width
-            or route_query_adapter.query_width != intention_router.context_width
+        if (
+            route_query_adapter is not None
+            and intention_router is not None
+            and (
+                route_query_adapter.controller_width != runtime.controller.width
+                or route_query_adapter.query_width != intention_router.context_width
+            )
         ):
             raise ValueError("route query adapter does not match controller or router")
         if entry_repertoire is not None:
@@ -2177,8 +2292,26 @@ class PolicyFreeAmodalRuntime:
                 raise ValueError("entry binding intention width does not match runtime")
             if entry_binding_repertoire.entry_width != entry_value_model.entry_width:
                 raise ValueError("entry binding entry width does not match planner")
-        if goal_memory is not None and goal_memory.state_width != planner.model.state_width:
+        if (
+            goal_memory is not None
+            and goal_memory.state_width != planner.model.state_width
+        ):
             raise ValueError("goal-fragment memory width does not match planner state")
+        if (
+            goal_memory is not None
+            and goal_memory.state_space_id != planner.state_space_id
+        ):
+            raise ValueError("goal-fragment memory space does not match planner")
+        if (
+            goal_stager is not None
+            and goal_stager.state_width != planner.model.state_width
+        ):
+            raise ValueError("goal-fragment stager width does not match planner state")
+        if (
+            goal_stager is not None
+            and goal_stager.state_space_id != planner.state_space_id
+        ):
+            raise ValueError("goal-fragment stager space does not match planner")
         if not isinstance(include_exploration_seed, bool):
             raise TypeError("policy-free exploration-seed flag must be boolean")
         self.runtime = runtime
@@ -2192,6 +2325,7 @@ class PolicyFreeAmodalRuntime:
         self.entry_repertoire = entry_repertoire
         self.entry_binding_repertoire = entry_binding_repertoire
         self.goal_memory = goal_memory
+        self.goal_stager = goal_stager
         self.include_exploration_seed = include_exploration_seed
 
     @property
@@ -2210,20 +2344,17 @@ class PolicyFreeAmodalRuntime:
                 and self.intention_router is not None
                 else "learned_opaque_intention_router_candidate_v1"
                 if self.intention_router is not None
-                else
-                "external_verified_repertoire_plus_outcome_intention_memory_v1"
+                else "external_verified_repertoire_plus_outcome_intention_memory_v1"
                 if self.intention_repertoire is not None
                 and self.intention_memory is not None
                 else "outcome_intention_memory_candidates_v1"
                 if self.intention_memory is not None
-                else
-                "external_verified_repertoire_plus_outcome_generator_v1"
+                else "external_verified_repertoire_plus_outcome_generator_v1"
                 if self.intention_repertoire is not None
                 and self.intention_generator is not None
                 else "outcome_generated_opaque_intention_v1"
                 if self.intention_generator is not None
-                else
-                "external_logical_addressed_intention_repertoire_v1"
+                else "external_logical_addressed_intention_repertoire_v1"
                 if self.intention_repertoire is not None
                 else "runtime_variable_opaque_caller_set_v1"
             ),
@@ -2273,8 +2404,44 @@ class PolicyFreeAmodalRuntime:
             "goal_memory": (
                 None if self.goal_memory is None else self.goal_memory.configuration()
             ),
+            "goal_stager": (
+                None if self.goal_stager is None else self.goal_stager.configuration()
+            ),
             "include_exploration_seed": self.include_exploration_seed,
         }
+
+    def observe_goal_fragment(
+        self,
+        candidate: ExternalGoalFragmentCandidate,
+        outcome: torch.Tensor | float,
+        *,
+        eligible: bool = True,
+    ) -> ExternalGoalFragmentObservationReceipt:
+        """Record one fresh destination outcome in external staging state."""
+
+        if self.goal_stager is None:
+            raise RuntimeError("policy-free runtime has no goal-fragment stager")
+        return self.goal_stager.observe(candidate, outcome, eligible=eligible)
+
+    def admit_goal_fragment_verified(
+        self,
+        candidate_digest: str,
+        retention_probe: Callable[[ExternalGoalFragmentMemory], bool],
+        *,
+        reason: str = "caller_owned_heldout_goal_fragment_probe",
+    ) -> ExternalGoalFragmentStagingAdmissionReceipt:
+        """Promote a stable staged destination through external memory."""
+
+        if self.goal_stager is None:
+            raise RuntimeError("policy-free runtime has no goal-fragment stager")
+        if self.goal_memory is None:
+            raise RuntimeError("policy-free runtime has no goal-fragment memory")
+        return self.goal_stager.admit_verified(
+            self.goal_memory,
+            candidate_digest,
+            retention_probe,
+            reason=reason,
+        )
 
     def observe_intention(
         self,
@@ -2569,14 +2736,17 @@ class PolicyFreeAmodalRuntime:
         intention_memory_generation = None
         entry_proposal = None
         binding_proposal = None
-        if sum(
-            value is not None
-            for value in (
-                generator_state,
-                intention_memory_state,
-                intention_router_state,
+        if (
+            sum(
+                value is not None
+                for value in (
+                    generator_state,
+                    intention_memory_state,
+                    intention_router_state,
+                )
             )
-        ) > 1:
+            > 1
+        ):
             raise ValueError(
                 "policy-free runtime accepts one intention-generation state"
             )
@@ -2636,9 +2806,8 @@ class PolicyFreeAmodalRuntime:
             )
             candidate_intentions = binding_proposal.intentions
             candidate_entries = binding_proposal.entries
-        elif (
-            self.entry_binding_repertoire is not None
-            and (candidate_intentions is None or candidate_entries is None)
+        elif self.entry_binding_repertoire is not None and (
+            candidate_intentions is None or candidate_entries is None
         ):
             raise ValueError(
                 "entry binding repertoire requires both candidate intentions and entries"
@@ -2666,7 +2835,9 @@ class PolicyFreeAmodalRuntime:
                 candidate_intentions = intention_memory_generation.intentions
                 generated_only = True
             elif intention_routing is not None:
-                candidate_intentions = intention_routing.selected_intentions.unsqueeze(1)
+                candidate_intentions = intention_routing.selected_intentions.unsqueeze(
+                    1
+                )
                 generated_only = True
             else:
                 candidate_intentions = intention_generation.intentions.unsqueeze(1)
@@ -2742,7 +2913,9 @@ class PolicyFreeAmodalRuntime:
                 intention=planned_intention,
                 decoded=self.runtime.output_bus(planned_intention),
                 state=model_state,
-                goal_state=(None if goal_state is None else goal_state.detach().clone()),
+                goal_state=(
+                    None if goal_state is None else goal_state.detach().clone()
+                ),
                 goal_fragments=goal_fragments,
                 selected_slot_id=selected_slot_id,
                 proposal=proposal,

@@ -6,7 +6,9 @@ from neural_computer import (
     AmodalControllerRuntime,
     AmodalEvent,
     ControllerFeedback,
+    ExternalGoalFragmentCandidate,
     ExternalGoalFragmentMemory,
+    ExternalGoalFragmentStager,
     ExternalModelBasedPlanner,
     PolicyFreeAmodalRuntime,
 )
@@ -137,3 +139,128 @@ def test_policy_free_runtime_can_read_destinations_from_external_goal_memory() -
     assert output.goal_fragments.composition == "intersection"
     assert output.goal_fragments.fragment_ids == (0,)
     assert torch.allclose(output.intention.payload, torch.zeros(1, 2))
+
+
+def test_goal_fragment_stager_keeps_only_scalar_evidence_and_promotes_copy_on_write() -> (
+    None
+):
+    candidate = ExternalGoalFragmentCandidate(
+        torch.tensor([1.0, -1.0]),
+        torch.tensor([True, True]),
+    )
+    stager = ExternalGoalFragmentStager(
+        2,
+        threshold=0.75,
+        min_observations=3,
+        min_stable_observations=2,
+    )
+    digest = candidate.digest(state_width=2)
+    for outcome in (0.8, 0.9, 0.8, 0.9):
+        receipt = stager.observe(candidate, outcome)
+    assert receipt.ready
+    assert receipt.candidate_digest == digest
+    assert receipt.stable_observations == 2
+
+    payload = stager.state_payload()
+    assert "outcomes" not in repr(payload)
+    restored = ExternalGoalFragmentStager.from_payload(payload)
+    assert restored.observation(digest) == stager.observation(digest)
+
+    memory = ExternalGoalFragmentMemory(2)
+    planner = ExternalModelBasedPlanner(_AdditiveModel(), beam_width=2)
+
+    def retained(proposed: ExternalGoalFragmentMemory) -> bool:
+        result = planner.plan(
+            torch.zeros(1, 2),
+            None,
+            torch.tensor([[1.0, -1.0], [0.0, 0.0]]),
+            horizon=1,
+            goal_fragments=proposed.propose((0,)),
+        )
+        return bool(
+            torch.allclose(result.predicted_states[0, -1], torch.tensor([1.0, -1.0]))
+        )
+
+    admission = restored.admit_verified(
+        memory,
+        digest,
+        retained,
+    )
+    assert admission.accepted
+    assert memory.fragment_count == 1
+    assert restored.pending_count == 0
+
+
+def test_goal_fragment_stager_rejects_unstable_or_shuffled_evidence() -> None:
+    good = ExternalGoalFragmentCandidate(
+        torch.tensor([1.0, 0.0]),
+        torch.tensor([True, False]),
+    )
+    bad = ExternalGoalFragmentCandidate(
+        torch.tensor([0.0, 1.0]),
+        torch.tensor([False, True]),
+    )
+    stager = ExternalGoalFragmentStager(
+        2,
+        threshold=0.75,
+        min_observations=3,
+        min_stable_observations=2,
+    )
+    for outcome in (1.0, 0.0, 1.0, 1.0):
+        stager.observe(good, outcome)
+    for outcome in (0.0, 1.0, 0.0, 1.0):
+        stager.observe(bad, outcome)
+    assert not stager.observation(good.digest(state_width=2)).ready
+    assert not stager.observation(bad.digest(state_width=2)).ready
+
+    memory = ExternalGoalFragmentMemory(2)
+    rejected = stager.admit_verified(
+        memory,
+        good.digest(state_width=2),
+        lambda _candidate: True,
+    )
+    assert not rejected.accepted
+    assert memory.fragment_count == 0
+
+
+def test_policy_free_runtime_stages_goal_from_external_scalar_outcomes() -> None:
+    torch.manual_seed(72)
+    controller = AmodalCognitiveController(
+        width=4,
+        workspace_slots=2,
+        intention_width=2,
+        feedback_width=3,
+        event_window_capacity=4,
+    )
+    runtime = AmodalControllerRuntime(controller)
+    goal_memory = ExternalGoalFragmentMemory(12)
+    goal_stager = ExternalGoalFragmentStager(
+        12,
+        threshold=0.75,
+        min_observations=2,
+        min_stable_observations=1,
+    )
+    policy_free = PolicyFreeAmodalRuntime(
+        runtime,
+        ExternalModelBasedPlanner(_RuntimeAdditiveModel(), beam_width=2),
+        goal_memory=goal_memory,
+        goal_stager=goal_stager,
+    )
+    controller_before = {
+        name: value.detach().clone()
+        for name, value in controller.state_dict().items()
+    }
+    candidate = ExternalGoalFragmentCandidate(
+        torch.ones(12),
+        torch.ones(12, dtype=torch.bool),
+    )
+    policy_free.observe_goal_fragment(candidate, 1.0)
+    policy_free.observe_goal_fragment(candidate, 1.0)
+    admission = policy_free.admit_goal_fragment_verified(
+        candidate.digest(state_width=12),
+        lambda proposed: proposed.fragment_count == 1,
+    )
+    assert admission.accepted
+    assert goal_memory.fragment_count == 1
+    for name, value in controller.state_dict().items():
+        assert torch.equal(value, controller_before[name])
