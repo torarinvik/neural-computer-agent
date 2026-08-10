@@ -5378,3 +5378,44 @@ an unnormalised causal magnitude. On that honest scale the ladder is:
 -0.0205 (F109) -> +0.0069 (F111) -> +0.0816 (F113) -> +0.0947 (F118),
 against +0.1234; i.e. 77% of the oracle-value target, not 119% of
 anything.
+
+**F119 (probe 219). CORRECTION to F117, and the real finding: the plant
+fits composed modular arithmetic PERFECTLY (1.0000) and generalises to
+unseen programs at CHANCE (0.0794 vs 0.0435). Composition is not
+happening at all — each program is memorised as its own function.**
+The single-world fit arm (1 training world, ignorance off, 30k updates,
+dim 128) removes reading from the picture entirely and asks only
+whether the pieces compose:
+
+    trained programs (18) : 1.0000   <- representation is not the limit
+    held-out programs (12): 0.0794   <- chance is 0.0435
+
+F117 read the multi-world 0.098-0.127 as "fit fails before reading".
+That was wrong in the way that matters: fit does not fail, it is
+perfect per-world. What fails is generalisation across ARRANGEMENTS of
+pieces the model already executes flawlessly. The multi-world number
+was low because 18 worlds x 18 programs is 324 separately-memorised
+functions, not because the arithmetic is unrepresentable.
+
+Why this is the most important null so far: the whole bank thesis is
+that structure is reusable and content is looked up. A model that
+executes [f,g,f] perfectly and is at chance on [g,f,g] has learned 18
+opaque functions, not two pieces plus a rule for combining them. No
+amount of world diversity fixes that — the failure is INSIDE one world
+where there is nothing to read.
+
+The cause is architectural and was ours to choose: the plant sees the
+whole program as a set of tokens and emits an answer in ONE shot, so
+nothing forces it to apply pieces sequentially. It is the F67 lesson
+(store facts, derive behaviour by search) one level up — we asked it
+to learn composite functions instead of learning a piece and applying
+it repeatedly.
+
+Next probe: `--iterate`, a recurrent latent state stepped ONCE PER
+PROGRAM TOKEN through a shared step function, decoded only at the end,
+trained end-to-end with no intermediate supervision. Same parameters,
+same blocks — the only change is that composition becomes structural
+rather than something to be learned. If held-out programs jump, the
+puzzle-piece mechanism is real and the interface was the whole story.
+
+Probe 219 is `math_compose.py --worlds 2 --ignorance 0`, 1 seed.
