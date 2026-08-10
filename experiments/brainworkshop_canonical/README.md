@@ -277,3 +277,19 @@ unbounded growth, arbitrary new computation, and general continual learning
 remain unqualified. Evidence is in
 `session_records/brainworkshop_canonical_2026-08-05/learned_eviction_context_seed17.json`,
 `...seed18.json`, and `...seed19.json`.
+
+The replay-free transition acquisition module also exposes the online
+discovery rung:
+
+```bash
+PYTHONPATH=src uv run python -m experiments.brainworkshop_canonical.replay_free_transition_acquisition \
+  --audit online-discovery --seed 93 --steps 6 \
+  --source-training-lifetimes 2 --target-training-lifetimes 2 \
+  --report-out /tmp/brainworkshop-online-transition-discovery.json
+```
+
+This starts with only a source factual slot, admits a novel rendered target
+slot from opaque transition evidence, and checks one-pass learning, route
+recovery, and source retention. It is deliberately a boundary audit rather
+than a general continual-learning claim; the seed ledger is in
+`session_records/online_transition_discovery_2026-08-11/sample_efficiency_ledger.json`.

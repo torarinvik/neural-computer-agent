@@ -14,6 +14,7 @@ from experiments.brainworkshop_canonical.goal_fragment_staging import (
 )
 from experiments.brainworkshop_canonical.replay_free_transition_acquisition import (
     run_nonstationary_transition_retention_audit,
+    run_online_transition_discovery_audit,
     run_replay_free_transition_acquisition_audit,
 )
 from neural_computer import (
@@ -182,6 +183,27 @@ def test_nonstationary_transition_learning_retains_source_slot_without_replay() 
     )
     assert report.replayed_examples == 0
     assert report.external_slot_count == 2
+
+
+def test_online_transition_discovery_grows_target_slot_without_replay() -> None:
+    report = run_online_transition_discovery_audit(seed=92)
+
+    assert report.status == "online_replay_free_transition_discovery_boundary"
+    assert report.controller_unchanged
+    assert report.replay_free_bank
+    assert report.source_slot_byte_stable
+    assert report.target_context_discovered
+    assert report.target_route_recovered
+    assert report.target_model_improved_on_heldout
+    assert report.source_heldout_error_after_target == (
+        report.source_heldout_error_before_target
+    )
+    assert report.replayed_examples == 0
+    assert report.transition_rows_consumed_once == 24
+    assert report.external_slot_count == 2
+    assert report.target_discovery_status == "admitted"
+    assert report.target_continuation_status == "matched"
+    assert report.target_heldout_status == "matched"
 
 
 def test_relation_reader_can_replace_gru_context_in_canonical_runner() -> None:

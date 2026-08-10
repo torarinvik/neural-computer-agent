@@ -24,7 +24,11 @@ from neural_computer import (
     ContentAddressedMemory,
     ControllerFeedback,
     ExternalModelBasedPlanner,
+    ExternalOnlineTransitionContextResult,
+    ExternalOnlineTransitionContextRouter,
+    ExternalTransitionContextEncoder,
     ExternalTransitionModelBank,
+    ExternalTransitionObservation,
     ExternalTransitionRollout,
     PolicyFreeAmodalRuntime,
 )
@@ -84,6 +88,39 @@ class NonstationaryTransitionRetentionReport:
     external_slot_count: int
     source_sample_count: int
     target_sample_count: int
+
+    def payload(self) -> dict[str, object]:
+        return asdict(self)
+
+
+@dataclass(frozen=True)
+class OnlineTransitionDiscoveryReport:
+    """Report for outcome-free online admission of a novel transition family."""
+
+    schema: str
+    status: str
+    controller_unchanged: bool
+    replay_free_bank: bool
+    source_slot_byte_stable: bool
+    target_context_discovered: bool
+    target_route_recovered: bool
+    target_model_improved_on_heldout: bool
+    source_heldout_error_before_target: float
+    source_heldout_error_after_target: float
+    trained_target_heldout_error: float
+    fresh_target_heldout_error: float
+    source_training_lifetimes: int
+    target_training_lifetimes: int
+    total_logical_lifetimes: int
+    unique_verifier_bits: int
+    transition_rows_consumed_once: int
+    replayed_examples: int
+    external_slot_count: int
+    source_sample_count: int
+    target_sample_count: int
+    target_discovery_status: str
+    target_continuation_status: str
+    target_heldout_status: str
 
     def payload(self) -> dict[str, object]:
         return asdict(self)
@@ -196,6 +233,54 @@ def _run_lifetime(
         ),
         unique_verifier_bits,
     )
+
+
+def _rollout_observations(
+    rollout: ExternalTransitionRollout,
+) -> list[ExternalTransitionObservation]:
+    """Expand an opaque rollout into one-pass row bundles for an external router."""
+
+    state = rollout.initial_state.unsqueeze(0)
+    observations: list[ExternalTransitionObservation] = []
+    for index in range(rollout.horizon):
+        observations.append(
+            ExternalTransitionObservation(
+                state=state.detach().clone(),
+                intention=rollout.intentions[index : index + 1].detach().clone(),
+                next_state=rollout.expected_states[index : index + 1]
+                .detach()
+                .clone(),
+            ).validate(
+                state_width=rollout.initial_state.shape[0],
+                intention_width=rollout.intentions.shape[1],
+            )
+        )
+        state = rollout.expected_states[index : index + 1]
+    return observations
+
+
+def _route_rollout(
+    router: ExternalOnlineTransitionContextRouter,
+    rollout: ExternalTransitionRollout,
+    *,
+    adapt: bool,
+) -> ExternalOnlineTransitionContextResult:
+    """Route a fresh rollout and optionally consume each admitted bundle once."""
+
+    result = None
+    for observation in _rollout_observations(rollout):
+        result = router.observe(observation)
+        if adapt and result.status in {
+            "admitted",
+            "reused",
+            "matched",
+            "continuation",
+            "sparse_matched",
+        }:
+            router.adaptation_step(result, None, replay_evidence=False)
+    if result is None:
+        raise RuntimeError("online transition routing needs a non-empty rollout")
+    return result
 
 
 def run_replay_free_transition_acquisition_audit(
@@ -487,18 +572,298 @@ def run_nonstationary_transition_retention_audit(
     )
 
 
+def run_online_transition_discovery_audit(
+    *,
+    seed: int = 93,
+    steps: int = 6,
+    source_training_lifetimes: int = 2,
+    target_training_lifetimes: int = 2,
+) -> OnlineTransitionDiscoveryReport:
+    """Discover and learn a novel rendered family without replay or a task label.
+
+    The target lifetime initially plans through the already-known source slot.
+    Only its opaque transition observations reach the online router.  The
+    router allocates a new external slot, consumes the bundle once through
+    replay-free affine statistics, and returns the discovered context for later
+    target lifetimes.  Cue symbols and n-back values remain verifier-private
+    diagnostics and never enter the router.
+    """
+
+    if min(steps, source_training_lifetimes, target_training_lifetimes) < 1:
+        raise ValueError("online transition audit budgets must be positive")
+    if target_training_lifetimes < 2:
+        raise ValueError("online transition discovery needs a continuation lifetime")
+    agent = CanonicalBrainWorkshopAgent(
+        symbol_count=8,
+        event_width=4,
+        intention_width=2,
+        feedback_width=3,
+        n_back=2,
+        reader_kind="relation",
+        seed=seed,
+    )
+    controller_before = _controller_digest(agent)
+    for parameter in agent.parameters():
+        parameter.requires_grad_(False)
+    bank = ExternalTransitionModelBank(
+        state_width=agent.controller.width * 3,
+        intention_width=agent.controller.intention_width,
+        context_width=agent.controller.width,
+        model_family=EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY,
+    )
+    source_context = _opaque_context(agent, 6)
+    source_index = bank.ensure_context(source_context)
+    policy_free = PolicyFreeAmodalRuntime(
+        agent.runtime,
+        ExternalModelBasedPlanner(bank, beam_width=4),
+    )
+    candidate_intentions = torch.randn(
+        6,
+        agent.controller.intention_width,
+        generator=torch.Generator().manual_seed(seed + 7000),
+    )
+
+    unique_bits = 0
+    for lifetime in range(source_training_lifetimes):
+        _, bits = _run_lifetime(
+            agent,
+            policy_free,
+            bank,
+            source_context,
+            n_back=2,
+            steps=steps,
+            seed=seed + lifetime,
+            cue_symbol=6,
+            candidate_intentions=candidate_intentions,
+            learn=True,
+        )
+        unique_bits += bits
+
+    source_digest = bank.models[source_index].digest()
+    source_heldout, source_bits = _run_lifetime(
+        agent,
+        policy_free,
+        bank,
+        source_context,
+        n_back=2,
+        steps=steps,
+        seed=seed + 10000,
+        cue_symbol=6,
+        candidate_intentions=candidate_intentions,
+        learn=False,
+    )
+    unique_bits += source_bits
+    planner = ExternalModelBasedPlanner(bank, beam_width=4)
+    source_error_before = planner.rollout_error(
+        source_heldout,
+        transition_context=source_context.unsqueeze(0),
+    )
+
+    context_encoder = ExternalTransitionContextEncoder(
+        bank.state_width,
+        bank.intention_width,
+        hidden_width=max(16, bank.state_width),
+        context_width=bank.context_width,
+    )
+    router = ExternalOnlineTransitionContextRouter(
+        bank,
+        context_encoder,
+        admission_observations=steps,
+        match_tolerance=0.05,
+        match_margin=0.0,
+        continuation_tolerance=0.05,
+    )
+
+    # Acquire the target while still behaving through the known source slot.
+    # The router sees only the resulting opaque transition rows.
+    target_discovery_rollout, bits = _run_lifetime(
+        agent,
+        policy_free,
+        bank,
+        source_context,
+        n_back=3,
+        steps=steps,
+        seed=seed + 2000,
+        cue_symbol=7,
+        candidate_intentions=candidate_intentions,
+        learn=False,
+    )
+    unique_bits += bits
+    discovery = _route_rollout(router, target_discovery_rollout, adapt=True)
+    source_error_after = planner.rollout_error(
+        source_heldout,
+        transition_context=source_context.unsqueeze(0),
+    )
+    if (
+        discovery.context is None
+        or discovery.status not in {"admitted", "reused"}
+        or discovery.stable_slot_id != 1
+    ):
+        unchanged = controller_before == _controller_digest(agent)
+        source_stable = source_digest == bank.models[source_index].digest()
+        return OnlineTransitionDiscoveryReport(
+            schema=(
+                "neural-computer.brainworkshop-online-transition-discovery-audit.v1"
+            ),
+            status="online_replay_free_transition_discovery_boundary_failed",
+            controller_unchanged=unchanged,
+            replay_free_bank=bank.replay_free_updates,
+            source_slot_byte_stable=source_stable,
+            target_context_discovered=False,
+            target_route_recovered=False,
+            target_model_improved_on_heldout=False,
+            source_heldout_error_before_target=source_error_before,
+            source_heldout_error_after_target=source_error_after,
+            trained_target_heldout_error=float("inf"),
+            fresh_target_heldout_error=float("inf"),
+            source_training_lifetimes=source_training_lifetimes,
+            target_training_lifetimes=target_training_lifetimes,
+            total_logical_lifetimes=source_training_lifetimes + 2,
+            unique_verifier_bits=unique_bits,
+            transition_rows_consumed_once=source_training_lifetimes * steps,
+            replayed_examples=0,
+            external_slot_count=bank.context_count,
+            source_sample_count=int(bank.models[source_index].sample_count),
+            target_sample_count=0,
+            target_discovery_status=discovery.status,
+            target_continuation_status="not_run",
+            target_heldout_status="not_run",
+        )
+    target_context = discovery.context.detach().clone()
+    target_slot_id = discovery.stable_slot_id
+
+    target_result = discovery
+    for lifetime in range(1, target_training_lifetimes):
+        target_rollout, bits = _run_lifetime(
+            agent,
+            policy_free,
+            bank,
+            target_context,
+            n_back=3,
+            steps=steps,
+            seed=seed + 2000 + lifetime,
+            cue_symbol=7,
+            candidate_intentions=candidate_intentions,
+            learn=False,
+        )
+        unique_bits += bits
+        target_result = _route_rollout(router, target_rollout, adapt=True)
+
+    target_heldout, target_bits = _run_lifetime(
+        agent,
+        policy_free,
+        bank,
+        target_context,
+        n_back=3,
+        steps=steps,
+        seed=seed + 12000,
+        cue_symbol=7,
+        candidate_intentions=candidate_intentions,
+        learn=False,
+    )
+    unique_bits += target_bits
+    target_heldout_result = _route_rollout(router, target_heldout, adapt=False)
+    trained_target_error = planner.rollout_error(
+        target_heldout,
+        transition_context=target_context.unsqueeze(0),
+    )
+    fresh_bank = ExternalTransitionModelBank(
+        state_width=bank.state_width,
+        intention_width=bank.intention_width,
+        context_width=bank.context_width,
+        model_family=EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY,
+    )
+    fresh_bank.ensure_context(target_context)
+    fresh_target_error = ExternalModelBasedPlanner(
+        fresh_bank,
+        beam_width=4,
+    ).rollout_error(
+        target_heldout,
+        transition_context=target_context.unsqueeze(0),
+    )
+    unchanged = controller_before == _controller_digest(agent)
+    source_stable = source_digest == bank.models[source_index].digest()
+    discovered = discovery.status in {"admitted", "reused"} and target_slot_id == 1
+    recovered = (
+        target_result.stable_slot_id == target_slot_id
+        and target_heldout_result.stable_slot_id == target_slot_id
+    )
+    improved = trained_target_error < fresh_target_error
+    passed = unchanged and source_stable and discovered and recovered and improved
+    return OnlineTransitionDiscoveryReport(
+        schema=(
+            "neural-computer.brainworkshop-online-transition-discovery-audit.v1"
+        ),
+        status=(
+            "online_replay_free_transition_discovery_boundary"
+            if passed
+            else "online_replay_free_transition_discovery_boundary_failed"
+        ),
+        controller_unchanged=unchanged,
+        replay_free_bank=bank.replay_free_updates,
+        source_slot_byte_stable=source_stable,
+        target_context_discovered=discovered,
+        target_route_recovered=recovered,
+        target_model_improved_on_heldout=improved,
+        source_heldout_error_before_target=source_error_before,
+        source_heldout_error_after_target=source_error_after,
+        trained_target_heldout_error=trained_target_error,
+        fresh_target_heldout_error=fresh_target_error,
+        source_training_lifetimes=source_training_lifetimes,
+        target_training_lifetimes=target_training_lifetimes,
+        total_logical_lifetimes=(
+            source_training_lifetimes
+            + target_training_lifetimes
+            + 2
+        ),
+        unique_verifier_bits=unique_bits,
+        transition_rows_consumed_once=(
+            source_training_lifetimes * steps + target_training_lifetimes * steps
+        ),
+        replayed_examples=0,
+        external_slot_count=bank.context_count,
+        source_sample_count=int(bank.models[source_index].sample_count),
+        target_sample_count=int(bank.models[1].sample_count),
+        target_discovery_status=discovery.status,
+        target_continuation_status=target_result.status,
+        target_heldout_status=target_heldout_result.status,
+    )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--audit",
+        choices=("single", "nonstationary", "online-discovery"),
+        default="single",
+    )
     parser.add_argument("--seed", type=int, default=91)
     parser.add_argument("--report-out", type=Path)
     parser.add_argument("--training-lifetimes", type=int, default=3)
+    parser.add_argument("--source-training-lifetimes", type=int, default=2)
+    parser.add_argument("--target-training-lifetimes", type=int, default=2)
     parser.add_argument("--steps", type=int, default=6)
     args = parser.parse_args()
-    report = run_replay_free_transition_acquisition_audit(
-        seed=args.seed,
-        training_lifetimes=args.training_lifetimes,
-        steps=args.steps,
-    )
+    if args.audit == "nonstationary":
+        report = run_nonstationary_transition_retention_audit(
+            seed=args.seed,
+            source_training_lifetimes=args.source_training_lifetimes,
+            target_training_lifetimes=args.target_training_lifetimes,
+            steps=args.steps,
+        )
+    elif args.audit == "online-discovery":
+        report = run_online_transition_discovery_audit(
+            seed=args.seed,
+            source_training_lifetimes=args.source_training_lifetimes,
+            target_training_lifetimes=args.target_training_lifetimes,
+            steps=args.steps,
+        )
+    else:
+        report = run_replay_free_transition_acquisition_audit(
+            seed=args.seed,
+            training_lifetimes=args.training_lifetimes,
+            steps=args.steps,
+        )
     if args.report_out is not None:
         args.report_out.parent.mkdir(parents=True, exist_ok=True)
         args.report_out.write_text(json.dumps(report.payload(), indent=2) + "\n")
