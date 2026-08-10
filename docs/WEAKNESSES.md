@@ -6,19 +6,28 @@ rung promotes, rejects, or qualifies. Ordered by severity.
 
 ## Open
 
-0. **Polarity asymmetry found (F112): the value head suppresses but
-   cannot promote — top-ranked cell is food 0.219 on normal worlds vs
-   0.021 on inverted twins, while poison avoidance (~0.016) transfers
-   to both.** Global predicted-vs-truth correlation is only 0.17 and
-   *identical* across polarity, so the defect is in the top of the
-   ranking, not the bulk: the ~ entry damps the flagged object's value
-   but fails to raise the newly-edible one above empty background. This
-   is the concrete face of the remaining +0.1165 to the oracle-value
-   target. Evidence: `value_fidelity_v1_2026-08-10`.
-   Next: make the entry able to promote, not only suppress — a signed
-   entry interaction in the value head, or diff-entries (entry as delta
-   from nearest existing entry, the "replaced puzzle piece" mechanism).
-   After that, the +0.0720 search/dynamics residual from F110.
+0. **Signed pathway doubles behaviour but the polarity scalar never
+   goes negative (F113): held-out +0.0069 -> +0.0692 (seed 69317
+   +0.1027, near the +0.1234 oracle-value target), top=food 0.667 on
+   normal worlds — yet inverted twins stay flat (top=food 0.073,
+   rewards ~0).** tanh(polarity(entry)) learned "up or off", not
+   "up or down": all gain landed on one polarity. The F112 asymmetry
+   is now isolated to a single learned scalar per world. Two-seed
+   spread is wide (+0.0357 / +0.1027). Evidence:
+   `signed_entry_v1_2026-08-10`.
+   Next: (1) log tanh(polarity(entry)) per held-out world — if it is
+   never negative the reader's twin entries are too similar for a
+   linear map to sign-split, and (2) the diff-entry mechanism (entry
+   as delta from the nearest existing entry, the "replaced puzzle
+   piece") is the targeted fix; (3) a third seed before any promotion
+   claim; then the +0.0720 search/dynamics residual (F110).
+
+0-prev-F112. **Polarity asymmetry found (F112): the value head
+   suppresses but cannot promote** — top=food 0.219 normal vs 0.021
+   inverted, poison avoidance transferring to both; correlation 0.17
+   identical across polarity, defect at the top of the ranking.
+   Evidence: `value_fidelity_v1_2026-08-10`. Addressed by F113's
+   signed pathway (partially — one polarity only).
 
 0-prev-F111. **Value head lands: 45.6%% of headroom, held-out positive
    for the first time (F111); +0.1165 remains to the oracle-value

@@ -720,9 +720,17 @@ def value_fidelity(config: FamilyConfig) -> dict:
             top_food += int(t[best] > 0)
             top_poison += int(t[best] < 0)
     n = max(len(correlations), 1)
-    return {"value_truth_correlation": round(sum(correlations) / n, 4),
-            "top_cell_is_food": round(top_food / n, 4),
-            "top_cell_is_poison": round(top_poison / n, 4)}
+    result = {"value_truth_correlation": round(sum(correlations) / n, 4),
+              "top_cell_is_food": round(top_food / n, 4),
+              "top_cell_is_poison": round(top_poison / n, 4)}
+    if args.signed_entry:
+        # F113 isolated the polarity asymmetry to this scalar: if it is
+        # never negative across worlds, the reader's twin entries are
+        # too similar for the linear map to sign-split.
+        with torch.no_grad():
+            result["polarity_scalar"] = round(float(
+                torch.tanh(outcome.polarity(entry.mean(dim=0)))), 4)
+    return result
 
 
 report = {"seed": args.seed, "train_count": len(train),

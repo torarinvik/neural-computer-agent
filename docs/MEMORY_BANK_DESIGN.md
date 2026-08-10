@@ -5206,3 +5206,45 @@ the diff-entry mechanism is the targeted fix.
 
 Two-seed spread is wide (+0.0357 / +0.1027); any promotion claim needs
 a third seed. Probe 213 is `game_slots.py --signed-entry`, 2 seeds.
+
+**F114 (probe 214). The math proving ground: with dense supervision the
+reader sign-splits twins PERFECTLY — twin-entry accuracy is 0.0000, the
+plant committing fully to the opposite rule — so the games' polarity
+failure is not a fundamental reader defect.** New probe `math_twins.py`
+per the proving-ground idea: a world is x -> (a*x + b) mod 16, its twin
+negates b; the reader sees 8 example pairs, the plant continues
+held-out queries; ignorance objective, pair-held-out splits, and the
+four controls all as in the games. Runs in ~2 minutes.
+
+| arm (held-out pairs, 2 seeds) | accuracy |
+| --- | ---: |
+| own entry | 0.4121 / 0.5000 |
+| twin entry | **0.0000 / 0.0000** |
+| withheld entry | 0.0501 / 0.0472 (chance 0.0625) |
+| stranger entry | 0.1550 / 0.1165 |
+
+Twin cosine 0.60 / 0.44 — the entries are genuinely different, and the
+plant reads the difference: given the twin's entry it predicts x - b
+where truth is x + b, which is why twin accuracy is ZERO rather than
+chance. That is the strongest possible form of the sign-split F113
+could not get from the games value head.
+
+The dissociation this buys: here the reader trains against DENSE exact
+next-value labels; in the games it trains through sparse discounted
+returns from 12%-dense events. Same architecture, same objective, same
+controls — opposite polarity behaviour. So the suspect in the games
+narrows to the training signal reaching the value pathway, not the
+reader's capacity to separate twins. (Supporting detail: stranger
+entries score above withheld here because a stranger's b can coincide
+with a held world's b — the reader is reading rules, not worlds. The
+linear sign-probe was uninformative either way, 0.27/0.65 — 12 held
+entries against a 768-dim probe is noise; the behavioural twin test is
+the measurement.)
+
+Own-entry accuracy at 0.41-0.50 rather than ~1.0 is the next math-side
+question: the additive rule is identifiable from any single example
+pair, so reading should saturate. Candidates: more training updates,
+more pairs (24 may under-span b-space), examples too few per entry.
+The math ground is cheap enough to sweep all three.
+
+Probe 214 is `math_twins.py`, 2 seeds.
