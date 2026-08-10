@@ -2676,3 +2676,14 @@ stable addresses, and left the factual bank unchanged. This is a bounded
 recency mechanism for reliability state, not general continual learning.
 Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_factored_contextual_reversal_promoted_2026-08-10/`.
+
+The strongest primitives now compose across three seeds: context-local
+reliability vetoes a near-boundary corruption without mutating factual memory,
+verifier reversal releases quarantine, retention-verified growth admits a new
+factual regime, inference-time goal-conditioned search reaches a held-out goal
+without an action-policy target, and middle eviction removes the matching
+contextual reliability state. The controller, shared base, and context encoder
+remain frozen, and the restored external state routes the surviving slot. This
+promotes a bounded factual-memory/search composition, not unrestricted growth
+or general continual learning. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_factored_contextual_search_promoted_2026-08-10/`.

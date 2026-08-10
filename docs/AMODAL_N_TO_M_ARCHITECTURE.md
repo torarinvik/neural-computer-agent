@@ -6902,3 +6902,22 @@ general continual learning.
 
 Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_factored_contextual_reversal_promoted_2026-08-10/`.
+
+## Contextual factual memory with goal-conditioned search (2026-08-10)
+
+The current primitives now compose across three seeds: context-local
+reliability vetoes near-boundary corruption without mutating factual memory;
+verifier reversal releases quarantine; retention-verified growth admits a new
+regime; inference-time goal-conditioned search reaches a held-out goal without
+an action-policy target; and middle eviction removes the corresponding
+contextual reliability state. Exact persistence restores the surviving route.
+The controller, shared base, and context encoder remain frozen with zero
+replay rows used for reliability calibration.
+
+This promotes a bounded composition of factual external memory and
+goal-conditioned behavior synthesis. It does not establish unrestricted memory
+growth, arbitrary new computation, learned raw-modality context formation, or
+general continual learning.
+
+Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_factored_contextual_search_promoted_2026-08-10/`.
