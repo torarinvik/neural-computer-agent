@@ -5970,10 +5970,39 @@ universally meaningful.
 
 This promotes bounded held-out goal-space generalization of behavior derived
 from replay-free factual knowledge and the opt-in search heuristic. It does
-not establish a learned cross-modal goal evaluator, arbitrary nonlinear goal
-abstraction, unrestricted planning, or general continual learning. Reports
+not establish cross-modal goal abstraction, arbitrary nonlinear goal
+representation, unrestricted planning, or general continual learning. Reports
 and checksums are archived in
 `session_records/sequence_working_memory_2026-08-02/external_universal_goal_reacher_promoted_2026-08-10/`.
+
+## Graded learned goal verification (2026-08-10)
+
+The next rung adds a learned external `ExternalGoalEvaluator`. It receives
+only opaque state/goal tensors and deterministic graded scalar verifier
+outcomes; the controller remains frozen. The evaluator is trained on nine
+coarse noisy goal values and then used by the planner on `24` held-out goal
+values with additional noise.
+
+Across seeds `84101`, `84102`, `84103`, and `84104`, deployed mastery was
+`0.992`, `0.992`, `0.983`, and `1.000`. Held-out verifier positives were all
+above `0.998`, negatives were all below `0.091`, goal-shuffled mastery was
+`0.0` on every seed, reward-shuffled evaluator mastery stayed below `0.042`,
+and corrupted-goal mastery was `0.0`. The evaluator and factual model were
+unchanged during search, persistence was exact, and transition evidence was
+consumed once.
+
+This rung also exposed and corrected a planning distinction. A hard binary
+goal verifier is useful for terminal acceptance but is too sparse to guide a
+long-horizon beam search. Graded verifier outcomes provide an intermediate
+goal-progress signal without introducing a task-specific policy.
+
+The evaluator used `648` rows repeatedly for `1,000` offline optimizer
+updates, so this is explicitly not replay-free evaluator learning. It promotes
+held-out noisy goal verification and external goal-conditioned planning, not
+cross-modal goal abstraction or general continual learning. The next
+bottleneck is a one-pass or sufficient-statistics goal memory that can migrate
+across representation changes without replay. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_learned_goal_evaluator_promoted_2026-08-10/`.
 
 ## Seed-widened policy-free model compounding (2026-08-10)
 

@@ -7289,6 +7289,51 @@ class ExternalGoalEvaluator(nn.Module):
             digest.update(detached.numpy().tobytes())
         return digest.hexdigest()
 
+    def state_payload(self) -> dict[str, Any]:
+        """Persist the learned verifier independently of the controller."""
+
+        return {
+            "schema": self.schema,
+            "configuration": self.configuration(),
+            "state": {
+                name: value.detach().cpu().clone()
+                for name, value in self.state_dict().items()
+            },
+            "sha256": self.digest(),
+        }
+
+    @classmethod
+    def from_payload(cls, payload: Mapping[str, Any]) -> ExternalGoalEvaluator:
+        """Restore a verifier and reject schema, shape, or checksum drift."""
+
+        if not isinstance(payload, Mapping) or payload.get("schema") != cls.schema:
+            raise ValueError("unsupported goal-evaluator payload")
+        configuration = payload.get("configuration")
+        state = payload.get("state")
+        if not isinstance(configuration, Mapping) or not isinstance(state, Mapping):
+            raise TypeError("goal-evaluator payload is incomplete")
+        model = cls(
+            int(configuration["state_width"]),
+            hidden_width=int(configuration["hidden_width"]),
+        )
+        current = model.state_dict()
+        if tuple(state) != tuple(current):
+            raise ValueError("goal-evaluator state names differ")
+        normalized: dict[str, torch.Tensor] = {}
+        for name, expected in current.items():
+            value = state[name]
+            if not isinstance(value, torch.Tensor):
+                raise TypeError("goal-evaluator state is not a tensor")
+            if value.shape != expected.shape or value.dtype != expected.dtype:
+                raise ValueError("goal-evaluator state is incompatible")
+            if not bool(torch.isfinite(value).all()):
+                raise ValueError("goal-evaluator state is not finite")
+            normalized[name] = value.detach().clone()
+        model.load_state_dict(normalized, strict=True)
+        if payload.get("sha256") != model.digest():
+            raise ValueError("goal-evaluator checksum mismatch")
+        return model
+
 
 class ExternalTransitionEvidenceEvaluator(nn.Module):
     """Learned external verifier for noisy factual transition evidence."""

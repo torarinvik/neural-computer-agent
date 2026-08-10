@@ -1,0 +1,31 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "external-learned-goal-evaluator",
+  "status": "promoted_heldout_noisy_goal_verification",
+  "seeds": [84101, 84102, 84103, 84104],
+  "unique_verifier_bits_per_seed": 120,
+  "goal_verifier_training_rows_per_seed": 648,
+  "goal_verifier_optimizer_updates_per_seed": 1000,
+  "goal_verifier_replayed_examples_per_seed": 647352,
+  "transition_rows_consumed_once_per_seed": 123,
+  "external_model_statistics_updates_per_seed": 1,
+  "controller_optimizer_updates_per_seed": 0,
+  "old_memory_replay_per_seed": 0,
+  "learned_goal_mastery_by_seed": [
+    0.9916666666666667,
+    0.9916666666666667,
+    0.9833333333333333,
+    1.0
+  ],
+  "goal_shuffled_mastery_by_seed": [0.0, 0.0, 0.0, 0.0],
+  "reward_shuffled_mastery_by_seed": [
+    0.008333333333333333,
+    0.03333333333333333,
+    0.016666666666666666,
+    0.041666666666666664
+  ],
+  "corrupted_goal_mastery_by_seed": [0.0, 0.0, 0.0, 0.0],
+  "transfer_ratio_against_fresh_learner": null,
+  "claim_boundary": "held-out noisy goal verification and planning through an external outcome-trained evaluator; not replay-free evaluator learning, cross-modal goal abstraction, or general continual learning",
+  "next_test": "replace repeated verifier training with one-pass or sufficient-statistics goal memory and test representation migration without replay"
+}

@@ -2813,6 +2813,23 @@ def test_goal_evaluator_learns_scalar_verifier_without_latent_distance() -> None
     assert probability[[1, 2]].max().item() < 0.01
 
 
+def test_goal_evaluator_payload_is_versioned_and_exact() -> None:
+    torch.manual_seed(1215)
+    evaluator = ExternalGoalEvaluator(2, hidden_width=8)
+    payload = evaluator.state_payload()
+    restored = ExternalGoalEvaluator.from_payload(payload)
+    state = torch.randn(4, 2)
+    goal = torch.randn(4, 2)
+
+    assert restored.digest() == evaluator.digest()
+    assert torch.equal(restored(state, goal), evaluator(state, goal))
+
+    corrupted = dict(payload)
+    corrupted["sha256"] = "0" * 64
+    with pytest.raises(ValueError, match="checksum"):
+        ExternalGoalEvaluator.from_payload(corrupted)
+
+
 def test_planner_accepts_contextual_append_only_transition_memory() -> None:
     memory = ExternalTransitionMemory(1, 1, context_width=1)
     memory.write(
