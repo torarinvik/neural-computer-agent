@@ -132,15 +132,28 @@ def _stream_rows(
     *,
     regime_index: int,
     partial_evidence: bool,
+    random_missingness: bool = False,
     noise_std: float = 0.0,
     noise_seed: int = 0,
 ) -> list[ExternalTransitionObservation]:
     if noise_std < 0.0:
         raise ValueError("stream noise standard deviation cannot be negative")
-    selected = _rows(
-        observation,
-        None if not partial_evidence else TARGET_COVERING_ROW_INDICES[regime_index],
-    )
+    if not partial_evidence:
+        selected = _rows(observation)
+    elif random_missingness:
+        generator = torch.Generator().manual_seed(noise_seed + 31337)
+        observed_count = observation.state.shape[0] // 2
+        indices = tuple(
+            sorted(
+                int(index)
+                for index in torch.randperm(
+                    observation.state.shape[0], generator=generator
+                )[:observed_count]
+            )
+        )
+        selected = _rows(observation, indices)
+    else:
+        selected = _rows(observation, TARGET_COVERING_ROW_INDICES[regime_index])
     repeats = (ADMISSION_OBSERVATIONS + len(selected) - 1) // len(selected)
     stream = (selected * repeats)[:ADMISSION_OBSERVATIONS]
     if noise_std == 0.0:
@@ -299,12 +312,15 @@ def run(
     *,
     sequence_repeats: int = 1,
     partial_evidence: bool = False,
+    random_missingness: bool = False,
     stream_noise_std: float = 0.0,
 ) -> dict[str, object]:
     if sequence_repeats < 1:
         raise ValueError("sequence repeats must be positive")
     if stream_noise_std < 0.0:
         raise ValueError("stream noise standard deviation cannot be negative")
+    if random_missingness and not partial_evidence:
+        raise ValueError("random missingness requires partial evidence")
     begun = time.perf_counter()
     torch.manual_seed(seed)
     state_codes, intention_codes, observations = _fixture(seed)
@@ -415,6 +431,7 @@ def run(
             observations[regime],
             regime_index=regime_index,
             partial_evidence=partial_evidence,
+            random_missingness=random_missingness,
             noise_std=stream_noise_std,
             noise_seed=seed + sequence_position * 1009,
         ):
@@ -579,18 +596,27 @@ def run(
             "policy": "none_external_disjoint_online_context_model_search_v1",
             "sequence_repeats": sequence_repeats,
             "partial_evidence": partial_evidence,
+            "random_missingness": random_missingness,
             "stream_noise_std": stream_noise_std,
             "observed_transition_rows": {
                 name: (
-                    len(TARGET_COVERING_ROW_INDICES[index])
-                    if partial_evidence
-                    else POSITION_COUNT * 2
+                    POSITION_COUNT * 2 // 2
+                    if random_missingness
+                    else (
+                        len(TARGET_COVERING_ROW_INDICES[index])
+                        if partial_evidence
+                        else POSITION_COUNT * 2
+                    )
                 )
                 for index, name in enumerate(REGIME_NAMES)
             },
             "withheld_transition_rows": {
                 name: (
-                    POSITION_COUNT * 2 - len(TARGET_COVERING_ROW_INDICES[index])
+                    POSITION_COUNT * 2 - (
+                        POSITION_COUNT * 2 // 2
+                        if random_missingness
+                        else len(TARGET_COVERING_ROW_INDICES[index])
+                    )
                     if partial_evidence
                     else 0
                 )
@@ -655,6 +681,7 @@ def main() -> None:
     parser.add_argument("--report-out", type=Path, required=True)
     parser.add_argument("--sequence-repeats", type=int, default=1)
     parser.add_argument("--partial-evidence", action="store_true")
+    parser.add_argument("--random-missingness", action="store_true")
     parser.add_argument("--stream-noise-std", type=float, default=0.0)
     args = parser.parse_args()
     run(
@@ -662,6 +689,7 @@ def main() -> None:
         args.report_out,
         sequence_repeats=args.sequence_repeats,
         partial_evidence=args.partial_evidence,
+        random_missingness=args.random_missingness,
         stream_noise_std=args.stream_noise_std,
     )
 

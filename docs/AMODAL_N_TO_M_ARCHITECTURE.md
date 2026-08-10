@@ -4857,6 +4857,24 @@ unrestricted memory growth, learned consolidation or compression, or general
 continual learning. Reports and accounting are in
 `session_records/sequence_working_memory_2026-08-02/external_disjoint_dynamics_noisy_partial_promoted_2026-08-10/`.
 
+## Rejected arbitrary missingness routing (2026-08-10)
+
+Replacing the target-covering mask with a deterministic random half-mask
+exposed the current identity bottleneck. Across seeds `70411`, `70412`, and
+`70413`, the router saw `7/14` rows per regime window but could not reliably
+reuse the same slot when the subset changed. Target-C reuse was `0/0/0`,
+target-D reuse was `1/0/0`, and duplicate admissions exhausted capacity. Final
+target mastery was respectively `0.333/1.000`, `0.333/0.333`, and
+`0.000/1.000` for C/D.
+
+This rejects the current router for arbitrary missingness. The failure is not
+controller plasticity: the controller remained frozen, while incomplete
+factual windows were mistaken for novel contexts. The next fix must create a
+persistent sparse identity or evidence-accumulation boundary, with a
+verifier-gated safeguard against contaminating an existing slot with a truly
+novel regime. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_disjoint_dynamics_random_missingness_rejected_2026-08-10/`.
+
 ## Copy-on-write transfer challenger for disjoint compounding (2026-08-09)
 
 The exported session's next-step requirement was seed-widening on genuinely
