@@ -12,6 +12,9 @@ from experiments.brainworkshop_canonical import (
 from experiments.brainworkshop_canonical.goal_fragment_staging import (
     run_goal_fragment_staging_audit,
 )
+from experiments.brainworkshop_canonical.replay_free_transition_acquisition import (
+    run_replay_free_transition_acquisition_audit,
+)
 from neural_computer import (
     AdaptiveOnlineEpisodicRelationReader,
     RetentionPolicyConfig,
@@ -140,6 +143,24 @@ def test_goal_fragment_staging_uses_real_verifier_bits_without_controller_update
     assert not report.fresh_candidate_accepted
     assert not report.inverted_outcome_accepted
     assert not report.reversal_accepted
+
+
+def test_rendered_transition_acquisition_improves_heldout_error_without_replay() -> None:
+    report = run_replay_free_transition_acquisition_audit(
+        seed=91,
+        steps=5,
+        training_lifetimes=2,
+    )
+
+    assert report.status == "rendered_replay_free_transition_boundary"
+    assert report.controller_unchanged
+    assert report.replay_free_bank
+    assert report.model_improved_on_heldout_rollout
+    assert report.replayed_examples == 0
+    assert report.optimizer_updates == 0
+    assert report.transition_rows_consumed_once == 10
+    assert report.external_sample_count == 10
+    assert report.fresh_sample_count == 0
 
 
 def test_relation_reader_can_replace_gru_context_in_canonical_runner() -> None:

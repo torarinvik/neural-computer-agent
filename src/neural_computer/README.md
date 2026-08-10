@@ -171,6 +171,15 @@ claiming general continual learning. `learn_transition_once()` enforces the
 replay-free affine/random-feature bank path and refuses a replay-dependent
 neural slot.
 
+The rendered audit
+`experiments/brainworkshop_canonical/replay_free_transition_acquisition.py`
+now validates this path against fresh `NBackVerifier` lifetimes. Its default
+rung lowers recursive held-out rollout error from `0.06614` in a matched fresh
+bank to `0.02737` after 18 one-pass external updates, with zero replay and an
+unchanged controller. This qualifies frozen-core factual-model acquisition;
+it is not yet evidence of new-task goal discovery or general continual
+learning.
+
 The canonical runner exposes the route table through a versioned
 `route_state_payload()` / `load_route_state_payload()` boundary. Reloading it
 validates slot count and context width and does not load or mutate controller

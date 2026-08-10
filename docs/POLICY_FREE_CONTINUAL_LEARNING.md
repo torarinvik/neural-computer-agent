@@ -1323,3 +1323,20 @@ zero-replay claim mechanically explicit. It does not itself prove
 that the learned model transfers to a new task; that still requires recursive
 held-out rollout error, planner success, fresh-learner comparison, and
 complete-prefix retention.
+
+## Rendered replay-free transition acquisition (2026-08-11)
+
+`experiments/brainworkshop_canonical/replay_free_transition_acquisition.py`
+now exercises the bridge on real rendered `NBackVerifier` lifetimes. The
+controller, event frontend, and keypress decoder are frozen. Consecutive
+policy-free outputs become opaque transition rows; an affine external bank
+consumes each row once, with no optimizer replay. A matched fresh bank provides
+the held-out control, and recursive model error is measured after learning.
+
+The default three-lifetime rung produced `0.02737` trained held-out rollout
+error versus `0.06614` for the fresh bank, with `18` transition rows consumed
+once, `0` replayed examples, `0` optimizer updates, `16` unique verifier bits,
+and an unchanged controller. This is the first rendered evidence that the
+external factual model can improve from frozen-core experience. It is still a
+transition-model boundary result: it does not yet show new-task acquisition,
+goal discovery, planner success, or retention across a nonstationary family.
