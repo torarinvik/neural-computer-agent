@@ -154,12 +154,16 @@ def _admit_one(
     feedback,
     events,
     contexts,
-    source_cell: int,
     prefix_records: list[dict[str, object]],
 ) -> tuple[object, object, dict[str, object], list[dict[str, object]]]:
     task = spec.task
     task_event = events[task.event_key]
     task_context = contexts[task.context_key]
+    source_receipt, source_cell = router.select_verified_source_cell(
+        state,
+        task_context,
+        context_mask=task.context_mask.unsqueeze(0),
+    )
     source_digest = router._state_digest(state)
     probe_records: dict[str, dict[str, object]] = {}
 
@@ -271,6 +275,8 @@ def _admit_one(
         "task_id": task.task_id,
         "selected_initialization": receipt.selected_initialization,
         "selected_cell": selected_cell,
+        "source_cell": source_cell,
+        "source_receipt": source_receipt.__dict__,
         "receipt": receipt,
         "probe": probe_records,
         "continuation": continuation,
@@ -324,7 +330,6 @@ def _run_sequence(seed: int, *, fresh: bool) -> dict[str, object]:
             feedback=prepared["feedback"],
             events=prepared["events"],
             contexts=prepared["contexts"],
-            source_cell=prepared["successor_cell"],
             prefix_records=prefix_records,
         )
         task_reports.append(task_report)
@@ -420,6 +425,16 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
         "fresh_all_tasks_selected_expected_prior": all(
             report["selected_initialization"] == spec.task.expected_initialization
             for report, spec in zip(fresh["tasks"], SEQUENTIAL_ADMISSIONS, strict=True)
+        ),
+        "warm_memory_selected_every_source": all(
+            bool(report["source_receipt"]["candidate_cells"])
+            and report["source_cell"] in report["source_receipt"]["candidate_cells"]
+            for report in warm["tasks"]
+        ),
+        "fresh_memory_selected_every_source": all(
+            bool(report["source_receipt"]["candidate_cells"])
+            and report["source_cell"] in report["source_receipt"]["candidate_cells"]
+            for report in fresh["tasks"]
         ),
         "warm_all_probe_margins_material": all(
             report["receipt"].transfer_adjusted_score is not None

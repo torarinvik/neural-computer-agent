@@ -1342,3 +1342,10 @@ The sequential admission harness extends this to three unseen families with
 append-only growth and complete-prefix retention after every admission. Its
 three-seed record is archived at
 `session_records/policy_free_intention_sequential_admission_promoted_2026-08-10/`.
+
+The sequential harness now retrieves its copy source automatically from
+verified external cells with `select_verified_source_cell`; no physical cell
+index is passed by the caller. Source-selection receipts preserve the
+learned compatibility and coverage evidence for audit and persistence. The
+three-seed record is archived at
+`session_records/policy_free_intention_sequential_auto_source_promoted_2026-08-10/`.

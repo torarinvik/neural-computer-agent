@@ -8617,3 +8617,10 @@ unseen task families are admitted from the same protected successor, each
 using v2 cost-aware receipts, and every earlier file passes a complete-prefix
 held-out verifier before the next append. This is bounded lifecycle evidence
 for the CPU/files analogy, not arbitrary computation or unrestricted memory.
+
+Source discovery is now also memory-side: before a sequential admission, the
+router can select a source from verified cells using learned compatibility
+rather than receiving a physical source index from the caller. The source
+selection receipt is versioned and auditable, and the controller still sees
+only learned event/intentions. This closes the fixed-address leak without
+claiming unrestricted source generalization.

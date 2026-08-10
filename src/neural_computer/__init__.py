@@ -214,10 +214,12 @@ from .intention_router import (
     EXTERNAL_ROUTED_INTENTION_PRIOR_SELECTION_SCHEMA_V2,
     EXTERNAL_ROUTED_INTENTION_PROPOSAL_SCHEMA,
     EXTERNAL_ROUTED_INTENTION_RETENTION_VERIFICATION_SCHEMA,
+    EXTERNAL_ROUTED_INTENTION_SOURCE_SELECTION_SCHEMA,
     ExternalOutcomeIntentionRouter,
     ExternalRoutedIntentionMemoryState,
     ExternalRoutedIntentionPriorSelectionReceipt,
     ExternalRoutedIntentionProposal,
+    ExternalRoutedIntentionSourceSelectionReceipt,
     ExternalRoutedRetentionVerification,
 )
 from .interface import (
@@ -678,6 +680,7 @@ __all__ = [
     "EXTERNAL_ROUTED_INTENTION_PRIOR_SELECTION_SCHEMA_V2",
     "EXTERNAL_ROUTED_INTENTION_PROPOSAL_SCHEMA",
     "EXTERNAL_ROUTED_INTENTION_RETENTION_VERIFICATION_SCHEMA",
+    "EXTERNAL_ROUTED_INTENTION_SOURCE_SELECTION_SCHEMA",
     "EXTERNAL_SIGNED_ENTRY_VALUE_SCHEMA",
     "EXTERNAL_STREAM_BINDING_FACTUAL_CONSOLIDATION_SCHEMA",
     "EXTERNAL_STREAM_BINDING_FACTUAL_GROWTH_SCHEMA",
@@ -890,6 +893,7 @@ __all__ = [
     "ExternalRoutedIntentionMemoryState",
     "ExternalRoutedIntentionPriorSelectionReceipt",
     "ExternalRoutedIntentionProposal",
+    "ExternalRoutedIntentionSourceSelectionReceipt",
     "ExternalRoutedRetentionVerification",
     "ExternalSequenceMemory",
     "ExternalSequenceOperatorMemory",

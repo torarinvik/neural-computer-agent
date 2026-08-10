@@ -8,10 +8,12 @@ from neural_computer import (
     EXTERNAL_ROUTED_INTENTION_MEMORY_SCHEMA_V3,
     EXTERNAL_ROUTED_INTENTION_MEMORY_SCHEMA_V4,
     EXTERNAL_ROUTED_INTENTION_PRIOR_SELECTION_SCHEMA_V2,
+    EXTERNAL_ROUTED_INTENTION_SOURCE_SELECTION_SCHEMA,
     ExternalOutcomeIntentionGenerator,
     ExternalOutcomeIntentionMemory,
     ExternalOutcomeIntentionRouter,
     ExternalRoutedIntentionPriorSelectionReceipt,
+    ExternalRoutedIntentionSourceSelectionReceipt,
 )
 
 
@@ -192,6 +194,37 @@ def test_router_prior_challenger_can_trade_verifier_score_for_cost() -> None:
     assert receipt.fresh_adjusted_score == 0.8
     assert receipt.transfer_cost == 10.0
     assert receipt.cost_weight == 0.02
+
+
+def test_router_selects_verified_source_from_learned_prototype_without_cell_hint() -> None:
+    router, state = _router()
+    state = router.protect(state, [0, 1])
+    prototypes = state.retention_context_prototypes.clone()
+    prototypes[0] = torch.tensor([1.0, 0.0, 0.0, 0.0])
+    prototypes[1] = torch.tensor([0.0, 1.0, 0.0, 0.0])
+    observed_masses = torch.zeros_like(state.retention_context_observed_masses)
+    observed_masses[0, 0] = 1.0
+    observed_masses[1, 1] = 1.0
+    state = replace(
+        state,
+        retention_context_prototypes=prototypes,
+        retention_context_masses=torch.ones_like(state.retention_context_masses),
+        retention_context_observed_masses=observed_masses,
+    )
+    source_digest = router._state_digest(state)
+
+    receipt, selected_cell = router.select_verified_source_cell(
+        state,
+        torch.tensor([[1.0, 0.0, 0.0, 0.0]]),
+        context_mask=torch.tensor([[True, False, False, False]]),
+    )
+
+    assert isinstance(receipt, ExternalRoutedIntentionSourceSelectionReceipt)
+    assert receipt.schema == EXTERNAL_ROUTED_INTENTION_SOURCE_SELECTION_SCHEMA
+    assert receipt.candidate_cells == (0, 1)
+    assert receipt.selected_cell == selected_cell == 0
+    assert receipt.selected_coverage == 1.0
+    assert router._state_digest(state) == source_digest
 
 
 def test_router_batches_sparse_union_and_credits_physical_cells() -> None:

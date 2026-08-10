@@ -43,6 +43,9 @@ EXTERNAL_ROUTED_INTENTION_PRIOR_SELECTION_SCHEMA = (
 EXTERNAL_ROUTED_INTENTION_PRIOR_SELECTION_SCHEMA_V2 = (
     "neural-computer.external-routed-intention-prior-selection.v2"
 )
+EXTERNAL_ROUTED_INTENTION_SOURCE_SELECTION_SCHEMA = (
+    "neural-computer.external-routed-intention-source-selection.v1"
+)
 
 
 @dataclass(frozen=True)
@@ -423,6 +426,42 @@ class ExternalRoutedIntentionPriorSelectionReceipt:
         return self
 
 
+@dataclass(frozen=True)
+class ExternalRoutedIntentionSourceSelectionReceipt:
+    """Auditable memory-side selection of a verified source cell."""
+
+    selected_cell: int
+    candidate_cells: tuple[int, ...]
+    candidate_scores: tuple[float, ...]
+    selected_score: float
+    selected_coverage: float
+    schema: str = EXTERNAL_ROUTED_INTENTION_SOURCE_SELECTION_SCHEMA
+
+    def validate(self) -> ExternalRoutedIntentionSourceSelectionReceipt:
+        if self.schema != EXTERNAL_ROUTED_INTENTION_SOURCE_SELECTION_SCHEMA:
+            raise ValueError("unsupported routed intention source-selection schema")
+        if not self.candidate_cells or len(self.candidate_cells) != len(self.candidate_scores):
+            raise ValueError("routed intention source candidates are invalid")
+        if any(
+            not isinstance(cell, int) or isinstance(cell, bool) or cell < 0
+            for cell in self.candidate_cells
+        ) or tuple(sorted(set(self.candidate_cells))) != self.candidate_cells:
+            raise ValueError("routed intention source candidate cells are invalid")
+        if self.selected_cell not in self.candidate_cells:
+            raise ValueError("routed intention selected source cell is invalid")
+        if any(not math.isfinite(float(score)) for score in self.candidate_scores):
+            raise ValueError("routed intention source candidate scores are invalid")
+        for name, value in (
+            ("selected_score", self.selected_score),
+            ("selected_coverage", self.selected_coverage),
+        ):
+            if not math.isfinite(float(value)):
+                raise ValueError(f"routed intention source {name} is invalid")
+        if not 0.0 <= float(self.selected_coverage) <= 1.0:
+            raise ValueError("routed intention source coverage is invalid")
+        return self
+
+
 class ExternalOutcomeIntentionRouter:
     """Select external intention cells from opaque context and scalar outcomes."""
 
@@ -765,6 +804,100 @@ class ExternalOutcomeIntentionRouter:
             raise ValueError("intention router presence must be boolean [batch]")
         if present.device != device:
             raise ValueError("intention router presence is on the wrong device")
+
+    def select_verified_source_cell(
+        self,
+        state: ExternalRoutedIntentionMemoryState,
+        context: torch.Tensor,
+        *,
+        context_mask: torch.Tensor | None = None,
+    ) -> tuple[ExternalRoutedIntentionSourceSelectionReceipt, int]:
+        """Select a protected source cell from learned memory-side evidence.
+
+        This is a deterministic address lookup for copy-on-write admission.
+        It never exposes a physical cell to the controller and never updates
+        route or content state. Only cells that passed retention verification
+        are eligible; compatibility uses their learned route key, verified
+        context prototype, observed support, quarantine state, and mask
+        profile.
+        """
+
+        self._validate_state(state)
+        self._validate_context(context, state)
+        if context.shape[0] != 1:
+            raise ValueError("routed intention source selection requires one context")
+        observed_context, mask = self._context_view(context, state, context_mask)
+        routing_features = self._routing_features(observed_context, mask)
+        logits = (
+            torch.einsum("bf,cf->bc", routing_features, state.routing_keys)
+            + state.routing_bias.unsqueeze(0)
+        ) / self.temperature
+        verified = state.cells.protected & (state.retention_context_masses > 0.0)
+        if not bool(verified.any()):
+            raise LookupError("routed intention has no verified source cells")
+        if self.verified_prototype_scale > 0.0:
+            prototype_similarity = self._masked_cosine(
+                observed_context,
+                mask,
+                state.retention_context_prototypes,
+                state.retention_context_observed_masses,
+            )
+            logits = logits + (
+                self.verified_prototype_scale
+                * prototype_similarity
+                * verified.to(dtype=context.dtype).unsqueeze(0)
+            ) / self.temperature
+        coverage = torch.ones(
+            1,
+            state.cells.baseline.shape[0],
+            device=context.device,
+            dtype=context.dtype,
+        )
+        if self.memory.generator.context_masking:
+            coverage = self._context_coverage(
+                mask,
+                state.retention_context_observed_masses,
+            ).to(dtype=context.dtype)
+            if self.verified_context_coverage_scale > 0.0:
+                logits = logits + (
+                    self.verified_context_coverage_scale
+                    * torch.log(coverage.clamp_min(1e-3))
+                    * verified.to(dtype=context.dtype).unsqueeze(0)
+                ) / self.temperature
+            if self.masked_reversal_quarantine_scale > 0.0:
+                quarantined = (
+                    verified & (state.retention_reversal_counts > 0)
+                ).to(dtype=context.dtype)
+                logits = logits - (
+                    self.masked_reversal_quarantine_scale
+                    * quarantined.unsqueeze(0)
+                ) / self.temperature
+        if self.memory.generator.context_masking and self.context_mask_profile_scale > 0.0:
+            profile_active = state.retention_context_mask_profiles.sum(dim=-1) > 0.0
+            if bool(profile_active.any()):
+                profile_compatibility = self._context_mask_profile_compatibility(
+                    mask,
+                    state.retention_context_mask_profiles,
+                ).to(dtype=context.dtype)
+                logits = logits + (
+                    self.context_mask_profile_scale
+                    * torch.log(profile_compatibility.clamp_min(1e-3))
+                    * profile_active.to(dtype=context.dtype).unsqueeze(0)
+                ) / self.temperature
+        candidate_cells = tuple(
+            int(cell) for cell in torch.where(verified)[0].detach().cpu().tolist()
+        )
+        candidate_scores = tuple(float(logits[0, cell].item()) for cell in candidate_cells)
+        selected_position = int(torch.argmax(logits[0].masked_fill(~verified, -torch.inf)).item())
+        selected_score = float(logits[0, selected_position].item())
+        receipt = ExternalRoutedIntentionSourceSelectionReceipt(
+            selected_cell=selected_position,
+            candidate_cells=candidate_cells,
+            candidate_scores=candidate_scores,
+            selected_score=selected_score,
+            selected_coverage=float(coverage[0, selected_position].item()),
+        ).validate()
+        return receipt, selected_position
 
     def propose(
         self,

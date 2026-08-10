@@ -938,3 +938,23 @@ family generalization, arbitrary new computation, unrestricted growth,
 compression, or general continual learning. The next pressure is a learned
 cost model and a larger task-family matrix without relying on a fixed source
 cell or synthetic target geometry.
+
+## Automatic verified source retrieval (2026-08-10)
+
+The sequential audit no longer passes a physical source-cell index into the
+copy challenger. `ExternalOutcomeIntentionRouter.select_verified_source_cell`
+chooses only among protected, held-out-verified cells using learned route
+compatibility, verified prototypes, observed support, quarantine state, and
+mask profiles. The selected source and candidate scores are returned in a
+versioned receipt, while the controller remains unaware of the address.
+
+Across three seeds, automatic source retrieval preserves the sequential
+`transfer -> fresh -> transfer` result, complete-prefix retention, and all
+causal controls while selecting a different verified stage cell in one warm
+run. Evidence is archived in
+`session_records/policy_free_intention_sequential_auto_source_promoted_2026-08-10/`.
+
+This removes a real caller-side lifecycle leak, but the selector is still
+bounded by the current learned context/prototype space. The next pressure is
+to learn source costs and compatibility over a larger, non-synthetic task
+family stream.
