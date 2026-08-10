@@ -116,7 +116,12 @@ from .event_bridge import (
 )
 from .factored_transition import (
     EXTERNAL_FACTORED_TRANSITION_MODEL_SCHEMA,
+    EXTERNAL_FACTORED_TRANSITION_PROMOTION_SCHEMA,
+    EXTERNAL_FACTORED_TRANSITION_ROUTER_SCHEMA,
     ExternalFactoredTransitionModel,
+    ExternalFactoredTransitionRouter,
+    FactoredTransitionPromotionReceipt,
+    FactoredTransitionRouteResult,
 )
 from .growth import (
     GrowthLoadReceipt,
@@ -432,6 +437,8 @@ __all__ = [
     "EXTERNAL_CONTEXTUAL_EVIDENCE_CALIBRATOR_SCHEMA",
     "EXTERNAL_CONTEXT_ADDRESS_RESOLVER_SCHEMA",
     "EXTERNAL_FACTORED_TRANSITION_MODEL_SCHEMA",
+    "EXTERNAL_FACTORED_TRANSITION_PROMOTION_SCHEMA",
+    "EXTERNAL_FACTORED_TRANSITION_ROUTER_SCHEMA",
     "EXTERNAL_FAST_WEIGHT_SCHEMA",
     "EXTERNAL_GOAL_CONDITIONED_MODEL_SELECTION_SCHEMA",
     "EXTERNAL_GOAL_EVALUATOR_SCHEMA",
@@ -578,6 +585,7 @@ __all__ = [
     "ExternalContextualEvidenceCalibrator",
     "ExternalExecutionSnapshot",
     "ExternalFactoredTransitionModel",
+    "ExternalFactoredTransitionRouter",
     "ExternalFastWeightCapabilityProgram",
     "ExternalFastWeightPlasticity",
     "ExternalFastWeightState",
@@ -639,6 +647,8 @@ __all__ = [
     "ExternalTransitionRouteMemory",
     "ExternalTransitionRouteQuery",
     "ExternalTransitionRouteQueryProposal",
+    "FactoredTransitionPromotionReceipt",
+    "FactoredTransitionRouteResult",
     "FactorizedOpaqueAddressRouter",
     "GoalConditionedMemoryProposal",
     "GoalConditionedModelSelection",
