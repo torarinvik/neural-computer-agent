@@ -6394,3 +6394,48 @@ diversity law, applied to the reader's objective rather than the
 plant's data.
 
 Probe 242 is `--contrastive-aux 0.3/1.0/3.0`.
+
+**CORRECTION to F142 (2026-08-10, same day). The headline was a
+SINGLE-SEED result and the replication does not support it. Seed 69317
+gives 0.5405 against seed 69316's 0.7069 — barely above the 0.5283
+joint-training baseline and nowhere near the "half the gap closed"
+claim.**
+
+| contrastive-aux w=1.0 | held-out per-bit | exact |
+| --- | ---: | ---: |
+| seed 69316 | 0.7069 | 0.1780 |
+| **seed 69317** | **0.5405** | **0.0161** |
+| mean | 0.6237 | 0.0971 |
+| contrastive PHASE (F139), 3 arms | 0.5646 / 0.6136 / 0.6287 | |
+| joint training (F135) | 0.5283 | 0.0096 |
+
+Two-seed mean 0.6237 sits inside the phase form's range, so **the
+auxiliary form is not established as better than the phase form**, and
+the weight curve (0.3 / 1.0 / 3.0) is single-seed throughout and
+cannot carry the interpretation I gave it — the "interior optimum"
+may be seed noise.
+
+What survives: contrastive signal of either form beats joint training
+and beats task-loss-through-a-frozen-plant. The ordering at the top of
+the ladder does not.
+
+**How this happened, since it is a process failure and not a
+measurement one.** The project's standing rule is two or more seeds
+before a promotion claim, and the sweep was three WEIGHTS at one seed
+rather than one weight at three seeds. Sweeping a hyper-parameter
+feels like replication because it produces several numbers, but every
+number shares the same initialisation — so a seed-driven outlier
+appears as a smooth curve with an optimum. F70 recorded the same
+error class (a cost curve that changed shape when seeds were
+widened), and it recurred here in a different costume.
+
+Rule tightened: **a sweep is not a replication.** Any claimed optimum
+must have its optimum point replicated at a second seed before it is
+written as a finding, and the sweep must be reported as single-seed
+until then. Applied retroactively — the F108 ignorance weight curve
+should be re-checked the same way, since it has the identical shape
+and provenance.
+
+The batch ladder now running (32, 128) inherits this: whatever it
+shows will be reported as single-seed until its best point is
+replicated.

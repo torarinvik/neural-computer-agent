@@ -19,12 +19,14 @@ rung promotes, rejects, or qualifies. Ordered by severity.
    target: task loss through a frozen plant gives 0.4973 (F136), joint
    training gives own == stranger (F135). Binding buys execution at
    the cost of a narrow entry target that task loss cannot search for.
-   Next: contrastive reader pre-training (running) — entries from the
-   same world agree, entries from different worlds do not. That is the
-   property distillation actually supplied, and it needs no privileged
-   parameters, only knowing which observations came from one world.
-   If it works, the mechanism is complete end-to-end without
-   privileged information.
+   Contrastive signal (either form) beats joint training and beats
+   task-loss-through-a-frozen-plant, but the ordering above that is
+   NOT established: the auxiliary form's 0.7069 was single-seed and
+   its replication gives 0.5405 (two-seed mean 0.6237, inside the
+   phase form's range). See the F142 correction.
+   Next: replicate at the best point before any further sweeping, and
+   re-check F108's ignorance weight curve, which has the identical
+   single-seed provenance.
 
 0-carry. **Carry the binding result to the games.** The games' beam
    search re-consults the entry at every rollout step, which is
