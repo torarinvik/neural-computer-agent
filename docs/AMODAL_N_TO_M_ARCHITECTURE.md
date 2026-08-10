@@ -7592,3 +7592,27 @@ false-consolidation control under unrelated high-similarity distractors and
 transfer to unseen equivalence transformations. Evidence and accounting are
 archived in
 `session_records/sequence_working_memory_2026-08-02/route_memory_open_world_compression_promoted_2026-08-10/`.
+
+## Verifier-safe false-consolidation control with unseen evidence patterns (2026-08-10)
+
+The persistent route-memory test now includes an unrelated pair whose raw key
+cosine is higher than the true redundant pair. Generic evidence-mask relations
+are the only differentiating signal. Copy-on-write retention verification
+rejects false pairs and confirms that rejected proposals leave the live store
+unchanged.
+
+Across seeds `86101`, `86102`, `86103`, and `86104`, online utility improved
+from `0.07`–`0.26` to `0.98`–`1.0`. The trained planner reached `1.0` utility
+on two training patterns and an unseen third pattern. It proposed 320 false
+consolidations during training and committed none; every rejected proposal was
+atomic. Fresh unseen controls scored `0.0`–`0.17`. Each run used 1,200 unique
+verifier utilities, 1,200 planner updates, zero replay, and a frozen
+controller.
+
+This promotes verifier-safe bounded consolidation control and generic pattern
+transfer. It does not establish arbitrary semantic equivalence, learned
+verifier design, unrestricted memory growth, or general continual learning.
+The next pressure point is delayed, multi-candidate false-consolidation
+control over open-ended route identities with reversal and retention-adjusted
+utility. Evidence and accounting are archived in
+`session_records/sequence_working_memory_2026-08-02/route_memory_false_consolidation_control_promoted_2026-08-10/`.

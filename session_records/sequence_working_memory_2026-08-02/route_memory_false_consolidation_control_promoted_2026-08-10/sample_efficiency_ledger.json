@@ -1,0 +1,43 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "route_memory_false_consolidation_control",
+  "status": "promoted",
+  "claim_boundary": "Four-seed replay-free verifier-safe consolidation control with high-similarity unrelated distractors and unseen evidence-pattern transfer; not arbitrary semantic equivalence or general continual learning.",
+  "seeds": [86101, 86102, 86103, 86104],
+  "configuration": {
+    "train_episodes_per_seed": 1200,
+    "heldout_episodes_per_pattern": 100,
+    "training_patterns": [0, 1],
+    "unseen_pattern": 2,
+    "true_pair": [1, 2],
+    "seeded_false_pair": [3, 4],
+    "planner_pair_similarity_prior": 0.5
+  },
+  "accounting_per_seed": {
+    "unique_verifier_bits": 1200,
+    "unique_logical_lifetimes": 1200,
+    "optimizer_updates": 1200,
+    "replayed_examples": 0,
+    "controller_updates": 0
+  },
+  "results": {
+    "first_window_utility": [0.23, 0.08, 0.07, 0.26],
+    "last_window_utility": [1.0, 0.98, 1.0, 1.0],
+    "training_true_commits": [1110, 1073, 1057, 1115],
+    "training_false_attempts": [83, 84, 78, 75],
+    "training_false_commits": [0, 0, 0, 0],
+    "training_atomic_failures": [0, 0, 0, 0],
+    "trained_unseen_utility": [1.0, 1.0, 1.0, 1.0],
+    "fresh_unseen_utility": [0.0, 0.17, 0.0, 0.11],
+    "all_gates_passed": true
+  },
+  "controls": {
+    "frozen_controller_digest": true,
+    "fresh_unseen_planner": true,
+    "high_similarity_unrelated_distractor": true,
+    "copy_on_write_atomic_rejection": true,
+    "unseen_evidence_pattern": true,
+    "replay": false
+  },
+  "next_test": "Scale false-consolidation control to open-ended route identities, multiple unrelated high-similarity candidates, delayed evidence, and reversal while measuring retention-adjusted utility and false-commit rate."
+}

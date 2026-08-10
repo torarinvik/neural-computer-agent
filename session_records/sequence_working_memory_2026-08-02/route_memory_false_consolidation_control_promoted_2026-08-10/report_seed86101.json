@@ -1,0 +1,75 @@
+{
+  "schema": "neural-computer.route-memory-false-consolidation-control.v1",
+  "claim_boundary": "verifier-safe false-consolidation control and transfer across generic mask patterns; not arbitrary semantic equivalence or general continual learning",
+  "seed": 86101,
+  "configuration": {
+    "train_episodes": 1200,
+    "heldout_episodes": 100,
+    "patterns": [
+      0,
+      1,
+      2
+    ],
+    "true_pair": [
+      1,
+      2
+    ],
+    "seeded_false_pair": [
+      3,
+      4
+    ],
+    "pair_similarity_prior": 0.5
+  },
+  "gates": {
+    "online_learning_improved": true,
+    "trained_pattern_transfer": true,
+    "unseen_pattern_transfer": true,
+    "false_consolidation_commits_zero": true,
+    "rejected_false_proposals_are_atomic": true,
+    "trained_beats_fresh_unseen": true,
+    "controller_frozen": true,
+    "replay_zero": true,
+    "updates_match_unique_utilities": true
+  },
+  "promoted": true,
+  "metrics": {
+    "first_window_utility": 0.23,
+    "last_window_utility": 1.0,
+    "training_true_commits": 1110,
+    "training_false_attempts": 83,
+    "training_false_commits": 0,
+    "training_atomic_failures": 0,
+    "pattern0": {
+      "utility": 1.0,
+      "true_commits": 100.0,
+      "false_attempts": 0.0,
+      "false_commits": 0.0
+    },
+    "pattern1": {
+      "utility": 1.0,
+      "true_commits": 100.0,
+      "false_attempts": 0.0,
+      "false_commits": 0.0
+    },
+    "unseen_pattern": {
+      "utility": 1.0,
+      "true_commits": 100.0,
+      "false_attempts": 0.0,
+      "false_commits": 0.0
+    },
+    "fresh_unseen_pattern": {
+      "utility": 0.0,
+      "true_commits": 0.0,
+      "false_attempts": 0.0,
+      "false_commits": 0.0
+    }
+  },
+  "accounting": {
+    "unique_verifier_utilities": 1200,
+    "unique_logical_lifetimes": 1200,
+    "optimizer_updates": 1200,
+    "replayed_examples": 0,
+    "controller_updates": 0,
+    "wall_seconds": 5.455779291980434
+  }
+}
