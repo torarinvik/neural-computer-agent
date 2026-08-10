@@ -7616,3 +7616,30 @@ The next pressure point is delayed, multi-candidate false-consolidation
 control over open-ended route identities with reversal and retention-adjusted
 utility. Evidence and accounting are archived in
 `session_records/sequence_working_memory_2026-08-02/route_memory_false_consolidation_control_promoted_2026-08-10/`.
+
+## Delayed evidence with multiple high-similarity candidates (2026-08-10)
+
+The persistent route-memory stream now presents each identity out of order:
+the true first observation, two unrelated but highly similar distractors, and
+then a delayed partial observation of the true identity. Only after the delay
+does consolidation become available. Copy-on-write verification rejects every
+non-target pair, preserves all accepted evidence, and detects a deliberately
+corrupted memory state without mutating it further.
+
+Across seeds `86201`, `86202`, `86203`, and `86204`, all 12 cycles completed
+through a coordinate reversal. Each run committed 12 compressions and 36
+growth operations with minimum prefix and full-final retention `1.0`. The
+planner made `95`–`284` false-consolidation proposals per seed and committed
+none. Trained planners completed all six unseen-pattern evaluation cycles;
+fresh controls completed `0`–`3`. Reward-shuffled controls required
+`2,395`–`3,000` attempts versus `198`–`387` for clean training. Every run
+used zero replay and a frozen controller.
+
+This promotes delayed verifier-safe bounded capacity maintenance, generic
+pattern transfer, and multi-candidate false-consolidation control. It does
+not establish arbitrary semantic identity, learned verifier design,
+unrestricted memory growth, or general continual learning. The next pressure
+point is multiple latent identities in flight with longer delays, cross-
+identity distractors, and bounded-memory eviction. Evidence and accounting
+are archived in
+`session_records/sequence_working_memory_2026-08-02/route_memory_delayed_multicandidate_control_promoted_2026-08-10/`.

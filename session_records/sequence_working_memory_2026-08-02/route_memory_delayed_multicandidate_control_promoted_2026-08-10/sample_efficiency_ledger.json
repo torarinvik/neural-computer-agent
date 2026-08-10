@@ -1,0 +1,56 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "route_memory_delayed_multicandidate_control",
+  "status": "promoted",
+  "claim_boundary": "Four-seed replay-free delayed-evidence capacity maintenance with multiple unrelated high-similarity distractors, reversal, unseen-pattern transfer, and atomic memory-corruption rejection; not arbitrary semantic identity or general continual learning.",
+  "seeds": [86201, 86202, 86203, 86204],
+  "configuration": {
+    "latent_cycles_per_training_stream": 12,
+    "reversal_cycle": 6,
+    "evaluation_cycles": 6,
+    "initial_capacity": 4,
+    "observation_order": [
+      "true_first",
+      "unrelated_high_similarity_a",
+      "unrelated_high_similarity_b",
+      "true_delayed_partial",
+      "consolidate_true_pair"
+    ],
+    "minimum_score": 0.78,
+    "planner_schema": "neural-computer.opaque-capacity-planner.v4"
+  },
+  "accounting_per_seed": {
+    "unique_verifier_bits": [368, 198, 259, 387],
+    "unique_logical_lifetimes": 12,
+    "optimizer_updates": [368, 198, 259, 387],
+    "replayed_examples": 0,
+    "controller_updates": 0
+  },
+  "results": {
+    "first_window_utility": [0.1865, 0.2865, 0.1865, 0.252],
+    "last_window_utility": [0.3375, 0.515, 0.534, 0.3375],
+    "trained_attempts": [368, 198, 259, 387],
+    "committed_transactions": [96, 96, 96, 96],
+    "compression_events": [12, 12, 12, 12],
+    "growth_events": [36, 36, 36, 36],
+    "false_consolidation_attempts": [243, 95, 157, 284],
+    "false_consolidation_commits": [0, 0, 0, 0],
+    "minimum_prefix_retention": [1.0, 1.0, 1.0, 1.0],
+    "full_final_retention": true,
+    "trained_unseen_cycles": [6, 6, 6, 6],
+    "fresh_unseen_cycles": [3, 0, 0, 0],
+    "reward_shuffled_attempts": [2395, 3000, 2939, 3000],
+    "all_gates_passed": true
+  },
+  "controls": {
+    "fresh_planner": true,
+    "reward_shuffled_updates": true,
+    "unseen_evidence_pattern": true,
+    "coordinate_reversal": true,
+    "memory_corruption_rejection": true,
+    "copy_on_write_atomic_rejection": true,
+    "frozen_controller": true,
+    "replay": false
+  },
+  "next_test": "Scale delayed evidence to multiple latent identities in flight, longer delays, cross-identity distractors, and bounded-memory eviction while keeping false-commit rate and retention prefixes explicit."
+}

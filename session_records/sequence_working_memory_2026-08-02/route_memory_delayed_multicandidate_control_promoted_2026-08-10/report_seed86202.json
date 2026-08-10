@@ -1,0 +1,68 @@
+{
+  "schema": "neural-computer.route-memory-delayed-multicandidate-control.v1",
+  "claim_boundary": "delayed verifier-safe capacity maintenance with multiple high-similarity distractors in one persistent route-memory stream; not arbitrary semantic identity, unrestricted memory, or general continual learning",
+  "seed": 86202,
+  "configuration": {
+    "latent_cycles": 12,
+    "reversal_cycle": 6,
+    "max_attempts": 3000,
+    "initial_capacity": 4,
+    "delayed_observation_order": [
+      "true_first",
+      "unrelated_high_similarity_a",
+      "unrelated_high_similarity_b",
+      "true_delayed_partial",
+      "consolidate_true_pair"
+    ],
+    "minimum_score": 0.78,
+    "planner_schema": "neural-computer.opaque-capacity-planner.v4"
+  },
+  "gates": {
+    "delayed_stream_completed": true,
+    "stable_prefix_retention": true,
+    "online_utility_improved": true,
+    "trained_beats_fresh": true,
+    "unseen_pattern_transfer": true,
+    "false_consolidation_commits_zero": true,
+    "rejected_false_proposals_are_atomic": true,
+    "reversal_was_completed": true,
+    "memory_corruption_is_rejected_atomically": true,
+    "reward_shuffle_is_less_efficient": true,
+    "controller_frozen": true,
+    "replay_zero": true,
+    "one_update_per_unique_utility": true
+  },
+  "promoted": true,
+  "metrics": {
+    "first_window_utility": 0.28650000000000003,
+    "last_window_utility": 0.515,
+    "trained_attempts": 198,
+    "trained_committed_transactions": 96,
+    "trained_completed_cycles": 12,
+    "trained_compression_events": 12,
+    "trained_growth_events": 36,
+    "trained_false_attempts": 95,
+    "trained_false_commits": 0,
+    "trained_atomic_failures": 0,
+    "trained_minimum_prefix_retention": 1.0,
+    "trained_full_final_retention": true,
+    "fresh_completed_cycles": 0,
+    "fresh_attempts": 3000,
+    "trained_unseen_completed_cycles": 6,
+    "trained_unseen_attempts": 48,
+    "fresh_unseen_completed_cycles": 0,
+    "reward_shuffled_completed_cycles": 0,
+    "reward_shuffled_attempts": 3000,
+    "reward_shuffled_false_attempts": 0,
+    "final_capacity": 40,
+    "final_prototype_count": 39
+  },
+  "accounting": {
+    "unique_verifier_utilities": 198,
+    "unique_logical_lifetimes": 12,
+    "optimizer_updates": 198,
+    "replayed_examples": 0,
+    "controller_updates": 0,
+    "wall_seconds": 18.424421708041336
+  }
+}
