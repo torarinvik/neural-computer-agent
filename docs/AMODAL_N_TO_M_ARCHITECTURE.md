@@ -7011,3 +7011,22 @@ optimizer updates. It remains a bounded storage-sharing result, not semantic
 merging, unrestricted growth, or general continual learning. Evidence and the
 accounting ledger are archived in
 `session_records/sequence_working_memory_2026-08-02/external_transition_model_consolidation_cow_promoted_2026-08-10/`.
+
+## Long alternating nonlinear lifecycle after consolidation (2026-08-10)
+
+The nonlinear external-memory lifecycle was extended from a one-shot
+compaction check to 16 complete alternation rounds across six regimes. Across
+three seeds, the bank grew through capacities `4 -> 6 -> 7`, shared an
+equivalent model, detached the later-updated alias copy-on-write, and retained
+all six regimes before and after detachment. The selected `float16_stats`
+representation preserved the same 96 regime visits per seed after compression
+and restore. Historical model digests, opaque logical addresses, router state,
+and corruption rejection remained exact. The detachment used 64 fresh
+target-regime rows per seed; accounting recorded 896 unique verifier bits and
+zero replay. The controller and consolidation transaction used zero optimizer
+updates.
+
+This promotes bounded long-alternation storage lifecycle safety. It does not
+establish semantic merging, unbounded memory growth, or general continual
+learning. Evidence and the accounting ledger are archived in
+`session_records/sequence_working_memory_2026-08-02/external_nonlinear_address_compaction_long_cow_promoted_2026-08-10/`.

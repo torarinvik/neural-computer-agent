@@ -7,6 +7,9 @@ retention-verified external-memory lifecycle operations:
 - create a copy-on-write equivalent factual slot;
 - consolidate only the equivalent slots while preserving both opaque logical
   addresses;
+- update the alias to exercise copy-on-write detachment;
+- alternate all six regimes for 16 complete rounds before and after storage
+  compression;
 - select a statistics-aware float16 codec only after a held-out retention
   probe, while rejecting unsafe legacy codecs;
 - reject corrupted evidence without changing the committed bank.
@@ -27,5 +30,5 @@ ill-conditioned normal matrix, stores the solved predictor in float16, and
 reconstructs the target statistics on restore. It is promoted only when it
 passes the same verifier. Compression is never accepted just to reduce bytes.
 
-This establishes a bounded lifecycle contract, not semantic model merging,
-unrestricted memory growth, or general continual learning.
+This establishes a bounded long-alternation lifecycle contract, not semantic
+model merging, unrestricted memory growth, or general continual learning.

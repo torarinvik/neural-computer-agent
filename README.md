@@ -2738,3 +2738,14 @@ performed zero optimizer updates. This promotes storage-sharing lifecycle
 safety, not semantic merging or unrestricted continual learning. Evidence is
 archived in
 `session_records/sequence_working_memory_2026-08-02/external_transition_model_consolidation_cow_promoted_2026-08-10/`.
+
+The nonlinear lifecycle now survives a longer changing-world stress test as
+well. Across three seeds, six regimes were alternated for 16 complete rounds
+before and after copy-on-write detachment and again through the selected
+`float16_stats` compressed representation. All 96 visits per seed retained
+their factual errors, historical digests and logical addresses persisted, and
+corrupted candidates remained non-mutating. The detachment consumed 64 fresh
+target-regime rows per seed, with 896 unique verifier bits and zero replay.
+This promotes bounded long-alternation lifecycle safety, not unrestricted
+continual learning. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_nonlinear_address_compaction_long_cow_promoted_2026-08-10/`.

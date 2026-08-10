@@ -39,6 +39,7 @@ from experiments.external_nonlinear_drift_learned_context.train import (
     TRAIN_ROWS,
     _fixture,
     _train_context_encoder,
+    _transition,
 )
 from neural_computer import (
     AmodalCognitiveController,
@@ -50,6 +51,7 @@ from neural_computer import (
 )
 
 COMPRESSION_RETENTION_DELTA = 1e-3
+ALTERNATION_ROUNDS = 16
 
 
 def _digest(module: torch.nn.Module) -> str:
@@ -81,6 +83,24 @@ def _retains(
     return all(
         _error(bank, heldout[name], context) < LOSS_THRESHOLD
         for name, context in contexts.items()
+    )
+
+
+def _fresh_copy_on_write_observation(seed: int) -> ExternalTransitionObservation:
+    """Generate new target-regime evidence, never reuse an earlier row."""
+
+    generator = torch.Generator().manual_seed(seed + 901_337)
+    state = torch.rand(TRAIN_ROWS, STATE_WIDTH, generator=generator) * 2.0 - 1.0
+    intention = torch.rand(
+        TRAIN_ROWS,
+        INTENTION_WIDTH,
+        generator=generator,
+    ) * 2.0 - 1.0
+    return ExternalTransitionObservation(
+        state=state,
+        intention=intention,
+        next_state=_transition(2, state, intention),
+        confidence=torch.ones(TRAIN_ROWS),
     )
 
 
@@ -284,6 +304,45 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
     if not consolidation.accepted:
         raise RuntimeError(f"verified consolidation failed: {consolidation.reason}")
 
+    aliases_before_copy_on_write = bank.model_aliases()
+    pre_copy_on_write_alternation = [
+        {
+            "regime": name,
+            "error": _error(bank, heldout[name], prior_contexts[name]),
+        }
+        for _round in range(ALTERNATION_ROUNDS)
+        for name in REGIME_NAMES
+    ]
+    source_c_digest_before_copy_on_write = bank.models[source_c_index].digest()
+    fresh_copy_on_write_observation = _fresh_copy_on_write_observation(seed)
+    bank.adaptation_step(
+        fresh_copy_on_write_observation,
+        duplicate_context.unsqueeze(0).expand(
+            fresh_copy_on_write_observation.state.shape[0],
+            -1,
+        ),
+        None,
+    )
+    aliases_after_copy_on_write = bank.model_aliases()
+    source_c_error_after_copy_on_write = _error(
+        bank,
+        heldout["target_c"],
+        prior_contexts["target_c"],
+    )
+    duplicate_error_after_copy_on_write = _error(
+        bank,
+        heldout["target_c"],
+        duplicate_context,
+    )
+    post_copy_on_write_alternation = [
+        {
+            "regime": name,
+            "error": _error(bank, heldout[name], prior_contexts[name]),
+        }
+        for _round in range(ALTERNATION_ROUNDS)
+        for name in REGIME_NAMES
+    ]
+
     compression = bank.select_compression_verified(
         (torch.float16, torch.int8, "int8_row", "float16_stats"),
         retention_probe=retains_with_compression_delta,
@@ -306,6 +365,14 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
             - compaction_baseline[name]
             for name, context in compaction_contexts.items()
         }
+    compressed_alternation = [
+        {
+            "regime": name,
+            "error": _error(compressed_restored, heldout[name], prior_contexts[name]),
+        }
+        for _round in range(ALTERNATION_ROUNDS)
+        for name in REGIME_NAMES
+    ]
 
     restored = ExternalOnlineTransitionContextRouter.from_payload(
         router.state_payload()
@@ -363,6 +430,24 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
             and consolidation.physical_models_after
             == consolidation.physical_models_before - 1
         ),
+        "pre_copy_on_write_alternation_retained": (
+            aliases_before_copy_on_write[duplicate_index] == source_c_index
+            and all(
+                float(row["error"]) < LOSS_THRESHOLD
+                for row in pre_copy_on_write_alternation
+            )
+        ),
+        "copy_on_write_preserves_source_during_long_use": (
+            aliases_after_copy_on_write[duplicate_index] != source_c_index
+            and bank.models[source_c_index].digest()
+            == source_c_digest_before_copy_on_write
+            and source_c_error_after_copy_on_write < LOSS_THRESHOLD
+            and duplicate_error_after_copy_on_write < LOSS_THRESHOLD
+        ),
+        "post_copy_on_write_alternation_retained": all(
+            float(row["error"]) < LOSS_THRESHOLD
+            for row in post_copy_on_write_alternation
+        ),
         "statistics_aware_compression_verified": (
             compression.accepted
             and compression.selected_codec in {"int8_row", "float16_stats"}
@@ -384,12 +469,16 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
             compressed_restored.slot_ids == bank.slot_ids
             and compressed_restored.model_aliases() == bank.model_aliases()
         ),
+        "compressed_long_alternation_retained": all(
+            float(row["error"]) < LOSS_THRESHOLD
+            for row in compressed_alternation
+        ),
         "stable_logical_addresses": historical_ids_stable
         and compressed_restored.slot_ids == bank.slot_ids,
         "historical_model_digests_stable": all_prior_digests_stable,
         "alias_relationship_persisted": (
             bank.model_aliases() == compressed_restored.model_aliases()
-            and bank.model_aliases()[duplicate_index] == source_c_index
+            and bank.model_aliases()[duplicate_index] != source_c_index
         ),
         "corruption_rejected_without_bank_write": corruption_rejected,
         "controller_unchanged": controller_digest == _digest(controller),
@@ -410,12 +499,12 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
         ),
     }
     report = {
-        "schema": "neural-computer.external-nonlinear-address-compaction.v1",
+        "schema": "neural-computer.external-nonlinear-address-compaction.v2",
         "seed": seed,
         "claim_boundary": (
-            "retention-verified factual-memory growth, alias consolidation, and "
-            "storage compression; not semantic merging or unrestricted general "
-            "continual learning"
+            "retention-verified six-regime 16-round factual-memory growth, alias "
+            "consolidation, copy-on-write, and storage compression; not semantic "
+            "merging or unrestricted general continual learning"
         ),
         "configuration": {
             "regimes": list(REGIME_NAMES),
@@ -433,6 +522,7 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
                 "float16_stats",
             ],
             "compression_retention_delta": COMPRESSION_RETENTION_DELTA,
+            "alternation_rounds": ALTERNATION_ROUNDS,
         },
         "gates": gates,
         "promoted": all(gates.values()),
@@ -466,6 +556,16 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
                 for receipt in compression.receipts
             ],
         },
+        "alternation": {
+            "rounds": ALTERNATION_ROUNDS,
+            "aliases_before_copy_on_write": aliases_before_copy_on_write,
+            "aliases_after_copy_on_write": aliases_after_copy_on_write,
+            "pre_copy_on_write": pre_copy_on_write_alternation,
+            "post_copy_on_write": post_copy_on_write_alternation,
+            "compressed": compressed_alternation,
+            "source_c_error_after_copy_on_write": source_c_error_after_copy_on_write,
+            "duplicate_error_after_copy_on_write": duplicate_error_after_copy_on_write,
+        },
         "corruption_control": {
             "statuses": dict(corruption_statuses),
             "accepted": corruption_receipt.accepted,
@@ -482,15 +582,23 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
             else None,
         },
         "accounting": {
-            "unique_verifier_bits": len(REGIME_NAMES) * HELDOUT_ROWS * STATE_WIDTH,
-            "unique_logical_lifetimes": len(REGIME_NAMES) * (TRAIN_ROWS + HELDOUT_ROWS),
+            "unique_verifier_bits": (
+                len(REGIME_NAMES) * HELDOUT_ROWS * STATE_WIDTH
+                + TRAIN_ROWS * STATE_WIDTH
+            ),
+            "unique_logical_lifetimes": (
+                len(REGIME_NAMES) * (TRAIN_ROWS + HELDOUT_ROWS) + TRAIN_ROWS
+            ),
             "context_encoder_optimizer_updates": context_updates,
             "model_statistics_updates": len(REGIME_NAMES[:SOURCE_REGIMES])
-            + PRESENTED_ROWS // ADMISSION_ROWS * len(TARGET_REGIMES),
+            + PRESENTED_ROWS // ADMISSION_ROWS * len(TARGET_REGIMES)
+            + 1,
             "controller_optimizer_updates": 0,
             "replayed_examples": 0,
             "old_regime_replay": 0,
             "compaction_optimizer_updates": 0,
+            "copy_on_write_statistics_updates": 1,
+            "copy_on_write_fresh_rows": TRAIN_ROWS,
             "wall_seconds": time.perf_counter() - begun,
         },
     }
