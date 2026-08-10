@@ -6076,6 +6076,25 @@ that can acquire one under the same held-out and retention gates. Evidence is
 archived in
 `session_records/sequence_working_memory_2026-08-02/external_goal_representation_drift_gate_promoted_2026-08-10/`.
 
+## Nonlinear goal representation alignment (2026-08-10)
+
+The rejected-linear-drift result now has a bounded nonlinear successor:
+`ExternalGoalRepresentationRandomFeatureAlignmentStatistics` freezes a random
+feature basis and learns only its one-pass sufficient statistics. Across seeds
+`84501`, `84502`, `84503`, and `84504`, the replacement frontend reached
+`1.000`, `0.992`, `0.975`, and `0.992` held-out planning mastery. Nonlinear
+alignment MSE stayed below the `0.005` promotion tolerance on every seed,
+while the linear candidate remained near `0.30` MSE and was rejected.
+
+The old verifier memory and factual model stayed frozen, verifier replay was
+zero, the nonlinear adapter was unchanged during search, and persistence was
+exact. Shuffled nonlinear alignment stayed between `0.025` and `0.067`. This
+promotes a finite nonlinear alignment basis, not arbitrary nonlinear
+computation or unrestricted frontend growth. The next bottleneck is basis
+growth or quarantine when held-out evidence exceeds current nonlinear
+capacity. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_goal_representation_nonlinear_alignment_promoted_2026-08-10/`.
+
 ## Seed-widened policy-free model compounding (2026-08-10)
 
 The nested factual-model compounding rung was widened from two to four seeds.

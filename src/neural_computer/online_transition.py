@@ -411,6 +411,200 @@ class ExternalGoalRepresentationAlignmentStatistics(nn.Module):
         return model
 
 
+EXTERNAL_GOAL_REPRESENTATION_RANDOM_FEATURE_ALIGNMENT_SCHEMA = (
+    "neural-computer.external-goal-representation-random-feature-alignment.v1"
+)
+
+
+class ExternalGoalRepresentationRandomFeatureAlignmentStatistics(nn.Module):
+    """Replay-free nonlinear alignment with a frozen random feature basis."""
+
+    schema = EXTERNAL_GOAL_REPRESENTATION_RANDOM_FEATURE_ALIGNMENT_SCHEMA
+
+    def __init__(
+        self,
+        source_width: int,
+        target_width: int,
+        *,
+        feature_width: int = 64,
+        ridge: float = 1e-4,
+        seed: int = 0,
+    ) -> None:
+        super().__init__()
+        if min(source_width, target_width, feature_width) < 1:
+            raise ValueError("random-feature alignment dimensions must be positive")
+        if ridge <= 0.0 or not math.isfinite(ridge):
+            raise ValueError("random-feature alignment ridge must be finite and positive")
+        self.source_width = int(source_width)
+        self.target_width = int(target_width)
+        self.feature_width = int(feature_width)
+        self.ridge = float(ridge)
+        self.seed = int(seed)
+        generator = torch.Generator(device="cpu")
+        generator.manual_seed(self.seed)
+        self.register_buffer(
+            "projection",
+            torch.randn(
+                self.source_width,
+                self.feature_width,
+                generator=generator,
+                dtype=torch.float32,
+            )
+            / math.sqrt(self.source_width),
+        )
+        self.register_buffer(
+            "bias",
+            torch.rand(
+                self.feature_width,
+                generator=generator,
+                dtype=torch.float32,
+            )
+            * (2.0 * math.pi),
+        )
+        statistics_width = self.feature_width + 1
+        self.register_buffer(
+            "normal_matrix",
+            torch.eye(statistics_width, dtype=torch.float32) * self.ridge,
+        )
+        self.register_buffer(
+            "target_matrix",
+            torch.zeros(statistics_width, self.target_width, dtype=torch.float32),
+        )
+        self.register_buffer("sample_count", torch.zeros((), dtype=torch.long))
+
+    def configuration(self) -> dict[str, int | float | str]:
+        return {
+            "schema": self.schema,
+            "source_width": self.source_width,
+            "target_width": self.target_width,
+            "feature_width": self.feature_width,
+            "ridge": self.ridge,
+            "seed": self.seed,
+            "representation": "opaque_frozen_random_features_v1",
+            "updates": "single_pass_weighted_normal_equations_v1",
+            "storage": "frozen_features_and_sufficient_statistics_v1",
+        }
+
+    def _features(self, source: torch.Tensor) -> torch.Tensor:
+        if source.ndim != 2 or source.shape[-1] != self.source_width:
+            raise ValueError("random-feature alignment source has the wrong shape")
+        if not bool(torch.isfinite(source).all()):
+            raise ValueError("random-feature alignment source must be finite")
+        values = source.to(self.projection)
+        features = torch.cos(values @ self.projection + self.bias)
+        return torch.cat((features, torch.ones(features.shape[0], 1)), dim=-1)
+
+    def observe(self, source: torch.Tensor, target: torch.Tensor) -> None:
+        """Consume paired nonlinear alignment evidence once."""
+
+        features = self._features(source)
+        if target.ndim != 2 or target.shape != (source.shape[0], self.target_width):
+            raise ValueError("random-feature alignment target has the wrong shape")
+        values = target.to(features)
+        if not bool(torch.isfinite(values).all()):
+            raise ValueError("random-feature alignment target must be finite")
+        self.normal_matrix.add_(features.transpose(0, 1) @ features)
+        self.target_matrix.add_(features.transpose(0, 1) @ values)
+        self.sample_count.add_(source.shape[0])
+
+    def _weights(self) -> torch.Tensor:
+        return torch.linalg.solve(self.normal_matrix, self.target_matrix)
+
+    def forward(self, source: torch.Tensor) -> torch.Tensor:
+        return self._features(source) @ self._weights()
+
+    def verify_heldout(
+        self,
+        source: torch.Tensor,
+        target: torch.Tensor,
+        *,
+        prediction_tolerance: float,
+    ) -> ExternalGoalRepresentationAlignmentReceipt:
+        if prediction_tolerance < 0.0 or not math.isfinite(prediction_tolerance):
+            raise ValueError("random-feature alignment prediction tolerance is invalid")
+        self._features(source)
+        if target.ndim != 2 or target.shape != (source.shape[0], self.target_width):
+            raise ValueError("random-feature alignment held-out target has the wrong shape")
+        if not bool(torch.isfinite(target).all()):
+            raise ValueError("random-feature alignment held-out target must be finite")
+        with torch.no_grad():
+            errors = (self(source) - target.to(self.normal_matrix)).square().mean(dim=-1)
+        max_error = float(errors.max().detach())
+        heldout_digest = hashlib.sha256(
+            target.detach().cpu().contiguous().numpy().tobytes()
+        ).hexdigest()
+        accepted = max_error <= prediction_tolerance
+        return ExternalGoalRepresentationAlignmentReceipt(
+            accepted=accepted,
+            source_width=self.source_width,
+            target_width=self.target_width,
+            query_count=int(source.shape[0]),
+            max_heldout_mse=max_error,
+            alignment_digest=self.digest(),
+            heldout_digest=heldout_digest,
+            reason=(
+                "held-out nonlinear alignment remained within tolerance"
+                if accepted
+                else "held-out nonlinear alignment exceeded tolerance"
+            ),
+        ).validate()
+
+    def digest(self) -> str:
+        digest = hashlib.sha256()
+        digest.update(self.schema.encode("utf-8"))
+        for name, value in sorted(self.state_dict().items()):
+            digest.update(name.encode("utf-8"))
+            digest.update(value.detach().cpu().contiguous().numpy().tobytes())
+        return digest.hexdigest()
+
+    def state_payload(self) -> dict[str, Any]:
+        return {
+            "schema": self.schema,
+            "configuration": self.configuration(),
+            "state": {
+                name: value.detach().cpu().clone()
+                for name, value in self.state_dict().items()
+            },
+            "sha256": self.digest(),
+        }
+
+    @classmethod
+    def from_payload(
+        cls,
+        payload: Mapping[str, Any],
+    ) -> ExternalGoalRepresentationRandomFeatureAlignmentStatistics:
+        if not isinstance(payload, Mapping) or payload.get("schema") != cls.schema:
+            raise ValueError("unsupported random-feature alignment payload")
+        configuration = payload.get("configuration")
+        state = payload.get("state")
+        if not isinstance(configuration, Mapping) or not isinstance(state, Mapping):
+            raise TypeError("random-feature alignment payload is incomplete")
+        model = cls(
+            int(configuration["source_width"]),
+            int(configuration["target_width"]),
+            feature_width=int(configuration["feature_width"]),
+            ridge=float(configuration["ridge"]),
+            seed=int(configuration["seed"]),
+        )
+        current = model.state_dict()
+        if tuple(state) != tuple(current):
+            raise ValueError("random-feature alignment state names differ")
+        normalized: dict[str, torch.Tensor] = {}
+        for name, expected in current.items():
+            value = state[name]
+            if not isinstance(value, torch.Tensor):
+                raise TypeError("random-feature alignment state is not a tensor")
+            if value.shape != expected.shape or value.dtype != expected.dtype:
+                raise ValueError("random-feature alignment state is incompatible")
+            if not bool(torch.isfinite(value).all()):
+                raise ValueError("random-feature alignment state is not finite")
+            normalized[name] = value.detach().clone()
+        model.load_state_dict(normalized, strict=True)
+        if payload.get("sha256") != model.digest():
+            raise ValueError("random-feature alignment checksum mismatch")
+        return model
+
+
 class ExternalAffineTransitionStatistics(nn.Module):
     """Compact online memory for an opaque affine transition function."""
 

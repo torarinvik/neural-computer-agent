@@ -104,7 +104,10 @@ def _evaluate(
     seed: int,
     *,
     corrupt_goals: bool = False,
+    representation=None,
 ) -> dict[str, object]:
+    if representation is None:
+        representation = _new_representation
     generator = torch.Generator().manual_seed(seed + 700_009)
     planner = ExternalModelBasedPlanner(
         model,
@@ -123,8 +126,8 @@ def _evaluate(
     )
     for goal in learned_goal.EVAL_GOALS:
         for start in learned_goal.EVAL_STARTS:
-            new_start = _new_representation(start, generator)
-            new_goal = _new_representation(goal, generator)
+            new_start = representation(start, generator)
+            new_goal = representation(goal, generator)
             if corrupt_goals:
                 new_goal = new_goal + torch.tensor([[4.0, 0.0]])
             old_start = adapter(new_start)

@@ -8,6 +8,7 @@ from neural_computer import (
     ExternalGoalEvaluatorStatistics,
     ExternalGoalRepresentationAlignmentReceipt,
     ExternalGoalRepresentationAlignmentStatistics,
+    ExternalGoalRepresentationRandomFeatureAlignmentStatistics,
     ExternalOnlineTransitionContextRouter,
     ExternalRandomFeatureTransitionStatistics,
     ExternalTransitionContextEncoder,
@@ -100,6 +101,35 @@ def test_goal_alignment_statistics_learns_once_and_persists_exactly() -> None:
     )
     assert not rejected.accepted
     assert adapter.digest() == before
+
+
+def test_random_feature_goal_alignment_learns_nonlinear_relation_once() -> None:
+    adapter = ExternalGoalRepresentationRandomFeatureAlignmentStatistics(
+        2,
+        1,
+        feature_width=64,
+        ridge=1e-4,
+        seed=1901,
+    )
+    values = torch.linspace(-1.0, 1.0, 48)
+    source = torch.stack((values.square(), values**3 + 0.35 * values), dim=-1)
+    target = values.reshape(-1, 1)
+    train = torch.arange(0, 48, 2)
+    heldout = torch.arange(1, 48, 2)
+
+    adapter.observe(source.index_select(0, train), target.index_select(0, train))
+    receipt = adapter.verify_heldout(
+        source.index_select(0, heldout),
+        target.index_select(0, heldout),
+        prediction_tolerance=0.05,
+    )
+    restored = ExternalGoalRepresentationRandomFeatureAlignmentStatistics.from_payload(
+        adapter.state_payload()
+    )
+
+    assert receipt.accepted
+    assert adapter.sample_count.item() == train.numel()
+    assert restored.digest() == adapter.digest()
 class _DeterministicEvidenceGate(torch.nn.Module):
     """Test-only replaceable evaluator with an opaque factual boundary."""
 
