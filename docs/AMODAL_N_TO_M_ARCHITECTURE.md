@@ -7544,3 +7544,26 @@ utility costs for growth, eviction, and compression, measured by
 retention-adjusted cumulative utility and transaction regret. Evidence and
 accounting are archived in
 `session_records/sequence_working_memory_2026-08-02/route_memory_persistent_stream_promoted_2026-08-10/`.
+
+## Persistent cost-sensitive route-memory compression (2026-08-10)
+
+The persistent stream now begins with two redundant pairs and repeated
+compression opportunities. The verifier assigns utility `1.0` to successful
+compression, `0.9`/`0.85` to admission/eviction, and `0.65` to growth, making
+capacity cost visible to the independently trainable policy.
+
+Across seeds `85901`, `85902`, `85903`, and `85904`, every stream committed
+exactly two persistent compressions, grew 41–48 times, and retained every
+mastered route at every measured prefix and at final verification. Stable
+utility ended at `0.8125`; trained cumulative utility was `149.8`–`181.9`,
+versus `0.0`–`3.8` for fresh controls. Each run used 300 unique utilities,
+300 policy updates, zero replay, and a frozen controller.
+
+This promotes persistent bounded cost-sensitive compression with retention.
+It does not establish open-ended redundancy discovery, unrestricted growth,
+universal economic planning, autonomous verifier design, or general
+continual learning. The next pressure point is learned compression discovery
+beyond the two seeded pairs, compared against a fixed-capacity non-compressing
+controller using retention-adjusted utility. Evidence and accounting are
+archived in
+`session_records/sequence_working_memory_2026-08-02/route_memory_persistent_compression_promoted_2026-08-10/`.
