@@ -1013,3 +1013,23 @@ learned program synthesis, arbitrary computation acquisition, unrestricted
 growth, or general continual learning. The next causal rung is outcome-only
 program-file acquisition on held-out Brain Workshop families, with fresh-file,
 no-agent, replay, retention, and frozen-controller controls.
+
+## Transactional executable-file admission (2026-08-10)
+
+`ExternalSequenceProgramMemory.admit_verified_artifact()` now provides the
+missing copy-on-write file transaction. It validates a portable opaque program
+against the shared interpreter ABI, consumes only deterministic scalar
+verifier outcomes, and commits the candidate only when a stable verifier
+prefix clears the configured threshold. Rejected candidates do not change the
+bank. Committed files may be protected independently, while the bank's
+artifacts, router tensors, output ABI metadata, protection state, and checksum
+round-trip through a tensor-only payload.
+
+This strengthens the CPU/files foundation for frozen-core learning and
+prevents candidate failure from becoming silent catastrophic forgetting. It
+is still a storage and admission contract: candidates are supplied by an
+external learner, so this does not claim program induction, arbitrary new
+computation, or general continual learning. The required next experiment is a
+held-out Brain Workshop file-acquisition audit with a fresh-file challenger,
+no-agent and shuffled-outcome controls, zero controller updates, and complete
+prefix retention.

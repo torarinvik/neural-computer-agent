@@ -1367,3 +1367,12 @@ learns from its normalized completed cost. The controller remains unaware of
 both the physical source and the cost policy. The three-seed audit is
 archived at
 `session_records/policy_free_intention_learned_cost_promoted_2026-08-10/`.
+
+`ExternalSequenceProgramMemory.admit_verified_artifact()` is the matching
+memory-side file transaction. It stages an ABI-checked artifact, consumes only
+ordered scalar verifier outcomes, and appends it only after a stable prefix
+passes. Rejection is non-mutating; protected files remain untouched; and
+`payload()` / `from_payload()` persist the opaque artifacts, routing tensors,
+output ABI metadata, and protection state independently of the controller.
+This makes executable files safe external learning state without claiming that
+the system can synthesize arbitrary programs yet.

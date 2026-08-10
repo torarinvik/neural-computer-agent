@@ -8679,3 +8679,27 @@ seam and its isolation, not learned program synthesis or Turing-complete
 continual learning. The next promotion must show outcome-only acquisition of
 new program files on held-out working-memory families and retain earlier files
 without replay or controller updates.
+
+## Transactional executable-file admission (2026-08-10)
+
+The executable-file boundary now has a memory-side admission transaction in
+`ExternalSequenceProgramMemory`. A candidate `ExternalProgramArtifact` is
+validated against the interpreter ABI, evaluated from an ordered stream of
+deterministic scalar verifier outcomes, and appended only after its stable
+prefix clears the configured threshold. A rejected candidate leaves the file
+count, parameters, and protected files unchanged. Promoted files can be
+protected independently of the controller, and the complete bank—including
+opaque router weights, file output schemas, protection state, and checksummed
+artifacts—can be reloaded through `payload()` / `from_payload()`.
+
+This is the correct external-memory transaction for “learn while frozen”:
+the controller and decoder interfaces do not change, raw episodes are not
+replayed by the file store, and a bad candidate cannot damage an older file.
+`ExternalProgramAdmissionReceipt` records the candidate digest,
+stable-bits-to-threshold, and commit slot without assigning semantic meaning
+to any latent coordinate. The API establishes safe executable-file staging and
+persistence; it does not establish learned program synthesis, arbitrary new
+computation acquisition, unrestricted growth, or general continual learning.
+The next causal audit remains outcome-only acquisition of genuinely new files
+on held-out Brain Workshop families, comparing staged warm candidates with a
+matched fresh-file control and measuring complete-prefix retention.

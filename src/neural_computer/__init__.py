@@ -348,7 +348,13 @@ from .prior_cost import (
     ExternalRoutedIntentionCostModel,
     ExternalRoutedIntentionCostModelState,
 )
-from .program import EXTERNAL_PROGRAM_ARTIFACT_SCHEMA, ExternalProgramArtifact
+from .program import (
+    EXTERNAL_PROGRAM_ADMISSION_SCHEMA,
+    EXTERNAL_PROGRAM_ARTIFACT_SCHEMA,
+    ExternalProgramAdmissionReceipt,
+    ExternalProgramArtifact,
+    evaluate_external_program_admission,
+)
 from .promotion import (
     HOLDOUT_LEDGER_SCHEMA,
     PROMOTION_SCHEMA,
@@ -660,6 +666,7 @@ __all__ = [
     "EXTERNAL_OUTCOME_PROGRAM_PRIOR_SELECTION_SCHEMA",
     "EXTERNAL_OUTCOME_PROGRAM_ROUTER_SCHEMA",
     "EXTERNAL_OUTCOME_VALUE_SCHEMA",
+    "EXTERNAL_PROGRAM_ADMISSION_SCHEMA",
     "EXTERNAL_PROGRAM_ARTIFACT_SCHEMA",
     "EXTERNAL_PROGRAM_RUNTIME_SCHEMA",
     "EXTERNAL_REGISTER_BASIS_ARTIFACT_SCHEMA",
@@ -894,6 +901,7 @@ __all__ = [
     "ExternalOutcomeProgramRouterState",
     "ExternalOutcomeValueBaseline",
     "ExternalOutcomeValueState",
+    "ExternalProgramAdmissionReceipt",
     "ExternalProgramAmodalRuntime",
     "ExternalProgramArtifact",
     "ExternalProgramRuntimeOutput",
@@ -1025,6 +1033,7 @@ __all__ = [
     "credit_weights_from_logits",
     "decompress_growth_artifact",
     "episodic_context_contrastive_loss",
+    "evaluate_external_program_admission",
     "evaluate_promotion",
     "evaluate_retention_gate",
     "factorized_counterfactual_policy_loss",

@@ -15,6 +15,9 @@ from typing import Any
 import torch
 
 EXTERNAL_PROGRAM_ARTIFACT_SCHEMA = "neural-computer.external-program-artifact.v1"
+EXTERNAL_PROGRAM_ADMISSION_SCHEMA = (
+    "neural-computer.external-program-admission.v1"
+)
 
 
 @dataclass(frozen=True)
@@ -155,4 +158,141 @@ class ExternalProgramArtifact:
         return artifact
 
 
-__all__ = ["EXTERNAL_PROGRAM_ARTIFACT_SCHEMA", "ExternalProgramArtifact"]
+@dataclass(frozen=True)
+class ExternalProgramAdmissionReceipt:
+    """Verifier-only admission result for one staged program file.
+
+    The receipt contains no task or protocol identity.  It records only the
+    candidate checksum and scalar verifier accounting needed to decide whether
+    a file may enter durable external memory.  A rejected candidate must not
+    change the executable bank.
+    """
+
+    accepted: bool
+    candidate_digest: str
+    slot: int | None
+    observations: int
+    stable_bits_to_threshold: int | None
+    stable_prefix_minimum: float | None
+    reason: str
+    schema: str = EXTERNAL_PROGRAM_ADMISSION_SCHEMA
+
+    def validate(self) -> ExternalProgramAdmissionReceipt:
+        if self.schema != EXTERNAL_PROGRAM_ADMISSION_SCHEMA:
+            raise ValueError("unsupported external program admission schema")
+        if len(self.candidate_digest) != 64:
+            raise ValueError("program admission candidate digest is malformed")
+        try:
+            int(self.candidate_digest, 16)
+        except ValueError as error:
+            raise ValueError("program admission candidate digest is malformed") from error
+        if self.observations < 0:
+            raise ValueError("program admission observations cannot be negative")
+        if self.slot is not None and self.slot < 0:
+            raise ValueError("program admission slot cannot be negative")
+        if self.stable_bits_to_threshold is not None and (
+            self.stable_bits_to_threshold < 1
+            or self.stable_bits_to_threshold > self.observations
+        ):
+            raise ValueError("program admission stable prefix is invalid")
+        if self.stable_prefix_minimum is not None and not (
+            0.0 <= self.stable_prefix_minimum <= 1.0
+        ):
+            raise ValueError("program admission stable prefix must lie in [0, 1]")
+        if not self.reason:
+            raise ValueError("program admission reason must be nonempty")
+        return self
+
+    def payload(self) -> dict[str, Any]:
+        """Return a portable audit record without candidate tensor contents."""
+
+        return {
+            "schema": self.schema,
+            "accepted": self.accepted,
+            "candidate_digest": self.candidate_digest,
+            "slot": self.slot,
+            "observations": self.observations,
+            "stable_bits_to_threshold": self.stable_bits_to_threshold,
+            "stable_prefix_minimum": self.stable_prefix_minimum,
+            "reason": self.reason,
+        }
+
+
+def evaluate_external_program_admission(
+    artifact: ExternalProgramArtifact,
+    outcomes: torch.Tensor | list[float] | tuple[float, ...],
+    *,
+    threshold: float = 0.8,
+    min_observations: int = 1,
+) -> ExternalProgramAdmissionReceipt:
+    """Evaluate a staged file using only an ordered scalar outcome stream.
+
+    The first prefix whose remaining outcomes all clear ``threshold`` is the
+    stable promotion prefix.  This is intentionally a sufficient accounting
+    rule: the raw examples need not be replayed or retained by the file store.
+    """
+
+    if not isinstance(artifact, ExternalProgramArtifact):
+        raise TypeError("program admission requires an external program artifact")
+    if not 0.0 <= threshold <= 1.0:
+        raise ValueError("program admission threshold must lie in [0, 1]")
+    if min_observations < 1:
+        raise ValueError("program admission needs positive minimum observations")
+    values = torch.as_tensor(outcomes, dtype=torch.float64).reshape(-1)
+    if values.numel() == 0:
+        return ExternalProgramAdmissionReceipt(
+            accepted=False,
+            candidate_digest=artifact.digest(),
+            slot=None,
+            observations=0,
+            stable_bits_to_threshold=None,
+            stable_prefix_minimum=None,
+            reason="no verifier outcomes were supplied",
+        ).validate()
+    if not bool(torch.isfinite(values).all()) or bool(
+        torch.any((values < 0.0) | (values > 1.0))
+    ):
+        raise ValueError("program admission outcomes must be finite values in [0, 1]")
+    if values.numel() < min_observations:
+        return ExternalProgramAdmissionReceipt(
+            accepted=False,
+            candidate_digest=artifact.digest(),
+            slot=None,
+            observations=int(values.numel()),
+            stable_bits_to_threshold=None,
+            stable_prefix_minimum=float(values.min().item()),
+            reason="candidate has not reached the minimum verifier observations",
+        ).validate()
+    stable_prefix: int | None = None
+    for index in range(values.numel()):
+        if bool(torch.all(values[index:] >= threshold)):
+            stable_prefix = index + 1
+            break
+    if stable_prefix is None:
+        return ExternalProgramAdmissionReceipt(
+            accepted=False,
+            candidate_digest=artifact.digest(),
+            slot=None,
+            observations=int(values.numel()),
+            stable_bits_to_threshold=None,
+            stable_prefix_minimum=float(values.min().item()),
+            reason="candidate did not clear a stable verifier prefix",
+        ).validate()
+    return ExternalProgramAdmissionReceipt(
+        accepted=True,
+        candidate_digest=artifact.digest(),
+        slot=None,
+        observations=int(values.numel()),
+        stable_bits_to_threshold=stable_prefix,
+        stable_prefix_minimum=float(values[stable_prefix - 1 :].min().item()),
+        reason="candidate cleared the stable verifier prefix",
+    ).validate()
+
+
+__all__ = [
+    "EXTERNAL_PROGRAM_ADMISSION_SCHEMA",
+    "EXTERNAL_PROGRAM_ARTIFACT_SCHEMA",
+    "ExternalProgramAdmissionReceipt",
+    "ExternalProgramArtifact",
+    "evaluate_external_program_admission",
+]

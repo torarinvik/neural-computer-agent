@@ -22,7 +22,11 @@ import torch.nn.functional as F
 from torch import nn
 
 from .interface import IntentEvent
-from .program import ExternalProgramArtifact
+from .program import (
+    ExternalProgramAdmissionReceipt,
+    ExternalProgramArtifact,
+    evaluate_external_program_admission,
+)
 
 EXTERNAL_REGISTER_SCHEMA = "neural-computer.external-register.v4"
 EXTERNAL_REGISTER_INSTRUCTION_SCHEMA = (
@@ -536,6 +540,8 @@ class ExternalSequenceProgramMemory(nn.Module):
         self.programs = nn.ParameterList()
         self.address_programs = nn.ParameterList()
         self.slot_keys = nn.ParameterList()
+        self._protected_slots: list[bool] = []
+        self._output_schemas: list[str | None] = []
         self.query_encoder = nn.GRU(
             self.instruction_width, self.router_hidden, batch_first=True
         )
@@ -575,6 +581,8 @@ class ExternalSequenceProgramMemory(nn.Module):
             "content_addressing": self.content_addressing,
             "slot_count": len(self.programs),
             "program_lengths": [int(program.shape[0]) for program in self.programs],
+            "output_schemas": list(self._output_schemas),
+            "protected_slots": list(self._protected_slots),
             "addressing": (
                 "immutable_opaque_program_content_v1"
                 if self.content_addressing
@@ -597,7 +605,9 @@ class ExternalSequenceProgramMemory(nn.Module):
             interpreter_schema="neural-computer.external-register.v4",
             execution_schema="neural-computer.external-register-read-execute.v1",
         )
-        return self.add_program(artifact.codes)
+        slot = self.add_program(artifact.codes)
+        self._output_schemas[slot] = artifact.output_schema
+        return slot
 
     def artifact(
         self,
@@ -609,11 +619,16 @@ class ExternalSequenceProgramMemory(nn.Module):
 
         if not 0 <= slot < len(self.programs):
             raise ValueError("sequence program memory slot index is out of range")
+        resolved_output_schema = (
+            self._output_schemas[slot]
+            if output_schema is None
+            else output_schema
+        )
         return ExternalProgramArtifact(
             codes=self.programs[slot].detach(),
             interpreter_schema="neural-computer.external-register.v4",
             execution_schema="neural-computer.external-register-read-execute.v1",
-            output_schema=output_schema,
+            output_schema=resolved_output_schema,
         )
 
     def add_program(self, codes: torch.Tensor) -> int:
@@ -635,7 +650,77 @@ class ExternalSequenceProgramMemory(nn.Module):
         key = nn.Parameter(torch.empty(self.instruction_width))
         nn.init.normal_(key, mean=0.0, std=0.02)
         self.slot_keys.append(key)
+        self._protected_slots.append(False)
+        self._output_schemas.append(None)
         return len(self.programs) - 1
+
+    @property
+    def file_count(self) -> int:
+        """Return the number of executable files in the external bank."""
+
+        return len(self.programs)
+
+    def protection_mask(self) -> torch.Tensor:
+        """Return memory-side protection without exposing file semantics."""
+
+        return torch.tensor(tuple(self._protected_slots), dtype=torch.bool)
+
+    def protect_file(self, slot: int) -> None:
+        """Make one admitted file ineligible for replacement or eviction."""
+
+        if not 0 <= slot < self.file_count:
+            raise ValueError("sequence program memory file index is out of range")
+        self._protected_slots[slot] = True
+
+    def is_file_protected(self, slot: int) -> bool:
+        """Return whether a file has passed the external retention gate."""
+
+        if not 0 <= slot < self.file_count:
+            raise ValueError("sequence program memory file index is out of range")
+        return self._protected_slots[slot]
+
+    def admit_verified_artifact(
+        self,
+        artifact: ExternalProgramArtifact,
+        outcomes: torch.Tensor | Sequence[float],
+        *,
+        threshold: float = 0.8,
+        min_observations: int = 1,
+        protect: bool = False,
+    ) -> ExternalProgramAdmissionReceipt:
+        """Stage and atomically admit one file after scalar verification.
+
+        ``artifact`` is never visible to the controller.  A failed candidate
+        leaves the module parameters and the file count untouched.  The
+        verifier outcomes are sufficient statistics for admission; raw rows
+        are not replayed or retained here.
+        """
+
+        artifact.validate_for(
+            instruction_width=self.instruction_width,
+            interpreter_schema="neural-computer.external-register.v4",
+            execution_schema="neural-computer.external-register-read-execute.v1",
+        )
+        receipt = evaluate_external_program_admission(
+            artifact,
+            outcomes,
+            threshold=threshold,
+            min_observations=min_observations,
+        )
+        if not receipt.accepted:
+            return receipt
+        slot = self.add_artifact(artifact)
+        if protect:
+            self.protect_file(slot)
+        return ExternalProgramAdmissionReceipt(
+            accepted=True,
+            candidate_digest=receipt.candidate_digest,
+            slot=slot,
+            observations=receipt.observations,
+            stable_bits_to_threshold=receipt.stable_bits_to_threshold,
+            stable_prefix_minimum=receipt.stable_prefix_minimum,
+            reason="candidate verified and committed as an external file",
+        ).validate()
 
     def program_codes(
         self,
@@ -722,6 +807,94 @@ class ExternalSequenceProgramMemory(nn.Module):
             device=query.device,
             dtype=query.dtype,
         ).squeeze(0)
+
+    def digest(self) -> str:
+        """Return a checksum over the executable bank and file protection state."""
+
+        digest = hashlib.sha256()
+        digest.update(self.schema.encode("utf-8"))
+        digest.update(repr(sorted(self.configuration().items())).encode("utf-8"))
+        for name, value in sorted(self.state_dict().items()):
+            detached = value.detach().cpu().contiguous()
+            digest.update(name.encode("utf-8"))
+            digest.update(str(detached.dtype).encode("utf-8"))
+            digest.update(repr(tuple(detached.shape)).encode("utf-8"))
+            digest.update(detached.numpy().tobytes())
+        return digest.hexdigest()
+
+    def payload(self) -> dict[str, object]:
+        """Serialize the external file bank independently of the controller."""
+
+        return {
+            "schema": self.schema,
+            "configuration": self.configuration(),
+            "artifacts": [
+                self.artifact(index).payload() for index in range(self.file_count)
+            ],
+            "output_schemas": list(self._output_schemas),
+            "protected_slots": list(self._protected_slots),
+            "state": {
+                name: value.detach().cpu().clone()
+                for name, value in self.state_dict().items()
+            },
+            "sha256": self.digest(),
+        }
+
+    @classmethod
+    def from_payload(cls, payload: dict[str, object]) -> ExternalSequenceProgramMemory:
+        """Restore and checksum one independently versioned external bank."""
+
+        if not isinstance(payload, dict):
+            raise TypeError("sequence program memory payload must be a dictionary")
+        if payload.get("schema") != EXTERNAL_SEQUENCE_PROGRAM_MEMORY_SCHEMA:
+            raise ValueError("unsupported sequence program memory schema")
+        configuration = payload.get("configuration")
+        artifacts = payload.get("artifacts")
+        output_schemas = payload.get("output_schemas")
+        protected_slots = payload.get("protected_slots")
+        state = payload.get("state")
+        if not isinstance(configuration, dict):
+            raise TypeError("sequence program memory configuration must be a dictionary")
+        if not isinstance(artifacts, list):
+            raise TypeError("sequence program memory artifacts must be a list")
+        if not isinstance(output_schemas, list):
+            raise TypeError("sequence program memory output schemas must be a list")
+        if not isinstance(protected_slots, list):
+            raise TypeError("sequence program memory protection must be a list")
+        if not isinstance(state, dict) or not all(
+            isinstance(name, str) and isinstance(value, torch.Tensor)
+            for name, value in state.items()
+        ):
+            raise TypeError("sequence program memory state must be a tensor mapping")
+        memory = cls(
+            int(configuration.get("instruction_width", -1)),
+            router_hidden=int(configuration.get("router_hidden", -1)),
+            router_temperature=float(configuration.get("router_temperature", -1.0)),
+            hard_routing=bool(configuration.get("hard_routing", False)),
+            content_addressing=bool(configuration.get("content_addressing", False)),
+        )
+        for artifact_payload in artifacts:
+            if not isinstance(artifact_payload, dict):
+                raise TypeError("sequence program memory artifact is not a dictionary")
+            memory.add_artifact(ExternalProgramArtifact.from_payload(artifact_payload))
+        if len(protected_slots) != memory.file_count or any(
+            not isinstance(value, bool) for value in protected_slots
+        ):
+            raise ValueError("sequence program memory protection has the wrong shape")
+        if len(output_schemas) != memory.file_count or any(
+            value is not None and not isinstance(value, str)
+            for value in output_schemas
+        ):
+            raise ValueError("sequence program memory output schemas have the wrong shape")
+        memory._protected_slots = list(protected_slots)
+        memory._output_schemas = list(output_schemas)
+        memory.load_state_dict(state, strict=True)
+        if int(configuration.get("slot_count", -1)) != memory.file_count:
+            raise ValueError("sequence program memory slot metadata mismatch")
+        expected = payload.get("sha256")
+        if not isinstance(expected, str) or expected != memory.digest():
+            raise ValueError("sequence program memory checksum mismatch")
+        return memory
 
 
 class _ExternalSequenceOperatorSlot(nn.Module):
