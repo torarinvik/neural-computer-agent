@@ -3902,6 +3902,34 @@ continual learning or unlimited computation. The next pressure test must
 repeat residual growth across a longer bank and measure route cost,
 compression, reversal, and memory-budget behavior.
 
+## Promoted multi-regime factual residual stream (2026-08-10)
+
+The longer pressure test admits six distinct factual regimes plus a reversal
+into seven opaque residual slots. A reusable transition model is trained once
+and frozen; each residual slot consumes `32` unique transition rows through
+one-pass random-feature sufficient statistics. Copy-on-write admission
+requires held-out one-step accuracy, a two-step recursive rollout, and
+complete-prefix retention of all earlier slots.
+
+Across seeds `101` and `102`, all seven lifetimes promote. Maximum retained
+prefix MSE is `0.004544`/`0.009934`, maximum rollout MSE is
+`0.018566`/`0.016057`, and source-retention MSE is `0.004217`/`0.000352`.
+Opaque route round-trips recover slots `0..6`, requiring `21` existing-slot
+comparisons across the seven novel bundles. The shared base remains
+byte-stable; shuffled reversal evidence is rejected; missing and corrupted
+evidence do not mutate committed memory; and persistence is exact.
+
+Float16 compression passes held-out verification and reduces residual-bank
+storage from `125,552` to `62,804` bytes. Int4 is rejected by the retention
+probe. The residual path uses zero replay, while matched fresh controls use
+`2,400` optimizer updates and replay `76,800` examples. Reports are archived
+in `session_records/policy_free_factual_residual_stream_promoted_2026-08-10/`.
+
+This promotes bounded factual-memory scaling and verified external growth, not
+general continual learning, arbitrary new computation, or unrestricted memory
+growth. The next boundary is a capacity-scaled residual basis with learned
+route uncertainty, maintenance, and out-of-distribution retention controls.
+
 ## Trajectory-statistics route queries and automatic cell qualification (2026-08-10)
 
 The memory-side route boundary now has an optional

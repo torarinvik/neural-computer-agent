@@ -219,6 +219,15 @@ The two-seed evidence is in
 The residual is one-pass and replay-free in this bounded test; it does not
 claim unrestricted computation or general continual learning.
 
+The follow-up factual residual stream admits six regimes plus a reversal into
+seven opaque slots with complete-prefix held-out retention, route round-trips,
+reversal/missing/corruption controls, exact persistence, and verifier-selected
+float16 compression. Both seeds pass while the shared base remains byte-stable;
+evidence is in
+`session_records/policy_free_factual_residual_stream_promoted_2026-08-10/`.
+This is bounded factual-memory scaling, not general continual learning or
+arbitrary new computation.
+
 The outcome-only view-routing audit trains `FactorizedOpaqueAddressRouter`
 from paired attempted-view outcomes. Across two seeds it reaches `1.000`
 held-out route accuracy and `1.000` candidate-permutation accuracy, while the

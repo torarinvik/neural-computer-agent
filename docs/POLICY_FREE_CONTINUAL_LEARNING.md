@@ -763,3 +763,34 @@ acquisition, not unrestricted residual capacity, arbitrary program induction,
 policy learning, or general continual learning. The next bottleneck is
 multi-regime residual growth with route-cost, compression, and bounded-memory
 accounting.
+
+## Promoted multi-regime factual residual stream (2026-08-10)
+
+The longer pressure test now admits six distinct factual regimes plus a
+reversal into seven opaque residual slots. The shared transition model is
+trained once and frozen. Each slot consumes `32` unique transition rows using
+one-pass random-feature sufficient statistics, and admission requires held-out
+one-step accuracy, a two-step recursive rollout, and complete-prefix
+retention of every earlier slot.
+
+Seeds `101` and `102` both promote all seven lifetimes. Maximum retained-prefix
+MSE is `0.004544` and `0.009934`; maximum rollout MSE is `0.018566` and
+`0.016057`; and source-retention MSE is `0.004217` and `0.000352`. Opaque
+route round-trips return slots `0..6` after `21` existing-slot comparisons for
+the seven novel bundles. The shared base remains byte-stable, shuffled
+reversal evidence is rejected, missing and corrupted evidence are non-mutating,
+and persistence is exact.
+
+Float16 compression passes the same held-out residual probe and reduces bank
+storage from `125,552` to `62,804` bytes. Int4 is rejected because its
+decompressed residual behavior does not retain the prefix. The residual path
+uses zero replay; matched fresh controls use `2,400` optimizer updates and
+replay `76,800` examples. Evidence is archived in
+`session_records/policy_free_factual_residual_stream_promoted_2026-08-10/`.
+
+This promotes bounded factual-memory scaling with verifier-gated growth and
+compression. It is still not general continual learning: the bank is bounded,
+the context encoder is fixed, and no new arbitrary computation has been
+demonstrated. The next bottleneck is scaling beyond a fixed residual basis and
+capacity while preserving route identity, compute cost, and retention under
+unseen task families.

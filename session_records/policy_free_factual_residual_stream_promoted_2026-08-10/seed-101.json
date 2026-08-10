@@ -1,0 +1,401 @@
+{
+  "schema": "neural-computer.policy-free-factual-residual-stream.v1",
+  "claim_boundary": "one frozen shared transition model plus a bounded seven-slot opaque one-pass factual residual bank with held-out prefix retention and verified compression; not general continual learning or unrestricted growth",
+  "seed": 101,
+  "configuration": {
+    "base_updates": 1500,
+    "control_updates": 400,
+    "regime_count": 6,
+    "total_regimes_including_reversal": 7,
+    "target_error_floor": 0.04,
+    "source_retention_floor": 0.01,
+    "compression_floor": 0.04,
+    "residual_feature_width": 64,
+    "residual_ridge": 0.1,
+    "residual": {
+      "schema": "neural-computer.external-factored-transition-model.v1",
+      "state_width": 1,
+      "intention_width": 1,
+      "context_width": 4,
+      "hidden_width": 32,
+      "residual_mode": "learned_residual_function_v1",
+      "residual_model_family": "random_feature_sufficient_statistics_v1",
+      "residual_hidden_width": 32,
+      "residual_learning_rate": 0.01,
+      "residual_ridge": 0.1,
+      "residual_random_feature_width": 64,
+      "residual_random_feature_seed": 10101,
+      "residual_capacity": 7,
+      "representation": "frozen_shared_base_plus_opaque_context_residual_v2",
+      "behavior": "derived_by_external_search_not_stored_policy_v1",
+      "base": {
+        "schema": "neural-computer.external-transition-model.v1",
+        "state_width": 1,
+        "intention_width": 1,
+        "hidden_width": 32,
+        "representation": "opaque_learned_state_and_intention_v1",
+        "training": "caller_owned_self_supervised_transition_outcomes_v1",
+        "behavior": "derived_by_external_search_not_stored_policy_v1"
+      },
+      "residual_memory": {
+        "schema": "neural-computer.external-transition-memory.v1",
+        "state_width": 1,
+        "intention_width": 1,
+        "context_width": 4,
+        "storage": "append_only_content_addressed_transition_facts_v1",
+        "behavior": "derived_by_external_search_not_stored_policy_v1",
+        "store": {
+          "format": "neural-computer.append-only-memory-backend.v1",
+          "schema": "neural-computer.content-addressed-memory.v1",
+          "width": 6,
+          "storage": "append_only",
+          "write_threshold": 0.5,
+          "query_temperature": 0.1,
+          "write_match_threshold": 0.999,
+          "read_match_threshold": 0.999,
+          "scope_capacity": 1
+        }
+      },
+      "residual_bank": {
+        "schema": "neural-computer.external-transition-model-bank.v1",
+        "state_width": 1,
+        "intention_width": 1,
+        "context_width": 4,
+        "representation_space_schema": "neural-computer.external-representation-space.v1",
+        "state_space_id": "opaque-state-v1",
+        "intention_space_id": "opaque-intention-v1",
+        "hidden_width": 32,
+        "model_family": "random_feature_sufficient_statistics_v1",
+        "model_families": [
+          "random_feature_sufficient_statistics_v1",
+          "random_feature_sufficient_statistics_v1",
+          "random_feature_sufficient_statistics_v1",
+          "random_feature_sufficient_statistics_v1",
+          "random_feature_sufficient_statistics_v1",
+          "random_feature_sufficient_statistics_v1",
+          "random_feature_sufficient_statistics_v1"
+        ],
+        "affine_ridge": 0.1,
+        "adaptation_learning_rate": 0.01,
+        "random_feature_width": 64,
+        "random_feature_seed": 10101,
+        "matching_tolerance": 1e-06,
+        "growth": "append_only_isolated_model_slots_v1",
+        "slot_addressing": "neural-computer.external-transition-model-slot-address.v1",
+        "behavior": "derived_by_external_model_search_v1",
+        "updates": "caller_or_bank_owned_optimizer_v1",
+        "capacity": 7
+      }
+    },
+    "routing": {
+      "schema": "neural-computer.external-factored-transition-router.v1",
+      "match_tolerance": 0.005,
+      "match_margin": 0.001,
+      "admission_observations": 8,
+      "max_contexts": 7,
+      "auto_grow": true,
+      "residual_adaptation_updates": 1,
+      "quarantine_capacity": 0,
+      "evidence_threshold": 0.5,
+      "evidence_gate_min_evidence": 0,
+      "committed_evidence_gate": false,
+      "evidence_evaluator": null,
+      "sparse_evidence": null,
+      "quarantined_observations": 0,
+      "slot_ids": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "behavior": "copy_on_write_residual_admission_v1"
+    },
+    "admission": "heldout_one_step_plus_recursive_rollout_plus_complete_prefix_retention_v1"
+  },
+  "gates": {
+    "all_regimes_promoted": true,
+    "all_one_step_passed": true,
+    "all_recursive_rollouts_passed": true,
+    "opaque_route_roundtrip_passed": true,
+    "complete_prefix_retention_passed": true,
+    "source_retention_passed": true,
+    "base_frozen": true,
+    "base_byte_stable": true,
+    "shuffled_reversal_not_promoted": true,
+    "missing_evidence_is_noop": true,
+    "corruption_is_quarantined_or_rejected": true,
+    "exact_persistence": true,
+    "one_pass_residual_accounting": true,
+    "compression_verified": true,
+    "compression_reduces_storage": true,
+    "fresh_controls_accounted": true,
+    "committed_state_unchanged_by_probes": true
+  },
+  "promoted": true,
+  "metrics": {
+    "base_source_error_before": 0.004216809757053852,
+    "base_source_error_after": 0.004216809757053852,
+    "prefix_errors": [
+      0.0005361562361940742,
+      0.0011228140210732818,
+      0.002090032445266843,
+      0.0033425691071897745,
+      0.0037766918540000916,
+      0.003868206636980176,
+      0.004543530289083719
+    ],
+    "restored_prefix_errors": [
+      0.0005361562361940742,
+      0.0011228140210732818,
+      0.002090032445266843,
+      0.0033425691071897745,
+      0.0037766918540000916,
+      0.003868206636980176,
+      0.004543530289083719
+    ],
+    "retention_probe_errors": [
+      {
+        "regime": 1,
+        "retained_regime": 0,
+        "error": 0.0005361562361940742
+      },
+      {
+        "regime": 2,
+        "retained_regime": 0,
+        "error": 0.0005361562361940742
+      },
+      {
+        "regime": 2,
+        "retained_regime": 1,
+        "error": 0.0011228140210732818
+      },
+      {
+        "regime": 3,
+        "retained_regime": 0,
+        "error": 0.0005361562361940742
+      },
+      {
+        "regime": 3,
+        "retained_regime": 1,
+        "error": 0.0011228140210732818
+      },
+      {
+        "regime": 3,
+        "retained_regime": 2,
+        "error": 0.002090032445266843
+      },
+      {
+        "regime": 4,
+        "retained_regime": 0,
+        "error": 0.0005361562361940742
+      },
+      {
+        "regime": 4,
+        "retained_regime": 1,
+        "error": 0.0011228140210732818
+      },
+      {
+        "regime": 4,
+        "retained_regime": 2,
+        "error": 0.002090032445266843
+      },
+      {
+        "regime": 4,
+        "retained_regime": 3,
+        "error": 0.0033425691071897745
+      },
+      {
+        "regime": 5,
+        "retained_regime": 0,
+        "error": 0.0005361562361940742
+      },
+      {
+        "regime": 5,
+        "retained_regime": 1,
+        "error": 0.0011228140210732818
+      },
+      {
+        "regime": 5,
+        "retained_regime": 2,
+        "error": 0.002090032445266843
+      },
+      {
+        "regime": 5,
+        "retained_regime": 3,
+        "error": 0.0033425691071897745
+      },
+      {
+        "regime": 5,
+        "retained_regime": 4,
+        "error": 0.0037766918540000916
+      }
+    ],
+    "records": [
+      {
+        "regime": 0,
+        "slot_id": 0,
+        "train_rows": 32,
+        "heldout_rows": 14,
+        "heldout_error": 0.0005361562361940742,
+        "rollout_error": 0.0015144591452553868
+      },
+      {
+        "regime": 1,
+        "slot_id": 1,
+        "train_rows": 32,
+        "heldout_rows": 14,
+        "heldout_error": 0.0011228140210732818,
+        "rollout_error": 0.00016355121624656022
+      },
+      {
+        "regime": 2,
+        "slot_id": 2,
+        "train_rows": 32,
+        "heldout_rows": 14,
+        "heldout_error": 0.002090032445266843,
+        "rollout_error": 0.002824110444635153
+      },
+      {
+        "regime": 3,
+        "slot_id": 3,
+        "train_rows": 32,
+        "heldout_rows": 14,
+        "heldout_error": 0.0033425691071897745,
+        "rollout_error": 0.01045855414122343
+      },
+      {
+        "regime": 4,
+        "slot_id": 4,
+        "train_rows": 32,
+        "heldout_rows": 14,
+        "heldout_error": 0.0037766918540000916,
+        "rollout_error": 0.016952361911535263
+      },
+      {
+        "regime": 5,
+        "slot_id": 5,
+        "train_rows": 32,
+        "heldout_rows": 14,
+        "heldout_error": 0.003868206636980176,
+        "rollout_error": 0.018565531820058823
+      },
+      {
+        "regime": "reversal",
+        "slot_id": 6,
+        "train_rows": 32,
+        "heldout_rows": 14,
+        "heldout_error": 0.004543530289083719,
+        "rollout_error": 0.0041200267150998116
+      }
+    ],
+    "route_roundtrip_slots": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "route_comparisons_for_novel_bundles": 21,
+    "shuffled_staging_status": "staged",
+    "shuffled_receipt": {
+      "accepted": false,
+      "heldout_error": 0.3585633933544159,
+      "reason": "candidate failed factual or retention probe"
+    },
+    "missing_result_status": "ambiguous",
+    "corruption_result_status": "ambiguous",
+    "compression": {
+      "accepted": true,
+      "selected_codec": "torch.float16",
+      "reason": "smallest retained compression candidate selected",
+      "receipts": [
+        {
+          "codec": "torch.float16",
+          "accepted": true,
+          "source_bytes": 125552,
+          "compressed_bytes": 62804,
+          "reason": "compressed candidate passed retention probe"
+        },
+        {
+          "codec": "int4",
+          "accepted": false,
+          "source_bytes": 125552,
+          "compressed_bytes": 21630,
+          "reason": "compressed candidate failed retention probe"
+        }
+      ]
+    },
+    "residual_sample_counts": [
+      32,
+      32,
+      32,
+      32,
+      32,
+      32,
+      32
+    ],
+    "residual_bank_storage_bytes": 125552,
+    "shared_base_storage_bytes": 4740,
+    "fresh_controls": [
+      {
+        "optimizer_updates": 400,
+        "replayed_examples": 12800,
+        "target_error": 0.00035088261938653886,
+        "source_error": 0.3501870334148407,
+        "parameter_bytes": 4740
+      },
+      {
+        "optimizer_updates": 400,
+        "replayed_examples": 12800,
+        "target_error": 0.00042792080785147846,
+        "source_error": 0.18053071200847626,
+        "parameter_bytes": 4740
+      },
+      {
+        "optimizer_updates": 400,
+        "replayed_examples": 12800,
+        "target_error": 0.0009724146802909672,
+        "source_error": 0.11968690901994705,
+        "parameter_bytes": 4740
+      },
+      {
+        "optimizer_updates": 400,
+        "replayed_examples": 12800,
+        "target_error": 0.0003478653379715979,
+        "source_error": 0.1577998697757721,
+        "parameter_bytes": 4740
+      },
+      {
+        "optimizer_updates": 400,
+        "replayed_examples": 12800,
+        "target_error": 0.005887158215045929,
+        "source_error": 0.24794289469718933,
+        "parameter_bytes": 4740
+      },
+      {
+        "optimizer_updates": 400,
+        "replayed_examples": 12800,
+        "target_error": 0.014905308373272419,
+        "source_error": 0.6577126383781433,
+        "parameter_bytes": 4740
+      }
+    ]
+  },
+  "accounting": {
+    "base_optimizer_updates": 1500,
+    "residual_optimizer_updates": 0,
+    "residual_unique_transition_rows": 224,
+    "residual_heldout_transition_rows": 98,
+    "residual_rollout_transition_rows": 14,
+    "logical_lifetimes": 7,
+    "residual_replayed_examples": 0,
+    "fresh_optimizer_updates": 2400,
+    "fresh_replayed_examples": 76800,
+    "wall_seconds": 3.8730857920018025
+  }
+}

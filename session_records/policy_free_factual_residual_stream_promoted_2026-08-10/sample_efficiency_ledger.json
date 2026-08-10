@@ -1,0 +1,31 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "policy-free-factual-residual-stream-promoted-2026-08-10",
+  "claim_status": "promoted_bounded_multi_regime_factual_residual_bank",
+  "seeds": [101, 102],
+  "logical_lifetimes": [7, 7],
+  "unique_transition_rows": [224, 224],
+  "heldout_transition_rows": [98, 98],
+  "recursive_rollout_rows": [14, 14],
+  "residual_optimizer_updates": 0,
+  "residual_replayed_examples": 0,
+  "fresh_optimizer_updates": [2400, 2400],
+  "fresh_replayed_examples": [76800, 76800],
+  "route_comparisons_for_novel_bundles": [21, 21],
+  "max_prefix_mse": [0.004543530289083719, 0.009933887049555779],
+  "max_rollout_mse": [0.018565531820058823, 0.016057224944233894],
+  "source_retention_mse": [0.004216809757053852, 0.00035190643393434584],
+  "compression": {
+    "selected_codec": "torch.float16",
+    "source_bytes": 125552,
+    "compressed_bytes": 62804,
+    "int4_accepted": false
+  },
+  "notes": [
+    "Frozen shared factual computation remained byte-stable.",
+    "Seven opaque logical slots were admitted with complete-prefix retention.",
+    "Random-feature sufficient statistics consumed each residual row once.",
+    "Shuffled, missing, and corrupted evidence controls did not mutate committed state.",
+    "This is bounded factual-memory scaling, not general continual learning."
+  ]
+}
