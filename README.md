@@ -2642,3 +2642,11 @@ preserve the surviving regimes. External router, reliability, and wait state
 restore exactly with the core frozen. This remains bounded continual-memory
 evidence, not general continual learning. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_factored_uncertain_lifecycle_promoted_2026-08-10/`.
+
+The long-horizon stress test now passes across three seeds: ten regimes,
+four capacity refusals, four growths, four evictions, 340 verifier outcomes,
+and repeated delayed-evidence resolutions per run. Corruptions are vetoed,
+legitimate reversals route, absence is non-mutating, and final opaque IDs and
+all external state persist. This remains bounded uncertain-memory evidence,
+not general continual learning. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_factored_long_horizon_promoted_2026-08-10/`.

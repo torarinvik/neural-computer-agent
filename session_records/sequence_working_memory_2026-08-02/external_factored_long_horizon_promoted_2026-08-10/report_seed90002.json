@@ -1,0 +1,273 @@
+{
+  "schema": "neural-computer.external-factored-long-horizon.v1",
+  "seed": 90002,
+  "configuration": {
+    "regime_count": 10,
+    "initial_capacity": 3,
+    "final_capacity": 7,
+    "train_rows": 20,
+    "corruption_delta": 0.04,
+    "reliability_threshold": 0.9,
+    "reliability_warmup": 4,
+    "claim": "long-horizon-adversarial-uncertain-memory-v1"
+  },
+  "metrics": {
+    "final_slot_ids": [
+      0,
+      5,
+      6,
+      7,
+      8,
+      9
+    ],
+    "capacity_refusals": [
+      "ambiguous",
+      "ambiguous",
+      "ambiguous",
+      "ambiguous"
+    ],
+    "growth_receipts": [
+      {
+        "accepted": true,
+        "source_capacity": 3,
+        "destination_capacity": 4,
+        "context_count": 3,
+        "content_digest_before": "9e1d06aee7a7ad9a55c875dc29b296cc8aeadd9625281628a36ce2ecdd52c373",
+        "content_digest_after": "9e1d06aee7a7ad9a55c875dc29b296cc8aeadd9625281628a36ce2ecdd52c373",
+        "reason": "retention-verified capacity growth committed",
+        "schema": "neural-computer.external-transition-model-growth.v1"
+      },
+      {
+        "accepted": true,
+        "source_capacity": 4,
+        "destination_capacity": 5,
+        "context_count": 4,
+        "content_digest_before": "fc718c52e422daade43252f188377613d3c8a09bfeac55d78e0cba13e837c350",
+        "content_digest_after": "fc718c52e422daade43252f188377613d3c8a09bfeac55d78e0cba13e837c350",
+        "reason": "retention-verified capacity growth committed",
+        "schema": "neural-computer.external-transition-model-growth.v1"
+      },
+      {
+        "accepted": true,
+        "source_capacity": 5,
+        "destination_capacity": 6,
+        "context_count": 5,
+        "content_digest_before": "780f7551274e7909276754673d87a0b6da079abe86f3943a36e22fbb0d3c0d91",
+        "content_digest_after": "780f7551274e7909276754673d87a0b6da079abe86f3943a36e22fbb0d3c0d91",
+        "reason": "retention-verified capacity growth committed",
+        "schema": "neural-computer.external-transition-model-growth.v1"
+      },
+      {
+        "accepted": true,
+        "source_capacity": 6,
+        "destination_capacity": 7,
+        "context_count": 6,
+        "content_digest_before": "9945ffca50b86614a51b037b46a56dcc969926875294ce5950d23d033696131f",
+        "content_digest_after": "9945ffca50b86614a51b037b46a56dcc969926875294ce5950d23d033696131f",
+        "reason": "retention-verified capacity growth committed",
+        "schema": "neural-computer.external-transition-model-growth.v1"
+      }
+    ],
+    "eviction_receipts": [
+      {
+        "accepted": true,
+        "evicted_index": 1,
+        "source_context_count": 4,
+        "destination_context_count": 3,
+        "physical_models_before": 4,
+        "physical_models_after": 3,
+        "content_digest_before": "5fd2967c7b419092f201fce7eb729ff5cc2841b8fea43829e9c798db02d2a5eb",
+        "content_digest_after": "59b818d721bfc6131a35a84c95752018aa68d4b77bfd5e47426e8e297f8c8a06",
+        "reason": "retention-verified logical model-slot eviction committed",
+        "evicted_slot_id": 1,
+        "schema": "neural-computer.external-transition-model-eviction.v1"
+      },
+      {
+        "accepted": true,
+        "evicted_index": 1,
+        "source_context_count": 5,
+        "destination_context_count": 4,
+        "physical_models_before": 5,
+        "physical_models_after": 4,
+        "content_digest_before": "54c7cb65a48f3a1fe7dc53f0cebf2ebc08c1935505ed5a55a597498de6842968",
+        "content_digest_after": "dca93d517fe0a7a982738be156f168c8e318973c5d6e239fa62bd83ae3ef12be",
+        "reason": "retention-verified logical model-slot eviction committed",
+        "evicted_slot_id": 2,
+        "schema": "neural-computer.external-transition-model-eviction.v1"
+      },
+      {
+        "accepted": true,
+        "evicted_index": 1,
+        "source_context_count": 6,
+        "destination_context_count": 5,
+        "physical_models_before": 6,
+        "physical_models_after": 5,
+        "content_digest_before": "dc3b6aed199644696e56db7902b692dbda5ecdccdbaae4b87cefa76bc1ca0b45",
+        "content_digest_after": "a1e1ffa0c1bfd01583b4f60ee09e72ab748b1f89d2c27bdb2f1395cf413979c9",
+        "reason": "retention-verified logical model-slot eviction committed",
+        "evicted_slot_id": 3,
+        "schema": "neural-computer.external-transition-model-eviction.v1"
+      },
+      {
+        "accepted": true,
+        "evicted_index": 1,
+        "source_context_count": 7,
+        "destination_context_count": 6,
+        "physical_models_before": 7,
+        "physical_models_after": 6,
+        "content_digest_before": "2859f6083b8a7f70c83124ff13321e29303b06242f7f2ff1c11974608789b872",
+        "content_digest_after": "d8849d7709246774a648ebe1c00ae706e0514f8d3c4bd5779e348744fec595cc",
+        "reason": "retention-verified logical model-slot eviction committed",
+        "evicted_slot_id": 4,
+        "schema": "neural-computer.external-transition-model-eviction.v1"
+      }
+    ],
+    "cycle_records": [
+      {
+        "regime": 3,
+        "new_slot": 3,
+        "victim_slot": 1,
+        "clean_status": "matched",
+        "corruption_status": "reliability_veto",
+        "partial_status": "matched",
+        "partial_slot": 1,
+        "quarantine_accepted": true,
+        "resolved": [
+          1
+        ],
+        "absence_non_mutating": true
+      },
+      {
+        "regime": 4,
+        "new_slot": 4,
+        "victim_slot": 2,
+        "clean_status": "matched",
+        "corruption_status": "reliability_veto",
+        "partial_status": "matched",
+        "partial_slot": 2,
+        "quarantine_accepted": true,
+        "resolved": [
+          2
+        ],
+        "absence_non_mutating": true
+      },
+      {
+        "regime": 5,
+        "new_slot": 5,
+        "victim_slot": 2,
+        "clean_status": "matched",
+        "corruption_status": "reliability_veto",
+        "partial_status": "matched",
+        "partial_slot": 2,
+        "quarantine_accepted": true,
+        "resolved": [
+          2
+        ],
+        "absence_non_mutating": true
+      },
+      {
+        "regime": 6,
+        "new_slot": 6,
+        "victim_slot": 3,
+        "clean_status": "matched",
+        "corruption_status": "reliability_veto",
+        "partial_status": "matched",
+        "partial_slot": 3,
+        "quarantine_accepted": true,
+        "resolved": [
+          3
+        ],
+        "absence_non_mutating": true
+      },
+      {
+        "regime": 7,
+        "new_slot": 7,
+        "victim_slot": 3,
+        "clean_status": "matched",
+        "corruption_status": "reliability_veto",
+        "partial_status": "matched",
+        "partial_slot": 3,
+        "quarantine_accepted": true,
+        "resolved": [
+          3
+        ],
+        "absence_non_mutating": true
+      },
+      {
+        "regime": 8,
+        "new_slot": 8,
+        "victim_slot": 4,
+        "clean_status": "matched",
+        "corruption_status": "reliability_veto",
+        "partial_status": "matched",
+        "partial_slot": 4,
+        "quarantine_accepted": true,
+        "resolved": [
+          4
+        ],
+        "absence_non_mutating": true
+      },
+      {
+        "regime": 9,
+        "new_slot": 9,
+        "victim_slot": 4,
+        "clean_status": "matched",
+        "corruption_status": "reliability_veto",
+        "partial_status": "matched",
+        "partial_slot": 4,
+        "quarantine_accepted": true,
+        "resolved": [
+          4
+        ],
+        "absence_non_mutating": true
+      }
+    ],
+    "fresh_corruption_status": "matched",
+    "reliability_observation_count": 340,
+    "wait_sample_count": 64
+  },
+  "gates": {
+    "all_regimes_promoted": true,
+    "four_capacity_refusals": true,
+    "four_growth_transactions": true,
+    "four_evictions": true,
+    "all_cycles_clean_revisit": true,
+    "all_cycles_corruption_vetoed": true,
+    "fresh_gate_disabled_control_matches": true,
+    "all_cycles_partial_routes": true,
+    "all_cycles_delayed_quarantine_resolved": true,
+    "all_cycles_absence_non_mutating": true,
+    "wait_policy_learned": true,
+    "final_active_routes": true,
+    "stable_ids_persisted": true,
+    "reliability_persistence": true,
+    "wait_persistence": true,
+    "base_frozen": true,
+    "controller_frozen": true,
+    "context_encoder_unchanged": true,
+    "replay_free": true
+  },
+  "accounting": {
+    "unique_verifier_outcomes": 340,
+    "unique_wait_outcomes": 64,
+    "unique_logical_transition_lifetimes": 400,
+    "reliability_sufficient_statistics_updates": 23,
+    "wait_sufficient_statistics_updates": 2,
+    "base_optimizer_updates": 0,
+    "residual_optimizer_updates": 0,
+    "replayed_examples": 0,
+    "old_regime_replay": 0,
+    "controller_optimizer_updates": 0,
+    "context_encoder_optimizer_updates": 0,
+    "wall_seconds": 0.7709782079909928
+  },
+  "digests": {
+    "base": "5dc291a2783d524fdec132e7823c73e3b11904ce54072b0e280e1a260ca0945d",
+    "controller": "0b2eaaa073999096c69cd23ad1f846206d5d2e66ead663b8ff74696d50402470",
+    "context_encoder": "621ecceda03c242eafa4cee668acd28527901de88a35868730bc433297d51a42",
+    "router": "59a7563259a35eb249f442b5996b018102e581b1d93bb0325e8670f4e58e963c",
+    "reliability": "a8a70a7cd34c8190c7bb7f1ecfecaea24d057efa65d140966ec77e049c3e31c4",
+    "wait": "21e121639131596e1ce7a4207304bf9f39b3775d8aabde2841d57a6688b4c18b"
+  },
+  "promoted": true
+}

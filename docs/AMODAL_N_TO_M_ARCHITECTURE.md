@@ -6827,3 +6827,22 @@ reversal and memory corruption controls.
 
 Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_factored_uncertain_lifecycle_promoted_2026-08-10/`.
+
+## Long-horizon uncertain-memory cycling (2026-08-10)
+
+The combined boundary now survives ten nonlinear regimes and four complete
+capacity cycles across three seeds. Each run contains four full-capacity
+refusals, four retention-verified growth transactions, four evictions, seven
+repeated reliability corruption vetoes, seven delayed partial quarantine and
+resolution events, and repeated absence no-ops. All regimes promoted, clean
+returns routed, final opaque IDs persisted, and reliability/wait/router state
+restored exactly while the base, controller, and context encoder stayed frozen.
+
+This is the strongest current bounded uncertain-memory result. It still does
+not prove unrestricted growth, arbitrary new computation, or general
+continual learning. The next required pressure is adversarial content drift
+over these same long horizons: corruption that is deliberately close to a
+legitimate transition, verifier reversal, and quarantine saturation.
+
+Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_factored_long_horizon_promoted_2026-08-10/`.
