@@ -6562,3 +6562,33 @@ an unresolved quarantine without caller-provided stream identity.
 
 Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_factored_random_drift_promoted_2026-08-10/`.
+
+## Autonomous verifier-gated capacity growth (2026-08-10)
+
+The online and factored routers now expose an opt-in `auto_grow` lifecycle
+mode. When a novel candidate arrives at capacity, the router may stage it
+instead of returning capacity immediately. It creates the growth metadata only
+on the isolated candidate and commits the larger capacity together with the
+candidate, after the independent held-out factual check and caller-owned
+retention probe pass. A rejected candidate leaves both live content and
+capacity unchanged. Payloads persist the mode, and legacy payloads default to
+the previous manual-growth behavior.
+
+The untrained-encoder open-world stream was rerun with this mode. Across three
+seeds, eight nonlinear regimes formed eight distinct slots while capacity grew
+automatically from `1` to `8`; reverse and interleaved revisits matched existing
+slots, all held-out errors passed, corrupted evidence was rejected without a
+bank write, and exact persistence held. The context encoder received zero
+pretraining updates, the controller stayed frozen, and old-regime replay was
+zero. The factored router exposes the same transaction for its residual
+memory, so capacity growth is no longer a caller-only precondition for either
+canonical factual path.
+
+This promotes bounded autonomous external-memory growth, not unrestricted
+memory growth, learned eviction, arbitrary computation, or general continual
+learning. The remaining open-world bottleneck is still learned evidence
+formation under broader, noisy, multimodal streams rather than a fixed
+synthetic transition family.
+
+Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_open_world_auto_growth_promoted_2026-08-10/`.

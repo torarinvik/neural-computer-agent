@@ -4914,6 +4914,7 @@ class ExternalOnlineTransitionContextRouter:
         match_margin: float = 0.01,
         admission_observations: int = 12,
         max_contexts: int | None = None,
+        auto_grow: bool = False,
         continuation_tolerance: float | None = None,
         conflict_patience: int = 1,
         defer_admission: bool = False,
@@ -5011,6 +5012,8 @@ class ExternalOnlineTransitionContextRouter:
             raise ValueError("online context admission count must be positive")
         if max_contexts is not None and max_contexts < 1:
             raise ValueError("online context maximum must be positive")
+        if not isinstance(auto_grow, bool):
+            raise TypeError("online context auto-growth flag must be boolean")
         allowed_families = {
             EXTERNAL_TRANSITION_NONLINEAR_MODEL_FAMILY,
             EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY,
@@ -5043,6 +5046,7 @@ class ExternalOnlineTransitionContextRouter:
         self.match_margin = float(match_margin)
         self.admission_observations = int(admission_observations)
         self.max_contexts = max_contexts
+        self.auto_grow = auto_grow
         self.continuation_tolerance = float(
             match_tolerance
             if continuation_tolerance is None
@@ -5160,6 +5164,7 @@ class ExternalOnlineTransitionContextRouter:
             "match_margin": self.match_margin,
             "admission_observations": self.admission_observations,
             "max_contexts": self.max_contexts,
+            "auto_grow": self.auto_grow,
             "continuation_tolerance": self.continuation_tolerance,
             "provisional_continuation_tolerance": self.provisional_continuation_tolerance,
             "provisional_match_margin": self.provisional_match_margin,
@@ -5934,7 +5939,7 @@ class ExternalOnlineTransitionContextRouter:
                         bundle,
                         candidate_index=candidate_index,
                     )
-            if self.max_contexts is not None and (
+            if self.max_contexts is not None and not self.auto_grow and (
                 self.bank.context_count + len(self._provisional_candidates)
                 >= self.max_contexts
             ):
@@ -6184,6 +6189,16 @@ class ExternalOnlineTransitionContextRouter:
         )
         if not callable(retention_probe):
             raise TypeError("candidate retention probe must be callable")
+        if (
+            destination_capacity is None
+            and self.auto_grow
+            and self.bank.capacity is not None
+            and self.bank.context_count >= self.bank.capacity
+        ):
+            # Growth is only metadata on the isolated candidate bank.  It is
+            # committed below, after the held-out candidate and retention
+            # probes pass, so a failed novel stream cannot consume capacity.
+            destination_capacity = self.bank.capacity + 1
         before = self.bank.content_digest()
         if not 0 <= candidate_index < len(self._provisional_candidates):
             candidate = None
@@ -6614,6 +6629,7 @@ class ExternalOnlineTransitionContextRouter:
                 if configuration.get("max_contexts") is None
                 else int(configuration["max_contexts"])
             ),
+            auto_grow=bool(configuration.get("auto_grow", False)),
             continuation_tolerance=float(
                 configuration.get(
                     "continuation_tolerance", configuration["match_tolerance"]

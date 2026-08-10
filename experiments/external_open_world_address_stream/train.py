@@ -83,6 +83,7 @@ def run(
     report_out: Path,
     *,
     regimes: int = 8,
+    auto_grow: bool = False,
 ) -> dict[str, object]:
     if regimes < 2:
         raise ValueError("open-world stream requires at least two regimes")
@@ -137,6 +138,7 @@ def run(
         provisional_continuation_tolerance=1e9,
         admission_observations=ADMISSION_ROWS,
         max_contexts=1,
+        auto_grow=auto_grow,
         defer_admission=True,
         candidate_model_families=(RANDOM_FEATURE_FAMILY,),
         provisional_evidence_policy="streaming_statistics",
@@ -149,7 +151,7 @@ def run(
     status_counts: Counter[str] = Counter()
 
     for index, name in enumerate(names):
-        if index:
+        if index and not auto_grow:
 
             def growth_probe(candidate: ExternalTransitionModelBank) -> bool:
                 return all(
@@ -187,6 +189,15 @@ def run(
         )
         if not receipt.accepted or receipt.slot_index is None:
             raise RuntimeError(f"{name} promotion failed: {receipt.reason}")
+        if index and auto_grow:
+            growth_records.append(
+                {
+                    "source_capacity": bank.capacity - 1,
+                    "destination_capacity": bank.capacity,
+                    "context_count": bank.context_count,
+                    "transaction": "automatic_promotion_growth",
+                }
+            )
         prior_contexts[name] = context
         slot_id = bank.slot_id_at(receipt.slot_index)
         prior_slot_digests[slot_id] = bank.models[receipt.slot_index].digest()
@@ -288,6 +299,7 @@ def run(
         "configuration": {
             "regime_count": regimes,
             "capacity_schedule": list(range(1, regimes + 1)),
+            "auto_grow": auto_grow,
             "presented_rows_per_regime": PRESENTED_ROWS,
             "heldout_rows_per_regime": HELDOUT_ROWS,
             "admission_rows": ADMISSION_ROWS,
@@ -341,9 +353,15 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--seed", type=int, default=82401)
     parser.add_argument("--regimes", type=int, default=8)
+    parser.add_argument("--auto-grow", action="store_true")
     parser.add_argument("--report-out", type=Path, required=True)
     args = parser.parse_args()
-    run(args.seed, args.report_out, regimes=args.regimes)
+    run(
+        args.seed,
+        args.report_out,
+        regimes=args.regimes,
+        auto_grow=args.auto_grow,
+    )
 
 
 if __name__ == "__main__":

@@ -568,6 +568,7 @@ class ExternalFactoredTransitionRouter:
         match_margin: float = 0.01,
         admission_observations: int = 8,
         max_contexts: int | None = None,
+        auto_grow: bool = False,
         residual_adaptation_updates: int = 16,
         quarantine_capacity: int = 0,
         sparse_evidence: ExternalSparseTransitionEvidenceIndex | None = None,
@@ -586,6 +587,8 @@ class ExternalFactoredTransitionRouter:
             raise ValueError("factored router admission observations must be positive")
         if max_contexts is not None and max_contexts < 1:
             raise ValueError("factored router capacity must be positive")
+        if not isinstance(auto_grow, bool):
+            raise TypeError("factored router auto-growth flag must be boolean")
         bank_capacity = (
             None if model.residual_bank is None else model.residual_bank.capacity
         )
@@ -620,6 +623,7 @@ class ExternalFactoredTransitionRouter:
         self.match_margin = float(match_margin)
         self.admission_observations = int(admission_observations)
         self.max_contexts = max_contexts
+        self.auto_grow = auto_grow
         self.residual_adaptation_updates = int(residual_adaptation_updates)
         self.quarantine_capacity = int(quarantine_capacity)
         self.sparse_evidence = sparse_evidence
@@ -884,7 +888,11 @@ class ExternalFactoredTransitionRouter:
                 context=None,
                 pending_observations=self.pending_observations,
             ).validate(context_width=self.model.context_width)
-        if self.max_contexts is not None and len(self._contexts) >= self.max_contexts:
+        if (
+            self.max_contexts is not None
+            and not self.auto_grow
+            and len(self._contexts) >= self.max_contexts
+        ):
             return FactoredTransitionRouteResult(
                 status="ambiguous",
                 slot_id=None,
@@ -945,7 +953,11 @@ class ExternalFactoredTransitionRouter:
                 context=self._contexts[self._slot_ids.index(sparse_slot)].clone(),
                 pending_observations=0,
             ).validate(context_width=self.model.context_width)
-        if self.max_contexts is not None and len(self._contexts) >= self.max_contexts:
+        if (
+            self.max_contexts is not None
+            and not self.auto_grow
+            and len(self._contexts) >= self.max_contexts
+        ):
             return FactoredTransitionRouteResult(
                 status="ambiguous",
                 slot_id=None,
@@ -1235,6 +1247,20 @@ class ExternalFactoredTransitionRouter:
             context_batch.expand(heldout.state.shape[0], -1),
         )
         error = float((prediction - heldout.next_state).square().mean().detach())
+        grows_capacity = (
+            self.auto_grow
+            and self.max_contexts is not None
+            and len(self._contexts) >= self.max_contexts
+        )
+        destination_capacity = (
+            None if not grows_capacity else self.max_contexts + 1
+        )
+        if (
+            destination_capacity is not None
+            and self._candidate_model.residual_bank is not None
+        ):
+            self._candidate_model.residual_bank.capacity = destination_capacity
+            self._candidate_model.residual_capacity = destination_capacity
         accepted = error <= prediction_tolerance and bool(retention_probe(self._candidate_model))
         if accepted:
             slot_id = self._next_slot_id
@@ -1246,6 +1272,8 @@ class ExternalFactoredTransitionRouter:
                 for evidence in self._candidate_evidence:
                     self.sparse_evidence.record(slot_id, evidence)
             self.model = self._candidate_model
+            if destination_capacity is not None:
+                self.max_contexts = destination_capacity
             self._candidate_model = None
             self._candidate_context = None
             self._candidate_evidence = []
@@ -1253,7 +1281,11 @@ class ExternalFactoredTransitionRouter:
                 accepted=True,
                 slot_id=slot_id,
                 heldout_error=error,
-                reason="candidate passed factual and retention probes",
+                reason=(
+                    "candidate passed factual and retention probes with capacity growth"
+                    if destination_capacity is not None
+                    else "candidate passed factual and retention probes"
+                ),
             ).validate()
         self._candidate_model = None
         self._candidate_context = None
@@ -1345,6 +1377,7 @@ class ExternalFactoredTransitionRouter:
             "match_margin": self.match_margin,
             "admission_observations": self.admission_observations,
             "max_contexts": self.max_contexts,
+            "auto_grow": self.auto_grow,
             "residual_adaptation_updates": self.residual_adaptation_updates,
             "quarantine_capacity": self.quarantine_capacity,
             "sparse_evidence": (
@@ -1473,6 +1506,7 @@ class ExternalFactoredTransitionRouter:
                 if configuration.get("max_contexts") is None
                 else int(configuration["max_contexts"])
             ),
+            auto_grow=bool(configuration.get("auto_grow", False)),
             residual_adaptation_updates=int(
                 configuration.get("residual_adaptation_updates", 16)
             ),

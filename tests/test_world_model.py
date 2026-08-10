@@ -2156,6 +2156,61 @@ def test_factored_router_owns_verified_growth_compression_and_stable_eviction() 
     assert router.slot_ids == (1,)
 
 
+def test_factored_router_auto_grows_on_verified_novel_bundle() -> None:
+    model = ExternalFactoredTransitionModel(1, 1, 2, hidden_width=8)
+    for parameter in model.base.parameters():
+        parameter.data.zero_()
+    model.freeze_base()
+    encoder = ExternalTransitionContextEncoder(1, 1, hidden_width=8, context_width=2)
+    router = ExternalFactoredTransitionRouter(
+        model,
+        encoder,
+        max_contexts=1,
+        auto_grow=True,
+        match_tolerance=1e-6,
+        match_margin=0.0,
+    )
+
+    def rows(next_value: float) -> list[ExternalTransitionObservation]:
+        return [
+            ExternalTransitionObservation(
+                state=torch.tensor([[0.0]]),
+                intention=torch.tensor([[1.0]]),
+                next_state=torch.tensor([[next_value]]),
+            ),
+            ExternalTransitionObservation(
+                state=torch.tensor([[1.0]]),
+                intention=torch.tensor([[1.0]]),
+                next_state=torch.tensor([[next_value + 1.0]]),
+            ),
+        ]
+
+    source = rows(0.0)
+    target = rows(10.0)
+    assert router.route_bundle(source).status == "staged"
+    assert router.promote_staged_candidate(
+        source[0],
+        lambda candidate: candidate.residual_record_count == 2,
+        prediction_tolerance=1e-6,
+    ).accepted
+    assert router.max_contexts == 1
+
+    before_target = router.model.digest()
+    assert router.route_bundle(target).status == "staged"
+    target_receipt = router.promote_staged_candidate(
+        target[0],
+        lambda candidate: candidate.residual_record_count == 4,
+        prediction_tolerance=1e-6,
+    )
+    assert target_receipt.accepted
+    assert "capacity growth" in target_receipt.reason
+    assert router.max_contexts == 2
+    assert router.model.digest() != before_target
+    restored = ExternalFactoredTransitionRouter.from_payload(router.state_payload())
+    assert restored.auto_grow
+    assert restored.max_contexts == 2
+
+
 def test_factored_router_resolves_quarantine_into_isolated_candidate() -> None:
     model = ExternalFactoredTransitionModel(1, 1, 2, hidden_width=8)
     for parameter in model.base.parameters():

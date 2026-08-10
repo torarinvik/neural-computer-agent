@@ -2546,3 +2546,12 @@ with zero old-regime replay during drift. This is a bounded composition result
 for randomized missingness plus gradual drift; it is not learned open-world
 version formation or general continual learning. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_factored_random_drift_promoted_2026-08-10/`.
+
+The open-world lifecycle is now autonomous at the capacity boundary. In the
+untrained-encoder eight-regime stream, the router grew capacity from `1 -> 8`
+inside seven held-out and prior-retention-verified candidate promotions across
+three seeds. All revisits matched existing slots, corrupted evidence was
+rejected without a bank write, and controller/encoder pretraining/old-regime
+replay remained zero. This is bounded automatic external-memory growth, not
+unrestricted continual learning. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_open_world_auto_growth_promoted_2026-08-10/`.

@@ -18,5 +18,16 @@ PYTHONPATH=. .venv/bin/python \
 
 This is an open-world-style bounded pressure test: it removes encoder
 pretraining but still uses finite capacity, a finite stream, and a fixed
-random-feature factual basis. It does not establish unrestricted general
-continual learning.
+random-feature factual basis. Add `--auto-grow` to let the router increase
+capacity only as part of a held-out and retention-verified promotion
+transaction:
+
+```bash
+PYTHONPATH=src:. uv run python \
+  experiments/external_open_world_address_stream/train.py \
+  --seed 82401 --regimes 8 --auto-grow \
+  --report-out /tmp/external-open-world-auto-growth.json
+```
+
+The automatic-growth mode is archived separately. It does not establish
+unrestricted general continual learning.

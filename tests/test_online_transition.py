@@ -454,6 +454,114 @@ def test_router_stages_and_promotes_affine_candidate_without_optimizer() -> None
     assert router.bank.models[0].sample_count.item() == 4
 
 
+def test_router_auto_grows_only_after_verified_candidate_promotion() -> None:
+    bank = ExternalTransitionModelBank(
+        2,
+        1,
+        4,
+        model_family="affine_sufficient_statistics_v1",
+        affine_ridge=1e-7,
+        capacity=1,
+    )
+    encoder = ExternalTransitionContextEncoder(2, 1, hidden_width=8, context_width=4)
+    router = ExternalOnlineTransitionContextRouter(
+        bank,
+        encoder,
+        match_tolerance=1e-8,
+        match_margin=1e-4,
+        continuation_tolerance=1e-8,
+        admission_observations=4,
+        max_contexts=1,
+        auto_grow=True,
+        defer_admission=True,
+        provisional_evidence_policy="streaming_statistics",
+    )
+    source = _affine_observation(8)
+    target = ExternalTransitionObservation(
+        state=source.state,
+        intention=source.intention,
+        next_state=source.next_state * 2.0,
+        confidence=source.confidence,
+    )
+
+    def consume(observation: ExternalTransitionObservation) -> None:
+        for row in range(observation.state.shape[0]):
+            result = router.observe(
+                ExternalTransitionObservation(
+                    state=observation.state[row : row + 1],
+                    intention=observation.intention[row : row + 1],
+                    next_state=observation.next_state[row : row + 1],
+                    confidence=torch.ones(1),
+                )
+            )
+            if result.status == "staged":
+                router.adaptation_step(result, None, replay_evidence=False)
+
+    consume(source)
+    source_receipt = router.promote_staged_candidate(
+        source,
+        lambda candidate: candidate.context_count == 1,
+        prediction_tolerance=1e-8,
+    )
+    assert source_receipt.accepted
+    assert router.bank.capacity == 1
+    assert router.max_contexts == 1
+
+    consume(target)
+    before_target = router.bank.content_digest()
+    target_receipt = router.promote_staged_candidate(
+        target,
+        lambda candidate: candidate.context_count == 2
+        and float(
+            candidate.loss(
+                source,
+                candidate.context_at(0).unsqueeze(0).expand(source.state.shape[0], -1),
+            )
+        )
+        < 1e-8,
+        prediction_tolerance=1e-8,
+    )
+    assert target_receipt.accepted
+    assert router.bank.capacity == 2
+    assert router.max_contexts == 2
+    assert router.bank.context_count == 2
+    assert router.bank.content_digest() != before_target
+    assert "capacity growth" in target_receipt.reason
+
+    rejected_router = ExternalOnlineTransitionContextRouter.from_payload(
+        router.state_payload()
+    )
+    rejected_router.max_contexts = 3
+    rejected_router.bank.capacity = 3
+    corrupted = ExternalTransitionObservation(
+        state=target.state,
+        intention=target.intention,
+        next_state=target.next_state + 3.0,
+        confidence=target.confidence,
+    )
+    for row in range(corrupted.state.shape[0]):
+        result = rejected_router.observe(
+            ExternalTransitionObservation(
+                state=corrupted.state[row : row + 1],
+                intention=corrupted.intention[row : row + 1],
+                next_state=corrupted.next_state[row : row + 1],
+                confidence=torch.ones(1),
+            )
+        )
+        if result.status == "staged":
+            rejected_router.adaptation_step(result, None, replay_evidence=False)
+    before_rejection = rejected_router.bank.content_digest()
+    rejection = rejected_router.promote_staged_candidate(
+        corrupted,
+        lambda _candidate: False,
+        prediction_tolerance=1e-8,
+    )
+    assert not rejection.accepted
+    assert rejected_router.bank.capacity == 3
+    assert rejected_router.bank.context_count == 2
+    assert rejected_router.bank.content_digest() == before_rejection
+
+
 def test_bank_selects_smallest_verified_model_family_without_mutating_candidates() -> None:
     torch.manual_seed(1303)
     observation = _affine_observation(12)
