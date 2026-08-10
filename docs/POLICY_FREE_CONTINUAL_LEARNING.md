@@ -123,3 +123,12 @@ every new factual write still requires independent held-out verification plus
 retention. The current pressure test is bounded and synthetic; it is an
 architecture invariant, not evidence that the system has learned arbitrary
 identity formation.
+
+The follow-on robustness audit in
+`experiments/external_transition_model_multistream_robustness/` adds the
+bounded lifecycle controls: a missing stream keeps only its own pending row,
+contradictory evidence becomes a non-mutating conflict, and a drifted stream
+is replaced only after verifier-gated eviction and retention of the sibling
+stream. This is still caller-owned opaque binding; the remaining generality
+bottleneck is learned identity/delay/reliability formation from asynchronous
+events rather than externally supplied stream keys.

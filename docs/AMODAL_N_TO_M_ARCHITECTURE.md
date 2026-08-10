@@ -7710,3 +7710,25 @@ binding invariant only; it does not establish learned stream identity,
 unrestricted memory growth, arbitrary computation, or general continual
 learning. The next meaningful rung is concurrent streams with missing,
 contradictory, and drifting evidence under bounded eviction.
+
+## Concurrent missing, contradictory, and drifting streams (2026-08-10)
+
+The shared stream boundary now has a lifecycle audit rather than only a clean
+interleaving audit. With a capacity-two factual bank, stream 0 continued while
+stream 1 temporarily lacked evidence; stream 1 retained its own bounded
+pending row and later resumed. A contradictory stream-1 bundle returned
+`pending` then `conflict` without mutating the committed bank or staging a
+replacement. After a retention-verified eviction of stream 1's old slot, the
+drifted evidence staged and promoted a new factual version while stream 0's
+model digest and binding remained unchanged.
+
+Across seeds `2201` and `2202`, missing isolation, contradiction safety,
+retention after drift, exact persistence, and checksum rejection all passed.
+The controller remained frozen, optimizer updates were zero, and replay was
+zero. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_multistream_robustness_promoted_2026-08-10/`.
+
+This promotes bounded robustness and retention-safe replacement, not learned
+stream identity. The next architecture bottleneck is to make the binding key
+itself emerge from asynchronous learned events and to train delay/reliability
+state online, while keeping the factual bank protected from shortcut labels.

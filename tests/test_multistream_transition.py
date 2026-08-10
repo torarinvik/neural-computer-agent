@@ -2,6 +2,9 @@ import pytest
 import torch
 
 from experiments.external_transition_model_multistream.train import _run
+from experiments.external_transition_model_multistream_robustness.train import (
+    _run as _run_robustness,
+)
 from neural_computer import (
     EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY,
     ExternalMultiStreamTransitionContextRouter,
@@ -113,5 +116,18 @@ def test_multistream_pressure_test_binds_each_promoted_stream() -> None:
     assert report["untouched_nonselected_candidates"] is True
     assert report["route_slot_ids"] == [0, 1, 2, 0, 1, 2]
     assert report["restored_route_slot_ids"] == [0, 1, 2]
+    assert report["persistence_exact"] is True
+    assert report["checksum_rejected"] is True
+
+
+def test_multistream_robustness_preserves_retention_across_drift() -> None:
+    report = _run_robustness(2201)
+
+    assert report["missing_isolated"] is True
+    assert report["late_stream_status"] == "continuation"
+    assert report["contradiction_safe"] is True
+    assert report["contradiction_statuses"] == ["pending", "conflict"]
+    assert report["retention_after_drift"] is True
+    assert report["restored_route_slot_ids"] == [0, 2]
     assert report["persistence_exact"] is True
     assert report["checksum_rejected"] is True
