@@ -8870,7 +8870,8 @@ external logical file. Restoring the checkpoint does not load executable files
 or controller parameters; those remain independently versioned resources.
 
 An exact-resume test covers a mixed-file batch, and an unknown-schema control is
-rejected before execution. This closes restart loss of active working context,
+rejected before execution; a deterministic envelope checksum also rejects
+tensor corruption. This closes restart loss of active working context,
 but it is still persistence infrastructure: it does not prove that the
 controller acquires arbitrary procedures or retains them under unrestricted
 nonstationary learning.

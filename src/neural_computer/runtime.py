@@ -1301,6 +1301,31 @@ EXTERNAL_PROGRAM_RUNTIME_STATE_SCHEMA = (
 _STANDALONE_PROGRAM_STATE_KEY = -1
 
 
+def _digest_runtime_state_payload(value: object) -> str:
+    """Hash nested tensor payloads without interpreting their learned values."""
+
+    digest = hashlib.sha256()
+
+    def visit(item: object) -> None:
+        if isinstance(item, torch.Tensor):
+            detached = item.detach().cpu().contiguous()
+            digest.update(str(detached.dtype).encode("utf-8"))
+            digest.update(repr(tuple(detached.shape)).encode("utf-8"))
+            digest.update(detached.numpy().tobytes())
+        elif isinstance(item, Mapping):
+            for key in sorted(item, key=str):
+                digest.update(str(key).encode("utf-8"))
+                visit(item[key])
+        elif isinstance(item, (tuple, list)):
+            for child in item:
+                visit(child)
+        else:
+            digest.update(repr(item).encode("utf-8"))
+
+    visit(value)
+    return digest.hexdigest()
+
+
 @dataclass(frozen=True)
 class ExternalProgramRuntimeState:
     """Joint state for one controller and one external computation file."""
@@ -1312,7 +1337,7 @@ class ExternalProgramRuntimeState:
     def payload(self) -> dict[str, object]:
         """Return a versioned tensor-only checkpoint for pause/resume."""
 
-        return {
+        payload: dict[str, object] = {
             "schema": EXTERNAL_PROGRAM_RUNTIME_STATE_SCHEMA,
             "controller": self.controller.payload(),
             "program": self.program.payload(),
@@ -1324,6 +1349,8 @@ class ExternalProgramRuntimeState:
                 for logical_id, state in sorted(self.program_states.items())
             ),
         }
+        payload["sha256"] = _digest_runtime_state_payload(payload)
+        return payload
 
     @classmethod
     def from_payload(cls, payload: dict[str, object]) -> ExternalProgramRuntimeState:
@@ -1333,9 +1360,13 @@ class ExternalProgramRuntimeState:
             raise TypeError("external program runtime state payload must be a dictionary")
         if payload.get("schema") != EXTERNAL_PROGRAM_RUNTIME_STATE_SCHEMA:
             raise ValueError("unsupported external program runtime state schema")
-        controller = payload.get("controller")
-        program = payload.get("program")
-        records = payload.get("program_states")
+        expected_digest = payload.get("sha256")
+        unsigned = {key: value for key, value in payload.items() if key != "sha256"}
+        if not isinstance(expected_digest, str) or expected_digest != _digest_runtime_state_payload(unsigned):
+            raise ValueError("external program runtime state checksum mismatch")
+        controller = unsigned.get("controller")
+        program = unsigned.get("program")
+        records = unsigned.get("program_states")
         if not isinstance(controller, dict) or not isinstance(program, dict):
             raise TypeError("external program runtime state payload is incomplete")
         if not isinstance(records, (tuple, list)):

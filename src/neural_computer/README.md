@@ -1458,4 +1458,5 @@ state writes.
 versioned tensor-only pause/resume checkpoint for the controller working state
 and every isolated executable-file state. Executable artifacts and model
 parameters remain separate resources; the checkpoint stores no raw modality,
-protocol, or verifier-private data.
+protocol, or verifier-private data, and its envelope checksum rejects silent
+tensor corruption.

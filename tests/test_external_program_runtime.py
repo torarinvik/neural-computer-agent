@@ -226,6 +226,18 @@ def test_external_program_runtime_state_rejects_unknown_checkpoint_schema():
         ExternalProgramRuntimeState.from_payload(payload)
 
 
+def test_external_program_runtime_state_rejects_tensor_corruption():
+    _runtime_module, _machine, agent = _runtime()
+    payload = agent.initial_state(1, device="cpu").payload()
+    controller_payload = dict(payload["controller"])
+    hidden = controller_payload["hidden"].clone()
+    hidden[0, 0] += 1.0
+    controller_payload["hidden"] = hidden
+    payload["controller"] = controller_payload
+    with pytest.raises(ValueError, match="checksum mismatch"):
+        ExternalProgramRuntimeState.from_payload(payload)
+
+
 def test_external_program_runtime_quiet_tick_does_not_grow_program_state():
     torch.manual_seed(904)
     _runtime_components, _machine, agent = _runtime()
