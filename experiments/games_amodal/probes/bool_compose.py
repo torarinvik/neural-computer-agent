@@ -58,6 +58,18 @@ parser.add_argument("--worlds", type=int, default=64)
 parser.add_argument("--held-worlds", type=int, default=8)
 parser.add_argument("--max-len", type=int, default=4)
 parser.add_argument(
+    "--oracle-entry", action="store_true",
+    help="ORACLE SUBSTITUTION on the entry (the F110 technique that "
+         "settled the games): replace the reader's output with the "
+         "world's TRUE hidden parameters, projected to entry shape. "
+         "F120/F122 measured reading to be entirely absent at "
+         "multi-world scale (stranger entry bit-identical to own) and "
+         "F121 fixed composition only where reading was not needed. "
+         "This separates the two: if oracle entries make multi-world "
+         "composition work, execution and composition are sound and "
+         "READING alone is the constraint; if they do not, the "
+         "interface still cannot use per-world content at all.")
+parser.add_argument(
     "--train-max-len", type=int, default=0,
     help="LENGTH EXTRAPOLATION split: train on every program of length "
          "<= L and hold out every LONGER one. The default split holds "
@@ -210,10 +222,31 @@ class Plant(torch.nn.Module):
         return self.head(self.norm(row[:, -1]))
 
 
+class OracleEntry(torch.nn.Module):
+    """Ground-truth world parameters projected into entry shape. Not a
+    learner — a substitution, legitimate for an ablation only."""
+
+    def __init__(self, dim: int, tokens: int, width: int):
+        super().__init__()
+        self.project = torch.nn.Linear(width, dim * tokens)
+        self.tokens, self.dim = tokens, dim
+
+    def forward(self, raw) -> torch.Tensor:
+        return self.project(raw).view(self.tokens, self.dim)
+
+
 reader = Reader(args.dim, args.bank_tokens)
 plant = Plant(args.dim, args.max_len)
+ORACLE_WIDTH = W + 1
+oracle = OracleEntry(args.dim, args.bank_tokens, ORACLE_WIDTH)
 optimizer = torch.optim.Adam(
-    list(reader.parameters()) + list(plant.parameters()), lr=args.lr)
+    list(reader.parameters()) + list(plant.parameters())
+    + list(oracle.parameters()), lr=args.lr)
+
+
+def oracle_raw(world: dict) -> torch.Tensor:
+    return torch.cat([bits_of(torch.tensor([world["b"]])),
+                            torch.tensor([[world["k"] / W]]).float()], dim=-1)
 
 worlds = make_worlds()
 select = torch.Generator().manual_seed(args.seed * 15485863)
@@ -239,7 +272,8 @@ for update in range(args.train_updates):
         0, len(train_worlds), (1,), generator=data_gen))]
     program = train_programs[int(torch.randint(
         0, len(train_programs), (1,), generator=data_gen))]
-    entry = reader(*reader_examples(world, data_gen))
+    entry = (oracle(oracle_raw(world)) if args.oracle_entry
+             else reader(*reader_examples(world, data_gen)))
     x = torch.randint(0, 1 << W, (args.batch_size,), generator=data_gen)
     y = bits_of(apply_program(world, program, x))
     loss = torch.nn.functional.binary_cross_entropy_with_logits(
@@ -257,6 +291,9 @@ for update in range(args.train_updates):
 
 
 def entry_of(world: dict, offset: int = 0) -> torch.Tensor:
+    if args.oracle_entry:
+        with torch.no_grad():
+            return oracle(oracle_raw(world))
     generator = torch.Generator().manual_seed(
         args.seed * 31 + hash(world["name"]) % 100000 + offset)
     with torch.no_grad():
