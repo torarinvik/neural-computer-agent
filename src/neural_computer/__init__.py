@@ -119,10 +119,12 @@ from .factored_transition import (
     EXTERNAL_FACTORED_TRANSITION_LEARNED_RESIDUAL_MODE,
     EXTERNAL_FACTORED_TRANSITION_MODEL_SCHEMA,
     EXTERNAL_FACTORED_TRANSITION_PROMOTION_SCHEMA,
+    EXTERNAL_FACTORED_TRANSITION_QUARANTINE_SCHEMA,
     EXTERNAL_FACTORED_TRANSITION_ROUTER_SCHEMA,
     ExternalFactoredTransitionModel,
     ExternalFactoredTransitionRouter,
     FactoredTransitionPromotionReceipt,
+    FactoredTransitionQuarantineReceipt,
     FactoredTransitionRouteResult,
 )
 from .growth import (
@@ -442,6 +444,7 @@ __all__ = [
     "EXTERNAL_FACTORED_TRANSITION_LEARNED_RESIDUAL_MODE",
     "EXTERNAL_FACTORED_TRANSITION_MODEL_SCHEMA",
     "EXTERNAL_FACTORED_TRANSITION_PROMOTION_SCHEMA",
+    "EXTERNAL_FACTORED_TRANSITION_QUARANTINE_SCHEMA",
     "EXTERNAL_FACTORED_TRANSITION_ROUTER_SCHEMA",
     "EXTERNAL_FAST_WEIGHT_SCHEMA",
     "EXTERNAL_GOAL_CONDITIONED_MODEL_SELECTION_SCHEMA",
@@ -652,6 +655,7 @@ __all__ = [
     "ExternalTransitionRouteQuery",
     "ExternalTransitionRouteQueryProposal",
     "FactoredTransitionPromotionReceipt",
+    "FactoredTransitionQuarantineReceipt",
     "FactoredTransitionRouteResult",
     "FactorizedOpaqueAddressRouter",
     "GoalConditionedMemoryProposal",

@@ -2025,6 +2025,7 @@ def test_factored_router_owns_verified_growth_compression_and_stable_eviction() 
         max_contexts=1,
         match_tolerance=0.005,
         match_margin=0.0,
+        quarantine_capacity=4,
     )
 
     def observation(offset: float, values: torch.Tensor) -> ExternalTransitionObservation:
@@ -2077,6 +2078,16 @@ def test_factored_router_owns_verified_growth_compression_and_stable_eviction() 
     assert contradictory.status == "ambiguous"
     assert empty.status == "ambiguous"
     assert router.digest() == partial_digest
+    quarantined = router.quarantine_partial_bundle(rows(source)[:1] + rows(target)[:1])
+    assert quarantined.accepted
+    assert router.quarantined_observations == 2
+    restored_quarantine = ExternalFactoredTransitionRouter.from_payload(
+        router.state_payload()
+    )
+    assert restored_quarantine.quarantined_observations == 2
+    drained = router.drain_quarantine()
+    assert drained is not None and drained.state.shape[0] == 2
+    assert router.quarantined_observations == 0
 
     compressed = router.select_compression_verified(
         ["float16_stats"],

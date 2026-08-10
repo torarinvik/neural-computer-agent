@@ -36,6 +36,9 @@ EXTERNAL_FACTORED_TRANSITION_ROUTER_SCHEMA = (
 EXTERNAL_FACTORED_TRANSITION_PROMOTION_SCHEMA = (
     "neural-computer.external-factored-transition-promotion.v1"
 )
+EXTERNAL_FACTORED_TRANSITION_QUARANTINE_SCHEMA = (
+    "neural-computer.external-factored-transition-quarantine.v1"
+)
 
 
 class ExternalFactoredTransitionModel(nn.Module):
@@ -517,6 +520,33 @@ class FactoredTransitionPromotionReceipt:
         return self
 
 
+@dataclass(frozen=True)
+class FactoredTransitionQuarantineReceipt:
+    """Receipt for explicitly storing unresolved external evidence."""
+
+    accepted: bool
+    rows_added: int
+    total_rows: int
+    capacity: int
+    digest_before: str
+    digest_after: str
+    reason: str
+    schema: str = EXTERNAL_FACTORED_TRANSITION_QUARANTINE_SCHEMA
+
+    def validate(self) -> FactoredTransitionQuarantineReceipt:
+        if self.schema != EXTERNAL_FACTORED_TRANSITION_QUARANTINE_SCHEMA:
+            raise ValueError("unsupported factored transition quarantine schema")
+        if min(self.rows_added, self.total_rows) < 0:
+            raise ValueError("factored quarantine row counts cannot be negative")
+        if self.capacity < 0 or self.total_rows > self.capacity:
+            raise ValueError("factored quarantine capacity is invalid")
+        if not self.digest_before or not self.digest_after:
+            raise ValueError("factored quarantine digests are missing")
+        if not self.reason:
+            raise ValueError("factored quarantine reason is missing")
+        return self
+
+
 class ExternalFactoredTransitionRouter:
     """Infer opaque residual addresses and promote candidates copy-on-write.
 
@@ -538,6 +568,7 @@ class ExternalFactoredTransitionRouter:
         admission_observations: int = 8,
         max_contexts: int | None = None,
         residual_adaptation_updates: int = 16,
+        quarantine_capacity: int = 0,
     ) -> None:
         if not isinstance(model, ExternalFactoredTransitionModel):
             raise TypeError("factored router requires a factored transition model")
@@ -570,6 +601,12 @@ class ExternalFactoredTransitionRouter:
             or residual_adaptation_updates < 1
         ):
             raise ValueError("factored residual adaptation updates must be positive")
+        if (
+            not isinstance(quarantine_capacity, int)
+            or isinstance(quarantine_capacity, bool)
+            or quarantine_capacity < 0
+        ):
+            raise ValueError("factored quarantine capacity must be non-negative")
         self.model = model
         self.context_encoder = context_encoder
         self.match_tolerance = float(match_tolerance)
@@ -577,10 +614,12 @@ class ExternalFactoredTransitionRouter:
         self.admission_observations = int(admission_observations)
         self.max_contexts = max_contexts
         self.residual_adaptation_updates = int(residual_adaptation_updates)
+        self.quarantine_capacity = int(quarantine_capacity)
         self._contexts: list[torch.Tensor] = []
         self._slot_ids: list[int] = []
         self._next_slot_id = 0
         self._pending: list[ExternalTransitionObservation] = []
+        self._quarantine: list[ExternalTransitionObservation] = []
         self._candidate_model: ExternalFactoredTransitionModel | None = None
         self._candidate_context: torch.Tensor | None = None
 
@@ -601,6 +640,12 @@ class ExternalFactoredTransitionRouter:
     @property
     def pending_observations(self) -> int:
         return sum(item.state.shape[0] for item in self._pending)
+
+    @property
+    def quarantined_observations(self) -> int:
+        """Return the number of unresolved rows retained outside candidates."""
+
+        return sum(item.state.shape[0] for item in self._quarantine)
 
     def grow_verified(
         self,
@@ -966,6 +1011,58 @@ class ExternalFactoredTransitionRouter:
             pending_observations=0,
         ).validate(context_width=self.model.context_width)
 
+    def quarantine_partial_bundle(
+        self,
+        observations: Sequence[ExternalTransitionObservation],
+    ) -> FactoredTransitionQuarantineReceipt:
+        """Persist unresolved evidence without routing, training, or promotion."""
+
+        if self._candidate_model is not None or self._pending:
+            raise RuntimeError("cannot quarantine while factored evidence is staged")
+        if not observations:
+            raise ValueError("factored quarantine bundle cannot be empty")
+        cloned = [self._clone_observation(item) for item in observations]
+        for item in cloned:
+            item.validate(
+                state_width=self.model.state_width,
+                intention_width=self.model.intention_width,
+            )
+        rows_added = sum(item.state.shape[0] for item in cloned)
+        before = self.digest()
+        total = self.quarantined_observations + rows_added
+        if self.quarantine_capacity == 0 or total > self.quarantine_capacity:
+            return FactoredTransitionQuarantineReceipt(
+                accepted=False,
+                rows_added=0,
+                total_rows=self.quarantined_observations,
+                capacity=self.quarantine_capacity,
+                digest_before=before,
+                digest_after=before,
+                reason="quarantine capacity rejected unresolved evidence",
+            ).validate()
+        self._quarantine.extend(cloned)
+        after = self.digest()
+        return FactoredTransitionQuarantineReceipt(
+            accepted=True,
+            rows_added=rows_added,
+            total_rows=total,
+            capacity=self.quarantine_capacity,
+            digest_before=before,
+            digest_after=after,
+            reason="unresolved evidence retained outside committed memory",
+        ).validate()
+
+    def drain_quarantine(self) -> ExternalTransitionObservation | None:
+        """Release retained evidence for an explicit caller-owned decision."""
+
+        if self._candidate_model is not None or self._pending:
+            raise RuntimeError("cannot drain quarantine while factored evidence is staged")
+        if not self._quarantine:
+            return None
+        merged = self._merge(self._quarantine)
+        self._quarantine.clear()
+        return merged
+
     def promote_staged_candidate(
         self,
         heldout: ExternalTransitionObservation,
@@ -1091,6 +1188,8 @@ class ExternalFactoredTransitionRouter:
             "admission_observations": self.admission_observations,
             "max_contexts": self.max_contexts,
             "residual_adaptation_updates": self.residual_adaptation_updates,
+            "quarantine_capacity": self.quarantine_capacity,
+            "quarantined_observations": self.quarantined_observations,
             "slot_ids": list(self._slot_ids),
             "behavior": "copy_on_write_residual_admission_v1",
         }
@@ -1108,6 +1207,13 @@ class ExternalFactoredTransitionRouter:
         if self._candidate_model is not None:
             digest.update(self._candidate_model.digest().encode("utf-8"))
         digest.update(str(self.pending_observations).encode("utf-8"))
+        for item in self._quarantine:
+            for value in (item.state, item.intention, item.next_state):
+                digest.update(value.detach().cpu().contiguous().numpy().tobytes())
+            if item.confidence is not None:
+                digest.update(
+                    item.confidence.detach().cpu().contiguous().numpy().tobytes()
+                )
         return digest.hexdigest()
 
     def state_payload(self) -> dict[str, object]:
@@ -1142,6 +1248,19 @@ class ExternalFactoredTransitionRouter:
                 }
                 for item in self._pending
             ],
+            "quarantine": [
+                {
+                    "state": item.state.tolist(),
+                    "intention": item.intention.tolist(),
+                    "next_state": item.next_state.tolist(),
+                    "confidence": (
+                        None
+                        if item.confidence is None
+                        else item.confidence.tolist()
+                    ),
+                }
+                for item in self._quarantine
+            ],
             "sha256": self.digest(),
         }
 
@@ -1171,6 +1290,7 @@ class ExternalFactoredTransitionRouter:
             residual_adaptation_updates=int(
                 configuration.get("residual_adaptation_updates", 16)
             ),
+            quarantine_capacity=int(configuration.get("quarantine_capacity", 0)),
         )
         router._contexts = [
             torch.tensor(values, dtype=torch.float32)
@@ -1204,6 +1324,22 @@ class ExternalFactoredTransitionRouter:
                     ),
                 )
             )
+        router._quarantine = []
+        for item in payload.get("quarantine", []):
+            router._quarantine.append(
+                ExternalTransitionObservation(
+                    state=torch.tensor(item["state"], dtype=torch.float32),
+                    intention=torch.tensor(item["intention"], dtype=torch.float32),
+                    next_state=torch.tensor(item["next_state"], dtype=torch.float32),
+                    confidence=(
+                        None
+                        if item.get("confidence") is None
+                        else torch.tensor(item["confidence"], dtype=torch.float32)
+                    ),
+                )
+            )
+        if router.quarantined_observations > router.quarantine_capacity:
+            raise ValueError("factored quarantine payload exceeds capacity")
         if payload.get("sha256") != router.digest():
             raise ValueError("factored router checksum mismatch")
         return router
