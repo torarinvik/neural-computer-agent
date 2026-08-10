@@ -6348,3 +6348,34 @@ all retained factual slots before novel evidence is staged. This avoids
 letting a single shared transition decide identity and avoids combining
 interleaved novel streams in one global pending window. Row-wise observation
 remains appropriate only after a caller has an established stream binding.
+
+## Learned external residual functions (2026-08-10)
+
+The factored model now has an optional learned residual-function backend. It
+keeps the shared transition base frozen and places one replaceable external
+learner behind each opaque context. The existing exact residual-memory mode
+remains the default compatibility path; the learned mode can use the
+repository's nonlinear MLP or affine sufficient-statistics family. Candidate
+training occurs on a copy and promotion still requires an independent
+held-out factual observation plus retention of every prior slot.
+
+The three-seed pressure test in
+`experiments/external_factored_learned_residual/` used a nonlinear shared
+source base, partial `16/20` online evidence, and an affine context-local
+residual family. All seeds promoted both regimes, routed six alternating
+revisits correctly, rejected a corrupted bound update without changing the
+committed digest, preserved the frozen controller/base/context encoder, and
+restored exact state. Target held-out MSE improved over the frozen-base-only
+control on all three seeds. A fresh-target learner won on one seed and lost on
+two, so the result promotes a generalizing external factual adaptation
+boundary, not positive transfer or general continual learning.
+
+Accounting recorded zero old-regime replay during target adaptation and zero
+controller optimizer updates. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_factored_learned_residual_promoted_2026-08-10/`.
+
+The next bottleneck is to make the learned residual representation robust on
+genuinely nonlinear, partially observed, and drifting dynamics while keeping
+the independent gate and fresh-control comparison. A model that only fits a
+small affine fixture is not yet the general factual learner required by the
+architecture.

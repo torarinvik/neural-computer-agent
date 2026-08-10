@@ -1,0 +1,96 @@
+{
+  "schema": "neural-computer.external-factored-learned-residual.v1",
+  "seed": 81011,
+  "configuration": {
+    "base_rows": 40,
+    "online_rows": 20,
+    "online_train_rows": 16,
+    "base_updates": 2000,
+    "residual_updates": 1,
+    "residual_model_family": "affine_sufficient_statistics_v1",
+    "prediction_tolerance": 0.1,
+    "claim": "partial-evidence-factored-learned-residual-retention-v1"
+  },
+  "metrics": {
+    "base_loss": 2.9394112033287456e-08,
+    "base_only_target_heldout_mse": 0.03902732580900192,
+    "learned_target_heldout_mse": 0.00209088996052742,
+    "learned_source_heldout_mse": 0.0020908862352371216,
+    "fresh_target_heldout_mse": 0.011920353397727013,
+    "fresh_target_training_mse": 3.183217578417441e-14,
+    "source_route_status": "staged",
+    "target_route_status": "staged",
+    "alternating_routes": [
+      0,
+      1,
+      0,
+      1,
+      0,
+      1
+    ],
+    "restored_routes": [
+      0,
+      1
+    ],
+    "source_promotion": {
+      "accepted": true,
+      "slot_id": 0,
+      "heldout_error": 0.0020908862352371216,
+      "reason": "candidate passed factual and retention probes",
+      "schema": "neural-computer.external-factored-transition-promotion.v1"
+    },
+    "target_promotion": {
+      "accepted": true,
+      "slot_id": 1,
+      "heldout_error": 0.00209088996052742,
+      "reason": "candidate passed factual and retention probes",
+      "schema": "neural-computer.external-factored-transition-promotion.v1"
+    },
+    "rejected_bound_update": {
+      "accepted": false,
+      "slot_id": null,
+      "heldout_error": 4.007956504821777,
+      "reason": "bound residual failed factual or retention probe",
+      "schema": "neural-computer.external-factored-transition-promotion.v1"
+    }
+  },
+  "gates": {
+    "source_promoted": true,
+    "target_promoted": true,
+    "partial_target_evidence": true,
+    "heldout_source_quality": true,
+    "heldout_target_quality": true,
+    "alternating_routes_correct": true,
+    "prior_retained_during_target_promotion": true,
+    "rejected_bad_bound_update": true,
+    "rejected_update_did_not_mutate_model": true,
+    "base_frozen": true,
+    "controller_unchanged": true,
+    "context_encoder_unchanged": true,
+    "exact_persistence": true,
+    "restored_routes_correct": true,
+    "learned_beats_base_only": true,
+    "fresh_control_measured": true
+  },
+  "accounting": {
+    "base_optimizer_updates": 2000,
+    "fresh_control_optimizer_updates": 2000,
+    "residual_optimizer_updates": 0,
+    "residual_statistics_updates": 2,
+    "controller_optimizer_updates": 0,
+    "context_encoder_optimizer_updates": 0,
+    "old_regime_replay_during_target_adaptation": 0,
+    "base_pretraining_rows": 40,
+    "source_online_rows": 16,
+    "target_online_rows": 16,
+    "target_heldout_rows": 4,
+    "wall_seconds": 2.186012332967948
+  },
+  "digests": {
+    "base": "bad53998e7bd364a51920f4d4a50cc50b172b6710d0f1f9f3456ea3609e1b704",
+    "controller": "c7cbd92aefe53fc4e40ce370bded74f835cf6b444e54110843cc9acc2fde72f3",
+    "context_encoder": "285a5b548027c60ae17bf362f0619e179bfa2182ab7da5419ada91f28a675f14",
+    "router": "fb76cde1f561f2e5d8ca7e133225b13bc4ad804edb6c16d6a6c30b902c1d19d0"
+  },
+  "promoted": true
+}

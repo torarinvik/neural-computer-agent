@@ -1,0 +1,36 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "external_factored_learned_residual_promoted_2026-08-10",
+  "claim": "partial-evidence-factored-learned-residual-retention-v1",
+  "replicates": 3,
+  "seeds": [81011, 81012, 81013],
+  "stable_gates": {
+    "source_promoted": 3,
+    "target_promoted": 3,
+    "alternating_routes_correct": 3,
+    "heldout_source_quality": 3,
+    "heldout_target_quality": 3,
+    "prior_retained_during_target_promotion": 3,
+    "rejected_bad_bound_update": 3,
+    "rejected_update_did_not_mutate_model": 3,
+    "base_frozen": 3,
+    "controller_unchanged": 3,
+    "context_encoder_unchanged": 3,
+    "exact_persistence": 3,
+    "restored_routes_correct": 3,
+    "learned_beats_base_only": 3
+  },
+  "accounting": {
+    "base_optimizer_updates_per_seed": 2000,
+    "residual_optimizer_updates_per_seed": 0,
+    "residual_statistics_updates_per_seed": 2,
+    "controller_optimizer_updates_per_seed": 0,
+    "context_encoder_optimizer_updates_per_seed": 0,
+    "old_regime_replay_during_target_adaptation_per_seed": 0,
+    "base_pretraining_rows_per_seed": 40,
+    "source_online_rows_per_seed": 16,
+    "target_online_rows_per_seed": 16,
+    "target_heldout_rows_per_seed": 4
+  },
+  "boundary": "bounded external learned factual residuals; no claim of general continual learning"
+}

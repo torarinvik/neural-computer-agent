@@ -11,15 +11,20 @@ import torch
 from torch import nn
 
 from .world_model import (
+    EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY,
+    EXTERNAL_TRANSITION_NONLINEAR_MODEL_FAMILY,
     ExternalTransitionContextEncoder,
     ExternalTransitionMemory,
     ExternalTransitionModel,
+    ExternalTransitionModelBank,
     ExternalTransitionObservation,
 )
 
 EXTERNAL_FACTORED_TRANSITION_MODEL_SCHEMA = (
     "neural-computer.external-factored-transition-model.v1"
 )
+EXTERNAL_FACTORED_TRANSITION_EXACT_RESIDUAL_MODE = "exact_residual_memory_v1"
+EXTERNAL_FACTORED_TRANSITION_LEARNED_RESIDUAL_MODE = "learned_residual_function_v1"
 EXTERNAL_FACTORED_TRANSITION_ROUTER_SCHEMA = (
     "neural-computer.external-factored-transition-router.v1"
 )
@@ -29,13 +34,14 @@ EXTERNAL_FACTORED_TRANSITION_PROMOTION_SCHEMA = (
 
 
 class ExternalFactoredTransitionModel(nn.Module):
-    """A frozen factual base plus append-only context-local residual facts.
+    """A frozen factual base plus external context-local residual state.
 
     The base learns reusable transition structure.  Once frozen, new regime
-    evidence is written only to the external residual memory addressed by an
-    opaque context.  Planning sees the sum of the base prediction and a
-    residual correction when an exact residual fact is available; it never
-    sees a task policy or protocol-specific action meaning.
+    evidence is written only to external residual state addressed by an
+    opaque context.  The compatibility mode stores exact residual facts;
+    learned mode stores a trainable residual function. Planning sees the sum
+    of the base prediction and the context-local residual; it never sees a
+    task policy or protocol-specific action meaning.
     """
 
     schema = EXTERNAL_FACTORED_TRANSITION_MODEL_SCHEMA
@@ -49,6 +55,10 @@ class ExternalFactoredTransitionModel(nn.Module):
         hidden_width: int = 64,
         residual_read_match_threshold: float = 0.999,
         residual_write_match_threshold: float = 0.999,
+        residual_mode: str = EXTERNAL_FACTORED_TRANSITION_EXACT_RESIDUAL_MODE,
+        residual_model_family: str = EXTERNAL_TRANSITION_NONLINEAR_MODEL_FAMILY,
+        residual_hidden_width: int | None = None,
+        residual_learning_rate: float = 0.01,
     ) -> None:
         super().__init__()
         if min(state_width, intention_width, context_width, hidden_width) < 1:
@@ -57,6 +67,26 @@ class ExternalFactoredTransitionModel(nn.Module):
         self.intention_width = int(intention_width)
         self.context_width = int(context_width)
         self.hidden_width = int(hidden_width)
+        if residual_mode not in {
+            EXTERNAL_FACTORED_TRANSITION_EXACT_RESIDUAL_MODE,
+            EXTERNAL_FACTORED_TRANSITION_LEARNED_RESIDUAL_MODE,
+        }:
+            raise ValueError("unsupported factored transition residual mode")
+        if residual_hidden_width is None:
+            residual_hidden_width = hidden_width
+        if residual_hidden_width < 1:
+            raise ValueError("factored residual hidden width must be positive")
+        if residual_learning_rate <= 0.0:
+            raise ValueError("factored residual learning rate must be positive")
+        if residual_model_family not in {
+            EXTERNAL_TRANSITION_NONLINEAR_MODEL_FAMILY,
+            EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY,
+        }:
+            raise ValueError("unsupported factored residual model family")
+        self.residual_mode = str(residual_mode)
+        self.residual_model_family = str(residual_model_family)
+        self.residual_hidden_width = int(residual_hidden_width)
+        self.residual_learning_rate = float(residual_learning_rate)
         self.base = ExternalTransitionModel(
             self.state_width,
             self.intention_width,
@@ -69,6 +99,18 @@ class ExternalFactoredTransitionModel(nn.Module):
             read_match_threshold=residual_read_match_threshold,
             write_match_threshold=residual_write_match_threshold,
         )
+        self.residual_bank = (
+            None
+            if self.residual_mode == EXTERNAL_FACTORED_TRANSITION_EXACT_RESIDUAL_MODE
+            else ExternalTransitionModelBank(
+                self.state_width,
+                self.intention_width,
+                self.context_width,
+                hidden_width=self.residual_hidden_width,
+                model_family=self.residual_model_family,
+                matching_tolerance=1e-6,
+            )
+        )
 
     def configuration(self) -> dict[str, int | float | str | dict[str, object]]:
         return {
@@ -77,10 +119,19 @@ class ExternalFactoredTransitionModel(nn.Module):
             "intention_width": self.intention_width,
             "context_width": self.context_width,
             "hidden_width": self.hidden_width,
-            "representation": "frozen_shared_base_plus_opaque_context_residual_v1",
+            "residual_mode": self.residual_mode,
+            "residual_model_family": self.residual_model_family,
+            "residual_hidden_width": self.residual_hidden_width,
+            "residual_learning_rate": self.residual_learning_rate,
+            "representation": "frozen_shared_base_plus_opaque_context_residual_v2",
             "behavior": "derived_by_external_search_not_stored_policy_v1",
             "base": self.base.configuration(),
             "residual_memory": self.residual_memory.configuration(),
+            "residual_bank": (
+                None
+                if self.residual_bank is None
+                else self.residual_bank.configuration()
+            ),
         }
 
     @property
@@ -89,7 +140,13 @@ class ExternalFactoredTransitionModel(nn.Module):
 
     @property
     def residual_record_count(self) -> int:
+        if self.residual_bank is not None:
+            return self.residual_bank.context_count
         return self.residual_memory.record_count
+
+    @property
+    def residual_context_count(self) -> int:
+        return 0 if self.residual_bank is None else self.residual_bank.context_count
 
     def freeze_base(self) -> None:
         """Freeze reusable computation before online residual adaptation."""
@@ -129,7 +186,7 @@ class ExternalFactoredTransitionModel(nn.Module):
         *,
         context: torch.Tensor,
     ) -> object:
-        """Store one verified current-regime correction without base updates."""
+        """Store or address one current-regime correction without base updates."""
 
         residual = self._residual_observation(observation)
         context_batch = context
@@ -137,7 +194,55 @@ class ExternalFactoredTransitionModel(nn.Module):
             context_batch = context_batch.unsqueeze(0).expand(
                 observation.state.shape[0], -1
             )
+        if self.residual_bank is not None:
+            return self.residual_bank.ensure_context(context)
         return self.residual_memory.write(residual, context=context_batch)
+
+    def fit_residual(
+        self,
+        observation: ExternalTransitionObservation,
+        *,
+        context: torch.Tensor,
+        updates: int,
+        optimizer: torch.optim.Optimizer | None = None,
+    ) -> tuple[float, int]:
+        """Learn a context-local residual function outside the frozen base."""
+
+        if self.residual_bank is None:
+            raise RuntimeError("exact residual memory has no trainable residual function")
+        if not self.base_frozen:
+            raise RuntimeError("factored residual learning requires a frozen base")
+        if not isinstance(updates, int) or isinstance(updates, bool) or updates < 1:
+            raise ValueError("factored residual updates must be a positive integer")
+        observation.validate(
+            state_width=self.state_width,
+            intention_width=self.intention_width,
+        )
+        slot_index = self.residual_bank.ensure_context(context)
+        normalized_context = self.residual_bank.context_at(slot_index)
+        context_batch = normalized_context.to(observation.state).unsqueeze(0).expand(
+            observation.state.shape[0], -1
+        )
+        residual = self._residual_observation(observation)
+        final_loss = float("inf")
+        if hasattr(self.residual_bank.models[slot_index], "observe"):
+            final_loss = self.residual_bank.adaptation_step(
+                residual,
+                context_batch,
+                None,
+            )
+            return final_loss, 1
+        selected_optimizer = optimizer or torch.optim.Adam(
+            self.residual_bank.models[slot_index].parameters(),
+            lr=self.residual_learning_rate,
+        )
+        for _update in range(updates):
+            final_loss = self.residual_bank.adaptation_step(
+                residual,
+                context_batch,
+                selected_optimizer,
+            )
+        return final_loss, updates
 
     def predict_with_context(
         self,
@@ -146,6 +251,13 @@ class ExternalFactoredTransitionModel(nn.Module):
         context: torch.Tensor,
     ) -> torch.Tensor:
         base_prediction = self.base(state, intention)
+        if self.residual_bank is not None:
+            residual_prediction = self.residual_bank(
+                state,
+                intention,
+                context,
+            )
+            return base_prediction + residual_prediction.to(base_prediction)
         residual, hit = self.residual_memory.predict_with_hit(
             state,
             intention,
@@ -193,6 +305,8 @@ class ExternalFactoredTransitionModel(nn.Module):
         digest.update(self.schema.encode("utf-8"))
         digest.update(self.base.digest().encode("utf-8"))
         digest.update(self.residual_memory.digest().encode("utf-8"))
+        if self.residual_bank is not None:
+            digest.update(self.residual_bank.digest().encode("utf-8"))
         return digest.hexdigest()
 
     @staticmethod
@@ -225,6 +339,9 @@ class ExternalFactoredTransitionModel(nn.Module):
             "configuration": self.configuration(),
             "base_state": self._state_payload(self.base),
             "residual_state": self._state_payload(self.residual_memory),
+            "residual_bank": (
+                None if self.residual_bank is None else self.residual_bank.payload()
+            ),
             "base_frozen": self.base_frozen,
             "sha256": self.digest(),
         }
@@ -249,6 +366,12 @@ class ExternalFactoredTransitionModel(nn.Module):
         residual_configuration = configuration.get("residual_memory")
         if not isinstance(residual_configuration, Mapping):
             raise TypeError("factored residual configuration is missing")
+        residual_mode = str(
+            configuration.get(
+                "residual_mode",
+                EXTERNAL_FACTORED_TRANSITION_EXACT_RESIDUAL_MODE,
+            )
+        )
         model = cls(
             int(configuration["state_width"]),
             int(configuration["intention_width"]),
@@ -260,6 +383,22 @@ class ExternalFactoredTransitionModel(nn.Module):
             residual_write_match_threshold=float(
                 residual_configuration["store"]["write_match_threshold"]
             ),
+            residual_mode=residual_mode,
+            residual_model_family=str(
+                configuration.get(
+                    "residual_model_family",
+                    EXTERNAL_TRANSITION_NONLINEAR_MODEL_FAMILY,
+                )
+            ),
+            residual_hidden_width=int(
+                configuration.get(
+                    "residual_hidden_width",
+                    configuration["hidden_width"],
+                )
+            ),
+            residual_learning_rate=float(
+                configuration.get("residual_learning_rate", 0.01)
+            ),
         )
         cls._load_state(model.base, base_state)
         residual_store_state = {
@@ -270,6 +409,16 @@ class ExternalFactoredTransitionModel(nn.Module):
             residual_store_state,
             strict=True,
         )
+        residual_bank_payload = payload.get("residual_bank")
+        if model.residual_bank is None:
+            if residual_bank_payload is not None:
+                raise ValueError("exact residual mode cannot contain a residual bank")
+        else:
+            if not isinstance(residual_bank_payload, Mapping):
+                raise TypeError("learned residual mode requires a residual bank")
+            model.residual_bank = ExternalTransitionModelBank.from_payload(
+                residual_bank_payload
+            )
         if bool(payload.get("base_frozen", False)):
             model.freeze_base()
         if payload.get("sha256") != model.digest():
@@ -345,6 +494,7 @@ class ExternalFactoredTransitionRouter:
         match_margin: float = 0.01,
         admission_observations: int = 8,
         max_contexts: int | None = None,
+        residual_adaptation_updates: int = 16,
     ) -> None:
         if not isinstance(model, ExternalFactoredTransitionModel):
             raise TypeError("factored router requires a factored transition model")
@@ -360,12 +510,19 @@ class ExternalFactoredTransitionRouter:
             raise ValueError("factored router admission observations must be positive")
         if max_contexts is not None and max_contexts < 1:
             raise ValueError("factored router capacity must be positive")
+        if (
+            not isinstance(residual_adaptation_updates, int)
+            or isinstance(residual_adaptation_updates, bool)
+            or residual_adaptation_updates < 1
+        ):
+            raise ValueError("factored residual adaptation updates must be positive")
         self.model = model
         self.context_encoder = context_encoder
         self.match_tolerance = float(match_tolerance)
         self.match_margin = float(match_margin)
         self.admission_observations = int(admission_observations)
         self.max_contexts = max_contexts
+        self.residual_adaptation_updates = int(residual_adaptation_updates)
         self._contexts: list[torch.Tensor] = []
         self._slot_ids: list[int] = []
         self._next_slot_id = 0
@@ -458,6 +615,12 @@ class ExternalFactoredTransitionRouter:
             self.model.state_payload()
         )
         candidate.write_residual(evidence, context=context)
+        if candidate.residual_bank is not None:
+            candidate.fit_residual(
+                evidence,
+                context=context,
+                updates=self.residual_adaptation_updates,
+            )
         self._candidate_model = candidate
         self._candidate_context = context
         self._pending.clear()
@@ -487,6 +650,12 @@ class ExternalFactoredTransitionRouter:
                 observation,
                 context=self._candidate_context,
             )
+            if self._candidate_model.residual_bank is not None:
+                self._candidate_model.fit_residual(
+                    observation,
+                    context=self._candidate_context,
+                    updates=self.residual_adaptation_updates,
+                )
             return FactoredTransitionRouteResult(
                 status="staged",
                 slot_id=None,
@@ -645,6 +814,12 @@ class ExternalFactoredTransitionRouter:
             self.model.state_payload()
         )
         candidate.write_residual(observation, context=context)
+        if candidate.residual_bank is not None:
+            candidate.fit_residual(
+                observation,
+                context=context,
+                updates=self.residual_adaptation_updates,
+            )
         heldout.validate(
             state_width=self.model.state_width,
             intention_width=self.model.intention_width,
@@ -681,6 +856,7 @@ class ExternalFactoredTransitionRouter:
             "match_margin": self.match_margin,
             "admission_observations": self.admission_observations,
             "max_contexts": self.max_contexts,
+            "residual_adaptation_updates": self.residual_adaptation_updates,
             "slot_ids": list(self._slot_ids),
             "behavior": "copy_on_write_residual_admission_v1",
         }
@@ -757,6 +933,9 @@ class ExternalFactoredTransitionRouter:
                 None
                 if configuration.get("max_contexts") is None
                 else int(configuration["max_contexts"])
+            ),
+            residual_adaptation_updates=int(
+                configuration.get("residual_adaptation_updates", 16)
             ),
         )
         router._contexts = [

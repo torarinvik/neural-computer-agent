@@ -1,0 +1,96 @@
+{
+  "schema": "neural-computer.external-factored-learned-residual.v1",
+  "seed": 81012,
+  "configuration": {
+    "base_rows": 40,
+    "online_rows": 20,
+    "online_train_rows": 16,
+    "base_updates": 2000,
+    "residual_updates": 1,
+    "residual_model_family": "affine_sufficient_statistics_v1",
+    "prediction_tolerance": 0.1,
+    "claim": "partial-evidence-factored-learned-residual-retention-v1"
+  },
+  "metrics": {
+    "base_loss": 9.819863180382526e-07,
+    "base_only_target_heldout_mse": 0.38406360149383545,
+    "learned_target_heldout_mse": 0.03312291204929352,
+    "learned_source_heldout_mse": 0.033122774213552475,
+    "fresh_target_heldout_mse": 0.04829993098974228,
+    "fresh_target_training_mse": 3.645025362271348e-14,
+    "source_route_status": "staged",
+    "target_route_status": "staged",
+    "alternating_routes": [
+      0,
+      1,
+      0,
+      1,
+      0,
+      1
+    ],
+    "restored_routes": [
+      0,
+      1
+    ],
+    "source_promotion": {
+      "accepted": true,
+      "slot_id": 0,
+      "heldout_error": 0.033122774213552475,
+      "reason": "candidate passed factual and retention probes",
+      "schema": "neural-computer.external-factored-transition-promotion.v1"
+    },
+    "target_promotion": {
+      "accepted": true,
+      "slot_id": 1,
+      "heldout_error": 0.03312291204929352,
+      "reason": "candidate passed factual and retention probes",
+      "schema": "neural-computer.external-factored-transition-promotion.v1"
+    },
+    "rejected_bound_update": {
+      "accepted": false,
+      "slot_id": null,
+      "heldout_error": 3.8466172218322754,
+      "reason": "bound residual failed factual or retention probe",
+      "schema": "neural-computer.external-factored-transition-promotion.v1"
+    }
+  },
+  "gates": {
+    "source_promoted": true,
+    "target_promoted": true,
+    "partial_target_evidence": true,
+    "heldout_source_quality": true,
+    "heldout_target_quality": true,
+    "alternating_routes_correct": true,
+    "prior_retained_during_target_promotion": true,
+    "rejected_bad_bound_update": true,
+    "rejected_update_did_not_mutate_model": true,
+    "base_frozen": true,
+    "controller_unchanged": true,
+    "context_encoder_unchanged": true,
+    "exact_persistence": true,
+    "restored_routes_correct": true,
+    "learned_beats_base_only": true,
+    "fresh_control_measured": true
+  },
+  "accounting": {
+    "base_optimizer_updates": 2000,
+    "fresh_control_optimizer_updates": 2000,
+    "residual_optimizer_updates": 0,
+    "residual_statistics_updates": 2,
+    "controller_optimizer_updates": 0,
+    "context_encoder_optimizer_updates": 0,
+    "old_regime_replay_during_target_adaptation": 0,
+    "base_pretraining_rows": 40,
+    "source_online_rows": 16,
+    "target_online_rows": 16,
+    "target_heldout_rows": 4,
+    "wall_seconds": 2.162889291997999
+  },
+  "digests": {
+    "base": "e74ac6d1e07d7bfb0c7447f3a1ea6420ceecbf0868ead616dba381f16e79929e",
+    "controller": "3e0c5bcc5c2019b329fe263e92486029d7ae69f490aff782d29be3f6477b8f5b",
+    "context_encoder": "7c9b6a9eead281b706d1553f7a2ede2217ae3d66f2e1d6ef6cc4e3e44a7acc13",
+    "router": "61185fe9e1396697bb39dfb664b85f32f5e26512712fb8bc6314794db93effec"
+  },
+  "promoted": true
+}

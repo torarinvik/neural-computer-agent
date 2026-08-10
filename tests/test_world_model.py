@@ -1,7 +1,10 @@
+from collections.abc import Callable
+
 import pytest
 import torch
 
 from neural_computer import (
+    EXTERNAL_FACTORED_TRANSITION_LEARNED_RESIDUAL_MODE,
     ExternalContextAddressResolver,
     ExternalContextualEvidenceCalibrator,
     ExternalFactoredTransitionModel,
@@ -1896,6 +1899,69 @@ def test_factored_transition_freezes_base_and_persists_context_residuals() -> No
     )
 
 
+def test_learned_factored_residual_generalizes_while_base_stays_frozen() -> None:
+    torch.manual_seed(1921)
+    model = ExternalFactoredTransitionModel(
+        1,
+        1,
+        2,
+        hidden_width=16,
+        residual_mode=EXTERNAL_FACTORED_TRANSITION_LEARNED_RESIDUAL_MODE,
+        residual_hidden_width=32,
+        residual_learning_rate=0.01,
+    )
+    for parameter in model.base.parameters():
+        parameter.data.zero_()
+    model.freeze_base()
+    base_before = model.base.digest()
+    context = torch.tensor([1.0, 0.0])
+    train_state = torch.linspace(-1.0, 1.0, 8).unsqueeze(-1)
+    training = ExternalTransitionObservation(
+        state=train_state,
+        intention=torch.ones(8, 1),
+        next_state=torch.sin(train_state * 2.0) + train_state,
+    )
+    heldout_state = torch.tensor([[-0.85], [-0.35], [0.15], [0.65]])
+    heldout = ExternalTransitionObservation(
+        state=heldout_state,
+        intention=torch.ones(4, 1),
+        next_state=torch.sin(heldout_state * 2.0) + heldout_state,
+    )
+    loss, updates = model.fit_residual(
+        training,
+        context=context,
+        updates=1_000,
+    )
+
+    error = float(
+        model.loss(
+            heldout,
+            context=context.unsqueeze(0).expand(heldout.state.shape[0], -1),
+        ).detach()
+    )
+    assert updates == 1_000
+    assert loss < 1e-5
+    assert error < 1e-3
+    assert model.base.digest() == base_before
+    assert model.base_frozen
+    assert model.residual_context_count == 1
+
+    restored = ExternalFactoredTransitionModel.from_payload(model.state_payload())
+    assert restored.digest() == model.digest()
+    assert torch.allclose(
+        restored.predict_with_context(
+            heldout.state,
+            heldout.intention,
+            context.unsqueeze(0).expand(heldout.state.shape[0], -1),
+        ),
+        model.predict_with_context(
+            heldout.state,
+            heldout.intention,
+            context.unsqueeze(0).expand(heldout.state.shape[0], -1),
+        ),
+    )
+
+
 def test_factored_router_stages_promotes_and_reuses_opaque_context() -> None:
     model = ExternalFactoredTransitionModel(1, 1, 2, hidden_width=8)
     model.freeze_base()
@@ -2012,6 +2078,107 @@ def test_factored_router_routes_opaque_bundles_atomically() -> None:
     assert staged.pending_observations == 0
     assert router.candidate_active
     assert router.pending_observations == 0
+
+
+def test_factored_router_learns_external_residual_functions_without_base_updates() -> (
+    None
+):
+    torch.manual_seed(1922)
+    model = ExternalFactoredTransitionModel(
+        1,
+        1,
+        4,
+        hidden_width=16,
+        residual_mode=EXTERNAL_FACTORED_TRANSITION_LEARNED_RESIDUAL_MODE,
+        residual_hidden_width=32,
+        residual_learning_rate=0.01,
+    )
+    for parameter in model.base.parameters():
+        parameter.data.zero_()
+    model.freeze_base()
+    base_before = model.base.digest()
+    encoder = ExternalTransitionContextEncoder(
+        1,
+        1,
+        hidden_width=16,
+        context_width=4,
+    )
+    router = ExternalFactoredTransitionRouter(
+        model,
+        encoder,
+        match_tolerance=0.05,
+        match_margin=0.001,
+        residual_adaptation_updates=300,
+    )
+    train_state = torch.linspace(-1.0, 1.0, 8).unsqueeze(-1)
+    heldout_state = torch.tensor([[-0.85], [-0.35], [0.15], [0.65]])
+
+    def observation(
+        state: torch.Tensor,
+        transform: Callable[[torch.Tensor], torch.Tensor],
+    ) -> ExternalTransitionObservation:
+        return ExternalTransitionObservation(
+            state=state,
+            intention=torch.ones(state.shape[0], 1),
+            next_state=transform(state),
+        )
+
+    source = observation(train_state, lambda state: torch.sin(state * 2.0) + state)
+    source_heldout = observation(
+        heldout_state,
+        lambda state: torch.sin(state * 2.0) + state,
+    )
+    target = observation(train_state, lambda state: torch.cos(state * 2.0) + state)
+    target_heldout = observation(
+        heldout_state,
+        lambda state: torch.cos(state * 2.0) + state,
+    )
+
+    def rows(item: ExternalTransitionObservation) -> list[ExternalTransitionObservation]:
+        return [
+            ExternalTransitionObservation(
+                state=item.state[index : index + 1],
+                intention=item.intention[index : index + 1],
+                next_state=item.next_state[index : index + 1],
+            )
+            for index in range(item.state.shape[0])
+        ]
+
+    assert router.route_bundle(rows(source)).status == "staged"
+    source_receipt = router.promote_staged_candidate(
+        source_heldout,
+        lambda candidate: candidate.residual_context_count == 1,
+        prediction_tolerance=0.01,
+    )
+    assert source_receipt.accepted
+    source_slot = source_receipt.slot_id
+    assert source_slot == 0
+
+    source_context = router.contexts[0]
+    assert router.route_bundle(rows(target)).status == "staged"
+    target_receipt = router.promote_staged_candidate(
+        target_heldout,
+        lambda candidate: float(
+            candidate.loss(
+                source_heldout,
+                context=source_context.unsqueeze(0).expand(
+                    source_heldout.state.shape[0], -1
+                ),
+            ).detach()
+        )
+        < 0.01,
+        prediction_tolerance=0.01,
+    )
+    assert target_receipt.accepted
+    assert target_receipt.slot_id == 1
+    assert router.route_bundle(rows(source)).slot_id == source_slot
+    assert router.route_bundle(rows(target)).slot_id == target_receipt.slot_id
+    assert model.base.digest() == base_before
+
+    restored = ExternalFactoredTransitionRouter.from_payload(router.state_payload())
+    assert restored.digest() == router.digest()
+    assert restored.route_bundle(rows(source)).slot_id == source_slot
+    assert restored.route_bundle(rows(target)).slot_id == target_receipt.slot_id
 
 
 def test_goal_evaluator_learns_scalar_verifier_without_latent_distance() -> None:
