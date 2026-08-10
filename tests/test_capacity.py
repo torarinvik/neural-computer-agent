@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import torch
 
-from neural_computer import MemoryCandidates, OpaqueCapacityPlanner
+from neural_computer import CapacityPlan, MemoryCandidates, OpaqueCapacityPlanner
 
 
 def _bank(batch: int = 2, capacity: int = 4, width: int = 6) -> MemoryCandidates:
@@ -143,3 +143,47 @@ def test_capacity_planner_learns_from_one_verifier_utility_without_mutating_memo
     assert planner.configuration()["updates"] == (
         "single_verifier_utility_without_replay_v1"
     )
+
+
+def test_capacity_planner_updates_eviction_and_pair_selectors() -> None:
+    bank = _bank(batch=1)
+    incoming_key = torch.nn.functional.normalize(torch.randn(1, 6), dim=-1)
+    incoming_value = torch.randn(1, 6)
+    protected = torch.tensor([[True, False, False, False]], dtype=torch.bool)
+    eviction_planner = OpaqueCapacityPlanner(width=6, hidden=16)
+    eviction_plan = CapacityPlan(
+        action="evict",
+        action_index=1,
+        eviction_index=1,
+        pair=None,
+        score=torch.tensor(0.0),
+    )
+    eviction_loss = eviction_planner.adaptation_step(
+        bank,
+        incoming_key,
+        incoming_value,
+        protected,
+        eviction_plan,
+        verifier_utility=1.0,
+        consolidation_available=torch.zeros(1, dtype=torch.bool),
+    )
+    assert torch.isfinite(torch.tensor(eviction_loss))
+
+    pair_planner = OpaqueCapacityPlanner(width=6, hidden=16)
+    pair_plan = CapacityPlan(
+        action="consolidate",
+        action_index=2,
+        eviction_index=None,
+        pair=(0, 1),
+        score=torch.tensor(0.0),
+    )
+    pair_loss = pair_planner.adaptation_step(
+        bank,
+        incoming_key,
+        incoming_value,
+        torch.ones(1, 4, dtype=torch.bool),
+        pair_plan,
+        verifier_utility=0.0,
+        consolidation_available=torch.ones(1, dtype=torch.bool),
+    )
+    assert torch.isfinite(torch.tensor(pair_loss))

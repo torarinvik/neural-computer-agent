@@ -7465,3 +7465,28 @@ eviction, growth, and consolidation utilities over longer interfering
 route-memory streams with reversal controls. Evidence and accounting are
 archived in
 `session_records/sequence_working_memory_2026-08-02/opaque_capacity_planner_online_utility_promoted_2026-08-10/`.
+
+## Replay-free sequential mixed-action capacity learning (2026-08-10)
+
+The external capacity policy was pressure-tested sequentially: it first
+learned consolidation, then learned admission, eviction, consolidation, and
+growth from a balanced stream without replaying the pretraining examples.
+Verifier utility remained external and scalar; the planner saw only opaque
+learned rows plus generic occupancy, protection, and availability facts.
+
+Across seeds `85601`, `85602`, `85603`, and `85604`, mixed online utility rose
+from `0.900`–`0.910` to `0.975`–`0.995`. The nontrivial eviction selector rose
+from `0.64`–`0.70` to `0.90`–`0.98`. Held-out utility was at least `0.905`
+for each action, and the earlier consolidation skill remained at `1.0` after
+the mixed phase. Each run used 2,000 unique verifier utilities, 2,000 policy
+updates, zero replay, and a frozen controller. The fresh-policy comparison
+excluded growth from the gain requirement because all-protected growth is a
+deliberately trivial control.
+
+This promotes sequential bounded capacity-policy learning with retention; it
+does not establish universal policy composition, autonomous verifier design,
+unbounded memory, or general continual learning. The next pressure point is
+closed-loop integration with actual route-memory transactions over longer
+nonstationary streams, including interference, reversal, and growth cost.
+Evidence and accounting are archived in
+`session_records/sequence_working_memory_2026-08-02/opaque_capacity_planner_mixed_utility_promoted_2026-08-10/`.

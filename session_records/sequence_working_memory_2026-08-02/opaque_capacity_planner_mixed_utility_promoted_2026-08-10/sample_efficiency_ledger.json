@@ -1,0 +1,40 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "opaque_capacity_planner_mixed_utility",
+  "status": "promoted",
+  "claim_boundary": "Four-seed replay-free sequential learning and retention across four bounded capacity actions; not universal capacity planning or general continual learning.",
+  "seeds": [85601, 85602, 85603, 85604],
+  "configuration": {
+    "pretrain_episodes_per_seed": 400,
+    "mixed_episodes_per_seed": 1600,
+    "heldout_per_action": 100,
+    "actions": ["admit", "evict", "consolidate", "grow"],
+    "capacity": 5,
+    "width": 8,
+    "exploration": "masked_categorical_sampling_v1",
+    "update": "centered_single_verifier_utility_policy_gradient_v1"
+  },
+  "accounting_per_seed": {
+    "unique_verifier_bits": 2000,
+    "unique_logical_lifetimes": 2000,
+    "optimizer_updates": 2000,
+    "replayed_examples": 0,
+    "controller_updates": 0
+  },
+  "results": {
+    "mixed_first_window_utility": [0.91, 0.9, 0.91, 0.905],
+    "mixed_last_window_utility": [0.98, 0.985, 0.995, 0.975],
+    "eviction_first_window_utility": [0.68, 0.64, 0.64, 0.7],
+    "eviction_last_window_utility": [0.92, 0.94, 0.98, 0.9],
+    "all_action_transfer": true,
+    "prior_consolidation_retained": true,
+    "all_gates_passed": true
+  },
+  "controls": {
+    "frozen_controller_digest": true,
+    "fresh_planner_baseline": true,
+    "trivial_growth_control_excluded_from_transfer_gain": true,
+    "replay": false
+  },
+  "next_test": "Move the learned policy into actual route-memory maintenance transactions and test longer nonstationary streams with interference, reversal, and growth costs."
+}
