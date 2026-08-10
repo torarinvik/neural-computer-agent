@@ -368,12 +368,15 @@ class Outcome(torch.nn.Module):
         self.norm = torch.nn.LayerNorm(dim)
         self.head = torch.nn.Linear(dim, 3)
         self.value_head = torch.nn.Linear(dim, 1)
-        # signed pathway (F112): the state alone rates how much an
+        # signed pathway (F112/F116): the state alone rates how much an
         # object-bearing future matters (polarity-free salience); the
         # entry alone says which way this world's rule points. Their
-        # product makes promote and suppress one sign apart.
-        self.salience = torch.nn.Linear(dim, 1)
-        self.polarity = torch.nn.Linear(dim, 1)
+        # product makes promote and suppress one sign apart. TWO
+        # channels, one per object plane — F116 measured that a single
+        # channel keys to plane-1 and leaves inverted worlds able to
+        # avoid but never to seek the plane-2 object.
+        self.salience = torch.nn.Linear(dim, 2)
+        self.polarity = torch.nn.Linear(dim, 2)
 
     def forward(self, states, acts, entry,
                 value: bool = False,
@@ -393,7 +396,7 @@ class Outcome(torch.nn.Module):
                 sign = torch.tanh(self.polarity(entry.mean(dim=0)))
                 out = out + (sign
                              * self.salience(self.norm(raw[:, 0]))
-                             ).squeeze(-1)
+                             ).sum(-1)
             return out
         return self.head(pooled)
 
@@ -728,8 +731,9 @@ def value_fidelity(config: FamilyConfig) -> dict:
         # never negative across worlds, the reader's twin entries are
         # too similar for the linear map to sign-split.
         with torch.no_grad():
-            result["polarity_scalar"] = round(float(
-                torch.tanh(outcome.polarity(entry.mean(dim=0)))), 4)
+            result["polarity_scalar"] = [
+                round(float(v), 4) for v in
+                torch.tanh(outcome.polarity(entry.mean(dim=0)))]
     return result
 
 

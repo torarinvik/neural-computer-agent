@@ -5299,3 +5299,31 @@ promote plane-2 with the same machinery normal worlds use for plane-1.
 
 Probe 216 is `game_slots.py --signed-entry` with polarity logging,
 seeds 69316/69318.
+
+**F117 (probe 217). Compositional math first contact is a NULL — chance
+everywhere, and the entry is not read at all.** New probe
+`math_compose.py`, the composition rung the founding objective actually
+needs: a world hides f(x) = x+b and g(x) = a*x over Z_23; the reader
+sees only SINGLE applications; the plant executes token programs like
+[f,g,f]; held-out split on both axes (worlds and programs), plus a
+swap control (f/g roles exchanged). At 12k updates / dim 96, 2 seeds:
+
+    trained worlds, trained programs : 0.098 / 0.088
+    every other cell                 : ~0.043-0.053  (chance 0.0435)
+
+Two diagnostics before any redesign:
+  * stranger accuracy is BIT-IDENTICAL to own-entry accuracy in every
+    cell — the plant distinguishes zeros-vs-real entry (the ignorance
+    term forces that) but treats all real entries alike: reading never
+    started;
+  * even the pure fit fails (0.098 on trained x trained), so the
+    binding constraint is below reading: modular multiplication
+    composed up to length 4 is not yet representable at this budget.
+
+Same failure order as the games (F106): model first, reader second —
+nothing can be read until something predicts. Scaled runs (60k
+updates, dim 128) are the first arm; if fit lands and reading still
+does not, the next lever is the F78 one — world diversity — before
+any architectural change.
+
+Probe 217 is `math_compose.py`, 2 seeds.
