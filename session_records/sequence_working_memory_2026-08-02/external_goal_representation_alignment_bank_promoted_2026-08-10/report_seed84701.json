@@ -1,0 +1,217 @@
+{
+  "schema": "neural-computer.external-goal-representation-alignment-bank.v1",
+  "claim_boundary": "bounded concurrent opaque frontend alignment slots with quarantine, stable eviction, and replay-free held-out promotion; not unrestricted memory growth or general continual learning",
+  "seed": 84701,
+  "configuration": {
+    "capacity": 2,
+    "quarantine_capacity": 2,
+    "alignment_tolerance": 0.005,
+    "feature_width": 96,
+    "frontends": [
+      "frontend-affine",
+      "frontend-nonlinear-a",
+      "frontend-nonlinear-b",
+      "frontend-corrupted"
+    ]
+  },
+  "gates": {
+    "affine_admitted": true,
+    "nonlinear_a_admitted": true,
+    "corrupted_candidate_rejected": true,
+    "corrupted_candidate_quarantined": true,
+    "valid_overflow_rejected": true,
+    "valid_overflow_quarantined": true,
+    "active_slots_unchanged_by_overflow": true,
+    "concurrent_initial_mastery": true,
+    "stable_slot_eviction_accepted": true,
+    "evicted_slot_not_reused": true,
+    "quarantined_valid_candidate_promoted": true,
+    "promoted_frontend_mastery": true,
+    "failed_eviction_did_not_mutate": true,
+    "corrupted_quarantine_retained": true,
+    "exact_bank_persistence": true,
+    "verifier_memory_unchanged": true,
+    "model_unchanged": true,
+    "controller_frozen": true,
+    "verifier_replay_zero": true,
+    "alignment_replay_zero": true
+  },
+  "promoted": true,
+  "metrics": {
+    "first_admission": {
+      "accepted": true,
+      "frontend_space_id": "frontend-affine",
+      "slot_id": 0,
+      "active_count": 1,
+      "capacity": 2,
+      "candidate_digest": "d0975b2ade2b90f3b02a18aa114f38b814681555d0bae1f45d4367978a9d9a71",
+      "heldout": {
+        "accepted": true,
+        "source_width": 2,
+        "target_width": 1,
+        "query_count": 48,
+        "max_heldout_mse": 6.163564194139326e-06,
+        "alignment_digest": "d0975b2ade2b90f3b02a18aa114f38b814681555d0bae1f45d4367978a9d9a71",
+        "heldout_digest": "84c1e81a1c6c5aa248df79b8d6430814965c17fc87f52958cada9c530b61fb8a",
+        "reason": "held-out alignment behavior remained within tolerance",
+        "schema": "neural-computer.external-goal-representation-alignment-verification.v1"
+      },
+      "quarantined": false,
+      "reason": "held-out alignment passed and active slot was committed",
+      "schema": "neural-computer.external-goal-representation-alignment-bank-admission.v1"
+    },
+    "second_admission": {
+      "accepted": true,
+      "frontend_space_id": "frontend-nonlinear-a",
+      "slot_id": 1,
+      "active_count": 2,
+      "capacity": 2,
+      "candidate_digest": "00758ca2c4c9d0bbf9ec34f88061f4fd6f586da8feb48203346caddaff2b7447",
+      "heldout": {
+        "accepted": true,
+        "source_width": 2,
+        "target_width": 1,
+        "query_count": 48,
+        "max_heldout_mse": 0.0008282051421701908,
+        "alignment_digest": "00758ca2c4c9d0bbf9ec34f88061f4fd6f586da8feb48203346caddaff2b7447",
+        "heldout_digest": "84c1e81a1c6c5aa248df79b8d6430814965c17fc87f52958cada9c530b61fb8a",
+        "reason": "held-out nonlinear alignment remained within tolerance",
+        "schema": "neural-computer.external-goal-representation-alignment-verification.v1"
+      },
+      "quarantined": false,
+      "reason": "held-out alignment passed and active slot was committed",
+      "schema": "neural-computer.external-goal-representation-alignment-bank-admission.v1"
+    },
+    "corrupted_admission": {
+      "accepted": false,
+      "frontend_space_id": "frontend-corrupted",
+      "slot_id": null,
+      "active_count": 2,
+      "capacity": 2,
+      "candidate_digest": "8e5c3c81bafe02f016137ab76cc78a7e3b4349e28c8c40df8cd130cbce06b2c1",
+      "heldout": {
+        "accepted": false,
+        "source_width": 2,
+        "target_width": 1,
+        "query_count": 48,
+        "max_heldout_mse": 5.5941362380981445,
+        "alignment_digest": "8e5c3c81bafe02f016137ab76cc78a7e3b4349e28c8c40df8cd130cbce06b2c1",
+        "heldout_digest": "84c1e81a1c6c5aa248df79b8d6430814965c17fc87f52958cada9c530b61fb8a",
+        "reason": "held-out nonlinear alignment exceeded tolerance",
+        "schema": "neural-computer.external-goal-representation-alignment-verification.v1"
+      },
+      "quarantined": true,
+      "reason": "held-out alignment rejected and candidate quarantined",
+      "schema": "neural-computer.external-goal-representation-alignment-bank-admission.v1"
+    },
+    "overflow_admission": {
+      "accepted": false,
+      "frontend_space_id": "frontend-nonlinear-b",
+      "slot_id": null,
+      "active_count": 2,
+      "capacity": 2,
+      "candidate_digest": "b17246ddf8bbc61dc8bac57f6d937bd40d4d5c8ca5706416cb6c57dd92a0c973",
+      "heldout": {
+        "accepted": true,
+        "source_width": 2,
+        "target_width": 1,
+        "query_count": 48,
+        "max_heldout_mse": 0.0011257320875301957,
+        "alignment_digest": "b17246ddf8bbc61dc8bac57f6d937bd40d4d5c8ca5706416cb6c57dd92a0c973",
+        "heldout_digest": "84c1e81a1c6c5aa248df79b8d6430814965c17fc87f52958cada9c530b61fb8a",
+        "reason": "held-out nonlinear alignment remained within tolerance",
+        "schema": "neural-computer.external-goal-representation-alignment-verification.v1"
+      },
+      "quarantined": true,
+      "reason": "active capacity is full; candidate quarantined",
+      "schema": "neural-computer.external-goal-representation-alignment-bank-admission.v1"
+    },
+    "eviction": {
+      "accepted": true,
+      "evicted_slot_id": 0,
+      "evicted_frontend_space_id": "frontend-affine",
+      "source_active_count": 2,
+      "destination_active_count": 1,
+      "source_digest": "495659cef3ea26daa302b3f7985f2b98d7c8126b95b38e6f8a8106c651d8d536",
+      "destination_digest": "5dc02b273ae980692d3251c492572ed96602fca2ba1aaf16e3b367ec08b4fdc2",
+      "reason": "stable-slot eviction passed retained-alignment probe",
+      "schema": "neural-computer.external-goal-representation-alignment-bank-eviction.v1"
+    },
+    "promoted_quarantine": {
+      "accepted": true,
+      "frontend_space_id": "frontend-nonlinear-b",
+      "slot_id": 2,
+      "active_count": 2,
+      "capacity": 2,
+      "candidate_digest": "b17246ddf8bbc61dc8bac57f6d937bd40d4d5c8ca5706416cb6c57dd92a0c973",
+      "heldout": {
+        "accepted": true,
+        "source_width": 2,
+        "target_width": 1,
+        "query_count": 48,
+        "max_heldout_mse": 0.0011257320875301957,
+        "alignment_digest": "b17246ddf8bbc61dc8bac57f6d937bd40d4d5c8ca5706416cb6c57dd92a0c973",
+        "heldout_digest": "84c1e81a1c6c5aa248df79b8d6430814965c17fc87f52958cada9c530b61fb8a",
+        "reason": "held-out nonlinear alignment remained within tolerance",
+        "schema": "neural-computer.external-goal-representation-alignment-verification.v1"
+      },
+      "quarantined": false,
+      "reason": "quarantined alignment passed after capacity became available",
+      "schema": "neural-computer.external-goal-representation-alignment-bank-admission.v1"
+    },
+    "failed_eviction": {
+      "accepted": false,
+      "evicted_slot_id": 1,
+      "evicted_frontend_space_id": "frontend-nonlinear-a",
+      "source_active_count": 2,
+      "destination_active_count": 2,
+      "source_digest": "770433dbd6178eb0699f64b08449aa0cff2a5f74e8cf2a766324a95cfe8d24b0",
+      "destination_digest": "770433dbd6178eb0699f64b08449aa0cff2a5f74e8cf2a766324a95cfe8d24b0",
+      "reason": "post-eviction retention probe failed",
+      "schema": "neural-computer.external-goal-representation-alignment-bank-eviction.v1"
+    },
+    "initial_affine_mastery": {
+      "mastery": 1.0,
+      "successful_trials": 120,
+      "trial_count": 120,
+      "expanded_nodes": 44640,
+      "mean_latency_seconds": 0.009499078491838493
+    },
+    "initial_nonlinear_mastery": {
+      "mastery": 0.9916666666666667,
+      "successful_trials": 119,
+      "trial_count": 120,
+      "expanded_nodes": 44640,
+      "mean_latency_seconds": 0.00919681841575463
+    },
+    "promoted_nonlinear_mastery": {
+      "mastery": 0.9833333333333333,
+      "successful_trials": 118,
+      "trial_count": 120,
+      "expanded_nodes": 44640,
+      "mean_latency_seconds": 0.00912770592791882
+    },
+    "final_active_frontends": [
+      "frontend-nonlinear-a",
+      "frontend-nonlinear-b"
+    ],
+    "final_slot_ids": [
+      1,
+      2
+    ],
+    "quarantined_frontends": [
+      "frontend-corrupted"
+    ]
+  },
+  "accounting": {
+    "unique_verifier_outcomes": 648,
+    "unique_alignment_pairs": 192,
+    "heldout_alignment_pairs": 192,
+    "transition_rows_consumed_once": 123,
+    "alignment_statistics_updates": 4,
+    "old_verifier_replay": 0,
+    "old_alignment_replay": 0,
+    "controller_optimizer_updates": 0,
+    "wall_seconds": 3.52314441697672
+  }
+}

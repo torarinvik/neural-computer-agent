@@ -127,6 +127,16 @@ from .factored_transition import (
     FactoredTransitionQuarantineReceipt,
     FactoredTransitionRouteResult,
 )
+from .goal_alignment import (
+    EXTERNAL_GOAL_REPRESENTATION_ALIGNMENT_BANK_ADMISSION_SCHEMA,
+    EXTERNAL_GOAL_REPRESENTATION_ALIGNMENT_BANK_EVICTION_SCHEMA,
+    EXTERNAL_GOAL_REPRESENTATION_ALIGNMENT_BANK_GROWTH_SCHEMA,
+    EXTERNAL_GOAL_REPRESENTATION_ALIGNMENT_BANK_SCHEMA,
+    ExternalGoalRepresentationAlignmentBank,
+    ExternalGoalRepresentationAlignmentBankAdmissionReceipt,
+    ExternalGoalRepresentationAlignmentBankEvictionReceipt,
+    ExternalGoalRepresentationAlignmentBankGrowthReceipt,
+)
 from .growth import (
     GrowthLoadReceipt,
     compose_growth_artifacts,
@@ -465,6 +475,10 @@ __all__ = [
     "EXTERNAL_GOAL_CONDITIONED_MODEL_SELECTION_SCHEMA",
     "EXTERNAL_GOAL_EVALUATOR_SCHEMA",
     "EXTERNAL_GOAL_EVALUATOR_STATISTICS_SCHEMA",
+    "EXTERNAL_GOAL_REPRESENTATION_ALIGNMENT_BANK_ADMISSION_SCHEMA",
+    "EXTERNAL_GOAL_REPRESENTATION_ALIGNMENT_BANK_EVICTION_SCHEMA",
+    "EXTERNAL_GOAL_REPRESENTATION_ALIGNMENT_BANK_GROWTH_SCHEMA",
+    "EXTERNAL_GOAL_REPRESENTATION_ALIGNMENT_BANK_SCHEMA",
     "EXTERNAL_GOAL_REPRESENTATION_ALIGNMENT_SCHEMA",
     "EXTERNAL_GOAL_REPRESENTATION_ALIGNMENT_VERIFICATION_SCHEMA",
     "EXTERNAL_GOAL_REPRESENTATION_RANDOM_FEATURE_ALIGNMENT_SCHEMA",
@@ -621,6 +635,10 @@ __all__ = [
     "ExternalGoalConditionedMemoryRelevance",
     "ExternalGoalEvaluator",
     "ExternalGoalEvaluatorStatistics",
+    "ExternalGoalRepresentationAlignmentBank",
+    "ExternalGoalRepresentationAlignmentBankAdmissionReceipt",
+    "ExternalGoalRepresentationAlignmentBankEvictionReceipt",
+    "ExternalGoalRepresentationAlignmentBankGrowthReceipt",
     "ExternalGoalRepresentationAlignmentReceipt",
     "ExternalGoalRepresentationAlignmentStatistics",
     "ExternalGoalRepresentationRandomFeatureAlignmentStatistics",

@@ -7200,3 +7200,27 @@ This promotes bounded long-alternation storage lifecycle safety. It does not
 establish semantic merging, unbounded memory growth, or general continual
 learning. Evidence and the accounting ledger are archived in
 `session_records/sequence_working_memory_2026-08-02/external_nonlinear_address_compaction_long_cow_promoted_2026-08-10/`.
+
+## Concurrent nonlinear goal-alignment capacity (2026-08-10)
+
+The goal-representation boundary now has a canonical external alignment bank
+with stable opaque frontend-space IDs, logical slot IDs, held-out admission,
+bounded quarantine, retention-gated growth, and stable-ID eviction. The bank
+supports affine and frozen-random-feature nonlinear adapters without putting a
+frontend-specific reasoning branch in the controller.
+
+Across seeds `84701`, `84702`, `84703`, and `84704`, two valid alignments
+coexisted at capacity two with initial mastery at least `0.9833`. A shuffled
+candidate failed its held-out gate and remained quarantined. A valid third
+frontend was refused at active capacity, retained in quarantine, and promoted
+after eviction of slot `0`; the surviving IDs ended as `(1, 2)` and the
+promoted frontend reached at least `0.9833` mastery. Failed eviction left live
+state unchanged, persistence was exact, and controller, factual model, and
+verifier memory digests stayed byte-stable with zero replay.
+
+This closes concurrent bounded alignment-slot lifecycle safety, not automatic
+semantic frontend identity or unrestricted memory growth. The next pressure
+test must combine multiple alignments with repeated nonlinear basis growth,
+delayed or missing evidence, and learned identity under no privileged space
+IDs. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_goal_representation_alignment_bank_promoted_2026-08-10/`.
