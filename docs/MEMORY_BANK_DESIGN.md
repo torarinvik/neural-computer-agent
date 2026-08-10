@@ -5925,3 +5925,58 @@ is a different experiment.
 
 Probe 231 is `bool_compose.py --iterate --max-len 1 --worlds 256`.
 Depth ladder (L1 second seed, L2) running.
+
+**F132 (probe 232). The world-count ladder shows a CLIFF between 1 and
+4 worlds, not a decline — and putting it beside F131 gives the unified
+statement this whole probe family has been circling: CONDITIONED
+execution fails as soon as depth exceeds one. The single-world
+successes work precisely because they need no conditioning.**
+
+| worlds (arithmetic, iterated + ORACLE entry, depth<=4) | trained programs |
+| ---: | ---: |
+| 1 | **1.0000** |
+| 4 | 0.0547 |
+| 16 | 0.0623 |
+| 64 | 0.0570 |
+| 256 | 0.0548 |
+
+Chance 0.0435. Four worlds is already total collapse, and 4 -> 256
+changes nothing. So this was never a capacity or scale story: the
+break is at the point where the step function must take its parameters
+from CONTEXT rather than from weights. With one world, "add b" and
+"multiply by a" are constants the weights absorb; with four, they must
+be read — even when handed over as clean one-hot codes.
+
+Laying every result in this family against that axis:
+
+| pieces | depth | conditioning needed | result |
+| --- | --- | --- | --- |
+| 1 (additive) | 1 | yes, many worlds | **works** (F114, twin 0.0000) |
+| 2 (boolean) | 1 | yes, 256 worlds | **weakly works** (F131, +0.030 per-bit over stranger) |
+| 2 | <=4 | NO (one world) | **perfect** (F121/F125, 1.0000) |
+| 2 | >=2 | yes, 4+ worlds | **chance** (F120,F122,F124,F126,F127,F128, here) |
+
+Every cell is explained by two facts and nothing else: conditioning
+works at depth 1, and it fails from depth 2 up.
+
+**This sharpens F121 rather than overturning it, and the correction
+matters.** F121/F125 demonstrate that a shared per-element step
+composes, generalises to unseen arrangements, and extends to unseen
+depths — all true, both seeds, at ceiling. What they do NOT
+demonstrate is BANK-FED composition, because in a single world the
+pieces live in the weights. The honest claim is: *compositional
+execution works when the pieces are in weights; supplying the pieces
+from context works only at depth 1.* The bank thesis needs both at
+once, and that conjunction has never been achieved here.
+
+The remaining question is now specific enough to attack directly: is
+the depth failure gradient REACH (the reader's signal must survive
+several step applications) or parameter DRIFT (the world parameter
+degrading as the latent is rewritten)? The boolean depth-2 arm
+discriminates. A third possibility the architecture invites: the entry
+is re-attended at every step, so the step function must re-extract the
+same parameters repeatedly — which suggests decoding the entry ONCE
+into explicit per-piece parameters and applying a function of those,
+the way an interpreter binds arguments before running a loop.
+
+Probe 232 is the `--worlds 4/16/64` ladder with oracle entries.
