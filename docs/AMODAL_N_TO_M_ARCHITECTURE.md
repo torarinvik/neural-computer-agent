@@ -4445,8 +4445,18 @@ factual slots remain compatible with the current evidence, it can select the
 opaque intention whose predicted consequences disagree most across those
 slots. The caller executes that intention and routes the observed consequence
 through the ordinary verifier; no task policy or slot label is injected. This
-is the model-based form of probe addressing and remains a diagnostic
-capability until it passes a causal probe-versus-random control.
+is the model-based form of probe addressing. It was initially retained as a
+diagnostic capability pending a causal probe-versus-random control.
+
+That narrow causal control now passes across seeds `83001`, `83002`, and
+`83003`: active model-disagreement probing routed the hidden regime at `1.0`,
+while uniform random intention selection reached `0.750`, `0.773`, and
+`0.730`. The controller and bank were unchanged during queries and persisted
+exactly. This qualifies active factual disambiguation for the two-regime
+synthetic boundary only; learned probe selection, noisy outcomes, multimodal
+usefulness, and general continual learning remain open. Evidence is archived
+in
+`session_records/sequence_working_memory_2026-08-02/external_model_disambiguation_probe_promoted_2026-08-10/`.
 
 The first matched two-seed pressure test froze the controller, trained the
 external model for `1,200` source updates, then acquired three target goals
