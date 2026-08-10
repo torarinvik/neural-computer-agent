@@ -4447,6 +4447,9 @@ slots. The caller executes that intention and routes the observed consequence
 through the ordinary verifier; no task policy or slot label is injected. This
 is the model-based form of probe addressing. It was initially retained as a
 diagnostic capability pending a causal probe-versus-random control.
+The online context router now exposes the same operation as a read-only
+request, deriving plausible stable slot IDs from the opaque evidence window
+when the caller does not supply them.
 
 That narrow causal control now passes across seeds `83001`, `83002`, and
 `83003`: active model-disagreement probing routed the hidden regime at `1.0`,

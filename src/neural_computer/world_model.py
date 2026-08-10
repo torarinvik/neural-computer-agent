@@ -5187,7 +5187,56 @@ class ExternalOnlineTransitionContextRouter:
                 else self.evidence_evaluator.configuration()
             ),
             "provisional_candidates": "isolated_indexed_copy_on_write_v1",
+            "active_probe": "read_only_model_disagreement_request_v1",
         }
+
+    @torch.no_grad()
+    def request_disambiguation_probe(
+        self,
+        observation: ExternalTransitionObservation,
+        candidate_intentions: torch.Tensor,
+        *,
+        candidate_slot_ids: Sequence[int] | None = None,
+    ) -> ExternalTransitionProbeResult:
+        """Request an active probe for an ambiguously routed evidence window.
+
+        The router derives plausible logical slots from factual prediction
+        error when the caller does not provide them. The returned probe is
+        read-only; executing it and submitting its observed consequence via
+        :meth:`observe` remains caller-owned.
+        """
+
+        observation.validate(
+            state_width=self.bank.state_width,
+            intention_width=self.bank.intention_width,
+        )
+        if observation.state.shape[0] < 1:
+            raise ValueError("disambiguation probing needs one evidence row")
+        if candidate_slot_ids is None:
+            errors = [
+                self._slot_error(index, observation)
+                for index in range(self.bank.context_count)
+            ]
+            best_error = min(errors)
+            candidate_indices = [
+                index
+                for index, error in enumerate(errors)
+                if error <= best_error + self.match_margin
+            ]
+            slot_ids = tuple(
+                self.bank.slot_id_at(index) for index in candidate_indices
+            )
+        else:
+            slot_ids = tuple(int(slot_id) for slot_id in candidate_slot_ids)
+        if len(slot_ids) < 2:
+            raise ValueError("disambiguation probe needs at least two plausible slots")
+        planner = ExternalModelBasedPlanner(self.bank, beam_width=1)
+        return planner.select_disambiguating_intention(
+            self.bank,
+            observation.state[:1],
+            candidate_intentions,
+            candidate_slot_ids=slot_ids,
+        )
 
     def grow_verified(
         self,

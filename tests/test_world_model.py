@@ -1934,6 +1934,52 @@ def test_planner_selects_active_intention_that_disambiguates_model_slots() -> No
     assert result.predicted_next_states.shape == (2, 2, 1)
 
 
+def test_online_router_requests_read_only_probe_for_ambiguous_evidence() -> None:
+    bank = ExternalTransitionModelBank(
+        1,
+        1,
+        2,
+        model_family="affine_sufficient_statistics_v1",
+        affine_ridge=1e-7,
+    )
+    for index, context in enumerate(
+        (torch.tensor([1.0, 0.0]), torch.tensor([0.0, 1.0]))
+    ):
+        slot = bank.ensure_context(context)
+        state = torch.tensor([[0.0], [0.0]])
+        intention = torch.tensor([[0.0], [1.0]])
+        next_state = (
+            torch.zeros_like(intention) if index == 0 else intention.clone()
+        )
+        bank.adaptation_step(
+            ExternalTransitionObservation(state, intention, next_state),
+            bank.context_at(slot).unsqueeze(0).expand(2, -1),
+            None,
+        )
+    router = ExternalOnlineTransitionContextRouter(
+        bank,
+        ExternalTransitionContextEncoder(1, 1, hidden_width=8, context_width=2),
+        match_margin=0.01,
+    )
+    ambiguous = ExternalTransitionObservation(
+        state=torch.tensor([[0.0]]),
+        intention=torch.tensor([[0.0]]),
+        next_state=torch.tensor([[0.0]]),
+    )
+    before = bank.digest()
+    probe = router.request_disambiguation_probe(
+        ambiguous,
+        torch.tensor([[0.0], [1.0]]),
+    )
+
+    assert probe.selected_intention.item() == 1.0
+    assert probe.candidate_slot_ids == (0, 1)
+    assert bank.digest() == before
+    assert router.configuration()["active_probe"] == (
+        "read_only_model_disagreement_request_v1"
+    )
+
+
 def test_context_resolver_reuses_consistent_facts_and_allocates_new_regime() -> None:
     memory = ExternalTransitionMemory(1, 1, context_width=2)
     resolver = ExternalContextAddressResolver(2, address_seed=1204)
