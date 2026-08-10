@@ -8,6 +8,7 @@ from neural_computer import (
     ExternalModelBasedPlanner,
     ExternalOnlineContextAddressResolver,
     ExternalOnlineTransitionContextRouter,
+    ExternalSparseTransitionEvidenceIndex,
     ExternalTransitionContextAddressAdapter,
     ExternalTransitionContextEncoder,
     ExternalTransitionEvidenceEvaluator,
@@ -80,6 +81,67 @@ def test_transition_route_query_empty_bank_is_explicit() -> None:
     assert proposal.selected_slot_id is None
     assert proposal.scores.numel() == 0
     assert proposal.margin is None
+
+
+def test_sparse_transition_evidence_routes_partial_overlap_and_rejects_conflict() -> (
+    None
+):
+    memory = ExternalSparseTransitionEvidenceIndex(
+        2,
+        1,
+        input_match_tolerance=0.01,
+        output_match_tolerance=0.01,
+        minimum_matches=2,
+    )
+    source = ExternalTransitionObservation(
+        state=torch.tensor([[1.0, 0.0], [0.0, 1.0], [1.0, 1.0]]),
+        intention=torch.tensor([[1.0], [2.0], [3.0]]),
+        next_state=torch.tensor([[0.0, 1.0], [1.0, 0.0], [1.0, 1.0]]),
+    )
+    memory.record(7, source)
+    partial = ExternalTransitionObservation(
+        state=source.state[[0, 2]],
+        intention=source.intention[[0, 2]],
+        next_state=source.next_state[[0, 2]],
+    )
+    proposal = memory.propose(partial, (7,))
+    assert proposal.selected_slot_id == 7
+    assert proposal.matched_observations == (2,)
+    assert proposal.contradictory_observations == (0,)
+    conflict = ExternalTransitionObservation(
+        state=source.state[[0, 2]],
+        intention=source.intention[[0, 2]],
+        next_state=source.next_state[[0, 2]].roll(1, 0),
+    )
+    rejected = memory.propose(conflict, (7,))
+    assert rejected.selected_slot_id is None
+    assert rejected.contradictory_observations == (2,)
+
+
+def test_sparse_transition_evidence_compacts_and_persists_unique_facts() -> None:
+    memory = ExternalSparseTransitionEvidenceIndex(2, 1)
+    observation = ExternalTransitionObservation(
+        state=torch.tensor([[1.0, 0.0]]),
+        intention=torch.tensor([[1.0]]),
+        next_state=torch.tensor([[0.0, 1.0]]),
+    )
+    memory.record(3, observation)
+    memory.record(
+        3,
+        ExternalTransitionObservation(
+            state=observation.state + 0.001,
+            intention=observation.intention,
+            next_state=observation.next_state + 0.001,
+        ),
+    )
+    assert memory.slot_record_count(3) == 1
+    compact = memory.observation_for_slot(3)
+    assert compact.state.shape == (1, 2)
+    restored = ExternalSparseTransitionEvidenceIndex.from_payload(
+        memory.state_payload()
+    )
+    assert restored.digest() == memory.digest()
+    assert restored.record_count == memory.record_count
 
 
 def test_transition_route_memory_is_slot_local_bounded_and_persistent() -> None:
@@ -457,8 +519,7 @@ def test_context_address_adapter_is_copy_on_write_and_persistent() -> None:
     assert candidate.parent_digest == before_digest
     assert (
         float(
-            adapter.encode_observation(observation)
-            .detach()
+            adapter.encode_observation(observation).detach()
             @ candidate.encode_observation(observation).detach()
         )
         <= 0.2
@@ -509,14 +570,17 @@ def test_online_router_keeps_address_adapter_copy_isolated_until_promotion() -> 
         confidence=torch.ones(2),
     )
 
-    assert router.observe(
-        ExternalTransitionObservation(
-            observations.state[:1],
-            observations.intention[:1],
-            observations.next_state[:1],
-            observations.confidence[:1],
-        )
-    ).status == "pending"
+    assert (
+        router.observe(
+            ExternalTransitionObservation(
+                observations.state[:1],
+                observations.intention[:1],
+                observations.next_state[:1],
+                observations.confidence[:1],
+            )
+        ).status
+        == "pending"
+    )
     staged = router.observe(
         ExternalTransitionObservation(
             observations.state[1:2],
@@ -556,7 +620,9 @@ def test_transition_context_prefix_alignment_supports_variable_evidence() -> Non
         )
 
 
-def test_transition_model_learns_from_opaque_observations_without_controller_state() -> None:
+def test_transition_model_learns_from_opaque_observations_without_controller_state() -> (
+    None
+):
     torch.manual_seed(1201)
     model = ExternalTransitionModel(3, 2, hidden_width=16)
     observation = ExternalTransitionObservation(
@@ -566,7 +632,9 @@ def test_transition_model_learns_from_opaque_observations_without_controller_sta
         confidence=torch.ones(8),
     )
 
-    before = {name: value.detach().clone() for name, value in model.state_dict().items()}
+    before = {
+        name: value.detach().clone() for name, value in model.state_dict().items()
+    }
     loss = model.loss(observation)
     optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
     optimizer.zero_grad()
@@ -1025,7 +1093,9 @@ def test_external_model_bank_representation_spaces_round_trip() -> None:
     )
 
 
-def test_external_model_bank_verified_representation_migration_is_copy_on_write() -> None:
+def test_external_model_bank_verified_representation_migration_is_copy_on_write() -> (
+    None
+):
     source = ExternalTransitionModelBank(
         1,
         1,
@@ -1207,9 +1277,7 @@ def test_random_feature_stats_compression_quantizes_solved_predictor() -> None:
     assert restored_loss <= baseline + 1e-3
     assert restored.context_count == bank.context_count
     assert restored.slot_ids == bank.slot_ids
-    assert (
-        payload["models"][0]["state"]["target_matrix"].dtype == torch.float16
-    )
+    assert payload["models"][0]["state"]["target_matrix"].dtype == torch.float16
 
 
 def test_transition_model_bank_selects_smallest_retained_codec() -> None:
@@ -1293,7 +1361,9 @@ def test_online_transition_context_router_admits_current_bundle_and_persists() -
     assert restored._conflict_windows == router._conflict_windows
 
 
-def test_online_transition_context_router_capacity_guard_does_not_grow_or_write() -> None:
+def test_online_transition_context_router_capacity_guard_does_not_grow_or_write() -> (
+    None
+):
     torch.manual_seed(1211)
     bank = ExternalTransitionModelBank(2, 1, 4, hidden_width=8)
     encoder = ExternalTransitionContextEncoder(2, 1, hidden_width=8, context_width=4)
@@ -1366,8 +1436,10 @@ def test_online_router_stages_candidate_before_heldout_verified_promotion() -> N
             next_state=torch.cat([row.next_state for row in rows]),
             confidence=torch.ones(2),
         ),
-        lambda candidate: candidate.context_count == 2
-        and candidate.models[0].digest() == source_digest,
+        lambda candidate: (
+            candidate.context_count == 2
+            and candidate.models[0].digest() == source_digest
+        ),
         prediction_tolerance=0.05,
     )
     assert receipt.accepted
@@ -1476,8 +1548,10 @@ def test_online_router_promotes_candidate_with_verified_capacity_growth() -> Non
             next_state=torch.cat([row.next_state for row in rows]),
             confidence=torch.ones(2),
         ),
-        lambda candidate: candidate.context_count == 2
-        and candidate.models[0].digest() == source_digest,
+        lambda candidate: (
+            candidate.context_count == 2
+            and candidate.models[0].digest() == source_digest
+        ),
         prediction_tolerance=0.05,
         destination_capacity=2,
     )
@@ -1531,8 +1605,10 @@ def test_online_router_recycles_verified_tail_capacity_for_next_candidate() -> N
             next_state=torch.cat([row.next_state for row in rows]),
             confidence=torch.ones(2),
         ),
-        lambda candidate: candidate.context_count == 2
-        and candidate.models[0].digest() == source_digest,
+        lambda candidate: (
+            candidate.context_count == 2
+            and candidate.models[0].digest() == source_digest
+        ),
         prediction_tolerance=0.05,
         destination_capacity=2,
     )
@@ -1559,8 +1635,10 @@ def test_online_router_recycles_verified_tail_capacity_for_next_candidate() -> N
             next_state=torch.cat([row.next_state for row in rows]),
             confidence=torch.ones(2),
         ),
-        lambda candidate: candidate.context_count == 2
-        and candidate.models[0].digest() == source_digest,
+        lambda candidate: (
+            candidate.context_count == 2
+            and candidate.models[0].digest() == source_digest
+        ),
         prediction_tolerance=0.05,
     )
     assert second_receipt.accepted
@@ -1624,11 +1702,12 @@ def test_online_router_isolates_alternating_provisional_candidates() -> None:
     assert router.provisional_candidate_count == 2
     assert router._provisional_candidates[0].model.digest() == candidate_a_digest
 
-    restored = ExternalOnlineTransitionContextRouter.from_payload(router.state_payload())
+    restored = ExternalOnlineTransitionContextRouter.from_payload(
+        router.state_payload()
+    )
     assert restored.provisional_candidate_count == 2
     assert [
-        len(candidate.observations)
-        for candidate in restored._provisional_candidates
+        len(candidate.observations) for candidate in restored._provisional_candidates
     ] == [1, 1]
 
     optimizer = torch.optim.Adam(
@@ -1643,8 +1722,10 @@ def test_online_router_isolates_alternating_provisional_candidates() -> None:
             next_state=torch.cat([row.next_state for row in stream_b]),
             confidence=torch.ones(2),
         ),
-        lambda candidate: candidate.context_count == 2
-        and candidate.models[0].digest() == source_digest,
+        lambda candidate: (
+            candidate.context_count == 2
+            and candidate.models[0].digest() == source_digest
+        ),
         prediction_tolerance=0.05,
         candidate_index=1,
     )
@@ -1803,7 +1884,9 @@ def test_context_resolver_reuses_consistent_facts_and_allocates_new_regime() -> 
     assert torch.allclose(restored.addresses(), resolver.addresses())
 
 
-def test_online_context_resolver_accumulates_interleaved_evidence_without_early_writes() -> None:
+def test_online_context_resolver_accumulates_interleaved_evidence_without_early_writes() -> (
+    None
+):
     memory = ExternalTransitionMemory(1, 1, context_width=2)
     resolver = ExternalOnlineContextAddressResolver(
         2,
@@ -1886,9 +1969,7 @@ def test_transition_evidence_statistics_learns_once_and_persists_without_rows() 
         error_scale=0.1,
     )
     prediction = torch.zeros(4, 2)
-    observed = torch.tensor(
-        [[0.0, 0.0], [0.01, 0.0], [0.5, 0.0], [0.6, 0.0]]
-    )
+    observed = torch.tensor([[0.0, 0.0], [0.01, 0.0], [0.5, 0.0], [0.6, 0.0]])
     outcomes = torch.tensor([1.0, 1.0, 0.0, 0.0])
     statistics.observe(prediction, observed, outcomes, torch.ones(4))
 

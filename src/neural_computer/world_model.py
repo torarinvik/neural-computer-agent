@@ -77,6 +77,9 @@ EXTERNAL_TRANSITION_ROUTE_QUERY_SCHEMA = (
 EXTERNAL_TRANSITION_ROUTE_MEMORY_SCHEMA = (
     "neural-computer.external-transition-route-memory.v1"
 )
+EXTERNAL_TRANSITION_SPARSE_EVIDENCE_SCHEMA = (
+    "neural-computer.external-transition-sparse-evidence.v1"
+)
 EXTERNAL_ONLINE_TRANSITION_CONTEXT_ROUTER_SCHEMA = (
     "neural-computer.external-online-transition-context-router.v1"
 )
@@ -427,7 +430,9 @@ class ExternalTransitionModelMigrationReceipt:
         if self.context_count < 0:
             raise ValueError("transition-model migration context count is invalid")
         if self.accepted and not math.isfinite(self.max_heldout_difference):
-            raise ValueError("accepted transition-model migration difference is invalid")
+            raise ValueError(
+                "accepted transition-model migration difference is invalid"
+            )
         for name, value in (
             ("source_state_space_id", self.source_state_space_id),
             ("target_state_space_id", self.target_state_space_id),
@@ -471,7 +476,11 @@ class ExternalTransitionModelPriorSelectionReceipt:
             ("transfer_probe_error", self.transfer_probe_error),
             ("fresh_probe_error", self.fresh_probe_error),
         ):
-            if not isinstance(value, (float, int)) or not math.isfinite(float(value)) or value < 0.0:
+            if (
+                not isinstance(value, (float, int))
+                or not math.isfinite(float(value))
+                or value < 0.0
+            ):
                 raise ValueError(f"transition-model {name} is invalid")
         if (
             not isinstance(self.probe_updates, int)
@@ -533,8 +542,12 @@ class ExternalTransitionModelBank(nn.Module):
             raise ValueError("unsupported external transition-model family")
         if affine_ridge <= 0.0:
             raise ValueError("affine transition ridge must be positive")
-        if adaptation_learning_rate <= 0.0 or not math.isfinite(adaptation_learning_rate):
-            raise ValueError("transition-model adaptation learning rate must be positive")
+        if adaptation_learning_rate <= 0.0 or not math.isfinite(
+            adaptation_learning_rate
+        ):
+            raise ValueError(
+                "transition-model adaptation learning rate must be positive"
+            )
         if random_feature_width < 1:
             raise ValueError("random-feature width must be positive")
         for name, value in (
@@ -810,7 +823,10 @@ class ExternalTransitionModelBank(nn.Module):
         nearest = self._nearest_context(normalized)
         if nearest is not None:
             return nearest
-        if initialize_from is not None and not 0 <= initialize_from < self.context_count:
+        if (
+            initialize_from is not None
+            and not 0 <= initialize_from < self.context_count
+        ):
             raise IndexError("transition-model transfer slot is out of range")
         if self.capacity is not None and self.context_count >= self.capacity:
             raise MemoryError("transition-model bank capacity is full")
@@ -904,9 +920,7 @@ class ExternalTransitionModelBank(nn.Module):
             if prediction_errors is None
             else list(prediction_errors)
         )
-        for slot_id, prediction_error in zip(
-            slot_ids, normalized_errors, strict=True
-        ):
+        for slot_id, prediction_error in zip(slot_ids, normalized_errors, strict=True):
             self.physical_index_for_slot_id(slot_id)
             if prediction_error is not None and (
                 not math.isfinite(prediction_error) or prediction_error < 0.0
@@ -914,9 +928,7 @@ class ExternalTransitionModelBank(nn.Module):
                 raise ValueError("transition lifetime prediction error is invalid")
             self._initialize_lifetime_slot(slot_id)
         self._lifetime_clock += elapsed_steps
-        for slot_id, prediction_error in zip(
-            slot_ids, normalized_errors, strict=True
-        ):
+        for slot_id, prediction_error in zip(slot_ids, normalized_errors, strict=True):
             self._lifetime_usage[slot_id] += 1
             self._lifetime_last_access[slot_id] = self._lifetime_clock
             if prediction_error is not None:
@@ -936,9 +948,8 @@ class ExternalTransitionModelBank(nn.Module):
         )
         age = torch.tensor(
             [
-                self._lifetime_clock - self._lifetime_last_access.get(
-                    slot_id, self._lifetime_clock
-                )
+                self._lifetime_clock
+                - self._lifetime_last_access.get(slot_id, self._lifetime_clock)
                 for slot_id in self._slot_ids
             ],
             dtype=torch.float32,
@@ -978,7 +989,9 @@ class ExternalTransitionModelBank(nn.Module):
             "schema": EXTERNAL_TRANSITION_MODEL_LIFETIME_TELEMETRY_SCHEMA,
             "logical_clock": self._lifetime_clock,
             "slot_ids": list(self._slot_ids),
-            "usage": [self._lifetime_usage.get(slot_id, 0) for slot_id in self._slot_ids],
+            "usage": [
+                self._lifetime_usage.get(slot_id, 0) for slot_id in self._slot_ids
+            ],
             "last_access": [
                 self._lifetime_last_access.get(slot_id, self._lifetime_clock)
                 for slot_id in self._slot_ids
@@ -1008,10 +1021,16 @@ class ExternalTransitionModelBank(nn.Module):
         usage = payload.get("usage")
         last_access = payload.get("last_access")
         prediction_error = payload.get("prediction_error")
-        if not all(isinstance(value, list) for value in (slot_ids, usage, last_access, prediction_error)):
+        if not all(
+            isinstance(value, list)
+            for value in (slot_ids, usage, last_access, prediction_error)
+        ):
             raise TypeError("transition lifetime telemetry lists are invalid")
         if slot_ids != list(self._slot_ids) or not (
-            len(usage) == len(last_access) == len(prediction_error) == len(self._slot_ids)
+            len(usage)
+            == len(last_access)
+            == len(prediction_error)
+            == len(self._slot_ids)
         ):
             raise ValueError("transition lifetime telemetry slots are misaligned")
         logical_clock = payload.get("logical_clock")
@@ -1210,10 +1229,7 @@ class ExternalTransitionModelBank(nn.Module):
                 physical_models_after=physical_before,
                 content_digest_before=before,
                 content_digest_after=before,
-                reason=(
-                    "non-tail eviction rejected to preserve opaque slot "
-                    "indices"
-                ),
+                reason=("non-tail eviction rejected to preserve opaque slot indices"),
             ).validate()
         if not bool(retention_probe(self)):
             return ExternalTransitionModelEvictionReceipt(
@@ -1358,7 +1374,9 @@ class ExternalTransitionModelBank(nn.Module):
     ) -> torch.Tensor:
         indices = self._validate_batch(state, intention, context)
         values = [
-            self.models[index](state[row : row + 1], intention[row : row + 1]).squeeze(0)
+            self.models[index](state[row : row + 1], intention[row : row + 1]).squeeze(
+                0
+            )
             for row, index in enumerate(indices)
         ]
         return torch.stack(values)
@@ -1442,9 +1460,7 @@ class ExternalTransitionModelBank(nn.Module):
                     observation.intention[row : row + 1],
                 )
                 error = float(
-                    (prediction - observation.next_state[row : row + 1])
-                    .square()
-                    .mean()
+                    (prediction - observation.next_state[row : row + 1]).square().mean()
                 )
                 lifetime_slot_ids.append(self.slot_id_at(index))
                 lifetime_errors.append(error)
@@ -1458,9 +1474,7 @@ class ExternalTransitionModelBank(nn.Module):
                     model.observe(subset)
                 continue
             selected_optimizer = (
-                optimizer.get(index)
-                if isinstance(optimizer, Mapping)
-                else optimizer
+                optimizer.get(index) if isinstance(optimizer, Mapping) else optimizer
             )
             if selected_optimizer is None:
                 selected_optimizer = torch.optim.SGD(
@@ -1497,7 +1511,9 @@ class ExternalTransitionModelBank(nn.Module):
         if self.model_family_at(first) != self.model_family_at(second):
             raise ValueError("transition-model consolidation families must match")
         if prediction_tolerance < 0.0:
-            raise ValueError("transition-model consolidation tolerance cannot be negative")
+            raise ValueError(
+                "transition-model consolidation tolerance cannot be negative"
+            )
         if not heldout:
             raise ValueError("transition-model consolidation needs held-out evidence")
         for observation in heldout:
@@ -1534,9 +1550,7 @@ class ExternalTransitionModelBank(nn.Module):
             )
             max_difference = max(
                 max_difference,
-                float(
-                    (first_prediction - second_prediction).square().mean().detach()
-                ),
+                float((first_prediction - second_prediction).square().mean().detach()),
             )
         if max_difference > prediction_tolerance:
             return ExternalTransitionModelConsolidationReceipt(
@@ -1595,9 +1609,7 @@ class ExternalTransitionModelBank(nn.Module):
 
     @staticmethod
     def _tensor_map_bytes(artifact: Mapping[str, torch.Tensor]) -> int:
-        return sum(
-            value.numel() * value.element_size() for value in artifact.values()
-        )
+        return sum(value.numel() * value.element_size() for value in artifact.values())
 
     def _compressed_payload_digest(self, payload: Mapping[str, Any]) -> str:
         digest = hashlib.sha256()
@@ -1605,9 +1617,7 @@ class ExternalTransitionModelBank(nn.Module):
         digest.update(str(payload["codec"]).encode("utf-8"))
         digest.update(repr(payload["configuration"]).encode("utf-8"))
         for context in payload["contexts"]:
-            digest.update(
-                torch.tensor(context, dtype=torch.float32).numpy().tobytes()
-            )
+            digest.update(torch.tensor(context, dtype=torch.float32).numpy().tobytes())
         digest.update(repr(payload.get("slot_ids")).encode("utf-8"))
         digest.update(repr(payload.get("next_slot_id")).encode("utf-8"))
         digest.update(repr(payload["model_aliases"]).encode("utf-8"))
@@ -1625,9 +1635,7 @@ class ExternalTransitionModelBank(nn.Module):
         digest.update(str(payload["codec"]).encode("utf-8"))
         digest.update(repr(payload["configuration"]).encode("utf-8"))
         for context in payload["contexts"]:
-            digest.update(
-                torch.tensor(context, dtype=torch.float32).numpy().tobytes()
-            )
+            digest.update(torch.tensor(context, dtype=torch.float32).numpy().tobytes())
         digest.update(repr(payload["model_aliases"]).encode("utf-8"))
         for model_payload in payload["models"]:
             digest.update(
@@ -1781,7 +1789,9 @@ class ExternalTransitionModelBank(nn.Module):
                 atol=1e-5,
                 rtol=1e-5,
             ):
-                raise ValueError("compressed transition-model context is not normalized")
+                raise ValueError(
+                    "compressed transition-model context is not normalized"
+                )
             bank._contexts.append(context.clone())
             bank.models.append(bank._new_model(model_families[index]))
             bank._model_families.append(model_families[index])
@@ -1797,18 +1807,21 @@ class ExternalTransitionModelBank(nn.Module):
                 and getattr(bank.models[index], "schema", None)
                 == "neural-computer.external-transition-random-feature-statistics.v1"
             ):
-                decompressed["target_matrix"] = (
-                    decompressed["normal_matrix"].to(torch.float32)
-                    @ decompressed["target_matrix"].to(torch.float32)
-                )
+                decompressed["target_matrix"] = decompressed["normal_matrix"].to(
+                    torch.float32
+                ) @ decompressed["target_matrix"].to(torch.float32)
             current = bank.models[index].state_dict()
             if tuple(decompressed) != tuple(current):
                 raise ValueError("compressed transition-model state names differ")
             normalized: dict[str, torch.Tensor] = {}
             for name, expected in current.items():
                 value = decompressed[name]
-                if value.shape != expected.shape or not bool(torch.isfinite(value).all()):
-                    raise ValueError("compressed transition-model state is incompatible")
+                if value.shape != expected.shape or not bool(
+                    torch.isfinite(value).all()
+                ):
+                    raise ValueError(
+                        "compressed transition-model state is incompatible"
+                    )
                 normalized[name] = value.to(dtype=expected.dtype)
             bank.models[index].load_state_dict(normalized, strict=True)
         if any(alias < 0 or alias > index for index, alias in enumerate(aliases)):
@@ -1816,21 +1829,19 @@ class ExternalTransitionModelBank(nn.Module):
         for index, alias in enumerate(aliases):
             if alias != index:
                 if model_families[index] != model_families[alias]:
-                    raise ValueError("compressed transition-model aliases cross families")
+                    raise ValueError(
+                        "compressed transition-model aliases cross families"
+                    )
                 bank.models[index] = bank.models[alias]
                 bank._model_families[index] = bank._model_families[alias]
         bank._next_slot_id = next_slot_id
         bank._restore_lifetime_telemetry(payload.get("lifetime_telemetry"))
-        if (
-            payload.get("sha256")
-            not in {
-                bank._compressed_payload_digest(payload),
-                bank._legacy_compressed_payload_digest(payload),
-            }
-        ):
+        if payload.get("sha256") not in {
+            bank._compressed_payload_digest(payload),
+            bank._legacy_compressed_payload_digest(payload),
+        }:
             raise ValueError("compressed transition-model payload checksum mismatch")
         return bank
-
 
     def compress_verified(
         self,
@@ -2008,9 +2019,7 @@ class ExternalTransitionModelBank(nn.Module):
                 )
             max_difference = max(
                 max_difference,
-                float(
-                    (source_prediction - candidate_prediction).square().mean()
-                ),
+                float((source_prediction - candidate_prediction).square().mean()),
             )
         if max_difference > prediction_tolerance:
             return ExternalTransitionModelMigrationReceipt(
@@ -2137,8 +2146,7 @@ class ExternalTransitionModelBank(nn.Module):
         else:
             raise TypeError("transition-model bank model aliases are invalid")
         if len(aliases) != len(models) or any(
-            alias < 0 or alias > index
-            for index, alias in enumerate(aliases)
+            alias < 0 or alias > index for index, alias in enumerate(aliases)
         ):
             raise ValueError("transition-model bank model aliases are invalid")
         bank = cls(
@@ -2207,7 +2215,9 @@ class ExternalTransitionModelBank(nn.Module):
             normalized: dict[str, torch.Tensor] = {}
             for name, expected in current.items():
                 value = torch.tensor(state_payload[name], dtype=expected.dtype)
-                if value.shape != expected.shape or not bool(torch.isfinite(value).all()):
+                if value.shape != expected.shape or not bool(
+                    torch.isfinite(value).all()
+                ):
                     raise ValueError("transition-model bank slot state is incompatible")
                 normalized[name] = value
             bank.models[index].load_state_dict(normalized, strict=True)
@@ -2221,11 +2231,10 @@ class ExternalTransitionModelBank(nn.Module):
                 bank._model_families[index] = bank._model_families[alias]
         bank._next_slot_id = next_slot_id
         bank._restore_lifetime_telemetry(payload.get("lifetime_telemetry"))
-        if (
-            payload.get("sha256") != bank.digest()
-            and payload.get("sha256")
-            not in {bank._legacy_stable_digest(), bank._legacy_digest()}
-        ):
+        if payload.get("sha256") != bank.digest() and payload.get("sha256") not in {
+            bank._legacy_stable_digest(),
+            bank._legacy_digest(),
+        }:
             raise ValueError("transition-model bank checksum mismatch")
         return bank
 
@@ -2243,9 +2252,7 @@ class ExternalTransitionModelLifetimeProposal:
     def validate(self) -> ExternalTransitionModelLifetimeProposal:
         if self.schema != EXTERNAL_TRANSITION_MODEL_LIFETIME_POLICY_SCHEMA:
             raise ValueError("unsupported transition-model lifetime schema")
-        if self.scores.ndim != 1 or self.scores.shape[0] != len(
-            self.eligible_slot_ids
-        ):
+        if self.scores.ndim != 1 or self.scores.shape[0] != len(self.eligible_slot_ids):
             raise ValueError("transition-model lifetime scores are misaligned")
         if bool(torch.isnan(self.scores).any()):
             raise ValueError("transition-model lifetime scores contain NaN")
@@ -2285,7 +2292,9 @@ class ExternalTransitionModelLifetimePolicy(nn.Module):
         if context_width < 1 or hidden_width < 1:
             raise ValueError("transition lifetime policy widths must be positive")
         if learning_rate <= 0.0 or not math.isfinite(learning_rate):
-            raise ValueError("transition lifetime policy learning rate must be positive")
+            raise ValueError(
+                "transition lifetime policy learning rate must be positive"
+            )
         self.context_width = int(context_width)
         self.hidden_width = int(hidden_width)
         self.learning_rate = float(learning_rate)
@@ -2683,7 +2692,6 @@ class ExternalTransitionModelLifetimePolicy(nn.Module):
         return policy
 
 
-
 @dataclass(frozen=True)
 class ExternalTransitionModelGrowthReceipt:
     """Auditable result of verifier-gated external model-bank growth."""
@@ -2728,17 +2736,23 @@ class ExternalTransitionModelEvictionReceipt:
     def validate(self) -> ExternalTransitionModelEvictionReceipt:
         if self.schema != EXTERNAL_TRANSITION_MODEL_EVICTION_SCHEMA:
             raise ValueError("unsupported transition-model eviction schema")
-        if min(
-            self.evicted_index,
-            self.source_context_count,
-            self.destination_context_count,
-            self.physical_models_before,
-            self.physical_models_after,
-        ) < 0:
+        if (
+            min(
+                self.evicted_index,
+                self.source_context_count,
+                self.destination_context_count,
+                self.physical_models_before,
+                self.physical_models_after,
+            )
+            < 0
+        ):
             raise ValueError("transition-model eviction counts are invalid")
         if self.evicted_slot_id is not None and self.evicted_slot_id < 0:
             raise ValueError("transition-model eviction slot ID is invalid")
-        if self.accepted and self.destination_context_count != self.source_context_count - 1:
+        if (
+            self.accepted
+            and self.destination_context_count != self.source_context_count - 1
+        ):
             raise ValueError("accepted transition-model eviction count is invalid")
         if not isinstance(self.reason, str) or not self.reason:
             raise ValueError("transition-model eviction receipt reason is missing")
@@ -2797,18 +2811,23 @@ class ExternalTransitionModelConsolidationReceipt:
     def validate(self) -> ExternalTransitionModelConsolidationReceipt:
         if self.schema != EXTERNAL_TRANSITION_MODEL_CONSOLIDATION_SCHEMA:
             raise ValueError("unsupported transition-model consolidation schema")
-        if min(
-            self.first,
-            self.second,
-            self.context_count,
-            self.physical_models_before,
-            self.physical_models_after,
-        ) < 0:
+        if (
+            min(
+                self.first,
+                self.second,
+                self.context_count,
+                self.physical_models_before,
+                self.physical_models_after,
+            )
+            < 0
+        ):
             raise ValueError("transition-model consolidation counts are invalid")
         if self.first == self.second:
             raise ValueError("transition-model consolidation slots must differ")
         if not math.isfinite(self.max_heldout_difference) and self.accepted:
-            raise ValueError("accepted transition-model consolidation difference is invalid")
+            raise ValueError(
+                "accepted transition-model consolidation difference is invalid"
+            )
         if self.accepted and self.physical_models_after >= self.physical_models_before:
             raise ValueError("accepted consolidation did not reduce physical models")
         if not isinstance(self.reason, str) or not self.reason:
@@ -2833,7 +2852,15 @@ class ExternalTransitionModelCompressionReceipt:
     def validate(self) -> ExternalTransitionModelCompressionReceipt:
         if self.schema != EXTERNAL_TRANSITION_MODEL_COMPRESSION_SCHEMA:
             raise ValueError("unsupported transition-model compression schema")
-        if min(self.source_bytes, self.compressed_bytes, self.context_count, self.physical_models) < 0:
+        if (
+            min(
+                self.source_bytes,
+                self.compressed_bytes,
+                self.context_count,
+                self.physical_models,
+            )
+            < 0
+        ):
             raise ValueError("transition-model compression counts are invalid")
         if self.accepted and self.compressed_bytes >= self.source_bytes:
             raise ValueError("accepted compression did not reduce storage bytes")
@@ -2856,7 +2883,9 @@ class ExternalTransitionModelCompressionSelection:
 
     def validate(self) -> ExternalTransitionModelCompressionSelection:
         if self.schema != EXTERNAL_TRANSITION_MODEL_COMPRESSION_SELECTION_SCHEMA:
-            raise ValueError("unsupported transition-model compression selection schema")
+            raise ValueError(
+                "unsupported transition-model compression selection schema"
+            )
         if not self.receipts:
             raise ValueError("compression selection has no candidate receipts")
         if self.accepted:
@@ -3107,7 +3136,10 @@ class ExternalTransitionContextEncoder(nn.Module):
             raise ValueError("prefix and full contexts have invalid rank")
         if prefix_contexts.shape[0] != full_contexts.shape[0]:
             raise ValueError("prefix and full context regime counts differ")
-        if prefix_contexts.shape[1] < 1 or prefix_contexts.shape[2] != full_contexts.shape[1]:
+        if (
+            prefix_contexts.shape[1] < 1
+            or prefix_contexts.shape[2] != full_contexts.shape[1]
+        ):
             raise ValueError("prefix and full context widths differ")
         if prefix_contexts.shape[0] < 2:
             raise ValueError("prefix alignment needs at least two regimes")
@@ -3121,14 +3153,18 @@ class ExternalTransitionContextEncoder(nn.Module):
         prefixes = nn.functional.normalize(prefix_contexts, dim=-1)
         full = nn.functional.normalize(full_contexts, dim=-1)
         regime_count, prefix_count, _width = prefixes.shape
-        logits = prefixes.reshape(regime_count * prefix_count, -1) @ full.transpose(0, 1)
+        logits = prefixes.reshape(regime_count * prefix_count, -1) @ full.transpose(
+            0, 1
+        )
         logits = logits / temperature
         labels = torch.arange(regime_count, device=logits.device).repeat_interleave(
             prefix_count
         )
         prefix_to_full = nn.functional.cross_entropy(logits, labels)
 
-        reverse_logits = full @ prefixes.reshape(regime_count * prefix_count, -1).transpose(0, 1)
+        reverse_logits = full @ prefixes.reshape(
+            regime_count * prefix_count, -1
+        ).transpose(0, 1)
         reverse_logits = reverse_logits / temperature
         positive_mask = torch.zeros_like(reverse_logits, dtype=torch.bool)
         for regime in range(regime_count):
@@ -3218,9 +3254,7 @@ class ExternalTransitionRouteQueryProposal:
     def validate(self) -> ExternalTransitionRouteQueryProposal:
         if self.schema != EXTERNAL_TRANSITION_ROUTE_QUERY_SCHEMA:
             raise ValueError("unsupported transition route-query schema")
-        if self.scores.ndim != 1 or self.scores.shape[0] != len(
-            self.eligible_slot_ids
-        ):
+        if self.scores.ndim != 1 or self.scores.shape[0] != len(self.eligible_slot_ids):
             raise ValueError("transition route-query scores are misaligned")
         if not bool(torch.isfinite(self.scores).all()):
             raise ValueError("transition route-query scores are not finite")
@@ -3267,7 +3301,9 @@ class ExternalTransitionRouteMemory:
         if width < 1:
             raise ValueError("transition route-memory width must be positive")
         if max_prototypes_per_slot < 1:
-            raise ValueError("transition route-memory prototype budget must be positive")
+            raise ValueError(
+                "transition route-memory prototype budget must be positive"
+            )
         if not -1.0 <= merge_cosine <= 1.0 or not math.isfinite(merge_cosine):
             raise ValueError("transition route-memory merge cosine is invalid")
         self.width = int(width)
@@ -3512,7 +3548,9 @@ class ExternalTransitionRouteMemory:
             if not isinstance(rows, list):
                 raise TypeError("transition route-memory slot rows are invalid")
             if len(rows) > memory.max_prototypes_per_slot:
-                raise ValueError("transition route-memory slot exceeds prototype budget")
+                raise ValueError(
+                    "transition route-memory slot exceeds prototype budget"
+                )
             for row in rows:
                 if not isinstance(row, Mapping):
                     raise TypeError("transition route-memory prototype row is invalid")
@@ -3529,16 +3567,26 @@ class ExternalTransitionRouteMemory:
                     atol=1e-5,
                     rtol=1e-5,
                 ):
-                    raise ValueError("transition route-memory prototype is not normalized")
+                    raise ValueError(
+                        "transition route-memory prototype is not normalized"
+                    )
                 normalized = prototype.detach().contiguous()
                 count = row.get("count")
                 if not isinstance(count, int) or isinstance(count, bool) or count < 1:
-                    raise ValueError("transition route-memory prototype count is invalid")
+                    raise ValueError(
+                        "transition route-memory prototype count is invalid"
+                    )
                 memory._prototypes[slot_id].append(normalized)
                 memory._counts[slot_id].append(count)
             dropped_count = dropped.get(str(slot_id), 0)
-            if not isinstance(dropped_count, int) or isinstance(dropped_count, bool) or dropped_count < 0:
-                raise ValueError("transition route-memory dropped-query count is invalid")
+            if (
+                not isinstance(dropped_count, int)
+                or isinstance(dropped_count, bool)
+                or dropped_count < 0
+            ):
+                raise ValueError(
+                    "transition route-memory dropped-query count is invalid"
+                )
             memory._dropped_queries[slot_id] = dropped_count
         version = payload.get("version", 0)
         if not isinstance(version, int) or isinstance(version, bool) or version < 0:
@@ -3547,6 +3595,443 @@ class ExternalTransitionRouteMemory:
         if payload.get("sha256") != memory.digest():
             raise ValueError("transition route-memory checksum mismatch")
         return memory
+
+
+@dataclass(frozen=True)
+class ExternalSparseTransitionEvidenceProposal:
+    """Sparse-fact route proposal for partially observed transitions."""
+
+    selected_slot_id: int | None
+    scores: torch.Tensor
+    eligible_slot_ids: tuple[int, ...]
+    matched_observations: tuple[int, ...]
+    contradictory_observations: tuple[int, ...]
+    unknown_observations: tuple[int, ...]
+    reason: str
+    schema: str = EXTERNAL_TRANSITION_SPARSE_EVIDENCE_SCHEMA
+
+    def validate(self) -> ExternalSparseTransitionEvidenceProposal:
+        if self.schema != EXTERNAL_TRANSITION_SPARSE_EVIDENCE_SCHEMA:
+            raise ValueError("unsupported sparse transition-evidence schema")
+        if self.scores.ndim != 1 or self.scores.shape[0] != len(self.eligible_slot_ids):
+            raise ValueError("sparse transition-evidence scores are misaligned")
+        if not bool(torch.isfinite(self.scores).all()):
+            raise ValueError("sparse transition-evidence scores are not finite")
+        lengths = {
+            len(self.eligible_slot_ids),
+            len(self.matched_observations),
+            len(self.contradictory_observations),
+            len(self.unknown_observations),
+        }
+        if len(lengths) != 1:
+            raise ValueError("sparse transition-evidence counts are misaligned")
+        if len(set(self.eligible_slot_ids)) != len(self.eligible_slot_ids):
+            raise ValueError("sparse transition-evidence slot IDs are duplicated")
+        if self.selected_slot_id is not None and self.selected_slot_id not in (
+            self.eligible_slot_ids
+        ):
+            raise ValueError("sparse transition-evidence selected slot is ineligible")
+        if any(
+            value < 0
+            for values in (
+                self.matched_observations,
+                self.contradictory_observations,
+                self.unknown_observations,
+            )
+            for value in values
+        ):
+            raise ValueError("sparse transition-evidence counts are negative")
+        if not isinstance(self.reason, str) or not self.reason:
+            raise ValueError("sparse transition-evidence reason is missing")
+        return self
+
+
+@dataclass
+class _SparseTransitionEvidenceRecord:
+    state: torch.Tensor
+    intention: torch.Tensor
+    next_state: torch.Tensor
+    count: int = 1
+
+
+class ExternalSparseTransitionEvidenceIndex:
+    """Compact external identity evidence for incomplete transition windows.
+
+    A slot stores only unique factual input/output records, merged by noisy
+    input proximity.  A query may propose a slot when enough observed rows
+    overlap with that slot and none of the overlapping facts contradict it.
+    Unknown rows are deliberately ignored for identity, while contradictions
+    block reuse.  This is a proposal boundary: callers still own adaptation
+    and may require a stronger verifier before accepting a write.
+    """
+
+    schema = EXTERNAL_TRANSITION_SPARSE_EVIDENCE_SCHEMA
+
+    def __init__(
+        self,
+        state_width: int,
+        intention_width: int,
+        *,
+        input_match_tolerance: float = 0.01,
+        output_match_tolerance: float = 0.01,
+        minimum_matches: int = 2,
+        minimum_match_fraction: float = 0.25,
+    ) -> None:
+        if min(state_width, intention_width) < 1:
+            raise ValueError("sparse transition-evidence dimensions are invalid")
+        if input_match_tolerance < 0.0 or output_match_tolerance < 0.0:
+            raise ValueError("sparse transition-evidence tolerances are invalid")
+        if minimum_matches < 1:
+            raise ValueError(
+                "sparse transition-evidence minimum matches must be positive"
+            )
+        if not 0.0 < minimum_match_fraction <= 1.0:
+            raise ValueError(
+                "sparse transition-evidence match fraction must lie in (0, 1]"
+            )
+        self.state_width = int(state_width)
+        self.intention_width = int(intention_width)
+        self.input_match_tolerance = float(input_match_tolerance)
+        self.output_match_tolerance = float(output_match_tolerance)
+        self.minimum_matches = int(minimum_matches)
+        self.minimum_match_fraction = float(minimum_match_fraction)
+        self._records: dict[int, list[_SparseTransitionEvidenceRecord]] = {}
+        self._version = 0
+
+    @staticmethod
+    def _validate_slot_id(slot_id: int) -> None:
+        if not isinstance(slot_id, int) or isinstance(slot_id, bool) or slot_id < 0:
+            raise ValueError("sparse transition-evidence slot ID is invalid")
+
+    @property
+    def slot_ids(self) -> tuple[int, ...]:
+        return tuple(sorted(self._records))
+
+    @property
+    def version(self) -> int:
+        return self._version
+
+    @property
+    def record_count(self) -> int:
+        return sum(len(records) for records in self._records.values())
+
+    def slot_record_count(self, slot_id: int) -> int:
+        self._validate_slot_id(slot_id)
+        if slot_id not in self._records:
+            raise KeyError(f"unknown sparse transition-evidence slot: {slot_id}")
+        return len(self._records[slot_id])
+
+    def observation_for_slot(
+        self,
+        slot_id: int,
+    ) -> ExternalTransitionObservation:
+        """Read the compact unique-fact view for caller-owned consolidation."""
+
+        self._validate_slot_id(slot_id)
+        records = self._records.get(slot_id)
+        if not records:
+            raise ValueError("sparse transition-evidence slot has no records")
+        return ExternalTransitionObservation(
+            state=torch.stack([record.state for record in records]),
+            intention=torch.stack([record.intention for record in records]),
+            next_state=torch.stack([record.next_state for record in records]),
+            confidence=torch.ones(len(records), dtype=torch.float32),
+        ).validate(
+            state_width=self.state_width,
+            intention_width=self.intention_width,
+        )
+
+    def register_slot(self, slot_id: int) -> None:
+        self._validate_slot_id(slot_id)
+        if slot_id not in self._records:
+            self._records[slot_id] = []
+            self._version += 1
+
+    def unregister_slot(self, slot_id: int) -> None:
+        self._validate_slot_id(slot_id)
+        if slot_id in self._records:
+            del self._records[slot_id]
+            self._version += 1
+
+    def _validate_observation(
+        self, observation: ExternalTransitionObservation
+    ) -> ExternalTransitionObservation:
+        return observation.validate(
+            state_width=self.state_width,
+            intention_width=self.intention_width,
+        )
+
+    @staticmethod
+    def _row_input(record: _SparseTransitionEvidenceRecord) -> torch.Tensor:
+        return torch.cat((record.state, record.intention), dim=-1)
+
+    def _nearest_record(
+        self,
+        records: Sequence[_SparseTransitionEvidenceRecord],
+        state: torch.Tensor,
+        intention: torch.Tensor,
+    ) -> tuple[int | None, float]:
+        if not records:
+            return None, float("inf")
+        query = torch.cat((state, intention), dim=-1)
+        stored = torch.stack([self._row_input(record) for record in records])
+        distances = (stored - query.unsqueeze(0)).square().mean(dim=-1)
+        index = int(distances.argmin())
+        return index, float(distances[index])
+
+    def record(
+        self,
+        slot_id: int,
+        observation: ExternalTransitionObservation,
+    ) -> int:
+        """Merge verified evidence into one external slot-local index."""
+
+        self._validate_slot_id(slot_id)
+        self._validate_observation(observation)
+        if slot_id not in self._records:
+            self.register_slot(slot_id)
+        records = self._records[slot_id]
+        added = 0
+        for row in range(observation.state.shape[0]):
+            state = observation.state[row].detach().to("cpu", dtype=torch.float32)
+            intention = (
+                observation.intention[row].detach().to("cpu", dtype=torch.float32)
+            )
+            next_state = (
+                observation.next_state[row].detach().to("cpu", dtype=torch.float32)
+            )
+            index, distance = self._nearest_record(records, state, intention)
+            if index is None or distance > self.input_match_tolerance:
+                records.append(
+                    _SparseTransitionEvidenceRecord(
+                        state=state.clone(),
+                        intention=intention.clone(),
+                        next_state=next_state.clone(),
+                    )
+                )
+                added += 1
+                continue
+            existing = records[index]
+            count = existing.count
+            weight = float(count + 1)
+            existing.state = (existing.state * count + state) / weight
+            existing.intention = (existing.intention * count + intention) / weight
+            existing.next_state = (existing.next_state * count + next_state) / weight
+            existing.count = count + 1
+        self._version += 1
+        return added
+
+    def propose(
+        self,
+        observation: ExternalTransitionObservation,
+        slot_ids: Sequence[int],
+    ) -> ExternalSparseTransitionEvidenceProposal:
+        """Propose a slot from overlapping non-contradictory sparse facts."""
+
+        self._validate_observation(observation)
+        eligible = tuple(int(slot_id) for slot_id in slot_ids)
+        if len(set(eligible)) != len(eligible):
+            raise ValueError("sparse transition-evidence slot IDs are duplicated")
+        for slot_id in eligible:
+            self._validate_slot_id(slot_id)
+        if not eligible:
+            return ExternalSparseTransitionEvidenceProposal(
+                selected_slot_id=None,
+                scores=torch.empty(0),
+                eligible_slot_ids=(),
+                matched_observations=(),
+                contradictory_observations=(),
+                unknown_observations=(),
+                reason="no committed slots are available",
+            ).validate()
+        matched_values: list[int] = []
+        contradictory_values: list[int] = []
+        unknown_values: list[int] = []
+        scores: list[float] = []
+        for slot_id in eligible:
+            records = self._records.get(slot_id, ())
+            matched = 0
+            contradictory = 0
+            unknown = 0
+            for row in range(observation.state.shape[0]):
+                index, input_distance = self._nearest_record(
+                    records,
+                    observation.state[row].detach().to("cpu", dtype=torch.float32),
+                    observation.intention[row].detach().to("cpu", dtype=torch.float32),
+                )
+                if index is None or input_distance > self.input_match_tolerance:
+                    unknown += 1
+                    continue
+                output_distance = float(
+                    (
+                        records[index].next_state
+                        - observation.next_state[row]
+                        .detach()
+                        .to("cpu", dtype=torch.float32)
+                    )
+                    .square()
+                    .mean()
+                )
+                if output_distance <= self.output_match_tolerance:
+                    matched += 1
+                else:
+                    contradictory += 1
+            matched_values.append(matched)
+            contradictory_values.append(contradictory)
+            unknown_values.append(unknown)
+            scores.append(float(matched - 2 * contradictory))
+        selected: int | None = None
+        candidates = [
+            index
+            for index, (matched, contradictory, unknown) in enumerate(
+                zip(
+                    matched_values,
+                    contradictory_values,
+                    unknown_values,
+                    strict=True,
+                )
+            )
+            if matched >= self.minimum_matches
+            and matched / observation.state.shape[0] >= self.minimum_match_fraction
+            and contradictory == 0
+        ]
+        if candidates:
+            selected = max(
+                candidates,
+                key=lambda index: (
+                    matched_values[index],
+                    -unknown_values[index],
+                    -index,
+                ),
+            )
+        return ExternalSparseTransitionEvidenceProposal(
+            selected_slot_id=(None if selected is None else eligible[selected]),
+            scores=torch.tensor(scores, dtype=torch.float32),
+            eligible_slot_ids=eligible,
+            matched_observations=tuple(matched_values),
+            contradictory_observations=tuple(contradictory_values),
+            unknown_observations=tuple(unknown_values),
+            reason=(
+                "overlapping non-contradictory sparse facts proposed a slot"
+                if selected is not None
+                else "no slot had enough non-contradictory sparse overlap"
+            ),
+        ).validate()
+
+    def configuration(self) -> dict[str, object]:
+        return {
+            "schema": self.schema,
+            "state_width": self.state_width,
+            "intention_width": self.intention_width,
+            "input_match_tolerance": self.input_match_tolerance,
+            "output_match_tolerance": self.output_match_tolerance,
+            "minimum_matches": self.minimum_matches,
+            "minimum_match_fraction": self.minimum_match_fraction,
+            "behavior": "compact_slot_local_sparse_fact_overlap_v1",
+            "storage": "unique_input_records_with_running_means_v1",
+        }
+
+    def state_payload(self) -> dict[str, object]:
+        slots = {
+            str(slot_id): [
+                {
+                    "state": record.state.tolist(),
+                    "intention": record.intention.tolist(),
+                    "next_state": record.next_state.tolist(),
+                    "count": record.count,
+                }
+                for record in self._records[slot_id]
+            ]
+            for slot_id in sorted(self._records)
+        }
+        payload: dict[str, object] = {
+            "schema": self.schema,
+            "configuration": self.configuration(),
+            "slots": slots,
+            "version": self._version,
+            "sha256": "",
+        }
+        digest = hashlib.sha256()
+        digest.update(self.schema.encode("utf-8"))
+        digest.update(repr(self.configuration()).encode("utf-8"))
+        digest.update(str(self._version).encode("utf-8"))
+        for slot_id in sorted(self._records):
+            digest.update(str(slot_id).encode("utf-8"))
+            for record in self._records[slot_id]:
+                digest.update(str(record.count).encode("utf-8"))
+                for value in (record.state, record.intention, record.next_state):
+                    digest.update(value.contiguous().numpy().tobytes())
+        payload["sha256"] = digest.hexdigest()
+        return payload
+
+    def digest(self) -> str:
+        return str(self.state_payload()["sha256"])
+
+    @classmethod
+    def from_payload(
+        cls,
+        payload: Mapping[str, Any],
+    ) -> ExternalSparseTransitionEvidenceIndex:
+        if not isinstance(payload, Mapping) or payload.get("schema") != cls.schema:
+            raise ValueError("unsupported sparse transition-evidence payload")
+        configuration = payload.get("configuration")
+        slots = payload.get("slots")
+        if not isinstance(configuration, Mapping) or not isinstance(slots, Mapping):
+            raise TypeError("sparse transition-evidence payload is incomplete")
+        index = cls(
+            int(configuration["state_width"]),
+            int(configuration["intention_width"]),
+            input_match_tolerance=float(configuration["input_match_tolerance"]),
+            output_match_tolerance=float(configuration["output_match_tolerance"]),
+            minimum_matches=int(configuration["minimum_matches"]),
+            minimum_match_fraction=float(configuration["minimum_match_fraction"]),
+        )
+        for raw_slot_id, rows in slots.items():
+            slot_id = int(raw_slot_id)
+            index.register_slot(slot_id)
+            if not isinstance(rows, list):
+                raise TypeError("sparse transition-evidence slot rows are invalid")
+            for row in rows:
+                if not isinstance(row, Mapping):
+                    raise TypeError("sparse transition-evidence record is invalid")
+                state = torch.tensor(row.get("state"), dtype=torch.float32)
+                intention = torch.tensor(row.get("intention"), dtype=torch.float32)
+                next_state = torch.tensor(row.get("next_state"), dtype=torch.float32)
+                _validate_tensor(
+                    state, name="sparse evidence state", ndim=1, width=index.state_width
+                )
+                _validate_tensor(
+                    intention,
+                    name="sparse evidence intention",
+                    ndim=1,
+                    width=index.intention_width,
+                )
+                _validate_tensor(
+                    next_state,
+                    name="sparse evidence next state",
+                    ndim=1,
+                    width=index.state_width,
+                )
+                count = row.get("count", 1)
+                if not isinstance(count, int) or isinstance(count, bool) or count < 1:
+                    raise ValueError(
+                        "sparse transition-evidence record count is invalid"
+                    )
+                index._records[slot_id].append(
+                    _SparseTransitionEvidenceRecord(
+                        state=state,
+                        intention=intention,
+                        next_state=next_state,
+                        count=count,
+                    )
+                )
+        version = payload.get("version", 0)
+        if not isinstance(version, int) or isinstance(version, bool) or version < 0:
+            raise ValueError("sparse transition-evidence version is invalid")
+        index._version = version
+        if payload.get("sha256") != index.digest():
+            raise ValueError("sparse transition-evidence checksum mismatch")
+        return index
 
 
 class ExternalTransitionRouteQuery(nn.Module):
@@ -3602,9 +4087,7 @@ class ExternalTransitionRouteQuery(nn.Module):
         self.route_width = None if route_width is None else int(route_width)
         self.learned_scorer = learned_scorer
         self.route_memory = route_memory
-        self._slot_adapters: dict[
-            int, ExternalTransitionContextAddressAdapter
-        ] = {}
+        self._slot_adapters: dict[int, ExternalTransitionContextAddressAdapter] = {}
         self._slot_route_keys: dict[int, torch.Tensor] = {}
 
     def configuration(self) -> dict[str, object]:
@@ -3619,9 +4102,7 @@ class ExternalTransitionRouteQuery(nn.Module):
                 else self.learned_scorer.configuration()
             ),
             "route_memory": (
-                None
-                if self.route_memory is None
-                else self.route_memory.configuration()
+                None if self.route_memory is None else self.route_memory.configuration()
             ),
             "feature": (
                 "context_key_v1"
@@ -3754,8 +4235,10 @@ class ExternalTransitionRouteQuery(nn.Module):
             self._slot_route_keys[slot_id] = torch.nn.functional.normalize(
                 route_key.detach().clone(), dim=-1
             )
-        self._slot_adapters[slot_id] = ExternalTransitionContextAddressAdapter.from_payload(
-            address_adapter.state_payload()
+        self._slot_adapters[slot_id] = (
+            ExternalTransitionContextAddressAdapter.from_payload(
+                address_adapter.state_payload()
+            )
         )
 
     def unregister_slot(self, slot_id: int) -> None:
@@ -3842,8 +4325,7 @@ class ExternalTransitionRouteQuery(nn.Module):
                 None
                 if len(slot_ids) == 1
                 else float(
-                    (learned_scores[ordered[0]] - learned_scores[ordered[1]])
-                    .detach()
+                    (learned_scores[ordered[0]] - learned_scores[ordered[1]]).detach()
                 )
             )
             selected_slot_id = (
@@ -3887,13 +4369,9 @@ class ExternalTransitionRouteQuery(nn.Module):
                 query = fallback_query.to(observation.state)
                 key = normalized_contexts[row]
             else:
-                query = adapter.encode_observation(observation).to(
-                    observation.state
-                )
+                query = adapter.encode_observation(observation).to(observation.state)
                 key = normalized_contexts[row]
-            scores.append(
-                (key * torch.nn.functional.normalize(query, dim=-1)).sum()
-            )
+            scores.append((key * torch.nn.functional.normalize(query, dim=-1)).sum())
         score_tensor = torch.stack(scores)
         ordered = torch.argsort(score_tensor, descending=True, stable=True)
         best = int(ordered[0])
@@ -3933,9 +4411,7 @@ class ExternalTransitionRouteQuery(nn.Module):
             },
             "learned_scorer": self._learned_scorer_payload(),
             "route_memory": (
-                None
-                if self.route_memory is None
-                else self.route_memory.state_payload()
+                None if self.route_memory is None else self.route_memory.state_payload()
             ),
             "sha256": "",
         }
@@ -4216,9 +4692,12 @@ class ExternalTransitionContextAddressAdapter(nn.Module):
         anchor_values = self._validate_anchors(anchors).to(observation.state)
         left = self.encode_observation(observation)
         right = self.encode_observation(self._perturbed_view(observation))
-        stability = 1.0 - torch.nn.functional.cosine_similarity(
-            left.unsqueeze(0), right.unsqueeze(0), dim=-1
-        ).mean()
+        stability = (
+            1.0
+            - torch.nn.functional.cosine_similarity(
+                left.unsqueeze(0), right.unsqueeze(0), dim=-1
+            ).mean()
+        )
         if anchor_values.shape[0] == 0:
             separation = left.new_zeros(())
         else:
@@ -4326,6 +4805,7 @@ class ExternalOnlineTransitionContextResult:
             raise ValueError("unsupported online transition-context result schema")
         if self.status not in {
             "matched",
+            "sparse_matched",
             "continuation",
             "conflict",
             "staged",
@@ -4422,9 +4902,12 @@ class ExternalOnlineTransitionContextRouter:
         evidence_gate_min_evidence: int = 0,
         address_adapter: ExternalTransitionContextAddressAdapter | None = None,
         route_query: ExternalTransitionRouteQuery | None = None,
+        sparse_evidence: ExternalSparseTransitionEvidenceIndex | None = None,
+        sparse_evidence_requires_full_capacity: bool = True,
         prior_selection_probe: Callable[
             [nn.Module, nn.Module, ExternalTransitionObservation], tuple[float, float]
-        ] | None = None,
+        ]
+        | None = None,
         prior_selection_probe_updates: int = 0,
     ) -> None:
         if (
@@ -4442,6 +4925,11 @@ class ExternalOnlineTransitionContextRouter:
             raise ValueError("router address adapter and bank widths differ")
         if route_query is not None and route_query.context_width != bank.context_width:
             raise ValueError("router route query and bank widths differ")
+        if sparse_evidence is not None and (
+            sparse_evidence.state_width != bank.state_width
+            or sparse_evidence.intention_width != bank.intention_width
+        ):
+            raise ValueError("router sparse evidence and bank widths differ")
         if match_tolerance < 0.0:
             raise ValueError("online context match tolerance cannot be negative")
         if match_margin < 0.0:
@@ -4467,11 +4955,11 @@ class ExternalOnlineTransitionContextRouter:
         if provisional_match_margin < 0.0:
             raise ValueError("provisional context match margin cannot be negative")
         if ambiguous_evidence_policy not in {"discard", "quarantine"}:
-            raise ValueError(
-                "ambiguous evidence policy must be discard or quarantine"
-            )
+            raise ValueError("ambiguous evidence policy must be discard or quarantine")
         if quarantine_capacity < 0:
-            raise ValueError("ambiguous evidence quarantine capacity cannot be negative")
+            raise ValueError(
+                "ambiguous evidence quarantine capacity cannot be negative"
+            )
         if ambiguous_evidence_policy == "quarantine" and quarantine_capacity < 1:
             raise ValueError(
                 "quarantine policy requires a positive quarantine capacity"
@@ -4518,7 +5006,10 @@ class ExternalOnlineTransitionContextRouter:
             raise ValueError("candidate model families must be unique and nonempty")
         if any(family not in allowed_families for family in families):
             raise ValueError("candidate model family is unsupported")
-        if len(families) > 1 and bank.model_family != EXTERNAL_TRANSITION_MIXED_MODEL_FAMILY:
+        if (
+            len(families) > 1
+            and bank.model_family != EXTERNAL_TRANSITION_MIXED_MODEL_FAMILY
+        ):
             raise ValueError("multiple candidate families require a mixed model bank")
         self.bank = bank
         self.context_encoder = context_encoder
@@ -4547,6 +5038,10 @@ class ExternalOnlineTransitionContextRouter:
         self.evidence_gate_min_evidence = int(evidence_gate_min_evidence)
         self.address_adapter = address_adapter
         self.route_query = route_query
+        self.sparse_evidence = sparse_evidence
+        self.sparse_evidence_requires_full_capacity = bool(
+            sparse_evidence_requires_full_capacity
+        )
         self.prior_selection_probe = prior_selection_probe
         self.prior_selection_probe_updates = int(prior_selection_probe_updates)
         self.candidate_model_families = families
@@ -4556,6 +5051,9 @@ class ExternalOnlineTransitionContextRouter:
         self._conflict_windows = 0
         self._provisional_candidates: list[_ProvisionalTransitionCandidate] = []
         self._ambiguous_quarantine: list[ExternalTransitionObservation] = []
+        if self.sparse_evidence is not None:
+            for slot_id in self.bank.slot_ids:
+                self.sparse_evidence.register_slot(slot_id)
 
     @property
     def pending_observations(self) -> int:
@@ -4566,8 +5064,7 @@ class ExternalOnlineTransitionContextRouter:
         """Return the number of unresolved ambiguous rows held externally."""
 
         return sum(
-            observation.state.shape[0]
-            for observation in self._ambiguous_quarantine
+            observation.state.shape[0] for observation in self._ambiguous_quarantine
         )
 
     @property
@@ -4645,11 +5142,22 @@ class ExternalOnlineTransitionContextRouter:
             "candidate_model_families": list(self.candidate_model_families),
             "routing": "factual_prediction_error_then_bound_continuation_v2",
             "route_query": (
-                None
-                if self.route_query is None
-                else self.route_query.configuration()
+                None if self.route_query is None else self.route_query.configuration()
             ),
             "route_query_role": "proposal_only_factual_verification_required_v1",
+            "sparse_evidence": (
+                None
+                if self.sparse_evidence is None
+                else self.sparse_evidence.configuration()
+            ),
+            "sparse_evidence_role": (
+                "disabled"
+                if self.sparse_evidence is None
+                else "overlap_proposal_unknown_rows_ignored_contradictions_block_v1"
+            ),
+            "sparse_evidence_requires_full_capacity": (
+                self.sparse_evidence_requires_full_capacity
+            ),
             "prior_selection": (
                 "verified_transfer_vs_fresh_v1"
                 if self.prior_selection_probe is not None
@@ -4706,6 +5214,8 @@ class ExternalOnlineTransitionContextRouter:
         receipt = self.bank.evict_verified(index, retention_probe)
         if receipt.accepted:
             self._refresh_active_slot()
+            if self.sparse_evidence is not None and receipt.evicted_slot_id is not None:
+                self.sparse_evidence.unregister_slot(receipt.evicted_slot_id)
             if self.route_query is not None and receipt.evicted_slot_id is not None:
                 self.route_query.unregister_slot(receipt.evicted_slot_id)
         return receipt
@@ -4736,6 +5246,8 @@ class ExternalOnlineTransitionContextRouter:
         )
         if receipt is not None and receipt.accepted:
             self._refresh_active_slot()
+            if self.sparse_evidence is not None and receipt.evicted_slot_id is not None:
+                self.sparse_evidence.unregister_slot(receipt.evicted_slot_id)
             if self.route_query is not None and receipt.evicted_slot_id is not None:
                 self.route_query.unregister_slot(receipt.evicted_slot_id)
         return proposal, receipt
@@ -4760,6 +5272,8 @@ class ExternalOnlineTransitionContextRouter:
         )
         if receipt is not None and receipt.accepted:
             self._refresh_active_slot()
+            if self.sparse_evidence is not None and receipt.evicted_slot_id is not None:
+                self.sparse_evidence.unregister_slot(receipt.evicted_slot_id)
             if self.route_query is not None and receipt.evicted_slot_id is not None:
                 self.route_query.unregister_slot(receipt.evicted_slot_id)
         return proposal, receipt
@@ -4774,6 +5288,8 @@ class ExternalOnlineTransitionContextRouter:
         receipt = self.bank.evict_verified_id(slot_id, retention_probe)
         if receipt.accepted:
             self._refresh_active_slot()
+            if self.sparse_evidence is not None:
+                self.sparse_evidence.unregister_slot(slot_id)
             if self.route_query is not None and receipt.evicted_slot_id is not None:
                 self.route_query.unregister_slot(receipt.evicted_slot_id)
         return receipt
@@ -4790,9 +5306,7 @@ class ExternalOnlineTransitionContextRouter:
 
     def _set_active_slot(self, index: int | None) -> None:
         self._active_slot = index
-        self._active_slot_id = (
-            None if index is None else self.bank.slot_id_at(index)
-        )
+        self._active_slot_id = None if index is None else self.bank.slot_id_at(index)
 
     def _refresh_active_slot(self) -> None:
         if self._active_slot_id is None:
@@ -4905,6 +5419,7 @@ class ExternalOnlineTransitionContextRouter:
                 self.bank.slot_id_at(index),
                 route_query_vector,
             )
+        self._record_sparse_evidence(index, observation)
         return index, error, margin, context
 
     def _slot_error(
@@ -4919,9 +5434,33 @@ class ExternalOnlineTransitionContextRouter:
             observation.intention,
             context_batch,
         )
-        return float(
-            (prediction - observation.next_state).square().mean().detach()
-        )
+        return float((prediction - observation.next_state).square().mean().detach())
+
+    def _record_sparse_evidence(
+        self,
+        index: int,
+        observation: ExternalTransitionObservation,
+    ) -> None:
+        if self.sparse_evidence is None:
+            return
+        slot_id = self.bank.slot_id_at(index)
+        self.sparse_evidence.register_slot(slot_id)
+        self.sparse_evidence.record(slot_id, observation)
+
+    def _sparse_match(
+        self,
+        observation: ExternalTransitionObservation,
+    ) -> ExternalSparseTransitionEvidenceProposal | None:
+        if self.sparse_evidence is None or self.bank.context_count == 0:
+            return None
+        if (
+            self.sparse_evidence_requires_full_capacity
+            and self.max_contexts is not None
+            and self.bank.context_count < self.max_contexts
+        ):
+            return None
+        proposal = self.sparse_evidence.propose(observation, self.bank.slot_ids)
+        return proposal if proposal.selected_slot_id is not None else None
 
     def _pending_result(
         self,
@@ -4961,7 +5500,9 @@ class ExternalOnlineTransitionContextRouter:
             observation,
             self.bank.contexts,
         )
-        return candidate_adapter.encode_observation(observation).detach(), candidate_adapter
+        return candidate_adapter.encode_observation(
+            observation
+        ).detach(), candidate_adapter
 
     def _stage_candidate(
         self,
@@ -4992,11 +5533,13 @@ class ExternalOnlineTransitionContextRouter:
             prior_family = self.bank.model_family_at(prior_index)
             primary_family = self.candidate_model_families[0]
             if primary_family == prior_family:
-                prior_selection, selected_model = self.bank.select_verified_transfer_prior(
-                    prior_index,
-                    observation,
-                    self.prior_selection_probe,
-                    probe_updates=self.prior_selection_probe_updates,
+                prior_selection, selected_model = (
+                    self.bank.select_verified_transfer_prior(
+                        prior_index,
+                        observation,
+                        self.prior_selection_probe,
+                        probe_updates=self.prior_selection_probe_updates,
+                    )
                 )
                 models[primary_family].load_state_dict(selected_model.state_dict())
         elif prior_index is not None:
@@ -5067,9 +5610,7 @@ class ExternalOnlineTransitionContextRouter:
         observation: ExternalTransitionObservation,
     ) -> float:
         prediction = model(observation.state, observation.intention)
-        return float(
-            (prediction - observation.next_state).square().mean().detach()
-        )
+        return float((prediction - observation.next_state).square().mean().detach())
 
     def _candidate_error(
         self,
@@ -5086,8 +5627,10 @@ class ExternalOnlineTransitionContextRouter:
                 self.evidence_evaluator is not None
                 and candidate.evidence_count >= self.evidence_gate_min_evidence
             ):
-                context = candidate.context.to(prediction).unsqueeze(0).expand(
-                    observation.state.shape[0], -1
+                context = (
+                    candidate.context.to(prediction)
+                    .unsqueeze(0)
+                    .expand(observation.state.shape[0], -1)
                 )
                 hits = torch.ones(
                     observation.state.shape[0],
@@ -5163,14 +5706,9 @@ class ExternalOnlineTransitionContextRouter:
                 key=lambda index: (candidate_errors[index], index),
             )
             ordered = sorted(candidate_errors)
-            margin = (
-                float("inf")
-                if len(ordered) == 1
-                else ordered[1] - ordered[0]
-            )
+            margin = float("inf") if len(ordered) == 1 else ordered[1] - ordered[0]
             if (
-                candidate_errors[best_index]
-                <= self.provisional_continuation_tolerance
+                candidate_errors[best_index] <= self.provisional_continuation_tolerance
                 and margin >= self.provisional_match_margin
             ):
                 candidate = self._provisional_candidates[best_index]
@@ -5223,13 +5761,40 @@ class ExternalOnlineTransitionContextRouter:
                 context_width=self.bank.context_width,
             )
 
-        if self._active_slot is not None and self._active_slot < self.bank.context_count:
+        sparse_match = self._sparse_match(bundle)
+        if sparse_match is not None and sparse_match.selected_slot_id is not None:
+            index = self.bank.physical_index_for_slot_id(sparse_match.selected_slot_id)
+            context = self.bank.context_at(index)
+            error = self._slot_error(index, bundle)
+            self._pending.clear()
+            self._set_active_slot(index)
+            self._conflict_windows = 0
+            self._record_sparse_evidence(index, bundle)
+            return ExternalOnlineTransitionContextResult(
+                status="sparse_matched",
+                slot_index=index,
+                context=context,
+                pending_observations=0,
+                prediction_error=error,
+                observation=bundle,
+                stable_slot_id=self.bank.slot_id_at(index),
+            ).validate(
+                state_width=self.bank.state_width,
+                intention_width=self.bank.intention_width,
+                context_width=self.bank.context_width,
+            )
+
+        if (
+            self._active_slot is not None
+            and self._active_slot < self.bank.context_count
+        ):
             active_error = self._slot_error(self._active_slot, bundle)
             active_context = self.bank.context_at(self._active_slot)
             if active_error <= self.continuation_tolerance:
                 index = self._active_slot
                 self._pending.clear()
                 self._conflict_windows = 0
+                self._record_sparse_evidence(index, bundle)
                 return ExternalOnlineTransitionContextResult(
                     status="continuation",
                     slot_index=index,
@@ -5288,9 +5853,7 @@ class ExternalOnlineTransitionContextRouter:
                             prediction_error=candidate_error,
                             observation=bundle,
                         )
-                    self._resolve_quarantine(
-                        anchor_candidate_index=candidate_index
-                    )
+                    self._resolve_quarantine(anchor_candidate_index=candidate_index)
                     self._pending.clear()
                     return self._staged_result(
                         bundle,
@@ -5309,8 +5872,7 @@ class ExternalOnlineTransitionContextRouter:
             if self.bank.context_count:
                 prior_index = int(
                     (
-                        self.bank.contexts
-                        @ candidate_context.to(self.bank.contexts)
+                        self.bank.contexts @ candidate_context.to(self.bank.contexts)
                     ).argmax()
                 )
             candidate_index = self._stage_candidate(
@@ -5322,7 +5884,10 @@ class ExternalOnlineTransitionContextRouter:
             self._pending.clear()
             return self._staged_result(bundle, candidate_index=candidate_index)
 
-        if self.max_contexts is not None and self.bank.context_count >= self.max_contexts:
+        if (
+            self.max_contexts is not None
+            and self.bank.context_count >= self.max_contexts
+        ):
             self._pending.clear()
             return self._pending_result(status="capacity")
 
@@ -5334,6 +5899,9 @@ class ExternalOnlineTransitionContextRouter:
             )
         before = self.bank.context_count
         index = self.bank.ensure_context(context, initialize_from=prior_index)
+        if self.sparse_evidence is not None:
+            self.sparse_evidence.register_slot(self.bank.slot_id_at(index))
+            self._record_sparse_evidence(index, bundle)
         if candidate_address_adapter is not None:
             self.address_adapter = candidate_address_adapter
         status = "admitted" if index == before else "reused"
@@ -5357,11 +5925,7 @@ class ExternalOnlineTransitionContextRouter:
     def adaptation_step(
         self,
         result: ExternalOnlineTransitionContextResult,
-        optimizer: (
-            torch.optim.Optimizer
-            | Mapping[str, torch.optim.Optimizer]
-            | None
-        ),
+        optimizer: (torch.optim.Optimizer | Mapping[str, torch.optim.Optimizer] | None),
         *,
         replay_evidence: bool = True,
     ) -> float:
@@ -5380,9 +5944,8 @@ class ExternalOnlineTransitionContextRouter:
         )
         if result.status == "staged":
             candidate_index = 0 if result.slot_index is None else result.slot_index
-            if (
-                result.observation is None
-                or not 0 <= candidate_index < len(self._provisional_candidates)
+            if result.observation is None or not 0 <= candidate_index < len(
+                self._provisional_candidates
             ):
                 return 0.0
             candidate = self._provisional_candidates[candidate_index]
@@ -5462,9 +6025,7 @@ class ExternalOnlineTransitionContextRouter:
                             lr=self.bank.adaptation_learning_rate,
                         )
                     selected_optimizer.zero_grad()
-                    deferred_evidence = self._merge_observations(
-                        resolved_after_update
-                    )
+                    deferred_evidence = self._merge_observations(resolved_after_update)
                     model.loss(deferred_evidence).backward()
                     selected_optimizer.step()
                 candidate.evidence_count += sum(
@@ -5473,17 +6034,45 @@ class ExternalOnlineTransitionContextRouter:
                 )
                 candidate.deferred_observations.clear()
             return float(primary_loss.detach())
-        if result.slot_index is None or result.context is None or result.observation is None:
+        if (
+            result.slot_index is None
+            or result.context is None
+            or result.observation is None
+        ):
             return 0.0
-        context = result.context.to(result.observation.state)
-        context_batch = context.unsqueeze(0).expand(
-            result.observation.state.shape[0], -1
-        )
+        observation = result.observation
+        if (
+            result.status == "sparse_matched"
+            and self.sparse_evidence is not None
+            and result.stable_slot_id is not None
+        ):
+            observation = self.sparse_evidence.observation_for_slot(
+                result.stable_slot_id
+            )
+        context = result.context.to(observation.state)
+        context_batch = context.unsqueeze(0).expand(observation.state.shape[0], -1)
         return self.bank.adaptation_step(
-            result.observation,
+            observation,
             context_batch,
             optimizer,
         )
+
+    def sparse_consolidation_step(
+        self,
+        slot_index: int,
+        optimizer: torch.optim.Optimizer | None,
+    ) -> float:
+        """Fit one slot from its deduplicated external sparse evidence."""
+
+        if self.sparse_evidence is None:
+            raise ValueError("sparse consolidation requires an evidence index")
+        if not 0 <= slot_index < self.bank.context_count:
+            raise IndexError("sparse consolidation slot is out of range")
+        slot_id = self.bank.slot_id_at(slot_index)
+        observation = self.sparse_evidence.observation_for_slot(slot_id)
+        context = self.bank.context_at(slot_index).to(observation.state)
+        context_batch = context.unsqueeze(0).expand(observation.state.shape[0], -1)
+        return self.bank.adaptation_step(observation, context_batch, optimizer)
 
     def promote_staged_candidate(
         self,
@@ -5509,9 +6098,7 @@ class ExternalOnlineTransitionContextRouter:
             if not isinstance(destination_capacity, int):
                 raise TypeError("destination capacity must be an integer")
             if self.bank.capacity is None:
-                raise ValueError(
-                    "destination capacity requires a bounded model bank"
-                )
+                raise ValueError("destination capacity requires a bounded model bank")
             if destination_capacity <= self.bank.capacity:
                 raise ValueError(
                     "destination capacity must exceed current model-bank capacity"
@@ -5570,9 +6157,7 @@ class ExternalOnlineTransitionContextRouter:
             prediction_tolerance=prediction_tolerance,
         )
         if not selection.accepted or selection.selected_family is None:
-            best_error = min(
-                receipt.heldout_error for receipt in selection.candidates
-            )
+            best_error = min(receipt.heldout_error for receipt in selection.candidates)
             candidate_digest = candidate.model.digest()
             return ExternalTransitionModelCandidateReceipt(
                 accepted=False,
@@ -5605,9 +6190,7 @@ class ExternalOnlineTransitionContextRouter:
 
         candidate_bank = ExternalTransitionModelBank.from_payload(self.bank.payload())
         target_capacity = (
-            self.bank.capacity
-            if destination_capacity is None
-            else destination_capacity
+            self.bank.capacity if destination_capacity is None else destination_capacity
         )
         if target_capacity is not None:
             candidate_content_before_growth = candidate_bank.content_digest()
@@ -5792,7 +6375,9 @@ class ExternalOnlineTransitionContextRouter:
             source_model_digest=str(payload["source_model_digest"]),
             selected_model_digest=str(payload["selected_model_digest"]),
             reason=str(payload["reason"]),
-            schema=str(payload.get("schema", EXTERNAL_TRANSITION_MODEL_PRIOR_SELECTION_SCHEMA)),
+            schema=str(
+                payload.get("schema", EXTERNAL_TRANSITION_MODEL_PRIOR_SELECTION_SCHEMA)
+            ),
         ).validate()
 
     def state_payload(self) -> dict[str, object]:
@@ -5812,8 +6397,7 @@ class ExternalOnlineTransitionContextRouter:
                 },
                 "evidence_count": candidate.evidence_count,
                 "observations": [
-                    self._observation_payload(row)
-                    for row in candidate.observations
+                    self._observation_payload(row) for row in candidate.observations
                 ],
                 "deferred_observations": [
                     self._observation_payload(row)
@@ -5841,14 +6425,16 @@ class ExternalOnlineTransitionContextRouter:
                 else self.address_adapter.state_payload()
             ),
             "route_query": (
+                None if self.route_query is None else self.route_query.state_payload()
+            ),
+            "sparse_evidence": (
                 None
-                if self.route_query is None
-                else self.route_query.state_payload()
+                if self.sparse_evidence is None
+                else self.sparse_evidence.state_payload()
             ),
             "pending": [self._observation_payload(row) for row in self._pending],
             "ambiguous_quarantine": [
-                self._observation_payload(row)
-                for row in self._ambiguous_quarantine
+                self._observation_payload(row) for row in self._ambiguous_quarantine
             ],
             "active_slot": self._active_slot,
             "active_slot_id": self._active_slot_id,
@@ -5865,13 +6451,13 @@ class ExternalOnlineTransitionContextRouter:
                 else first_candidate.model.state_payload()
             ),
             "provisional_model_family": (
-                None
-                if first_candidate is None
-                else first_candidate.model_family
+                None if first_candidate is None else first_candidate.model_family
             ),
             "provisional_observations": [
                 self._observation_payload(row)
-                for row in ([] if first_candidate is None else first_candidate.observations)
+                for row in (
+                    [] if first_candidate is None else first_candidate.observations
+                )
             ],
         }
 
@@ -5883,7 +6469,8 @@ class ExternalOnlineTransitionContextRouter:
         evidence_evaluator: nn.Module | None = None,
         prior_selection_probe: Callable[
             [nn.Module, nn.Module, ExternalTransitionObservation], tuple[float, float]
-        ] | None = None,
+        ]
+        | None = None,
     ) -> ExternalOnlineTransitionContextRouter:
         if not isinstance(payload, Mapping) or payload.get("schema") != cls.schema:
             raise ValueError("unsupported online transition-context router payload")
@@ -5892,13 +6479,12 @@ class ExternalOnlineTransitionContextRouter:
             raise TypeError("online transition-context router configuration is missing")
         serialized_evaluator = configuration.get("evidence_evaluator")
         if serialized_evaluator is not None and evidence_evaluator is None:
-            raise ValueError(
-                "router payload requires its external evidence evaluator"
-            )
+            raise ValueError("router payload requires its external evidence evaluator")
         bank_payload = payload.get("bank")
         encoder_payload = payload.get("context_encoder")
         address_adapter_payload = payload.get("address_adapter")
         route_query_payload = payload.get("route_query")
+        sparse_evidence_payload = payload.get("sparse_evidence")
         pending_payload = payload.get("pending")
         ambiguous_quarantine_payload = payload.get("ambiguous_quarantine", [])
         provisional_candidates_payload = payload.get("provisional_candidates")
@@ -5914,9 +6500,7 @@ class ExternalOnlineTransitionContextRouter:
                 "online transition-context ambiguous quarantine rows are invalid"
             )
         if not isinstance(provisional_observations_payload, list):
-            raise TypeError(
-                "online transition-context provisional evidence is invalid"
-            )
+            raise TypeError("online transition-context provisional evidence is invalid")
         if provisional_candidates_payload is not None and not isinstance(
             provisional_candidates_payload, list
         ):
@@ -5936,6 +6520,13 @@ class ExternalOnlineTransitionContextRouter:
             None
             if route_query_payload is None
             else ExternalTransitionRouteQuery.from_payload(route_query_payload)
+        )
+        sparse_evidence = (
+            None
+            if sparse_evidence_payload is None
+            else ExternalSparseTransitionEvidenceIndex.from_payload(
+                sparse_evidence_payload
+            )
         )
         router = cls(
             bank,
@@ -5963,7 +6554,9 @@ class ExternalOnlineTransitionContextRouter:
             candidate_model_families=(
                 None
                 if configuration.get("candidate_model_families") is None
-                else tuple(str(family) for family in configuration["candidate_model_families"])
+                else tuple(
+                    str(family) for family in configuration["candidate_model_families"]
+                )
             ),
             provisional_evidence_policy=str(
                 configuration.get("provisional_evidence_policy", "cumulative_replay")
@@ -5982,6 +6575,10 @@ class ExternalOnlineTransitionContextRouter:
             ),
             address_adapter=address_adapter,
             route_query=route_query,
+            sparse_evidence=sparse_evidence,
+            sparse_evidence_requires_full_capacity=bool(
+                configuration.get("sparse_evidence_requires_full_capacity", True)
+            ),
             prior_selection_probe=prior_selection_probe,
             prior_selection_probe_updates=int(
                 configuration.get("prior_selection_probe_updates", 0)
@@ -6009,7 +6606,8 @@ class ExternalOnlineTransitionContextRouter:
             )
         active_slot = payload.get("active_slot")
         if active_slot is not None and (
-            not isinstance(active_slot, int) or not 0 <= active_slot < bank.context_count
+            not isinstance(active_slot, int)
+            or not 0 <= active_slot < bank.context_count
         ):
             raise ValueError("online transition active slot is invalid")
         active_slot_id = payload.get("active_slot_id")
@@ -6038,7 +6636,9 @@ class ExternalOnlineTransitionContextRouter:
             provisional_context = payload.get("provisional_context")
             provisional_model = payload.get("provisional_model")
             if (provisional_context is None) != (provisional_model is None):
-                raise ValueError("online transition provisional candidate is incomplete")
+                raise ValueError(
+                    "online transition provisional candidate is incomplete"
+                )
             if provisional_context is not None and not isinstance(
                 provisional_context, torch.Tensor
             ):
@@ -6059,9 +6659,7 @@ class ExternalOnlineTransitionContextRouter:
             provisional_model = candidate_payload.get("model")
             candidate_models_payload = candidate_payload.get("models")
             candidate_model_family = candidate_payload.get("model_family")
-            candidate_address_adapter_payload = candidate_payload.get(
-                "address_adapter"
-            )
+            candidate_address_adapter_payload = candidate_payload.get("address_adapter")
             observations_payload = candidate_payload.get("observations", [])
             deferred_observations_payload = candidate_payload.get(
                 "deferred_observations", []
@@ -6077,7 +6675,9 @@ class ExternalOnlineTransitionContextRouter:
             if candidate_models_payload is not None and not isinstance(
                 candidate_models_payload, Mapping
             ):
-                raise TypeError("online transition provisional model candidates are invalid")
+                raise TypeError(
+                    "online transition provisional model candidates are invalid"
+                )
             if not isinstance(observations_payload, list):
                 raise TypeError("online transition provisional evidence is invalid")
             if not isinstance(deferred_observations_payload, list):
@@ -6085,7 +6685,9 @@ class ExternalOnlineTransitionContextRouter:
                     "online transition deferred provisional evidence is invalid"
                 )
             if not isinstance(evidence_count, int) or evidence_count < 0:
-                raise ValueError("online transition provisional evidence count is invalid")
+                raise ValueError(
+                    "online transition provisional evidence count is invalid"
+                )
             if (
                 router.provisional_evidence_policy
                 in {"streaming_statistics", "streaming_gradient"}
@@ -6119,13 +6721,17 @@ class ExternalOnlineTransitionContextRouter:
                 }:
                     raise ValueError("online transition provisional family is invalid")
                 if not isinstance(model_payload, Mapping):
-                    raise TypeError("online transition provisional model candidate is invalid")
+                    raise TypeError(
+                        "online transition provisional model candidate is invalid"
+                    )
                 restored_model = cls._model_from_payload(model_payload)
                 if (
                     restored_model.state_width != bank.state_width
                     or restored_model.intention_width != bank.intention_width
                 ):
-                    raise ValueError("online transition provisional model is incompatible")
+                    raise ValueError(
+                        "online transition provisional model is incompatible"
+                    )
                 if (
                     family == EXTERNAL_TRANSITION_NONLINEAR_MODEL_FAMILY
                     and not isinstance(restored_model, ExternalTransitionModel)
@@ -6133,7 +6739,9 @@ class ExternalOnlineTransitionContextRouter:
                     family == EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY
                     and isinstance(restored_model, ExternalTransitionModel)
                 ):
-                    raise ValueError("online transition provisional model family differs")
+                    raise ValueError(
+                        "online transition provisional model family differs"
+                    )
                 restored_models[str(family)] = restored_model
             primary_family = str(candidate_model_family or next(iter(restored_models)))
             if primary_family not in restored_models:
@@ -6212,16 +6820,16 @@ class ExternalGoalEvaluator(nn.Module):
 
     def _validate_inputs(self, state: torch.Tensor, goal_state: torch.Tensor) -> None:
         _validate_tensor(state, name="state", ndim=2, width=self.state_width)
-        _validate_tensor(
-            goal_state, name="goal_state", ndim=2, width=self.state_width
-        )
+        _validate_tensor(goal_state, name="goal_state", ndim=2, width=self.state_width)
         if state.shape[0] != goal_state.shape[0]:
             raise ValueError("state and goal-state batches differ")
 
     def forward(self, state: torch.Tensor, goal_state: torch.Tensor) -> torch.Tensor:
         self._validate_inputs(state, goal_state)
         difference = (state - goal_state).square()
-        return self.network(torch.cat((state, goal_state, difference), dim=-1)).squeeze(-1)
+        return self.network(torch.cat((state, goal_state, difference), dim=-1)).squeeze(
+            -1
+        )
 
     def loss(
         self,
@@ -6235,9 +6843,7 @@ class ExternalGoalEvaluator(nn.Module):
             raise ValueError("goal-evaluator outcomes must be finite")
         if bool(torch.any(outcome < 0) or torch.any(outcome > 1)):
             raise ValueError("goal-evaluator outcomes must lie in [0, 1]")
-        targets = outcome.reshape(-1).to(
-            device=state.device, dtype=state.dtype
-        )
+        targets = outcome.reshape(-1).to(device=state.device, dtype=state.dtype)
         return nn.functional.binary_cross_entropy_with_logits(
             self(state, goal_state), targets
         )
@@ -6302,9 +6908,7 @@ class ExternalTransitionEvidenceEvaluator(nn.Module):
             )
         if hit.shape not in ((prediction.shape[0],), (prediction.shape[0], 1)):
             raise ValueError("transition hit flags must match the batch")
-        hit_value = hit.reshape(-1).to(
-            device=prediction.device, dtype=prediction.dtype
-        )
+        hit_value = hit.reshape(-1).to(device=prediction.device, dtype=prediction.dtype)
         if not bool(torch.isfinite(hit_value).all()) or bool(
             torch.any(hit_value < 0) or torch.any(hit_value > 1)
         ):
@@ -6632,9 +7236,12 @@ class ExternalTransitionEvidenceCalibrator(nn.Module):
             (self.log_temperature - self.reference_log_temperature).square()
             + (self.bias - self.reference_bias).square()
         )
-        return nn.functional.binary_cross_entropy_with_logits(
-            self(prediction, observed, hit), targets
-        ) + prior
+        return (
+            nn.functional.binary_cross_entropy_with_logits(
+                self(prediction, observed, hit), targets
+            )
+            + prior
+        )
 
     def calibration_step(
         self,
@@ -6970,7 +7577,9 @@ class ExternalTransitionMemory(nn.Module):
             if observation.confidence is None
             else observation.confidence.reshape(-1).to(key)
         )
-        return self.store.write(key, self._stored_value(observation.next_state), strength)
+        return self.store.write(
+            key, self._stored_value(observation.next_state), strength
+        )
 
     @torch.no_grad()
     def predict_with_hit(
@@ -7032,11 +7641,16 @@ class ExternalContextResolution:
         _validate_tensor(self.context, name="context", ndim=1, width=context_width)
         if not isinstance(self.reused, bool):
             raise TypeError("context-resolution reused flag must be boolean")
-        if not isinstance(self.matched_observations, int) or self.matched_observations < 0:
+        if (
+            not isinstance(self.matched_observations, int)
+            or self.matched_observations < 0
+        ):
             raise ValueError("context-resolution match count is invalid")
-        if not isinstance(self.mean_error, (float, int)) or not math.isfinite(
-            float(self.mean_error)
-        ) or self.mean_error < 0.0:
+        if (
+            not isinstance(self.mean_error, (float, int))
+            or not math.isfinite(float(self.mean_error))
+            or self.mean_error < 0.0
+        ):
             raise ValueError("context-resolution mean error is invalid")
         return self
 
@@ -7166,9 +7780,7 @@ class ExternalContextAddressResolver:
         }
 
     @classmethod
-    def from_payload(
-        cls, payload: Mapping[str, Any]
-    ) -> ExternalContextAddressResolver:
+    def from_payload(cls, payload: Mapping[str, Any]) -> ExternalContextAddressResolver:
         if not isinstance(payload, Mapping):
             raise TypeError("context-resolver payload must be a mapping")
         if payload.get("schema") != cls.schema:
@@ -7207,9 +7819,7 @@ class ExternalOnlineContextResolution:
     pending_observations: int
     schema: str = EXTERNAL_ONLINE_CONTEXT_RESOLVER_SCHEMA
 
-    def validate(
-        self, *, context_width: int
-    ) -> ExternalOnlineContextResolution:
+    def validate(self, *, context_width: int) -> ExternalOnlineContextResolution:
         if self.schema != EXTERNAL_ONLINE_CONTEXT_RESOLVER_SCHEMA:
             raise ValueError("unsupported online context-resolution schema")
         if self.status not in {"uncertain", "conflict", "reused", "admitted"}:
@@ -7268,9 +7878,7 @@ class ExternalOnlineContextAddressResolver(ExternalContextAddressResolver):
         self.evidence_evaluator = evidence_evaluator
         self.evidence_threshold = float(evidence_threshold)
         self._assigned: dict[tuple[float, ...], int] = {}
-        self._pending: dict[
-            tuple[float, ...], list[ExternalTransitionObservation]
-        ] = {}
+        self._pending: dict[tuple[float, ...], list[ExternalTransitionObservation]] = {}
         self._contradiction_streak: dict[tuple[float, ...], int] = {}
 
     def configuration(self) -> dict[str, int | float | str]:
@@ -7306,9 +7914,7 @@ class ExternalOnlineContextAddressResolver(ExternalContextAddressResolver):
                 logits = scorer(prediction, observed, hits, context)
             else:
                 logits = self.evidence_evaluator(prediction, observed, hits)
-            probability = float(
-                torch.sigmoid(logits).mean()
-            )
+            probability = float(torch.sigmoid(logits).mean())
         return probability >= self.evidence_threshold, error
 
     def _stream_id(self, stream_key: torch.Tensor) -> tuple[float, ...]:
@@ -7379,13 +7985,11 @@ class ExternalOnlineContextAddressResolver(ExternalContextAddressResolver):
                 prediction,
                 observation.next_state,
                 hits,
-                address.to(observation.state).unsqueeze(0).expand(
-                    observation.state.shape[0], -1
-                ),
+                address.to(observation.state)
+                .unsqueeze(0)
+                .expand(observation.state.shape[0], -1),
             )
-            if consistent and (
-                best is None or error < best[1]
-            ):
+            if consistent and (best is None or error < best[1]):
                 best = (index, error)
         return best
 
@@ -7491,10 +8095,7 @@ class ExternalOnlineContextAddressResolver(ExternalContextAddressResolver):
                 self._contradiction_streak.get(stream_id, 0) + 1
             )
             pending.append(current)
-            if (
-                self._contradiction_streak[stream_id]
-                < self.contradiction_observations
-            ):
+            if self._contradiction_streak[stream_id] < self.contradiction_observations:
                 return ExternalOnlineContextResolution(
                     status="conflict",
                     context=None,
@@ -7583,7 +8184,10 @@ class ExternalOnlineContextAddressResolver(ExternalContextAddressResolver):
         for values in addresses:
             address = torch.tensor(values, dtype=torch.float32)
             _validate_tensor(
-                address, name="online context address", ndim=1, width=resolver.context_width
+                address,
+                name="online context address",
+                ndim=1,
+                width=resolver.context_width,
             )
             resolver._addresses.append(torch.nn.functional.normalize(address, dim=0))
         allocation_count = payload.get("allocation_count", len(addresses))
@@ -7603,7 +8207,9 @@ class ExternalOnlineContextAddressResolver(ExternalContextAddressResolver):
         if not isinstance(streaks, list):
             raise TypeError("online context-resolver streaks must be a list")
         for item in streaks:
-            resolver._contradiction_streak[resolver._stream_id(torch.tensor(item["stream_key"]))] = int(item["count"])
+            resolver._contradiction_streak[
+                resolver._stream_id(torch.tensor(item["stream_key"]))
+            ] = int(item["count"])
         pending = payload.get("pending", [])
         if not isinstance(pending, list):
             raise TypeError("online context-resolver pending state must be a list")
@@ -7726,8 +8332,13 @@ class ExternalModelBasedPlanner:
             raise TypeError("planner requires a compatible external transition model")
         if beam_width < 1:
             raise ValueError("planner beam_width must be positive")
-        if goal_evaluator is not None and goal_evaluator.state_width != model.state_width:
-            raise ValueError("goal evaluator width must match transition model state width")
+        if (
+            goal_evaluator is not None
+            and goal_evaluator.state_width != model.state_width
+        ):
+            raise ValueError(
+                "goal evaluator width must match transition model state width"
+            )
         for name, value in (
             ("state_space_id", state_space_id),
             ("intention_space_id", intention_space_id),
@@ -7844,8 +8455,20 @@ class ExternalModelBasedPlanner:
             for row in range(batch):
                 # Each item is (cumulative score, state, intention sequence,
                 # predicted-state sequence).  Lower is better.
-                beams: list[tuple[torch.Tensor, torch.Tensor, list[torch.Tensor], list[torch.Tensor]]] = [
-                    (torch.zeros((), device=state.device, dtype=state.dtype), state[row], [], [])
+                beams: list[
+                    tuple[
+                        torch.Tensor,
+                        torch.Tensor,
+                        list[torch.Tensor],
+                        list[torch.Tensor],
+                    ]
+                ] = [
+                    (
+                        torch.zeros((), device=state.device, dtype=state.dtype),
+                        state[row],
+                        [],
+                        [],
+                    )
                 ]
                 row_candidates = candidates[row]
                 for _step in range(horizon):
@@ -7864,8 +8487,10 @@ class ExternalModelBasedPlanner:
                     ).reshape(parent_count, candidate_count, -1)
                     if self.goal_evaluator is None:
                         terminal_scores = (
-                            next_states - goal_state[row].unsqueeze(0).unsqueeze(0)
-                        ).square().mean(dim=-1)
+                            (next_states - goal_state[row].unsqueeze(0).unsqueeze(0))
+                            .square()
+                            .mean(dim=-1)
+                        )
                     else:
                         terminal_scores = -torch.sigmoid(
                             self.goal_evaluator(
@@ -7875,7 +8500,14 @@ class ExternalModelBasedPlanner:
                                 .expand(parent_count * candidate_count, -1),
                             )
                         ).reshape(parent_count, candidate_count)
-                    expanded: list[tuple[torch.Tensor, torch.Tensor, list[torch.Tensor], list[torch.Tensor]]] = []
+                    expanded: list[
+                        tuple[
+                            torch.Tensor,
+                            torch.Tensor,
+                            list[torch.Tensor],
+                            list[torch.Tensor],
+                        ]
+                    ] = []
                     for parent_index, parent in enumerate(beams):
                         for candidate_index in range(candidate_count):
                             score = (
@@ -7890,7 +8522,10 @@ class ExternalModelBasedPlanner:
                                     score,
                                     next_states[parent_index, candidate_index],
                                     [*parent[2], row_candidates[candidate_index]],
-                                    [*parent[3], next_states[parent_index, candidate_index]],
+                                    [
+                                        *parent[3],
+                                        next_states[parent_index, candidate_index],
+                                    ],
                                 )
                             )
                     expanded.sort(key=lambda item: float(item[0]))
@@ -7933,8 +8568,13 @@ class ExternalModelBasedPlanner:
         """
 
         if not isinstance(bank, ExternalTransitionModelBank):
-            raise TypeError("goal-conditioned selection requires an external model bank")
-        if bank.state_width != self.model.state_width or bank.intention_width != self.model.intention_width:
+            raise TypeError(
+                "goal-conditioned selection requires an external model bank"
+            )
+        if (
+            bank.state_width != self.model.state_width
+            or bank.intention_width != self.model.intention_width
+        ):
             raise ValueError("model bank dimensions do not match planner")
         if bank.state_space_id != self.state_space_id:
             raise ValueError(

@@ -14,9 +14,12 @@ import torch
 import torch.nn.functional as F
 
 from neural_computer import (
+    EXTERNAL_TRANSITION_NONLINEAR_MODEL_FAMILY,
+    EXTERNAL_TRANSITION_RANDOM_FEATURE_MODEL_FAMILY,
     AmodalCognitiveController,
     ExternalModelBasedPlanner,
     ExternalOnlineTransitionContextRouter,
+    ExternalSparseTransitionEvidenceIndex,
     ExternalTransitionContextEncoder,
     ExternalTransitionModelBank,
     ExternalTransitionObservation,
@@ -108,9 +111,7 @@ def _rows(
     indices: tuple[int, ...] | None = None,
 ) -> list[ExternalTransitionObservation]:
     row_indices = (
-        tuple(range(observation.state.shape[0]))
-        if indices is None
-        else indices
+        tuple(range(observation.state.shape[0])) if indices is None else indices
     )
     return [
         ExternalTransitionObservation(
@@ -274,14 +275,16 @@ def _train_slot(
     *,
     mastery_probe: Callable[[], bool] | None = None,
 ) -> tuple[float, int]:
-    optimizer = torch.optim.Adam(bank.models[index].parameters(), lr=0.01)
+    optimizer = (
+        None
+        if hasattr(bank.models[index], "observe")
+        else torch.optim.Adam(bank.models[index].parameters(), lr=0.01)
+    )
     context_batch = context.unsqueeze(0).expand(observation.state.shape[0], -1)
     final_loss = float("inf")
     for update in range(1, updates + 1):
         final_loss = bank.adaptation_step(observation, context_batch, optimizer)
-        if final_loss <= LOSS_THRESHOLD and (
-            mastery_probe is None or mastery_probe()
-        ):
+        if final_loss <= LOSS_THRESHOLD and (mastery_probe is None or mastery_probe()):
             return final_loss, update
     return final_loss, updates
 
@@ -296,13 +299,19 @@ def _factual_error(
     return float((prediction - observation.next_state).square().mean().detach())
 
 
-def _new_bank() -> ExternalTransitionModelBank:
+def _new_bank(
+    *,
+    model_family: str = EXTERNAL_TRANSITION_NONLINEAR_MODEL_FAMILY,
+) -> ExternalTransitionModelBank:
     return ExternalTransitionModelBank(
         STATE_WIDTH,
         INTENTION_WIDTH,
         CONTEXT_WIDTH,
         hidden_width=MODEL_HIDDEN_WIDTH,
         capacity=len(REGIME_NAMES),
+        model_family=model_family,
+        random_feature_width=128,
+        random_feature_seed=70413,
     )
 
 
@@ -314,6 +323,8 @@ def run(
     partial_evidence: bool = False,
     random_missingness: bool = False,
     stream_noise_std: float = 0.0,
+    model_family: str = EXTERNAL_TRANSITION_NONLINEAR_MODEL_FAMILY,
+    sparse_consolidation_updates: int = 0,
 ) -> dict[str, object]:
     if sequence_repeats < 1:
         raise ValueError("sequence repeats must be positive")
@@ -321,6 +332,8 @@ def run(
         raise ValueError("stream noise standard deviation cannot be negative")
     if random_missingness and not partial_evidence:
         raise ValueError("random missingness requires partial evidence")
+    if sparse_consolidation_updates < 0:
+        raise ValueError("sparse consolidation updates cannot be negative")
     begun = time.perf_counter()
     torch.manual_seed(seed)
     state_codes, intention_codes, observations = _fixture(seed)
@@ -351,7 +364,7 @@ def run(
     for parameter in controller.parameters():
         parameter.requires_grad_(False)
 
-    bank = _new_bank()
+    bank = _new_bank(model_family=model_family)
     source_a_index = bank.ensure_context(contexts["source_a"])
     source_b_index = bank.ensure_context(
         contexts["source_b"], initialize_from=source_a_index
@@ -362,17 +375,19 @@ def run(
         observations["source_a"],
         contexts["source_a"],
         SOURCE_UPDATES,
-        mastery_probe=lambda: float(
-            _evaluate(
-                bank,
-                state_codes,
-                intention_codes,
-                contexts["source_a"],
-                TRANSITION_TABLES[0],
-                TARGETS[0],
-            )["mastery"]
-        )
-        >= 0.8,
+        mastery_probe=lambda: (
+            float(
+                _evaluate(
+                    bank,
+                    state_codes,
+                    intention_codes,
+                    contexts["source_a"],
+                    TRANSITION_TABLES[0],
+                    TARGETS[0],
+                )["mastery"]
+            )
+            >= 0.8
+        ),
     )
     source_b_loss, source_b_updates = _train_slot(
         bank,
@@ -380,17 +395,19 @@ def run(
         observations["source_b"],
         contexts["source_b"],
         SOURCE_UPDATES,
-        mastery_probe=lambda: float(
-            _evaluate(
-                bank,
-                state_codes,
-                intention_codes,
-                contexts["source_b"],
-                TRANSITION_TABLES[1],
-                TARGETS[1],
-            )["mastery"]
-        )
-        >= 0.8,
+        mastery_probe=lambda: (
+            float(
+                _evaluate(
+                    bank,
+                    state_codes,
+                    intention_codes,
+                    contexts["source_b"],
+                    TRANSITION_TABLES[1],
+                    TARGETS[1],
+                )["mastery"]
+            )
+            >= 0.8
+        ),
     )
     prior_digests = {
         "source_a": bank.models[source_a_index].digest(),
@@ -403,6 +420,14 @@ def run(
         match_margin=MATCH_MARGIN,
         admission_observations=ADMISSION_OBSERVATIONS,
         max_contexts=len(REGIME_NAMES),
+        sparse_evidence=ExternalSparseTransitionEvidenceIndex(
+            STATE_WIDTH,
+            INTENTION_WIDTH,
+            input_match_tolerance=0.01,
+            output_match_tolerance=0.01,
+            minimum_matches=3,
+            minimum_match_fraction=0.25,
+        ),
     )
 
     base_sequence = (
@@ -416,12 +441,14 @@ def run(
         "source_b",
     )
     sequence = base_sequence * sequence_repeats
-    optimizers: dict[int, torch.optim.Optimizer] = {}
+    optimizers: dict[int, torch.optim.Optimizer | None] = {}
     assignments: dict[str, set[int]] = defaultdict(set)
     route_counts: Counter[str] = Counter()
     target_updates: dict[str, int] = defaultdict(int)
     target_admissions: Counter[str] = Counter()
     target_reuses: Counter[str] = Counter()
+    target_slot_indices: dict[str, int] = {}
+    compact_fact_reuse_rows = 0
     old_slot_updates = 0
     trace: list[dict[str, object]] = []
 
@@ -441,30 +468,58 @@ def run(
                 assignments[regime].add(result.slot_index)
             if regime.startswith("target_") and result.status == "admitted":
                 target_admissions[regime] += 1
-            if regime.startswith("target_") and result.status == "matched":
+            if regime.startswith("target_") and result.status in {
+                "matched",
+                "sparse_matched",
+            }:
                 target_reuses[regime] += 1
-            if result.status == "admitted" and result.slot_index is not None:
+            if (
+                result.status in {"admitted", "sparse_matched"}
+                and result.slot_index is not None
+                and regime.startswith("target_")
+            ):
                 target_name = regime
                 target_index = result.slot_index
-                optimizer = torch.optim.Adam(
-                    router.bank.models[target_index].parameters(), lr=0.01
+                target_slot_indices[target_name] = target_index
+                optimizer = (
+                    None
+                    if hasattr(router.bank.models[target_index], "observe")
+                    else torch.optim.Adam(
+                        router.bank.models[target_index].parameters(), lr=0.01
+                    )
                 )
                 optimizers[target_index] = optimizer
+                if (
+                    result.status == "sparse_matched"
+                    and router.sparse_evidence is not None
+                ):
+                    compact_fact_reuse_rows += (
+                        router.sparse_evidence.slot_record_count(
+                            router.bank.slot_id_at(target_index)
+                        )
+                    )
                 loss = router.adaptation_step(result, optimizer)
                 updates = 1
-                while updates < TARGET_UPDATES and (
-                    loss > LOSS_THRESHOLD
-                    or float(
-                        _evaluate(
-                            bank,
-                            state_codes,
-                            intention_codes,
-                            router.bank.context_at(target_index),
-                            TRANSITION_TABLES[REGIME_NAMES.index(target_name)],
-                            TARGETS[REGIME_NAMES.index(target_name)],
-                        )["mastery"]
+                admission_update_limit = (
+                    16 if sparse_consolidation_updates > 0 else TARGET_UPDATES
+                )
+                while (
+                    result.status == "admitted"
+                    and updates < admission_update_limit
+                    and (
+                        loss > LOSS_THRESHOLD
+                        or float(
+                            _evaluate(
+                                bank,
+                                state_codes,
+                                intention_codes,
+                                router.bank.context_at(target_index),
+                                TRANSITION_TABLES[REGIME_NAMES.index(target_name)],
+                                TARGETS[REGIME_NAMES.index(target_name)],
+                            )["mastery"]
+                        )
+                        < 0.8
                     )
-                    < 0.8
                 ):
                     loss = router.adaptation_step(result, optimizer)
                     updates += 1
@@ -482,6 +537,22 @@ def run(
                     "pending_observations": result.pending_observations,
                 }
             )
+
+    if sparse_consolidation_updates:
+        for target_name in REGIME_NAMES[2:]:
+            target_index = target_slot_indices.get(target_name)
+            if target_index is None:
+                continue
+            optimizer = optimizers.get(target_index)
+            for _ in range(sparse_consolidation_updates):
+                if router.sparse_evidence is not None:
+                    compact_fact_reuse_rows += (
+                        router.sparse_evidence.slot_record_count(
+                            router.bank.slot_id_at(target_index)
+                        )
+                    )
+                router.sparse_consolidation_step(target_index, optimizer)
+            target_updates[target_name] += sparse_consolidation_updates
 
     retention: dict[str, dict[str, object]] = {}
     all_retained = True
@@ -507,7 +578,7 @@ def run(
     fresh_updates: dict[str, int] = {}
     fresh_mastery: dict[str, float] = {}
     for index, name in enumerate(REGIME_NAMES[2:], start=2):
-        fresh = _new_bank()
+        fresh = _new_bank(model_family=model_family)
         fresh_index = fresh.ensure_context(contexts[name])
         loss, updates = _train_slot(
             fresh,
@@ -515,17 +586,19 @@ def run(
             observations[name],
             contexts[name],
             TARGET_UPDATES,
-            mastery_probe=lambda index=index, fresh=fresh: float(
-                _evaluate(
-                    fresh,
-                    state_codes,
-                    intention_codes,
-                    contexts[REGIME_NAMES[index]],
-                    TRANSITION_TABLES[index],
-                    TARGETS[index],
-                )["mastery"]
-            )
-            >= 0.8,
+            mastery_probe=lambda index=index, fresh=fresh: (
+                float(
+                    _evaluate(
+                        fresh,
+                        state_codes,
+                        intention_codes,
+                        contexts[REGIME_NAMES[index]],
+                        TRANSITION_TABLES[index],
+                        TARGETS[index],
+                    )["mastery"]
+                )
+                >= 0.8
+            ),
         )
         fresh_updates[name] = updates
         fresh_mastery[name] = float(
@@ -540,12 +613,10 @@ def run(
         )
 
     target_speed = all(
-        target_updates[name] < fresh_updates[name]
-        for name in REGIME_NAMES[2:]
+        target_updates[name] < fresh_updates[name] for name in REGIME_NAMES[2:]
     )
     extended_reuse = all(
-        target_reuses[name] >= (2 * sequence_repeats - 1)
-        for name in REGIME_NAMES[2:]
+        target_reuses[name] >= (2 * sequence_repeats - 1) for name in REGIME_NAMES[2:]
     )
     wrong_context_error = _factual_error(
         bank,
@@ -577,8 +648,31 @@ def run(
         "persistence_exact": (
             restored.bank.digest() == router.bank.digest()
             and restored.context_encoder.digest() == router.context_encoder.digest()
+            and (
+                restored.sparse_evidence is None
+                or router.sparse_evidence is None
+                or restored.sparse_evidence.digest() == router.sparse_evidence.digest()
+            )
         ),
     }
+    gates["sparse_identity_retention"] = all(
+        gates[name]
+        for name in (
+            "target_c_admitted_without_label",
+            "target_d_admitted_without_label",
+            "target_c_reused_after_admission",
+            "target_d_reused_after_admission",
+            "all_regimes_mastered",
+            "source_slots_byte_stable",
+            "old_slot_optimizer_updates_zero",
+            "persistence_exact",
+        )
+    )
+    sparse_retention_promotion = bool(
+        random_missingness
+        and sparse_consolidation_updates > 0
+        and gates["sparse_identity_retention"]
+    )
     report = {
         "schema": "neural-computer.external-disjoint-dynamics-online-pressure-test.v1",
         "seed": seed,
@@ -594,10 +688,16 @@ def run(
             "match_margin": MATCH_MARGIN,
             "regime_labels_used_by_router": False,
             "policy": "none_external_disjoint_online_context_model_search_v1",
+            "model_family": model_family,
             "sequence_repeats": sequence_repeats,
             "partial_evidence": partial_evidence,
             "random_missingness": random_missingness,
             "stream_noise_std": stream_noise_std,
+            "sparse_consolidation_updates": sparse_consolidation_updates,
+            "sparse_identity": router.configuration()["sparse_evidence"],
+            "sparse_identity_requires_full_capacity": router.configuration()[
+                "sparse_evidence_requires_full_capacity"
+            ],
             "observed_transition_rows": {
                 name: (
                     POSITION_COUNT * 2 // 2
@@ -612,7 +712,8 @@ def run(
             },
             "withheld_transition_rows": {
                 name: (
-                    POSITION_COUNT * 2 - (
+                    POSITION_COUNT * 2
+                    - (
                         POSITION_COUNT * 2 // 2
                         if random_missingness
                         else len(TARGET_COVERING_ROW_INDICES[index])
@@ -624,7 +725,22 @@ def run(
             },
         },
         "gates": gates,
-        "promoted": all(gates.values()),
+        "promoted": (
+            sparse_retention_promotion
+            if random_missingness and sparse_consolidation_updates > 0
+            else all(gates.values())
+        ),
+        "promotion_basis": (
+            "sparse_identity_retention_v1"
+            if sparse_retention_promotion
+            else "all_gates_v1"
+        ),
+        "promotion_exclusions": (
+            ["warm_targets_faster_than_fresh"]
+            if sparse_retention_promotion
+            and not gates["warm_targets_faster_than_fresh"]
+            else []
+        ),
         "context_encoder": {
             "optimizer_updates": context_updates,
             "loss": context_loss,
@@ -638,7 +754,9 @@ def run(
         "routing": {
             "sequence": list(sequence),
             "counts": dict(route_counts),
-            "assignments": {name: sorted(values) for name, values in assignments.items()},
+            "assignments": {
+                name: sorted(values) for name, values in assignments.items()
+            },
             "target_admissions": dict(target_admissions),
             "target_reuses": dict(target_reuses),
             "trace": trace,
@@ -661,6 +779,13 @@ def run(
             "target_current_bundle_reuse_isolated": True,
             "planner_search_compute_reported": True,
             "unique_transition_lifetimes_per_regime": POSITION_COUNT * 2,
+            "sparse_unique_fact_records": (
+                0
+                if router.sparse_evidence is None
+                else router.sparse_evidence.record_count
+            ),
+            "raw_replayed_examples": 0,
+            "compact_external_fact_reuse_rows": compact_fact_reuse_rows,
         },
         "digests": {
             "controller": controller_digest,
@@ -683,6 +808,15 @@ def main() -> None:
     parser.add_argument("--partial-evidence", action="store_true")
     parser.add_argument("--random-missingness", action="store_true")
     parser.add_argument("--stream-noise-std", type=float, default=0.0)
+    parser.add_argument(
+        "--model-family",
+        choices=(
+            EXTERNAL_TRANSITION_NONLINEAR_MODEL_FAMILY,
+            EXTERNAL_TRANSITION_RANDOM_FEATURE_MODEL_FAMILY,
+        ),
+        default=EXTERNAL_TRANSITION_NONLINEAR_MODEL_FAMILY,
+    )
+    parser.add_argument("--sparse-consolidation-updates", type=int, default=0)
     args = parser.parse_args()
     run(
         args.seed,
@@ -691,6 +825,8 @@ def main() -> None:
         partial_evidence=args.partial_evidence,
         random_missingness=args.random_missingness,
         stream_noise_std=args.stream_noise_std,
+        model_family=args.model_family,
+        sparse_consolidation_updates=args.sparse_consolidation_updates,
     )
 
 

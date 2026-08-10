@@ -4875,6 +4875,35 @@ verifier-gated safeguard against contaminating an existing slot with a truly
 novel regime. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_disjoint_dynamics_random_missingness_rejected_2026-08-10/`.
 
+## Promoted sparse identity and compact consolidation (2026-08-10)
+
+The rejected boundary was repaired with a compact slot-local evidence index.
+Each slot stores unique factual `(state, intention, next-state)` records with
+running means. A partial query may reuse a slot only when enough overlapping
+facts agree and no overlapping fact contradicts it; unknown rows do not force a
+duplicate. Sparse reuse is disabled while the bank is bootstrapping, preventing
+shared facts from binding a novel regime to an old slot. Once the bank is
+populated, each addressed factual model receives bounded consolidation updates
+from its deduplicated external facts.
+
+Across seeds `70411`, `70412`, and `70413`, random half-masks (`7/14` rows per
+window) were alternated for four rounds. All three seeds admitted both novel
+regimes once, routed each seven times after admission, retained `1.0` planner
+mastery for every regime, kept source slots byte-stable, applied zero old-slot
+updates, and passed exact persistence. The compact evidence index ended with
+`56`, `56`, and `54` unique records. Warm target updates were `39/39`,
+`38/39`, and `39/38`, versus fresh `44/43`, `40/35`, and `30/33`.
+
+This is a qualified promotion of sparse identity, retention, and compact
+consolidation. The model reused `632`, `615`, and `623` compact external fact
+rows during sparse adaptation and consolidation; raw-row replay remained zero.
+Uniform sample-efficiency improvement is explicitly not promoted: the latter
+two seeds were slower than fresh controls. The mask is synthetic, bootstrap
+admission is capacity-guarded, and this does not establish arbitrary real
+multimodal missingness, unrestricted memory growth, or general continual
+learning. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_disjoint_dynamics_sparse_identity_promoted_2026-08-10/`.
+
 ## Copy-on-write transfer challenger for disjoint compounding (2026-08-09)
 
 The exported session's next-step requirement was seed-widening on genuinely
