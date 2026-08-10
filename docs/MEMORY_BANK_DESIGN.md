@@ -5540,3 +5540,48 @@ and answers it. F117 spent three arms on the wrong axis because that
 check came last instead of first.
 
 Probe 222 is `math_compose.py --worlds 256`, 2 seeds.
+
+**F123 (probe 223). REGRESSION, three seeds, unambiguous: balanced
+seeking destroys reading outright. The asymmetric collection policy was
+doing double duty and I only saw one of its two jobs.** F118 diagnosed
+the dead plane-2 salience channel correctly — `--seek` targeted plane-1
+objects only, so plane-2 consumption events were nearly absent and
+inverted worlds had nothing to learn "seek" from. The fix (target both
+planes with equal probability, nothing else changed):
+
+| arm | held-out | entry effect |
+| --- | ---: | ---: |
+| plane-1 seek (F118) | +0.0811 / +0.0972 / +0.1058 | +0.244 to +0.295 |
+| **balanced seek (F123)** | **-0.0480 / -0.0474 / -0.0449** | **+0.0005 / +0.0003 / +0.0001** |
+
+Entry effect is not reduced; it is annihilated to the fourth decimal.
+The polarity scalars stop sign-splitting (|tanh| max 0.18-0.37 with
+twins now giving nearly IDENTICAL values, against +-1.0 cleanly split
+in F118). Held-out lands at the context-free floor.
+
+The mechanism, which is F106 re-created deliberately by a data change:
+seeking plane-1 only makes normal worlds mostly-positive and inverted
+worlds mostly-negative, so a single twin-averaged predictor fits badly
+and reading PAYS. Balanced seeking makes both twins' outcome marginals
+identical, the twin-average becomes an excellent fit, and the model
+settles there — exactly the collapse the ignorance objective was
+introduced to prevent, arrived at from the data side where the
+ignorance term has no purchase (it constrains only the entry-FREE
+prediction, and here the entry-USING prediction is the degenerate one).
+
+**The lesson, which generalises past this probe: asymmetry in the data
+is what makes reading pay.** A benchmark whose twins are marginally
+identical does not reward context-reading, it merely permits it. F104's
+design rule (every inversion-invariant policy must score near floor)
+constrains the TASK; this constrains the COLLECTION — an
+inversion-invariant data distribution silently converts a
+context-required task into a context-optional one.
+
+Fix queued as `--seek-plane2 p` (0.0 = F118, 0.5 = this collapse):
+intermediate p should keep enough marginal asymmetry for reading to pay
+while still visiting plane-2. Whether such a p exists is an empirical
+question and may be answered "no" — in which case the channel must be
+fed some other way (e.g. seeking by predicted value once the model is
+good enough, rather than by fixed plane index).
+
+Probe 223 is `game_slots.py` with balanced seeking, 3 seeds.
