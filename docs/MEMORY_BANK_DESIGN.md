@@ -6342,3 +6342,55 @@ obvious next games probe and follows from a measurement rather than a
 hunch.
 
 Probe 241 is `game_slots.py --tied-salience`, 3 seeds.
+
+**F142 (probe 242). Running the contrastive term as an AUXILIARY loss
+during joint training — rather than as a frozen pre-training phase —
+closes roughly half the remaining gap to the privileged ceiling using
+no privileged information at all: 0.7069 per-bit on held-out worlds,
+exact match 0.178 against 0.0096 for joint training.** And the weight
+has an interior optimum, the same shape as the ignorance weight curve
+(F108):
+
+| contrastive-aux weight | held-out per-bit | exact |
+| ---: | ---: | ---: |
+| 0.3 | 0.6453 | 0.1286 |
+| **1.0** | **0.7069** | **0.1780** |
+| 3.0 | 0.5795 | 0.0449 |
+
+The full ladder of reader training schemes, all on the same probe,
+same plant, same inputs:
+
+| scheme | held-out per-bit | privileged? |
+| --- | ---: | :---: |
+| task loss through frozen plant (F136) | 0.4973 | no |
+| joint training (F135) | 0.5283 | no |
+| contrastive PHASE, then plant (F139) | 0.6136 / 0.6287 | no |
+| **contrastive AUXILIARY, w=1.0 (F142)** | **0.7069** | **no** |
+| distilled onto oracle entry (F138) | 0.9723 / 0.9478 | YES |
+| chance | 0.5000 | |
+
+Exact-match rose 18x from joint training (0.0096 -> 0.1780), which
+matters more than the per-bit figure: getting all eight bits right
+requires the entry to specify the world, not merely to correlate
+with it.
+
+**Why the auxiliary form beats the phase form, which is the reusable
+part.** The entry must satisfy two requirements at once — be
+DISCRIMINATIVE (identify the world) and be BINDABLE (land where a
+simple linear binder can decode it). A phase can only supply one at a
+time, and the reader is frozen before the plant exists to express the
+second. Optimised together, the task loss shapes the code while the
+contrastive term keeps it from collapsing, and neither waits. The
+interior optimum says the same thing from the other side: at weight
+3.0 discriminability dominates and bindability is lost, dropping below
+even the phase result.
+
+Remaining to the privileged ceiling: 0.7069 against 0.9723. The
+cheapest untried lever is the contrastive task's difficulty — the
+InfoNCE batch is 8 worlds, so the reader need only tell one world from
+seven, which a coarse code achieves. A larger batch demands a finer
+code. That is a one-line change and follows the same logic as F78's
+diversity law, applied to the reader's objective rather than the
+plant's data.
+
+Probe 242 is `--contrastive-aux 0.3/1.0/3.0`.
