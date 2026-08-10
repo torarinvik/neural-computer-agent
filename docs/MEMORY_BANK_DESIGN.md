@@ -6439,3 +6439,61 @@ and provenance.
 The batch ladder now running (32, 128) inherits this: whatever it
 shows will be reported as single-seed until its best point is
 replicated.
+
+**F143 (probe 243). The binding principle transfers to the games and
+essentially closes the gap to the oracle-value target: pooled held-out
++0.1229 against +0.1234, on three seeds, with the seed variance that
+plagued F141 GONE.** The prediction was written down in F141's entry
+before the run — that the games' beam search re-derives the world
+parameters at every rollout step, exactly F135's depth killer, and
+that the tied-salience seed variance was the un-bound attention path
+competing with the bound one. Binding was the only change.
+
+| arm | per-seed held-out | pooled | entry effect | inverted top=food |
+| --- | --- | ---: | ---: | --- |
+| tied only (F141) | +0.1175/+0.0794/+0.1017 | +0.0995 | +0.28..+0.32 | 0.417/0.042/0.000 |
+| **+ bind-value (F143)** | **+0.0980/+0.1334/+0.1373** | **+0.1229** | **+0.30..+0.36** | **0.333/0.188/0.375** |
+| oracle-value target | | +0.1234 | | |
+| full oracle | | +0.1954 | | |
+
+Three things, in order of how much they matter:
+
+  * **Pooled +0.1229 against a +0.1234 target** — the learned value
+    model now buys essentially what PERFECT values buy through this
+    same search. Two of three seeds exceed it (+0.1334, +0.1373). The
+    quantity F110 named as the dominant term in the games gap
+    (+0.1439) is closed.
+  * **All three seeds now seek in inverted worlds** (0.333, 0.188,
+    0.375) where F141 had one seed working and two at zero, and normal
+    worlds are saturated at 1.000 everywhere. The polarity asymmetry
+    that has been the games' defining defect since F112 is gone.
+  * **Entry effects are the largest ever measured** (+0.297 to
+    +0.358), and the twin arm falls to -0.199..-0.221 — supplying the
+    wrong world's entry is now more harmful than ever, which is what
+    reading harder looks like.
+
+The full games ladder against the floor-to-full-oracle span:
+
+    F109  -0.0205   5.0%
+    F111  +0.0069  17.0%   n-step value head
+    F113  +0.0816  49.9%   signed entry
+    F118  +0.0947  55.7%   two-channel salience
+    F141  +0.0995  57.8%   tied salience
+    F143  +0.1229  68.1%   BIND ONCE
+    target +0.1234 68.3%   (oracle values, learned dynamics+search)
+    full  +0.1954 100%     (oracle values AND oracle dynamics)
+
+The remaining 31.9% is F110's search-and-dynamics residual, which the
+value model was never going to touch — closing it needs a better
+transition model or a better search, not a better entry.
+
+**The methodological point worth keeping.** This is the first time in
+the session that a mechanism found on the math ground transferred to
+the games and worked on the first try, with three seeds and no
+tuning. It transferred because it was a STRUCTURAL claim about
+interfaces ("bind context once, then iterate") rather than a tuned
+quantity, and structural claims are the ones that move between
+domains. The findings that did not transfer — weights, curricula,
+collection policies — were all quantities.
+
+Probe 243 is `game_slots.py --tied-salience --bind-value`, 3 seeds.
