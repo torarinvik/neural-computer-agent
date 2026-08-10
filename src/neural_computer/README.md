@@ -1243,6 +1243,16 @@ core, copy-on-write retention, fresh-transfer, shuffled-outcome, persistence,
 and zero-replay gates. This promotes the seam, not unrestricted continual
 learning.
 
+`ExternalProgramAmodalRuntime` is the canonical execution seam for the
+CPU-plus-files path. It runs the frozen amodal controller, a replaceable
+`ExternalCapabilityRegisterMachine`, and the intention bus in one
+`INPUT -> PROCESS -> OUTPUT` cycle. Portable `ExternalProgramArtifact` files
+are observed and executed copy-on-write outside the controller; only the
+resulting opaque intention reaches decoders. Use verifier-gated external
+retention when promoting a new file. This provides a stable path for learning
+new computation without adding controller branches, but does not by itself
+claim learned program synthesis or general continual learning.
+
 `ExternalRegisterComputeBasisArtifact` closes the corresponding persistence
 gap for learned external computation. A compute slot's ABI and tensor state
 can be checksummed, moved between interpreters, and reloaded through

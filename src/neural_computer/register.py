@@ -2306,6 +2306,37 @@ class ExternalCapabilityRegisterMachine(nn.Module):
     ) -> torch.Tensor:
         """Execute opaque program codes through the shared interpreter."""
 
+        executed, _trace = self.execute_code_chain_trace(
+            register,
+            program_codes,
+            event_window=event_window,
+            event_window_mask=event_window_mask,
+            meta_context=meta_context,
+            sequence_operator_memory=sequence_operator_memory,
+            sequence_operator_slot=sequence_operator_slot,
+            sequence_operator_route_query=sequence_operator_route_query,
+        )
+        return executed
+
+    def execute_code_chain_trace(
+        self,
+        register: torch.Tensor,
+        program_codes: torch.Tensor,
+        *,
+        event_window: torch.Tensor | None = None,
+        event_window_mask: torch.Tensor | None = None,
+        meta_context: torch.Tensor | None = None,
+        sequence_operator_memory: ExternalSequenceOperatorMemory | None = None,
+        sequence_operator_slot: int | None = None,
+        sequence_operator_route_query: torch.Tensor | None = None,
+    ) -> tuple[torch.Tensor, tuple[torch.Tensor, ...]]:
+        """Execute opaque program codes and retain an opaque state trace.
+
+        The trace is positional execution evidence only.  It is useful for
+        verifier probes and debugging, but it is never fed back into the
+        controller as privileged program semantics.
+        """
+
         if (
             program_codes.ndim != 3
             or program_codes.shape[0] != register.shape[0]
@@ -2313,6 +2344,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             or program_codes.shape[2] != self.instruction_width
         ):
             raise ValueError("program codes have the wrong shape for execution")
+        trace: list[torch.Tensor] = []
         for code in program_codes.transpose(0, 1):
             register = self.execute(
                 register,
@@ -2324,7 +2356,8 @@ class ExternalCapabilityRegisterMachine(nn.Module):
                 sequence_operator_slot=sequence_operator_slot,
                 sequence_operator_route_query=sequence_operator_route_query,
             )
-        return register
+            trace.append(register)
+        return register, tuple(trace)
 
     def execute_artifact(
         self,
@@ -2356,6 +2389,100 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             sequence_operator_memory=sequence_operator_memory,
             sequence_operator_slot=sequence_operator_slot,
             sequence_operator_route_query=sequence_operator_route_query,
+        )
+
+    def execute_artifact_trace(
+        self,
+        register: torch.Tensor,
+        artifact: ExternalProgramArtifact,
+        *,
+        event_window: torch.Tensor | None = None,
+        event_window_mask: torch.Tensor | None = None,
+        meta_context: torch.Tensor | None = None,
+        sequence_operator_memory: ExternalSequenceOperatorMemory | None = None,
+        sequence_operator_slot: int | None = None,
+        sequence_operator_route_query: torch.Tensor | None = None,
+    ) -> tuple[torch.Tensor, tuple[torch.Tensor, ...]]:
+        """Execute a portable artifact while retaining its state trace."""
+
+        if not isinstance(artifact, ExternalProgramArtifact):
+            raise TypeError("register execution requires an external program artifact")
+        artifact.validate_for(
+            instruction_width=self.instruction_width,
+            interpreter_schema=EXTERNAL_REGISTER_SCHEMA,
+            execution_schema=EXTERNAL_REGISTER_READ_EXECUTE_SCHEMA,
+        )
+        return self.execute_code_chain_trace(
+            register,
+            artifact.codes.unsqueeze(0).expand(register.shape[0], -1, -1),
+            event_window=event_window,
+            event_window_mask=event_window_mask,
+            meta_context=meta_context,
+            sequence_operator_memory=sequence_operator_memory,
+            sequence_operator_slot=sequence_operator_slot,
+            sequence_operator_route_query=sequence_operator_route_query,
+        )
+
+    def read_execute_artifact_snapshot(
+        self,
+        *,
+        event: torch.Tensor,
+        action: torch.Tensor,
+        outcome: torch.Tensor,
+        intention: IntentEvent,
+        state: ExternalRegisterState,
+        artifact: ExternalProgramArtifact,
+        present: torch.Tensor | None = None,
+        meta_context: torch.Tensor | None = None,
+        sequence_operator_memory: ExternalSequenceOperatorMemory | None = None,
+        sequence_operator_slot: int | None = None,
+        sequence_operator_route_query: torch.Tensor | None = None,
+    ) -> ExternalExecutionSnapshot:
+        """Observe once and execute one external file copy-on-write.
+
+        The observed register is durable external state.  The executed
+        register and trace are a transient candidate result, so a failed
+        verifier can discard them without mutating the durable state.
+        """
+
+        if present is None:
+            present = torch.ones(
+                event.shape[0], dtype=torch.bool, device=event.device
+            )
+        register, observed = self.observe_register(
+            event=event,
+            action=action,
+            outcome=outcome,
+            intention=intention,
+            state=state,
+            present=present,
+        )
+        executed, trace = self.execute_artifact_trace(
+            register,
+            artifact,
+            event_window=observed.event_window,
+            event_window_mask=observed.event_window_mask,
+            meta_context=meta_context,
+            sequence_operator_memory=sequence_operator_memory,
+            sequence_operator_slot=sequence_operator_slot,
+            sequence_operator_route_query=sequence_operator_route_query,
+        )
+        trace = tuple(
+            torch.where(present.unsqueeze(-1), value, register) for value in trace
+        )
+        snapshot = ExternalExecutionSnapshot(
+            observed=observed,
+            executed=torch.where(present.unsqueeze(-1), executed, register),
+            trace=trace,
+            program_digest=artifact.digest(),
+        )
+        return snapshot.validate(
+            batch_size=event.shape[0],
+            register_width=self.register_width,
+            context_width=self.context_width,
+            event_width=self.event_width,
+            event_window_size=self.event_window_size,
+            program_length=artifact.program_length,
         )
 
     def execute_chain(

@@ -57,6 +57,13 @@ from .interface import (
 )
 from .memory import MemoryBackend
 from .policies import EventWaitPolicy, EventWaitStatistics
+from .program import ExternalProgramArtifact
+from .register import (
+    ExternalCapabilityRegisterMachine,
+    ExternalExecutionSnapshot,
+    ExternalRegisterState,
+    ExternalSequenceProgramMemory,
+)
 from .representation import (
     DEFAULT_CONTROLLER_STATE_SPACE_ID,
     DEFAULT_EVENT_SPACE_ID,
@@ -1285,6 +1292,227 @@ class ExternalControllerTrajectoryQueryAdapter(nn.Module):
         if not bool(torch.isfinite(query).all()):
             raise ValueError("trajectory-query output must be finite")
         return query
+
+
+EXTERNAL_PROGRAM_RUNTIME_SCHEMA = "neural-computer.external-program-runtime.v1"
+
+
+@dataclass(frozen=True)
+class ExternalProgramRuntimeState:
+    """Joint state for one controller and one external computation file."""
+
+    controller: ControllerState
+    program: ExternalRegisterState
+
+
+@dataclass(frozen=True)
+class ExternalProgramRuntimeOutput:
+    """One INPUT -> PROCESS -> OUTPUT cycle with external computation.
+
+    The controller remains the only amodal processor.  The register machine
+    is a replaceable external computation file: it reads only the controller's
+    learned state and opaque feedback, and its transient result is what the
+    decoders receive.  ``controller.intention`` stays diagnostic and is never
+    silently used as the device output.
+    """
+
+    controller: ControllerOutput
+    execution: ExternalExecutionSnapshot
+    intention: IntentEvent
+    decoded: dict[str, torch.Tensor]
+    selected_program_slot: int | None
+    schema: str = EXTERNAL_PROGRAM_RUNTIME_SCHEMA
+
+
+class ExternalProgramAmodalRuntime(nn.Module):
+    """Run portable external programs through the canonical amodal boundary.
+
+    This is the CPU-plus-files seam suggested by the architecture work.  A
+    fixed controller handles learned events, working memory, and feedback;
+    an external register interpreter executes a versioned opaque artifact;
+    the intention bus fans the result out to any decoders.  Program files can
+    be replaced, routed, or grown without changing controller parameters.
+    """
+
+    schema = EXTERNAL_PROGRAM_RUNTIME_SCHEMA
+
+    def __init__(
+        self,
+        runtime: AmodalControllerRuntime,
+        machine: ExternalCapabilityRegisterMachine,
+        *,
+        program: ExternalProgramArtifact | None = None,
+        program_memory: ExternalSequenceProgramMemory | None = None,
+        program_query_adapter: ExternalControllerStateAdapter | None = None,
+    ) -> None:
+        super().__init__()
+        if not isinstance(runtime, AmodalControllerRuntime):
+            raise TypeError("external program runtime requires an amodal runtime")
+        if not isinstance(machine, ExternalCapabilityRegisterMachine):
+            raise TypeError("external program runtime requires a register machine")
+        if (program is None) == (program_memory is None):
+            raise ValueError("external program runtime requires one program source")
+        controller_feature_width = runtime.controller.width * 3
+        if machine.event_width != controller_feature_width:
+            raise ValueError(
+                "external program event width must match controller state width"
+            )
+        if machine.action_width != runtime.controller.feedback_width:
+            raise ValueError(
+                "external program action width must match controller feedback width"
+            )
+        if machine.intention_width != runtime.intention_width:
+            raise ValueError(
+                "external program intention width must match controller intention width"
+            )
+        if program is not None:
+            program.validate_for(
+                instruction_width=machine.instruction_width,
+                interpreter_schema="neural-computer.external-register.v4",
+                execution_schema="neural-computer.external-register-read-execute.v1",
+            )
+        if program_memory is not None:
+            if program_memory.instruction_width != machine.instruction_width:
+                raise ValueError("program memory instruction width does not match machine")
+            if len(program_memory.programs) < 1:
+                raise ValueError("program memory must contain at least one artifact")
+        if program_query_adapter is not None and (
+            program_query_adapter.controller_feature_width != controller_feature_width
+            or program_query_adapter.state_width != machine.instruction_width
+        ):
+            raise ValueError("program query adapter does not match controller or machine")
+        self.runtime = runtime
+        self.machine = machine
+        self.program = program
+        self.program_memory = program_memory
+        self.program_query_adapter = program_query_adapter or (
+            ExternalControllerStateAdapter(
+                controller_feature_width,
+                machine.instruction_width,
+            )
+            if program_memory is not None
+            else None
+        )
+
+    def configuration(self) -> dict[str, object]:
+        return {
+            "schema": self.schema,
+            "boundary": "controller_state_to_external_register_to_intention_bus_v1",
+            "controller": self.runtime.configuration()["controller"],
+            "runtime": self.runtime.configuration(),
+            "machine": self.machine.configuration(),
+            "program_source": (
+                "portable_external_artifact_v1"
+                if self.program is not None
+                else "opaque_content_routed_external_program_memory_v1"
+            ),
+            "program": None if self.program is None else self.program.configuration(),
+            "program_memory": (
+                None
+                if self.program_memory is None
+                else self.program_memory.configuration()
+            ),
+            "program_query_adapter": (
+                None
+                if self.program_query_adapter is None
+                else self.program_query_adapter.configuration()
+            ),
+            "controller_output": "diagnostic_only_v1",
+            "decoder_input": "external_program_intention_v1",
+        }
+
+    def initial_state(
+        self,
+        batch_size: int,
+        *,
+        device: torch.device | str,
+        dtype: torch.dtype = torch.float32,
+    ) -> ExternalProgramRuntimeState:
+        return ExternalProgramRuntimeState(
+            controller=self.runtime.initial_state(
+                batch_size,
+                device=device,
+                dtype=dtype,
+            ),
+            program=self.machine.initial_state(
+                batch_size,
+                device=device,
+                dtype=dtype,
+            ),
+        )
+
+    def _select_program(
+        self,
+        controller_output: ControllerOutput,
+    ) -> tuple[ExternalProgramArtifact, int | None]:
+        if self.program is not None:
+            return self.program, None
+        if self.program_memory is None or self.program_query_adapter is None:
+            raise RuntimeError("external program runtime has no program source")
+        query = self.program_query_adapter(controller_output)
+        selected = self.program_memory.route_weights(query).argmax(dim=-1)
+        if selected.numel() < 1 or not torch.all(selected == selected[0]):
+            raise ValueError(
+                "program-memory routing requires one program per batch; "
+                "partition mixed program schedules before execution"
+            )
+        slot = int(selected[0])
+        artifact = self.program_memory.artifact(slot)
+        artifact.validate_for(
+            instruction_width=self.machine.instruction_width,
+            interpreter_schema="neural-computer.external-register.v4",
+            execution_schema="neural-computer.external-register-read-execute.v1",
+        )
+        return artifact, slot
+
+    def step_events(
+        self,
+        events: AmodalEventCollection | Sequence[AmodalEvent],
+        state: ExternalProgramRuntimeState,
+        feedback: ControllerFeedback,
+        *,
+        elapsed: torch.Tensor | float = 1.0,
+        disable_workspace: bool = False,
+        memory_scope: torch.Tensor | None = None,
+    ) -> tuple[ExternalProgramRuntimeOutput, ExternalProgramRuntimeState]:
+        if not isinstance(state, ExternalProgramRuntimeState):
+            raise TypeError("external program runtime state has the wrong type")
+        collection = self.runtime.input_bus(events)
+        controller_output, next_controller = self.runtime.controller.step(
+            collection,
+            state.controller,
+            feedback,
+            self.runtime.memory,
+            elapsed=elapsed,
+            disable_workspace=disable_workspace,
+            memory_scope=memory_scope,
+        )
+        artifact, selected_slot = self._select_program(controller_output)
+        present = collection.present.any(dim=1)
+        snapshot = self.machine.read_execute_artifact_snapshot(
+            event=controller_output.state_representation,
+            action=feedback.action,
+            outcome=feedback.reward,
+            intention=controller_output.intention,
+            state=state.program,
+            artifact=artifact,
+            present=present,
+        )
+        intention = IntentEvent(
+            payload=self.machine.to_intention(snapshot.executed).payload,
+            confidence=controller_output.intention.confidence,
+        ).validate(width=self.runtime.intention_width)
+        output = ExternalProgramRuntimeOutput(
+            controller=controller_output,
+            execution=snapshot,
+            intention=intention,
+            decoded=self.runtime.output_bus(intention),
+            selected_program_slot=selected_slot,
+        )
+        return output, ExternalProgramRuntimeState(
+            controller=next_controller,
+            program=snapshot.observed,
+        )
 
 
 @dataclass(frozen=True)

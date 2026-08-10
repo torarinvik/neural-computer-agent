@@ -986,3 +986,30 @@ acquisition gains: the current probe scores dominate the decision, and the
 stream remains a small synthetic family matrix. The next pressure is a larger
 and genuinely non-synthetic family stream in which predicted cost can be
 tested against held-out acquisition curves.
+
+## Canonical external computation runtime seam (2026-08-10)
+
+The CPU-plus-files architecture now has a first-class execution boundary.
+`ExternalProgramAmodalRuntime` runs one frozen `AmodalCognitiveController`,
+one replaceable `ExternalCapabilityRegisterMachine`, and the ordinary
+intention bus as one `INPUT -> PROCESS -> OUTPUT` cycle. A portable
+`ExternalProgramArtifact` is observed through learned controller state and
+opaque action/outcome feedback, executed copy-on-write, and converted into the
+intention delivered to decoders. The controller's own intention is retained as
+diagnostic state and is not silently decoded.
+
+The external execution snapshot records the observed persistent register, the
+transient result, an opaque positional trace, and an artifact checksum. A
+failed verifier can therefore discard a candidate file without rolling back or
+replaying the controller. `ExternalSequenceProgramMemory` can route among
+multiple opaque program files from a replaceable state adapter; the controller
+never receives the physical slot address or interpreter metadata.
+
+This closes a real architectural gap exposed by the exported session: the
+system can now store executable computation as portable external state rather
+than treating artifacts as storage-only or adding a controller branch for each
+new capability. It is an execution and replacement contract, not evidence of
+learned program synthesis, arbitrary computation acquisition, unrestricted
+growth, or general continual learning. The next causal rung is outcome-only
+program-file acquisition on held-out Brain Workshop families, with fresh-file,
+no-agent, replay, retention, and frozen-controller controls.

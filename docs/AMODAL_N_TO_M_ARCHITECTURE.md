@@ -8651,3 +8651,31 @@ improves acquisition broadly: the probe still dominates selection in this
 small task-family stream. Broad cost generalization, universal positive
 transfer, arbitrary new computation, unrestricted growth, compression, and
 general continual learning remain open.
+
+## Canonical external computation runtime seam (2026-08-10)
+
+The `INPUT -> PROCESS -> OUTPUT` cycle now has a direct external-computation
+path. `ExternalProgramAmodalRuntime` keeps the amodal controller as the only
+central processor while a versioned `ExternalProgramArtifact` is executed by
+the replaceable `ExternalCapabilityRegisterMachine`. The machine consumes the
+controller's learned state representation plus opaque action/outcome
+feedback, never raw modality payloads, device action IDs, task labels, or
+verifier-private metadata. Its transient register result is projected into
+one intention and sent through the existing `M`-decoder intention bus.
+
+The artifact execution is copy-on-write: the persistent external register is
+advanced by observation, while the executed register and positional trace are
+returned as a checksummed `ExternalExecutionSnapshot`. Retention verification
+can reject the file without mutating the controller or committed external
+state. An `ExternalSequenceProgramMemory` source can select among portable
+opaque files through a replaceable query adapter; physical program slots stay
+outside the controller boundary.
+
+This implements the exported session's strongest CPU/files lesson more
+faithfully than a task-specific policy table: durable memory may contain
+reusable factual or executable computation, while behavior is produced by a
+shared interpreter and verified at deployment. The implementation proves the
+seam and its isolation, not learned program synthesis or Turing-complete
+continual learning. The next promotion must show outcome-only acquisition of
+new program files on held-out working-memory families and retain earlier files
+without replay or controller updates.
