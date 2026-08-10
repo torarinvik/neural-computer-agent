@@ -1376,3 +1376,13 @@ passes. Rejection is non-mutating; protected files remain untouched; and
 output ABI metadata, and protection state independently of the controller.
 This makes executable files safe external learning state without claiming that
 the system can synthesize arbitrary programs yet.
+
+`ExternalProgramCandidateSearch` adds the first outcome-driven synthesis seam
+for that file format. It mutates opaque instruction sequences outside the
+controller, records only aggregate verifier statistics and candidate digests,
+and leaves durable admission to the existing stable-prefix transaction. The
+promoted three-seed audit synthesizes one held-out two-step composition from a
+protected parent while a matched fresh atom fails the same bounded search
+budget. This qualifies one-edit structural synthesis only; multi-step beam
+search, arbitrary program induction, and general continual learning remain
+open.

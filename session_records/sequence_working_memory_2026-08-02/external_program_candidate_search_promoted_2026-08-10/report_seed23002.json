@@ -1,0 +1,90 @@
+{
+  "schema": "neural-computer.external-program-candidate-search.v1",
+  "claim_boundary": "outcome-only one-edit structural synthesis of one portable executable file from a protected opaque parent; not open-ended program induction",
+  "seed": 23002,
+  "configuration": {
+    "event_width": 4,
+    "machine_event_width": 12,
+    "register_width": 4,
+    "instruction_width": 8,
+    "interpreter_updates": 500,
+    "search_episodes": 256,
+    "verifier_probes": 32,
+    "target_threshold": 0.95,
+    "error_scale": 0.05
+  },
+  "interpreter_final_loss": 6.684463841276876e-15,
+  "source_mastery": 1.0,
+  "target_mastery": 1.0,
+  "fresh_target": 0.07393273466641404,
+  "warm_search_proposals": 1,
+  "fresh_search_proposals": 256,
+  "warm_best_quality": 1.0,
+  "fresh_best_quality": 0.07393273466641404,
+  "candidate_outcome_mean": 1.0,
+  "corrupted_candidate_outcome_mean": 0.03983115777373314,
+  "candidate_digest": "dd768620d29aeed18de5855669600886226accee7717f501ea68b9101ee14786",
+  "target_digest": "dd768620d29aeed18de5855669600886226accee7717f501ea68b9101ee14786",
+  "source_memory_files": 2,
+  "restored_memory_files": 2,
+  "warm_search_accepted": 1,
+  "fresh_search_accepted": 0,
+  "admission": {
+    "schema": "neural-computer.external-program-admission.v1",
+    "accepted": true,
+    "candidate_digest": "dd768620d29aeed18de5855669600886226accee7717f501ea68b9101ee14786",
+    "slot": 1,
+    "observations": 32,
+    "stable_bits_to_threshold": 1,
+    "stable_prefix_minimum": 1.0,
+    "reason": "candidate verified and committed as an external file"
+  },
+  "corrupted_admission": {
+    "schema": "neural-computer.external-program-admission.v1",
+    "accepted": false,
+    "candidate_digest": "9b8bd1aed1fe4c3b74e11f702b98775a86520a1241d965c30874a31dc998e29a",
+    "slot": null,
+    "observations": 32,
+    "stable_bits_to_threshold": null,
+    "stable_prefix_minimum": 0.0004646377346944064,
+    "reason": "candidate did not clear a stable verifier prefix"
+  },
+  "runtime_smoke": {
+    "executed_file": "b65a6b35e4753b55be446730206ee99e8d634722b0f8feaf3df4617f205907bc",
+    "decoded_shape": [
+      1,
+      1
+    ],
+    "controller_frozen": true
+  },
+  "gates": {
+    "target_not_preloaded": true,
+    "warm_candidate_generated": true,
+    "candidate_admitted": true,
+    "candidate_protected": true,
+    "source_protected": true,
+    "source_retention": true,
+    "target_mastery": true,
+    "fresh_control_not_admitted": true,
+    "corrupted_candidate_rejected": true,
+    "corrupted_noop": true,
+    "shuffled_control_rejected": true,
+    "search_state_persistence_exact": true,
+    "file_memory_persistence_exact": true,
+    "controller_runtime_seam": true,
+    "interpreter_frozen": true,
+    "zero_replayed_examples": true,
+    "zero_controller_optimizer_updates": true
+  },
+  "promoted": true,
+  "accounting": {
+    "unique_verifier_bits": 8288,
+    "unique_logical_lifetimes": 259,
+    "program_verifier_outcomes": 8288,
+    "interpreter_optimizer_updates": 500,
+    "controller_optimizer_updates": 0,
+    "replayed_examples": 0,
+    "raw_verifier_rows_retained": 0,
+    "wall_seconds": 1.4177774169947952
+  }
+}

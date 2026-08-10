@@ -355,6 +355,15 @@ from .program import (
     ExternalProgramArtifact,
     evaluate_external_program_admission,
 )
+from .program_search import (
+    EXTERNAL_PROGRAM_CANDIDATE_PROPOSAL_SCHEMA,
+    EXTERNAL_PROGRAM_CANDIDATE_SEARCH_SCHEMA,
+    PROGRAM_MUTATION_OPERATORS,
+    ExternalProgramCandidateFeedback,
+    ExternalProgramCandidateProposal,
+    ExternalProgramCandidateSearch,
+    ExternalProgramCandidateSearchState,
+)
 from .promotion import (
     HOLDOUT_LEDGER_SCHEMA,
     PROMOTION_SCHEMA,
@@ -668,6 +677,8 @@ __all__ = [
     "EXTERNAL_OUTCOME_VALUE_SCHEMA",
     "EXTERNAL_PROGRAM_ADMISSION_SCHEMA",
     "EXTERNAL_PROGRAM_ARTIFACT_SCHEMA",
+    "EXTERNAL_PROGRAM_CANDIDATE_PROPOSAL_SCHEMA",
+    "EXTERNAL_PROGRAM_CANDIDATE_SEARCH_SCHEMA",
     "EXTERNAL_PROGRAM_RUNTIME_SCHEMA",
     "EXTERNAL_REGISTER_BASIS_ARTIFACT_SCHEMA",
     "EXTERNAL_REGISTER_BASIS_SCHEMA",
@@ -761,6 +772,7 @@ __all__ = [
     "MEMORY_SNAPSHOT_FORMAT",
     "OPAQUE_STATE_STORE_SCHEMA",
     "POLICY_FREE_RUNTIME_SCHEMA",
+    "PROGRAM_MUTATION_OPERATORS",
     "PROMOTION_SCHEMA",
     "REPRESENTATION_SPACE_SCHEMA",
     "RETENTION_LEDGER_SCHEMA",
@@ -904,6 +916,10 @@ __all__ = [
     "ExternalProgramAdmissionReceipt",
     "ExternalProgramAmodalRuntime",
     "ExternalProgramArtifact",
+    "ExternalProgramCandidateFeedback",
+    "ExternalProgramCandidateProposal",
+    "ExternalProgramCandidateSearch",
+    "ExternalProgramCandidateSearchState",
     "ExternalProgramRuntimeOutput",
     "ExternalProgramRuntimeState",
     "ExternalRandomFeatureGrowthReceipt",

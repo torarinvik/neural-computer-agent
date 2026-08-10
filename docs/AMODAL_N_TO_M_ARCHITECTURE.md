@@ -8734,3 +8734,27 @@ program synthesis, arbitrary new computation acquisition, unrestricted memory
 growth, or general continual learning. The next decisive test is outcome-only
 candidate generation on a larger, genuinely non-synthetic Brain Workshop
 family stream.
+
+## Outcome-only executable-program candidate search (2026-08-10)
+
+The next executable-memory gap is now closed at a bounded rung. The new
+`ExternalProgramCandidateSearch` generates copy-on-write instruction
+sequences from an opaque instruction bank using generic replace, insert,
+delete, swap, and jitter edits. It updates only aggregate operator reward and
+acceptance statistics from scalar verifier outcomes; raw verifier rows and
+target programs never enter the search state.
+
+The three-seed audit is archived under
+`session_records/sequence_working_memory_2026-08-02/external_program_candidate_search_promoted_2026-08-10/`.
+One protected one-instruction source composes a held-out two-instruction
+target in `1--13` proposals, while a matched fresh atom fails the same
+one-edit/256-proposal budget. All runs retain source and target at `1.0000`,
+reject corrupted and shuffled evidence, reload exact search/file state, and
+keep both interpreter and controller frozen with zero replay.
+
+This promotes outcome-driven one-edit structural synthesis of one portable
+external file. It does not establish multi-step beam search, arbitrary
+program induction, Turing-complete learning, unrestricted growth, or general
+continual learning. The next decisive implementation is a persistent
+multi-step candidate frontier evaluated on a real Brain Workshop family
+stream, with provisional hypotheses isolated from protected files.

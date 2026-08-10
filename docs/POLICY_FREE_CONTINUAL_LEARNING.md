@@ -1054,3 +1054,21 @@ retention, not program synthesis, arbitrary new computation, unrestricted
 memory growth, or general continual learning. The next pressure is to generate
 candidate files from scalar outcomes and test the same contract on a larger
 non-synthetic Brain Workshop family stream.
+
+## Promoted outcome-only executable-program search (2026-08-10)
+
+`ExternalProgramCandidateSearch` now supplies candidates rather than requiring
+the caller to hand over a complete new executable file. It performs generic
+opaque sequence edits and learns aggregate operator statistics from scalar
+verifier outcomes. Proposals are copy-on-write; only the stable-prefix winner
+is passed to `ExternalSequenceProgramMemory.admit_verified_artifact()`.
+
+Across seeds `23001`, `23002`, and `23003`, a protected parent synthesizes a
+held-out two-instruction composition in `1--13` proposals. The fresh parent
+control fails within `256` proposals, while source and target retention remain
+perfect. Corruption, shuffled outcomes, exact reload, frozen-interpreter,
+frozen-controller, zero-replay, and zero-controller-update gates pass.
+
+This is bounded one-edit structural synthesis, not open-ended program
+induction or general continual learning. The next pressure is a persistent
+multi-step hypothesis frontier on a genuine Brain Workshop family stream.
