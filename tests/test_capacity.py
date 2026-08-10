@@ -62,6 +62,37 @@ def test_capacity_planner_is_equivariant_to_candidate_permutation() -> None:
     )
 
 
+def test_capacity_planner_pair_selector_is_coordinate_relation_invariant() -> None:
+    bank = _bank(batch=1)
+    incoming_key = torch.nn.functional.normalize(torch.randn(1, 6), dim=-1)
+    incoming_value = torch.randn(1, 6)
+    protected = torch.zeros(1, 4, dtype=torch.bool)
+    planner = OpaqueCapacityPlanner(width=6, hidden=16).eval()
+    original = planner(
+        bank,
+        incoming_key,
+        incoming_value,
+        protected,
+        consolidation_available=torch.ones(1, dtype=torch.bool),
+    )
+    feature_permutation = torch.tensor([2, 5, 0, 3, 1, 4])
+    transformed_bank = MemoryCandidates(
+        keys=bank.keys[..., feature_permutation],
+        values=bank.values[..., feature_permutation],
+        strengths=bank.strengths,
+        timestamps=bank.timestamps,
+        occupied=bank.occupied,
+    )
+    transformed = planner(
+        transformed_bank,
+        incoming_key[:, feature_permutation],
+        incoming_value[:, feature_permutation],
+        protected,
+        consolidation_available=torch.ones(1, dtype=torch.bool),
+    )
+    assert torch.allclose(original.pair_scores, transformed.pair_scores)
+
+
 def test_capacity_planner_masks_protected_eviction_and_can_force_growth() -> None:
     bank = _bank(batch=1, capacity=3)
     planner = OpaqueCapacityPlanner(width=6, hidden=16).eval()

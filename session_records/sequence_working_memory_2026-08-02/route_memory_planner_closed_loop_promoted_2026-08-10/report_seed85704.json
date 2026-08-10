@@ -1,0 +1,96 @@
+{
+  "schema": "neural-computer.route-memory-planner-closed-loop.v1",
+  "claim_boundary": "replay-free sequential closed-loop learning and reversed-pattern transfer for four bounded route-memory maintenance actions; not universal policy composition, unbounded memory, autonomous verifier design, or general continual learning",
+  "seed": 85704,
+  "configuration": {
+    "pretrain_episodes": 400,
+    "mixed_episodes": 1600,
+    "heldout_per_action": 80,
+    "actions": [
+      "admit",
+      "evict",
+      "consolidate",
+      "grow"
+    ],
+    "capacity": 4,
+    "width": 8,
+    "hidden": 48,
+    "temperature": 0.8,
+    "transaction": "copy_on_write_verifier_gated_route_memory_v1",
+    "update": "centered_single_verifier_utility_policy_gradient_v1"
+  },
+  "gates": {
+    "mixed_utility_retained_or_improved": true,
+    "stable_mixed_threshold": true,
+    "forward_action_transfer": true,
+    "reversed_action_transfer": true,
+    "prior_consolidation_retained": true,
+    "forward_beats_fresh": true,
+    "reversed_beats_fresh": true,
+    "controller_frozen": true,
+    "replay_zero": true,
+    "updates_match_unique_episodes": true,
+    "transactions_are_verifier_gated": true
+  },
+  "promoted": true,
+  "metrics": {
+    "pretrain_last_window_utility": 1.0,
+    "mixed_first_window_utility": 0.99,
+    "mixed_last_window_utility": 1.0,
+    "stable_start_episode": 1,
+    "stable_window_minimum": 0.99,
+    "online_by_action": {
+      "admit": {
+        "first_window": 0.96,
+        "last_window": 1.0
+      },
+      "evict": {
+        "first_window": 1.0,
+        "last_window": 1.0
+      },
+      "consolidate": {
+        "first_window": 1.0,
+        "last_window": 1.0
+      },
+      "grow": {
+        "first_window": 1.0,
+        "last_window": 1.0
+      }
+    },
+    "trained_forward_by_action": {
+      "admit": 1.0,
+      "evict": 1.0,
+      "consolidate": 1.0,
+      "grow": 1.0
+    },
+    "trained_reversed_by_action": {
+      "admit": 1.0,
+      "evict": 1.0,
+      "consolidate": 1.0,
+      "grow": 1.0
+    },
+    "fresh_forward_by_action": {
+      "admit": 1.0,
+      "evict": 0.0,
+      "consolidate": 0.3625,
+      "grow": 1.0
+    },
+    "fresh_reversed_by_action": {
+      "admit": 1.0,
+      "evict": 0.0,
+      "consolidate": 0.0875,
+      "grow": 1.0
+    },
+    "forward_gain_over_fresh": 0.5458333333333333,
+    "reversed_gain_over_fresh": 0.6375000000000001,
+    "committed_mixed_transactions": 1599
+  },
+  "accounting": {
+    "unique_verifier_utilities": 2000,
+    "unique_logical_lifetimes": 2000,
+    "optimizer_updates": 2000,
+    "replayed_examples": 0,
+    "controller_updates": 0,
+    "wall_seconds": 8.568227000010666
+  }
+}

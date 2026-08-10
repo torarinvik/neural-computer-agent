@@ -3843,14 +3843,18 @@ class ExternalTransitionRouteMemory:
         query: torch.Tensor,
         *,
         query_mask: torch.Tensor | None = None,
+        replacement_index: int | None = None,
         retention_probe: Callable[[ExternalTransitionRouteMemory], bool],
     ) -> ExternalTransitionRouteMemoryReplacementReceipt:
         """Commit new route evidence only when a candidate retains old routes.
 
         A novel query is appended while capacity is available.  When the
         per-slot budget is full, the least-supported prototype is replaced on
-        a copy and committed only if the verifier accepts the candidate.  A
-        failed probe leaves every live field and digest unchanged.
+        a copy by default and committed only if the verifier accepts the
+        candidate. ``replacement_index`` lets a verified opaque capacity
+        planner choose the row explicitly; it is honored only for a novel
+        query at a full budget. A failed probe leaves every live field and
+        digest unchanged.
         """
 
         self._validate_slot_id(slot_id)
@@ -3858,6 +3862,15 @@ class ExternalTransitionRouteMemory:
             raise KeyError(f"unknown transition route-memory slot: {slot_id}")
         if not callable(retention_probe):
             raise TypeError("transition route-memory retention probe is invalid")
+        if replacement_index is not None:
+            if (
+                not isinstance(replacement_index, int)
+                or isinstance(replacement_index, bool)
+                or replacement_index < 0
+            ):
+                raise ValueError("transition route-memory replacement index is invalid")
+            if replacement_index >= self.prototype_count(slot_id):
+                raise IndexError("transition route-memory replacement index is out of range")
         self._normalize(query, query_mask)
         source_digest = self.digest()
         query_digest = self._query_digest(query, query_mask)
@@ -3869,9 +3882,13 @@ class ExternalTransitionRouteMemory:
             prototypes = candidate._prototypes[slot_id]
             prototype_masks = candidate._prototype_masks[slot_id]
             counts = candidate._counts[slot_id]
-            replaced_index = min(
-                range(len(prototypes)),
-                key=lambda index: (counts[index], index),
+            replaced_index = (
+                min(
+                    range(len(prototypes)),
+                    key=lambda index: (counts[index], index),
+                )
+                if replacement_index is None
+                else replacement_index
             )
             normalized, observed_mask = candidate._normalize(query, query_mask)
             del prototypes[replaced_index]
@@ -4114,6 +4131,9 @@ class ExternalTransitionRouteMemory:
         query_mask: torch.Tensor | None = None,
         protected_indices: Sequence[int] = (),
         consolidation_available: bool = True,
+        explore: bool = False,
+        temperature: float = 1.0,
+        generator: torch.Generator | None = None,
     ) -> Any:
         """Ask an opaque capacity planner for a non-binding maintenance plan.
 
@@ -4132,6 +4152,8 @@ class ExternalTransitionRouteMemory:
             raise TypeError("transition route-memory planner must expose propose")
         if not isinstance(consolidation_available, bool):
             raise TypeError("transition route-memory consolidation availability must be bool")
+        if not isinstance(explore, bool):
+            raise TypeError("transition route-memory planner exploration must be bool")
         normalized, observed_mask = self._normalize(query, query_mask)
         candidates = self.policy_candidates(slot_id)
         protected = torch.zeros(
@@ -4148,15 +4170,24 @@ class ExternalTransitionRouteMemory:
             ):
                 raise ValueError("transition route-memory protected index is invalid")
             protected[0, index] = True
+        proposal_kwargs: dict[str, Any] = {
+            "consolidation_available": torch.tensor(
+                [consolidation_available],
+                dtype=torch.bool,
+            ),
+        }
+        if explore or temperature != 1.0 or generator is not None:
+            proposal_kwargs.update(
+                explore=explore,
+                temperature=temperature,
+                generator=generator,
+            )
         return planner.propose(
             candidates,
             normalized.unsqueeze(0),
             observed_mask.to(dtype=torch.float32).unsqueeze(0),
             protected,
-            consolidation_available=torch.tensor(
-                [consolidation_available],
-                dtype=torch.bool,
-            ),
+            **proposal_kwargs,
         )
 
     def propose(

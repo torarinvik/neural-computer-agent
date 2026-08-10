@@ -7490,3 +7490,31 @@ closed-loop integration with actual route-memory transactions over longer
 nonstationary streams, including interference, reversal, and growth cost.
 Evidence and accounting are archived in
 `session_records/sequence_working_memory_2026-08-02/opaque_capacity_planner_mixed_utility_promoted_2026-08-10/`.
+
+## Closed-loop route-memory capacity-policy transfer (2026-08-10)
+
+The planner is now connected to actual route-memory maintenance transactions.
+Verifier-approved replacement can honor the planner's selected row, and the
+route-memory maintenance boundary can request exploratory proposals. The pair
+selector was upgraded to use coordinate-invariant key/value relations,
+generic support/age metadata, and incoming-to-row similarities rather than
+raw feature coordinates.
+
+Across seeds `85701`, `85702`, `85703`, and `85704`, copy-on-write
+verifier-gated transactions achieved `1.0` held-out utility for admission,
+eviction, consolidation, and growth under both forward and reversed
+redundancy patterns. The earlier consolidation skill remained at `1.0`;
+stable mixed utility was `0.98`–`0.99` or higher. The trained policy's
+aggregate gain over a fresh planner on the learnable action families was at
+least `0.333` in both patterns. Each run used 2,000 unique verifier
+utilities, 2,000 policy updates, zero replay, a frozen controller, and
+1,598–1,599 committed transactions out of 1,600.
+
+This promotes closed-loop bounded capacity-policy learning and relational
+selector transfer. It does not establish persistent nonstationary memory
+management, unbounded growth, universal policy composition, autonomous
+verifier design, or general continual learning. The next pressure point is a
+single persistent route-memory stream with interference, reversal, and
+explicit growth/consolidation costs, evaluated by retention prefixes and
+transaction regret. Evidence and accounting are archived in
+`session_records/sequence_working_memory_2026-08-02/route_memory_planner_closed_loop_promoted_2026-08-10/`.

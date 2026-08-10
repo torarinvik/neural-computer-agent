@@ -313,6 +313,34 @@ def test_transition_route_memory_replacement_is_atomic_and_retention_gated() -> 
     assert restored.propose(new_query, (10,), minimum_score=0.9).selected_slot_id == 10
 
 
+def test_transition_route_memory_honors_verified_planner_replacement_index() -> None:
+    memory = ExternalTransitionRouteMemory(
+        4,
+        max_prototypes_per_slot=2,
+        merge_cosine=0.99,
+    )
+    first = torch.tensor([1.0, 0.0, 0.0, 0.0])
+    second = torch.tensor([0.0, 0.0, 1.0, 0.0])
+    replacement = torch.tensor([0.0, 0.0, 0.0, 1.0])
+    memory.register_slot(10, prototype=first)
+    assert memory.observe(10, second)
+    receipt = memory.replace_verified(
+        10,
+        replacement,
+        replacement_index=0,
+        retention_probe=lambda candidate: (
+            candidate.propose(second, (10,), minimum_score=0.9).selected_slot_id
+            == 10
+            and candidate.propose(replacement, (10,), minimum_score=0.9).selected_slot_id
+            == 10
+        ),
+    )
+    assert receipt.accepted
+    assert receipt.replaced_index == 0
+    assert memory.propose(first, (10,), minimum_score=0.99).selected_slot_id is None
+    assert memory.propose(replacement, (10,), minimum_score=0.99).selected_slot_id == 10
+
+
 def test_transition_route_memory_capacity_growth_is_atomic_and_replay_free() -> None:
     memory = ExternalTransitionRouteMemory(
         4,

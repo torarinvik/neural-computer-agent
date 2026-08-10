@@ -16,7 +16,7 @@ from torch import nn
 
 from .memory import MemoryCandidates
 
-CAPACITY_PLANNER_SCHEMA = "neural-computer.opaque-capacity-planner.v1"
+CAPACITY_PLANNER_SCHEMA = "neural-computer.opaque-capacity-planner.v3"
 ADMISSION_ACTIONS = ("admit", "evict", "consolidate", "grow")
 
 
@@ -87,7 +87,9 @@ class OpaqueCapacityPlanner(nn.Module):
             nn.GELU(),
             nn.Linear(hidden, 1),
         )
-        pair_width = 2 * row_width + incoming_width
+        pair_relation_width = 10
+        self.pair_relation_width = pair_relation_width
+        pair_width = pair_relation_width
         self.pair_network = nn.Sequential(
             nn.Linear(pair_width, hidden),
             nn.GELU(),
@@ -102,6 +104,16 @@ class OpaqueCapacityPlanner(nn.Module):
             "learning_rate": self.learning_rate,
             "actions": ADMISSION_ACTIONS,
             "row_features": "key_value_strength_relative_age",
+            "pair_relations": (
+                "key_cosine",
+                "value_cosine",
+                "support_sum",
+                "support_abs_difference",
+                "age_sum",
+                "age_abs_difference",
+                "incoming_key_cosines",
+                "incoming_value_cosines",
+            ),
             "updates": "single_verifier_utility_without_replay_v1",
         }
 
@@ -215,11 +227,43 @@ class OpaqueCapacityPlanner(nn.Module):
         eviction_scores = self.eviction_network(
             torch.cat((repeated_global, row_features), dim=-1)
         ).squeeze(-1)
-        left = row_features[:, :, None, :].expand(-1, -1, capacity, -1)
-        right = row_features[:, None, :, :].expand(-1, capacity, -1, -1)
-        incoming_pairs = incoming[:, None, None, :].expand(-1, capacity, capacity, -1)
+        left_metadata = row_features[:, :, None, -2:].expand(-1, -1, capacity, -1)
+        right_metadata = row_features[:, None, :, -2:].expand(-1, capacity, -1, -1)
+        normalized_keys = torch.nn.functional.normalize(bank.keys, dim=-1)
+        normalized_values = torch.nn.functional.normalize(bank.values, dim=-1)
+        normalized_incoming_key = torch.nn.functional.normalize(incoming_key, dim=-1)
+        normalized_incoming_value = torch.nn.functional.normalize(incoming_value, dim=-1)
+        pair_relations = torch.stack(
+            (
+                normalized_keys @ normalized_keys.transpose(-1, -2),
+                normalized_values @ normalized_values.transpose(-1, -2),
+            ),
+            dim=-1,
+        )
+        incoming_key_cosines = (
+            normalized_keys * normalized_incoming_key[:, None, :]
+        ).sum(dim=-1)
+        incoming_value_cosines = (
+            normalized_values * normalized_incoming_value[:, None, :]
+        ).sum(dim=-1)
+        incoming_pair_relations = torch.cat(
+            (
+                incoming_key_cosines[:, :, None, None].expand(-1, -1, capacity, -1),
+                incoming_key_cosines[:, None, :, None].expand(-1, capacity, -1, -1),
+                incoming_value_cosines[:, :, None, None].expand(-1, -1, capacity, -1),
+                incoming_value_cosines[:, None, :, None].expand(-1, capacity, -1, -1),
+            ),
+            dim=-1,
+        )
+        metadata_relations = torch.cat(
+            (
+                left_metadata + right_metadata,
+                (left_metadata - right_metadata).abs(),
+            ),
+            dim=-1,
+        )
         pair_scores = self.pair_network(
-            torch.cat((left + right, (left - right).abs(), incoming_pairs), dim=-1)
+            torch.cat((pair_relations, metadata_relations, incoming_pair_relations), dim=-1)
         ).squeeze(-1)
         valid_evictions = occupied & ~protected
         valid_pairs = occupied[:, :, None] & occupied[:, None, :]
