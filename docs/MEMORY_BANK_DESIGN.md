@@ -6497,3 +6497,37 @@ domains. The findings that did not transfer — weights, curricula,
 collection policies — were all quantities.
 
 Probe 243 is `game_slots.py --tied-salience --bind-value`, 3 seeds.
+
+**F144 (probe 244, SINGLE SEED — reported as provisional under the rule
+tightened after F142's correction). The contrastive batch ladder shows
+a second interior optimum: batch 32 gives 0.7993 held-out per-bit and
+0.3158 exact, the best non-privileged numbers measured.**
+
+| contrastive batch (w=1.0, seed 69316) | held-out per-bit | exact |
+| ---: | ---: | ---: |
+| 8 | 0.7069 | 0.1780 |
+| **32** | **0.7993** | **0.3158** |
+| 128 | 0.5738 | 0.0606 |
+
+This is exactly the shape F142 produced and exactly the shape that did
+not survive replication there, so no claim is made until the best
+point is reproduced. Two further seeds at batch 32 are running for
+that purpose alone — not a sweep, a replication of one point.
+
+If it holds, the reading is F78's diversity law applied to the
+READER's objective: at batch 8 the reader distinguishes one world from
+seven and a coarse code suffices; at 32 it must separate a world from
+31 and the code has to be finer. The collapse at 128 would then be the
+familiar over-shoot — the contrastive term dominating the task loss
+and costing bindability, the same trade F142's weight curve suggested.
+
+The honest caveat is that this interpretation is available for a
+result that may be noise, and F142 is on record as having produced a
+tidy mechanistic story for exactly such a curve one day earlier. The
+story is written here so it can be checked, not because it is
+believed.
+
+Exact-match at 0.3158 would be the number that matters if it survives:
+all eight bits correct requires the entry to SPECIFY the world, and
+0.3158 against joint training's 0.0096 is a 33x change on the strict
+measure rather than the lenient one.
