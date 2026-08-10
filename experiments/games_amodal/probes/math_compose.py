@@ -71,6 +71,19 @@ parser.add_argument(
          "A curriculum gets reading established on the readable task "
          "first, then extends it — the bootstrapping F120 identified.")
 parser.add_argument(
+    "--distill", action="store_true",
+    help="in phase 2, train the reader to MATCH the oracle entry "
+         "directly (squared error on the entry vector) instead of "
+         "through task loss. Diagnostic, not a proposed mechanism: "
+         "the oracle entry is built from privileged parameters, so a "
+         "reader trained this way is not a solution. What it answers "
+         "is whether the reader CAN represent the required entry from "
+         "observations at all. F136 showed phase-2 task loss fails to "
+         "move it; if distillation also fails, the reader or its "
+         "inputs are inadequate, and if it succeeds, the reader is "
+         "capable and the missing piece is purely the training "
+         "signal. Requires --two-phase.")
+parser.add_argument(
     "--two-phase", type=float, default=0.0,
     help="F75-F79's FROZEN PLANT + AMORTISED READING, applied here. "
          "Train the plant on ORACLE entries for this fraction of "
@@ -350,8 +363,14 @@ for update in range(args.train_updates):
              else reader(*reader_examples(world, data_gen)))
     x = torch.randint(0, M, (args.batch_size,), generator=data_gen)
     y = apply_program(world, program, x)
-    loss = torch.nn.functional.cross_entropy(plant(program, x, entry), y)
-    if args.ignorance > 0:
+    if args.distill and args.two_phase > 0 and update >= phase_one:
+        loss = torch.nn.functional.mse_loss(
+            entry, oracle(oracle_raw(world)).detach())
+    else:
+        loss = torch.nn.functional.cross_entropy(
+            plant(program, x, entry), y)
+    if args.ignorance > 0 and not (
+            args.two_phase > 0 and update >= phase_one):
         blind = plant(program, x,
                       torch.zeros_like(entry)).log_softmax(-1)
         entropy = -(blind.exp() * blind).sum(-1).mean()
