@@ -150,6 +150,20 @@ parser.add_argument(
          "scalar head trained on the observed return, used raw by the "
          "search.")
 parser.add_argument(
+    "--tied-salience", action="store_true",
+    help="F73's SLOT SYMMETRY applied to the signed pathway: instead "
+         "of two independent salience channels read off the whole "
+         "state embedding, one SHARED function scores each object "
+         "slot from its own relative features, and the entry supplies "
+         "one sign per slot. F118 measured that the plane-2 channel "
+         "never receives gradient because collection visits plane-1, "
+         "and F123/F129 measured that fixing the data either destroys "
+         "reading (p=0.5) or buys almost nothing (p=0.25). Tying the "
+         "channels removes the need for plane-2 data entirely: "
+         "whatever plane-1 visits teach about 'an object this far away "
+         "is worth this much' transfers to plane-2 by construction, "
+         "and only the SIGN has to come from the entry.")
+parser.add_argument(
     "--signed-entry", action="store_true",
     help="add a multiplicative signed pathway to the value head: "
          "value += tanh(polarity(entry)) * salience(state). F112 found "
@@ -400,6 +414,27 @@ class Outcome(torch.nn.Module):
         # avoid but never to seek the plane-2 object.
         self.salience = torch.nn.Linear(dim, 2)
         self.polarity = torch.nn.Linear(dim, 2)
+        # tied variant: 4 features per object slot (relative row,
+        # relative column, absence flag, L1 distance), scored by ONE
+        # shared map so both slots share every parameter
+        self.tied = torch.nn.Sequential(
+            torch.nn.Linear(4, 32), torch.nn.ReLU(),
+            torch.nn.Linear(32, 1))
+
+    @staticmethod
+    def object_features(states: torch.Tensor) -> torch.Tensor:
+        """(B, SLOTS) -> (B, 2, 4): each object slot described only by
+        its own relation to the avatar, in the same frame for both."""
+        avatar = states[:, :2].float()
+        rows = []
+        for index in range(2):
+            obj = states[:, 2 + 2 * index:4 + 2 * index].float()
+            absent = (obj[:, 0] >= ABSENT).float().unsqueeze(-1)
+            delta = (obj - avatar) / float(HEIGHT)
+            rows.append(torch.cat(
+                [delta * (1 - absent), absent,
+                 delta.abs().sum(-1, keepdim=True) * (1 - absent)], dim=-1))
+        return torch.stack(rows, dim=1)
 
     def forward(self, states, acts, entry,
                 value: bool = False,
@@ -417,9 +452,12 @@ class Outcome(torch.nn.Module):
             out = self.value_head(pooled).squeeze(-1)
             if signed and entry is not None:
                 sign = torch.tanh(self.polarity(entry.mean(dim=0)))
-                out = out + (sign
-                             * self.salience(self.norm(raw[:, 0]))
-                             ).sum(-1)
+                if args.tied_salience:
+                    weight = self.tied(
+                        self.object_features(states)).squeeze(-1)
+                else:
+                    weight = self.salience(self.norm(raw[:, 0]))
+                out = out + (sign * weight).sum(-1)
             return out
         return self.head(pooled)
 
