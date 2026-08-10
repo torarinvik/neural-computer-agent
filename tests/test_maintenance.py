@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import torch
 
+from experiments.external_memory_maintenance_policy.real_train import (
+    run as run_real_maintenance,
+)
 from experiments.external_memory_maintenance_policy.train import run
 from neural_computer import (
     EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY,
@@ -12,6 +15,7 @@ from neural_computer import (
     ExternalOnlineTransitionContextRouter,
     ExternalTransitionContextEncoder,
     ExternalTransitionModelBank,
+    ExternalTransitionObservation,
 )
 
 
@@ -145,9 +149,66 @@ def test_compression_commit_is_copy_on_write_and_probe_gated() -> None:
     assert bank.context_count == 2
 
 
+def test_bank_growth_and_consolidation_reject_mutating_probes_atomically() -> None:
+    torch.manual_seed(6106)
+    bank = ExternalTransitionModelBank(
+        2,
+        1,
+        2,
+        hidden_width=8,
+        model_family=EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY,
+        capacity=2,
+    )
+    first = bank.ensure_context(torch.tensor([1.0, 0.0]))
+    second = bank.ensure_context(
+        torch.tensor([0.0, 1.0]),
+        initialize_from=first,
+    )
+    before = bank.digest()
+
+    def mutating_growth_probe(candidate) -> bool:
+        next(iter(candidate.models[0].state_dict().values())).add_(1.0)
+        return False
+
+    growth = bank.grow_verified(
+        3,
+        mutating_growth_probe,
+    )
+    assert not growth.accepted
+    assert bank.capacity == 2
+    assert bank.digest() == before
+    heldout = ExternalTransitionObservation(
+        state=torch.tensor([[0.2, -0.4]]),
+        intention=torch.tensor([[0.7]]),
+        next_state=torch.tensor([[0.1, 0.2]]),
+    )
+
+    def mutating_probe(candidate) -> bool:
+        next(iter(candidate.models[0].state_dict().values())).add_(1.0)
+        return True
+
+    consolidation = bank.consolidate_verified(
+        first,
+        second,
+        [heldout],
+        retention_probe=mutating_probe,
+    )
+    assert not consolidation.accepted
+    assert bank.physical_model_count == 2
+    assert bank.digest() == before
+
+
 def test_learned_maintenance_pressure_test_passes(tmp_path) -> None:
     report = run(6107, tmp_path / "maintenance.json")
     assert report["promoted"] is True
     assert report["gates"]["trained_beats_fresh"] is True
     assert report["gates"]["trained_beats_shuffled_verifier"] is True
     assert report["accounting"]["replayed_examples"] == 0
+
+
+def test_real_maintenance_pressure_test_passes(tmp_path) -> None:
+    report = run_real_maintenance(6110, tmp_path / "real-maintenance.json")
+    assert report["promoted"] is True
+    assert report["gates"]["real_transaction_observed"] is True
+    assert report["gates"]["compression_bytes_observed"] is True
+    assert report["gates"]["unsafe_probe_atomic"] is True

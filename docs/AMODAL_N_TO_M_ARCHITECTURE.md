@@ -7927,3 +7927,14 @@ replay, and one policy update per unique verifier utility. This is the
 architecture's first learned finite-budget maintenance rung; it does not yet
 claim learned verifier economics, autonomous candidate equivalence discovery,
 unrestricted memory growth, or general continual learning.
+
+The follow-on real-transaction audit in
+`session_records/sequence_working_memory_2026-08-02/external_memory_real_maintenance_promoted_2026-08-10/`
+derives utility from actual growth, held-out factual sharing, compression-byte,
+and retention-probe receipts. All three seeds reach `0.95` held-out utility
+against fresh controls at `0.70`, `0.7375`, and `0.70`; persistence and
+mutating-probe atomicity pass. The action-shuffled controls reach `0.25`,
+`0.70`, and `0.2375`, confirming that the causal maintenance choices matter.
+The next architectural pressure is a single long nonstationary stream with
+accumulating interference and repeated maintenance decisions, not independent
+reset scenarios.

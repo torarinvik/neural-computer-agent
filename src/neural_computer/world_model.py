@@ -790,6 +790,21 @@ class ExternalTransitionModelBank(nn.Module):
         except (TypeError, ValueError):
             return None
 
+    def _commit_candidate(self, candidate: ExternalTransitionModelBank) -> None:
+        """Swap a fully validated bank candidate into the live object."""
+
+        if not isinstance(candidate, ExternalTransitionModelBank):
+            raise TypeError("transition-model bank candidate is invalid")
+        self.models = candidate.models
+        self._contexts = [context.detach().clone() for context in candidate._contexts]
+        self._model_families = list(candidate._model_families)
+        self._slot_ids = list(candidate._slot_ids)
+        self._next_slot_id = candidate._next_slot_id
+        self._lifetime_clock = candidate._lifetime_clock
+        self._lifetime_usage = dict(candidate._lifetime_usage)
+        self._lifetime_last_access = dict(candidate._lifetime_last_access)
+        self._lifetime_prediction_error = dict(candidate._lifetime_prediction_error)
+
     def select_model_family_verified(
         self,
         candidates: Mapping[str, nn.Module],
@@ -1316,7 +1331,8 @@ class ExternalTransitionModelBank(nn.Module):
             raise TypeError("retention probe must be callable")
         source_capacity = self.capacity
         content_before = self.content_digest()
-        if not bool(retention_probe(self)):
+        candidate = ExternalTransitionModelBank.from_payload(self.payload())
+        if not bool(retention_probe(candidate)) or candidate.content_digest() != content_before:
             return ExternalTransitionModelGrowthReceipt(
                 accepted=False,
                 source_capacity=source_capacity,
@@ -1324,21 +1340,25 @@ class ExternalTransitionModelBank(nn.Module):
                 context_count=self.context_count,
                 content_digest_before=content_before,
                 content_digest_after=content_before,
-                reason="pre-growth retention probe failed",
+                reason="pre-growth retention or integrity probe failed",
             )
-        self.capacity = destination_capacity
-        content_after = self.content_digest()
-        if content_after != content_before or not bool(retention_probe(self)):
-            self.capacity = source_capacity
+        candidate.capacity = destination_capacity
+        content_after = candidate.content_digest()
+        if (
+            content_after != content_before
+            or not bool(retention_probe(candidate))
+            or candidate.content_digest() != content_after
+        ):
             return ExternalTransitionModelGrowthReceipt(
                 accepted=False,
                 source_capacity=source_capacity,
                 destination_capacity=source_capacity,
                 context_count=self.context_count,
                 content_digest_before=content_before,
-                content_digest_after=self.content_digest(),
-                reason="post-growth retention or content-integrity probe failed",
+                content_digest_after=content_before,
+                reason="post-growth retention or integrity probe failed",
             )
+        self.capacity = destination_capacity
         return ExternalTransitionModelGrowthReceipt(
             accepted=True,
             source_capacity=source_capacity,
@@ -1385,7 +1405,8 @@ class ExternalTransitionModelBank(nn.Module):
                 content_digest_after=before,
                 reason=("non-tail eviction rejected to preserve opaque slot indices"),
             ).validate()
-        if not bool(retention_probe(self)):
+        candidate = ExternalTransitionModelBank.from_payload(self.payload())
+        if not bool(retention_probe(candidate)) or candidate.content_digest() != before:
             return ExternalTransitionModelEvictionReceipt(
                 accepted=False,
                 evicted_index=index,
@@ -1395,10 +1416,8 @@ class ExternalTransitionModelBank(nn.Module):
                 physical_models_after=physical_before,
                 content_digest_before=before,
                 content_digest_after=before,
-                reason="pre-eviction retention probe failed",
+                reason="pre-eviction retention or integrity probe failed",
             ).validate()
-
-        candidate = ExternalTransitionModelBank.from_payload(self.payload())
         del candidate._contexts[index]
         del candidate.models[index]
         del candidate._model_families[index]
@@ -1407,7 +1426,7 @@ class ExternalTransitionModelBank(nn.Module):
         candidate._lifetime_last_access.pop(evicted_slot_id, None)
         candidate._lifetime_prediction_error.pop(evicted_slot_id, None)
         after = candidate.content_digest()
-        if not bool(retention_probe(candidate)):
+        if not bool(retention_probe(candidate)) or candidate.content_digest() != after:
             return ExternalTransitionModelEvictionReceipt(
                 accepted=False,
                 evicted_index=index,
@@ -1420,15 +1439,7 @@ class ExternalTransitionModelBank(nn.Module):
                 reason="post-eviction retention probe failed",
             ).validate()
 
-        self._contexts = candidate._contexts
-        self.models = candidate.models
-        self._model_families = candidate._model_families
-        self._slot_ids = candidate._slot_ids
-        self._next_slot_id = candidate._next_slot_id
-        self._lifetime_clock = candidate._lifetime_clock
-        self._lifetime_usage = candidate._lifetime_usage
-        self._lifetime_last_access = candidate._lifetime_last_access
-        self._lifetime_prediction_error = candidate._lifetime_prediction_error
+        self._commit_candidate(candidate)
         return ExternalTransitionModelEvictionReceipt(
             accepted=True,
             evicted_index=index,
@@ -1461,7 +1472,8 @@ class ExternalTransitionModelBank(nn.Module):
         before = self.content_digest()
         physical_before = self.physical_model_count
         source_count = self.context_count
-        if not bool(retention_probe(self)):
+        candidate = ExternalTransitionModelBank.from_payload(self.payload())
+        if not bool(retention_probe(candidate)) or candidate.content_digest() != before:
             return ExternalTransitionModelEvictionReceipt(
                 accepted=False,
                 evicted_index=index,
@@ -1472,10 +1484,8 @@ class ExternalTransitionModelBank(nn.Module):
                 physical_models_after=physical_before,
                 content_digest_before=before,
                 content_digest_after=before,
-                reason="pre-eviction retention probe failed",
+                reason="pre-eviction retention or integrity probe failed",
             ).validate()
-
-        candidate = ExternalTransitionModelBank.from_payload(self.payload())
         del candidate._contexts[index]
         del candidate.models[index]
         del candidate._model_families[index]
@@ -1484,7 +1494,7 @@ class ExternalTransitionModelBank(nn.Module):
         candidate._lifetime_last_access.pop(slot_id, None)
         candidate._lifetime_prediction_error.pop(slot_id, None)
         after = candidate.content_digest()
-        if not bool(retention_probe(candidate)):
+        if not bool(retention_probe(candidate)) or candidate.content_digest() != after:
             return ExternalTransitionModelEvictionReceipt(
                 accepted=False,
                 evicted_index=index,
@@ -1498,15 +1508,7 @@ class ExternalTransitionModelBank(nn.Module):
                 reason="post-eviction retention probe failed",
             ).validate()
 
-        self._contexts = candidate._contexts
-        self.models = candidate.models
-        self._model_families = candidate._model_families
-        self._slot_ids = candidate._slot_ids
-        self._next_slot_id = candidate._next_slot_id
-        self._lifetime_clock = candidate._lifetime_clock
-        self._lifetime_usage = candidate._lifetime_usage
-        self._lifetime_last_access = candidate._lifetime_last_access
-        self._lifetime_prediction_error = candidate._lifetime_prediction_error
+        self._commit_candidate(candidate)
         return ExternalTransitionModelEvictionReceipt(
             accepted=True,
             evicted_index=index,
@@ -1685,7 +1687,11 @@ class ExternalTransitionModelBank(nn.Module):
         before_content = self.content_digest()
         if retention_probe is not None and not callable(retention_probe):
             raise TypeError("transition-model consolidation retention probe is invalid")
-        if retention_probe is not None and not bool(retention_probe(self)):
+        candidate = ExternalTransitionModelBank.from_payload(self.payload())
+        if retention_probe is not None and (
+            not bool(retention_probe(candidate))
+            or candidate.content_digest() != before_content
+        ):
             return ExternalTransitionModelConsolidationReceipt(
                 accepted=False,
                 first=first,
@@ -1701,11 +1707,11 @@ class ExternalTransitionModelBank(nn.Module):
 
         max_difference = 0.0
         for observation in heldout:
-            first_prediction = self.models[first](
+            first_prediction = candidate.models[first](
                 observation.state,
                 observation.intention,
             )
-            second_prediction = self.models[second](
+            second_prediction = candidate.models[second](
                 observation.state,
                 observation.intention,
             )
@@ -1728,23 +1734,25 @@ class ExternalTransitionModelBank(nn.Module):
             ).validate()
 
         physical_before = self.physical_model_count
-        original_second = self.models[second]
-        self.models[second] = self.models[first]
-        after_content = self.content_digest()
-        if retention_probe is not None and not bool(retention_probe(self)):
-            self.models[second] = original_second
+        candidate.models[second] = candidate.models[first]
+        after_content = candidate.content_digest()
+        if retention_probe is not None and (
+            not bool(retention_probe(candidate))
+            or candidate.content_digest() != after_content
+        ):
             return ExternalTransitionModelConsolidationReceipt(
                 accepted=False,
                 first=first,
                 second=second,
                 context_count=self.context_count,
                 physical_models_before=physical_before,
-                physical_models_after=self.physical_model_count,
+                physical_models_after=physical_before,
                 max_heldout_difference=max_difference,
                 content_digest_before=before_content,
-                content_digest_after=self.content_digest(),
-                reason="post-consolidation retention probe failed",
+                content_digest_after=before_content,
+                reason="post-consolidation retention or integrity probe failed",
             ).validate()
+        self._commit_candidate(candidate)
         return ExternalTransitionModelConsolidationReceipt(
             accepted=True,
             first=first,
@@ -2090,15 +2098,7 @@ class ExternalTransitionModelBank(nn.Module):
         ).validate()
         if not receipt.accepted:
             return receipt
-        self.models = candidate.models
-        self._contexts = [context.detach().clone() for context in candidate._contexts]
-        self._model_families = list(candidate._model_families)
-        self._slot_ids = list(candidate._slot_ids)
-        self._next_slot_id = candidate._next_slot_id
-        self._lifetime_clock = candidate._lifetime_clock
-        self._lifetime_usage = dict(candidate._lifetime_usage)
-        self._lifetime_last_access = dict(candidate._lifetime_last_access)
-        self._lifetime_prediction_error = dict(candidate._lifetime_prediction_error)
+        self._commit_candidate(candidate)
         return receipt
 
     def select_compression_verified(

@@ -1,0 +1,23 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "external_memory_real_maintenance",
+  "date": "2026-08-10",
+  "claim": "learned maintenance selection over real external-memory transactions",
+  "claim_boundary": "not learned verifier design, autonomous equivalence discovery, unrestricted memory growth, or general continual learning",
+  "seeds": [6110, 6111, 6112],
+  "unique_verifier_bits": 1440,
+  "unique_logical_lifetimes": 1440,
+  "optimizer_updates": 1440,
+  "replayed_examples": 0,
+  "controller_updates": 0,
+  "trained_heldout_utility": [0.95, 0.95, 0.95],
+  "fresh_heldout_utility": [0.7, 0.7375, 0.7],
+  "shuffled_verifier_heldout_utility": [0.7, 0.4625, 0.25],
+  "action_shuffled_heldout_utility": [0.25, 0.7, 0.2375],
+  "action_shuffled_control": true,
+  "bytes_saved": [5664, 5472, 5616],
+  "capacity_growth_events": [176, 209, 217],
+  "persistence_exact": true,
+  "unsafe_probe_atomic": true,
+  "promoted": true
+}

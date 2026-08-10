@@ -324,3 +324,28 @@ autonomous equivalence discovery, universal continual learning, or unrestricted
 memory growth. The next pressure is to train the policy against real verified
 retention and byte-cost outcomes while repeating growth, sharing, and
 compression over a longer nonstationary stream.
+
+## Real-transaction maintenance audit (2026-08-10)
+
+The maintenance policy has now been tested against actual external-bank
+receipts rather than synthetic action labels. The real pressure test performs
+retention-verified growth, held-out-equivalent parameter sharing, and
+float16 candidate compression; the scalar utility includes the observed
+transaction result and byte savings. A matched no-op/defer regime prevents the
+policy from treating every available operation as beneficial.
+
+The three-seed archive is
+`session_records/sequence_working_memory_2026-08-02/external_memory_real_maintenance_promoted_2026-08-10/`.
+All seeds reached `0.95` held-out utility versus `0.70`, `0.7375`, and `0.70`
+fresh controls. The action-shuffled controls reached `0.25`, `0.70`, and
+`0.2375`, providing a causal check that the learned maintenance choices—not
+only exposure to utility—drive the gain. Persistence was exact, compression
+saved `5664`, `5472`, and `5616` bytes, and mutating retention probes were
+rejected atomically.
+
+This promotes learned maintenance selection over real memory transactions,
+not learned verifier design, autonomous equivalence discovery, unrestricted
+growth, or general continual learning. The next bottleneck is longer
+nonstationary operation where the memory must decide when to retain, replace,
+share, or compress under accumulating interference rather than independent
+micro-scenarios.
