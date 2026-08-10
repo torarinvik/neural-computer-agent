@@ -8624,3 +8624,30 @@ rather than receiving a physical source index from the caller. The source
 selection receipt is versioned and auditable, and the controller still sees
 only learned event/intentions. This closes the fixed-address leak without
 claiming unrestricted source generalization.
+
+## Learned external admission cost
+
+The external admission boundary now includes
+`ExternalRoutedIntentionCostModel`. This is a replaceable memory-side learner,
+not another controller branch: it estimates normalized transfer and fresh
+continuation work from masked opaque context values, the verified source's
+coverage, and current bank size. After an admission completes, only the
+selected branch is updated by a normalized replay-free sufficient-statistics
+step. Its versioned tensor state has an independent checksum and persistence
+boundary.
+
+The sequential audit in
+`session_records/policy_free_intention_learned_cost_promoted_2026-08-10/`
+replicates this contract across three seeds. All source, causal, retention,
+corruption, reversal, persistence, frozen-controller, and zero-replay gates
+pass. One matched-fresh run chooses `fresh` for a nearby target where the
+historical hand schedule expected `transfer`; this is retained as the correct
+behavior because verifier-selected adjusted utility, rather than a task label
+or caller schedule, is authoritative.
+
+This promotes learned memory-side admission economics and removes one more
+caller-owned lifecycle decision. It does not establish that the cost model
+improves acquisition broadly: the probe still dominates selection in this
+small task-family stream. Broad cost generalization, universal positive
+transfer, arbitrary new computation, unrestricted growth, compression, and
+general continual learning remain open.

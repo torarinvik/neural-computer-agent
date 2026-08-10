@@ -342,6 +342,12 @@ from .policies import (
     EventWaitPolicy,
     EventWaitStatistics,
 )
+from .prior_cost import (
+    EXTERNAL_ROUTED_INTENTION_COST_MODEL_SCHEMA,
+    ExternalRoutedIntentionCostEstimate,
+    ExternalRoutedIntentionCostModel,
+    ExternalRoutedIntentionCostModelState,
+)
 from .program import EXTERNAL_PROGRAM_ARTIFACT_SCHEMA, ExternalProgramArtifact
 from .promotion import (
     HOLDOUT_LEDGER_SCHEMA,
@@ -671,6 +677,7 @@ __all__ = [
     "EXTERNAL_REGISTER_SHARED_STABLE_RELATIONAL_MODE",
     "EXTERNAL_REGISTER_STATE_SCHEMA",
     "EXTERNAL_REPRESENTATION_SPACE_SCHEMA",
+    "EXTERNAL_ROUTED_INTENTION_COST_MODEL_SCHEMA",
     "EXTERNAL_ROUTED_INTENTION_MEMORY_SCHEMA",
     "EXTERNAL_ROUTED_INTENTION_MEMORY_SCHEMA_V1",
     "EXTERNAL_ROUTED_INTENTION_MEMORY_SCHEMA_V2",
@@ -890,6 +897,9 @@ __all__ = [
     "ExternalRegisterComputeBasisArtifact",
     "ExternalRegisterInstruction",
     "ExternalRegisterState",
+    "ExternalRoutedIntentionCostEstimate",
+    "ExternalRoutedIntentionCostModel",
+    "ExternalRoutedIntentionCostModelState",
     "ExternalRoutedIntentionMemoryState",
     "ExternalRoutedIntentionPriorSelectionReceipt",
     "ExternalRoutedIntentionProposal",

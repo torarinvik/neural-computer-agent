@@ -20,6 +20,11 @@ import torch
 from experiments.policy_free_intention_memory import train as base
 from experiments.policy_free_intention_routing import novel_challenger as challenger
 from experiments.policy_free_intention_routing import train as routed
+from neural_computer.prior_cost import (
+    EXTERNAL_ROUTED_INTENTION_COST_MODEL_SCHEMA,
+    ExternalRoutedIntentionCostModel,
+    ExternalRoutedIntentionCostModelState,
+)
 
 PROBE_UPDATES = challenger.CHALLENGER_PROBE_UPDATES
 MAX_UPDATES = challenger.NOVEL_MAX_UPDATES
@@ -155,7 +160,15 @@ def _admit_one(
     events,
     contexts,
     prefix_records: list[dict[str, object]],
-) -> tuple[object, object, dict[str, object], list[dict[str, object]]]:
+    cost_model: ExternalRoutedIntentionCostModel | None = None,
+    cost_state: ExternalRoutedIntentionCostModelState | None = None,
+) -> tuple[
+    object,
+    object,
+    dict[str, object],
+    list[dict[str, object]],
+    ExternalRoutedIntentionCostModelState | None,
+]:
     task = spec.task
     task_event = events[task.event_key]
     task_context = contexts[task.context_key]
@@ -165,6 +178,24 @@ def _admit_one(
         context_mask=task.context_mask.unsqueeze(0),
     )
     source_digest = router._state_digest(state)
+    source_coverage = float(source_receipt.selected_coverage)
+    cell_count = int(state.cells.baseline.shape[0])
+    cost_estimate = None
+    if cost_model is not None:
+        if cost_state is None:
+            raise ValueError("learned cost admission requires cost state")
+        cost_estimate = cost_model.estimate(
+            cost_state,
+            task_context,
+            context_mask=task.context_mask.unsqueeze(0),
+            source_coverage=source_coverage,
+            cell_count=cell_count,
+        )
+        transfer_cost = cost_estimate.transfer_cost
+        fresh_cost = cost_estimate.fresh_cost
+    else:
+        transfer_cost = spec.transfer_cost
+        fresh_cost = spec.fresh_cost
     probe_records: dict[str, dict[str, object]] = {}
 
     def probe(
@@ -228,8 +259,8 @@ def _admit_one(
             probe,
             context_mask=task.context_mask,
             probe_updates=PROBE_UPDATES,
-            transfer_cost=spec.transfer_cost,
-            fresh_cost=spec.fresh_cost,
+            transfer_cost=transfer_cost,
+            fresh_cost=fresh_cost,
             cost_weight=spec.cost_weight,
         )
     )
@@ -258,6 +289,26 @@ def _admit_one(
         context_mask=task.context_mask,
         target=task.target,
     )
+    observed_cost = min(1.0, float(continuation["updates"]) / MAX_UPDATES)
+    selected_cost_error = None
+    if cost_model is not None:
+        cost_state = cost_model.observe(
+            cost_state,
+            task_context,
+            context_mask=task.context_mask.unsqueeze(0),
+            source_coverage=source_coverage,
+            cell_count=cell_count,
+            selected_initialization=receipt.selected_initialization,
+            observed_cost=observed_cost,
+        )
+        selected_cost_error = abs(
+            (
+                cost_estimate.transfer_cost
+                if receipt.selected_initialization == "transfer"
+                else cost_estimate.fresh_cost
+            )
+            - observed_cost
+        )
     record = {
         "task_id": task.task_id,
         "cell": selected_cell,
@@ -289,15 +340,39 @@ def _admit_one(
             receipt.transfer_adjusted_score - receipt.fresh_adjusted_score
         ),
         "task_unseen": _task_is_unseen(task),
+        "cost_estimate": None if cost_estimate is None else cost_estimate.__dict__,
+        "observed_cost": observed_cost,
+        "selected_cost_prediction_error": selected_cost_error,
+        "cost_model_observed": cost_model is not None,
     }
-    return selected_router, selected_state, result, next_records
+    return selected_router, selected_state, result, next_records, cost_state
 
 
-def _run_sequence(seed: int, *, fresh: bool) -> dict[str, object]:
+def _run_sequence(
+    seed: int,
+    *,
+    fresh: bool,
+    learned_cost: bool = False,
+) -> dict[str, object]:
     prepared = challenger._prepare(seed, fresh=fresh)
     reference_policy = prepared["reference_policy"]
     router = prepared["router"]
     state = prepared["state"]
+    cost_model = (
+        ExternalRoutedIntentionCostModel(
+            int(prepared["contexts"]["source"].shape[-1]),
+        )
+        if learned_cost
+        else None
+    )
+    cost_state = (
+        cost_model.initial_state(
+            device=state.routing_keys.device,
+            dtype=state.routing_keys.dtype,
+        )
+        if cost_model is not None
+        else None
+    )
     prefix_records = [
         {
             "task_id": "known_source",
@@ -318,7 +393,7 @@ def _run_sequence(seed: int, *, fresh: bool) -> dict[str, object]:
     task_reports: list[dict[str, object]] = []
     initial_external_cells = int(state.cells.baseline.shape[0])
     for task_index, spec in enumerate(SEQUENTIAL_ADMISSIONS):
-        router, state, task_report, prefix_records = _admit_one(
+        router, state, task_report, prefix_records, cost_state = _admit_one(
             seed=seed,
             task_index=task_index,
             spec=spec,
@@ -331,6 +406,8 @@ def _run_sequence(seed: int, *, fresh: bool) -> dict[str, object]:
             events=prepared["events"],
             contexts=prepared["contexts"],
             prefix_records=prefix_records,
+            cost_model=cost_model,
+            cost_state=cost_state,
         )
         task_reports.append(task_report)
         records.extend(prefix_records[-1:])
@@ -388,6 +465,25 @@ def _run_sequence(seed: int, *, fresh: bool) -> dict[str, object]:
         latest_task,
     )
     persistence = router.state_from_payload(router.state_payload(state))
+    cost_persistence_exact = True
+    cost_model_digest = None
+    cost_model_summary = None
+    if cost_model is not None:
+        restored_cost_state = cost_model.state_from_payload(
+            cost_model.state_payload(cost_state)
+        )
+        cost_persistence_exact = all(
+            torch.equal(value, restored_cost_state._tensors()[name])
+            for name, value in cost_state._tensors().items()
+        )
+        cost_payload = cost_model.state_payload(cost_state)
+        cost_model_digest = cost_payload["sha256"]
+        cost_model_summary = {
+            "transfer_observations": int(cost_state.transfer_observations.item()),
+            "fresh_observations": int(cost_state.fresh_observations.item()),
+            "transfer_absolute_error": float(cost_state.transfer_absolute_error.item()),
+            "fresh_absolute_error": float(cost_state.fresh_absolute_error.item()),
+        }
     return {
         "fresh": fresh,
         "tasks": task_reports,
@@ -404,13 +500,25 @@ def _run_sequence(seed: int, *, fresh: bool) -> dict[str, object]:
         "adapter_digest": base._digest_module(reference_policy.state_adapter),
         "known_source_retention": prepared["source_retention"],
         "known_successor_retention": prepared["successor_retention"],
+        "learned_cost": learned_cost,
+        "cost_model_digest": cost_model_digest,
+        "cost_model_configuration": (
+            None if cost_model is None else cost_model.configuration()
+        ),
+        "cost_model_summary": cost_model_summary,
+        "cost_model_persistence_exact": cost_persistence_exact,
     }
 
 
-def run(seed: int, report_out: Path) -> dict[str, object]:
+def run(
+    seed: int,
+    report_out: Path,
+    *,
+    learned_cost: bool = False,
+) -> dict[str, object]:
     begun = time.perf_counter()
-    warm = _run_sequence(seed, fresh=False)
-    fresh = _run_sequence(seed, fresh=True)
+    warm = _run_sequence(seed, fresh=False, learned_cost=learned_cost)
+    fresh = _run_sequence(seed, fresh=True, learned_cost=learned_cost)
     task_masks = [spec.task.context_mask.tolist() for spec in SEQUENTIAL_ADMISSIONS]
     task_targets = [spec.task.target.tolist() for spec in SEQUENTIAL_ADMISSIONS]
     gates: dict[str, bool] = {
@@ -517,15 +625,67 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
         "controller_frozen": warm["controller_digest"] == fresh["controller_digest"],
         "state_adapter_frozen": warm["adapter_digest"] == fresh["adapter_digest"],
         "zero_replayed_examples": True,
-    }
-    report = {
-        "schema": "neural-computer.policy-free-intention-sequential-admission.v1",
-        "claim_boundary": (
-            "bounded sequential cost-aware copy-or-fresh admission over three "
-            "unseen task families with complete-prefix retention; broad task-family "
-            "generalization, arbitrary new computation, unrestricted growth, and "
-            "general continual learning remain unqualified"
+        "warm_cost_model_observed_every_admission": (
+            all(report["cost_model_observed"] for report in warm["tasks"])
+            if learned_cost
+            else True
         ),
+        "fresh_cost_model_observed_every_admission": (
+            all(report["cost_model_observed"] for report in fresh["tasks"])
+            if learned_cost
+            else True
+        ),
+        "warm_cost_model_persistence_exact": warm["cost_model_persistence_exact"],
+        "fresh_cost_model_persistence_exact": fresh["cost_model_persistence_exact"],
+    }
+    if learned_cost:
+        gates.pop("warm_all_tasks_selected_expected_prior")
+        gates.pop("fresh_all_tasks_selected_expected_prior")
+        gates["warm_all_tasks_selected_by_learned_cost_aware_verifier"] = all(
+            (
+                report["receipt"].transfer_adjusted_score
+                if report["selected_initialization"] == "transfer"
+                else report["receipt"].fresh_adjusted_score
+            )
+            >= (
+                report["receipt"].fresh_adjusted_score
+                if report["selected_initialization"] == "transfer"
+                else report["receipt"].transfer_adjusted_score
+            )
+            for report in warm["tasks"]
+        )
+        gates["fresh_all_tasks_selected_by_learned_cost_aware_verifier"] = all(
+            (
+                report["receipt"].transfer_adjusted_score
+                if report["selected_initialization"] == "transfer"
+                else report["receipt"].fresh_adjusted_score
+            )
+            >= (
+                report["receipt"].fresh_adjusted_score
+                if report["selected_initialization"] == "transfer"
+                else report["receipt"].transfer_adjusted_score
+            )
+            for report in fresh["tasks"]
+        )
+    report = {
+        "schema": (
+            "neural-computer.policy-free-intention-sequential-admission.v2"
+            if learned_cost
+            else "neural-computer.policy-free-intention-sequential-admission.v1"
+        ),
+        "claim_boundary": (
+            (
+                "bounded learned cost-aware verifier-selected copy-or-fresh admission "
+                "over three unseen task families with complete-prefix retention"
+            )
+            if learned_cost
+            else (
+                "bounded sequential cost-aware copy-or-fresh admission over three "
+                "unseen task families with complete-prefix retention"
+            )
+        )
+        + "; broad task-family generalization, arbitrary new computation, "
+        "unrestricted growth, and general continual learning remain unqualified",
         "seed": seed,
         "configuration": {
             "known_curriculum": "adaptive_versioned_multi_stage",
@@ -547,6 +707,14 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
             "minimum_probe_margin": MIN_PROBE_MARGIN,
             "minimum_adjusted_margin": MIN_ADJUSTED_MARGIN,
             "replayed_examples": 0,
+            "learned_cost_model": (
+                None
+                if not learned_cost
+                else {
+                    "schema": EXTERNAL_ROUTED_INTENTION_COST_MODEL_SCHEMA,
+                    "configuration": warm["cost_model_configuration"],
+                }
+            ),
         },
         "gates": gates,
         "promoted": all(gates.values()),
@@ -565,6 +733,8 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
                 "latest_after_reversal": warm["latest_after_reversal"],
                 "initial_external_cells": warm["initial_external_cells"],
                 "final_external_cells": int(warm["state"].cells.baseline.shape[0]),
+                "cost_model_digest": warm["cost_model_digest"],
+                "cost_model_summary": warm["cost_model_summary"],
             },
             "fresh": {
                 "tasks": [
@@ -580,6 +750,8 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
                 "latest_after_reversal": fresh["latest_after_reversal"],
                 "initial_external_cells": fresh["initial_external_cells"],
                 "final_external_cells": int(fresh["state"].cells.baseline.shape[0]),
+                "cost_model_digest": fresh["cost_model_digest"],
+                "cost_model_summary": fresh["cost_model_summary"],
             },
         },
         "accounting": {
@@ -619,8 +791,13 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--seed", type=int, default=85301)
     parser.add_argument("--report-out", type=Path, required=True)
+    parser.add_argument(
+        "--learned-cost",
+        action="store_true",
+        help="learn transfer/fresh costs from completed admissions",
+    )
     args = parser.parse_args()
-    run(args.seed, args.report_out)
+    run(args.seed, args.report_out, learned_cost=args.learned_cost)
 
 
 if __name__ == "__main__":

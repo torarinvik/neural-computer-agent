@@ -1349,3 +1349,11 @@ index is passed by the caller. Source-selection receipts preserve the
 learned compatibility and coverage evidence for audit and persistence. The
 three-seed record is archived at
 `session_records/policy_free_intention_sequential_auto_source_promoted_2026-08-10/`.
+
+`ExternalRoutedIntentionCostModel` provides the complementary memory-side
+admission economics. Masked opaque context, verified source coverage, and
+bank size predict transfer/fresh continuation cost; only the selected branch
+learns from its normalized completed cost. The controller remains unaware of
+both the physical source and the cost policy. The three-seed audit is
+archived at
+`session_records/policy_free_intention_learned_cost_promoted_2026-08-10/`.

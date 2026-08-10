@@ -958,3 +958,31 @@ This removes a real caller-side lifecycle leak, but the selector is still
 bounded by the current learned context/prototype space. The next pressure is
 to learn source costs and compatibility over a larger, non-synthetic task
 family stream.
+
+## Learned source/admission cost (2026-08-10)
+
+The next increment moves the remaining hand-specified transfer/fresh costs
+behind a replaceable memory-side contract:
+`ExternalRoutedIntentionCostModel`. It receives only masked opaque context,
+verified source coverage, and the current external-cell count. A completed
+admission contributes one normalized continuation-cost observation to the
+branch that was actually selected. The model retains sufficient statistics,
+not task IDs, trajectories, or replayed examples; the controller, state
+adapter, and factual content remain frozen.
+
+The three-seed audit is archived under
+`session_records/policy_free_intention_learned_cost_promoted_2026-08-10/`.
+Every run passes automatic source selection, cost-aware v2 receipts, mastery,
+complete-prefix retention, reversal, corruption, missing-evidence, causal
+controls, exact model-state reload, frozen-core, and zero-replay gates. Warm
+runs select `transfer -> fresh -> transfer`; the matched-fresh run for seed
+85302 selects `fresh -> fresh -> transfer`, showing that the learned policy
+does not force a historical sequence when the outcome-only challenger favors
+fresh initialization.
+
+This promotes a bounded learned admission-cost contract and removes a
+caller-side economic schedule. It does not yet show broad cost prediction or
+acquisition gains: the current probe scores dominate the decision, and the
+stream remains a small synthetic family matrix. The next pressure is a larger
+and genuinely non-synthetic family stream in which predicted cost can be
+tested against held-out acquisition curves.
