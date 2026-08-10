@@ -1295,6 +1295,9 @@ class ExternalControllerTrajectoryQueryAdapter(nn.Module):
 
 
 EXTERNAL_PROGRAM_RUNTIME_SCHEMA = "neural-computer.external-program-runtime.v3"
+EXTERNAL_PROGRAM_RUNTIME_STATE_SCHEMA = (
+    "neural-computer.external-program-runtime-state.v1"
+)
 _STANDALONE_PROGRAM_STATE_KEY = -1
 
 
@@ -1305,6 +1308,56 @@ class ExternalProgramRuntimeState:
     controller: ControllerState
     program: ExternalRegisterState
     program_states: Mapping[int, ExternalRegisterState] = field(default_factory=dict)
+
+    def payload(self) -> dict[str, object]:
+        """Return a versioned tensor-only checkpoint for pause/resume."""
+
+        return {
+            "schema": EXTERNAL_PROGRAM_RUNTIME_STATE_SCHEMA,
+            "controller": self.controller.payload(),
+            "program": self.program.payload(),
+            "program_states": tuple(
+                {
+                    "logical_id": int(logical_id),
+                    "state": state.payload(),
+                }
+                for logical_id, state in sorted(self.program_states.items())
+            ),
+        }
+
+    @classmethod
+    def from_payload(cls, payload: dict[str, object]) -> ExternalProgramRuntimeState:
+        """Restore external runtime state without loading executable files."""
+
+        if not isinstance(payload, dict):
+            raise TypeError("external program runtime state payload must be a dictionary")
+        if payload.get("schema") != EXTERNAL_PROGRAM_RUNTIME_STATE_SCHEMA:
+            raise ValueError("unsupported external program runtime state schema")
+        controller = payload.get("controller")
+        program = payload.get("program")
+        records = payload.get("program_states")
+        if not isinstance(controller, dict) or not isinstance(program, dict):
+            raise TypeError("external program runtime state payload is incomplete")
+        if not isinstance(records, (tuple, list)):
+            raise TypeError("external program runtime program states must be a sequence")
+        program_states: dict[int, ExternalRegisterState] = {}
+        for record in records:
+            if not isinstance(record, dict):
+                raise TypeError("external program runtime program state is malformed")
+            logical_id = record.get("logical_id")
+            state_payload = record.get("state")
+            if not isinstance(logical_id, int) or logical_id < -1:
+                raise ValueError("external program runtime logical ID is invalid")
+            if logical_id in program_states:
+                raise ValueError("external program runtime logical IDs must be unique")
+            if not isinstance(state_payload, dict):
+                raise TypeError("external program runtime program state is missing")
+            program_states[logical_id] = ExternalRegisterState.from_payload(state_payload)
+        return cls(
+            controller=ControllerState.from_payload(controller),
+            program=ExternalRegisterState.from_payload(program),
+            program_states=program_states,
+        )
 
 
 @dataclass(frozen=True)

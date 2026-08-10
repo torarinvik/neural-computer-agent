@@ -1453,3 +1453,9 @@ The runtime schema is `neural-computer.external-program-runtime.v3`. Version 3
 also supports mixed batch schedules: different rows may route to different
 files in one tick, with row-partitioned execution snapshots and no cross-file
 state writes.
+
+`ExternalProgramRuntimeState.payload()` and `from_payload()` provide a
+versioned tensor-only pause/resume checkpoint for the controller working state
+and every isolated executable-file state. Executable artifacts and model
+parameters remain separate resources; the checkpoint stores no raw modality,
+protocol, or verifier-private data.

@@ -8859,3 +8859,18 @@ select a different logical file; the executor is invoked with a row mask per
 file, and the runtime merges only the resulting output rows while retaining
 the individual execution snapshots. This removes the prior requirement to
 partition a multi-family batch before the controller can run it.
+
+## Durable controller-plus-file working state (2026-08-10)
+
+The runtime state boundary now has a versioned tensor-only checkpoint via
+`ExternalProgramRuntimeState.payload()` and `from_payload()`. It persists the
+controller's event window, workspace, hidden state, source trust, and growth
+registers together with the isolated recurrent state for every stable
+external logical file. Restoring the checkpoint does not load executable files
+or controller parameters; those remain independently versioned resources.
+
+An exact-resume test covers a mixed-file batch, and an unknown-schema control is
+rejected before execution. This closes restart loss of active working context,
+but it is still persistence infrastructure: it does not prove that the
+controller acquires arbitrary procedures or retains them under unrestricted
+nonstationary learning.

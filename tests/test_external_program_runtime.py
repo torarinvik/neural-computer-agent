@@ -1,3 +1,4 @@
+import pytest
 import torch
 from torch import nn
 
@@ -10,6 +11,7 @@ from neural_computer import (
     ExternalCapabilityRegisterMachine,
     ExternalProgramAmodalRuntime,
     ExternalProgramArtifact,
+    ExternalProgramRuntimeState,
     ExternalSequenceProgramMemory,
 )
 
@@ -167,6 +169,61 @@ def test_external_program_runtime_supports_mixed_file_schedule_in_one_batch():
     assert next_state.program_states.keys() == {0, 1}
     assert next_state.program_states[0].initialized.tolist() == [True, False]
     assert next_state.program_states[1].initialized.tolist() == [False, True]
+
+
+def test_external_program_runtime_state_round_trip_resumes_exactly():
+    torch.manual_seed(9032)
+    memory = _PartitionedProgramMemory()
+    memory.add_artifact(_artifact())
+    memory.add_artifact(_artifact())
+    _runtime_module, _machine, agent = _runtime(memory=memory)
+    state = agent.initial_state(2, device="cpu")
+    _, paused_state = agent.step_events(
+        [AmodalEvent(torch.randn(2, 4))],
+        state,
+        _feedback(2),
+    )
+    checkpoint = paused_state.payload()
+    restored_state = ExternalProgramRuntimeState.from_payload(checkpoint)
+
+    next_events = [AmodalEvent(torch.randn(2, 4))]
+    original_output, original_next = agent.step_events(
+        next_events,
+        paused_state,
+        _feedback(2),
+    )
+    resumed_output, resumed_next = agent.step_events(
+        next_events,
+        restored_state,
+        _feedback(2),
+    )
+
+    torch.testing.assert_close(
+        original_output.execution.executed,
+        resumed_output.execution.executed,
+    )
+    torch.testing.assert_close(
+        original_output.intention.payload,
+        resumed_output.intention.payload,
+    )
+    torch.testing.assert_close(
+        original_output.decoded["echo"],
+        resumed_output.decoded["echo"],
+    )
+    for logical_id in original_next.program_states:
+        original_file = original_next.program_states[logical_id]
+        resumed_file = resumed_next.program_states[logical_id]
+        torch.testing.assert_close(original_file.register, resumed_file.register)
+        torch.testing.assert_close(original_file.context, resumed_file.context)
+        assert torch.equal(original_file.initialized, resumed_file.initialized)
+
+
+def test_external_program_runtime_state_rejects_unknown_checkpoint_schema():
+    _runtime_module, _machine, agent = _runtime()
+    payload = agent.initial_state(1, device="cpu").payload()
+    payload["schema"] = "neural-computer.external-program-runtime-state.unknown"
+    with pytest.raises(ValueError, match="unsupported external program runtime state"):
+        ExternalProgramRuntimeState.from_payload(payload)
 
 
 def test_external_program_runtime_quiet_tick_does_not_grow_program_state():

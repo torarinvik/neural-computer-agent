@@ -1165,6 +1165,14 @@ per-file recurrent state bank is updated only for its assigned rows. This is
 important for measuring multiple Brain Workshop families together rather than
 silently forcing a single-family batch.
 
+The controller-plus-file working state is also restartable. A versioned
+tensor-only checkpoint preserves the controller event window and workspace
+together with every logical file's recurrent register state, while executable
+artifacts and model parameters remain separate resources. Exact mixed-batch
+resume and unknown-schema rejection are covered by tests. This removes a
+restart-induced source of forgetting, but does not itself establish new-skill
+acquisition or general continual learning.
+
 This is a prerequisite for honest continual-learning measurements: content
 retention is not enough if temporal working state is shared accidentally. The
 next pressure remains a real nonstationary Brain Workshop acquisition stream,
