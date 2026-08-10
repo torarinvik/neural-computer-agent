@@ -1,0 +1,55 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "external_irreversible_cost_planning",
+  "entries": [
+    {
+      "seed": 83311,
+      "arm": "learned-cost-irreversible-search",
+      "unique_verifier_bits": 32,
+      "unique_logical_lifetimes": 16,
+      "optimizer_updates": 0,
+      "replayed_examples": 0,
+      "raw_replayed_examples": 0,
+      "controller_updates": 0,
+      "stable_bits_to_threshold": null,
+      "retention_on_mastered_primitives": 1.0,
+      "transfer_ratio_against_fresh": null,
+      "terminal_route_cost": 5.0,
+      "cost_aware_route_cost": 2.0,
+      "promoted": true
+    },
+    {
+      "seed": 83312,
+      "arm": "learned-cost-irreversible-search",
+      "unique_verifier_bits": 32,
+      "unique_logical_lifetimes": 16,
+      "optimizer_updates": 0,
+      "replayed_examples": 0,
+      "raw_replayed_examples": 0,
+      "controller_updates": 0,
+      "stable_bits_to_threshold": null,
+      "retention_on_mastered_primitives": 1.0,
+      "transfer_ratio_against_fresh": null,
+      "terminal_route_cost": 10.0,
+      "cost_aware_route_cost": 2.0,
+      "promoted": true
+    },
+    {
+      "seed": 83313,
+      "arm": "learned-cost-irreversible-search",
+      "unique_verifier_bits": 32,
+      "unique_logical_lifetimes": 16,
+      "optimizer_updates": 0,
+      "replayed_examples": 0,
+      "raw_replayed_examples": 0,
+      "controller_updates": 0,
+      "stable_bits_to_threshold": null,
+      "retention_on_mastered_primitives": 1.0,
+      "transfer_ratio_against_fresh": null,
+      "terminal_route_cost": 6.0,
+      "cost_aware_route_cost": 2.0,
+      "promoted": true
+    }
+  ],
+  "claim_boundary": "qualified bounded replay-free learned-cost search with one absorbing trap; broad irreversible generalization remains open"
+}

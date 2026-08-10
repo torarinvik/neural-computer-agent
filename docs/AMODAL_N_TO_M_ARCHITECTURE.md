@@ -4527,6 +4527,24 @@ dynamics, retrieval-before-learning across a growing bank, and general
 continual learning remain open. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_cost_aware_planning_promoted_2026-08-10/`.
 
+## Replay-free learned-cost search with an irreversible trap (2026-08-10)
+
+The cost boundary now survives a stronger three-seed fixture with an
+absorbing trap. A random-feature factual model learned the opaque transition
+function once, while a separate affine external model learned scalar
+intention costs from the same one-pass evidence. Cost-aware search reached the
+goal on every seed, avoided the irreversible trap, and reduced actual route
+cost from `5/10/6` under terminal-only search to `2/2/2`. Shuffled cost
+controls changed behavior and failed the goal. Both external models and the
+controller remained unchanged during planning; persistence, quality, and
+zero-replay gates passed.
+
+This promotes a bounded replay-free learned-cost planning seam, not general
+irreversible-world competence: the scalar cost model is simple, the trap
+fixture is tiny, the horizon is finite, and cost/address learning across a
+growing bank remains open. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_irreversible_cost_planning_promoted_2026-08-10/`.
+
 ## Append-only transition memory across disjoint dynamics (2026-08-09)
 
 The next two-seed rung adds `ExternalTransitionMemory`, an append-only factual
