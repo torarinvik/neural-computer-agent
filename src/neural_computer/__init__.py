@@ -68,10 +68,12 @@ from .capability import (
 )
 from .capacity import (
     ADMISSION_ACTIONS,
+    CAPACITY_PLANNER_ADAPTER_SCHEMA,
     CAPACITY_PLANNER_SCHEMA,
     CapacityPlan,
     CapacityPlannerOutput,
     OpaqueCapacityPlanner,
+    OpaqueCapacityPlannerAdapter,
 )
 from .checkpoint import load_runtime_components, save_runtime
 from .consolidation import (
@@ -445,6 +447,7 @@ __all__ = [
     "CAPABILITY_LIFECYCLE_SCHEMA",
     "CAPABILITY_SELECTION_SCHEMA",
     "CAPABILITY_STAGING_SCHEMA",
+    "CAPACITY_PLANNER_ADAPTER_SCHEMA",
     "CAPACITY_PLANNER_SCHEMA",
     "CONDITIONED_EVENT_BRIDGE_SCHEMA",
     "CONSOLIDATION_OPERATION_COUNT",
@@ -764,6 +767,7 @@ __all__ = [
     "OpaqueCandidateIdentityView",
     "OpaqueCandidateSignatureNormalizer",
     "OpaqueCapacityPlanner",
+    "OpaqueCapacityPlannerAdapter",
     "OpaqueConsolidationPolicy",
     "OpaqueProtocolDecoder",
     "OpaqueViewRouteExtension",

@@ -24,6 +24,7 @@ import torch
 from torch import nn
 
 from .addressing import OpaqueCandidateGrowthRouter
+from .capacity import ADMISSION_ACTIONS, OpaqueCapacityPlannerAdapter
 from .growth import compress_growth_artifact, decompress_growth_artifact
 from .memory import (
     AppendOnlyContentAddressedMemory,
@@ -4131,6 +4132,8 @@ class ExternalTransitionRouteMemory:
         query_mask: torch.Tensor | None = None,
         protected_indices: Sequence[int] = (),
         consolidation_available: bool = True,
+        action_mask: Sequence[bool] | torch.Tensor | None = None,
+        planner_adapter: OpaqueCapacityPlannerAdapter | None = None,
         explore: bool = False,
         temperature: float = 1.0,
         generator: torch.Generator | None = None,
@@ -4150,8 +4153,30 @@ class ExternalTransitionRouteMemory:
             raise KeyError(f"unknown transition route-memory slot: {slot_id}")
         if not callable(getattr(planner, "propose", None)):
             raise TypeError("transition route-memory planner must expose propose")
+        if planner_adapter is not None and not isinstance(
+            planner_adapter, OpaqueCapacityPlannerAdapter
+        ):
+            raise TypeError("transition route-memory planner adapter is invalid")
         if not isinstance(consolidation_available, bool):
             raise TypeError("transition route-memory consolidation availability must be bool")
+        if action_mask is not None:
+            if isinstance(action_mask, torch.Tensor):
+                if action_mask.shape != (len(ADMISSION_ACTIONS),):
+                    raise ValueError("transition route-memory action mask is invalid")
+                if action_mask.dtype != torch.bool:
+                    raise TypeError("transition route-memory action mask must be bool")
+                normalized_action_mask = action_mask.detach().clone().unsqueeze(0)
+            else:
+                if len(action_mask) != len(ADMISSION_ACTIONS):
+                    raise ValueError("transition route-memory action mask is invalid")
+                if not all(isinstance(value, bool) for value in action_mask):
+                    raise TypeError("transition route-memory action mask must be bool")
+                normalized_action_mask = torch.tensor(
+                    [list(action_mask)],
+                    dtype=torch.bool,
+                )
+        else:
+            normalized_action_mask = None
         if not isinstance(explore, bool):
             raise TypeError("transition route-memory planner exploration must be bool")
         normalized, observed_mask = self._normalize(query, query_mask)
@@ -4176,6 +4201,10 @@ class ExternalTransitionRouteMemory:
                 dtype=torch.bool,
             ),
         }
+        if normalized_action_mask is not None:
+            proposal_kwargs["action_mask"] = normalized_action_mask
+        if planner_adapter is not None:
+            proposal_kwargs["adapter"] = planner_adapter
         if explore or temperature != 1.0 or generator is not None:
             proposal_kwargs.update(
                 explore=explore,

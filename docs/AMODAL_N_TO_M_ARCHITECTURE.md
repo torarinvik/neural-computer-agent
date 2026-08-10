@@ -4,6 +4,11 @@ This document is the normative architecture specification for the project.
 When a design note, experiment README, or historical report uses looser
 language, this document controls the meaning of the target system.
 
+The continual-learning specialization of this architecture is defined in
+`docs/POLICY_FREE_CONTINUAL_LEARNING.md`: durable general knowledge is factual
+transition structure, while behavior is derived by opaque model search rather
+than stored as a task policy.
+
 ## One-sentence definition
 
 The target is one modality-independent cognitive controller that consumes a

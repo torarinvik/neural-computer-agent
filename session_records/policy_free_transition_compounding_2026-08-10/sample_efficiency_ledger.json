@@ -1,0 +1,31 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "policy-free-transition-compounding",
+  "date": "2026-08-10",
+  "runs": [
+    {
+      "seed": 70311,
+      "variant": "nested_transition_model_search",
+      "promoted": true,
+      "unique_verifier_bits_per_regime": 16,
+      "replayed_examples": 19184,
+      "controller_optimizer_updates": 0,
+      "warm_target_updates": [24, 24, 17],
+      "fresh_target_updates": [38, 38, 34],
+      "prior_slots_retained": true
+    },
+    {
+      "seed": 70411,
+      "variant": "disjoint_transition_model_search",
+      "promoted": true,
+      "unique_verifier_bits": 56,
+      "replayed_examples": 0,
+      "controller_optimizer_updates": 0,
+      "warm_target_updates": [42, 36],
+      "fresh_target_updates": [42, 39],
+      "prior_slots_retained": true,
+      "transfer_ratio_against_fresh": 1.0193548387096774
+    }
+  ],
+  "claim_boundary": "policy-free factual transition adaptation with derived search; not general continual learning"
+}
