@@ -143,6 +143,36 @@ def test_transition_route_query_can_use_slot_local_prototype_memory() -> None:
     assert restored.digest() == query.digest()
 
 
+def test_transition_route_query_can_use_trained_context_key_feature() -> None:
+    encoder = ExternalTransitionContextEncoder(2, 1, hidden_width=6, context_width=4)
+    adapter = ExternalTransitionContextAddressAdapter(encoder)
+    memory = ExternalTransitionRouteMemory(4)
+    query = ExternalTransitionRouteQuery(
+        4,
+        minimum_score=0.8,
+        route_width=4,
+        route_memory=memory,
+    )
+    observation = ExternalTransitionObservation(
+        state=torch.randn(2, 2),
+        intention=torch.randn(2, 1),
+        next_state=torch.randn(2, 2),
+    )
+    context_key = adapter.encode_observation(observation)
+    query.register_slot(10, adapter, route_key=context_key)
+    query.register_slot(20, route_key=torch.tensor([0.0, 1.0, 0.0, 0.0]))
+
+    assert not query.uses_trajectory_feature()
+    proposal = query.propose_observation(
+        observation,
+        torch.randn(2, 4),
+        (10, 20),
+        fallback_query=context_key,
+    )
+    assert proposal.selected_slot_id == 10
+    assert query.configuration()["feature"] == "context_key_v1"
+
+
 def test_online_router_verified_prior_selection_is_isolated_and_persistent() -> None:
     torch.manual_seed(1213)
     bank = ExternalTransitionModelBank(

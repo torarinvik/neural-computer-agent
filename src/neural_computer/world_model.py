@@ -3623,6 +3623,12 @@ class ExternalTransitionRouteQuery(nn.Module):
                 if self.route_memory is None
                 else self.route_memory.configuration()
             ),
+            "feature": (
+                "context_key_v1"
+                if self.route_width == self.context_width
+                or (self.route_memory is not None and self.route_width is None)
+                else "trajectory_stats_v1"
+            ),
             "metric": (
                 "learned_permutation_equivariant_pair_score_v1"
                 if self.learned_scorer is not None
@@ -3633,6 +3639,27 @@ class ExternalTransitionRouteQuery(nn.Module):
             "role": "proposal_only_factual_verification_required_v1",
             "slot_adapter_count": len(self._slot_adapters),
         }
+
+    def uses_trajectory_feature(self) -> bool:
+        """Return whether route slots use the legacy recurrent feature path."""
+
+        return not (
+            self.route_width == self.context_width
+            or (self.route_memory is not None and self.route_width is None)
+        )
+
+    def route_feature(
+        self,
+        adapter: ExternalTransitionContextAddressAdapter,
+        observation: ExternalTransitionObservation,
+    ) -> torch.Tensor:
+        """Encode a route query using the configured opaque feature space."""
+
+        return (
+            adapter.trajectory_stats(observation)
+            if self.uses_trajectory_feature()
+            else adapter.encode_observation(observation)
+        )
 
     def propose(
         self,
@@ -3844,7 +3871,7 @@ class ExternalTransitionRouteQuery(nn.Module):
             adapter = self._slot_adapters.get(int(slot_id))
             route_key = self._slot_route_keys.get(int(slot_id))
             if adapter is not None and route_key is not None:
-                query = adapter.trajectory_stats(observation).to(observation.state)
+                query = self.route_feature(adapter, observation).to(observation.state)
                 key = route_key.to(observation.state)
             elif adapter is None:
                 if fallback_query is None:
@@ -4838,13 +4865,7 @@ class ExternalOnlineTransitionContextRouter:
             with torch.no_grad():
                 route_query_vector = (
                     self.context_encoder.trajectory_stats(observation)
-                    if (
-                        self.route_query.learned_scorer is not None
-                        or (
-                            self.route_query.route_memory is not None
-                            and self.route_query.route_width is not None
-                        )
-                    )
+                    if self.route_query.uses_trajectory_feature()
                     else (
                         self.address_adapter.encode_observation(observation)
                         if self.address_adapter is not None
@@ -5654,8 +5675,11 @@ class ExternalOnlineTransitionContextRouter:
             self.route_query.register_slot(
                 promoted_slot_id,
                 candidate.address_adapter,
-                route_key=candidate.address_adapter.trajectory_stats(
-                    heldout_observation
+                route_key=(
+                    self.route_query.route_feature(
+                        candidate.address_adapter,
+                        heldout_observation,
+                    )
                 ),
             )
         if destination_capacity is not None:

@@ -1,0 +1,259 @@
+{
+  "schema": "neural-computer.external-learned-nonlinear-open-world.v1",
+  "seed": 82602,
+  "claim_boundary": "bounded replay-free learned nonlinear factual-memory slots under partial open-world evidence; not unrestricted continual learning",
+  "configuration": {
+    "regimes": [
+      "regime_00",
+      "regime_01",
+      "regime_02",
+      "regime_03"
+    ],
+    "model_family": "nonlinear_mlp_v1",
+    "hidden_width": 64,
+    "presented_rows_per_regime": 48,
+    "available_train_rows_per_regime": 64,
+    "heldout_rows_per_regime": 64,
+    "admission_rows": 4,
+    "quality_threshold": 0.08,
+    "promotion_threshold": 0.2,
+    "match_tolerance": 0.01,
+    "route_query": null,
+    "route_query_minimum_score": 0.8,
+    "learned_route_updates_per_regime": 0,
+    "route_memory_prototypes_per_slot": 0,
+    "verified_prior_selection": false,
+    "prior_probe_updates_per_candidate": 0,
+    "source_pretrained_context": false,
+    "meta_pretrained_context": false,
+    "context_pretrain_source_indices": [
+      0,
+      1
+    ],
+    "context_pretrain_updates": 0,
+    "context_aggregation": "mean_pool",
+    "route_feature": "trajectory_stats_v1",
+    "provisional_evidence_policy": "streaming_gradient",
+    "gradient_steps_per_current_window": 16,
+    "address_update": "copy_on_write_current_bundle_anchor_separation_v1"
+  },
+  "gates": {
+    "encoder_unchanged_after_setup": true,
+    "encoder_frozen_after_setup": true,
+    "source_pretraining_accounted": true,
+    "learned_nonlinear_model_family": true,
+    "all_regimes_acquired": true,
+    "partial_evidence_used": true,
+    "current_window_gradient_updates": true,
+    "all_heldout_errors_pass": true,
+    "revisits_match_existing_slots": true,
+    "route_proposals_match_factual_winners": true,
+    "all_prior_slots_retained": true,
+    "corruption_rejected_without_bank_write": true,
+    "no_raw_candidate_rows_retained": true,
+    "address_adapter_learned_online": true,
+    "base_adapter_copy_on_write": true,
+    "controller_unchanged": true,
+    "exact_router_persistence": true
+  },
+  "promoted": true,
+  "acquisitions": [
+    {
+      "name": "regime_00",
+      "slot_id": 0,
+      "presented_rows": 48,
+      "available_rows": 64,
+      "optimizer_updates": 192,
+      "heldout_error": 0.02918064221739769,
+      "address_version": 13,
+      "prior_selection": null
+    },
+    {
+      "name": "regime_01",
+      "slot_id": 1,
+      "presented_rows": 48,
+      "available_rows": 64,
+      "optimizer_updates": 192,
+      "heldout_error": 0.05037017539143562,
+      "address_version": 26,
+      "prior_selection": null
+    },
+    {
+      "name": "regime_02",
+      "slot_id": 2,
+      "presented_rows": 48,
+      "available_rows": 64,
+      "optimizer_updates": 192,
+      "heldout_error": 0.015417111106216908,
+      "address_version": 39,
+      "prior_selection": null
+    },
+    {
+      "name": "regime_03",
+      "slot_id": 3,
+      "presented_rows": 48,
+      "available_rows": 64,
+      "optimizer_updates": 192,
+      "heldout_error": 0.010769960470497608,
+      "address_version": 52,
+      "prior_selection": null
+    }
+  ],
+  "revisits": [
+    {
+      "name": "regime_02",
+      "statuses": {
+        "pending": 36,
+        "matched": 3,
+        "capacity": 9
+      },
+      "expected_slot_id": 2,
+      "returned_slot_ids": [
+        2
+      ],
+      "matched_existing_slot": true,
+      "heldout_error": 0.015417111106216908,
+      "route_diagnostic": null
+    },
+    {
+      "name": "regime_00",
+      "statuses": {
+        "pending": 36,
+        "matched": 4,
+        "capacity": 8
+      },
+      "expected_slot_id": 0,
+      "returned_slot_ids": [
+        0
+      ],
+      "matched_existing_slot": true,
+      "heldout_error": 0.02918064221739769,
+      "route_diagnostic": null
+    },
+    {
+      "name": "regime_03",
+      "statuses": {
+        "pending": 36,
+        "capacity": 8,
+        "matched": 4
+      },
+      "expected_slot_id": 3,
+      "returned_slot_ids": [
+        3
+      ],
+      "matched_existing_slot": true,
+      "heldout_error": 0.010769960470497608,
+      "route_diagnostic": null
+    },
+    {
+      "name": "regime_01",
+      "statuses": {
+        "pending": 36,
+        "capacity": 7,
+        "matched": 5
+      },
+      "expected_slot_id": 1,
+      "returned_slot_ids": [
+        1
+      ],
+      "matched_existing_slot": true,
+      "heldout_error": 0.05037017539143562,
+      "route_diagnostic": null
+    },
+    {
+      "name": "regime_00",
+      "statuses": {
+        "pending": 36,
+        "matched": 4,
+        "capacity": 8
+      },
+      "expected_slot_id": 0,
+      "returned_slot_ids": [
+        0
+      ],
+      "matched_existing_slot": true,
+      "heldout_error": 0.02918064221739769,
+      "route_diagnostic": null
+    },
+    {
+      "name": "regime_02",
+      "statuses": {
+        "pending": 36,
+        "matched": 3,
+        "capacity": 9
+      },
+      "expected_slot_id": 2,
+      "returned_slot_ids": [
+        2
+      ],
+      "matched_existing_slot": true,
+      "heldout_error": 0.015417111106216908,
+      "route_diagnostic": null
+    }
+  ],
+  "corruption_control": {
+    "statuses": {
+      "pending": 36,
+      "staged": 12
+    },
+    "accepted": false,
+    "bank_unchanged": true
+  },
+  "status_counts": {
+    "regime_00:pending": 36,
+    "regime_00:staged": 12,
+    "regime_01:pending": 36,
+    "regime_01:staged": 12,
+    "regime_02:pending": 36,
+    "regime_02:staged": 12,
+    "regime_03:pending": 36,
+    "regime_03:staged": 12,
+    "revisit:regime_02:pending": 72,
+    "revisit:regime_02:matched": 6,
+    "revisit:regime_02:capacity": 18,
+    "revisit:regime_00:pending": 72,
+    "revisit:regime_00:matched": 8,
+    "revisit:regime_00:capacity": 16,
+    "revisit:regime_03:pending": 36,
+    "revisit:regime_03:capacity": 8,
+    "revisit:regime_03:matched": 4,
+    "revisit:regime_01:pending": 36,
+    "revisit:regime_01:capacity": 7,
+    "revisit:regime_01:matched": 5
+  },
+  "address_adapter": {
+    "base_digest": "3021e141f7cbe3c93d4ac5f866a6efdd766e386620db06f2bb44c8735ec3a7ed",
+    "final_digest": "97f1bdd4fd7a4d35d26b6905419a4231aa2094064f1f10b775a037062c804ffd",
+    "final_version": 52
+  },
+  "context_encoder": {
+    "source_pretraining": false,
+    "meta_pretraining": false,
+    "source_regime_indices": [
+      0,
+      1
+    ],
+    "optimizer_updates": 0,
+    "loss": null,
+    "frozen_after_pretraining": true,
+    "digest": "68e17e0ad93d8fd3f9ea054791d462198dff6fd4ed74cc18b1a90f75245d2051"
+  },
+  "accounting": {
+    "unique_verifier_bits": 512,
+    "unique_logical_lifetimes": 512,
+    "context_encoder_optimizer_updates": 0,
+    "address_adapter_optimizer_updates": 208,
+    "model_optimizer_updates": 768,
+    "route_scorer_optimizer_updates": 0,
+    "route_memory_state_updates": 0,
+    "route_memory_prototype_count": 0,
+    "prior_probe_optimizer_updates": 0,
+    "route_scorer_unique_current_windows": 0,
+    "route_scorer_current_window_reuses": 0,
+    "current_window_reuses": 720,
+    "replayed_examples": 0,
+    "old_regime_replay": 0,
+    "controller_optimizer_updates": 0,
+    "wall_seconds": 2.0181351660285145
+  }
+}

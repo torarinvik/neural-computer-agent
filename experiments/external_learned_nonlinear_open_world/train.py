@@ -27,6 +27,7 @@ from experiments.external_nonlinear_drift_learned_context.train import (
     STATE_WIDTH,
     TRAIN_ROWS,
     _fixture,
+    _noisy_view,
     _row,
 )
 from neural_computer import (
@@ -61,6 +62,9 @@ LEARNED_ROUTE_HIDDEN = 48
 LEARNED_ROUTE_UPDATES = 128
 ROUTE_MEMORY_PROTOTYPES = 4
 PRIOR_PROBE_UPDATES = 4
+CONTEXT_PRETRAIN_UPDATES = 400
+CONTEXT_PREFIX_LENGTHS = (8, 24, 48)
+META_SOURCE_REGIME_INDICES = tuple(range(8, 16))
 
 
 def _digest(module: torch.nn.Module) -> str:
@@ -93,6 +97,140 @@ def _new_bank(capacity: int) -> ExternalTransitionModelBank:
         adaptation_learning_rate=0.01,
         capacity=capacity,
     )
+
+
+def _prefix(
+    observation: ExternalTransitionObservation,
+    count: int,
+) -> ExternalTransitionObservation:
+    if count < 1 or count > observation.state.shape[0]:
+        raise ValueError("context prefix length is out of range")
+    return ExternalTransitionObservation(
+        state=observation.state[:count],
+        intention=observation.intention[:count],
+        next_state=observation.next_state[:count],
+        confidence=(
+            None
+            if observation.confidence is None
+            else observation.confidence[:count]
+        ),
+    )
+
+
+def _train_source_context_encoder(
+    encoder: ExternalTransitionContextEncoder,
+    source_observations: list[ExternalTransitionObservation],
+    *,
+    seed: int,
+    updates: int,
+) -> float:
+    """Learn stable relation keys from source bundles only.
+
+    The pairing is made by two noisy views of the same opaque transition
+    bundle, not by a task/rule label. Prefix alignment makes the key usable
+    before a full bundle has arrived. Target bundles are deliberately absent
+    from this optimizer loop.
+    """
+
+    if updates < 1:
+        raise ValueError("context pretraining updates must be positive")
+    if len(source_observations) < 2:
+        raise ValueError("context pretraining needs at least two source bundles")
+    optimizer = torch.optim.Adam(encoder.parameters(), lr=0.003)
+    final_loss = float("inf")
+    for update in range(1, updates + 1):
+        left = [
+            encoder.encode_observation(
+                _noisy_view(
+                    observation,
+                    seed=seed + update * 31 + index,
+                    noise=0.005,
+                )
+            )
+            for index, observation in enumerate(source_observations)
+        ]
+        right = [
+            encoder.encode_observation(
+                _noisy_view(
+                    observation,
+                    seed=seed + update * 47 + index,
+                    noise=0.01,
+                )
+            )
+            for index, observation in enumerate(source_observations)
+        ]
+        contrastive = encoder.contrastive_loss(
+            torch.stack(left),
+            torch.stack(right),
+            temperature=0.1,
+        )
+        route_left = [
+            encoder.trajectory_stats(
+                _noisy_view(
+                    observation,
+                    seed=seed + update * 59 + index,
+                    noise=0.005,
+                )
+            )
+            for index, observation in enumerate(source_observations)
+        ]
+        route_right = [
+            encoder.trajectory_stats(
+                _noisy_view(
+                    observation,
+                    seed=seed + update * 71 + index,
+                    noise=0.01,
+                )
+            )
+            for index, observation in enumerate(source_observations)
+        ]
+        route_contrastive = encoder.contrastive_loss(
+            torch.stack(route_left),
+            torch.stack(route_right),
+            temperature=0.1,
+        )
+        full_contexts = torch.stack(
+            [encoder.encode_observation(observation) for observation in source_observations]
+        )
+        prefix_contexts = torch.stack(
+            [
+                torch.stack(
+                    [
+                        encoder.encode_observation(_prefix(observation, count))
+                        for count in CONTEXT_PREFIX_LENGTHS
+                    ]
+                )
+                for observation in source_observations
+            ]
+        )
+        full_route_features = torch.stack(
+            [encoder.trajectory_stats(observation) for observation in source_observations]
+        )
+        prefix_route_features = torch.stack(
+            [
+                torch.stack(
+                    [
+                        encoder.trajectory_stats(_prefix(observation, count))
+                        for count in CONTEXT_PREFIX_LENGTHS
+                    ]
+                )
+                for observation in source_observations
+            ]
+        )
+        loss = contrastive + 0.5 * encoder.prefix_alignment_loss(
+            prefix_contexts,
+            full_contexts,
+            temperature=0.1,
+        ) + route_contrastive + 0.5 * encoder.prefix_alignment_loss(
+            prefix_route_features,
+            full_route_features,
+            temperature=0.1,
+        )
+        optimizer.zero_grad(set_to_none=True)
+        loss.backward()
+        optimizer.step()
+        final_loss = float(loss.detach())
+    return final_loss
 
 
 def _shadow_prior_probe(
@@ -153,9 +291,12 @@ def _consume(
     observation: ExternalTransitionObservation,
     *,
     optimizer: torch.optim.Optimizer | None,
+    gradient_steps: int = GRADIENT_STEPS_PER_BUNDLE,
     start: int = 0,
     count: int = PRESENTED_ROWS,
 ) -> tuple[Counter[str], torch.optim.Optimizer | None, list[float], list[object]]:
+    if gradient_steps < 1:
+        raise ValueError("gradient steps per bundle must be positive")
     statuses: Counter[str] = Counter()
     losses: list[float] = []
     results: list[object] = []
@@ -171,7 +312,7 @@ def _consume(
                 router.provisional_model_at(0).parameters(),
                 lr=0.01,
             )
-        for _step in range(GRADIENT_STEPS_PER_BUNDLE):
+        for _step in range(gradient_steps):
             losses.append(
                 router.adaptation_step(
                     result,
@@ -190,13 +331,7 @@ def _route_diagnostic(
         return None
     fallback = (
         router.context_encoder.trajectory_stats(observation)
-        if (
-            router.route_query.learned_scorer is not None
-            or (
-                router.route_query.route_memory is not None
-                and router.route_query.route_width is not None
-            )
-        )
+        if router.route_query.uses_trajectory_feature()
         else (
             router.address_adapter.encode_observation(observation)
             if router.address_adapter is not None
@@ -249,7 +384,11 @@ def _train_learned_route_query(
     ):
         raise RuntimeError("learned route query has an incomplete key bank")
     with torch.no_grad():
-        query = router.context_encoder.trajectory_stats(observation)
+        query = (
+            router.context_encoder.trajectory_stats(observation)
+            if route_query.uses_trajectory_feature()
+            else router.context_encoder.encode_observation(observation)
+        )
         keys = torch.stack(
             [route_query._slot_route_keys[slot_id] for slot_id in router.bank.slot_ids]
         ).to(query)
@@ -309,9 +448,16 @@ def run(
     route_memory_prototypes: int = ROUTE_MEMORY_PROTOTYPES,
     use_verified_prior: bool = False,
     prior_probe_updates: int = PRIOR_PROBE_UPDATES,
+    use_source_pretrained_context: bool = False,
+    context_pretrain_updates: int = CONTEXT_PRETRAIN_UPDATES,
+    use_context_route_features: bool = False,
+    use_meta_pretrained_context: bool = False,
+    gradient_steps_per_bundle: int = GRADIENT_STEPS_PER_BUNDLE,
 ) -> dict[str, object]:
     begun = time.perf_counter()
     torch.set_num_threads(1)
+    if gradient_steps_per_bundle < 1:
+        raise ValueError("gradient steps per bundle must be positive")
     prior_probe = (
         partial(_shadow_prior_probe, updates=prior_probe_updates)
         if use_verified_prior
@@ -329,8 +475,28 @@ def run(
         context_width=CONTEXT_WIDTH,
         aggregation="mean_pool",
     )
+    context_pretraining_loss = None
+    context_pretraining_source_indices = (0, 1)
+    if use_meta_pretrained_context:
+        context_pretraining_source_indices = META_SOURCE_REGIME_INDICES
+    pretraining_enabled = (
+        use_source_pretrained_context or use_meta_pretrained_context
+    )
+    if pretraining_enabled:
+        pretraining_fixtures = {
+            index: _fixture(seed, index)
+            for index in context_pretraining_source_indices
+        }
+        context_pretraining_loss = _train_source_context_encoder(
+            encoder,
+            [pair[0] for pair in pretraining_fixtures.values()],
+            seed=seed,
+            updates=context_pretrain_updates,
+        )
     encoder.eval()
     encoder_digest = encoder.digest()
+    for parameter in encoder.parameters():
+        parameter.requires_grad_(False)
     address_adapter = ExternalTransitionContextAddressAdapter(
         encoder,
         learning_rate=0.001,
@@ -350,7 +516,17 @@ def run(
         parameter.requires_grad_(False)
 
     bank = _new_bank(1)
-    route_width = CONTEXT_WIDTH + CONTEXT_HIDDEN_WIDTH * 3
+    if use_context_route_features and not (
+        use_learned_route_query or use_prototype_route_memory
+    ):
+        raise ValueError(
+            "context route features require a learned scorer or prototype memory"
+        )
+    route_width = (
+        CONTEXT_WIDTH
+        if use_context_route_features
+        else CONTEXT_WIDTH + CONTEXT_HIDDEN_WIDTH * 3
+    )
     learned_scorer = (
         OpaqueCandidateGrowthRouter(route_width, hidden=LEARNED_ROUTE_HIDDEN)
         if use_learned_route_query
@@ -434,6 +610,7 @@ def run(
             router,
             observations[name],
             optimizer=None,
+            gradient_steps=gradient_steps_per_bundle,
         )
         status_counts.update(f"{name}:{status}" for status, count in statuses.items() for _ in range(count))
         optimizer_updates += len(losses)
@@ -500,6 +677,7 @@ def run(
             router,
             observations[name],
             optimizer=None,
+            gradient_steps=gradient_steps_per_bundle,
         )
         status_counts.update(f"revisit:{name}:{status}" for status, count in statuses.items() for _ in range(count))
         returned_slots = {
@@ -552,6 +730,7 @@ def run(
         corruption_router,
         corrupted,
         optimizer=None,
+        gradient_steps=gradient_steps_per_bundle,
     )
     del corruption_optimizer
     corruption_receipt = corruption_router.promote_staged_candidate(
@@ -562,7 +741,7 @@ def run(
     corruption_rejected = (
         corruption_statuses["staged"] == PRESENTED_ROWS // ADMISSION_ROWS
         and len(corruption_losses)
-        == PRESENTED_ROWS // ADMISSION_ROWS * GRADIENT_STEPS_PER_BUNDLE
+        == PRESENTED_ROWS // ADMISSION_ROWS * gradient_steps_per_bundle
         and not corruption_receipt.accepted
         and corruption_router.bank.content_digest() == corruption_before
     )
@@ -578,8 +757,18 @@ def run(
         for slot_id, name in slot_names.items()
     )
     gates = {
-        "untrained_encoder": encoder.digest() == encoder_digest,
-        "zero_encoder_pretraining_updates": True,
+        "encoder_unchanged_after_setup": encoder.digest() == encoder_digest,
+        "encoder_frozen_after_setup": all(
+            not parameter.requires_grad for parameter in encoder.parameters()
+        ),
+        "source_pretraining_accounted": (
+            not pretraining_enabled
+            or (
+                context_pretrain_updates > 0
+                and context_pretraining_loss is not None
+                and bool(torch.isfinite(torch.tensor(context_pretraining_loss)))
+            )
+        ),
         "learned_nonlinear_model_family": all(
             bank.model_family_at(index) == MODEL_FAMILY
             for index in range(bank.context_count)
@@ -590,7 +779,7 @@ def run(
             REGIME_COUNT
             * PRESENTED_ROWS
             // ADMISSION_ROWS
-            * GRADIENT_STEPS_PER_BUNDLE
+            * gradient_steps_per_bundle
         ),
         "all_heldout_errors_pass": all(
             float(record["heldout_error"]) < QUALITY_THRESHOLD for record in records
@@ -670,9 +859,22 @@ def run(
             "prior_probe_updates_per_candidate": prior_probe_updates
             if use_verified_prior
             else 0,
-            "context_encoder_optimizer_updates": 0,
+            "source_pretrained_context": pretraining_enabled,
+            "meta_pretrained_context": use_meta_pretrained_context,
+            "context_pretrain_source_indices": list(
+                context_pretraining_source_indices
+            ),
+            "context_pretrain_updates": context_pretrain_updates
+            if pretraining_enabled
+            else 0,
+            "context_aggregation": "mean_pool",
+            "route_feature": (
+                "context_key_v1"
+                if use_context_route_features
+                else "trajectory_stats_v1"
+            ),
             "provisional_evidence_policy": "streaming_gradient",
-            "gradient_steps_per_current_window": GRADIENT_STEPS_PER_BUNDLE,
+            "gradient_steps_per_current_window": gradient_steps_per_bundle,
             "address_update": "copy_on_write_current_bundle_anchor_separation_v1",
         },
         "gates": gates,
@@ -690,10 +892,25 @@ def run(
             "final_digest": router.address_adapter.digest(),
             "final_version": router.address_adapter.version,
         },
+        "context_encoder": {
+            "source_pretraining": pretraining_enabled,
+            "meta_pretraining": use_meta_pretrained_context,
+            "source_regime_indices": list(context_pretraining_source_indices),
+            "optimizer_updates": context_pretrain_updates
+            if pretraining_enabled
+            else 0,
+            "loss": context_pretraining_loss,
+            "frozen_after_pretraining": all(
+                not parameter.requires_grad for parameter in encoder.parameters()
+            ),
+            "digest": encoder.digest(),
+        },
         "accounting": {
             "unique_verifier_bits": REGIME_COUNT * HELDOUT_ROWS * STATE_WIDTH,
             "unique_logical_lifetimes": REGIME_COUNT * (TRAIN_ROWS + HELDOUT_ROWS),
-            "context_encoder_optimizer_updates": 0,
+            "context_encoder_optimizer_updates": context_pretrain_updates
+            if pretraining_enabled
+            else 0,
             "address_adapter_optimizer_updates": router.address_adapter.version * 4,
             "model_optimizer_updates": optimizer_updates,
             "route_scorer_optimizer_updates": route_scorer_updates,
@@ -727,7 +944,7 @@ def run(
                 REGIME_COUNT
                 * PRESENTED_ROWS
                 // ADMISSION_ROWS
-                * (GRADIENT_STEPS_PER_BUNDLE - 1)
+                * (gradient_steps_per_bundle - 1)
             ),
             "replayed_examples": 0,
             "old_regime_replay": 0,
@@ -765,6 +982,19 @@ def main() -> None:
         type=int,
         default=PRIOR_PROBE_UPDATES,
     )
+    parser.add_argument("--source-pretrained-context", action="store_true")
+    parser.add_argument(
+        "--context-pretrain-updates",
+        type=int,
+        default=CONTEXT_PRETRAIN_UPDATES,
+    )
+    parser.add_argument("--context-route-features", action="store_true")
+    parser.add_argument("--meta-pretrained-context", action="store_true")
+    parser.add_argument(
+        "--gradient-steps-per-bundle",
+        type=int,
+        default=GRADIENT_STEPS_PER_BUNDLE,
+    )
     parser.add_argument(
         "--learned-route-updates",
         type=int,
@@ -781,6 +1011,10 @@ def main() -> None:
         raise SystemExit("--route-memory-prototypes must be positive")
     if args.prior_probe_updates < 1:
         raise SystemExit("--prior-probe-updates must be positive")
+    if args.context_pretrain_updates < 1:
+        raise SystemExit("--context-pretrain-updates must be positive")
+    if args.gradient_steps_per_bundle < 1:
+        raise SystemExit("--gradient-steps-per-bundle must be positive")
     if args.learned_route_query and args.prototype_route_memory:
         raise SystemExit(
             "--learned-route-query and --prototype-route-memory are exclusive"
@@ -797,6 +1031,11 @@ def main() -> None:
         route_memory_prototypes=args.route_memory_prototypes,
         use_verified_prior=args.verified_transfer_prior,
         prior_probe_updates=args.prior_probe_updates,
+        use_source_pretrained_context=args.source_pretrained_context,
+        context_pretrain_updates=args.context_pretrain_updates,
+        use_context_route_features=args.context_route_features,
+        use_meta_pretrained_context=args.meta_pretrained_context,
+        gradient_steps_per_bundle=args.gradient_steps_per_bundle,
     )
 
 

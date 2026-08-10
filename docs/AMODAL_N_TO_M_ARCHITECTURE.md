@@ -6037,3 +6037,47 @@ next experiment must meta-learn or otherwise stabilize the factual model's
 representation and route identity, while preserving verifier-gated
 copy-on-write and no-replay accounting. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_learned_nonlinear_verified_transfer_prior_rejected_2026-08-10/`.
+
+## Promoted replay-free nonlinear factual-memory retention (2026-08-10)
+
+The nonlinear factual-memory pressure test now uses sixteen local optimizer
+updates per four-row current evidence window rather than four. Across seeds
+`82601`, `82602`, and `82603`, all four `48/64` partial-evidence regimes
+passed held-out acquisition, all six revisits returned the correct stable
+logical slot, all prior slots remained byte-stable, corruption was rejected
+without a bank write, and exact persistence passed. The controller and
+context encoder received zero optimizer updates; old-regime replay and raw
+provisional-row retention were zero.
+
+This promotes bounded factual-model retention, not route memory. The router
+identified slots through factual transition prediction; route-query and
+prototype-memory updates were zero. Separate prototype audits still show
+that opaque route proposals can be wrong, so proposals remain optional
+accelerators behind factual verification. The improvement is therefore
+attributed to better current-window model fitting, not to a routing shortcut.
+
+The result remains bounded to four synthetic nonlinear regimes, finite model
+capacity, supplied opaque transition bundles, and sixteen-step local fitting.
+It does not establish unrestricted growth, arbitrary new computation, or
+general continual learning. The next test should use a genuinely different
+dynamics family or partial/gradual drift while preserving the same retention,
+fresh-control, replay, and optimizer accounting. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_learned_nonlinear_factual_memory_16step_promoted_2026-08-10/`.
+
+## Route-representation diagnostic rejection (2026-08-10)
+
+Source-only context pretraining, direct trained context-key route features,
+and an eight-regime meta-pretrained recurrent trajectory feature were tested
+against the nonlinear route-memory fixture. On seed `82601`, route proposals
+matched factual winners only `2/6`, `1/6`, and `2/6`, respectively, and every
+arm had `0/6` factual revisits under the four-step model-fitting budget.
+Held-out acquisition still passed, so the failure is specifically route
+identity rather than basic model fitting.
+
+This rejects the route-representation variants as capability gains, while
+retaining their explicit feature-space boundary and source-only training
+hooks. The result reinforces the distinction between factual retention and
+route acceleration: route proposals must remain non-authoritative until a
+verifier-grounded factual signature can reliably identify a slot. Evidence is
+archived in
+`session_records/sequence_working_memory_2026-08-02/external_nonlinear_route_representation_diagnostics_rejected_2026-08-10/`.

@@ -1,0 +1,46 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "external_nonlinear_route_representation_diagnostics_rejected_2026-08-10",
+  "entries": [
+    {
+      "seed": 82601,
+      "arm": "source-pretrained-trajectory-feature",
+      "unique_verifier_bits": 512,
+      "unique_logical_lifetimes": 512,
+      "optimizer_updates": 592,
+      "replayed_examples": 0,
+      "controller_updates": 0,
+      "route_proposal_matches": 2,
+      "route_proposal_queries": 6,
+      "revisit_matches": 0,
+      "promoted": false
+    },
+    {
+      "seed": 82601,
+      "arm": "source-pretrained-context-key",
+      "unique_verifier_bits": 512,
+      "unique_logical_lifetimes": 512,
+      "optimizer_updates": 592,
+      "replayed_examples": 0,
+      "controller_updates": 0,
+      "route_proposal_matches": 1,
+      "route_proposal_queries": 6,
+      "revisit_matches": 0,
+      "promoted": false
+    },
+    {
+      "seed": 82601,
+      "arm": "meta-pretrained-trajectory-feature",
+      "unique_verifier_bits": 512,
+      "unique_logical_lifetimes": 512,
+      "optimizer_updates": 592,
+      "replayed_examples": 0,
+      "controller_updates": 0,
+      "route_proposal_matches": 2,
+      "route_proposal_queries": 6,
+      "revisit_matches": 0,
+      "promoted": false
+    }
+  ],
+  "claim_boundary": "Route representation diagnostics rejected; no general route-identity claim."
+}
