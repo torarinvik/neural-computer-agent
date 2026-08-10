@@ -38,6 +38,7 @@ MASTERY_THRESHOLD = 0.8
 SOURCE_REGIMES = 2
 TARGET_REGIMES = tuple(range(SOURCE_REGIMES, len(REGIME_NAMES)))
 PRIOR_PROBE_UPDATES = 4
+NO_AGENT_TRIALS = 128
 
 
 def _digest_module(module: torch.nn.Module) -> str:
@@ -151,6 +152,28 @@ def _retention_prefix(
     return rows, retained
 
 
+def _evaluate_no_agent(regime_index: int, *, seed: int) -> dict[str, object]:
+    """Measure a verifier-only random-intention floor without a model."""
+
+    generator = torch.Generator().manual_seed(seed + 1_000_003 * regime_index)
+    table = TRANSITION_TABLES[regime_index]
+    successes: list[bool] = []
+    for start, goal in TARGETS[regime_index]:
+        for _trial in range(NO_AGENT_TRIALS):
+            position = start
+            for _step in range(HORIZON):
+                action = int(torch.randint(0, 2, (), generator=generator))
+                position = table[action][position]
+            successes.append(position == goal)
+    return {
+        "trials_per_target": NO_AGENT_TRIALS,
+        "targets": len(TARGETS[regime_index]),
+        "successes": int(sum(successes)),
+        "attempts": len(successes),
+        "mastery": sum(successes) / len(successes),
+    }
+
+
 def run(seed: int, report_out: Path) -> dict[str, object]:
     begun = time.perf_counter()
     torch.set_num_threads(1)
@@ -174,6 +197,10 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
             name: context_encoder.encode_observation(observations[name])
             for name in REGIME_NAMES
         }
+    no_agent = {
+        name: _evaluate_no_agent(index, seed=seed)
+        for index, name in enumerate(REGIME_NAMES[ SOURCE_REGIMES : ], start=SOURCE_REGIMES)
+    }
 
     controller = AmodalCognitiveController(
         width=STATE_WIDTH,
@@ -357,6 +384,10 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
         "all_warm_targets_mastered": all_warm_mastered,
         "all_fresh_controls_mastered": all_fresh_mastered,
         "warm_cumulative_cost_beats_fresh": warm_total < fresh_total,
+        "no_agent_floor_below_mastery": all(
+            float(result["mastery"]) < MASTERY_THRESHOLD
+            for result in no_agent.values()
+        ),
         "all_prior_regimes_retained_and_byte_stable": all_prior_retained,
         "old_regime_replay_during_adaptation_zero": True,
         "planner_is_inference_only": True,
@@ -381,6 +412,7 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
             "source_update_budget": SOURCE_UPDATES,
             "target_update_budget": TARGET_UPDATES,
             "prior_probe_updates_per_candidate": PRIOR_PROBE_UPDATES,
+            "no_agent_trials_per_target": NO_AGENT_TRIALS,
             "loss_threshold": LOSS_THRESHOLD,
             "mastery_threshold": MASTERY_THRESHOLD,
             "horizon": HORIZON,
@@ -388,6 +420,9 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
         },
         "gates": gates,
         "promoted": all(gates.values()),
+        "controls": {
+            "no_agent": no_agent,
+        },
         "source": {
             "rows": source_rows,
             "optimizer_updates": source_optimizer_updates,
@@ -404,6 +439,8 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
             "shadow_prior_probe_updates": 2
             * PRIOR_PROBE_UPDATES
             * len(TARGET_REGIMES),
+            "no_agent_verifier_trials": NO_AGENT_TRIALS
+            * sum(len(TARGETS[index]) for index in TARGET_REGIMES),
             "current_target_rows_reused_for_optimizer": True,
             "old_regime_replay_during_target_adaptation": 0,
             "controller_optimizer_updates": 0,

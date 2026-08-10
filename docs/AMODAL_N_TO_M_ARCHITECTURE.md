@@ -6921,3 +6921,20 @@ general continual learning.
 
 Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_factored_contextual_search_promoted_2026-08-10/`.
+
+## Disjoint factual-model compounding with no-agent controls (2026-08-10)
+
+The disjoint-dynamics compounding rung now includes an explicit verifier-only
+random-intention floor: 128 trials per target and 768 target trials per seed.
+Across three seeds, the floor stayed below mastery while matched fresh learners
+and policy-free factual-model/search arms mastered both disjoint target
+dynamics, retained every prior slot with byte-stable digests, and used zero
+old-regime replay during target adaptation.
+
+This strengthens the causal control boundary for disjoint factual-model
+compounding. It does not establish unrestricted memory growth, arbitrary new
+computation, or general continual learning. The five-seed challenger result
+with one rejected cost seed remains the more conservative population audit.
+
+Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_transition_model_disjoint_compounding_controls_promoted_2026-08-10/`.

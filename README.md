@@ -2687,3 +2687,11 @@ remain frozen, and the restored external state routes the surviving slot. This
 promotes a bounded factual-memory/search composition, not unrestricted growth
 or general continual learning. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_factored_contextual_search_promoted_2026-08-10/`.
+
+The disjoint-dynamics compounding result now has an explicit no-agent floor as
+well. Across three seeds, 768 random-intention verifier trials per seed stayed
+well below mastery while matched fresh learners and the policy-free factual
+model/search arm mastered both disjoint targets and retained every source slot.
+This strengthens the control boundary, not the claim to general continual
+learning. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_transition_model_disjoint_compounding_controls_promoted_2026-08-10/`.

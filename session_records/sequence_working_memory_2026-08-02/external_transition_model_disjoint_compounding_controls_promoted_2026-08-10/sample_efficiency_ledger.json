@@ -1,0 +1,29 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "external_transition_model_disjoint_compounding_controls",
+  "decision": "promote",
+  "claim_boundary": "three-seed disjoint factual-model compounding with matched fresh learners and explicit no-agent floors; not general continual learning",
+  "seeds": [70411, 70412, 70413],
+  "accounting": {
+    "source_regimes": 2,
+    "target_regimes": 2,
+    "no_agent_trials_per_target": 128,
+    "no_agent_verifier_trials_per_seed": 768,
+    "old_regime_replay_during_adaptation": 0,
+    "controller_optimizer_updates": 0,
+    "context_encoder_updates": 400,
+    "fresh_target_learners": 2,
+    "prior_probe_updates_per_candidate": 4
+  },
+  "gates": {
+    "all_three_seeds_passed": true,
+    "transition_tables_are_disjoint": true,
+    "all_source_regimes_mastered": true,
+    "all_warm_targets_mastered": true,
+    "all_fresh_controls_mastered": true,
+    "warm_cumulative_cost_beats_fresh": true,
+    "no_agent_floor_below_mastery": true,
+    "all_prior_regimes_retained_and_byte_stable": true,
+    "planner_is_inference_only": true
+  }
+}

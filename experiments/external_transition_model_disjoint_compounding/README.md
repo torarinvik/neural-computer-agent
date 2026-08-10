@@ -19,6 +19,11 @@ old-regime replay, and checks every prior slot after every target. It is a
 replication/extension of the exported session's F69 mechanism, not a claim of
 general continual learning.
 
+The current source also measures a verifier-only random-intention floor: 128
+trials per target, 768 target trials per seed. This keeps the planner result
+separate from the no-agent baseline; the floor must remain below the mastery
+threshold for promotion.
+
 Run one seed with:
 
 ```bash
