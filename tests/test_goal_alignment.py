@@ -190,3 +190,55 @@ def test_alignment_bank_identity_updates_are_explicitly_verifier_gated() -> None
     assert bank.digest() != before
     with pytest.raises(KeyError, match="unknown"):
         bank.observe_identity_verified(9, torch.tensor([1.0, 0.0]))
+
+
+def test_alignment_bank_defers_overlapping_identity_and_resolves_from_later_anchor() -> None:
+    bank = ExternalGoalRepresentationAlignmentBank(
+        1,
+        capacity=2,
+        identity_width=2,
+        identity_quarantine_capacity=2,
+    )
+    first, source, target = _adapter(0.0)
+    second, second_source, second_target = _adapter(1.0)
+    first_receipt = bank.admit_verified(
+        "opaque-a",
+        first,
+        source,
+        target,
+        prediction_tolerance=1e-3,
+        identity_signature=torch.tensor([1.0, 0.0]),
+    )
+    second_receipt = bank.admit_verified(
+        "opaque-b",
+        second,
+        second_source,
+        second_target,
+        prediction_tolerance=1e-3,
+        identity_signature=torch.tensor([0.0, 1.0]),
+    )
+    deferred = bank.defer_identity_signature(
+        torch.tensor([1.0, 1.0]),
+        candidate_slot_ids=(first_receipt.slot_id, second_receipt.slot_id),
+    )
+    assert deferred.accepted and bank.identity_quarantined_count == 1
+
+    blocked_eviction = bank.evict_verified(first_receipt.slot_id, lambda _candidate: True)
+    assert not blocked_eviction.accepted
+    rejected = bank.resolve_identity_quarantine(
+        first_receipt.slot_id,
+        verifier_accepted=False,
+    )
+    assert not rejected.accepted and bank.identity_quarantined_count == 1
+    persisted = ExternalGoalRepresentationAlignmentBank.from_payload(bank.state_payload())
+    assert persisted.identity_quarantined_count == 1
+    assert persisted.digest() == bank.digest()
+
+    resolved = bank.resolve_identity_quarantine(
+        first_receipt.slot_id,
+        verifier_accepted=True,
+    )
+    assert resolved.accepted and resolved.resolved_count == 1
+    assert bank.identity_quarantined_count == 0
+    evicted = bank.evict_verified(second_receipt.slot_id, lambda candidate: candidate.active_count == 1)
+    assert evicted.accepted

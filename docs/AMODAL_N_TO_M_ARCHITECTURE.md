@@ -7249,3 +7249,28 @@ identity discovery. The next gap is learning identity from richer partial
 windows under gradual drift and delayed evidence, including cases where two
 frontends have overlapping signatures. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_goal_representation_alignment_identity_promoted_2026-08-10/`.
+
+## Delayed identity resolution for overlapping goal alignments (2026-08-10)
+
+The goal-alignment bank now has a bounded quarantine for identity signatures
+that cannot yet be assigned safely. Exact signature overlap is refused at the
+active route boundary; unresolved evidence can be retained outside active
+prototypes, while referenced slots remain protected from eviction. A later
+anchor may resolve the evidence only through an explicit verifier-gated
+mutation. Rejected anchors preserve the full bank digest; accepted anchors
+consume only evidence that successfully updates the selected slot.
+
+Across seeds `84901`, `84902`, `84903`, and `84904`, two overlapping signatures
+were retained at quarantine capacity two, a third was refused, eviction was
+blocked while evidence was live, verifier rejection was byte-stable, and
+verifier acceptance resolved both records. Resolved frontend mastery was
+`0.975`–`1.0`; persistence was exact, the controller/model/verifier stayed
+frozen, and replay was zero.
+
+This promotes bounded verifier-gated delayed identity resolution. It does not
+establish semantic open-world identity discovery, learned anchor selection,
+unrestricted memory growth, or general continual learning. The next pressure
+test combines this boundary with gradual drift, missing windows, repeated
+route reversals, and anchor selection without caller-supplied slot IDs.
+Evidence and accounting are archived in
+`session_records/sequence_working_memory_2026-08-02/external_goal_representation_alignment_delayed_identity_promoted_2026-08-10/`.

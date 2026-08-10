@@ -43,6 +43,12 @@ EXTERNAL_GOAL_REPRESENTATION_ALIGNMENT_BANK_GROWTH_SCHEMA = (
 EXTERNAL_GOAL_REPRESENTATION_ALIGNMENT_BANK_IDENTITY_SCHEMA = (
     "neural-computer.external-goal-representation-alignment-bank-identity.v1"
 )
+EXTERNAL_GOAL_REPRESENTATION_ALIGNMENT_IDENTITY_QUARANTINE_SCHEMA = (
+    "neural-computer.external-goal-representation-alignment-identity-quarantine.v1"
+)
+EXTERNAL_GOAL_REPRESENTATION_ALIGNMENT_IDENTITY_RESOLUTION_SCHEMA = (
+    "neural-computer.external-goal-representation-alignment-identity-resolution.v1"
+)
 
 _ALIGNMENT_TYPES = (
     ExternalGoalRepresentationAlignmentStatistics,
@@ -193,6 +199,85 @@ class ExternalGoalRepresentationAlignmentRouteResult:
         return self
 
 
+@dataclass(frozen=True)
+class ExternalGoalRepresentationIdentityQuarantineReceipt:
+    """Auditable storage decision for one unresolved identity signature."""
+
+    accepted: bool
+    candidate_slot_ids: tuple[int, ...]
+    quarantined_count: int
+    capacity: int
+    signature_digest: str
+    reason: str
+    schema: str = EXTERNAL_GOAL_REPRESENTATION_ALIGNMENT_IDENTITY_QUARANTINE_SCHEMA
+
+    def validate(self) -> ExternalGoalRepresentationIdentityQuarantineReceipt:
+        if self.schema != EXTERNAL_GOAL_REPRESENTATION_ALIGNMENT_IDENTITY_QUARANTINE_SCHEMA:
+            raise ValueError("unsupported goal alignment identity-quarantine schema")
+        if min(self.quarantined_count, self.capacity) < 0:
+            raise ValueError("goal alignment identity-quarantine counts are invalid")
+        if self.quarantined_count > self.capacity:
+            raise ValueError("goal alignment identity quarantine exceeds capacity")
+        if len(self.candidate_slot_ids) < 1 or len(set(self.candidate_slot_ids)) != len(
+            self.candidate_slot_ids
+        ):
+            raise ValueError("goal alignment identity quarantine candidates are invalid")
+        if any(
+            not isinstance(slot_id, int) or isinstance(slot_id, bool) or slot_id < 0
+            for slot_id in self.candidate_slot_ids
+        ):
+            raise ValueError("goal alignment identity quarantine slot ID is invalid")
+        for name, value in (("signature_digest", self.signature_digest), ("reason", self.reason)):
+            if not isinstance(value, str) or not value:
+                raise ValueError(f"goal alignment identity quarantine {name} is missing")
+        return self
+
+
+@dataclass(frozen=True)
+class ExternalGoalRepresentationIdentityResolutionReceipt:
+    """Auditable verifier-gated consumption of deferred identity evidence."""
+
+    accepted: bool
+    anchor_slot_id: int
+    attempted_count: int
+    resolved_count: int
+    remaining_count: int
+    verifier_accepted: bool
+    source_digest: str
+    destination_digest: str
+    reason: str
+    schema: str = EXTERNAL_GOAL_REPRESENTATION_ALIGNMENT_IDENTITY_RESOLUTION_SCHEMA
+
+    def validate(self) -> ExternalGoalRepresentationIdentityResolutionReceipt:
+        if self.schema != EXTERNAL_GOAL_REPRESENTATION_ALIGNMENT_IDENTITY_RESOLUTION_SCHEMA:
+            raise ValueError("unsupported goal alignment identity-resolution schema")
+        if self.anchor_slot_id < 0 or min(
+            self.attempted_count, self.resolved_count, self.remaining_count
+        ) < 0:
+            raise ValueError("goal alignment identity resolution counts are invalid")
+        if self.resolved_count > self.attempted_count:
+            raise ValueError("goal alignment identity resolution over-consumed evidence")
+        if not isinstance(self.verifier_accepted, bool):
+            raise TypeError("goal alignment identity verifier decision is invalid")
+        for name, value in (
+            ("source_digest", self.source_digest),
+            ("destination_digest", self.destination_digest),
+            ("reason", self.reason),
+        ):
+            if not isinstance(value, str) or not value:
+                raise ValueError(f"goal alignment identity resolution {name} is missing")
+        return self
+
+
+def _signature_digest(signature: torch.Tensor) -> str:
+    digest = hashlib.sha256()
+    detached = signature.detach().cpu().contiguous()
+    digest.update(str(detached.dtype).encode("utf-8"))
+    digest.update(repr(tuple(detached.shape)).encode("utf-8"))
+    digest.update(detached.numpy().tobytes())
+    return digest.hexdigest()
+
+
 class ExternalGoalRepresentationAlignmentBank(nn.Module):
     """Bounded external bank of independently replaceable goal alignments.
 
@@ -217,6 +302,7 @@ class ExternalGoalRepresentationAlignmentBank(nn.Module):
         identity_min_margin: float = 0.05,
         identity_max_prototypes_per_slot: int = 4,
         identity_merge_cosine: float = 0.98,
+        identity_quarantine_capacity: int = 0,
     ) -> None:
         super().__init__()
         if target_width < 1:
@@ -231,17 +317,21 @@ class ExternalGoalRepresentationAlignmentBank(nn.Module):
             raise ValueError("goal alignment identity score floor is invalid")
         if identity_min_margin < 0.0 or not math.isfinite(identity_min_margin):
             raise ValueError("goal alignment identity margin floor is invalid")
+        if identity_quarantine_capacity < 0:
+            raise ValueError("goal alignment identity quarantine capacity cannot be negative")
         self.target_width = int(target_width)
         self.capacity = int(capacity)
         self.quarantine_capacity = int(quarantine_capacity)
         self.identity_width = None if identity_width is None else int(identity_width)
         self.identity_min_score = float(identity_min_score)
         self.identity_min_margin = float(identity_min_margin)
+        self.identity_quarantine_capacity = int(identity_quarantine_capacity)
         self.adapters = nn.ModuleList()
         self._frontend_space_ids: list[str] = []
         self._slot_ids: list[int] = []
         self._next_slot_id = 0
         self._quarantine: list[dict[str, Any]] = []
+        self._identity_quarantine: list[dict[str, Any]] = []
         self.identity_memory = (
             None
             if self.identity_width is None
@@ -271,6 +361,10 @@ class ExternalGoalRepresentationAlignmentBank(nn.Module):
     @property
     def identity_enabled(self) -> bool:
         return self.identity_memory is not None
+
+    @property
+    def identity_quarantined_count(self) -> int:
+        return len(self._identity_quarantine)
 
     def _validate_space_id(self, frontend_space_id: str) -> str:
         if not isinstance(frontend_space_id, str) or not frontend_space_id.strip():
@@ -544,6 +638,20 @@ class ExternalGoalRepresentationAlignmentBank(nn.Module):
             index = self._slot_ids.index(slot_id)
         except ValueError as error:
             raise KeyError(f"unknown goal alignment slot ID: {slot_id}") from error
+        if any(
+            slot_id in item["candidate_slot_ids"]
+            for item in self._identity_quarantine
+        ):
+            return ExternalGoalRepresentationAlignmentBankEvictionReceipt(
+                False,
+                slot_id,
+                self._frontend_space_ids[index],
+                self.active_count,
+                self.active_count,
+                self.active_digest(),
+                self.active_digest(),
+                "eviction blocked while deferred identity evidence references slot",
+            ).validate()
         source_digest = self.active_digest()
         space_id = self._frontend_space_ids[index]
         candidate = self.from_payload(self.state_payload())
@@ -636,6 +744,109 @@ class ExternalGoalRepresentationAlignmentBank(nn.Module):
             raise KeyError(f"unknown goal alignment slot ID: {slot_id}")
         return self.identity_memory.observe(slot_id, signature)
 
+    def defer_identity_signature(
+        self,
+        signature: torch.Tensor,
+        *,
+        candidate_slot_ids: tuple[int, ...] | None = None,
+    ) -> ExternalGoalRepresentationIdentityQuarantineReceipt:
+        """Retain an ambiguous signature without changing active identity state."""
+
+        if self.identity_memory is None:
+            raise RuntimeError("identity quarantine requires signature routing")
+        self._validate_identity_signature(signature)
+        candidates = self.slot_ids if candidate_slot_ids is None else tuple(candidate_slot_ids)
+        if not candidates or len(set(candidates)) != len(candidates):
+            raise ValueError("identity quarantine candidate slots are invalid")
+        if any(slot_id not in self._slot_ids for slot_id in candidates):
+            raise KeyError("identity quarantine candidate slot is not active")
+        signature_digest = _signature_digest(signature)
+        if len(self._identity_quarantine) >= self.identity_quarantine_capacity:
+            return ExternalGoalRepresentationIdentityQuarantineReceipt(
+                accepted=False,
+                candidate_slot_ids=candidates,
+                quarantined_count=len(self._identity_quarantine),
+                capacity=self.identity_quarantine_capacity,
+                signature_digest=signature_digest,
+                reason="identity quarantine capacity rejected unresolved signature",
+            ).validate()
+        self._identity_quarantine.append(
+            {
+                "signature": signature.detach().cpu().tolist(),
+                "candidate_slot_ids": list(candidates),
+            }
+        )
+        return ExternalGoalRepresentationIdentityQuarantineReceipt(
+            accepted=True,
+            candidate_slot_ids=candidates,
+            quarantined_count=len(self._identity_quarantine),
+            capacity=self.identity_quarantine_capacity,
+            signature_digest=signature_digest,
+            reason="ambiguous identity signature retained outside active prototypes",
+        ).validate()
+
+    def resolve_identity_quarantine(
+        self,
+        anchor_slot_id: int,
+        *,
+        verifier_accepted: bool,
+    ) -> ExternalGoalRepresentationIdentityResolutionReceipt:
+        """Resolve deferred signatures only after an external verifier accepts an anchor."""
+
+        if self.identity_memory is None:
+            raise RuntimeError("identity quarantine requires signature routing")
+        if not isinstance(anchor_slot_id, int) or isinstance(anchor_slot_id, bool) or anchor_slot_id < 0:
+            raise ValueError("identity resolution anchor slot ID is invalid")
+        if anchor_slot_id not in self._slot_ids:
+            raise KeyError(f"unknown identity resolution anchor slot: {anchor_slot_id}")
+        if not isinstance(verifier_accepted, bool):
+            raise TypeError("identity resolution verifier decision must be boolean")
+        source_digest = self.digest()
+        attempted = sum(
+            anchor_slot_id in item["candidate_slot_ids"]
+            for item in self._identity_quarantine
+        )
+        if not verifier_accepted:
+            return ExternalGoalRepresentationIdentityResolutionReceipt(
+                accepted=False,
+                anchor_slot_id=anchor_slot_id,
+                attempted_count=attempted,
+                resolved_count=0,
+                remaining_count=len(self._identity_quarantine),
+                verifier_accepted=False,
+                source_digest=source_digest,
+                destination_digest=source_digest,
+                reason="verifier rejected identity anchor; deferred signatures retained",
+            ).validate()
+        unresolved: list[dict[str, Any]] = []
+        resolved = 0
+        for item in self._identity_quarantine:
+            if anchor_slot_id not in item["candidate_slot_ids"]:
+                unresolved.append(item)
+                continue
+            signature = torch.tensor(item["signature"], dtype=torch.float32)
+            if self.identity_memory.observe(anchor_slot_id, signature):
+                resolved += 1
+            else:
+                unresolved.append(item)
+        self._identity_quarantine = unresolved
+        destination_digest = self.digest()
+        return ExternalGoalRepresentationIdentityResolutionReceipt(
+            accepted=resolved > 0,
+            anchor_slot_id=anchor_slot_id,
+            attempted_count=attempted,
+            resolved_count=resolved,
+            remaining_count=len(unresolved),
+            verifier_accepted=True,
+            source_digest=source_digest,
+            destination_digest=destination_digest,
+            reason=(
+                "verifier-accepted anchor resolved deferred identity signatures"
+                if resolved > 0
+                else "no deferred identity signatures could be resolved for anchor"
+            ),
+        ).validate()
+
     def active_digest(self) -> str:
         digest = hashlib.sha256()
         digest.update(self.schema.encode("utf-8"))
@@ -660,6 +871,11 @@ class ExternalGoalRepresentationAlignmentBank(nn.Module):
             digest.update(_adapter_from_payload(item["adapter"]).digest().encode("utf-8"))
             digest.update(str(item["reason"]).encode("utf-8"))
             digest.update(repr(item.get("identity_signature")).encode("utf-8"))
+        for item in self._identity_quarantine:
+            digest.update(repr(item["candidate_slot_ids"]).encode("utf-8"))
+            digest.update(
+                _signature_digest(torch.tensor(item["signature"])).encode("utf-8")
+            )
         return digest.hexdigest()
 
     def configuration(self) -> dict[str, Any]:
@@ -671,6 +887,7 @@ class ExternalGoalRepresentationAlignmentBank(nn.Module):
             "identity_width": self.identity_width,
             "identity_min_score": self.identity_min_score,
             "identity_min_margin": self.identity_min_margin,
+            "identity_quarantine_capacity": self.identity_quarantine_capacity,
             "identity_memory": (
                 None
                 if self.identity_memory is None
@@ -701,6 +918,13 @@ class ExternalGoalRepresentationAlignmentBank(nn.Module):
                 if self.identity_memory is None
                 else self.identity_memory.state_payload()
             ),
+            "identity_quarantine": [
+                {
+                    "signature": item["signature"],
+                    "candidate_slot_ids": item["candidate_slot_ids"],
+                }
+                for item in self._identity_quarantine
+            ],
             "quarantine": [
                 {
                     "frontend_space_id": item["frontend_space_id"],
@@ -741,6 +965,9 @@ class ExternalGoalRepresentationAlignmentBank(nn.Module):
             identity_merge_cosine=float(
                 (configuration.get("identity_memory") or {}).get("merge_cosine", 0.98)
             ),
+            identity_quarantine_capacity=int(
+                configuration.get("identity_quarantine_capacity", 0)
+            ),
         )
         active = payload.get("active")
         if not isinstance(active, list):
@@ -770,6 +997,29 @@ class ExternalGoalRepresentationAlignmentBank(nn.Module):
             if bank.identity_memory.slot_ids != bank.slot_ids:
                 raise ValueError("goal alignment identity slots do not match active slots")
         bank._next_slot_id = int(configuration.get("next_slot_id", max(bank._slot_ids, default=-1) + 1))
+        identity_quarantine = payload.get("identity_quarantine", [])
+        if not isinstance(identity_quarantine, list) or len(identity_quarantine) > bank.identity_quarantine_capacity:
+            raise ValueError("goal alignment identity quarantine payload is invalid")
+        bank._identity_quarantine = []
+        for item in identity_quarantine:
+            if not isinstance(item, Mapping):
+                raise TypeError("goal alignment identity quarantine item is invalid")
+            signature = torch.tensor(item.get("signature"), dtype=torch.float32)
+            bank._validate_identity_signature(signature)
+            candidates = item.get("candidate_slot_ids")
+            if not isinstance(candidates, list) or not candidates:
+                raise ValueError("goal alignment identity quarantine candidates are invalid")
+            normalized_candidates = tuple(int(slot_id) for slot_id in candidates)
+            if len(set(normalized_candidates)) != len(normalized_candidates) or any(
+                slot_id not in bank._slot_ids for slot_id in normalized_candidates
+            ):
+                raise ValueError("goal alignment identity quarantine references unknown slot")
+            bank._identity_quarantine.append(
+                {
+                    "signature": signature.tolist(),
+                    "candidate_slot_ids": list(normalized_candidates),
+                }
+            )
         bank._quarantine = []
         quarantine = payload.get("quarantine", [])
         if not isinstance(quarantine, list) or len(quarantine) > bank.quarantine_capacity:

@@ -1,0 +1,23 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "external-goal-representation-alignment-delayed-identity",
+  "status": "promoted_bounded_verifier_gated_delayed_identity",
+  "seeds": [84901, 84902, 84903, 84904],
+  "capacity": 2,
+  "identity_quarantine_capacity": 2,
+  "unique_verifier_outcomes_per_seed": 648,
+  "unique_alignment_pairs_per_seed": 96,
+  "heldout_alignment_pairs_per_seed": 96,
+  "deferred_identity_signatures_per_seed": 2,
+  "resolved_identity_signatures_per_seed": 2,
+  "identity_route_updates_after_admission_per_seed": 1,
+  "replayed_examples_per_seed": 0,
+  "resolved_frontend_mastery_by_seed": [1.0, 0.9916666666666667, 0.975, 1.0],
+  "overlap_refused_by_seed": [true, true, true, true],
+  "verifier_rejection_preserved_state_by_seed": [true, true, true, true],
+  "verifier_acceptance_resolved_by_seed": [true, true, true, true],
+  "controller_optimizer_updates_per_seed": 0,
+  "transfer_ratio_against_fresh_learner": null,
+  "claim_boundary": "bounded verifier-gated quarantine and delayed resolution of overlapping opaque identity signatures; not semantic open-world identity, unrestricted memory growth, or general continual learning",
+  "next_test": "compose delayed identity resolution with gradual drift, missing windows, repeated route reversals, and learned anchor selection without caller-supplied slot IDs"
+}

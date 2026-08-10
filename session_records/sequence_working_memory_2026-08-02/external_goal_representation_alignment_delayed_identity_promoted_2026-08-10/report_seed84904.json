@@ -1,0 +1,195 @@
+{
+  "schema": "neural-computer.external-goal-representation-alignment-delayed-identity.v1",
+  "claim_boundary": "bounded verifier-gated quarantine and delayed resolution of overlapping opaque identity signatures; not semantic open-world identity, unrestricted memory growth, or general continual learning",
+  "seed": 84904,
+  "configuration": {
+    "capacity": 2,
+    "identity_quarantine_capacity": 2,
+    "overlapping_signature": true,
+    "runtime_frontend_ids_used_for_routing": false
+  },
+  "gates": {
+    "both_overlapping_frontends_admitted": true,
+    "overlap_route_refused": true,
+    "overlap_route_read_only": true,
+    "first_deferred_signature_retained": true,
+    "second_deferred_signature_retained": true,
+    "quarantine_overflow_refused": true,
+    "eviction_blocked_by_deferred_reference": true,
+    "verifier_rejection_preserves_deferred_state": true,
+    "deferred_state_persists_exactly": true,
+    "anchor_update_written": true,
+    "anchor_route_selected_nonlinear": true,
+    "verifier_acceptance_resolved_deferred": true,
+    "eviction_after_resolution_accepted": true,
+    "resolved_frontend_mastery": true,
+    "resolved_runtime_route": true,
+    "exact_final_persistence": true,
+    "restored_anchor_route": true,
+    "verifier_memory_unchanged": true,
+    "model_unchanged": true,
+    "controller_frozen": true,
+    "verifier_replay_zero": true,
+    "alignment_replay_zero": true
+  },
+  "promoted": true,
+  "metrics": {
+    "ambiguous_route": {
+      "selected_slot_id": null,
+      "eligible_slot_ids": [
+        0,
+        1
+      ],
+      "scores": [
+        1.0,
+        1.0
+      ],
+      "margin": 0.0,
+      "reason": "signature route margin was below the ambiguity floor"
+    },
+    "deferred_one": {
+      "accepted": true,
+      "candidate_slot_ids": [
+        0,
+        1
+      ],
+      "quarantined_count": 1,
+      "capacity": 2,
+      "signature_digest": "41735453091603daf569575a74c9880ea4434999ab75c4bfd4ba475716052eb0",
+      "reason": "ambiguous identity signature retained outside active prototypes",
+      "schema": "neural-computer.external-goal-representation-alignment-identity-quarantine.v1"
+    },
+    "deferred_two": {
+      "accepted": true,
+      "candidate_slot_ids": [
+        0,
+        1
+      ],
+      "quarantined_count": 2,
+      "capacity": 2,
+      "signature_digest": "41735453091603daf569575a74c9880ea4434999ab75c4bfd4ba475716052eb0",
+      "reason": "ambiguous identity signature retained outside active prototypes",
+      "schema": "neural-computer.external-goal-representation-alignment-identity-quarantine.v1"
+    },
+    "overflow": {
+      "accepted": false,
+      "candidate_slot_ids": [
+        0,
+        1
+      ],
+      "quarantined_count": 2,
+      "capacity": 2,
+      "signature_digest": "41735453091603daf569575a74c9880ea4434999ab75c4bfd4ba475716052eb0",
+      "reason": "identity quarantine capacity rejected unresolved signature",
+      "schema": "neural-computer.external-goal-representation-alignment-identity-quarantine.v1"
+    },
+    "blocked_eviction": {
+      "accepted": false,
+      "evicted_slot_id": 0,
+      "evicted_frontend_space_id": "opaque-nonlinear",
+      "source_active_count": 2,
+      "destination_active_count": 2,
+      "source_digest": "f01b0eefa2bd948ed55f7efb03b9d837cb054f4e7b7435eaf70a8284599203ff",
+      "destination_digest": "f01b0eefa2bd948ed55f7efb03b9d837cb054f4e7b7435eaf70a8284599203ff",
+      "reason": "eviction blocked while deferred identity evidence references slot",
+      "schema": "neural-computer.external-goal-representation-alignment-bank-eviction.v1"
+    },
+    "rejected_resolution": {
+      "accepted": false,
+      "anchor_slot_id": 0,
+      "attempted_count": 2,
+      "resolved_count": 0,
+      "remaining_count": 2,
+      "verifier_accepted": false,
+      "source_digest": "0719850c1128d3c631b0f7318f962470c2e4ff9704c86e08bcef59faabcc07f4",
+      "destination_digest": "0719850c1128d3c631b0f7318f962470c2e4ff9704c86e08bcef59faabcc07f4",
+      "reason": "verifier rejected identity anchor; deferred signatures retained",
+      "schema": "neural-computer.external-goal-representation-alignment-identity-resolution.v1"
+    },
+    "anchor_route": {
+      "selected_slot_id": 0,
+      "eligible_slot_ids": [
+        0,
+        1
+      ],
+      "scores": [
+        1.0000001192092896,
+        0.46836018562316895
+      ],
+      "margin": 0.5316399335861206,
+      "reason": "slot-local signature route passed score and margin floors"
+    },
+    "accepted_resolution": {
+      "accepted": true,
+      "anchor_slot_id": 0,
+      "attempted_count": 2,
+      "resolved_count": 2,
+      "remaining_count": 0,
+      "verifier_accepted": true,
+      "source_digest": "36df991a5983fdbd02b5ea8c3e77a95c2289a428ed2eb3253a8a72486f5c9cb4",
+      "destination_digest": "af871977a4118e8c3eb86e2ca4516ed82572a6a183a712cbdd017d95bbcaaccb",
+      "reason": "verifier-accepted anchor resolved deferred identity signatures",
+      "schema": "neural-computer.external-goal-representation-alignment-identity-resolution.v1"
+    },
+    "evicted": {
+      "accepted": true,
+      "evicted_slot_id": 1,
+      "evicted_frontend_space_id": "opaque-affine",
+      "source_active_count": 2,
+      "destination_active_count": 1,
+      "source_digest": "ca3f704cf2a29c211ccec9d46e83f4f2efb617444f581240e03b296b146f7bea",
+      "destination_digest": "1a144a4efc536deb2a5b1c025cd4a2ceab453967a67d8418587b7d34635e70d2",
+      "reason": "stable-slot eviction passed retained-alignment probe",
+      "schema": "neural-computer.external-goal-representation-alignment-bank-eviction.v1"
+    },
+    "resolved_mastery": {
+      "mastery": 1.0,
+      "successful_trials": 120,
+      "trial_count": 120,
+      "expanded_nodes": 44640,
+      "mean_latency_seconds": 0.009146053167448069
+    },
+    "resolved_route": {
+      "selected_slot_id": 0,
+      "eligible_slot_ids": [
+        0
+      ],
+      "scores": [
+        0.9080378413200378
+      ],
+      "margin": null,
+      "reason": "slot-local signature route passed score and margin floors"
+    },
+    "restored_anchor_route": {
+      "selected_slot_id": 0,
+      "eligible_slot_ids": [
+        0
+      ],
+      "scores": [
+        1.0000001192092896
+      ],
+      "margin": null,
+      "reason": "slot-local signature route passed score and margin floors"
+    },
+    "final_active_slots": [
+      0
+    ],
+    "final_identity_quarantine_count": 0
+  },
+  "accounting": {
+    "unique_verifier_outcomes": 648,
+    "unique_alignment_pairs": 96,
+    "heldout_alignment_pairs": 96,
+    "unique_identity_signatures": 2,
+    "deferred_identity_signatures": 2,
+    "resolved_identity_signatures": 2,
+    "transition_rows_consumed_once": 123,
+    "verifier_statistics_updates": 1,
+    "alignment_statistics_updates": 2,
+    "identity_route_updates_after_admission": 1,
+    "old_verifier_replay": 0,
+    "old_alignment_replay": 0,
+    "controller_optimizer_updates": 0,
+    "wall_seconds": 1.186607167008333
+  }
+}
