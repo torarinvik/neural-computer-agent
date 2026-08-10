@@ -1,0 +1,253 @@
+{
+  "schema": "neural-computer.external-factored-repeated-lifecycle.v1",
+  "seed": 88002,
+  "configuration": {
+    "regime_count": 7,
+    "rows_per_regime": 24,
+    "train_rows": 20,
+    "initial_capacity": 2,
+    "first_grown_capacity": 4,
+    "second_grown_capacity": 5,
+    "residual_model_family": "random_feature_sufficient_statistics_v1",
+    "feature_width": 128,
+    "prediction_tolerance": 0.1,
+    "claim": "repeated-factored-memory-growth-eviction-v1"
+  },
+  "metrics": {
+    "first_slots": [
+      0,
+      1
+    ],
+    "second_slots": [
+      2,
+      3
+    ],
+    "fourth_slot": 4,
+    "fifth_slot": 5,
+    "sixth_slot": 6,
+    "promotion_receipts": [
+      {
+        "regime": 0,
+        "route_status": "staged",
+        "receipt": {
+          "accepted": true,
+          "slot_id": 0,
+          "heldout_error": 0.001146868453361094,
+          "reason": "candidate passed factual and retention probes",
+          "schema": "neural-computer.external-factored-transition-promotion.v1",
+          "heldout_rollout_error": null
+        }
+      },
+      {
+        "regime": 1,
+        "route_status": "staged",
+        "receipt": {
+          "accepted": true,
+          "slot_id": 1,
+          "heldout_error": 0.001217201235704124,
+          "reason": "candidate passed factual and retention probes",
+          "schema": "neural-computer.external-factored-transition-promotion.v1",
+          "heldout_rollout_error": null
+        }
+      },
+      {
+        "regime": 2,
+        "route_status": "staged",
+        "receipt": {
+          "accepted": true,
+          "slot_id": 2,
+          "heldout_error": 0.0013092649169266224,
+          "reason": "candidate passed factual and retention probes",
+          "schema": "neural-computer.external-factored-transition-promotion.v1",
+          "heldout_rollout_error": null
+        }
+      },
+      {
+        "regime": 3,
+        "route_status": "staged",
+        "receipt": {
+          "accepted": true,
+          "slot_id": 3,
+          "heldout_error": 0.0011325612431392074,
+          "reason": "candidate passed factual and retention probes",
+          "schema": "neural-computer.external-factored-transition-promotion.v1",
+          "heldout_rollout_error": null
+        }
+      },
+      {
+        "regime": 4,
+        "route_status": "staged",
+        "receipt": {
+          "accepted": true,
+          "slot_id": 4,
+          "heldout_error": 0.0012144696665927768,
+          "reason": "candidate passed factual and retention probes",
+          "schema": "neural-computer.external-factored-transition-promotion.v1",
+          "heldout_rollout_error": null
+        }
+      },
+      {
+        "regime": 5,
+        "route_status": "staged",
+        "receipt": {
+          "accepted": true,
+          "slot_id": 5,
+          "heldout_error": 0.0012822902062907815,
+          "reason": "candidate passed factual and retention probes",
+          "schema": "neural-computer.external-factored-transition-promotion.v1",
+          "heldout_rollout_error": null
+        }
+      },
+      {
+        "regime": 6,
+        "route_status": "staged",
+        "receipt": {
+          "accepted": true,
+          "slot_id": 6,
+          "heldout_error": 0.0011911161709576845,
+          "reason": "candidate passed factual and retention probes",
+          "schema": "neural-computer.external-factored-transition-promotion.v1",
+          "heldout_rollout_error": null
+        }
+      }
+    ],
+    "first_growth": {
+      "accepted": true,
+      "source_capacity": 2,
+      "destination_capacity": 4,
+      "context_count": 2,
+      "content_digest_before": "171c83e024708eddd33744d96914e85a028f92e1919c2f26afa1b7ad1a2e1839",
+      "content_digest_after": "171c83e024708eddd33744d96914e85a028f92e1919c2f26afa1b7ad1a2e1839",
+      "reason": "retention-verified capacity growth committed",
+      "schema": "neural-computer.external-transition-model-growth.v1"
+    },
+    "second_growth": {
+      "accepted": true,
+      "source_capacity": 4,
+      "destination_capacity": 5,
+      "context_count": 4,
+      "content_digest_before": "d5d007f243c01e14add15a3b70cf44a5f13fce80302673575d471031fce5985d",
+      "content_digest_after": "d5d007f243c01e14add15a3b70cf44a5f13fce80302673575d471031fce5985d",
+      "reason": "retention-verified capacity growth committed",
+      "schema": "neural-computer.external-transition-model-growth.v1"
+    },
+    "first_eviction": {
+      "accepted": true,
+      "evicted_index": 1,
+      "source_context_count": 4,
+      "destination_context_count": 3,
+      "physical_models_before": 4,
+      "physical_models_after": 3,
+      "content_digest_before": "cd51efb4c5fb7c8b2aece832b55ec5c7c5d6fa46be796bbd5e4a79aa048c392d",
+      "content_digest_after": "fc875d396f9c40fb39f712dc3c516545b81084440d8f2cde014b41674c3a4fb9",
+      "reason": "retention-verified logical model-slot eviction committed",
+      "evicted_slot_id": 1,
+      "schema": "neural-computer.external-transition-model-eviction.v1"
+    },
+    "second_eviction": {
+      "accepted": true,
+      "evicted_index": 2,
+      "source_context_count": 5,
+      "destination_context_count": 4,
+      "physical_models_before": 5,
+      "physical_models_after": 4,
+      "content_digest_before": "b7ccfb398db3d473f436ff05868bfb00e725259ec82c85c9c078409c00ccc3c3",
+      "content_digest_after": "96b62ada163199f53df47722af3341b7313ebbfeaf4aa2a6c5c1a8a8f36c13ee",
+      "reason": "retention-verified logical model-slot eviction committed",
+      "evicted_slot_id": 3,
+      "schema": "neural-computer.external-transition-model-eviction.v1"
+    },
+    "routes_after_first_growth": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "routes_after_first_eviction": [
+      0,
+      2,
+      3,
+      4
+    ],
+    "routes_after_second_growth": [
+      0,
+      2,
+      3,
+      4,
+      5
+    ],
+    "final_routes": [
+      0,
+      2,
+      4,
+      5,
+      6
+    ],
+    "partial_routes": [
+      0,
+      6
+    ],
+    "restored_routes": [
+      0,
+      2,
+      4,
+      5,
+      6
+    ],
+    "compression": {
+      "accepted": true,
+      "selected_codec": "float16_stats",
+      "receipts": [
+        "ExternalTransitionModelCompressionReceipt(accepted=True, codec='float16_stats', source_bytes=350820, compressed_bytes=348240, context_count=5, physical_models=5, candidate_digest='518dc1f9e9eaff0b5791c5a29112ce8212edffc6500a35d4312175dfa1195609', reason='compressed candidate passed retention probe', schema='neural-computer.external-transition-model-compression.v1')",
+        "ExternalTransitionModelCompressionReceipt(accepted=False, codec='torch.float16', source_bytes=350820, compressed_bytes=175430, context_count=5, physical_models=5, candidate_digest='3a7c5084d98ae34445c1ffc9ae1b024d83e3841d0c1b7a50b9312eae0694aefb', reason='compressed candidate failed retention probe', schema='neural-computer.external-transition-model-compression.v1')"
+      ],
+      "reason": "smallest retained compression candidate selected",
+      "schema": "neural-computer.external-transition-model-compression-selection.v1"
+    },
+    "final_slot_ids": [
+      0,
+      2,
+      4,
+      5,
+      6
+    ]
+  },
+  "gates": {
+    "all_seven_promoted": true,
+    "first_growth_retains": true,
+    "second_growth_retains": true,
+    "routes_after_first_growth": true,
+    "first_eviction_accepted": true,
+    "first_eviction_survivors_route": true,
+    "second_growth_routes": true,
+    "second_eviction_accepted": true,
+    "second_eviction_survivors_route": true,
+    "stable_ids_after_repeated_lifecycle": true,
+    "partial_reads_do_not_mutate": true,
+    "compression_selected": true,
+    "compression_roundtrip_retained": true,
+    "persistence_retains_ids": true,
+    "base_unchanged": true,
+    "controller_unchanged": true,
+    "context_encoder_unchanged": true,
+    "no_old_regime_replay": true
+  },
+  "accounting": {
+    "base_optimizer_updates": 0,
+    "residual_optimizer_updates": 0,
+    "residual_statistics_updates": 7,
+    "controller_optimizer_updates": 0,
+    "context_encoder_optimizer_updates": 0,
+    "old_regime_replay": 0,
+    "unique_regime_rows": 140,
+    "heldout_rows_per_regime": 4,
+    "wall_seconds": 0.43400787498103455
+  },
+  "digests": {
+    "base": "5dc291a2783d524fdec132e7823c73e3b11904ce54072b0e280e1a260ca0945d",
+    "controller": "de859dfcb90bb7e26f2470972a962304eb43210934543cdb0a62402e276d0981",
+    "context_encoder": "bb68e2cbda68a0c62b576170137e4e6c41491bb945236e7004581ed87d291e22",
+    "router": "5e2991335ac5ae355880d9ad86519864ee90efdb4bb992c7505c31edaa57696f"
+  },
+  "promoted": true
+}

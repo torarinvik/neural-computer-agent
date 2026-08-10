@@ -6786,3 +6786,23 @@ shown over a longer lifetime rather than one expansion.
 
 Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_factored_reversal_capacity_promoted_2026-08-10/`.
+
+## Repeated growth and eviction lifetime (2026-08-10)
+
+The factored external-memory lifecycle now survives two independent growth
+transactions and two verified middle-slot evictions across three seeds. Seven
+nonlinear regimes were promoted; the surviving opaque IDs remained
+`(0, 2, 4, 5, 6)` after growth, eviction, new admission, compression, and
+restore. Held-out retention passed at each mutation, partial reads did not
+mutate the router, and the selected compressed representation passed its
+retention round-trip. The base, controller, and context encoder stayed frozen
+with zero old-regime replay.
+
+This strengthens bounded memory lifecycle guarantees but does not establish
+unrestricted growth or general continual learning. The next pressure test is
+to combine repeated lifecycle mutation with online reliability and delayed or
+missing evidence, where state admission and eviction must remain safe under
+uncertain observations.
+
+Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_factored_repeated_lifecycle_promoted_2026-08-10/`.

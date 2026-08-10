@@ -2626,3 +2626,11 @@ memory. The new regime then promotes while all prior slots remain retained.
 This is bounded continual-memory evidence, not general continual learning.
 Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_factored_reversal_capacity_promoted_2026-08-10/`.
+
+Repeated lifecycle pressure now passes across three seeds: seven nonlinear
+regimes survive two independent capacity expansions and two verified middle-
+slot evictions, with opaque IDs `(0, 2, 4, 5, 6)` preserved and restored.
+Partial reads remain non-mutating and the selected compressed representation
+passes retention. This is bounded memory-lifecycle evidence, not general
+continual learning. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_factored_repeated_lifecycle_promoted_2026-08-10/`.
