@@ -6297,3 +6297,48 @@ optimised at the same time rather than in series. Weights 0.3, 1.0,
 3.0 running.
 
 Probe 240 is `--deep-binder`, oracle and contrastive arms.
+
+**F141 (probe 241). Tied salience gives the best games number yet
+(+0.0995 pooled) and — on one seed of three — the first inverted
+worlds that actually SEEK: top=food 0.417 against 0.000-0.042
+everywhere previously. But it does not do so reliably, and the honest
+summary is a proof of existence with high seed variance.**
+
+| arm | held-out (3 seeds) | pooled | entry effect | top=food inverted |
+| --- | --- | ---: | ---: | ---: |
+| two-channel, untied (F118) | +0.0811/+0.0972/+0.1058 | +0.0947 | +0.24..+0.30 | 0.021 |
+| **tied (F141)** | +0.1175/+0.0794/+0.1017 | **+0.0995** | **+0.28..+0.32** | **0.417 / 0.042 / 0.000** |
+| oracle-value target | | +0.1234 | | |
+
+Seed 69316 reaches +0.1175, within +0.006 of what perfect values buy
+through this search, and is the first configuration in the entire
+games sequence where inverted worlds rank food on top a meaningful
+fraction of the time. Seeds 69317 and 69318 reproduce the old
+behaviour exactly (0.042, 0.000) while still improving slightly on
+reward. Entry effects are the largest measured at every seed.
+
+So the mechanism CAN do what F130 predicted — sharing the salience map
+across object slots lets plane-1 experience transfer to plane-2 — and
+it does not do so dependably. Reporting the pooled number alone would
+hide that; reporting only seed 69316 would be selection. Both are
+above.
+
+**An observation from F135 that reframes the games' signed pathway,
+and it was there all along.** The signed term computes
+`tanh(polarity(entry.mean(0))) * salience(state)` — the entry is
+reduced to a per-world scalar ONCE and multiplied in, while the
+attention path consults the entry afresh at every search step. That
+is exactly the bind-once/re-attend split F135 measured, sitting inside
+the games probe unremarked. And it is the bound half that carries the
+result: every gain from F113 onward came from the signed term, while
+the attention path's contribution has never been isolated.
+
+That predicts something testable: binding the games' value pathway
+fully — deriving all entry-dependent quantities once per episode
+rather than per rollout step — should behave like F135 did, and the
+seed variance in tied salience may be the residue of the un-bound
+attention path competing with the bound one. Untested; it is the
+obvious next games probe and follows from a measurement rather than a
+hunch.
+
+Probe 241 is `game_slots.py --tied-salience`, 3 seeds.
