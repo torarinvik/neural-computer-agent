@@ -6,6 +6,7 @@ import torch
 from neural_computer import (
     ExternalAffineTransitionStatistics,
     ExternalGoalEvaluatorStatistics,
+    ExternalGoalRepresentationAlignmentReceipt,
     ExternalGoalRepresentationAlignmentStatistics,
     ExternalOnlineTransitionContextRouter,
     ExternalRandomFeatureTransitionStatistics,
@@ -84,6 +85,21 @@ def test_goal_alignment_statistics_learns_once_and_persists_exactly() -> None:
     assert torch.allclose(adapter(source), target, atol=1e-3)
     assert restored.digest() == before
     assert torch.equal(restored(source), adapter(source))
+    receipt = adapter.verify_heldout(
+        source,
+        target,
+        prediction_tolerance=1e-3,
+    )
+    assert isinstance(receipt, ExternalGoalRepresentationAlignmentReceipt)
+    assert receipt.accepted
+
+    rejected = adapter.verify_heldout(
+        source,
+        target + 1.0,
+        prediction_tolerance=1e-3,
+    )
+    assert not rejected.accepted
+    assert adapter.digest() == before
 class _DeterministicEvidenceGate(torch.nn.Module):
     """Test-only replaceable evaluator with an opaque factual boundary."""
 

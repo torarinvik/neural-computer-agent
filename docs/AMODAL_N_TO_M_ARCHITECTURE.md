@@ -6058,6 +6058,24 @@ learning. The next bottleneck is evidence-gated handling of nonlinear or
 partially observed frontend drift. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_goal_representation_migration_promoted_2026-08-10/`.
 
+## Evidence-gated goal representation drift (2026-08-10)
+
+The alignment boundary now has a non-mutating held-out verification receipt.
+Across seeds `84401`, `84402`, `84403`, and `84404`, a partially observed
+affine replacement frontend preserved `1.000` planning mastery on every seed;
+its maximum held-out alignment MSE stayed below `1e-5`. A genuinely nonlinear
+replacement produced held-out MSE between `0.299` and `0.304` and was rejected
+on every seed before it could serve the planner or live memory.
+
+The old goal verifier memory stayed unchanged, verifier replay was zero, and
+the controller and factual model remained frozen. This closes an important
+safety hole: a new representation cannot be promoted merely because it fits
+the acquisition pairs. It does not solve nonlinear alignment; the next
+bottleneck is a frozen nonlinear external basis or a quarantine-and-grow path
+that can acquire one under the same held-out and retention gates. Evidence is
+archived in
+`session_records/sequence_working_memory_2026-08-02/external_goal_representation_drift_gate_promoted_2026-08-10/`.
+
 ## Seed-widened policy-free model compounding (2026-08-10)
 
 The nested factual-model compounding rung was widened from two to four seeds.

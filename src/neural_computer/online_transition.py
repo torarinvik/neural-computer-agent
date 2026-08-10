@@ -207,6 +207,40 @@ class ExternalGoalEvaluatorStatistics(nn.Module):
 EXTERNAL_GOAL_REPRESENTATION_ALIGNMENT_SCHEMA = (
     "neural-computer.external-goal-representation-alignment.v1"
 )
+EXTERNAL_GOAL_REPRESENTATION_ALIGNMENT_VERIFICATION_SCHEMA = (
+    "neural-computer.external-goal-representation-alignment-verification.v1"
+)
+
+
+@dataclass(frozen=True)
+class ExternalGoalRepresentationAlignmentReceipt:
+    """Auditable held-out decision for an alignment candidate."""
+
+    accepted: bool
+    source_width: int
+    target_width: int
+    query_count: int
+    max_heldout_mse: float
+    alignment_digest: str
+    heldout_digest: str
+    reason: str
+    schema: str = EXTERNAL_GOAL_REPRESENTATION_ALIGNMENT_VERIFICATION_SCHEMA
+
+    def validate(self) -> ExternalGoalRepresentationAlignmentReceipt:
+        if self.schema != EXTERNAL_GOAL_REPRESENTATION_ALIGNMENT_VERIFICATION_SCHEMA:
+            raise ValueError("unsupported goal alignment verification schema")
+        if min(self.source_width, self.target_width, self.query_count) < 1:
+            raise ValueError("goal alignment verification dimensions are invalid")
+        if self.max_heldout_mse < 0.0 or not math.isfinite(self.max_heldout_mse):
+            raise ValueError("goal alignment held-out error is invalid")
+        for name, value in (
+            ("alignment_digest", self.alignment_digest),
+            ("heldout_digest", self.heldout_digest),
+            ("reason", self.reason),
+        ):
+            if not isinstance(value, str) or not value:
+                raise ValueError(f"goal alignment verification {name} is missing")
+        return self
 
 
 class ExternalGoalRepresentationAlignmentStatistics(nn.Module):
@@ -283,6 +317,45 @@ class ExternalGoalRepresentationAlignmentStatistics(nn.Module):
 
     def forward(self, source: torch.Tensor) -> torch.Tensor:
         return self._features(source).to(self.normal_matrix) @ self._weights()
+
+    def verify_heldout(
+        self,
+        source: torch.Tensor,
+        target: torch.Tensor,
+        *,
+        prediction_tolerance: float,
+    ) -> ExternalGoalRepresentationAlignmentReceipt:
+        """Check a held-out paired set without changing adapter state."""
+
+        if prediction_tolerance < 0.0 or not math.isfinite(prediction_tolerance):
+            raise ValueError("goal alignment prediction tolerance is invalid")
+        self._features(source)
+        if target.ndim != 2 or target.shape != (source.shape[0], self.target_width):
+            raise ValueError("goal alignment held-out target has the wrong shape")
+        if not bool(torch.isfinite(target).all()):
+            raise ValueError("goal alignment held-out target must be finite")
+        with torch.no_grad():
+            prediction = self(source)
+            errors = (prediction - target.to(prediction)).square().mean(dim=-1)
+        max_error = float(errors.max().detach())
+        heldout_digest = hashlib.sha256(
+            target.detach().cpu().contiguous().numpy().tobytes()
+        ).hexdigest()
+        accepted = max_error <= prediction_tolerance
+        return ExternalGoalRepresentationAlignmentReceipt(
+            accepted=accepted,
+            source_width=self.source_width,
+            target_width=self.target_width,
+            query_count=int(source.shape[0]),
+            max_heldout_mse=max_error,
+            alignment_digest=self.digest(),
+            heldout_digest=heldout_digest,
+            reason=(
+                "held-out alignment behavior remained within tolerance"
+                if accepted
+                else "held-out alignment behavior exceeded tolerance"
+            ),
+        ).validate()
 
     def digest(self) -> str:
         digest = hashlib.sha256()

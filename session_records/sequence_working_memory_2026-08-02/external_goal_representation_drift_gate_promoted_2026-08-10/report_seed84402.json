@@ -1,0 +1,83 @@
+{
+  "schema": "neural-computer.external-goal-representation-drift-gate.v1",
+  "claim_boundary": "evidence-gated acceptance of partial affine alignment and rejection of nonlinear drift; not nonlinear migration or general continual learning",
+  "seed": 84402,
+  "configuration": {
+    "alignment_rows": 96,
+    "partial_train_stride": 4,
+    "nonlinear_train_stride": 2,
+    "alignment_tolerance": 0.005,
+    "nonlinear_amplitude": 0.35
+  },
+  "gates": {
+    "partial_affine_alignment_accepted": true,
+    "partial_affine_mastery": true,
+    "nonlinear_alignment_rejected": true,
+    "rejected_candidate_not_served": true,
+    "heldout_verification_used": true,
+    "verifier_memory_unchanged": true,
+    "model_unchanged": true,
+    "exact_affine_adapter_persistence": true,
+    "controller_frozen": true,
+    "verifier_replay_zero": true
+  },
+  "promoted": true,
+  "metrics": {
+    "partial_affine_receipt": {
+      "accepted": true,
+      "source_width": 2,
+      "target_width": 1,
+      "query_count": 72,
+      "max_heldout_mse": 5.182497716305079e-06,
+      "alignment_digest": "bbc76136aaffb914ab6bf4ce6171baf39f3756db33c99cc8a4c14aca0899074f",
+      "heldout_digest": "4790bc1be12bdb11de2fb5c109736fafc6dda7d4db9441408974f2be1240a8c2",
+      "reason": "held-out alignment behavior remained within tolerance",
+      "schema": "neural-computer.external-goal-representation-alignment-verification.v1"
+    },
+    "partial_affine_mastery": {
+      "mastery": 1.0,
+      "successful_trials": 120,
+      "trial_count": 120,
+      "expanded_nodes": 44640,
+      "mean_latency_seconds": 0.007212753382918891
+    },
+    "nonlinear_receipt": {
+      "accepted": false,
+      "source_width": 2,
+      "target_width": 1,
+      "query_count": 48,
+      "max_heldout_mse": 0.3005184233188629,
+      "alignment_digest": "335cefa5a563b3439cfc780ba99dca2c9b9361864829f482846fb8c5cbd0c9cd",
+      "heldout_digest": "84c1e81a1c6c5aa248df79b8d6430814965c17fc87f52958cada9c530b61fb8a",
+      "reason": "held-out alignment behavior exceeded tolerance",
+      "schema": "neural-computer.external-goal-representation-alignment-verification.v1"
+    },
+    "nonlinear_candidate_digest": "335cefa5a563b3439cfc780ba99dca2c9b9361864829f482846fb8c5cbd0c9cd",
+    "verifier_training": {
+      "unique_verifier_outcomes": 648,
+      "statistics_updates": 1,
+      "replayed_rows": 0
+    },
+    "partial_affine_training": {
+      "unique_alignment_pairs": 24,
+      "alignment_statistics_updates": 1,
+      "replayed_alignment_pairs": 0
+    },
+    "nonlinear_training": {
+      "unique_alignment_pairs": 48,
+      "alignment_statistics_updates": 1,
+      "replayed_alignment_pairs": 0
+    }
+  },
+  "accounting": {
+    "unique_verifier_outcomes": 648,
+    "partial_affine_alignment_pairs": 24,
+    "nonlinear_alignment_pairs": 48,
+    "heldout_affine_alignment_pairs": 72,
+    "heldout_nonlinear_alignment_pairs": 48,
+    "transition_rows_consumed_once": 123,
+    "old_verifier_replay": 0,
+    "controller_optimizer_updates": 0,
+    "wall_seconds": 0.9117763339891098
+  }
+}
