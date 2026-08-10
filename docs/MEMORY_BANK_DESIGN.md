@@ -5792,3 +5792,52 @@ knobs we know how to turn, which is why the next step is isolation
 rather than another fix.
 
 Probe 227 is `math_compose.py --curriculum 0.5`, 2 seeds.
+
+**F128 (probe 228). The 2x2 completes — all four cells at chance — and
+the honest reading is that I built a careful factorial on a CONFOUNDED
+substrate, so it cannot answer the question it was designed for.**
+
+| 256 worlds, arithmetic | learned reader | oracle entry |
+| ---------- | ---: | ---: |
+| one-shot | 0.0619 | 0.0672 |
+| iterated | 0.0581 | **0.0548** |
+
+Chance 0.0435; the same plant reaches 1.0000 at one world.
+
+The decisive cell (iterated + oracle) is at chance on TRAINED programs,
+including length-1 ones. So the arithmetic plant cannot apply a single
+piece correctly at 256 worlds even when handed (a, b) as clean one-hot
+codes. That is not a statement about banks or composition — it is the
+statement that it has not learned modular multiplication with a
+runtime multiplier, which is the canonical grokking-hard task and is
+routinely reported to need 10^5-10^6 updates. This ran for 6x10^4.
+
+**So the arithmetic 2x2 is uninterpretable for our purposes, and every
+arithmetic multi-world null since F117 inherits that.** The design was
+sound and the substrate was not: I varied interface and entry-source
+carefully while the underlying function was one neither arm could
+learn in the budget. A factorial cannot rescue a floor effect.
+
+What survives untouched, because it never depended on the multi-world
+arithmetic cells:
+  * F121/F125 — composition, unseen arrangements, unseen depths, two
+    seeds, ceiling. Single world, so no runtime multiplier is needed;
+  * F114 — reading at multi-world scale, twin accuracy 0.0000, on a
+    purely ADDITIVE family (a = 1) where no multiplication appears;
+  * F123 — the games regression, which is a different probe entirely.
+
+Note the pattern across those three: everything that WORKED avoided
+runtime modular multiplication, and everything that failed at
+multi-world scale required it. That is a simpler explanation of the
+whole composition-probe null sequence than any of the four mechanisms
+I proposed, and it was available from F117 onward.
+
+The boolean ground is now load-bearing rather than supporting, since
+XOR-with-mask and rotate-by-k have no such difficulty. Two arms
+running: boolean iterated + oracle entry at 256 worlds (if this is at
+chance the defect is real and structural; if it works, the only open
+question is reading), and a boolean single-world control, which has
+never been run — F121/F125 are arithmetic-only, so it is not yet known
+that the boolean ground reproduces the composition result at all.
+
+Probe 228 is `math_compose.py --iterate --oracle-entry --worlds 256`.
