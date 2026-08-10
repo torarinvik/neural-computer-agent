@@ -22,7 +22,7 @@
     ],
     "b_corrupt_statuses": [
       "pending",
-      "capacity"
+      "reliability_veto"
     ],
     "a_reversal_statuses": [
       "pending",
@@ -47,6 +47,7 @@
     "stream_a_clean_routes": true,
     "stream_b_clean_routes": true,
     "online_gate_vetoes_corrupted_stream_b": true,
+    "corruption_does_not_stage_candidate": true,
     "stream_a_reversal_routes": true,
     "stream_b_reversal_routes": true,
     "fresh_gate_disabled_control_matches_corruption": true,
@@ -69,5 +70,5 @@
     "reliability_sufficient_statistics_updates": 10,
     "wait_sufficient_statistics_updates": 64
   },
-  "elapsed_seconds": 0.013341332960408181
+  "elapsed_seconds": 0.013129041995853186
 }

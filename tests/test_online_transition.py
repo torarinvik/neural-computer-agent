@@ -704,6 +704,78 @@ def test_committed_reliability_gate_vetoes_corruption_without_mutating_identity(
     assert restored._best_slot(corrupted) is None
 
 
+def test_reliability_veto_does_not_block_high_error_novel_candidate() -> None:
+    source = _affine_observation(2)
+    bank = ExternalTransitionModelBank(
+        2,
+        1,
+        4,
+        model_family="affine_sufficient_statistics_v1",
+        affine_ridge=1e-7,
+        capacity=2,
+    )
+    context = torch.tensor([1.0, 0.0, 0.0, 0.0])
+    bank.ensure_context(context)
+    bank.adaptation_step(
+        source,
+        context.unsqueeze(0).expand(source.state.shape[0], -1),
+        None,
+    )
+    reliability = ExternalTransitionEvidenceStatistics(
+        2,
+        bin_count=8,
+        error_scale=0.1,
+        prior_count=0.01,
+    )
+    reliability.observe(source.next_state, source.next_state, torch.ones(2))
+    reliability.observe(source.next_state, source.next_state + 0.12, torch.zeros(2))
+    router = ExternalOnlineTransitionContextRouter(
+        bank,
+        ExternalTransitionContextEncoder(2, 1, hidden_width=8, context_width=4),
+        match_tolerance=0.02,
+        admission_observations=2,
+        max_contexts=2,
+        defer_admission=True,
+        evidence_evaluator=reliability,
+        evidence_threshold=0.9,
+        evidence_gate_min_evidence=1,
+        committed_evidence_gate=True,
+    )
+    low_error_corruption = ExternalTransitionObservation(
+        state=source.state,
+        intention=source.intention,
+        next_state=source.next_state + 0.12,
+    )
+    def row_observation(
+        observation: ExternalTransitionObservation, row: int
+    ) -> ExternalTransitionObservation:
+        return ExternalTransitionObservation(
+            state=observation.state[row : row + 1],
+            intention=observation.intention[row : row + 1],
+            next_state=observation.next_state[row : row + 1],
+        )
+
+    statuses = [
+        router.observe(row_observation(low_error_corruption, row)).status
+        for row in range(2)
+    ]
+    assert statuses[-1] == "reliability_veto"
+    assert router.provisional_candidate_count == 0
+    assert router.bank.context_count == 1
+
+    novel = ExternalTransitionObservation(
+        state=source.state,
+        intention=source.intention,
+        next_state=source.next_state + 1.0,
+    )
+    novel_statuses = [
+        router.observe(row_observation(novel, row)).status for row in range(2)
+    ]
+    assert novel_statuses[-1] == "staged"
+    assert router.provisional_candidate_count == 1
+    assert router.bank.context_count == 1
+
+
 def test_bank_selects_smallest_verified_model_family_without_mutating_candidates() -> None:
     torch.manual_seed(1303)
     observation = _affine_observation(12)

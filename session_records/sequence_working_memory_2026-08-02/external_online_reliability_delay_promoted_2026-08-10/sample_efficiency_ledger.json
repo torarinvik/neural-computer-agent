@@ -21,6 +21,7 @@
     "gate_was_open_before_corruption": true,
     "clean_interleaved_streams_route": true,
     "online_gate_vetoes_corrupted_stream": true,
+    "corruption_does_not_stage_candidate": true,
     "fresh_gate_disabled_control_matches_corruption": true,
     "interleaved_reversal_routes_to_original_slots": true,
     "historical_bank_unchanged": true,

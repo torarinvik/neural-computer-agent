@@ -6724,10 +6724,12 @@ Evidence is archived in
 The separated boundary now learns online rather than from a separate
 calibration fixture. Two factual streams were interleaved across three seeds.
 After four clean verifier outcomes, the committed-slot reliability gate
-vetoed a low-error corrupted revisit in stream B; later clean observations
-from both streams routed back to their original stable slots. A fresh
-gate-disabled control matched the same corruption, establishing a causal
-reliability effect rather than a tolerance artifact.
+vetoed a low-error corrupted revisit in stream B without staging a replacement
+candidate; later clean observations from both streams routed back to their
+original stable slots. High-error novel evidence remained eligible for
+candidate formation when capacity was available. A fresh gate-disabled control
+matched the same corruption, establishing a causal reliability effect rather
+than a tolerance artifact.
 
 Incomplete timestamp evidence was updated in the same run. The wait policy
 learned a `0.999665` probability for delayed incomplete evidence and

@@ -288,7 +288,8 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
         "stream_a_clean_routes": a_clean_statuses[-1] == "matched",
         "stream_b_clean_routes": b_clean_statuses[-1] == "matched",
         "online_gate_vetoes_corrupted_stream_b": b_corrupt_statuses[-1]
-        in {"capacity", "conflict"},
+        in {"capacity", "conflict", "reliability_veto", "ambiguous"},
+        "corruption_does_not_stage_candidate": router.provisional_candidate_count == 0,
         "stream_a_reversal_routes": a_reversal_statuses[-1] == "matched",
         "stream_b_reversal_routes": b_reversal_statuses[-1] == "matched",
         "fresh_gate_disabled_control_matches_corruption": fresh_corrupt_statuses[-1]

@@ -4909,6 +4909,7 @@ class ExternalOnlineTransitionContextResult:
             "conflict",
             "staged",
             "ambiguous",
+            "reliability_veto",
             "pending",
             "admitted",
             "reused",
@@ -5172,6 +5173,7 @@ class ExternalOnlineTransitionContextRouter:
         self._conflict_windows = 0
         self._provisional_candidates: list[_ProvisionalTransitionCandidate] = []
         self._ambiguous_quarantine: list[ExternalTransitionObservation] = []
+        self._last_reliability_veto = False
         if self.sparse_evidence is not None:
             for slot_id in self.bank.slot_ids:
                 self.sparse_evidence.register_slot(slot_id)
@@ -5531,6 +5533,7 @@ class ExternalOnlineTransitionContextRouter:
         self,
         observation: ExternalTransitionObservation,
     ) -> tuple[int, float, float, torch.Tensor] | None:
+        self._last_reliability_veto = False
         if self.bank.context_count == 0:
             return None
         candidates: list[tuple[float, int, torch.Tensor]] = []
@@ -5542,13 +5545,15 @@ class ExternalOnlineTransitionContextRouter:
                 observation.intention,
                 context_batch,
             )
+            error = self._robust_error(prediction, observation.next_state)
             if self.committed_evidence_gate and not self._evidence_allows(
                 prediction,
                 observation.next_state,
                 context=context,
             ):
+                if error <= self.match_tolerance:
+                    self._last_reliability_veto = True
                 continue
-            error = self._robust_error(prediction, observation.next_state)
             candidates.append((error, index, context))
         if not candidates:
             return None
@@ -6014,6 +6019,15 @@ class ExternalOnlineTransitionContextRouter:
                 state_width=self.bank.state_width,
                 intention_width=self.bank.intention_width,
                 context_width=self.bank.context_width,
+            )
+
+        if self._last_reliability_veto:
+            stored = self._quarantine_bundle(bundle)
+            self._pending.clear()
+            return self._pending_result(
+                status="reliability_veto" if not stored else "ambiguous",
+                prediction_error=None,
+                observation=bundle,
             )
 
         sparse_match = self._sparse_match(bundle)
