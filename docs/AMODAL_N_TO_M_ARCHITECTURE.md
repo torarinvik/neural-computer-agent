@@ -8854,7 +8854,7 @@ alternating routes, state non-interference, verified retirement, and reload of
 stable IDs. It is still a bounded runtime integrity result, not evidence of
 general program acquisition or general continual learning.
 
-Runtime schema v4 supports mixed batch schedules and makes trajectory-aware
+Runtime schema v5 supports mixed batch schedules and makes trajectory-aware
 addressing the default. Each row may select a different logical file; the
 executor is invoked with a row mask per file, and the runtime merges only the
 resulting output rows while retaining the individual execution snapshots. The
@@ -8863,6 +8863,12 @@ mean/max statistics over the current learned event window. A final-state-only
 adapter remains an explicit compatibility option. This removes the prior
 requirement to partition a multi-family batch before the controller can run it
 and preserves more evidence for route identification.
+
+The output also exposes the opaque route query and soft per-file probabilities
+to the host-side learning boundary. These values are suitable for exact
+propensity accounting and delayed scalar route credit; they are not fed back
+into the controller, and the controller still never receives physical or
+logical file identity.
 
 ## Durable controller-plus-file working state (2026-08-10)
 

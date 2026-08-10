@@ -1172,6 +1172,13 @@ Final-state-only routing remains an explicit compatibility control. This
 strengthens route identifiability without exposing raw modality formats or
 logical file IDs to the controller.
 
+The runtime now also returns the opaque route query and soft per-file
+probabilities outside the controller boundary. A future route learner can use
+those values with the observed scalar outcome and exact propensity, including
+in a mixed batch, without retaining raw verifier rows or adding a controller
+branch. The current runtime does not silently update route parameters; the
+credit learner remains an independently versioned memory-side component.
+
 The controller-plus-file working state is also restartable. A versioned
 tensor-only checkpoint preserves the controller event window and workspace
 together with every logical file's recurrent register state, while executable

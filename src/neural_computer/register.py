@@ -1474,7 +1474,9 @@ class ExternalSequenceProgramMemory(nn.Module):
         _, hidden = self.query_encoder(codes)
         return self.program_query(hidden[-1])
 
-    def route_weights(self, query: torch.Tensor) -> torch.Tensor:
+    def route_probabilities(self, query: torch.Tensor) -> torch.Tensor:
+        """Return soft route probabilities for external credit accounting."""
+
         if query.ndim != 2 or query.shape[1] != self.instruction_width:
             raise ValueError("sequence program route query has the wrong shape")
         if not len(self.programs):
@@ -1498,6 +1500,12 @@ class ExternalSequenceProgramMemory(nn.Module):
         soft_weights = torch.softmax(
             logits / (self.router_temperature * (self.router_hidden**0.5)), dim=-1
         )
+        return soft_weights
+
+    def route_weights(self, query: torch.Tensor) -> torch.Tensor:
+        """Return the configured hard or soft route weights."""
+
+        soft_weights = self.route_probabilities(query)
         if not self.hard_routing:
             return soft_weights
         hard_weights = F.one_hot(

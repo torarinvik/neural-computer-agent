@@ -137,7 +137,7 @@ def test_external_program_runtime_routes_file_result_to_decoders_without_core_mu
         _feedback(2),
     )
 
-    assert output.schema == "neural-computer.external-program-runtime.v4"
+    assert output.schema == "neural-computer.external-program-runtime.v5"
     assert output.execution.program_digest is not None
     assert len(output.execution.program_digest) == 64
     assert len(output.execution.trace) == 3
@@ -163,6 +163,14 @@ def test_external_program_memory_selects_file_without_exposing_slot_to_controlle
     )
 
     assert output.selected_program_slot in (0, 1)
+    assert output.program_route_query is not None
+    assert output.program_route_query.shape == (1, 5)
+    assert output.program_route_probabilities is not None
+    assert output.program_route_probabilities.shape == (1, 2)
+    torch.testing.assert_close(
+        output.program_route_probabilities.sum(dim=-1),
+        torch.ones(1),
+    )
     assert output.execution.program_digest in {first.digest(), second.digest()}
     assert agent.configuration()["program_source"] == (
         "opaque_content_routed_external_program_memory_v1"
@@ -229,6 +237,14 @@ def test_external_program_runtime_supports_mixed_file_schedule_in_one_batch():
     assert output.selected_program_logical_ids.tolist() == [0, 1]
     assert len(output.execution_snapshots) == 2
     assert output.execution.program_digest is None
+    assert output.program_route_query is not None
+    assert output.program_route_query.shape == (2, 5)
+    assert output.program_route_probabilities is not None
+    assert output.program_route_probabilities.shape == (2, 2)
+    torch.testing.assert_close(
+        output.program_route_probabilities.sum(dim=-1),
+        torch.ones(2),
+    )
     assert next_state.program_states.keys() == {0, 1}
     assert next_state.program_states[0].initialized.tolist() == [True, False]
     assert next_state.program_states[1].initialized.tolist() == [False, True]

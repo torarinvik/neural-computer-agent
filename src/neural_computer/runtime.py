@@ -1294,7 +1294,7 @@ class ExternalControllerTrajectoryQueryAdapter(nn.Module):
         return query
 
 
-EXTERNAL_PROGRAM_RUNTIME_SCHEMA = "neural-computer.external-program-runtime.v4"
+EXTERNAL_PROGRAM_RUNTIME_SCHEMA = "neural-computer.external-program-runtime.v5"
 EXTERNAL_PROGRAM_RUNTIME_STATE_SCHEMA = (
     "neural-computer.external-program-runtime-state.v1"
 )
@@ -1410,6 +1410,8 @@ class ExternalProgramRuntimeOutput:
     selected_program_logical_id: int | None = None
     selected_program_slots: torch.Tensor | None = None
     selected_program_logical_ids: torch.Tensor | None = None
+    program_route_query: torch.Tensor | None = None
+    program_route_probabilities: torch.Tensor | None = None
     execution_snapshots: tuple[ExternalExecutionSnapshot, ...] = ()
     schema: str = EXTERNAL_PROGRAM_RUNTIME_SCHEMA
 
@@ -1561,7 +1563,12 @@ class ExternalProgramAmodalRuntime(nn.Module):
         self,
         controller_output: ControllerOutput,
         controller_state: ControllerState,
-    ) -> tuple[torch.Tensor, torch.Tensor]:
+    ) -> tuple[
+        torch.Tensor,
+        torch.Tensor,
+        torch.Tensor | None,
+        torch.Tensor | None,
+    ]:
         if self.program is not None:
             batch_size = controller_output.state_representation.shape[0]
             return (
@@ -1577,6 +1584,8 @@ class ExternalProgramAmodalRuntime(nn.Module):
                     dtype=torch.long,
                     device=controller_output.state_representation.device,
                 ),
+                None,
+                None,
             )
         if self.program_memory is None or self.program_query_adapter is None:
             raise RuntimeError("external program runtime has no program source")
@@ -1587,13 +1596,22 @@ class ExternalProgramAmodalRuntime(nn.Module):
             query = self.program_query_adapter(controller_output, controller_state)
         else:
             query = self.program_query_adapter(controller_output)
-        selected = self.program_memory.route_weights(query).argmax(dim=-1)
+        route_weights = self.program_memory.route_weights(query)
+        if type(self.program_memory).route_weights is ExternalSequenceProgramMemory.route_weights:
+            probabilities = self.program_memory.route_probabilities(query)
+        else:
+            # A replaceable memory-side route policy may override the route
+            # weights without implementing the optional probability helper.
+            # Preserve that policy and expose its normalized weights as the
+            # only honest propensity surface available at this boundary.
+            probabilities = route_weights.detach()
+        selected = route_weights.argmax(dim=-1)
         logical_ids = torch.tensor(
             [self.program_memory.logical_slot_id(int(slot)) for slot in selected],
             dtype=torch.long,
             device=selected.device,
         )
-        return logical_ids, selected
+        return logical_ids, selected, query, probabilities
 
     @staticmethod
     def _merge_register_states(
@@ -1656,7 +1674,12 @@ class ExternalProgramAmodalRuntime(nn.Module):
             disable_workspace=disable_workspace,
             memory_scope=memory_scope,
         )
-        selected_logical_ids, selected_slots = self._select_program(
+        (
+            selected_logical_ids,
+            selected_slots,
+            program_route_query,
+            program_route_probabilities,
+        ) = self._select_program(
             controller_output,
             next_controller,
         )
@@ -1768,6 +1791,16 @@ class ExternalProgramAmodalRuntime(nn.Module):
             ),
             selected_program_slots=selected_slots.detach().clone(),
             selected_program_logical_ids=selected_logical_ids.detach().clone(),
+            program_route_query=(
+                None
+                if program_route_query is None
+                else program_route_query.detach().clone()
+            ),
+            program_route_probabilities=(
+                None
+                if program_route_probabilities is None
+                else program_route_probabilities.detach().clone()
+            ),
             execution_snapshots=execution_snapshots,
         )
         if self.program_memory is not None:
