@@ -57,6 +57,15 @@ parser.add_argument("--lr", type=float, default=1e-3)
 parser.add_argument("--worlds", type=int, default=64)
 parser.add_argument("--held-worlds", type=int, default=8)
 parser.add_argument("--max-len", type=int, default=4)
+parser.add_argument(
+    "--iterate", action="store_true",
+    help="apply the program ONE PIECE AT A TIME through a shared step "
+         "function over a recurrent latent, decoding only at the end. "
+         "F119 measured the one-shot interface fitting trained programs "
+         "at 1.0000 while sitting at chance on unseen ARRANGEMENTS of "
+         "the same pieces — it memorises composite functions instead of "
+         "composing. This makes composition structural: same blocks, "
+         "same parameter count, no intermediate supervision.")
 parser.add_argument("--json", default="")
 args = parser.parse_args()
 
@@ -151,7 +160,23 @@ class Plant(torch.nn.Module):
         self.norm = torch.nn.LayerNorm(dim)
         self.head = torch.nn.Linear(dim, W)
 
+    def step(self, token: int, hidden, entry):
+        """One piece applied to the latent. Shared across positions and
+        program lengths — that sharing IS the compositional prior."""
+        row = (hidden + self.piece(torch.tensor(token))).unsqueeze(1)
+        if entry is not None:
+            context = entry.unsqueeze(0).expand(hidden.shape[0], -1, -1)
+            row = torch.cat([context, row], dim=1)
+        for block in self.blocks:
+            row = block(row)
+        return self.norm(row[:, -1])
+
     def forward(self, program: tuple, x, entry) -> torch.Tensor:
+        if args.iterate:
+            hidden = self.value(bits_of(x))
+            for token in reversed(program):
+                hidden = self.step(token, hidden, entry)
+            return self.head(hidden)
         batch, length = x.shape[0], len(program)
         tokens = (self.piece(torch.tensor(program))
                   + self.position(torch.arange(length)))
