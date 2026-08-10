@@ -8470,7 +8470,7 @@ are expanded across every context dimension to preserve their old behavior.
 
 The focused causal tests cover masked feature construction, missing-value
 gradient exclusion, partial retention prototypes, exact reload, and v3
-migration; the repository suite remains green at 612 tests. This is a safety
+migration; the repository suite remains green at 614 tests. This is a safety
 and information-preservation boundary, not a claim of arbitrary missing-stream
 reasoning: the next experiment must test partial contexts under delayed/noisy
 outcomes, contradictory streams, fresh controls, reversal, and stable-prefix
@@ -8499,3 +8499,33 @@ faster than the matched-fresh successor. This is evidence for a real remaining
 bottleneck—reliable transfer across changing observation patterns—not evidence
 against the mask contract. The next rung is overlapping masks followed by a
 gradual mask curriculum; arbitrary missing-stream reasoning remains unclaimed.
+
+## Promoted overlapping-mask transfer and non-destructive reversal (2026-08-10)
+
+The next rung closes that bounded transfer gap. The router now uses a generic
+verified-support prior: a protected cell is penalized when its verified
+prototype covers too little of the query's observed dimensions. This is an
+address reliability signal, not a semantic field or task label. Copy-on-write
+children also neutralize value and route weights for dimensions the source
+cell never observed, preventing untrained missing dimensions from contaminating
+the inherited basis.
+
+Masked reversal is now non-destructive. Repeated relevant low outcomes put a
+protected cell into quarantine and demote it for routing while leaving its
+content and verified prototype unchanged. A challenger cell can acquire the
+new behavior, preserving both versions. Weakly overlapping evidence is ignored
+for reversal accounting when it does not cover enough of the verified query;
+this prevents an incomplete stream from erasing a mastered capability.
+
+The promotion-quality audit in
+`session_records/policy_free_intention_masked_routing_overlap_promoted_2026-08-10/`
+passes across seeds `85301` and `85302`. Successor transfer required `9/23`
+and `11/19` updates against matched fresh learners, for ratios `2.5556` and
+`1.7273`; both seeds passed frozen-core, delayed/noisy, causal, corruption,
+exact-reload, protected-retention, held-out prefix verification, and zero-
+replay gates. The audit qualifies bounded overlapping-mask transfer and
+non-destructive masked reversal, not arbitrary missing-stream cognition,
+unrestricted growth, compression, or general continual learning. The current
+The halfway-switch gradual curriculum is archived as a rejection in
+`session_records/policy_free_intention_masked_routing_gradual_rejected_2026-08-10/`
+and is the next curriculum design bottleneck.

@@ -309,3 +309,84 @@ def test_router_tracks_partial_retention_without_learning_missing_dimensions() -
             state.retention_context_observed_masses
         ),
     )
+
+
+def test_masked_copy_on_write_neutralizes_source_unobserved_dimensions() -> None:
+    memory = ExternalOutcomeIntentionMemory(
+        ExternalOutcomeIntentionGenerator(
+            context_width=4,
+            intention_width=2,
+            hidden_width=8,
+            context_masking=True,
+            initial_parameter_scale=0.05,
+        )
+    )
+    router = ExternalOutcomeIntentionRouter(memory, exploration_bonus=0.0)
+    state = router.initial_state(1)
+    context = torch.tensor([[1.0, 2.0, 3.0, 4.0]])
+    mask = torch.tensor([[True, False, True, False]])
+    proposal = router.propose(state, context, context_mask=mask)
+    state = router.record_decision(state, proposal)
+    state = router.apply_feedback(state, proposal, torch.ones(1))
+
+    source_input_weights = state.cells.input_weights[0].clone()
+    source_routing_key = state.routing_keys[0].clone()
+    assert bool(source_input_weights[:, 1].abs().sum() > 0.0)
+    assert bool(source_input_weights[:, 3].abs().sum() > 0.0)
+    assert bool(source_routing_key[1].abs() > 0.0)
+    assert bool(source_routing_key[3].abs() > 0.0)
+
+    state, child = router.append_cell(state, source_cell=0)
+    assert torch.equal(
+        state.cells.input_weights[child, :, [0, 2]],
+        source_input_weights[:, [0, 2]],
+    )
+    assert torch.equal(
+        state.cells.input_weights[child, :, [1, 3]],
+        torch.zeros(8, 2),
+    )
+    assert torch.equal(state.routing_keys[child, [0, 2]], source_routing_key[[0, 2]])
+    assert torch.equal(state.routing_keys[child, [1, 3]], torch.zeros(2))
+
+
+def test_masked_reversal_quarantines_instead_of_mutating_protected_cell() -> None:
+    memory = ExternalOutcomeIntentionMemory(
+        ExternalOutcomeIntentionGenerator(
+            context_width=4,
+            intention_width=2,
+            hidden_width=8,
+            context_masking=True,
+        )
+    )
+    router = ExternalOutcomeIntentionRouter(
+        memory,
+        exploration_bonus=0.0,
+        mastery_threshold=0.75,
+        min_mastery_feedbacks=3,
+        reversal_threshold=0.25,
+        reversal_patience=3,
+    )
+    state = router.initial_state(1)
+    context = torch.tensor([[1.0, 0.0, 3.0, 0.0]])
+    mask = torch.tensor([[True, False, True, False]])
+
+    def observe(outcome: float) -> None:
+        nonlocal state
+        proposal = router.propose(state, context, context_mask=mask)
+        state = router.record_decision(state, proposal)
+        state = router.apply_feedback(
+            state,
+            proposal,
+            torch.tensor([outcome]),
+        )
+
+    for _ in range(3):
+        observe(1.0)
+    before = state.cells.output_weights.clone()
+    for _ in range(3):
+        observe(0.0)
+
+    assert bool(state.cells.protected[0])
+    assert bool(state.retention_mastered[0])
+    assert int(state.retention_reversal_counts[0]) == 1
+    assert torch.equal(state.cells.output_weights, before)

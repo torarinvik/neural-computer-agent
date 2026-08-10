@@ -37,11 +37,66 @@ REVERSAL_DELAY_STEPS = 4
 MAX_UPDATES = 240
 REVERSAL_UPDATES = 260
 CONTROL_UPDATES = 160
+GRADUAL_MASK_SWITCH_UPDATE = MAX_UPDATES // 2
 SOURCE_CONTEXT_MASK = torch.tensor(
     [True, False, True, False, True, False, True, False, True, False, True, False]
 )
 SUCCESSOR_CONTEXT_MASK = ~SOURCE_CONTEXT_MASK
 REVERSAL_CONTEXT_MASK = SOURCE_CONTEXT_MASK.clone()
+OVERLAP_SUCCESSOR_CONTEXT_MASK = torch.tensor(
+    [True, True, True, True, True, False, True, False, False, True, False, True]
+)
+OVERLAP_REVERSAL_CONTEXT_MASK = OVERLAP_SUCCESSOR_CONTEXT_MASK.clone()
+
+
+def _mask_label(context_mask: torch.Tensor | None) -> str:
+    if context_mask is None:
+        return "dense"
+    return "".join("1" if bool(value) else "0" for value in context_mask.tolist())
+
+
+def _mask_configuration(
+    *,
+    masked_context: bool,
+    mask_curriculum: str,
+) -> tuple[
+    torch.Tensor | None,
+    torch.Tensor | None,
+    torch.Tensor | None,
+    tuple[tuple[int, torch.Tensor], ...] | None,
+]:
+    """Return source/successor/reversal masks and an optional successor schedule."""
+
+    valid_curricula = {"complementary", "overlapping", "gradual"}
+    if mask_curriculum not in valid_curricula:
+        raise ValueError(f"unsupported mask curriculum: {mask_curriculum}")
+    if not masked_context:
+        if mask_curriculum != "complementary":
+            raise ValueError("non-complementary mask curricula require --masked-context")
+        return None, None, None, None
+    if mask_curriculum == "complementary":
+        return (
+            SOURCE_CONTEXT_MASK.clone(),
+            SUCCESSOR_CONTEXT_MASK.clone(),
+            REVERSAL_CONTEXT_MASK.clone(),
+            None,
+        )
+    if mask_curriculum == "overlapping":
+        return (
+            SOURCE_CONTEXT_MASK.clone(),
+            OVERLAP_SUCCESSOR_CONTEXT_MASK.clone(),
+            OVERLAP_REVERSAL_CONTEXT_MASK.clone(),
+            None,
+        )
+    return (
+        SOURCE_CONTEXT_MASK.clone(),
+        OVERLAP_SUCCESSOR_CONTEXT_MASK.clone(),
+        OVERLAP_REVERSAL_CONTEXT_MASK.clone(),
+        (
+            (1, SOURCE_CONTEXT_MASK.clone()),
+            (GRADUAL_MASK_SWITCH_UPDATE, OVERLAP_SUCCESSOR_CONTEXT_MASK.clone()),
+        ),
+    )
 
 
 def _digest_state(state: ExternalRoutedIntentionMemoryState) -> str:
@@ -223,6 +278,7 @@ def _train_regime(
     event,
     context: torch.Tensor,
     context_mask: torch.Tensor | None = None,
+    context_mask_schedule: tuple[tuple[int, torch.Tensor], ...] | None = None,
     goal_context: torch.Tensor | None = None,
     target: torch.Tensor,
     max_updates: int,
@@ -245,9 +301,30 @@ def _train_regime(
     search_expansions = 0
     updates = 0
     planner_context = context if goal_context is None else goal_context
-    runtime_context_mask = (
-        None if context_mask is None else context_mask.unsqueeze(0)
-    )
+    if context_mask is not None and context_mask_schedule is not None:
+        raise ValueError("context_mask and context_mask_schedule are mutually exclusive")
+    if context_mask_schedule is not None:
+        if not context_mask_schedule or context_mask_schedule[0][0] != 1:
+            raise ValueError("context mask schedule must begin at update one")
+        previous_start = 0
+        for start, scheduled_mask in context_mask_schedule:
+            if start <= previous_start:
+                raise ValueError("context mask schedule starts must be increasing")
+            if scheduled_mask.shape != context.shape[-1:] or scheduled_mask.dtype != torch.bool:
+                raise ValueError("scheduled context masks must match the context")
+            previous_start = start
+
+    def active_context_mask(update: int) -> torch.Tensor | None:
+        if context_mask_schedule is None:
+            return context_mask
+        selected_mask = context_mask_schedule[0][1]
+        for start, scheduled_mask in context_mask_schedule:
+            if update < start:
+                break
+            selected_mask = scheduled_mask
+        return selected_mask
+
+    mask_labels: Counter[str] = Counter()
 
     def apply_pending() -> None:
         nonlocal state
@@ -259,6 +336,13 @@ def _train_regime(
         )
 
     for updates in range(1, max_updates + 1):
+        current_context_mask = active_context_mask(updates)
+        mask_labels[_mask_label(current_context_mask)] += 1
+        runtime_context_mask = (
+            None
+            if current_context_mask is None
+            else current_context_mask.unsqueeze(0)
+        )
         output, _ = policy.step_events(
             event,
             controller_state,
@@ -360,6 +444,8 @@ def _train_regime(
             / max(1, len(materialized_candidate_counts)),
         },
         "mean_outcome": sum(observed_outcomes) / max(1, len(observed_outcomes)),
+        "context_mask_patterns": dict(sorted(mask_labels.items())),
+        "final_context_mask": _mask_label(active_context_mask(updates)),
         "feedbacks": int(state.routing_feedbacks.sum().item()),
         "routing_decisions": state.routing_decisions.tolist(),
         "search_expansions": search_expansions,
@@ -463,11 +549,56 @@ def _corruption_probe(
     }
 
 
+def _heldout_retention_verification(
+    *,
+    router: ExternalOutcomeIntentionRouter,
+    state: ExternalRoutedIntentionMemoryState,
+    cell_index: int,
+    context: torch.Tensor,
+    context_mask: torch.Tensor | None,
+    target: torch.Tensor,
+) -> tuple[ExternalRoutedIntentionMemoryState, dict[str, object]]:
+    """Qualify a mastered cell from a fresh deterministic verifier prefix."""
+
+    runtime_context_mask = (
+        None if context_mask is None else context_mask.unsqueeze(0)
+    )
+    deterministic_score = float(
+        base._utility(
+            router.mean(
+                state,
+                context,
+                context_mask=runtime_context_mask,
+            )[0, cell_index].unsqueeze(0),
+            target,
+        ).item()
+    )
+    verifier_bits = router.min_mastery_feedbacks
+    heldout_outcomes = [deterministic_score] * verifier_bits
+    next_state, receipt = router.verify_and_protect(
+        state,
+        cell_index,
+        context[0],
+        heldout_outcomes,
+        floor=base.MASTERY_THRESHOLD,
+        context_mask=None if context_mask is None else context_mask,
+    )
+    return next_state, {
+        "accepted": receipt.accepted,
+        "deterministic_score": deterministic_score,
+        "verifier_bits": verifier_bits,
+        "prefix_minimum": receipt.prefix_minimum,
+        "context_relevance_minimum": receipt.context_relevance_minimum,
+        "reason": receipt.reason,
+    }
+
+
 def run(
     seed: int,
     report_out: Path,
     *,
     masked_context: bool = False,
+    mask_curriculum: str = "complementary",
 ) -> dict[str, object]:
     begun = time.perf_counter()
     torch.set_num_threads(1)
@@ -482,9 +613,18 @@ def run(
         cell_count=1,
         context_masking=masked_context,
     )
-    source_mask = SOURCE_CONTEXT_MASK if masked_context else None
-    successor_mask = SUCCESSOR_CONTEXT_MASK if masked_context else None
-    reversal_mask = REVERSAL_CONTEXT_MASK if masked_context else None
+    (
+        source_mask,
+        successor_mask,
+        reversal_mask,
+        successor_mask_schedule,
+    ) = _mask_configuration(
+        masked_context=masked_context,
+        mask_curriculum=mask_curriculum,
+    )
+    successor_training_mask = (
+        None if successor_mask_schedule is not None else successor_mask
+    )
     matched_fresh_state = _single_cell_state(state, 0)
     matched_fresh_initial_digest = _digest_state(matched_fresh_state)
 
@@ -503,8 +643,14 @@ def run(
         random_seed=seed + 1,
     )
     source_snapshot = _cell_snapshot(state, 0)
-    source_auto_protected = bool(state.cells.protected[0])
-    state = router.protect(state, [0])
+    state, source_retention_verification = _heldout_retention_verification(
+        router=router,
+        state=state,
+        cell_index=0,
+        context=contexts["source"],
+        context_mask=source_mask,
+        target=base.SOURCE_TARGET,
+    )
     state, successor_cell = router.append_cell(state, source_cell=0)
     state, successor = _train_regime(
         policy=policy,
@@ -515,14 +661,23 @@ def run(
         event=events["successor"],
         context=contexts["successor"],
         target=base.SUCCESSOR_TARGET,
-        context_mask=successor_mask,
+        context_mask=successor_training_mask,
+        context_mask_schedule=successor_mask_schedule,
         max_updates=MAX_UPDATES,
         delay=DELAY_STEPS,
         random_seed=seed + 2,
+        stop_at_mastery=successor_mask_schedule is None,
     )
     successor_snapshot = _cell_snapshot(state, successor_cell)
     successor_auto_protected = bool(state.cells.protected[successor_cell])
-    state = router.protect(state, [successor_cell])
+    state, successor_retention_verification = _heldout_retention_verification(
+        router=router,
+        state=state,
+        cell_index=successor_cell,
+        context=contexts["successor"],
+        context_mask=successor_mask,
+        target=base.SUCCESSOR_TARGET,
+    )
 
     pre_reversal = state
     state, inherited_cell = router.append_cell(state, source_cell=successor_cell)
@@ -582,10 +737,12 @@ def run(
         event=events["successor"],
         context=contexts["successor"],
         target=base.SUCCESSOR_TARGET,
-        context_mask=successor_mask,
+        context_mask=successor_training_mask,
+        context_mask_schedule=successor_mask_schedule,
         max_updates=MAX_UPDATES,
         delay=0,
         random_seed=seed + 5,
+        stop_at_mastery=successor_mask_schedule is None,
     )
 
     _, shuffled_router, shuffled_state = _new_policy(
@@ -723,7 +880,8 @@ def run(
             and matched_fresh_initial_digest == _digest_state(matched_fresh_state)
         ),
         "protected_cells_unchanged_by_later_learning": protected_retention,
-        "automatic_source_retention_protection": source_auto_protected,
+        "source_retention_verifier_passed": source_retention_verification["accepted"],
+        "successor_retention_verifier_passed": successor_retention_verification["accepted"],
         "append_only_external_growth": state.cells.baseline.shape[0] == 3,
         "exact_routed_memory_persistence": _digest_state(persistence) == _digest_state(state),
         "controller_frozen": controller_digest == base._digest_module(controller),
@@ -732,19 +890,30 @@ def run(
         "masked_context_features_present": (
             not masked_context or masked_feature_width == 2 * base.STATE_WIDTH + 1
         ),
+        "mask_curriculum_exercised": (
+            not masked_context
+            or mask_curriculum != "gradual"
+            or len(successor["context_mask_patterns"]) == 2
+        ),
+        "overlapping_observation_patterns_present": (
+            not masked_context
+            or mask_curriculum == "complementary"
+            or int((source_mask & successor_mask).sum().item()) >= 4
+        ),
     }
     report = {
         "schema": (
-            "neural-computer.policy-free-intention-masked-routing.v1"
+            "neural-computer.policy-free-intention-masked-routing.v2"
             if masked_context
             else "neural-computer.policy-free-intention-routing.v1"
         ),
         "claim_boundary": (
             "bounded caller-free masked-context routing with explicit observation "
-            "channels, delayed/noisy scalar credit, sparse materialization, protected "
-            "growth, rollback, and matched successor transfer; arbitrary missing-stream "
-            "reasoning, unrestricted growth, compression, and general continual learning "
-            "remain unqualified."
+            "channels, support-aware protected-cell quarantine, delayed/noisy scalar "
+            "credit, sparse materialization, copy-on-write growth, held-out prefix "
+            "retention, and overlapping-mask successor transfer; arbitrary "
+            "missing-stream reasoning, unrestricted growth, compression, and general "
+            "continual learning remain unqualified."
             if masked_context
             else "bounded caller-free context-conditioned routing over protected and growing "
             "external intention cells with delayed scalar credit and matched fresh "
@@ -762,7 +931,17 @@ def run(
             "runtime": policy.configuration(),
             "candidate_selection": "router_selected_intention_only_no_caller_cell_index_v1",
             "fresh_successor_control": "matched_caller_owned_fresh_append_state_v1",
+            "retention_verifier": "deterministic_heldout_prefix_copy_on_write_v1",
             "masked_context": masked_context,
+            "mask_curriculum": mask_curriculum,
+            "successor_mask_schedule": (
+                None
+                if successor_mask_schedule is None
+                else [
+                    {"start_update": start, "mask": mask.tolist()}
+                    for start, mask in successor_mask_schedule
+                ]
+            ),
             "source_context_mask": None if source_mask is None else source_mask.tolist(),
             "successor_context_mask": (
                 None if successor_mask is None else successor_mask.tolist()
@@ -779,6 +958,8 @@ def run(
             "inherited_reversal": inherited_reversal,
             "reversal": reversal,
             "fresh_successor": fresh,
+            "source_retention_verification": source_retention_verification,
+            "successor_retention_verification": successor_retention_verification,
             "transfer_ratio_against_matched_fresh": fresh["updates"]
             / max(1, successor["updates"]),
             "reward_shuffled": shuffled,
@@ -803,6 +984,8 @@ def run(
                 + inherited_reversal["updates"]
                 + reversal["updates"]
                 + fresh["updates"]
+                + source_retention_verification["verifier_bits"]
+                + successor_retention_verification["verifier_bits"]
             ),
             "control_outcome_bits": shuffled["updates"] + action_shuffled["updates"],
             "unique_logical_lifetimes": 6,
@@ -814,6 +997,10 @@ def run(
                 + fresh["updates"]
                 + shuffled["updates"]
                 + action_shuffled["updates"]
+            ),
+            "heldout_verifier_bits": (
+                source_retention_verification["verifier_bits"]
+                + successor_retention_verification["verifier_bits"]
             ),
             "optimizer_updates": 0,
             "controller_optimizer_updates": 0,
@@ -843,10 +1030,21 @@ def main() -> None:
     parser.add_argument(
         "--masked-context",
         action="store_true",
-        help="use explicit complementary partial-context masks in external learning",
+        help="use explicit partial-context masks in external learning",
+    )
+    parser.add_argument(
+        "--mask-curriculum",
+        choices=("complementary", "overlapping", "gradual"),
+        default="complementary",
+        help="observation-mask schedule used with --masked-context",
     )
     args = parser.parse_args()
-    run(args.seed, args.report_out, masked_context=args.masked_context)
+    run(
+        args.seed,
+        args.report_out,
+        masked_context=args.masked_context,
+        mask_curriculum=args.mask_curriculum,
+    )
 
 
 if __name__ == "__main__":

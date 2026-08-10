@@ -338,6 +338,9 @@ class ExternalOutcomeIntentionRouter:
         reversal_patience: int = 4,
         context_relevance_threshold: float = 0.9,
         verified_prototype_scale: float = 3.0,
+        verified_context_coverage_scale: float = 6.0,
+        reversal_context_coverage_threshold: float = 0.75,
+        masked_reversal_quarantine_scale: float = 6.0,
     ) -> None:
         if not isinstance(memory, ExternalOutcomeIntentionMemory):
             raise TypeError("intention router requires external intention memory")
@@ -367,6 +370,15 @@ class ExternalOutcomeIntentionRouter:
             raise ValueError("intention router context relevance threshold is invalid")
         if not math.isfinite(verified_prototype_scale) or verified_prototype_scale < 0.0:
             raise ValueError("intention router verified prototype scale is invalid")
+        if (
+            not math.isfinite(verified_context_coverage_scale)
+            or verified_context_coverage_scale < 0.0
+        ):
+            raise ValueError("intention router verified context coverage scale is invalid")
+        if not 0.0 <= reversal_context_coverage_threshold <= 1.0:
+            raise ValueError("intention router reversal context coverage threshold is invalid")
+        if not math.isfinite(masked_reversal_quarantine_scale) or masked_reversal_quarantine_scale < 0.0:
+            raise ValueError("intention router masked reversal quarantine scale is invalid")
         self.memory = memory
         self.initial_learning_rate = float(initial_learning_rate)
         self.initial_baseline_rate = float(initial_baseline_rate)
@@ -381,6 +393,11 @@ class ExternalOutcomeIntentionRouter:
         self.reversal_patience = int(reversal_patience)
         self.context_relevance_threshold = float(context_relevance_threshold)
         self.verified_prototype_scale = float(verified_prototype_scale)
+        self.verified_context_coverage_scale = float(verified_context_coverage_scale)
+        self.reversal_context_coverage_threshold = float(
+            reversal_context_coverage_threshold
+        )
+        self.masked_reversal_quarantine_scale = float(masked_reversal_quarantine_scale)
 
     @property
     def context_width(self) -> int:
@@ -427,6 +444,9 @@ class ExternalOutcomeIntentionRouter:
                 "reversal_patience": self.reversal_patience,
                 "context_relevance_threshold": self.context_relevance_threshold,
                 "verified_prototype_scale": self.verified_prototype_scale,
+                "verified_context_coverage_scale": self.verified_context_coverage_scale,
+                "reversal_context_coverage_threshold": self.reversal_context_coverage_threshold,
+                "masked_reversal_quarantine_scale": self.masked_reversal_quarantine_scale,
                 "heldout_gate": "verifier_prefix_minimum_copy_on_write_v1",
             },
             "protection": "verified_cell_freezes_content_and_route_until_reversal_v1",
@@ -553,7 +573,21 @@ class ExternalOutcomeIntentionRouter:
         prototype = prototypes.unsqueeze(0) * overlap
         numerator = (query * prototype).sum(dim=-1)
         denominator = query.square().sum(dim=-1).sqrt() * prototype.square().sum(dim=-1).sqrt()
-        return torch.where(denominator > 0.0, numerator / denominator.clamp_min(1e-12), 0.0)
+        cosine = numerator / denominator.clamp_min(1e-12)
+        return torch.where(denominator > 0.0, cosine.clamp(-1.0, 1.0), 0.0)
+
+    @staticmethod
+    def _context_coverage(
+        masks: torch.Tensor,
+        observed_masses: torch.Tensor,
+    ) -> torch.Tensor:
+        """Return the fraction of each query whose dimensions are verified."""
+
+        query_width = masks.to(dtype=torch.float32).sum(dim=-1).clamp_min(1.0)
+        covered_width = (
+            masks.unsqueeze(1) & (observed_masses > 0.0).unsqueeze(0)
+        ).to(dtype=torch.float32).sum(dim=-1)
+        return covered_width / query_width.unsqueeze(-1)
 
     def _validate_context(
         self,
@@ -604,18 +638,39 @@ class ExternalOutcomeIntentionRouter:
             + exploration_bonus
         ) / self.temperature
         verified = state.cells.protected & (state.retention_context_masses > 0.0)
-        if self.verified_prototype_scale > 0.0 and bool(verified.any()):
-            prototype_similarity = self._masked_cosine(
-                observed_context,
-                mask,
-                state.retention_context_prototypes,
-                state.retention_context_observed_masses,
-            )
-            logits = logits + (
-                self.verified_prototype_scale
-                * prototype_similarity
-                * verified.to(dtype=context.dtype).unsqueeze(0)
-            ) / self.temperature
+        if bool(verified.any()):
+            if self.verified_prototype_scale > 0.0:
+                prototype_similarity = self._masked_cosine(
+                    observed_context,
+                    mask,
+                    state.retention_context_prototypes,
+                    state.retention_context_observed_masses,
+                )
+                logits = logits + (
+                    self.verified_prototype_scale
+                    * prototype_similarity
+                    * verified.to(dtype=context.dtype).unsqueeze(0)
+                ) / self.temperature
+            if self.memory.generator.context_masking:
+                coverage = self._context_coverage(
+                    mask,
+                    state.retention_context_observed_masses,
+                ).to(dtype=context.dtype)
+                if self.verified_context_coverage_scale > 0.0:
+                    logits = logits + (
+                        self.verified_context_coverage_scale
+                        * torch.log(coverage.clamp_min(1e-3))
+                        * verified.to(dtype=context.dtype).unsqueeze(0)
+                    ) / self.temperature
+                if self.masked_reversal_quarantine_scale > 0.0:
+                    quarantined = (
+                        verified
+                        & (state.retention_reversal_counts > 0)
+                    ).to(dtype=context.dtype)
+                    logits = logits - (
+                        self.masked_reversal_quarantine_scale
+                        * quarantined.unsqueeze(0)
+                    ) / self.temperature
         base_probabilities = torch.softmax(logits, dim=-1)
         unqualified = (
             ~state.cells.protected
@@ -869,6 +924,15 @@ class ExternalOutcomeIntentionRouter:
             context_mask = context_masks[batch_index]
             mass = float(context_masses[cell_index].item())
             if bool(protected[cell_index]) and mass > 0.0:
+                if self.memory.generator.context_masking:
+                    coverage = float(
+                        self._context_coverage(
+                            context_mask.unsqueeze(0),
+                            context_observed_masses[cell_index].unsqueeze(0),
+                        ).item()
+                    )
+                    if coverage < self.reversal_context_coverage_threshold:
+                        continue
                 relevance = self._masked_cosine(
                     context.unsqueeze(0),
                     context_mask.unsqueeze(0),
@@ -908,16 +972,17 @@ class ExternalOutcomeIntentionRouter:
                 else:
                     reversal_streaks[cell_index] = 0
                 if int(reversal_streaks[cell_index].item()) >= self.reversal_patience:
-                    protected[cell_index] = False
                     reversal_counts[cell_index] += 1
                     reversal_streaks[cell_index] = 0
-                    observations[cell_index] = 0
-                    successes[cell_index] = 0.0
-                    prefix_minima[cell_index] = 1.0
-                    mastered[cell_index] = False
-                    context_prototypes[cell_index].zero_()
-                    context_masses[cell_index] = 0.0
-                    context_observed_masses[cell_index].zero_()
+                    if not self.memory.generator.context_masking:
+                        protected[cell_index] = False
+                        observations[cell_index] = 0
+                        successes[cell_index] = 0.0
+                        prefix_minima[cell_index] = 1.0
+                        mastered[cell_index] = False
+                        context_prototypes[cell_index].zero_()
+                        context_masses[cell_index] = 0.0
+                        context_observed_masses[cell_index].zero_()
             elif not bool(mastered[cell_index]):
                 current_mean = successes[cell_index] / observation_count
                 if (
@@ -975,6 +1040,16 @@ class ExternalOutcomeIntentionRouter:
         )
         device = state.routing_keys.device
         dtype = state.routing_keys.dtype
+        source_observed_dimensions: torch.Tensor | None = None
+        if source_cell is not None and self.memory.generator.context_masking:
+            observed_masses = state.retention_context_observed_masses[source_cell]
+            if bool((observed_masses > 0.0).any()):
+                source_observed_dimensions = observed_masses > 0.0
+                input_weights = next_cells.input_weights.clone()
+                input_weights[new_index, :, : self.context_width][
+                    :, ~source_observed_dimensions
+                ] = 0.0
+                next_cells = replace(next_cells, input_weights=input_weights)
         if source_cell is not None and not 0 <= source_cell < state.routing_keys.shape[0]:
             raise ValueError("intention router source cell is out of range")
         if source_cell is None:
@@ -988,6 +1063,8 @@ class ExternalOutcomeIntentionRouter:
             new_key = state.routing_keys[source_cell : source_cell + 1].clone()
             if self.memory.generator.context_masking:
                 new_key[:, self.context_width :].zero_()
+                if source_observed_dimensions is not None:
+                    new_key[:, : self.context_width][:, ~source_observed_dimensions] = 0.0
             new_bias = state.routing_bias[source_cell : source_cell + 1].clone()
         else:
             new_key = self.initial_routing_scale * torch.randn(

@@ -1267,6 +1267,16 @@ while the replaceable memory side receives the evidence mask.
 
 In masked router mode, route keys receive the same value/mask representation.
 Copy-on-write children keep reusable value weights but neutralize
-mask-specific weights. The complementary-mask audit is intentionally rejected
-because transfer is not yet stable across abrupt observation-pattern changes;
-see `session_records/policy_free_intention_masked_routing_2026-08-10/`.
+mask-specific weights and dimensions never observed by the source cell. Verified
+cells also carry a generic support prior: a protected route is downweighted when
+its verified prototype covers too little of the query's observed evidence. In
+masked mode, repeated relevant low outcomes quarantine a protected cell rather
+than mutating it, so a copy-on-write challenger can learn a reversal without
+forgetting the old file.
+
+The overlapping-mask audit now promotes this boundary across two seeds; see
+`session_records/policy_free_intention_masked_routing_overlap_promoted_2026-08-10/`.
+The halfway-switch gradual curriculum is archived as a rejection in
+`session_records/policy_free_intention_masked_routing_gradual_rejected_2026-08-10/`.
+Arbitrary missing-stream reasoning, unrestricted growth, compression, and
+general continual learning remain unqualified.
