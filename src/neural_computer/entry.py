@@ -969,7 +969,7 @@ class ExternalEntryBindingRepertoire:
             "merge_cosine": self.merge_cosine,
             "intention_space_id": self.intention_space_id,
             "entry_space_id": self.entry_space_id,
-            "storage": "append_only_atomic_opaque_intention_entry_binding_v1",
+            "storage": "logical_addressed_atomic_opaque_intention_entry_binding_v1",
             "learning": "outcome_sufficient_statistics_without_replay_v1",
         }
 

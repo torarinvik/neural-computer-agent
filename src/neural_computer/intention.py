@@ -35,6 +35,9 @@ EXTERNAL_INTENTION_ADMISSION_SCHEMA = (
 EXTERNAL_INTENTION_EXPLORATION_SCHEMA = (
     "neural-computer.external-intention-exploration.v1"
 )
+EXTERNAL_INTENTION_CONSOLIDATION_SCHEMA = (
+    "neural-computer.external-intention-consolidation.v1"
+)
 
 
 def _validate_tensor(
@@ -223,6 +226,62 @@ class ExternalIntentionExplorationProposal:
         return self
 
 
+@dataclass(frozen=True)
+class ExternalIntentionConsolidationReceipt:
+    """Retention-gated copy-on-write consolidation result."""
+
+    accepted: bool
+    retired_ids: tuple[int, ...]
+    replacement_id: int | None
+    source_record_count: int
+    destination_record_count: int
+    source_digest: str
+    candidate_digest: str
+    destination_digest: str
+    reason: str
+    version: int
+    schema: str = EXTERNAL_INTENTION_CONSOLIDATION_SCHEMA
+
+    def validate(self) -> ExternalIntentionConsolidationReceipt:
+        if self.schema != EXTERNAL_INTENTION_CONSOLIDATION_SCHEMA:
+            raise ValueError("unsupported intention-consolidation schema")
+        if not self.retired_ids or len(set(self.retired_ids)) != len(self.retired_ids):
+            raise ValueError("intention-consolidation retired IDs are invalid")
+        if any(
+            not isinstance(value, int)
+            or isinstance(value, bool)
+            or value < 0
+            for value in self.retired_ids
+        ):
+            raise ValueError("intention-consolidation retired ID is invalid")
+        if self.accepted:
+            if (
+                self.replacement_id is None
+                or isinstance(self.replacement_id, bool)
+                or self.replacement_id < 0
+            ):
+                raise ValueError("accepted intention consolidation has no replacement ID")
+            if self.destination_record_count != self.source_record_count - len(
+                self.retired_ids
+            ) + 1:
+                raise ValueError("accepted intention consolidation count is invalid")
+        elif self.replacement_id is not None:
+            raise ValueError("rejected intention consolidation has a replacement ID")
+        if min(self.source_record_count, self.destination_record_count) < 1:
+            raise ValueError("intention-consolidation record counts are invalid")
+        if not isinstance(self.version, int) or isinstance(self.version, bool) or self.version < 0:
+            raise ValueError("intention-consolidation version is invalid")
+        for name, value in (
+            ("source_digest", self.source_digest),
+            ("candidate_digest", self.candidate_digest),
+            ("destination_digest", self.destination_digest),
+            ("reason", self.reason),
+        ):
+            if not isinstance(value, str) or not value:
+                raise ValueError(f"intention-consolidation {name} is missing")
+        return self
+
+
 class ExternalIntentionCompositionExplorer:
     """Generate verifier-bound ephemeral intentions from retained experience.
 
@@ -305,7 +364,12 @@ class ExternalIntentionCompositionExplorer:
                     ):
                         continue
                     candidates.append(candidate.detach().clone())
-                    pairs.append((left_index, right_index))
+                    pairs.append(
+                        (
+                            repertoire.logical_id_at(left_index),
+                            repertoire.logical_id_at(right_index),
+                        )
+                    )
                     operations.append(operation)
         if max_candidates is not None:
             candidates = candidates[:max_candidates]
@@ -354,6 +418,9 @@ class ExternalIntentionRepertoire:
         self._last_propensities: list[float] = []
         self._last_seen: list[int] = []
         self._version = 0
+        self._logical_ids: list[int] = []
+        self._next_logical_id = 0
+        self._aliases: dict[int, int] = {}
 
     @property
     def record_count(self) -> int:
@@ -363,16 +430,50 @@ class ExternalIntentionRepertoire:
     def version(self) -> int:
         return self._version
 
+    @property
+    def logical_ids(self) -> tuple[int, ...]:
+        """Return stable logical IDs in current physical proposal order."""
+
+        return tuple(self._logical_ids)
+
+    def logical_id_at(self, index: int) -> int:
+        if not isinstance(index, int) or isinstance(index, bool) or not 0 <= index < self.record_count:
+            raise IndexError("intention physical index is out of range")
+        return self._logical_ids[index]
+
+    def resolve_logical_id(self, logical_id: int) -> int:
+        """Resolve a retired logical ID to its retained replacement."""
+
+        if not isinstance(logical_id, int) or isinstance(logical_id, bool) or logical_id < 0:
+            raise ValueError("intention logical ID is invalid")
+        seen: set[int] = set()
+        current = logical_id
+        while current in self._aliases:
+            if current in seen:
+                raise RuntimeError("intention logical-ID alias cycle detected")
+            seen.add(current)
+            current = self._aliases[current]
+        return current
+
+    def physical_index_for_id(self, logical_id: int) -> int:
+        resolved = self.resolve_logical_id(logical_id)
+        try:
+            return self._logical_ids.index(resolved)
+        except ValueError as error:
+            raise KeyError(f"unknown intention logical ID: {logical_id}") from error
+
     def configuration(self) -> dict[str, int | float | str]:
         return {
             "schema": self.schema,
             "width": self.width,
             "merge_cosine": self.merge_cosine,
-            "storage": "append_only_opaque_intention_experience_v1",
+            "storage": "logical_addressed_opaque_intention_experience_v1",
             "proposal": (
                 "verified_retrieval_default_plus_explicit_ephemeral_controller_seed_v1"
             ),
             "learning": "outcome_sufficient_statistics_without_replay_v1",
+            "logical_addresses": "stable_ids_with_persisted_aliases_v1",
+            "maintenance": "retention_gated_copy_on_write_consolidation_v1",
         }
 
     def _validate_batch(
@@ -547,7 +648,7 @@ class ExternalIntentionRepertoire:
             destination_digest = self.content_digest()
             return ExternalIntentionAdmissionReceipt(
                 accepted=True,
-                entry_index=source_count,
+                entry_index=candidate.logical_id_at(candidate.record_count - 1),
                 source_record_count=source_count,
                 destination_record_count=self.record_count,
                 source_digest=source_digest,
@@ -586,6 +687,9 @@ class ExternalIntentionRepertoire:
         self._last_propensities = list(other._last_propensities)
         self._last_seen = list(other._last_seen)
         self._version = other._version
+        self._logical_ids = list(other._logical_ids)
+        self._next_logical_id = other._next_logical_id
+        self._aliases = dict(other._aliases)
 
     def observe(
         self,
@@ -618,6 +722,10 @@ class ExternalIntentionRepertoire:
                 self._last_propensities.append(0.0)
                 self._last_seen.append(0)
                 index = len(self._intentions) - 1
+                if index != len(self._logical_ids):
+                    raise RuntimeError("intention storage appended out of order")
+                self._logical_ids.append(self._next_logical_id)
+                self._next_logical_id += 1
                 added.append(True)
             else:
                 added.append(False)
@@ -646,6 +754,161 @@ class ExternalIntentionRepertoire:
             version=self._version,
             record_count=self.record_count,
             content_digest=self.content_digest(),
+        ).validate()
+
+    def _consolidation_candidate(
+        self,
+        retired_ids: tuple[int, ...],
+        replacement_intention: torch.Tensor,
+    ) -> tuple[ExternalIntentionRepertoire, int]:
+        if len(retired_ids) < 2:
+            raise ValueError("intention consolidation needs two records")
+        if len(set(retired_ids)) != len(retired_ids):
+            raise ValueError("intention consolidation IDs are duplicated")
+        if any(
+            not isinstance(logical_id, int)
+            or isinstance(logical_id, bool)
+            or logical_id < 0
+            for logical_id in retired_ids
+        ):
+            raise ValueError("intention consolidation ID is invalid")
+        if any(logical_id not in self._logical_ids for logical_id in retired_ids):
+            raise ValueError("intention consolidation can retire live IDs only")
+        normalized, _utility, _propensity, _timestamp = self._validate_batch(
+            replacement_intention,
+            None,
+            None,
+            None,
+        )
+        if normalized.shape[0] != 1:
+            raise ValueError("intention consolidation accepts one vector")
+        replacement = normalized[0]
+        retired_indices = tuple(
+            sorted(self._logical_ids.index(logical_id) for logical_id in retired_ids)
+        )
+        retired_index_set = set(retired_indices)
+        retained_indices = tuple(
+            index
+            for index in range(self.record_count)
+            if index not in retired_index_set
+        )
+        if any(
+            self._entry_similarity(self._intentions[index], replacement)
+            >= self.merge_cosine
+            for index in retained_indices
+        ):
+            raise ValueError(
+                "intention consolidation replacement duplicates a retained vector"
+            )
+
+        candidate = ExternalIntentionRepertoire.from_payload(self.payload())
+        candidate._intentions = [
+            self._intentions[index].clone() for index in retained_indices
+        ] + [replacement.clone()]
+
+        def aggregate(values: list[int | float]) -> list[int | float]:
+            retained = [values[index] for index in retained_indices]
+            combined = sum(values[index] for index in retired_indices)
+            return retained + [combined]
+
+        candidate._attempts = [int(value) for value in aggregate(self._attempts)]
+        candidate._outcome_counts = [
+            int(value) for value in aggregate(self._outcome_counts)
+        ]
+        candidate._utility_sums = [
+            float(value) for value in aggregate(self._utility_sums)
+        ]
+        candidate._utility_square_sums = [
+            float(value) for value in aggregate(self._utility_square_sums)
+        ]
+        candidate._propensity_sums = [
+            float(value) for value in aggregate(self._propensity_sums)
+        ]
+        candidate._inverse_propensity_utility_sums = [
+            float(value)
+            for value in aggregate(self._inverse_propensity_utility_sums)
+        ]
+        latest_index = max(
+            retired_indices,
+            key=lambda index: (self._last_seen[index], index),
+        )
+        candidate._last_propensities = [
+            self._last_propensities[index] for index in retained_indices
+        ] + [self._last_propensities[latest_index]]
+        candidate._last_seen = [self._last_seen[index] for index in retained_indices] + [
+            max(self._last_seen[index] for index in retired_indices)
+        ]
+        candidate._version = self._version + 1
+        replacement_id = min(retired_ids)
+        candidate._logical_ids = [
+            self._logical_ids[index] for index in retained_indices
+        ] + [replacement_id]
+        retired_set = set(retired_ids)
+        candidate._aliases = {
+            source: (
+                replacement_id
+                if self.resolve_logical_id(destination) in retired_set
+                else self.resolve_logical_id(destination)
+            )
+            for source, destination in self._aliases.items()
+        }
+        for logical_id in retired_ids:
+            if logical_id != replacement_id:
+                candidate._aliases[logical_id] = replacement_id
+        candidate._next_logical_id = max(self._next_logical_id, replacement_id + 1)
+        candidate.validate_state()
+        return candidate, replacement_id
+
+    def consolidate_verified(
+        self,
+        retired_ids: tuple[int, ...] | list[int],
+        replacement_intention: torch.Tensor,
+        retention_probe: Callable[[ExternalIntentionRepertoire], bool],
+        *,
+        reason: str = "caller_owned_heldout_retention_probe",
+    ) -> ExternalIntentionConsolidationReceipt:
+        """Compact intention memory only after an isolated retention probe passes."""
+
+        if not callable(retention_probe):
+            raise TypeError("intention consolidation retention probe must be callable")
+        if not isinstance(reason, str) or not reason:
+            raise ValueError("intention consolidation reason is missing")
+        normalized_ids = tuple(retired_ids)
+        source_count = self.record_count
+        source_digest = self.content_digest()
+        candidate, replacement_id = self._consolidation_candidate(
+            normalized_ids,
+            replacement_intention,
+        )
+        candidate_digest = candidate.content_digest()
+        accepted = bool(retention_probe(candidate))
+        probe_unchanged = candidate.content_digest() == candidate_digest
+        accepted = accepted and probe_unchanged
+        if accepted:
+            self._copy_from(candidate)
+            return ExternalIntentionConsolidationReceipt(
+                accepted=True,
+                retired_ids=normalized_ids,
+                replacement_id=replacement_id,
+                source_record_count=source_count,
+                destination_record_count=self.record_count,
+                source_digest=source_digest,
+                candidate_digest=candidate_digest,
+                destination_digest=self.content_digest(),
+                reason=reason,
+                version=self.version,
+            ).validate()
+        return ExternalIntentionConsolidationReceipt(
+            accepted=False,
+            retired_ids=normalized_ids,
+            replacement_id=None,
+            source_record_count=source_count,
+            destination_record_count=source_count,
+            source_digest=source_digest,
+            candidate_digest=candidate_digest,
+            destination_digest=source_digest,
+            reason="heldout retention probe rejected or mutated candidate intention state",
+            version=self.version,
         ).validate()
 
     def propose(
@@ -708,14 +971,15 @@ class ExternalIntentionRepertoire:
                         rows.append(seed.clone())
                         source_indices.append(-1)
                         exploration_flags.append(True)
-                elif not any(index == matching_index for index in source_indices):
+                elif self._logical_ids[matching_index] not in source_indices:
                     rows.append(self._intentions[matching_index].clone())
-                    source_indices.append(matching_index)
+                    source_indices.append(self._logical_ids[matching_index])
                     exploration_flags.append(False)
         for index, stored_row in enumerate(stored):
-            if index not in source_indices:
+            logical_id = self._logical_ids[index]
+            if logical_id not in source_indices:
                 rows.append(stored_row)
-                source_indices.append(index)
+                source_indices.append(logical_id)
                 exploration_flags.append(False)
         if not rows:
             raise ValueError("intention repertoire cannot propose an empty set")
@@ -821,6 +1085,42 @@ class ExternalIntentionRepertoire:
             )
         ):
             raise ValueError("intention outcome counts exceed attempts")
+        if len(self._logical_ids) != count:
+            raise ValueError("intention logical IDs are misaligned")
+        if any(
+            not isinstance(value, int)
+            or isinstance(value, bool)
+            or value < 0
+            for value in self._logical_ids
+        ):
+            raise ValueError("intention logical IDs are invalid")
+        if len(set(self._logical_ids)) != len(self._logical_ids):
+            raise ValueError("intention logical IDs are duplicated")
+        if (
+            not isinstance(self._next_logical_id, int)
+            or isinstance(self._next_logical_id, bool)
+            or self._next_logical_id < 0
+        ):
+            raise ValueError("intention next logical ID is invalid")
+        if self._next_logical_id <= max(self._logical_ids, default=-1):
+            raise ValueError("intention next logical ID is stale")
+        if any(
+            not isinstance(source, int)
+            or isinstance(source, bool)
+            or source < 0
+            or not isinstance(destination, int)
+            or isinstance(destination, bool)
+            or destination < 0
+            for source, destination in self._aliases.items()
+        ):
+            raise ValueError("intention logical-ID aliases are invalid")
+        if set(self._aliases) & set(self._logical_ids):
+            raise ValueError("intention logical-ID aliases shadow live IDs")
+        for source, destination in self._aliases.items():
+            if self.resolve_logical_id(destination) not in self._logical_ids:
+                raise ValueError("intention logical-ID alias target is not live")
+            if source == destination:
+                raise ValueError("intention logical-ID alias is self-referential")
 
     @staticmethod
     def _digest_payload(payload: Mapping[str, Any]) -> str:
@@ -846,6 +1146,9 @@ class ExternalIntentionRepertoire:
             "width": self.width,
             "merge_cosine": self.merge_cosine,
             "version": self._version,
+            "logical_ids": list(self._logical_ids),
+            "next_logical_id": self._next_logical_id,
+            "aliases": dict(sorted(self._aliases.items())),
             **self.statistics(),
         }
         payload["sha256"] = self._digest_payload(payload)
@@ -858,6 +1161,9 @@ class ExternalIntentionRepertoire:
         width = payload.get("width")
         merge_cosine = payload.get("merge_cosine")
         version = payload.get("version")
+        logical_ids_payload = payload.get("logical_ids")
+        next_logical_id_payload = payload.get("next_logical_id")
+        aliases_payload = payload.get("aliases", {})
         if not isinstance(width, int) or isinstance(width, bool):
             raise TypeError("intention repertoire payload width is invalid")
         if not isinstance(merge_cosine, (int, float)) or not math.isfinite(
@@ -897,6 +1203,33 @@ class ExternalIntentionRepertoire:
         for name, value in tensors.items():
             if not isinstance(value, torch.Tensor) or value.shape[0] != count:
                 raise ValueError(f"intention repertoire payload {name} is misaligned")
+        logical_ids = (
+            list(range(count))
+            if logical_ids_payload is None
+            else logical_ids_payload
+        )
+        next_logical_id = count if next_logical_id_payload is None else next_logical_id_payload
+        if not isinstance(logical_ids, list) or not all(
+            isinstance(value, int)
+            and not isinstance(value, bool)
+            and value >= 0
+            for value in logical_ids
+        ):
+            raise ValueError("intention repertoire payload logical IDs are invalid")
+        if not isinstance(next_logical_id, int) or isinstance(next_logical_id, bool) or next_logical_id < 0:
+            raise ValueError("intention repertoire payload next logical ID is invalid")
+        if not isinstance(aliases_payload, Mapping):
+            raise TypeError("intention repertoire payload aliases are invalid")
+        aliases: dict[int, int] = {}
+        for source, destination in aliases_payload.items():
+            if (
+                not isinstance(source, int)
+                or isinstance(source, bool)
+                or not isinstance(destination, int)
+                or isinstance(destination, bool)
+            ):
+                raise TypeError("intention repertoire payload aliases are invalid")
+            aliases[int(source)] = int(destination)
         repertoire._intentions = [
             row.detach().to(device="cpu", dtype=torch.float32).contiguous()
             for row in intentions
@@ -923,6 +1256,9 @@ class ExternalIntentionRepertoire:
         ]
         repertoire._last_seen = [int(value) for value in tensors["last_seen"].tolist()]
         repertoire._version = version
+        repertoire._logical_ids = list(logical_ids)
+        repertoire._next_logical_id = next_logical_id
+        repertoire._aliases = aliases
         repertoire.validate_state()
         return repertoire
 
@@ -936,18 +1272,23 @@ class ExternalIntentionRepertoire:
             "width": self.width,
             "merge_cosine": self.merge_cosine,
             "version": self._version,
+            "logical_ids": list(self._logical_ids),
+            "next_logical_id": self._next_logical_id,
+            "aliases": dict(sorted(self._aliases.items())),
             **self.statistics(),
         }
 
 
 __all__ = [
     "EXTERNAL_INTENTION_ADMISSION_SCHEMA",
+    "EXTERNAL_INTENTION_CONSOLIDATION_SCHEMA",
     "EXTERNAL_INTENTION_EXPLORATION_SCHEMA",
     "EXTERNAL_INTENTION_OBSERVATION_SCHEMA",
     "EXTERNAL_INTENTION_PROPOSAL_SCHEMA",
     "EXTERNAL_INTENTION_REPERTOIRE_SCHEMA",
     "ExternalIntentionAdmissionReceipt",
     "ExternalIntentionCompositionExplorer",
+    "ExternalIntentionConsolidationReceipt",
     "ExternalIntentionExplorationProposal",
     "ExternalIntentionObservationReceipt",
     "ExternalIntentionProposal",

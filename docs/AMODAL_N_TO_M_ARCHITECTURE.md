@@ -8151,3 +8151,24 @@ matched no-entry planner remains polarity-insensitive. This promotes live
 signed-delta search, not arbitrary value learning or general continual
 learning. The next pressure is persistent entry growth and changing-regime
 search with independent held-out factual verification.
+
+## Stable-address intention memory (2026-08-10)
+
+`ExternalIntentionRepertoire`, the standalone output-candidate memory used by
+the policy-free fallback path, now has the same retention-safe lifecycle as
+atomic intention↔entry binding memory. Each observed opaque intention receives
+a stable logical ID. Consolidation aggregates its outcome and exact-propensity
+sufficient statistics on a copy, retains one replacement address, persists
+aliases for the retired IDs, and commits only after an independent held-out
+retention probe passes without mutation.
+
+Runtime proposals and composition provenance use logical IDs rather than
+physical row positions. Old payloads without address metadata load with their
+original positional IDs, preserving the versioned external-memory boundary
+while enabling future compaction. The controller, planner, and decoders remain
+unchanged; maintenance stays outside the cognitive core.
+
+This closes a consistency and address-stability gap, not the harder problem of
+inventing useful new intention vectors from partial multimodal experience.
+Learned candidate generation, equivalence discovery, unrestricted growth, and
+general continual learning remain unqualified.

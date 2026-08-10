@@ -1132,3 +1132,12 @@ bindings as well as physical recurrent compute. A compatible binding may
 share both modules after fresh verifier approval while retaining independent
 external recurrent state; no unconditional compression or general continual
 learning claim follows.
+
+The external output-candidate store now uses the same stable-address contract
+as atomic intention↔entry memory. `ExternalIntentionRepertoire` persists
+logical IDs and aliases, maps proposals and composition provenance through
+those IDs, and exposes verifier-gated copy-on-write consolidation that
+aggregates sufficient statistics without replay. The policy-free runtime can
+invoke this maintenance path while the controller remains frozen. This is a
+memory-safety and persistence improvement; candidate invention from partial
+experience and general continual learning remain open.

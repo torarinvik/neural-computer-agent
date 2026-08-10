@@ -546,3 +546,26 @@ growth, or general continual learning. The next pressure is a long
 nonstationary stream where candidate selection and retention decisions are
 learned from verifier outcomes and evaluated with stable-prefix retention and
 matched-fresh transfer accounting.
+
+## Stable-address intention memory (2026-08-10)
+
+The same files-like lifecycle now applies to the standalone
+`ExternalIntentionRepertoire`, which is the policy-free runtime's fallback
+candidate store when no atomic intention↔entry binding bank is configured.
+Observed output vectors receive stable logical IDs; physical compaction keeps
+one replacement address and persists aliases for retired IDs. Outcome and
+exact-propensity sufficient statistics are aggregated directly, so maintenance
+does not replay old examples or update the controller.
+
+`consolidate_verified` is exposed through `PolicyFreeAmodalRuntime` and uses
+the same isolated retention-probe and mutation-integrity gate as binding
+memory. Proposal and composition provenance now report logical IDs rather than
+physical positions, so reordering or compaction cannot silently redirect a
+durable output reference. Legacy payloads without address metadata remain
+loadable and are assigned their original positional IDs.
+
+This generalizes the memory safety contract; it does not create arbitrary new
+intention content or establish learned equivalence discovery. The next
+capability bottleneck remains outcome-only candidate generation from partial
+multimodal experience, with retention and transfer measured against a fresh
+learner.

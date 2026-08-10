@@ -30,6 +30,7 @@ from .entry import (
     ExternalEntryRepertoire,
 )
 from .intention import (
+    ExternalIntentionConsolidationReceipt,
     ExternalIntentionObservationReceipt,
     ExternalIntentionProposal,
     ExternalIntentionRepertoire,
@@ -1298,7 +1299,7 @@ class PolicyFreeAmodalRuntime:
             "controller_intention": "diagnostic_only_not_decoded_v1",
             "goal_input": "opaque_external_destination_state_or_goal_set_v1",
             "candidate_intentions": (
-                "external_append_only_intention_repertoire_v1"
+                "external_logical_addressed_intention_repertoire_v1"
                 if self.intention_repertoire is not None
                 else "runtime_variable_opaque_caller_set_v1"
             ),
@@ -1346,6 +1347,25 @@ class PolicyFreeAmodalRuntime:
             utility=utility,
             propensity=propensity,
             timestamp=timestamp,
+        )
+
+    def consolidate_intention_verified(
+        self,
+        retired_ids: tuple[int, ...] | list[int],
+        replacement_intention: torch.Tensor,
+        retention_probe: Callable[[ExternalIntentionRepertoire], bool],
+        *,
+        reason: str = "caller_owned_heldout_retention_probe",
+    ) -> ExternalIntentionConsolidationReceipt:
+        """Run retention-safe intention maintenance outside the controller."""
+
+        if self.intention_repertoire is None:
+            raise RuntimeError("policy-free runtime has no intention repertoire")
+        return self.intention_repertoire.consolidate_verified(
+            retired_ids,
+            replacement_intention,
+            retention_probe,
+            reason=reason,
         )
 
     def observe_entry(

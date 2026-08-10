@@ -79,6 +79,15 @@ def test_repertoire_grows_from_opaque_outcomes_without_reward_ranking() -> None:
     with pytest.raises(ValueError, match="checksum"):
         ExternalIntentionRepertoire.from_payload(corrupt)
 
+    legacy = repertoire.payload()
+    legacy.pop("logical_ids")
+    legacy.pop("next_logical_id")
+    legacy.pop("aliases")
+    legacy["sha256"] = ExternalIntentionRepertoire._digest_payload(legacy)
+    legacy_restored = ExternalIntentionRepertoire.from_payload(legacy)
+    assert legacy_restored.logical_ids == (0, 1)
+    assert legacy_restored.resolve_logical_id(1) == 1
+
 
 def test_verified_intention_admission_is_copy_on_write_and_retention_safe() -> None:
     repertoire = ExternalIntentionRepertoire(2)
@@ -129,6 +138,66 @@ def test_composition_explorer_proposes_ephemeral_candidates_from_retained_vector
     assert repertoire.record_count == 2
 
 
+def test_intention_consolidation_preserves_aliases_and_sufficient_statistics() -> None:
+    repertoire = ExternalIntentionRepertoire(2)
+    repertoire.observe(
+        torch.tensor([[1.0, 0.0], [0.0, 1.0], [-1.0, 0.0]]),
+        utility=torch.tensor([1.0, 0.0, -1.0]),
+        propensity=torch.tensor([0.5, 1.0, 0.25]),
+        timestamp=torch.tensor([10, 20, 30]),
+    )
+    source_digest = repertoire.content_digest()
+
+    receipt = repertoire.consolidate_verified(
+        (0, 1),
+        torch.tensor([0.5, 0.5]),
+        lambda candidate: (
+            candidate.logical_ids == (2, 0)
+            and candidate.resolve_logical_id(1) == 0
+            and candidate.physical_index_for_id(1) == 1
+            and candidate.propose(include_seed=False).source_indices == (2, 0)
+            and candidate.statistics()["attempts"].tolist() == [1, 2]
+        ),
+    )
+
+    assert receipt.accepted
+    assert receipt.retired_ids == (0, 1)
+    assert receipt.replacement_id == 0
+    assert receipt.source_record_count == 3
+    assert receipt.destination_record_count == 2
+    assert repertoire.logical_ids == (2, 0)
+    assert repertoire.resolve_logical_id(1) == 0
+    assert repertoire.physical_index_for_id(1) == 1
+    assert repertoire.content_digest() == receipt.destination_digest
+    assert repertoire.content_digest() != source_digest
+
+    restored = ExternalIntentionRepertoire.from_payload(repertoire.payload())
+    assert restored.content_digest() == repertoire.content_digest()
+    assert restored.logical_ids == (2, 0)
+    assert restored.resolve_logical_id(1) == 0
+    assert restored.physical_index_for_id(1) == 1
+
+
+def test_intention_consolidation_rejects_mutating_probe_atomically() -> None:
+    repertoire = ExternalIntentionRepertoire(2)
+    repertoire.observe(torch.tensor([[1.0, 0.0], [0.0, 1.0]]))
+    source_digest = repertoire.content_digest()
+
+    receipt = repertoire.consolidate_verified(
+        (0, 1),
+        torch.tensor([0.5, 0.5]),
+        lambda candidate: bool(
+            candidate.observe(torch.tensor([0.25, 0.75]), utility=1.0).outcome_observed
+        ),
+    )
+
+    assert not receipt.accepted
+    assert receipt.replacement_id is None
+    assert receipt.destination_record_count == receipt.source_record_count == 2
+    assert repertoire.logical_ids == (0, 1)
+    assert repertoire.content_digest() == source_digest
+
+
 def test_policy_free_runtime_can_source_candidates_from_external_repertoire() -> None:
     torch.manual_seed(19)
     controller = AmodalCognitiveController(
@@ -174,7 +243,7 @@ def test_policy_free_runtime_can_source_candidates_from_external_repertoire() ->
     assert torch.allclose(output.planning.predicted_states[0, -1], goal[0])
     assert torch.allclose(output.decoded["echo"], output.intention.payload)
     assert policy_free.configuration()["candidate_intentions"] == (
-        "external_append_only_intention_repertoire_v1"
+        "external_logical_addressed_intention_repertoire_v1"
     )
 
     receipt = policy_free.observe_intention(
@@ -185,6 +254,14 @@ def test_policy_free_runtime_can_source_candidates_from_external_repertoire() ->
     assert receipt.outcome_observed
     for name, value in controller.state_dict().items():
         assert torch.equal(value, before[name])
+
+    consolidation = policy_free.consolidate_intention_verified(
+        (0, 1),
+        torch.tensor([0.5, 0.5]),
+        lambda candidate: candidate.logical_ids == (2, 3, 0),
+    )
+    assert consolidation.accepted
+    assert repertoire.resolve_logical_id(1) == 0
 
 
 def test_policy_free_runtime_requires_candidates_or_repertoire() -> None:
