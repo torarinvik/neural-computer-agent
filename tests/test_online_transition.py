@@ -584,6 +584,80 @@ def test_router_stages_and_promotes_affine_candidate_without_optimizer() -> None
     assert router.bank.models[0].sample_count.item() == 4
 
 
+def test_promotion_requires_all_independent_heldout_lifetimes() -> None:
+    bank = ExternalTransitionModelBank(
+        2,
+        1,
+        4,
+        model_family="affine_sufficient_statistics_v1",
+        affine_ridge=1e-7,
+    )
+    router = ExternalOnlineTransitionContextRouter(
+        bank,
+        ExternalTransitionContextEncoder(2, 1, hidden_width=8, context_width=4),
+        match_tolerance=1e-8,
+        match_margin=0.0,
+        continuation_tolerance=1e-8,
+        admission_observations=4,
+        defer_admission=True,
+        provisional_evidence_policy="streaming_statistics",
+    )
+    source = _affine_observation(4)
+    rows = [
+        ExternalTransitionObservation(
+            state=source.state[row : row + 1],
+            intention=source.intention[row : row + 1],
+            next_state=source.next_state[row : row + 1],
+            confidence=torch.ones(1),
+        )
+        for row in range(4)
+    ]
+    for row in rows[:3]:
+        assert router.observe(row).status == "pending"
+    staged = router.observe(rows[3])
+    assert staged.status == "staged"
+    router.adaptation_step(staged, None, replay_evidence=False)
+
+    heldout = _affine_observation(4)
+    before = router.bank.content_digest()
+    bad_heldout = ExternalTransitionObservation(
+        state=heldout.state,
+        intention=heldout.intention,
+        next_state=heldout.next_state + 10.0,
+    )
+    prediction_rejected = router.promote_staged_candidate(
+        heldout,
+        lambda candidate: candidate.context_count == 1,
+        prediction_tolerance=1e-7,
+        additional_heldout_observations=(bad_heldout,),
+    )
+    assert not prediction_rejected.accepted
+    assert "held-out" in prediction_rejected.reason
+    assert router.bank.content_digest() == before
+    assert router.provisional_candidate_count == 1
+    rejected = router.promote_staged_candidate(
+        heldout,
+        lambda candidate: candidate.context_count == 1,
+        prediction_tolerance=1e-7,
+        heldout_rollout=_affine_rollout(),
+        rollout_error_tolerance=1e-8,
+        additional_heldout_rollouts=(_affine_rollout(scale=2.0),),
+    )
+    assert not rejected.accepted
+    assert "recursive" in rejected.reason
+    assert router.bank.content_digest() == before
+    assert router.provisional_candidate_count == 1
+
+    accepted = router.promote_staged_candidate(
+        heldout,
+        lambda candidate: candidate.context_count == 1,
+        prediction_tolerance=1e-7,
+        heldout_rollout=_affine_rollout(),
+        rollout_error_tolerance=1e-8,
+    )
+    assert accepted.accepted
+
+
 def test_router_auto_grows_only_after_verified_candidate_promotion() -> None:
     bank = ExternalTransitionModelBank(
         2,

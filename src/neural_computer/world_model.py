@@ -815,6 +815,7 @@ class ExternalTransitionModelBank(nn.Module):
         candidates: Mapping[str, nn.Module],
         heldout_observation: ExternalTransitionObservation,
         *,
+        heldout_observations: Sequence[ExternalTransitionObservation] | None = None,
         prediction_tolerance: float = 0.05,
         retention_probe: Callable[[nn.Module], bool] | None = None,
     ) -> ExternalTransitionModelFamilySelection:
@@ -829,6 +830,7 @@ class ExternalTransitionModelBank(nn.Module):
         return select_verified_transition_model_family(
             candidates,
             heldout_observation,
+            heldout_observations=heldout_observations,
             prediction_tolerance=prediction_tolerance,
             retention_probe=retention_probe,
         )
@@ -7364,6 +7366,9 @@ class ExternalOnlineTransitionContextRouter:
         destination_capacity: int | None = None,
         heldout_rollout: ExternalTransitionRollout | None = None,
         rollout_error_tolerance: float | None = None,
+        additional_heldout_observations: Sequence[ExternalTransitionObservation]
+        | None = None,
+        additional_heldout_rollouts: Sequence[ExternalTransitionRollout] | None = None,
     ) -> ExternalTransitionModelCandidateReceipt:
         """Commit a provisional model only after held-out and retention proof.
 
@@ -7378,12 +7383,29 @@ class ExternalOnlineTransitionContextRouter:
             raise ValueError("candidate prediction tolerance cannot be negative")
         if rollout_error_tolerance is not None and rollout_error_tolerance < 0.0:
             raise ValueError("candidate rollout tolerance cannot be negative")
+        if heldout_rollout is None and additional_heldout_rollouts:
+            raise ValueError(
+                "additional held-out rollouts require a primary held-out rollout"
+            )
         if heldout_rollout is None and rollout_error_tolerance is not None:
             raise ValueError(
                 "rollout error tolerance requires a held-out transition rollout"
             )
-        if heldout_rollout is not None:
-            heldout_rollout.validate(
+        additional_observations = (
+            ()
+            if additional_heldout_observations is None
+            else tuple(additional_heldout_observations)
+        )
+        additional_rollouts = (
+            ()
+            if additional_heldout_rollouts is None
+            else tuple(additional_heldout_rollouts)
+        )
+        heldout_rollouts = (
+            () if heldout_rollout is None else (heldout_rollout, *additional_rollouts)
+        )
+        for rollout in heldout_rollouts:
+            rollout.validate(
                 state_width=self.bank.state_width,
                 intention_width=self.bank.intention_width,
             )
@@ -7457,6 +7479,7 @@ class ExternalOnlineTransitionContextRouter:
         selection = self.bank.select_model_family_verified(
             candidate_models,
             heldout_observation,
+            heldout_observations=additional_observations,
             prediction_tolerance=prediction_tolerance,
         )
         if not selection.accepted or selection.selected_family is None:
@@ -7517,11 +7540,15 @@ class ExternalOnlineTransitionContextRouter:
                 reason="provisional context duplicates a committed context",
             ).validate()
         candidate_bank.models[bank_candidate_index].load_state_dict(model.state_dict())
-        heldout_context = context.unsqueeze(0).expand(
-            heldout_observation.state.shape[0], -1
-        )
-        heldout_error = float(
-            candidate_bank.loss(heldout_observation, heldout_context).detach()
+        heldout_observations_all = (heldout_observation, *additional_observations)
+        heldout_error = max(
+            float(
+                candidate_bank.loss(
+                    observation,
+                    context.unsqueeze(0).expand(observation.state.shape[0], -1),
+                ).detach()
+            )
+            for observation in heldout_observations_all
         )
         if heldout_error > prediction_tolerance:
             return ExternalTransitionModelCandidateReceipt(
@@ -7535,20 +7562,24 @@ class ExternalOnlineTransitionContextRouter:
                 reason="held-out candidate prediction failed",
             ).validate()
         heldout_rollout_error: float | None = None
-        if heldout_rollout is not None:
+        if heldout_rollouts:
             rollout_error_tolerance = (
                 prediction_tolerance
                 if rollout_error_tolerance is None
                 else rollout_error_tolerance
             )
-            heldout_rollout_error = ExternalModelBasedPlanner(
-                candidate_bank,
-                beam_width=1,
-            ).rollout_error(
-                heldout_rollout,
-                transition_context=context.unsqueeze(0),
-            )
-            if heldout_rollout_error > rollout_error_tolerance:
+            rollout_errors = [
+                ExternalModelBasedPlanner(
+                    candidate_bank,
+                    beam_width=1,
+                ).rollout_error(
+                    rollout,
+                    transition_context=context.unsqueeze(0),
+                )
+                for rollout in heldout_rollouts
+            ]
+            heldout_rollout_error = max(rollout_errors)
+            if any(error > rollout_error_tolerance for error in rollout_errors):
                 return ExternalTransitionModelCandidateReceipt(
                     accepted=False,
                     slot_index=None,

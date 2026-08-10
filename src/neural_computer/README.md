@@ -1545,6 +1545,13 @@ retention, and a matched fresh challenger. This remains a bounded frozen-core
 transition boundary; multi-lifetime promotion and general continual learning
 are still open.
 
+Transition-slot promotion supports multiple independent held-out observations
+and rollouts. Selection and recursive verification use the worst held-out
+error, so a candidate cannot enter external memory after succeeding on only a
+single lucky lifetime. The rendered Brain Workshop audit uses three staged
+holdouts plus a post-promotion route lifetime; its seed-mixed result remains a
+bounded safety boundary rather than a claim of general continual learning.
+
 ## Opaque goal-fragment memory
 
 `ExternalGoalFragmentMemory` stores destinations outside the fixed controller.

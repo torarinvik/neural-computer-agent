@@ -1395,3 +1395,26 @@ conditioning and safety improvement, not a promotion of general continual
 learning; the next bottleneck is multi-lifetime promotion evidence before
 external slot commit. The full accounting is in
 `session_records/window_aware_transition_state_2026-08-11/sample_efficiency_ledger.json`.
+
+## Multi-lifetime transition promotion (2026-08-11)
+
+The promotion transaction now accepts a sequence of independent held-out
+observations and recursive rollouts. Model-family selection uses the worst
+error across the complete sequence, and copy-on-write promotion aborts if any
+held-out lifetime exceeds the factual threshold. Existing single-lifetime
+callers remain valid, while new continual-learning experiments can require a
+real evidence prefix before committing external memory.
+
+The rendered discovery audit now validates three fresh target lifetimes through
+an isolated staged bank, requires the router's strict `0.05` one-step match
+tolerance plus recursive rollout and fresh-challenger gates, and then runs one
+additional post-promotion route lifetime. Seed `93` reaches target error
+`0.02279` versus `0.06259` for a fresh bank, retains the source slot, consumes
+`24` training rows once, replays zero examples, and uses `9` logical lifetimes
+with the controller frozen.
+
+Across six seeds, two pass and four reject before or at promotion. This is a
+stronger safety boundary, not a general continual-learning result. The next
+bottleneck is route/context generalization on unseen target trajectories: the
+factual slot can be correct on its promotion prefix while the router still
+rejects a later trajectory as unrouteable.

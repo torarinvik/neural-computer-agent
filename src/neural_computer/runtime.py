@@ -1315,7 +1315,7 @@ class ExternalControllerEventWindowStateAdapter(nn.Module):
         state_width: int | None = None,
         *,
         hidden_width: int = 0,
-        window_gain: float = 0.1,
+        window_gain: float = 0.15,
     ) -> None:
         super().__init__()
         if controller_width < 1 or hidden_width < 0 or not math.isfinite(window_gain):

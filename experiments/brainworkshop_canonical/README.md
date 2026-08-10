@@ -294,7 +294,8 @@ recursive, source-retention, and matched fresh-candidate gates. It checks
 one-pass learning, route recovery, and source retention. The policy-free
 runtime can use `ExternalControllerEventWindowStateAdapter` to retain bounded
 event-window statistics at the historical planner width, and the promotion
-call passes the recursive held-out rollout into the atomic commit gate. It is
-deliberately a boundary audit rather than a general continual-learning claim;
-the seed ledger is in
-`session_records/window_aware_transition_state_2026-08-11/sample_efficiency_ledger.json`.
+call passes three independent recursive held-out rollouts into the atomic
+commit gate before a post-promotion route lifetime. It is deliberately a
+boundary audit rather than a general continual-learning claim; the seed
+ledger is in
+`session_records/multi_lifetime_transition_promotion_2026-08-11/sample_efficiency_ledger.json`.

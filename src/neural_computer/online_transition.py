@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import hashlib
 import math
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -1293,6 +1293,7 @@ def select_verified_transition_model_family(
     candidates: Mapping[str, nn.Module],
     heldout_observation: ExternalTransitionObservation,
     *,
+    heldout_observations: Sequence[ExternalTransitionObservation] | None = None,
     prediction_tolerance: float = 0.05,
     retention_probe: Any = None,
 ) -> ExternalTransitionModelFamilySelection:
@@ -1315,15 +1316,22 @@ def select_verified_transition_model_family(
     first_model = next(iter(candidates.values()))
     if not isinstance(first_model, nn.Module) or not hasattr(first_model, "loss"):
         raise TypeError("model-family candidates must be learned modules with loss()")
-    heldout_observation.validate(
-        state_width=int(first_model.state_width),
-        intention_width=int(first_model.intention_width),
+    additional_observations = (
+        () if heldout_observations is None else tuple(heldout_observations)
     )
+    observations = (heldout_observation, *additional_observations)
+    for observation in observations:
+        observation.validate(
+            state_width=int(first_model.state_width),
+            intention_width=int(first_model.intention_width),
+        )
     receipts: list[ExternalTransitionModelFamilyCandidateReceipt] = []
     for name, model in candidates.items():
         if not isinstance(model, nn.Module) or not hasattr(model, "loss"):
             raise TypeError("model-family candidates must be learned modules with loss()")
-        heldout_error = float(model.loss(heldout_observation).detach())
+        heldout_error = max(
+            float(model.loss(observation).detach()) for observation in observations
+        )
         storage_bytes = sum(
             value.numel() * value.element_size() for value in model.state_dict().values()
         )
@@ -1337,7 +1345,7 @@ def select_verified_transition_model_family(
                 storage_bytes=storage_bytes,
                 candidate_digest=_candidate_digest(model),
                 reason=(
-                    "held-out and retention-verified candidate accepted"
+                    "all held-out and retention-verified candidates accepted"
                     if accepted
                     else (
                         "held-out candidate prediction failed"
@@ -1358,7 +1366,7 @@ def select_verified_transition_model_family(
         selected_family=None if selected is None else selected.model_family,
         candidates=tuple(receipts),
         reason=(
-            "smallest held-out and retention-verified model family selected"
+            "smallest all-held-out and retention-verified model family selected"
             if selected is not None
             else "no model-family candidate passed verification"
         ),
