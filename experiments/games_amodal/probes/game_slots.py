@@ -150,6 +150,19 @@ parser.add_argument(
          "scalar head trained on the observed return, used raw by the "
          "search.")
 parser.add_argument(
+    "--bind-value", action="store_true",
+    help="F135's BIND-ONCE carried to the games. The beam search calls "
+         "the value head at every rollout step with the entry as "
+         "attention context, so the same world parameters are "
+         "re-derived on each of `depth` steps — exactly the pattern "
+         "F135 measured as the depth killer in the composition probes "
+         "(0.5548 re-attending vs 0.9983 binding once). This reduces "
+         "the entry to ONE vector via a simple linear map and adds it "
+         "to the state token instead, so the entry is consulted once "
+         "per call and never attended over. Note the signed pathway "
+         "was ALREADY bound in this sense, and it is the half that has "
+         "carried every gain since F113.")
+parser.add_argument(
     "--tied-salience", action="store_true",
     help="F73's SLOT SYMMETRY applied to the signed pathway: instead "
          "of two independent salience channels read off the whole "
@@ -420,6 +433,10 @@ class Outcome(torch.nn.Module):
         self.tied = torch.nn.Sequential(
             torch.nn.Linear(4, 32), torch.nn.ReLU(),
             torch.nn.Linear(32, 1))
+        # bind-once path: entry -> one vector, added to the state token.
+        # Deliberately a single linear map — F140 measured that giving
+        # this decoder capacity destroys the effect (0.9983 -> 0.6196).
+        self.value_binder = torch.nn.Linear(dim, dim)
 
     @staticmethod
     def object_features(states: torch.Tensor) -> torch.Tensor:
@@ -442,7 +459,10 @@ class Outcome(torch.nn.Module):
         raw = (self.state(encode(states))
                + self.action(acts)).unsqueeze(1)
         token = raw
-        if entry is not None:
+        if args.bind_value and entry is not None:
+            token = raw + self.value_binder(
+                entry.mean(dim=0)).view(1, 1, -1)
+        elif entry is not None:
             context = entry.unsqueeze(0).expand(states.shape[0], -1, -1)
             token = torch.cat([context, token], dim=1)
         for block in self.blocks:
