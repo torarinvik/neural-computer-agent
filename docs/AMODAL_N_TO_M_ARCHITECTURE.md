@@ -4433,8 +4433,12 @@ The production package now exposes `ExternalTransitionModel`,
 is an independently replaceable external component that learns only from
 opaque state/intention/next-state tensors. The planner derives an intention
 sequence by searching candidate opaque intentions against an opaque terminal
-goal state; it does not store a task-specific policy and does not resize the
-controller when candidate count changes.
+goal state or a runtime-sized set of possible goal states; it does not store a
+task-specific policy and does not resize the controller when candidate or goal
+count changes. When an `ExternalGoalEvaluator` is supplied, a goal set is an
+existential opaque predicate: the best verifier score for any member is the
+terminal objective. This supports goal fragments without assigning semantics
+to latent coordinates.
 
 The first matched two-seed pressure test froze the controller, trained the
 external model for `1,200` source updates, then acquired three target goals

@@ -1854,6 +1854,51 @@ def test_planner_accepts_contextual_append_only_transition_memory() -> None:
     assert torch.equal(result.predicted_states[0, 0], torch.ones(1))
 
 
+def test_planner_accepts_runtime_sized_opaque_goal_sets() -> None:
+    planner = ExternalModelBasedPlanner(_AdditiveTransitionModel(), beam_width=1)
+    result = planner.plan(
+        torch.zeros(1, 1),
+        torch.tensor([[[1.0], [3.0]]]),
+        torch.tensor([[-1.0], [1.0], [2.0]]),
+        horizon=1,
+    )
+
+    assert result.intentions.shape == (1, 1, 1)
+    assert result.predicted_states.shape == (1, 1, 1)
+    assert result.intentions[0, 0, 0].item() == 1.0
+    assert result.predicted_states[0, 0, 0].item() == 1.0
+    assert result.scores.item() == 0.0
+
+
+def test_planner_goal_set_uses_learned_verifier_as_existential_predicate() -> None:
+    torch.manual_seed(1214)
+    evaluator = ExternalGoalEvaluator(1, hidden_width=8)
+    optimizer = torch.optim.Adam(evaluator.parameters(), lr=0.05)
+    states = torch.tensor([[0.0], [1.0], [2.0], [3.0]])
+    goals = torch.tensor([[1.0], [1.0], [3.0], [3.0]])
+    outcomes = torch.tensor([0.0, 1.0, 0.0, 1.0])
+    for _ in range(250):
+        optimizer.zero_grad()
+        loss = evaluator.loss(states, goals, outcomes)
+        loss.backward()
+        optimizer.step()
+
+    planner = ExternalModelBasedPlanner(
+        _AdditiveTransitionModel(),
+        beam_width=1,
+        goal_evaluator=evaluator,
+    )
+    result = planner.plan(
+        torch.zeros(1, 1),
+        torch.tensor([[[1.0], [3.0]]]),
+        torch.tensor([[1.0], [2.0]]),
+        horizon=1,
+    )
+
+    assert result.intentions[0, 0, 0].item() == 1.0
+    assert result.scores.item() < -0.9
+
+
 def test_context_resolver_reuses_consistent_facts_and_allocates_new_regime() -> None:
     memory = ExternalTransitionMemory(1, 1, context_width=2)
     resolver = ExternalContextAddressResolver(2, address_seed=1204)

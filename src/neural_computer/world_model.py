@@ -8356,6 +8356,7 @@ class ExternalModelBasedPlanner:
             "schema": self.schema,
             "beam_width": self.beam_width,
             "search": "opaque_candidate_beam_rollout_v1",
+            "goal_input": "single_or_runtime_sized_opaque_goal_set_v1",
             "objective": (
                 "learned_verifier_terminal_match_v1"
                 if self.goal_evaluator is not None
@@ -8404,14 +8405,22 @@ class ExternalModelBasedPlanner:
             ndim=2,
             width=self.model.state_width,
         )
+        if goal_state.ndim not in (2, 3):
+            raise ValueError("goal_state must be [batch,width] or [batch,goals,width]")
         _validate_tensor(
             goal_state,
             name="goal_state",
-            ndim=2,
+            ndim=goal_state.ndim,
             width=self.model.state_width,
         )
         if goal_state.shape[0] != state.shape[0]:
             raise ValueError("state and goal_state batches differ")
+        if goal_state.ndim == 2:
+            goals = goal_state.unsqueeze(1)
+        else:
+            goals = goal_state
+        if goals.shape[1] < 1:
+            raise ValueError("planner requires at least one goal state")
         if transition_context is not None:
             context_width = getattr(self.model, "context_width", None)
             if not isinstance(context_width, int) or context_width < 1:
@@ -8485,21 +8494,34 @@ class ExternalModelBasedPlanner:
                         .unsqueeze(0)
                         .expand(parent_count * candidate_count, -1),
                     ).reshape(parent_count, candidate_count, -1)
+                    row_goals = goals[row]
                     if self.goal_evaluator is None:
-                        terminal_scores = (
-                            (next_states - goal_state[row].unsqueeze(0).unsqueeze(0))
-                            .square()
-                            .mean(dim=-1)
-                        )
+                        goal_distances = (
+                            next_states.unsqueeze(2)
+                            - row_goals.unsqueeze(0).unsqueeze(0)
+                        ).square().mean(dim=-1)
+                        terminal_scores = goal_distances.min(dim=-1).values
                     else:
-                        terminal_scores = -torch.sigmoid(
-                            self.goal_evaluator(
-                                next_states.reshape(-1, self.model.state_width),
-                                goal_state[row]
-                                .unsqueeze(0)
-                                .expand(parent_count * candidate_count, -1),
+                        state_queries = (
+                            next_states.unsqueeze(2)
+                            .expand(-1, -1, row_goals.shape[0], -1)
+                            .reshape(-1, self.model.state_width)
+                        )
+                        goal_queries = (
+                            row_goals.unsqueeze(0)
+                            .unsqueeze(0)
+                            .expand(
+                                parent_count,
+                                candidate_count,
+                                -1,
+                                -1,
                             )
-                        ).reshape(parent_count, candidate_count)
+                            .reshape(-1, self.model.state_width)
+                        )
+                        success_probability = torch.sigmoid(
+                            self.goal_evaluator(state_queries, goal_queries)
+                        ).reshape(parent_count, candidate_count, -1)
+                        terminal_scores = -success_probability.max(dim=-1).values
                     expanded: list[
                         tuple[
                             torch.Tensor,
