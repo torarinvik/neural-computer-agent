@@ -6034,6 +6034,31 @@ class ExternalOnlineTransitionContextRouter:
 
         return len(self._provisional_candidates)
 
+    def fork_stream(self) -> ExternalOnlineTransitionContextRouter:
+        """Create an empty stream-local router over the same external bank.
+
+        The committed factual bank, context encoder, route index, sparse
+        evidence, and evidence evaluator remain shared. Pending rows,
+        active-slot continuity, quarantine, address-adapter state, and staged
+        candidates are isolated. This is the primitive used by the
+        multi-stream boundary; it does not create another controller or bank.
+        """
+
+        child = copy.deepcopy(self)
+        child.bank = self.bank
+        child.context_encoder = self.context_encoder
+        child.route_query = self.route_query
+        child.sparse_evidence = self.sparse_evidence
+        child.evidence_evaluator = self.evidence_evaluator
+        child._pending = []
+        child._active_slot = None
+        child._active_slot_id = None
+        child._conflict_windows = 0
+        child._provisional_candidates = []
+        child._ambiguous_quarantine = []
+        child._last_reliability_veto = False
+        return child
+
     def provisional_model_at(self, candidate_index: int) -> nn.Module:
         """Return one isolated candidate for caller-owned optimization."""
 
@@ -6810,8 +6835,18 @@ class ExternalOnlineTransitionContextRouter:
     def observe(
         self,
         observation: ExternalTransitionObservation,
+        *,
+        preferred_slot_id: int | None = None,
     ) -> ExternalOnlineTransitionContextResult:
-        """Route one current-stream row without accepting a regime label."""
+        """Route one current-stream row without accepting a regime label.
+
+        ``preferred_slot_id`` is an optional verified continuation binding for
+        a caller-owned stream. It is only a preference: the factual evidence
+        must still fit the slot, otherwise ordinary multi-slot routing runs.
+        This keeps stream identity separate from task labels while preventing
+        a shared bank from assigning a low-error stream to another slot merely
+        because that slot happens to be globally closest.
+        """
 
         self._refresh_active_slot()
         observation.validate(
@@ -6825,6 +6860,55 @@ class ExternalOnlineTransitionContextRouter:
             return self._pending_result()
 
         bundle = self._merge_observations(self._pending)
+        if preferred_slot_id is not None:
+            if (
+                not isinstance(preferred_slot_id, int)
+                or isinstance(preferred_slot_id, bool)
+                or preferred_slot_id < 0
+            ):
+                raise ValueError("preferred transition-model slot ID is invalid")
+            try:
+                preferred_index = self.bank.physical_index_for_slot_id(
+                    preferred_slot_id
+                )
+            except KeyError:
+                preferred_index = None
+            if preferred_index is not None:
+                preferred_context = self.bank.context_at(preferred_index)
+                preferred_context_batch = preferred_context.to(bundle.state).unsqueeze(
+                    0
+                ).expand(bundle.state.shape[0], -1)
+                preferred_prediction = self.bank(
+                    bundle.state,
+                    bundle.intention,
+                    preferred_context_batch,
+                )
+                preferred_error = self._robust_error(
+                    preferred_prediction,
+                    bundle.next_state,
+                )
+                if preferred_error <= self.continuation_tolerance and self._evidence_allows(
+                    preferred_prediction,
+                    bundle.next_state,
+                    context=preferred_context,
+                ):
+                    self._pending.clear()
+                    self._set_active_slot(preferred_index)
+                    self._conflict_windows = 0
+                    self._record_sparse_evidence(preferred_index, bundle)
+                    return ExternalOnlineTransitionContextResult(
+                        status="continuation",
+                        slot_index=preferred_index,
+                        context=preferred_context,
+                        pending_observations=0,
+                        prediction_error=preferred_error,
+                        observation=bundle,
+                        stable_slot_id=preferred_slot_id,
+                    ).validate(
+                        state_width=self.bank.state_width,
+                        intention_width=self.bank.intention_width,
+                        context_width=self.bank.context_width,
+                    )
         match = self._best_slot(bundle)
         if match is not None:
             index, error, _margin, context = match

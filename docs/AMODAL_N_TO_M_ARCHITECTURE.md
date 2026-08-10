@@ -7671,3 +7671,42 @@ continual learning: the dynamics family, context encoder, model capacity,
 probe budget, and planner horizon remain finite and synthetic. Evidence is
 archived in
 `session_records/sequence_working_memory_2026-08-02/external_transition_model_disjoint_compounding_matched_fresh_promoted_2026-08-10/`.
+
+## Shared factual bank with interleaved stream bindings (2026-08-10)
+
+The exported games architecture made the ownership rule explicit: the
+controller is fixed-size compute, the external bank is growing factual
+memory, and behavior is derived by search rather than stored as one policy per
+task. The next implementation consequence is that multiple live streams must
+not share one pending evidence window or one provisional candidate.
+
+`ExternalMultiStreamTransitionContextRouter` now provides that boundary. It
+keeps pending rows, active continuity, ambiguity quarantine, address-adapter
+copies, and provisional factual candidates isolated per opaque normalized
+stream key, while sharing exactly one model bank, context encoder, route query,
+sparse evidence index, and verifier boundary. Once a candidate is promoted, its
+stable slot address becomes that stream's preferred continuation address.
+Evidence must still fit the preferred factual model; a contradiction can fall
+back to ordinary factual routing rather than silently overwriting the old slot.
+This is stream binding, not a task label or a modality-specific reasoning
+branch.
+
+The persistence payload stores the shared router once and serializes only
+stream-local transient state per binding. Its recursive checksum hashes tensor
+dtype, shape, and bytes instead of tensor string representations, so a changed
+stream key, candidate, or pending row is rejected before restoration. Bank
+context matching must retain the established float32 round-off tolerance;
+normalizing an already-stored key again is not bit-exact.
+
+The sub-minute pressure test in
+`experiments/external_transition_model_multistream/` stages three streams in
+interleaved order, updates only one candidate, verifies the other candidates
+remain byte-stable, then performs one-pass factual updates and held-out
+promotion. Seed `1901` promoted all three streams, routed revisits to stable
+slot IDs `[0, 1, 2, 0, 1, 2]`, restored the same routing after persistence,
+rejected a checksum-corrupted payload, used zero replay and zero optimizer
+updates, and kept the controller frozen. This promotes a bounded shared-bank
+binding invariant only; it does not establish learned stream identity,
+unrestricted memory growth, arbitrary computation, or general continual
+learning. The next meaningful rung is concurrent streams with missing,
+contradictory, and drifting evidence under bounded eviction.

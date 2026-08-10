@@ -112,3 +112,14 @@ The interleaved bounded-memory experiment is a complementary pressure test for
 binding, delayed evidence, eviction, and retention. Its structural action mask
 is part of the transaction boundary; its learned capacity policy is not
 evidence of general continual learning.
+
+The shared-bank stream boundary is implemented by
+`neural_computer.ExternalMultiStreamTransitionContextRouter`. It is the
+policy-free analogue of the exported games session's shared-controller design:
+one controller and one factual bank serve many opaque streams, while each
+stream owns only its transport window and provisional copy-on-write state.
+Promoted stream addresses are preferred continuations, not semantic labels, and
+every new factual write still requires independent held-out verification plus
+retention. The current pressure test is bounded and synthetic; it is an
+architecture invariant, not evidence that the system has learned arbitrary
+identity formation.

@@ -205,6 +205,11 @@ from .memory import (
     PersistentAppendOnlyContentAddressedMemory,
     PersistentContentAddressedMemory,
 )
+from .multistream_transition import (
+    EXTERNAL_MULTI_STREAM_TRANSITION_ROUTER_SCHEMA,
+    ExternalMultiStreamTransitionContextResult,
+    ExternalMultiStreamTransitionContextRouter,
+)
 from .online_transition import (
     EXTERNAL_GOAL_EVALUATOR_STATISTICS_SCHEMA,
     EXTERNAL_GOAL_REPRESENTATION_ALIGNMENT_SCHEMA,
@@ -505,6 +510,7 @@ __all__ = [
     "EXTERNAL_GOAL_REPRESENTATION_RANDOM_FEATURE_ALIGNMENT_SCHEMA",
     "EXTERNAL_GOAL_REPRESENTATION_RANDOM_FEATURE_GROWTH_SCHEMA",
     "EXTERNAL_MODEL_PLANNER_SCHEMA",
+    "EXTERNAL_MULTI_STREAM_TRANSITION_ROUTER_SCHEMA",
     "EXTERNAL_ONLINE_CONTEXT_RESOLVER_SCHEMA",
     "EXTERNAL_ONLINE_TRANSITION_CONTEXT_ROUTER_SCHEMA",
     "EXTERNAL_OUTCOME_CREDIT_SCHEMA",
@@ -675,6 +681,8 @@ __all__ = [
     "ExternalMemoryEvictionPolicy",
     "ExternalMemoryWritePolicy",
     "ExternalModelBasedPlanner",
+    "ExternalMultiStreamTransitionContextResult",
+    "ExternalMultiStreamTransitionContextRouter",
     "ExternalOnlineContextAddressResolver",
     "ExternalOnlineContextResolution",
     "ExternalOnlineTransitionContextResult",
