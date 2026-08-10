@@ -59,6 +59,42 @@ receives a state, receives a **goal**, and acts. It holds:
 It must hold **no** task content. This is the invariant that every
 failure in this project has violated in a new way (see §4).
 
+**The plant must APPLY ONE PIECE AT A TIME (F121).** Settled
+2026-08-10, and it is an interface constraint rather than a training
+one. Given a composite task presented whole, the plant fits every
+composite it is shown at 1.0000 and generalises to unseen arrangements
+of the very same pieces at CHANCE (0.0794 against 0.0435). Given the
+same task one piece at a time — a latent stepped once per element
+through a step function SHARED across positions and lengths, decoded
+only at the end, no intermediate supervision, identical parameter
+count — it reaches 1.0000 on the unseen arrangements.
+
+This is the same principle as "model, not policy", one level up. A
+stored policy goes stale because it commits to behaviour; a stored
+COMPOSITE goes stale because it commits to an arrangement. Both are
+fixed by storing the smaller thing and deriving the larger at act time
+— facts plus search in the first case, pieces plus iteration in the
+second. Anywhere the plant is asked for a whole answer to a structured
+request, that is a design bug.
+
+Two boundaries measured with it, both of which cost a probe to learn:
+
+- **Iteration is downstream of reading, and multiplies whatever the
+  step knows — including nothing (F124).** In a setting where the
+  entry was not being read, iterating made results WORSE than one-shot
+  (0.0077 vs 0.1454), because a world-ignorant step applied four times
+  compounds its error where a one-shot model can still emit a
+  world-independent average and collect partial credit.
+- **Diversity does not substitute for it (F122).** Scaling worlds 10x
+  moved composition from chance to chance on two independent grounds,
+  while the interface change moved it from chance to perfect. F78's
+  law governs whether an expressible rule is READ or MEMORISED; it
+  says nothing about whether composites are expressible at all.
+
+Consequence for the build: check expressibility in the interface —
+one single-world, reading-off fit run — BEFORE spending arms on
+diversity, capacity, or budget.
+
 ### 2.2 Bank (growing, external, per-task)
 
 A set of **fragments**. A fragment names a goal — under the current
@@ -359,6 +395,28 @@ the content half. See §6.
 | Consolidation retires catastrophic forgetting in a plastic core | promoted EWC rung, 5/5 seeds |
 
 ## 5. What is open
+
+0. **Reading is dead at multi-world scale in the composition probes,
+   and four independent measurements say so (F120, F122, F124).**
+   Stranger-entry accuracy is bit-identical to own-entry accuracy at
+   every world count and both grounds; 10x diversity is inert;
+   iterating amplifies rather than repairs it. The only entry effect
+   anywhere is withheld-vs-present (0.0044 vs 0.0052-0.0138) — the
+   model uses "an entry exists" but never "WHICH entry". This matters
+   more than it sounds: the composition probes are where the
+   puzzle-piece thesis is tested, and a bank nobody reads cannot
+   demonstrate it.
+   Suspected cause, with a stated precondition from F120: the
+   ignorance objective penalises being accurate WITHOUT the entry, so
+   it exerts no pressure while the model is inaccurate either way.
+   Reading was alive in the single-application setting (F114, twin
+   accuracy 0.0000) and dies as soon as the plant's job is a
+   composite. Measured aggravating factor: only 11%% of updates land
+   on length-1 programs and 67%% on length>=3, so almost all training
+   is the hardest form of a task the model cannot yet do.
+   Arms running: oracle-entry substitution (does execution work at
+   all when the world is KNOWN?) and a length curriculum (establish
+   reading where it is known to work, then extend).
 
 1. **Cross-domain transfer is NEGATIVE, and freezing the plant does not
    fix it (F61).** Warm-starting the walled grid from the line: 0.277
