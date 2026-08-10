@@ -270,3 +270,27 @@ growth, learned verifier design, arbitrary new computation beyond the registered
 candidate families, or general continual learning. The next requirement is to
 make growth repeat over more than two additions while measuring stable
 retention, transfer against a matched fresh learner, and memory compression.
+
+## Binding-aware factual consolidation (2026-08-10)
+
+The external memory boundary now has a compaction transaction in addition to
+growth. `ExternalLearnedMultiStreamTransitionContextRouter.consolidate_factual_slots_verified`
+can share physical parameters between two held-out-equivalent factual slots
+without merging their anonymous binding tracks or stable slot addresses. The
+transaction runs on a full-state copy; a failed equivalence check, unlike model
+family, or mutating retention probe leaves binding and factual state unchanged.
+Future adaptation remains safe because the shared model detaches copy-on-write
+when one slot receives new evidence.
+
+The three-seed audit in
+`experiments/external_learned_binding_factual_consolidation/` retained three
+opaque streams and reduced physical factual models from three to two on every
+seed. It rejected unlike-family consolidation and a probe that attempted to
+mutate candidate state, retained all slot addresses and bindings, reloaded
+exactly, and used zero replay, zero factual optimizer updates, and zero
+controller updates.
+
+This promotes bounded binding-aware factual parameter sharing, not learned
+consolidation policy, semantic stream merging, unrestricted memory growth, or
+general continual learning. The next pressure should combine repeated growth,
+learned maintenance choice, and compression under a finite capacity budget.

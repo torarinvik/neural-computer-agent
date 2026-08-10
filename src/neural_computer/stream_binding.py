@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import hashlib
 import math
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -51,6 +51,9 @@ EXTERNAL_STREAM_BINDING_GROWTH_SCHEMA = (
 )
 EXTERNAL_STREAM_BINDING_FACTUAL_GROWTH_SCHEMA = (
     "neural-computer.external-stream-binding-factual-growth.v1"
+)
+EXTERNAL_STREAM_BINDING_FACTUAL_CONSOLIDATION_SCHEMA = (
+    "neural-computer.external-stream-binding-factual-consolidation.v1"
 )
 EXTERNAL_STREAM_BINDING_LIFECYCLE_POLICY_SCHEMA = (
     "neural-computer.external-stream-binding-lifecycle-policy.v1"
@@ -523,6 +526,76 @@ class ExternalStreamBindingFactualGrowthReceipt:
             raise ValueError("stream-binding factual growth reason is missing")
         if self.accepted and (self.track_id is None or self.slot_id is None):
             raise ValueError("accepted stream-binding factual growth is incomplete")
+        return self
+
+
+@dataclass(frozen=True)
+class ExternalStreamBindingFactualConsolidationReceipt:
+    """Atomic parameter sharing while retaining two opaque stream addresses."""
+
+    accepted: bool
+    first_track_id: int | None
+    second_track_id: int | None
+    first_slot_id: int | None
+    second_slot_id: int | None
+    physical_models_before: int
+    physical_models_after: int
+    max_heldout_difference: float
+    binding_digest_before: str
+    binding_digest_after: str
+    router_digest_before: str
+    router_digest_after: str
+    reason: str
+    schema: str = EXTERNAL_STREAM_BINDING_FACTUAL_CONSOLIDATION_SCHEMA
+
+    def validate(self) -> ExternalStreamBindingFactualConsolidationReceipt:
+        if self.schema != EXTERNAL_STREAM_BINDING_FACTUAL_CONSOLIDATION_SCHEMA:
+            raise ValueError("unsupported stream-binding factual consolidation schema")
+        for name, value in (
+            ("first track ID", self.first_track_id),
+            ("second track ID", self.second_track_id),
+            ("first slot ID", self.first_slot_id),
+            ("second slot ID", self.second_slot_id),
+        ):
+            if value is not None and (
+                not isinstance(value, int)
+                or isinstance(value, bool)
+                or value < 0
+            ):
+                raise ValueError(f"stream-binding factual consolidation {name} is invalid")
+        if self.accepted and any(
+            value is None
+            for value in (
+                self.first_track_id,
+                self.second_track_id,
+                self.first_slot_id,
+                self.second_slot_id,
+            )
+        ):
+            raise ValueError("accepted stream-binding factual consolidation is incomplete")
+        if (
+            min(self.physical_models_before, self.physical_models_after) < 0
+            or self.accepted
+            and self.physical_models_after >= self.physical_models_before
+        ):
+            raise ValueError("stream-binding factual consolidation model counts are invalid")
+        if (
+            not math.isfinite(self.max_heldout_difference)
+            and self.accepted
+        ) or self.max_heldout_difference < 0.0:
+            raise ValueError(
+                "stream-binding factual consolidation held-out difference is invalid"
+            )
+        for name, value in (
+            ("binding digest before", self.binding_digest_before),
+            ("binding digest after", self.binding_digest_after),
+            ("router digest before", self.router_digest_before),
+            ("router digest after", self.router_digest_after),
+        ):
+            if not isinstance(value, str) or not value:
+                raise ValueError(f"stream-binding factual consolidation {name} is missing")
+        if not isinstance(self.reason, str) or not self.reason:
+            raise ValueError("stream-binding factual consolidation reason is missing")
         return self
 
 
@@ -2520,6 +2593,167 @@ class ExternalLearnedMultiStreamTransitionContextRouter:
             reason="joint_binding_and_factual_growth_committed",
         ).validate()
 
+    def consolidate_factual_slots_verified(
+        self,
+        first_stream_key: torch.Tensor,
+        second_stream_key: torch.Tensor,
+        heldout: Sequence[ExternalTransitionObservation],
+        *,
+        prediction_tolerance: float = 1e-6,
+        retention_probe: Callable[
+            [ExternalLearnedMultiStreamTransitionContextRouter], bool
+        ]
+        | None = None,
+    ) -> ExternalStreamBindingFactualConsolidationReceipt:
+        """Compact equivalent factual slots without merging stream identity.
+
+        The two anonymous tracks and their stable factual slot addresses remain
+        distinct.  Only their physical model parameters are aliased on an
+        isolated full-state copy after held-out equivalence and retention
+        checks.  A probe that mutates the candidate is rejected as well.
+        """
+
+        first_key = _normalize_key(
+            first_stream_key,
+            width=self.binding.stream_key_width,
+        )
+        second_key = _normalize_key(
+            second_stream_key,
+            width=self.binding.stream_key_width,
+        )
+        if torch.allclose(first_key, second_key, atol=1e-7, rtol=0.0):
+            raise ValueError("factual consolidation stream keys must differ")
+        if not isinstance(heldout, Sequence) or isinstance(heldout, (str, bytes)):
+            raise TypeError("factual consolidation held-out evidence is invalid")
+        if not heldout:
+            raise ValueError("factual consolidation needs held-out evidence")
+        if prediction_tolerance < 0.0 or not math.isfinite(prediction_tolerance):
+            raise ValueError("factual consolidation prediction tolerance is invalid")
+        if retention_probe is not None and not callable(retention_probe):
+            raise TypeError("factual consolidation retention probe is invalid")
+
+        binding_before = self.binding.digest()
+        router_before = self.router.digest()
+        physical_models_before = self.router.bank.physical_model_count
+        track_ids = self.binding.track_ids
+
+        def track_for_key(key: torch.Tensor) -> int | None:
+            for track_id in track_ids:
+                if torch.allclose(
+                    self.binding.track_state(track_id)["stream_key"],
+                    key,
+                    atol=1e-6,
+                    rtol=0.0,
+                ):
+                    return track_id
+            return None
+
+        first_track_id = track_for_key(first_key)
+        second_track_id = track_for_key(second_key)
+        first_slot_id = self.router.bound_slot_id(first_key)
+        second_slot_id = self.router.bound_slot_id(second_key)
+
+        def rejected(reason: str) -> ExternalStreamBindingFactualConsolidationReceipt:
+            return ExternalStreamBindingFactualConsolidationReceipt(
+                accepted=False,
+                first_track_id=first_track_id,
+                second_track_id=second_track_id,
+                first_slot_id=first_slot_id,
+                second_slot_id=second_slot_id,
+                physical_models_before=physical_models_before,
+                physical_models_after=physical_models_before,
+                max_heldout_difference=float("inf"),
+                binding_digest_before=binding_before,
+                binding_digest_after=binding_before,
+                router_digest_before=router_before,
+                router_digest_after=router_before,
+                reason=reason,
+            ).validate()
+
+        if first_track_id is None or second_track_id is None:
+            return rejected("stream_key_has_no_live_binding_track")
+        if first_slot_id is None or second_slot_id is None:
+            return rejected("stream_key_has_no_bound_factual_slot")
+        if first_slot_id == second_slot_id:
+            raise ValueError("factual consolidation slot IDs must differ")
+        first_index = self.router.bank.physical_index_for_slot_id(first_slot_id)
+        second_index = self.router.bank.physical_index_for_slot_id(second_slot_id)
+        if self.router.bank.model_family_at(first_index) != self.router.bank.model_family_at(
+            second_index
+        ):
+            return rejected("factual_consolidation_model_families_differ")
+
+        candidate = type(self).from_payload(self.state_payload())
+        retained_binding_digest = _retained_binding_digest(
+            candidate.binding,
+            track_ids=candidate.binding.track_ids,
+        )
+
+        def candidate_retention_probe(
+            _bank: Any,
+        ) -> bool:
+            candidate.router._refresh_children()
+            before = candidate.digest()
+            accepted = (
+                True
+                if retention_probe is None
+                else bool(retention_probe(candidate))
+            )
+            return (
+                accepted
+                and candidate.digest() == before
+                and _retained_binding_digest(
+                    candidate.binding,
+                    track_ids=candidate.binding.track_ids,
+                )
+                == retained_binding_digest
+            )
+
+        bank_receipt = candidate.router.bank.consolidate_verified(
+            first_index,
+            second_index,
+            heldout,
+            prediction_tolerance=prediction_tolerance,
+            retention_probe=candidate_retention_probe,
+        )
+        if not bank_receipt.accepted:
+            return ExternalStreamBindingFactualConsolidationReceipt(
+                accepted=False,
+                first_track_id=first_track_id,
+                second_track_id=second_track_id,
+                first_slot_id=first_slot_id,
+                second_slot_id=second_slot_id,
+                physical_models_before=physical_models_before,
+                physical_models_after=physical_models_before,
+                max_heldout_difference=bank_receipt.max_heldout_difference,
+                binding_digest_before=binding_before,
+                binding_digest_after=binding_before,
+                router_digest_before=router_before,
+                router_digest_after=router_before,
+                reason=bank_receipt.reason,
+            ).validate()
+
+        candidate.router._refresh_children()
+        if candidate.binding.digest() != binding_before:
+            return rejected("binding_state_changed_during_consolidation")
+        self.router = candidate.router
+        self.binding = candidate.binding
+        return ExternalStreamBindingFactualConsolidationReceipt(
+            accepted=True,
+            first_track_id=first_track_id,
+            second_track_id=second_track_id,
+            first_slot_id=first_slot_id,
+            second_slot_id=second_slot_id,
+            physical_models_before=physical_models_before,
+            physical_models_after=self.router.bank.physical_model_count,
+            max_heldout_difference=bank_receipt.max_heldout_difference,
+            binding_digest_before=binding_before,
+            binding_digest_after=self.binding.digest(),
+            router_digest_before=router_before,
+            router_digest_after=self.router.digest(),
+            reason="held-out and retention-verified factual parameter sharing committed",
+        ).validate()
+
     def adaptation_step(
         self,
         result: ExternalLearnedMultiStreamTransitionResult,
@@ -2616,6 +2850,7 @@ class ExternalLearnedMultiStreamTransitionContextRouter:
 
 __all__ = [
     "EXTERNAL_LEARNED_MULTI_STREAM_ROUTER_SCHEMA",
+    "EXTERNAL_STREAM_BINDING_FACTUAL_CONSOLIDATION_SCHEMA",
     "EXTERNAL_STREAM_BINDING_FACTUAL_GROWTH_SCHEMA",
     "EXTERNAL_STREAM_BINDING_FACTUAL_REPLACEMENT_SCHEMA",
     "EXTERNAL_STREAM_BINDING_GROWTH_SCHEMA",
@@ -2628,6 +2863,7 @@ __all__ = [
     "ExternalLearnedMultiStreamTransitionContextRouter",
     "ExternalLearnedMultiStreamTransitionResult",
     "ExternalOnlineStreamBindingMemory",
+    "ExternalStreamBindingFactualConsolidationReceipt",
     "ExternalStreamBindingFactualGrowthReceipt",
     "ExternalStreamBindingFactualReplacementReceipt",
     "ExternalStreamBindingGrowthReceipt",

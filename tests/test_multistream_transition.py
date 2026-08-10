@@ -109,6 +109,59 @@ def test_multistream_router_persists_stream_local_candidates_over_shared_bank() 
         ExternalMultiStreamTransitionContextRouter.from_payload(corrupted)
 
 
+def test_multistream_consolidation_shares_models_without_merging_slots() -> None:
+    torch.manual_seed(1403)
+    bank = ExternalTransitionModelBank(
+        2,
+        1,
+        4,
+        model_family="mixed_verified_v1",
+        capacity=2,
+    )
+    first = bank.ensure_context(
+        torch.tensor([1.0, 0.0, 0.0, 0.0]),
+        model_family=EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY,
+    )
+    second = bank.ensure_context(
+        torch.tensor([0.0, 1.0, 0.0, 0.0]),
+        model_family=EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY,
+    )
+    bank.models[second].load_state_dict(bank.models[first].state_dict())
+    encoder = ExternalTransitionContextEncoder(2, 1, hidden_width=8, context_width=4)
+    single = ExternalOnlineTransitionContextRouter(
+        bank,
+        encoder,
+        admission_observations=2,
+        max_contexts=2,
+        defer_admission=True,
+        candidate_model_families=(EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY,),
+    )
+    router = ExternalMultiStreamTransitionContextRouter(single, stream_key_width=3)
+    stream_a = torch.tensor([1.0, 0.0, 0.0])
+    stream_b = torch.tensor([0.0, 1.0, 0.0])
+    router._child(stream_a)
+    router._child(stream_b)
+    router._bound_slot_ids[router._stream_id(stream_a)] = bank.slot_id_at(first)
+    router._bound_slot_ids[router._stream_id(stream_b)] = bank.slot_id_at(second)
+    slot_ids = router.bank.slot_ids
+
+    receipt = router.consolidate_verified(
+        bank.slot_id_at(first),
+        bank.slot_id_at(second),
+        [_observation((0.1, 0.2))],
+        retention_probe=lambda candidate: candidate.bank.slot_ids == slot_ids,
+    )
+
+    assert receipt.accepted
+    assert receipt.physical_models_before == 2
+    assert receipt.physical_models_after == 1
+    assert router.bank.slot_ids == slot_ids
+    restored = ExternalMultiStreamTransitionContextRouter.from_payload(
+        router.state_payload()
+    )
+    assert restored.digest() == router.digest()
+
+
 def test_multistream_pressure_test_binds_each_promoted_stream() -> None:
     report = _run(1901)
 

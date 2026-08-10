@@ -1,0 +1,93 @@
+{
+  "schema": "neural-computer.external-learned-binding-factual-consolidation-pressure-test.v1",
+  "seed": 2701,
+  "promoted": true,
+  "identity": {
+    "contrastive_loss": 4.3490341340657324e-05,
+    "optimizer_updates": 240,
+    "encoder_digest": "5f490c8c89d5b3548114c52e54f1806e72ea1ca218f7cdb1ed8cf580940a8d7b"
+  },
+  "configuration": {
+    "streams": 3,
+    "preexisting_external_slots": 3,
+    "initial_factual_capacity": 3,
+    "final_factual_capacity": 3,
+    "candidate_model_families": [
+      "affine_sufficient_statistics_v1",
+      "random_feature_sufficient_statistics_v1"
+    ],
+    "consolidation": "equivalent_physical_model_aliasing_v1",
+    "replay_free": true
+  },
+  "growth": {
+    "track_ids": [
+      0,
+      1,
+      2
+    ],
+    "slot_ids": [
+      0,
+      1,
+      2
+    ],
+    "model_families": [
+      "affine_sufficient_statistics_v1",
+      "affine_sufficient_statistics_v1",
+      "random_feature_sufficient_statistics_v1"
+    ]
+  },
+  "consolidation": {
+    "accepted": true,
+    "first_track_id": 0,
+    "second_track_id": 1,
+    "first_slot_id": 0,
+    "second_slot_id": 1,
+    "physical_models_before": 3,
+    "physical_models_after": 2,
+    "max_heldout_difference": 0.0,
+    "distinct_rejection_reason": "factual_consolidation_model_families_differ",
+    "mutating_rejection_reason": "pre-consolidation retention probe failed"
+  },
+  "retention": {
+    "slot_ids_before": [
+      0,
+      1,
+      2
+    ],
+    "slot_ids_after": [
+      0,
+      1,
+      2
+    ],
+    "binding_digest_unchanged": true,
+    "router_digest_before_consolidation": "57f2e4b5981015328bcfbfd2b8a1cdde82ae81aeb4f0e3b7d121edab0450bd3c",
+    "router_digest_after_consolidation": "6ea982aad1a68ef783faa3507ec13a576e31a77ac5243e1226bb4090055bc39f"
+  },
+  "gates": {
+    "identity_loss_converged": true,
+    "three_streams_bound": true,
+    "distinct_rejection_atomic": true,
+    "mutating_probe_rejection_atomic": true,
+    "equivalent_consolidation_committed": true,
+    "slot_addresses_retained": true,
+    "physical_model_count_reduced": true,
+    "binding_retained": true,
+    "retention_probe_passed": true,
+    "exact_persistence": true,
+    "controller_frozen_unchanged": true,
+    "binding_encoder_frozen": true
+  },
+  "accounting": {
+    "identity_optimizer_updates": 240,
+    "policy_optimizer_updates": 0,
+    "factual_optimizer_updates": 0,
+    "controller_optimizer_updates": 0,
+    "replayed_examples": 0,
+    "growth_verifier_bits": 0,
+    "consolidation_verifier_bits": 2,
+    "unique_verifier_bits": 2,
+    "unique_logical_lifetimes": 3
+  },
+  "claim_boundary": "bounded retention-safe factual parameter sharing after learned binding; not learned consolidation policy, unrestricted memory growth, arbitrary new computation, or general continual learning",
+  "elapsed_seconds": 1.7364170419750735
+}

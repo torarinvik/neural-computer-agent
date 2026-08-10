@@ -359,6 +359,7 @@ from .runtime import (
 from .state_store import OPAQUE_STATE_STORE_SCHEMA, PersistentOpaqueStateStore
 from .stream_binding import (
     EXTERNAL_LEARNED_MULTI_STREAM_ROUTER_SCHEMA,
+    EXTERNAL_STREAM_BINDING_FACTUAL_CONSOLIDATION_SCHEMA,
     EXTERNAL_STREAM_BINDING_FACTUAL_GROWTH_SCHEMA,
     EXTERNAL_STREAM_BINDING_FACTUAL_REPLACEMENT_SCHEMA,
     EXTERNAL_STREAM_BINDING_GROWTH_SCHEMA,
@@ -371,6 +372,7 @@ from .stream_binding import (
     ExternalLearnedMultiStreamTransitionContextRouter,
     ExternalLearnedMultiStreamTransitionResult,
     ExternalOnlineStreamBindingMemory,
+    ExternalStreamBindingFactualConsolidationReceipt,
     ExternalStreamBindingFactualGrowthReceipt,
     ExternalStreamBindingFactualReplacementReceipt,
     ExternalStreamBindingGrowthReceipt,
@@ -564,6 +566,7 @@ __all__ = [
     "EXTERNAL_REGISTER_SHARED_STABLE_RELATIONAL_MODE",
     "EXTERNAL_REGISTER_STATE_SCHEMA",
     "EXTERNAL_REPRESENTATION_SPACE_SCHEMA",
+    "EXTERNAL_STREAM_BINDING_FACTUAL_CONSOLIDATION_SCHEMA",
     "EXTERNAL_STREAM_BINDING_FACTUAL_GROWTH_SCHEMA",
     "EXTERNAL_STREAM_BINDING_FACTUAL_REPLACEMENT_SCHEMA",
     "EXTERNAL_STREAM_BINDING_GROWTH_SCHEMA",
@@ -746,6 +749,7 @@ __all__ = [
     "ExternalSequenceProgramMemory",
     "ExternalSparseTransitionEvidenceIndex",
     "ExternalSparseTransitionEvidenceProposal",
+    "ExternalStreamBindingFactualConsolidationReceipt",
     "ExternalStreamBindingFactualGrowthReceipt",
     "ExternalStreamBindingFactualReplacementReceipt",
     "ExternalStreamBindingGrowthReceipt",

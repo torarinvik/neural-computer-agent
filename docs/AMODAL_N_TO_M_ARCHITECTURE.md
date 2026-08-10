@@ -7879,3 +7879,27 @@ verifier, arbitrary new computation outside the registered candidate families,
 or general continual learning. The next rung is repeated growth over a longer
 sequence with stable-retention prefixes, compression/consolidation probes, and
 matched-fresh transfer accounting.
+
+## Binding-aware factual consolidation (2026-08-10)
+
+The external memory lifecycle now includes a binding-aware compaction seam:
+`ExternalLearnedMultiStreamTransitionContextRouter.consolidate_factual_slots_verified`.
+Two opaque stream tracks retain their independent learned keys and stable
+factual slot addresses, while equivalent factual model parameters may share
+one physical object. Held-out prediction equivalence and a complete retention
+probe run on an isolated full-state candidate. A failed candidate, including a
+probe that mutates candidate state, is discarded without changing either
+binding or factual memory.
+
+The promoted audit is archived under
+`session_records/sequence_working_memory_2026-08-02/external_learned_binding_factual_consolidation_promoted_2026-08-10/`.
+Across seeds `2701`, `2702`, and `2703`, three anonymous tracks and three slot
+addresses remained present while physical model storage fell from three to two.
+Unlike model families were rejected atomically; exact persistence, frozen
+controller/encoder, zero replay, and zero factual optimizer updates passed.
+
+This promotes bounded retention-safe factual parameter sharing, not semantic
+stream merging, learned maintenance policy, unrestricted growth, or general
+continual learning. The next integration is a finite-budget lifecycle that can
+learn whether to grow, share, compress, or defer while preserving the same
+retention floor.

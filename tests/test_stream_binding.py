@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import torch
 
+from experiments.external_learned_binding_factual_consolidation.train import (
+    run as run_factual_consolidation_pressure_test,
+)
 from experiments.external_learned_binding_factual_growth.train import (
     run as run_factual_growth_pressure_test,
 )
@@ -376,6 +379,17 @@ def test_joint_binding_factual_growth_pressure_test_passes() -> None:
     assert report["gates"]["controller_frozen_unchanged"] is True
 
 
+def test_learned_binding_factual_consolidation_pressure_test_passes() -> None:
+    report = run_factual_consolidation_pressure_test(2701)
+    assert report["promoted"] is True
+    assert report["gates"]["distinct_rejection_atomic"] is True
+    assert report["gates"]["mutating_probe_rejection_atomic"] is True
+    assert report["gates"]["equivalent_consolidation_committed"] is True
+    assert report["gates"]["slot_addresses_retained"] is True
+    assert report["gates"]["physical_model_count_reduced"] is True
+    assert report["gates"]["exact_persistence"] is True
+
+
 def test_joint_binding_factual_growth_is_atomic_and_persistent() -> None:
     encoder, observations = _fixture(506, stream_count=3)
     bank = ExternalTransitionModelBank(
@@ -468,3 +482,60 @@ def test_joint_binding_factual_growth_is_atomic_and_persistent() -> None:
         router.state_payload()
     )
     assert restored.digest() == router.digest()
+
+    first_key = router.binding.track_state(0)["stream_key"]
+    second_key = router.binding.track_state(1)["stream_key"]
+    before_consolidation_binding = router.binding.digest()
+    before_consolidation_router = router.digest()
+    rejected_consolidation = router.consolidate_factual_slots_verified(
+        first_key,
+        second_key,
+        [_row(observations[0], 2)],
+        prediction_tolerance=1e-8,
+    )
+    assert not rejected_consolidation.accepted
+    assert router.binding.digest() == before_consolidation_binding
+    assert router.digest() == before_consolidation_router
+
+    assert router.router.bank.model_family_at(0) == router.router.bank.model_family_at(1)
+    router.router.bank.models[1].load_state_dict(
+        router.router.bank.models[0].state_dict()
+    )
+
+    before_mutating_probe_router = router.digest()
+
+    def mutate_consolidation_candidate(
+        candidate: ExternalLearnedMultiStreamTransitionContextRouter,
+    ) -> bool:
+        candidate.binding.max_streams += 1
+        return True
+
+    rejected_mutating_probe = router.consolidate_factual_slots_verified(
+        first_key,
+        second_key,
+        [_row(observations[0], 2)],
+        prediction_tolerance=1e-8,
+        retention_probe=mutate_consolidation_candidate,
+    )
+    assert not rejected_mutating_probe.accepted
+    assert router.digest() == before_mutating_probe_router
+
+    accepted_consolidation = router.consolidate_factual_slots_verified(
+        first_key,
+        second_key,
+        [_row(observations[0], 2)],
+        prediction_tolerance=1e-8,
+    )
+    assert accepted_consolidation.accepted
+    assert accepted_consolidation.physical_models_before == 2
+    assert accepted_consolidation.physical_models_after == 1
+    assert accepted_consolidation.first_slot_id != accepted_consolidation.second_slot_id
+    assert router.binding.digest() == before_consolidation_binding
+    assert router.router.bound_slot_id(first_key) == accepted_consolidation.first_slot_id
+    assert router.router.bound_slot_id(second_key) == accepted_consolidation.second_slot_id
+    consolidated_restored = (
+        ExternalLearnedMultiStreamTransitionContextRouter.from_payload(
+            router.state_payload()
+        )
+    )
+    assert consolidated_restored.digest() == router.digest()

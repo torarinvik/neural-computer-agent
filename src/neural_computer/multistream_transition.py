@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import copy
 import hashlib
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -16,6 +16,7 @@ from .world_model import (
     ExternalOnlineTransitionContextRouter,
     ExternalTransitionModelBank,
     ExternalTransitionModelCandidateReceipt,
+    ExternalTransitionModelConsolidationReceipt,
     ExternalTransitionObservation,
 )
 
@@ -315,6 +316,72 @@ class ExternalMultiStreamTransitionContextRouter:
     ) -> object:
         receipt = self.router.evict_verified_id(slot_id, retention_probe)
         self._refresh_children()
+        return receipt
+
+    def consolidate_verified(
+        self,
+        first_slot_id: int,
+        second_slot_id: int,
+        heldout: Sequence[ExternalTransitionObservation],
+        *,
+        prediction_tolerance: float = 1e-6,
+        retention_probe: Callable[
+            [ExternalMultiStreamTransitionContextRouter], bool
+        ]
+        | None = None,
+    ) -> ExternalTransitionModelConsolidationReceipt:
+        """Share equivalent factual slots on an isolated router copy.
+
+        Stream addresses and context keys remain distinct.  Only the physical
+        model object is shared, and the complete stream-local router state is
+        committed together with that alias.  A retention probe is read-only:
+        mutating a candidate during the probe rejects the transaction.
+        """
+
+        for name, value in (
+            ("first factual slot ID", first_slot_id),
+            ("second factual slot ID", second_slot_id),
+        ):
+            if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+                raise ValueError(f"multi-stream {name} is invalid")
+        self.bank.physical_index_for_slot_id(first_slot_id)
+        self.bank.physical_index_for_slot_id(second_slot_id)
+        if not isinstance(heldout, Sequence) or isinstance(heldout, (str, bytes)):
+            raise TypeError("multi-stream consolidation held-out evidence is invalid")
+        if not heldout:
+            raise ValueError("multi-stream consolidation needs held-out evidence")
+        if prediction_tolerance < 0.0:
+            raise ValueError("multi-stream consolidation tolerance cannot be negative")
+        if retention_probe is not None and not callable(retention_probe):
+            raise TypeError("multi-stream consolidation retention probe is invalid")
+
+        candidate = type(self).from_payload(self.state_payload())
+
+        def candidate_retention_probe(
+            _bank: ExternalTransitionModelBank,
+        ) -> bool:
+            candidate._refresh_children()
+            before = candidate.digest()
+            accepted = (
+                True
+                if retention_probe is None
+                else bool(retention_probe(candidate))
+            )
+            return accepted and candidate.digest() == before
+
+        receipt = candidate.router.bank.consolidate_verified(
+            candidate.router.bank.physical_index_for_slot_id(first_slot_id),
+            candidate.router.bank.physical_index_for_slot_id(second_slot_id),
+            heldout,
+            prediction_tolerance=prediction_tolerance,
+            retention_probe=candidate_retention_probe,
+        )
+        if not receipt.accepted:
+            return receipt
+        candidate._refresh_children()
+        self.router = candidate.router
+        self._streams = candidate._streams
+        self._bound_slot_ids = candidate._bound_slot_ids
         return receipt
 
     def state_payload(self) -> dict[str, object]:
