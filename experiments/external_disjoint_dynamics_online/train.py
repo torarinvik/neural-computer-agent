@@ -38,6 +38,16 @@ ADMISSION_OBSERVATIONS = POSITION_COUNT * 2
 REGIME_NAMES = ("source_a", "source_b", "target_c", "target_d")
 HORIZON = 3
 
+# Diagnostic-only fixture bookkeeping: each set covers one valid three-step
+# path for every held-out target while withholding the remaining transition
+# rows. The router receives no regime label or row-index metadata.
+TARGET_COVERING_ROW_INDICES = (
+    (0, 1, 2, 6, 9, 10),
+    (0, 1, 2, 4, 10, 12, 13),
+    (1, 5, 8, 11, 12),
+    (0, 1, 2, 3, 6, 10, 12),
+)
+
 # Same opaque interface, four unrelated transition functions. These are
 # verifier-private tables; no table or regime identifier reaches the router.
 TRANSITION_TABLES = (
@@ -95,7 +105,13 @@ def _fixture(
 
 def _rows(
     observation: ExternalTransitionObservation,
+    indices: tuple[int, ...] | None = None,
 ) -> list[ExternalTransitionObservation]:
+    row_indices = (
+        tuple(range(observation.state.shape[0]))
+        if indices is None
+        else indices
+    )
     return [
         ExternalTransitionObservation(
             state=observation.state[index : index + 1],
@@ -107,8 +123,22 @@ def _rows(
                 else observation.confidence[index : index + 1]
             ),
         )
-        for index in range(observation.state.shape[0])
+        for index in row_indices
     ]
+
+
+def _stream_rows(
+    observation: ExternalTransitionObservation,
+    *,
+    regime_index: int,
+    partial_evidence: bool,
+) -> list[ExternalTransitionObservation]:
+    selected = _rows(
+        observation,
+        None if not partial_evidence else TARGET_COVERING_ROW_INDICES[regime_index],
+    )
+    repeats = (ADMISSION_OBSERVATIONS + len(selected) - 1) // len(selected)
+    return (selected * repeats)[:ADMISSION_OBSERVATIONS]
 
 
 def _train_context_encoder(
@@ -236,6 +266,7 @@ def run(
     report_out: Path,
     *,
     sequence_repeats: int = 1,
+    partial_evidence: bool = False,
 ) -> dict[str, object]:
     if sequence_repeats < 1:
         raise ValueError("sequence repeats must be positive")
@@ -344,7 +375,12 @@ def run(
     trace: list[dict[str, object]] = []
 
     for regime in sequence:
-        for row in _rows(observations[regime]):
+        regime_index = REGIME_NAMES.index(regime)
+        for row in _stream_rows(
+            observations[regime],
+            regime_index=regime_index,
+            partial_evidence=partial_evidence,
+        ):
             result = router.observe(row)
             route_counts[f"{regime}:{result.status}"] += 1
             if result.slot_index is not None:
@@ -505,6 +541,23 @@ def run(
             "regime_labels_used_by_router": False,
             "policy": "none_external_disjoint_online_context_model_search_v1",
             "sequence_repeats": sequence_repeats,
+            "partial_evidence": partial_evidence,
+            "observed_transition_rows": {
+                name: (
+                    len(TARGET_COVERING_ROW_INDICES[index])
+                    if partial_evidence
+                    else POSITION_COUNT * 2
+                )
+                for index, name in enumerate(REGIME_NAMES)
+            },
+            "withheld_transition_rows": {
+                name: (
+                    POSITION_COUNT * 2 - len(TARGET_COVERING_ROW_INDICES[index])
+                    if partial_evidence
+                    else 0
+                )
+                for index, name in enumerate(REGIME_NAMES)
+            },
         },
         "gates": gates,
         "promoted": all(gates.values()),
@@ -563,8 +616,14 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=70411)
     parser.add_argument("--report-out", type=Path, required=True)
     parser.add_argument("--sequence-repeats", type=int, default=1)
+    parser.add_argument("--partial-evidence", action="store_true")
     args = parser.parse_args()
-    run(args.seed, args.report_out, sequence_repeats=args.sequence_repeats)
+    run(
+        args.seed,
+        args.report_out,
+        sequence_repeats=args.sequence_repeats,
+        partial_evidence=args.partial_evidence,
+    )
 
 
 if __name__ == "__main__":

@@ -1,0 +1,52 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "external_disjoint_dynamics_partial_evidence",
+  "entries": [
+    {
+      "seed": 70411,
+      "arm": "four-round-target-covering-partial-evidence",
+      "unique_verifier_bits": 25,
+      "unique_logical_lifetimes": 56,
+      "optimizer_updates": 610,
+      "replayed_examples": 0,
+      "controller_updates": 0,
+      "stable_bits_to_threshold": null,
+      "retention_on_mastered_primitives": 1.0,
+      "transfer_ratio_against_fresh": 0.460,
+      "observed_transition_rows": 25,
+      "withheld_transition_rows": 31,
+      "promoted": true
+    },
+    {
+      "seed": 70412,
+      "arm": "four-round-target-covering-partial-evidence",
+      "unique_verifier_bits": 25,
+      "unique_logical_lifetimes": 56,
+      "optimizer_updates": 577,
+      "replayed_examples": 0,
+      "controller_updates": 0,
+      "stable_bits_to_threshold": null,
+      "retention_on_mastered_primitives": 1.0,
+      "transfer_ratio_against_fresh": 0.387,
+      "observed_transition_rows": 25,
+      "withheld_transition_rows": 31,
+      "promoted": true
+    },
+    {
+      "seed": 70413,
+      "arm": "four-round-target-covering-partial-evidence",
+      "unique_verifier_bits": 25,
+      "unique_logical_lifetimes": 56,
+      "optimizer_updates": 568,
+      "replayed_examples": 0,
+      "controller_updates": 0,
+      "stable_bits_to_threshold": null,
+      "retention_on_mastered_primitives": 1.0,
+      "transfer_ratio_against_fresh": 0.651,
+      "observed_transition_rows": 25,
+      "withheld_transition_rows": 31,
+      "promoted": true
+    }
+  ],
+  "claim_boundary": "bounded target-covering partial-evidence routing and retention; not arbitrary missingness or general continual learning"
+}
