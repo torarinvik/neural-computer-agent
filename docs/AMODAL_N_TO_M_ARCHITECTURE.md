@@ -8604,3 +8604,10 @@ on all three seeds and preserves the mastered source and the later novel file
 through reversal. It establishes safe bounded prior selection, not a claim
 that the controller can invent arbitrary new computation or that transfer is
 always beneficial.
+
+The selection receipt also supports a v2 cost-aware utility: a caller may
+provide nonnegative transfer/fresh deployment costs and a cost weight, and
+the router selects on `probe_score - cost_weight * cost` while recording both
+raw and adjusted scores. Zero-cost calls retain the v1 behavior. This keeps
+budget policy on the external-memory side of the amodal boundary instead of
+adding a controller branch.

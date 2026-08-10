@@ -13,7 +13,7 @@ from __future__ import annotations
 import argparse
 import json
 import time
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 import torch
@@ -23,11 +23,61 @@ from experiments.policy_free_intention_routing import train as routed
 from neural_computer import PolicyFreeAmodalRuntime
 
 CHALLENGER_PROBE_UPDATES = 12
+CHALLENGER_MIN_PROBE_MARGIN = 0.05
 NOVEL_MAX_UPDATES = 240
-NOVEL_CONTEXT_MASK = torch.tensor(
-    [True, False, True, True, False, True, True, False, False, True, False, True]
-)
-NOVEL_TARGET = torch.tensor([-0.25, 0.35])
+
+
+@dataclass(frozen=True)
+class ChallengerTask:
+    """A verifier-only novel task used to test prior admission decisions."""
+
+    task_id: str
+    context_mask: torch.Tensor
+    target: torch.Tensor
+    expected_initialization: str
+    probe_direction: str
+    report_schema: str
+    claim_boundary: str
+
+    def validate(self) -> ChallengerTask:
+        if not self.task_id:
+            raise ValueError("challenger task id is required")
+        if self.context_mask.shape != (base.STATE_WIDTH,):
+            raise ValueError("challenger task mask has the wrong shape")
+        if self.context_mask.dtype != torch.bool:
+            raise ValueError("challenger task mask must be boolean")
+        if self.target.shape != (base.INTENTION_WIDTH,):
+            raise ValueError("challenger task target has the wrong shape")
+        if self.expected_initialization not in {"transfer", "fresh"}:
+            raise ValueError("challenger task initialization expectation is invalid")
+        if self.probe_direction not in {"transfer", "fresh"}:
+            raise ValueError("challenger task probe direction is invalid")
+        if not self.report_schema or not self.claim_boundary:
+            raise ValueError("challenger task report metadata is required")
+        return self
+
+
+HARMFUL_NOVEL_TASK = ChallengerTask(
+    task_id="unseen_target_blind_copy_negative_transfer",
+    context_mask=torch.tensor(
+        [True, False, True, True, False, True, True, False, False, True, False, True]
+    ),
+    target=torch.tensor([-0.25, 0.35]),
+    expected_initialization="fresh",
+    probe_direction="fresh",
+    report_schema="neural-computer.policy-free-intention-novel-challenger.v1",
+    claim_boundary=(
+        "bounded verifier-selected copy-or-fresh external intention admission "
+        "for one unseen evidence combination and target after a known adaptive "
+        "sequence; general distribution shift and unrestricted continual learning "
+        "remain unqualified"
+    ),
+).validate()
+
+# Backward-compatible names for small external probes that used the original
+# single-task harness before task configurations became explicit.
+NOVEL_CONTEXT_MASK = HARMFUL_NOVEL_TASK.context_mask
+NOVEL_TARGET = HARMFUL_NOVEL_TASK.target
 
 
 def _policy_with_router(
@@ -47,13 +97,14 @@ def _score(
     state: routed.ExternalRoutedIntentionMemoryState,
     cell_index: int,
     context: torch.Tensor,
+    task: ChallengerTask,
 ) -> float:
     mean = router.mean(
         state,
         context,
-        context_mask=NOVEL_CONTEXT_MASK.unsqueeze(0),
+        context_mask=task.context_mask.unsqueeze(0),
     )[0, cell_index].unsqueeze(0)
-    return float(base._utility(mean, NOVEL_TARGET).item())
+    return float(base._utility(mean, task.target).item())
 
 
 def _cell_corruption_probe(
@@ -61,9 +112,9 @@ def _cell_corruption_probe(
     state: routed.ExternalRoutedIntentionMemoryState,
     cell_index: int,
     context: torch.Tensor,
-    target: torch.Tensor,
+    task: ChallengerTask,
 ) -> dict[str, object]:
-    clean_score = _score(router, state, cell_index, context)
+    clean_score = _score(router, state, cell_index, context, task)
     corrupted_cells = replace(
         state.cells,
         output_weights=state.cells.output_weights.clone(),
@@ -77,9 +128,9 @@ def _cell_corruption_probe(
     corrupted_mean = router.mean(
         corrupted_state,
         context,
-        context_mask=NOVEL_CONTEXT_MASK.unsqueeze(0),
+        context_mask=task.context_mask.unsqueeze(0),
     )[0, cell_index].unsqueeze(0)
-    corrupted_score = float(base._utility(corrupted_mean, target).item())
+    corrupted_score = float(base._utility(corrupted_mean, task.target).item())
     return {
         "clean_score": clean_score,
         "corrupted_score": corrupted_score,
@@ -91,6 +142,7 @@ def _run_causal_controls(
     seed: int,
     *,
     fresh: bool,
+    task: ChallengerTask,
     reference_policy: routed.PolicyFreeAmodalRuntime,
     controller_state,
     feedback,
@@ -111,7 +163,7 @@ def _run_causal_controls(
         return policy, router, state
 
     reward_policy, reward_router, reward_state = setup(610)
-    reward_initial_score = _score(reward_router, reward_state, 0, context)
+    reward_initial_score = _score(reward_router, reward_state, 0, context, task)
     reward_state, reward_report = routed._train_regime(
         policy=reward_policy,
         router=reward_router,
@@ -120,8 +172,8 @@ def _run_causal_controls(
         feedback=feedback,
         event=event,
         context=context,
-        target=NOVEL_TARGET,
-        context_mask=NOVEL_CONTEXT_MASK,
+        target=task.target,
+        context_mask=task.context_mask,
         max_updates=routed.CONTROL_UPDATES,
         delay=routed.DELAY_STEPS,
         reward_shuffled=True,
@@ -131,7 +183,7 @@ def _run_causal_controls(
     reward_report = dict(reward_report)
     reward_report["initial_score"] = reward_initial_score
     action_policy, action_router, action_state = setup(620)
-    action_initial_score = _score(action_router, action_state, 0, context)
+    action_initial_score = _score(action_router, action_state, 0, context, task)
     action_state, action_report = routed._train_regime(
         policy=action_policy,
         router=action_router,
@@ -140,8 +192,8 @@ def _run_causal_controls(
         feedback=feedback,
         event=event,
         context=context,
-        target=NOVEL_TARGET,
-        context_mask=NOVEL_CONTEXT_MASK,
+        target=task.target,
+        context_mask=task.context_mask,
         max_updates=routed.CONTROL_UPDATES,
         delay=routed.DELAY_STEPS,
         action_shuffled=True,
@@ -159,8 +211,8 @@ def _run_causal_controls(
         feedback=feedback,
         event=event,
         context=context,
-        target=NOVEL_TARGET,
-        context_mask=NOVEL_CONTEXT_MASK,
+        target=task.target,
+        context_mask=task.context_mask,
     )
     return {
         "reward_shuffled": reward_report,
@@ -269,7 +321,12 @@ def _prepare(
     }
 
 
-def _run_challenger(seed: int, *, fresh: bool) -> dict[str, object]:
+def _run_challenger(
+    seed: int,
+    *,
+    fresh: bool,
+    task: ChallengerTask,
+) -> dict[str, object]:
     prepared = _prepare(seed, fresh=fresh)
     router = prepared["router"]
     state = prepared["state"]
@@ -300,8 +357,8 @@ def _run_challenger(seed: int, *, fresh: bool) -> dict[str, object]:
             feedback=feedback,
             event=events["successor"],
             context=contexts["successor"],
-            target=NOVEL_TARGET,
-            context_mask=NOVEL_CONTEXT_MASK,
+            target=task.target,
+            context_mask=task.context_mask,
             max_updates=CHALLENGER_PROBE_UPDATES,
             delay=routed.DELAY_STEPS,
             random_seed=seed + (202 if fresh else 102),
@@ -318,8 +375,8 @@ def _run_challenger(seed: int, *, fresh: bool) -> dict[str, object]:
             feedback=feedback,
             event=events["successor"],
             context=contexts["successor"],
-            target=NOVEL_TARGET,
-            context_mask=NOVEL_CONTEXT_MASK,
+            target=task.target,
+            context_mask=task.context_mask,
             max_updates=CHALLENGER_PROBE_UPDATES,
             delay=routed.DELAY_STEPS,
             random_seed=seed + 302,
@@ -331,12 +388,14 @@ def _run_challenger(seed: int, *, fresh: bool) -> dict[str, object]:
             transfer_state,
             transfer_cell,
             contexts["successor"],
+            task,
         )
         fresh_score = _score(
             fresh_router,
             fresh_state,
             fresh_cell,
             contexts["successor"],
+            task,
         )
         probe_records.update(
             {
@@ -351,7 +410,7 @@ def _run_challenger(seed: int, *, fresh: bool) -> dict[str, object]:
         state,
         source_cell,
         probe,
-        context_mask=NOVEL_CONTEXT_MASK,
+        context_mask=task.context_mask,
         probe_updates=CHALLENGER_PROBE_UPDATES,
     )
     selected_policy = _policy_with_router(reference_policy, selected_router)
@@ -364,8 +423,8 @@ def _run_challenger(seed: int, *, fresh: bool) -> dict[str, object]:
         feedback=feedback,
         event=events["successor"],
         context=contexts["successor"],
-        target=NOVEL_TARGET,
-        context_mask=NOVEL_CONTEXT_MASK,
+        target=task.target,
+        context_mask=task.context_mask,
         max_updates=NOVEL_MAX_UPDATES,
         delay=routed.DELAY_STEPS,
         random_seed=seed + 502,
@@ -377,12 +436,13 @@ def _run_challenger(seed: int, *, fresh: bool) -> dict[str, object]:
         state=selected_state,
         cell_index=selected_cell,
         context=contexts["successor"],
-        context_mask=NOVEL_CONTEXT_MASK,
-        target=NOVEL_TARGET,
+        context_mask=task.context_mask,
+        target=task.target,
     )
     controls = _run_causal_controls(
         seed,
         fresh=fresh,
+        task=task,
         reference_policy=reference_policy,
         controller_state=controller_state,
         feedback=feedback,
@@ -394,7 +454,7 @@ def _run_challenger(seed: int, *, fresh: bool) -> dict[str, object]:
         selected_state,
         selected_cell,
         contexts["successor"],
-        NOVEL_TARGET,
+        task,
     )
     reversal_state, reversal_cell = selected_router.append_cell(
         selected_state,
@@ -433,8 +493,8 @@ def _run_challenger(seed: int, *, fresh: bool) -> dict[str, object]:
         state=reversal_state,
         cell_index=selected_cell,
         context=contexts["successor"],
-        context_mask=NOVEL_CONTEXT_MASK,
-        target=NOVEL_TARGET,
+        context_mask=task.context_mask,
+        target=task.target,
     )
     source_unchanged = router._state_digest(state) == source_digest
     persistence = selected_router.state_from_payload(
@@ -484,26 +544,82 @@ def _run_challenger(seed: int, *, fresh: bool) -> dict[str, object]:
     }
 
 
-def run(seed: int, report_out: Path) -> dict[str, object]:
+def run(
+    seed: int,
+    report_out: Path,
+    *,
+    task: ChallengerTask = HARMFUL_NOVEL_TASK,
+) -> dict[str, object]:
+    task.validate()
     begun = time.perf_counter()
-    warm = _run_challenger(seed, fresh=False)
-    fresh = _run_challenger(seed, fresh=True)
+    warm = _run_challenger(seed, fresh=False, task=task)
+    fresh = _run_challenger(seed, fresh=True, task=task)
     controller_frozen = (
         warm["controller_digest"] == fresh["controller_digest"]
     )
     adapter_frozen = warm["adapter_digest"] == fresh["adapter_digest"]
+    source_mask, successor_mask, reversal_mask, known_schedule = routed._mask_configuration(
+        masked_context=True,
+        mask_curriculum="adaptive_versioned_multi_stage",
+    )
+    known_masks = [source_mask, successor_mask, reversal_mask]
+    if known_schedule is not None:
+        known_masks.extend(mask for _, mask in known_schedule)
+    task_mask_unseen = all(
+        not torch.equal(task.context_mask, known_mask) for known_mask in known_masks
+    )
+    task_target_unseen = all(
+        not torch.equal(task.target, known_target)
+        for known_target in (
+            base.SOURCE_TARGET,
+            base.SUCCESSOR_TARGET,
+            base.REVERSED_TARGET,
+        )
+    )
+
+    def probe_margin(receipt) -> float:
+        return float(
+            receipt.transfer_probe_score - receipt.fresh_probe_score
+            if task.probe_direction == "transfer"
+            else receipt.fresh_probe_score - receipt.transfer_probe_score
+        )
+
     gates = {
+        "task_mask_is_unseen": task_mask_unseen,
+        "task_target_is_unseen": task_target_unseen,
         "warm_known_sequence_mastered": warm["known_successor"]["stage_mastery_complete"],
         "fresh_known_sequence_mastered": fresh["known_successor"]["stage_mastery_complete"],
         "warm_source_retained": warm["known_source_retention"]["accepted"],
         "fresh_source_retained": fresh["known_source_retention"]["accepted"],
         "warm_known_successor_retained": warm["known_successor_retention"]["accepted"],
         "fresh_known_successor_retained": fresh["known_successor_retention"]["accepted"],
-        "copied_prior_rejected_on_novel_target": (
-            warm["receipt"].selected_initialization == "fresh"
-            and fresh["receipt"].selected_initialization == "fresh"
-            and warm["receipt"].transfer_probe_score < warm["receipt"].fresh_probe_score
-            and fresh["receipt"].transfer_probe_score < fresh["receipt"].fresh_probe_score
+        "warm_candidate_selection_matches_task": (
+            warm["receipt"].selected_initialization
+            == task.expected_initialization
+        ),
+        "fresh_candidate_selection_matches_task": (
+            fresh["receipt"].selected_initialization
+            == task.expected_initialization
+        ),
+        "warm_probe_order_matches_task": (
+            warm["receipt"].transfer_probe_score
+            > warm["receipt"].fresh_probe_score
+            if task.probe_direction == "transfer"
+            else warm["receipt"].transfer_probe_score
+            < warm["receipt"].fresh_probe_score
+        ),
+        "fresh_probe_order_matches_task": (
+            fresh["receipt"].transfer_probe_score
+            > fresh["receipt"].fresh_probe_score
+            if task.probe_direction == "transfer"
+            else fresh["receipt"].transfer_probe_score
+            < fresh["receipt"].fresh_probe_score
+        ),
+        "warm_probe_margin_material": (
+            probe_margin(warm["receipt"]) >= CHALLENGER_MIN_PROBE_MARGIN
+        ),
+        "fresh_probe_margin_material": (
+            probe_margin(fresh["receipt"]) >= CHALLENGER_MIN_PROBE_MARGIN
         ),
         "warm_novel_mastered": warm["continuation"]["deterministic_best_score"] >= base.MASTERY_THRESHOLD,
         "fresh_novel_mastered": fresh["continuation"]["deterministic_best_score"] >= base.MASTERY_THRESHOLD,
@@ -560,17 +676,16 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
         "zero_replayed_examples": True,
     }
     report = {
-        "schema": "neural-computer.policy-free-intention-novel-challenger.v1",
-        "claim_boundary": (
-            "bounded verifier-selected copy-or-fresh external intention admission "
-            "for one unseen evidence combination and target after a known adaptive "
-            "sequence; general distribution shift and unrestricted continual learning "
-            "remain unqualified"
-        ),
+        "schema": task.report_schema,
+        "claim_boundary": task.claim_boundary,
         "seed": seed,
         "configuration": {
-            "novel_context_mask": NOVEL_CONTEXT_MASK.tolist(),
-            "novel_target": NOVEL_TARGET.tolist(),
+            "task_id": task.task_id,
+            "novel_context_mask": task.context_mask.tolist(),
+            "novel_target": task.target.tolist(),
+            "expected_initialization": task.expected_initialization,
+            "probe_direction": task.probe_direction,
+            "minimum_probe_margin": CHALLENGER_MIN_PROBE_MARGIN,
             "probe_updates": CHALLENGER_PROBE_UPDATES,
             "max_continuation_updates": NOVEL_MAX_UPDATES,
             "known_curriculum": "adaptive_versioned_multi_stage",
@@ -585,6 +700,7 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
                 "selected_initialization": warm["receipt"].selected_initialization,
                 "transfer_probe_score": warm["receipt"].transfer_probe_score,
                 "fresh_probe_score": warm["receipt"].fresh_probe_score,
+                "probe_margin": probe_margin(warm["receipt"]),
                 "total_updates": warm["total_updates"],
                 "continuation": warm["continuation"],
                 "retention": warm["retention"],
@@ -600,6 +716,7 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
                 "selected_initialization": fresh["receipt"].selected_initialization,
                 "transfer_probe_score": fresh["receipt"].transfer_probe_score,
                 "fresh_probe_score": fresh["receipt"].fresh_probe_score,
+                "probe_margin": probe_margin(fresh["receipt"]),
                 "total_updates": fresh["total_updates"],
                 "continuation": fresh["continuation"],
                 "retention": fresh["retention"],

@@ -7,6 +7,7 @@ from neural_computer import (
     EXTERNAL_ROUTED_INTENTION_MEMORY_SCHEMA_V2,
     EXTERNAL_ROUTED_INTENTION_MEMORY_SCHEMA_V3,
     EXTERNAL_ROUTED_INTENTION_MEMORY_SCHEMA_V4,
+    EXTERNAL_ROUTED_INTENTION_PRIOR_SELECTION_SCHEMA_V2,
     ExternalOutcomeIntentionGenerator,
     ExternalOutcomeIntentionMemory,
     ExternalOutcomeIntentionRouter,
@@ -165,6 +166,32 @@ def test_router_prior_challenger_can_reject_copy_and_select_fresh_state() -> Non
     assert selected_router is not router
     assert selected_state.cells.baseline.shape == (3,)
     assert router._state_digest(state) == source_digest
+
+
+def test_router_prior_challenger_can_trade_verifier_score_for_cost() -> None:
+    router, state = _router()
+
+    def probe(*_args):
+        return 0.9, 0.8, _args[1], _args[4]
+
+    receipt, _selected_router, _selected_state, selected_cell = (
+        router.select_verified_transfer_prior(
+            state,
+            0,
+            probe,
+            transfer_cost=10.0,
+            fresh_cost=0.0,
+            cost_weight=0.02,
+        )
+    )
+
+    assert receipt.schema == EXTERNAL_ROUTED_INTENTION_PRIOR_SELECTION_SCHEMA_V2
+    assert receipt.selected_initialization == "fresh"
+    assert selected_cell == receipt.fresh_cell == 2
+    assert receipt.transfer_adjusted_score == 0.7
+    assert receipt.fresh_adjusted_score == 0.8
+    assert receipt.transfer_cost == 10.0
+    assert receipt.cost_weight == 0.02
 
 
 def test_router_batches_sparse_union_and_credits_physical_cells() -> None:

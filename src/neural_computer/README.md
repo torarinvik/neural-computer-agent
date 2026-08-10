@@ -1330,3 +1330,10 @@ challenger audit is archived in
 `session_records/policy_free_intention_novel_challenger_promoted_2026-08-10/`.
 It promotes bounded admission safety, not positive novel-task transfer or
 general continual learning.
+
+The companion positive-transfer harness uses the same API with an unseen
+nearby target. Transfer wins all six isolated branch probes across three
+seeds, while the negative-transfer harness continues to select fresh state.
+Both records are retained under `session_records/` and deliberately keep
+universal speedup and broad generalization unclaimed. Selection receipts also
+support v2 cost-aware adjusted scores for deployment-budget decisions.

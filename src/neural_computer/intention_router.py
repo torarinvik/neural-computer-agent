@@ -40,6 +40,9 @@ EXTERNAL_ROUTED_INTENTION_RETENTION_VERIFICATION_SCHEMA = (
 EXTERNAL_ROUTED_INTENTION_PRIOR_SELECTION_SCHEMA = (
     "neural-computer.external-routed-intention-prior-selection.v1"
 )
+EXTERNAL_ROUTED_INTENTION_PRIOR_SELECTION_SCHEMA_V2 = (
+    "neural-computer.external-routed-intention-prior-selection.v2"
+)
 
 
 @dataclass(frozen=True)
@@ -348,9 +351,17 @@ class ExternalRoutedIntentionPriorSelectionReceipt:
     selected_state_digest: str
     reason: str
     schema: str = EXTERNAL_ROUTED_INTENTION_PRIOR_SELECTION_SCHEMA
+    transfer_cost: float = 0.0
+    fresh_cost: float = 0.0
+    cost_weight: float = 0.0
+    transfer_adjusted_score: float | None = None
+    fresh_adjusted_score: float | None = None
 
     def validate(self) -> ExternalRoutedIntentionPriorSelectionReceipt:
-        if self.schema != EXTERNAL_ROUTED_INTENTION_PRIOR_SELECTION_SCHEMA:
+        if self.schema not in {
+            EXTERNAL_ROUTED_INTENTION_PRIOR_SELECTION_SCHEMA,
+            EXTERNAL_ROUTED_INTENTION_PRIOR_SELECTION_SCHEMA_V2,
+        }:
             raise ValueError("unsupported routed intention prior-selection schema")
         if self.selected_initialization not in {"transfer", "fresh"}:
             raise ValueError("routed intention prior selection is invalid")
@@ -367,6 +378,35 @@ class ExternalRoutedIntentionPriorSelectionReceipt:
         ):
             if not isinstance(value, (float, int)) or not math.isfinite(float(value)):
                 raise ValueError(f"routed intention prior {name} is invalid")
+        for name, value in (
+            ("transfer_cost", self.transfer_cost),
+            ("fresh_cost", self.fresh_cost),
+            ("cost_weight", self.cost_weight),
+        ):
+            if (
+                not isinstance(value, (float, int))
+                or not math.isfinite(float(value))
+                or float(value) < 0.0
+            ):
+                raise ValueError(f"routed intention prior {name} is invalid")
+        adjusted_scores = (
+            ("transfer_adjusted_score", self.transfer_adjusted_score),
+            ("fresh_adjusted_score", self.fresh_adjusted_score),
+        )
+        for name, value in adjusted_scores:
+            if value is not None and (
+                not isinstance(value, (float, int))
+                or not math.isfinite(float(value))
+            ):
+                raise ValueError(f"routed intention prior {name} is invalid")
+        if self.schema == EXTERNAL_ROUTED_INTENTION_PRIOR_SELECTION_SCHEMA:
+            if any(
+                float(value) != 0.0
+                for value in (self.transfer_cost, self.fresh_cost, self.cost_weight)
+            ) or any(value is not None for _, value in adjusted_scores):
+                raise ValueError("v1 prior-selection receipts cannot contain costs")
+        elif self.transfer_adjusted_score is None or self.fresh_adjusted_score is None:
+            raise ValueError("v2 prior-selection receipts require adjusted scores")
         if (
             not isinstance(self.probe_updates, int)
             or isinstance(self.probe_updates, bool)
@@ -1314,6 +1354,9 @@ class ExternalOutcomeIntentionRouter:
         *,
         context_mask: torch.Tensor | None = None,
         probe_updates: int = 0,
+        transfer_cost: float = 0.0,
+        fresh_cost: float = 0.0,
+        cost_weight: float = 0.0,
     ) -> tuple[
         ExternalRoutedIntentionPriorSelectionReceipt,
         ExternalOutcomeIntentionRouter,
@@ -1343,6 +1386,18 @@ class ExternalOutcomeIntentionRouter:
             or probe_updates < 0
         ):
             raise ValueError("routed intention prior probe updates are invalid")
+        for name, value in (
+            ("transfer_cost", transfer_cost),
+            ("fresh_cost", fresh_cost),
+            ("cost_weight", cost_weight),
+        ):
+            if (
+                not isinstance(value, (float, int))
+                or isinstance(value, bool)
+                or not math.isfinite(float(value))
+                or float(value) < 0.0
+            ):
+                raise ValueError(f"routed intention prior {name} is invalid")
 
         source_digest = self._state_digest(state)
         transfer_router = copy.deepcopy(self)
@@ -1385,8 +1440,20 @@ class ExternalOutcomeIntentionRouter:
             raise ValueError("routed intention prior probe scores must be finite")
         if self._state_digest(state) != source_digest:
             raise RuntimeError("routed intention prior probe mutated the source state")
+        cost_aware = any(
+            float(value) != 0.0
+            for value in (transfer_cost, fresh_cost, cost_weight)
+        )
+        transfer_adjusted_score = float(transfer_score) - float(cost_weight) * float(
+            transfer_cost
+        )
+        fresh_adjusted_score = float(fresh_score) - float(cost_weight) * float(
+            fresh_cost
+        )
         selected_initialization = (
-            "transfer" if float(transfer_score) >= float(fresh_score) else "fresh"
+            "transfer"
+            if transfer_adjusted_score >= fresh_adjusted_score
+            else "fresh"
         )
         selected_router, selected_state, selected_cell = (
             (transfer_router, transfer_state, transfer_cell)
@@ -1404,10 +1471,32 @@ class ExternalOutcomeIntentionRouter:
             source_state_digest=source_digest,
             selected_state_digest=selected_router._state_digest(selected_state),
             reason=(
-                "transferred external intention state won the verifier challenger"
+                (
+                    "transferred external intention state won the cost-aware verifier challenger"
+                    if cost_aware
+                    else "transferred external intention state won the verifier challenger"
+                )
                 if selected_initialization == "transfer"
-                else "fresh external intention state won the verifier challenger"
+                else (
+                    "fresh external intention state won the cost-aware verifier challenger"
+                    if cost_aware
+                    else "fresh external intention state won the verifier challenger"
+                )
             ),
+            schema=(
+                EXTERNAL_ROUTED_INTENTION_PRIOR_SELECTION_SCHEMA_V2
+                if cost_aware
+                else EXTERNAL_ROUTED_INTENTION_PRIOR_SELECTION_SCHEMA
+            ),
+            transfer_cost=float(transfer_cost),
+            fresh_cost=float(fresh_cost),
+            cost_weight=float(cost_weight),
+            transfer_adjusted_score=transfer_adjusted_score
+            if cost_aware
+            else None,
+            fresh_adjusted_score=fresh_adjusted_score
+            if cost_aware
+            else None,
         ).validate()
         return receipt, selected_router, selected_state, selected_cell
 

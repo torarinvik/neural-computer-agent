@@ -904,3 +904,19 @@ computation, unrestricted memory growth, compression, or general continual
 learning. The next high-ROI experiment is a probe that sometimes accepts a
 useful transfer prior on a genuinely novel combination, followed by learned
 cost-aware admission and retention across multiple unseen task families.
+
+## Positive prior selection on a nearby unseen task (2026-08-10)
+
+The complementary audit uses the same verifier transaction with an unseen
+mask and an unseen target that is a nearby continuation of the mastered
+successor. Transfer wins all six warm/fresh challenger decisions with a probe
+margin of at least `0.094`, and every selected transfer branch masters and
+retains the novel capability. The evidence is archived in
+`session_records/policy_free_intention_positive_transfer_challenger_promoted_2026-08-10/`.
+
+This is the first replicated positive prior-selection signal: the verifier
+can accept useful inherited external computation as well as reject harmful
+copying. Matched warm acquisition is faster in two of three seeds, so this
+does not establish a universal warm-over-fresh speedup or broad positive
+transfer. The next step is cost-aware admission across multiple genuinely
+different task families.
