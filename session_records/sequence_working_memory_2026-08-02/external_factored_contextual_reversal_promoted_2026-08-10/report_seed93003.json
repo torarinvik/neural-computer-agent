@@ -1,0 +1,79 @@
+{
+  "schema": "neural-computer.external-factored-contextual-reversal.v1",
+  "seed": 93003,
+  "configuration": {
+    "slot_count": 2,
+    "rows_per_slot": 4,
+    "drift_delta": 0.04,
+    "count_decay": 0.1,
+    "match_tolerance": 0.005,
+    "claim": "contextual-reliability-reversal-without-factual-replay-v1"
+  },
+  "metrics": {
+    "initial_statuses": [
+      "reliability_veto",
+      "matched"
+    ],
+    "first_reversal_before": [
+      "reliability_veto",
+      "matched"
+    ],
+    "after_first_reversal": [
+      "matched",
+      "reliability_veto"
+    ],
+    "second_reversal_before": [
+      "matched",
+      "reliability_veto"
+    ],
+    "after_second_reversal": [
+      "reliability_veto",
+      "matched"
+    ],
+    "initial_quarantine_rows": 4,
+    "first_resolved": [
+      0,
+      0
+    ],
+    "second_resolved": [
+      1,
+      1
+    ],
+    "final_quarantine_rows": 4,
+    "verifier_observation_count": 24
+  },
+  "gates": {
+    "initial_negative_veto_positive_match": true,
+    "initial_negative_quarantine_retained": true,
+    "first_reversal_updates_without_replay": true,
+    "first_reversal_resolves_retained_rows": true,
+    "second_reversal_updates_again": true,
+    "second_reversal_resolves_retained_rows": true,
+    "fact_bank_unchanged": true,
+    "persistence_exact": true,
+    "base_frozen": true,
+    "controller_frozen": true,
+    "context_encoder_unchanged": true,
+    "replay_free": true
+  },
+  "accounting": {
+    "unique_verifier_outcomes": 24,
+    "unique_logical_transition_lifetimes": 2,
+    "contextual_sufficient_statistics_updates": 4,
+    "base_optimizer_updates": 0,
+    "residual_optimizer_updates": 0,
+    "replayed_examples": 0,
+    "old_regime_replay": 0,
+    "controller_optimizer_updates": 0,
+    "context_encoder_optimizer_updates": 0,
+    "wall_seconds": 0.02747483301209286
+  },
+  "digests": {
+    "base": "d5406936006070bc08fc786f4b6bcffdf6555051316719a498c420755d41de44",
+    "controller": "7fcb2cc05bd19ccd7ab3386e939a3e93c6d2a3dd0e49d7067ed0e22e668beeb5",
+    "context_encoder": "1b15b22020f3a0128fc757c8a8a0620effbd7b087ace4e68b36ba2c8e9034f44",
+    "router": "32f1bb6b244be4245dadeaa739b5204c4f48afd8f618c2f165b3b595c7a633e1",
+    "statistics": "4696571816a86e9300bbbb715c1690260f051bc8a3eefeb79401725e1560b37d"
+  },
+  "promoted": true
+}

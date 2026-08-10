@@ -2447,6 +2447,25 @@ def test_contextual_evidence_statistics_isolate_and_persist_contexts() -> None:
     assert torch.equal(restored.score(prediction, observed, None, contexts), scores)
 
 
+def test_contextual_evidence_statistics_adapts_reversal_with_local_decay() -> None:
+    statistics = ExternalContextualTransitionEvidenceStatistics(
+        1,
+        2,
+        bin_count=8,
+        error_scale=0.1,
+        prior_count=0.01,
+        count_decay=0.1,
+    )
+    prediction = torch.zeros(1, 1)
+    observed = torch.full((1, 1), 0.01)
+    context = torch.tensor([1.0, 0.0])
+    statistics.observe(prediction, observed, torch.ones(1), context)
+    assert statistics.score(prediction, observed, None, context).item() > 0.0
+    statistics.observe(prediction, observed, torch.zeros(1), context)
+    assert statistics.score(prediction, observed, None, context).item() < 0.0
+    assert statistics.configuration()["count_decay"] == 0.1
+
+
 def test_factored_router_resolves_quarantine_into_isolated_candidate() -> None:
     model = ExternalFactoredTransitionModel(1, 1, 2, hidden_width=8)
     for parameter in model.base.parameters():

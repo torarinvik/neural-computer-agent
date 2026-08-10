@@ -6885,3 +6885,20 @@ memory growth, or general continual learning.
 
 Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_factored_contextual_reliability_promoted_2026-08-10/`.
+
+## Contextual reliability reversal (2026-08-10)
+
+Context-local sufficient statistics now support bounded recency through an
+explicit count-decay parameter. Across three seeds, two slots received the
+same near-boundary drift while verifier labels alternated twice. The gate
+flipped in one subsequent evidence window on each reversal, retained rows
+resolved to the correct stable addresses, and the factual bank remained
+unchanged. Persistence, frozen-component, and zero-replay controls passed.
+
+This promotes adaptive reliability state, not adaptive factual forgetting: the
+factual transition memory remains protected while only the verifier-side
+confidence state changes. It does not establish unrestricted memory growth or
+general continual learning.
+
+Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_factored_contextual_reversal_promoted_2026-08-10/`.

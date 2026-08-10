@@ -2668,3 +2668,11 @@ contextual sufficient statistics persisted exactly while the fact bank,
 controller, and context encoder stayed frozen. This is bounded context-local
 reliability, not general continual learning. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_factored_contextual_reliability_promoted_2026-08-10/`.
+
+The context-local reliability state now adapts to verifier reversals as well.
+Across three seeds, bounded count decay flipped two slots’ route decisions in
+one subsequent evidence window, resolved retained quarantine rows to their
+stable addresses, and left the factual bank unchanged. This is a bounded
+recency mechanism for reliability state, not general continual learning.
+Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_factored_contextual_reversal_promoted_2026-08-10/`.

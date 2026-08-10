@@ -7569,6 +7569,7 @@ class ExternalContextualTransitionEvidenceStatistics(nn.Module):
         error_scale: float = 0.1,
         prior_count: float = 1.0,
         matching_tolerance: float = 1e-4,
+        count_decay: float = 1.0,
     ) -> None:
         super().__init__()
         if min(state_width, context_width) < 1 or bin_count < 2:
@@ -7579,12 +7580,15 @@ class ExternalContextualTransitionEvidenceStatistics(nn.Module):
             raise ValueError("contextual evidence-statistics prior is invalid")
         if matching_tolerance < 0.0 or not math.isfinite(matching_tolerance):
             raise ValueError("contextual evidence-statistics matching tolerance is invalid")
+        if not 0.0 < count_decay <= 1.0 or not math.isfinite(count_decay):
+            raise ValueError("contextual evidence-statistics count decay is invalid")
         self.state_width = int(state_width)
         self.context_width = int(context_width)
         self.bin_count = int(bin_count)
         self.error_scale = float(error_scale)
         self.prior_count = float(prior_count)
         self.matching_tolerance = float(matching_tolerance)
+        self.count_decay = float(count_decay)
         self.register_buffer(
             "error_edges",
             torch.logspace(
@@ -7621,6 +7625,7 @@ class ExternalContextualTransitionEvidenceStatistics(nn.Module):
             "error_scale": self.error_scale,
             "prior_count": self.prior_count,
             "matching_tolerance": self.matching_tolerance,
+            "count_decay": self.count_decay,
             "training": "one_pass_contextual_scalar_verifier_outcomes_v1",
             "storage": "per_context_error_bin_sufficient_statistics_only_v1",
         }
@@ -7754,6 +7759,9 @@ class ExternalContextualTransitionEvidenceStatistics(nn.Module):
             raise ValueError("contextual evidence outcomes are invalid")
         indices = self._context_indices(normalized)
         bins = self._bin_indices(prediction, observed).to(indices.device)
+        for context_index in torch.unique(indices).tolist():
+            self.positive_counts[context_index].mul_(self.count_decay)
+            self.negative_counts[context_index].mul_(self.count_decay)
         flat = indices * self.bin_count + bins
         self.positive_counts.view(-1).index_add_(0, flat, targets)
         self.negative_counts.view(-1).index_add_(0, flat, 1.0 - targets)
@@ -7799,6 +7807,7 @@ class ExternalContextualTransitionEvidenceStatistics(nn.Module):
             error_scale=float(configuration["error_scale"]),
             prior_count=float(configuration["prior_count"]),
             matching_tolerance=float(configuration["matching_tolerance"]),
+            count_decay=float(configuration.get("count_decay", 1.0)),
         )
         expected = restored.state_dict()
         if tuple(state) != tuple(expected):
