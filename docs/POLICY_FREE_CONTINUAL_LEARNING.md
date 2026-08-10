@@ -739,3 +739,27 @@ This promotes bounded stable-prefix retention and address preservation, not
 positive transfer. The matched fresh learner remains faster on some disjoint
 successors, so the next bottleneck is a verified factual/residual challenger
 that improves acquisition without copying policy-like generator weights.
+
+## Promoted one-pass factual residual growth (2026-08-10)
+
+The next pressure test now exercises that challenger. A source transition
+model is trained once and frozen. A successor regime is admitted through an
+opaque context-addressed random-feature residual whose sufficient statistics
+consume each of `32` fresh transition rows once. The candidate must pass an
+independent held-out one-step probe, a two-step recursive rollout, and source
+retention before copy-on-write promotion.
+
+Seeds `101` and `102` both pass. Residual held-out MSE is `0.000890`/`0.005689`,
+recursive rollout MSE is `0.000551`/`0.028136`, and source-retention MSE is
+`0.004217`/`0.000352`. Shuffled transition evidence is rejected, missing
+evidence is a no-op, persistence is exact, and the frozen base remains
+byte-stable. Evidence is archived in
+`session_records/policy_free_factual_residual_growth_promoted_2026-08-10/`.
+
+The matched full-model-copy and fresh controls can fit the successor, but
+replay the target rows through `1,500` optimizer updates and fail source
+retention at target stability. This promotes one-pass factual residual
+acquisition, not unrestricted residual capacity, arbitrary program induction,
+policy learning, or general continual learning. The next bottleneck is
+multi-regime residual growth with route-cost, compression, and bounded-memory
+accounting.

@@ -3882,6 +3882,26 @@ continual learning. Fresh learners still win on some disjoint successors;
 the next architectural pressure is verified factual/residual compute that
 improves acquisition without copying policy-like generator weights.
 
+## Promoted one-pass factual residual challenger (2026-08-10)
+
+The factual challenger is now exercised end to end. A reusable source
+transition model is frozen before a successor stream arrives. A separate
+opaque context-addressed random-feature residual learns the successor delta
+from `32` fresh transition rows in one pass. Admission is copy-on-write and
+requires held-out one-step, recursive-rollout, and source-retention probes.
+
+Both seeds `101` and `102` pass; the residual leaves the source model
+byte-stable, while shuffled transition evidence is rejected and persistence is
+exact. The matched full-model-copy and fresh controls fit the new regime only
+after repeated optimizer updates and both fail source retention at target
+stability. The promoted evidence is in
+`session_records/policy_free_factual_residual_growth_promoted_2026-08-10/`.
+
+This establishes a bounded factual-residual acquisition seam, not general
+continual learning or unlimited computation. The next pressure test must
+repeat residual growth across a longer bank and measure route cost,
+compression, reversal, and memory-budget behavior.
+
 ## Trajectory-statistics route queries and automatic cell qualification (2026-08-10)
 
 The memory-side route boundary now has an optional

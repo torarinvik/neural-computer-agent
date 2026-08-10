@@ -1,0 +1,24 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "policy-free-factual-residual-growth-promoted-2026-08-10",
+  "claim_status": "promoted_one_pass_factual_residual",
+  "seeds": [101, 102],
+  "unique_transition_rows": [32, 32],
+  "heldout_transition_rows": [14, 14],
+  "recursive_rollout_rows": [2, 2],
+  "residual_optimizer_updates": 0,
+  "residual_replayed_examples": 0,
+  "fresh_optimizer_updates": [1500, 1500],
+  "fresh_replayed_examples": [48000, 48000],
+  "copy_optimizer_updates": [1500, 1500],
+  "copy_replayed_examples": [48000, 48000],
+  "residual_heldout_mse": [0.0008898981614038348, 0.005688682664185762],
+  "residual_rollout_mse": [0.000550921424292028, 0.02813604101538658],
+  "source_retention_mse": [0.004216809757053852, 0.00035190643393434584],
+  "notes": [
+    "Frozen shared factual computation remained byte-stable.",
+    "Random-feature sufficient statistics consumed each residual row once.",
+    "Full-model-copy and fresh controls fit the successor but failed source retention.",
+    "This is a bounded factual-residual result, not general continual learning."
+  ]
+}

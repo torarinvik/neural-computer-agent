@@ -210,6 +210,15 @@ addressing. Evidence is in
 It does not promote positive transfer: fresh learners still win on some
 disjoint successors, so the next step is a factual/residual challenger.
 
+That factual challenger is now promoted as a separate external seam:
+`ExternalFactoredTransitionModel` keeps the reusable transition base frozen
+while `ExternalFactoredTransitionRouter` admits a context-addressed residual
+only after held-out one-step, recursive-rollout, and source-retention probes.
+The two-seed evidence is in
+`session_records/policy_free_factual_residual_growth_promoted_2026-08-10/`.
+The residual is one-pass and replay-free in this bounded test; it does not
+claim unrestricted computation or general continual learning.
+
 The outcome-only view-routing audit trains `FactorizedOpaqueAddressRouter`
 from paired attempted-view outcomes. Across two seeds it reaches `1.000`
 held-out route accuracy and `1.000` candidate-permutation accuracy, while the
