@@ -186,6 +186,14 @@ from .lifecycle import (
     StagedCapabilityReceipt,
     select_capability_candidate,
 )
+from .maintenance import (
+    EXTERNAL_MEMORY_MAINTENANCE_POLICY_SCHEMA,
+    EXTERNAL_MEMORY_MAINTENANCE_PROPOSAL_SCHEMA,
+    MAINTENANCE_ACTIONS,
+    MAINTENANCE_FEATURE_WIDTH,
+    ExternalMemoryMaintenancePolicy,
+    ExternalMemoryMaintenanceProposal,
+)
 from .memory import (
     APPEND_ONLY_MEMORY_BACKEND_FORMAT,
     APPEND_ONLY_MEMORY_SNAPSHOT_FORMAT,
@@ -536,6 +544,8 @@ __all__ = [
     "EXTERNAL_GOAL_REPRESENTATION_RANDOM_FEATURE_ALIGNMENT_SCHEMA",
     "EXTERNAL_GOAL_REPRESENTATION_RANDOM_FEATURE_GROWTH_SCHEMA",
     "EXTERNAL_LEARNED_MULTI_STREAM_ROUTER_SCHEMA",
+    "EXTERNAL_MEMORY_MAINTENANCE_POLICY_SCHEMA",
+    "EXTERNAL_MEMORY_MAINTENANCE_PROPOSAL_SCHEMA",
     "EXTERNAL_MODEL_PLANNER_SCHEMA",
     "EXTERNAL_MULTI_STREAM_TRANSITION_ROUTER_SCHEMA",
     "EXTERNAL_ONLINE_CONTEXT_RESOLVER_SCHEMA",
@@ -617,6 +627,8 @@ __all__ = [
     "INTENTION_SCHEMA",
     "KEYPRESS_DECODER_SCHEMA",
     "KEYPRESS_ENCODER_SCHEMA",
+    "MAINTENANCE_ACTIONS",
+    "MAINTENANCE_FEATURE_WIDTH",
     "MEMORY_BACKEND_FORMAT",
     "MEMORY_MIGRATION_SCHEMA",
     "MEMORY_READ_MATCH_THRESHOLD",
@@ -718,6 +730,8 @@ __all__ = [
     "ExternalLearnedMultiStreamTransitionContextRouter",
     "ExternalLearnedMultiStreamTransitionResult",
     "ExternalMemoryEvictionPolicy",
+    "ExternalMemoryMaintenancePolicy",
+    "ExternalMemoryMaintenanceProposal",
     "ExternalMemoryWritePolicy",
     "ExternalModelBasedPlanner",
     "ExternalMultiStreamTransitionContextResult",

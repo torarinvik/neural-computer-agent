@@ -22,6 +22,10 @@ from typing import Any
 
 import torch
 
+from .maintenance import (
+    ExternalMemoryMaintenancePolicy,
+    ExternalMemoryMaintenanceProposal,
+)
 from .multistream_transition import (
     ExternalMultiStreamTransitionContextResult,
     ExternalMultiStreamTransitionContextRouter,
@@ -2005,6 +2009,167 @@ class ExternalLearnedMultiStreamTransitionContextRouter:
             "router": self.router.configuration(),
             "ownership": "binding_and_factual_router_external_to_frozen_controller_v1",
         }
+
+    def maintenance_features(
+        self,
+        *,
+        redundancy_pressure: float | None = None,
+        compression_opportunity: float = 0.0,
+    ) -> torch.Tensor:
+        """Return generic storage telemetry for an external policy.
+
+        The policy sees capacity, lifetime, aliasing, binding, and storage
+        pressure only.  It never receives stream labels, task IDs, raw
+        observations, or protocol-shaped actions.
+        """
+
+        if not math.isfinite(compression_opportunity) or not 0.0 <= compression_opportunity <= 1.0:
+            raise ValueError("maintenance compression opportunity must lie in [0, 1]")
+        bank = self.router.bank
+        telemetry = bank.lifetime_telemetry()
+        logical = bank.context_count
+        physical = bank.physical_model_count
+        bank_capacity = bank.capacity
+        capacity_denominator = max(
+            1,
+            bank_capacity if bank_capacity is not None else logical,
+        )
+        logical_fraction = min(logical / float(capacity_denominator), 1.0)
+        physical_fraction = min(physical / float(capacity_denominator), 1.0)
+        alias_fraction = 0.0 if logical == 0 else 1.0 - physical / float(logical)
+        usage = telemetry.usage
+        age = telemetry.age
+        prediction_error = telemetry.prediction_error
+        usage_scale = max(float(usage.max()) if usage.numel() else 0.0, 1.0)
+        age_scale = max(float(telemetry.logical_clock), 1.0)
+        mean_usage = float(usage.mean()) / usage_scale if usage.numel() else 0.0
+        mean_age = float(age.mean()) / age_scale if age.numel() else 0.0
+        mean_error = (
+            float(prediction_error.mean()) / (1.0 + float(prediction_error.mean()))
+            if prediction_error.numel()
+            else 0.0
+        )
+        max_error = (
+            float(prediction_error.max()) / (1.0 + float(prediction_error.max()))
+            if prediction_error.numel()
+            else 0.0
+        )
+        if redundancy_pressure is None:
+            redundancy_pressure = alias_fraction
+        if not math.isfinite(redundancy_pressure) or not 0.0 <= redundancy_pressure <= 1.0:
+            raise ValueError("maintenance redundancy pressure must lie in [0, 1]")
+        binding_pressure = min(
+            self.binding.stream_count / float(max(self.binding.max_streams, 1)),
+            1.0,
+        )
+        provisional_pressure = min(
+            self.binding.provisional_count
+            / float(max(self.binding.provisional_capacity, 1)),
+            1.0,
+        )
+        return torch.tensor(
+            [
+                1.0
+                if bank.capacity is not None and logical >= bank.capacity
+                else 0.0,
+                logical_fraction,
+                physical_fraction,
+                max(0.0, min(alias_fraction, 1.0)),
+                mean_usage,
+                mean_age,
+                mean_error,
+                max_error,
+                binding_pressure,
+                provisional_pressure,
+                redundancy_pressure,
+                compression_opportunity,
+            ],
+            dtype=torch.float32,
+        )
+
+    def propose_maintenance(
+        self,
+        policy: ExternalMemoryMaintenancePolicy,
+        *,
+        grow_available: bool = False,
+        share_available: bool = False,
+        compression_available: bool = False,
+        redundancy_pressure: float | None = None,
+        compression_opportunity: float = 0.0,
+        sample: bool = False,
+        generator: torch.Generator | None = None,
+    ) -> ExternalMemoryMaintenanceProposal:
+        """Ask the replaceable memory policy for one legal maintenance action."""
+
+        if not isinstance(policy, ExternalMemoryMaintenancePolicy):
+            raise TypeError("maintenance policy must be external-memory policy")
+        structural = (grow_available, share_available, compression_available, True)
+        if not all(isinstance(value, bool) for value in structural):
+            raise TypeError("maintenance action availability must be bool")
+        action_mask = torch.tensor(structural, dtype=torch.bool)
+        features = self.maintenance_features(
+            redundancy_pressure=redundancy_pressure,
+            compression_opportunity=compression_opportunity,
+        )
+        return policy.propose(
+            features,
+            action_mask,
+            sample=sample,
+            generator=generator,
+        )
+
+    def apply_maintenance_proposal(
+        self,
+        proposal: ExternalMemoryMaintenanceProposal,
+        *,
+        retention_probe: Callable[[Any], bool] | None = None,
+        destination_capacity: int | None = None,
+        share_pair: tuple[torch.Tensor, torch.Tensor] | None = None,
+        heldout: Sequence[ExternalTransitionObservation] = (),
+        compression_dtype: torch.dtype | str = torch.float16,
+    ) -> Any:
+        """Execute one proposal through the existing verifier-gated APIs.
+
+        The proposal chooses the operation; the caller supplies only legal
+        structural evidence such as an independently discovered equivalent
+        pair, held-out observations, or a destination capacity.  ``defer``
+        is a successful no-op and never mutates either memory layer.
+        """
+
+        proposal.validate()
+        if proposal.action == "defer":
+            return None
+        if proposal.action == "grow":
+            if destination_capacity is None:
+                raise ValueError("maintenance growth needs destination capacity")
+            if retention_probe is None:
+                raise ValueError("maintenance growth needs a retention probe")
+            return self.router.bank.grow_verified(
+                destination_capacity,
+                retention_probe,
+            )
+        if proposal.action == "share":
+            if share_pair is None:
+                raise ValueError("maintenance sharing needs an equivalent pair")
+            if len(heldout) == 0:
+                raise ValueError("maintenance sharing needs held-out evidence")
+            if retention_probe is None:
+                raise ValueError("maintenance sharing needs a retention probe")
+            first_key, second_key = share_pair
+            return self.consolidate_factual_slots_verified(
+                first_key,
+                second_key,
+                heldout,
+                retention_probe=retention_probe,
+            )
+        if proposal.action == "compress":
+            if retention_probe is None:
+                raise ValueError("maintenance compression needs a retention probe")
+            return self.router.bank.compress_and_commit_verified(
+                dtype=compression_dtype,
+                retention_probe=retention_probe,
+            )
+        raise ValueError(f"unsupported maintenance action: {proposal.action}")
 
     def observe(
         self,

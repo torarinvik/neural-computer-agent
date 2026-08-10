@@ -2039,6 +2039,68 @@ class ExternalTransitionModelBank(nn.Module):
             ),
         ).validate()
 
+    def compress_and_commit_verified(
+        self,
+        *,
+        dtype: torch.dtype | str = torch.float16,
+        retention_probe: Callable[[ExternalTransitionModelBank], bool] | None = None,
+    ) -> ExternalTransitionModelCompressionReceipt:
+        """Commit a retained compressed runtime candidate copy-on-write.
+
+        :meth:`compress_verified` is intentionally proposal-only for callers
+        that persist a separate checkpoint.  A live external-memory
+        maintenance policy needs an explicit commit operation as well.  The
+        candidate is independently restored, probed, and checked for probe
+        mutation before the complete bank state is swapped atomically.
+        """
+
+        payload = self.compressed_payload(dtype=dtype)
+        candidate = self.from_compressed_payload(payload)
+        if retention_probe is not None and not callable(retention_probe):
+            raise TypeError("transition-model compression retention probe is invalid")
+        candidate_digest_before = candidate.content_digest()
+        accepted = retention_probe is None or bool(retention_probe(candidate))
+        probe_unchanged = candidate.content_digest() == candidate_digest_before
+        source_bytes = sum(
+            self._tensor_map_bytes(model.state_dict()) for model in self.models
+        )
+        compressed_bytes = sum(
+            self._tensor_map_bytes(model_payload["state"])
+            for model_payload in payload["models"]
+        )
+        if accepted and not probe_unchanged:
+            accepted = False
+        receipt = ExternalTransitionModelCompressionReceipt(
+            accepted=accepted,
+            codec=str(dtype),
+            source_bytes=source_bytes,
+            compressed_bytes=compressed_bytes,
+            context_count=self.context_count,
+            physical_models=self.physical_model_count,
+            candidate_digest=candidate.digest(),
+            reason=(
+                "compressed runtime candidate passed retention and was committed"
+                if accepted
+                else (
+                    "compression retention probe mutated candidate"
+                    if not probe_unchanged
+                    else "compressed runtime candidate failed retention probe"
+                )
+            ),
+        ).validate()
+        if not receipt.accepted:
+            return receipt
+        self.models = candidate.models
+        self._contexts = [context.detach().clone() for context in candidate._contexts]
+        self._model_families = list(candidate._model_families)
+        self._slot_ids = list(candidate._slot_ids)
+        self._next_slot_id = candidate._next_slot_id
+        self._lifetime_clock = candidate._lifetime_clock
+        self._lifetime_usage = dict(candidate._lifetime_usage)
+        self._lifetime_last_access = dict(candidate._lifetime_last_access)
+        self._lifetime_prediction_error = dict(candidate._lifetime_prediction_error)
+        return receipt
+
     def select_compression_verified(
         self,
         codecs: Sequence[torch.dtype | str],

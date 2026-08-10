@@ -7903,3 +7903,27 @@ stream merging, learned maintenance policy, unrestricted growth, or general
 continual learning. The next integration is a finite-budget lifecycle that can
 learn whether to grow, share, compress, or defer while preserving the same
 retention floor.
+
+## Learned finite-budget maintenance choice (2026-08-10)
+
+The memory side now exposes a versioned `grow/share/compress/defer` policy
+boundary. A frozen controller remains a generic event-to-intention processor;
+the replaceable policy sees only generic external-memory telemetry and a
+structural action mask. It performs discrete action selection and can adapt
+from one scalar verifier utility without replay. It never receives modality
+formats, task IDs, semantic slot labels, or protocol actions.
+
+The router connects this proposal boundary to existing verifier-gated factual
+growth and binding-aware parameter sharing. Runtime compression also has an
+explicit copy-on-write commit: an independently restored candidate must pass
+retention and mutation-integrity checks before the live factual bank changes.
+Stable opaque slot addresses and binding tracks are therefore preserved while
+physical storage can change.
+
+The bounded pressure test in
+`experiments/external_memory_maintenance_policy/` beats matched fresh and
+reward-shuffled controls on three seeds, with zero controller updates, zero
+replay, and one policy update per unique verifier utility. This is the
+architecture's first learned finite-budget maintenance rung; it does not yet
+claim learned verifier economics, autonomous candidate equivalence discovery,
+unrestricted memory growth, or general continual learning.

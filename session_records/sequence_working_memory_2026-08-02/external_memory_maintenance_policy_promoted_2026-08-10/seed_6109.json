@@ -1,0 +1,45 @@
+{
+  "schema": "neural-computer.external-memory-maintenance-policy.v1",
+  "claim_boundary": "learned finite-budget external-memory action selection over a synthetic verifier stream; not general continual learning, unrestricted memory growth, or autonomous equivalence discovery",
+  "seed": 6109,
+  "configuration": {
+    "train_steps": 320,
+    "eval_steps": 96,
+    "actions": [
+      "grow",
+      "share",
+      "compress",
+      "defer"
+    ],
+    "update": "single_scalar_verifier_policy_gradient_without_replay_v1"
+  },
+  "gates": {
+    "trained_beats_fresh": true,
+    "trained_beats_shuffled_verifier": true,
+    "all_actions_observed": true,
+    "controller_frozen": true,
+    "replay_zero": true,
+    "one_update_per_unique_utility": true
+  },
+  "promoted": true,
+  "metrics": {
+    "trained_eval_utility": 0.75,
+    "fresh_eval_utility": 0.25,
+    "shuffled_verifier_eval_utility": 0.25,
+    "trained_final_window_utility": 0.75,
+    "trained_action_counts": {
+      "grow": 185,
+      "share": 66,
+      "compress": 6,
+      "defer": 63
+    }
+  },
+  "accounting": {
+    "unique_verifier_utilities": 320,
+    "unique_logical_lifetimes": 320,
+    "optimizer_updates": 320,
+    "replayed_examples": 0,
+    "controller_updates": 0,
+    "wall_seconds": 0.7205674999859184
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "external_memory_maintenance_policy",
+  "date": "2026-08-10",
+  "claim": "learned finite-budget external-memory action selection",
+  "claim_boundary": "not learned verifier economics, autonomous equivalence discovery, unrestricted memory growth, or general continual learning",
+  "seeds": [6107, 6108, 6109],
+  "unique_verifier_bits": 960,
+  "unique_logical_lifetimes": 960,
+  "optimizer_updates": 960,
+  "replayed_examples": 0,
+  "controller_updates": 0,
+  "trained_heldout_utility": [0.5, 0.75, 0.75],
+  "fresh_heldout_utility": [0.25, 0.25, 0.25],
+  "shuffled_verifier_heldout_utility": [0.25, 0.25, 0.25],
+  "stable_retention": "not applicable to synthetic action-only verifier",
+  "transfer_ratio": "not applicable to synthetic action-only verifier",
+  "promoted": true
+}

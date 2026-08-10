@@ -1,0 +1,24 @@
+# External memory maintenance policy
+
+This pressure test adds the next architectural layer after verifier-gated
+growth and factual consolidation: a replaceable policy learns the discrete
+choice among `grow`, `share`, `compress`, and `defer` from generic external
+storage telemetry.
+
+The policy is outside the controller and receives no task labels, raw
+modalities, semantic IDs, or protocol actions. A synthetic external verifier
+returns one scalar utility per sampled decision. The trained policy is
+compared with a fresh policy and with a matched reward-shuffled verifier.
+
+The result is intentionally bounded. It demonstrates learned maintenance
+selection, not autonomous equivalence discovery, universal continual
+learning, or unrestricted memory growth. Actual mutations remain behind the
+existing copy-on-write retention gates in the external memory APIs.
+
+Run one seed from the repository root:
+
+```bash
+.venv/bin/python experiments/external_memory_maintenance_policy/train.py \
+  --seed 6107 \
+  --report-out /tmp/external-memory-maintenance-policy.json
+```

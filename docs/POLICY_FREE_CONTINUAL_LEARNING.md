@@ -294,3 +294,33 @@ This promotes bounded binding-aware factual parameter sharing, not learned
 consolidation policy, semantic stream merging, unrestricted memory growth, or
 general continual learning. The next pressure should combine repeated growth,
 learned maintenance choice, and compression under a finite capacity budget.
+
+## Learned finite-budget maintenance choice (2026-08-10)
+
+The external-memory boundary now has a replaceable discrete maintenance policy
+with four actions: `grow`, `share`, `compress`, and `defer`. It consumes only
+generic storage telemetry—capacity pressure, slot/alias fractions, lifetime
+usage and age, prediction error, binding pressure, redundancy, and compression
+opportunity. Structural action masks are supplied by the memory implementation;
+the policy cannot make an illegal operation legal, and it cannot commit a
+mutation. Existing copy-on-write retention probes remain authoritative.
+
+`ExternalLearnedMultiStreamTransitionContextRouter.propose_maintenance` and
+`apply_maintenance_proposal` connect the policy to factual growth, binding-aware
+sharing, and runtime compression. Compression now has an explicit
+`compress_and_commit_verified` path: the candidate is restored independently,
+retention-probed, checked for probe mutation, and only then swapped into the
+live bank. `defer` is an explicit no-op rather than an implicit caller branch.
+
+The pressure test in `experiments/external_memory_maintenance_policy/` learns
+the action choice from one scalar verifier utility per step, with zero replay
+and a frozen controller. Three seeds beat matched fresh and reward-shuffled
+controls; the first seed scored `0.50` versus `0.25` fresh and the two audit
+seeds scored `0.75` versus `0.25` fresh. All four actions were observed and
+the policy state round-tripped by checksum.
+
+This promotes learned maintenance selection, not learned verifier design,
+autonomous equivalence discovery, universal continual learning, or unrestricted
+memory growth. The next pressure is to train the policy against real verified
+retention and byte-cost outcomes while repeating growth, sharing, and
+compression over a longer nonstationary stream.
