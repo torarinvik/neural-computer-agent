@@ -11,3 +11,6 @@ Chance 0.0435. No intermediate supervision; identical parameter count.
 The shared step function is the entire compositional prior.
 
 Replication (added 2026-08-10): seed 69317 also 1.0000 / 1.0000.
+
+Cross-ground replication (F133): boolean single-world control gives
+1.0000 exact and 1.0000 per-bit, identical to the arithmetic result.

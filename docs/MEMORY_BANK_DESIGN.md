@@ -5980,3 +5980,34 @@ into explicit per-piece parameters and applying a function of those,
 the way an interpreter binds arguments before running a loop.
 
 Probe 232 is the `--worlds 4/16/64` ladder with oracle entries.
+
+**F133 (probe 233). The composition result replicates across GROUNDS,
+not merely across seeds: the boolean single-world control gives
+1.0000 / 1.0000, identical to the arithmetic F121.** Different pieces
+(XOR-with-mask and rotate-by-k rather than add-b and multiply-by-a),
+different output head (8 independent bits rather than a 23-way
+softmax), different chance floor (0.0039 rather than 0.0435) — same
+ceiling on held-out program arrangements, and per-bit accuracy is
+1.0000 too, so it is exactly right rather than mostly right.
+
+This is worth more than another seed. A seed replication says the
+effect is not noise; a GROUND replication says the effect is not a
+property of the particular function. The iterated shared step composes
+because of what it is, not because modular arithmetic happens to suit
+it.
+
+It also removes the last alternative reading of F121. One could have
+argued that add-and-multiply mod 23 is unusually compositional — both
+pieces are affine, so their composition stays affine and a single
+learned affine map might cover every program. XOR and rotation admit
+no such collapse (XOR is not affine over the reals, and the pair
+generates a non-abelian group), yet the result is identical.
+
+So the settled half of the thesis is now firmly settled: **a shared
+per-element step function composes, generalises to unseen
+arrangements, extends to unseen depths, and does so on two unrelated
+function families.** The unsettled half is unchanged and now stands
+alone: it works with the pieces in WEIGHTS, and supplying them from
+CONTEXT still fails above depth 1 (F131, F132).
+
+Probe 233 is `bool_compose.py --iterate --worlds 2 --ignorance 0`.
