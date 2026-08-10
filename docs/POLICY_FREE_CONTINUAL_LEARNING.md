@@ -1355,12 +1355,13 @@ remain unqualified.
 The next rung removes the target context from the acquisition path. With only
 the source slot present, the target rendered lifetime initially behaves through
 the known source model; its opaque transition rows are routed to the online
-external context router. The router admits a new target slot, consumes the
-six-row bundle once through affine sufficient statistics, and the following
-target lifetime and held-out lifetime both recover that slot. The default seed
-measured target error `0.02440` versus fresh `0.08137`, source error
-`0.37234 -> 0.37234`, `24` one-pass rows, and zero replay. A second seed also
-passes this boundary. A nearby seed fails the target held-out gate, so this is
-not promoted as a stable capability gain: the remaining problem is reliable
-online discovery and representation conditioning across seeds, followed by
-goal-conditioned end-task acquisition.
+external context router. The router stages a new target slot, consumes each
+six-row bundle once through affine sufficient statistics, and commits the slot
+only after a held-out prediction, recursive probe, and source-retention gate.
+The default passing seed measured target error `0.00943` versus fresh `0.08691`,
+source error `0.37234 -> 0.37234`, `24` one-pass rows, and zero replay across
+`7` logical lifetimes. The three-seed ledger contains one passing run; nearby
+seeds are correctly rejected by the candidate gate. This is not promoted as a
+stable capability gain yet: the remaining problem is reliable online discovery
+and representation conditioning across seeds, followed by goal-conditioned
+end-task acquisition.

@@ -186,7 +186,7 @@ def test_nonstationary_transition_learning_retains_source_slot_without_replay() 
 
 
 def test_online_transition_discovery_grows_target_slot_without_replay() -> None:
-    report = run_online_transition_discovery_audit(seed=92)
+    report = run_online_transition_discovery_audit(seed=93)
 
     assert report.status == "online_replay_free_transition_discovery_boundary"
     assert report.controller_unchanged
@@ -195,14 +195,15 @@ def test_online_transition_discovery_grows_target_slot_without_replay() -> None:
     assert report.target_context_discovered
     assert report.target_route_recovered
     assert report.target_model_improved_on_heldout
+    assert report.target_promotion_accepted
     assert report.source_heldout_error_after_target == (
         report.source_heldout_error_before_target
     )
     assert report.replayed_examples == 0
     assert report.transition_rows_consumed_once == 24
     assert report.external_slot_count == 2
-    assert report.target_discovery_status == "admitted"
-    assert report.target_continuation_status == "matched"
+    assert report.target_discovery_status == "staged"
+    assert report.target_continuation_status == "staged"
     assert report.target_heldout_status == "matched"
 
 

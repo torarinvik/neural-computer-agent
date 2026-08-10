@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
@@ -118,6 +119,8 @@ class OnlineTransitionDiscoveryReport:
     external_slot_count: int
     source_sample_count: int
     target_sample_count: int
+    target_promotion_accepted: bool
+    target_promotion_reason: str
     target_discovery_status: str
     target_continuation_status: str
     target_heldout_status: str
@@ -276,11 +279,30 @@ def _route_rollout(
             "matched",
             "continuation",
             "sparse_matched",
+            "staged",
         }:
             router.adaptation_step(result, None, replay_evidence=False)
     if result is None:
         raise RuntimeError("online transition routing needs a non-empty rollout")
     return result
+
+
+def _rollout_bundle(
+    rollout: ExternalTransitionRollout,
+) -> ExternalTransitionObservation:
+    """Combine one held-out rollout into one opaque verification bundle."""
+
+    rows = _rollout_observations(rollout)
+    if not rows:
+        raise RuntimeError("transition rollout bundle needs at least one row")
+    return ExternalTransitionObservation(
+        state=torch.cat([row.state for row in rows]),
+        intention=torch.cat([row.intention for row in rows]),
+        next_state=torch.cat([row.next_state for row in rows]),
+    ).validate(
+        state_width=rollout.initial_state.shape[0],
+        intention_width=rollout.intentions.shape[1],
+    )
 
 
 def run_replay_free_transition_acquisition_audit(
@@ -578,21 +600,24 @@ def run_online_transition_discovery_audit(
     steps: int = 6,
     source_training_lifetimes: int = 2,
     target_training_lifetimes: int = 2,
+    affine_ridge: float = 1e-5,
 ) -> OnlineTransitionDiscoveryReport:
     """Discover and learn a novel rendered family without replay or a task label.
 
     The target lifetime initially plans through the already-known source slot.
     Only its opaque transition observations reach the online router.  The
-    router allocates a new external slot, consumes the bundle once through
-    replay-free affine statistics, and returns the discovered context for later
-    target lifetimes.  Cue symbols and n-back values remain verifier-private
-    diagnostics and never enter the router.
+    router stages a new external slot, consumes each training bundle once
+    through replay-free affine statistics, and commits the discovered context
+    only after held-out and source-retention probes. Cue symbols and n-back
+    values remain verifier-private diagnostics and never enter the router.
     """
 
     if min(steps, source_training_lifetimes, target_training_lifetimes) < 1:
         raise ValueError("online transition audit budgets must be positive")
     if target_training_lifetimes < 2:
         raise ValueError("online transition discovery needs a continuation lifetime")
+    if affine_ridge <= 0.0 or not math.isfinite(float(affine_ridge)):
+        raise ValueError("online transition affine ridge must be finite and positive")
     agent = CanonicalBrainWorkshopAgent(
         symbol_count=8,
         event_width=4,
@@ -610,6 +635,7 @@ def run_online_transition_discovery_audit(
         intention_width=agent.controller.intention_width,
         context_width=agent.controller.width,
         model_family=EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY,
+        affine_ridge=affine_ridge,
     )
     source_context = _opaque_context(agent, 6)
     source_index = bank.ensure_context(source_context)
@@ -672,38 +698,51 @@ def run_online_transition_discovery_audit(
         match_tolerance=0.05,
         match_margin=0.0,
         continuation_tolerance=0.05,
+        defer_admission=True,
+        max_contexts=2,
+        provisional_evidence_policy="streaming_statistics",
     )
 
     # Acquire the target while still behaving through the known source slot.
-    # The router sees only the resulting opaque transition rows.
-    target_discovery_rollout, bits = _run_lifetime(
-        agent,
-        policy_free,
-        bank,
-        source_context,
-        n_back=3,
-        steps=steps,
-        seed=seed + 2000,
-        cue_symbol=7,
-        candidate_intentions=candidate_intentions,
-        learn=False,
-    )
-    unique_bits += bits
-    discovery = _route_rollout(router, target_discovery_rollout, adapt=True)
+    # The router sees only the resulting opaque transition rows and keeps the
+    # candidate outside the committed bank until the held-out gate passes.
+    discovery = None
+    target_result = None
+    for lifetime in range(target_training_lifetimes):
+        target_rollout, bits = _run_lifetime(
+            agent,
+            policy_free,
+            bank,
+            source_context,
+            n_back=3,
+            steps=steps,
+            seed=seed + 2000 + lifetime,
+            cue_symbol=7,
+            candidate_intentions=candidate_intentions,
+            learn=False,
+        )
+        unique_bits += bits
+        routed = _route_rollout(router, target_rollout, adapt=True)
+        if discovery is None:
+            discovery = routed
+        target_result = routed
     source_error_after = planner.rollout_error(
         source_heldout,
         transition_context=source_context.unsqueeze(0),
     )
+    discovery_status = "not_staged" if discovery is None else discovery.status
     if (
-        discovery.context is None
-        or discovery.status not in {"admitted", "reused"}
-        or discovery.stable_slot_id != 1
+        discovery is None
+        or target_result is None
+        or discovery.context is None
+        or discovery.status != "staged"
+        or router.provisional_candidate_count != 1
     ):
         unchanged = controller_before == _controller_digest(agent)
         source_stable = source_digest == bank.models[source_index].digest()
         return OnlineTransitionDiscoveryReport(
             schema=(
-                "neural-computer.brainworkshop-online-transition-discovery-audit.v1"
+                "neural-computer.brainworkshop-online-transition-discovery-audit.v2"
             ),
             status="online_replay_free_transition_discovery_boundary_failed",
             controller_unchanged=unchanged,
@@ -718,42 +757,30 @@ def run_online_transition_discovery_audit(
             fresh_target_heldout_error=float("inf"),
             source_training_lifetimes=source_training_lifetimes,
             target_training_lifetimes=target_training_lifetimes,
-            total_logical_lifetimes=source_training_lifetimes + 2,
+            total_logical_lifetimes=(
+                source_training_lifetimes + target_training_lifetimes + 1
+            ),
             unique_verifier_bits=unique_bits,
             transition_rows_consumed_once=source_training_lifetimes * steps,
             replayed_examples=0,
             external_slot_count=bank.context_count,
             source_sample_count=int(bank.models[source_index].sample_count),
             target_sample_count=0,
-            target_discovery_status=discovery.status,
-            target_continuation_status="not_run",
+            target_promotion_accepted=False,
+            target_promotion_reason="no provisional target candidate was staged",
+            target_discovery_status=discovery_status,
+            target_continuation_status=(
+                "not_run" if target_result is None else target_result.status
+            ),
             target_heldout_status="not_run",
         )
-    target_context = discovery.context.detach().clone()
-    target_slot_id = discovery.stable_slot_id
 
-    target_result = discovery
-    for lifetime in range(1, target_training_lifetimes):
-        target_rollout, bits = _run_lifetime(
-            agent,
-            policy_free,
-            bank,
-            target_context,
-            n_back=3,
-            steps=steps,
-            seed=seed + 2000 + lifetime,
-            cue_symbol=7,
-            candidate_intentions=candidate_intentions,
-            learn=False,
-        )
-        unique_bits += bits
-        target_result = _route_rollout(router, target_rollout, adapt=True)
-
-    target_heldout, target_bits = _run_lifetime(
+    candidate_context = router.provisional_context_at(0)
+    promotion_holdout, promotion_bits = _run_lifetime(
         agent,
         policy_free,
         bank,
-        target_context,
+        source_context,
         n_back=3,
         steps=steps,
         seed=seed + 12000,
@@ -761,10 +788,106 @@ def run_online_transition_discovery_audit(
         candidate_intentions=candidate_intentions,
         learn=False,
     )
-    unique_bits += target_bits
-    target_heldout_result = _route_rollout(router, target_heldout, adapt=False)
-    trained_target_error = planner.rollout_error(
-        target_heldout,
+    unique_bits += promotion_bits
+    promotion_route = _route_rollout(router, promotion_holdout, adapt=False)
+    promotion_observation = _rollout_bundle(promotion_holdout)
+
+    def retention_probe(candidate_bank: ExternalTransitionModelBank) -> bool:
+        if candidate_bank.models[source_index].digest() != source_digest:
+            return False
+        candidate_runtime = PolicyFreeAmodalRuntime(
+            agent.runtime,
+            ExternalModelBasedPlanner(candidate_bank, beam_width=4),
+        )
+        candidate_rollout, _ = _run_lifetime(
+            agent,
+            candidate_runtime,
+            candidate_bank,
+            candidate_context,
+            n_back=3,
+            steps=steps,
+            seed=seed + 12000,
+            cue_symbol=7,
+            candidate_intentions=candidate_intentions,
+            learn=False,
+        )
+        candidate_error = ExternalModelBasedPlanner(
+            candidate_bank,
+            beam_width=4,
+        ).rollout_error(
+            candidate_rollout,
+            transition_context=candidate_context.unsqueeze(0),
+        )
+        return candidate_error <= 0.2
+
+    promotion = router.promote_staged_candidate(
+        promotion_observation,
+        retention_probe,
+        prediction_tolerance=0.2,
+    )
+    source_error_after = planner.rollout_error(
+        source_heldout,
+        transition_context=source_context.unsqueeze(0),
+    )
+    if not promotion.accepted or promotion.slot_index is None:
+        unchanged = controller_before == _controller_digest(agent)
+        source_stable = source_digest == bank.models[source_index].digest()
+        return OnlineTransitionDiscoveryReport(
+            schema=(
+                "neural-computer.brainworkshop-online-transition-discovery-audit.v2"
+            ),
+            status="online_replay_free_transition_discovery_boundary_failed",
+            controller_unchanged=unchanged,
+            replay_free_bank=bank.replay_free_updates,
+            source_slot_byte_stable=source_stable,
+            target_context_discovered=False,
+            target_route_recovered=False,
+            target_model_improved_on_heldout=False,
+            source_heldout_error_before_target=source_error_before,
+            source_heldout_error_after_target=source_error_after,
+            trained_target_heldout_error=float("inf"),
+            fresh_target_heldout_error=float("inf"),
+            source_training_lifetimes=source_training_lifetimes,
+            target_training_lifetimes=target_training_lifetimes,
+            total_logical_lifetimes=(
+                source_training_lifetimes + target_training_lifetimes + 2
+            ),
+            unique_verifier_bits=unique_bits,
+            transition_rows_consumed_once=(
+                source_training_lifetimes * steps
+                + target_training_lifetimes * steps
+            ),
+            replayed_examples=0,
+            external_slot_count=bank.context_count,
+            source_sample_count=int(bank.models[source_index].sample_count),
+            target_sample_count=0,
+            target_promotion_accepted=False,
+            target_promotion_reason=promotion.reason,
+            target_discovery_status=discovery.status,
+            target_continuation_status=target_result.status,
+            target_heldout_status=promotion_route.status,
+        )
+
+    target_context = bank.context_at(promotion.slot_index)
+    target_recovery, recovery_bits = _run_lifetime(
+        agent,
+        policy_free,
+        bank,
+        target_context,
+        n_back=3,
+        steps=steps,
+        seed=seed + 14000,
+        cue_symbol=7,
+        candidate_intentions=candidate_intentions,
+        learn=False,
+    )
+    unique_bits += recovery_bits
+    target_recovery_result = _route_rollout(router, target_recovery, adapt=False)
+    trained_target_error = ExternalModelBasedPlanner(
+        bank,
+        beam_width=4,
+    ).rollout_error(
+        target_recovery,
         transition_context=target_context.unsqueeze(0),
     )
     fresh_bank = ExternalTransitionModelBank(
@@ -772,27 +895,33 @@ def run_online_transition_discovery_audit(
         intention_width=bank.intention_width,
         context_width=bank.context_width,
         model_family=EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY,
+        affine_ridge=affine_ridge,
     )
     fresh_bank.ensure_context(target_context)
     fresh_target_error = ExternalModelBasedPlanner(
         fresh_bank,
         beam_width=4,
     ).rollout_error(
-        target_heldout,
+        target_recovery,
         transition_context=target_context.unsqueeze(0),
     )
     unchanged = controller_before == _controller_digest(agent)
     source_stable = source_digest == bank.models[source_index].digest()
-    discovered = discovery.status in {"admitted", "reused"} and target_slot_id == 1
+    discovered = promotion.accepted and promotion.slot_id == 1
     recovered = (
-        target_result.stable_slot_id == target_slot_id
-        and target_heldout_result.stable_slot_id == target_slot_id
+        target_recovery_result.stable_slot_id == promotion.slot_id
     )
     improved = trained_target_error < fresh_target_error
-    passed = unchanged and source_stable and discovered and recovered and improved
+    passed = (
+        unchanged
+        and source_stable
+        and discovered
+        and recovered
+        and improved
+    )
     return OnlineTransitionDiscoveryReport(
         schema=(
-            "neural-computer.brainworkshop-online-transition-discovery-audit.v1"
+            "neural-computer.brainworkshop-online-transition-discovery-audit.v2"
         ),
         status=(
             "online_replay_free_transition_discovery_boundary"
@@ -814,7 +943,7 @@ def run_online_transition_discovery_audit(
         total_logical_lifetimes=(
             source_training_lifetimes
             + target_training_lifetimes
-            + 2
+            + 3
         ),
         unique_verifier_bits=unique_bits,
         transition_rows_consumed_once=(
@@ -823,10 +952,12 @@ def run_online_transition_discovery_audit(
         replayed_examples=0,
         external_slot_count=bank.context_count,
         source_sample_count=int(bank.models[source_index].sample_count),
-        target_sample_count=int(bank.models[1].sample_count),
+        target_sample_count=int(bank.models[promotion.slot_index].sample_count),
+        target_promotion_accepted=promotion.accepted,
+        target_promotion_reason=promotion.reason,
         target_discovery_status=discovery.status,
         target_continuation_status=target_result.status,
-        target_heldout_status=target_heldout_result.status,
+        target_heldout_status=target_recovery_result.status,
     )
 
 

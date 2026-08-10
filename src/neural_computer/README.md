@@ -178,12 +178,13 @@ matched fresh bank with zero replay. This is isolated factual-model retention,
 not yet end-task acquisition or arbitrary goal discovery.
 
 The online discovery rung then starts with only the source transition slot.
-Target rendered transitions are admitted under a newly inferred opaque context,
-learned once by the replay-free affine bank, and routed back to that slot on
-later target lifetimes while the source slot remains byte-stable. This boundary
-passes on two nearby seeds but is not promoted yet because a neighboring seed
-fails the held-out target gate; the next work is robust discovery followed by
-goal-conditioned end-task acquisition.
+Target rendered transitions are staged under a newly inferred opaque context,
+learned once by the replay-free affine bank, and committed only after held-out,
+recursive, and source-retention gates. A passing seed routes later target
+lifetimes back to the new slot while the source remains byte-stable. This
+boundary passes on one seed but is not promoted yet because neighboring seeds
+are rejected by the candidate gate; the next work is robust discovery followed
+by goal-conditioned end-task acquisition.
 
 The rendered audit
 `experiments/brainworkshop_canonical/replay_free_transition_acquisition.py`
