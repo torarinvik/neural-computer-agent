@@ -1,0 +1,58 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "external_model_disambiguation_probe_wide_noisy",
+  "entries": [
+    {
+      "seed": 83101,
+      "arm": "active-model-disagreement-probe-8-way-noise-0.1",
+      "unique_verifier_bits": 16,
+      "unique_logical_lifetimes": 16,
+      "optimizer_updates": 0,
+      "replayed_examples": 0,
+      "raw_replayed_examples": 0,
+      "controller_updates": 0,
+      "stable_bits_to_threshold": null,
+      "retention_on_mastered_primitives": 0.984375,
+      "transfer_ratio_against_fresh": null,
+      "probe_accuracy": 0.984375,
+      "random_control_accuracy": 0.80078125,
+      "probe_margin": 0.18359375,
+      "promoted": true
+    },
+    {
+      "seed": 83102,
+      "arm": "active-model-disagreement-probe-8-way-noise-0.1",
+      "unique_verifier_bits": 16,
+      "unique_logical_lifetimes": 16,
+      "optimizer_updates": 0,
+      "replayed_examples": 0,
+      "raw_replayed_examples": 0,
+      "controller_updates": 0,
+      "stable_bits_to_threshold": null,
+      "retention_on_mastered_primitives": 0.9765625,
+      "transfer_ratio_against_fresh": null,
+      "probe_accuracy": 0.9765625,
+      "random_control_accuracy": 0.8203125,
+      "probe_margin": 0.15625,
+      "promoted": true
+    },
+    {
+      "seed": 83103,
+      "arm": "active-model-disagreement-probe-8-way-noise-0.1",
+      "unique_verifier_bits": 16,
+      "unique_logical_lifetimes": 16,
+      "optimizer_updates": 0,
+      "replayed_examples": 0,
+      "raw_replayed_examples": 0,
+      "controller_updates": 0,
+      "stable_bits_to_threshold": null,
+      "retention_on_mastered_primitives": 0.98046875,
+      "transfer_ratio_against_fresh": null,
+      "probe_accuracy": 0.98046875,
+      "random_control_accuracy": 0.75390625,
+      "probe_margin": 0.2265625,
+      "promoted": true
+    }
+  ],
+  "claim_boundary": "qualified active factual-model disambiguation under an eight-way candidate space and one synthetic noise level; live router integration and learned probe selection remain open"
+}

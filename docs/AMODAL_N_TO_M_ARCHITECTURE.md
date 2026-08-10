@@ -4458,6 +4458,16 @@ usefulness, and general continual learning remain open. Evidence is archived
 in
 `session_records/sequence_working_memory_2026-08-02/external_model_disambiguation_probe_promoted_2026-08-10/`.
 
+A follow-up widened the candidate intention set to eight and added Gaussian
+outcome noise (`0.1`). Across seeds `83101`, `83102`, and `83103`, active
+probe routing reached `0.984`, `0.977`, and `0.980`, against random controls
+at `0.801`, `0.820`, and `0.754`. All seeds passed the predeclared `0.95`
+quality gate, selected the informative intention, preserved the frozen
+controller and bank, and restored exactly. This strengthens the bounded probe
+result; live asynchronous-router integration and learned probe selection
+remain open. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_model_disambiguation_probe_wide_noisy_promoted_2026-08-10/`.
+
 The first matched two-seed pressure test froze the controller, trained the
 external model for `1,200` source updates, then acquired three target goals
 with zero target optimizer updates and zero replay. All target and retention

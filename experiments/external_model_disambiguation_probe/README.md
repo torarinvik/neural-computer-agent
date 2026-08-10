@@ -7,6 +7,10 @@ intention with maximal predicted disagreement; the observed consequence then
 routes the hidden model. A uniform random-intention control and random tie
 break establish the causal floor.
 
+The harness also supports wider candidate spaces and noisy consequences. The
+clean two-intention audit uses a perfect routing gate; noisy audits use a
+predeclared `0.95` active-routing gate and keep the random control separate.
+
 The controller is frozen, transition acquisition is one-pass, queries do not
 mutate the model bank, and persistence is checked. This is a narrow causal
 probe boundary, not a claim of multimodal probe learning or general continual
