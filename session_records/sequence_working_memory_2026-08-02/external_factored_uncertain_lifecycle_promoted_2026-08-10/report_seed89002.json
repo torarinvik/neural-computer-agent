@@ -1,0 +1,140 @@
+{
+  "schema": "neural-computer.external-factored-uncertain-lifecycle.v1",
+  "seed": 89002,
+  "configuration": {
+    "regime_count": 4,
+    "initial_capacity": 2,
+    "grown_capacity": 3,
+    "train_rows": 20,
+    "corruption_delta": 0.04,
+    "reliability_threshold": 0.9,
+    "reliability_warmup": 4,
+    "wait_statistics_samples": 32,
+    "claim": "online-reliability-wait-lifecycle-v1"
+  },
+  "metrics": {
+    "source_route_status": "staged",
+    "target_route_status": "staged",
+    "clean_source_status": "matched",
+    "clean_target_status": "matched",
+    "corruption_status": "reliability_veto",
+    "source_reversal_status": "matched",
+    "target_reversal_status": "matched",
+    "delayed_wait_probability": 0.9996646642684937,
+    "immediate_wait_probability": 0.00033536419505253434,
+    "partial_read": {
+      "status": "matched",
+      "slot_id": 0,
+      "context": "tensor([ 0.2186,  0.0560, -0.5491,  0.0009,  0.1585,  0.5093, -0.0821,  0.5969])",
+      "pending_observations": 0,
+      "schema": "neural-computer.external-factored-transition-router.v1"
+    },
+    "delayed_quarantine": {
+      "accepted": true,
+      "rows_added": 5,
+      "total_rows": 25,
+      "capacity": 40,
+      "digest_before": "c2a024bd6e91ef206caea411226be65bb133916acdaa0ae79b71356fd4502904",
+      "digest_after": "f5b2b0ca978ef5c21d3b721fd434a77d37cf6214745f4c205a08b0b42290bb64",
+      "reason": "unresolved evidence retained outside committed memory",
+      "schema": "neural-computer.external-factored-transition-quarantine.v1"
+    },
+    "resolved_slots": [
+      0
+    ],
+    "full_capacity_novel_status": "ambiguous",
+    "growth": {
+      "accepted": true,
+      "source_capacity": 2,
+      "destination_capacity": 3,
+      "context_count": 2,
+      "content_digest_before": "12af73c1411cc51fc3e7795c78df3b74c7a52f3fd826ddd83d009e60d44c4849",
+      "content_digest_after": "12af73c1411cc51fc3e7795c78df3b74c7a52f3fd826ddd83d009e60d44c4849",
+      "reason": "retention-verified capacity growth committed",
+      "schema": "neural-computer.external-transition-model-growth.v1"
+    },
+    "third_promotion": {
+      "accepted": true,
+      "slot_id": 2,
+      "heldout_error": 0.0002811419835779816,
+      "reason": "candidate passed factual and retention probes",
+      "schema": "neural-computer.external-factored-transition-promotion.v1",
+      "heldout_rollout_error": null
+    },
+    "eviction": {
+      "accepted": true,
+      "evicted_index": 1,
+      "source_context_count": 3,
+      "destination_context_count": 2,
+      "physical_models_before": 3,
+      "physical_models_after": 2,
+      "content_digest_before": "c3b55699bf3803bb9250e6c594ae0df4610e56d8adb5f68a543d75e81e4dc846",
+      "content_digest_after": "3c297ce74f622880d87b32319ba382bfd6501f43272a6c60dcfb3cd8a48203bb",
+      "reason": "retention-verified logical model-slot eviction committed",
+      "evicted_slot_id": 1,
+      "schema": "neural-computer.external-transition-model-eviction.v1"
+    },
+    "fourth_promotion": {
+      "accepted": true,
+      "slot_id": 3,
+      "heldout_error": 0.0001773019030224532,
+      "reason": "candidate passed factual and retention probes",
+      "schema": "neural-computer.external-factored-transition-promotion.v1",
+      "heldout_rollout_error": null
+    },
+    "final_slot_ids": [
+      0,
+      2,
+      3
+    ],
+    "reliability_observation_count": 60
+  },
+  "gates": {
+    "source_promoted": true,
+    "target_promoted": true,
+    "clean_revisits_route": true,
+    "reliability_warmup_reached": true,
+    "corruption_vetoed": true,
+    "active_gate_reversals_route": true,
+    "delayed_wait_learned": true,
+    "immediate_absence_released": true,
+    "partial_read_routes": true,
+    "delayed_partial_quarantined": true,
+    "quarantine_resolved_once": true,
+    "corruption_quarantine_retained": true,
+    "full_capacity_novelty_refused": true,
+    "growth_accepted": true,
+    "novel_promoted_after_growth": true,
+    "eviction_accepted": true,
+    "fourth_promoted_after_eviction": true,
+    "survivors_route_after_lifecycle": true,
+    "base_frozen": true,
+    "controller_frozen": true,
+    "context_encoder_unchanged": true,
+    "exact_persistence": true,
+    "replay_free": true
+  },
+  "accounting": {
+    "unique_verifier_outcomes": 60,
+    "unique_wait_outcomes": 32,
+    "unique_logical_transition_lifetimes": 100,
+    "wait_sufficient_statistics_updates": 2,
+    "reliability_sufficient_statistics_updates": 3,
+    "base_optimizer_updates": 0,
+    "residual_optimizer_updates": 0,
+    "replayed_examples": 0,
+    "old_regime_replay": 0,
+    "controller_optimizer_updates": 0,
+    "context_encoder_optimizer_updates": 0,
+    "wall_seconds": 0.1391452089883387
+  },
+  "digests": {
+    "base": "5dc291a2783d524fdec132e7823c73e3b11904ce54072b0e280e1a260ca0945d",
+    "controller": "0656ffdec8e518e54dc64ced6611371d989cba764fcb3075dd61477eae935a24",
+    "context_encoder": "cac12bfb314680ae5f155ecb388bba2f3d011fd8700e07d811e07a454875c79b",
+    "router": "70020299ba80715776854d7275c62a665f97e377e316ed5b5aa0ebbaa066e93f",
+    "reliability": "2c1227b577cc9cac890c45cea9c2f593abd383e19ba274ad61136f237e8f6093",
+    "wait": "a364c85e55b502a416a7c3ab6cb03f8bb6e94091622bf6f955976eb36f4f177c"
+  },
+  "promoted": true
+}

@@ -2634,3 +2634,11 @@ Partial reads remain non-mutating and the selected compressed representation
 passes retention. This is bounded memory-lifecycle evidence, not general
 continual learning. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_factored_repeated_lifecycle_promoted_2026-08-10/`.
+
+The lifecycle now survives uncertain evidence across three seeds: reliability
+vetoes corruption, wait statistics retain delayed partial evidence and release
+fast absence, full capacity refuses novelty, and verified growth/eviction still
+preserve the surviving regimes. External router, reliability, and wait state
+restore exactly with the core frozen. This remains bounded continual-memory
+evidence, not general continual learning. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_factored_uncertain_lifecycle_promoted_2026-08-10/`.

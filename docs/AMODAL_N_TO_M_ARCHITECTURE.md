@@ -6806,3 +6806,24 @@ uncertain observations.
 
 Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_factored_repeated_lifecycle_promoted_2026-08-10/`.
+
+## Uncertain-evidence lifecycle (2026-08-10)
+
+The external lifecycle now combines three independently persisted states across
+three seeds: factual residual memory, replay-free transition reliability, and
+replay-free wait/absence statistics. A low-error corruption was vetoed and
+retained in quarantine while active-gate reversals still routed. Delayed
+partial evidence was held and resolved once; fast absence released without
+mutation. At full capacity a novel regime was refused, then retention-verified
+growth admitted it, a middle slot was evicted, and a fourth regime was
+promoted. Surviving regimes remained routable and all external state restored
+exactly with the base/controller/context encoder frozen.
+
+This is the strongest current bounded uncertain-memory result, but it still
+does not establish unrestricted growth, arbitrary computation, or general
+continual learning. The next bottleneck is long-horizon stress: many cycles of
+uncertain admission, delayed resolution, growth, and eviction with adversarial
+reversal and memory corruption controls.
+
+Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_factored_uncertain_lifecycle_promoted_2026-08-10/`.
