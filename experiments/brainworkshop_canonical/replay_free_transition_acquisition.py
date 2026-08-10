@@ -21,7 +21,6 @@ import torch.nn.functional as F
 
 from neural_computer import (
     EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY,
-    AmodalEvent,
     ContentAddressedMemory,
     ControllerFeedback,
     ExternalModelBasedPlanner,
@@ -57,6 +56,34 @@ class ReplayFreeTransitionAcquisitionReport:
     external_sample_count: int
     fresh_sample_count: int
     schema_version: str = REPLAY_FREE_TRANSITION_AUDIT_SCHEMA
+
+    def payload(self) -> dict[str, object]:
+        return asdict(self)
+
+
+@dataclass(frozen=True)
+class NonstationaryTransitionRetentionReport:
+    """Report for two external transition families learned sequentially."""
+
+    schema: str
+    status: str
+    controller_unchanged: bool
+    replay_free_bank: bool
+    source_slot_byte_stable: bool
+    target_model_improved_on_heldout: bool
+    source_heldout_error_before_target: float
+    source_heldout_error_after_target: float
+    trained_target_heldout_error: float
+    fresh_target_heldout_error: float
+    source_training_lifetimes: int
+    target_training_lifetimes: int
+    total_logical_lifetimes: int
+    unique_verifier_bits: int
+    transition_rows_consumed_once: int
+    replayed_examples: int
+    external_slot_count: int
+    source_sample_count: int
+    target_sample_count: int
 
     def payload(self) -> dict[str, object]:
         return asdict(self)
@@ -130,6 +157,7 @@ def _run_lifetime(
             candidate_intentions,
             horizon=1,
             beam_width=4,
+            transition_context=context.unsqueeze(0),
         )
         if previous is not None and learn:
             observation = policy_free.transition_observation(previous, output)
@@ -289,6 +317,173 @@ def run_replay_free_transition_acquisition_audit(
         external_slot_count=bank.context_count,
         external_sample_count=int(bank.models[0].sample_count),
         fresh_sample_count=int(fresh_bank.models[0].sample_count),
+    )
+
+
+def run_nonstationary_transition_retention_audit(
+    *,
+    seed: int = 92,
+    steps: int = 6,
+    source_training_lifetimes: int = 2,
+    target_training_lifetimes: int = 2,
+) -> NonstationaryTransitionRetentionReport:
+    """Learn two rendered families sequentially without replaying the source."""
+
+    if min(steps, source_training_lifetimes, target_training_lifetimes) < 1:
+        raise ValueError("nonstationary transition audit budgets must be positive")
+    agent = CanonicalBrainWorkshopAgent(
+        symbol_count=8,
+        event_width=4,
+        intention_width=2,
+        feedback_width=3,
+        n_back=2,
+        reader_kind="relation",
+        seed=seed,
+    )
+    controller_before = _controller_digest(agent)
+    for parameter in agent.parameters():
+        parameter.requires_grad_(False)
+    bank = ExternalTransitionModelBank(
+        state_width=agent.controller.width * 3,
+        intention_width=agent.controller.intention_width,
+        context_width=agent.controller.width,
+        model_family=EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY,
+    )
+    source_context = _opaque_context(agent, 6)
+    target_context = _opaque_context(agent, 7)
+    source_index = bank.ensure_context(source_context)
+    target_index = bank.ensure_context(target_context)
+    policy_free = PolicyFreeAmodalRuntime(
+        agent.runtime,
+        ExternalModelBasedPlanner(bank, beam_width=4),
+    )
+    candidate_intentions = torch.randn(
+        6,
+        agent.controller.intention_width,
+        generator=torch.Generator().manual_seed(seed + 7000),
+    )
+
+    unique_bits = 0
+    consumed_rows = 0
+    for lifetime in range(source_training_lifetimes):
+        _, bits = _run_lifetime(
+            agent,
+            policy_free,
+            bank,
+            source_context,
+            n_back=2,
+            steps=steps,
+            seed=seed + lifetime,
+            cue_symbol=6,
+            candidate_intentions=candidate_intentions,
+            learn=True,
+        )
+        unique_bits += bits
+        consumed_rows += steps
+    source_digest = bank.models[source_index].digest()
+    source_heldout, source_bits = _run_lifetime(
+        agent,
+        policy_free,
+        bank,
+        source_context,
+        n_back=2,
+        steps=steps,
+        seed=seed + 10000,
+        cue_symbol=6,
+        candidate_intentions=candidate_intentions,
+        learn=False,
+    )
+    unique_bits += source_bits
+    planner = ExternalModelBasedPlanner(bank, beam_width=4)
+    source_error_before = planner.rollout_error(
+        source_heldout,
+        transition_context=source_context.unsqueeze(0),
+    )
+
+    for lifetime in range(target_training_lifetimes):
+        _, bits = _run_lifetime(
+            agent,
+            policy_free,
+            bank,
+            target_context,
+            n_back=3,
+            steps=steps,
+            seed=seed + 2000 + lifetime,
+            cue_symbol=7,
+            candidate_intentions=candidate_intentions,
+            learn=True,
+        )
+        unique_bits += bits
+        consumed_rows += steps
+    target_heldout, target_bits = _run_lifetime(
+        agent,
+        policy_free,
+        bank,
+        target_context,
+        n_back=3,
+        steps=steps,
+        seed=seed + 12000,
+        cue_symbol=7,
+        candidate_intentions=candidate_intentions,
+        learn=False,
+    )
+    unique_bits += target_bits
+    source_error_after = planner.rollout_error(
+        source_heldout,
+        transition_context=source_context.unsqueeze(0),
+    )
+    trained_target_error = planner.rollout_error(
+        target_heldout,
+        transition_context=target_context.unsqueeze(0),
+    )
+
+    fresh_bank = ExternalTransitionModelBank(
+        state_width=bank.state_width,
+        intention_width=bank.intention_width,
+        context_width=bank.context_width,
+        model_family=EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY,
+    )
+    fresh_bank.ensure_context(target_context)
+    fresh_target_error = ExternalModelBasedPlanner(
+        fresh_bank,
+        beam_width=4,
+    ).rollout_error(
+        target_heldout,
+        transition_context=target_context.unsqueeze(0),
+    )
+    unchanged = controller_before == _controller_digest(agent)
+    source_stable = source_digest == bank.models[source_index].digest()
+    target_improved = trained_target_error < fresh_target_error
+    return NonstationaryTransitionRetentionReport(
+        schema=(
+            "neural-computer.brainworkshop-nonstationary-transition-retention-audit.v1"
+        ),
+        status=(
+            "nonstationary_replay_free_transition_boundary"
+            if unchanged and source_stable and target_improved
+            else "nonstationary_replay_free_transition_boundary_failed"
+        ),
+        controller_unchanged=unchanged,
+        replay_free_bank=bank.replay_free_updates,
+        source_slot_byte_stable=source_stable,
+        target_model_improved_on_heldout=target_improved,
+        source_heldout_error_before_target=source_error_before,
+        source_heldout_error_after_target=source_error_after,
+        trained_target_heldout_error=trained_target_error,
+        fresh_target_heldout_error=fresh_target_error,
+        source_training_lifetimes=source_training_lifetimes,
+        target_training_lifetimes=target_training_lifetimes,
+        total_logical_lifetimes=(
+            source_training_lifetimes
+            + target_training_lifetimes
+            + 2
+        ),
+        unique_verifier_bits=unique_bits,
+        transition_rows_consumed_once=consumed_rows,
+        replayed_examples=0,
+        external_slot_count=bank.context_count,
+        source_sample_count=int(bank.models[source_index].sample_count),
+        target_sample_count=int(bank.models[target_index].sample_count),
     )
 
 

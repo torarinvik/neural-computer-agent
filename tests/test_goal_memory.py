@@ -262,6 +262,23 @@ def test_policy_free_runtime_can_consume_one_fresh_transition_without_replay() -
     assert int(bank.models[source_index].sample_count) == observation.state.shape[0]
     assert int(bank.models[target_index].sample_count) == target_observation.state.shape[0]
     assert bank.models[source_index].digest() == source_digest
+    runtime_state = runtime.initial_state(1, device="cpu")
+    runtime_feedback = ControllerFeedback(
+        action=torch.zeros(1, 3),
+        reward=torch.zeros(1),
+        propensity=torch.ones(1),
+        has_feedback=torch.zeros(1),
+    )
+    routed_output, _ = policy_free.step_events(
+        [AmodalEvent(torch.randn(1, 4))],
+        runtime_state,
+        runtime_feedback,
+        torch.zeros(1, 12),
+        intentions,
+        horizon=1,
+        transition_context=source_context.unsqueeze(0),
+    )
+    assert routed_output.intention.payload.shape == (1, 2)
     for name, value in controller.state_dict().items():
         assert torch.equal(value, controller_before[name])
 

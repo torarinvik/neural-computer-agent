@@ -3198,25 +3198,42 @@ class PolicyFreeAmodalRuntime:
             )
             candidate_entries = entry_proposal.entries
         if isinstance(self.planner.model, ExternalTransitionModelBank):
-            if transition_context is not None:
-                raise ValueError(
-                    "bank-backed policy-free planning selects context internally"
+            if transition_context is None:
+                selection = self.planner.select_bank_model(
+                    self.planner.model,
+                    model_state,
+                    goal_state,
+                    candidate_intentions,
+                    horizon=horizon,
+                    beam_width=beam_width,
+                    intention_costs=intention_costs,
+                    candidate_entries=candidate_entries,
+                    entry_value_weight=entry_value_weight,
+                    step_cost_weight=step_cost_weight,
+                    goal_fragments=goal_fragments,
                 )
-            selection = self.planner.select_bank_model(
-                self.planner.model,
-                model_state,
-                goal_state,
-                candidate_intentions,
-                horizon=horizon,
-                beam_width=beam_width,
-                intention_costs=intention_costs,
-                candidate_entries=candidate_entries,
-                entry_value_weight=entry_value_weight,
-                step_cost_weight=step_cost_weight,
-                goal_fragments=goal_fragments,
-            )
-            planning = selection.planning
-            selected_slot_id = selection.selected_slot_id
+                planning = selection.planning
+                selected_slot_id = selection.selected_slot_id
+            else:
+                # A caller-owned opaque route may select one factual bank
+                # context before planning.  The context is passed through
+                # the external bank and never becomes a controller feature
+                # or a protocol-shaped slot ID.
+                planning = self.planner.plan(
+                    model_state,
+                    goal_state,
+                    candidate_intentions,
+                    horizon=horizon,
+                    beam_width=beam_width,
+                    transition_context=transition_context,
+                    intention_costs=intention_costs,
+                    candidate_entries=candidate_entries,
+                    entry_value_weight=entry_value_weight,
+                    step_cost_weight=step_cost_weight,
+                    goal_progress_weight=goal_progress_weight,
+                    goal_fragments=goal_fragments,
+                )
+                selected_slot_id = None
         else:
             planning = self.planner.plan(
                 model_state,

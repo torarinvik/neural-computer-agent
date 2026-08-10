@@ -1340,3 +1340,14 @@ and an unchanged controller. This is the first rendered evidence that the
 external factual model can improve from frozen-core experience. It is still a
 transition-model boundary result: it does not yet show new-task acquisition,
 goal discovery, planner success, or retention across a nonstationary family.
+
+The same harness now includes a two-family nonstationary rung. Source n-back-2
+experience is learned under one opaque rendered cue, then target n-back-3
+experience is learned under a different cue/context and isolated bank slot.
+The source slot remains byte-stable while the target slot improves its held-out
+recursive error over a fresh target bank. The default run measured source error
+`0.03704 -> 0.03704`, target error `0.01334` versus fresh `0.04522`, `24`
+transition rows consumed once, and zero replay. This is the first direct
+no-replay retention result across a nonstationary rendered family, but it is
+still isolated factual-model growth; goal discovery and end-task acquisition
+remain unqualified.

@@ -171,6 +171,12 @@ claiming general continual learning. `learn_transition_once()` enforces the
 replay-free affine/random-feature bank path and refuses a replay-dependent
 neural slot.
 
+The same audit also supports a two-family nonstationary rung: n-back-2 source
+experience and n-back-3 target experience occupy separate opaque external
+contexts. The source model remains byte-stable while the target model beats a
+matched fresh bank with zero replay. This is isolated factual-model retention,
+not yet end-task acquisition or arbitrary goal discovery.
+
 The rendered audit
 `experiments/brainworkshop_canonical/replay_free_transition_acquisition.py`
 now validates this path against fresh `NBackVerifier` lifetimes. Its default
