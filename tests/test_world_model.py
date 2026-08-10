@@ -2273,6 +2273,81 @@ def test_factored_router_auto_grows_on_verified_novel_bundle() -> None:
     assert restored.max_contexts == 2
 
 
+def test_factored_reliability_gate_vetoes_corruption_but_preserves_growth_path() -> None:
+    model = ExternalFactoredTransitionModel(
+        1,
+        1,
+        2,
+        hidden_width=8,
+        residual_capacity=2,
+    )
+    for parameter in model.base.parameters():
+        parameter.data.zero_()
+    model.freeze_base()
+    encoder = ExternalTransitionContextEncoder(1, 1, hidden_width=8, context_width=2)
+    reliability = ExternalTransitionEvidenceStatistics(
+        1,
+        bin_count=8,
+        error_scale=0.1,
+        prior_count=0.01,
+    )
+    reliability.observe(
+        torch.tensor([[1.0], [1.0]]),
+        torch.tensor([[1.0], [1.0]]),
+        torch.ones(2),
+    )
+    reliability.observe(
+        torch.tensor([[1.0], [1.0]]),
+        torch.tensor([[1.12], [1.12]]),
+        torch.zeros(2),
+    )
+    router = ExternalFactoredTransitionRouter(
+        model,
+        encoder,
+        max_contexts=2,
+        match_tolerance=0.02,
+        match_margin=0.0,
+        quarantine_capacity=4,
+        evidence_evaluator=reliability,
+        evidence_threshold=0.9,
+        evidence_gate_min_evidence=1,
+        committed_evidence_gate=True,
+    )
+
+    source = ExternalTransitionObservation(
+        state=torch.tensor([[-1.0], [1.0]]),
+        intention=torch.ones(2, 1),
+        next_state=torch.tensor([[-0.5], [0.5]]),
+    )
+    heldout = source
+    assert router.route_bundle((source,)).status == "staged"
+    assert router.promote_staged_candidate(heldout, lambda _candidate: True).accepted
+
+    corrupted = ExternalTransitionObservation(
+        state=source.state,
+        intention=source.intention,
+        next_state=source.next_state + 0.12,
+    )
+    vetoed = router.route_bundle((corrupted,))
+    assert vetoed.status == "reliability_veto"
+    assert not router.candidate_active
+    assert router.slot_ids == (0,)
+    assert router.quarantined_observations == 2
+
+    novel = ExternalTransitionObservation(
+        state=source.state,
+        intention=source.intention,
+        next_state=source.next_state + 1.0,
+    )
+    assert router.route_bundle((novel,)).status == "staged"
+    assert router.candidate_active
+
+    restored = ExternalFactoredTransitionRouter.from_payload(
+        router.state_payload(), evidence_evaluator=reliability
+    )
+    assert restored.digest() == router.digest()
+
+
 def test_factored_router_resolves_quarantine_into_isolated_candidate() -> None:
     model = ExternalFactoredTransitionModel(1, 1, 2, hidden_width=8)
     for parameter in model.base.parameters():

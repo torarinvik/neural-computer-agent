@@ -1,0 +1,33 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "external_factored_online_reliability_growth",
+  "decision": "promote",
+  "claim_boundary": "three-seed nonlinear reliability veto, candidate isolation, and verified one-to-two-slot growth; not general continual learning",
+  "seeds": [86001, 86002, 86003],
+  "accounting": {
+    "unique_verifier_outcomes_per_seed": 6,
+    "unique_logical_transition_lifetimes_per_seed": 28,
+    "base_optimizer_updates_per_seed": 1000,
+    "residual_optimizer_updates_per_seed": 0,
+    "reliability_optimizer_updates_per_seed": 0,
+    "replayed_examples": 0,
+    "old_regime_replay": 0,
+    "controller_optimizer_updates": 0,
+    "context_encoder_optimizer_updates": 0
+  },
+  "gates": {
+    "all_three_seeds_passed": true,
+    "online_low_error_corruption_vetoed": true,
+    "corruption_did_not_stage_candidate": true,
+    "fresh_gate_disabled_control_matched_corruption": true,
+    "novel_nonlinear_candidate_staged": true,
+    "verified_capacity_growth": true,
+    "prior_source_retained_after_growth": true,
+    "target_route_retained_after_growth": true,
+    "base_frozen": true,
+    "controller_frozen": true,
+    "context_encoder_frozen": true,
+    "exact_persistence": true,
+    "replay_free": true
+  }
+}

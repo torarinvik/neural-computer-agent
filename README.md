@@ -2608,3 +2608,12 @@ updated in the same run, with zero replay and byte-stable factual memory and
 controller. This remains a bounded online mechanism, not general continual
 learning. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_online_reliability_delay_promoted_2026-08-10/`.
+
+Reliability gating now reaches nonlinear candidate admission and verified
+capacity growth. Across three seeds, low-error corruption was vetoed without
+staging a replacement candidate, a fresh gate-disabled control accepted it,
+and a novel nonlinear regime promoted through isolated copy-on-write growth
+from one slot to two while retaining the source regime. This remains bounded
+continual-memory evidence, not general continual learning. Evidence is
+archived in
+`session_records/sequence_working_memory_2026-08-02/external_factored_online_reliability_growth_promoted_2026-08-10/`.

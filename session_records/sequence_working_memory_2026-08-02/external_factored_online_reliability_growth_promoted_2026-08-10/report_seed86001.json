@@ -1,0 +1,84 @@
+{
+  "schema": "neural-computer.external-factored-online-reliability-growth.v1",
+  "seed": 86001,
+  "configuration": {
+    "base_rows": 48,
+    "source_train_rows": 20,
+    "target_train_rows": 20,
+    "corruption_delta": 0.04,
+    "match_tolerance": 0.005,
+    "reliability_threshold": 0.9,
+    "reliability_warmup": 4,
+    "base_updates": 1000,
+    "residual_updates": 400,
+    "residual_model_family": "random_feature_sufficient_statistics_v1",
+    "claim": "online_nonlinear_reliability_veto_with_verified_growth_v1"
+  },
+  "metrics": {
+    "source_route_status": "staged",
+    "clean_a_status": "matched",
+    "clean_b_status": "matched",
+    "corruption_status": "reliability_veto",
+    "fresh_corruption_status": "matched",
+    "novel_route_status": "staged",
+    "source_promotion": {
+      "accepted": true,
+      "slot_id": 0,
+      "heldout_error": 0.00021612527780234814,
+      "reason": "candidate passed factual and retention probes",
+      "schema": "neural-computer.external-factored-transition-promotion.v1",
+      "heldout_rollout_error": null
+    },
+    "target_promotion": {
+      "accepted": true,
+      "slot_id": 1,
+      "heldout_error": 0.000909915950614959,
+      "reason": "candidate passed factual and retention probes with capacity growth",
+      "schema": "neural-computer.external-factored-transition-promotion.v1",
+      "heldout_rollout_error": null
+    },
+    "source_revisit_slot": 0,
+    "target_revisit_slot": 1,
+    "reliability_observation_count": 6,
+    "router_context_count": 2,
+    "router_max_contexts": 2,
+    "base_loss": 3.2214618386205984e-06
+  },
+  "gates": {
+    "source_promoted": true,
+    "clean_routes_before_corruption": true,
+    "gate_warmup_reached": true,
+    "corruption_vetoed": true,
+    "corruption_did_not_stage": true,
+    "fresh_gate_disabled_control_matches": true,
+    "novel_nonlinear_candidate_staged": true,
+    "target_promoted_with_capacity_growth": true,
+    "source_retained_after_growth": true,
+    "target_routes_after_growth": true,
+    "base_frozen": true,
+    "controller_frozen": true,
+    "context_encoder_unchanged": true,
+    "exact_persistence": true,
+    "replay_free": true
+  },
+  "accounting": {
+    "unique_verifier_outcomes": 6,
+    "unique_logical_transition_lifetimes": 28,
+    "base_optimizer_updates": 1000,
+    "residual_optimizer_updates": 0,
+    "reliability_optimizer_updates": 0,
+    "replayed_examples": 0,
+    "old_regime_replay": 0,
+    "controller_optimizer_updates": 0,
+    "context_encoder_optimizer_updates": 0,
+    "wall_seconds": 0.7290877079940401
+  },
+  "digests": {
+    "base": "f22dd656d8112a8395b93e127c0ddc62005c5f3bf302fc146e2b62b723019591",
+    "controller": "d39da4909bb1d06e0644a850dd011409aa342db01ac06e34b048b577baa464ec",
+    "context_encoder": "ad2c08cf0bef36821d827518fe8b2747bd28b367187cb289e38afd0ed99e6d90",
+    "router": "8c989810a4f02ae02df5b169fe05cfc3e8c2b414e44db7d30ff720dea735f0e8",
+    "reliability": "8bd9f3a6a514ccfbdd3a47adb28732a6babb83ddf09e574ed606bd26a4f56472"
+  },
+  "promoted": true
+}

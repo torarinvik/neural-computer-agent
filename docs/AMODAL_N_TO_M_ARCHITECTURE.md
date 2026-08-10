@@ -6745,3 +6745,24 @@ only committed-slot routing.
 
 Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_online_reliability_delay_promoted_2026-08-10/`.
+
+## Reliability-gated nonlinear candidate growth (2026-08-10)
+
+The learned evidence boundary now reaches candidate admission and verified
+capacity growth in a three-seed nonlinear factored audit. A frozen source regime
+was promoted, clean verifier outcomes warmed the replay-free reliability state,
+and a low-error corrupted revisit was vetoed and quarantined without staging a
+replacement candidate. A fresh gate-disabled control accepted the same
+corruption. High-error novel nonlinear evidence remained eligible for an
+isolated candidate, which promoted while growing the residual capacity from one
+slot to two and retaining the original source route.
+
+The base model, controller, and context encoder remained frozen; no old
+evidence was replayed; persistence was exact. This closes the boundary where a
+reliability veto could otherwise accidentally become a candidate-capacity
+policy. It still does not establish unrestricted growth or general continual
+learning. The next pressure test is adversarial reliability under repeated
+regime reversals and candidate-capacity pressure.
+
+Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_factored_online_reliability_growth_promoted_2026-08-10/`.

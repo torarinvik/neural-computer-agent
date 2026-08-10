@@ -488,7 +488,13 @@ class FactoredTransitionRouteResult:
     def validate(self, *, context_width: int) -> FactoredTransitionRouteResult:
         if self.schema != EXTERNAL_FACTORED_TRANSITION_ROUTER_SCHEMA:
             raise ValueError("unsupported factored transition route schema")
-        if self.status not in {"pending", "matched", "staged", "ambiguous"}:
+        if self.status not in {
+            "pending",
+            "matched",
+            "staged",
+            "ambiguous",
+            "reliability_veto",
+        }:
             raise ValueError("unsupported factored transition route status")
         if self.slot_id is not None and self.slot_id < 0:
             raise ValueError("factored transition route slot ID is invalid")
@@ -579,6 +585,10 @@ class ExternalFactoredTransitionRouter:
         auto_grow: bool = False,
         residual_adaptation_updates: int = 16,
         quarantine_capacity: int = 0,
+        evidence_evaluator: nn.Module | None = None,
+        evidence_threshold: float = 0.5,
+        evidence_gate_min_evidence: int = 0,
+        committed_evidence_gate: bool = False,
         sparse_evidence: ExternalSparseTransitionEvidenceIndex | None = None,
     ) -> None:
         if not isinstance(model, ExternalFactoredTransitionModel):
@@ -620,6 +630,17 @@ class ExternalFactoredTransitionRouter:
             or quarantine_capacity < 0
         ):
             raise ValueError("factored quarantine capacity must be non-negative")
+        if not 0.0 < evidence_threshold < 1.0:
+            raise ValueError("factored evidence threshold must lie in (0, 1)")
+        if evidence_gate_min_evidence < 0:
+            raise ValueError("factored evidence gate warm-up cannot be negative")
+        if not isinstance(committed_evidence_gate, bool):
+            raise TypeError("factored committed evidence gate must be boolean")
+        if evidence_evaluator is not None and (
+            not hasattr(evidence_evaluator, "state_width")
+            or int(evidence_evaluator.state_width) != model.state_width
+        ):
+            raise ValueError("factored evidence evaluator and model widths differ")
         if sparse_evidence is not None and (
             sparse_evidence.state_width != model.state_width
             or sparse_evidence.intention_width != model.intention_width
@@ -634,6 +655,10 @@ class ExternalFactoredTransitionRouter:
         self.auto_grow = auto_grow
         self.residual_adaptation_updates = int(residual_adaptation_updates)
         self.quarantine_capacity = int(quarantine_capacity)
+        self.evidence_evaluator = evidence_evaluator
+        self.evidence_threshold = float(evidence_threshold)
+        self.evidence_gate_min_evidence = int(evidence_gate_min_evidence)
+        self.committed_evidence_gate = committed_evidence_gate
         self.sparse_evidence = sparse_evidence
         self._contexts: list[torch.Tensor] = []
         self._slot_ids: list[int] = []
@@ -643,6 +668,7 @@ class ExternalFactoredTransitionRouter:
         self._candidate_model: ExternalFactoredTransitionModel | None = None
         self._candidate_context: torch.Tensor | None = None
         self._candidate_evidence: list[ExternalTransitionObservation] = []
+        self._last_reliability_veto = False
 
     @property
     def contexts(self) -> torch.Tensor:
@@ -780,6 +806,7 @@ class ExternalFactoredTransitionRouter:
         match_tolerance: float | None = None,
         match_margin: float | None = None,
     ) -> tuple[int, float, float] | None:
+        self._last_reliability_veto = False
         if not self._contexts:
             return None
         errors: list[float] = []
@@ -790,9 +817,21 @@ class ExternalFactoredTransitionRouter:
                 observation.intention,
                 context_batch.expand(observation.state.shape[0], -1),
             )
-            errors.append(
-                float((prediction - observation.next_state).square().mean().detach())
-            )
+            error = float((prediction - observation.next_state).square().mean().detach())
+            if self.committed_evidence_gate and not self._evidence_allows(
+                prediction,
+                observation.next_state,
+                candidate_evidence_count=None,
+            ):
+                if error <= (
+                    self.match_tolerance
+                    if match_tolerance is None
+                    else match_tolerance
+                ):
+                    self._last_reliability_veto = True
+                errors.append(float("inf"))
+            else:
+                errors.append(error)
         ordering = sorted(range(len(errors)), key=lambda index: (errors[index], index))
         best = ordering[0]
         margin = (
@@ -806,6 +845,69 @@ class ExternalFactoredTransitionRouter:
             return None
         return self._slot_ids[best], errors[best], margin
 
+    def _evidence_probability(
+        self,
+        prediction: torch.Tensor,
+        observed: torch.Tensor,
+    ) -> float:
+        """Read caller-owned reliability state without changing factual memory."""
+
+        if self.evidence_evaluator is None:
+            return 1.0
+        hits = torch.ones(
+            prediction.shape[0],
+            device=prediction.device,
+            dtype=prediction.dtype,
+        )
+        scorer = getattr(self.evidence_evaluator, "score", None)
+        with torch.no_grad():
+            logits = (
+                scorer(prediction, observed, hits)
+                if callable(scorer)
+                else self.evidence_evaluator(prediction, observed, hits)
+            )
+            return float(torch.sigmoid(logits).mean())
+
+    def _evidence_allows(
+        self,
+        prediction: torch.Tensor,
+        observed: torch.Tensor,
+        *,
+        candidate_evidence_count: int | None,
+    ) -> bool:
+        """Conservatively veto unreliable evidence after explicit warm-up."""
+
+        if self.evidence_evaluator is None:
+            return True
+        if candidate_evidence_count is None:
+            observed_count = getattr(
+                self.evidence_evaluator, "observation_count", None
+            )
+            ready = (
+                True
+                if observed_count is None
+                else int(observed_count) >= self.evidence_gate_min_evidence
+            )
+        else:
+            ready = candidate_evidence_count >= self.evidence_gate_min_evidence
+        return (
+            not ready
+            or self._evidence_probability(prediction, observed)
+            >= self.evidence_threshold
+        )
+
+    def _quarantine_reliability_veto(
+        self,
+        observation: ExternalTransitionObservation,
+    ) -> FactoredTransitionRouteResult:
+        receipt = self.quarantine_partial_bundle((observation,))
+        return FactoredTransitionRouteResult(
+            status="reliability_veto" if receipt.accepted else "ambiguous",
+            slot_id=None,
+            context=None,
+            pending_observations=0,
+        ).validate(context_width=self.model.context_width)
+
     def _sparse_proposal(
         self,
         observation: ExternalTransitionObservation,
@@ -815,7 +917,25 @@ class ExternalFactoredTransitionRouter:
         if self.sparse_evidence is None or not self._slot_ids:
             return None
         proposal = self.sparse_evidence.propose(observation, self._slot_ids)
-        return proposal.selected_slot_id
+        slot_id = proposal.selected_slot_id
+        if slot_id is None or not self.committed_evidence_gate:
+            return slot_id
+        context = self._contexts[self._slot_ids.index(slot_id)].to(observation.state)
+        prediction = self.model.predict_with_context(
+            observation.state,
+            observation.intention,
+            context.unsqueeze(0).expand(observation.state.shape[0], -1),
+        )
+        error = float((prediction - observation.next_state).square().mean().detach())
+        if not self._evidence_allows(
+            prediction,
+            observation.next_state,
+            candidate_evidence_count=None,
+        ):
+            if error <= self.match_tolerance:
+                self._last_reliability_veto = True
+            return None
+        return slot_id
 
     def _stage_candidate(self) -> FactoredTransitionRouteResult:
         evidence = self._merge(self._pending)
@@ -823,6 +943,14 @@ class ExternalFactoredTransitionRouter:
         candidate = ExternalFactoredTransitionModel.from_payload(
             self.model.state_payload()
         )
+        if (
+            self.auto_grow
+            and self.max_contexts is not None
+            and len(self._contexts) >= self.max_contexts
+            and candidate.residual_bank is not None
+        ):
+            candidate.residual_bank.capacity = self.max_contexts + 1
+            candidate.residual_capacity = self.max_contexts + 1
         candidate.write_residual(evidence, context=context)
         if candidate.residual_bank is not None:
             candidate.fit_residual(
@@ -856,6 +984,21 @@ class ExternalFactoredTransitionRouter:
         if self._candidate_model is not None:
             if self._candidate_context is None:
                 raise RuntimeError("factored candidate context is missing")
+            candidate_prediction = self._candidate_model.predict_with_context(
+                observation.state,
+                observation.intention,
+                self._candidate_context.to(observation.state)
+                .unsqueeze(0)
+                .expand(observation.state.shape[0], -1),
+            )
+            if self.committed_evidence_gate and not self._evidence_allows(
+                candidate_prediction,
+                observation.next_state,
+                candidate_evidence_count=sum(
+                    item.state.shape[0] for item in self._candidate_evidence
+                ),
+            ):
+                return self._quarantine_reliability_veto(observation)
             self._candidate_model.write_residual(
                 observation,
                 context=self._candidate_context,
@@ -888,6 +1031,9 @@ class ExternalFactoredTransitionRouter:
                 context=self._contexts[self._slot_ids.index(slot_id)].clone(),
                 pending_observations=0,
             ).validate(context_width=self.model.context_width)
+        if self._last_reliability_veto:
+            self._pending.clear()
+            return self._quarantine_reliability_veto(observation)
         self._pending.append(self._clone_observation(observation))
         if self.pending_observations < self.admission_observations:
             return FactoredTransitionRouteResult(
@@ -952,7 +1098,11 @@ class ExternalFactoredTransitionRouter:
                 context=self._contexts[self._slot_ids.index(slot_id)].clone(),
                 pending_observations=0,
             ).validate(context_width=self.model.context_width)
+        if self._last_reliability_veto:
+            return self._quarantine_reliability_veto(merged)
         sparse_slot = self._sparse_proposal(merged)
+        if self._last_reliability_veto:
+            return self._quarantine_reliability_veto(merged)
         if sparse_slot is not None:
             self.sparse_evidence.record(sparse_slot, merged)
             return FactoredTransitionRouteResult(
@@ -1025,7 +1175,15 @@ class ExternalFactoredTransitionRouter:
                 intention_width=self.model.intention_width,
             )
         merged = self._merge(cloned)
+        self._last_reliability_veto = False
         sparse_slot = self._sparse_proposal(merged)
+        if self._last_reliability_veto:
+            return FactoredTransitionRouteResult(
+                status="reliability_veto",
+                slot_id=None,
+                context=None,
+                pending_observations=0,
+            ).validate(context_width=self.model.context_width)
         if sparse_slot is not None:
             context_index = self._slot_ids.index(sparse_slot)
             return FactoredTransitionRouteResult(
@@ -1046,6 +1204,12 @@ class ExternalFactoredTransitionRouter:
                 context_batch,
             )
             errors = (prediction - merged.next_state).square().mean(dim=-1)
+            if self.committed_evidence_gate and not self._evidence_allows(
+                prediction,
+                merged.next_state,
+                candidate_evidence_count=None,
+            ):
+                continue
             matched = int((errors <= match_tolerance).sum())
             contradictory = bool(torch.any(errors > contradiction_floor))
             if matched < required_matches or contradictory:
@@ -1436,6 +1600,14 @@ class ExternalFactoredTransitionRouter:
             "auto_grow": self.auto_grow,
             "residual_adaptation_updates": self.residual_adaptation_updates,
             "quarantine_capacity": self.quarantine_capacity,
+            "evidence_threshold": self.evidence_threshold,
+            "evidence_gate_min_evidence": self.evidence_gate_min_evidence,
+            "committed_evidence_gate": self.committed_evidence_gate,
+            "evidence_evaluator": (
+                None
+                if self.evidence_evaluator is None
+                else self.evidence_evaluator.configuration()
+            ),
             "sparse_evidence": (
                 None
                 if self.sparse_evidence is None
@@ -1543,12 +1715,17 @@ class ExternalFactoredTransitionRouter:
     def from_payload(
         cls,
         payload: Mapping[str, Any],
+        *,
+        evidence_evaluator: nn.Module | None = None,
     ) -> ExternalFactoredTransitionRouter:
         if not isinstance(payload, Mapping) or payload.get("schema") != cls.schema:
             raise ValueError("unsupported factored router payload")
         configuration = payload.get("configuration")
         if not isinstance(configuration, Mapping):
             raise TypeError("factored router configuration is missing")
+        serialized_evaluator = configuration.get("evidence_evaluator")
+        if serialized_evaluator is not None and evidence_evaluator is None:
+            raise ValueError("factored router payload requires its external evidence evaluator")
         model = ExternalFactoredTransitionModel.from_payload(payload["model"])
         encoder = ExternalTransitionContextEncoder.from_payload(payload["context_encoder"])
         router = cls(
@@ -1567,6 +1744,14 @@ class ExternalFactoredTransitionRouter:
                 configuration.get("residual_adaptation_updates", 16)
             ),
             quarantine_capacity=int(configuration.get("quarantine_capacity", 0)),
+            evidence_evaluator=evidence_evaluator,
+            evidence_threshold=float(configuration.get("evidence_threshold", 0.5)),
+            evidence_gate_min_evidence=int(
+                configuration.get("evidence_gate_min_evidence", 0)
+            ),
+            committed_evidence_gate=bool(
+                configuration.get("committed_evidence_gate", False)
+            ),
             sparse_evidence=(
                 None
                 if payload.get("sparse_evidence") is None
