@@ -401,6 +401,79 @@ def test_transition_route_memory_requires_mask_overlap_for_merges() -> None:
     assert restored.digest() == memory.digest()
 
 
+def test_transition_route_memory_consolidation_is_retention_gated_and_persistent() -> None:
+    memory = ExternalTransitionRouteMemory(
+        4,
+        max_prototypes_per_slot=4,
+        merge_cosine=0.99,
+    )
+    full = torch.tensor([1.0, 0.0, 0.0, 0.0])
+    first = torch.tensor([0.0, 1.0, 0.0, 0.0])
+    second = torch.tensor([0.0, 0.0, 1.0, 0.0])
+    third = torch.tensor([0.0, 0.0, 0.0, 1.0])
+    first_mask = torch.tensor([True, True, False, False])
+    second_mask = torch.tensor([False, False, True, True])
+    third_mask = torch.tensor([False, False, False, True])
+    memory.register_slot(10, prototype=full)
+    assert memory.observe(10, first, query_mask=first_mask)
+    assert memory.observe(10, second, query_mask=second_mask)
+    assert memory.observe(10, third, query_mask=third_mask)
+    assert memory.prototype_count(10) == 4
+    source_digest = memory.digest()
+
+    rejected = memory.consolidate_verified(
+        10,
+        (2, 1),
+        retention_probe=lambda _candidate: False,
+    )
+    assert not rejected.accepted
+    assert rejected.merged_indices == (1, 2)
+    assert memory.prototype_count(10) == 4
+    assert memory.digest() == source_digest
+
+    def retention_probe(candidate: ExternalTransitionRouteMemory) -> bool:
+        return all(
+            candidate.propose(
+                query,
+                (10,),
+                minimum_score=0.95,
+                query_mask=query_mask,
+            ).selected_slot_id
+            == 10
+            for query, query_mask in (
+                (full, None),
+                (first, first_mask),
+                (second, second_mask),
+                (third, third_mask),
+            )
+        )
+
+    accepted = memory.consolidate_verified(10, (1, 2), retention_probe)
+    assert accepted.accepted
+    assert accepted.merged_indices == (1, 2)
+    assert accepted.source_prototype_count == 4
+    assert accepted.destination_prototype_count == 3
+    assert memory.prototype_count(10) == 3
+    restored = ExternalTransitionRouteMemory.from_payload(memory.state_payload())
+    assert restored.prototype_count(10) == 3
+    assert restored.digest() == memory.digest()
+    for query, query_mask in (
+        (full, None),
+        (first, first_mask),
+        (second, second_mask),
+        (third, third_mask),
+    ):
+        assert (
+            restored.propose(
+                query,
+                (10,),
+                minimum_score=0.95,
+                query_mask=query_mask,
+            ).selected_slot_id
+            == 10
+        )
+
+
 def test_transition_route_query_can_use_slot_local_prototype_memory() -> None:
     memory = ExternalTransitionRouteMemory(4)
     query = ExternalTransitionRouteQuery(

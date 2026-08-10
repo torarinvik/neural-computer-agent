@@ -7397,3 +7397,25 @@ semantic open-world identity, or general continual learning. The next
 pressure point is mask-aware consolidation and capacity policy across more
 than two unseen masks. Evidence and accounting are archived in
 `session_records/sequence_working_memory_2026-08-02/external_goal_representation_alignment_masked_growth_promoted_2026-08-10/`.
+
+## Verifier-gated multi-mask identity-memory consolidation (2026-08-10)
+
+External route memory now supports copy-on-write consolidation of selected
+slot-local prototypes. Count-weighted masked averaging preserves the union of
+observed dimensions; the merged candidate is committed only after a verifier
+retention probe confirms every old route. Rejected consolidation leaves the
+live rows, masks, counts, and digest unchanged.
+
+Across seeds `85301`, `85302`, `85303`, and `85304`, memory grew from one to
+four prototypes per slot, learned three partial patterns with different masks,
+then merged two rows while retaining all three partial routes and both full
+alignment routes. Affine mastery was `1.0`; nonlinear mastery was `0.9917`–`1.0`.
+Exact persistence, frozen controller/model/verifier state, and zero replay
+passed in every run.
+
+This promotes bounded verifier-gated external-memory growth and compression,
+not autonomous compression policy, unbounded memory, semantic open-world
+identity, or general continual learning. The next pressure point is learned
+capacity allocation and consolidation over longer streams with interference,
+reversal, and bounded storage. Evidence and accounting are archived in
+`session_records/sequence_working_memory_2026-08-02/external_goal_representation_alignment_masked_consolidation_promoted_2026-08-10/`.

@@ -89,6 +89,9 @@ EXTERNAL_TRANSITION_ROUTE_MEMORY_REPLACEMENT_SCHEMA = (
 EXTERNAL_TRANSITION_ROUTE_MEMORY_GROWTH_SCHEMA = (
     "neural-computer.external-transition-route-memory-growth.v1"
 )
+EXTERNAL_TRANSITION_ROUTE_MEMORY_CONSOLIDATION_SCHEMA = (
+    "neural-computer.external-transition-route-memory-consolidation.v1"
+)
 EXTERNAL_TRANSITION_SPARSE_EVIDENCE_SCHEMA = (
     "neural-computer.external-transition-sparse-evidence.v1"
 )
@@ -3491,6 +3494,56 @@ class ExternalTransitionRouteMemoryGrowthReceipt:
         return self
 
 
+@dataclass(frozen=True)
+class ExternalTransitionRouteMemoryConsolidationReceipt:
+    """Auditable copy-on-write merging of slot-local prototype rows."""
+
+    accepted: bool
+    slot_id: int
+    merged_indices: tuple[int, ...]
+    source_prototype_count: int
+    destination_prototype_count: int
+    source_digest: str
+    destination_digest: str
+    reason: str
+    schema: str = EXTERNAL_TRANSITION_ROUTE_MEMORY_CONSOLIDATION_SCHEMA
+
+    def validate(self) -> ExternalTransitionRouteMemoryConsolidationReceipt:
+        if self.schema != EXTERNAL_TRANSITION_ROUTE_MEMORY_CONSOLIDATION_SCHEMA:
+            raise ValueError("unsupported transition route-memory consolidation schema")
+        if self.slot_id < 0:
+            raise ValueError("transition route-memory consolidation slot is invalid")
+        if len(self.merged_indices) < 2 or len(set(self.merged_indices)) != len(
+            self.merged_indices
+        ):
+            raise ValueError("transition route-memory consolidation indices are invalid")
+        if any(index < 0 for index in self.merged_indices):
+            raise ValueError("transition route-memory consolidation index is invalid")
+        if min(
+            self.source_prototype_count,
+            self.destination_prototype_count,
+        ) < 0:
+            raise ValueError("transition route-memory consolidation counts are invalid")
+        expected_destination = self.source_prototype_count - len(self.merged_indices) + 1
+        if self.accepted:
+            if self.destination_prototype_count != expected_destination:
+                raise ValueError(
+                    "accepted transition route-memory consolidation count is invalid"
+                )
+        elif self.destination_prototype_count != self.source_prototype_count:
+            raise ValueError("rejected route-memory consolidation mutated count")
+        for name, value in (
+            ("source_digest", self.source_digest),
+            ("destination_digest", self.destination_digest),
+            ("reason", self.reason),
+        ):
+            if not isinstance(value, str) or not value:
+                raise ValueError(
+                    f"transition route-memory consolidation {name} is missing"
+                )
+        return self
+
+
 class ExternalTransitionRouteMemory:
     """Bounded slot-local prototypes for continual opaque route identity.
 
@@ -3911,6 +3964,97 @@ class ExternalTransitionRouteMemory:
             source_digest=source_digest,
             destination_digest=destination_digest,
             reason="retention-verified route-memory capacity growth committed",
+        ).validate()
+
+    def consolidate_verified(
+        self,
+        slot_id: int,
+        prototype_indices: Sequence[int],
+        retention_probe: Callable[[ExternalTransitionRouteMemory], bool],
+    ) -> ExternalTransitionRouteMemoryConsolidationReceipt:
+        """Merge selected prototype rows only after a retention proof.
+
+        The selected rows are combined with count-weighted masked averaging on
+        a copy.  Union masks preserve complementary evidence, while the
+        verifier decides whether the merged representation still routes every
+        old capability.  Rejection leaves the live memory byte-stable.
+        """
+
+        self._validate_slot_id(slot_id)
+        if slot_id not in self._prototypes:
+            raise KeyError(f"unknown transition route-memory slot: {slot_id}")
+        if not isinstance(prototype_indices, Sequence) or isinstance(
+            prototype_indices, (str, bytes)
+        ):
+            raise TypeError("transition route-memory consolidation indices are invalid")
+        indices = tuple(prototype_indices)
+        if len(indices) < 2 or len(set(indices)) != len(indices):
+            raise ValueError("transition route-memory consolidation needs distinct rows")
+        if any(
+            not isinstance(index, int) or isinstance(index, bool) or index < 0
+            for index in indices
+        ):
+            raise ValueError("transition route-memory consolidation index is invalid")
+        if any(index >= self.prototype_count(slot_id) for index in indices):
+            raise IndexError("transition route-memory consolidation index is out of range")
+        if not callable(retention_probe):
+            raise TypeError(
+                "transition route-memory consolidation retention probe is invalid"
+            )
+        source_digest = self.digest()
+        source_count = self.prototype_count(slot_id)
+        candidate = self.from_payload(self.state_payload())
+        ordered = tuple(sorted(indices))
+        prototypes = candidate._prototypes[slot_id]
+        prototype_masks = candidate._prototype_masks[slot_id]
+        counts = candidate._counts[slot_id]
+        merged = prototypes[ordered[0]]
+        merged_mask = prototype_masks[ordered[0]]
+        merged_count = counts[ordered[0]]
+        for index in ordered[1:]:
+            merged, merged_mask = candidate._merge_prototypes(
+                merged,
+                merged_mask,
+                merged_count,
+                prototypes[index],
+                torch.ones(candidate.width, dtype=torch.bool)
+                if prototype_masks[index] is None
+                else prototype_masks[index],
+            )
+            merged_count += counts[index]
+        prototypes[ordered[0]] = merged
+        prototype_masks[ordered[0]] = merged_mask
+        counts[ordered[0]] = merged_count
+        for index in reversed(ordered[1:]):
+            del prototypes[index]
+            del prototype_masks[index]
+            del counts[index]
+        candidate._version += 1
+        if not bool(retention_probe(candidate)):
+            return ExternalTransitionRouteMemoryConsolidationReceipt(
+                accepted=False,
+                slot_id=slot_id,
+                merged_indices=ordered,
+                source_prototype_count=source_count,
+                destination_prototype_count=source_count,
+                source_digest=source_digest,
+                destination_digest=source_digest,
+                reason="verifier retention probe rejected route-memory consolidation",
+            ).validate()
+        self._prototypes = candidate._prototypes
+        self._prototype_masks = candidate._prototype_masks
+        self._counts = candidate._counts
+        self._dropped_queries = candidate._dropped_queries
+        self._version = candidate._version
+        return ExternalTransitionRouteMemoryConsolidationReceipt(
+            accepted=True,
+            slot_id=slot_id,
+            merged_indices=ordered,
+            source_prototype_count=source_count,
+            destination_prototype_count=self.prototype_count(slot_id),
+            source_digest=source_digest,
+            destination_digest=self.digest(),
+            reason="retention-verified route-memory consolidation committed",
         ).validate()
 
     def prototype_count(self, slot_id: int) -> int:
