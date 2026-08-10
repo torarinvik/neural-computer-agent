@@ -8048,3 +8048,22 @@ This is verified new-intention storage, not a learned generator of arbitrary
 output programs. The next pressure is to make the candidate source itself
 emerge from partial experience and active exploration while retaining the same
 held-out admission and complete-retention gates.
+
+## External compositional intention exploration (2026-08-10)
+
+`ExternalIntentionCompositionExplorer` now supplies a first bounded source of
+new candidates from retained opaque experience. It composes pairs of verified
+intention vectors with a versioned operation set (`mean`, `sum`, and
+`difference`), deduplicates near-equivalent proposals, records source indices
+and operations, and never mutates the live repertoire. The resulting proposal
+is ephemeral until `admit_verified` accepts it through an independent held-out
+verifier.
+
+The promoted admission audit now proves this causal chain: the diagonal
+intention is generated from entries `(0, 1)`, admitted, and immediately enables
+the held-out goal while the controller, model, and retained entries stay
+unchanged. This is a useful pressure-tested bridge from retrieval to
+composition, but it is not arbitrary program synthesis, learned operation
+discovery, or general continual learning. The next step is to generate and
+verify candidates from partial multimodal experience and active outcome-only
+exploration rather than a fixed algebraic catalogue.

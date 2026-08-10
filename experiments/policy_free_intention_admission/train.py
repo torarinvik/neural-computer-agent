@@ -27,14 +27,13 @@ from neural_computer import (
     AmodalControllerRuntime,
     AmodalEvent,
     ExternalAffineTransitionStatistics,
+    ExternalIntentionCompositionExplorer,
     ExternalIntentionRepertoire,
     ExternalModelBasedPlanner,
     OpaqueProtocolDecoder,
     PolicyFreeAmodalRuntime,
 )
 
-NEW_INTENTION = torch.tensor([0.5, 0.5])
-REJECTED_INTENTION = torch.tensor([0.5, -0.5])
 DIAGONAL_TARGET = (1.5, 1.5)
 
 
@@ -101,6 +100,14 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
     model_digest = planner_model.digest()
     repertoire = ExternalIntentionRepertoire(INTENTION_WIDTH)
     repertoire.observe(ACTION_BASIS)
+    explorer = ExternalIntentionCompositionExplorer(
+        operations=("mean", "sum", "difference")
+    )
+    exploration = explorer.propose(repertoire)
+    if exploration.intentions.shape[0] < 2:
+        raise AssertionError("intention explorer did not produce two candidates")
+    new_intention = exploration.intentions[0]
+    rejected_intention = exploration.intentions[1]
     retained_before = repertoire.statistics()["intentions"].clone()
     policy_free = PolicyFreeAmodalRuntime(
         runtime,
@@ -128,11 +135,11 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
     heldout_generator = torch.Generator().manual_seed(seed + 19_001)
     heldout_state = torch.randn(16, STATE_WIDTH, generator=heldout_generator)
     heldout_padding = torch.zeros(16, STATE_WIDTH)
-    heldout_padding[:, :INTENTION_WIDTH] = NEW_INTENTION
+    heldout_padding[:, :INTENTION_WIDTH] = new_intention
     heldout_next_state = heldout_state + heldout_padding
     heldout_prediction = planner_model(
         heldout_state,
-        NEW_INTENTION.unsqueeze(0).expand(heldout_state.shape[0], -1),
+        new_intention.unsqueeze(0).expand(heldout_state.shape[0], -1),
     )
     heldout_error = float(
         (heldout_prediction - heldout_next_state).square().mean().detach()
@@ -144,10 +151,10 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
             return False
         if heldout_error > 1e-4:
             return False
-        candidate.observe(NEW_INTENTION, utility=1.0, propensity=1.0)
+        candidate.observe(new_intention, utility=1.0, propensity=1.0)
         return True
 
-    admission = repertoire.admit_verified(NEW_INTENTION, verify_new_intention)
+    admission = repertoire.admit_verified(new_intention, verify_new_intention)
     retained_after_admission = repertoire.statistics()["intentions"][: len(ACTION_BASIS)]
     post_displacement, _, post_expansions = _run(
         policy_free,
@@ -168,7 +175,7 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
         (
             planner_model(
                 heldout_state,
-                REJECTED_INTENTION.unsqueeze(0).expand(heldout_state.shape[0], -1),
+                rejected_intention.unsqueeze(0).expand(heldout_state.shape[0], -1),
             )
             - rejected_target
         )
@@ -177,13 +184,15 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
         .detach()
     )
     rejected = repertoire.admit_verified(
-        REJECTED_INTENTION,
+        rejected_intention,
         lambda _candidate: rejected_error <= 1e-4,
     )
     restored = ExternalIntentionRepertoire.from_payload(repertoire.payload())
     gates = {
         "pre_admission_goal_not_mastered": not before_success,
         "heldout_factual_probe_passed": heldout_error <= 1e-4,
+        "candidate_generated_from_repertoire": exploration.source_pairs[0] == (0, 1)
+        and exploration.operations[0] == "mean",
         "new_intention_admitted": admission.accepted,
         "post_admission_goal_mastered": post_success,
         "retained_vectors_unchanged": torch.equal(
@@ -206,8 +215,11 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
         "seed": seed,
         "configuration": {
             "initial_repertoire_count": len(ACTION_BASIS),
-            "new_intention": NEW_INTENTION.tolist(),
-            "rejected_intention": REJECTED_INTENTION.tolist(),
+            "new_intention": new_intention.tolist(),
+            "rejected_intention": rejected_intention.tolist(),
+            "explorer": explorer.configuration(),
+            "exploration_source_pairs": [list(pair) for pair in exploration.source_pairs],
+            "exploration_operations": list(exploration.operations),
             "goal": list(DIAGONAL_TARGET),
             "horizon": HORIZON - 1,
             "candidate_intentions_argument": "omitted_at_runtime",
@@ -229,6 +241,7 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
             "unique_logical_lifetimes": TRANSITION_ROWS + len(ACTION_BASIS) + 2,
             "factual_statistics_updates": 1,
             "intention_admission_transactions": 2,
+            "exploration_candidates_proposed": int(exploration.intentions.shape[0]),
             "optimizer_updates": 0,
             "controller_optimizer_updates": 0,
             "replayed_examples": 0,

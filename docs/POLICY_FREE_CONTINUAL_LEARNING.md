@@ -444,3 +444,20 @@ This closes safe admission, not candidate invention. General continual
 learning still requires an external proposer that can generate useful new
 intention content from partial multimodal evidence and an outcome-only active
 exploration loop that can discover it efficiently.
+
+## External compositional intention exploration (2026-08-10)
+
+`ExternalIntentionCompositionExplorer` provides a bounded, auditable source of
+candidate content from retained opaque experience. It composes pairs of
+verified vectors using a versioned operation set (`mean`, `sum`, and
+`difference`), removes near-duplicates, preserves source-pair provenance, and
+does not mutate the live repertoire. Candidates remain ephemeral until the
+held-out `admit_verified` transaction accepts one.
+
+The promoted three-seed audit now derives the diagonal intention from retained
+entries `(0, 1)`, then verifies and admits it without controller updates,
+replay, or old-entry drift. This is a real improvement in acquisition
+provenance, but the boundary remains bounded composition rather than learned
+operation discovery, arbitrary new computation, or general continual
+learning. The next experiment should drive candidate proposals from partial
+multimodal observations and active outcome-only exploration.

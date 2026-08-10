@@ -7,6 +7,7 @@ from neural_computer import (
     AmodalControllerRuntime,
     AmodalEvent,
     ControllerFeedback,
+    ExternalIntentionCompositionExplorer,
     ExternalIntentionRepertoire,
     ExternalModelBasedPlanner,
     PolicyFreeAmodalRuntime,
@@ -114,6 +115,18 @@ def test_verified_intention_admission_is_copy_on_write_and_retention_safe() -> N
     assert not mutation_rejected.accepted
     assert mutation_rejected.source_digest == rejected_digest
     assert repertoire.content_digest() == rejected_digest
+
+
+def test_composition_explorer_proposes_ephemeral_candidates_from_retained_vectors() -> None:
+    repertoire = ExternalIntentionRepertoire(2)
+    repertoire.observe(torch.tensor([[1.0, 0.0], [0.0, 1.0]]))
+    explorer = ExternalIntentionCompositionExplorer(operations=("mean",))
+    proposal = explorer.propose(repertoire)
+    assert proposal.intentions.shape == (1, 2)
+    assert proposal.source_pairs == ((0, 1),)
+    assert proposal.operations == ("mean",)
+    assert torch.allclose(proposal.intentions[0], torch.tensor([0.5, 0.5]))
+    assert repertoire.record_count == 2
 
 
 def test_policy_free_runtime_can_source_candidates_from_external_repertoire() -> None:

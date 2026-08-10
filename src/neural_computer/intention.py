@@ -32,6 +32,9 @@ EXTERNAL_INTENTION_OBSERVATION_SCHEMA = (
 EXTERNAL_INTENTION_ADMISSION_SCHEMA = (
     "neural-computer.external-intention-admission.v1"
 )
+EXTERNAL_INTENTION_EXPLORATION_SCHEMA = (
+    "neural-computer.external-intention-exploration.v1"
+)
 
 
 def _validate_tensor(
@@ -179,6 +182,146 @@ class ExternalIntentionAdmissionReceipt:
             if not isinstance(value, str) or not value:
                 raise ValueError(f"intention-admission {name} is missing")
         return self
+
+
+@dataclass(frozen=True)
+class ExternalIntentionExplorationProposal:
+    """Ephemeral candidates composed from verified opaque intention entries."""
+
+    intentions: torch.Tensor
+    source_pairs: tuple[tuple[int, int], ...]
+    operations: tuple[str, ...]
+    version: int
+    schema: str = EXTERNAL_INTENTION_EXPLORATION_SCHEMA
+
+    def validate(self, *, width: int) -> ExternalIntentionExplorationProposal:
+        if self.schema != EXTERNAL_INTENTION_EXPLORATION_SCHEMA:
+            raise ValueError("unsupported intention-exploration schema")
+        _validate_tensor(
+            self.intentions,
+            name="intention exploration proposal",
+            ndim=2,
+            width=width,
+        )
+        count = self.intentions.shape[0]
+        if len(self.source_pairs) != count or len(self.operations) != count:
+            raise ValueError("intention exploration metadata is misaligned")
+        for pair in self.source_pairs:
+            if (
+                len(pair) != 2
+                or any(
+                    not isinstance(index, int) or isinstance(index, bool) or index < 0
+                    for index in pair
+                )
+                or pair[0] == pair[1]
+            ):
+                raise ValueError("intention exploration source pair is invalid")
+        if any(not isinstance(operation, str) or not operation for operation in self.operations):
+            raise ValueError("intention exploration operation is missing")
+        if not isinstance(self.version, int) or self.version < 0:
+            raise ValueError("intention exploration version is invalid")
+        return self
+
+
+class ExternalIntentionCompositionExplorer:
+    """Generate verifier-bound ephemeral intentions from retained experience.
+
+    The explorer knows only vector algebra and opaque external entry indices.
+    It never scores a candidate by reward and never mutates the repertoire;
+    factual held-out verification remains the sole admission authority.
+    """
+
+    schema = EXTERNAL_INTENTION_EXPLORATION_SCHEMA
+    _SUPPORTED_OPERATIONS = ("mean", "sum", "difference")
+
+    def __init__(
+        self,
+        operations: tuple[str, ...] = ("mean", "sum", "difference"),
+        *,
+        merge_cosine: float = 0.999,
+    ) -> None:
+        if not operations:
+            raise ValueError("intention explorer needs one operation")
+        if any(operation not in self._SUPPORTED_OPERATIONS for operation in operations):
+            raise ValueError("intention explorer operation is unsupported")
+        if len(set(operations)) != len(operations):
+            raise ValueError("intention explorer operations must be unique")
+        if not -1.0 <= merge_cosine <= 1.0 or not math.isfinite(merge_cosine):
+            raise ValueError("intention explorer merge cosine is invalid")
+        self.operations = tuple(operations)
+        self.merge_cosine = float(merge_cosine)
+
+    def configuration(self) -> dict[str, object]:
+        return {
+            "schema": self.schema,
+            "operations": list(self.operations),
+            "merge_cosine": self.merge_cosine,
+            "behavior": "ephemeral_opaque_composition_before_heldout_admission_v1",
+            "policy": "none_reward_ranking_disabled_v1",
+        }
+
+    @staticmethod
+    def _similarity(left: torch.Tensor, right: torch.Tensor) -> float:
+        left_norm = torch.linalg.vector_norm(left)
+        right_norm = torch.linalg.vector_norm(right)
+        if float(left_norm) <= 1e-12 or float(right_norm) <= 1e-12:
+            return 1.0 if torch.equal(left, right) else -1.0
+        return float(torch.dot(left, right) / (left_norm * right_norm))
+
+    def propose(
+        self,
+        repertoire: ExternalIntentionRepertoire,
+        *,
+        max_candidates: int | None = None,
+    ) -> ExternalIntentionExplorationProposal:
+        if not isinstance(repertoire, ExternalIntentionRepertoire):
+            raise TypeError("intention exploration requires an external repertoire")
+        if max_candidates is not None and (
+            not isinstance(max_candidates, int)
+            or isinstance(max_candidates, bool)
+            or max_candidates < 1
+        ):
+            raise ValueError("maximum exploration candidates must be positive")
+        stored = repertoire.statistics()["intentions"]
+        candidates: list[torch.Tensor] = []
+        pairs: list[tuple[int, int]] = []
+        operations: list[str] = []
+        for left_index in range(stored.shape[0]):
+            for right_index in range(left_index + 1, stored.shape[0]):
+                left = stored[left_index]
+                right = stored[right_index]
+                for operation in self.operations:
+                    if operation == "mean":
+                        candidate = 0.5 * (left + right)
+                    elif operation == "sum":
+                        candidate = left + right
+                    else:
+                        candidate = left - right
+                    if not bool(torch.isfinite(candidate).all()):
+                        continue
+                    if any(
+                        self._similarity(candidate, existing) >= self.merge_cosine
+                        for existing in [*stored, *candidates]
+                    ):
+                        continue
+                    candidates.append(candidate.detach().clone())
+                    pairs.append((left_index, right_index))
+                    operations.append(operation)
+        if max_candidates is not None:
+            candidates = candidates[:max_candidates]
+            pairs = pairs[:max_candidates]
+            operations = operations[:max_candidates]
+        intentions = (
+            torch.stack(candidates)
+            if candidates
+            else torch.empty((0, repertoire.width), dtype=torch.float32)
+        )
+        return ExternalIntentionExplorationProposal(
+            intentions=intentions,
+            source_pairs=tuple(pairs),
+            operations=tuple(operations),
+            version=repertoire.version,
+        ).validate(width=repertoire.width)
 
 
 class ExternalIntentionRepertoire:
@@ -799,10 +942,13 @@ class ExternalIntentionRepertoire:
 
 __all__ = [
     "EXTERNAL_INTENTION_ADMISSION_SCHEMA",
+    "EXTERNAL_INTENTION_EXPLORATION_SCHEMA",
     "EXTERNAL_INTENTION_OBSERVATION_SCHEMA",
     "EXTERNAL_INTENTION_PROPOSAL_SCHEMA",
     "EXTERNAL_INTENTION_REPERTOIRE_SCHEMA",
     "ExternalIntentionAdmissionReceipt",
+    "ExternalIntentionCompositionExplorer",
+    "ExternalIntentionExplorationProposal",
     "ExternalIntentionObservationReceipt",
     "ExternalIntentionProposal",
     "ExternalIntentionRepertoire",

@@ -9,8 +9,48 @@
       0.5
     ],
     "rejected_intention": [
-      0.5,
-      -0.5
+      1.0,
+      -1.0
+    ],
+    "explorer": {
+      "schema": "neural-computer.external-intention-exploration.v1",
+      "operations": [
+        "mean",
+        "sum",
+        "difference"
+      ],
+      "merge_cosine": 0.999,
+      "behavior": "ephemeral_opaque_composition_before_heldout_admission_v1",
+      "policy": "none_reward_ranking_disabled_v1"
+    },
+    "exploration_source_pairs": [
+      [
+        0,
+        1
+      ],
+      [
+        0,
+        1
+      ],
+      [
+        0,
+        2
+      ],
+      [
+        1,
+        2
+      ],
+      [
+        2,
+        3
+      ]
+    ],
+    "exploration_operations": [
+      "mean",
+      "difference",
+      "mean",
+      "mean",
+      "mean"
     ],
     "goal": [
       1.5,
@@ -22,6 +62,7 @@
   "gates": {
     "pre_admission_goal_not_mastered": true,
     "heldout_factual_probe_passed": true,
+    "candidate_generated_from_repertoire": true,
     "new_intention_admitted": true,
     "post_admission_goal_mastered": true,
     "retained_vectors_unchanged": true,
@@ -43,7 +84,7 @@
       1.5
     ],
     "heldout_error": 3.2322245330533225e-14,
-    "rejected_error": 0.01500000525265932,
+    "rejected_error": 0.1066666767001152,
     "admission_entry_index": 4,
     "rejected_record_count": 5,
     "before_expanded_nodes": 52,
@@ -54,9 +95,10 @@
     "unique_logical_lifetimes": 70,
     "factual_statistics_updates": 1,
     "intention_admission_transactions": 2,
+    "exploration_candidates_proposed": 5,
     "optimizer_updates": 0,
     "controller_optimizer_updates": 0,
     "replayed_examples": 0,
-    "wall_seconds": 0.02192895795451477
+    "wall_seconds": 0.020267624990083277
   }
 }
