@@ -372,3 +372,32 @@ learning.
 The remaining pressure is to remove the predeclared candidate schedule and
 make candidate discovery, identity formation, and retention demand arise from
 partially observed multimodal experience while preserving the same economics.
+
+## Canonical policy-free execution seam (2026-08-10)
+
+The exported games session exposed a gap in the earlier implementation: a
+planner existed, but the production amodal runtime still sent the
+controller's direct intention to decoders. That left a stale preferential
+policy in the live path even when factual model search was available.
+
+`PolicyFreeAmodalRuntime` closes that gap. The controller updates working
+state and exposes one opaque learned state representation; an external goal
+state (the destination held by long-term memory) and a runtime-sized set of
+opaque candidate intentions go to `ExternalModelBasedPlanner`. The first
+planned intention, not `controller.intention`, is sent to the intention bus.
+When the planner owns an `ExternalTransitionModelBank`, it performs
+goal-conditioned factual retrieval before any caller-owned adaptation.
+
+```text
+N encoders -> event bus -> one controller/working memory -> opaque state
+                                                        + opaque goal
+                                  -> factual model bank -> search
+                                  -> intention bus -> M decoders
+```
+
+This is a canonical execution boundary, not yet a general capability claim.
+The goal representation, candidate intention basis, factual model family, and
+verification probes remain replaceable external components. The next
+promotion must measure model-free controller behavior against this path on a
+nontrivial held-out stream, with zero-shot capability, search expansions,
+latency, target updates, lifetime cost, and retention reported separately.

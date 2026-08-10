@@ -350,6 +350,7 @@ from .retention import (
     stable_prefix_minimum,
 )
 from .runtime import (
+    POLICY_FREE_RUNTIME_SCHEMA,
     AmodalControllerRuntime,
     AmodalEventTimeline,
     AmodalEventWindow,
@@ -360,7 +361,10 @@ from .runtime import (
     AmodalOutputBus,
     AmodalRuntimeOutput,
     ConditionedOpaqueProtocolDecoder,
+    ExternalControllerStateAdapter,
     OpaqueProtocolDecoder,
+    PolicyFreeAmodalRuntime,
+    PolicyFreeRuntimeOutput,
     RuntimeMigrationExample,
     RuntimeMigrationReceipt,
 )
@@ -635,6 +639,7 @@ __all__ = [
     "MEMORY_SCHEMA",
     "MEMORY_SNAPSHOT_FORMAT",
     "OPAQUE_STATE_STORE_SCHEMA",
+    "POLICY_FREE_RUNTIME_SCHEMA",
     "PROMOTION_SCHEMA",
     "REPRESENTATION_SPACE_SCHEMA",
     "RETENTION_LEDGER_SCHEMA",
@@ -705,6 +710,7 @@ __all__ = [
     "ExternalContextResolution",
     "ExternalContextualEvidenceCalibrator",
     "ExternalContextualTransitionEvidenceStatistics",
+    "ExternalControllerStateAdapter",
     "ExternalExecutionSnapshot",
     "ExternalFactoredTransitionModel",
     "ExternalFactoredTransitionRouter",
@@ -850,6 +856,8 @@ __all__ = [
     "PersistentOpaqueRouteEvidence",
     "PersistentOpaqueStateStore",
     "PersistentRouteEvidenceStatus",
+    "PolicyFreeAmodalRuntime",
+    "PolicyFreeRuntimeOutput",
     "PromotionDecision",
     "PromotionEvidence",
     "PromotionGate",

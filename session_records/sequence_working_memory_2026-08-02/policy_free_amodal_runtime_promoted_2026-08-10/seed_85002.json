@@ -1,0 +1,134 @@
+{
+  "schema": "neural-computer.policy-free-amodal-runtime.v1",
+  "claim_boundary": "canonical integration of one frozen amodal controller with one-pass factual model search; not general continual learning",
+  "seed": 85002,
+  "configuration": {
+    "controller_width": 4,
+    "state_width": 12,
+    "intention_width": 2,
+    "candidate_intentions": [
+      [
+        1.0,
+        0.0
+      ],
+      [
+        0.0,
+        1.0
+      ],
+      [
+        -1.0,
+        0.0
+      ],
+      [
+        0.0,
+        -1.0
+      ]
+    ],
+    "horizon": 4,
+    "beam_width": 8,
+    "goal_progress_weight": 1.0,
+    "goal_input": "opaque_external_destination_state_v1"
+  },
+  "gates": {
+    "all_novel_goals_mastered": true,
+    "beats_random_floor": true,
+    "goal_conditioned": true,
+    "controller_frozen": true,
+    "model_unchanged_during_search": true,
+    "exact_model_persistence": true,
+    "direct_controller_is_not_deployed": true,
+    "zero_replayed_examples": true
+  },
+  "promoted": true,
+  "metrics": {
+    "policy_free": [
+      {
+        "target": [
+          2,
+          2
+        ],
+        "planned_displacement": [
+          2,
+          2
+        ],
+        "success": true,
+        "expanded_nodes": 84,
+        "latency_seconds": 0.0029367919778451324,
+        "decoded_shape": [
+          1,
+          2
+        ]
+      },
+      {
+        "target": [
+          2,
+          -2
+        ],
+        "planned_displacement": [
+          2,
+          -2
+        ],
+        "success": true,
+        "expanded_nodes": 84,
+        "latency_seconds": 0.002525709045585245,
+        "decoded_shape": [
+          1,
+          2
+        ]
+      },
+      {
+        "target": [
+          -2,
+          2
+        ],
+        "planned_displacement": [
+          -2,
+          2
+        ],
+        "success": true,
+        "expanded_nodes": 84,
+        "latency_seconds": 0.0024349160376004875,
+        "decoded_shape": [
+          1,
+          2
+        ]
+      },
+      {
+        "target": [
+          -2,
+          -2
+        ],
+        "planned_displacement": [
+          -2,
+          -2
+        ],
+        "success": true,
+        "expanded_nodes": 84,
+        "latency_seconds": 0.0024427499738521874,
+        "decoded_shape": [
+          1,
+          2
+        ]
+      }
+    ],
+    "policy_free_mastery": 1.0,
+    "goal_shuffled_mastery": 0.0,
+    "random_floor": 0.021484375,
+    "direct_controller_displacement": [
+      0,
+      4
+    ]
+  },
+  "accounting": {
+    "unique_verifier_bits": 4,
+    "unique_logical_lifetimes": 68,
+    "factual_statistics_updates": 1,
+    "transition_rows_consumed_once": 64,
+    "optimizer_updates": 0,
+    "controller_optimizer_updates": 0,
+    "replayed_examples": 0,
+    "search_expansions": 336,
+    "mean_search_latency_seconds": 0.002585041758720763,
+    "wall_seconds": 0.03665783297037706
+  }
+}

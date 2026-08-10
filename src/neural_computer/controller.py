@@ -69,6 +69,7 @@ class ControllerState:
 @dataclass(frozen=True)
 class ControllerOutput:
     intention: IntentEvent
+    state_representation: torch.Tensor
     memory_key: torch.Tensor
     memory_value: torch.Tensor
     memory_write_strength: torch.Tensor
@@ -1021,6 +1022,7 @@ class AmodalCognitiveController(nn.Module):
             memory_value = memory_value + self.memory_value_feedback(feedback_embedding)
         output = ControllerOutput(
             intention=intent_event,
+            state_representation=combined,
             memory_key=memory_query_key,
             memory_value=memory_value,
             memory_write_strength=memory_write_strength,
@@ -1049,6 +1051,7 @@ class AmodalCognitiveController(nn.Module):
         )
         output = ControllerOutput(
             intention=output.intention,
+            state_representation=output.state_representation,
             memory_key=output.memory_key,
             memory_value=output.memory_value,
             memory_write_strength=output.memory_write_strength,

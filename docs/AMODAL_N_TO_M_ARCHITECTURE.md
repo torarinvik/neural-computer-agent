@@ -7961,3 +7961,44 @@ growth, learned candidate discovery, arbitrary new computation, or general
 continual learning. The next pressure is to make candidate identity and
 equivalence discovery emerge from partial event streams rather than a
 predeclared schedule.
+
+## Policy-free factual execution (2026-08-10)
+
+The architecture now exposes a first-class runtime path for the strongest
+continual-learning result from the exported games session. A policy stores
+preferences and can become wrong on a novel regime; a factual transition model
+stores what an opaque state becomes after an opaque intention. New evidence can
+therefore be added or represented as an external residual without overwriting
+the action preference used by an earlier regime.
+
+`PolicyFreeAmodalRuntime` keeps the controller as the single amodal cognitive
+component for event integration and working state, but does not decode its
+direct intention. It maps the controller's learned state representation
+through the independently replaceable `ExternalControllerStateAdapter`,
+retrieves a factual model when a bank is present, searches toward an opaque
+goal/destination, and sends only the planner's next intention to the existing
+intention bus. The controller's direct intention remains diagnostic so it can
+be compared causally; it is not the deployed action path in this mode.
+
+This realizes the architectural split:
+
+```text
+plant/controller: reusable learned state integration and working memory
+external memory: factual transition models, residuals, and opaque goals
+runtime compute: model-based search; no stored task policy
+```
+
+The exported session also supplies two design rules that remain normative:
+
+1. Diversity identifies abstraction. Train shared parameters on structurally
+   different regimes so task-specific pursuit habits conflict; store the
+   surviving shared structure in the plant and contradictory facts externally.
+2. Optimize lifetime acquisition cost, not only immediate reward. Retrieval
+   must be attempted before new learning, and the cost of warm-up must be
+   amortized across later targets. A flat library is not compounding.
+
+The runtime seam itself is now implemented and unit-tested, but it does not
+promote general continual learning. Promotion still requires fresh and
+policy-based controls, zero-shot target capability, held-out model
+verification, model-corruption controls, search-depth/latency accounting,
+and stable retention over a genuinely novel multi-target stream.

@@ -37,8 +37,14 @@ from .representation import (
     REPRESENTATION_SPACE_SCHEMA,
     validate_representation_space_id,
 )
+from .world_model import (
+    ExternalModelBasedPlanner,
+    ExternalTransitionModelBank,
+    ModelBasedPlanningResult,
+)
 
 RUNTIME_FORMAT = "neural-computer.amodal-runtime.v30"
+POLICY_FREE_RUNTIME_SCHEMA = "neural-computer.policy-free-amodal-runtime.v1"
 
 
 class OpaqueProtocolDecoder(nn.Module):
@@ -1107,3 +1113,229 @@ class AmodalControllerRuntime(nn.Module):
                 raise
         if self.wait_policy is not None:
             self.wait_policy.load_state_dict(components["wait_policy"])
+
+
+class ExternalControllerStateAdapter(nn.Module):
+    """Map the controller's learned state representation to model state.
+
+    This adapter is deliberately outside the controller.  It consumes only
+    the controller's opaque learned state representation and can therefore be
+    frozen, replaced, or trained independently of the factual transition
+    model.  It contains no action vocabulary, task label, or protocol branch.
+    """
+
+    schema = "neural-computer.external-controller-state-adapter.v1"
+
+    def __init__(
+        self,
+        controller_feature_width: int,
+        state_width: int,
+        *,
+        hidden_width: int = 0,
+    ) -> None:
+        super().__init__()
+        if min(controller_feature_width, state_width) < 1 or hidden_width < 0:
+            raise ValueError("controller state-adapter dimensions are invalid")
+        self.controller_feature_width = int(controller_feature_width)
+        self.state_width = int(state_width)
+        self.hidden_width = int(hidden_width)
+        if hidden_width:
+            self.network = nn.Sequential(
+                nn.Linear(self.controller_feature_width, hidden_width),
+                nn.GELU(),
+                nn.Linear(hidden_width, self.state_width),
+            )
+        elif controller_feature_width == state_width:
+            self.network = nn.Identity()
+        else:
+            self.network = nn.Linear(controller_feature_width, state_width)
+
+    def configuration(self) -> dict[str, int | str]:
+        return {
+            "schema": self.schema,
+            "controller_feature_width": self.controller_feature_width,
+            "state_width": self.state_width,
+            "hidden_width": self.hidden_width,
+            "input": "opaque_controller_state_representation_v1",
+            "behavior": "replaceable_state_projection_not_policy_v1",
+        }
+
+    def forward(self, output: ControllerOutput | torch.Tensor) -> torch.Tensor:
+        state = (
+            output.state_representation
+            if isinstance(output, ControllerOutput)
+            else output
+        )
+        if state.ndim != 2 or state.shape[1] != self.controller_feature_width:
+            raise ValueError("controller state representation has the wrong shape")
+        if not bool(torch.isfinite(state).all()):
+            raise ValueError("controller state representation must be finite")
+        projected = self.network(state)
+        if not bool(torch.isfinite(projected).all()):
+            raise ValueError("adapted model state must be finite")
+        return projected
+
+
+@dataclass(frozen=True)
+class PolicyFreeRuntimeOutput:
+    """One model-derived intention produced by the policy-free runtime.
+
+    ``controller.intention`` is retained inside the diagnostic controller
+    output, but is intentionally not sent to the output bus.  The only
+    intention exposed to decoders is the first step of the factual planner's
+    verified model rollout.
+    """
+
+    controller: ControllerOutput
+    planning: ModelBasedPlanningResult
+    intention: IntentEvent
+    decoded: dict[str, torch.Tensor]
+    state: torch.Tensor
+    goal_state: torch.Tensor
+    selected_slot_id: int | None
+    schema: str = POLICY_FREE_RUNTIME_SCHEMA
+
+
+class PolicyFreeAmodalRuntime:
+    """Compose one amodal controller with factual model-based behavior.
+
+    The controller updates working state and emits an opaque learned state
+    representation.  An external goal/destination and candidate intention set
+    are passed to a factual transition model; beam search derives behavior at
+    inference time.  Thus a new regime can add facts or residuals without
+    overwriting a stored action preference.  If the planner owns a model bank,
+    it retrieves the best factual slot before any caller-owned adaptation.
+    """
+
+    schema = POLICY_FREE_RUNTIME_SCHEMA
+
+    def __init__(
+        self,
+        runtime: AmodalControllerRuntime,
+        planner: ExternalModelBasedPlanner,
+        *,
+        state_adapter: ExternalControllerStateAdapter | None = None,
+    ) -> None:
+        if not isinstance(runtime, AmodalControllerRuntime):
+            raise TypeError("policy-free runtime requires an amodal controller runtime")
+        if not isinstance(planner, ExternalModelBasedPlanner):
+            raise TypeError("policy-free runtime requires an external model planner")
+        expected_input_width = runtime.controller.width * 3
+        selected_adapter = state_adapter or ExternalControllerStateAdapter(
+            expected_input_width,
+            planner.model.state_width,
+        )
+        if selected_adapter.controller_feature_width != expected_input_width:
+            raise ValueError("policy-free state adapter input width does not match controller")
+        if selected_adapter.state_width != planner.model.state_width:
+            raise ValueError("policy-free state adapter output width does not match planner")
+        if planner.model.intention_width != runtime.intention_width:
+            raise ValueError("policy-free planner intention width does not match runtime")
+        self.runtime = runtime
+        self.planner = planner
+        self.state_adapter = selected_adapter
+
+    @property
+    def controller(self) -> AmodalCognitiveController:
+        return self.runtime.controller
+
+    def configuration(self) -> dict[str, object]:
+        return {
+            "schema": self.schema,
+            "behavior": "factual_model_search_no_stored_policy_v1",
+            "controller_intention": "diagnostic_only_not_decoded_v1",
+            "goal_input": "opaque_external_destination_state_or_goal_set_v1",
+            "candidate_intentions": "runtime_variable_opaque_learned_set_v1",
+            "retrieval": (
+                "goal_conditioned_bank_search_before_adaptation_v1"
+                if isinstance(self.planner.model, ExternalTransitionModelBank)
+                else "caller_selected_factual_model_v1"
+            ),
+            "runtime": self.runtime.configuration(),
+            "planner": self.planner.configuration(),
+            "state_adapter": self.state_adapter.configuration(),
+        }
+
+    def step_events(
+        self,
+        events: AmodalEventCollection | Sequence[AmodalEvent],
+        state: ControllerState,
+        feedback: ControllerFeedback,
+        goal_state: torch.Tensor,
+        candidate_intentions: torch.Tensor,
+        *,
+        horizon: int,
+        beam_width: int | None = None,
+        transition_context: torch.Tensor | None = None,
+        intention_costs: torch.Tensor | None = None,
+        step_cost_weight: float = 0.0,
+        goal_progress_weight: float = 0.0,
+        elapsed: torch.Tensor | float = 1.0,
+        disable_workspace: bool = False,
+        memory_scope: torch.Tensor | None = None,
+        sample_memory_writes: bool = False,
+        memory_write_override: torch.Tensor | None = None,
+        memory_write_uniform: torch.Tensor | None = None,
+        memory_write_gradient: bool = True,
+    ) -> tuple[PolicyFreeRuntimeOutput, ControllerState]:
+        collection = self.runtime.input_bus(events)
+        controller_output, next_state = self.runtime.controller.step(
+            collection,
+            state,
+            feedback,
+            self.runtime.memory,
+            elapsed=elapsed,
+            disable_workspace=disable_workspace,
+            memory_scope=memory_scope,
+            sample_memory_writes=sample_memory_writes,
+            memory_write_override=memory_write_override,
+            memory_write_uniform=memory_write_uniform,
+            memory_write_gradient=memory_write_gradient,
+        )
+        model_state = self.state_adapter(controller_output)
+        if isinstance(self.planner.model, ExternalTransitionModelBank):
+            if transition_context is not None:
+                raise ValueError(
+                    "bank-backed policy-free planning selects context internally"
+                )
+            selection = self.planner.select_bank_model(
+                self.planner.model,
+                model_state,
+                goal_state,
+                candidate_intentions,
+                horizon=horizon,
+                beam_width=beam_width,
+                intention_costs=intention_costs,
+                step_cost_weight=step_cost_weight,
+            )
+            planning = selection.planning
+            selected_slot_id = selection.selected_slot_id
+        else:
+            planning = self.planner.plan(
+                model_state,
+                goal_state,
+                candidate_intentions,
+                horizon=horizon,
+                beam_width=beam_width,
+                transition_context=transition_context,
+                intention_costs=intention_costs,
+                step_cost_weight=step_cost_weight,
+                goal_progress_weight=goal_progress_weight,
+            )
+            selected_slot_id = None
+        planned_intention = IntentEvent(
+            payload=planning.intentions[:, 0, :],
+            confidence=controller_output.intention.confidence,
+        ).validate(width=self.runtime.intention_width)
+        return (
+            PolicyFreeRuntimeOutput(
+                controller=controller_output,
+                planning=planning,
+                intention=planned_intention,
+                decoded=self.runtime.output_bus(planned_intention),
+                state=model_state,
+                goal_state=goal_state.detach().clone(),
+                selected_slot_id=selected_slot_id,
+            ),
+            next_state,
+        )
