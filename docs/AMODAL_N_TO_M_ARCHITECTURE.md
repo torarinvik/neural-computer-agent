@@ -4782,12 +4782,13 @@ error and margin test fail, after which the frozen context encoder forms an
 opaque key and a new external model slot is admitted. The router receives no
 regime labels; labels in the experiment are diagnostics only.
 
-Both seeds admitted two novel regimes once, reused each on a later visit, and
-reached `1.0` planner mastery for all four regimes. Warm target updates were
-`36/32` versus fresh `44/43` on seed `70411`, and `35/31` versus `40/35` on
-seed `70412`. Source models stayed at `1.0` and byte-stable, old-slot
-optimizer updates were zero, wrong-context factual error passed, the
-controller stayed frozen, and persistence was exact.
+All three seeds admitted two novel regimes once, reused each on a later visit,
+and reached `1.0` planner mastery for all four regimes. Warm target updates
+were `36/32` versus fresh `44/43` on seed `70411`, `35/31` versus `40/35` on
+seed `70412`, and `27/30` versus `30/33` on seed `70413`. Source models stayed
+at `1.0` and byte-stable, old-slot optimizer updates were zero, wrong-context
+factual error passed, the controller stayed frozen, and persistence was exact
+in every seed.
 
 This promotes a stronger bounded claim than nested-delta transfer: factual
 model routing and acquisition survive disjoint transition functions. It still
