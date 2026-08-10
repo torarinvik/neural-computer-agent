@@ -6095,6 +6095,24 @@ growth or quarantine when held-out evidence exceeds current nonlinear
 capacity. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_goal_representation_nonlinear_alignment_promoted_2026-08-10/`.
 
+## Copy-on-write nonlinear goal-alignment growth (2026-08-10)
+
+The nonlinear alignment memory can now grow without replaying its earlier
+rows. An initial 16-feature adapter consumed `24` sparse pairs and failed
+held-out verification (`0.392–0.625` mastery). A retention-verified
+copy-on-write expansion to `80` features consumed only `24` new pairs and
+reached `0.950–1.000` mastery across four seeds. Post-growth held-out MSE was
+below `0.00284`, and the growth seam's maximum retention error was below
+`2e-11` on every seed.
+
+The old alignment and verifier memories remained protected, persistence was
+exact, and replay was zero. This promotes bounded external nonlinear capacity
+growth, not unrestricted capacity or general continual learning. The next
+bottleneck is concurrent frontend pressure: growth refusal, quarantine, and
+eviction must preserve multiple nonlinear alignments without silently
+forgetting one. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_goal_representation_nonlinear_growth_promoted_2026-08-10/`.
+
 ## Seed-widened policy-free model compounding (2026-08-10)
 
 The nested factual-model compounding rung was widened from two to four seeds.

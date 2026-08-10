@@ -414,6 +414,41 @@ class ExternalGoalRepresentationAlignmentStatistics(nn.Module):
 EXTERNAL_GOAL_REPRESENTATION_RANDOM_FEATURE_ALIGNMENT_SCHEMA = (
     "neural-computer.external-goal-representation-random-feature-alignment.v1"
 )
+EXTERNAL_GOAL_REPRESENTATION_RANDOM_FEATURE_GROWTH_SCHEMA = (
+    "neural-computer.external-goal-representation-random-feature-growth.v1"
+)
+
+
+@dataclass(frozen=True)
+class ExternalGoalRepresentationRandomFeatureGrowthReceipt:
+    """Auditable copy-on-write nonlinear alignment basis growth."""
+
+    accepted: bool
+    source_feature_width: int
+    destination_feature_width: int
+    max_retention_mse: float
+    source_digest: str
+    target_digest: str
+    reason: str
+    schema: str = EXTERNAL_GOAL_REPRESENTATION_RANDOM_FEATURE_GROWTH_SCHEMA
+
+    def validate(self) -> ExternalGoalRepresentationRandomFeatureGrowthReceipt:
+        if self.schema != EXTERNAL_GOAL_REPRESENTATION_RANDOM_FEATURE_GROWTH_SCHEMA:
+            raise ValueError("unsupported random-feature alignment growth schema")
+        if self.source_feature_width < 1 or self.destination_feature_width < 1:
+            raise ValueError("random-feature alignment growth widths are invalid")
+        if self.accepted and self.destination_feature_width <= self.source_feature_width:
+            raise ValueError("accepted random-feature alignment did not grow")
+        if self.max_retention_mse < 0.0 or not math.isfinite(self.max_retention_mse):
+            raise ValueError("random-feature alignment retention error is invalid")
+        for name, value in (
+            ("source_digest", self.source_digest),
+            ("target_digest", self.target_digest),
+            ("reason", self.reason),
+        ):
+            if not isinstance(value, str) or not value:
+                raise ValueError(f"random-feature alignment growth {name} is missing")
+        return self
 
 
 class ExternalGoalRepresentationRandomFeatureAlignmentStatistics(nn.Module):
@@ -512,6 +547,111 @@ class ExternalGoalRepresentationRandomFeatureAlignmentStatistics(nn.Module):
 
     def forward(self, source: torch.Tensor) -> torch.Tensor:
         return self._features(source) @ self._weights()
+
+    def _grow_features(self, destination_width: int) -> None:
+        if not isinstance(destination_width, int):
+            raise TypeError("random-feature alignment destination width must be an integer")
+        if destination_width <= self.feature_width:
+            raise ValueError("random-feature alignment destination must grow")
+        source_width = self.feature_width
+        added_width = destination_width - source_width
+        generator = torch.Generator(device="cpu")
+        generator.manual_seed(self.seed + source_width * 100_003)
+        projection = torch.randn(
+            self.source_width,
+            added_width,
+            generator=generator,
+            dtype=self.projection.dtype,
+        ) / math.sqrt(self.source_width)
+        bias = torch.rand(
+            added_width,
+            generator=generator,
+            dtype=self.bias.dtype,
+        ) * (2.0 * math.pi)
+        self.projection = torch.cat((self.projection, projection), dim=-1)
+        self.bias = torch.cat((self.bias, bias), dim=-1)
+
+        old_normal = self.normal_matrix
+        old_target = self.target_matrix
+        new_statistics_width = destination_width + 1
+        new_normal = torch.eye(
+            new_statistics_width,
+            dtype=old_normal.dtype,
+            device=old_normal.device,
+        ) * self.ridge
+        new_normal[:source_width, :source_width] = old_normal[:source_width, :source_width]
+        new_normal[:source_width, destination_width] = old_normal[
+            :source_width, source_width
+        ]
+        new_normal[destination_width, :source_width] = old_normal[
+            source_width, :source_width
+        ]
+        new_normal[destination_width, destination_width] = old_normal[
+            source_width, source_width
+        ]
+        new_target = torch.zeros(
+            new_statistics_width,
+            self.target_width,
+            dtype=old_target.dtype,
+            device=old_target.device,
+        )
+        new_target[:source_width] = old_target[:source_width]
+        new_target[destination_width] = old_target[source_width]
+        self.normal_matrix = new_normal
+        self.target_matrix = new_target
+        self.feature_width = destination_width
+
+    def grow_features_verified(
+        self,
+        destination_width: int,
+        retention_source: torch.Tensor,
+        *,
+        retention_tolerance: float,
+    ) -> ExternalGoalRepresentationRandomFeatureGrowthReceipt:
+        """Grow copy-on-write only when old alignment behavior is retained."""
+
+        if retention_tolerance < 0.0 or not math.isfinite(retention_tolerance):
+            raise ValueError("random-feature alignment retention tolerance is invalid")
+        if retention_source.ndim != 2 or retention_source.shape[-1] != self.source_width:
+            raise ValueError("random-feature alignment retention source has the wrong shape")
+        if not bool(torch.isfinite(retention_source).all()):
+            raise ValueError("random-feature alignment retention source must be finite")
+        source_feature_width = self.feature_width
+        source_digest = self.digest()
+        with torch.no_grad():
+            source_prediction = self(retention_source)
+        candidate = self.from_payload(self.state_payload())
+        candidate._grow_features(destination_width)
+        with torch.no_grad():
+            candidate_prediction = candidate(retention_source)
+            max_error = float(
+                (candidate_prediction - source_prediction).square().mean(dim=-1).max()
+            )
+        if max_error > retention_tolerance:
+            return ExternalGoalRepresentationRandomFeatureGrowthReceipt(
+                accepted=False,
+                source_feature_width=source_feature_width,
+                destination_feature_width=source_feature_width,
+                max_retention_mse=max_error,
+                source_digest=source_digest,
+                target_digest=source_digest,
+                reason="candidate nonlinear basis failed retention verification",
+            ).validate()
+        target_digest = candidate.digest()
+        self.feature_width = candidate.feature_width
+        self.projection = candidate.projection
+        self.bias = candidate.bias
+        self.normal_matrix = candidate.normal_matrix
+        self.target_matrix = candidate.target_matrix
+        return ExternalGoalRepresentationRandomFeatureGrowthReceipt(
+            accepted=True,
+            source_feature_width=source_feature_width,
+            destination_feature_width=destination_width,
+            max_retention_mse=max_error,
+            source_digest=source_digest,
+            target_digest=target_digest,
+            reason="retention-verified nonlinear alignment basis growth committed",
+        ).validate()
 
     def verify_heldout(
         self,

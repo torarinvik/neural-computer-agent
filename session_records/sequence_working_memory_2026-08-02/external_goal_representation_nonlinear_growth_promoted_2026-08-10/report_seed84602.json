@@ -1,0 +1,98 @@
+{
+  "schema": "neural-computer.external-goal-representation-nonlinear-growth.v1",
+  "claim_boundary": "copy-on-write growth of a bounded replay-free nonlinear goal alignment basis; not unrestricted capacity or general continual learning",
+  "seed": 84602,
+  "configuration": {
+    "initial_feature_width": 16,
+    "grown_feature_width": 80,
+    "initial_alignment_pairs": 24,
+    "growth_alignment_pairs": 24,
+    "heldout_alignment_pairs": 48,
+    "alignment_tolerance": 0.005,
+    "retention_tolerance": 1e-08
+  },
+  "gates": {
+    "pre_growth_candidate_failed": true,
+    "growth_retention_accepted": true,
+    "post_growth_alignment_accepted": true,
+    "growth_improved_mastery": true,
+    "grown_goal_mastery": true,
+    "adapter_unchanged_during_search": true,
+    "old_adapter_state_retained_at_growth": true,
+    "verifier_memory_unchanged": true,
+    "model_unchanged": true,
+    "exact_adapter_persistence": true,
+    "controller_frozen": true,
+    "verifier_replay_zero": true,
+    "alignment_replay_zero": true
+  },
+  "promoted": true,
+  "metrics": {
+    "pre_growth_receipt": {
+      "accepted": false,
+      "source_width": 2,
+      "target_width": 1,
+      "query_count": 48,
+      "max_heldout_mse": 0.005561920814216137,
+      "alignment_digest": "de4e801c9c4b967e99aa88151429a96276f400af672f8db2d0bc487c0cf79117",
+      "heldout_digest": "84c1e81a1c6c5aa248df79b8d6430814965c17fc87f52958cada9c530b61fb8a",
+      "reason": "held-out nonlinear alignment exceeded tolerance",
+      "schema": "neural-computer.external-goal-representation-alignment-verification.v1"
+    },
+    "pre_growth_mastery": {
+      "mastery": 0.39166666666666666,
+      "successful_trials": 47,
+      "trial_count": 120,
+      "expanded_nodes": 44640,
+      "mean_latency_seconds": 0.0066917655858560465
+    },
+    "growth_receipt": {
+      "accepted": true,
+      "source_feature_width": 16,
+      "destination_feature_width": 80,
+      "max_retention_mse": 1.1141310096718371e-11,
+      "source_digest": "de4e801c9c4b967e99aa88151429a96276f400af672f8db2d0bc487c0cf79117",
+      "target_digest": "2bc7ab99394a2e9bea565aa0016951ed5ffad9bdacbbbdb8c43b68043662a11c",
+      "reason": "retention-verified nonlinear alignment basis growth committed",
+      "schema": "neural-computer.external-goal-representation-random-feature-growth.v1"
+    },
+    "post_growth_receipt": {
+      "accepted": true,
+      "source_width": 2,
+      "target_width": 1,
+      "query_count": 48,
+      "max_heldout_mse": 0.0018513161921873689,
+      "alignment_digest": "7956b3ee86a3f96bc9510799faf9966a6004d525ce3d7fa8cabeba487fa968d0",
+      "heldout_digest": "84c1e81a1c6c5aa248df79b8d6430814965c17fc87f52958cada9c530b61fb8a",
+      "reason": "held-out nonlinear alignment remained within tolerance",
+      "schema": "neural-computer.external-goal-representation-alignment-verification.v1"
+    },
+    "grown_mastery": {
+      "mastery": 0.975,
+      "successful_trials": 117,
+      "trial_count": 120,
+      "expanded_nodes": 44640,
+      "mean_latency_seconds": 0.0064193982500000855
+    },
+    "verifier_training": {
+      "unique_verifier_outcomes": 648,
+      "statistics_updates": 1,
+      "replayed_rows": 0
+    }
+  },
+  "accounting": {
+    "unique_verifier_outcomes": 648,
+    "initial_alignment_pairs": 24,
+    "growth_alignment_pairs": 24,
+    "heldout_alignment_pairs": 48,
+    "transition_rows_consumed_once": 123,
+    "verifier_statistics_updates": 1,
+    "alignment_statistics_updates": 2,
+    "old_verifier_replay": 0,
+    "old_alignment_replay": 0,
+    "controller_optimizer_updates": 0,
+    "planner_search_expansions": 44640,
+    "mean_search_latency_seconds": 0.0064193982500000855,
+    "wall_seconds": 1.6588491249713115
+  }
+}
