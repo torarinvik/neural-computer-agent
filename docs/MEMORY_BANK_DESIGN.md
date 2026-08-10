@@ -5585,3 +5585,41 @@ fed some other way (e.g. seeking by predicted value once the model is
 good enough, rather than by fixed plane index).
 
 Probe 223 is `game_slots.py` with balanced seeking, 3 seeds.
+
+**F124 (probe 224). The iterated interface makes the multi-world case
+WORSE, not better — composition and reading are independent problems,
+and iterating amplifies a reading failure instead of curing it.** Same
+64-world boolean setting as F120, only the interface changed:
+
+| interface | trained programs | held programs | stranger | withheld |
+| --- | ---: | ---: | ---: | ---: |
+| one-shot (F120) | 0.1454 / 0.0679 | 0.0325 / 0.0029 | == own | 0.0123 |
+| **iterated (F124)** | **0.0077 / 0.0143** | 0.0052 / 0.0135 | **== own** | 0.0044 |
+| iterated + length-extrap | 0.0222 | 0.0038 (len 4) | == own | 0.0062 |
+
+F121 took the SINGLE-world case from 0.0794 to 1.0000 with this same
+change. The difference between the two settings is the only thing that
+matters here: in the single-world arm the step function has two fixed
+pieces to learn and needs no per-world content; at 64 worlds it must
+get the pieces FROM the entry, and F120 already measured that channel
+to be dead (stranger bit-identical to own, still true here).
+
+The mechanism of the deterioration is worth stating because it will
+recur: a one-shot model can emit a world-independent average answer and
+collect partial credit; an iterated model applies a world-ignorant step
+four times and compounds the error. **Iteration is a multiplier on
+whatever the step function knows — including a multiplier on nothing.**
+So the interface fix is necessary but strictly downstream of reading.
+
+One real signal in the noise: withheld (0.0044) now sits clearly BELOW
+own and stranger (0.0052-0.0138), where F120 had them level. The model
+has begun using "an entry is present" without using "WHICH entry" —
+the first crack, but not reading.
+
+This is the fourth independent confirmation that reading is dead at
+multi-world scale in the composition probes (F120 stranger identity,
+F122 diversity inertia, F124 here, and the withheld/own gap being the
+only entry effect anywhere). Oracle-entry arms are running to decide
+whether execution is sound and reading is the sole constraint.
+
+Probe 224 is `bool_compose.py --iterate`, 2 seeds + 1 length arm.
