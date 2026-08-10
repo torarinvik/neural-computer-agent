@@ -4892,6 +4892,7 @@ class ExternalOnlineTransitionContextResult:
     observation: ExternalTransitionObservation | None = None
     stable_slot_id: int | None = None
     schema: str = EXTERNAL_ONLINE_TRANSITION_CONTEXT_ROUTER_SCHEMA
+    quarantine_accepted: bool | None = None
 
     def validate(
         self,
@@ -4936,6 +4937,10 @@ class ExternalOnlineTransitionContextResult:
             not math.isfinite(self.prediction_error) or self.prediction_error < 0.0
         ):
             raise ValueError("online transition-context prediction error is invalid")
+        if self.quarantine_accepted is not None and not isinstance(
+            self.quarantine_accepted, bool
+        ):
+            raise ValueError("online transition-context quarantine status is invalid")
         if self.observation is not None:
             self.observation.validate(
                 state_width=state_width,
@@ -5745,6 +5750,7 @@ class ExternalOnlineTransitionContextRouter:
         stable_slot_id: int | None = None,
         context: torch.Tensor | None = None,
         observation: ExternalTransitionObservation | None = None,
+        quarantine_accepted: bool | None = None,
     ) -> ExternalOnlineTransitionContextResult:
         return ExternalOnlineTransitionContextResult(
             status=status,
@@ -5754,6 +5760,7 @@ class ExternalOnlineTransitionContextRouter:
             prediction_error=prediction_error,
             observation=observation,
             stable_slot_id=stable_slot_id,
+            quarantine_accepted=quarantine_accepted,
         ).validate(
             state_width=self.bank.state_width,
             intention_width=self.bank.intention_width,
@@ -6025,9 +6032,10 @@ class ExternalOnlineTransitionContextRouter:
             stored = self._quarantine_bundle(bundle)
             self._pending.clear()
             return self._pending_result(
-                status="reliability_veto" if not stored else "ambiguous",
+                status="reliability_veto",
                 prediction_error=None,
                 observation=bundle,
+                quarantine_accepted=stored,
             )
 
         sparse_match = self._sparse_match(bundle)

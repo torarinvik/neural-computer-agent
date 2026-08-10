@@ -6846,3 +6846,24 @@ legitimate transition, verifier reversal, and quarantine saturation.
 
 Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_factored_long_horizon_promoted_2026-08-10/`.
+
+## Near-boundary recovery and quarantine saturation (2026-08-10)
+
+The next pressure test uses deliberately near-tolerance content drift rather
+than a clearly corrupted transition. Across three seeds, replay-free verifier
+outcomes teach the separate reliability state to veto the drift while the
+frozen factored slot remains unchanged. The first two vetoes are retained in
+bounded quarantine; when the third arrives at capacity, the route result now
+reports `status="reliability_veto"` with
+`quarantine_accepted=false`, preserving the distinction between protected
+evidence and dropped evidence.
+
+After verifier reversal, the retained bundles resolve and the same drift
+routes to the original opaque slot. No candidate is staged, persistence is
+exact, and the base and context encoder remain frozen. This promotes explicit
+bounded overflow accounting and near-boundary recovery. It does not establish
+unrestricted memory growth, arbitrary new computation, or general continual
+learning.
+
+Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_factored_boundary_recovery_promoted_2026-08-10/`.

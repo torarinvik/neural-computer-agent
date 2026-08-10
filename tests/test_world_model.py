@@ -2330,9 +2330,16 @@ def test_factored_reliability_gate_vetoes_corruption_but_preserves_growth_path()
     )
     vetoed = router.route_bundle((corrupted,))
     assert vetoed.status == "reliability_veto"
+    assert vetoed.quarantine_accepted is True
     assert not router.candidate_active
     assert router.slot_ids == (0,)
     assert router.quarantined_observations == 2
+
+    assert router.route_bundle((corrupted,)).quarantine_accepted is True
+    saturated = router.route_bundle((corrupted,))
+    assert saturated.status == "reliability_veto"
+    assert saturated.quarantine_accepted is False
+    assert router.quarantined_observations == 4
 
     novel = ExternalTransitionObservation(
         state=source.state,

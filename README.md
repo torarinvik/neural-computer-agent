@@ -2650,3 +2650,12 @@ legitimate reversals route, absence is non-mutating, and final opaque IDs and
 all external state persist. This remains bounded uncertain-memory evidence,
 not general continual learning. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_factored_long_horizon_promoted_2026-08-10/`.
+
+The next boundary also passes across three seeds: deliberately near-tolerance
+drift is vetoed by replay-free reliability state, the first two vetoes are
+retained, and a third veto at full quarantine is reported explicitly as
+`reliability_veto` with `quarantine_accepted=false`. Verifier reversal drains
+the retained evidence and restores the original route without mutating the
+fact bank or staging a candidate. This is bounded near-boundary recovery and
+overflow accounting, not general continual learning. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_factored_boundary_recovery_promoted_2026-08-10/`.

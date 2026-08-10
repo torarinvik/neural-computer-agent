@@ -755,11 +755,12 @@ def test_reliability_veto_does_not_block_high_error_novel_candidate() -> None:
             next_state=observation.next_state[row : row + 1],
         )
 
-    statuses = [
-        router.observe(row_observation(low_error_corruption, row)).status
+    results = [
+        router.observe(row_observation(low_error_corruption, row))
         for row in range(2)
     ]
-    assert statuses[-1] == "reliability_veto"
+    assert results[-1].status == "reliability_veto"
+    assert results[-1].quarantine_accepted is False
     assert router.provisional_candidate_count == 0
     assert router.bank.context_count == 1
 

@@ -484,6 +484,7 @@ class FactoredTransitionRouteResult:
     context: torch.Tensor | None
     pending_observations: int
     schema: str = EXTERNAL_FACTORED_TRANSITION_ROUTER_SCHEMA
+    quarantine_accepted: bool | None = None
 
     def validate(self, *, context_width: int) -> FactoredTransitionRouteResult:
         if self.schema != EXTERNAL_FACTORED_TRANSITION_ROUTER_SCHEMA:
@@ -504,6 +505,10 @@ class FactoredTransitionRouteResult:
             raise ValueError("factored transition route context has wrong shape")
         if self.pending_observations < 0:
             raise ValueError("factored transition pending count is invalid")
+        if self.quarantine_accepted is not None and not isinstance(
+            self.quarantine_accepted, bool
+        ):
+            raise ValueError("factored transition quarantine status is invalid")
         return self
 
 
@@ -902,10 +907,11 @@ class ExternalFactoredTransitionRouter:
     ) -> FactoredTransitionRouteResult:
         receipt = self.quarantine_partial_bundle((observation,))
         return FactoredTransitionRouteResult(
-            status="reliability_veto" if receipt.accepted else "ambiguous",
+            status="reliability_veto",
             slot_id=None,
             context=None,
             pending_observations=0,
+            quarantine_accepted=receipt.accepted,
         ).validate(context_width=self.model.context_width)
 
     def _sparse_proposal(
