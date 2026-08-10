@@ -5,6 +5,7 @@ import torch
 
 from neural_computer import (
     ExternalAffineTransitionStatistics,
+    ExternalGoalEvaluatorStatistics,
     ExternalOnlineTransitionContextRouter,
     ExternalRandomFeatureTransitionStatistics,
     ExternalTransitionContextEncoder,
@@ -44,6 +45,25 @@ def _affine_rollout(scale: float = 1.0) -> ExternalTransitionRollout:
         intentions=intentions,
         expected_states=expected,
     )
+
+
+def test_goal_evaluator_statistics_learns_once_and_persists_exactly() -> None:
+    evaluator = ExternalGoalEvaluatorStatistics(1, ridge=1e-4)
+    state = torch.tensor([[-1.0], [-1.0], [0.0], [0.0], [1.0], [1.0]])
+    goal = torch.tensor([[-1.0], [0.0], [0.0], [1.0], [1.0], [-1.0]])
+    outcome = torch.tensor([0.99, 0.10, 0.99, 0.10, 0.99, 0.10])
+
+    evaluator.observe(state, goal, outcome)
+    before = evaluator.digest()
+    restored = ExternalGoalEvaluatorStatistics.from_payload(
+        evaluator.state_payload()
+    )
+
+    assert evaluator.sample_count.item() == state.shape[0]
+    assert float(torch.sigmoid(evaluator(state[[0, 2, 4]], goal[[0, 2, 4]])).min()) > 0.9
+    assert float(torch.sigmoid(evaluator(state[[1, 3, 5]], goal[[1, 3, 5]])).max()) < 0.2
+    assert restored.digest() == before
+    assert torch.equal(restored(state, goal), evaluator(state, goal))
 class _DeterministicEvidenceGate(torch.nn.Module):
     """Test-only replaceable evaluator with an opaque factual boundary."""
 

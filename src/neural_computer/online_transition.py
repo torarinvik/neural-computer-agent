@@ -33,6 +33,177 @@ EXTERNAL_TRANSITION_RANDOM_FEATURE_STATISTICS_SCHEMA = (
 EXTERNAL_TRANSITION_RANDOM_FEATURE_GROWTH_SCHEMA = (
     "neural-computer.external-transition-random-feature-growth.v1"
 )
+
+EXTERNAL_GOAL_EVALUATOR_STATISTICS_SCHEMA = (
+    "neural-computer.external-goal-evaluator-statistics.v2"
+)
+
+
+class ExternalGoalEvaluatorStatistics(nn.Module):
+    """Replay-free sufficient statistics for a graded opaque goal score.
+
+    The component stores only normal-equation state. Its features are generic
+    pairwise relations between standardized state and goal tensors; no task
+    label or protocol field is introduced. Bounded distance features make the
+    one-pass fit robust to small representation noise and prevent harmful
+    extrapolation outside the observed goal range. The output is a logit so
+    the planner can use it anywhere it accepts an ``ExternalGoalEvaluator``.
+    """
+
+    schema = EXTERNAL_GOAL_EVALUATOR_STATISTICS_SCHEMA
+
+    def __init__(
+        self,
+        state_width: int,
+        *,
+        ridge: float = 1e-5,
+        distance_clip: float = 0.1,
+    ) -> None:
+        super().__init__()
+        if state_width < 1:
+            raise ValueError("goal-evaluator statistics width must be positive")
+        if ridge <= 0.0 or not math.isfinite(ridge):
+            raise ValueError("goal-evaluator statistics ridge must be finite and positive")
+        if distance_clip <= 0.0 or not math.isfinite(distance_clip):
+            raise ValueError(
+                "goal-evaluator statistics distance clip must be finite and positive"
+            )
+        self.state_width = int(state_width)
+        self.ridge = float(ridge)
+        self.distance_clip = float(distance_clip)
+        self.feature_width = self.state_width * 2 + 1
+        self.register_buffer(
+            "normal_matrix",
+            torch.eye(self.feature_width, dtype=torch.float32) * self.ridge,
+        )
+        self.register_buffer(
+            "target_vector",
+            torch.zeros(self.feature_width, 1, dtype=torch.float32),
+        )
+        self.register_buffer("sample_count", torch.zeros((), dtype=torch.long))
+
+    def configuration(self) -> dict[str, int | float | str]:
+        return {
+            "schema": self.schema,
+            "state_width": self.state_width,
+            "ridge": self.ridge,
+            "distance_clip": self.distance_clip,
+            "representation": "opaque_goal_distance_features_v2",
+            "score": "graded_verifier_logit_v1",
+            "updates": "single_pass_weighted_normal_equations_v1",
+            "storage": "normal_and_target_statistics_only_v1",
+        }
+
+    def _features(
+        self,
+        state: torch.Tensor,
+        goal_state: torch.Tensor,
+    ) -> torch.Tensor:
+        if state.ndim != 2 or state.shape[-1] != self.state_width:
+            raise ValueError("goal-evaluator state has the wrong shape")
+        if goal_state.ndim != 2 or goal_state.shape != state.shape:
+            raise ValueError("goal-evaluator goal has the wrong shape")
+        if not bool(torch.isfinite(state).all()) or not bool(
+            torch.isfinite(goal_state).all()
+        ):
+            raise ValueError("goal-evaluator inputs must be finite")
+        difference = (state - goal_state).abs()
+        bounded_difference = difference.clamp(max=self.distance_clip)
+        ones = torch.ones(state.shape[0], 1, device=state.device, dtype=state.dtype)
+        return torch.cat((difference, bounded_difference, ones), dim=-1)
+
+    def observe(
+        self,
+        state: torch.Tensor,
+        goal_state: torch.Tensor,
+        outcome: torch.Tensor,
+    ) -> None:
+        """Consume graded verifier outcomes once without retaining rows."""
+
+        features = self._features(state, goal_state).to(self.normal_matrix)
+        if outcome.shape not in ((state.shape[0],), (state.shape[0], 1)):
+            raise ValueError("goal-evaluator outcomes must match the batch")
+        values = outcome.reshape(-1).to(features)
+        if not bool(torch.isfinite(values).all()) or bool(
+            torch.any(values < 0.0) or torch.any(values > 1.0)
+        ):
+            raise ValueError("goal-evaluator outcomes must lie in [0, 1]")
+        logits = torch.logit(values.clamp(1e-4, 1.0 - 1e-4)).unsqueeze(-1)
+        self.normal_matrix.add_(features.transpose(0, 1) @ features)
+        self.target_vector.add_(features.transpose(0, 1) @ logits)
+        self.sample_count.add_(state.shape[0])
+
+    def _weights(self) -> torch.Tensor:
+        return torch.linalg.solve(self.normal_matrix, self.target_vector)
+
+    def forward(self, state: torch.Tensor, goal_state: torch.Tensor) -> torch.Tensor:
+        return (self._features(state, goal_state).to(self.normal_matrix) @ self._weights()).squeeze(-1)
+
+    def loss(
+        self,
+        state: torch.Tensor,
+        goal_state: torch.Tensor,
+        outcome: torch.Tensor,
+    ) -> torch.Tensor:
+        values = outcome.reshape(-1).to(self.normal_matrix)
+        return torch.nn.functional.binary_cross_entropy_with_logits(
+            self(state, goal_state).to(values), values
+        )
+
+    def digest(self) -> str:
+        digest = hashlib.sha256()
+        digest.update(self.schema.encode("utf-8"))
+        for name, value in sorted(self.state_dict().items()):
+            digest.update(name.encode("utf-8"))
+            digest.update(value.detach().cpu().contiguous().numpy().tobytes())
+        return digest.hexdigest()
+
+    def state_payload(self) -> dict[str, Any]:
+        return {
+            "schema": self.schema,
+            "configuration": self.configuration(),
+            "state": {
+                name: value.detach().cpu().clone()
+                for name, value in self.state_dict().items()
+            },
+            "sha256": self.digest(),
+        }
+
+    @classmethod
+    def from_payload(
+        cls,
+        payload: Mapping[str, Any],
+    ) -> ExternalGoalEvaluatorStatistics:
+        if not isinstance(payload, Mapping) or payload.get("schema") != cls.schema:
+            raise ValueError("unsupported goal-evaluator statistics payload")
+        configuration = payload.get("configuration")
+        state = payload.get("state")
+        if not isinstance(configuration, Mapping) or not isinstance(state, Mapping):
+            raise TypeError("goal-evaluator statistics payload is incomplete")
+        model = cls(
+            int(configuration["state_width"]),
+            ridge=float(configuration["ridge"]),
+            distance_clip=float(configuration["distance_clip"]),
+        )
+        current = model.state_dict()
+        if tuple(state) != tuple(current):
+            raise ValueError("goal-evaluator statistics state names differ")
+        normalized: dict[str, torch.Tensor] = {}
+        for name, expected in current.items():
+            value = state[name]
+            if not isinstance(value, torch.Tensor):
+                raise TypeError("goal-evaluator statistics state is not a tensor")
+            if value.shape != expected.shape or value.dtype != expected.dtype:
+                raise ValueError("goal-evaluator statistics state is incompatible")
+            if not bool(torch.isfinite(value).all()):
+                raise ValueError("goal-evaluator statistics state is not finite")
+            normalized[name] = value.detach().clone()
+        model.load_state_dict(normalized, strict=True)
+        if payload.get("sha256") != model.digest():
+            raise ValueError("goal-evaluator statistics checksum mismatch")
+        return model
+
+
 class ExternalAffineTransitionStatistics(nn.Module):
     """Compact online memory for an opaque affine transition function."""
 

@@ -6004,6 +6004,33 @@ bottleneck is a one-pass or sufficient-statistics goal memory that can migrate
 across representation changes without replay. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_learned_goal_evaluator_promoted_2026-08-10/`.
 
+## One-pass sufficient-statistics goal verification (2026-08-10)
+
+The next rung replaces the repeated MLP batch with
+`ExternalGoalEvaluatorStatistics`, an independently versioned external memory
+that consumes the same graded opaque verifier outcomes once through normal
+equation sufficient statistics. Its bounded pairwise distance basis includes
+an unbounded distance term for directional search and a clipped term for
+robustness to small representation noise; it does not add task labels or a
+protocol-specific policy branch.
+
+Across seeds `84201`, `84202`, `84203`, and `84204`, held-out deployed mastery
+was `1.000` on every seed. Held-out positive probabilities were at least
+`0.958`, negatives were at most `0.107`, goal-shuffled and corrupted-goal
+mastery were `0.0`, and reward-shuffled evaluator mastery was `0.0`, `0.225`,
+`0.0`, and `0.0`. The controller and factual transition model stayed frozen,
+the evaluator was unchanged during search, and exact persistence was verified.
+
+The evaluator consumed `648` unique graded verifier outcomes in one statistics
+update, stored no raw rows, replayed zero goal examples, and made zero
+controller optimizer updates. This is the first promoted replay-free goal
+memory boundary in this ladder, but it is deliberately narrow: a bounded
+sufficient-statistics relation is not arbitrary nonlinear goal abstraction,
+representation migration, unrestricted memory growth, or general continual
+learning. The next bottleneck is migration across changed event/goal bases
+without replaying old verifier outcomes. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_one_pass_goal_evaluator_promoted_2026-08-10/`.
+
 ## Seed-widened policy-free model compounding (2026-08-10)
 
 The nested factual-model compounding rung was widened from two to four seeds.
