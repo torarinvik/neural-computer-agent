@@ -6523,3 +6523,12 @@ per seed. The result is bounded synthetic missingness handling; it does not
 establish arbitrary real multimodal missingness or learned semantic identity.
 Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_factored_random_missingness_promoted_2026-08-10/`.
+
+The sparse index was then tested during nonlinear drift. Five seeds retained
+the source, target, and six drift facts as `46` conflict-preserving opaque
+records per seed; source/target alternation, drift held-out quality, corrupted
+update rejection, and exact persistence all passed. Same-input contradictory
+outcomes are kept as separate factual versions rather than averaged away.
+This is bounded replay-free drift retention, not arbitrary nonstationarity or
+learned semantic identity. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_factored_nonlinear_drift_sparse_identity_promoted_2026-08-10/`.

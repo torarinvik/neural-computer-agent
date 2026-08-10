@@ -150,6 +150,39 @@ def test_sparse_transition_evidence_compacts_and_persists_unique_facts() -> None
     assert restored.record_count == memory.record_count
 
 
+def test_sparse_transition_evidence_preserves_conflicting_drift_versions() -> None:
+    memory = ExternalSparseTransitionEvidenceIndex(
+        1,
+        1,
+        input_match_tolerance=1e-6,
+        output_match_tolerance=0.01,
+        minimum_matches=1,
+        minimum_match_fraction=1.0,
+    )
+    state = torch.tensor([[0.5]])
+    intention = torch.tensor([[1.0]])
+    source = ExternalTransitionObservation(
+        state=state,
+        intention=intention,
+        next_state=torch.tensor([[1.0]]),
+    )
+    drift = ExternalTransitionObservation(
+        state=state,
+        intention=intention,
+        next_state=torch.tensor([[1.5]]),
+    )
+    memory.record(4, source)
+    memory.record(4, drift)
+    assert memory.slot_record_count(4) == 2
+    assert memory.propose(source, (4,)).selected_slot_id == 4
+    assert memory.propose(drift, (4,)).selected_slot_id == 4
+    restored = ExternalSparseTransitionEvidenceIndex.from_payload(
+        memory.state_payload()
+    )
+    assert restored.slot_record_count(4) == 2
+    assert restored.propose(drift, (4,)).selected_slot_id == 4
+
+
 def test_transition_route_memory_is_slot_local_bounded_and_persistent() -> None:
     memory = ExternalTransitionRouteMemory(
         4,

@@ -33,3 +33,6 @@ PYTHONPATH=src uv run python experiments/external_factored_nonlinear_drift/train
 The result is bounded to smooth synthetic nonlinear dynamics, a fixed feature
 basis, and finite external capacity; it does not establish arbitrary
 computation, unrestricted growth, or general continual learning.
+
+The sparse-identity continuation is archived in
+`session_records/sequence_working_memory_2026-08-02/external_factored_nonlinear_drift_sparse_identity_promoted_2026-08-10/`.

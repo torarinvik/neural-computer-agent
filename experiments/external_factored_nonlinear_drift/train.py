@@ -16,6 +16,7 @@ from neural_computer import (
     AmodalCognitiveController,
     ExternalFactoredTransitionModel,
     ExternalFactoredTransitionRouter,
+    ExternalSparseTransitionEvidenceIndex,
     ExternalTransitionContextEncoder,
     ExternalTransitionModel,
     ExternalTransitionObservation,
@@ -250,6 +251,14 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
         match_tolerance=0.005,
         match_margin=0.0001,
         residual_adaptation_updates=RESIDUAL_UPDATES,
+        sparse_evidence=ExternalSparseTransitionEvidenceIndex(
+            STATE_WIDTH,
+            INTENTION_WIDTH,
+            input_match_tolerance=1e-6,
+            output_match_tolerance=0.01,
+            minimum_matches=1,
+            minimum_match_fraction=0.25,
+        ),
     )
 
     source_route = router.route_bundle(_rows(source_train))
@@ -329,6 +338,11 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
     after_rejection = router.model.digest()
     restored = ExternalFactoredTransitionRouter.from_payload(router.state_payload())
     persistence_exact = restored.digest() == router.digest()
+    restored_sparse_digest = (
+        None
+        if restored.sparse_evidence is None
+        else restored.sparse_evidence.digest()
+    )
     restored_routes = []
     if target_receipt is not None and target_receipt.accepted:
         restored_routes = [
@@ -371,6 +385,16 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
         "context_encoder_unchanged": encoder_digest == encoder.digest(),
         "exact_persistence": persistence_exact,
         "restored_routes_correct": restored_routes == [0, 1],
+        "sparse_drift_identity_persisted": (
+            router.sparse_evidence is not None
+            and restored.sparse_evidence is not None
+            and router.sparse_evidence.record_count >= (
+                source_train.state.shape[0]
+                + target_train.state.shape[0]
+                + drift_update.state.shape[0]
+            )
+            and restored_sparse_digest == router.sparse_evidence.digest()
+        ),
         "learned_beats_base_only": drift_error < base_only_drift_error,
         "fresh_control_measured": fresh_updates == BASE_UPDATES,
     }
@@ -423,6 +447,11 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
             "target_online_rows": ONLINE_TRAIN_ROWS,
             "drift_update_rows": drift_update.state.shape[0],
             "drift_heldout_rows": drift_heldout.state.shape[0],
+            "sparse_identity_records": (
+                0
+                if router.sparse_evidence is None
+                else router.sparse_evidence.record_count
+            ),
             "wall_seconds": time.perf_counter() - begun,
         },
         "digests": {

@@ -1,0 +1,33 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "external_factored_nonlinear_drift_sparse_identity_promoted_2026-08-10",
+  "claim": "bounded-replay-free-nonlinear-drift-with-conflict-preserving-sparse-identity-v1",
+  "replicates": 5,
+  "seeds": [81021, 81022, 81023, 81024, 81025],
+  "stable_gates": {
+    "source_promoted": 5,
+    "target_promoted": 5,
+    "drift_promoted": 5,
+    "drift_heldout_quality": 5,
+    "prior_target_retained_after_drift": 5,
+    "alternating_routes_correct": 5,
+    "rejected_corrupted_drift": 5,
+    "sparse_drift_identity_persisted": 5,
+    "exact_persistence": 5,
+    "base_unchanged": 5,
+    "controller_unchanged": 5,
+    "context_encoder_unchanged": 5
+  },
+  "accounting": {
+    "base_optimizer_updates_per_seed": 2000,
+    "residual_optimizer_updates_per_seed": 0,
+    "residual_statistics_updates_per_seed": 3,
+    "controller_optimizer_updates_per_seed": 0,
+    "context_encoder_optimizer_updates_per_seed": 0,
+    "old_regime_replay_per_seed": 0,
+    "sparse_identity_records_per_seed": 46,
+    "fresh_control_measured": true,
+    "fresh_control_positive_transfer_claim": false
+  },
+  "boundary": "bounded replay-free nonlinear drift retention with conflict-preserving sparse identity; no claim of arbitrary nonstationarity or general continual learning"
+}

@@ -3813,6 +3813,24 @@ class ExternalSparseTransitionEvidenceIndex:
                 added += 1
                 continue
             existing = records[index]
+            output_distance = float(
+                (existing.next_state - next_state).square().mean()
+            )
+            if output_distance > self.output_match_tolerance:
+                # The same opaque input can legitimately acquire a new factual
+                # outcome after a nonstationary transition.  Keep both facts
+                # rather than averaging them into a value that matches neither
+                # version.  Identity proposals select among these preserved
+                # outcomes by factual agreement.
+                records.append(
+                    _SparseTransitionEvidenceRecord(
+                        state=state.clone(),
+                        intention=intention.clone(),
+                        next_state=next_state.clone(),
+                    )
+                )
+                added += 1
+                continue
             count = existing.count
             weight = float(count + 1)
             existing.state = (existing.state * count + state) / weight
@@ -3855,23 +3873,30 @@ class ExternalSparseTransitionEvidenceIndex:
             contradictory = 0
             unknown = 0
             for row in range(observation.state.shape[0]):
-                index, input_distance = self._nearest_record(
-                    records,
-                    observation.state[row].detach().to("cpu", dtype=torch.float32),
-                    observation.intention[row].detach().to("cpu", dtype=torch.float32),
+                state = observation.state[row].detach().to("cpu", dtype=torch.float32)
+                intention = observation.intention[row].detach().to(
+                    "cpu", dtype=torch.float32
                 )
-                if index is None or input_distance > self.input_match_tolerance:
+                query = torch.cat((state, intention), dim=-1)
+                overlaps = [
+                    record
+                    for record in records
+                    if float(
+                        (
+                            self._row_input(record) - query
+                        ).square().mean()
+                    )
+                    <= self.input_match_tolerance
+                ]
+                if not overlaps:
                     unknown += 1
                     continue
-                output_distance = float(
-                    (
-                        records[index].next_state
-                        - observation.next_state[row]
-                        .detach()
-                        .to("cpu", dtype=torch.float32)
-                    )
-                    .square()
-                    .mean()
+                observed_next_state = observation.next_state[row].detach().to(
+                    "cpu", dtype=torch.float32
+                )
+                output_distance = min(
+                    float((record.next_state - observed_next_state).square().mean())
+                    for record in overlaps
                 )
                 if output_distance <= self.output_match_tolerance:
                     matched += 1
@@ -3928,8 +3953,8 @@ class ExternalSparseTransitionEvidenceIndex:
             "output_match_tolerance": self.output_match_tolerance,
             "minimum_matches": self.minimum_matches,
             "minimum_match_fraction": self.minimum_match_fraction,
-            "behavior": "compact_slot_local_sparse_fact_overlap_v1",
-            "storage": "unique_input_records_with_running_means_v1",
+            "behavior": "compact_slot_local_sparse_fact_overlap_v2",
+            "storage": "input_records_with_running_means_and_preserved_conflicts_v1",
         }
 
     def state_payload(self) -> dict[str, object]:
