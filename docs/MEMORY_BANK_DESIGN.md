@@ -6159,3 +6159,54 @@ cannot represent what binding needs, and the entry interface itself
 has to change.
 
 Probe 236 is `--two-phase 0.5/0.75`; probe 237 is the depth ladder.
+
+**F138 (probe 238). The reader IS capable: trained to produce the entry
+the bound plant needs, it drives 0.9723 / 0.9478 per-bit on HELD-OUT
+WORLDS — worlds it has never seen — against the 0.9983 oracle ceiling.
+So the missing piece is the reader's training SIGNAL, not the reader,
+its inputs, or the entry interface.**
+
+| boolean, 256 worlds, depth<=4, held-out worlds | per-bit | exact |
+| --- | ---: | ---: |
+| oracle entry, bound (F135) | 0.9983 | 0.9872 |
+| **reader entry, distilled (F138)** | **0.9723 / 0.9478** | 0.8894 / 0.6775 |
+| reader entry, task loss (F136) | 0.4973 | 0.0027 |
+| reader entry, joint training (F135) | 0.5283 / 0.5144 | 0.0096 |
+| stranger entry | 0.5488 / 0.5936 | — |
+| chance | 0.5000 | 0.0039 |
+
+Read the third and fourth rows against the second: the SAME reader
+architecture, on the SAME inputs, producing entries for the SAME
+frozen plant, goes from chance to near-ceiling purely by changing what
+it is trained against. Nothing about capacity, representation, or
+interface differs between those rows.
+
+**What this means for the thesis, stated carefully.** On held-out
+worlds the reader watches a handful of interactions, emits an entry in
+one forward pass with zero gradient steps, and that entry drives
+multi-step execution at 0.97 where a stranger's entry gives 0.55. That
+is the bank mechanism working end-to-end — a fixed plant, a growing
+external store, novel worlds, no weight updates at acquisition — with
+one asterisk that must not be lost: **the reader was trained against a
+privileged target**, so this is a capability result, not a solution.
+The oracle entry is built from the world's true parameters, which a
+real system does not have.
+
+**The path this opens, and why it is not privileged.** Distillation
+worked because it gave the reader a target that was CONSISTENT across
+worlds — the same world always maps to the same entry, different
+worlds to different ones. That property does not require knowing the
+parameters. A learner always knows which observations came from the
+same episode, so it can train the reader contrastively: entries from
+the same world pulled together, entries from different worlds pushed
+apart. Then freeze the reader and train the plant to bind whatever
+code the reader settled on. Phase order reversed from F136, and the
+privileged information disappears — F44's rule is respected too, since
+the reader still sees only consequences.
+
+This also explains F136's failure precisely rather than vaguely: task
+loss through a frozen plant asks the reader to find one specific point
+in entry space by search; a contrastive objective asks it only to be
+CONSISTENT and DISCRIMINATIVE, and then lets the plant come to it.
+
+Probe 238 is `--two-phase 0.5 --distill`, 2 seeds.
