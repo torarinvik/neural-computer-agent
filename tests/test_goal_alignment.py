@@ -113,3 +113,80 @@ def test_alignment_bank_rejects_duplicate_or_unknown_operations() -> None:
         bank.admit_verified("frontend-a", adapter, source, target, prediction_tolerance=1e-3)
     with pytest.raises(KeyError, match="unknown"):
         bank.route("unknown", source)
+
+
+def test_alignment_bank_routes_by_opaque_signature_and_refuses_ambiguity() -> None:
+    bank = ExternalGoalRepresentationAlignmentBank(
+        1,
+        capacity=2,
+        identity_width=3,
+        identity_min_score=0.6,
+        identity_min_margin=0.2,
+    )
+    first, source, target = _adapter(0.0)
+    second, second_source, second_target = _adapter(1.0)
+    assert bank.admit_verified(
+        "opaque-a",
+        first,
+        source,
+        target,
+        prediction_tolerance=1e-3,
+        identity_signature=torch.tensor([1.0, 0.0, 0.0]),
+    ).accepted
+    assert bank.admit_verified(
+        "opaque-b",
+        second,
+        second_source,
+        second_target,
+        prediction_tolerance=1e-3,
+        identity_signature=torch.tensor([0.0, 1.0, 0.0]),
+    ).accepted
+
+    routed = bank.route_by_signature(
+        torch.tensor([1.0, 0.02, 0.0]),
+        source,
+    )
+    assert routed.selected_slot_id == 0
+    assert routed.aligned is not None
+    assert torch.equal(routed.aligned, bank.route_slot(routed.selected_slot_id, source))
+
+    ambiguous = bank.route_by_signature(
+        torch.tensor([1.0, 1.0, 0.0]),
+        source,
+    )
+    assert ambiguous.selected_slot_id is None
+    assert ambiguous.aligned is None
+
+    missing = bank.route_by_signature(torch.tensor([0.0, 0.0, 1.0]), source)
+    assert missing.selected_slot_id is None
+    assert missing.aligned is None
+
+    restored = ExternalGoalRepresentationAlignmentBank.from_payload(bank.state_payload())
+    restored_route = restored.route_by_signature(
+        torch.tensor([0.0, 1.0, 0.02]),
+        second_source,
+    )
+    assert restored.digest() == bank.digest()
+    assert restored_route.selected_slot_id == 1
+    assert torch.equal(
+        restored_route.aligned,
+        bank.route_slot(restored_route.selected_slot_id, second_source),
+    )
+
+
+def test_alignment_bank_identity_updates_are_explicitly_verifier_gated() -> None:
+    bank = ExternalGoalRepresentationAlignmentBank(1, capacity=1, identity_width=2)
+    adapter, source, target = _adapter(0.0)
+    receipt = bank.admit_verified(
+        "opaque-a",
+        adapter,
+        source,
+        target,
+        prediction_tolerance=1e-3,
+        identity_signature=torch.tensor([1.0, 0.0]),
+    )
+    before = bank.digest()
+    assert bank.observe_identity_verified(receipt.slot_id, torch.tensor([1.0, 0.01]))
+    assert bank.digest() != before
+    with pytest.raises(KeyError, match="unknown"):
+        bank.observe_identity_verified(9, torch.tensor([1.0, 0.0]))

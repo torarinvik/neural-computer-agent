@@ -10,6 +10,7 @@ only admits, routes, quarantines, grows, and evicts alignment state.
 from __future__ import annotations
 
 import hashlib
+import math
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Any
@@ -21,6 +22,10 @@ from .online_transition import (
     ExternalGoalRepresentationAlignmentReceipt,
     ExternalGoalRepresentationAlignmentStatistics,
     ExternalGoalRepresentationRandomFeatureAlignmentStatistics,
+)
+from .world_model import (
+    ExternalTransitionRouteMemory,
+    ExternalTransitionRouteQueryProposal,
 )
 
 EXTERNAL_GOAL_REPRESENTATION_ALIGNMENT_BANK_SCHEMA = (
@@ -34,6 +39,9 @@ EXTERNAL_GOAL_REPRESENTATION_ALIGNMENT_BANK_EVICTION_SCHEMA = (
 )
 EXTERNAL_GOAL_REPRESENTATION_ALIGNMENT_BANK_GROWTH_SCHEMA = (
     "neural-computer.external-goal-representation-alignment-bank-growth.v1"
+)
+EXTERNAL_GOAL_REPRESENTATION_ALIGNMENT_BANK_IDENTITY_SCHEMA = (
+    "neural-computer.external-goal-representation-alignment-bank-identity.v1"
 )
 
 _ALIGNMENT_TYPES = (
@@ -51,13 +59,6 @@ def _adapter_from_payload(payload: Mapping[str, Any]) -> nn.Module:
             payload
         )
     raise ValueError("unsupported goal alignment adapter schema")
-
-
-def _digest_text(*values: str) -> str:
-    digest = hashlib.sha256()
-    for value in values:
-        digest.update(value.encode("utf-8"))
-    return digest.hexdigest()
 
 
 @dataclass(frozen=True)
@@ -158,14 +159,49 @@ class ExternalGoalRepresentationAlignmentBankGrowthReceipt:
         return self
 
 
+@dataclass(frozen=True)
+class ExternalGoalRepresentationAlignmentRouteResult:
+    """A safe signature route or an explicit refusal to guess."""
+
+    selected_slot_id: int | None
+    eligible_slot_ids: tuple[int, ...]
+    scores: torch.Tensor
+    margin: float | None
+    aligned: torch.Tensor | None
+    reason: str
+    schema: str = EXTERNAL_GOAL_REPRESENTATION_ALIGNMENT_BANK_IDENTITY_SCHEMA
+
+    def validate(self) -> ExternalGoalRepresentationAlignmentRouteResult:
+        if self.schema != EXTERNAL_GOAL_REPRESENTATION_ALIGNMENT_BANK_IDENTITY_SCHEMA:
+            raise ValueError("unsupported goal alignment identity schema")
+        if self.scores.ndim != 1 or self.scores.shape[0] != len(self.eligible_slot_ids):
+            raise ValueError("goal alignment identity scores are misaligned")
+        if not bool(torch.isfinite(self.scores).all()):
+            raise ValueError("goal alignment identity scores are not finite")
+        if len(set(self.eligible_slot_ids)) != len(self.eligible_slot_ids):
+            raise ValueError("goal alignment identity slot IDs are duplicated")
+        if self.selected_slot_id is not None and self.selected_slot_id not in self.eligible_slot_ids:
+            raise ValueError("goal alignment identity selected slot is ineligible")
+        if self.margin is not None and (self.margin < 0.0 or not math.isfinite(self.margin)):
+            raise ValueError("goal alignment identity margin is invalid")
+        if self.selected_slot_id is None and self.aligned is not None:
+            raise ValueError("refused goal alignment route cannot have output")
+        if self.selected_slot_id is not None and self.aligned is None:
+            raise ValueError("accepted goal alignment route must have output")
+        if not isinstance(self.reason, str) or not self.reason:
+            raise ValueError("goal alignment identity reason is missing")
+        return self
+
+
 class ExternalGoalRepresentationAlignmentBank(nn.Module):
     """Bounded external bank of independently replaceable goal alignments.
 
-    A frontend space is never inferred from tensor similarity.  The opaque
-    space ID selects an existing slot, while admission is authorized only by
-    a held-out alignment gate.  Failed or capacity-blocked candidates may be
-    retained in quarantine without touching active adapters and can later be
-    promoted after capacity is made available.
+    Frontend space IDs are admission-only metadata. At runtime, a generic
+    learned-event signature proposes an opaque slot and the bank refuses to
+    serve it when score or margin evidence is insufficient. Admission is
+    authorized only by a held-out alignment gate. Failed or capacity-blocked
+    candidates may be retained in quarantine without touching active adapters
+    and can later be promoted after capacity is made available.
     """
 
     schema = EXTERNAL_GOAL_REPRESENTATION_ALIGNMENT_BANK_SCHEMA
@@ -176,6 +212,11 @@ class ExternalGoalRepresentationAlignmentBank(nn.Module):
         *,
         capacity: int,
         quarantine_capacity: int = 2,
+        identity_width: int | None = None,
+        identity_min_score: float = 0.85,
+        identity_min_margin: float = 0.05,
+        identity_max_prototypes_per_slot: int = 4,
+        identity_merge_cosine: float = 0.98,
     ) -> None:
         super().__init__()
         if target_width < 1:
@@ -184,14 +225,32 @@ class ExternalGoalRepresentationAlignmentBank(nn.Module):
             raise ValueError("goal alignment bank capacity must be positive")
         if quarantine_capacity < 0:
             raise ValueError("goal alignment bank quarantine capacity cannot be negative")
+        if identity_width is not None and identity_width < 1:
+            raise ValueError("goal alignment identity width must be positive")
+        if not -1.0 <= identity_min_score <= 1.0 or not math.isfinite(identity_min_score):
+            raise ValueError("goal alignment identity score floor is invalid")
+        if identity_min_margin < 0.0 or not math.isfinite(identity_min_margin):
+            raise ValueError("goal alignment identity margin floor is invalid")
         self.target_width = int(target_width)
         self.capacity = int(capacity)
         self.quarantine_capacity = int(quarantine_capacity)
+        self.identity_width = None if identity_width is None else int(identity_width)
+        self.identity_min_score = float(identity_min_score)
+        self.identity_min_margin = float(identity_min_margin)
         self.adapters = nn.ModuleList()
         self._frontend_space_ids: list[str] = []
         self._slot_ids: list[int] = []
         self._next_slot_id = 0
         self._quarantine: list[dict[str, Any]] = []
+        self.identity_memory = (
+            None
+            if self.identity_width is None
+            else ExternalTransitionRouteMemory(
+                self.identity_width,
+                max_prototypes_per_slot=identity_max_prototypes_per_slot,
+                merge_cosine=identity_merge_cosine,
+            )
+        )
 
     @property
     def active_count(self) -> int:
@@ -209,6 +268,10 @@ class ExternalGoalRepresentationAlignmentBank(nn.Module):
     def quarantined_space_ids(self) -> tuple[str, ...]:
         return tuple(item["frontend_space_id"] for item in self._quarantine)
 
+    @property
+    def identity_enabled(self) -> bool:
+        return self.identity_memory is not None
+
     def _validate_space_id(self, frontend_space_id: str) -> str:
         if not isinstance(frontend_space_id, str) or not frontend_space_id.strip():
             raise ValueError("goal alignment frontend space ID must be non-empty")
@@ -219,6 +282,20 @@ class ExternalGoalRepresentationAlignmentBank(nn.Module):
             raise TypeError("goal alignment bank adapter type is unsupported")
         if adapter.target_width != self.target_width:
             raise ValueError("goal alignment adapter target space width differs")
+
+    def _validate_identity_signature(self, signature: torch.Tensor | None) -> None:
+        if self.identity_memory is None:
+            if signature is not None:
+                raise ValueError("identity signature supplied to a disabled identity bank")
+            return
+        if signature is None:
+            raise ValueError("identity-enabled goal alignment admission needs a signature")
+        if signature.ndim != 1 or signature.shape[0] != self.identity_width:
+            raise ValueError("goal alignment identity signature has the wrong shape")
+        if not bool(torch.isfinite(signature).all()):
+            raise ValueError("goal alignment identity signature must be finite")
+        if float(torch.linalg.vector_norm(signature)) <= 1e-12:
+            raise ValueError("goal alignment identity signature must be non-zero")
 
     @staticmethod
     def _clone_adapter(adapter: nn.Module) -> nn.Module:
@@ -239,7 +316,13 @@ class ExternalGoalRepresentationAlignmentBank(nn.Module):
 
         return self.adapter_for_space(frontend_space_id)(source)
 
-    def _store_quarantine(self, space_id: str, adapter: nn.Module, reason: str) -> bool:
+    def _store_quarantine(
+        self,
+        space_id: str,
+        adapter: nn.Module,
+        reason: str,
+        identity_signature: torch.Tensor | None,
+    ) -> bool:
         if self.quarantine_capacity == 0 or len(self._quarantine) >= self.quarantine_capacity:
             return False
         if space_id in self.quarantined_space_ids:
@@ -249,6 +332,11 @@ class ExternalGoalRepresentationAlignmentBank(nn.Module):
                 "frontend_space_id": space_id,
                 "adapter": self._clone_adapter(adapter).state_payload(),
                 "reason": reason,
+                "identity_signature": (
+                    None
+                    if identity_signature is None
+                    else identity_signature.detach().cpu().tolist()
+                ),
             }
         )
         return True
@@ -261,11 +349,13 @@ class ExternalGoalRepresentationAlignmentBank(nn.Module):
         heldout_target: torch.Tensor,
         *,
         prediction_tolerance: float,
+        identity_signature: torch.Tensor | None = None,
     ) -> ExternalGoalRepresentationAlignmentBankAdmissionReceipt:
         """Stage and commit an adapter only after held-out verification."""
 
         space_id = self._validate_space_id(frontend_space_id)
         self._validate_adapter(adapter)
+        self._validate_identity_signature(identity_signature)
         if space_id in self.frontend_space_ids:
             raise ValueError("goal frontend space is already active")
         if space_id in self.quarantined_space_ids:
@@ -278,7 +368,12 @@ class ExternalGoalRepresentationAlignmentBank(nn.Module):
         quarantined = False
         reason = heldout.reason
         if not heldout.accepted:
-            quarantined = self._store_quarantine(space_id, adapter, "held-out alignment rejected")
+            quarantined = self._store_quarantine(
+                space_id,
+                adapter,
+                "held-out alignment rejected",
+                identity_signature,
+            )
             reason = (
                 "held-out alignment rejected and candidate quarantined"
                 if quarantined
@@ -296,7 +391,12 @@ class ExternalGoalRepresentationAlignmentBank(nn.Module):
                 reason=reason,
             ).validate()
         if self.active_count >= self.capacity:
-            quarantined = self._store_quarantine(space_id, adapter, "active capacity is full")
+            quarantined = self._store_quarantine(
+                space_id,
+                adapter,
+                "active capacity is full",
+                identity_signature,
+            )
             reason = (
                 "active capacity is full; candidate quarantined"
                 if quarantined
@@ -319,6 +419,9 @@ class ExternalGoalRepresentationAlignmentBank(nn.Module):
         slot_id = self._next_slot_id
         self._next_slot_id += 1
         self._slot_ids.append(slot_id)
+        if self.identity_memory is not None:
+            self.identity_memory.register_slot(slot_id)
+            self.identity_memory.observe(slot_id, identity_signature)
         return ExternalGoalRepresentationAlignmentBankAdmissionReceipt(
             accepted=True,
             frontend_space_id=space_id,
@@ -348,6 +451,12 @@ class ExternalGoalRepresentationAlignmentBank(nn.Module):
             raise KeyError(f"unknown quarantined goal frontend space: {space_id}") from error
         item = self._quarantine[index]
         adapter = _adapter_from_payload(item["adapter"])
+        identity_signature = (
+            None
+            if item.get("identity_signature") is None
+            else torch.tensor(item["identity_signature"], dtype=torch.float32)
+        )
+        self._validate_identity_signature(identity_signature)
         heldout = adapter.verify_heldout(
             heldout_source,
             heldout_target,
@@ -376,6 +485,9 @@ class ExternalGoalRepresentationAlignmentBank(nn.Module):
         slot_id = self._next_slot_id
         self._next_slot_id += 1
         self._slot_ids.append(slot_id)
+        if self.identity_memory is not None:
+            self.identity_memory.register_slot(slot_id)
+            self.identity_memory.observe(slot_id, identity_signature)
         return ExternalGoalRepresentationAlignmentBankAdmissionReceipt(
             accepted=True,
             frontend_space_id=space_id,
@@ -438,6 +550,8 @@ class ExternalGoalRepresentationAlignmentBank(nn.Module):
         del candidate.adapters[index]
         del candidate._frontend_space_ids[index]
         del candidate._slot_ids[index]
+        if candidate.identity_memory is not None:
+            candidate.identity_memory.unregister_slot(slot_id)
         if not bool(retention_probe(candidate)):
             return ExternalGoalRepresentationAlignmentBankEvictionReceipt(
                 False, slot_id, space_id, self.active_count, self.active_count,
@@ -446,12 +560,81 @@ class ExternalGoalRepresentationAlignmentBank(nn.Module):
         self.adapters = candidate.adapters
         self._frontend_space_ids = candidate._frontend_space_ids
         self._slot_ids = candidate._slot_ids
+        self.identity_memory = candidate.identity_memory
         destination_digest = self.active_digest()
         return ExternalGoalRepresentationAlignmentBankEvictionReceipt(
             True, slot_id, space_id, self.active_count + 1, self.active_count,
             source_digest, destination_digest,
             "stable-slot eviction passed retained-alignment probe"
         ).validate()
+
+    def route_by_signature(
+        self,
+        signature: torch.Tensor,
+        source: torch.Tensor,
+        *,
+        minimum_score: float | None = None,
+        minimum_margin: float | None = None,
+    ) -> ExternalGoalRepresentationAlignmentRouteResult:
+        """Route without a frontend ID, refusing ambiguous signatures."""
+
+        if self.identity_memory is None:
+            raise RuntimeError("signature routing is disabled for this alignment bank")
+        self._validate_identity_signature(signature)
+        score_floor = (
+            self.identity_min_score if minimum_score is None else float(minimum_score)
+        )
+        margin_floor = (
+            self.identity_min_margin if minimum_margin is None else float(minimum_margin)
+        )
+        if not -1.0 <= score_floor <= 1.0 or not math.isfinite(score_floor):
+            raise ValueError("goal alignment route score floor is invalid")
+        if margin_floor < 0.0 or not math.isfinite(margin_floor):
+            raise ValueError("goal alignment route margin floor is invalid")
+        proposal: ExternalTransitionRouteQueryProposal = self.identity_memory.propose(
+            signature,
+            self.slot_ids,
+            minimum_score=score_floor,
+        )
+        selected = proposal.selected_slot_id
+        reason = proposal.reason
+        if selected is not None and proposal.margin is not None and proposal.margin < margin_floor:
+            selected = None
+            reason = "signature route margin was below the ambiguity floor"
+        aligned = None
+        if selected is not None:
+            index = self._slot_ids.index(selected)
+            aligned = self.adapters[index](source)
+            reason = "slot-local signature route passed score and margin floors"
+        return ExternalGoalRepresentationAlignmentRouteResult(
+            selected_slot_id=selected,
+            eligible_slot_ids=proposal.eligible_slot_ids,
+            scores=proposal.scores,
+            margin=proposal.margin,
+            aligned=aligned,
+            reason=reason,
+        ).validate()
+
+    def route_slot(self, slot_id: int, source: torch.Tensor) -> torch.Tensor:
+        """Apply a slot returned by ``route_by_signature``."""
+
+        if not isinstance(slot_id, int) or isinstance(slot_id, bool) or slot_id < 0:
+            raise ValueError("goal alignment route slot ID is invalid")
+        try:
+            index = self._slot_ids.index(slot_id)
+        except ValueError as error:
+            raise KeyError(f"unknown goal alignment slot ID: {slot_id}") from error
+        return self.adapters[index](source)
+
+    def observe_identity_verified(self, slot_id: int, signature: torch.Tensor) -> bool:
+        """Update one slot's identity prototypes only after external verification."""
+
+        if self.identity_memory is None:
+            raise RuntimeError("signature routing is disabled for this alignment bank")
+        self._validate_identity_signature(signature)
+        if slot_id not in self._slot_ids:
+            raise KeyError(f"unknown goal alignment slot ID: {slot_id}")
+        return self.identity_memory.observe(slot_id, signature)
 
     def active_digest(self) -> str:
         digest = hashlib.sha256()
@@ -463,6 +646,8 @@ class ExternalGoalRepresentationAlignmentBank(nn.Module):
             digest.update(space_id.encode("utf-8"))
             digest.update(str(slot_id).encode("utf-8"))
             digest.update(adapter.digest().encode("utf-8"))
+        if self.identity_memory is not None:
+            digest.update(self.identity_memory.digest().encode("utf-8"))
         return digest.hexdigest()
 
     def digest(self) -> str:
@@ -474,6 +659,7 @@ class ExternalGoalRepresentationAlignmentBank(nn.Module):
             digest.update(str(item["frontend_space_id"]).encode("utf-8"))
             digest.update(_adapter_from_payload(item["adapter"]).digest().encode("utf-8"))
             digest.update(str(item["reason"]).encode("utf-8"))
+            digest.update(repr(item.get("identity_signature")).encode("utf-8"))
         return digest.hexdigest()
 
     def configuration(self) -> dict[str, Any]:
@@ -482,6 +668,14 @@ class ExternalGoalRepresentationAlignmentBank(nn.Module):
             "target_width": self.target_width,
             "capacity": self.capacity,
             "quarantine_capacity": self.quarantine_capacity,
+            "identity_width": self.identity_width,
+            "identity_min_score": self.identity_min_score,
+            "identity_min_margin": self.identity_min_margin,
+            "identity_memory": (
+                None
+                if self.identity_memory is None
+                else self.identity_memory.configuration()
+            ),
             "frontend_space_ids": list(self._frontend_space_ids),
             "slot_ids": list(self._slot_ids),
             "next_slot_id": self._next_slot_id,
@@ -502,11 +696,17 @@ class ExternalGoalRepresentationAlignmentBank(nn.Module):
                     self._frontend_space_ids, self._slot_ids, self.adapters, strict=True
                 )
             ],
+            "identity_memory": (
+                None
+                if self.identity_memory is None
+                else self.identity_memory.state_payload()
+            ),
             "quarantine": [
                 {
                     "frontend_space_id": item["frontend_space_id"],
                     "adapter": item["adapter"],
                     "reason": item["reason"],
+                    "identity_signature": item.get("identity_signature"),
                 }
                 for item in self._quarantine
             ],
@@ -526,6 +726,21 @@ class ExternalGoalRepresentationAlignmentBank(nn.Module):
             int(configuration["target_width"]),
             capacity=int(configuration["capacity"]),
             quarantine_capacity=int(configuration.get("quarantine_capacity", 0)),
+            identity_width=(
+                None
+                if configuration.get("identity_width") is None
+                else int(configuration["identity_width"])
+            ),
+            identity_min_score=float(configuration.get("identity_min_score", 0.85)),
+            identity_min_margin=float(configuration.get("identity_min_margin", 0.05)),
+            identity_max_prototypes_per_slot=int(
+                (configuration.get("identity_memory") or {}).get(
+                    "max_prototypes_per_slot", 4
+                )
+            ),
+            identity_merge_cosine=float(
+                (configuration.get("identity_memory") or {}).get("merge_cosine", 0.98)
+            ),
         )
         active = payload.get("active")
         if not isinstance(active, list):
@@ -539,8 +754,21 @@ class ExternalGoalRepresentationAlignmentBank(nn.Module):
             bank.adapters.append(adapter)
             bank._frontend_space_ids.append(space_id)
             bank._slot_ids.append(int(item["slot_id"]))
-        if len(bank.adapters) > bank.capacity or len(set(bank._slot_ids)) != len(bank._slot_ids):
+        if (
+            len(bank.adapters) > bank.capacity
+            or len(set(bank._slot_ids)) != len(bank._slot_ids)
+            or len(set(bank._frontend_space_ids)) != len(bank._frontend_space_ids)
+        ):
             raise ValueError("goal alignment bank active slots are invalid")
+        if bank.identity_memory is not None:
+            identity_payload = payload.get("identity_memory")
+            if not isinstance(identity_payload, Mapping):
+                raise TypeError("goal alignment identity memory payload is missing")
+            bank.identity_memory = ExternalTransitionRouteMemory.from_payload(
+                identity_payload
+            )
+            if bank.identity_memory.slot_ids != bank.slot_ids:
+                raise ValueError("goal alignment identity slots do not match active slots")
         bank._next_slot_id = int(configuration.get("next_slot_id", max(bank._slot_ids, default=-1) + 1))
         bank._quarantine = []
         quarantine = payload.get("quarantine", [])
@@ -554,9 +782,21 @@ class ExternalGoalRepresentationAlignmentBank(nn.Module):
                     "frontend_space_id": bank._validate_space_id(str(item["frontend_space_id"])),
                     "adapter": item["adapter"],
                     "reason": str(item["reason"]),
+                    "identity_signature": item.get("identity_signature"),
                 }
             )
             _adapter_from_payload(item["adapter"])
+            if bank.identity_memory is not None:
+                signature = item.get("identity_signature")
+                if signature is None:
+                    raise ValueError("identity-enabled quarantine item lacks signature")
+                bank._validate_identity_signature(
+                    torch.tensor(signature, dtype=torch.float32)
+                )
+        active_ids = set(bank._frontend_space_ids)
+        quarantine_ids = set(bank.quarantined_space_ids)
+        if active_ids & quarantine_ids:
+            raise ValueError("goal alignment active and quarantined IDs overlap")
         if payload.get("sha256") != bank.digest():
             raise ValueError("goal alignment bank checksum mismatch")
         return bank

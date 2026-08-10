@@ -1,0 +1,220 @@
+{
+  "schema": "neural-computer.external-goal-representation-alignment-identity.v1",
+  "claim_boundary": "bounded learned opaque signature routing for concurrent external goal alignments with ambiguity refusal; not semantic identity discovery, unrestricted growth, or general continual learning",
+  "seed": 84804,
+  "configuration": {
+    "capacity": 2,
+    "quarantine_capacity": 2,
+    "identity_width": 8,
+    "identity_min_score": 0.6,
+    "identity_min_margin": 0.2,
+    "feature_width": 96,
+    "runtime_frontend_ids_supplied": false
+  },
+  "gates": {
+    "nonlinear_admitted_before_affine": true,
+    "affine_admitted_after_nonlinear": true,
+    "initial_runtime_routing_accuracy": true,
+    "shuffled_identity_control_fails": true,
+    "ambiguous_signature_refused": true,
+    "missing_signature_refused": true,
+    "valid_overflow_quarantined": true,
+    "corrupted_candidate_rejected_and_quarantined": true,
+    "stable_eviction_accepted": true,
+    "swapped_candidate_promoted": true,
+    "promoted_runtime_routing": true,
+    "promoted_runtime_mastery": true,
+    "corrupted_candidate_not_served": true,
+    "identity_routes_read_only": true,
+    "exact_bank_persistence": true,
+    "restored_runtime_route": true,
+    "verifier_memory_unchanged": true,
+    "model_unchanged": true,
+    "controller_frozen": true,
+    "verifier_replay_zero": true,
+    "alignment_replay_zero": true
+  },
+  "promoted": true,
+  "metrics": {
+    "initial_routing_accuracy": 1.0,
+    "initial_selected_slots": [
+      1,
+      0
+    ],
+    "shuffled_routing_accuracy": 0.0,
+    "shuffled_selected_slots": [
+      1,
+      0
+    ],
+    "ambiguous_route": {
+      "selected_slot_id": null,
+      "eligible_slot_ids": [
+        0,
+        1
+      ],
+      "scores": [
+        0.9084194898605347,
+        0.906855046749115
+      ],
+      "margin": 0.0015644431114196777,
+      "reason": "signature route margin was below the ambiguity floor"
+    },
+    "missing_route": {
+      "selected_slot_id": null,
+      "eligible_slot_ids": [
+        0,
+        1
+      ],
+      "scores": [
+        -0.00010654211655491963,
+        -0.5411327481269836
+      ],
+      "margin": 0.54102623462677,
+      "reason": "no slot-local prototype exceeded the proposal-quality floor"
+    },
+    "overflow_admission": {
+      "accepted": false,
+      "frontend_space_id": "opaque-swapped",
+      "slot_id": null,
+      "active_count": 2,
+      "capacity": 2,
+      "candidate_digest": "ec6954c15a1b4e74ee3b6e8af3ff46abf8fec210e91f1607f33df9303a2a83de",
+      "heldout": {
+        "accepted": true,
+        "source_width": 2,
+        "target_width": 1,
+        "query_count": 48,
+        "max_heldout_mse": 0.0011886467691510916,
+        "alignment_digest": "ec6954c15a1b4e74ee3b6e8af3ff46abf8fec210e91f1607f33df9303a2a83de",
+        "heldout_digest": "84c1e81a1c6c5aa248df79b8d6430814965c17fc87f52958cada9c530b61fb8a",
+        "reason": "held-out nonlinear alignment remained within tolerance",
+        "schema": "neural-computer.external-goal-representation-alignment-verification.v1"
+      },
+      "quarantined": true,
+      "reason": "active capacity is full; candidate quarantined",
+      "schema": "neural-computer.external-goal-representation-alignment-bank-admission.v1"
+    },
+    "corrupted_admission": {
+      "accepted": false,
+      "frontend_space_id": "opaque-corrupted",
+      "slot_id": null,
+      "active_count": 2,
+      "capacity": 2,
+      "candidate_digest": "369a3fe202d3a1f61975a3b05c64c7403ed411697301a54f7c91f706678a38dc",
+      "heldout": {
+        "accepted": false,
+        "source_width": 2,
+        "target_width": 1,
+        "query_count": 48,
+        "max_heldout_mse": 4.695557594299316,
+        "alignment_digest": "369a3fe202d3a1f61975a3b05c64c7403ed411697301a54f7c91f706678a38dc",
+        "heldout_digest": "84c1e81a1c6c5aa248df79b8d6430814965c17fc87f52958cada9c530b61fb8a",
+        "reason": "held-out nonlinear alignment exceeded tolerance",
+        "schema": "neural-computer.external-goal-representation-alignment-verification.v1"
+      },
+      "quarantined": true,
+      "reason": "held-out alignment rejected and candidate quarantined",
+      "schema": "neural-computer.external-goal-representation-alignment-bank-admission.v1"
+    },
+    "eviction": {
+      "accepted": true,
+      "evicted_slot_id": 1,
+      "evicted_frontend_space_id": "opaque-affine",
+      "source_active_count": 2,
+      "destination_active_count": 1,
+      "source_digest": "9d6cbe6fcd8d1b023132e591318b83340b6f70e157cd02c3f964b19cba3a15fa",
+      "destination_digest": "c0d0441803189cf74d4ac2676630b5abf5021f7c4daf5f779a7990727ec76b05",
+      "reason": "stable-slot eviction passed retained-alignment probe",
+      "schema": "neural-computer.external-goal-representation-alignment-bank-eviction.v1"
+    },
+    "promoted_admission": {
+      "accepted": true,
+      "frontend_space_id": "opaque-swapped",
+      "slot_id": 2,
+      "active_count": 2,
+      "capacity": 2,
+      "candidate_digest": "ec6954c15a1b4e74ee3b6e8af3ff46abf8fec210e91f1607f33df9303a2a83de",
+      "heldout": {
+        "accepted": true,
+        "source_width": 2,
+        "target_width": 1,
+        "query_count": 48,
+        "max_heldout_mse": 0.0011886467691510916,
+        "alignment_digest": "ec6954c15a1b4e74ee3b6e8af3ff46abf8fec210e91f1607f33df9303a2a83de",
+        "heldout_digest": "84c1e81a1c6c5aa248df79b8d6430814965c17fc87f52958cada9c530b61fb8a",
+        "reason": "held-out nonlinear alignment remained within tolerance",
+        "schema": "neural-computer.external-goal-representation-alignment-verification.v1"
+      },
+      "quarantined": false,
+      "reason": "quarantined alignment passed after capacity became available",
+      "schema": "neural-computer.external-goal-representation-alignment-bank-admission.v1"
+    },
+    "promoted_route": {
+      "selected_slot_id": 2,
+      "eligible_slot_ids": [
+        0,
+        2
+      ],
+      "scores": [
+        0.5028746724128723,
+        0.9995748996734619
+      ],
+      "margin": 0.4967002272605896,
+      "reason": "slot-local signature route passed score and margin floors"
+    },
+    "promoted_mastery": {
+      "mastery": 1.0,
+      "successful_trials": 120,
+      "trial_count": 120,
+      "expanded_nodes": 44640,
+      "mean_latency_seconds": 0.008765448585230236
+    },
+    "corrupted_route": {
+      "selected_slot_id": 0,
+      "eligible_slot_ids": [
+        0,
+        2
+      ],
+      "scores": [
+        1.0,
+        0.4997248947620392
+      ],
+      "margin": 0.5002751350402832,
+      "reason": "slot-local signature route passed score and margin floors"
+    },
+    "restored_route": {
+      "selected_slot_id": 2,
+      "eligible_slot_ids": [
+        0,
+        2
+      ],
+      "scores": [
+        0.5027415156364441,
+        0.999569296836853
+      ],
+      "margin": 0.49682778120040894,
+      "reason": "slot-local signature route passed score and margin floors"
+    },
+    "final_active_slots": [
+      0,
+      2
+    ],
+    "final_quarantine": [
+      "opaque-corrupted"
+    ]
+  },
+  "accounting": {
+    "unique_verifier_outcomes": 648,
+    "unique_alignment_pairs": 192,
+    "heldout_alignment_pairs": 192,
+    "unique_identity_signatures": 4,
+    "transition_rows_consumed_once": 123,
+    "verifier_statistics_updates": 1,
+    "alignment_statistics_updates": 4,
+    "identity_route_updates_after_admission": 0,
+    "old_verifier_replay": 0,
+    "old_alignment_replay": 0,
+    "controller_optimizer_updates": 0,
+    "wall_seconds": 1.1482781670056283
+  }
+}

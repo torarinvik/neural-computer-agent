@@ -7224,3 +7224,28 @@ test must combine multiple alignments with repeated nonlinear basis growth,
 delayed or missing evidence, and learned identity under no privileged space
 IDs. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_goal_representation_alignment_bank_promoted_2026-08-10/`.
+
+## Learned opaque identity for concurrent goal alignments (2026-08-10)
+
+Runtime goal-alignment routing no longer requires the caller to provide a
+frontend-space ID. The external bank now reuses the generic slot-local route
+memory to store bounded prototypes of learned frontend-tensor summaries. A
+route is served only when its score and winner margin pass explicit floors;
+ambiguous or missing signatures return no aligned output. Identity prototypes
+are written only during held-out-verified admission or an explicit
+verifier-approved update.
+
+Across seeds `84801`, `84802`, `84803`, and `84804`, runtime routing accuracy
+was `1.0` and the shuffled identity control was `0.0`. Ambiguous and missing
+signatures were refused in every run. A valid unseen swapped frontend was
+quarantined at capacity, admitted after stable-ID eviction, and reached
+`0.9667`–`1.0` mastery without a runtime frontend ID. The corrupted candidate
+remained quarantined and was not served; persistence was exact, route reads
+were non-mutating, the controller/model/verifier stayed byte-stable, and
+replay was zero.
+
+This promotes bounded learned signature routing, not semantic open-world
+identity discovery. The next gap is learning identity from richer partial
+windows under gradual drift and delayed evidence, including cases where two
+frontends have overlapping signatures. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_goal_representation_alignment_identity_promoted_2026-08-10/`.

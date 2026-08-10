@@ -1,0 +1,31 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "external-goal-representation-alignment-identity",
+  "status": "promoted_bounded_opaque_signature_routing",
+  "seeds": [84801, 84802, 84803, 84804],
+  "capacity": 2,
+  "quarantine_capacity": 2,
+  "identity_width": 8,
+  "unique_verifier_outcomes_per_seed": 648,
+  "unique_alignment_pairs_per_seed": 192,
+  "heldout_alignment_pairs_per_seed": 192,
+  "unique_identity_signatures_per_seed": 4,
+  "alignment_statistics_updates_per_seed": 4,
+  "identity_route_updates_after_admission_per_seed": 0,
+  "replayed_examples_per_seed": 0,
+  "runtime_routing_accuracy_by_seed": [1.0, 1.0, 1.0, 1.0],
+  "shuffled_identity_accuracy_by_seed": [0.0, 0.0, 0.0, 0.0],
+  "promoted_frontend_mastery_by_seed": [
+    0.9916666666666667,
+    1.0,
+    0.9666666666666667,
+    1.0
+  ],
+  "ambiguous_refusal_by_seed": [true, true, true, true],
+  "missing_refusal_by_seed": [true, true, true, true],
+  "runtime_frontend_ids_supplied": false,
+  "controller_optimizer_updates_per_seed": 0,
+  "transfer_ratio_against_fresh_learner": null,
+  "claim_boundary": "bounded learned opaque signature routing for concurrent external goal alignments with ambiguity refusal; not semantic identity discovery, unrestricted growth, or general continual learning",
+  "next_test": "learn identity from richer partial event windows under gradual drift, delayed evidence, and more than one plausible frontend per signature cluster"
+}
