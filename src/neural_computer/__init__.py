@@ -114,6 +114,10 @@ from .event_bridge import (
     AmodalEventBridge,
     CapabilityConditionedEventBridge,
 )
+from .factored_transition import (
+    EXTERNAL_FACTORED_TRANSITION_MODEL_SCHEMA,
+    ExternalFactoredTransitionModel,
+)
 from .growth import (
     GrowthLoadReceipt,
     compose_growth_artifacts,
@@ -427,6 +431,7 @@ __all__ = [
     "EXTERNAL_CAPABILITY_SLOT_BINDING_SCHEMA",
     "EXTERNAL_CONTEXTUAL_EVIDENCE_CALIBRATOR_SCHEMA",
     "EXTERNAL_CONTEXT_ADDRESS_RESOLVER_SCHEMA",
+    "EXTERNAL_FACTORED_TRANSITION_MODEL_SCHEMA",
     "EXTERNAL_FAST_WEIGHT_SCHEMA",
     "EXTERNAL_GOAL_CONDITIONED_MODEL_SELECTION_SCHEMA",
     "EXTERNAL_GOAL_EVALUATOR_SCHEMA",
@@ -572,6 +577,7 @@ __all__ = [
     "ExternalContextResolution",
     "ExternalContextualEvidenceCalibrator",
     "ExternalExecutionSnapshot",
+    "ExternalFactoredTransitionModel",
     "ExternalFastWeightCapabilityProgram",
     "ExternalFastWeightPlasticity",
     "ExternalFastWeightState",

@@ -6309,3 +6309,26 @@ route acceleration: route proposals must remain non-authoritative until a
 verifier-grounded factual signature can reliably identify a slot. Evidence is
 archived in
 `session_records/sequence_working_memory_2026-08-02/external_nonlinear_route_representation_diagnostics_rejected_2026-08-10/`.
+
+## Factored factual computation with external residual memory (2026-08-10)
+
+The next implementation separates reusable factual computation from
+context-local adaptation. ExternalFactoredTransitionModel trains a shared
+transition base once, freezes it, and stores only opaque context-addressed
+residual facts in an append-only external memory. The planner derives
+intentions from the sum of base prediction and an exact residual hit; no task
+policy is stored in the base or residual memory.
+
+Across seeds `82701`, `82702`, and `82703`, four genuinely disjoint transition
+regimes were presented sequentially. Source regimes received complete
+evidence; each target received only a verifier-private target-covering subset
+(`5` or `7` of `14` rows). All planner goals reached `1.0` mastery, every
+earlier regime retained mastery after later writes, the base and context
+encoder remained byte-stable, residual adaptation used zero optimizer updates,
+and exact persistence passed.
+
+This promotes a bounded factored factual-memory boundary under partial
+evidence. It does not establish automatic context formation, arbitrary
+missingness, unbounded residual growth, compression, or general continual
+learning. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_factored_transition_residual_promoted_2026-08-10/`.

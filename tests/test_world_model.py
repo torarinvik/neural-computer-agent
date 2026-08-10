@@ -4,6 +4,7 @@ import torch
 from neural_computer import (
     ExternalContextAddressResolver,
     ExternalContextualEvidenceCalibrator,
+    ExternalFactoredTransitionModel,
     ExternalGoalEvaluator,
     ExternalModelBasedPlanner,
     ExternalOnlineContextAddressResolver,
@@ -1842,6 +1843,56 @@ def test_append_only_transition_memory_retains_disjoint_contextual_dynamics() ->
     assert torch.equal(source_before, source_after)
     assert torch.equal(source_after, source.next_state)
     assert torch.equal(target_after, target.next_state)
+
+
+def test_factored_transition_freezes_base_and_persists_context_residuals() -> None:
+    model = ExternalFactoredTransitionModel(
+        1,
+        1,
+        1,
+        hidden_width=8,
+    )
+    source = ExternalTransitionObservation(
+        state=torch.tensor([[0.0], [1.0]]),
+        intention=torch.ones(2, 1),
+        next_state=torch.tensor([[1.0], [2.0]]),
+    )
+    target = ExternalTransitionObservation(
+        state=source.state,
+        intention=source.intention,
+        next_state=torch.tensor([[-1.0], [0.0]]),
+    )
+    model.freeze_base()
+    base_before = model.base.digest()
+    model.write_residual(source, context=torch.ones(1))
+    model.write_residual(target, context=-torch.ones(1))
+
+    source_prediction = model.predict_with_context(
+        source.state,
+        source.intention,
+        torch.ones(2, 1),
+    )
+    target_prediction = model.predict_with_context(
+        target.state,
+        target.intention,
+        -torch.ones(2, 1),
+    )
+    assert torch.allclose(source_prediction, source.next_state)
+    assert torch.allclose(target_prediction, target.next_state)
+    assert model.base.digest() == base_before
+    assert model.base_frozen
+    assert model.residual_record_count == 4
+
+    restored = ExternalFactoredTransitionModel.from_payload(model.state_payload())
+    assert restored.digest() == model.digest()
+    assert torch.allclose(
+        restored.predict_with_context(
+            target.state,
+            target.intention,
+            -torch.ones(2, 1),
+        ),
+        target.next_state,
+    )
 
 
 def test_goal_evaluator_learns_scalar_verifier_without_latent_distance() -> None:
