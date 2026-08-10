@@ -2446,6 +2446,57 @@ class PolicyFreeAmodalRuntime:
         while self.goal_route_evidence.slot_count < self.goal_memory.fragment_count:
             self.goal_route_evidence.append_slot()
 
+    def goal_memory_state_payload(self) -> dict[str, object]:
+        """Return the independently reloadable opaque goal-memory state."""
+
+        if self.goal_memory is None:
+            raise RuntimeError("policy-free runtime has no goal-fragment memory")
+        return self.goal_memory.state_payload()
+
+    def load_goal_memory_state_payload(self, payload: Mapping[str, object]) -> None:
+        """Replace goal memory after validating its ABI and checksum.
+
+        The candidate is parsed before the live reference changes.  Route
+        evidence is retained only when every existing opaque slot remains
+        addressable in the replacement memory; no controller parameter or
+        working state is loaded by this operation.
+        """
+
+        restored = ExternalGoalFragmentMemory.from_payload(payload)
+        if restored.state_width != self.planner.model.state_width:
+            raise ValueError("goal-memory state width does not match planner")
+        if restored.state_space_id != self.planner.state_space_id:
+            raise ValueError("goal-memory state space does not match planner")
+        if (
+            self.goal_route_evidence is not None
+            and self.goal_route_evidence.slot_count > restored.fragment_count
+        ):
+            raise ValueError(
+                "replacement goal memory cannot drop routed fragment slots"
+            )
+        self.goal_memory = restored
+        self._sync_goal_route_slots()
+
+    def goal_route_state_payload(self) -> dict[str, object]:
+        """Return independently reloadable opaque goal-route evidence."""
+
+        if self.goal_route_evidence is None:
+            raise RuntimeError("policy-free runtime has no goal route evidence")
+        return self.goal_route_evidence.payload()
+
+    def load_goal_route_state_payload(self, payload: Mapping[str, object]) -> None:
+        """Replace route evidence after validating width and slot alignment."""
+
+        if self.goal_memory is None:
+            raise RuntimeError("goal route evidence has no goal-fragment memory")
+        restored = PersistentOpaqueContextRouteEvidence.from_payload(dict(payload))
+        if restored.width != self.planner.model.state_width:
+            raise ValueError("goal-route context width does not match planner")
+        if restored.slot_count > self.goal_memory.fragment_count:
+            raise ValueError("goal-route evidence addresses absent goal fragments")
+        self.goal_route_evidence = restored
+        self._sync_goal_route_slots()
+
     def observe_goal_fragment_route(
         self,
         contexts: torch.Tensor,

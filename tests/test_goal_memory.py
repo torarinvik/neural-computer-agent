@@ -187,6 +187,17 @@ def test_policy_free_runtime_routes_goal_fragments_from_opaque_context_evidence(
     )
     assert route.payload()["contexts"]
 
+    memory_payload = policy_free.goal_memory_state_payload()
+    route_payload = policy_free.goal_route_state_payload()
+    policy_free.load_goal_memory_state_payload(memory_payload)
+    policy_free.load_goal_route_state_payload(route_payload)
+    assert (
+        policy_free.goal_memory_state_payload()["sha256"] == memory_payload["sha256"]
+    )
+    assert policy_free.goal_route_state_payload() == route_payload
+    for name, value in controller.state_dict().items():
+        assert torch.equal(value, controller_before[name])
+
 
 def test_intersection_goal_fragments_require_all_puzzle_pieces() -> None:
     memory = ExternalGoalFragmentMemory(2)

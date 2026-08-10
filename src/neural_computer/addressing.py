@@ -585,7 +585,21 @@ class PersistentOpaqueContextRouteEvidence:
             evidence_payload = item.get("evidence")
             if not isinstance(key, list) or not isinstance(evidence_payload, dict):
                 raise TypeError("context-route row has invalid fields")
-            key_tensor = table._validate_context(torch.tensor(key, dtype=torch.float32))
+            key_tensor = torch.tensor(key, dtype=torch.float32)
+            if key_tensor.ndim != 1 or key_tensor.shape[0] != table.width:
+                raise ValueError("context-route serialized key has the wrong shape")
+            if not bool(torch.isfinite(key_tensor).all()):
+                raise ValueError("context-route serialized key is not finite")
+            norm = torch.linalg.vector_norm(key_tensor)
+            if float(norm) <= 1e-8:
+                raise ValueError("context-route serialized key cannot be zero")
+            # Payloads emitted by this class already contain normalized
+            # float32 keys. Preserve those exact values so a save/load cycle
+            # is byte-stable; normalize only legacy or externally authored
+            # rows that are materially off the expected unit sphere.
+            if not torch.isclose(norm, torch.ones_like(norm), atol=1e-5, rtol=1e-5):
+                key_tensor = F.normalize(key_tensor, dim=0)
+            key_tensor = key_tensor.contiguous()
             evidence = PersistentOpaqueRouteEvidence.from_payload(evidence_payload)
             if evidence.slot_count != table.slot_count:
                 raise ValueError("context-route evidence has the wrong slot count")
