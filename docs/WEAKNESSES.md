@@ -15,18 +15,20 @@ rung promotes, rejects, or qualifies. Ordered by severity.
    count, no intermediate supervision, gets every unseen arrangement
    right once the step function is shared across positions. Evidence:
    `iterated_composition_v1_2026-08-10`.
+   Strengthened by F125: trained on lengths 1-3 only, the iterated
+   plant answers all sixteen unseen LENGTH-4 programs at 1.0000, so
+   within-length interpolation is excluded and the step extends to
+   unseen depths.
    Still open, in priority order:
-   (a) **does the BANK feed it?** F120's 64-world boolean setting had
-       reading entirely absent (stranger entry bit-identical to own).
-       Iterated arms on that exact setting are running — this is the
-       question that matters for the architecture;
-   (b) **length extrapolation** — F121's held-out programs share
-       lengths with trained ones, so within-length interpolation is
-       not yet excluded; strict train-<=3 / test-4 arms running in
-       both probes;
-   (c) one seed so far (chance-to-ceiling, so not a noise question,
-       but replication is queued);
-   (d) **carry it back to the games**: the beam search already applies
+   (a) **does the BANK feed it?** THE remaining question. Every
+       composition success (F121, F125) is single-world, where the
+       step needs no per-world content; every multi-world arm (F120,
+       F122, F124) has reading dead. Oracle-entry arms running: if
+       execution works with a KNOWN world, reading is the sole
+       constraint and the target is unambiguous.
+   (b) one seed on F121/F125 (chance-to-ceiling, so not a noise
+       question, but replication is queued);
+   (c) **carry it back to the games**: the beam search already applies
        a learned step repeatedly, so the games may already have the
        right interface — worth checking rather than assuming.
 
