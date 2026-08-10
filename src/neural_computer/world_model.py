@@ -8568,6 +8568,11 @@ class ExternalOnlineContextAddressResolver(ExternalContextAddressResolver):
         self.evidence_evaluator = evidence_evaluator
         self.evidence_threshold = float(evidence_threshold)
         self._assigned: dict[tuple[float, ...], int] = {}
+        # Keep the factual versions ever associated with each opaque stream.
+        # A stream may move to a newly admitted version and later return to an
+        # older one; the history is routing metadata only and never stores a
+        # second copy of the observations.
+        self._versions: dict[tuple[float, ...], list[int]] = {}
         self._pending: dict[tuple[float, ...], list[ExternalTransitionObservation]] = {}
         self._contradiction_streak: dict[tuple[float, ...], int] = {}
 
@@ -8616,7 +8621,9 @@ class ExternalOnlineContextAddressResolver(ExternalContextAddressResolver):
         normalized = torch.nn.functional.normalize(
             stream_key.detach().to(device="cpu", dtype=torch.float32), dim=0
         )
-        return tuple(float(value) for value in normalized.tolist())
+        # Canonicalize after normalization so JSON round-trips do not create
+        # a second dictionary key from tiny float32 renormalization drift.
+        return tuple(round(float(value), 7) for value in normalized.tolist())
 
     @staticmethod
     def _clone_observation(
@@ -8656,9 +8663,16 @@ class ExternalOnlineContextAddressResolver(ExternalContextAddressResolver):
         self,
         observation: ExternalTransitionObservation,
         memory: ExternalTransitionMemory,
+        candidate_indices: Sequence[int] | None = None,
     ) -> tuple[int, float] | None:
         best: tuple[int, float] | None = None
-        for index, address in enumerate(self._addresses):
+        indices = (
+            range(len(self._addresses))
+            if candidate_indices is None
+            else candidate_indices
+        )
+        for index in indices:
+            address = self._addresses[index]
             prediction, hits = memory.predict_with_hit(
                 observation.state,
                 observation.intention,
@@ -8700,6 +8714,9 @@ class ExternalOnlineContextAddressResolver(ExternalContextAddressResolver):
             .expand(sum(item.state.shape[0] for item in observations), -1),
         )
         self._assigned[stream_id] = context_index
+        versions = self._versions.setdefault(stream_id, [])
+        if context_index not in versions:
+            versions.append(context_index)
         return sum(item.state.shape[0] for item in observations)
 
     def observe(
@@ -8733,6 +8750,7 @@ class ExternalOnlineContextAddressResolver(ExternalContextAddressResolver):
             candidate = self._candidate(current, memory)
             if candidate is not None and not pending:
                 self._assigned[stream_id] = candidate[0]
+                self._versions.setdefault(stream_id, []).append(candidate[0])
                 return ExternalOnlineContextResolution(
                     status="reused",
                     context=self._addresses[candidate[0]].clone(),
@@ -8781,6 +8799,27 @@ class ExternalOnlineContextAddressResolver(ExternalContextAddressResolver):
                     committed_observations=0,
                     pending_observations=0,
                 ).validate(context_width=self.context_width)
+            # A stream can legitimately return to a previously observed
+            # regime.  Search all committed addresses before treating this as
+            # a novel version: otherwise every A -> B -> A cycle allocates a
+            # fresh address for A and turns bounded versioning into needless
+            # memory growth.  This is read-only routing; no old fact is
+            # overwritten and contradictory evidence remains uncommitted.
+            prior_candidate = self._candidate(
+                current,
+                memory,
+                self._versions.get(stream_id, ()),
+            )
+            if prior_candidate is not None and prior_candidate[0] != context_index:
+                self._assigned[stream_id] = prior_candidate[0]
+                pending.clear()
+                self._contradiction_streak.pop(stream_id, None)
+                return ExternalOnlineContextResolution(
+                    status="reused",
+                    context=self._addresses[prior_candidate[0]].clone(),
+                    committed_observations=0,
+                    pending_observations=0,
+                ).validate(context_width=self.context_width)
             self._contradiction_streak[stream_id] = (
                 self._contradiction_streak.get(stream_id, 0) + 1
             )
@@ -8823,6 +8862,10 @@ class ExternalOnlineContextAddressResolver(ExternalContextAddressResolver):
         base["assigned"] = [
             {"stream_key": list(stream), "address_index": index}
             for stream, index in self._assigned.items()
+        ]
+        base["version_history"] = [
+            {"stream_key": list(stream), "address_indices": indices}
+            for stream, indices in self._versions.items()
         ]
         base["contradiction_streak"] = [
             {"stream_key": list(stream), "count": count}
@@ -8893,6 +8936,24 @@ class ExternalOnlineContextAddressResolver(ExternalContextAddressResolver):
             if not 0 <= index < resolver.context_count:
                 raise ValueError("online context-resolver address index is invalid")
             resolver._assigned[stream] = index
+            resolver._versions.setdefault(stream, []).append(index)
+        version_history = payload.get("version_history")
+        if version_history is not None:
+            if not isinstance(version_history, list):
+                raise TypeError("online context-resolver version history must be a list")
+            resolver._versions.clear()
+            for item in version_history:
+                stream = resolver._stream_id(torch.tensor(item["stream_key"]))
+                indices = item["address_indices"]
+                if not isinstance(indices, list) or not indices:
+                    raise ValueError("online context-resolver version history is invalid")
+                normalized_indices: list[int] = []
+                for index in indices:
+                    if not isinstance(index, int) or not 0 <= index < resolver.context_count:
+                        raise ValueError("online context-resolver version index is invalid")
+                    if index not in normalized_indices:
+                        normalized_indices.append(index)
+                resolver._versions[stream] = normalized_indices
         streaks = payload.get("contradiction_streak", [])
         if not isinstance(streaks, list):
             raise TypeError("online context-resolver streaks must be a list")

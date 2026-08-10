@@ -6973,3 +6973,22 @@ growth, or general continual learning.
 
 Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_disjoint_dynamics_noisy_partial_high_noise_promoted_2026-08-10/`.
+
+## Dynamic-regime factual versioning (2026-08-10)
+
+The online context resolver now retains a per-stream history of factual
+versions. In a three-seed reversal-cycle pressure test, regime A was admitted
+first; two contradictory rows for regime B kept the first row uncommitted and
+allocated B at a new address on the second. Subsequent A and B rows reactivated
+their existing addresses rather than allocating duplicate versions or writing
+over old facts. Both versions remained exact, persistence preserved the route,
+the controller remained byte-stable, and optimizer updates and replay were
+zero.
+
+The implementation also canonicalizes normalized opaque stream keys before
+serialization, preventing a restart from silently creating a duplicate stream
+binding due to float32 round-off. This is a bounded same-stream factual
+versioning result. It does not establish arbitrary regime discovery, learned
+compression, unbounded growth, or general continual learning. The reports and
+ledger are archived in
+`session_records/sequence_working_memory_2026-08-02/external_online_context_versioning_promoted_2026-08-10/`.

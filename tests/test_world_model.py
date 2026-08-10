@@ -2992,6 +2992,64 @@ def test_online_context_resolver_accumulates_interleaved_evidence_without_early_
     assert pending_memory.record_count == 3
 
 
+def test_online_context_resolver_reactivates_retained_version_after_reversal_cycle() -> None:
+    memory = ExternalTransitionMemory(1, 1, context_width=2)
+    resolver = ExternalOnlineContextAddressResolver(
+        2,
+        address_seed=1207,
+        admission_observations=3,
+        contradiction_observations=2,
+    )
+
+    def row(position: float, next_position: float) -> ExternalTransitionObservation:
+        return ExternalTransitionObservation(
+            state=torch.tensor([[position]]),
+            intention=torch.ones(1, 1),
+            next_state=torch.tensor([[next_position]]),
+        )
+
+    stream = torch.tensor([1.0, 0.0])
+    source_rows = (row(0.0, 1.0), row(1.0, 2.0), row(2.0, 3.0))
+    for item in source_rows:
+        resolution = resolver.observe(item, stream, memory)
+    assert resolution.status == "admitted"
+    source_context = resolution.context.clone()
+    source_context_count = resolver.context_count
+    source_record_count = memory.record_count
+
+    reversal_rows = (row(0.0, -1.0), row(1.0, 0.0))
+    assert resolver.observe(reversal_rows[0], stream, memory).status == "conflict"
+    reversal = resolver.observe(reversal_rows[1], stream, memory)
+    assert reversal.status == "admitted"
+    reversal_context = reversal.context.clone()
+    assert resolver.context_count == source_context_count + 1
+    assert memory.record_count == source_record_count + 2
+
+    # Returning to the old regime reactivates its retained address rather
+    # than allocating A-v2.  The first row is enough to identify the old
+    # factual version because it is already committed and exact.
+    restored_source = resolver.observe(source_rows[0], stream, memory)
+    assert restored_source.status == "reused"
+    assert torch.allclose(restored_source.context, source_context)
+    assert resolver.context_count == source_context_count + 1
+    assert memory.record_count == source_record_count + 2
+    assert resolver.observe(source_rows[1], stream, memory).status == "reused"
+
+    # The new version is also retained and can be reactivated without a
+    # write, proving that both sides of the reversal remain addressable.
+    restored_reversal = resolver.observe(reversal_rows[0], stream, memory)
+    assert restored_reversal.status == "reused"
+    assert torch.allclose(restored_reversal.context, reversal_context)
+    assert resolver.context_count == source_context_count + 1
+    assert memory.record_count == source_record_count + 2
+
+    restored = ExternalOnlineContextAddressResolver.from_payload(resolver.payload())
+    assert restored.context_count == resolver.context_count
+    assert torch.allclose(restored.addresses(), resolver.addresses())
+    assert restored.observe(source_rows[0], stream, memory).status == "reused"
+    assert restored.observe(reversal_rows[0], stream, memory).status == "reused"
+
+
 def test_transition_evidence_evaluator_has_versioned_scalar_outcome_boundary() -> None:
     evaluator = ExternalTransitionEvidenceEvaluator(3, hidden_width=8)
     prediction = torch.zeros(4, 3)

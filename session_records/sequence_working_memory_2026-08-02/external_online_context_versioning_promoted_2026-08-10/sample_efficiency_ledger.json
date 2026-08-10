@@ -1,0 +1,27 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "external_online_context_versioning",
+  "decision": "promote",
+  "claim_boundary": "three-seed same-stream reversal versioning with exact reactivation and persistence; not arbitrary regime discovery, unbounded growth, compression, or general continual learning",
+  "seeds": [96001, 96002, 96003],
+  "accounting": {
+    "unique_transition_lifetimes_per_seed": 7,
+    "unique_verifier_bits_per_seed": 7,
+    "controller_optimizer_updates": 0,
+    "replayed_examples": 0,
+    "memory_records_before_reversal": 3,
+    "memory_records_after_reversal": 5,
+    "learned_context_versions": 2
+  },
+  "gates": {
+    "all_three_seeds_passed": true,
+    "source_waits_then_admits": true,
+    "reversal_waits_before_write": true,
+    "new_version_without_overwrite": true,
+    "both_versions_retained": true,
+    "both_versions_reactivated_without_growth": true,
+    "persistence_exact": true,
+    "controller_frozen": true,
+    "fresh_and_corruption_controls": true
+  }
+}

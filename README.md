@@ -2713,3 +2713,18 @@ source slots stayed byte-stable, and old-slot updates remained zero. This is a
 bounded synthetic-noise robustness result, not general continual learning.
 Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_disjoint_dynamics_noisy_partial_high_noise_promoted_2026-08-10/`.
+
+## Dynamic-regime factual versioning (2026-08-10)
+
+The online factual resolver now handles a reversible regime change on one
+opaque stream without erasing the prior version. Across three seeds, regime A
+was admitted, the first contradictory B row remained uncommitted, and the
+second contradictory row allocated B at a new address. Returning to A and B
+reactivated the retained versions with exact predictions, no additional
+writes, and no address growth. Serialization preserved both routes; the
+controller stayed byte-stable with zero optimizer updates and zero replay.
+
+This promotes bounded same-stream factual versioning and reactivation. It does
+not establish arbitrary regime discovery, unbounded growth, learned
+compression, or general continual learning. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_online_context_versioning_promoted_2026-08-10/`.
