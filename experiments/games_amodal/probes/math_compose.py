@@ -71,6 +71,15 @@ parser.add_argument(
          "A curriculum gets reading established on the readable task "
          "first, then extends it — the bootstrapping F120 identified.")
 parser.add_argument(
+    "--contrastive-batch", type=int, default=8,
+    help="number of worlds the contrastive term must tell apart at "
+         "once. F142 reached 0.7069 with 8, where the reader need only "
+         "distinguish one world from seven — a coarse code suffices. "
+         "A larger batch demands a finer code, which is F78's "
+         "diversity law applied to the READER's objective rather than "
+         "the plant's data: make the easy solution unrepresentable and "
+         "the wanted one becomes the only option.")
+parser.add_argument(
     "--contrastive-aux", type=float, default=0.0,
     help="contrastive term as an AUXILIARY loss during joint training "
          "rather than a frozen pre-training phase. F139 showed a "
@@ -409,7 +418,8 @@ for update in range(args.train_updates):
         optimizer = torch.optim.Adam(reader.parameters(), lr=args.lr)
     if args.contrastive > 0 and update < contrast_end:
         picks = torch.randperm(
-            len(train_worlds), generator=data_gen)[:8].tolist()
+            len(train_worlds),
+            generator=data_gen)[:args.contrastive_batch].tolist()
         loss = contrastive_loss([train_worlds[i] for i in picks])
         optimizer.zero_grad()
         loss.backward()
@@ -448,7 +458,8 @@ for update in range(args.train_updates):
         loss = loss + args.ignorance * (uniform - entropy)
     if args.contrastive_aux > 0:
         picks = torch.randperm(
-            len(train_worlds), generator=data_gen)[:8].tolist()
+            len(train_worlds),
+            generator=data_gen)[:args.contrastive_batch].tolist()
         loss = loss + args.contrastive_aux * contrastive_loss(
             [train_worlds[i] for i in picks])
     optimizer.zero_grad()
