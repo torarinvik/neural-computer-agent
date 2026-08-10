@@ -1,0 +1,55 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "external_disjoint_dynamics_sparse_identity_noisy",
+  "entries": [
+    {
+      "seed": 70411,
+      "arm": "random-half-mask-noisy-sparse-identity-16-consolidation",
+      "unique_verifier_bits": 56,
+      "unique_logical_lifetimes": 56,
+      "optimizer_updates": 626,
+      "replayed_examples": 632,
+      "raw_replayed_examples": 0,
+      "controller_updates": 0,
+      "stable_bits_to_threshold": null,
+      "retention_on_mastered_primitives": 1.0,
+      "transfer_ratio_against_fresh": 0.897,
+      "sparse_unique_fact_records": 56,
+      "stream_noise_std": 0.02,
+      "promoted": true
+    },
+    {
+      "seed": 70412,
+      "arm": "random-half-mask-noisy-sparse-identity-16-consolidation",
+      "unique_verifier_bits": 56,
+      "unique_logical_lifetimes": 56,
+      "optimizer_updates": 648,
+      "replayed_examples": 628,
+      "raw_replayed_examples": 0,
+      "controller_updates": 0,
+      "stable_bits_to_threshold": null,
+      "retention_on_mastered_primitives": 1.0,
+      "transfer_ratio_against_fresh": 1.040,
+      "sparse_unique_fact_records": 56,
+      "stream_noise_std": 0.02,
+      "promoted": true
+    },
+    {
+      "seed": 70413,
+      "arm": "random-half-mask-noisy-sparse-identity-16-consolidation",
+      "unique_verifier_bits": 56,
+      "unique_logical_lifetimes": 56,
+      "optimizer_updates": 604,
+      "replayed_examples": 623,
+      "raw_replayed_examples": 0,
+      "controller_updates": 0,
+      "stable_bits_to_threshold": null,
+      "retention_on_mastered_primitives": 1.0,
+      "transfer_ratio_against_fresh": 1.182,
+      "sparse_unique_fact_records": 54,
+      "stream_noise_std": 0.02,
+      "promoted": true
+    }
+  ],
+  "claim_boundary": "qualified noisy sparse identity and retention promotion; uniform sample-efficiency gain not established"
+}

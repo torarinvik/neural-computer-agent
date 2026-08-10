@@ -4904,6 +4904,23 @@ multimodal missingness, unrestricted memory growth, or general continual
 learning. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_disjoint_dynamics_sparse_identity_promoted_2026-08-10/`.
 
+## Noisy sparse identity retention (2026-08-10)
+
+The sparse identity boundary was repeated with Gaussian perturbations of
+standard deviation `0.02` on observed state and next-state tensors. Random
+half-masks remained in place (`7/14` rows per window) and the four-regime stream
+still alternated for four rounds. All three seeds admitted both novel regimes
+once, routed each seven times after admission, retained `1.0` planner mastery,
+kept source slots byte-stable, applied zero old-slot updates, and passed exact
+persistence. Compact external-fact reuse was `632`, `628`, and `623` rows;
+raw-row replay remained zero.
+
+This strengthens the qualified sparse-identity promotion to one synthetic
+noise level. It does not establish real multimodal noise, unrestricted memory
+growth, or general continual learning; the latter two seeds remain slower than
+fresh controls. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_disjoint_dynamics_sparse_identity_noisy_promoted_2026-08-10/`.
+
 ## Copy-on-write transfer challenger for disjoint compounding (2026-08-09)
 
 The exported session's next-step requirement was seed-widening on genuinely
