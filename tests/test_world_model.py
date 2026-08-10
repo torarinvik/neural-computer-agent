@@ -236,6 +236,32 @@ def test_transition_route_memory_scores_partial_queries_without_mutating_state()
         )
 
 
+def test_transition_route_memory_learns_masked_prototypes_and_restores_them() -> None:
+    memory = ExternalTransitionRouteMemory(4, merge_cosine=0.999999)
+    memory.register_slot(10, prototype=torch.tensor([1.0, 0.0, 0.0, 0.0]))
+    before = memory.digest()
+    assert memory.observe(
+        10,
+        torch.tensor([0.98, 0.02, 9.0, -7.0]),
+        query_mask=torch.tensor([True, True, False, False]),
+    )
+    assert memory.digest() != before
+    assert memory.masked_prototype_count == 1
+    payload = memory.state_payload()
+    row = payload["slots"]["10"][1]
+    assert row["mask"] == [True, True, False, False]
+    restored = ExternalTransitionRouteMemory.from_payload(payload)
+    assert restored.digest() == memory.digest()
+    assert restored.masked_prototype_count == 1
+    query = restored.propose(
+        torch.tensor([0.99, 0.01, 100.0, 100.0]),
+        (10,),
+        minimum_score=0.95,
+        query_mask=torch.tensor([True, True, False, False]),
+    )
+    assert query.selected_slot_id == 10
+
+
 def test_transition_route_query_can_use_slot_local_prototype_memory() -> None:
     memory = ExternalTransitionRouteMemory(4)
     query = ExternalTransitionRouteQuery(

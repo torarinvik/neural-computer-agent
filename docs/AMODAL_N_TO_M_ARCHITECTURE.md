@@ -7301,3 +7301,50 @@ accumulator that can improve from repeated partial windows without storing
 unrecoverable zero-filled identity vectors. Evidence and accounting are
 archived in
 `session_records/sequence_working_memory_2026-08-02/external_goal_representation_alignment_drift_missing_reversal_promoted_2026-08-10/`.
+
+## Persistent masked identity prototypes (2026-08-10)
+
+The external route-memory boundary now persists an observed-dimension mask
+with each verifier-approved identity prototype. Partial queries compare only
+dimensions observed by both the query and prototype. Verifier-approved partial
+anchors can merge with existing prototypes or append bounded masked variants;
+missing dimensions are never represented as learned zero values. Legacy full
+prototype payloads remain readable and checksum-compatible.
+
+Across seeds `85001`, `85002`, `85003`, and `85004`, all 33 identity windows
+per seed routed correctly, all 25 partial anchors updated persistent masked
+memory, and all 33 anchors updated without a caller-supplied frontend or slot
+ID. Both alignments reached `1.0` mastery; one masked prototype persisted and
+restored exactly in every run. Frozen controller/model/verifier state and zero
+replay passed in every run.
+
+This promotes bounded replay-free verifier-gated learning from repeated partial
+identity evidence. It does not establish semantic open-world identity,
+autonomous verifier design, unbounded prototype growth, or general continual
+learning. The next pressure test measures masked-prototype capacity pressure,
+verifier-gated consolidation and eviction, and transfer to unseen partial-
+window patterns. Evidence and accounting are archived in
+`session_records/sequence_working_memory_2026-08-02/external_goal_representation_alignment_masked_prototype_promoted_2026-08-10/`.
+
+## Persistent masked identity prototypes (2026-08-10)
+
+The external route-memory boundary now persists an observed-dimension mask
+with each verifier-approved identity prototype. Partial queries compare only
+dimensions observed by both the query and prototype. Verifier-approved partial
+anchors can merge with existing prototypes or append bounded masked variants;
+missing dimensions are never represented as learned zero values. Legacy full
+prototype payloads remain readable and checksum-compatible.
+
+Across seeds `85001`, `85002`, `85003`, and `85004`, all 32 identity windows
+per seed routed correctly, all 24 partial anchors updated persistent masked
+memory, and all 32 anchors updated without a caller-supplied frontend or slot
+ID. Both alignments reached `1.0` mastery; exact persistence, frozen
+controller/model/verifier state, and zero replay passed in every run.
+
+This promotes bounded replay-free verifier-gated learning from repeated partial
+identity evidence. It does not establish semantic open-world identity,
+autonomous verifier design, unbounded prototype growth, or general continual
+learning. The next pressure test measures masked-prototype capacity pressure,
+verifier-gated consolidation and eviction, and transfer to unseen partial-
+window patterns. Evidence and accounting are archived in
+`session_records/sequence_working_memory_2026-08-02/external_goal_representation_alignment_masked_prototype_promoted_2026-08-10/`.

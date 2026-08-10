@@ -3439,6 +3439,7 @@ class ExternalTransitionRouteMemory:
         self.max_prototypes_per_slot = int(max_prototypes_per_slot)
         self.merge_cosine = float(merge_cosine)
         self._prototypes: dict[int, list[torch.Tensor]] = {}
+        self._prototype_masks: dict[int, list[torch.Tensor | None]] = {}
         self._counts: dict[int, list[int]] = {}
         self._dropped_queries: dict[int, int] = {}
         self._version = 0
@@ -3481,14 +3482,64 @@ class ExternalTransitionRouteMemory:
     @staticmethod
     def _masked_similarity(
         prototype: torch.Tensor,
+        prototype_mask: torch.Tensor | None,
         query: torch.Tensor,
         query_mask: torch.Tensor,
     ) -> float:
-        projected = torch.where(query_mask, prototype, torch.zeros_like(prototype))
-        norm = torch.linalg.vector_norm(projected)
-        if float(norm) <= 1e-12:
+        available = (
+            query_mask
+            if prototype_mask is None
+            else torch.logical_and(prototype_mask, query_mask)
+        )
+        projected_prototype = torch.where(
+            available,
+            prototype,
+            torch.zeros_like(prototype),
+        )
+        projected_query = torch.where(
+            available,
+            query,
+            torch.zeros_like(query),
+        )
+        prototype_norm = torch.linalg.vector_norm(projected_prototype)
+        query_norm = torch.linalg.vector_norm(projected_query)
+        if float(prototype_norm) <= 1e-12 or float(query_norm) <= 1e-12:
             return -1.0
-        return float((torch.nn.functional.normalize(projected, dim=0) @ query).detach())
+        return float(
+            (
+                torch.nn.functional.normalize(projected_prototype, dim=0)
+                @ torch.nn.functional.normalize(projected_query, dim=0)
+            ).detach()
+        )
+
+    @staticmethod
+    def _merge_prototypes(
+        prototype: torch.Tensor,
+        prototype_mask: torch.Tensor | None,
+        count: int,
+        query: torch.Tensor,
+        query_mask: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor | None]:
+        previous_mask = (
+            torch.ones(query.shape[0], dtype=torch.bool)
+            if prototype_mask is None
+            else prototype_mask
+        )
+        union_mask = torch.logical_or(previous_mask, query_mask)
+        previous_values = torch.where(
+            previous_mask,
+            prototype,
+            torch.zeros_like(prototype),
+        )
+        query_values = torch.where(query_mask, query, torch.zeros_like(query))
+        both = torch.logical_and(previous_mask, query_mask)
+        merged = torch.where(
+            both,
+            (previous_values * count + query_values) / (count + 1),
+            torch.where(previous_mask, previous_values, query_values),
+        )
+        merged = torch.nn.functional.normalize(merged, dim=0).contiguous()
+        return merged, None if bool(union_mask.all()) else union_mask.contiguous()
 
     @property
     def slot_ids(self) -> tuple[int, ...]:
@@ -3502,6 +3553,13 @@ class ExternalTransitionRouteMemory:
     def total_prototype_count(self) -> int:
         return sum(len(prototypes) for prototypes in self._prototypes.values())
 
+    @property
+    def masked_prototype_count(self) -> int:
+        return sum(
+            sum(mask is not None for mask in self._prototype_masks[slot_id])
+            for slot_id in self._prototype_masks
+        )
+
     def register_slot(
         self,
         slot_id: int,
@@ -3513,6 +3571,7 @@ class ExternalTransitionRouteMemory:
         self._validate_slot_id(slot_id)
         if slot_id not in self._prototypes:
             self._prototypes[slot_id] = []
+            self._prototype_masks[slot_id] = []
             self._counts[slot_id] = []
             self._dropped_queries[slot_id] = 0
             self._version += 1
@@ -3524,11 +3583,17 @@ class ExternalTransitionRouteMemory:
         if slot_id not in self._prototypes:
             return
         del self._prototypes[slot_id]
+        del self._prototype_masks[slot_id]
         del self._counts[slot_id]
         del self._dropped_queries[slot_id]
         self._version += 1
 
-    def observe(self, slot_id: int, query: torch.Tensor) -> bool:
+    def observe(
+        self,
+        slot_id: int,
+        query: torch.Tensor,
+        query_mask: torch.Tensor | None = None,
+    ) -> bool:
         """Store one verifier-approved opaque query in its owning slot.
 
         Returns ``True`` when the query was stored or merged and ``False``
@@ -3538,27 +3603,51 @@ class ExternalTransitionRouteMemory:
         self._validate_slot_id(slot_id)
         if slot_id not in self._prototypes:
             raise KeyError(f"unknown transition route-memory slot: {slot_id}")
-        normalized, _ = self._normalize(query)
+        normalized, observed_mask = self._normalize(query, query_mask)
+        stored_mask = None if query_mask is None else observed_mask
         prototypes = self._prototypes[slot_id]
+        prototype_masks = self._prototype_masks[slot_id]
         counts = self._counts[slot_id]
         if not prototypes:
             prototypes.append(normalized)
+            prototype_masks.append(stored_mask)
             counts.append(1)
             self._version += 1
             return True
-        similarities = torch.stack(prototypes) @ normalized
+        similarities = torch.tensor(
+            [
+                self._masked_similarity(
+                    prototype,
+                    prototype_mask,
+                    normalized,
+                    observed_mask,
+                )
+                for prototype, prototype_mask in zip(
+                    prototypes,
+                    prototype_masks,
+                    strict=True,
+                )
+            ],
+            dtype=normalized.dtype,
+        )
         nearest = int(similarities.argmax())
         if float(similarities[nearest]) >= self.merge_cosine:
             count = counts[nearest]
-            merged = torch.nn.functional.normalize(
-                (prototypes[nearest] * count + normalized) / (count + 1), dim=0
-            ).contiguous()
+            merged, merged_mask = self._merge_prototypes(
+                prototypes[nearest],
+                prototype_masks[nearest],
+                count,
+                normalized,
+                observed_mask,
+            )
             prototypes[nearest] = merged
+            prototype_masks[nearest] = merged_mask
             counts[nearest] = count + 1
             self._version += 1
             return True
         if len(prototypes) < self.max_prototypes_per_slot:
             prototypes.append(normalized)
+            prototype_masks.append(stored_mask)
             counts.append(1)
             self._version += 1
             return True
@@ -3609,8 +3698,17 @@ class ExternalTransitionRouteMemory:
             scores.append(
                 max(
                     (
-                        self._masked_similarity(prototype, normalized, observed_mask)
-                        for prototype in prototypes
+                        self._masked_similarity(
+                            prototype,
+                            prototype_mask,
+                            normalized,
+                            observed_mask,
+                        )
+                        for prototype, prototype_mask in zip(
+                            prototypes,
+                            self._prototype_masks.get(slot_id, ()),
+                            strict=True,
+                        )
                     ),
                     default=-1.0,
                 )
@@ -3658,9 +3756,17 @@ class ExternalTransitionRouteMemory:
                 {
                     "prototype": prototype.tolist(),
                     "count": count,
+                    **(
+                        {}
+                        if prototype_mask is None
+                        else {"mask": prototype_mask.tolist()}
+                    ),
                 }
-                for prototype, count in zip(
-                    self._prototypes[slot_id], self._counts[slot_id], strict=True
+                for prototype, prototype_mask, count in zip(
+                    self._prototypes[slot_id],
+                    self._prototype_masks[slot_id],
+                    self._counts[slot_id],
+                    strict=True,
                 )
             ]
             for slot_id in sorted(self._prototypes)
@@ -3683,11 +3789,17 @@ class ExternalTransitionRouteMemory:
         for slot_id in sorted(self._prototypes):
             digest.update(str(slot_id).encode("utf-8"))
             digest.update(str(self._dropped_queries[slot_id]).encode("utf-8"))
-            for prototype, count in zip(
-                self._prototypes[slot_id], self._counts[slot_id], strict=True
+            for prototype, prototype_mask, count in zip(
+                self._prototypes[slot_id],
+                self._prototype_masks[slot_id],
+                self._counts[slot_id],
+                strict=True,
             ):
                 digest.update(str(count).encode("utf-8"))
                 digest.update(prototype.contiguous().numpy().tobytes())
+                if prototype_mask is not None:
+                    digest.update(b"masked-prototype-v1")
+                    digest.update(prototype_mask.contiguous().numpy().tobytes())
         digest.update(str(self._version).encode("utf-8"))
         payload["sha256"] = digest.hexdigest()
         return payload
@@ -3740,12 +3852,37 @@ class ExternalTransitionRouteMemory:
                         "transition route-memory prototype is not normalized"
                     )
                 normalized = prototype.detach().contiguous()
+                raw_mask = row.get("mask")
+                if raw_mask is None:
+                    prototype_mask = None
+                else:
+                    if not isinstance(raw_mask, list) or len(raw_mask) != memory.width:
+                        raise ValueError(
+                            "transition route-memory prototype mask is invalid"
+                        )
+                    if any(not isinstance(value, bool) for value in raw_mask):
+                        raise ValueError(
+                            "transition route-memory prototype mask values are invalid"
+                        )
+                    prototype_mask = torch.tensor(raw_mask, dtype=torch.bool)
+                    if not bool(prototype_mask.any()):
+                        raise ValueError(
+                            "transition route-memory prototype mask is empty"
+                        )
+                    if not torch.equal(
+                        normalized.masked_select(~prototype_mask),
+                        torch.zeros_like(normalized.masked_select(~prototype_mask)),
+                    ):
+                        raise ValueError(
+                            "transition route-memory masked prototype has hidden values"
+                        )
                 count = row.get("count")
                 if not isinstance(count, int) or isinstance(count, bool) or count < 1:
                     raise ValueError(
                         "transition route-memory prototype count is invalid"
                     )
                 memory._prototypes[slot_id].append(normalized)
+                memory._prototype_masks[slot_id].append(prototype_mask)
                 memory._counts[slot_id].append(count)
             dropped_count = dropped.get(str(slot_id), 0)
             if (

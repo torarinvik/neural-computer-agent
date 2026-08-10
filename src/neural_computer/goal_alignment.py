@@ -847,15 +847,26 @@ class ExternalGoalRepresentationAlignmentBank(nn.Module):
             raise KeyError(f"unknown goal alignment slot ID: {slot_id}") from error
         return self.adapters[index](source)
 
-    def observe_identity_verified(self, slot_id: int, signature: torch.Tensor) -> bool:
+    def observe_identity_verified(
+        self,
+        slot_id: int,
+        signature: torch.Tensor,
+        *,
+        signature_mask: torch.Tensor | None = None,
+    ) -> bool:
         """Update one slot's identity prototypes only after external verification."""
 
         if self.identity_memory is None:
             raise RuntimeError("signature routing is disabled for this alignment bank")
         self._validate_identity_signature(signature)
+        self._validate_identity_signature_mask(signature_mask)
         if slot_id not in self._slot_ids:
             raise KeyError(f"unknown goal alignment slot ID: {slot_id}")
-        return self.identity_memory.observe(slot_id, signature)
+        return self.identity_memory.observe(
+            slot_id,
+            signature,
+            query_mask=signature_mask,
+        )
 
     def defer_identity_signature(
         self,
@@ -983,10 +994,10 @@ class ExternalGoalRepresentationAlignmentBank(nn.Module):
         """Select and learn an identity anchor without a caller slot ID.
 
         The proposal is read-only.  The external verifier may accept or reject
-        that proposal, but it never supplies a semantic/frontend ID.  Partial
-        anchors can route safely; only full anchors are added as new identity
-        prototypes, while accepted full anchors also consume matching deferred
-        evidence.
+        that proposal, but it never supplies a semantic/frontend ID. Full and
+        partial anchors may update bounded identity prototypes using explicit
+        presence masks; missing dimensions are never zero-filled into a full
+        prototype. Accepted anchors also consume matching deferred evidence.
         """
 
         if self.identity_memory is None:
@@ -1047,12 +1058,14 @@ class ExternalGoalRepresentationAlignmentBank(nn.Module):
                 destination_digest=source_digest,
                 reason="verifier rejected proposed identity anchor; state unchanged",
             ).validate()
-        full_mask = signature_mask is None or bool(signature_mask.all())
-        anchor_update_stored = full_mask and self.identity_memory.observe(selected, signature)
+        anchor_update_stored = self.identity_memory.observe(
+            selected,
+            signature,
+            query_mask=signature_mask,
+        )
         resolved = 0
         remaining = self.identity_quarantined_count
-        if full_mask:
-            _, resolved, remaining = self._consume_identity_quarantine(selected)
+        _, resolved, remaining = self._consume_identity_quarantine(selected)
         destination_digest = self.digest()
         return ExternalGoalRepresentationIdentityAnchorReceipt(
             accepted=anchor_update_stored or resolved > 0,
@@ -1070,10 +1083,8 @@ class ExternalGoalRepresentationAlignmentBank(nn.Module):
             reason=(
                 "verifier-accepted anchor updated identity and resolved deferred evidence"
                 if anchor_update_stored and resolved > 0
-                else "verifier-accepted full anchor updated identity prototypes"
+                else "verifier-accepted anchor updated identity prototypes"
                 if anchor_update_stored
-                else "verifier-accepted partial anchor routed without prototype mutation"
-                if not full_mask
                 else "verifier-accepted anchor made no state change"
             ),
         ).validate()

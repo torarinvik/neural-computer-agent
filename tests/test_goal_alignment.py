@@ -287,6 +287,16 @@ def test_alignment_bank_routes_partial_evidence_and_selects_anchor_without_slot_
     assert partial_b.selected_slot_id == 1
     assert bank.digest() == before
 
+    before_partial_anchor = bank.digest()
+    partial_anchor = bank.accept_identity_anchor(
+        torch.tensor([0.99, 0.01, 42.0]),
+        signature_mask=torch.tensor([True, True, False]),
+        verifier_accepted=True,
+    )
+    assert partial_anchor.accepted
+    assert partial_anchor.anchor_update_stored
+    assert bank.digest() != before_partial_anchor
+
     deferred = bank.defer_identity_signature(torch.tensor([1.0, 1.0, 0.0]))
     assert deferred.accepted
     rejected = bank.accept_identity_anchor(
@@ -295,15 +305,6 @@ def test_alignment_bank_routes_partial_evidence_and_selects_anchor_without_slot_
         verifier_accepted=False,
     )
     assert not rejected.accepted and rejected.selected_slot_id == 0
-    assert bank.identity_quarantined_count == 1
-
-    partial_anchor = bank.accept_identity_anchor(
-        torch.tensor([0.99, 0.01, 42.0]),
-        signature_mask=torch.tensor([True, True, False]),
-        verifier_accepted=True,
-    )
-    assert not partial_anchor.accepted
-    assert not partial_anchor.anchor_update_stored
     assert bank.identity_quarantined_count == 1
 
     resolved = bank.accept_identity_anchor(

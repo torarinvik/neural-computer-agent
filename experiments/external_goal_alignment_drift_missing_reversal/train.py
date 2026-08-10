@@ -161,6 +161,7 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
     route_correct = 0
     partial_count = 0
     full_anchor_count = 0
+    partial_anchor_updates = 0
     anchor_updates = 0
     reversal_count = 0
     last_order: tuple[str, str] | None = None
@@ -203,6 +204,7 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
                 verifier_accepted=selected == expected_slot,
             )
             full_anchor_count += int(mask is None)
+            partial_anchor_updates += int(mask is not None and anchor.anchor_update_stored)
             anchor_updates += int(anchor.anchor_update_stored)
             ordered_queries.append(
                 {
@@ -214,6 +216,40 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
                     "anchor": anchor.__dict__,
                 }
             )
+
+    masked_probe_mask = torch.ones(width, dtype=torch.bool)
+    masked_probe_mask[[0, 3]] = False
+    masked_probe_specs = (
+        ("affine-masked-probe", affine_base, affine_direction, affine_receipt.slot_id, 0.6),
+    )
+    for name, base, direction, expected_slot, amplitude in masked_probe_specs:
+        signature = _drifted_signature(base, direction, amplitude)
+        source = affine_source[:1] if expected_slot == affine_receipt.slot_id else nonlinear_source[:1]
+        route = bank.route_by_signature(
+            signature,
+            source,
+            signature_mask=masked_probe_mask,
+        )
+        selected = route.selected_slot_id
+        route_correct += int(selected == expected_slot)
+        partial_count += 1
+        anchor = bank.accept_identity_anchor(
+            signature,
+            signature_mask=masked_probe_mask,
+            verifier_accepted=selected == expected_slot,
+        )
+        partial_anchor_updates += int(anchor.anchor_update_stored)
+        anchor_updates += int(anchor.anchor_update_stored)
+        ordered_queries.append(
+            {
+                "phase": len(DRIFT_PHASES),
+                "name": name,
+                "expected_slot": expected_slot,
+                "mask_present_count": int(masked_probe_mask.sum()),
+                "route": _route_summary(route),
+                "anchor": anchor.__dict__,
+            }
+        )
 
     affine_eval, affine_route = identity._evaluate_routed(
         bank,
@@ -237,8 +273,10 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
         nonlinear_base,
         nonlinear_source[:1],
     )
+    masked_prototype_count = bank.identity_memory.masked_prototype_count
+    restored_masked_prototype_count = restored.identity_memory.masked_prototype_count
 
-    total_queries = len(DRIFT_PHASES) * 2
+    total_queries = len(ordered_queries)
     gates = {
         "both_frontends_admitted": affine_receipt.accepted and nonlinear_receipt.accepted,
         "deferred_ambiguous_evidence_retained": deferred_one.accepted and deferred_two.accepted,
@@ -260,7 +298,12 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
             and item["anchor"]["selected_slot_id"] == item["expected_slot"]
             for item in ordered_queries
         ),
-        "full_anchors_updated_without_ids": anchor_updates == full_anchor_count,
+        "partial_anchors_learned_without_ids": partial_anchor_updates == partial_count,
+        "all_anchors_updated_without_ids": anchor_updates == total_queries,
+        "masked_prototype_memory_persisted": masked_prototype_count > 0,
+        "masked_prototype_persistence_exact": (
+            restored_masked_prototype_count == masked_prototype_count
+        ),
         "affine_mastery_after_drift": affine_eval["mastery"] >= 0.95,
         "nonlinear_mastery_after_drift": nonlinear_eval["mastery"] >= 0.95,
         "exact_final_persistence": restored.digest() == bank.digest(),
@@ -300,7 +343,10 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
             "route_accuracy": route_correct / total_queries,
             "partial_query_count": partial_count,
             "full_anchor_count": full_anchor_count,
+            "partial_anchor_updates": partial_anchor_updates,
             "anchor_updates": anchor_updates,
+            "masked_prototype_count": masked_prototype_count,
+            "restored_masked_prototype_count": restored_masked_prototype_count,
             "reversal_count": reversal_count,
             "accepted_anchor": accepted_anchor.__dict__,
             "affine_route": _route_summary(affine_route),

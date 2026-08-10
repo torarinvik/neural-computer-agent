@@ -7,8 +7,9 @@ reverses so runtime routing cannot depend on stream position.
 
 The bank selects the proposed identity slot from the signature itself. A
 verifier accepts or rejects that proposal without supplying a frontend or slot
-ID. Full accepted anchors may update identity prototypes and resolve deferred
-evidence; partial anchors route but are not stored as incomplete prototypes.
+ID. Full and partial accepted anchors may update masked identity prototypes and
+resolve deferred evidence. Missing dimensions are persisted as masks rather
+than zero-filled into a false full identity.
 
 Run one seed with:
 
@@ -18,6 +19,6 @@ PYTHONPATH=.:src .venv/bin/python experiments/external_goal_alignment_drift_miss
 ```
 
 The claim is intentionally bounded: replay-free, verifier-gated identity
-retention under gradual drift, reversible drift, and partial evidence. It does
-not establish open-world identity discovery, autonomous verifier design,
-unrestricted growth, or general continual learning.
+retention under gradual drift, reversible drift, and learned partial evidence.
+It does not establish open-world identity discovery, autonomous verifier
+design, unrestricted growth, or general continual learning.
