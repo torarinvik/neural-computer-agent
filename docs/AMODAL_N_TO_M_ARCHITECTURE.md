@@ -8172,3 +8172,30 @@ This closes a consistency and address-stability gap, not the harder problem of
 inventing useful new intention vectors from partial multimodal experience.
 Learned candidate generation, equivalence discovery, unrestricted growth, and
 general continual learning remain unqualified.
+
+## Outcome-trained intention content generation (2026-08-10)
+
+`ExternalOutcomeIntentionGenerator` adds the missing provisional-content
+boundary without adding a controller or protocol-specific branch. It maps a
+learned opaque context through a compact external stochastic neural generator,
+samples a continuous intention, and updates only its persisted external state
+from scalar verifier outcomes using Gaussian score-function credit. The state
+contains the generator cells, delayed eligibility traces, baseline, counters,
+and protection mask; the controller remains frozen and receives no raw
+modality data or privileged target information.
+
+Generated content is explicitly provisional. A caller must pass it through
+`ExternalIntentionRepertoire.admit_verified` before it becomes a durable
+candidate for `PolicyFreeAmodalRuntime` and factual model search. Cells can
+grow copy-on-write from a protected predecessor, while missing feedback is an
+exact no-op for learned content. Proposal log densities are retained so
+outcome accounting can distinguish sampled exploration from verified memory.
+
+The focused causal coverage shows outcome-driven movement toward hidden
+continuous verifier targets, shuffled-outcome failure, protected retention,
+copy-on-write growth, and exact reload. This is a bounded external proposal
+mechanism, not arbitrary program induction or general continual learning. The
+next promotion must use partial multimodal contexts, delayed and noisy
+outcomes, competing retained candidates, a matched fresh learner, and the
+required unique-verifier-bit, update, replay, latency, transfer, and stable
+retention accounting.

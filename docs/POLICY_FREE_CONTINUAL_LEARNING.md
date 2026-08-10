@@ -569,3 +569,42 @@ intention content or establish learned equivalence discovery. The next
 capability bottleneck remains outcome-only candidate generation from partial
 multimodal experience, with retention and transfer measured against a fresh
 learner.
+
+## Outcome-trained continuous intention generation (2026-08-10)
+
+The next part of that boundary is now implemented by
+`ExternalOutcomeIntentionGenerator`. It is a replaceable memory-side
+stochastic neural program: a learned opaque controller context enters a small
+external tanh/linear generator, which samples provisional intention content.
+The generator stores its weights, baseline, eligibility traces, and counters
+as external state. It has no controller parameters and receives no raw
+modality data, task labels, correct actions, or differentiable verifier
+signal.
+
+```text
+opaque controller context
+          -> external Gaussian intention generator
+          -> provisional opaque intention
+          -> held-out factual verifier
+          -> admission into stable intention memory
+          -> policy-free factual search
+```
+
+Delayed scalar feedback updates the generator with a Gaussian score-function
+credit rule. Exact proposal log densities are retained for accounting, while
+missing evidence is a no-op. Cells can be appended copy-on-write from a
+protected predecessor; protected cells never change their learned content
+when later feedback arrives. State persistence is tensor-only and versioned.
+
+The focused causal rung demonstrates that a hidden continuous verifier can
+move generated content toward a target from scalar outcomes, while
+outcome-shuffled feedback fails, and that missing feedback, protected-cell
+retention, copy-on-write growth, and exact reload all hold. This is an
+implementation milestone, not a promotion of general continual learning.
+The generator is a bounded proposal mechanism, not an arbitrary program
+inductor or deployed policy. A generated intention remains provisional until
+`ExternalIntentionRepertoire.admit_verified` passes an independent held-out
+factual and retention probe. The next experiment must test partial
+multimodal contexts, competing old candidates, delayed/noisy outcomes, and
+matched fresh-learner transfer with unique verifier bits, optimizer updates,
+replay, latency, and stable-prefix retention reported separately.

@@ -1141,3 +1141,16 @@ aggregates sufficient statistics without replay. The policy-free runtime can
 invoke this maintenance path while the controller remains frozen. This is a
 memory-safety and persistence improvement; candidate invention from partial
 experience and general continual learning remain open.
+
+`ExternalOutcomeIntentionGenerator` is the next replaceable boundary. It
+generates provisional continuous intention content from learned opaque
+context, then adapts only external generator state through scalar
+score-function credit. It supports delayed feedback, exact Gaussian proposal
+log densities, missing-evidence no-ops, protected cells, copy-on-write growth,
+and tensor-only reload. Generated vectors are not trusted output: they must
+pass the repertoire's held-out verifier-gated admission before factual model
+search can treat them as durable candidates. The current five-test causal
+rung shows outcome-driven discovery and shuffled-outcome failure, but this is
+still bounded proposal generation—not arbitrary program induction or general
+continual learning. See `docs/POLICY_FREE_CONTINUAL_LEARNING.md` for the
+claim boundary and next experiment.
