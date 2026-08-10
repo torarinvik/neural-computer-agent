@@ -1242,3 +1242,11 @@ without changing the controller. The two-seed audit in
 core, copy-on-write retention, fresh-transfer, shuffled-outcome, persistence,
 and zero-replay gates. This promotes the seam, not unrestricted continual
 learning.
+
+`ExternalRegisterComputeBasisArtifact` closes the corresponding persistence
+gap for learned external computation. A compute slot's ABI and tensor state
+can be checksummed, moved between interpreters, and reloaded through
+`ExternalCapabilityRegisterMachine.add_basis_artifact()` without mutating the
+shared interpreter. Instruction vectors and compute capacity are now both
+portable external files; retention and behavior verification still decide
+whether a loaded slot is deployable.

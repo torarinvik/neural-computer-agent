@@ -7,6 +7,7 @@ from neural_computer import (
     ExternalProgramArtifact,
     ExternalRegisterBasisCompatibilityPrior,
     ExternalRegisterComputeBasis,
+    ExternalRegisterComputeBasisArtifact,
     ExternalRegisterInstruction,
     ExternalSequenceMemory,
     ExternalSequenceOperatorMemory,
@@ -103,6 +104,99 @@ def test_external_compute_basis_is_append_only_and_memory_addressable() -> None:
     assert default.shape == extended.shape == register.shape
     assert torch.isfinite(extended).all()
     assert not torch.equal(default, extended)
+
+
+def test_external_compute_basis_artifact_round_trips_exactly() -> None:
+    torch.manual_seed(918)
+    machine = _machine()
+    basis_slot = machine.add_basis_slot()
+    artifact = machine.basis_artifact(basis_slot)
+
+    payload = artifact.payload()
+    restored = ExternalRegisterComputeBasisArtifact.from_payload(payload)
+    loaded = ExternalRegisterComputeBasisArtifact.from_payload(restored.payload())
+    basis = machine.basis_slots[basis_slot]
+    rehydrated = type(basis).from_artifact(loaded)
+    register = torch.randn(3, machine.register_width)
+    code = machine.instructions[0].expanded(
+        register.shape[0], device=register.device, dtype=register.dtype
+    )
+
+    assert restored.digest() == artifact.digest()
+    assert loaded.configuration == artifact.configuration
+    assert all(
+        torch.equal(loaded.state[name], value) for name, value in artifact.state.items()
+    )
+    assert torch.allclose(basis(register, code), rehydrated(register, code))
+
+
+def test_external_compute_basis_artifact_load_isolated_from_frozen_interpreter() -> None:
+    torch.manual_seed(919)
+    source = _machine()
+    source_slot = source.add_basis_slot()
+    artifact = source.basis_artifact(source_slot)
+    target = _machine()
+    core_before = {
+        name: value.detach().clone()
+        for name, value in target.state_dict().items()
+        if not name.startswith("basis_slots.")
+    }
+    target_slot = target.add_basis_artifact(artifact)
+    core_after = {
+        name: value.detach().clone()
+        for name, value in target.state_dict().items()
+        if not name.startswith("basis_slots.")
+    }
+    register = torch.randn(2, target.register_width)
+    code = target.instructions[0].expanded(
+        register.shape[0], device=register.device, dtype=register.dtype
+    )
+
+    assert target_slot == 0
+    assert all(torch.equal(core_before[name], core_after[name]) for name in core_before)
+    assert torch.allclose(
+        source.basis_slots[source_slot](register, code),
+        target.basis_slots[target_slot](register, code),
+    )
+
+    with torch.no_grad():
+        target.basis_slots[target_slot].network[0].bias[0] += 1.0
+    assert not torch.equal(
+        source.basis_slots[source_slot].network[0].bias,
+        target.basis_slots[target_slot].network[0].bias,
+    )
+
+
+def test_external_compute_basis_artifact_rejects_corruption_and_wrong_abi() -> None:
+    machine = _machine()
+    machine.add_basis_slot()
+    payload = machine.basis_artifact(0).payload()
+    payload["state"] = dict(payload["state"])
+    first_name = next(iter(payload["state"]))
+    payload["state"][first_name] = payload["state"][first_name].clone()
+    payload["state"][first_name].reshape(-1)[0] += 1.0
+
+    try:
+        ExternalRegisterComputeBasisArtifact.from_payload(payload)
+    except ValueError as error:
+        assert "checksum mismatch" in str(error)
+    else:
+        raise AssertionError("expected a corrupted compute artifact to be rejected")
+
+    wrong = machine.basis_artifact(0).payload()
+    wrong["configuration"] = dict(wrong["configuration"])
+    wrong["configuration"]["register_width"] += 1
+    wrong["sha256"] = ExternalRegisterComputeBasisArtifact(
+        configuration=wrong["configuration"],
+        state=wrong["state"],
+    ).digest()
+    incompatible = ExternalRegisterComputeBasisArtifact.from_payload(wrong)
+    try:
+        machine.add_basis_artifact(incompatible)
+    except ValueError as error:
+        assert "incompatible" in str(error)
+    else:
+        raise AssertionError("expected a wrong-ABI compute artifact to be rejected")
 
 
 def test_shared_interpreter_mode_uses_one_instruction_family_for_addressed_slots() -> None:

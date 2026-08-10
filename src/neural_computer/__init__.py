@@ -352,6 +352,7 @@ from .promotion import (
     write_promotion_record,
 )
 from .register import (
+    EXTERNAL_REGISTER_BASIS_ARTIFACT_SCHEMA,
     EXTERNAL_REGISTER_BASIS_SCHEMA,
     EXTERNAL_REGISTER_COMPATIBILITY_SCHEMA,
     EXTERNAL_REGISTER_EXECUTION_SNAPSHOT_SCHEMA,
@@ -375,6 +376,7 @@ from .register import (
     ExternalExecutionSnapshot,
     ExternalRegisterBasisCompatibilityPrior,
     ExternalRegisterComputeBasis,
+    ExternalRegisterComputeBasisArtifact,
     ExternalRegisterInstruction,
     ExternalRegisterState,
     ExternalSequenceMemory,
@@ -640,6 +642,7 @@ __all__ = [
     "EXTERNAL_OUTCOME_PROGRAM_ROUTER_SCHEMA",
     "EXTERNAL_OUTCOME_VALUE_SCHEMA",
     "EXTERNAL_PROGRAM_ARTIFACT_SCHEMA",
+    "EXTERNAL_REGISTER_BASIS_ARTIFACT_SCHEMA",
     "EXTERNAL_REGISTER_BASIS_SCHEMA",
     "EXTERNAL_REGISTER_COMPATIBILITY_SCHEMA",
     "EXTERNAL_REGISTER_EXECUTION_SNAPSHOT_SCHEMA",
@@ -870,6 +873,7 @@ __all__ = [
     "ExternalRandomFeatureTransitionStatistics",
     "ExternalRegisterBasisCompatibilityPrior",
     "ExternalRegisterComputeBasis",
+    "ExternalRegisterComputeBasisArtifact",
     "ExternalRegisterInstruction",
     "ExternalRegisterState",
     "ExternalRoutedIntentionMemoryState",

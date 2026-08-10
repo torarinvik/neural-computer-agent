@@ -13,6 +13,7 @@ interpreter, rather than adding another whole neural reasoning branch.
 
 from __future__ import annotations
 
+import hashlib
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 
@@ -38,6 +39,9 @@ EXTERNAL_REGISTER_EXECUTION_SNAPSHOT_SCHEMA = (
     "neural-computer.external-register-execution-snapshot.v1"
 )
 EXTERNAL_REGISTER_BASIS_SCHEMA = "neural-computer.external-register-compute-basis.v1"
+EXTERNAL_REGISTER_BASIS_ARTIFACT_SCHEMA = (
+    "neural-computer.external-register-compute-basis-artifact.v1"
+)
 EXTERNAL_REGISTER_COMPATIBILITY_SCHEMA = (
     "neural-computer.external-register-compatibility-prior.v1"
 )
@@ -925,6 +929,92 @@ class ExternalRegisterInstruction(nn.Module):
         return self.code.to(device=device, dtype=dtype).expand(batch_size, -1)
 
 
+@dataclass(frozen=True)
+class ExternalRegisterComputeBasisArtifact:
+    """Portable, checksummed file for one learned external compute slot.
+
+    Instruction vectors and compute-slot weights are separate kinds of
+    external state.  This artifact makes the latter independently durable,
+    so a new computation can be moved between interpreters without copying
+    the shared controller or accidentally admitting a partial checkpoint.
+    """
+
+    configuration: Mapping[str, int | str]
+    state: Mapping[str, torch.Tensor]
+    schema: str = EXTERNAL_REGISTER_BASIS_ARTIFACT_SCHEMA
+
+    def __post_init__(self) -> None:
+        if self.schema != EXTERNAL_REGISTER_BASIS_ARTIFACT_SCHEMA:
+            raise ValueError("unsupported compute basis artifact schema")
+        if not isinstance(self.configuration, Mapping) or not self.configuration:
+            raise TypeError("compute basis artifact configuration must be a mapping")
+        if self.configuration.get("schema") != EXTERNAL_REGISTER_BASIS_SCHEMA:
+            raise ValueError("compute basis artifact ABI schema is invalid")
+        if not isinstance(self.state, Mapping) or not self.state:
+            raise ValueError("compute basis artifact state must be nonempty")
+        for name, value in self.state.items():
+            if not isinstance(name, str) or not name:
+                raise ValueError("compute basis artifact state names must be nonempty")
+            if not isinstance(value, torch.Tensor):
+                raise TypeError("compute basis artifact state values must be tensors")
+            if not bool(torch.isfinite(value).all()):
+                raise ValueError(f"compute basis artifact state entry {name!r} is non-finite")
+
+    def _digest(self) -> str:
+        digest = hashlib.sha256()
+        digest.update(self.schema.encode("utf-8"))
+        digest.update(repr(sorted(dict(self.configuration).items())).encode("utf-8"))
+        for name, value in sorted(self.state.items()):
+            detached = value.detach().cpu().contiguous()
+            digest.update(name.encode("utf-8"))
+            digest.update(str(detached.dtype).encode("utf-8"))
+            digest.update(repr(tuple(detached.shape)).encode("utf-8"))
+            digest.update(detached.numpy().tobytes())
+        return digest.hexdigest()
+
+    def digest(self) -> str:
+        """Return an integrity digest over the ABI and all learned tensors."""
+
+        return self._digest()
+
+    def payload(self) -> dict[str, object]:
+        """Return a tensor-only payload suitable for a memory-side file."""
+
+        return {
+            "schema": self.schema,
+            "configuration": dict(self.configuration),
+            "state": {
+                name: value.detach().cpu().clone()
+                for name, value in self.state.items()
+            },
+            "sha256": self.digest(),
+        }
+
+    @classmethod
+    def from_payload(
+        cls, payload: Mapping[str, object]
+    ) -> ExternalRegisterComputeBasisArtifact:
+        """Restore and integrity-check one external compute file."""
+
+        if not isinstance(payload, Mapping):
+            raise TypeError("compute basis artifact payload must be a mapping")
+        configuration = payload.get("configuration")
+        state = payload.get("state")
+        if not isinstance(configuration, Mapping):
+            raise TypeError("compute basis artifact configuration is invalid")
+        if not isinstance(state, Mapping):
+            raise TypeError("compute basis artifact state is invalid")
+        artifact = cls(
+            configuration=dict(configuration),
+            state=dict(state),
+            schema=str(payload.get("schema", "")),
+        )
+        expected = payload.get("sha256")
+        if not isinstance(expected, str) or expected != artifact.digest():
+            raise ValueError("compute basis artifact checksum mismatch")
+        return artifact
+
+
 class ExternalRegisterComputeBasis(nn.Module):
     """One append-only external computation slot.
 
@@ -1002,6 +1092,63 @@ class ExternalRegisterComputeBasis(nn.Module):
             "storage": "append_only_external_compute_slot_v1",
             "signature": "one_opaque_learned_slot_key_v1",
         }
+
+    def artifact(self) -> ExternalRegisterComputeBasisArtifact:
+        """Snapshot this learned slot as an independently portable artifact.
+
+        The slot is external computation, so its learned weights must be
+        reloadable without serializing or mutating the shared interpreter.
+        The returned artifact contains only the slot ABI and tensor state; it
+        carries no task, modality, or verifier-private metadata.
+        """
+
+        return ExternalRegisterComputeBasisArtifact(
+            configuration=self.configuration(),
+            state={
+                name: value.detach().cpu().clone()
+                for name, value in self.state_dict().items()
+            },
+        )
+
+    @classmethod
+    def from_artifact(
+        cls,
+        artifact: ExternalRegisterComputeBasisArtifact,
+        *,
+        expected_configuration: Mapping[str, int | str] | None = None,
+    ) -> ExternalRegisterComputeBasis:
+        """Rehydrate one slot without constructing a shared interpreter."""
+
+        if not isinstance(artifact, ExternalRegisterComputeBasisArtifact):
+            raise TypeError("compute basis restoration requires a basis artifact")
+        if expected_configuration is not None:
+            expected = dict(expected_configuration)
+            if dict(artifact.configuration) != expected:
+                raise ValueError("compute basis artifact configuration is incompatible")
+        configuration = dict(artifact.configuration)
+        basis = cls(
+            int(configuration["register_width"]),
+            int(configuration["instruction_width"]),
+            hidden=int(configuration["hidden"]),
+            event_width=int(configuration["event_width"]),
+            event_window_size=int(configuration["event_window_size"]),
+            microsteps=int(configuration["microsteps"]),
+            event_read_mode=str(configuration["event_read_mode"]),
+        )
+        current = basis.state_dict()
+        if set(current) != set(artifact.state):
+            raise ValueError("compute basis artifact state entries are incompatible")
+        for name, value in artifact.state.items():
+            if value.shape != current[name].shape or value.dtype != current[name].dtype:
+                raise ValueError(f"compute basis artifact state entry {name!r} is incompatible")
+        basis.load_state_dict(
+            {
+                name: value.detach().clone().to(device=current[name].device)
+                for name, value in artifact.state.items()
+            },
+            strict=True,
+        )
+        return basis
 
     def forward(
         self,
@@ -1569,6 +1716,40 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             raise ValueError("basis slot dimensions do not match the machine")
         self.basis_slots.append(basis)
         return len(self.basis_slots) - 1
+
+    def _basis_artifact_configuration(self) -> dict[str, int | str]:
+        """Return the ABI expected by every slot in this interpreter."""
+
+        return {
+            "schema": EXTERNAL_REGISTER_BASIS_SCHEMA,
+            "register_width": self.register_width,
+            "instruction_width": self.instruction_width,
+            "hidden": self.basis_hidden,
+            "event_width": self.event_width if self.event_window_size else 0,
+            "event_window_size": self.event_window_size,
+            "microsteps": self.basis_microsteps,
+            "event_read_mode": self.basis_event_read_mode,
+            "storage": "append_only_external_compute_slot_v1",
+            "signature": "one_opaque_learned_slot_key_v1",
+        }
+
+    def basis_artifact(self, basis_slot: int) -> ExternalRegisterComputeBasisArtifact:
+        """Export one slot without exposing or copying shared interpreter state."""
+
+        if not 0 <= basis_slot < len(self.basis_slots):
+            raise IndexError("basis slot index is out of range")
+        return self.basis_slots[basis_slot].artifact()
+
+    def add_basis_artifact(
+        self, artifact: ExternalRegisterComputeBasisArtifact
+    ) -> int:
+        """Append a verified external slot restored from a portable file."""
+
+        basis = ExternalRegisterComputeBasis.from_artifact(
+            artifact,
+            expected_configuration=self._basis_artifact_configuration(),
+        )
+        return self.add_basis_slot(basis)
 
     def select_basis_slot(
         self,

@@ -8424,3 +8424,27 @@ initial state provides a matched transfer control; both seeds show faster
 successor acquisition from the protected source-derived cell. Route-cost
 scaling, compression, and long-horizon stable-prefix transfer remain the next
 bottlenecks.
+
+## Portable external compute-slot artifacts (2026-08-10)
+
+The CPU/files boundary now persists learned external computation as a first-
+class artifact. `ExternalRegisterComputeBasisArtifact` snapshots one
+append-only compute slot's versioned ABI and tensor state, computes an
+interface-and-content SHA-256 digest, rejects tensor or configuration
+corruption, and restores the slot into a compatible interpreter without
+serializing the shared controller or changing its parameters.
+
+`ExternalCapabilityRegisterMachine.basis_artifact()` and
+`add_basis_artifact()` make the lifecycle explicit: acquire a slot, freeze and
+verify it, write the opaque slot file, then load it into a replacement/frozen
+interpreter as independently owned computation. The restored slot produces
+the same register transition, while the shared interpreter remains
+byte-stable and later mutation of the restored copy cannot affect the source.
+
+This closes a real implementation gap in the CPU/files analogy: an
+instruction vector was portable before, but a newly learned computation was
+still tied to the in-memory register machine. It is a persistence and
+replacement improvement, not evidence of arbitrary new computation or general
+continual learning. Behavior verification, retention gates, and explicit
+instruction/basis routing remain required before a loaded artifact becomes
+deployed capability.
