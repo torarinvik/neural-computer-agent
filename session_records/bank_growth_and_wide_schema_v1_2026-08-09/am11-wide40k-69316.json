@@ -1,0 +1,76 @@
+{
+  "seed": 69316,
+  "film": false,
+  "wide": true,
+  "pool": 4096,
+  "context": 128,
+  "bank_tokens": 16,
+  "train_cost": 40000,
+  "scramble": false,
+  "random_plant": false,
+  "stop_at": 0.98,
+  "held_out": {
+    "line": {
+      "read_accuracy": 1.0,
+      "read_cost": 0,
+      "finetune_cost": 0,
+      "finetune_accuracy": 1.0,
+      "cold_cost": 25,
+      "cold_accuracy": 1.0
+    },
+    "dial": {
+      "read_accuracy": 0.8711,
+      "read_cost": 0,
+      "finetune_cost": 25,
+      "finetune_accuracy": 0.988,
+      "cold_cost": 75,
+      "cold_accuracy": 0.9993
+    },
+    "toggle": {
+      "read_accuracy": 0.5573,
+      "read_cost": 0,
+      "finetune_cost": 50,
+      "finetune_accuracy": 0.9974,
+      "cold_cost": 100,
+      "cold_accuracy": 0.9896
+    },
+    "perm": {
+      "read_accuracy": 1.0,
+      "read_cost": 0,
+      "finetune_cost": 0,
+      "finetune_accuracy": 1.0,
+      "cold_cost": 75,
+      "cold_accuracy": 1.0
+    }
+  },
+  "in_distribution": 0.9984,
+  "novel_in_support": {
+    "count": 13,
+    "read_accuracy": 0.9186,
+    "read_cost": 0,
+    "mastered_by_reading": 7,
+    "finetune_cost": 11.5,
+    "cold_cost": 59.6
+  },
+  "withheld_bank": {
+    "novel_in_support": 0.214,
+    "hand_made": {
+      "line": 0.1875,
+      "dial": 0.0368,
+      "toggle": 0.0,
+      "perm": 0.0
+    }
+  },
+  "wrong_context": {
+    "line": 0.0,
+    "dial": 0.0,
+    "toggle": 0.224,
+    "perm": 0.0
+  },
+  "retention_delta": {
+    "line": 0.0,
+    "dial": 0.0,
+    "toggle": 0.0,
+    "perm": 0.0
+  }
+}

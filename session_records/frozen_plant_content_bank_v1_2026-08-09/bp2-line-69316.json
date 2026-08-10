@@ -1,0 +1,75 @@
+{
+  "seed": 69316,
+  "held_out": "line",
+  "pretrain": [
+    "dial",
+    "toggle",
+    "perm"
+  ],
+  "bank_tokens": 16,
+  "stop_at": 0.98,
+  "budget": 600,
+  "pretrain_family_count": 48,
+  "pretrain_cost": 2600,
+  "pretrain_accuracy": {
+    "proc0": 1.0,
+    "proc1": 0.9728,
+    "proc2": 1.0,
+    "proc3": 1.0,
+    "proc4": 0.8938,
+    "proc5": 1.0,
+    "proc6": 1.0,
+    "proc7": 1.0
+  },
+  "retention_before": {
+    "proc0": 1.0,
+    "proc1": 0.9728,
+    "proc2": 1.0,
+    "proc3": 1.0,
+    "proc4": 0.8938,
+    "proc5": 1.0,
+    "proc6": 1.0,
+    "proc7": 1.0
+  },
+  "bank_pretrained": {
+    "cost": 25,
+    "accuracy": 1.0
+  },
+  "retention_after": {
+    "proc0": 1.0,
+    "proc1": 0.9728,
+    "proc2": 1.0,
+    "proc3": 1.0,
+    "proc4": 0.8938,
+    "proc5": 1.0,
+    "proc6": 1.0,
+    "proc7": 1.0
+  },
+  "retention_delta": {
+    "proc0": 0.0,
+    "proc1": 0.0,
+    "proc2": 0.0,
+    "proc3": 0.0,
+    "proc4": 0.0,
+    "proc5": 0.0,
+    "proc6": 0.0,
+    "proc7": 0.0
+  },
+  "bank_random_plant": {
+    "cost": 600,
+    "accuracy": 0.375
+  },
+  "bank_scrambled_plant": {
+    "cost": 100,
+    "accuracy": 1.0,
+    "pretrain_cost": 3000
+  },
+  "cold_full": {
+    "cost": 25,
+    "accuracy": 1.0
+  },
+  "trainable_parameters": {
+    "cold_full": 68936,
+    "bank_entry": 1024
+  }
+}

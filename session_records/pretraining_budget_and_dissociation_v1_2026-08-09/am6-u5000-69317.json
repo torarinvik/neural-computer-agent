@@ -1,0 +1,66 @@
+{
+  "seed": 69317,
+  "film": false,
+  "pool": 4096,
+  "context": 128,
+  "bank_tokens": 16,
+  "train_cost": 5000,
+  "scramble": false,
+  "random_plant": false,
+  "stop_at": 0.98,
+  "held_out": {
+    "line": {
+      "read_accuracy": 0.875,
+      "read_cost": 0,
+      "finetune_cost": 75,
+      "finetune_accuracy": 1.0,
+      "cold_cost": 25,
+      "cold_accuracy": 1.0
+    },
+    "dial": {
+      "read_accuracy": 0.2389,
+      "read_cost": 0,
+      "finetune_cost": 600,
+      "finetune_accuracy": 0.4245,
+      "cold_cost": 75,
+      "cold_accuracy": 0.998
+    },
+    "toggle": {
+      "read_accuracy": 0.0,
+      "read_cost": 0,
+      "finetune_cost": 600,
+      "finetune_accuracy": 0.5573,
+      "cold_cost": 100,
+      "cold_accuracy": 0.9922
+    },
+    "perm": {
+      "read_accuracy": 0.0,
+      "read_cost": 0,
+      "finetune_cost": 600,
+      "finetune_accuracy": 0.2361,
+      "cold_cost": 75,
+      "cold_accuracy": 1.0
+    }
+  },
+  "in_distribution": 0.5695,
+  "novel_in_support": {
+    "count": 12,
+    "read_accuracy": 0.3934,
+    "read_cost": 0,
+    "mastered_by_reading": 0,
+    "finetune_cost": 516.7,
+    "cold_cost": 58.3
+  },
+  "wrong_context": {
+    "line": 0.0,
+    "dial": 0.1058,
+    "toggle": 0.0,
+    "perm": 0.0
+  },
+  "retention_delta": {
+    "line": 0.0,
+    "dial": 0.0,
+    "toggle": 0.0,
+    "perm": 0.0
+  }
+}

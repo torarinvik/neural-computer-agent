@@ -1,0 +1,1222 @@
+{
+  "seed": 69317,
+  "film": false,
+  "wide": false,
+  "pool": 4096,
+  "context": 128,
+  "bank_tokens": 16,
+  "train_cost": 40000,
+  "scramble": false,
+  "random_plant": false,
+  "stop_at": 0.98,
+  "held_out": {
+    "line": {
+      "read_accuracy": 1.0,
+      "read_cost": 0,
+      "finetune_cost": 0,
+      "finetune_accuracy": 1.0,
+      "cold_cost": 25,
+      "cold_accuracy": 1.0
+    },
+    "dial": {
+      "read_accuracy": 0.8151,
+      "read_cost": 0,
+      "finetune_cost": 150,
+      "finetune_accuracy": 0.9909,
+      "cold_cost": 75,
+      "cold_accuracy": 0.9925
+    },
+    "toggle": {
+      "read_accuracy": 0.25,
+      "read_cost": 0,
+      "finetune_cost": 600,
+      "finetune_accuracy": 0.8333,
+      "cold_cost": 75,
+      "cold_accuracy": 0.9818
+    },
+    "perm": {
+      "read_accuracy": 1.0,
+      "read_cost": 0,
+      "finetune_cost": 0,
+      "finetune_accuracy": 1.0,
+      "cold_cost": 75,
+      "cold_accuracy": 1.0
+    }
+  },
+  "in_distribution": 0.9742,
+  "novel_detail": [
+    {
+      "slots": 5,
+      "values": 3,
+      "actions": 4,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "dec",
+        "inc",
+        "swap"
+      ],
+      "states": 243,
+      "read": 1.0
+    },
+    {
+      "slots": 3,
+      "values": 3,
+      "actions": 6,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "cinc",
+        "inc",
+        "noop",
+        "swap"
+      ],
+      "states": 27,
+      "read": 0.8333
+    },
+    {
+      "slots": 2,
+      "values": 6,
+      "actions": 6,
+      "space": "product",
+      "ops": [
+        "cinc",
+        "inc",
+        "swap"
+      ],
+      "states": 36,
+      "read": 0.8102
+    },
+    {
+      "slots": 2,
+      "values": 5,
+      "actions": 4,
+      "space": "product",
+      "ops": [
+        "cinc",
+        "inc",
+        "noop"
+      ],
+      "states": 25,
+      "read": 1.0
+    },
+    {
+      "slots": 5,
+      "values": 3,
+      "actions": 6,
+      "space": "product",
+      "ops": [
+        "cinc",
+        "dec",
+        "inc",
+        "swap"
+      ],
+      "states": 243,
+      "read": 0.8059
+    },
+    {
+      "slots": 2,
+      "values": 7,
+      "actions": 6,
+      "space": "product",
+      "ops": [
+        "cinc",
+        "dec",
+        "noop",
+        "swap"
+      ],
+      "states": 49,
+      "read": 0.8537
+    },
+    {
+      "slots": 4,
+      "values": 4,
+      "actions": 3,
+      "space": "product",
+      "ops": [
+        "dec",
+        "swap"
+      ],
+      "states": 256,
+      "read": 0.9167
+    },
+    {
+      "slots": 4,
+      "values": 2,
+      "actions": 3,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "cinc"
+      ],
+      "states": 16,
+      "read": 1.0
+    },
+    {
+      "slots": 2,
+      "values": 7,
+      "actions": 6,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "cinc",
+        "dec",
+        "noop"
+      ],
+      "states": 49,
+      "read": 0.6871
+    },
+    {
+      "slots": 6,
+      "values": 2,
+      "actions": 6,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "cinc",
+        "dec",
+        "noop",
+        "swap"
+      ],
+      "states": 64,
+      "read": 0.8333
+    },
+    {
+      "slots": 4,
+      "values": 4,
+      "actions": 2,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "inc"
+      ],
+      "states": 256,
+      "read": 1.0
+    },
+    {
+      "slots": 6,
+      "values": 2,
+      "actions": 6,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "cinc",
+        "dec",
+        "noop",
+        "swap"
+      ],
+      "states": 64,
+      "read": 0.9167
+    },
+    {
+      "slots": 5,
+      "values": 3,
+      "actions": 2,
+      "space": "product",
+      "ops": [
+        "inc"
+      ],
+      "states": 243,
+      "read": 1.0
+    },
+    {
+      "slots": 2,
+      "values": 2,
+      "actions": 3,
+      "space": "product",
+      "ops": [
+        "inc",
+        "noop",
+        "swap"
+      ],
+      "states": 4,
+      "read": 1.0
+    },
+    {
+      "slots": 5,
+      "values": 3,
+      "actions": 2,
+      "space": "product",
+      "ops": [
+        "noop",
+        "swap"
+      ],
+      "states": 243,
+      "read": 1.0
+    },
+    {
+      "slots": 6,
+      "values": 2,
+      "actions": 2,
+      "space": "product",
+      "ops": [
+        "dec",
+        "inc"
+      ],
+      "states": 64,
+      "read": 1.0
+    },
+    {
+      "slots": 2,
+      "values": 8,
+      "actions": 3,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "noop",
+        "swap"
+      ],
+      "states": 64,
+      "read": 1.0
+    },
+    {
+      "slots": 3,
+      "values": 4,
+      "actions": 3,
+      "space": "product",
+      "ops": [
+        "cinc",
+        "inc",
+        "swap"
+      ],
+      "states": 64,
+      "read": 1.0
+    },
+    {
+      "slots": 5,
+      "values": 2,
+      "actions": 4,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "dec",
+        "noop",
+        "swap"
+      ],
+      "states": 32,
+      "read": 1.0
+    },
+    {
+      "slots": 4,
+      "values": 3,
+      "actions": 3,
+      "space": "product",
+      "ops": [
+        "cinc",
+        "inc"
+      ],
+      "states": 81,
+      "read": 1.0
+    },
+    {
+      "slots": 5,
+      "values": 3,
+      "actions": 6,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "cinc",
+        "dec",
+        "swap"
+      ],
+      "states": 243,
+      "read": 0.7202
+    },
+    {
+      "slots": 5,
+      "values": 3,
+      "actions": 3,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "cinc",
+        "noop"
+      ],
+      "states": 243,
+      "read": 0.9835
+    },
+    {
+      "slots": 2,
+      "values": 6,
+      "actions": 4,
+      "space": "product",
+      "ops": [
+        "cinc",
+        "dec",
+        "noop"
+      ],
+      "states": 36,
+      "read": 1.0
+    },
+    {
+      "slots": 2,
+      "values": 6,
+      "actions": 5,
+      "space": "product",
+      "ops": [
+        "cinc",
+        "dec",
+        "noop",
+        "swap"
+      ],
+      "states": 36,
+      "read": 1.0
+    },
+    {
+      "slots": 5,
+      "values": 2,
+      "actions": 4,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "cinc",
+        "inc"
+      ],
+      "states": 32,
+      "read": 1.0
+    },
+    {
+      "slots": 6,
+      "values": 2,
+      "actions": 4,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "inc",
+        "noop"
+      ],
+      "states": 64,
+      "read": 1.0
+    },
+    {
+      "slots": 6,
+      "values": 2,
+      "actions": 5,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "cinc",
+        "dec",
+        "inc",
+        "noop"
+      ],
+      "states": 64,
+      "read": 1.0
+    },
+    {
+      "slots": 6,
+      "values": 2,
+      "actions": 4,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "dec",
+        "swap"
+      ],
+      "states": 64,
+      "read": 1.0
+    },
+    {
+      "slots": 6,
+      "values": 2,
+      "actions": 3,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "swap"
+      ],
+      "states": 64,
+      "read": 0.9167
+    },
+    {
+      "slots": 5,
+      "values": 3,
+      "actions": 3,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "dec"
+      ],
+      "states": 243,
+      "read": 1.0
+    },
+    {
+      "slots": 2,
+      "values": 8,
+      "actions": 4,
+      "space": "product",
+      "ops": [
+        "dec",
+        "noop"
+      ],
+      "states": 64,
+      "read": 1.0
+    },
+    {
+      "slots": 4,
+      "values": 3,
+      "actions": 6,
+      "space": "product",
+      "ops": [
+        "dec",
+        "inc",
+        "noop",
+        "swap"
+      ],
+      "states": 81,
+      "read": 1.0
+    },
+    {
+      "slots": 5,
+      "values": 2,
+      "actions": 3,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "cinc",
+        "inc"
+      ],
+      "states": 32,
+      "read": 1.0
+    },
+    {
+      "slots": 2,
+      "values": 7,
+      "actions": 6,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "cinc",
+        "noop",
+        "swap"
+      ],
+      "states": 49,
+      "read": 0.9116
+    },
+    {
+      "slots": 5,
+      "values": 2,
+      "actions": 5,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "cinc",
+        "inc",
+        "noop"
+      ],
+      "states": 32,
+      "read": 1.0
+    },
+    {
+      "slots": 4,
+      "values": 4,
+      "actions": 2,
+      "space": "product",
+      "ops": [
+        "cinc",
+        "dec"
+      ],
+      "states": 256,
+      "read": 1.0
+    },
+    {
+      "slots": 4,
+      "values": 3,
+      "actions": 3,
+      "space": "product",
+      "ops": [
+        "cinc",
+        "dec",
+        "inc"
+      ],
+      "states": 81,
+      "read": 0.8889
+    },
+    {
+      "slots": 4,
+      "values": 4,
+      "actions": 4,
+      "space": "product",
+      "ops": [
+        "cinc",
+        "dec",
+        "inc",
+        "swap"
+      ],
+      "states": 256,
+      "read": 1.0
+    },
+    {
+      "slots": 4,
+      "values": 4,
+      "actions": 3,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "noop",
+        "swap"
+      ],
+      "states": 256,
+      "read": 1.0
+    },
+    {
+      "slots": 2,
+      "values": 3,
+      "actions": 3,
+      "space": "product",
+      "ops": [
+        "cinc",
+        "noop"
+      ],
+      "states": 9,
+      "read": 1.0
+    },
+    {
+      "slots": 2,
+      "values": 8,
+      "actions": 5,
+      "space": "product",
+      "ops": [
+        "cinc",
+        "dec",
+        "noop",
+        "swap"
+      ],
+      "states": 64,
+      "read": 1.0
+    },
+    {
+      "slots": 2,
+      "values": 4,
+      "actions": 6,
+      "space": "product",
+      "ops": [
+        "cinc",
+        "inc",
+        "noop",
+        "swap"
+      ],
+      "states": 16,
+      "read": 0.875
+    },
+    {
+      "slots": 6,
+      "values": 2,
+      "actions": 3,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "cinc",
+        "noop"
+      ],
+      "states": 64,
+      "read": 1.0
+    },
+    {
+      "slots": 4,
+      "values": 3,
+      "actions": 5,
+      "space": "product",
+      "ops": [
+        "cinc",
+        "inc",
+        "noop",
+        "swap"
+      ],
+      "states": 81,
+      "read": 0.9778
+    },
+    {
+      "slots": 1,
+      "values": 5,
+      "actions": 6,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "dec",
+        "noop"
+      ],
+      "states": 5,
+      "read": 0.9
+    },
+    {
+      "slots": 6,
+      "values": 2,
+      "actions": 3,
+      "space": "product",
+      "ops": [
+        "cinc",
+        "dec",
+        "inc"
+      ],
+      "states": 64,
+      "read": 1.0
+    },
+    {
+      "slots": 5,
+      "values": 3,
+      "actions": 6,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "dec",
+        "inc",
+        "swap"
+      ],
+      "states": 243,
+      "read": 0.7846
+    },
+    {
+      "slots": 2,
+      "values": 8,
+      "actions": 2,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "dec"
+      ],
+      "states": 64,
+      "read": 0.9375
+    },
+    {
+      "slots": 2,
+      "values": 8,
+      "actions": 3,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "cinc"
+      ],
+      "states": 64,
+      "read": 0.9896
+    },
+    {
+      "slots": 6,
+      "values": 2,
+      "actions": 5,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "cinc",
+        "dec",
+        "inc"
+      ],
+      "states": 64,
+      "read": 1.0
+    },
+    {
+      "slots": 6,
+      "values": 2,
+      "actions": 4,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "swap"
+      ],
+      "states": 64,
+      "read": 1.0
+    },
+    {
+      "slots": 4,
+      "values": 2,
+      "actions": 5,
+      "space": "product",
+      "ops": [
+        "cinc",
+        "inc",
+        "noop",
+        "swap"
+      ],
+      "states": 16,
+      "read": 1.0
+    },
+    {
+      "slots": 4,
+      "values": 4,
+      "actions": 5,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "dec",
+        "inc",
+        "noop"
+      ],
+      "states": 256,
+      "read": 1.0
+    },
+    {
+      "slots": 5,
+      "values": 3,
+      "actions": 5,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "cinc",
+        "inc"
+      ],
+      "states": 243,
+      "read": 0.9226
+    },
+    {
+      "slots": 5,
+      "values": 2,
+      "actions": 4,
+      "space": "product",
+      "ops": [
+        "cinc",
+        "noop",
+        "swap"
+      ],
+      "states": 32,
+      "read": 1.0
+    },
+    {
+      "slots": 3,
+      "values": 6,
+      "actions": 5,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "dec",
+        "noop",
+        "swap"
+      ],
+      "states": 216,
+      "read": 0.8694
+    },
+    {
+      "slots": 5,
+      "values": 2,
+      "actions": 6,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "dec",
+        "swap"
+      ],
+      "states": 32,
+      "read": 0.8333
+    },
+    {
+      "slots": 1,
+      "values": 3,
+      "actions": 3,
+      "space": "product",
+      "ops": [
+        "cinc",
+        "inc",
+        "noop"
+      ],
+      "states": 3,
+      "read": 1.0
+    },
+    {
+      "slots": 4,
+      "values": 4,
+      "actions": 2,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "cinc"
+      ],
+      "states": 256,
+      "read": 1.0
+    },
+    {
+      "slots": 2,
+      "values": 3,
+      "actions": 4,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "inc",
+        "swap"
+      ],
+      "states": 9,
+      "read": 1.0
+    },
+    {
+      "slots": 5,
+      "values": 3,
+      "actions": 6,
+      "space": "product",
+      "ops": [
+        "cinc",
+        "dec",
+        "noop",
+        "swap"
+      ],
+      "states": 243,
+      "read": 0.8889
+    },
+    {
+      "slots": 5,
+      "values": 3,
+      "actions": 2,
+      "space": "product",
+      "ops": [
+        "dec"
+      ],
+      "states": 243,
+      "read": 0.8333
+    },
+    {
+      "slots": 5,
+      "values": 3,
+      "actions": 5,
+      "space": "product",
+      "ops": [
+        "inc",
+        "noop"
+      ],
+      "states": 243,
+      "read": 1.0
+    },
+    {
+      "slots": 3,
+      "values": 6,
+      "actions": 3,
+      "space": "product",
+      "ops": [
+        "dec",
+        "inc"
+      ],
+      "states": 216,
+      "read": 1.0
+    },
+    {
+      "slots": 3,
+      "values": 3,
+      "actions": 6,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "cinc",
+        "dec",
+        "noop",
+        "swap"
+      ],
+      "states": 27,
+      "read": 0.9815
+    },
+    {
+      "slots": 4,
+      "values": 3,
+      "actions": 4,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "inc",
+        "swap"
+      ],
+      "states": 81,
+      "read": 1.0
+    },
+    {
+      "slots": 5,
+      "values": 2,
+      "actions": 4,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "inc"
+      ],
+      "states": 32,
+      "read": 1.0
+    },
+    {
+      "slots": 1,
+      "values": 5,
+      "actions": 6,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "cinc",
+        "inc"
+      ],
+      "states": 5,
+      "read": 0.9667
+    },
+    {
+      "slots": 1,
+      "values": 2,
+      "actions": 5,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "dec",
+        "noop"
+      ],
+      "states": 2,
+      "read": 1.0
+    },
+    {
+      "slots": 2,
+      "values": 6,
+      "actions": 5,
+      "space": "product",
+      "ops": [
+        "cinc",
+        "inc",
+        "noop",
+        "swap"
+      ],
+      "states": 36,
+      "read": 1.0
+    },
+    {
+      "slots": 6,
+      "values": 2,
+      "actions": 3,
+      "space": "product",
+      "ops": [
+        "inc",
+        "noop"
+      ],
+      "states": 64,
+      "read": 1.0
+    },
+    {
+      "slots": 1,
+      "values": 2,
+      "actions": 5,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "inc",
+        "noop"
+      ],
+      "states": 2,
+      "read": 1.0
+    },
+    {
+      "slots": 3,
+      "values": 6,
+      "actions": 6,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "cinc",
+        "dec",
+        "inc",
+        "swap"
+      ],
+      "states": 216,
+      "read": 0.8812
+    },
+    {
+      "slots": 4,
+      "values": 4,
+      "actions": 6,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "cinc",
+        "dec",
+        "inc",
+        "noop"
+      ],
+      "states": 256,
+      "read": 0.8665
+    },
+    {
+      "slots": 4,
+      "values": 2,
+      "actions": 3,
+      "space": "product",
+      "ops": [
+        "cinc",
+        "dec",
+        "noop"
+      ],
+      "states": 16,
+      "read": 1.0
+    },
+    {
+      "slots": 2,
+      "values": 2,
+      "actions": 4,
+      "space": "product",
+      "ops": [
+        "inc",
+        "noop",
+        "swap"
+      ],
+      "states": 4,
+      "read": 1.0
+    },
+    {
+      "slots": 1,
+      "values": 2,
+      "actions": 3,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "inc"
+      ],
+      "states": 2,
+      "read": 1.0
+    },
+    {
+      "slots": 3,
+      "values": 4,
+      "actions": 4,
+      "space": "product",
+      "ops": [
+        "cinc",
+        "inc",
+        "noop"
+      ],
+      "states": 64,
+      "read": 1.0
+    },
+    {
+      "slots": 6,
+      "values": 2,
+      "actions": 5,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "cinc",
+        "dec",
+        "noop"
+      ],
+      "states": 64,
+      "read": 1.0
+    },
+    {
+      "slots": 4,
+      "values": 4,
+      "actions": 4,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "inc",
+        "swap"
+      ],
+      "states": 256,
+      "read": 1.0
+    },
+    {
+      "slots": 5,
+      "values": 2,
+      "actions": 3,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "cinc",
+        "dec"
+      ],
+      "states": 32,
+      "read": 1.0
+    },
+    {
+      "slots": 2,
+      "values": 6,
+      "actions": 3,
+      "space": "product",
+      "ops": [
+        "noop",
+        "swap"
+      ],
+      "states": 36,
+      "read": 0.9907
+    },
+    {
+      "slots": 1,
+      "values": 6,
+      "actions": 5,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "dec",
+        "inc",
+        "noop"
+      ],
+      "states": 6,
+      "read": 1.0
+    },
+    {
+      "slots": 6,
+      "values": 2,
+      "actions": 5,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "dec",
+        "inc",
+        "swap"
+      ],
+      "states": 64,
+      "read": 1.0
+    },
+    {
+      "slots": 3,
+      "values": 7,
+      "actions": 6,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "cinc",
+        "dec",
+        "swap"
+      ],
+      "states": 343,
+      "read": 0.8673
+    },
+    {
+      "slots": 5,
+      "values": 2,
+      "actions": 2,
+      "space": "product",
+      "ops": [
+        "dec"
+      ],
+      "states": 32,
+      "read": 1.0
+    },
+    {
+      "slots": 2,
+      "values": 8,
+      "actions": 4,
+      "space": "product",
+      "ops": [
+        "cinc",
+        "dec",
+        "inc",
+        "noop"
+      ],
+      "states": 64,
+      "read": 0.9961
+    }
+  ],
+  "novel_in_support": {
+    "count": 87,
+    "read_accuracy": 0.9591,
+    "read_cost": 0,
+    "mastered_by_reading": 61,
+    "finetune_cost": 33.0,
+    "cold_cost": 61.5
+  },
+  "withheld_bank": {
+    "novel_in_support": 0.315,
+    "hand_made": {
+      "line": 0.25,
+      "dial": 0.0345,
+      "toggle": 0.0,
+      "perm": 0.0
+    }
+  },
+  "wrong_context": {
+    "line": 0.0625,
+    "dial": 0.0238,
+    "toggle": 0.25,
+    "perm": 0.0
+  },
+  "retention_delta": {
+    "line": 0.0,
+    "dial": 0.0,
+    "toggle": 0.0,
+    "perm": 0.0
+  }
+}

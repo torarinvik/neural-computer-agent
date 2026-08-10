@@ -1,0 +1,487 @@
+{
+  "seed": 69317,
+  "film": false,
+  "wide": true,
+  "pool": 4096,
+  "context": 128,
+  "bank_tokens": 16,
+  "train_cost": 40000,
+  "scramble": false,
+  "random_plant": false,
+  "stop_at": 0.98,
+  "held_out": {
+    "line": {
+      "read_accuracy": 1.0,
+      "read_cost": 0,
+      "finetune_cost": 0,
+      "finetune_accuracy": 1.0,
+      "cold_cost": 25,
+      "cold_accuracy": 1.0
+    },
+    "dial": {
+      "read_accuracy": 0.7891,
+      "read_cost": 0,
+      "finetune_cost": 75,
+      "finetune_accuracy": 0.9925,
+      "cold_cost": 100,
+      "cold_accuracy": 1.0
+    },
+    "toggle": {
+      "read_accuracy": 1.0,
+      "read_cost": 0,
+      "finetune_cost": 0,
+      "finetune_accuracy": 1.0,
+      "cold_cost": 100,
+      "cold_accuracy": 0.987
+    },
+    "perm": {
+      "read_accuracy": 1.0,
+      "read_cost": 0,
+      "finetune_cost": 0,
+      "finetune_accuracy": 1.0,
+      "cold_cost": 100,
+      "cold_accuracy": 1.0
+    },
+    "grid": {
+      "read_accuracy": 1.0,
+      "read_cost": 0,
+      "finetune_cost": 0,
+      "finetune_accuracy": 1.0,
+      "cold_cost": 50,
+      "cold_accuracy": 1.0
+    },
+    "walled": {
+      "read_accuracy": 0.8945,
+      "read_cost": 0,
+      "finetune_cost": 450,
+      "finetune_accuracy": 0.9844,
+      "cold_cost": 100,
+      "cold_accuracy": 1.0
+    }
+  },
+  "in_distribution": 1.0,
+  "novel_detail": [
+    {
+      "slots": 5,
+      "values": 3,
+      "actions": 4,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "cinc",
+        "dec"
+      ],
+      "states": 243,
+      "read": 1.0
+    },
+    {
+      "slots": 3,
+      "values": 3,
+      "actions": 4,
+      "space": "perm",
+      "ops": [
+        "noop",
+        "swap"
+      ],
+      "states": 6,
+      "read": 1.0
+    },
+    {
+      "slots": 6,
+      "values": 2,
+      "actions": 4,
+      "space": "product",
+      "ops": [
+        "noop",
+        "swap"
+      ],
+      "states": 64,
+      "read": 1.0
+    },
+    {
+      "slots": 2,
+      "values": 5,
+      "actions": 4,
+      "space": "product",
+      "ops": [
+        "noop",
+        "swap"
+      ],
+      "states": 25,
+      "read": 1.0
+    },
+    {
+      "slots": 2,
+      "values": 2,
+      "actions": 2,
+      "space": "product",
+      "ops": [
+        "cinc",
+        "pair"
+      ],
+      "states": 4,
+      "read": 1.0
+    },
+    {
+      "slots": 6,
+      "values": 2,
+      "actions": 3,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "inc",
+        "noop"
+      ],
+      "states": 64,
+      "read": 1.0
+    },
+    {
+      "slots": 1,
+      "values": 7,
+      "actions": 6,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "cinc",
+        "inc",
+        "noop"
+      ],
+      "states": 7,
+      "read": 1.0
+    },
+    {
+      "slots": 3,
+      "values": 3,
+      "actions": 4,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "cinc",
+        "pair"
+      ],
+      "states": 27,
+      "read": 1.0
+    },
+    {
+      "slots": 4,
+      "values": 2,
+      "actions": 2,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "pair"
+      ],
+      "states": 16,
+      "read": 1.0
+    },
+    {
+      "slots": 3,
+      "values": 4,
+      "actions": 4,
+      "space": "product",
+      "ops": [
+        "dec",
+        "inc",
+        "noop",
+        "pair"
+      ],
+      "states": 64,
+      "read": 1.0
+    },
+    {
+      "slots": 6,
+      "values": 2,
+      "actions": 6,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "cinc",
+        "dec",
+        "inc",
+        "pair",
+        "swap"
+      ],
+      "states": 64,
+      "read": 1.0
+    },
+    {
+      "slots": 3,
+      "values": 2,
+      "actions": 4,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "noop",
+        "swap"
+      ],
+      "states": 8,
+      "read": 1.0
+    },
+    {
+      "slots": 2,
+      "values": 2,
+      "actions": 3,
+      "space": "product",
+      "ops": [
+        "cinc",
+        "pair",
+        "swap"
+      ],
+      "states": 4,
+      "read": 1.0
+    },
+    {
+      "slots": 2,
+      "values": 6,
+      "actions": 4,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "dec",
+        "noop"
+      ],
+      "states": 36,
+      "read": 1.0
+    },
+    {
+      "slots": 4,
+      "values": 3,
+      "actions": 2,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "dec"
+      ],
+      "states": 81,
+      "read": 1.0
+    },
+    {
+      "slots": 2,
+      "values": 8,
+      "actions": 2,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "noop"
+      ],
+      "states": 64,
+      "read": 1.0
+    },
+    {
+      "slots": 6,
+      "values": 2,
+      "actions": 4,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "cinc",
+        "inc",
+        "swap"
+      ],
+      "states": 64,
+      "read": 0.9453
+    },
+    {
+      "slots": 2,
+      "values": 8,
+      "actions": 3,
+      "space": "product",
+      "ops": [
+        "inc",
+        "pair",
+        "swap"
+      ],
+      "states": 64,
+      "read": 0.9688
+    },
+    {
+      "slots": 6,
+      "values": 2,
+      "actions": 2,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "pair"
+      ],
+      "states": 64,
+      "read": 1.0
+    },
+    {
+      "slots": 3,
+      "values": 3,
+      "actions": 2,
+      "space": "product",
+      "ops": [
+        "dec",
+        "inc"
+      ],
+      "states": 27,
+      "read": 1.0
+    },
+    {
+      "slots": 4,
+      "values": 4,
+      "actions": 5,
+      "space": "perm",
+      "ops": [
+        "noop",
+        "swap"
+      ],
+      "states": 24,
+      "read": 1.0
+    },
+    {
+      "slots": 4,
+      "values": 4,
+      "actions": 6,
+      "space": "perm",
+      "ops": [
+        "noop",
+        "swap"
+      ],
+      "states": 24,
+      "read": 1.0
+    },
+    {
+      "slots": 2,
+      "values": 2,
+      "actions": 3,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "inc",
+        "swap"
+      ],
+      "states": 4,
+      "read": 1.0
+    },
+    {
+      "slots": 1,
+      "values": 3,
+      "actions": 6,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "dec",
+        "inc",
+        "noop"
+      ],
+      "states": 3,
+      "read": 1.0
+    },
+    {
+      "slots": 2,
+      "values": 3,
+      "actions": 4,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "dec",
+        "pair",
+        "swap"
+      ],
+      "states": 9,
+      "read": 1.0
+    },
+    {
+      "slots": 4,
+      "values": 2,
+      "actions": 5,
+      "space": "product",
+      "ops": [
+        "cinc",
+        "dec",
+        "inc",
+        "pair",
+        "swap"
+      ],
+      "states": 16,
+      "read": 1.0
+    },
+    {
+      "slots": 1,
+      "values": 4,
+      "actions": 4,
+      "space": "product",
+      "ops": [
+        "dec",
+        "inc",
+        "noop"
+      ],
+      "states": 4,
+      "read": 1.0
+    },
+    {
+      "slots": 6,
+      "values": 2,
+      "actions": 4,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "inc",
+        "pair",
+        "swap"
+      ],
+      "states": 64,
+      "read": 1.0
+    },
+    {
+      "slots": 4,
+      "values": 3,
+      "actions": 6,
+      "space": "product",
+      "ops": [
+        "cinc",
+        "dec",
+        "inc",
+        "noop",
+        "pair"
+      ],
+      "states": 81,
+      "read": 1.0
+    }
+  ],
+  "novel_in_support": {
+    "count": 29,
+    "read_accuracy": 0.997,
+    "read_cost": 0,
+    "mastered_by_reading": 27,
+    "finetune_cost": 1.7,
+    "cold_cost": 53.4
+  },
+  "withheld_bank": {
+    "novel_in_support": 0.143,
+    "hand_made": {
+      "line": 0.25,
+      "dial": 0.1035,
+      "toggle": 0.0,
+      "perm": 0.0,
+      "grid": 0.2227,
+      "walled": 0.2227
+    }
+  },
+  "wrong_context": {
+    "line": 0.0938,
+    "dial": 0.1081,
+    "toggle": 0.0312,
+    "perm": 0.0833,
+    "grid": 0.0752,
+    "walled": 0.1192
+  },
+  "wrong_context_neighbour": {
+    "line": 0.0,
+    "dial": 0.0,
+    "toggle": 0.2188,
+    "perm": 0.0,
+    "grid": 1.0,
+    "walled": 0.2422
+  },
+  "retention_delta": {
+    "line": 0.0,
+    "dial": 0.0,
+    "toggle": 0.0,
+    "perm": 0.0,
+    "grid": 0.0,
+    "walled": 0.0
+  }
+}

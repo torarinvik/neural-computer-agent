@@ -1,0 +1,102 @@
+{
+  "seed": 69316,
+  "arity": 3,
+  "train_pairings": [
+    [
+      0,
+      0
+    ],
+    [
+      0,
+      1
+    ],
+    [
+      0,
+      2
+    ],
+    [
+      1,
+      1
+    ],
+    [
+      2,
+      0
+    ],
+    [
+      2,
+      2
+    ]
+  ],
+  "held_out_pairings": [
+    [
+      2,
+      1
+    ],
+    [
+      1,
+      2
+    ],
+    [
+      1,
+      0
+    ]
+  ],
+  "random_plant": false,
+  "chance": 0.25,
+  "held_out": {
+    "21": {
+      "choice_accuracy": 0.4883,
+      "mean_reward": 0.3859
+    },
+    "12": {
+      "choice_accuracy": 0.5283,
+      "mean_reward": 0.434
+    },
+    "10": {
+      "choice_accuracy": 0.5576,
+      "mean_reward": 0.4691
+    }
+  },
+  "trained": {
+    "00": {
+      "choice_accuracy": 1.0,
+      "mean_reward": 1.0
+    },
+    "01": {
+      "choice_accuracy": 1.0,
+      "mean_reward": 1.0
+    },
+    "02": {
+      "choice_accuracy": 1.0,
+      "mean_reward": 1.0
+    }
+  },
+  "withheld_entry": {
+    "21": {
+      "choice_accuracy": 0.7832,
+      "mean_reward": 0.7398
+    },
+    "12": {
+      "choice_accuracy": 0.0,
+      "mean_reward": -0.2
+    },
+    "10": {
+      "choice_accuracy": 0.1733,
+      "mean_reward": 0.008
+    }
+  },
+  "stranger_entry": {
+    "21": {
+      "choice_accuracy": 0.0,
+      "mean_reward": -0.2
+    },
+    "12": {
+      "choice_accuracy": 0.0,
+      "mean_reward": -0.2
+    },
+    "10": {
+      "choice_accuracy": 0.0,
+      "mean_reward": -0.2
+    }
+  }
+}

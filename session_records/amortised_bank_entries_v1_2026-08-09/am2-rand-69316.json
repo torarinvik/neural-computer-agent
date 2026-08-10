@@ -1,0 +1,65 @@
+{
+  "seed": 69316,
+  "pool": 256,
+  "context": 128,
+  "bank_tokens": 16,
+  "train_cost": 0,
+  "scramble": false,
+  "random_plant": true,
+  "stop_at": 0.98,
+  "held_out": {
+    "line": {
+      "read_accuracy": 0.1875,
+      "read_cost": 0,
+      "finetune_cost": 600,
+      "finetune_accuracy": 0.375,
+      "cold_cost": 25,
+      "cold_accuracy": 1.0
+    },
+    "dial": {
+      "read_accuracy": 0.0026,
+      "read_cost": 0,
+      "finetune_cost": 600,
+      "finetune_accuracy": 0.0042,
+      "cold_cost": 75,
+      "cold_accuracy": 0.986
+    },
+    "toggle": {
+      "read_accuracy": 0.0026,
+      "read_cost": 0,
+      "finetune_cost": 600,
+      "finetune_accuracy": 0.0052,
+      "cold_cost": 125,
+      "cold_accuracy": 0.9896
+    },
+    "perm": {
+      "read_accuracy": 0.0,
+      "read_cost": 0,
+      "finetune_cost": 600,
+      "finetune_accuracy": 0.0,
+      "cold_cost": 50,
+      "cold_accuracy": 1.0
+    }
+  },
+  "in_distribution": 0.0395,
+  "novel_in_support": {
+    "count": 16,
+    "read_accuracy": 0.0259,
+    "read_cost": 0,
+    "mastered_by_reading": 0,
+    "finetune_cost": 600.0,
+    "cold_cost": 40.6
+  },
+  "wrong_context": {
+    "line": 0.1875,
+    "dial": 0.0026,
+    "toggle": 0.0026,
+    "perm": 0.0
+  },
+  "retention_delta": {
+    "line": 0.0,
+    "dial": 0.0,
+    "toggle": 0.0,
+    "perm": 0.0
+  }
+}

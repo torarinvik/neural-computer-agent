@@ -1,0 +1,129 @@
+{
+  "seed": 69318,
+  "order": [
+    "line",
+    "dial",
+    "toggle",
+    "perm"
+  ],
+  "scramble": false,
+  "stop_at": 0.98,
+  "budget": 600,
+  "floors": {
+    "line": {
+      "reach": 0.4062,
+      "path_ratio": 2.1154
+    },
+    "dial": {
+      "reach": 0.0,
+      "path_ratio": null
+    },
+    "toggle": {
+      "reach": 0.0938,
+      "path_ratio": 1.3889
+    },
+    "perm": {
+      "reach": 0.125,
+      "path_ratio": 1.375
+    }
+  },
+  "copy_baseline": {
+    "line": 0.125,
+    "dial": 0.6667,
+    "toggle": 0.6944,
+    "perm": 0.5
+  },
+  "steps": 8,
+  "cold": [
+    {
+      "family": "line",
+      "cost": 25,
+      "accuracy": 1.0,
+      "slots_fresh": 0.0625,
+      "reach": 1.0,
+      "path_ratio": 1.0
+    },
+    {
+      "family": "dial",
+      "cost": 75,
+      "accuracy": 0.9906,
+      "slots_fresh": 0.1013,
+      "reach": 1.0,
+      "path_ratio": 1.0
+    },
+    {
+      "family": "toggle",
+      "cost": 75,
+      "accuracy": 0.9896,
+      "slots_fresh": 0.1949,
+      "reach": 0.9688,
+      "path_ratio": 1.0
+    },
+    {
+      "family": "perm",
+      "cost": 75,
+      "accuracy": 1.0,
+      "slots_fresh": 0.1875,
+      "reach": 1.0,
+      "path_ratio": 1.0
+    }
+  ],
+  "warm": [
+    {
+      "family": "line",
+      "cost": 25,
+      "accuracy": 1.0,
+      "accuracy_before": 0.125,
+      "slots_before": 0.125,
+      "zero_shot": 0.625,
+      "reach": 1.0,
+      "path_ratio": 1.0
+    },
+    {
+      "family": "dial",
+      "cost": 100,
+      "accuracy": 0.9967,
+      "accuracy_before": 0.0039,
+      "slots_before": 0.1733,
+      "zero_shot": 0.0,
+      "reach": 1.0,
+      "path_ratio": 1.0
+    },
+    {
+      "family": "toggle",
+      "cost": 125,
+      "accuracy": 1.0,
+      "accuracy_before": 0.0,
+      "slots_before": 0.4036,
+      "zero_shot": 0.0312,
+      "reach": 1.0,
+      "path_ratio": 1.0
+    },
+    {
+      "family": "perm",
+      "cost": 150,
+      "accuracy": 1.0,
+      "accuracy_before": 0.0,
+      "slots_before": 0.3368,
+      "zero_shot": 0.125,
+      "reach": 1.0,
+      "path_ratio": 1.0
+    }
+  ],
+  "retention": {
+    "line": 0.125,
+    "dial": 0.0046,
+    "toggle": 0.0052,
+    "perm": 1.0
+  },
+  "retention_reach": {
+    "line": 0.4062,
+    "dial": 0.0,
+    "toggle": 0.0312,
+    "perm": 1.0
+  },
+  "totals": {
+    "cold": 250,
+    "warm": 400
+  }
+}

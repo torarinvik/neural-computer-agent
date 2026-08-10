@@ -1,0 +1,46 @@
+{
+ "seed": 69320,
+ "rung": "r4",
+ "warm_start": "",
+ "no_agent": {
+  "reach": 0.1719,
+  "path_ratio": 4.6778
+ },
+ "sequence": [
+  {
+   "rung": "r2",
+   "zero_shot": 0.4531,
+   "final": 0.9844,
+   "updates_to_mastery": 100,
+   "updates_spent": 100
+  },
+  {
+   "rung": "r3",
+   "zero_shot": 0.3906,
+   "final": 0.9219,
+   "updates_to_mastery": 300,
+   "updates_spent": 300
+  },
+  {
+   "rung": "r4",
+   "zero_shot": 0.4375,
+   "final": 0.5469,
+   "updates_to_mastery": null,
+   "updates_spent": 400
+  }
+ ],
+ "final": {
+  "rung": "r4",
+  "zero_shot": 0.4375,
+  "final": 0.5469,
+  "updates_to_mastery": null,
+  "updates_spent": 400
+ },
+ "updates_spent_total": 800,
+ "curve": [],
+ "updates_to_mastery": null,
+ "warm_updates_spent": 0,
+ "amortised_over_targets": 3,
+ "lifetime_updates": 1200,
+ "cost_per_target": 400.0
+}

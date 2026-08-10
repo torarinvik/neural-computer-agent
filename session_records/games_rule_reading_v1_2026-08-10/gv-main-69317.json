@@ -1,0 +1,207 @@
+{
+  "seed": 69317,
+  "mode": "variants",
+  "train_count": 38,
+  "held_out_count": 12,
+  "random_plant": false,
+  "held_out": {
+    "collect2+avoid1~": {
+      "reward": -0.0068,
+      "floor": -0.0171
+    },
+    "intercept2+avoid2": {
+      "reward": -0.0498,
+      "floor": -0.0483
+    },
+    "intercept1+avoid1~": {
+      "reward": -0.0288,
+      "floor": -0.0278
+    },
+    "collect2": {
+      "reward": 0.0063,
+      "floor": 0.0166
+    },
+    "collect2+avoid2": {
+      "reward": -0.001,
+      "floor": 0.0088
+    },
+    "intercept2": {
+      "reward": -0.0566,
+      "floor": -0.0488
+    },
+    "intercept1+navigate1": {
+      "reward": -0.0273,
+      "floor": -0.0273
+    },
+    "collect2+intercept1": {
+      "reward": -0.0225,
+      "floor": -0.02
+    },
+    "collect2~": {
+      "reward": -0.0063,
+      "floor": -0.0146
+    },
+    "avoid1~": {
+      "reward": -0.0015,
+      "floor": -0.0073
+    },
+    "collect1": {
+      "reward": 0.0024,
+      "floor": 0.0093
+    },
+    "intercept2~": {
+      "reward": -0.0566,
+      "floor": -0.0488
+    }
+  },
+  "trained": {
+    "collect1+navigate1~": {
+      "reward": -0.0029,
+      "floor": -0.0112
+    },
+    "avoid1+navigate1": {
+      "reward": -0.0034,
+      "floor": 0.0
+    },
+    "collect1+intercept1": {
+      "reward": -0.0273,
+      "floor": -0.0205
+    },
+    "intercept1~": {
+      "reward": -0.0278,
+      "floor": -0.0249
+    },
+    "avoid2+navigate1~": {
+      "reward": -0.0083,
+      "floor": -0.0176
+    },
+    "intercept2+avoid2~": {
+      "reward": -0.0498,
+      "floor": -0.0483
+    },
+    "collect1+avoid1": {
+      "reward": -0.002,
+      "floor": -0.0024
+    },
+    "collect2+intercept1~": {
+      "reward": -0.0278,
+      "floor": -0.0269
+    },
+    "intercept2+navigate1": {
+      "reward": -0.0483,
+      "floor": -0.0493
+    },
+    "intercept1+avoid2~": {
+      "reward": -0.0288,
+      "floor": -0.0293
+    },
+    "intercept1+navigate1~": {
+      "reward": -0.0293,
+      "floor": -0.0303
+    },
+    "avoid2": {
+      "reward": -0.0083,
+      "floor": -0.0146
+    }
+  },
+  "withheld_entry": {
+    "collect2+avoid1~": {
+      "reward": -0.0073,
+      "floor": -0.0171
+    },
+    "intercept2+avoid2": {
+      "reward": -0.0537,
+      "floor": -0.0483
+    },
+    "intercept1+avoid1~": {
+      "reward": -0.0288,
+      "floor": -0.0278
+    },
+    "collect2": {
+      "reward": 0.0054,
+      "floor": 0.0166
+    },
+    "collect2+avoid2": {
+      "reward": -0.0015,
+      "floor": 0.0088
+    },
+    "intercept2": {
+      "reward": -0.0532,
+      "floor": -0.0488
+    },
+    "intercept1+navigate1": {
+      "reward": -0.0273,
+      "floor": -0.0273
+    },
+    "collect2+intercept1": {
+      "reward": -0.0249,
+      "floor": -0.02
+    },
+    "collect2~": {
+      "reward": -0.0039,
+      "floor": -0.0146
+    },
+    "avoid1~": {
+      "reward": -0.0015,
+      "floor": -0.0073
+    },
+    "collect1": {
+      "reward": 0.002,
+      "floor": 0.0093
+    },
+    "intercept2~": {
+      "reward": -0.0532,
+      "floor": -0.0488
+    }
+  },
+  "stranger_entry": {
+    "collect2+avoid1~": {
+      "reward": -0.0083,
+      "floor": -0.0171
+    },
+    "intercept2+avoid2": {
+      "reward": -0.0498,
+      "floor": -0.0483
+    },
+    "intercept1+avoid1~": {
+      "reward": -0.0288,
+      "floor": -0.0278
+    },
+    "collect2": {
+      "reward": 0.0063,
+      "floor": 0.0166
+    },
+    "collect2+avoid2": {
+      "reward": -0.001,
+      "floor": 0.0088
+    },
+    "intercept2": {
+      "reward": -0.0508,
+      "floor": -0.0488
+    },
+    "intercept1+navigate1": {
+      "reward": -0.0273,
+      "floor": -0.0273
+    },
+    "collect2+intercept1": {
+      "reward": -0.0225,
+      "floor": -0.02
+    },
+    "collect2~": {
+      "reward": -0.0029,
+      "floor": -0.0146
+    },
+    "avoid1~": {
+      "reward": -0.0024,
+      "floor": -0.0073
+    },
+    "collect1": {
+      "reward": 0.0024,
+      "floor": 0.0093
+    },
+    "intercept2~": {
+      "reward": -0.0508,
+      "floor": -0.0488
+    }
+  }
+}

@@ -1,0 +1,207 @@
+{
+  "seed": 69316,
+  "mode": "variants",
+  "train_count": 38,
+  "held_out_count": 12,
+  "random_plant": false,
+  "held_out": {
+    "intercept1+avoid1~": {
+      "reward": -0.0288,
+      "floor": -0.0293
+    },
+    "intercept1~": {
+      "reward": -0.0283,
+      "floor": -0.0283
+    },
+    "intercept2": {
+      "reward": -0.0444,
+      "floor": -0.0469
+    },
+    "collect2+avoid1": {
+      "reward": 0.0034,
+      "floor": 0.0015
+    },
+    "avoid1+navigate1": {
+      "reward": -0.0049,
+      "floor": -0.0039
+    },
+    "collect2+avoid2~": {
+      "reward": -0.0059,
+      "floor": -0.0205
+    },
+    "collect2+avoid1~": {
+      "reward": -0.0049,
+      "floor": -0.0156
+    },
+    "intercept1+avoid2~": {
+      "reward": -0.0273,
+      "floor": -0.0288
+    },
+    "collect2+intercept1": {
+      "reward": -0.0264,
+      "floor": -0.0249
+    },
+    "avoid2~": {
+      "reward": -0.0049,
+      "floor": -0.0142
+    },
+    "avoid1+navigate1~": {
+      "reward": -0.0073,
+      "floor": -0.0132
+    },
+    "collect2+intercept2~": {
+      "reward": -0.0483,
+      "floor": -0.0454
+    }
+  },
+  "trained": {
+    "collect1+intercept1": {
+      "reward": -0.022,
+      "floor": -0.0244
+    },
+    "collect2+intercept2": {
+      "reward": -0.0469,
+      "floor": -0.0405
+    },
+    "collect2+navigate1": {
+      "reward": 0.0024,
+      "floor": 0.0259
+    },
+    "collect2": {
+      "reward": 0.0029,
+      "floor": 0.0156
+    },
+    "intercept2+navigate1": {
+      "reward": -0.0527,
+      "floor": -0.0522
+    },
+    "collect1+intercept1~": {
+      "reward": -0.0269,
+      "floor": -0.0283
+    },
+    "intercept2+avoid1": {
+      "reward": -0.0469,
+      "floor": -0.0474
+    },
+    "collect1+navigate1": {
+      "reward": 0.0024,
+      "floor": 0.0137
+    },
+    "collect2+avoid2": {
+      "reward": -0.0015,
+      "floor": 0.001
+    },
+    "collect2+intercept1~": {
+      "reward": -0.0298,
+      "floor": -0.0264
+    },
+    "collect1+avoid1~": {
+      "reward": -0.0059,
+      "floor": -0.0132
+    },
+    "avoid1~": {
+      "reward": -0.0024,
+      "floor": -0.0078
+    }
+  },
+  "withheld_entry": {
+    "intercept1+avoid1~": {
+      "reward": -0.0298,
+      "floor": -0.0293
+    },
+    "intercept1~": {
+      "reward": -0.0303,
+      "floor": -0.0283
+    },
+    "intercept2": {
+      "reward": -0.0518,
+      "floor": -0.0469
+    },
+    "collect2+avoid1": {
+      "reward": -0.0005,
+      "floor": 0.0015
+    },
+    "avoid1+navigate1": {
+      "reward": -0.002,
+      "floor": -0.0039
+    },
+    "collect2+avoid2~": {
+      "reward": -0.0176,
+      "floor": -0.0205
+    },
+    "collect2+avoid1~": {
+      "reward": -0.0122,
+      "floor": -0.0156
+    },
+    "intercept1+avoid2~": {
+      "reward": -0.0269,
+      "floor": -0.0288
+    },
+    "collect2+intercept1": {
+      "reward": -0.021,
+      "floor": -0.0249
+    },
+    "avoid2~": {
+      "reward": -0.0142,
+      "floor": -0.0142
+    },
+    "avoid1+navigate1~": {
+      "reward": -0.0039,
+      "floor": -0.0132
+    },
+    "collect2+intercept2~": {
+      "reward": -0.0488,
+      "floor": -0.0454
+    }
+  },
+  "stranger_entry": {
+    "intercept1+avoid1~": {
+      "reward": -0.0293,
+      "floor": -0.0293
+    },
+    "intercept1~": {
+      "reward": -0.0283,
+      "floor": -0.0283
+    },
+    "intercept2": {
+      "reward": -0.0435,
+      "floor": -0.0469
+    },
+    "collect2+avoid1": {
+      "reward": 0.002,
+      "floor": 0.0015
+    },
+    "avoid1+navigate1": {
+      "reward": -0.0044,
+      "floor": -0.0039
+    },
+    "collect2+avoid2~": {
+      "reward": -0.0107,
+      "floor": -0.0205
+    },
+    "collect2+avoid1~": {
+      "reward": -0.0063,
+      "floor": -0.0156
+    },
+    "intercept1+avoid2~": {
+      "reward": -0.0293,
+      "floor": -0.0288
+    },
+    "collect2+intercept1": {
+      "reward": -0.0259,
+      "floor": -0.0249
+    },
+    "avoid2~": {
+      "reward": -0.0039,
+      "floor": -0.0142
+    },
+    "avoid1+navigate1~": {
+      "reward": -0.0054,
+      "floor": -0.0132
+    },
+    "collect2+intercept2~": {
+      "reward": -0.0474,
+      "floor": -0.0454
+    }
+  }
+}

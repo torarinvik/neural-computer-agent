@@ -1,0 +1,503 @@
+{
+  "seed": 69316,
+  "film": false,
+  "wide": true,
+  "pool": 4096,
+  "context": 128,
+  "bank_tokens": 16,
+  "train_cost": 40000,
+  "scramble": false,
+  "random_plant": false,
+  "stop_at": 0.98,
+  "held_out": {
+    "line": {
+      "read_accuracy": 0.9375,
+      "read_cost": 0,
+      "finetune_cost": 25,
+      "finetune_accuracy": 1.0,
+      "cold_cost": 25,
+      "cold_accuracy": 1.0
+    },
+    "dial": {
+      "read_accuracy": 0.6862,
+      "read_cost": 0,
+      "finetune_cost": 150,
+      "finetune_accuracy": 0.9925,
+      "cold_cost": 75,
+      "cold_accuracy": 0.9909
+    },
+    "toggle": {
+      "read_accuracy": 0.8464,
+      "read_cost": 0,
+      "finetune_cost": 25,
+      "finetune_accuracy": 1.0,
+      "cold_cost": 100,
+      "cold_accuracy": 0.9922
+    },
+    "perm": {
+      "read_accuracy": 1.0,
+      "read_cost": 0,
+      "finetune_cost": 0,
+      "finetune_accuracy": 1.0,
+      "cold_cost": 50,
+      "cold_accuracy": 1.0
+    },
+    "grid": {
+      "read_accuracy": 0.9648,
+      "read_cost": 0,
+      "finetune_cost": 50,
+      "finetune_accuracy": 0.9961,
+      "cold_cost": 50,
+      "cold_accuracy": 0.9961
+    },
+    "walled": {
+      "read_accuracy": 0.7031,
+      "read_cost": 0,
+      "finetune_cost": 600,
+      "finetune_accuracy": 0.957,
+      "cold_cost": 75,
+      "cold_accuracy": 0.9922
+    }
+  },
+  "in_distribution": 0.9709,
+  "novel_detail": [
+    {
+      "slots": 2,
+      "values": 5,
+      "actions": 2,
+      "space": "product",
+      "ops": [
+        "swap"
+      ],
+      "states": 25,
+      "read": 1.0
+    },
+    {
+      "slots": 6,
+      "values": 2,
+      "actions": 5,
+      "space": "product",
+      "ops": [
+        "noop",
+        "swap",
+        "wall"
+      ],
+      "states": 64,
+      "read": 1.0
+    },
+    {
+      "slots": 1,
+      "values": 4,
+      "actions": 3,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "dec",
+        "noop"
+      ],
+      "states": 4,
+      "read": 1.0
+    },
+    {
+      "slots": 6,
+      "values": 2,
+      "actions": 4,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "dec",
+        "inc",
+        "wall"
+      ],
+      "states": 64,
+      "read": 1.0
+    },
+    {
+      "slots": 2,
+      "values": 6,
+      "actions": 3,
+      "space": "product",
+      "ops": [
+        "cond",
+        "dec",
+        "noop"
+      ],
+      "states": 36,
+      "read": 0.9907
+    },
+    {
+      "slots": 4,
+      "values": 3,
+      "actions": 5,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "dec",
+        "noop",
+        "pair",
+        "wall"
+      ],
+      "states": 81,
+      "read": 0.9728
+    },
+    {
+      "slots": 5,
+      "values": 2,
+      "actions": 5,
+      "space": "product",
+      "ops": [
+        "cinc",
+        "dec",
+        "inc",
+        "swap"
+      ],
+      "states": 32,
+      "read": 1.0
+    },
+    {
+      "slots": 3,
+      "values": 3,
+      "actions": 5,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "dec",
+        "noop"
+      ],
+      "states": 27,
+      "read": 1.0
+    },
+    {
+      "slots": 4,
+      "values": 4,
+      "actions": 6,
+      "space": "product",
+      "ops": [
+        "cinc",
+        "dec",
+        "inc",
+        "noop",
+        "swap",
+        "wall"
+      ],
+      "states": 256,
+      "read": 0.9915
+    },
+    {
+      "slots": 1,
+      "values": 6,
+      "actions": 6,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "cinc",
+        "dec",
+        "inc"
+      ],
+      "states": 6,
+      "read": 0.9722
+    },
+    {
+      "slots": 5,
+      "values": 2,
+      "actions": 2,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "swap"
+      ],
+      "states": 32,
+      "read": 1.0
+    },
+    {
+      "slots": 3,
+      "values": 8,
+      "actions": 3,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "cinc",
+        "swap"
+      ],
+      "states": 512,
+      "read": 0.9837
+    },
+    {
+      "slots": 6,
+      "values": 2,
+      "actions": 4,
+      "space": "product",
+      "ops": [
+        "noop",
+        "swap",
+        "wall"
+      ],
+      "states": 64,
+      "read": 0.8555
+    },
+    {
+      "slots": 3,
+      "values": 4,
+      "actions": 2,
+      "space": "product",
+      "ops": [
+        "cinc",
+        "cond"
+      ],
+      "states": 64,
+      "read": 0.9062
+    },
+    {
+      "slots": 6,
+      "values": 2,
+      "actions": 2,
+      "space": "product",
+      "ops": [
+        "cond",
+        "pair"
+      ],
+      "states": 64,
+      "read": 0.875
+    },
+    {
+      "slots": 6,
+      "values": 2,
+      "actions": 3,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "cinc",
+        "dec"
+      ],
+      "states": 64,
+      "read": 1.0
+    },
+    {
+      "slots": 1,
+      "values": 5,
+      "actions": 5,
+      "space": "product",
+      "ops": [
+        "cinc",
+        "dec",
+        "noop"
+      ],
+      "states": 5,
+      "read": 1.0
+    },
+    {
+      "slots": 1,
+      "values": 6,
+      "actions": 5,
+      "space": "product",
+      "ops": [
+        "cinc",
+        "inc",
+        "noop"
+      ],
+      "states": 6,
+      "read": 0.9333
+    },
+    {
+      "slots": 5,
+      "values": 2,
+      "actions": 3,
+      "space": "product",
+      "ops": [
+        "cinc",
+        "dec"
+      ],
+      "states": 32,
+      "read": 1.0
+    },
+    {
+      "slots": 3,
+      "values": 7,
+      "actions": 3,
+      "space": "product",
+      "ops": [
+        "inc",
+        "noop"
+      ],
+      "states": 343,
+      "read": 0.895
+    },
+    {
+      "slots": 2,
+      "values": 3,
+      "actions": 3,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "cinc",
+        "cond"
+      ],
+      "states": 9,
+      "read": 1.0
+    },
+    {
+      "slots": 1,
+      "values": 4,
+      "actions": 6,
+      "space": "product",
+      "ops": [
+        "cinc",
+        "dec",
+        "inc",
+        "wall"
+      ],
+      "states": 4,
+      "read": 0.9583
+    },
+    {
+      "slots": 5,
+      "values": 3,
+      "actions": 4,
+      "space": "product",
+      "ops": [
+        "cinc",
+        "pair",
+        "swap"
+      ],
+      "states": 243,
+      "read": 1.0
+    },
+    {
+      "slots": 6,
+      "values": 2,
+      "actions": 3,
+      "space": "product",
+      "ops": [
+        "cinc",
+        "inc",
+        "pair"
+      ],
+      "states": 64,
+      "read": 0.9219
+    },
+    {
+      "slots": 3,
+      "values": 5,
+      "actions": 4,
+      "space": "product",
+      "ops": [
+        "dec",
+        "noop",
+        "pair",
+        "swap"
+      ],
+      "states": 125,
+      "read": 0.95
+    },
+    {
+      "slots": 3,
+      "values": 3,
+      "actions": 5,
+      "space": "product",
+      "ops": [
+        "dec",
+        "inc",
+        "pair",
+        "swap"
+      ],
+      "states": 27,
+      "read": 0.9407
+    },
+    {
+      "slots": 2,
+      "values": 5,
+      "actions": 6,
+      "space": "product",
+      "ops": [
+        "cdec",
+        "cond",
+        "dec",
+        "noop",
+        "wall"
+      ],
+      "states": 25,
+      "read": 0.9733
+    },
+    {
+      "slots": 5,
+      "values": 3,
+      "actions": 2,
+      "space": "product",
+      "ops": [
+        "cond",
+        "noop"
+      ],
+      "states": 243,
+      "read": 0.9403
+    },
+    {
+      "slots": 5,
+      "values": 3,
+      "actions": 2,
+      "space": "product",
+      "ops": [
+        "cond",
+        "dec"
+      ],
+      "states": 243,
+      "read": 0.8889
+    },
+    {
+      "slots": 3,
+      "values": 5,
+      "actions": 6,
+      "space": "product",
+      "ops": [
+        "cond",
+        "pair",
+        "swap",
+        "wall"
+      ],
+      "states": 125,
+      "read": 0.8987
+    }
+  ],
+  "novel_in_support": {
+    "count": 30,
+    "read_accuracy": 0.9616,
+    "read_cost": 0,
+    "mastered_by_reading": 15,
+    "finetune_cost": 32.5,
+    "cold_cost": 58.3
+  },
+  "withheld_bank": {
+    "novel_in_support": 0.3446,
+    "hand_made": {
+      "line": 0.1875,
+      "dial": 0.0199,
+      "toggle": 0.0,
+      "perm": 0.0,
+      "grid": 0.1914,
+      "walled": 0.2578
+    }
+  },
+  "wrong_context": {
+    "line": 0.1875,
+    "dial": 0.0181,
+    "toggle": 0.0091,
+    "perm": 0.0,
+    "grid": 0.1084,
+    "walled": 0.1553
+  },
+  "wrong_context_neighbour": {
+    "line": 0.0625,
+    "dial": 0.0042,
+    "toggle": 0.25,
+    "perm": 0.0,
+    "grid": 0.7461,
+    "walled": 0.418
+  },
+  "retention_delta": {
+    "line": 0.0,
+    "dial": 0.0,
+    "toggle": 0.0,
+    "perm": 0.0,
+    "grid": 0.0,
+    "walled": 0.0
+  }
+}

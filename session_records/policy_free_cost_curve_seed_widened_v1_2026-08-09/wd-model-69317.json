@@ -1,0 +1,74 @@
+{
+ "seed": 69317,
+ "rung": "r4",
+ "warm_start": "",
+ "no_agent": {
+  "reach": 0.1562,
+  "path_ratio": 3.1604
+ },
+ "model_accuracy": {
+  "r4": 1.0
+ },
+ "model_sources": [
+  "r4"
+ ],
+ "policy_free_reach": 0.9375,
+ "model_sequence": [
+  {
+   "rung": "r2",
+   "zero_shot": 0.5625,
+   "after": 1.0,
+   "model_updates": 50
+  },
+  {
+   "rung": "r3",
+   "zero_shot": 0.4688,
+   "after": 0.9062,
+   "model_updates": 150
+  },
+  {
+   "rung": "r4",
+   "zero_shot": 0.5,
+   "after": 0.875,
+   "model_updates": 25
+  }
+ ],
+ "model_updates_total": 225,
+ "sequence": [
+  {
+   "rung": "r2",
+   "zero_shot": 0.5,
+   "final": 0.9688,
+   "updates_to_mastery": 100,
+   "updates_spent": 400
+  },
+  {
+   "rung": "r3",
+   "zero_shot": 0.0469,
+   "final": 0.8438,
+   "updates_to_mastery": null,
+   "updates_spent": 400
+  },
+  {
+   "rung": "r4",
+   "zero_shot": 0.4844,
+   "final": 0.5312,
+   "updates_to_mastery": null,
+   "updates_spent": 400
+  }
+ ],
+ "final": {
+  "rung": "r4",
+  "zero_shot": 0.4844,
+  "final": 0.5312,
+  "updates_to_mastery": null,
+  "updates_spent": 400
+ },
+ "updates_spent_total": 1200,
+ "curve": [],
+ "updates_to_mastery": null,
+ "warm_updates_spent": 0,
+ "amortised_over_targets": 3,
+ "lifetime_updates": 1200,
+ "cost_per_target": 400.0
+}

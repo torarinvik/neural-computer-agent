@@ -1,0 +1,258 @@
+{
+  "seed": 69317,
+  "train_count": 42,
+  "held_out_count": 12,
+  "random_plant": false,
+  "depth": 4,
+  "beam": 4,
+  "held_out": {
+    "f1p4r4": {
+      "reward": -0.0542,
+      "floor": -0.0386
+    },
+    "f1p4r4~": {
+      "reward": -0.0425,
+      "floor": -0.0581
+    },
+    "f2p4r3": {
+      "reward": -0.0619,
+      "floor": -0.0526
+    },
+    "f2p4r3~": {
+      "reward": -0.0307,
+      "floor": -0.0409
+    },
+    "f2p5r4": {
+      "reward": -0.0596,
+      "floor": -0.0318
+    },
+    "f2p5r4~": {
+      "reward": -0.0361,
+      "floor": -0.0631
+    },
+    "f3p5r2": {
+      "reward": -0.0676,
+      "floor": -0.0671
+    },
+    "f3p5r2~": {
+      "reward": -0.0185,
+      "floor": -0.0241
+    },
+    "f3p5r3": {
+      "reward": -0.0562,
+      "floor": -0.0446
+    },
+    "f3p5r3~": {
+      "reward": -0.0366,
+      "floor": -0.0485
+    },
+    "f3p5r4": {
+      "reward": -0.0473,
+      "floor": -0.0413
+    },
+    "f3p5r4~": {
+      "reward": -0.0473,
+      "floor": -0.053
+    }
+  },
+  "trained": {
+    "f1p3r2": {
+      "reward": -0.0658,
+      "floor": -0.0367
+    },
+    "f1p3r2~": {
+      "reward": -0.021,
+      "floor": -0.0523
+    },
+    "f1p3r3": {
+      "reward": -0.0514,
+      "floor": -0.0722
+    },
+    "f1p3r3~": {
+      "reward": -0.0436,
+      "floor": -0.0214
+    },
+    "f1p3r4": {
+      "reward": -0.052,
+      "floor": -0.0482
+    },
+    "f1p3r4~": {
+      "reward": -0.0322,
+      "floor": -0.0482
+    },
+    "f1p4r2": {
+      "reward": -0.0604,
+      "floor": -0.0412
+    },
+    "f1p4r2~": {
+      "reward": -0.037,
+      "floor": -0.049
+    },
+    "f1p4r3": {
+      "reward": -0.06,
+      "floor": -0.0662
+    },
+    "f1p4r3~": {
+      "reward": -0.0365,
+      "floor": -0.0271
+    },
+    "f1p5r2": {
+      "reward": -0.0744,
+      "floor": -0.0414
+    },
+    "f1p5r2~": {
+      "reward": -0.0197,
+      "floor": -0.0492
+    }
+  },
+  "withheld_entry": {
+    "f1p4r4": {
+      "reward": -0.0566,
+      "floor": -0.0386
+    },
+    "f1p4r4~": {
+      "reward": -0.041,
+      "floor": -0.0581
+    },
+    "f2p4r3": {
+      "reward": -0.0641,
+      "floor": -0.0526
+    },
+    "f2p4r3~": {
+      "reward": -0.0328,
+      "floor": -0.0409
+    },
+    "f2p5r4": {
+      "reward": -0.062,
+      "floor": -0.0318
+    },
+    "f2p5r4~": {
+      "reward": -0.0347,
+      "floor": -0.0631
+    },
+    "f3p5r2": {
+      "reward": -0.081,
+      "floor": -0.0671
+    },
+    "f3p5r2~": {
+      "reward": -0.0067,
+      "floor": -0.0241
+    },
+    "f3p5r3": {
+      "reward": -0.0524,
+      "floor": -0.0446
+    },
+    "f3p5r3~": {
+      "reward": -0.0407,
+      "floor": -0.0485
+    },
+    "f3p5r4": {
+      "reward": -0.0382,
+      "floor": -0.0413
+    },
+    "f3p5r4~": {
+      "reward": -0.0577,
+      "floor": -0.053
+    }
+  },
+  "stranger_entry": {
+    "f1p4r4": {
+      "reward": -0.0542,
+      "floor": -0.0386
+    },
+    "f1p4r4~": {
+      "reward": -0.0425,
+      "floor": -0.0581
+    },
+    "f2p4r3": {
+      "reward": -0.0619,
+      "floor": -0.0526
+    },
+    "f2p4r3~": {
+      "reward": -0.0307,
+      "floor": -0.0409
+    },
+    "f2p5r4": {
+      "reward": -0.0661,
+      "floor": -0.0318
+    },
+    "f2p5r4~": {
+      "reward": -0.0361,
+      "floor": -0.0631
+    },
+    "f3p5r2": {
+      "reward": -0.0692,
+      "floor": -0.0671
+    },
+    "f3p5r2~": {
+      "reward": -0.0185,
+      "floor": -0.0241
+    },
+    "f3p5r3": {
+      "reward": -0.0562,
+      "floor": -0.0446
+    },
+    "f3p5r3~": {
+      "reward": -0.0366,
+      "floor": -0.0485
+    },
+    "f3p5r4": {
+      "reward": -0.0473,
+      "floor": -0.0413
+    },
+    "f3p5r4~": {
+      "reward": -0.0473,
+      "floor": -0.053
+    }
+  },
+  "twin_entry": {
+    "f1p4r4": {
+      "reward": -0.0542,
+      "floor": -0.0386
+    },
+    "f1p4r4~": {
+      "reward": -0.0425,
+      "floor": -0.0581
+    },
+    "f2p4r3": {
+      "reward": -0.0619,
+      "floor": -0.0526
+    },
+    "f2p4r3~": {
+      "reward": -0.0307,
+      "floor": -0.0409
+    },
+    "f2p5r4": {
+      "reward": -0.0661,
+      "floor": -0.0318
+    },
+    "f2p5r4~": {
+      "reward": -0.0361,
+      "floor": -0.0631
+    },
+    "f3p5r2": {
+      "reward": -0.0692,
+      "floor": -0.0671
+    },
+    "f3p5r2~": {
+      "reward": -0.0185,
+      "floor": -0.0241
+    },
+    "f3p5r3": {
+      "reward": -0.0562,
+      "floor": -0.0446
+    },
+    "f3p5r3~": {
+      "reward": -0.0366,
+      "floor": -0.0485
+    },
+    "f3p5r4": {
+      "reward": -0.0473,
+      "floor": -0.0413
+    },
+    "f3p5r4~": {
+      "reward": -0.0473,
+      "floor": -0.053
+    }
+  }
+}

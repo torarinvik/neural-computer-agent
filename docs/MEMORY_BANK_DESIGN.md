@@ -2847,3 +2847,2322 @@ genuinely differ rather than nest.
 
 Probe 173 is `reacher_ladder.py --model-search --targets` with model
 early-stopping.
+
+**F70 (probe 174). F69's downward cost curve replicates on 5/5 seeds.**
+F69's honest scope note said the cost curve rested on one seed. Five
+seeds (69316-69320), two arms, identical three-rung sequence
+(r2 -> r3 -> r4), model arm charged what its dynamics model actually
+needed, policy arm charged updates spent:
+
+| arm | r2 | r3 | r4 | total |
+| --- | ---: | ---: | ---: | ---: |
+| policy cost | 100 | 260 | 400* | 760 |
+| **model cost** | **60** | **160** | **45** | **265** |
+| policy final reach | 0.944 | 0.850 | 0.444 | |
+| **model final reach** | **1.000** | **0.925** | **0.881** | |
+
+*policy r4 hit the 400-update budget cap on 5/5 seeds, so its cost is
+right-censored: the true figure is >= 400 and the 2.9x total-cost gap is
+a LOWER bound.
+
+**The shape holds on every seed individually, not just in the mean.**
+Model cost r2 -> r4 falls on 5/5 (50->50, 50->25, 50->50, 75->50,
+75->50); policy cost rises on 5/5 (100->400 every seed). Final r4 reach
+separates with no overlap: model 0.812-0.938, policy 0.234-0.547,
+no-agent floor 0.219. The hardest rung, arriving last, is the CHEAPEST
+of the three for the model arm (45 mean vs r3's 160) — the compounding
+signature, seed-robust.
+
+Correction to F69's scope note: the cost curve now has the same seed
+support as F67's transfer result. What remains unwidened is the FAMILY,
+not the seed. r2/r3/r4 nest (a line inside an open grid inside a walled
+grid), so a model of r4's dynamics contains r2's; the untested case is a
+family whose dynamics genuinely differ. Prediction, recorded before the
+experiment: a model meeting unfamiliar dynamics is INCOMPLETE and
+repairs by observation, while a policy meeting them is WRONG and must
+first unlearn — so the model arm should degrade gracefully where the
+policy arm degrades catastrophically. If instead the model arm collapses
+to cold-start cost on disjoint dynamics, the mechanism is nesting, not
+compounding, and F67-F70 are scoped to nested families only.
+
+Probe 174 is `reacher_ladder.py --model-search=10 --targets=r2,r3,r4
+--rung r4 --sparse --updates 400` x 5 seeds vs `--retrieval-first`.
+
+**F71 (probe 175). F67-F70 measured NESTING, not compounding. On
+families whose dynamics genuinely differ, catastrophic forgetting comes
+straight back — in the model.** The reacher ladder's rungs all live in
+one N*N state space and agree on every shared (cell, action) pair, so
+training on r4 REINFORCES r2 rather than overwriting it. "A model cannot
+hold a contradiction" was true but irrelevant: nothing was contradicted.
+
+`schema_family.py` removes the nesting. Four families share no surface —
+`line` (bounded position), `dial` (three counters mod 8, wrapping),
+`toggle` (six bits, XOR masks, self-inverse and abelian, nothing moves),
+`perm` (ordering of four items, adjacent swaps, non-abelian). Each
+occupies a different number of state slots, so the input identifies the
+family and no family nests in another. Learned sequentially by one
+model, 5 seeds, exhaustive accuracy over every (state, action) pair:
+
+| family | retained after the sequence | uniform chance |
+| --- | ---: | ---: |
+| line | 0.138 | 0.125 |
+| dial | 0.029 | 0.002 |
+| toggle | 0.080 | ~0 |
+| perm (last learned) | 0.997 | 0.0002 |
+
+`line` retains at exactly its chance floor. The model forgets as
+completely as any policy ever did.
+
+**The correction is sharper than "F68 was wrong."** Facts do not
+conflict; PARAMETERS do. The model/policy distinction (F67) is about
+what is STORED and it survives — a model never holds a wrong preference.
+Catastrophic forgetting is about WHERE it is stored, and a shared weight
+matrix overwrites regardless of content type. Fixing the content type
+does not fix the storage medium, and F67-F70 could not see this because
+nesting made every later gradient agree with every earlier one.
+
+This is the project's founding architectural claim arriving from
+measurement rather than assertion: skills — here, dynamics — must live
+in an external bank, not in weights. Eight consolidation mechanisms have
+already failed at making weights behave like a bank.
+
+**F72 (probe 175, same runs). No schema transfer. The cost saving is
+generic warm-up and the scramble control proves it.** Sequential vs
+cold, cost = updates actually spent to reach 0.98 dynamics accuracy:
+
+| arm | cold total | warm total | saving |
+| --- | ---: | ---: | ---: |
+| plain families | 660 | 590 | 70 (11%) |
+| **scrambled control** | 1445 | 1340 | **105 (7%)** |
+
+The scramble control replaces each family's dynamics with a random
+permutation of its own states — same sizes, same action counts, schema
+destroyed. It saves MORE in absolute terms than the real families do.
+Whatever the warm start buys, it is not structure. Per-seed the plain
+saving is +100/+75/+25/+75/+75 against scramble's +50/+125/+125/+100/+125.
+
+Cost also does not fall across the sequence (45 -> 315 -> 135 -> 95);
+it tracks state-space size, not position in the order.
+
+**Why, measured rather than guessed.** Slot-level accuracy (fraction of
+individual slots predicted right) against the copy-forward baseline —
+the trivial rule "next state = current state", which is the bulk of the
+shared schema:
+
+| family | fresh net | after prior families | copy baseline |
+| --- | ---: | ---: | ---: |
+| toggle | 0.083 | 0.329 | **0.694** |
+| perm | 0.110 | 0.378 | **0.500** |
+
+The warm model carries more than a fresh one (0.329 vs 0.083) but stays
+FAR BELOW the trivial copy rule. After training on `line` and `dial`,
+slots 3-5 have never once been active, so the model emits noise into
+them. It never learned "copy slot i forward" as a rule — it learned six
+unrelated per-slot mappings, because a dense layer gives every slot its
+own weights and nothing ties slot 5's behaviour to slot 0's.
+
+**That is bottom-up learning, stated mechanically.** The diagnosis
+implies its own fix, and the fix is an architectural constraint rather
+than another objective term: share weights ACROSS SLOTS, so a rule
+learned on one slot is automatically a rule about all slots.
+
+Prediction recorded BEFORE the run: a slot-symmetric model should push
+slot accuracy on an unseen family ABOVE the copy baseline and cut cost
+on later families materially, while the scrambled control gains nothing
+— random tables have no slot-symmetric structure to share. If the
+scramble control benefits equally again, weight sharing is also just
+warm-up and the top-down claim needs a different mechanism entirely.
+
+Probe 175 is `experiments/games_amodal/probes/schema_family.py`
+(`--scramble` for the control), 5 seeds.
+
+**F73 (probe 176). Top-down structure works, and the scramble control
+proves it is structure. A slot-symmetric plant learns every family
+2.36x cheaper.** F72 diagnosed the dense model as learning six
+unrelated per-slot mappings and never the copy-forward rule they share,
+because each slot owns a private stripe of weights. The fix is
+architectural: read the state as a set of slot tokens and share the
+value embedding, the per-slot MLP and the output head ACROSS slots, with
+positional embeddings keeping slots distinct and attention supplying
+cross-slot interaction. Nothing in it names a family.
+
+Cold cost to reach 0.98 dynamics accuracy, 5 seeds, mean:
+
+| family | dense | **slot-symmetric** | speedup |
+| --- | ---: | ---: | ---: |
+| line | 45 | **25** | 1.8x |
+| dial | 285 | **80** | 3.6x |
+| toggle | 205 | **95** | 2.2x |
+| perm | 125 | **80** | 1.6x |
+| total | 660 | **280** | **2.36x** |
+
+Per-seed totals do not overlap: dense 675/675/600/675/675 against slot
+275/300/250/275/300.
+
+**The causal gate.** Run the identical comparison on the scrambled
+control — same state spaces, same action counts, dynamics replaced by
+random permutations, schema destroyed:
+
+| dynamics | dense cold | slot cold | speedup |
+| --- | ---: | ---: | ---: |
+| real families | 660 | 280 | **2.36x** |
+| scrambled | 1445 | 1405 | **1.03x** |
+
+The advantage vanishes when the structure it exploits is removed. It is
+not a better optimiser, not more capacity, not warm-up: it is the
+architecture matching what the tasks actually share. This is the first
+measured instance in the project of top-down structure paying, and it is
+causally attributed rather than assumed.
+
+It also raises what a transferred model carries onto an unseen family:
+slot accuracy on `toggle` after training on `line` and `dial` rises from
+0.329 (dense) to 0.519 (slot), against a fresh-network 0.168.
+
+**F74 (probe 176, same runs). Structure in weights helps; CONTENT in
+weights still fails, and sharing makes the interference worse.** The
+same runs measured sequential learning, and the slot plant is WORSE than
+cold at it:
+
+| arch | dynamics | cold total | warm total | warm - cold |
+| --- | --- | ---: | ---: | ---: |
+| dense | real | 660 | 590 | -70 |
+| **slot** | real | **280** | **380** | **+100** |
+| dense | scrambled | 1445 | 1340 | -105 |
+| slot | scrambled | 1405 | 1685 | +280 |
+
+Retention after the full sequence stays at the chance floor for both
+(`line` 0.138 dense, 0.100 slot). Weight sharing raises transfer of
+STRUCTURE and raises interference over CONTENT at the same time, because
+it is the same weights doing both jobs.
+
+**This is the founding architecture, arrived at by measurement.** The
+project's premise — a fixed-size amodal plant whose skills live in an
+external growing bank — is exactly the split these two findings force:
+
+  * STRUCTURE is task-general, small, learned once, and belongs in the
+    plant's weights. F73 measures what it is worth: 2.36x, causally.
+  * CONTENT is per-family, unbounded, mutually non-contradictory, and
+    must NOT live in weights. F71 and F74 measure what happens when it
+    does: total forgetting, made worse by the very sharing that makes
+    structure transfer.
+
+Eight consolidation mechanisms failed to make one weight store do both
+jobs. F73/F74 say why that was never going to work, and the fix is not a
+ninth penalty term: it is to stop asking weights to hold content.
+
+Next experiment, with its prediction recorded in advance: pre-train the
+slot plant on structure, FREEZE it, and hold each family's dynamics in
+the external bank the plant reads. Predicted — retention flat, because
+bank entries cannot overwrite one another; cost per family below the
+280 cold total, because structure is already paid for; and no negative
+transfer, because nothing is shared that can conflict. If retention
+still collapses with a frozen plant and banked content, then the bank
+interface itself is leaking content into weights and that is the bug to
+find.
+
+Probe 176 is `schema_family.py --arch slot` against `--arch dense`,
+5 seeds, each with `--scramble` as the causal control.
+
+**F75 (probe 177). Frozen plant + external bank: forgetting is SOLVED,
+structure transfer is real and causal, and the cost gate still FAILS.**
+The experiment F73/F74 forced. Pre-train a slot-symmetric plant on 48
+families sampled from the schema, each family's content carried by its
+own 16-token bank entry; FREEZE every plant weight; then learn a
+held-out hand-made family by fitting a fresh entry alone. Leave-one-out
+over all four families, 3 seeds.
+
+An intermediate run is why the pre-training distribution is 48 families
+and not 3: with three fixed families the plant learns three MODES rather
+than how to read an entry, and a fourth entry has nothing general to
+plug into — held-out accuracy 0.069 against a cold 1.000, and raising
+entry capacity from 256 to 4096 parameters only reached 0.667. This is
+Chan et al. from the other direction: few fixed-meaning classes give
+in-weights memorisation, many varied ones give in-context reading.
+
+**1. Forgetting is solved, structurally.** Retention delta after fitting
+the held-out entry, across 96 measurements: **min +0.0000, max +0.0000**.
+Not "small" — exactly zero, because the plant is frozen and two entries
+are separate tensors. F71's total collapse and F74's chance-floor
+retention are gone. This is a bug check that passed, not a discovery:
+it is true by construction, and the measurement exists to prove the
+interface does not leak content back into weights.
+
+**2. Structure transfer is real, and the scramble control now
+discriminates.** Mean accuracy on the held-out family:
+
+| held out | schema-pretrained plant | scrambled-pretrained | random plant |
+| --- | ---: | ---: | ---: |
+| line | 1.000 | 1.000 | 0.312 |
+| dial | 0.994 | 0.684 | 0.005 |
+| toggle | 1.000 | 0.557 | 0.007 |
+| perm | 0.898 | 0.264 | 0.009 |
+
+The random-plant null is decisive everywhere: pre-training is necessary.
+The scrambled null separates on three of four families; `line` (8
+states, 2 actions) is too easy to discriminate anything and should not
+be counted as evidence either way.
+
+**3. The cost gate fails, and this is the headline.** Cost to reach 0.98
+on the held-out family:
+
+| | bank entry, frozen plant | cold full model |
+| --- | ---: | ---: |
+| mean updates | **123** | **62** |
+| trainable parameters | 1,024 | 68,936 |
+| reached 0.98 | 11/12 runs | 12/12 |
+| cheaper than cold | **2/12 runs** | — |
+
+Fitting an entry costs about TWICE a cold fit in updates. Per parameter
+it is 67x leaner and the plant is reused, but the gate was stated in
+updates and in updates it is not met. Pre-training cost — 2350 updates
+over 48 families — is on top, and since per-task cost already exceeds
+cold, no amount of amortisation rescues it.
+
+**Correction to my own first reading.** The single smoke run (held-out
+`perm`, seed 69316) gave bank 50 against cold 75 and I called it "the
+gate". Leave-one-out says 2/12. That is the sixth time in this project a
+single-seed signal has failed to replicate; the smoke run was one of the
+two wins.
+
+Two bugs in this probe were found by reading its own output, before any
+result was recorded: the scrambled control redrew fresh permutations
+inside its row loop (so it was not a per-action permutation, and
+same-length family names collided on one seed), and retention was
+reported as an absolute score, mixing "pre-training stopped early here"
+with "the held-out fit damaged it". Fixing the control moved scrambled
+`toggle` from 1.000 to 0.557 — it materially changed a null.
+
+**Where the remaining cost goes.** `perm` is worst (242 mean, one
+outright failure at 0.694). The procedural generator builds full product
+state spaces, while `perm`'s states are permutations only — a region of
+the space the plant never saw. The gap is distributional coverage, not
+the mechanism.
+
+**Next, prediction recorded in advance.** The cost that remains is
+gradient descent on the entry: hundreds of steps to infer content that
+is fully determined by a few dozen observed transitions. Replace it with
+amortised inference — an encoder mapping a handful of (state, action,
+next state) triples DIRECTLY to an entry, trained across the family
+distribution, so acquiring a new family is forward passes rather than
+gradient steps. Predicted: cost per novel family drops below cold by an
+order of magnitude, retention stays exactly flat, and the random-plant
+and scrambled nulls stay dead. If instead amortised entries plateau
+below 0.98 on held-out families, the entry is too weak a channel to
+carry content and the bank needs a richer interface than context tokens.
+
+Probe 177 is `experiments/games_amodal/probes/bank_plant.py`, leave-one-out
+x 3 seeds, with `--pretrain-families 48`.
+
+**F76 (probe 178). Amortised reading works and is causal, but the cost
+gate fails a THIRD time — and the reason is now exactly located.** The
+experiment F75 predicted. An encoder maps observed (state, action, next
+state) triples directly to a bank entry: acquiring a family is one
+forward pass, zero gradient steps, zero weights moved. Trained across
+256 families sampled from the schema, 20000 updates, 3 seeds.
+
+**What works.** The encoder genuinely reads:
+
+| | in-distribution read accuracy |
+| --- | ---: |
+| trained (3 seeds) | **0.918 / 0.903 / 0.937** |
+| scrambled-dynamics null | 0.210 |
+| random-plant null | 0.040 |
+
+The wrong-context null — feed the encoder a DIFFERENT family's
+transitions — collapses to 0.000-0.065. Nothing is being memorised; the
+entry carries the content.
+
+**Novel families from the same generator, never trained on:**
+
+| arm | read accuracy | mastered by reading | fine-tune cost | cold cost |
+| --- | ---: | ---: | ---: | ---: |
+| trained | **0.682** | 2.3 / 16 | 83.8 | **49.5** |
+| scrambled null | 0.147 | 0 / 16 | 273.4 | 40.6 |
+| random-plant null | 0.026 | 0 / 16 | 600.0 | 40.6 |
+
+**68% of a novel family's dynamics, correct, from a single forward pass
+at zero gradient cost.** Both nulls are dead. The `line` family reads at
+0.958 against a cold cost of 25 updates — one family acquired
+essentially free.
+
+**Why the gate still fails.** Converting that read into 0.98 mastery
+costs 84 updates against cold's 50, and only 2.3 of 16 novel families
+clear the bar by reading alone. Fine-tuning from a partially correct
+entry is DEARER than starting from scratch, because the frozen plant
+caps what can be repaired: 1,024 entry parameters against cold's 68,936
+free ones. Whatever the plant reads wrongly, the entry often cannot fix.
+
+That is the trade stated exactly: **freezing the plant is what makes
+retention perfect (delta 0.0000, again, everywhere) and it is the same
+thing that caps expressivity.** The two are one mechanism, not two.
+
+**The brutal accounting, stated plainly.** Pre-training is 20000 updates
+over 256 families. Cold is ~50 per family. Even if reading were free,
+break-even needs 400 downstream families; since per-family cost is 84
+and cold is 50, it never breaks even at all. Nothing here is cheaper yet
+in total updates.
+
+**The distribution boundary, measured.** On the four hand-made families:
+`line` reads 0.958, `dial` 0.373, `perm` 0.255, `toggle` 0.043. The
+generator has no paired-flip op and builds only product state spaces, so
+`toggle` (XOR over bit PAIRS) and `perm` (states are permutations, not a
+product) are outside its SUPPORT — not merely unseen instances of it.
+This is the "NYC does not help in Tokyo" boundary as a measurement
+rather than an assertion: the mechanism transfers within the schema it
+was trained on and degrades outside it, in proportion to how far
+outside.
+
+**Three mechanisms, three failures of the same gate.** F70 met it only
+because the families nested; F75 fitted entries at 2x cold; F76 reads
+entries at zero cost but cannot finish the job. The gate — a novel task
+cheaper than from scratch — remains UNMET. What has been won is real and
+should not be inflated: forgetting is solved outright, structure
+transfer is causal and has survived four separate scramble controls, and
+zero-gradient partial acquisition is measured at 0.682.
+
+Next, prediction recorded in advance: the binding constraint is entry
+EXPRESSIVITY, not reading. Two candidates, and they are distinguishable
+by measurement — (a) widen the channel: let the entry modulate the
+plant's computation (per-family gains/biases on the slot MLP) rather
+than only prepend tokens, keeping every weight shared and frozen;
+(b) widen the generator's support so the schema covers paired ops and
+non-product state spaces. Predicted: (a) raises `mastered by reading`
+well above 2.3/16 while retention stays exactly 0.0000, because the
+per-family parameters still live in the bank; (b) raises the hand-made
+families' read accuracy without helping the in-support novel ones. If
+(a) also degrades retention, then any channel wide enough to be
+expressive is wide enough to interfere, and that is a real wall worth
+naming rather than working around.
+
+Probe 178 is `experiments/games_amodal/probes/amortised_bank.py`,
+3 seeds plus `--scramble` and `--random-plant` nulls.
+
+**F77 (probe 179). The recorded prediction was WRONG: widening the entry
+channel makes generalisation worse, and the falsifier did not fire.**
+F76 predicted that entry EXPRESSIVITY was the binding constraint and
+that letting the entry modulate the plant's computation (per-family
+gains and biases on every block, weights still shared and frozen) would
+raise mastery-by-reading above 2.3/16. It did the opposite.
+
+| channel | in-distribution | novel read | mastered by reading | fine-tune cost |
+| --- | ---: | ---: | ---: | ---: |
+| tokens only (F76) | 0.919 | **0.682** | **2.3 / 16** | **83.8** |
+| tokens + modulation | 0.925 | 0.567 | 1.0 / 16 | 106.8 |
+| modulation, scrambled null | 0.348 | 0.157 | 0 / 16 | 253.1 |
+
+In-distribution is unchanged (0.919 -> 0.925) while every novel-family
+number gets worse. That is the signature of overfitting the conditioning
+pathway, not of a capacity limit being lifted: the extra channel gives
+the model more ways to fit the 256 training families and buys nothing
+for the seventeenth.
+
+Hand-made families move the same way (`line` 0.958 -> 0.896, `dial`
+0.373 -> 0.305, `perm` 0.255 -> 0.231), and fine-tune costs rise
+(`dial` 192 -> 425).
+
+**The falsifier did not fire, and that matters.** F76 recorded: "if (a)
+also degrades retention, then any channel wide enough to be expressive
+is wide enough to interfere, and that is a real wall." Retention delta
+stayed exactly 0.0000 with the wider channel. So the wall is NOT
+interference — the frozen-plant/banked-content split keeps its
+guarantee even when the channel is widened substantially. What fails is
+generalisation of the READER, which is a different problem with
+different fixes.
+
+**A capacity confound, caught.** Two earlier arms (dim 128, 3 layers, at
+pool 256 and 1024) scored 0.392 and 0.375 in-distribution against the
+working config's 0.918 — they are badly undertrained at 20000 updates,
+not evidence about pool size. Comparing them would have "shown" that a
+larger pool hurts. Pool diversity is being tested properly at the
+working configuration instead.
+
+Probe 179 is `amortised_bank.py --film`, 3 seeds plus a scrambled null.
+
+**F78 (probe 180). The binding constraint is TRAINING DIVERSITY, and the
+curve is monotone. This is the mechanism that forces top-down
+learning.** F77 refuted entry expressivity. Holding the architecture
+fixed at the working configuration and varying only the NUMBER of
+distinct families the plant and encoder are trained on:
+
+| pool | in-distribution | novel read (0 gradient steps) | mastered by reading | fine-tune cost | cold cost |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 64 | 0.974 | 0.318 | 0 / 16 | 186.8 | 46.1 |
+| 256 | 0.919 | 0.682 | 2.3 / 16 | 83.8 | 49.5 |
+| **1024** | 0.931 | **0.918** | **5.5 / 16** | **49.1** | 45.5 |
+
+**Note which column moves the wrong way.** A pool of 64 has the HIGHEST
+in-distribution accuracy (0.974) and the WORST novel-family accuracy
+(0.318). It memorised its 64 families instead of learning to read one.
+That is Chan et al.'s axis measured directly in this system: few fixed
+meanings produce in-weights memorisation, many varied ones produce
+in-context reading. Diversity is the knob, and it is the only knob that
+has moved this number.
+
+Per-seed, no overlap between conditions: pool 64 gives [0.360, 0.276],
+pool 256 [0.775, 0.582, 0.688], pool 1024 [0.940, 0.897].
+
+The hand-made families — never sampled by the generator — move with it:
+`line` 0.250 -> 0.958 -> 0.969, `dial` 0.004 -> 0.373 -> 0.866, `perm`
+0.021 -> 0.255 -> 0.729. Even `perm`, whose permutation state space is
+outside the generator's support, reads at 0.729 from a single forward
+pass once the pool is large enough.
+
+**Status of the gate.** At pool 1024 the fine-tune cost is 49.1 against
+a cold 45.5 — parity, not a win, and the 20000 pre-training updates are
+still on top. The gate is NOT met. What IS established is the direction:
+every diversity increase has improved every novel-family number, the
+trend is monotone across three conditions and seven runs, and 0.918 of a
+novel family's dynamics now comes from one forward pass at zero gradient
+cost.
+
+**What this says about the project's question.** "Produce a program such
+that given task A makes novel task B faster to learn than from scratch"
+is not answered by a better objective, a better consolidation penalty or
+a wider adaptation channel — all three were tried and all three failed.
+It is answered by training on ENOUGH DIFFERENT TASKS that reading the
+structure is the only strategy that works. Top-down learning is not
+something the architecture can be told to do; it is what the
+architecture is forced into when memorisation stops paying.
+
+Probe 180 is `amortised_bank.py --pool {64,256,1024}`, 2-3 seeds each.
+
+**F79 (probe 180 extended). At pool 4096 the per-task gate CROSSES: a
+novel family costs 34.3 updates against 50.0 from scratch.** Extending
+F78's diversity curve by one point:
+
+| pool | novel read (0 steps) | mastered | **acquisition cost** | **cold cost** |
+| ---: | ---: | ---: | ---: | ---: |
+| 64 | 0.318 | 0 / 16 | 186.8 | 46.1 |
+| 256 | 0.682 | 2.3 / 16 | 83.8 | 49.5 |
+| 1024 | 0.918 | 5.5 / 16 | 49.1 | 45.5 |
+| **4096** | 0.907 | 5.5 / 16 | **34.3** | **50.0** |
+
+Both seeds cross individually: 22.9 vs 41.7 and 45.8 vs 58.3.
+
+**This is the founding objective, met per task.** "Produce a program
+such that given task A makes novel task B faster to learn than from
+scratch" — on families the system has never seen, drawn from a
+generator whose instances it was never shown, acquisition is 1.46x
+cheaper than starting cold, with every plant weight frozen, retention
+delta exactly 0.0000, and the wrong-context null at 0.000-0.138.
+
+**What plateaus and what keeps improving.** Read accuracy saturates
+between pool 1024 and 4096 (0.918 -> 0.907) and mastery-by-reading stays
+at 5.5/16, but COST keeps falling (49.1 -> 34.3). More diversity is no
+longer producing a better one-shot read; it is producing an entry that
+is a better starting point for the remainder. Those are different things
+and the earlier readouts could not have separated them.
+
+**The lifetime gate is still NOT met, and this is the honest limit.**
+Pre-training costs 20000 updates. The per-task saving is 15.7 updates,
+so break-even needs about **1274 downstream families**. Sixteen were
+measured. The claim earned here is per-task acquisition cost, not
+lifetime cost, and anyone reading only the table would get that wrong.
+
+Other limits, stated: two seeds at pool 4096; `toggle` still reads at
+0.096 because paired-bit flips are outside the generator's support at
+every pool size, so diversity within a schema does not buy coverage
+outside it; and 10.5 of 16 novel families still need some fine-tuning.
+
+**The through-line of F71-F79.** Eight consolidation mechanisms, an
+architectural prior, a frozen plant, an external bank and an amortised
+reader were each necessary and none was sufficient. What finally moved
+the number was none of them individually — it was training on enough
+different tasks that reading structure beat memorising it. Every earlier
+mechanism was a precondition for that to be possible: without the
+slot-symmetric plant there is no structure to read, without the frozen
+plant and banked content there is no retention, without the reader there
+is no zero-cost acquisition. The diversity is what makes them pay.
+
+Probe 180 is `amortised_bank.py --pool {64,256,1024,4096}`, 2-3 seeds each.
+
+**F80 (probe 181). Pre-training cannot be shortened, and lengthening it
+IMPROVES break-even. Both of my stated next steps were wrong.** The
+WEAKNESSES ledger said "drive the pre-training cost down (20000 was a
+round number, not a measured minimum)". Measured, at pool 4096, 2 seeds:
+
+| pre-train updates | in-dist | novel read | mastered | acquisition | cold | saving | break-even |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 2500 | 0.369 | 0.308 | 0/16 | 540.6 | 50.0 | -490.6 | never |
+| 5000 | 0.452 | 0.361 | 0/16 | 489.6 | 50.0 | -439.6 | never |
+| 10000 | 0.804 | 0.692 | 1.5/16 | 214.6 | 50.0 | -164.6 | never |
+| 15000 | 0.944 | 0.837 | 4.0/16 | 97.9 | 50.0 | -47.9 | never |
+| 20000 | 0.968 | 0.907 | 5.5/16 | 34.3 | 50.0 | +15.7 | 1278 |
+| **40000** | **1.000** | **0.972** | **9.5/16** | **7.2** | 50.0 | **+42.8** | **936** |
+
+**20000 was not padding.** Below it the reader does not generalise and
+acquisition is WORSE than cold — at 10000, 214.6 against 50.0. The
+crossing is sharp, between 15000 and 20000. Shortening pre-training is
+not available.
+
+**And the opposite move pays twice.** Doubling to 40000 cuts acquisition
+from 34.3 to 7.2 — **6.9x cheaper than cold**, 9.5 of 16 novel families
+mastered by reading alone with zero gradient steps, per-seed 6.2/8.3
+against cold 41.7/58.3 with no overlap. Because the per-task saving grows
+faster than the pre-training bill, break-even IMPROVES from 1278 to 936.
+I had predicted the reverse — that diminishing acquisition gains would
+push break-even up. It falls.
+
+**Widening the schema's support works, and it is not free.** F79's hard
+floor was `toggle` at 0.096 at every pool size, caused by the generator
+having no simultaneous two-slot op. Adding two-slot ops and permutation
+state spaces (`--wide`), pool 4096, 20000 updates:
+
+| family | narrow | wide |
+| --- | ---: | ---: |
+| toggle | 0.096 | **0.306** |
+| perm | 0.521 | **0.708** |
+| dial | 0.775 | **0.863** |
+
+The floor lifts 3.2x. But the wider distribution is harder, so at the
+same budget acquisition rises 34.3 -> 81.3 against a cold 57.9 and the
+gate UN-CROSSES. The two gaps are coupled: at a fixed budget you buy
+coverage or you buy cost, not both. The budget curve says the fix is
+more pre-training, not a narrower schema — untested at `--wide`, and the
+honest statement is that the wide result is a 20000-update snapshot of a
+distribution that demonstrably needs more.
+
+Probe 181 is `amortised_bank.py` at `--train-updates {2500..40000}` and
+`--wide`, pool 4096, 2 seeds each.
+
+**F81 (probe 182). Double dissociation completed: the capability lives
+in the bank, and the residual measures exactly how much structure lives
+in the weights.** Imported from the protocol used in a parallel Codex
+session on this project, which had an arm this probe lacked. We tested a
+CORRUPTED bank (wrong family's entry); we had never tested a WITHHELD
+one. Pool 4096, 20000 updates, 2 seeds, novel in-support families:
+
+| bank | read accuracy |
+| --- | ---: |
+| present | **0.907** |
+| withheld (zero entry) | 0.236 |
+| corrupted (another family's entry) | 0.037 |
+
+Per hand-made family, withheld collapses to 0.094 / 0.016 / 0.000 /
+0.007 (`line` / `dial` / `toggle` / `perm`) against 1.000 / 0.775 /
+0.096 / 0.521 with the bank present. Present -> mastery, withheld ->
+chance, corrupted -> chance, and every plant weight is frozen throughout.
+The skill is in the bank.
+
+**The residual is the interesting number.** Withheld sits at 0.236, not
+at zero, and it should not be at zero: a zero entry is NEUTRAL, so the
+plant falls back on its generic structural prior — copy-forward and the
+slot-symmetric regularities — and gets that fraction right with no
+content whatsoever. A corrupted entry is worse (0.037) because it
+actively misleads rather than abstaining.
+
+That gives the F73/F74 split a direct measurement instead of an
+argument. Of the 0.907 a read entry achieves, **0.236 is structure held
+in frozen weights and 0.671 is content supplied by the bank.** The
+architecture's central claim — structure in the plant, content in the
+bank — is now a number, and the two halves were never separable before
+this arm existed.
+
+Probe 182 is `amortised_bank.py` with the withheld-bank arm, 2 seeds.
+
+**F82 (probe 181 completed). Break-even has an INTERIOR OPTIMUM at 936
+families, and the pre-training axis is now fully explored.** Extending
+F80 to 80000 updates closes the curve:
+
+| pre-train | novel read | mastered | acquisition | cold | saving | break-even |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 15000 | 0.837 | 4.0/16 | 97.9 | 50.0 | -47.9 | never |
+| 20000 | 0.907 | 5.5/16 | 34.3 | 50.0 | +15.7 | 1278 |
+| **40000** | 0.972 | 9.5/16 | 7.2 | 50.0 | +42.8 | **936** |
+| 80000 | 0.990 | 10.0/16 | 5.2 | 50.0 | +44.8 | 1786 |
+
+**Why the optimum is interior, and why it is a floor.** Acquisition cost
+cannot fall below zero, so the per-task saving is capped at cold's 50.
+By 40000 the saving is 42.8 — already 86% of the theoretical maximum —
+so doubling the bill to 80000 buys only 2.0 more and break-even nearly
+doubles. Below 20000 the reader does not generalise and there is no
+saving at all. The minimum is therefore structural: **at this
+configuration the lifetime gate cannot be brought below about 936
+downstream families by any choice of pre-training budget.** That axis is
+finished; further gains must come from elsewhere.
+
+**Correction to F79's support claim.** F79 concluded that "diversity
+within a schema buys nothing outside it", from `perm` reading 0.521 and
+`toggle` 0.096 at 20000 updates. With the same narrow generator at
+80000: `perm` reads **0.965** and `toggle` 0.272. `perm`'s permutation
+state space is genuinely outside the generator's support and it is now
+read almost perfectly. So the out-of-support penalty was substantially
+an UNDERTRAINED-READER artifact, not a hard boundary — the boundary
+moves with training. `toggle` remains the real hard case at 0.272, and
+it is the one the widened generator addresses directly (0.096 -> 0.306
+at 20000).
+
+The honest revision: enough diversity plus enough training generalises
+well beyond the schema's literal support, and the earlier claim was a
+snapshot mistaken for a limit. What stays true is that `toggle`-style
+structure — simultaneous multi-slot effects absent from the op
+vocabulary entirely — is the slowest to come, and widening the
+vocabulary is the direct fix.
+
+Retention delta remains exactly 0.0000 at every budget.
+
+Probe 181 is `amortised_bank.py --train-updates {2500..80000}`, pool
+4096, 2 seeds each.
+
+**F83 (probe 183). The primary gate measured: (a) and (b) pass cleanly,
+(c) passes but the test is WEAK and I should say so.** 64 novel families
+acquired one after another through a single frozen plant at the optimal
+budget, every entry kept, 2 seeds.
+
+**(a) Mastery keeps growing: 64/64 on both seeds.** 59/64 and 56/64 were
+acquired by READING ALONE — zero gradient steps, one forward pass. Only
+5 and 8 families needed any tuning at all.
+
+**(b) Retention stays exact: drift max 0.0, mean 0.0, both seeds**,
+measured across the whole grown bank after all 64 entries exist.
+
+**(c) Cost against bank position:**
+
+| bank position | read | acquisition | cold | saving |
+| --- | ---: | ---: | ---: | ---: |
+| 1-16 | 0.989 | 2.3 | 53.9 | +51.6 |
+| 17-32 | 0.998 | 0.8 | 46.1 | +45.3 |
+| 33-48 | 0.991 | 9.4 | 50.8 | +41.4 |
+| 49-64 | 0.984 | 7.0 | 51.6 | +44.5 |
+
+Overall 4.9 against a cold 50.6 — **10.4x cheaper across 64 sequential
+acquisitions**, with the saving between +41 and +52 in every quartile.
+
+**Why I am not calling (c) a strong result.** First-8 to last-8 looks
+like a +9.4 drift, but the quartile pattern is not monotone (2.3, 0.8,
+9.4, 7.0) while bank size is, correlation with position is weak (+0.200,
++0.092) and in one seed correlation with FAMILY DIFFICULTY is stronger
+(+0.411). The apparent drift is a handful of outliers — one family at
+275 updates, one at 75, everything else at 25 or 0.
+
+The deeper reason is structural, and it is the honest caveat:
+**entry i+1 is fitted without ever seeing entries 0..i.** The plant is
+frozen and entries are independent tensors, so nothing in this mechanism
+COULD make acquisition cost grow with bank size. Clause (c) as
+implemented cannot fail. A gate that cannot fail is not evidence, and
+this project has mistaken exactly that for evidence before (F53, F71).
+
+**What the real (c) needs: RETRIEVAL.** The cost that would scale with N
+is finding the right entry among N, and this probe never pays it —
+entries are handed to the correct family by construction. That is the
+one component of the architecture still missing, and the project already
+has the two candidate mechanisms for it (F57 cued addressing, F44
+consequence probing). Until retrieval exists, the honest statement is:
+per-family ACQUISITION cost does not drift, and per-family RETRIEVAL
+cost is unmeasured because there is no retrieval.
+
+**F84 (probe 184). The wide schema at the optimal budget: the gate
+re-crosses and the `toggle` floor lifts.** F79's hard case and F80's
+un-crossing were the same budget artefact.
+
+| | wide @ 20k | **wide @ 40k** | narrow @ 40k |
+| --- | ---: | ---: | ---: |
+| toggle | 0.306 | **0.527** | 0.198 |
+| perm | 0.708 | **0.986** | 1.000 |
+| novel read | 0.880 | 0.930 | 0.972 |
+| in-distribution | 0.947 | 0.987 | 1.000 |
+| **acquisition** | 81.3 | **20.4** | 7.2 |
+| cold | 57.9 | 57.9 | 50.0 |
+
+At the optimal budget the wide generator acquires novel families **2.8x
+cheaper than cold** (20.4 vs 57.9) instead of 1.4x more expensively, and
+`toggle` — stuck at 0.096 for the whole of F79 — reads at 0.527, its
+best figure anywhere. F80's "widening un-crosses the gate" was true only
+at 20000 updates, exactly as the budget curve predicted: a harder
+distribution needs more pre-training, not a narrower schema.
+
+The remaining honest gap is that `toggle` at 0.527 is still the worst of
+the four, so simultaneous multi-slot structure is genuinely the slowest
+thing this architecture learns to read, even when it is in the training
+vocabulary.
+
+Probes 183/184 are `amortised_bank.py --sequential 64` and `--wide` at
+`--train-updates 40000`, pool 4096, 2 seeds each.
+
+**F85 (probe 185). Retrieval built. Clause (c) can now fail, and it
+shows the project's first measured scaling limit.** F83's caveat was
+that entries were handed to the correct family by construction, so
+nothing scaled with bank size and the gate could not fail. Retrieval by
+consequence probing (F44's mechanism) closes that: score every stored
+entry by how well it predicts a few HELD-OUT transitions of the task at
+hand, take the best.
+
+| bank N | retrieval accuracy | chance | margin over runner-up | in-bank score | outside-bank score | forward passes |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 8 | 1.000 | 0.125 | 0.564 | 1.000 | 0.429 | 8 |
+| 16 | 1.000 | 0.062 | 0.456 | 1.000 | 0.496 | 16 |
+| 32 | 1.000 | 0.031 | 0.400 | 1.000 | 0.596 | 32 |
+| 64 | **0.969** | 0.016 | 0.365 | 1.000 | 0.642 | 64 |
+
+Both seeds give 0.9688 at N=64, against a 0.016 chance floor.
+
+**The discrimination null is the important column.** A task NOT in the
+bank must score LOW against every entry, or "retrieval accuracy" is
+satisfied by a system that always returns something. In-bank tasks score
+1.000 throughout; strangers score 0.429 at N=8 rising to 0.642 at N=64.
+The GAP is what matters and it shrinks monotonically: 0.571, 0.504,
+0.404, 0.358. With more entries in the bank, some entry increasingly
+explains a stranger's transitions by accident.
+
+**Two limits, one measured and one projected — stated separately.**
+
+1. **Measured, present tense: retrieval is O(N) and already costs more
+   than minting.** A linear scan of 64 entries is 64 plant forward
+   passes, while minting a fresh entry costs 2.7-7.0 update steps. At
+   N=64 identifying a known task is already dearer than learning it from
+   scratch would be at this scale. A naive linear bank does not scale,
+   and the fix is content-addressed keys giving sublinear lookup —
+   infrastructure this project has and has never wired in (open
+   weakness 8).
+2. **Projected, and labelled as such: discrimination degrades roughly
+   0.07 per doubling.** A linear-in-log extrapolation puts the gap near
+   zero in the low thousands of entries — close to F82's ~936 break-even
+   scale, which is a suggestive coincidence and nothing more. Four
+   points and two seeds do not support a confident extrapolation, and
+   the runner-up margin's decrements are DECELERATING (-0.108, -0.056,
+   -0.035), which would push any crossing further out. The honest claim
+   is the direction, not the intercept.
+
+**Status of the primary gate.** (a) 64/64 mastered, both seeds. (b)
+retention drift exactly 0.0. (c) acquisition cost does not drift (2.7
+and 7.0 against cold 53.5 and 47.7) AND retrieval now supplies a
+component that genuinely scales with N — so the clause is falsifiable
+for the first time. It passes at N=64 on accuracy and fails on cost
+efficiency: retrieval is linear where it must be sublinear.
+
+That is a better position than F83's, because the gate now has something
+to break. The next work is not a new mechanism but the one the ledger
+has carried unbuilt since the beginning: content-addressed retrieval,
+measured against this same linear-scan baseline.
+
+Probe 185 is `amortised_bank.py --sequential 64 --retrieval`, pool 4096,
+40000 pre-training updates, 2 seeds.
+
+**F86 (probe 186). Content-addressed retrieval closes F85's O(N)
+failure: constant plant cost, perfect identification — but keys alone
+cannot reject strangers, and that part is not optional.** F85's measured
+failure was that a linear scan costs N plant forward passes, so at N=64
+recognising a task was dearer than minting one. Content addressing
+stores an ADDRESS (the key of the entry as first read) beside the
+CONTENT (the tuned entry), and matches a fresh read against stored keys
+by cosine — one encoder pass, no plant passes.
+
+| N | scan acc | scan passes | **key acc** | **key passes** | key+verify | verify passes |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 8 | 1.000 | 8 | 1.000 | **0** | 1.000 | 4 |
+| 16 | 1.000 | 16 | 1.000 | **0** | 1.000 | 4 |
+| 32 | 1.000 | 32 | 1.000 | **0** | 1.000 | 4 |
+| 64 | 0.969 | 64 | **1.000** | **0** | **1.000** | 4 |
+
+Keys are perfect at every bank size including 64, where the linear scan
+had begun to slip (0.969), and they are perfect at zero plant forward
+passes. Both seeds give 1.000.
+
+**The cost problem is solved.** Retrieval is now 4 plant passes
+(retrieve-then-verify, constant in N) against minting's 2.7-7.0 update
+steps, each of which is a forward AND a backward. Recognising a known
+task is now decisively cheaper than relearning it, and stays so as the
+bank grows — which is the condition clause (c) exists to test, and the
+precondition for the reuse-driven efficiency §3 has claimed since the
+beginning without implementing.
+
+**The honest caveat, and it is a real one: keys cannot tell a stranger
+from a resident.** The key similarity gap between in-bank and
+out-of-bank tasks is much weaker than consequence probing's, and it
+degrades faster:
+
+| N | key: in-bank | key: stranger | gap | consequence gap |
+| ---: | ---: | ---: | ---: | ---: |
+| 8 | 0.992 | 0.667 | 0.325 | 0.571 |
+| 64 | 0.990 | 0.862 | **0.128** | 0.358 |
+
+A never-seen family still matches its nearest stored key at 0.862. A
+system that addressed by key alone and reused above a threshold would
+wrongly reuse constantly — the failure mode where a bank stops minting
+and starts pretending. So the two mechanisms are not alternatives and
+the cheap one cannot stand on its own:
+
+  * **keys ADDRESS** — 0 plant passes, perfect shortlist, no ability to
+    say "none of these";
+  * **consequence VERIFIES** — 4 plant passes, constant in N, and it is
+    what supplies the "none of these" that reuse-or-mint needs.
+
+That division is the architecture's own §2.3 split arriving from
+measurement: cued addressing is cheap and fast, consequence probing is
+what makes identity knowable (F44), and this is the first result showing
+they are complementary rather than competing routes.
+
+**Primary gate status.** (a) 64/64 mastered. (b) retention drift exactly
+0.0. (c) acquisition cost does not drift with N, retrieval accuracy is
+1.000 at N=64, and retrieval COST is now constant rather than linear.
+All three clauses pass, and (c) is falsifiable — F85 showed it failing
+on cost, F86 fixed the mechanism it was failing on.
+
+Watched, unchanged: the key gap shrinks about 0.066 per doubling and the
+consequence gap about 0.071. Neither is measured beyond N=64 and
+extrapolation is not supported; re-measure at 128 and 256.
+
+Probe 186 is `amortised_bank.py --sequential 64 --retrieval`, pool 4096,
+40000 pre-training updates, 2 seeds.
+
+**F87 (probe 187). The gate holds at N=256, four times beyond where it
+was last measured — and the extrapolation I refused to make would have
+been wrong.** 256 novel families acquired sequentially through one
+frozen plant, 2 seeds.
+
+**All three clauses, at 4x the bank size:**
+
+- **(a) 256/256 mastered**, both seeds.
+- **(b) retention drift max 0.0** across all 256 entries.
+- **(c) no acquisition drift**: first-64 vs last-64 is 2.7 -> 3.5 on one
+  seed and 7.0 -> 4.7 on the other — one rises slightly, one falls,
+  against a cold cost of ~51. Acquisition stays 10-15x cheaper with the
+  bank four times larger.
+
+**Retrieval scales, and the three mechanisms separate cleanly:**
+
+| N | key | key+verify | linear scan |
+| ---: | ---: | ---: | ---: |
+| 64 | 1.000 | 1.000 | 0.969 |
+| 128 | 0.996 | 1.000 | 0.953 |
+| **256** | 0.988 | **0.994** | 0.918 |
+
+Retrieve-then-verify is the best of the three at every size and holds
+0.994 at N=256 (per-seed 0.996/0.992) at a CONSTANT 4 plant forward
+passes, while the linear scan — which costs 256 passes — has decayed to
+0.918. The cheap mechanism is also the accurate one.
+
+**The discrimination trend, now measured instead of projected:**
+
+| N | key gap | consequence gap | key: stranger similarity |
+| ---: | ---: | ---: | ---: |
+| 8 | 0.325 | 0.571 | 0.667 |
+| 64 | 0.128 | 0.356 | 0.862 |
+| 128 | 0.095 | 0.345 | 0.895 |
+| 256 | **0.068** | **0.258** | **0.923** |
+
+**The extrapolation would have been wrong, and declining to make it was
+correct.** The key gap's decrements per doubling are -0.109, -0.049,
+-0.039, -0.033, -0.027 — decelerating consistently, roughly halving.
+A linear-in-log projection put the gap at zero in the low thousands;
+the measured curve is approaching a small positive asymptote instead.
+This is the second time this session that a trend from few points
+inverted or flattened on measurement (the first was the gradient-cosine
+reading at 50 vs 500 updates).
+
+**What the shrinking gap does and does not break.** It does NOT break
+retrieval: ranking is what retrieval needs, and ranking survives to
+0.994. It DOES break threshold-based reuse-or-mint on keys alone — a
+never-seen family matches its nearest stored key at 0.923, so no fixed
+cosine threshold can separate "I have this" from "I have something
+vaguely like it". Consequence verification still separates (gap 0.258),
+which is precisely why F86 concluded the verify step is not optional.
+That conclusion is now load-bearing rather than cautious.
+
+Probe 187 is `amortised_bank.py --sequential 256 --retrieval`, pool
+4096, 40000 pre-training updates, 2 seeds.
+
+**F88 (probe 188). "`toggle` is hard" was the wrong description. SLOT
+COUNT is the predictor, and state-space size is not.** `toggle` has been
+the worst-read family at every configuration since F79 and the framing
+was always about `toggle` specifically. Recording each novel family's
+SHAPE beside its read accuracy — 154 in-support families, 2 seeds,
+pool 4096 at 40000 updates — replaces the anecdote with a variable:
+
+| slots | n | mean read | mastered |
+| ---: | ---: | ---: | ---: |
+| 1 | 30 | 0.996 | 27/30 |
+| 2 | 49 | 0.995 | 47/49 |
+| 3 | 40 | 0.995 | 36/40 |
+| 4 | 16 | 0.974 | 13/16 |
+| 5 | 14 | 0.935 | 8/14 |
+| **6** | 5 | **0.870** | 2/5 |
+
+Monotone in slot count. `toggle`'s own shape (6 slots, 2 values) reads
+0.870 against 0.988 for every other shape — so `toggle` is not a special
+case, it is simply the widest family in the set.
+
+**State-space size is NOT the cause, which rules out the obvious
+explanation.** 512-state families read 0.977 — better than 6-slot
+families at 0.870, despite being eight times larger. Nor is it values
+per slot: the apparent weakness at values=2 (0.958) is confounded,
+because only small values permit many slots. What degrades is the number
+of factors the entry must specify SIMULTANEOUSLY, not how much space
+those factors span.
+
+That is a capacity statement about the ENTRY rather than the plant: an
+entry must encode roughly slots x actions transition rules, so a 6-slot
+6-action family asks 36 rules of the same 16 tokens that a 1-slot family
+uses for 6.
+
+**Prediction, recorded before the run now in flight:** raising bank
+tokens from 16 to 48 should lift slots=5 and slots=6 substantially and
+do essentially nothing for slots=1-3, which are already at 0.995. If
+instead every slot count improves equally, the limit is general entry
+capacity and the slot-count correlation is incidental; if nothing
+improves, the limit is in the plant's ability to USE a wider entry and
+F77's finding — that widening the modulation channel hurt — extends to
+token count as well.
+
+Probe 188 is `amortised_bank.py --novel-count 96` with per-family shape
+diagnostics, 2 seeds.
+
+**F89 (probe 189). Entry capacity is NOT the limit — more of it makes
+wide families WORSE. F77 generalises into a law of this
+architecture.** F88's prediction was that raising bank tokens from 16 to
+48 would lift the wide families (slots 5-6) and leave the narrow ones
+alone. Measured, 154 novel in-support families per arm, 2 seeds:
+
+| slots | 16 tokens | 48 tokens | delta |
+| ---: | ---: | ---: | ---: |
+| 1 | 0.996 | 0.995 | -0.001 |
+| 2 | 0.995 | 0.996 | +0.000 |
+| 3 | 0.995 | 0.985 | -0.010 |
+| 4 | 0.974 | 0.974 | +0.001 |
+| 5 | 0.935 | 0.912 | -0.023 |
+| **6** | 0.870 | **0.782** | **-0.088** |
+
+Aggregated: slots<=3 moves -0.004 (nothing), slots>=5 moves **-0.040**,
+and the widest families lose most. Overall novel read falls 0.984 ->
+0.976 and acquisition rises 5.8 -> 7.8.
+
+**This is F77's result again, by a different route.** F77 widened the
+conditioning channel by MODULATION and novel-family reading fell 0.682
+-> 0.567. F89 widens it by TOKEN COUNT and the hardest families fall
+0.870 -> 0.782. Two independent ways of giving the bank interface more
+capacity, both leaving in-distribution accuracy roughly unchanged while
+degrading exactly the cases that were already hardest.
+
+Stated as a rule this architecture now supports twice over:
+
+> **The bank interface should be as narrow as the task allows. Extra
+> conditioning capacity is spent overfitting the training distribution,
+> not on expressing harder families.**
+
+**So the limit on wide families is representation, not width — and that
+is the third branch of F88's recorded prediction.** F88 wrote: "if
+nothing improves, the limit is in the plant's ability to USE a wider
+entry and F77's finding extends to token count as well." That is what
+happened.
+
+Every gain in this project has come from the training distribution and
+none from capacity: F78 (diversity 64 -> 4096), F80/F82 (budget), F84
+(schema support). Every capacity increase has hurt: F77, F89. Rejection
+sampling leaves 6-slot families at 3.7% of the pool (152 of 4096), and
+slots>=5 at 11%. The experiment now in flight samples slot COUNTS
+uniformly instead — 6-slot families rise to ~16% — with the prediction
+that slots=6 read accuracy rises materially while slots<=3 is unchanged,
+since those are already at 0.995 and cannot move.
+
+If balancing does NOT lift the wide families, then the limit is the
+plant's 2-layer attention over 6 slot tokens rather than anything about
+the data, and depth becomes the next variable — the first time in this
+project that adding capacity would be the indicated move.
+
+Probe 189 is `amortised_bank.py --bank-tokens 48` against 16, 2 seeds.
+
+**F90 (probe 190). Balancing the distribution lifts wide families
+exactly as predicted — by taking accuracy from the narrow ones. The
+distribution does not create capability, it ALLOCATES it.** F89 ruled
+out entry capacity. Sampling slot COUNTS uniformly (6-slot families rise
+from 3.7% to ~16% of the pool) instead of uniformly over feasible
+(slots, values) pairs:
+
+| slots | rejection sampling | **balanced** | delta |
+| ---: | ---: | ---: | ---: |
+| 1 | 0.996 | 0.963 | -0.033 |
+| 2 | 0.995 | 0.954 | -0.041 |
+| 3 | 0.995 | 0.941 | -0.054 |
+| 4 | 0.974 | 0.972 | -0.001 |
+| 5 | 0.935 | 0.957 | +0.022 |
+| **6** | **0.870** | **0.972** | **+0.102** |
+
+slots>=5 gains +0.047; slots<=3 loses -0.042. The prediction was right
+about direction and wrong about it being free.
+
+**This is the cleanest statement of the mechanism this project has.**
+Put beside F77 and F89 — two independent ways of ADDING interface
+capacity, both of which made the hardest families worse — the picture is
+consistent:
+
+> The reader has a fixed capacity budget across family widths. The
+> TRAINING DISTRIBUTION decides how that budget is allocated. Adding
+> interface capacity does not add budget; it adds overfitting.
+
+That also explains why 40000 pre-training updates were needed and why
+20000 failed (F80): the budget has to be learned before it can be
+allocated.
+
+**Cost of the reallocation, stated plainly.** Acquisition rises 5.8 ->
+32.1 against a cold baseline that also rises (51.1 -> 59.5, because the
+balanced test set is genuinely harder). Still cheaper than cold, but
+1.9x rather than 8.8x. And a caveat on the aggregate numbers: balancing
+changed the TEST distribution as well as the training one, so overall
+"novel read 0.984 -> 0.962" is not a like-for-like comparison. The
+per-slot breakdown above is the fair one, and it is unambiguous.
+
+**What did NOT move: hand-made `toggle`, 0.198 -> 0.208.** Balancing
+lifted 6-slot PROCEDURAL families to 0.972 but left `toggle` where it
+was, and the reason is visible in the spec: `toggle` flips a PAIR of
+bits, and this run used the narrow op vocabulary. Slot representation
+and op vocabulary are two separate gaps and `toggle` needs both. The run
+now in flight is `--balanced --wide`, the one cell that has never been
+tested, and it is the direct prediction of these two findings taken
+together.
+
+Probe 190 is `amortised_bank.py --balanced`, 2 seeds, against F88's
+rejection-sampled baseline.
+
+**F91 (probe 191). Op vocabulary and slot balancing together fix
+`toggle` and largely dissolve F90's trade. The reallocation was an
+artefact of an inadequate schema, not a fixed budget.** F90 found that
+balancing slot counts bought wide families (+0.102 at 6 slots) by taking
+from narrow ones (-0.042). F84 separately found that widening the op
+vocabulary lifted `toggle`. The combination has never been run:
+
+| slots | rejection + narrow | balanced + narrow | **balanced + WIDE** |
+| ---: | ---: | ---: | ---: |
+| 1 | 0.996 | 0.963 | 0.987 |
+| 2 | 0.995 | 0.954 | 0.993 |
+| 3 | 0.995 | 0.941 | 0.984 |
+| 4 | 0.974 | 0.972 | 0.972 |
+| 5 | 0.935 | 0.957 | **0.968** |
+| 6 | 0.870 | 0.972 | **0.976** |
+| slots>=5 | 0.918 | 0.965 | **0.973** |
+| slots<=3 | 0.996 | 0.954 | **0.988** |
+
+**Balanced+wide is best on wide families AND recovers nearly all of the
+narrow loss.** F90's trade was not a fixed capacity budget being
+reallocated — it was wide families being needlessly expensive to express
+because the op vocabulary lacked simultaneous multi-slot effects. Supply
+the right primitive and the same reader covers both.
+
+That is a correction to F90's headline. The rule from F77/F89 stands —
+adding INTERFACE capacity hurts — but F90's stronger claim, that
+distribution merely reallocates a fixed budget, is too strong. A better
+SCHEMA raises the ceiling for everyone; only distribution shifts within
+a fixed schema trade off.
+
+**`toggle`, the project's hardest case since F79, is solved:**
+
+| | F79 (pool sweep) | F84 (wide @20k) | F87 (narrow @40k) | **F91 (balanced+wide @40k)** |
+| --- | ---: | ---: | ---: | ---: |
+| toggle read | 0.096 | 0.306 | 0.198 | **0.917** |
+
+Zero gradient steps, frozen plant, from a single forward pass over 128
+observed transitions. Neither ingredient alone was close: op vocabulary
+without balancing reached 0.306, balancing without op vocabulary 0.208.
+The hand-made families are never sampled by the generator, so this is
+genuine out-of-set generalisation.
+
+**Cost, honestly.** Acquisition is 22.2 against a cold 58.9 — 2.7x
+cheaper, not the 8.7x of the rejection-sampled arm, but that arm's test
+set is easier (cold 51.1). Overall novel read 0.980 with in-distribution
+0.979.
+
+**Where this leaves the frontier.** The primary gate passes at N=256
+(F87), retrieval is constant-cost and 0.994 accurate (F86, F87), and the
+last identified capability gap is closed. The remaining open items are
+no longer about this mechanism: they are the discrimination gap's slow
+shrink (0.068 at N=256, decelerating, measured not extrapolated) and
+whether any of this survives contact with the games battery, which has
+not been touched since F70.
+
+Probe 191 is `amortised_bank.py --balanced --wide`, 2 seeds.
+
+**F92 (probe 192). The project's own reacher, read by a plant that never
+saw a grid: the open grid is FREE, the walled grid FAILS. Position-
+dependent dynamics are a structural class this schema cannot express.**
+F71-F91 are all measured on procedurally generated families. The reacher
+ladder (F67-F70) is a task this project actually built, and its grid
+state is exactly two slots of eight values, so it can be read by the
+same plant with no new machinery.
+
+| family | read (0 gradient steps) | per-seed | fine-tune | cold |
+| --- | ---: | --- | ---: | ---: |
+| **grid** (open, r3) | **1.000** | 1.000 / 1.000 | **0** | 50 |
+| **walled** (r4) | 0.894 | 0.894 / 0.894 | **438** | **88** |
+
+**The open grid is acquired for free.** A plant pre-trained only on
+procedural families reads the reacher's own dynamics perfectly from 128
+observed transitions, zero gradient steps, against a cold cost of 50
+updates. That is the first time anything in this project has transferred
+to a task it was built for rather than a task built for it.
+
+**The walled grid is the first decisive FAILURE of this mechanism.**
+Read 0.894, and fine-tuning to 0.98 costs 438 updates against a cold 88
+— five times WORSE than learning it from scratch. The cause is
+structural and was predicted before the run: every op the generator can
+produce is a uniform function of SLOT VALUES, while a wall makes the
+effect of an action depend on WHICH STATE you are in. Walls change
+27/256 transitions, and those 27 are exactly the ones the plant cannot
+represent. No amount of `--wide` op vocabulary or `--balanced` sampling
+reaches this, because the missing primitive is a different kind:
+conditional or masked effects, not another uniform slot operation.
+
+That is a clean localisation of the ceiling. The mechanism reads
+dynamics that are FUNCTIONS OF THE STATE VECTOR and fails on dynamics
+that are functions of the STATE'S IDENTITY.
+
+**A flaw in my own null, found by this run.** `grid`'s wrong-context
+null reads 1.000 — apparently "the entry is decoration". It is not: the
+withheld-bank control gives 0.170 for `grid` and 0.221 for `walled`, so
+an entry is definitely load-bearing. The null is simply uninformative
+here, because it pairs each family with its LIST NEIGHBOUR and `grid`'s
+neighbour is `walled` — two families sharing 229 of 256 transitions.
+A "wrong" entry that is 90% right cannot falsify anything. `walled`'s
+null (paired with `line`) reads 0.350 and is meaningful.
+
+The wrong-context null has been quoted as evidence since F76 and it was
+sound there, where all four families were mutually unrelated. Adding
+near-duplicate families broke its assumption silently. It should draw a
+RANDOM unrelated family rather than a neighbour, and until it does, its
+value is only interpretable when the pairing is known to be distant.
+
+Probe 192 is `amortised_bank.py --balanced --wide` with `grid` and
+`walled` added to the hand-made held-out set, 2 seeds.
+
+**F93 (probe 193). The fixed null vindicates the entry decisively, and
+clause (c) holds at N=1024.**
+
+**The null fix (F92's flaw), measured.** Drawing the wrong context from
+a FRESHLY GENERATED family instead of the list neighbour:
+
+| family | read | stranger entry | neighbour entry (old null) | withheld |
+| --- | ---: | ---: | ---: | ---: |
+| grid | 1.000 | **0.117** | 1.000 | 0.170 |
+| walled | 0.894 | **0.156** | 0.350 | 0.221 |
+| line | 1.000 | 0.109 | 0.000 | 0.188 |
+| dial | 0.782 | 0.072 | 0.001 | 0.053 |
+| toggle | 0.917 | 0.021 | 0.227 | 0.000 |
+| perm | 1.000 | 0.042 | 0.000 | 0.000 |
+
+`grid`'s null moves from 1.000 to 0.117. The old figure was entirely an
+artefact of pairing `grid` with `walled`, which share 229 of 256
+transitions. Every family now shows the expected pattern — right entry
+0.78-1.00, wrong entry 0.02-0.16, no entry 0.00-0.22 — and the double
+dissociation is clean across all six.
+
+The lesson generalises past this probe: a null that pairs items by
+position silently stops being a null when near-duplicates enter the set.
+Draw controls at random from the generating distribution, not from the
+neighbourhood.
+
+**Clause (c) at N=1024**, sixteen times the bank size where it was first
+measured:
+
+| seed | mastered | retention drift | acq first-128 | acq last-128 | cold |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 69316 | 1024/1024 | 0.0 | 4.3 | 5.3 | 50.1 |
+| 69317 | 1023/1024 | 0.0 | 8.8 | 10.5 | 48.8 |
+
+Acquisition rises about 1.2x across a 1024-entry bank while remaining
+5-10x cheaper than cold, and retention stays exactly 0.0 over a thousand
+entries. The drift is real but small and both seeds show it, so it
+should be watched rather than dismissed: at this rate it would take a
+bank of order 10^5 to erase the advantage.
+
+**A measurement gap of my own making.** The retrieval ladder was capped
+at 256 in the code while `--sequential 1024` was running, so retrieval
+at N=512 and N=1024 was never computed despite the bank existing. The
+expensive part had already been paid. The ladder is now extended and the
+run relaunched; until it lands, the discrimination trend remains
+measured only to N=256 (key gap 0.068, decrements decelerating:
+-0.109, -0.049, -0.038, -0.033, -0.027).
+
+Probe 193 is `amortised_bank.py --sequential 1024` and the stranger-null
+rerun, 2 seeds each.
+
+**F94 (probe 194). Retrieval measured to N=1024. Retrieve-then-verify
+holds 0.980 at constant cost — and F87's "asymptote" claim was as
+unsupported as the linear extrapolation it criticised.**
+
+| N | key | **key+verify** | linear scan | key gap | decrement | conseq gap | stranger key sim |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 8 | 1.000 | 1.000 | 1.000 | 0.325 | - | 0.571 | 0.667 |
+| 64 | 1.000 | 1.000 | 0.969 | 0.128 | -0.038 | 0.356 | 0.862 |
+| 256 | 0.988 | 0.994 | 0.918 | 0.068 | -0.027 | 0.259 | 0.923 |
+| 512 | 0.975 | 0.988 | 0.884 | 0.066 | -0.002 | 0.168 | 0.925 |
+| **1024** | 0.951 | **0.980** | 0.853 | **0.037** | -0.029 | 0.171 | **0.954** |
+
+**Retrieve-then-verify is the mechanism that scales.** 0.980 at N=1024
+(per-seed 0.979/0.981) on a CONSTANT 4 plant forward passes, while the
+1024-pass linear scan has fallen to 0.853. Sixteen times the bank, 1/256
+of the retrieval cost, and better accuracy.
+
+**Correction to F87, and it is a correction to my own methodology.** F87
+said the key-gap decrements were "decelerating, roughly halving" and
+that the curve "is approaching a small positive asymptote instead" of
+reaching zero. With four more points that is not supported: decrements
+run -0.109, -0.049, -0.038, -0.033, -0.027, -0.002, -0.029. The -0.002
+at N=512 is noise, and the N=1024 decrement (-0.029) is the same size as
+the N=256 one. The gap is still falling at roughly its earlier rate and
+sits at 0.037.
+
+I criticised a linear-in-log extrapolation for resting on four points
+and then made an asymptotic claim from the same four points. Both were
+projections dressed as findings. The supportable statement is only what
+was measured: the key gap is 0.037 at N=1024 and still declining, and
+whether it flattens is unknown.
+
+**What that means practically.** Key-only discrimination is effectively
+gone at N=1024 — a never-seen family matches its nearest stored key at
+0.954 — so no threshold on key similarity can support reuse-or-mint at
+this scale. Two things nevertheless survive:
+
+  * **ranking**, which is all retrieval needs: key top-1 is still 0.951;
+  * **consequence verification**, whose gap is 0.171 — six times the key
+    gap and the only remaining source of "none of these".
+
+The architecture's dependence on the verify step therefore grows with
+bank size rather than shrinking. F86 called it "not optional"; at
+N=1024 it is the only thing doing that job.
+
+Probe 194 is `amortised_bank.py --sequential 1024 --retrieval` with the
+size ladder extended to 1024, 2 seeds.
+
+**F95 (probe 195). The conditional primitive did NOT fix the walled grid
+— it made everything worse at a fixed budget.** F92 localised the
+mechanism's ceiling to position-dependent dynamics and the ledger called
+for a conditional/masked op primitive, "the direct analogue of the
+F84/F91 fix that took `toggle` from 0.096 to 0.917". Two such primitives
+were added to the schema — a barrier that refuses a move onto a
+particular value (literally the reacher's obstacle) and an effect
+conditional on another slot. Pool 4096, 40000 updates, 2 seeds:
+
+| family | balanced+wide | **+ gated primitives** |
+| --- | ---: | ---: |
+| grid | read 1.000, ft 0 | read 0.978, ft 25 |
+| **walled** | read 0.894, ft 438 | read **0.795**, ft **600 (capped)** |
+| toggle | read 0.917, ft 125 | read 0.800, ft 25 |
+| novel in-support read | 0.976 | 0.960 |
+| acquisition vs cold | 26.3 / 62.3 (2.4x) | 43.6 / 57.0 (1.3x) |
+| in-distribution | 0.979 | 0.961 |
+
+The target case got WORSE (0.894 -> 0.795, and fine-tuning now exhausts
+the budget), and so did nearly everything else.
+
+**Why the analogy to `toggle` failed.** `pair` was a SIMPLE uniform op
+that made a previously inexpressible family expressible without enlarging
+the hypothesis class much. `wall` and `cond` are position-dependent, and
+adding them enlarges the class the reader must span across every family
+it sees — in-distribution accuracy itself falls 0.979 -> 0.961, which is
+the signature of a distribution that has become harder to learn rather
+than one that has become more expressive.
+
+**The one explanation still live is budget, and it has a precedent.**
+F80/F84 measured exactly this shape once before: the `--wide` schema at
+20000 updates un-crossed the cost gate (acquisition 81.3 vs cold 57.9)
+and at 40000 it re-crossed decisively (20.4 vs 57.9). A harder
+distribution needs more pre-training, not a narrower schema. The gated
+schema at 40000 may be in the same position the wide schema was at
+20000.
+
+Prediction recorded before the run now in flight (gated at 80000):
+if position-dependent dynamics are learnable by this reader at all,
+`walled` should rise well above 0.894 and its fine-tune cost fall below
+the cold 88. If `walled` stays near 0.8 with twice the budget, then
+position-dependent dynamics are not a schema gap at all — they are
+outside what this reader architecture can represent, and the fix would
+have to be the plant (depth, or a different attention over states),
+which would be the first time in this project that adding model capacity
+is the indicated move.
+
+Probe 195 is `amortised_bank.py --balanced --wide --gated`, 2 seeds.
+
+**F96 (probe 196). The ceiling is exact and it is not budget, not
+schema, and not capacity: the bank stores RULES and cannot store
+EXCEPTIONS.** F95's failed fix left one explanation live — that the
+gated schema at 40000 was in the position the wide schema had been at
+20000, undertrained rather than wrong. Doubling to 80000 settles it:
+
+| family | balanced+wide @40k | gated @40k | **gated @80k** |
+| --- | ---: | ---: | ---: |
+| grid | 1.000, ft 0 | 0.978, ft 25 | **1.000, ft 0** |
+| toggle | 0.917, ft 125 | 0.800, ft 25 | **0.992, ft 0** |
+| dial | 0.782, ft 150 | 0.833, ft 88 | **0.980, ft 25** |
+| perm / line | 1.000 | 1.000 / 0.969 | **1.000 / 1.000** |
+| **walled** | **0.894**, ft 438 | 0.795, ft 600 | **0.894**, ft 600 |
+| in-distribution | 0.979 | 0.961 | 0.978 |
+| novel read | 0.976 | 0.960 | **0.982** |
+| acquisition vs cold | 2.4x | 1.3x | **3.0x** |
+
+**Everything F95 broke, the extra budget repaired — except the one
+family the primitive was added for.** `toggle` reaches 0.992 at zero
+cost (its best ever), `dial` 0.980, novel acquisition 3.0x cheaper than
+cold. `walled` sits at 0.894 on both seeds at both budgets, unmoved.
+
+**The number 0.894 is not a partial success. It is an exact
+identification of what the reader does.** `grid` and `walled` agree on
+**229 of 256** transitions = **0.8945**, and the measured read accuracy
+is 0.894 on every seed and every configuration. The reader gets every
+non-wall transition right and every wall transition wrong. It is not
+partially learning the obstacle — it reads "8x8 grid movement" from the
+context and ignores the exception set entirely, even though roughly 13
+of the 128 observed transitions demonstrate it.
+
+**Why more of anything cannot fix this.** The obstacle is ~121 bits of
+ARBITRARY content (log2 of the ways to choose 27 blocked transitions
+from 256). It is not compressible into a rule of the kind every other
+family has — "increment slot 2 mod 8" is a rule; "these 27 cells are
+blocked" is a list. The entry is read by a plant that applies a uniform
+function to slot values, so an entry can only ever name a rule. No
+budget, no vocabulary and no token count changes that, and F95 showed
+enlarging the hypothesis class actively costs elsewhere.
+
+**The architectural conclusion, and it is the project's own design
+arriving from measurement.** This is the semantic/episodic split:
+
+  * **rules** — compressible, apply everywhere, belong in the bank
+    entries this mechanism already has. Measured: 0.982 read, 3.0x
+    cheaper acquisition, retention exact to N=1024.
+  * **exceptions** — arbitrary, per-state, incompressible. They need a
+    STORE, not a rule: content-addressed episodic memory holding
+    (state, action) -> outcome for the states where the rule fails.
+
+`ContentAddressedMemory` has sat unused in this repository since the
+beginning (open weakness 8, "no memory bank in the games runtime"). F96
+is the first result that says precisely what it is for and predicts what
+it should buy: `walled` should go from 0.894 to ~1.000 by storing 27
+exceptions, with the rule-bank untouched.
+
+That is a sharper claim than "add episodic memory" — it is "the residual
+0.106 is exactly the exception set, and an episodic store of 27 entries
+closes it".
+
+Probe 196 is `amortised_bank.py --balanced --wide --gated` at 40000 and
+80000 updates, 2 seeds each.
+
+**F97 (probe 197). The exception store closes the last gap, on exactly
+the predicted number. `walled` 0.894 -> 1.000 with 27 stored
+exceptions.** F96 predicted: "`walled` goes 0.894 -> ~1.000 by storing
+27 exceptions, with the rule-bank untouched." Built and measured — the
+plant stays frozen, the entry is unchanged, no gradient step is taken,
+and exceptions are recorded only where the rule is observably WRONG:
+
+| family | rule only | watch 128 | watch 256 | watch 512 | watch 1024 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| **walled** | 0.894 | 0.928 (8) | 0.965 (18) | 0.984 (23) | **1.000 (27)** |
+| grid | 1.000 | 1.000 (**0**) | 1.000 (**0**) | 1.000 (**0**) | 1.000 (**0**) |
+| toggle | 0.992 | 0.994 (0) | 0.995 (1) | 0.999 (2) | 0.997 (2) |
+| dial | 0.980 | 0.980 (2) | 0.981 (4) | 0.982 (8) | 0.986 (18) |
+| perm | 1.000 | 1.000 (**0**) | 1.000 (**0**) | 1.000 (**0**) | 1.000 (**0**) |
+| line | 1.000 | 1.000 (**0**) | 1.000 (**0**) | 1.000 (**0**) | 1.000 (**0**) |
+
+*(accuracy with exception count in parentheses)*
+
+**Exactly 27, on both seeds.** That is precisely the number of
+transitions on which `grid` and `walled` differ. The store found the
+obstacle and nothing else.
+
+**The degeneracy check is the important one.** A store that fixes
+everything by memorising everything would be worthless — it would be a
+lookup table wearing an architecture. The store holds **zero** entries
+for `grid`, `perm` and `line`, the families the rule already captures
+perfectly, at every observation budget up to 1024. It grows only where
+rules fail, which is the property that makes it a complement to the bank
+rather than a replacement for it.
+
+**The limit is observation, not capacity.** Coverage rises 8 -> 18 -> 23
+-> 27 as the world is watched longer, and 128 random draws from 256
+possible (state, action) pairs cover only ~39% of them, so the
+intermediate figures are exactly what sampling predicts. Nothing is
+being learned; the system is simply looking.
+
+**This completes the split §2.2 now records:**
+
+  * **rules** — compressible, universal, read in one forward pass into a
+    bank entry: 0.982 on novel families, 3.0x cheaper acquisition than
+    cold, retention exact to N=1024, retrieval 0.980 at constant cost.
+  * **exceptions** — arbitrary, per-state, incompressible, recorded
+    where the rule is seen to fail: 27 entries turn the project's own
+    walled reacher from 0.894 to 1.000, and 0 entries are spent on
+    families that need none.
+
+**Honest scope.** The store here is an exact dictionary keyed by
+(state, action) — an idealised content-addressed memory. A learned or
+approximate store would be lossy and this result does not speak for it;
+what is established is that the INFORMATION needed is small, precisely
+localised, and obtainable by watching. The failure mode to watch for is
+a family whose rule captures little: the store would then grow toward
+the whole table and degenerate into memorisation. `dial` at 18 entries
+is the closest instance here, and store size per family is the
+diagnostic that would catch it.
+
+Probe 197 is `amortised_bank.py --balanced --wide --gated` at 80000
+updates with the exception store, 2 seeds.
+
+**F98 (probe 198). A real content-addressed store matches the idealised
+dictionary — once the key stops being lossy. And the degeneration case
+is measured, then separated by two orders of magnitude.** F97's store
+was an exact dict keyed by (state, action): it never mis-fires and never
+runs out of room. Two things it could not speak for were a realistic
+approximate store, and a family with no rule at all.
+
+**Approximate store, similarity-addressed with capacity:**
+
+| family | rule | exact dict | **mean-pooled key** | **concatenated key** |
+| --- | ---: | ---: | ---: | ---: |
+| walled | 0.894 | 0.996 | 0.908 | **0.996** |
+| toggle | 0.992 | 0.999 | **0.951** | **1.000** |
+| dial | 0.980 | 0.985 | 0.968 | 0.986 |
+| chaos | 0.014 | 0.986 | 0.557 | 0.977 |
+| grid / perm / line | 1.000 | 1.000 | 1.000 | 1.000 |
+
+**My first key design was the whole failure.** Mean-pooling the slot
+embeddings loses state identity — two different states can share a mean
+— so the store both missed exceptions and fired on the wrong ones. On
+`toggle` it was NET-HARMFUL, dragging 0.992 down to 0.951: a store that
+made a family the rule already handled WORSE. Keeping the slots
+concatenated preserves identity and the approximate store then matches
+the exact dictionary everywhere (walled 0.996, toggle 1.000).
+
+So content addressing is fine for exceptions; lossy addressing is not.
+That is a narrower and more useful claim than "approximate stores work",
+and it was one pooling operation away from the opposite conclusion.
+
+**Degeneration, measured rather than assumed.** `chaos` is a family
+whose transition table is a random permutation per action — no rule
+exists to read. The rule alone scores 0.014, and the exception store
+grows to 249 of 256 possible entries and reaches 0.986. **The store does
+become the whole table when no rule exists.** The failure mode named in
+F97 is real.
+
+**And it is trivially detectable.** Violation rate — the fraction of
+observations on which the rule is wrong — separates the cases by two
+orders of magnitude:
+
+| family | violation rate | verdict |
+| --- | ---: | --- |
+| grid, perm, line | **0.0%** | rule holds |
+| toggle | 1.1% | rule holds |
+| dial | 2.1% | rule holds |
+| **walled** | **10.3%** | rule + exceptions |
+| **chaos** | **98.5%** | NO RULE — refuse to memorise |
+
+A capacity cap alone is a poor guard: bounding `chaos` to 32 entries
+holds memory down but accuracy collapses to 0.127, so the system fails
+silently. The violation rate is the honest signal — it says WHY the
+store is growing, and a system that watches it can report "this task is
+not rule-like" instead of quietly turning into a lookup table.
+
+That completes the store: rules in the bank, exceptions in a
+content-addressed episodic memory addressed by a non-lossy key, and a
+measured criterion for when a task is not compressible at all.
+
+Probe 198 is `amortised_bank.py --store-key {mean,concat}` with the
+rule-free `chaos` family, 2 seeds.
+
+**F99 (probe 199). The mechanism reaches the ACTUAL GAMES: the entry is
+causally driving behaviour, in-distribution works, and generalisation to
+held-out rule pairs is weak and seed-unstable — exactly as F78
+predicts.** F71-F98 were measured on procedurally generated families and
+the reacher in a slot interface. This is the games battery itself: real
+screens from `FamilyVerifier`, verifier-private rules, and REWARD rather
+than next-state.
+
+The `dual` variant is the games' own factorisation test. Each trial puts
+the avatar at the centre with `arity` items adjacent and a cue across
+the top row; for cue k exactly one side is edible. A "family" is one
+(rule0, rule1) pairing — 9 of them at arity 3, built from 6 independent
+sub-rules. The reader watches 64 (screen, action, reward) triples and
+emits an entry; the frozen plant predicts each action's OUTCOME and
+behaviour is argmax. Nothing preferential is stored: "side 1 is edible
+under cue 0" is a fact that cannot go stale, where "move right" is a
+habit the next variant contradicts.
+
+| arm | choice accuracy | mean reward |
+| --- | ---: | ---: |
+| trained pairings | **0.667** | +0.600 |
+| held-out pairings | 0.345 | +0.214 |
+| held-out, entry WITHHELD | 0.241 | +0.102 |
+| held-out, STRANGER entry | **0.083** | **-0.100** |
+| random plant | 0.065 | -0.042 |
+| chance | 0.250 | |
+
+**The entry is unambiguously load-bearing.** Withholding it drops
+behaviour to chance (0.241 vs 0.250) — the plant alone knows no rule.
+Supplying ANOTHER pairing's entry drops it to 0.083 with NEGATIVE
+reward: a wrong rule makes the agent eat the wrong item on purpose.
+That is a stronger causal demonstration than anything in the synthetic
+families, because here being wrong is actively punished.
+
+**Generalisation is the weak part, and it is seed-unstable.** Held-out
+pairings score 0.488/0.528/0.558 on one seed and 0.104/0.221/0.173 on
+the other — one seed clearly above chance, the other clearly below. The
+0.345 mean is carried entirely by the first.
+
+**F78 predicts this, and the prediction is quantitative.** Diversity is
+the knob: with 64 procedural families the reader MEMORISED (novel read
+0.318) and it took 4096 to make reading the winning strategy. Here there
+are **six** training pairings. Six. By this project's own measurement,
+in-weights memorisation is what a distribution that small should
+produce, and 0.667 trained against 0.345 held-out is exactly that
+signature.
+
+So the honest reading is not "the mechanism fails on games". It is that
+the games' rule space is small BY CONSTRUCTION, and the condition F58
+and F78 identified — goals plentiful enough that memorising is not
+competitive — is not met by the battery as it stands. That is a
+statement about the benchmark as much as the method.
+
+The run now in flight raises `arity` to 4 and 5 (16 and 25 pairings) to
+test the diversity explanation directly on the games. Prediction: held-
+out choice accuracy rises with the number of distinct pairings and the
+seed instability shrinks. If it does not, the games differ from the
+synthetic families in some way beyond rule count, and finding out which
+way becomes the next question.
+
+Probe 199 is `experiments/games_amodal/probes/game_rule_reading.py`,
+2 seeds plus a random-plant null.
+
+**F100 (probe 200). Reading rules across 50 game variants learns
+NOTHING — because I built a one-step reward model and the games have
+delayed reward. The formulation was wrong, not the mechanism.** F99
+found the dual game's rule space capped at 9 pairings (the verifier
+rejects `arity` above 3), far below the diversity F78 says is needed.
+The battery's own variant enumeration supplies 50 distinct worlds
+(`family_variants` x `inverted`), so that was the natural larger axis.
+
+| arm | reward | floor | lift | beats floor |
+| --- | ---: | ---: | ---: | ---: |
+| trained variants | -0.020 | -0.019 | -0.001 | 6.0/12 |
+| held-out variants | -0.020 | -0.021 | +0.001 | 5.5/12 |
+| entry withheld | -0.021 | -0.021 | -0.001 | 4.5/12 |
+| stranger entry | -0.020 | -0.021 | +0.001 | 4.5/12 |
+| **random plant (null)** | -0.019 | -0.022 | **+0.003** | **8/12** |
+
+**The random-plant null does as well as the trained system.** Twelve
+thousand updates bought nothing at all, on trained variants as much as
+held-out ones. That pattern — no lift anywhere, including in
+distribution — is not a generalisation failure, it is a formulation
+failure, and it points at the probe rather than the method.
+
+**The cause.** `collect`, `intercept`, `avoid` and `navigate` are
+MULTI-STEP: reward arrives after several moves toward something. My
+plant predicts the outcome of ONE action and behaviour is a greedy
+argmax over that prediction. Almost every single action in these games
+yields exactly zero, so the model is right and useless — greedy
+one-step prediction is not a policy for a navigation task.
+
+The dual game worked (F99: 0.667 trained, stranger entry -0.100) for
+exactly the reason these do not: a dual trial IS one step. The item is
+adjacent, one action resolves it, and one-step outcome prediction is the
+whole problem.
+
+**This is F67's architecture, and I omitted half of it.** F67 concluded
+that behaviour should be DERIVED BY SEARCH in a learned transition
+model, and the reacher probes did precisely that — BFS over predicted
+next states. Here I learned a reward model and no transition model, then
+searched to depth one. For a one-step game that is complete; for a
+navigation game it is a stub.
+
+What the games need, stated concretely: a transition model over screens
+or over an extracted factored state, a reward model as built here, and
+search over the two — the same combination `reacher_ladder.py` uses.
+The reading mechanism supplies the per-world CONTENT for both; what is
+missing is the multi-step derivation, not the bank.
+
+**Honest status of the games claim.** Reading a game's rule from
+observed outcomes works and is causally demonstrated where the game is
+a one-step decision (F99). It is untested on multi-step games, because
+this probe could not test it — and the 50-variant result above should be
+read as a measurement of my probe, not of the architecture.
+
+Probe 200 is `game_rule_reading.py --variants`, 2 seeds plus a
+random-plant null.
+
+**F101 (probe 201). Model + value + SEARCH also fails on the games, and
+the nulls say why: the ENTRY contributes nothing. The state
+representation is the defect, not the derivation.** F100 located its own
+failure in greedy one-step action selection and prescribed F67's
+missing half. Built: a transition model (cell, action) -> next cell, a
+value model (screen, cell, entry) -> what happens if I stand there, and
+breadth-first search over the two, recomputed every step.
+
+| arm | reward | floor | lift | beats floor |
+| --- | ---: | ---: | ---: | ---: |
+| trained variants | -0.0385 | -0.0402 | +0.0017 | 7.0/12 |
+| held-out variants | -0.0383 | -0.0400 | +0.0016 | 6.5/12 |
+| held-out, entry WITHHELD | -0.0380 | -0.0400 | **+0.0020** | 6.5/12 |
+| held-out, STRANGER entry | -0.0377 | -0.0400 | **+0.0023** | 6.5/12 |
+| random plant | -0.0444 | -0.0436 | -0.0008 | 5/12 |
+
+Search did roughly double the lift over F100's greedy probe (+0.0016
+against +0.0008), but both numbers are negligible, and the decisive
+column is the nulls: **withholding the entry scores the same, and a
+STRANGER'S entry scores slightly better.** On the games' `dual` variant
+the same nulls were brutal — a stranger's entry drove reward to -0.100
+(F99). Here the entry is decoration. Whatever the system is doing, it is
+not reading the world.
+
+**So the diagnosis moves up a level, and it is the same shape as F92.**
+The state I gave it is the avatar's cell plus one screen frame. That is
+not a sufficient state for these games: `intercept` has objects FALLING,
+`avoid` has hazards MOVING, and a single frame contains no velocity or
+phase. A value attached to "standing on cell c" cannot express "cell c
+is safe now and lethal in two steps". The model is being asked to
+predict something its inputs do not determine — Markov-insufficient by
+construction — so no amount of search over it helps and no entry can
+rescue it.
+
+F92 found the mechanism reads dynamics that are functions of the STATE
+VECTOR and fails on dynamics that are functions of the state's IDENTITY.
+This is the same boundary one level up: it fails on dynamics that are
+functions of state HISTORY.
+
+**Two failed probe formulations, one honest conclusion.** The bank
+mechanism is not what is failing on the games — it has never been given
+a state in which the games' dynamics are predictable. What the battery
+needs is a factored MULTI-OBJECT state: avatar, plus each faller and
+hazard, plus enough frames to expose motion. That is precisely what the
+slot interface of F71-F98 was built for and it has never been fed game
+objects; `schema_families.py` handles six slots of eight values, and a
+composigrid frame with an avatar and two hazards is exactly that shape.
+
+Recorded as the next experiment rather than attempted here, because two
+formulation failures in a row is the point at which this project's own
+rules say to stop iterating and state the finding.
+
+Probes 200 and 201 are `game_rule_reading.py --variants` and
+`game_search.py`, 2 seeds each plus random-plant nulls.
+
+**F102 (probe 202). The slot state made it WORSE, which refutes F101's
+diagnosis — and the real cause is measured: 98.16% of outcomes under
+random play are "nothing".** F101 blamed the state representation
+(avatar cell + one frame is Markov-insufficient) and prescribed a
+factored multi-object state. Built: six slots read off the screen
+(avatar row/col, nearest positive object row/col, nearest negative
+object row/col), a dynamics model over that state, an outcome model, and
+beam search over both.
+
+Same seed, same held-out variants, floors verified bit-identical 12/12:
+
+| arm | mean lift over floor | beats floor |
+| --- | ---: | ---: |
+| trained | **-0.0013** | 5/12 |
+| **untrained (random plant)** | **+0.0071** | **10/12** |
+
+**Training makes it worse than not training.** That is not noise and not
+a measurement artefact — the floors are the same numbers to the last
+decimal.
+
+**Correction to F101.** I diagnosed state representation and this
+experiment adds exactly the missing information — falling objects now
+move IN the state — and the result got worse. The state was not the
+binding constraint, so F101's diagnosis was wrong.
+
+**The actual cause, measured over 20 variants and 25600 random steps:**
+
+| outcome class | share |
+| --- | ---: |
+| nothing | **98.16%** |
+| cost | 1.53% |
+| food | **0.31%** |
+
+Three consequences, and together they explain the sign of the result:
+
+1. A model that always predicts "nothing" scores 98.16%. Cross-entropy
+   on random-play data is almost entirely satisfied by that constant, so
+   there is nearly no gradient toward the 1.8% that matters.
+2. The residual signal is **5:1 biased toward COST** (1.53% vs 0.31%).
+   Where the model does deviate from "nothing", it predicts punishment
+   more readily than reward.
+3. Beam search maximises P(food) - P(cost) over that near-flat,
+   cost-biased landscape, so the agent systematically avoids everything
+   — including food — and is CONSISTENTLY wrong where random play is
+   only randomly wrong. Consistency is why it lands below the floor.
+
+**And this explains F99 exactly.** The `dual` game worked — 0.667
+trained, and a stranger's entry driving reward to -0.100 — because every
+`dual` step resolves a trial, so its outcomes are ~100% non-zero. The
+mechanism works where the outcome signal is DENSE and fails where it is
+1.8%. That is one coherent account of every games result in F99-F102,
+and it is about signal density, not about the bank, the search, or the
+state.
+
+**What this actually asks for**, and it is standard rather than novel:
+class-balanced or importance-weighted outcome loss, on-policy or
+outcome-seeking data collection instead of uniform random rollouts, and
+a VALUE (expected future outcome) rather than an immediate-outcome
+target. None of the three has been tried; all three are ordinary
+reinforcement-learning practice that this line skipped by collecting
+data with a uniform random policy.
+
+Recorded as the corrected next step. The sequence F100 -> F101 -> F102
+is three formulations and two wrong diagnoses of my own, and the thing
+that finally identified the cause was counting the labels — which cost
+one command and should have come first.
+
+Probe 202 is `game_slots.py`, 2 seeds plus a random-plant null.
+
+**F103 (probe 203). The three sparsity fixes help but do not close it —
+and the untrained control reveals that my FLOOR was the wrong baseline
+all along.** F102 prescribed class-balanced loss, outcome-seeking data
+collection, and a value target. All three built and measured:
+
+| arm | F102 baseline | **with all three fixes** |
+| --- | ---: | ---: |
+| trained variants | -0.0045 (3.0/12) | **-0.0006** (4.5/12) |
+| held-out variants | -0.0024 (4.0/12) | **+0.0007** (5.5/12) |
+| held-out, entry withheld | -0.0036 | +0.0013 |
+| held-out, stranger entry | -0.0033 | +0.0007 |
+| untrained control | +0.0071 (10/12) | +0.0075 (10/12) |
+
+The fixes move every trained arm in the right direction — held-out lift
+crosses from negative to positive — and label density confirms why:
+outcome-seeking raises the food class from 3.54% to 12.18%, a 3.4x
+increase, while the value target alone barely moves it (3.54% -> 3.72%).
+Seeking is what mattered; the horizon was nearly irrelevant.
+
+**But two things are still wrong, and they are the important ones.**
+
+1. **The untrained control still wins**: +0.0075 against +0.0057 on the
+   same seed, 10/12 against 8/12. Training an outcome model and
+   searching in it is still worse than searching in an untrained one.
+2. **The entry is still decoration**: correct +0.0007, withheld +0.0013,
+   stranger +0.0007 — a gap of exactly zero. Nothing is being read.
+
+**Why the untrained control is strong, which is the real finding.**
+Beam search over a random-but-fixed value function produces PERSISTENT
+DIRECTIONAL motion — the agent commits to a direction instead of
+jittering. In a grid where food is scattered, persistent motion covers
+far more ground than a random walk, so it collects more by accident.
+
+That means the random-action FLOOR was never the right control for a
+searching agent. "Beats a random walk" is satisfied for free by anything
+that moves consistently, and every games number in F100-F103 was scored
+against it. The correct control is **search with an untrained model** —
+which isolates what the LEARNING contributes from what the SEARCH
+contributes — and against that control this system has never once won.
+
+That reframes F100-F102's conclusions without rescuing them: the earlier
+runs were not merely failing to help, they were being compared against a
+baseline too weak to be informative, and the one strong control present
+(the untrained plant) was the number that mattered in all of them.
+
+**A bug in my own fix, caught by measuring rather than reading.** The
+first implementation of the value target accumulated the discounted
+return to the END of the collected sequence regardless of `--horizon`,
+so the flag only trimmed trailing rows and every label was a full
+Monte-Carlo return. The ablation would have been meaningless. It
+surfaced from checking label density across settings — the same
+one-command check that should have opened this whole line.
+
+**Honest status of the games.** The mechanism works on `dual`, where
+outcomes are ~100% dense and the nulls are brutal in the right direction
+(F99). It does not work on the multi-step variants, where after three
+formulations, three sparsity fixes and a corrected baseline the learned
+model still adds nothing over an untrained one. The remaining
+explanations are ordinary and untested: the outcome signal may still be
+too sparse at 12%, 8000 updates over 38 variants may be far too few
+(F80 needed 40000 on a much simpler distribution), or a searching agent
+in these games may need on-policy correction rather than one round of
+seeded collection. All three are measurable; none is exotic.
+
+Probe 203 is `game_slots.py --horizon 4 --balance-loss --seek 0.5`,
+2 seeds plus an untrained control.
+
+**F104 (probe 204). Density plus training finally beats the untrained
+control — but the INVERTED TWIN control proves the bank entry is not
+being read at all. The gain is generic competence, not world-specific
+content.**
+
+**First, what worked.** F103's three fixes plus more of both:
+
+| arm | held-out lift | vs untrained control | wins |
+| --- | ---: | ---: | ---: |
+| 8k updates, seek 0.5 | +0.0007 | -0.0018 | 4/12 |
+| 40k updates, seek 0.5 | -0.0017 | -0.0047 | 2/12 |
+| **40k updates, seek 0.85** | **+0.0093** | **+0.0161** | **6/12** |
+| untrained control | +0.0075 | — | — |
+
+Density is the decisive variable, not updates: 40k at seek 0.5 is WORSE
+than 8k at seek 0.5, so more training on a signal-poor distribution
+actively hurts. With both, seed 69316 reaches +0.0236 against the
+untrained control's +0.0075, with large wins on the `intercept`
+variants (+0.0859, +0.0567, +0.0489) where "get under the falling
+object" is a strong, learnable regularity. Seed 69317 fails (-0.0051),
+so it is one seed of two.
+
+**Then, the control that settles it.** F103's stranger control drew a
+RANDOM other variant, which is usually a different component mix whose
+entry is merely uninformative. The sharp control is the INVERTED TWIN:
+same components, same rendering, opposite rewards — the only entry that
+is actively WRONG on identical pixels.
+
+| entry supplied | seed 69316 | seed 69317 |
+| --- | ---: | ---: |
+| correct | +0.0236 | -0.0051 |
+| withheld (zeros) | +0.0202 | -0.0063 |
+| stranger | +0.0215 | -0.0054 |
+| **inverted TWIN** | **+0.0225** | **-0.0057** |
+| correct minus twin | **+0.0011** | **+0.0007** |
+
+**Handing the agent the exact opposite of the truth changes nothing.**
+Per variant, most differences are exactly 0.0000 or one reward
+quantum. So the entry carries essentially none of the inversion bit, and
+whatever the dense/long training bought is INVERSION-INVARIANT
+competence — moving usefully with respect to objects — learned by the
+transition model and the search, with the bank contributing nothing.
+
+**The contrast with F99 is the whole finding.** On `dual` a stranger's
+entry drove reward to -0.100 against +0.600 with the right one. The same
+mechanism, the same reader, the same architecture — and there the entry
+was everything. The difference is what the two settings require:
+
+  * `dual` — every step resolves a trial whose answer is knowable ONLY
+    from prior outcomes, so no inversion-invariant policy exists and
+    reading is the only way to score;
+  * the multi-step variants — a large fraction of the available reward
+    is inversion-invariant, so a policy that ignores the bank captures
+    most of it, and gradient descent finds that policy first.
+
+That is not a defect of the bank. It is a statement about what these
+tasks measure: **a benchmark only exercises context-reading if ignoring
+context is unprofitable.** The battery's multi-step variants do not meet
+that condition; `dual` and `choice` were designed to and do.
+
+The practical consequence for this project is a test-design rule rather
+than a mechanism change: when adding a game to test the bank, verify
+first that an inversion-invariant policy scores near floor. If it does
+not, the game measures navigation competence and will report the bank as
+working or not working for reasons that have nothing to do with the
+bank.
+
+Probe 204 is `game_slots.py --train-updates 40000 --horizon 4
+--balance-loss --seek 0.85`, 2 seeds, with the inverted-twin control.
+
+**F105 (probe 205). The context-required multi-step benchmark exists,
+is validated, and the current stack captures 0.2% of its headroom.**
+F104 showed the battery had no multi-step game in which context is
+required, and gave the rule for building one. Built from configuration
+the games already support — `forage` supplies opposing item types,
+`inverted` swaps which is food, `recentre_every` with `spawn_radius`
+makes the avatar cross ground to reach each trial.
+
+**Validated against F104's rule BEFORE running the mechanism**, pair
+means over a twin and its inverse:
+
+| policy | normal | inverted | pair mean |
+| --- | ---: | ---: | ---: |
+| idle | -0.0501 | -0.0497 | -0.0499 |
+| random | -0.0496 | -0.0453 | -0.0474 |
+| eat-anything | -0.0368 | -0.0267 | -0.0318 |
+| always eat plane 1 | **+0.1919** | **-0.2640** | -0.0360 |
+| always eat plane 2 | -0.2709 | +0.1989 | -0.0360 |
+| **ORACLE (uses the hidden bit)** | +0.1919 | +0.1989 | **+0.1954** |
+
+Every inversion-invariant policy loses. A fixed preference earns +0.19
+on one twin and -0.26 on the other and nets -0.036, which is the
+property F104 required. **Headroom obtainable only by reading context:
++0.2272.**
+
+**Then the mechanism, 54 worlds, held out by whole twin pair, 40000
+updates with all three sparsity fixes:**
+
+| arm | pair-mean reward |
+| --- | ---: |
+| trained worlds | -0.0463 |
+| held-out worlds | -0.0466 |
+| entry withheld | -0.0472 |
+| stranger entry | -0.0471 |
+| **inverted TWIN entry** | -0.0471 |
+| untrained control | -0.0483 |
+| *best invariant policy (reference)* | *-0.0318* |
+| *oracle (reference)* | *+0.1954* |
+
+**Entry effect: +0.0005 against +0.2272 available — 0.2% of the
+headroom.** And the deeper problem is not generalisation: the score on
+TRAINED worlds is -0.0463, worse than the best inversion-invariant
+policy and barely above idling. The system does not learn these worlds
+at all, on a task where a ten-line hand-written policy earns +0.1954.
+
+**What is settled and what is not.** Settled: the reading mechanism
+works where a trial resolves every step and no context-free policy
+exists (`dual`, F99 — stranger entry -0.100 against +0.600 correct). It
+does not work on multi-step navigation-plus-context, and F105 removes
+the last alternative explanation, because this benchmark is verified to
+require context and to have large headroom. Not settled: WHY. The stack
+fails to learn even the trained worlds, so the defect is upstream of the
+bank — plausibly the beam search over a learned 6-slot model being too
+weak to sustain navigation to a respawning target, which is testable by
+scoring the transition and outcome models directly rather than only
+through behaviour.
+
+**The benchmark is the durable part.** It has a measured floor
+(-0.0318 for the best context-free policy), a measured ceiling
+(+0.1954), and a validated guarantee that the gap between them is
+reachable only by reading context. Any future attempt can be scored
+against those numbers, which is what F100-F104 lacked and spent four
+findings discovering.
+
+Probe 205 is `game_slots.py --forage-twins --train-updates 40000
+--horizon 4 --balance-loss --seek 0.85`, 2 seeds plus an untrained
+control.
+
+**F106 (probe 206). The models scored directly: the search was never the
+defect. The reader and the outcome model have collapsed jointly onto the
+twin-average — which is F58's failure, and F58's fix already exists.**
+Every games finding from F100 on was inferred from reward alone, so "it
+plays badly" could equally have meant bad models or bad search. Scoring
+the models directly separates them.
+
+**Transition model** (40000-update runs, held-out worlds):
+per-slot accuracy 0.8154, exact-state 0.5842. Mediocre, and not the
+binding defect.
+
+**Outcome model**: balanced accuracy 0.4312 against a 0.3333 chance
+floor. Per-class recall is the interesting part —
+**cost 0.4672, nothing 0.0000, food 0.6575.** The class-balanced loss
+from F103 did not fix the degeneracy, it INVERTED it: F102's model
+always said "nothing", this one never says it. Both are degenerate and
+the fix swapped which.
+
+**Twin discrimination, the decisive measurement.** The same
+(state, action) batch scored with the CORRECT entry and with the
+INVERTED TWIN's — worlds that render identically and reward oppositely:
+
+| | value |
+| --- | ---: |
+| label agreement with twin entry | **0.9998** |
+| mean abs P(food) gap vs twin | **0.0000** |
+
+**The outcome model produces identical predictions under an entry and
+its exact inverse.** No search over such a model could ever have
+distinguished the twins, so F100-F105's behavioural failures were all
+downstream of this. The search was never the defect.
+
+**And the sub-fork: the reader is not encoding the bit either.** Cosine
+between a world's entry and its inverse's entry: **0.9855** (8000-update
+run, 6 worlds, range 0.980-0.992). The reader emits nearly the same
+entry for opposite worlds, and the outcome model ignores what little
+difference remains.
+
+**This is F58, exactly.** F58 recorded: "with few goals, ignoring the
+goal channel is competitive, and under isolation it is OPTIMAL — so the
+plant learns an unconditional habit and never reads its instruction."
+Here the two halves collapse together: the outcome model finds the
+twin-average first, which leaves the reader no gradient to differentiate
+by, which leaves the outcome model nothing to read. Neither can move
+alone and gradient descent has no reason to move both.
+
+**The fix is a mechanism this project already built and never applied
+here.** F58's phase-1 IGNORANCE OBJECTIVE penalises the model for
+performing well WITHOUT the entry, making reading the only way to score.
+It was built for the goal channel and the situation is identical. The
+prediction it licenses is specific and testable: with an ignorance term,
+twin label agreement must fall well below 0.9998 and entry cosine well
+below 0.9855, BEFORE any behavioural improvement is claimed — the model
+measurements should move first, and if they do not, the behavioural
+number means nothing.
+
+**What this closes.** The games line ran F99-F106 and the honest summary
+is: the mechanism reads a world where reading is the only way to score
+(`dual`, F99); on multi-step worlds it collapses to the context-free
+average, and that collapse is now measured at the model level rather
+than inferred from behaviour. The benchmark (F105) and these
+diagnostics are what any next attempt should be scored against — floor
+-0.0318, ceiling +0.1954, twin agreement 0.9998, entry cosine 0.9855.
+
+Probe 206 is `game_slots.py --forage-twins` with model diagnostics,
+2 seeds at 40000 updates plus an 8000-update run for entry similarity.
+
+**F107 (probe 207). F58's ignorance objective closes the collapse. The
+entry's causal contribution grows 100x, the model gate moves FIRST, and
+the system beats the best context-free policy for the first time on a
+multi-step task.** F106 localised the defect: the outcome model gave
+0.9998 label agreement between an entry and its inverted twin, and the
+reader emitted entries 0.9855 cosine-similar for opposite worlds — a
+joint collapse onto the twin-average, which is F58's failure verbatim.
+F58's remedy is to penalise being accurate WITHOUT the entry. Applied
+here as an entropy term pushing the entry-free prediction toward uniform.
+
+**The model gate, checked before any behavioural claim** (the standing
+requirement recorded in F106):
+
+| arm | twin agreement | food gap | entry cosine | outcome balanced acc |
+| --- | ---: | ---: | ---: | ---: |
+| no ignorance (F106) | 0.9998 | 0.0000 | 0.9855 | 0.4312 |
+| **ignorance 0.5** | **0.5343** | **0.1473** | **0.7119** | 0.4305 |
+| ignorance 2.0 | 0.6838 | 0.0863 | 0.3804 | 0.4321 |
+
+The model now predicts differently under an entry and its exact inverse,
+and the reader emits genuinely different entries for twins. Outcome
+accuracy is unchanged (0.4305 against 0.4312), so the term bought
+discrimination without costing prediction.
+
+**Then behaviour, which is now meaningful:**
+
+| arm | held-out | twin entry | **entry effect** |
+| --- | ---: | ---: | ---: |
+| no ignorance | -0.0466 | -0.0471 | +0.0005 |
+| **ignorance 0.5** | **-0.0217** | **-0.0716** | **+0.0499** |
+| *best invariant policy* | *-0.0318* | | |
+| *oracle* | *+0.1954* | | |
+
+Three things, consistent on both seeds (+0.0543 and +0.0455):
+
+1. **The entry's causal contribution grows 100x**, +0.0005 to +0.0499.
+2. **It beats the best context-free policy** (-0.0217 against -0.0318) —
+   the first time anything in F100-F106 has.
+3. **The wrong rule now HURTS**: twin entry -0.0716 against a withheld
+   -0.0480. That is F99's signature appearing on a multi-step task.
+
+**22.0% of the measured headroom, captured by reading context.**
+
+**Honest scope.** 22% is not 100% — the oracle remains far above at
++0.1954. And the response is NON-MONOTONE: ignorance 2.0 produces MORE
+differentiated entries (cosine 0.3804 against 0.5's 0.7119) but WORSE
+behaviour (+0.0230 against +0.0499). More pressure on the entry channel
+is not simply better, and the curve between is being swept now rather
+than assumed.
+
+**The chain that got here, because the shape of it is the lesson.**
+Behavioural failure (F100) -> wrong diagnosis, state representation
+(F101) -> refuted by building it -> sparsity, found by counting labels
+(F102) -> fixes that helped but inverted a degeneracy (F103) -> the
+baseline itself was wrong (F104) -> benchmark built and validated (F105)
+-> models scored directly, collapse localised (F106) -> existing
+mechanism applied (F107). Six findings inferring from behaviour, then
+one batch of model-level scoring answered it. The standing rule from
+F106 — model measurements move first, or the behavioural number means
+nothing — is what made this result interpretable rather than another
+reward number.
+
+Probe 207 is `game_slots.py --forage-twins --ignorance {0.5, 2.0}`,
+2 seeds each.
+
+**F108 (probe 208). The ignorance weight has a threshold and an optimum,
+and past the optimum the reader and the model DECOUPLE.** F107 left the
+non-monotone response uncharacterised. Swept, 2 seeds each, 40000
+updates, model gate reported before behaviour:
+
+| weight | twin agree | food gap | entry cosine | outcome bal | held-out | **entry effect** | % headroom |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 0.0 | 0.9998 | 0.0000 | 0.9855 | 0.4312 | -0.0466 | +0.0005 | 0.2% |
+| 0.1 | 0.9931 | 0.0009 | 0.9821 | 0.4175 | -0.0472 | -0.0015 | -0.7% |
+| 0.25 | 0.7029 | 0.0912 | 0.6972 | 0.4234 | -0.0324 | +0.0250 | 11.0% |
+| **0.5** | 0.5343 | 0.1473 | 0.7119 | 0.4305 | **-0.0217** | **+0.0499** | **22.0%** |
+| 1.0 | **0.3364** | **0.1753** | 0.4940 | **0.4474** | -0.0285 | +0.0417 | 18.4% |
+| 2.0 | 0.6838 | 0.0863 | **0.3804** | 0.4321 | -0.0362 | +0.0230 | 10.1% |
+
+**Three structures in one curve.**
+
+1. **A threshold.** Weight 0.1 does nothing at all — twin agreement
+   0.9931, entry cosine 0.9821, entry effect -0.0015. The collapse is
+   stable against small pressure; it takes about 0.25 to break.
+2. **An optimum at 0.5**, and it is an inverted U rather than a plateau:
+   11.0% -> 22.0% -> 18.4% -> 10.1%.
+3. **Decoupling past the optimum, which is the interesting part.** At
+   weight 1.0 the model discriminates MOST (twin agreement 0.3364, food
+   gap 0.1753) and its outcome accuracy is highest (0.4474) — yet it
+   scores below 0.5. At weight 2.0 the READER emits the most distinct
+   entries of the whole sweep (cosine 0.3804) while the MODEL's
+   discrimination falls back to 0.6838. The two halves stop moving
+   together: pressure keeps pushing the reader apart past the point
+   where the model can use what it is given.
+
+So maximum discrimination is not maximum benefit, and the quantity to
+tune is the AGREEMENT between the halves rather than the separation of
+either. That is a mechanism-level statement the behavioural numbers
+alone could never have produced — it comes from having measured reader
+and model separately (F106).
+
+**Status of the games line, complete.** From 0.2% of the measured
+headroom to 22.0%, with the wrong entry now actively harmful (-0.0716
+against a withheld -0.0480) and the system beating the best context-free
+policy (-0.0217 against -0.0318) for the first time. The remaining 78%
+is not diagnosed, and the honest candidates are ordinary: the transition
+model is only 0.5842 exact, the outcome model only 0.4474 balanced at
+its best, and beam search over models that inaccurate has a low ceiling
+regardless of how well the entry is read.
+
+Probe 208 is `game_slots.py --forage-twins --ignorance {0, 0.1, 0.25,
+0.5, 1.0, 2.0}`, 2 seeds each.
+
+**F109 (probe 209). The transition model was never deficient — the
+search was planning against hallucinated objects. Freezing them buys
+3.4 points. And my explanation for the rest is refuted.**
+
+**Per-slot diagnosis first.** F108 blamed the remaining gap partly on a
+transition model at 0.5842 exact. Broken down by slot:
+
+| slot | accuracy |
+| --- | ---: |
+| avatar row | **1.0000** |
+| avatar col | **1.0000** |
+| nearest positive object (row, col) | 0.6722, 0.6722 |
+| nearest negative object (row, col) | 0.7728, 0.7712 |
+
+The avatar's dynamics are learned PERFECTLY. The 0.58 exact figure is
+entirely the object slots, and those are not learnable: "nearest object"
+changes discontinuously when the avatar moves or an item respawns. It is
+a stochastic function of the world, not a deficiency of the model.
+
+**Which located a real defect in the SEARCH.** Beam search rolled all
+six slots forward, so a depth-4 plan compounded 0.72 per step into
+roughly 0.27 — planning against object positions the model invented.
+Items sit still between respawns, so the OBSERVED layout is the better
+estimate. Holding the object slots fixed and rolling only the avatar:
+
+| arm | held-out | twin entry | entry effect | % headroom |
+| --- | ---: | ---: | ---: | ---: |
+| ignorance 0.5 (F107) | -0.0217 | -0.0716 | +0.0499 | 22.0% |
+| **+ freeze objects** | **-0.0205** | -0.0782 | **+0.0577** | **25.4%** |
+
+Both seeds improve (+0.0525, +0.0628). A real gain, and a small one —
+so hallucinated objects were not the main remaining barrier either.
+
+**And the hypothesis for the rest is REFUTED.** I predicted the binding
+limit was the "nearest object only" abstraction: with one item pair the
+slots describe the world completely, with three the agent can step onto
+an item the state never mentions. Broken down by item count:
+
+| item pairs | held-out | entry effect | % headroom |
+| ---: | ---: | ---: | ---: |
+| 1 (state COMPLETE) | -0.0264 | +0.0450 | 19.8% |
+| 2 | -0.0326 | +0.0440 | 19.3% |
+| **3 (state most incomplete)** | **-0.0074** | **+0.0762** | **33.6%** |
+
+The worlds where the abstraction is WORST perform BEST, and outcome-model
+accuracy is flat across counts (0.4320 vs 0.4291). The prediction was
+backwards. The likeliest reading is that more items simply means more
+chances to eat — reward density at TEST time, not state completeness —
+but that is a hypothesis and is recorded as one.
+
+**Honest position on the remaining ~75%.** Three candidates have now
+been tested and none explains it: the transition model (perfect where it
+matters), the search's object rollout (worth 3.4 points), and the state
+abstraction (refuted, and backwards). The outcome model sits at 0.4474
+balanced accuracy at its best, which is the obvious remaining suspect,
+but nothing yet shows it is the binding one. Stating that plainly is
+better than a fourth guess — this session has already recorded two wrong
+diagnoses of mine on this exact question (F101 state, F108 transition
+model).
+
+Probe 209 is `game_slots.py --freeze-objects` with per-slot transition
+diagnostics, 2 seeds.
+
+**F110 (probe 210). Oracle substitution: the outcome model IS the
+binding constraint, and the split is now exact — 63% of the missing
+headroom is the outcome model, 32% is search/dynamics.** F109 left the
+outcome model as the obvious suspect without showing it binding, and
+this project had already spent two wrong diagnoses on that question.
+The discriminating test: replace the outcome model with ground truth
+INSIDE the search, keeping the learned dynamics and the beam intact.
+
+| arm | held-out reward |
+| --- | ---: |
+| learned outcome model (F109 best) | -0.0205 |
+| **ORACLE outcome values, learned everything else** | **+0.1234** |
+| hand-coded oracle policy (ceiling) | +0.1954 |
+| best context-free policy (floor) | -0.0318 |
+
+Per-seed +0.1093 / +0.1375 — both far above anything any learned arm has
+reached.
+
+**The verdict, in one sentence: give the search true values and it
+captures 68.3% of the floor-to-ceiling gap, so the outcome model was the
+binding constraint, and the residual +0.0720 to the ceiling is the
+search and dynamics' share.** The full decomposition of the games gap,
+measured rather than argued:
+
+  * entry not read at all (fixed by F107's ignorance objective): was
+    worth +0.0499;
+  * object hallucination in search (fixed by F109's freeze): +0.0078;
+  * **outcome model inaccuracy: +0.1439 — the dominant term**;
+  * search + dynamics residual: +0.0720, currently unaddressed.
+
+**Why this is the right kind of result.** Two wrong mechanism guesses
+(F101, F108) cost a formulation each; this one run cannot be argued
+with, because the only thing changed is the quantity under suspicion.
+The next work is now genuinely known rather than suspected: make the
+outcome model better — it sits at 0.4474 balanced accuracy against a
+0.3333 floor, trained from 12%-dense outcome labels through a bank
+entry. The candidates are the ordinary ones (more visits per world,
+better labels, a value head trained on n-step returns rather than
+3-class outcomes), and the oracle arm now provides the exact target any
+of them should be scored against: +0.1234 is what perfect values buy
+through this search.
+
+Probe 210 is `game_slots.py --oracle-outcome`, 2 seeds.
+
+**F111 (probe 211). The n-step value head nearly doubles the captured
+headroom — 25.4% to 45.6% — and held-out reward turns positive for the
+first time.** F110's oracle test convicted the outcome model and showed
+the interface that works: real-valued cell worth, not 3-class bins.
+Mimicking that interface — a scalar head regressing the discounted
+n-step return, used raw by the search, with the ignorance term pinning
+the entry-free prediction to the batch mean:
+
+| arm | held-out | twin entry | entry effect | % headroom |
+| --- | ---: | ---: | ---: | ---: |
+| 3-class outcome (F109) | -0.0205 | -0.0782 | +0.0577 | 25.4% |
+| **n-step value head** | **+0.0069** | **-0.0968** | **+0.1036** | **45.6%** |
+| oracle values (target) | +0.1234 | | | |
+| best context-free (floor) | -0.0318 | | | |
+
+Both seeds positive held-out (+0.0010, +0.0127); both seeds' twin
+penalty deepens (-0.0901, -0.1034) — the wrong rule hurts MORE when the
+values are real-valued, which is what reading harder looks like.
+
+The 3-class quantisation was itself a large part of the constraint it
+was supposed to measure: collapsing all positive futures into one bin
+threw away the gradient the search needed, and was degenerate twice
+over along the way (F102 all-nothing, F106 never-nothing). Regression
+has no bins to degenerate into.
+
+Remaining to the oracle-value target: +0.1165. The games ladder in
+sequence: 0.2% -> 22.0% (ignorance) -> 25.4% (freeze) -> 45.6% (value
+head), each step from a measured diagnosis rather than a guess.
+
+Probe 211 is `game_slots.py --value-head`, 2 seeds.
+
+**F112 (probe 212). Value fidelity is low and polarity-asymmetric: the
+value head almost never ranks food on top in inverted worlds — the
+entry flips avoidance but not attraction.** With the F111 configuration
+plus a direct fidelity check — score every cell with the value head and
+compare against the verifier's ground-truth worth map — pooled over
+2 seeds x 12 held-out worlds:
+
+| measure | pooled | normal worlds | inverted (~) worlds |
+| --- | ---: | ---: | ---: |
+| predicted-vs-truth correlation | 0.1727 | 0.1694 | 0.1761 |
+| top-ranked cell is food | 0.1198 | 0.2188 | **0.0208** |
+| top-ranked cell is poison | 0.0156 | 0.0182 | 0.0130 |
+
+Three facts, one picture:
+
+  * **Global correlation is weak (0.17) yet behaviour captures 45.6% of
+    headroom.** Beam search only needs correct *ranking among the few
+    cells reachable within depth 4*, not a globally faithful map — so
+    low correlation and decent behaviour can coexist. This also warns:
+    the remaining +0.1165 will not come from nudging correlation; it
+    must come from ranking near the avatar.
+  * **Poison avoidance transfers across polarity; food attraction does
+    not.** top=poison is near zero everywhere — the model reads the
+    entry well enough to know which object class to avoid in both twins.
+    But top=food collapses from 0.219 to 0.021 on ~ worlds: on inverted
+    worlds the argmax cell is almost always *empty*, never the truly
+    edible object.
+  * The correlation being *identical* across polarity while top=food is
+    10x different means the asymmetry lives in the extreme of the
+    ranking, not the bulk: the ~ entry damps the poisonous object's
+    value (avoidance works) but fails to *raise* the newly-edible
+    object above background.
+
+Interpretation: the entry acts multiplicatively-downward, not as a true
+sign flip. The pre-training distribution is symmetric in twins by
+construction, so this is not label imbalance; it is the value head
+finding "suppress the flagged object" easier to express than "promote
+it". This matches the held-out reward split visible in every run since
+F107: normal worlds positive, ~ worlds hovering just below zero.
+
+The next fix target is therefore concrete: make the entry able to
+*promote*, not only suppress — candidates are a signed (rather than
+gated) entry interaction in the value head, or the diff-entry mechanism
+(entries as deltas against the nearest existing entry), which expresses
+"same world, one piece swapped" natively.
+
+Probe 212 is `game_slots.py` value_fidelity(), 2 seeds (69316/69317).
