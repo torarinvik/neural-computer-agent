@@ -1154,3 +1154,13 @@ rung shows outcome-driven discovery and shuffled-outcome failure, but this is
 still bounded proposal generation—not arbitrary program induction or general
 continual learning. See `docs/POLICY_FREE_CONTINUAL_LEARNING.md` for the
 claim boundary and next experiment.
+
+`PolicyFreeAmodalRuntime` is the canonical integration seam for that generator.
+It proposes from the controller's opaque adapted state, leaves generator state
+mutation to explicit caller-side feedback methods, and can combine a
+provisional generated candidate with an independently verified repertoire
+without changing the controller. The two-seed audit in
+`session_records/policy_free_intention_generation_2026-08-10/` passes frozen
+core, copy-on-write retention, fresh-transfer, shuffled-outcome, persistence,
+and zero-replay gates. This promotes the seam, not unrestricted continual
+learning.

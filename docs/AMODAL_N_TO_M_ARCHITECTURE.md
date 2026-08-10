@@ -8199,3 +8199,31 @@ next promotion must use partial multimodal contexts, delayed and noisy
 outcomes, competing retained candidates, a matched fresh learner, and the
 required unique-verifier-bit, update, replay, latency, transfer, and stable
 retention accounting.
+
+## Canonical policy-free generator integration (2026-08-10)
+
+`PolicyFreeAmodalRuntime` now integrates the external generator as a
+memory-side proposal source. The controller still follows the canonical
+`event-token window -> controller/memory -> opaque state` path. The generator
+consumes only that adapted state and returns a provisional opaque intention;
+the runtime may plan with it immediately for a factual probe, or append it
+after verified repertoire candidates. Generator state is caller-owned and is
+updated only through explicit decision and scalar-feedback methods, so the
+inference path cannot silently write durable memory.
+
+The generator is intentionally incompatible with atomic entry-binding
+proposals in this API. A future binding path must supply and verify the matching
+entry explicitly; this keeps intention invention separate from
+intention-entry commitment and prevents a new output vector from smuggling an
+unverified protocol artifact into the planner. Held-out admission remains the
+only path to durable candidate memory.
+
+The two-seed bounded audit in
+`session_records/policy_free_intention_generation_2026-08-10/` passes frozen
+controller/state-adapter, copy-on-write retention, fresh-transfer,
+shuffled-outcome, exact-persistence, and zero-replay gates. This is the first
+promoted end-to-end seam for outcome-only continuous intention discovery, not a
+claim of general continual learning, unrestricted growth, or arbitrary new
+computation. The next architectural pressure test is a nonstationary stream
+with partial multimodal contexts, delayed/noisy outcomes, competing old
+candidates, reversal, and repeated append/protect/consolidate cycles.

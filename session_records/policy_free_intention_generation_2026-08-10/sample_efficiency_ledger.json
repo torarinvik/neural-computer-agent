@@ -1,0 +1,36 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "policy-free-intention-generation",
+  "date": "2026-08-10",
+  "runs": [
+    {
+      "seed": 85101,
+      "variant": "frozen_controller_external_generator_copy_on_write",
+      "promoted": true,
+      "unique_verifier_bits": 41,
+      "control_outcome_bits": 500,
+      "replayed_examples": 0,
+      "controller_optimizer_updates": 0,
+      "successor_updates": 9,
+      "fresh_updates": 13,
+      "transfer_ratio_against_fresh": 1.4444444444444444,
+      "source_retained": true,
+      "shuffled_control_failed": true
+    },
+    {
+      "seed": 85102,
+      "variant": "frozen_controller_external_generator_copy_on_write",
+      "promoted": true,
+      "unique_verifier_bits": 63,
+      "control_outcome_bits": 500,
+      "replayed_examples": 0,
+      "controller_optimizer_updates": 0,
+      "successor_updates": 11,
+      "fresh_updates": 20,
+      "transfer_ratio_against_fresh": 1.8181818181818181,
+      "source_retained": true,
+      "shuffled_control_failed": true
+    }
+  ],
+  "claim_boundary": "replicated bounded outcome-only continuous intention generation with external copy-on-write memory; not general continual learning"
+}

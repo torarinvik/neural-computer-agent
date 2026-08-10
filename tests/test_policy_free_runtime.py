@@ -9,7 +9,9 @@ from neural_computer import (
     ExternalControllerStateAdapter,
     ExternalEntryBindingRepertoire,
     ExternalEntryRepertoire,
+    ExternalIntentionRepertoire,
     ExternalModelBasedPlanner,
+    ExternalOutcomeIntentionGenerator,
     ExternalSignedEntryValueModel,
     PolicyFreeAmodalRuntime,
 )
@@ -294,3 +296,66 @@ def test_policy_free_runtime_requires_model_state_width_to_match_adapter() -> No
         assert "adapter input width" in str(error)
     else:
         raise AssertionError("mismatched policy-free model width was accepted")
+
+
+def test_policy_free_runtime_injects_external_generated_candidate_and_feedback() -> None:
+    torch.manual_seed(16)
+    controller = AmodalCognitiveController(
+        width=4,
+        workspace_slots=2,
+        intention_width=2,
+        feedback_width=3,
+        event_window_capacity=4,
+    )
+    runtime = AmodalControllerRuntime(controller)
+    state = runtime.initial_state(1, device="cpu")
+    feedback = _feedback()
+    event = [AmodalEvent(torch.randn(1, 4))]
+    preview, _ = runtime.step_events(event, state, feedback)
+    goal = preview.controller.state_representation.detach().clone()
+    goal[:, :2] += torch.tensor([0.5, 0.5])
+
+    generator = ExternalOutcomeIntentionGenerator(
+        context_width=12,
+        intention_width=2,
+        hidden_width=8,
+        noise_scale=0.4,
+    )
+    generator_state = generator.initial_state(1)
+    repertoire = ExternalIntentionRepertoire(2)
+    repertoire.observe(torch.tensor([[1.0, 0.0], [0.0, 1.0]]))
+    policy_free = PolicyFreeAmodalRuntime(
+        runtime,
+        ExternalModelBasedPlanner(_AdditiveFactualModel(), beam_width=4),
+        intention_repertoire=repertoire,
+        intention_generator=generator,
+    )
+
+    output, _ = policy_free.step_events(
+        event,
+        state,
+        feedback,
+        goal,
+        horizon=1,
+        beam_width=4,
+        generator_state=generator_state,
+    )
+
+    assert output.intention_generation is not None
+    assert output.intention_generation.intentions.shape == (1, 2)
+    assert output.planning.expanded_nodes > 0
+    assert policy_free.configuration()["candidate_intentions"] == (
+        "external_verified_repertoire_plus_outcome_generator_v1"
+    )
+    generator_state = policy_free.record_intention_generation_decision(
+        generator_state,
+        output.intention_generation,
+    )
+    generator_state = policy_free.apply_intention_generation_feedback(
+        generator_state,
+        output.intention_generation,
+        torch.ones(1),
+        terminal=torch.ones(1, dtype=torch.bool),
+    )
+    assert generator_state.decisions.tolist() == [1]
+    assert generator_state.feedbacks.tolist() == [1]

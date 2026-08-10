@@ -1,0 +1,95 @@
+{
+  "schema": "neural-computer.policy-free-intention-generation.v1",
+  "claim_boundary": "outcome-only continuous intention discovery through a frozen amodal controller and policy-free runtime; not general continual learning",
+  "seed": 85102,
+  "configuration": {
+    "controller_width": 4,
+    "state_width": 12,
+    "intention_width": 2,
+    "source_target": [
+      0.75,
+      -0.75
+    ],
+    "successor_target": [
+      0.550000011920929,
+      -0.949999988079071
+    ],
+    "utility_temperature": 0.8,
+    "mastery_threshold": 0.95,
+    "candidate_memory": {
+      "schema": "neural-computer.external-intention-repertoire.v1",
+      "width": 2,
+      "merge_cosine": 0.999,
+      "storage": "logical_addressed_opaque_intention_experience_v1",
+      "proposal": "verified_retrieval_default_plus_explicit_ephemeral_controller_seed_v1",
+      "learning": "outcome_sufficient_statistics_without_replay_v1",
+      "logical_addresses": "stable_ids_with_persisted_aliases_v1",
+      "maintenance": "retention_gated_copy_on_write_consolidation_v1"
+    },
+    "generator": {
+      "schema": "neural-computer.external-outcome-intention-generator.v1",
+      "context_width": 12,
+      "intention_width": 2,
+      "hidden_width": 32,
+      "feature_width": 13,
+      "initial_learning_rate": 0.1,
+      "initial_trace_decay": 0.0,
+      "initial_baseline_rate": 0.05,
+      "initial_baseline": 0.5,
+      "noise_scale": 0.35,
+      "initial_parameter_scale": 0.05,
+      "update_rule": "outcome_only_gaussian_score_credit_external_mlp_v1",
+      "state": "external_generator_cells_and_eligibility_v1",
+      "controller": "frozen_opaque_context_only_v1",
+      "persistence": "tensor_only_versioned_payload_v1"
+    }
+  },
+  "gates": {
+    "source_generator_acquired": true,
+    "successor_generator_acquired": true,
+    "fresh_successor_control_acquired": true,
+    "outcome_shuffled_control_failed": true,
+    "source_intention_admitted": true,
+    "successor_intention_admitted": true,
+    "source_goal_planned_after_admission": true,
+    "successor_goal_planned_after_admission": true,
+    "copy_on_write_source_retained": true,
+    "warm_successor_faster_than_fresh": true,
+    "controller_frozen": true,
+    "state_adapter_frozen": true,
+    "exact_repertoire_persistence": true,
+    "exact_generator_persistence": true,
+    "retained_base_entries_unchanged": true,
+    "zero_replayed_examples": true
+  },
+  "promoted": true,
+  "metrics": {
+    "source_updates": 32,
+    "source_score": 0.9711270928382874,
+    "successor_updates": 11,
+    "successor_score": 0.9591341614723206,
+    "fresh_updates": 20,
+    "fresh_score": 0.9762928485870361,
+    "shuffled_updates": 500,
+    "shuffled_score": 1.0382668981295459e-13,
+    "source_seconds": 0.07964995800284669,
+    "successor_seconds": 0.033129709016066045,
+    "fresh_seconds": 0.062268582987599075,
+    "shuffled_seconds": 1.3618285410339013,
+    "source_admission": true,
+    "successor_admission": true,
+    "repertoire_count": 6,
+    "source_cell_digest_before_successor": "ca6cbc02afcd96deecc1c6f66765d98cd92b1c3ab90622336438c3f8155cd3d9"
+  },
+  "accounting": {
+    "unique_verifier_bits": 63,
+    "control_outcome_bits": 500,
+    "unique_logical_lifetimes": 4,
+    "external_generator_updates": 563,
+    "optimizer_updates": 0,
+    "controller_optimizer_updates": 0,
+    "replayed_examples": 0,
+    "search_expansions": 586,
+    "wall_seconds": 1.5557857499807142
+  }
+}

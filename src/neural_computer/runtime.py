@@ -31,9 +31,12 @@ from .entry import (
 )
 from .intention import (
     ExternalIntentionConsolidationReceipt,
+    ExternalIntentionGenerationProposal,
     ExternalIntentionObservationReceipt,
     ExternalIntentionProposal,
     ExternalIntentionRepertoire,
+    ExternalOutcomeIntentionGenerator,
+    ExternalOutcomeIntentionGeneratorState,
 )
 from .interface import (
     EVENT_SCHEMA,
@@ -1209,6 +1212,7 @@ class PolicyFreeRuntimeOutput:
     goal_state: torch.Tensor
     selected_slot_id: int | None
     proposal: ExternalIntentionProposal | None = None
+    intention_generation: ExternalIntentionGenerationProposal | None = None
     entry_proposal: ExternalEntryProposal | None = None
     binding_proposal: ExternalEntryBindingProposal | None = None
     schema: str = POLICY_FREE_RUNTIME_SCHEMA
@@ -1237,6 +1241,7 @@ class PolicyFreeAmodalRuntime:
         *,
         state_adapter: ExternalControllerStateAdapter | None = None,
         intention_repertoire: ExternalIntentionRepertoire | None = None,
+        intention_generator: ExternalOutcomeIntentionGenerator | None = None,
         entry_repertoire: ExternalEntryRepertoire | None = None,
         entry_binding_repertoire: ExternalEntryBindingRepertoire | None = None,
         include_exploration_seed: bool = False,
@@ -1260,6 +1265,13 @@ class PolicyFreeAmodalRuntime:
             intention_repertoire.width != runtime.intention_width
         ):
             raise ValueError("intention repertoire width does not match runtime")
+        if intention_generator is not None and (
+            intention_generator.intention_width != runtime.intention_width
+            or intention_generator.context_width != planner.model.state_width
+        ):
+            raise ValueError(
+                "intention generator dimensions do not match policy-free runtime"
+            )
         if entry_repertoire is not None:
             entry_value_model = planner.entry_value_model
             if entry_value_model is None:
@@ -1284,6 +1296,7 @@ class PolicyFreeAmodalRuntime:
         self.planner = planner
         self.state_adapter = selected_adapter
         self.intention_repertoire = intention_repertoire
+        self.intention_generator = intention_generator
         self.entry_repertoire = entry_repertoire
         self.entry_binding_repertoire = entry_binding_repertoire
         self.include_exploration_seed = include_exploration_seed
@@ -1299,6 +1312,12 @@ class PolicyFreeAmodalRuntime:
             "controller_intention": "diagnostic_only_not_decoded_v1",
             "goal_input": "opaque_external_destination_state_or_goal_set_v1",
             "candidate_intentions": (
+                "external_verified_repertoire_plus_outcome_generator_v1"
+                if self.intention_repertoire is not None
+                and self.intention_generator is not None
+                else "outcome_generated_opaque_intention_v1"
+                if self.intention_generator is not None
+                else
                 "external_logical_addressed_intention_repertoire_v1"
                 if self.intention_repertoire is not None
                 else "runtime_variable_opaque_caller_set_v1"
@@ -1315,6 +1334,11 @@ class PolicyFreeAmodalRuntime:
                 None
                 if self.intention_repertoire is None
                 else self.intention_repertoire.configuration()
+            ),
+            "intention_generator": (
+                None
+                if self.intention_generator is None
+                else self.intention_generator.configuration()
             ),
             "entry_repertoire": (
                 None
@@ -1366,6 +1390,45 @@ class PolicyFreeAmodalRuntime:
             replacement_intention,
             retention_probe,
             reason=reason,
+        )
+
+    def apply_intention_generation_feedback(
+        self,
+        state: ExternalOutcomeIntentionGeneratorState,
+        proposal: ExternalIntentionGenerationProposal,
+        outcome: torch.Tensor,
+        *,
+        present: torch.Tensor | None = None,
+        terminal: torch.Tensor | None = None,
+        baseline_override: torch.Tensor | None = None,
+    ) -> ExternalOutcomeIntentionGeneratorState:
+        """Apply verifier feedback to caller-owned external generator state."""
+
+        if self.intention_generator is None:
+            raise RuntimeError("policy-free runtime has no intention generator")
+        return self.intention_generator.apply_feedback(
+            state,
+            outcome,
+            present=present,
+            terminal=terminal,
+            baseline_override=baseline_override,
+        )
+
+    def record_intention_generation_decision(
+        self,
+        state: ExternalOutcomeIntentionGeneratorState,
+        proposal: ExternalIntentionGenerationProposal,
+        *,
+        present: torch.Tensor | None = None,
+    ) -> ExternalOutcomeIntentionGeneratorState:
+        """Record a generated proposal before its verifier outcome arrives."""
+
+        if self.intention_generator is None:
+            raise RuntimeError("policy-free runtime has no intention generator")
+        return self.intention_generator.record_decision(
+            state,
+            proposal,
+            present=present,
         )
 
     def observe_entry(
@@ -1452,6 +1515,7 @@ class PolicyFreeAmodalRuntime:
         memory_write_override: torch.Tensor | None = None,
         memory_write_uniform: torch.Tensor | None = None,
         memory_write_gradient: bool = True,
+        generator_state: ExternalOutcomeIntentionGeneratorState | None = None,
     ) -> tuple[PolicyFreeRuntimeOutput, ControllerState]:
         collection = self.runtime.input_bus(events)
         controller_output, next_state = self.runtime.controller.step(
@@ -1469,8 +1533,23 @@ class PolicyFreeAmodalRuntime:
         )
         model_state = self.state_adapter(controller_output)
         proposal = None
+        intention_generation = None
         entry_proposal = None
         binding_proposal = None
+        if generator_state is not None:
+            if self.intention_generator is None:
+                raise ValueError(
+                    "generator state supplied without an intention generator"
+                )
+            intention_generation = self.intention_generator.propose(
+                generator_state,
+                model_state,
+            )
+            if self.entry_binding_repertoire is not None:
+                raise ValueError(
+                    "intention generation cannot be paired with atomic entry bindings"
+                )
+        generated_only = False
         if (
             self.entry_binding_repertoire is not None
             and candidate_intentions is None
@@ -1490,18 +1569,31 @@ class PolicyFreeAmodalRuntime:
                 "entry binding repertoire requires both candidate intentions and entries"
             )
         if candidate_intentions is None:
-            if self.intention_repertoire is None:
+            if self.intention_repertoire is None and intention_generation is None:
                 raise ValueError(
-                    "candidate intentions are required when no external repertoire is configured"
+                    "candidate intentions require a repertoire or intention generator"
                 )
-            proposal = self.intention_repertoire.propose(
-                controller_output.intention.payload,
-                include_seed=(
-                    self.include_exploration_seed
-                    or self.intention_repertoire.record_count == 0
-                ),
+            if self.intention_repertoire is not None:
+                proposal = self.intention_repertoire.propose(
+                    controller_output.intention.payload,
+                    include_seed=(
+                        self.include_exploration_seed
+                        or self.intention_repertoire.record_count == 0
+                    ),
+                )
+                candidate_intentions = proposal.intentions
+            else:
+                candidate_intentions = intention_generation.intentions.unsqueeze(1)
+                generated_only = True
+        if intention_generation is not None and not generated_only:
+            if candidate_intentions.ndim == 2:
+                candidate_intentions = candidate_intentions.unsqueeze(0).expand(
+                    model_state.shape[0], -1, -1
+                )
+            candidate_intentions = torch.cat(
+                (candidate_intentions, intention_generation.intentions.unsqueeze(1)),
+                dim=1,
             )
-            candidate_intentions = proposal.intentions
         if candidate_entries is None and self.entry_repertoire is not None:
             entry_proposal = self.entry_repertoire.propose(
                 device=model_state.device,
@@ -1556,6 +1648,7 @@ class PolicyFreeAmodalRuntime:
                 goal_state=goal_state.detach().clone(),
                 selected_slot_id=selected_slot_id,
                 proposal=proposal,
+                intention_generation=intention_generation,
                 entry_proposal=entry_proposal,
                 binding_proposal=binding_proposal,
             ),

@@ -608,3 +608,25 @@ factual and retention probe. The next experiment must test partial
 multimodal contexts, competing old candidates, delayed/noisy outcomes, and
 matched fresh-learner transfer with unique verifier bits, optimizer updates,
 replay, latency, and stable-prefix retention reported separately.
+
+## Canonical runtime seam and first promoted rung (2026-08-10)
+
+`PolicyFreeAmodalRuntime` now accepts an optional
+`ExternalOutcomeIntentionGenerator` and caller-owned generator state. During a
+step, the controller still emits only the versioned opaque model state. The
+generator may propose one provisional candidate from that state; the runtime
+can plan with it immediately, or append it after verified repertoire candidates
+when both are configured. The runtime does not mutate generator state. The
+caller records the proposal and applies the later scalar verifier outcome
+through explicit runtime methods, preserving the separation between inference,
+external learning, and durable admission. Atomic intention↔entry bindings
+reject generator injection because a standalone candidate has no entry to bind.
+
+The replicated bounded audit is archived in
+`session_records/policy_free_intention_generation_2026-08-10/`. With the
+controller and state adapter frozen and zero replayed examples, protected
+successor cells reached mastery in `9/13` and `11/20` updates relative to fresh
+learners; shuffled outcomes failed. This promotes the runtime seam and
+external-memory training contract, not general continual learning. The next
+gate must challenge the seam with partial multimodal context, delayed or noisy
+outcomes, multiple competing memories, reversals, and repeated growth.
