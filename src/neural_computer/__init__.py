@@ -357,6 +357,14 @@ from .runtime import (
     RuntimeMigrationReceipt,
 )
 from .state_store import OPAQUE_STATE_STORE_SCHEMA, PersistentOpaqueStateStore
+from .stream_binding import (
+    EXTERNAL_LEARNED_MULTI_STREAM_ROUTER_SCHEMA,
+    EXTERNAL_STREAM_BINDING_MEMORY_SCHEMA,
+    ExternalLearnedMultiStreamTransitionContextRouter,
+    ExternalLearnedMultiStreamTransitionResult,
+    ExternalOnlineStreamBindingMemory,
+    ExternalStreamBindingResult,
+)
 from .world_model import (
     DEFAULT_INTENTION_SPACE_ID,
     DEFAULT_STATE_SPACE_ID,
@@ -509,6 +517,7 @@ __all__ = [
     "EXTERNAL_GOAL_REPRESENTATION_ALIGNMENT_VERIFICATION_SCHEMA",
     "EXTERNAL_GOAL_REPRESENTATION_RANDOM_FEATURE_ALIGNMENT_SCHEMA",
     "EXTERNAL_GOAL_REPRESENTATION_RANDOM_FEATURE_GROWTH_SCHEMA",
+    "EXTERNAL_LEARNED_MULTI_STREAM_ROUTER_SCHEMA",
     "EXTERNAL_MODEL_PLANNER_SCHEMA",
     "EXTERNAL_MULTI_STREAM_TRANSITION_ROUTER_SCHEMA",
     "EXTERNAL_ONLINE_CONTEXT_RESOLVER_SCHEMA",
@@ -539,6 +548,7 @@ __all__ = [
     "EXTERNAL_REGISTER_SHARED_STABLE_RELATIONAL_MODE",
     "EXTERNAL_REGISTER_STATE_SCHEMA",
     "EXTERNAL_REPRESENTATION_SPACE_SCHEMA",
+    "EXTERNAL_STREAM_BINDING_MEMORY_SCHEMA",
     "EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY",
     "EXTERNAL_TRANSITION_AFFINE_STATISTICS_SCHEMA",
     "EXTERNAL_TRANSITION_CONTEXT_ADDRESS_ADAPTER_SCHEMA",
@@ -678,6 +688,8 @@ __all__ = [
     "ExternalGoalRepresentationRandomFeatureAlignmentStatistics",
     "ExternalGoalRepresentationRandomFeatureGrowthReceipt",
     "ExternalGrowthPrior",
+    "ExternalLearnedMultiStreamTransitionContextRouter",
+    "ExternalLearnedMultiStreamTransitionResult",
     "ExternalMemoryEvictionPolicy",
     "ExternalMemoryWritePolicy",
     "ExternalModelBasedPlanner",
@@ -685,6 +697,7 @@ __all__ = [
     "ExternalMultiStreamTransitionContextRouter",
     "ExternalOnlineContextAddressResolver",
     "ExternalOnlineContextResolution",
+    "ExternalOnlineStreamBindingMemory",
     "ExternalOnlineTransitionContextResult",
     "ExternalOnlineTransitionContextRouter",
     "ExternalOutcomeCreditPlasticity",
@@ -709,6 +722,7 @@ __all__ = [
     "ExternalSequenceProgramMemory",
     "ExternalSparseTransitionEvidenceIndex",
     "ExternalSparseTransitionEvidenceProposal",
+    "ExternalStreamBindingResult",
     "ExternalTransitionContextAddressAdapter",
     "ExternalTransitionContextEncoder",
     "ExternalTransitionEvidenceCalibrator",

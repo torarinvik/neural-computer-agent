@@ -436,6 +436,14 @@ The production package closes the structural boundary gaps as follows:
   have their own explicit version and validated state schema.
 - Generic reliability and wait policies can be trained from latent/transport
   evidence and scalar utility without modality-specific branches.
+- `ExternalOnlineStreamBindingMemory` is the memory-side learned identity
+  boundary for transition streams. It consumes one learned transition arrival
+  at a time, maintains anonymous bounded prefixes, and returns an opaque stable
+  source key only when similarity and separation are sufficient. Delay and
+  reliability are external sufficient state; unresolved binding is an
+  explicit non-mutating outcome. `ExternalLearnedMultiStreamTransitionContextRouter`
+  composes this binder with one shared factual transition bank, removing
+  caller-owned stream keys without adding a controller branch.
 - The recurrent controller emits an execution-plane `WAIT`/`THINK`/`COMMIT`
   policy. `WAIT` preserves a tentative state for later events, `THINK` spends
   a bounded quiet recurrent tick, and `COMMIT` releases the opaque intention;
@@ -7732,3 +7740,14 @@ This promotes bounded robustness and retention-safe replacement, not learned
 stream identity. The next architecture bottleneck is to make the binding key
 itself emerge from asynchronous learned events and to train delay/reliability
 state online, while keeping the factual bank protected from shortcut labels.
+
+The learned anonymous binding follow-up is now promoted under
+`session_records/sequence_working_memory_2026-08-02/external_learned_stream_binding_promoted_2026-08-10/`.
+Across two seeds, a frozen encoder trained from paired same-stream views
+separates three anonymous streams at 100% diagnostic consistency while a fresh
+encoder reaches 16.7%. The result also survives a missing arrival and an
+interleaving-order permutation, estimates inter-arrival delay, updates trust
+from scalar verifier outcomes, and reloads exactly. This qualifies the next
+bounded transport boundary only; it does not qualify open-set identity,
+general learned delay policy, unrestricted growth, or general continual
+learning.

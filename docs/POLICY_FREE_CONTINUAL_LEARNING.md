@@ -132,3 +132,27 @@ is replaced only after verifier-gated eviction and retention of the sibling
 stream. This is still caller-owned opaque binding; the remaining generality
 bottleneck is learned identity/delay/reliability formation from asynchronous
 events rather than externally supplied stream keys.
+
+## Learned anonymous binding boundary (2026-08-10)
+
+The next layer is implemented by `ExternalOnlineStreamBindingMemory` and
+`ExternalLearnedMultiStreamTransitionContextRouter`. A frozen
+`ExternalTransitionContextEncoder` is trained from paired same-stream views;
+deployment then grows only external state: anonymous track keys, bounded
+transition prefixes, opaque prototypes, inter-arrival delay estimates, and
+positive/negative verifier sufficient statistics. The combined router feeds
+those learned keys into the same shared factual bank, so the caller no longer
+supplies stream identity.
+
+The two-seed pressure test in
+`experiments/external_learned_stream_binding/` separates three anonymous
+streams with 100% diagnostic consistency versus 16.7% for a fresh untrained
+encoder. It passes missing-arrival isolation, interleaving-order permutation,
+learned delay, verifier reliability, frozen-controller, exact-persistence,
+and checksum-rejection gates. Trainer-only stream indices construct positive
+pairs and score the diagnostic; they never enter deployed memory.
+
+This qualifies a bounded learned identity/binding boundary, not general
+continual learning. The next pressure must vary encoders, stream counts, delay
+laws, open-set arrivals, and contradictory evidence while retaining the
+factual router's held-out promotion and complete-retention gates.
