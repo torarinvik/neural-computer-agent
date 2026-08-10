@@ -7648,3 +7648,26 @@ point is multiple latent identities in flight with longer delays, cross-
 identity distractors, and bounded-memory eviction. Evidence and accounting
 are archived in
 `session_records/sequence_working_memory_2026-08-02/route_memory_delayed_multicandidate_control_promoted_2026-08-10/`.
+
+## Matched fresh initialization for policy-free transfer (2026-08-10)
+
+The copy-on-write transfer challenger now accepts a caller-owned fresh model.
+The probe receives an isolated transfer copy and a probe clone of that fresh
+state, while the matched fresh control trains from the exact unprobed digest.
+This closes an experimental validity hole: a transfer comparison must not mix
+prior quality with random initialization luck. The live source slot remains
+byte-stable and only the explicitly selected candidate can enter the bank.
+
+The disjoint four-regime audit was rerun across seeds `70411`–`70415`. All five
+seeds mastered both novel regimes, retained every prior slot at `1.0`, kept the
+controller frozen, used zero old-regime replay, and passed the cumulative model
+cost gate. Warm versus matched-fresh cumulative updates were `155/162`,
+`133/145`, `125/131`, `150/157`, and `137/145`; transfer was selected on three
+of the ten target decisions.
+
+This promotes a fair, reproducible challenger protocol and a five-seed
+policy-free disjoint compounding signal. It does not promote general
+continual learning: the dynamics family, context encoder, model capacity,
+probe budget, and planner horizon remain finite and synthetic. Evidence is
+archived in
+`session_records/sequence_working_memory_2026-08-02/external_transition_model_disjoint_compounding_matched_fresh_promoted_2026-08-10/`.

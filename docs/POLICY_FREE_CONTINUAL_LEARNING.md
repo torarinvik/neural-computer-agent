@@ -91,6 +91,10 @@ valid pixel/rerender changes where applicable, model corruption, source or
 goal shuffles, and byte-stability checks for retained model slots. A transfer
 claim is not valid when the target is so easy that a fresh learner has no
 headroom, or when warm-up cost is charged to only one of many later targets.
+When a transfer challenger is used, its fresh candidate and the matched fresh
+control must begin from the same caller-owned initial state. Otherwise random
+initialization is confounded with transfer and the cumulative cost comparison
+is not interpretable.
 
 ## Repository mapping
 

@@ -1325,6 +1325,41 @@ def test_transition_model_bank_prior_challenger_is_copy_on_write() -> None:
     assert bank.models[source_index].digest() == source_digest
 
 
+def test_transition_model_bank_prior_challenger_accepts_matched_fresh_candidate() -> None:
+    torch.manual_seed(1211)
+    bank = ExternalTransitionModelBank(2, 1, 3, hidden_width=8)
+    source_index = bank.ensure_context(torch.tensor([1.0, 0.0, 0.0]))
+    fresh = bank.new_model(bank.model_family_at(source_index))
+    fresh_initial_digest = fresh.digest()
+    observation = ExternalTransitionObservation(
+        state=torch.randn(4, 2),
+        intention=torch.randn(4, 1),
+        next_state=torch.randn(4, 2),
+        confidence=torch.ones(4),
+    )
+
+    def probe(
+        transfer: torch.nn.Module,
+        candidate: torch.nn.Module,
+        current: ExternalTransitionObservation,
+    ) -> tuple[float, float]:
+        assert candidate is fresh
+        assert candidate.digest() == fresh_initial_digest
+        return (float(transfer.loss(current).detach()), 0.0)
+
+    receipt, selected = bank.select_verified_transfer_prior(
+        source_index,
+        observation,
+        probe,
+        fresh_candidate=fresh,
+    )
+
+    assert receipt.selected_initialization == "fresh"
+    assert selected is fresh
+    assert fresh.digest() == selected.digest()
+    assert bank.context_count == 1
+
+
 def test_transition_model_bank_eviction_is_verified_and_alias_safe() -> None:
     torch.manual_seed(1209)
     bank = ExternalTransitionModelBank(2, 1, 3, hidden_width=8, capacity=3)

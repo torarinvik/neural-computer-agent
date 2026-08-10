@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import hashlib
 import json
 import time
@@ -120,6 +121,18 @@ def _shadow_prior_probe(
         float(transfer.loss(observation).detach()),
         float(fresh.loss(observation).detach()),
     )
+
+
+def _new_isolated_fresh_model(
+    bank: torch.nn.Module,
+    model_family: str,
+    seed: int,
+) -> torch.nn.Module:
+    """Create a matched fresh candidate without perturbing live RNG state."""
+
+    with torch.random.fork_rng(devices=[]):
+        torch.manual_seed(seed)
+        return bank.new_model(model_family)
 
 
 def _retention_prefix(
@@ -259,21 +272,31 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
 
     for regime_index in TARGET_REGIMES:
         name = REGIME_NAMES[regime_index]
+        model_family = bank.model_family_at(previous_index)
+        fresh_control_model = _new_isolated_fresh_model(
+            bank,
+            model_family,
+            seed + 1_000_003 * (regime_index + 1),
+        )
+        fresh_initial_digest = fresh_control_model.digest()
+        probe_fresh_model = copy.deepcopy(fresh_control_model)
         context = contexts[name]
         prior_receipt, selected_model = bank.select_verified_transfer_prior(
             previous_index,
             observations[name],
             _shadow_prior_probe,
             probe_updates=PRIOR_PROBE_UPDATES,
+            fresh_candidate=probe_fresh_model,
         )
-        warm_index = bank.ensure_context(
-            context,
-            initialize_from=(
-                previous_index
-                if prior_receipt.selected_initialization == "transfer"
-                else None
-            ),
-        )
+        with torch.random.fork_rng(devices=[]):
+            warm_index = bank.ensure_context(
+                context,
+                initialize_from=(
+                    previous_index
+                    if prior_receipt.selected_initialization == "transfer"
+                    else None
+                ),
+            )
         bank.models[warm_index].load_state_dict(selected_model.state_dict())
         pre_continuation = _evaluate(
             bank,
@@ -293,17 +316,21 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
             regime_index,
             update_budget=TARGET_UPDATES - PRIOR_PROBE_UPDATES,
         )
-        fresh = _new_bank()
-        fresh_index = fresh.ensure_context(context)
-        fresh_loss, fresh_updates, fresh_result = _train_until_mastery(
-            fresh,
-            fresh_index,
-            observations[name],
-            context,
-            state_codes,
-            intention_codes,
-            regime_index,
-        )
+        with torch.random.fork_rng(devices=[]):
+            fresh = _new_bank()
+            fresh_index = fresh.ensure_context(context)
+            fresh.models[fresh_index].load_state_dict(
+                fresh_control_model.state_dict()
+            )
+            fresh_loss, fresh_updates, fresh_result = _train_until_mastery(
+                fresh,
+                fresh_index,
+                observations[name],
+                context,
+                state_codes,
+                intention_codes,
+                regime_index,
+            )
         shadow_updates = 2 * PRIOR_PROBE_UPDATES
         warm_updates = shadow_updates + continuation_updates
         warm_total += warm_updates
@@ -345,6 +372,7 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
                     "fresh_probe_error": prior_receipt.fresh_probe_error,
                     "probe_updates_per_candidate": prior_receipt.probe_updates,
                     "selected_model_digest": prior_receipt.selected_model_digest,
+                    "matched_fresh_initial_digest": fresh_initial_digest,
                     "reason": prior_receipt.reason,
                 },
                 "pre_continuation": pre_continuation,
@@ -358,6 +386,7 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
                 "fresh": {
                     "optimizer_updates": fresh_updates,
                     "loss": fresh_loss,
+                    "initial_model_digest": fresh_initial_digest,
                     "result": fresh_result,
                 },
                 "retained_prefix": stable_prefix,
@@ -391,6 +420,7 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
         "all_prior_regimes_retained_and_byte_stable": all_prior_retained,
         "old_regime_replay_during_adaptation_zero": True,
         "planner_is_inference_only": True,
+        "fresh_control_uses_exact_unprobed_challenger_initialization": True,
     }
     report = {
         "schema": "neural-computer.external-transition-model-disjoint-compounding-pressure-test.v1",
@@ -442,6 +472,7 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
             "no_agent_verifier_trials": NO_AGENT_TRIALS
             * sum(len(TARGETS[index]) for index in TARGET_REGIMES),
             "current_target_rows_reused_for_optimizer": True,
+            "fresh_control_initialization_is_matched": True,
             "old_regime_replay_during_target_adaptation": 0,
             "controller_optimizer_updates": 0,
             "planner_search_compute_reported": True,

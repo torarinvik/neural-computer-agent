@@ -9,9 +9,11 @@ opaque model search, with no task policy stored in the controller or bank.
 
 Before each target is appended, the bank creates isolated transfer and fresh
 challengers and gives both the same four-update factual prefix. The lower-loss
-candidate is selected, while the source slot remains byte-stable. This
-copy-on-write gate is the mechanism under test; it is not allowed to silently
-turn a negative-transfer seed into a pass.
+candidate is selected, while the source slot remains byte-stable. The fresh
+challenger is cloned from one caller-owned baseline, and the matched fresh
+control trains from that exact unprobed state; this removes initialization luck
+from the transfer comparison. This copy-on-write gate is the mechanism under
+test; it is not allowed to silently turn a negative-transfer seed into a pass.
 
 The audit charges matched source acquisition, stops only when both factual
 loss and planner mastery pass, measures current-target reuse separately from

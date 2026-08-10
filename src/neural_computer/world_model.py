@@ -14,6 +14,7 @@ behavior is recomputed instead of being stored as a task-specific policy.
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import math
 from collections.abc import Callable, Mapping, Sequence
@@ -821,6 +822,7 @@ class ExternalTransitionModelBank(nn.Module):
         ],
         *,
         probe_updates: int = 0,
+        fresh_candidate: nn.Module | None = None,
     ) -> tuple[ExternalTransitionModelPriorSelectionReceipt, nn.Module]:
         """Select transfer or fresh initialization without mutating the bank.
 
@@ -831,6 +833,12 @@ class ExternalTransitionModelBank(nn.Module):
         the caller must explicitly append it to the bank.  This makes negative
         transfer measurable and reversible instead of silently forcing every
         new regime through an old parameter state.
+
+        ``fresh_candidate`` is an optional caller-owned fresh model.  When
+        supplied, the probe mutates that candidate in place, allowing the
+        caller to preserve a byte-identical pre-probe clone for a matched fresh
+        control.  The candidate remains outside the bank until the caller
+        explicitly commits it.
         """
 
         if not 0 <= source_index < self.context_count:
@@ -846,9 +854,28 @@ class ExternalTransitionModelBank(nn.Module):
             intention_width=self.intention_width,
         )
         family = self.model_family_at(source_index)
-        transfer = self._new_model(family)
-        transfer.load_state_dict(self.models[source_index].state_dict())
-        fresh = self._new_model(family)
+        # Deep-copy the factual prior so challenger construction does not
+        # consume RNG state or instantiate an unrelated temporary model.
+        transfer = copy.deepcopy(self.models[source_index])
+        fresh = (
+            self._new_model(family)
+            if fresh_candidate is None
+            else fresh_candidate
+        )
+        if not isinstance(fresh, nn.Module):
+            raise TypeError("fresh transition-model candidate must be a module")
+        if any(model is fresh for model in self.models):
+            raise ValueError("fresh transition-model candidate aliases a live slot")
+        # Compare against the live source ABI instead of instantiating a
+        # throwaway module; validation must not consume caller RNG state.
+        expected_state = self.models[source_index].state_dict()
+        candidate_state = fresh.state_dict()
+        if set(candidate_state) != set(expected_state) or any(
+            candidate_state[name].shape != expected_state[name].shape
+            or candidate_state[name].dtype != expected_state[name].dtype
+            for name in expected_state
+        ):
+            raise ValueError("fresh transition-model candidate has incompatible state")
         source_digest = self.models[source_index].digest()
         scores = probe(transfer, fresh, observation)
         if not isinstance(scores, (tuple, list)) or len(scores) != 2:

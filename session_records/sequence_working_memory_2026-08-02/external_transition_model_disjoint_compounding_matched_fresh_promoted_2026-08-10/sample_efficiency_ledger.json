@@ -1,0 +1,18 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "external_transition_model_disjoint_compounding_matched_fresh_promoted_2026-08-10",
+  "status": "promoted_five_seed_fair_challenger",
+  "population_seeds": [70411, 70412, 70413, 70414, 70415],
+  "source_regimes": 2,
+  "target_regimes": 2,
+  "prior_probe_updates_per_candidate": 4,
+  "warm_cumulative_model_updates": [155, 133, 125, 150, 137],
+  "fresh_cumulative_model_updates": [162, 145, 131, 157, 145],
+  "promoted_seeds": [70411, 70412, 70413, 70414, 70415],
+  "transfer_decisions": [0, 1, 1, 0, 1],
+  "retention_on_mastered_primitives": 1.0,
+  "old_regime_replay_during_adaptation": 0,
+  "controller_optimizer_updates": 0,
+  "fresh_control_initialization_matched": true,
+  "claim_boundary": "Fair verifier-gated factual-model compounding on a finite disjoint synthetic family; not general continual learning."
+}
