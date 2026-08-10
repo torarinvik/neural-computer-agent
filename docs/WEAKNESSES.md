@@ -28,10 +28,17 @@ rung promotes, rejects, or qualifies. Ordered by severity.
    re-check F108's ignorance weight curve, which has the identical
    single-seed provenance.
 
-0-carry. **Carry the binding result to the games.** The games' beam
-   search re-consults the entry at every rollout step, which is
-   exactly the pattern F135 measured as the depth killer. Untested
-   there; worth checking before any further games tuning.
+0-carry. **DONE, and it worked (F143).** Binding the games' value
+   pathway — entry reduced to one vector added to the state token
+   instead of attended over at every rollout step — took pooled
+   held-out from +0.0995 to +0.1229 against a +0.1234 oracle-value
+   target, on three seeds with no tuning. All three seeds now seek in
+   inverted worlds (0.333/0.188/0.375, against 0.417/0.042/0.000),
+   closing the polarity asymmetry open since F112. Evidence:
+   `bind_value_games_v1_2026-08-10`.
+   The games' remaining 31.9% of floor-to-full-oracle is F110's
+   search-and-dynamics residual, which no improvement to the entry can
+   reach — it needs a better transition model or a better search.
 
 0-lesson. **The ignorance objective is toothless when the model is
    bad (F120).** It penalises being accurate WITHOUT the entry; a
@@ -40,8 +47,9 @@ rung promotes, rejects, or qualifies. Ordered by severity.
    the twin-average. Precondition now stated: get the model predicting
    before expecting the ignorance term to force reading.
 
-1. **Games polarity: the second salience channel is starved by the
-   collection policy (F118).** Two-channel salience reached pooled
+1. **CLOSED by F143** (kept for the trail). **Games polarity: the
+   second salience channel is starved by the collection policy
+   (F118).** Two-channel salience reached pooled
    held-out +0.0947 (ladder -0.0205 -> +0.0069 -> +0.0816 -> +0.0947
    against the +0.1234 oracle-value target) and normal worlds saturate
    at top=food 1.000 — but in every seed one polarity channel is alive
