@@ -2704,3 +2704,12 @@ comparisons. This promotes a bounded cost-predictive transfer mechanism while
 retaining the conservative five-seed negative-cost audit. Evidence is archived
 in
 `session_records/sequence_working_memory_2026-08-02/external_transition_model_challenger_calibration_promoted_2026-08-10/`.
+
+The learned context router also survives a stronger noisy partial-evidence
+condition: state and next-state noise `0.04`, twice the earlier promoted
+level, two complete alternation rounds, and no regime labels. Across three
+seeds, novel regimes were admitted and reused, all regimes remained mastered,
+source slots stayed byte-stable, and old-slot updates remained zero. This is a
+bounded synthetic-noise robustness result, not general continual learning.
+Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_disjoint_dynamics_noisy_partial_high_noise_promoted_2026-08-10/`.

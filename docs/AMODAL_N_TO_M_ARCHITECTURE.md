@@ -6957,3 +6957,19 @@ conservative control.
 
 Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_transition_model_challenger_calibration_promoted_2026-08-10/`.
+
+## High-noise partial-evidence disjoint routing (2026-08-10)
+
+The learned context router now passes a stronger synthetic noise rung: state
+and next-state standard deviation `0.04`, twice the earlier promoted noisy
+condition, with target-covering partial evidence and two complete alternation
+rounds. Across three seeds, novel regimes were admitted and reused without
+labels, all regimes remained mastered, source slots stayed byte-stable,
+persistence was exact, and old-slot updates were zero.
+
+This promotes bounded high-noise partial-evidence routing. It does not
+establish arbitrary missingness, real multimodal noise, unrestricted memory
+growth, or general continual learning.
+
+Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_disjoint_dynamics_noisy_partial_high_noise_promoted_2026-08-10/`.
