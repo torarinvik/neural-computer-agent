@@ -60,6 +60,7 @@ ROUTE_QUERY_MINIMUM_SCORE = 0.80
 LEARNED_ROUTE_HIDDEN = 48
 LEARNED_ROUTE_UPDATES = 128
 ROUTE_MEMORY_PROTOTYPES = 4
+PRIOR_PROBE_UPDATES = 4
 
 
 def _digest(module: torch.nn.Module) -> str:
@@ -92,6 +93,47 @@ def _new_bank(capacity: int) -> ExternalTransitionModelBank:
         adaptation_learning_rate=0.01,
         capacity=capacity,
     )
+
+
+def _shadow_prior_probe(
+    transfer: torch.nn.Module,
+    fresh: torch.nn.Module,
+    observation: ExternalTransitionObservation,
+    *,
+    updates: int = PRIOR_PROBE_UPDATES,
+) -> tuple[float, float]:
+    """Challenge transfer and fresh priors using only the current bundle."""
+
+    transfer_optimizer = torch.optim.Adam(transfer.parameters(), lr=0.01)
+    fresh_optimizer = torch.optim.Adam(fresh.parameters(), lr=0.01)
+    for _step in range(updates):
+        for model, optimizer in (
+            (transfer, transfer_optimizer),
+            (fresh, fresh_optimizer),
+        ):
+            loss = model.loss(observation)
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+    return (
+        float(transfer.loss(observation).detach()),
+        float(fresh.loss(observation).detach()),
+    )
+
+
+def _prior_selection_report(
+    receipt: object | None,
+) -> dict[str, object] | None:
+    if receipt is None:
+        return None
+    return {
+        "selected_initialization": receipt.selected_initialization,
+        "source_slot_id": receipt.source_slot_id,
+        "transfer_probe_error": receipt.transfer_probe_error,
+        "fresh_probe_error": receipt.fresh_probe_error,
+        "probe_updates": receipt.probe_updates,
+        "reason": receipt.reason,
+    }
 
 
 def _retention_probe(
@@ -265,9 +307,16 @@ def run(
     learned_route_updates: int = LEARNED_ROUTE_UPDATES,
     use_prototype_route_memory: bool = False,
     route_memory_prototypes: int = ROUTE_MEMORY_PROTOTYPES,
+    use_verified_prior: bool = False,
+    prior_probe_updates: int = PRIOR_PROBE_UPDATES,
 ) -> dict[str, object]:
     begun = time.perf_counter()
     torch.set_num_threads(1)
+    prior_probe = (
+        partial(_shadow_prior_probe, updates=prior_probe_updates)
+        if use_verified_prior
+        else None
+    )
     torch.manual_seed(seed)
     fixtures = {name: _fixture(seed, index) for index, name in enumerate(NAMES)}
     observations = {name: pair[0] for name, pair in fixtures.items()}
@@ -353,6 +402,12 @@ def run(
             )
             else None
         ),
+        prior_selection_probe=(
+            prior_probe
+        ),
+        prior_selection_probe_updates=(
+            prior_probe_updates if use_verified_prior else 0
+        ),
     )
 
     contexts: dict[str, torch.Tensor] = {}
@@ -384,6 +439,9 @@ def run(
         optimizer_updates += len(losses)
         if router.provisional_candidate_count != 1:
             raise RuntimeError(f"{name} did not leave one learned candidate")
+        prior_selection = _prior_selection_report(
+            router._provisional_candidates[0].prior_selection
+        )
         context = router.provisional_context_at(0)
         receipt = router.promote_staged_candidate(
             heldout[name],
@@ -424,6 +482,7 @@ def run(
                 "optimizer_updates": len(losses),
                 "heldout_error": _error(bank, heldout[name], context),
                 "address_version": router.address_adapter.version,
+                "prior_selection": prior_selection,
             }
         )
         if use_learned_route_query:
@@ -474,7 +533,12 @@ def run(
         0.5 if use_learned_route_query else route_query_minimum_score
     )
 
-    corruption_router = ExternalOnlineTransitionContextRouter.from_payload(router.state_payload())
+    corruption_router = ExternalOnlineTransitionContextRouter.from_payload(
+        router.state_payload(),
+        prior_selection_probe=(
+            prior_probe
+        ),
+    )
     corruption_router.bank.capacity = REGIME_COUNT + 1
     corruption_router.max_contexts = REGIME_COUNT + 1
     corrupted = ExternalTransitionObservation(
@@ -503,7 +567,12 @@ def run(
         and corruption_router.bank.content_digest() == corruption_before
     )
 
-    restored = ExternalOnlineTransitionContextRouter.from_payload(router.state_payload())
+    restored = ExternalOnlineTransitionContextRouter.from_payload(
+        router.state_payload(),
+        prior_selection_probe=(
+            prior_probe
+        ),
+    )
     prior_retained = all(
         bank.models[bank.physical_index_for_slot_id(slot_id)].digest() == digests[name]
         for slot_id, name in slot_names.items()
@@ -597,6 +666,10 @@ def run(
             "route_memory_prototypes_per_slot": route_memory_prototypes
             if use_prototype_route_memory
             else 0,
+            "verified_prior_selection": use_verified_prior,
+            "prior_probe_updates_per_candidate": prior_probe_updates
+            if use_verified_prior
+            else 0,
             "context_encoder_optimizer_updates": 0,
             "provisional_evidence_policy": "streaming_gradient",
             "gradient_steps_per_current_window": GRADIENT_STEPS_PER_BUNDLE,
@@ -634,6 +707,13 @@ def run(
                 router.route_query.route_memory.total_prototype_count
                 if router.route_query is not None
                 and router.route_query.route_memory is not None
+                else 0
+            ),
+            "prior_probe_optimizer_updates": (
+                2
+                * prior_probe_updates
+                * max(0, REGIME_COUNT - 1)
+                if use_verified_prior
                 else 0
             ),
             "route_scorer_unique_current_windows": max(0, REGIME_COUNT - 1)
@@ -679,6 +759,12 @@ def main() -> None:
         type=int,
         default=ROUTE_MEMORY_PROTOTYPES,
     )
+    parser.add_argument("--verified-transfer-prior", action="store_true")
+    parser.add_argument(
+        "--prior-probe-updates",
+        type=int,
+        default=PRIOR_PROBE_UPDATES,
+    )
     parser.add_argument(
         "--learned-route-updates",
         type=int,
@@ -693,6 +779,8 @@ def main() -> None:
         raise SystemExit("--learned-route-updates must be positive")
     if args.route_memory_prototypes < 1:
         raise SystemExit("--route-memory-prototypes must be positive")
+    if args.prior_probe_updates < 1:
+        raise SystemExit("--prior-probe-updates must be positive")
     if args.learned_route_query and args.prototype_route_memory:
         raise SystemExit(
             "--learned-route-query and --prototype-route-memory are exclusive"
@@ -707,6 +795,8 @@ def main() -> None:
         learned_route_updates=args.learned_route_updates,
         use_prototype_route_memory=args.prototype_route_memory,
         route_memory_prototypes=args.route_memory_prototypes,
+        use_verified_prior=args.verified_transfer_prior,
+        prior_probe_updates=args.prior_probe_updates,
     )
 
 

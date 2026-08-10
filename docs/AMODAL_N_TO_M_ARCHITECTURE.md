@@ -6008,3 +6008,32 @@ pressure test must make the representation stable or meta-learned before
 freezing it; threshold tuning and additional prototypes are not substitutes
 for missing identity information. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_transition_prototype_route_memory_rejected_2026-08-10/`.
+
+## Rejected verified transfer-vs-fresh nonlinear prior (2026-08-10)
+
+The next pressure test used isolated copy-on-write challengers to decide
+whether a novel nonlinear factual-model candidate should start from a prior
+slot or a fresh model. Both challengers were trained only on the current
+bundle; the lower factual probe loss selected the candidate, and the
+controller, committed slots, raw provisional evidence, and old-regime replay
+remained unchanged. The selection receipt persisted exactly and the probe was
+covered by a source-state isolation test.
+
+Across seeds `82601`, `82602`, and `82603`, verified transfer was selected for
+every novel regime after the first. It did not improve the promoted gates:
+held-out quality passed `1/3` seeds for the verified arm versus `2/3` for the
+automatic-prior control, and revisit identity remained incomplete (`0/6`,
+`2/6`, and `2/6`). One seed improved, one partially improved, and one
+regressed. The factual fallback remained correct, but that safety behavior is
+not a capability gain.
+
+This rejects transfer-prior selection as the missing mechanism. A local
+challenger can choose a better initialization, but it cannot create a stable
+identity representation for nonlinear regimes. The exported session's larger
+lesson therefore stands: factual transition models plus goal-conditioned
+search are the durable substrate; stored policies, adapters, and learned
+initializations are preference-shaped state that can still become stale. The
+next experiment must meta-learn or otherwise stabilize the factual model's
+representation and route identity, while preserving verifier-gated
+copy-on-write and no-replay accounting. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_learned_nonlinear_verified_transfer_prior_rejected_2026-08-10/`.

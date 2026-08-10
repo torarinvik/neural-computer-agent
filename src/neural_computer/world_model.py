@@ -4351,6 +4351,7 @@ class _ProvisionalTransitionCandidate:
         default_factory=list
     )
     alternatives: dict[str, nn.Module] = field(default_factory=dict)
+    prior_selection: ExternalTransitionModelPriorSelectionReceipt | None = None
 
     def models(self) -> dict[str, nn.Module]:
         return {self.model_family: self.model, **self.alternatives}
@@ -4394,6 +4395,10 @@ class ExternalOnlineTransitionContextRouter:
         evidence_gate_min_evidence: int = 0,
         address_adapter: ExternalTransitionContextAddressAdapter | None = None,
         route_query: ExternalTransitionRouteQuery | None = None,
+        prior_selection_probe: Callable[
+            [nn.Module, nn.Module, ExternalTransitionObservation], tuple[float, float]
+        ] | None = None,
+        prior_selection_probe_updates: int = 0,
     ) -> None:
         if (
             bank.state_width != context_encoder.state_width
@@ -4448,6 +4453,14 @@ class ExternalOnlineTransitionContextRouter:
             raise ValueError("online evidence threshold must lie in (0, 1)")
         if evidence_gate_min_evidence < 0:
             raise ValueError("online evidence gate warm-up cannot be negative")
+        if prior_selection_probe_updates < 0:
+            raise ValueError("prior selection probe updates cannot be negative")
+        if prior_selection_probe is None and prior_selection_probe_updates:
+            raise ValueError(
+                "prior selection probe updates require a prior selection probe"
+            )
+        if prior_selection_probe is not None and not callable(prior_selection_probe):
+            raise TypeError("prior selection probe must be callable")
         if evidence_evaluator is not None and (
             not hasattr(evidence_evaluator, "state_width")
             or int(evidence_evaluator.state_width) != bank.state_width
@@ -4507,6 +4520,8 @@ class ExternalOnlineTransitionContextRouter:
         self.evidence_gate_min_evidence = int(evidence_gate_min_evidence)
         self.address_adapter = address_adapter
         self.route_query = route_query
+        self.prior_selection_probe = prior_selection_probe
+        self.prior_selection_probe_updates = int(prior_selection_probe_updates)
         self.candidate_model_families = families
         self._pending: list[ExternalTransitionObservation] = []
         self._active_slot: int | None = None
@@ -4608,6 +4623,12 @@ class ExternalOnlineTransitionContextRouter:
                 else self.route_query.configuration()
             ),
             "route_query_role": "proposal_only_factual_verification_required_v1",
+            "prior_selection": (
+                "verified_transfer_vs_fresh_v1"
+                if self.prior_selection_probe is not None
+                else "automatic_same_family_transfer_v1"
+            ),
+            "prior_selection_probe_updates": self.prior_selection_probe_updates,
             "writes": "caller_owned_slot_only_v1",
             "provisional_evidence": (
                 "cumulative_verified_window_v1"
@@ -4925,6 +4946,7 @@ class ExternalOnlineTransitionContextRouter:
         self,
         context: torch.Tensor,
         *,
+        observation: ExternalTransitionObservation,
         prior_index: int | None,
         address_adapter: ExternalTransitionContextAddressAdapter | None = None,
     ) -> int:
@@ -4944,7 +4966,19 @@ class ExternalOnlineTransitionContextRouter:
             raise ValueError(
                 "streaming_gradient candidates require caller-optimized models"
             )
-        if prior_index is not None:
+        prior_selection: ExternalTransitionModelPriorSelectionReceipt | None = None
+        if prior_index is not None and self.prior_selection_probe is not None:
+            prior_family = self.bank.model_family_at(prior_index)
+            primary_family = self.candidate_model_families[0]
+            if primary_family == prior_family:
+                prior_selection, selected_model = self.bank.select_verified_transfer_prior(
+                    prior_index,
+                    observation,
+                    self.prior_selection_probe,
+                    probe_updates=self.prior_selection_probe_updates,
+                )
+                models[primary_family].load_state_dict(selected_model.state_dict())
+        elif prior_index is not None:
             prior_family = self.bank.model_family_at(prior_index)
             for family, model in models.items():
                 if (
@@ -4965,6 +4999,7 @@ class ExternalOnlineTransitionContextRouter:
                     for family, model in models.items()
                     if family != self.candidate_model_families[0]
                 },
+                prior_selection=prior_selection,
             )
         )
         return len(self._provisional_candidates) - 1
@@ -5259,6 +5294,7 @@ class ExternalOnlineTransitionContextRouter:
                 )
             candidate_index = self._stage_candidate(
                 candidate_context,
+                observation=bundle,
                 prior_index=prior_index,
                 address_adapter=candidate_address_adapter,
             )
@@ -5697,6 +5733,44 @@ class ExternalOnlineTransitionContextRouter:
             raise ValueError("unsupported online transition provisional model")
         return ExternalRandomFeatureTransitionStatistics.from_payload(payload)
 
+    @staticmethod
+    def _prior_selection_payload(
+        receipt: ExternalTransitionModelPriorSelectionReceipt | None,
+    ) -> dict[str, object] | None:
+        if receipt is None:
+            return None
+        return {
+            "schema": receipt.schema,
+            "selected_initialization": receipt.selected_initialization,
+            "source_slot_id": receipt.source_slot_id,
+            "transfer_probe_error": receipt.transfer_probe_error,
+            "fresh_probe_error": receipt.fresh_probe_error,
+            "probe_updates": receipt.probe_updates,
+            "source_model_digest": receipt.source_model_digest,
+            "selected_model_digest": receipt.selected_model_digest,
+            "reason": receipt.reason,
+        }
+
+    @staticmethod
+    def _prior_selection_from_payload(
+        payload: Mapping[str, Any] | None,
+    ) -> ExternalTransitionModelPriorSelectionReceipt | None:
+        if payload is None:
+            return None
+        if not isinstance(payload, Mapping):
+            raise TypeError("online transition prior-selection receipt is invalid")
+        return ExternalTransitionModelPriorSelectionReceipt(
+            selected_initialization=str(payload["selected_initialization"]),
+            source_slot_id=int(payload["source_slot_id"]),
+            transfer_probe_error=float(payload["transfer_probe_error"]),
+            fresh_probe_error=float(payload["fresh_probe_error"]),
+            probe_updates=int(payload["probe_updates"]),
+            source_model_digest=str(payload["source_model_digest"]),
+            selected_model_digest=str(payload["selected_model_digest"]),
+            reason=str(payload["reason"]),
+            schema=str(payload.get("schema", EXTERNAL_TRANSITION_MODEL_PRIOR_SELECTION_SCHEMA)),
+        ).validate()
+
     def state_payload(self) -> dict[str, object]:
         provisional_candidates = [
             {
@@ -5721,6 +5795,9 @@ class ExternalOnlineTransitionContextRouter:
                     self._observation_payload(row)
                     for row in candidate.deferred_observations
                 ],
+                "prior_selection": self._prior_selection_payload(
+                    candidate.prior_selection
+                ),
             }
             for candidate in self._provisional_candidates
         ]
@@ -5780,6 +5857,9 @@ class ExternalOnlineTransitionContextRouter:
         payload: Mapping[str, Any],
         *,
         evidence_evaluator: nn.Module | None = None,
+        prior_selection_probe: Callable[
+            [nn.Module, nn.Module, ExternalTransitionObservation], tuple[float, float]
+        ] | None = None,
     ) -> ExternalOnlineTransitionContextRouter:
         if not isinstance(payload, Mapping) or payload.get("schema") != cls.schema:
             raise ValueError("unsupported online transition-context router payload")
@@ -5878,6 +5958,10 @@ class ExternalOnlineTransitionContextRouter:
             ),
             address_adapter=address_adapter,
             route_query=route_query,
+            prior_selection_probe=prior_selection_probe,
+            prior_selection_probe_updates=int(
+                configuration.get("prior_selection_probe_updates", 0)
+            ),
         )
         for row_payload in pending_payload:
             row = cls._observation_from_payload(row_payload)
@@ -5958,6 +6042,7 @@ class ExternalOnlineTransitionContextRouter:
             deferred_observations_payload = candidate_payload.get(
                 "deferred_observations", []
             )
+            prior_selection_payload = candidate_payload.get("prior_selection")
             evidence_count = candidate_payload.get(
                 "evidence_count", len(observations_payload)
             )
@@ -6065,6 +6150,9 @@ class ExternalOnlineTransitionContextRouter:
                         for family, model in restored_models.items()
                         if family != primary_family
                     },
+                    prior_selection=router._prior_selection_from_payload(
+                        prior_selection_payload
+                    ),
                 )
             )
         return router

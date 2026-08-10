@@ -143,6 +143,72 @@ def test_transition_route_query_can_use_slot_local_prototype_memory() -> None:
     assert restored.digest() == query.digest()
 
 
+def test_online_router_verified_prior_selection_is_isolated_and_persistent() -> None:
+    torch.manual_seed(1213)
+    bank = ExternalTransitionModelBank(
+        2,
+        1,
+        4,
+        hidden_width=8,
+        capacity=2,
+    )
+    encoder = ExternalTransitionContextEncoder(
+        2,
+        1,
+        hidden_width=6,
+        context_width=4,
+    )
+    source_context = bank.ensure_context(torch.tensor([1.0, 0.0, 0.0, 0.0]))
+    source_digest = bank.models[source_context].digest()
+
+    def probe(
+        transfer: torch.nn.Module,
+        fresh: torch.nn.Module,
+        _observation: ExternalTransitionObservation,
+    ) -> tuple[float, float]:
+        with torch.no_grad():
+            for parameter in transfer.parameters():
+                parameter.add_(0.01)
+            for parameter in fresh.parameters():
+                parameter.add_(0.02)
+        return 0.1, 0.2
+
+    router = ExternalOnlineTransitionContextRouter(
+        bank,
+        encoder,
+        match_tolerance=0.0,
+        match_margin=0.0,
+        admission_observations=1,
+        max_contexts=2,
+        defer_admission=True,
+        candidate_model_families=("nonlinear_mlp_v1",),
+        provisional_evidence_policy="streaming_gradient",
+        prior_selection_probe=probe,
+        prior_selection_probe_updates=1,
+    )
+    result = router.observe(
+        ExternalTransitionObservation(
+            state=torch.randn(1, 2),
+            intention=torch.randn(1, 1),
+            next_state=torch.randn(1, 2),
+        )
+    )
+
+    assert result.status == "staged"
+    receipt = router._provisional_candidates[0].prior_selection
+    assert receipt is not None
+    assert receipt.selected_initialization == "transfer"
+    assert bank.models[source_context].digest() == source_digest
+    restored = ExternalOnlineTransitionContextRouter.from_payload(
+        router.state_payload(),
+        prior_selection_probe=probe,
+    )
+    restored_receipt = restored._provisional_candidates[0].prior_selection
+    assert restored_receipt is not None
+    assert restored_receipt.selected_model_digest == receipt.selected_model_digest
+    assert restored.configuration() == router.configuration()
+
+
 def test_learned_transition_route_query_is_persistent_and_opaque() -> None:
     torch.manual_seed(1211)
     encoder = ExternalTransitionContextEncoder(2, 1, hidden_width=6, context_width=4)
