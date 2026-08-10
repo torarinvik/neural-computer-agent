@@ -723,8 +723,6 @@ class ExternalEntryBindingObservationReceipt:
             raise ValueError("external-entry binding observation version is invalid")
         if not isinstance(self.record_count, int) or self.record_count < 1:
             raise ValueError("external-entry binding observation count is invalid")
-        if any(index >= self.record_count for index in self.entry_indices):
-            raise ValueError("external-entry binding observation index is out of range")
         if not isinstance(self.content_digest, str) or not self.content_digest:
             raise ValueError("external-entry binding observation digest is missing")
         return self
@@ -800,7 +798,7 @@ class ExternalEntryBindingAdmissionReceipt:
         if min(self.source_record_count, self.destination_record_count) < 0:
             raise ValueError("external-entry binding admission counts are invalid")
         if self.accepted:
-            if self.entry_index != self.source_record_count:
+            if self.entry_index is None or self.entry_index < 0:
                 raise ValueError("accepted external-entry binding index is invalid")
             if self.destination_record_count != self.source_record_count + 1:
                 raise ValueError("accepted external-entry binding count is invalid")
@@ -865,6 +863,8 @@ class ExternalEntryBindingRepertoire:
                 f"{self.intention_space_id}+{self.entry_space_id}"
             ),
         )
+        self._logical_ids: list[int] = []
+        self._next_logical_id = 0
 
     @property
     def record_count(self) -> int:
@@ -873,6 +873,27 @@ class ExternalEntryBindingRepertoire:
     @property
     def version(self) -> int:
         return self._store.version
+
+    @property
+    def logical_ids(self) -> tuple[int, ...]:
+        """Return stable logical IDs in current physical proposal order."""
+
+        return tuple(self._logical_ids)
+
+    def logical_id_at(self, index: int) -> int:
+        if not 0 <= index < self.record_count:
+            raise IndexError("external-entry binding physical index is out of range")
+        return self._logical_ids[index]
+
+    def physical_index_for_id(self, logical_id: int) -> int:
+        if not isinstance(logical_id, int) or logical_id < 0:
+            raise ValueError("external-entry binding logical ID is invalid")
+        try:
+            return self._logical_ids.index(logical_id)
+        except ValueError as error:
+            raise KeyError(
+                f"unknown external-entry binding logical ID: {logical_id}"
+            ) from error
 
     def configuration(self) -> dict[str, int | float | str]:
         return {
@@ -933,6 +954,16 @@ class ExternalEntryBindingRepertoire:
             raise ValueError("external-entry binding intention state is invalid")
         if stats["entries"].shape[1] != self.entry_width:
             raise ValueError("external-entry binding entry state is invalid")
+        if len(self._logical_ids) != self.record_count:
+            raise ValueError("external-entry binding logical IDs are misaligned")
+        if any(not isinstance(value, int) or value < 0 for value in self._logical_ids):
+            raise ValueError("external-entry binding logical IDs are invalid")
+        if len(set(self._logical_ids)) != len(self._logical_ids):
+            raise ValueError("external-entry binding logical IDs are duplicated")
+        if not isinstance(self._next_logical_id, int) or self._next_logical_id < 0:
+            raise ValueError("external-entry binding next logical ID is invalid")
+        if self._next_logical_id <= max(self._logical_ids, default=-1):
+            raise ValueError("external-entry binding next logical ID is stale")
 
     @staticmethod
     def _digest_payload(payload: Mapping[str, Any]) -> str:
@@ -959,6 +990,8 @@ class ExternalEntryBindingRepertoire:
             "schema": self.schema,
             "configuration": self.configuration(),
             "version": self.version,
+            "logical_ids": list(self._logical_ids),
+            "next_logical_id": self._next_logical_id,
             "store": self._store.payload(),
         }
 
@@ -982,10 +1015,18 @@ class ExternalEntryBindingRepertoire:
         configuration = payload.get("configuration")
         store_payload = payload.get("store")
         version = payload.get("version")
+        logical_ids = payload.get("logical_ids")
+        next_logical_id = payload.get("next_logical_id")
         if not isinstance(configuration, Mapping) or not isinstance(store_payload, Mapping):
             raise TypeError("external-entry binding payload is incomplete")
         if not isinstance(version, int) or version < 0:
             raise ValueError("external-entry binding payload version is invalid")
+        if not isinstance(logical_ids, list) or not all(
+            isinstance(value, int) and value >= 0 for value in logical_ids
+        ):
+            raise ValueError("external-entry binding payload logical IDs are invalid")
+        if not isinstance(next_logical_id, int) or next_logical_id < 0:
+            raise ValueError("external-entry binding payload next logical ID is invalid")
         repertoire = cls(
             int(configuration["intention_width"]),
             int(configuration["entry_width"]),
@@ -1002,6 +1043,8 @@ class ExternalEntryBindingRepertoire:
             if key in configuration
         }:
             raise ValueError("external-entry binding payload configuration differs")
+        repertoire._logical_ids = list(logical_ids)
+        repertoire._next_logical_id = next_logical_id
         repertoire.validate_state()
         return repertoire
 
@@ -1012,6 +1055,8 @@ class ExternalEntryBindingRepertoire:
         if not isinstance(other, ExternalEntryBindingRepertoire):
             raise TypeError("external-entry binding replacement must use same type")
         self._store = ExternalEntryRepertoire.from_payload(other._store.payload())
+        self._logical_ids = list(other._logical_ids)
+        self._next_logical_id = other._next_logical_id
 
     def observe(
         self,
@@ -1032,8 +1077,24 @@ class ExternalEntryBindingRepertoire:
             propensity=propensity,
             timestamp=timestamp,
         )
+        for physical_index, added in zip(
+            receipt.entry_indices,
+            receipt.added,
+            strict=True,
+        ):
+            if added:
+                if physical_index != len(self._logical_ids):
+                    raise RuntimeError(
+                        "external-entry binding storage appended out of order"
+                    )
+                self._logical_ids.append(self._next_logical_id)
+                self._next_logical_id += 1
+        logical_indices = tuple(
+            self._logical_ids[physical_index] for physical_index in receipt.entry_indices
+        )
+        self.validate_state()
         return ExternalEntryBindingObservationReceipt(
-            entry_indices=receipt.entry_indices,
+            entry_indices=logical_indices,
             added=receipt.added,
             outcome_observed=receipt.outcome_observed,
             version=receipt.version,
@@ -1056,7 +1117,10 @@ class ExternalEntryBindingRepertoire:
         return ExternalEntryBindingProposal(
             intentions=proposal.entries[:, : self.intention_width],
             entries=proposal.entries[:, self.intention_width :],
-            source_indices=proposal.source_indices,
+            source_indices=tuple(
+                self._logical_ids[physical_index]
+                for physical_index in proposal.source_indices
+            ),
             propensities=proposal.propensities,
             version=proposal.version,
         ).validate(
@@ -1119,7 +1183,7 @@ class ExternalEntryBindingRepertoire:
             self._copy_from(candidate)
             return ExternalEntryBindingAdmissionReceipt(
                 accepted=True,
-                entry_index=source_count,
+                entry_index=candidate.logical_id_at(candidate.record_count - 1),
                 source_record_count=source_count,
                 destination_record_count=self.record_count,
                 source_digest=source_digest,

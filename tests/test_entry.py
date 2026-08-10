@@ -103,6 +103,7 @@ def test_external_entry_binding_repertoire_keeps_pairs_atomic() -> None:
         torch.tensor([[1.0, 0.0], [0.0, 1.0]]),
     )
     assert torch.equal(proposal.entries, torch.tensor([[1.0], [-1.0]]))
+    assert proposal.source_indices == (0, 1)
 
     candidate_intention = torch.tensor([0.5, 0.5])
     candidate_entry = torch.tensor([1.0])
@@ -120,9 +121,11 @@ def test_external_entry_binding_repertoire_keeps_pairs_atomic() -> None:
     assert accepted.accepted
     assert accepted.entry_index == 2
     assert repertoire.record_count == 3
+    assert repertoire.logical_ids == (0, 1, 2)
 
     restored = ExternalEntryBindingRepertoire.from_payload(repertoire.payload())
     assert restored.content_digest() == repertoire.content_digest()
+    assert restored.logical_ids == repertoire.logical_ids
     corrupt = repertoire.payload()
     corrupt["store"] = dict(corrupt["store"])
     corrupt["store"]["entries"] = corrupt["store"]["entries"].clone()

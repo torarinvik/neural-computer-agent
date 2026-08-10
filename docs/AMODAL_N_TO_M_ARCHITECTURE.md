@@ -8106,7 +8106,8 @@ learned compression. `ExternalEntryBindingRepertoire` now stores
 intention↔entry pairs atomically, and policy-free runtime proposals return both
 tensors from one external record rather than joining two independently ordered
 lists. The next pressure is retention-safe consolidation and compression
-across changing regimes with held-out factual retention as the gate.
+across changing regimes with stable logical IDs preserved through maintenance
+and held-out factual retention as the gate.
 
 ## Live signed-entry search (2026-08-10)
 

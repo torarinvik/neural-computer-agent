@@ -521,4 +521,5 @@ compression. `ExternalEntryBindingRepertoire` now stores intention↔entry pairs
 atomically and `PolicyFreeAmodalRuntime` can propose both tensors from one
 record, eliminating positional joins between independent repertoires. The
 next pressure is retention-safe consolidation and compression across changing
-regimes, with held-out factual retention as the admission gate.
+regimes, with stable logical IDs preserved through maintenance and held-out
+factual retention as the admission gate.
