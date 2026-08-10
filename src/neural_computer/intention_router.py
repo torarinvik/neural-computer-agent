@@ -17,8 +17,11 @@ from .intention_memory import (
 EXTERNAL_ROUTED_INTENTION_MEMORY_SCHEMA_V1 = (
     "neural-computer.external-routed-intention-memory.v1"
 )
-EXTERNAL_ROUTED_INTENTION_MEMORY_SCHEMA = (
+EXTERNAL_ROUTED_INTENTION_MEMORY_SCHEMA_V2 = (
     "neural-computer.external-routed-intention-memory.v2"
+)
+EXTERNAL_ROUTED_INTENTION_MEMORY_SCHEMA = (
+    "neural-computer.external-routed-intention-memory.v3"
 )
 EXTERNAL_ROUTED_INTENTION_PROPOSAL_SCHEMA = (
     "neural-computer.external-routed-intention-proposal.v1"
@@ -239,7 +242,7 @@ class ExternalRoutedRetentionVerification:
     mean_outcome: float
     floor: float
     accepted: bool
-    context_relevance: float | None
+    context_relevance_minimum: float | None
     reason: str
     schema: str = EXTERNAL_ROUTED_INTENTION_RETENTION_VERIFICATION_SCHEMA
 
@@ -276,9 +279,9 @@ class ExternalRoutedRetentionVerification:
             raise ValueError("routed retention summary does not match outcomes")
         if not isinstance(self.accepted, bool):
             raise TypeError("routed retention acceptance must be boolean")
-        if self.context_relevance is not None and (
-            not math.isfinite(float(self.context_relevance))
-            or not -1.0 <= float(self.context_relevance) <= 1.0
+        if self.context_relevance_minimum is not None and (
+            not math.isfinite(float(self.context_relevance_minimum))
+            or not -1.0 <= float(self.context_relevance_minimum) <= 1.0
         ):
             raise ValueError("routed retention context relevance is invalid")
         if not isinstance(self.reason, str) or not self.reason:
@@ -307,6 +310,7 @@ class ExternalOutcomeIntentionRouter:
         reversal_threshold: float = 0.5,
         reversal_patience: int = 4,
         context_relevance_threshold: float = 0.9,
+        verified_prototype_scale: float = 3.0,
     ) -> None:
         if not isinstance(memory, ExternalOutcomeIntentionMemory):
             raise TypeError("intention router requires external intention memory")
@@ -322,7 +326,7 @@ class ExternalOutcomeIntentionRouter:
             raise ValueError("intention router exploration bonus is invalid")
         if not math.isfinite(initial_routing_scale) or initial_routing_scale <= 0.0:
             raise ValueError("intention router initialization scale is invalid")
-        if not 0.0 <= unqualified_cell_probability < 1.0:
+        if not 0.0 <= unqualified_cell_probability <= 1.0:
             raise ValueError("intention router unqualified-cell probability is invalid")
         if not 0.0 <= mastery_threshold <= 1.0:
             raise ValueError("intention router mastery threshold is invalid")
@@ -334,6 +338,8 @@ class ExternalOutcomeIntentionRouter:
             raise ValueError("intention router reversal patience must be positive")
         if not -1.0 <= context_relevance_threshold <= 1.0:
             raise ValueError("intention router context relevance threshold is invalid")
+        if not math.isfinite(verified_prototype_scale) or verified_prototype_scale < 0.0:
+            raise ValueError("intention router verified prototype scale is invalid")
         self.memory = memory
         self.initial_learning_rate = float(initial_learning_rate)
         self.initial_baseline_rate = float(initial_baseline_rate)
@@ -347,6 +353,7 @@ class ExternalOutcomeIntentionRouter:
         self.reversal_threshold = float(reversal_threshold)
         self.reversal_patience = int(reversal_patience)
         self.context_relevance_threshold = float(context_relevance_threshold)
+        self.verified_prototype_scale = float(verified_prototype_scale)
 
     @property
     def context_width(self) -> int:
@@ -364,7 +371,7 @@ class ExternalOutcomeIntentionRouter:
         return {
             "schema": self.schema,
             "memory": self.memory.configuration(),
-            "routing": "opaque_context_to_external_cell_mixture_then_sparse_materialization_v2",
+            "routing": "opaque_context_to_external_cell_mixture_then_sparse_materialization_v3",
             "credit": "outcome_only_route_score_gradient_v1",
             "temperature": self.temperature,
             "exploration_bonus": self.exploration_bonus,
@@ -379,8 +386,10 @@ class ExternalOutcomeIntentionRouter:
                 "reversal_threshold": self.reversal_threshold,
                 "reversal_patience": self.reversal_patience,
                 "context_relevance_threshold": self.context_relevance_threshold,
+                "verified_prototype_scale": self.verified_prototype_scale,
                 "heldout_gate": "verifier_prefix_minimum_copy_on_write_v1",
             },
+            "protection": "verified_cell_freezes_content_and_route_until_reversal_v1",
             "capacity": "append_only_external_cell_count_v1",
             "controller": "frozen_opaque_context_only_v1",
         }
@@ -483,10 +492,26 @@ class ExternalOutcomeIntentionRouter:
             + state.routing_bias.unsqueeze(0)
             + exploration_bonus
         ) / self.temperature
+        verified = state.cells.protected & (state.retention_context_masses > 0.0)
+        if self.verified_prototype_scale > 0.0 and bool(verified.any()):
+            context_normalized = torch.nn.functional.normalize(context, dim=-1)
+            prototypes_normalized = torch.nn.functional.normalize(
+                state.retention_context_prototypes,
+                dim=-1,
+            )
+            prototype_similarity = torch.einsum(
+                "bf,cf->bc",
+                context_normalized,
+                prototypes_normalized,
+            )
+            logits = logits + (
+                self.verified_prototype_scale
+                * prototype_similarity
+                * verified.to(dtype=context.dtype).unsqueeze(0)
+            ) / self.temperature
         base_probabilities = torch.softmax(logits, dim=-1)
         unqualified = (
-            (~state.cells.protected)
-            & (state.retention_observations < self.min_mastery_feedbacks)
+            ~state.cells.protected
         ).to(dtype=context.dtype)
         unqualified_count = unqualified.sum()
         if (
@@ -580,12 +605,13 @@ class ExternalOutcomeIntentionRouter:
             proposal.selected_cells,
             present=present,
         )
+        mutable = present & ~state.cells.protected[proposal.selected_cells]
         counts = torch.zeros_like(state.routing_decisions)
-        if bool(present.any()):
+        if bool(mutable.any()):
             counts.index_add_(
                 0,
-                proposal.selected_cells[present],
-                torch.ones_like(proposal.selected_cells[present]),
+                proposal.selected_cells[mutable],
+                torch.ones_like(proposal.selected_cells[mutable]),
             )
         next_state = replace(
             state,
@@ -648,7 +674,8 @@ class ExternalOutcomeIntentionRouter:
         cells = replace(cells, protected=protected)
         centered = outcome - state.routing_baseline[0]
         active = present
-        update_scale = self.initial_learning_rate * centered * active.to(
+        route_mutable = active & ~protected[proposal.selected_cells]
+        update_scale = self.initial_learning_rate * centered * route_mutable.to(
             dtype=state.routing_keys.dtype
         )
         route_key_delta = (
@@ -936,7 +963,7 @@ class ExternalOutcomeIntentionRouter:
         cell_count = state.cells.baseline.shape[0]
         if not 0 <= cell_index < cell_count:
             raise IndexError("routed retention cell index is out of range")
-        if context.ndim != 1 or context.shape[0] != self.context_width:
+        if context.ndim not in (1, 2) or context.shape[-1] != self.context_width:
             raise ValueError("routed retention context has the wrong shape")
         if context.device != state.routing_keys.device:
             raise ValueError("routed retention context is on the wrong device")
@@ -950,18 +977,26 @@ class ExternalOutcomeIntentionRouter:
             values = tuple(float(value) for value in outcomes)
         if not values:
             raise ValueError("routed retention needs at least one held-out outcome")
+        if context.ndim == 1:
+            verifier_contexts = context.unsqueeze(0).expand(len(values), -1)
+        else:
+            if context.shape[0] != len(values):
+                raise ValueError(
+                    "routed retention contexts and outcomes must have equal length"
+                )
+            verifier_contexts = context
         selected_floor = self.mastery_threshold if floor is None else float(floor)
         if not 0.0 <= selected_floor <= 1.0:
             raise ValueError("routed retention floor must lie in [0, 1]")
-        context_relevance: float | None = None
+        context_relevance_minimum: float | None = None
         mass = float(state.retention_context_masses[cell_index].item())
         if mass > 0.0:
-            context_relevance = float(
+            context_relevance_minimum = float(
                 torch.nn.functional.cosine_similarity(
-                    context.unsqueeze(0),
+                    verifier_contexts,
                     state.retention_context_prototypes[cell_index].unsqueeze(0),
                     dim=-1,
-                ).item()
+                ).min().item()
             )
         prefix_minimum = min(values)
         mean_outcome = sum(values) / len(values)
@@ -969,8 +1004,8 @@ class ExternalOutcomeIntentionRouter:
             len(values) >= self.min_mastery_feedbacks
             and prefix_minimum >= selected_floor
             and (
-                context_relevance is None
-                or context_relevance >= self.context_relevance_threshold
+                context_relevance_minimum is None
+                or context_relevance_minimum >= self.context_relevance_threshold
             )
         )
         if accepted:
@@ -985,8 +1020,8 @@ class ExternalOutcomeIntentionRouter:
             context_prototypes = state.retention_context_prototypes.clone()
             context_masses = state.retention_context_masses.clone()
             if mass <= 0.0:
-                context_prototypes[cell_index] = context
-                context_masses[cell_index] = 1.0
+                context_prototypes[cell_index] = verifier_contexts.mean(dim=0)
+                context_masses[cell_index] = float(len(values))
             next_state = replace(
                 state,
                 cells=cells,
@@ -1001,8 +1036,8 @@ class ExternalOutcomeIntentionRouter:
             reason = "heldout_prefix_floor_failed"
             if len(values) < self.min_mastery_feedbacks:
                 reason = "heldout_prefix_too_short"
-            elif context_relevance is not None and (
-                context_relevance < self.context_relevance_threshold
+            elif context_relevance_minimum is not None and (
+                context_relevance_minimum < self.context_relevance_threshold
             ):
                 reason = "heldout_context_not_relevant"
         receipt = ExternalRoutedRetentionVerification(
@@ -1012,7 +1047,7 @@ class ExternalOutcomeIntentionRouter:
             mean_outcome=mean_outcome,
             floor=selected_floor,
             accepted=accepted,
-            context_relevance=context_relevance,
+            context_relevance_minimum=context_relevance_minimum,
             reason=reason,
         ).validate()
         self._validate_state(next_state)
@@ -1064,7 +1099,11 @@ class ExternalOutcomeIntentionRouter:
         payload: Mapping[str, object],
     ) -> ExternalRoutedIntentionMemoryState:
         schema = payload.get("schema")
-        if schema not in (self.schema, EXTERNAL_ROUTED_INTENTION_MEMORY_SCHEMA_V1):
+        if schema not in (
+            self.schema,
+            EXTERNAL_ROUTED_INTENTION_MEMORY_SCHEMA_V2,
+            EXTERNAL_ROUTED_INTENTION_MEMORY_SCHEMA_V1,
+        ):
             raise ValueError("unsupported routed intention state schema")
         configuration = payload.get("configuration")
         if not isinstance(configuration, Mapping):

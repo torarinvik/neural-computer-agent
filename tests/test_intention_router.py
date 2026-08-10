@@ -2,6 +2,7 @@ import torch
 
 from neural_computer import (
     EXTERNAL_ROUTED_INTENTION_MEMORY_SCHEMA_V1,
+    EXTERNAL_ROUTED_INTENTION_MEMORY_SCHEMA_V2,
     ExternalOutcomeIntentionGenerator,
     ExternalOutcomeIntentionMemory,
     ExternalOutcomeIntentionRouter,
@@ -84,6 +85,11 @@ def test_router_explores_appended_cells_protects_content_and_reloads() -> None:
     )
 
     legacy_payload = dict(payload)
+    v2_payload = dict(payload)
+    v2_payload["schema"] = EXTERNAL_ROUTED_INTENTION_MEMORY_SCHEMA_V2
+    v2_restored = router.state_from_payload(v2_payload)
+    assert torch.equal(v2_restored.retention_mastered, state.retention_mastered)
+
     legacy_payload["schema"] = EXTERNAL_ROUTED_INTENTION_MEMORY_SCHEMA_V1
     for name in (
         "retention_observations",
@@ -207,3 +213,42 @@ def test_router_heldout_verifier_can_protect_without_mutating_learning_state() -
     assert not rejected.accepted
     assert rejected.reason == "heldout_context_not_relevant"
     assert torch.equal(rejected_state.cells.input_weights, state.cells.input_weights)
+
+
+def test_router_protection_freezes_address_until_reversal() -> None:
+    router, state = _router()
+    state = router.protect(state, [0])
+    context = torch.tensor([[1.0, 0.0, 0.0, 0.0]])
+    random_source = torch.Generator().manual_seed(19)
+    for _ in range(100):
+        proposal = router.propose(state, context, generator=random_source)
+        if int(proposal.selected_cells.item()) == 0:
+            break
+    else:
+        raise AssertionError("protected cell was never sampled")
+    before_keys = state.routing_keys.clone()
+    before_bias = state.routing_bias.clone()
+    before_decisions = state.routing_decisions.clone()
+    state = router.record_decision(state, proposal)
+    state = router.apply_feedback(state, proposal, torch.ones(1))
+
+    assert torch.equal(state.routing_keys, before_keys)
+    assert torch.equal(state.routing_bias, before_bias)
+    assert torch.equal(state.routing_decisions, before_decisions)
+    assert int(state.routing_feedbacks[0]) == 1
+
+
+def test_verified_context_prototype_restores_address_for_protected_cell() -> None:
+    router, state = _router()
+    context = torch.tensor([1.0, 0.0, 0.0, 0.0])
+    state, receipt = router.verify_and_protect(
+        state,
+        0,
+        context,
+        [1.0] * 8,
+        floor=0.9,
+    )
+    proposal = router.propose(state, context.unsqueeze(0))
+
+    assert receipt.accepted
+    assert float(proposal.route_probabilities[0, 0]) > 0.65

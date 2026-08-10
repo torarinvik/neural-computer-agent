@@ -201,8 +201,14 @@ Retention is split into two authorities: noisy online outcomes may adapt
 unprotected cells, while `ExternalOutcomeIntentionRouter.verify_and_protect`
 is a held-out copy-on-write gate for freezing them. The verifier transaction
 records a stable-prefix receipt and changes only protection/qualification
-metadata; it never
-silently trains content or routing.
+metadata; it never silently trains content or routing.
+
+The replicated six-regime follow-up now passes bounded stable-prefix retention
+and route-preservation gates with held-out qualification and verified prototype
+addressing. Evidence is in
+`session_records/policy_free_intention_prefix_growth_promoted_2026-08-10/`.
+It does not promote positive transfer: fresh learners still win on some
+disjoint successors, so the next step is a factual/residual challenger.
 
 The outcome-only view-routing audit trains `FactorizedOpaqueAddressRouter`
 from paired attempted-view outcomes. Across two seeds it reaches `1.000`

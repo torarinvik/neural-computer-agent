@@ -1,0 +1,21 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "policy-free-intention-prefix-growth-promoted-2026-08-10",
+  "claim_status": "promoted_bounded_stable_prefix",
+  "seeds": [85401, 85402],
+  "regime_count": 6,
+  "unique_verifier_bits": [287, 300],
+  "unique_logical_lifetimes": 6,
+  "optimizer_updates": 0,
+  "controller_optimizer_updates": 0,
+  "replayed_examples": 0,
+  "retention_content_floors": [0.9596227407455444, 0.9617365002632141],
+  "retention_route_floors": [0.58836829662323, 0.6725943088531494],
+  "positive_transfer_on_every_successor": false,
+  "notes": [
+    "Six-regime stable-prefix retention passed on both seeds.",
+    "Held-out verifier qualification and frozen prototype addressing were required.",
+    "The matched fresh learner remains faster on some disjoint successors; positive transfer is not promoted.",
+    "This is bounded continual retention, not general continual learning."
+  ]
+}

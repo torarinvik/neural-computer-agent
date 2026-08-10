@@ -301,7 +301,14 @@ def _train_regime(
         ):
             while pending:
                 apply_pending()
-            break
+            settled_scores = base._utility(router.mean(state, context)[0], target)
+            settled_score = float(
+                settled_scores[mastery_cell].item()
+                if mastery_cell is not None
+                else settled_scores.max().item()
+            )
+            if settled_score >= base.MASTERY_THRESHOLD:
+                break
     while pending:
         apply_pending()
 

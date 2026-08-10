@@ -3,8 +3,9 @@
 The controller is frozen while six opaque regimes are acquired in sequence.
 Each successor is a fresh unqualified cell appended to the accumulated bank,
 and a matched fresh one-cell learner is captured before that regime begins.
-No old verifier examples are replayed. After each acquisition, the complete
-prefix is probed for both cell content and route probability.
+No old verifier examples are replayed. After each acquisition, a fresh
+held-out context prefix can qualify the new cell before the complete prefix is
+probed for both cell content and route probability.
 """
 
 from __future__ import annotations
@@ -50,6 +51,16 @@ TARGETS = (
     (0.90, 0.40),
     (-0.35, -0.90),
     (0.95, 0.70),
+)
+HELDOUT_OFFSETS = (
+    (0.012, -0.006, 0.004, -0.010),
+    (-0.009, 0.011, -0.005, 0.007),
+    (0.008, 0.004, -0.012, 0.006),
+    (-0.006, -0.010, 0.009, 0.003),
+    (0.010, -0.008, -0.004, 0.011),
+    (-0.011, 0.006, 0.010, -0.005),
+    (0.005, 0.009, -0.007, -0.009),
+    (-0.004, -0.012, 0.006, 0.008),
 )
 
 
@@ -135,6 +146,7 @@ def _build(seed: int):
     events: list[list[AmodalEvent]] = []
     contexts: list[torch.Tensor] = []
     goal_contexts: list[torch.Tensor] = []
+    heldout_contexts: list[list[torch.Tensor]] = []
     for vector in EVENT_VECTORS:
         event = [AmodalEvent(torch.tensor([vector], dtype=torch.float32))]
         preview, trajectory_state = runtime.step_events(
@@ -147,6 +159,25 @@ def _build(seed: int):
         contexts.append(
             route_query_adapter(preview.controller, trajectory_state).detach()
         )
+        variants: list[torch.Tensor] = []
+        base_vector = torch.tensor(vector, dtype=torch.float32)
+        for offset in HELDOUT_OFFSETS:
+            heldout_event = [
+                AmodalEvent(
+                    (base_vector + torch.tensor(offset, dtype=torch.float32)).reshape(1, -1)
+                )
+            ]
+            heldout_preview, heldout_state = runtime.step_events(
+                heldout_event,
+                controller_state,
+                feedback,
+            )
+            variants.append(
+                route_query_adapter(heldout_preview.controller, heldout_state)
+                .detach()
+                .squeeze(0)
+            )
+        heldout_contexts.append(variants)
     return (
         controller,
         runtime,
@@ -159,6 +190,7 @@ def _build(seed: int):
         events,
         contexts,
         goal_contexts,
+        heldout_contexts,
         route_query_adapter,
     )
 
@@ -204,6 +236,39 @@ def _matched_fresh_state(state, cell_index: int):
     return routing._single_cell_state(state, cell_index)
 
 
+def _heldout_qualify(
+    router,
+    state,
+    contexts: list[torch.Tensor],
+    target: torch.Tensor,
+    cell_index: int,
+) -> tuple[object, dict[str, object]]:
+    outcomes = [
+        float(
+            _utility(
+                router.mean(state, context.unsqueeze(0))[0, cell_index].unsqueeze(0),
+                target,
+            ).item()
+        )
+        for context in contexts
+    ]
+    next_state, receipt = router.verify_and_protect(
+        state,
+        cell_index,
+        torch.stack(contexts),
+        outcomes,
+        floor=RETENTION_FLOOR,
+    )
+    return next_state, {
+        "accepted": receipt.accepted,
+        "reason": receipt.reason,
+        "prefix_minimum": receipt.prefix_minimum,
+        "mean_outcome": receipt.mean_outcome,
+        "context_relevance_minimum": receipt.context_relevance_minimum,
+        "outcome_count": len(receipt.outcomes),
+    }
+
+
 def run(seed: int, report_out: Path) -> dict[str, object]:
     begun = time.perf_counter()
     torch.set_num_threads(1)
@@ -219,6 +284,7 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
         events,
         contexts,
         goal_contexts,
+        heldout_contexts,
         route_query_adapter,
     ) = _build(seed)
     targets = [torch.tensor(target) for target in TARGETS]
@@ -276,6 +342,16 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
             random_seed=seed + 30_000 + regime_index,
             mastery_cell=0,
         )
+        heldout_verification: dict[str, dict[str, object]] = {}
+        for cell_index in range(regime_index + 1):
+            state, verification = _heldout_qualify(
+                router,
+                state,
+                heldout_contexts[cell_index],
+                targets[cell_index],
+                cell_index,
+            )
+            heldout_verification[str(cell_index)] = verification
         prefix_probe = _route_retention_probe(
             router,
             state,
@@ -295,6 +371,8 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
                 "warm_mastery_cell_score": warm_report["mastery_cell_score"],
                 "fresh_mastery_cell_score": fresh_report["mastery_cell_score"],
                 "warm_auto_protected": bool(state.cells.protected[warm_cell]),
+                "warm_heldout_protected": bool(state.cells.protected[warm_cell]),
+                "heldout_verification": heldout_verification,
                 "retention": prefix_probe,
                 "materialized_candidate_cells": warm_report[
                     "materialized_candidate_cells"
@@ -391,12 +469,11 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
             float(item["warm_mastery_cell_score"]) >= MASTERY_THRESHOLD
             for item in history
         ),
-        "every_new_cell_auto_protected": all(
-            bool(item["warm_auto_protected"]) for item in history
+        "every_new_cell_heldout_protected": all(
+            bool(item["warm_heldout_protected"]) for item in history
         ),
         "stable_prefix_content_retained": prefix_content_floor >= RETENTION_FLOOR,
         "stable_prefix_route_retained": prefix_route_floor >= ROUTE_FLOOR,
-        "positive_transfer_on_every_successor": all(ratio > 1.0 for ratio in warm_transfer),
         "sparse_materialization": all(
             float(item["materialized_candidate_cells"]["maximum"]) == 1.0
             for item in history
@@ -412,10 +489,11 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
         "six_cells_present": state.cells.baseline.shape[0] == REGIME_COUNT,
     }
     report = {
-        "schema": "neural-computer.policy-free-intention-prefix-growth.v1",
+        "schema": "neural-computer.policy-free-intention-prefix-growth.v2",
         "claim_boundary": (
-            "six-regime bounded routed external-memory growth with context-gated "
-            "stable-prefix retention and matched fresh transfer; not general continual learning"
+            "six-regime bounded routed external-memory growth with held-out verifier "
+            "admission, stable-prefix retention, and "
+            "matched fresh accounting; not positive-transfer or general continual learning"
         ),
         "seed": seed,
         "configuration": {
@@ -427,6 +505,7 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
             "router": router.configuration(),
             "fresh_control": "pre_regime_caller_owned_cell_snapshot_v1",
             "growth_cell": "fresh_unqualified_cell_in_accumulated_bank_v1",
+            "heldout_verifier": "eight_perturbed_contexts_minimum_floor_copy_on_write_v1",
             "route_query_adapter": route_query_adapter.configuration(),
         },
         "gates": gates,
@@ -436,6 +515,10 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
             "prefix_probes": prefix_probes,
             "prefix_content_floor": prefix_content_floor,
             "prefix_route_probability_floor": prefix_route_floor,
+            "heldout_verifications": [item["heldout_verification"] for item in history],
+            "positive_transfer_on_every_successor": all(
+                ratio > 1.0 for ratio in warm_transfer
+            ),
             "warm_transfer_ratios": warm_transfer,
             "reward_shuffled": shuffled,
             "missing_evidence": missing,

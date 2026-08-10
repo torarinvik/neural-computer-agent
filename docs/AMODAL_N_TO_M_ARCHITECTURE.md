@@ -3861,6 +3861,27 @@ mechanism, not the universal-computation gap. The exact audit required roughly
 procedure complexity and verification cost are now explicit implementation
 bottlenecks.
 
+## Promoted six-regime stable-prefix retention (2026-08-10)
+
+The follow-up pressure test uses fresh unprotected challenger cells, eight
+perturbed held-out contexts per regime, and delayed-feedback settlement before
+declaring mastery. A held-out verifier qualifies a cell through
+`verify_and_protect`; only then do generator content and route state freeze,
+and the verified context prototype become an address prior. Relevant reversal
+evidence can release the cell for a new challenger.
+
+Seeds `85401` and `85402` both pass six-regime mastery, held-out qualification,
+stable content, stable route, sparse materialization, shuffled-outcome,
+missing-evidence, corruption, persistence, frozen-controller, and zero-replay
+gates. Content floors are `0.9596`/`0.9617`; route floors are
+`0.5884`/`0.6726`. Evidence is archived in
+`session_records/policy_free_intention_prefix_growth_promoted_2026-08-10/`.
+
+The claim is bounded stable-prefix retention, not positive transfer or general
+continual learning. Fresh learners still win on some disjoint successors;
+the next architectural pressure is verified factual/residual compute that
+improves acquisition without copying policy-like generator weights.
+
 ## Trajectory-statistics route queries and automatic cell qualification (2026-08-10)
 
 The memory-side route boundary now has an optional

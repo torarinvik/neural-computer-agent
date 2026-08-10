@@ -719,3 +719,23 @@ Its failure is architectural evidence: blindly copying an intention-generator
 policy into a contradictory regime is negative transfer. The next promotion
 must use a factual residual/delta or a fresh challenger, then commit only
 after held-out candidate mastery and complete-prefix retention pass.
+
+## Promoted six-regime stable-prefix retention (2026-08-10)
+
+The follow-up uses fresh unprotected challenger cells, eight perturbed
+held-out contexts per regime, delayed-feedback settlement before mastery is
+declared, and verifier-gated protection. Once a cell passes its held-out
+prefix, its content and route state freeze together; its verified context
+prototype becomes a memory-side address prior. Relevant reversal evidence is
+the only release path.
+
+Both seeds pass all bounded retention gates: six regimes master, every new
+cell is held-out qualified, content floors are `0.9596` and `0.9617`, route
+floors are `0.5884` and `0.6726`, and all causal, persistence, frozen-core,
+and zero-replay controls pass. The reports are archived in
+`session_records/policy_free_intention_prefix_growth_promoted_2026-08-10/`.
+
+This promotes bounded stable-prefix retention and address preservation, not
+positive transfer. The matched fresh learner remains faster on some disjoint
+successors, so the next bottleneck is a verified factual/residual challenger
+that improves acquisition without copying policy-like generator weights.
