@@ -6,6 +6,7 @@ from neural_computer import (
     AmodalControllerRuntime,
     AmodalEvent,
     ControllerFeedback,
+    ExternalControllerEventWindowStateAdapter,
     ExternalControllerStateAdapter,
     ExternalControllerTrajectoryQueryAdapter,
     ExternalEntryBindingRepertoire,
@@ -351,6 +352,36 @@ def test_policy_free_runtime_requires_model_state_width_to_match_adapter() -> No
         assert "adapter input width" in str(error)
     else:
         raise AssertionError("mismatched policy-free model width was accepted")
+
+
+def test_event_window_state_adapter_preserves_opaque_state_width_and_history() -> None:
+    torch.manual_seed(18)
+    controller = AmodalCognitiveController(
+        width=4,
+        workspace_slots=2,
+        intention_width=2,
+        feedback_width=3,
+        event_window_capacity=4,
+    )
+    runtime = AmodalControllerRuntime(controller)
+    state = runtime.initial_state(1, device="cpu")
+    output, next_state = runtime.step_events(
+        [AmodalEvent(torch.randn(1, 4))],
+        state,
+        _feedback(),
+    )
+    adapter = ExternalControllerEventWindowStateAdapter(
+        controller.width,
+        state_width=controller.width * 3,
+        window_gain=0.1,
+    )
+    adapted = adapter(output.controller, next_state)
+    assert adapted.shape == output.controller.state_representation.shape
+    assert torch.isfinite(adapted).all()
+    assert not torch.allclose(adapted, output.controller.state_representation)
+    assert adapter.configuration()["input"] == (
+        "opaque_controller_state_plus_bounded_event_window_v1"
+    )
 
 
 def test_policy_free_runtime_injects_external_generated_candidate_and_feedback() -> None:

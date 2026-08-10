@@ -291,6 +291,10 @@ PYTHONPATH=src uv run python -m experiments.brainworkshop_canonical.replay_free_
 This starts with only a source factual slot, stages a novel rendered target
 slot from opaque transition evidence, and commits it only after held-out,
 recursive, source-retention, and matched fresh-candidate gates. It checks
-one-pass learning, route recovery, and source retention. It is deliberately a boundary audit rather
-than a general continual-learning claim; the seed ledger is in
-`session_records/online_transition_discovery_2026-08-11/sample_efficiency_ledger.json`.
+one-pass learning, route recovery, and source retention. The policy-free
+runtime can use `ExternalControllerEventWindowStateAdapter` to retain bounded
+event-window statistics at the historical planner width, and the promotion
+call passes the recursive held-out rollout into the atomic commit gate. It is
+deliberately a boundary audit rather than a general continual-learning claim;
+the seed ledger is in
+`session_records/window_aware_transition_state_2026-08-11/sample_efficiency_ledger.json`.

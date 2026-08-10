@@ -8,6 +8,7 @@ vocabulary or device protocol.
 from __future__ import annotations
 
 import hashlib
+import math
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 
@@ -1287,6 +1288,164 @@ class ExternalControllerStateAdapter(nn.Module):
         return projected
 
 
+class ExternalControllerEventWindowStateAdapter(nn.Module):
+    """Expose bounded learned event history at the external memory seam.
+
+    The controller's ordinary state representation is intentionally compact,
+    but it is a bound/reduction of the event window.  This adapter preserves
+    that representation and appends masked mean/max statistics of the
+    controller's retained learned tokens before the factual model sees the
+    state.  It is still entirely opaque: no modality, task, action, or
+    protocol field is introduced.
+
+    The adapter is external and replaceable.  Its default identity path makes
+    the state contract deterministic and auditable; a caller may provide a
+    projection when a planner uses a different state width.  The optional
+    ``state`` argument is deliberately explicit so callers cannot silently
+    pretend that a window-aware adapter received temporal context when it did
+    not.  Output-only calls remain supported for goal-fragment probes, where
+    the missing window is represented by zero statistics.
+    """
+
+    schema = "neural-computer.external-controller-event-window-state-adapter.v1"
+
+    def __init__(
+        self,
+        controller_width: int,
+        state_width: int | None = None,
+        *,
+        hidden_width: int = 0,
+        window_gain: float = 0.1,
+    ) -> None:
+        super().__init__()
+        if controller_width < 1 or hidden_width < 0 or not math.isfinite(window_gain):
+            raise ValueError("event-window state-adapter dimensions are invalid")
+        self.controller_width = int(controller_width)
+        self.controller_feature_width = self.controller_width * 3
+        self.window_feature_width = self.controller_width * 2
+        self.input_width = self.controller_feature_width + self.window_feature_width
+        self.state_width = self.input_width if state_width is None else int(state_width)
+        if self.state_width < 1:
+            raise ValueError("event-window state-adapter state width must be positive")
+        self.hidden_width = int(hidden_width)
+        self.window_gain = float(window_gain)
+        if hidden_width:
+            self.network = nn.Sequential(
+                nn.Linear(self.input_width, hidden_width),
+                nn.GELU(),
+                nn.Linear(hidden_width, self.state_width),
+            )
+        elif self.state_width == self.controller_feature_width:
+            # Keep the historical planner width and fold extra temporal
+            # evidence into the opaque event block.  This avoids increasing
+            # sample complexity merely to expose the retained window.
+            self.network = None
+        elif self.state_width == self.input_width:
+            self.network = nn.Identity()
+        else:
+            self.network = nn.Linear(self.input_width, self.state_width)
+
+    def configuration(self) -> dict[str, int | float | str]:
+        return {
+            "schema": self.schema,
+            "controller_width": self.controller_width,
+            "controller_feature_width": self.controller_feature_width,
+            "window_feature_width": self.window_feature_width,
+            "input_width": self.input_width,
+            "state_width": self.state_width,
+            "hidden_width": self.hidden_width,
+            "window_gain": self.window_gain,
+            "input": "opaque_controller_state_plus_bounded_event_window_v1",
+            "statistics": "masked_mean_and_max_v1",
+            "behavior": "replaceable_markov_state_projection_not_policy_v1",
+        }
+
+    @staticmethod
+    def _window_statistics(
+        state: ControllerState,
+        *,
+        batch_size: int,
+        width: int,
+        device: torch.device,
+        dtype: torch.dtype,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        payload = state.event_window.payload.to(device=device, dtype=dtype)
+        present = state.event_window.present
+        if payload.ndim != 3 or payload.shape != (
+            batch_size,
+            state.event_window.payload.shape[1],
+            width,
+        ):
+            raise ValueError("controller event window payload has the wrong shape")
+        if present.shape != payload.shape[:2] or present.dtype != torch.bool:
+            raise ValueError("controller event window presence has the wrong shape")
+        present_float = present.to(dtype=dtype)
+        denominator = present_float.sum(dim=1, keepdim=True).clamp_min(1.0)
+        mean = (payload * present_float.unsqueeze(-1)).sum(dim=1) / denominator
+        maximum = payload.masked_fill(~present.unsqueeze(-1), -torch.inf).amax(dim=1)
+        maximum = torch.where(
+            present.any(dim=1, keepdim=True),
+            maximum,
+            torch.zeros_like(maximum),
+        )
+        return mean, maximum
+
+    def forward(
+        self,
+        output: ControllerOutput,
+        state: ControllerState | None = None,
+    ) -> torch.Tensor:
+        if not isinstance(output, ControllerOutput):
+            raise TypeError("event-window state adapter requires controller output")
+        representation = output.state_representation
+        if (
+            representation.ndim != 2
+            or representation.shape[1] != self.controller_feature_width
+        ):
+            raise ValueError(
+                "controller state representation has the wrong event-window shape"
+            )
+        if not bool(torch.isfinite(representation).all()):
+            raise ValueError("controller state representation must be finite")
+        if state is None:
+            mean = torch.zeros(
+                representation.shape[0],
+                self.controller_width,
+                device=representation.device,
+                dtype=representation.dtype,
+            )
+            maximum = torch.zeros_like(mean)
+        else:
+            if not isinstance(state, ControllerState):
+                raise TypeError("event-window state adapter state has the wrong type")
+            if state.hidden.ndim != 2 or state.hidden.shape[0] != representation.shape[0]:
+                raise ValueError("event-window state adapter batch does not match")
+            mean, maximum = self._window_statistics(
+                state,
+                batch_size=representation.shape[0],
+                width=self.controller_width,
+                device=representation.device,
+                dtype=representation.dtype,
+            )
+        features = torch.cat((representation, mean, maximum), dim=-1)
+        if not bool(torch.isfinite(features).all()):
+            raise ValueError("event-window state features must be finite")
+        if self.network is None:
+            projected = torch.cat(
+                (
+                    representation[:, : 2 * self.controller_width],
+                    representation[:, 2 * self.controller_width :]
+                    + self.window_gain * (mean + maximum),
+                ),
+                dim=-1,
+            )
+        else:
+            projected = self.network(features)
+        if not bool(torch.isfinite(projected).all()):
+            raise ValueError("event-window adapted model state must be finite")
+        return projected
+
+
 class ExternalControllerTrajectoryQueryAdapter(nn.Module):
     """Build an opaque route query from controller state and event history.
 
@@ -2187,7 +2346,11 @@ class PolicyFreeAmodalRuntime:
         runtime: AmodalControllerRuntime,
         planner: ExternalModelBasedPlanner,
         *,
-        state_adapter: ExternalControllerStateAdapter | None = None,
+        state_adapter: (
+            ExternalControllerStateAdapter
+            | ExternalControllerEventWindowStateAdapter
+            | None
+        ) = None,
         intention_repertoire: ExternalIntentionRepertoire | None = None,
         intention_generator: ExternalOutcomeIntentionGenerator | None = None,
         intention_memory: ExternalOutcomeIntentionMemory | None = None,
@@ -2353,6 +2516,17 @@ class PolicyFreeAmodalRuntime:
     @property
     def controller(self) -> AmodalCognitiveController:
         return self.runtime.controller
+
+    def _adapt_state(
+        self,
+        controller_output: ControllerOutput,
+        controller_state: ControllerState | None,
+    ) -> torch.Tensor:
+        """Apply the selected external state contract without protocol branches."""
+
+        if isinstance(self.state_adapter, ExternalControllerEventWindowStateAdapter):
+            return self.state_adapter(controller_output, controller_state)
+        return self.state_adapter(controller_output)
 
     def configuration(self) -> dict[str, object]:
         return {
@@ -2661,7 +2835,7 @@ class PolicyFreeAmodalRuntime:
 
         if not isinstance(controller_output, ControllerOutput):
             raise TypeError("goal-fragment candidate needs controller output")
-        model_state = self.state_adapter(controller_output)
+        model_state = self._adapt_state(controller_output, None)
         if model_state.shape[0] != 1:
             raise ValueError(
                 "goal-fragment candidate derivation requires one controller row"
@@ -2996,7 +3170,7 @@ class PolicyFreeAmodalRuntime:
             memory_write_uniform=memory_write_uniform,
             memory_write_gradient=memory_write_gradient,
         )
-        model_state = self.state_adapter(controller_output)
+        model_state = self._adapt_state(controller_output, next_state)
         route_query = (
             model_state
             if self.route_query_adapter is None

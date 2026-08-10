@@ -24,6 +24,7 @@ from neural_computer import (
     EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY,
     ContentAddressedMemory,
     ControllerFeedback,
+    ExternalControllerEventWindowStateAdapter,
     ExternalModelBasedPlanner,
     ExternalOnlineTransitionContextResult,
     ExternalOnlineTransitionContextRouter,
@@ -124,6 +125,8 @@ class OnlineTransitionDiscoveryReport:
     target_discovery_status: str
     target_continuation_status: str
     target_heldout_status: str
+    state_adapter_schema: str
+    state_width: int
 
     def payload(self) -> dict[str, object]:
         return asdict(self)
@@ -601,6 +604,7 @@ def run_online_transition_discovery_audit(
     source_training_lifetimes: int = 2,
     target_training_lifetimes: int = 2,
     affine_ridge: float = 1e-5,
+    window_gain: float = 0.1,
 ) -> OnlineTransitionDiscoveryReport:
     """Discover and learn a novel rendered family without replay or a task label.
 
@@ -630,8 +634,13 @@ def run_online_transition_discovery_audit(
     controller_before = _controller_digest(agent)
     for parameter in agent.parameters():
         parameter.requires_grad_(False)
-    bank = ExternalTransitionModelBank(
+    state_adapter = ExternalControllerEventWindowStateAdapter(
+        agent.controller.width,
         state_width=agent.controller.width * 3,
+        window_gain=window_gain,
+    )
+    bank = ExternalTransitionModelBank(
+        state_width=state_adapter.state_width,
         intention_width=agent.controller.intention_width,
         context_width=agent.controller.width,
         model_family=EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY,
@@ -642,6 +651,7 @@ def run_online_transition_discovery_audit(
     policy_free = PolicyFreeAmodalRuntime(
         agent.runtime,
         ExternalModelBasedPlanner(bank, beam_width=4),
+        state_adapter=state_adapter,
     )
     candidate_intentions = torch.randn(
         6,
@@ -779,6 +789,8 @@ def run_online_transition_discovery_audit(
                 "not_run" if target_result is None else target_result.status
             ),
             target_heldout_status="not_run",
+            state_adapter_schema=state_adapter.schema,
+            state_width=state_adapter.state_width,
         )
 
     candidate_context = router.provisional_context_at(0)
@@ -845,6 +857,8 @@ def run_online_transition_discovery_audit(
         promotion_observation,
         retention_probe,
         prediction_tolerance=0.2,
+        heldout_rollout=promotion_holdout,
+        rollout_error_tolerance=0.2,
     )
     source_error_after = planner.rollout_error(
         source_heldout,
@@ -887,6 +901,8 @@ def run_online_transition_discovery_audit(
             target_discovery_status=discovery.status,
             target_continuation_status=target_result.status,
             target_heldout_status=promotion_route.status,
+            state_adapter_schema=state_adapter.schema,
+            state_width=state_adapter.state_width,
         )
 
     target_context = bank.context_at(promotion.slot_index)
@@ -979,6 +995,8 @@ def run_online_transition_discovery_audit(
         target_discovery_status=discovery.status,
         target_continuation_status=target_result.status,
         target_heldout_status=target_recovery_result.status,
+        state_adapter_schema=state_adapter.schema,
+        state_width=state_adapter.state_width,
     )
 
 

@@ -1,0 +1,141 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "window_aware_transition_state_2026-08-11",
+  "status": "boundary_not_promoted_seed_mixed",
+  "population_seeds": [
+    92,
+    93,
+    94,
+    95,
+    100,
+    101
+  ],
+  "state_adapter": {
+    "schema": "neural-computer.external-controller-event-window-state-adapter.v1",
+    "state_width": 12,
+    "window_gain": 0.1,
+    "conditioning": "masked_mean_max_folded_into_opaque_event_block_v1"
+  },
+  "unique_verifier_bits_total": 135,
+  "unique_logical_lifetimes_total": 39,
+  "optimizer_updates_total": 0,
+  "replayed_examples_total": 0,
+  "verifier_outcome_events_total": 273,
+  "feedback_events_total": 273,
+  "wall_time_seconds_total": null,
+  "mean_action_latency_ms_by_seed": null,
+  "stable_bits_to_threshold_by_seed": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+  ],
+  "retention_on_mastered_primitives_by_seed": [
+    0.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0
+  ],
+  "transfer_ratio_against_fresh_learner": null,
+  "verification": {
+    "rung": "window_aware_online_replay_free_transition_discovery",
+    "steps": 6,
+    "source_training_lifetimes": 2,
+    "target_training_lifetimes": 2,
+    "transition_rows_consumed_once_by_seed": [
+      12,
+      24,
+      24,
+      24,
+      24,
+      24
+    ],
+    "transition_rows_consumed_once_total": 132,
+    "controller_frozen": [
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ],
+    "replay_free_bank": [
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ],
+    "target_context_discovered": [
+      false,
+      true,
+      false,
+      true,
+      true,
+      true
+    ],
+    "target_route_recovered": [
+      false,
+      true,
+      false,
+      true,
+      true,
+      true
+    ],
+    "target_model_improved_on_heldout": [
+      false,
+      true,
+      false,
+      false,
+      true,
+      true
+    ],
+    "target_promotion_accepted": [
+      false,
+      true,
+      false,
+      true,
+      true,
+      true
+    ],
+    "source_slot_byte_stable": [
+      false,
+      true,
+      true,
+      true,
+      true,
+      true
+    ],
+    "matched_fresh_candidate_gate": [
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ],
+    "recursive_heldout_promotion_gate": [
+      false,
+      true,
+      false,
+      true,
+      true,
+      true
+    ],
+    "target_promotion_reasons": [
+      "no provisional target candidate was staged",
+      "held-out, recursive-rollout, and retention-verified candidate promotion committed",
+      "held-out recursive candidate rollout failed",
+      "held-out, recursive-rollout, and retention-verified candidate promotion committed",
+      "held-out, recursive-rollout, and retention-verified candidate promotion committed",
+      "held-out, recursive-rollout, and retention-verified candidate promotion committed"
+    ],
+    "promotion_gate_passed": false,
+    "claim_boundary": "Three of six seeds pass a window-aware frozen-core transition-slot discovery boundary with zero replay, recursive held-out promotion, source retention, and a matched fresh challenger. Three seeds fail; one accepted candidate still loses to a fresh challenger on a later held-out lifetime. The result is not promoted as general continual learning, unrestricted memory growth, goal discovery, or end-task acquisition."
+  }
+}

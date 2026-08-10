@@ -1366,3 +1366,32 @@ seeds are correctly rejected by the candidate gate. This is not promoted as a
 stable capability gain yet: the remaining problem is reliable online discovery
 and representation conditioning across seeds, followed by goal-conditioned
 end-task acquisition.
+
+## Window-aware factual state boundary (2026-08-11)
+
+The external state seam now has a second replaceable contract,
+`ExternalControllerEventWindowStateAdapter`. The original adapter exposes the
+controller's compact learned representation only; the new contract appends
+masked mean/max statistics of the controller's bounded learned event window.
+When the planner keeps the historical state width, the statistics are folded
+into the opaque event block with a small residual instead of widening the
+factual model and making the six-row acquisition rung underdetermined. No raw
+modality, action, task label, or verifier metadata crosses the boundary.
+
+The online-discovery promotion path now also passes the actual held-out
+rollout into the router's atomic promotion gate. A candidate must survive
+one-step prediction, recursive held-out rollout, source retention, and a
+matched fresh challenger before its external slot is committed. On the
+default seed (`93`), the window-aware run achieved `0.07781` target rollout
+error versus `0.09364` for a fresh bank, retained the source slot byte-for-byte,
+consumed `24` transition rows once, replayed zero examples, and left the
+controller unchanged across `7` logical lifetimes.
+
+The six-seed ledger contains three passing runs and three rejected runs. One
+run still demonstrates why a single promotion rollout is not enough: its
+candidate passed the atomic gate but lost to the fresh challenger on a later
+held-out lifetime, so the overall audit remains failed. This is a meaningful
+conditioning and safety improvement, not a promotion of general continual
+learning; the next bottleneck is multi-lifetime promotion evidence before
+external slot commit. The full accounting is in
+`session_records/window_aware_transition_state_2026-08-11/sample_efficiency_ledger.json`.

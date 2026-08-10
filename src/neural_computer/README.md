@@ -1535,6 +1535,16 @@ parameters remain separate resources; the checkpoint stores no raw modality,
 protocol, or verifier-private data, and its envelope checksum rejects silent
 tensor corruption.
 
+The policy-free factual seam also exposes
+`ExternalControllerEventWindowStateAdapter`. It preserves the compact opaque
+controller state while folding bounded event-window statistics into the same
+planner width, so short-evidence transition learning can retain more temporal
+binding without enlarging the external model. Promotion can require a real
+recursive held-out rollout in addition to one-step prediction, source-slot
+retention, and a matched fresh challenger. This remains a bounded frozen-core
+transition boundary; multi-lifetime promotion and general continual learning
+are still open.
+
 ## Opaque goal-fragment memory
 
 `ExternalGoalFragmentMemory` stores destinations outside the fixed controller.
