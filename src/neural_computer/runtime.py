@@ -2556,6 +2556,45 @@ class PolicyFreeAmodalRuntime:
             raise RuntimeError("policy-free runtime has no goal-fragment stager")
         return self.goal_stager.observe(candidate, outcome, eligible=eligible)
 
+    def goal_fragment_candidate_from_controller_output(
+        self,
+        controller_output: ControllerOutput,
+        *,
+        mask: torch.Tensor | None = None,
+    ) -> ExternalGoalFragmentCandidate:
+        """Project an opaque controller state into planner goal space.
+
+        This is the canonical candidate boundary for frozen-core learning.
+        The caller supplies no protocol value or semantic coordinate; the
+        replaceable external state adapter performs the only representation
+        conversion before the candidate enters staging.
+        """
+
+        if not isinstance(controller_output, ControllerOutput):
+            raise TypeError("goal-fragment candidate needs controller output")
+        model_state = self.state_adapter(controller_output)
+        if model_state.shape[0] != 1:
+            raise ValueError(
+                "goal-fragment candidate derivation requires one controller row"
+            )
+        return ExternalGoalFragmentCandidate.from_state(model_state, mask=mask)
+
+    def observe_goal_fragment_controller_output(
+        self,
+        controller_output: ControllerOutput,
+        outcome: torch.Tensor | float,
+        *,
+        mask: torch.Tensor | None = None,
+        eligible: bool = True,
+    ) -> ExternalGoalFragmentObservationReceipt:
+        """Stage a planner-space candidate derived from one learned state."""
+
+        candidate = self.goal_fragment_candidate_from_controller_output(
+            controller_output,
+            mask=mask,
+        )
+        return self.observe_goal_fragment(candidate, outcome, eligible=eligible)
+
     def observe_goal_fragment_state(
         self,
         state: torch.Tensor,

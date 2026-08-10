@@ -1257,7 +1257,11 @@ the durable memory and the staging state unchanged; an accepted candidate is
 removed from pending staging only after the durable fragment commits. The
 runtime exposes this as `observe_goal_fragment()` and
 `admit_goal_fragment_verified()`, with the controller, event bus, factual
-model, and decoders untouched.
+model, and decoders untouched. `goal_fragment_candidate_from_controller_output()`
+and `observe_goal_fragment_controller_output()` provide the stricter path: a
+candidate is projected through the runtime's replaceable state adapter before
+staging, so planner-space and controller-space tensors cannot be confused by
+the caller.
 
 This is an implementation boundary and a replay-free acquisition pressure
 test, not a claim that Brain Workshop has learned arbitrary goals. The next

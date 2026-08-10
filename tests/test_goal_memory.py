@@ -385,11 +385,23 @@ def test_policy_free_runtime_stages_goal_from_external_scalar_outcomes() -> None
         name: value.detach().clone()
         for name, value in controller.state_dict().items()
     }
-    candidate = ExternalGoalFragmentCandidate(
-        torch.ones(12),
-        torch.ones(12, dtype=torch.bool),
+    state = runtime.initial_state(1, device="cpu")
+    feedback = ControllerFeedback(
+        action=torch.zeros(1, 3),
+        reward=torch.zeros(1),
+        propensity=torch.ones(1),
+        has_feedback=torch.zeros(1),
     )
-    policy_free.observe_goal_fragment_state(torch.ones(12), 1.0)
+    preview, _ = runtime.step_events(
+        [AmodalEvent(torch.randn(1, 4))], state, feedback
+    )
+    candidate = policy_free.goal_fragment_candidate_from_controller_output(
+        preview.controller
+    )
+    receipt = policy_free.observe_goal_fragment_controller_output(
+        preview.controller, 1.0
+    )
+    assert receipt.candidate_digest == candidate.digest(state_width=12)
     policy_free.observe_goal_fragment(candidate, 1.0)
     admission = policy_free.admit_goal_fragment_verified(
         candidate.digest(state_width=12),

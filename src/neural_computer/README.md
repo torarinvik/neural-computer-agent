@@ -145,7 +145,9 @@ stable-prefix gate then passes the candidate through
 stores verifier rows or replayable trajectories and cannot mutate the
 controller. This supports learn-while-frozen destination growth while leaving
 general goal discovery and unrestricted continual learning as open empirical
-questions.
+questions. Use `goal_fragment_candidate_from_controller_output()` when the
+candidate comes from the live learned state: it forces the external state
+adapter to establish planner-space width before the stager accepts evidence.
 
 `PersistentOpaqueContextRouteEvidence` now closes the first execution loop for
 those fragments. The policy-free runtime can synchronize append-only goal slots,
