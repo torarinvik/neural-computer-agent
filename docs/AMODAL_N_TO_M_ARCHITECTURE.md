@@ -4508,6 +4508,25 @@ actual model updates and search compute separately, and compare against a
 matched fresh model. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_model_based_planner_initial_rung_2026-08-09/`.
 
+## Opaque cost-aware goal search (2026-08-10)
+
+The planner now accepts runtime-sized nonnegative opaque intention costs and
+can minimize terminal goal error plus accumulated step cost. This implements a
+key lesson from the exported learning session: optimizing immediate success
+alone does not pressure the system to retrieve and reuse an existing solution;
+the long-horizon objective must measure the cost of reaching the goal.
+
+The three-seed pressure test learned one affine factual model from fifteen
+opaque transition rows. Terminal-only and cost-aware search both reached the
+same goal, but cost-aware search reduced route cost from `10` to `1` on every
+seed. Shuffling the cost vector changed the route and failed the goal control.
+The controller and factual model were unchanged during search, persistence
+was exact, and planner search performed zero optimizer updates or replay.
+This qualifies cost-aware inference only: cost prediction, irreversible
+dynamics, retrieval-before-learning across a growing bank, and general
+continual learning remain open. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_cost_aware_planning_promoted_2026-08-10/`.
+
 ## Append-only transition memory across disjoint dynamics (2026-08-09)
 
 The next two-seed rung adds `ExternalTransitionMemory`, an append-only factual

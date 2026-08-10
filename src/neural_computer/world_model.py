@@ -8462,6 +8462,7 @@ class ExternalModelBasedPlanner:
                 else "terminal_opaque_goal_state_match_v1"
             ),
             "policy": "none_behavior_derived_at_inference_v1",
+            "cost_input": "optional_nonnegative_opaque_intention_costs_v1",
             "representation_space_schema": EXTERNAL_REPRESENTATION_SPACE_SCHEMA,
             "state_space_id": self.state_space_id,
             "intention_space_id": self.intention_space_id,
@@ -8489,14 +8490,25 @@ class ExternalModelBasedPlanner:
         horizon: int,
         beam_width: int | None = None,
         transition_context: torch.Tensor | None = None,
+        intention_costs: torch.Tensor | None = None,
+        step_cost_weight: float = 0.0,
     ) -> ModelBasedPlanningResult:
-        """Return the lowest predicted-distance candidate sequence.
+        """Return the lowest-scoring candidate sequence.
 
         Candidate intentions may be shared as ``[candidates, width]`` or
         supplied per batch as ``[batch, candidates, width]``.  Candidate
         count is therefore runtime-variable and never changes model shapes.
-        The planner is inference-only and does not mutate the model.
+        Optional ``intention_costs`` may be shared as ``[candidates]`` or
+        supplied per batch as ``[batch, candidates]``.  When
+        ``step_cost_weight`` is positive, the planner minimizes terminal
+        goal error plus the accumulated opaque step cost.  Costs are caller-
+        supplied transport/verifier scalars; they are never interpreted as
+        protocol IDs or semantic action fields.  The planner is inference-
+        only and does not mutate the model.
         """
+
+        if not math.isfinite(float(step_cost_weight)) or step_cost_weight < 0.0:
+            raise ValueError("planner step_cost_weight must be finite and non-negative")
 
         _validate_tensor(
             state,
@@ -8548,6 +8560,30 @@ class ExternalModelBasedPlanner:
             raise ValueError("per-batch candidate intentions have the wrong batch")
         if candidates.shape[1] < 1:
             raise ValueError("planner requires at least one candidate intention")
+        candidate_costs: torch.Tensor | None = None
+        if intention_costs is not None:
+            if intention_costs.ndim not in (1, 2):
+                raise ValueError(
+                    "intention_costs must be [candidates] or [batch,candidates]"
+                )
+            if intention_costs.ndim == 1:
+                if intention_costs.shape[0] != candidates.shape[1]:
+                    raise ValueError("intention costs do not match candidate count")
+                candidate_costs = intention_costs.unsqueeze(0).expand(
+                    state.shape[0], -1
+                )
+            elif intention_costs.shape != (
+                state.shape[0],
+                candidates.shape[1],
+            ):
+                raise ValueError("per-batch intention costs have the wrong shape")
+            else:
+                candidate_costs = intention_costs
+            if not bool(torch.isfinite(candidate_costs).all()):
+                raise ValueError("intention costs must be finite")
+            if bool((candidate_costs < 0.0).any()):
+                raise ValueError("intention costs must be non-negative")
+            candidate_costs = candidate_costs.to(device=state.device, dtype=state.dtype)
         if horizon < 1:
             raise ValueError("planner horizon must be positive")
         width = self.beam_width if beam_width is None else int(beam_width)
@@ -8579,6 +8615,9 @@ class ExternalModelBasedPlanner:
                     )
                 ]
                 row_candidates = candidates[row]
+                row_costs = (
+                    None if candidate_costs is None else candidate_costs[row]
+                )
                 for _step in range(horizon):
                     parent_states = torch.stack([item[1] for item in beams])
                     parent_count = parent_states.shape[0]
@@ -8631,13 +8670,15 @@ class ExternalModelBasedPlanner:
                     ] = []
                     for parent_index, parent in enumerate(beams):
                         for candidate_index in range(candidate_count):
-                            score = (
-                                terminal_scores[parent_index, candidate_index]
-                                if _step == horizon - 1
-                                else torch.zeros_like(
-                                    terminal_scores[parent_index, candidate_index]
-                                )
-                            )
+                            score = parent[0]
+                            if row_costs is not None:
+                                score = score + step_cost_weight * row_costs[
+                                    candidate_index
+                                ]
+                            if _step == horizon - 1:
+                                score = score + terminal_scores[
+                                    parent_index, candidate_index
+                                ]
                             expanded.append(
                                 (
                                     score,
@@ -8764,13 +8805,18 @@ class ExternalModelBasedPlanner:
         *,
         horizon: int,
         beam_width: int | None = None,
+        intention_costs: torch.Tensor | None = None,
+        step_cost_weight: float = 0.0,
     ) -> GoalConditionedModelSelection:
         """Select the model whose factual rollout best reaches the goal.
 
         This is inference-time search over facts, not a stored task policy.
         Candidate model count remains runtime-variable; the controller and
-        each model interface remain unchanged. Stable logical addresses are
-        returned so physical bank reorganization cannot stale the selection.
+        each model interface remain unchanged. Optional opaque intention costs
+        are passed through to each factual rollout so model selection can
+        optimize the same goal-plus-lifetime-cost objective. Stable logical
+        addresses are returned so physical bank reorganization cannot stale
+        the selection.
         """
 
         if not isinstance(bank, ExternalTransitionModelBank):
@@ -8805,6 +8851,8 @@ class ExternalModelBasedPlanner:
                     horizon=horizon,
                     beam_width=beam_width,
                     transition_context=context.unsqueeze(0),
+                    intention_costs=intention_costs,
+                    step_cost_weight=step_cost_weight,
                 )
             )
         scores = torch.stack([result.scores[0] for result in results])

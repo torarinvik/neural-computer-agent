@@ -707,6 +707,37 @@ def test_planner_derives_behavior_by_search_and_accepts_variable_candidates() ->
     assert shorter.intentions[0, 0, 0].item() == 2.0
 
 
+def test_planner_can_trade_terminal_success_for_lower_opaque_step_cost() -> None:
+    planner = ExternalModelBasedPlanner(_AdditiveTransitionModel(), beam_width=3)
+    state = torch.zeros(1, 1)
+    goal = torch.full((1, 1), 2.0)
+    candidates = torch.tensor([[2.0], [1.0], [0.0]])
+
+    terminal_only = planner.plan(
+        state,
+        goal,
+        candidates,
+        horizon=2,
+        beam_width=3,
+    )
+    cost_aware = planner.plan(
+        state,
+        goal,
+        candidates,
+        horizon=2,
+        beam_width=3,
+        intention_costs=torch.tensor([5.0, 1.0, 4.0]),
+        step_cost_weight=1.0,
+    )
+
+    assert torch.equal(
+        terminal_only.intentions[0, :, 0], torch.tensor([2.0, 0.0])
+    )
+    assert torch.equal(cost_aware.intentions[0, :, 0], torch.tensor([1.0, 1.0]))
+    assert terminal_only.scores.item() == 0.0
+    assert cost_aware.scores.item() == 2.0
+
+
 def test_planner_supports_per_batch_candidate_sets_without_resize() -> None:
     planner = ExternalModelBasedPlanner(_AdditiveTransitionModel(), beam_width=1)
     result = planner.plan(
