@@ -1,0 +1,54 @@
+{
+  "schema": "neural-computer.external-online-disambiguation-probe.v1",
+  "seed": 83201,
+  "configuration": {
+    "episodes": 256,
+    "candidate_count": 8,
+    "outcome_noise_std": 0.1,
+    "match_tolerance": 0.5,
+    "match_margin": 0.05,
+    "probe_policy": "router_request_model_disagreement_then_observe_v1",
+    "regime_labels_used_by_router": false,
+    "controller_frozen": true
+  },
+  "metrics": {
+    "active_resolution_rate": 1.0,
+    "active_routing_accuracy": 1.0,
+    "active_informative_selection_rate": 1.0,
+    "random_resolution_rate": 0.14453125,
+    "random_routing_accuracy": 0.14453125,
+    "active_resolution_margin": 0.85546875,
+    "random_intention_histogram": {
+      "0": 24,
+      "1": 29,
+      "2": 28,
+      "3": 27,
+      "4": 34,
+      "5": 33,
+      "6": 44,
+      "7": 37
+    }
+  },
+  "gates": {
+    "active_resolution_quality_gate": true,
+    "active_routing_quality_gate": true,
+    "active_selects_informative_every_episode": true,
+    "active_beats_random_resolution": true,
+    "active_selects_informative_intention": true,
+    "controller_unchanged": true,
+    "bank_unchanged": true,
+    "persistence_exact": true
+  },
+  "accounting": {
+    "unique_verifier_lifetimes": 16,
+    "unique_verifier_bits": 16,
+    "probe_requests": 256,
+    "router_observations": 256,
+    "external_model_observation_writes": 32,
+    "controller_optimizer_updates": 0,
+    "old_regime_replay": 0,
+    "raw_replayed_examples": 0
+  },
+  "promoted": true,
+  "elapsed_seconds": 0.31677949998993427
+}

@@ -4471,6 +4471,20 @@ result; live asynchronous-router integration and learned probe selection
 remain open. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_model_disambiguation_probe_wide_noisy_promoted_2026-08-10/`.
 
+The follow-up online seam is now promoted across seeds `83201`, `83202`, and
+`83203`. Each run sent an ambiguous opaque evidence window through the
+router's read-only probe request, executed the returned intention in a hidden
+regime, and submitted the noisy consequence through the ordinary observation
+path. Active resolution and routing were `1.0` on every seed, versus random
+resolution of `0.145`, `0.117`, and `0.137`. The audit used eight opaque
+one-hot candidate intentions, outcome noise `0.1`, and fixed factual matching
+tolerance/margin `0.5`/`0.05`; the controller and factual bank were unchanged,
+and router persistence was exact. This qualifies the request--execute--observe
+integration only: the candidate basis and factual models are fixture-supplied,
+so learned probe formation, multimodal usefulness, irreversible dynamics, and
+general continual learning remain open. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_online_disambiguation_probe_promoted_2026-08-10/`.
+
 The first matched two-seed pressure test froze the controller, trained the
 external model for `1,200` source updates, then acquired three target goals
 with zero target optimizer updates and zero replay. All target and retention

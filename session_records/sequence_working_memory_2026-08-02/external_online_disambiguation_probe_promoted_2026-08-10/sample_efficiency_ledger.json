@@ -1,0 +1,55 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "external_online_disambiguation_probe",
+  "entries": [
+    {
+      "seed": 83201,
+      "arm": "online-active-probe-8way-noisy",
+      "unique_verifier_bits": 16,
+      "unique_logical_lifetimes": 16,
+      "optimizer_updates": 0,
+      "replayed_examples": 0,
+      "raw_replayed_examples": 0,
+      "controller_updates": 0,
+      "stable_bits_to_threshold": null,
+      "retention_on_mastered_primitives": 1.0,
+      "transfer_ratio_against_fresh": null,
+      "active_resolution_rate": 1.0,
+      "random_resolution_rate": 0.14453125,
+      "promoted": true
+    },
+    {
+      "seed": 83202,
+      "arm": "online-active-probe-8way-noisy",
+      "unique_verifier_bits": 16,
+      "unique_logical_lifetimes": 16,
+      "optimizer_updates": 0,
+      "replayed_examples": 0,
+      "raw_replayed_examples": 0,
+      "controller_updates": 0,
+      "stable_bits_to_threshold": null,
+      "retention_on_mastered_primitives": 1.0,
+      "transfer_ratio_against_fresh": null,
+      "active_resolution_rate": 1.0,
+      "random_resolution_rate": 0.1171875,
+      "promoted": true
+    },
+    {
+      "seed": 83203,
+      "arm": "online-active-probe-8way-noisy",
+      "unique_verifier_bits": 16,
+      "unique_logical_lifetimes": 16,
+      "optimizer_updates": 0,
+      "replayed_examples": 0,
+      "raw_replayed_examples": 0,
+      "controller_updates": 0,
+      "stable_bits_to_threshold": null,
+      "retention_on_mastered_primitives": 1.0,
+      "transfer_ratio_against_fresh": null,
+      "active_resolution_rate": 1.0,
+      "random_resolution_rate": 0.13671875,
+      "promoted": true
+    }
+  ],
+  "claim_boundary": "qualified bounded online active-probe resolution under noisy opaque consequences; learned and multimodal probe selection remain open"
+}
