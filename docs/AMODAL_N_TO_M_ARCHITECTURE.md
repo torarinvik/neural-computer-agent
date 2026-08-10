@@ -3930,6 +3930,35 @@ general continual learning, arbitrary new computation, or unrestricted memory
 growth. The next boundary is a capacity-scaled residual basis with learned
 route uncertainty, maintenance, and out-of-distribution retention controls.
 
+## Promoted capacity-scaled factual memory and learned reliability (2026-08-10)
+
+The next pressure test admits nine factual regimes plus a reversal into ten
+opaque residual slots. The shared transition model remains frozen. After four
+slots, a verifier-gated copy-on-write transaction expands capacity from `4` to
+`8`; later admissions reach capacity `10` without changing retained content.
+Each lifetime consumes `32` unique transition rows and passes held-out
+one-step, recursive-rollout, and complete-prefix retention probes.
+
+Across seeds `101` and `102`, all ten lifetimes promote. Maximum retained-prefix
+MSE is `0.004544`/`0.014426`; route round-trips recover slots `0..9` after `45`
+existing-slot comparisons. A rejected growth proposal is a no-op, shuffled
+reversal is rejected, the frozen base remains byte-stable, and persistence is
+exact.
+
+An external replay-free error-bin reliability component consumes `142`
+verifier outcomes without retaining rows. Clean reads score `0.917`/`0.958`
+while corrupted and out-of-distribution evidence scores `0.250` for both
+seeds. The learned gate allows clean reads and rejects the bad reads without
+mutating residual or verifier state. Float16 compression reduces residual
+storage from `179,360` to `89,720` bytes; int4 is rejected. Reports are in
+`session_records/policy_free_factual_residual_capacity_promoted_2026-08-10/`.
+
+This promotes bounded capacity-scaled factual memory and external learned
+reliability, not general continual learning, arbitrary new computation, or
+unrestricted memory growth. The next architectural boundary is a learned
+procedure/capability stream under genuinely novel distributions, with
+maintenance and verifier calibration still isolated from the controller.
+
 ## Trajectory-statistics route queries and automatic cell qualification (2026-08-10)
 
 The memory-side route boundary now has an optional

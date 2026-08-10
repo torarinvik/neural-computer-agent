@@ -794,3 +794,33 @@ the context encoder is fixed, and no new arbitrary computation has been
 demonstrated. The next bottleneck is scaling beyond a fixed residual basis and
 capacity while preserving route identity, compute cost, and retention under
 unseen task families.
+
+## Promoted capacity-scaled factual memory and learned reliability (2026-08-10)
+
+The next pressure test admits nine factual regimes plus a reversal into ten
+opaque residual slots. The shared transition model remains frozen. After four
+slots, a verifier-gated copy-on-write transaction expands capacity from `4` to
+`8`; later admissions reach capacity `10` without changing retained content.
+Every lifetime consumes `32` unique transition rows and passes held-out
+one-step, recursive-rollout, and complete-prefix retention probes.
+
+Seeds `101` and `102` both promote. Maximum prefix MSE is `0.004544` and
+`0.014426`; route round-trips recover slots `0..9` after `45` existing-slot
+comparisons. A rejected growth proposal is a no-op, shuffled reversal is not
+promoted, the frozen base remains byte-stable, and persistence is exact.
+
+An external replay-free error-bin reliability component learns from `142`
+verifier outcomes without retaining rows. It allows clean reads with
+probability `0.917`/`0.958` and scores corrupted/OOD evidence at `0.250` for
+both seeds. Corrupted evidence and a state outside the training range are
+rejected without mutating either memory or reliability state. Float16
+compression reduces residual storage from `179,360` to `89,720` bytes; int4 is
+rejected. Evidence is archived in
+`session_records/policy_free_factual_residual_capacity_promoted_2026-08-10/`.
+
+This promotes bounded capacity-scaled factual memory with learned external
+reliability. It is still not general continual learning: the residual basis,
+context encoder, and verifier calibration remain bounded, and no arbitrary new
+computation has been demonstrated. The next bottleneck is scaling and
+maintaining these mechanisms under genuinely novel distributions and learned
+procedures rather than synthetic factual regimes.

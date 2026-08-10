@@ -228,6 +228,16 @@ evidence is in
 This is bounded factual-memory scaling, not general continual learning or
 arbitrary new computation.
 
+The capacity-scaled follow-up admits nine regimes plus a reversal into ten
+opaque residual slots, performs verified `4 -> 8` capacity growth, and uses a
+replay-free external reliability gate to allow clean reads while rejecting
+corrupted and out-of-distribution evidence. Both seeds preserve the frozen
+base and pass held-out prefix retention, persistence, and float16 compression;
+evidence is in
+`session_records/policy_free_factual_residual_capacity_promoted_2026-08-10/`.
+This remains bounded factual-memory scaling, not general continual learning or
+arbitrary new computation.
+
 The outcome-only view-routing audit trains `FactorizedOpaqueAddressRouter`
 from paired attempted-view outcomes. Across two seeds it reaches `1.000`
 held-out route accuracy and `1.000` candidate-permutation accuracy, while the
