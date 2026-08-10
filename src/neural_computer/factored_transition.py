@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import hashlib
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
@@ -563,6 +563,72 @@ class ExternalFactoredTransitionRouter:
             slot_id=None,
             heldout_error=error,
             reason="candidate failed factual or retention probe",
+        ).validate()
+
+    def update_bound_slot(
+        self,
+        slot_id: int,
+        observation: ExternalTransitionObservation,
+        retention_probe: Callable[[ExternalFactoredTransitionModel], bool],
+        *,
+        heldout: ExternalTransitionObservation | None = None,
+        prediction_tolerance: float = 0.05,
+    ) -> FactoredTransitionPromotionReceipt:
+        """Add a verified unseen fact to an already-bound logical slot.
+
+        The update is copy-on-write.  A caller that owns an opaque stream
+        binding can extend its slot without asking the identity router to
+        rediscover the context from one incomplete row.  Existing behavior is
+        protected by ``retention_probe`` before the new residual is committed.
+        """
+
+        if not isinstance(slot_id, int) or isinstance(slot_id, bool) or slot_id < 0:
+            raise ValueError("bound factored slot ID must be a non-negative integer")
+        if not callable(retention_probe):
+            raise TypeError("bound factored retention probe must be callable")
+        if prediction_tolerance < 0.0:
+            raise ValueError("bound factored prediction tolerance cannot be negative")
+        observation.validate(
+            state_width=self.model.state_width,
+            intention_width=self.model.intention_width,
+        )
+        try:
+            context_index = self._slot_ids.index(slot_id)
+        except ValueError as error:
+            raise KeyError(f"unknown factored slot ID: {slot_id}") from error
+        context = self._contexts[context_index]
+        candidate = ExternalFactoredTransitionModel.from_payload(
+            self.model.state_payload()
+        )
+        candidate.write_residual(observation, context=context)
+        verifier_observation = observation if heldout is None else heldout
+        verifier_observation.validate(
+            state_width=self.model.state_width,
+            intention_width=self.model.intention_width,
+        )
+        context_batch = context.to(verifier_observation.state).unsqueeze(0)
+        prediction = candidate.predict_with_context(
+            verifier_observation.state,
+            verifier_observation.intention,
+            context_batch.expand(verifier_observation.state.shape[0], -1),
+        )
+        error = float(
+            (prediction - verifier_observation.next_state).square().mean().detach()
+        )
+        accepted = error <= prediction_tolerance and bool(retention_probe(candidate))
+        if accepted:
+            self.model = candidate
+            return FactoredTransitionPromotionReceipt(
+                accepted=True,
+                slot_id=slot_id,
+                heldout_error=error,
+                reason="bound residual passed factual and retention probes",
+            ).validate()
+        return FactoredTransitionPromotionReceipt(
+            accepted=False,
+            slot_id=None,
+            heldout_error=error,
+            reason="bound residual failed factual or retention probe",
         ).validate()
 
     def configuration(self) -> dict[str, int | float | str | None]:

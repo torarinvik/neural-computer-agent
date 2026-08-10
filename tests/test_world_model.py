@@ -1929,6 +1929,35 @@ def test_factored_router_stages_promotes_and_reuses_opaque_context() -> None:
     assert receipt.accepted
     assert receipt.slot_id == 0
     assert router.observe(first).status == "matched"
+
+    unseen = ExternalTransitionObservation(
+        state=torch.tensor([[2.0]]),
+        intention=torch.tensor([[1.0]]),
+        next_state=torch.tensor([[3.0]]),
+    )
+    updated = router.update_bound_slot(
+        0,
+        unseen,
+        lambda candidate: candidate.residual_record_count == 3,
+        prediction_tolerance=1e-6,
+    )
+    assert updated.accepted
+    assert updated.slot_id == 0
+    assert router.observe(unseen).status == "matched"
+
+    before_rejected_update = router.model.digest()
+    rejected = router.update_bound_slot(
+        0,
+        ExternalTransitionObservation(
+            state=torch.tensor([[3.0]]),
+            intention=torch.tensor([[1.0]]),
+            next_state=torch.tensor([[999.0]]),
+        ),
+        lambda _candidate: False,
+    )
+    assert not rejected.accepted
+    assert router.model.digest() == before_rejected_update
+
     restored = ExternalFactoredTransitionRouter.from_payload(router.state_payload())
     assert restored.digest() == router.digest()
     assert restored.slot_ids == (0,)
