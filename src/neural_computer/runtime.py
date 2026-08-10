@@ -14,6 +14,7 @@ from dataclasses import dataclass, field
 import torch
 from torch import nn
 
+from .addressing import PersistentOpaqueContextRouteEvidence
 from .controller import (
     EXECUTION_STATES,
     AmodalCognitiveController,
@@ -2154,6 +2155,7 @@ class PolicyFreeRuntimeOutput:
     goal_state: torch.Tensor | None
     selected_slot_id: int | None
     goal_fragments: ExternalGoalFragmentSet | None = None
+    goal_fragment_indices: torch.Tensor | None = None
     proposal: ExternalIntentionProposal | None = None
     intention_generation: ExternalIntentionGenerationProposal | None = None
     intention_memory_generation: ExternalIntentionMemoryProposal | None = None
@@ -2194,6 +2196,7 @@ class PolicyFreeAmodalRuntime:
         entry_binding_repertoire: ExternalEntryBindingRepertoire | None = None,
         goal_memory: ExternalGoalFragmentMemory | None = None,
         goal_stager: ExternalGoalFragmentStager | None = None,
+        goal_route_evidence: PersistentOpaqueContextRouteEvidence | None = None,
         include_exploration_seed: bool = False,
     ) -> None:
         if not isinstance(runtime, AmodalControllerRuntime):
@@ -2312,6 +2315,22 @@ class PolicyFreeAmodalRuntime:
             and goal_stager.state_space_id != planner.state_space_id
         ):
             raise ValueError("goal-fragment stager space does not match planner")
+        if goal_route_evidence is not None and not isinstance(
+            goal_route_evidence, PersistentOpaqueContextRouteEvidence
+        ):
+            raise TypeError("goal route evidence has the wrong type")
+        if goal_route_evidence is not None and goal_memory is None:
+            raise ValueError("goal route evidence requires goal-fragment memory")
+        if goal_route_evidence is not None and (
+            goal_route_evidence.width != planner.model.state_width
+        ):
+            raise ValueError("goal route evidence width does not match planner state")
+        if goal_route_evidence is not None and (
+            goal_route_evidence.slot_count > goal_memory.fragment_count
+        ):
+            raise ValueError(
+                "goal route evidence cannot address fragments absent from memory"
+            )
         if not isinstance(include_exploration_seed, bool):
             raise TypeError("policy-free exploration-seed flag must be boolean")
         self.runtime = runtime
@@ -2326,7 +2345,9 @@ class PolicyFreeAmodalRuntime:
         self.entry_binding_repertoire = entry_binding_repertoire
         self.goal_memory = goal_memory
         self.goal_stager = goal_stager
+        self.goal_route_evidence = goal_route_evidence
         self.include_exploration_seed = include_exploration_seed
+        self._sync_goal_route_slots()
 
     @property
     def controller(self) -> AmodalCognitiveController:
@@ -2407,8 +2428,69 @@ class PolicyFreeAmodalRuntime:
             "goal_stager": (
                 None if self.goal_stager is None else self.goal_stager.configuration()
             ),
+            "goal_route_evidence": (
+                None
+                if self.goal_route_evidence is None
+                else self.goal_route_evidence.payload()
+            ),
             "include_exploration_seed": self.include_exploration_seed,
         }
+
+    def _sync_goal_route_slots(self) -> None:
+        """Keep route-slot width aligned with append-only goal memory."""
+
+        if self.goal_route_evidence is None:
+            return
+        if self.goal_memory is None:
+            raise RuntimeError("goal route evidence has no goal-fragment memory")
+        while self.goal_route_evidence.slot_count < self.goal_memory.fragment_count:
+            self.goal_route_evidence.append_slot()
+
+    def observe_goal_fragment_route(
+        self,
+        contexts: torch.Tensor,
+        fragment_indices: int | torch.Tensor,
+        outcomes: torch.Tensor | float,
+    ) -> None:
+        """Record scalar held-out route outcomes in external memory.
+
+        The route learner sees only the learned context, an opaque fragment
+        index, and a deterministic verifier scalar.  It never updates the
+        controller or stores the underlying trajectory.
+        """
+
+        if self.goal_route_evidence is None:
+            raise RuntimeError("policy-free runtime has no goal route evidence")
+        self._sync_goal_route_slots()
+        if contexts.ndim != 2:
+            raise ValueError("goal route contexts must have shape [batch, width]")
+        batch_size = contexts.shape[0]
+        if isinstance(fragment_indices, int):
+            slots = torch.full(
+                (batch_size,),
+                fragment_indices,
+                dtype=torch.long,
+                device=contexts.device,
+            )
+        else:
+            slots = torch.as_tensor(fragment_indices, device=contexts.device)
+            if slots.ndim == 0:
+                slots = slots.expand(batch_size)
+            if slots.ndim != 1 or slots.shape[0] != batch_size:
+                raise ValueError(
+                    "goal route fragment indices must have shape [batch]"
+                )
+            slots = slots.to(dtype=torch.long)
+        outcome_values = torch.as_tensor(outcomes, device=contexts.device)
+        if outcome_values.ndim == 0:
+            outcome_values = outcome_values.expand(batch_size)
+        if outcome_values.ndim != 1 or outcome_values.shape[0] != batch_size:
+            raise ValueError("goal route outcomes must have shape [batch]")
+        self.goal_route_evidence.observe_batch(
+            contexts.detach(),
+            slots.detach(),
+            outcome_values.detach().to(dtype=torch.float32),
+        )
 
     def observe_goal_fragment(
         self,
@@ -2455,12 +2537,15 @@ class PolicyFreeAmodalRuntime:
             raise RuntimeError("policy-free runtime has no goal-fragment stager")
         if self.goal_memory is None:
             raise RuntimeError("policy-free runtime has no goal-fragment memory")
-        return self.goal_stager.admit_verified(
+        receipt = self.goal_stager.admit_verified(
             self.goal_memory,
             candidate_digest,
             retention_probe,
             reason=reason,
         )
+        if receipt.accepted:
+            self._sync_goal_route_slots()
+        return receipt
 
     def observe_intention(
         self,
@@ -2716,20 +2801,8 @@ class PolicyFreeAmodalRuntime:
             raise ValueError(
                 "policy-free runtime accepts goal fragments or goal memory indices, not both"
             )
-        if goal_fragment_indices is not None:
-            if self.goal_memory is None:
-                raise ValueError("goal memory indices supplied without goal memory")
-            goal_fragments = self.goal_memory.propose(
-                goal_fragment_indices,
-                batch_size=state.hidden.shape[0],
-                composition=goal_composition,
-                device=state.event_window.payload.device,
-                dtype=state.event_window.payload.dtype,
-            )
-        if (goal_state is None) == (goal_fragments is None):
-            raise ValueError(
-                "policy-free runtime requires exactly one goal state or fragment set"
-            )
+        if goal_fragment_indices is not None and self.goal_memory is None:
+            raise ValueError("goal memory indices supplied without goal memory")
         collection = self.runtime.input_bus(events)
         controller_output, next_state = self.runtime.controller.step(
             collection,
@@ -2750,6 +2823,66 @@ class PolicyFreeAmodalRuntime:
             if self.route_query_adapter is None
             else self.route_query_adapter(controller_output, next_state)
         )
+        selected_goal_indices: torch.Tensor | None = None
+        if goal_fragment_indices is not None:
+            if self.goal_memory is None:
+                raise RuntimeError("goal memory disappeared during goal resolution")
+            if isinstance(goal_fragment_indices, torch.Tensor) and (
+                goal_fragment_indices.ndim == 2
+            ):
+                goal_fragments = self.goal_memory.propose_per_batch(
+                    goal_fragment_indices,
+                    batch_size=model_state.shape[0],
+                    composition=goal_composition,
+                    device=model_state.device,
+                    dtype=model_state.dtype,
+                )
+                selected_goal_indices = goal_fragment_indices.detach().clone()
+            else:
+                goal_fragments = self.goal_memory.propose(
+                    goal_fragment_indices,
+                    batch_size=model_state.shape[0],
+                    composition=goal_composition,
+                    device=model_state.device,
+                    dtype=model_state.dtype,
+                )
+                if isinstance(goal_fragment_indices, torch.Tensor):
+                    shared_indices = goal_fragment_indices.detach().to(
+                        device=model_state.device, dtype=torch.long
+                    )
+                else:
+                    shared_indices = torch.tensor(
+                        tuple(int(index) for index in goal_fragment_indices),
+                        device=model_state.device,
+                        dtype=torch.long,
+                    )
+                selected_goal_indices = shared_indices.unsqueeze(0).expand(
+                    model_state.shape[0], -1
+                ).clone()
+        elif (
+            goal_state is None
+            and goal_fragments is None
+            and self.goal_route_evidence is not None
+        ):
+            if self.goal_memory is None:
+                raise RuntimeError("goal route evidence has no goal-fragment memory")
+            self._sync_goal_route_slots()
+            if self.goal_route_evidence.slot_count < 1:
+                raise ValueError("goal route evidence has no goal fragments to select")
+            selected_goal_indices = self.goal_route_evidence.preferred_slots(
+                model_state.detach()
+            ).unsqueeze(1)
+            goal_fragments = self.goal_memory.propose_per_batch(
+                selected_goal_indices,
+                batch_size=model_state.shape[0],
+                composition=goal_composition,
+                device=model_state.device,
+                dtype=model_state.dtype,
+            )
+        if (goal_state is None) == (goal_fragments is None):
+            raise ValueError(
+                "policy-free runtime requires exactly one goal state or fragment set"
+            )
         proposal = None
         intention_generation = None
         intention_memory_generation = None
@@ -2936,6 +3069,11 @@ class PolicyFreeAmodalRuntime:
                     None if goal_state is None else goal_state.detach().clone()
                 ),
                 goal_fragments=goal_fragments,
+                goal_fragment_indices=(
+                    None
+                    if selected_goal_indices is None
+                    else selected_goal_indices.detach().clone()
+                ),
                 selected_slot_id=selected_slot_id,
                 proposal=proposal,
                 intention_generation=intention_generation,

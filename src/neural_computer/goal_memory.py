@@ -508,6 +508,87 @@ class ExternalGoalFragmentMemory:
         )
         return result.validate(state_width=self.state_width, batch=batch_size)
 
+    def propose_per_batch(
+        self,
+        indices: Sequence[Sequence[int]] | torch.Tensor,
+        *,
+        batch_size: int,
+        composition: str = "union",
+        device: torch.device | str = "cpu",
+        dtype: torch.dtype = torch.float32,
+    ) -> ExternalGoalFragmentSet:
+        """Read independently selected opaque fragments for each batch row.
+
+        Unlike :meth:`propose`, this method does not broadcast one shared
+        address set across the batch.  Each row may select a different
+        ordered fragment tuple, which keeps binding information intact when
+        an external route learner has acquired context-conditioned evidence.
+        Fragment IDs are intentionally omitted from the controller-facing set:
+        the address is memory metadata, not a learned semantic feature.
+        """
+
+        if self.fragment_count < 1:
+            raise ValueError("goal-fragment memory is empty")
+        if not isinstance(batch_size, int) or isinstance(batch_size, bool) or batch_size < 1:
+            raise ValueError("goal-fragment batch size must be positive")
+        if isinstance(indices, torch.Tensor):
+            if indices.ndim == 1:
+                if indices.shape[0] != batch_size:
+                    raise ValueError(
+                        "per-batch goal-fragment indices must match batch size"
+                    )
+                rows = [[int(index)] for index in indices.detach().cpu().tolist()]
+            elif indices.ndim == 2:
+                if indices.shape[0] != batch_size:
+                    raise ValueError(
+                        "per-batch goal-fragment indices must match batch size"
+                    )
+                rows = [
+                    [int(index) for index in row]
+                    for row in indices.detach().cpu().tolist()
+                ]
+            else:
+                raise ValueError(
+                    "per-batch goal-fragment indices must be one- or two-dimensional"
+                )
+        else:
+            rows = [[int(index) for index in row] for row in indices]
+            if len(rows) != batch_size:
+                raise ValueError("per-batch goal-fragment indices must match batch size")
+
+        if any(
+            not row or tuple(sorted(set(row))) != tuple(row)
+            for row in rows
+        ):
+            raise ValueError(
+                "per-batch goal-fragment indices must be ordered and unique"
+            )
+        if any(
+            index < 0 or index >= self.fragment_count
+            for row in rows
+            for index in row
+        ):
+            raise IndexError("goal-fragment index is out of range")
+
+        values = torch.stack(
+            [
+                torch.stack([self._values[index] for index in row])
+                for row in rows
+            ]
+        ).to(device=device, dtype=dtype)
+        masks = torch.stack(
+            [
+                torch.stack([self._masks[index] for index in row])
+                for row in rows
+            ]
+        ).to(device=device)
+        result = ExternalGoalFragmentSet(
+            values=values,
+            masks=masks,
+            composition=composition,
+        )
+        return result.validate(state_width=self.state_width, batch=batch_size)
+
     def state_payload(self) -> dict[str, object]:
         payload: dict[str, object] = {
             "schema": self.schema,

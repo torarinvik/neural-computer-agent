@@ -10,6 +10,7 @@ from neural_computer import (
     ExternalGoalFragmentMemory,
     ExternalGoalFragmentStager,
     ExternalModelBasedPlanner,
+    PersistentOpaqueContextRouteEvidence,
     PolicyFreeAmodalRuntime,
 )
 
@@ -62,6 +63,114 @@ def test_goal_fragment_memory_is_opaque_copy_on_write_and_persistent() -> None:
     assert proposed.values.shape == (2, 1, 3)
     assert proposed.masks.dtype is torch.bool
     assert proposed.fragment_ids == (0,)
+
+
+def test_goal_fragment_memory_supports_per_batch_opaque_selection() -> None:
+    memory = ExternalGoalFragmentMemory(3)
+    memory.append(torch.tensor([1.0, 0.0, 0.0]), torch.tensor([True, False, False]))
+    memory.append(torch.tensor([0.0, 1.0, 0.0]), torch.tensor([False, True, False]))
+
+    proposed = memory.propose_per_batch(
+        torch.tensor([[0], [1]]),
+        batch_size=2,
+        composition="intersection",
+    )
+
+    assert proposed.values.shape == (2, 1, 3)
+    assert proposed.fragment_ids == ()
+    assert torch.equal(
+        proposed.values[:, 0, :],
+        torch.tensor([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]]),
+    )
+    assert proposed.composition == "intersection"
+
+
+def test_policy_free_runtime_routes_goal_fragments_from_opaque_context_evidence() -> None:
+    torch.manual_seed(73)
+    controller = AmodalCognitiveController(
+        width=4,
+        workspace_slots=2,
+        intention_width=2,
+        feedback_width=3,
+        event_window_capacity=4,
+    )
+    runtime = AmodalControllerRuntime(controller)
+    state = runtime.initial_state(1, device="cpu")
+    feedback = ControllerFeedback(
+        action=torch.zeros(1, 3),
+        reward=torch.zeros(1),
+        propensity=torch.ones(1),
+        has_feedback=torch.zeros(1),
+    )
+    event = [AmodalEvent(torch.randn(1, 4))]
+    preview, _ = runtime.step_events(event, state, feedback)
+    context = preview.controller.state_representation.detach()
+    goal_memory = ExternalGoalFragmentMemory(12)
+    goal_memory.append(torch.ones(12), torch.ones(12, dtype=torch.bool))
+    goal_memory.append(-torch.ones(12), torch.ones(12, dtype=torch.bool))
+    route = PersistentOpaqueContextRouteEvidence(
+        width=12,
+        mastery_threshold=0.75,
+        min_mastery_observations=2,
+        reversal_patience=2,
+    )
+    policy_free = PolicyFreeAmodalRuntime(
+        runtime,
+        ExternalModelBasedPlanner(_RuntimeAdditiveModel(), beam_width=2),
+        goal_memory=goal_memory,
+        goal_route_evidence=route,
+    )
+    controller_before = {
+        name: value.detach().clone() for name, value in controller.state_dict().items()
+    }
+    policy_free.observe_goal_fragment_route(context, 1, 1.0)
+    policy_free.observe_goal_fragment_route(context, 1, 1.0)
+
+    output, _ = policy_free.step_events(
+        event,
+        state,
+        feedback,
+        None,
+        torch.tensor([[0.0, 0.0], [1.0, 0.0]]),
+        horizon=1,
+    )
+
+    assert output.goal_fragment_indices is not None
+    assert output.goal_fragment_indices.tolist() == [[1]]
+    assert route.has_context(context[0])
+    assert route.preferred_slots(context).tolist() == [1]
+    for name, value in controller.state_dict().items():
+        assert torch.equal(value, controller_before[name])
+
+    # A fresh opaque context has no evidence and must use append-order fallback.
+    fresh_event = [AmodalEvent(torch.randn(1, 4))]
+    fresh_preview, _ = runtime.step_events(fresh_event, state, feedback)
+    fresh_context = fresh_preview.controller.state_representation.detach()
+    fresh_output, _ = policy_free.step_events(
+        fresh_event,
+        state,
+        feedback,
+        None,
+        torch.tensor([[0.0, 0.0], [1.0, 0.0]]),
+        horizon=1,
+    )
+    assert fresh_output.goal_fragment_indices.tolist() == [[0]]
+    assert route.preferred_slots(fresh_context).tolist() == [0]
+    assert not route.has_context(fresh_context[0])
+
+    # Reversal evidence clears the protected preference without touching the core.
+    policy_free.observe_goal_fragment_route(context, 1, 0.0)
+    policy_free.observe_goal_fragment_route(context, 1, 0.0)
+    reversed_output, _ = policy_free.step_events(
+        event,
+        state,
+        feedback,
+        None,
+        torch.tensor([[0.0, 0.0], [1.0, 0.0]]),
+        horizon=1,
+    )
+    assert reversed_output.goal_fragment_indices.tolist() == [[0]]
+    assert route.payload()["contexts"]
 
 
 def test_intersection_goal_fragments_require_all_puzzle_pieces() -> None:

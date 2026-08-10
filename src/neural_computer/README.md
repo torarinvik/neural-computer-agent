@@ -147,6 +147,17 @@ controller. This supports learn-while-frozen destination growth while leaving
 general goal discovery and unrestricted continual learning as open empirical
 questions.
 
+`PersistentOpaqueContextRouteEvidence` now closes the first execution loop for
+those fragments. The policy-free runtime can synchronize append-only goal slots,
+learn a context-conditioned preferred slot from opaque scalar outcomes, and
+select separate fragments for separate batch rows through
+`ExternalGoalFragmentMemory.propose_per_batch()`. Unknown contexts use
+append-order fallback, and repeated low outcomes can demote a stale protected
+route without deleting the underlying fragment. Route state is external,
+versioned, and serializable; the controller remains frozen and receives no
+fragment address. This is a verified routing boundary, not yet general goal
+discovery or arbitrary new computation.
+
 The canonical runner exposes the route table through a versioned
 `route_state_payload()` / `load_route_state_payload()` boundary. Reloading it
 validates slot count and context width and does not load or mutate controller

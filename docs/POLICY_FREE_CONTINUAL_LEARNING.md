@@ -1274,3 +1274,30 @@ checks missing-evidence, fresh-candidate, inverted-outcome, and reversal
 no-admission controls. Its report labels itself `staging_boundary_only`; it is
 intentionally not a promotion record until the fragment is coupled to
 downstream model-based behavior.
+
+## Context-conditioned goal routing (2026-08-11)
+
+The next coupling is now explicit. `PersistentOpaqueContextRouteEvidence` can
+learn which append-only goal-fragment slot is useful for an opaque learned
+controller state, using only attempted slot IDs and deterministic scalar
+outcomes. `PolicyFreeAmodalRuntime` synchronizes route-slot width with goal
+memory, selects a per-batch fragment without caller-supplied addresses, and
+passes that fragment into the ordinary factual planner. `propose_per_batch()`
+keeps simultaneous contexts separately bound instead of broadcasting one
+destination across the batch.
+
+This makes the path causal while preserving the CPU/files boundary: the
+controller weights are untouched, route evidence is independently versioned
+and serializable, and the planner still derives intentions by model search
+rather than reading a stored action policy. Protected route preferences can
+also be demoted after a configured reversal prefix; the durable fragment is
+not deleted merely because its current context route became stale.
+
+The focused controls cover learned-slot selection, append-order fallback for
+unseen contexts, reversal demotion, per-batch binding, and frozen-controller
+checks. This is stronger than destination storage, but it remains bounded
+context-conditioned routing. It does not yet demonstrate that a fragment can
+be discovered from arbitrary rendered experience, that a frozen core can
+invent new computation, or that Brain Workshop acquisition improves on a
+fresh learner. Those claims still require held-out acquisition curves and
+complete-prefix retention controls.
