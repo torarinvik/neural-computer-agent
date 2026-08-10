@@ -2617,3 +2617,12 @@ from one slot to two while retaining the source regime. This remains bounded
 continual-memory evidence, not general continual learning. Evidence is
 archived in
 `session_records/sequence_working_memory_2026-08-02/external_factored_online_reliability_growth_promoted_2026-08-10/`.
+
+The adversarial reversal/capacity audit now passes across three seeds. With
+the reliability gate active, low-error corruption is vetoed without candidate
+staging, legitimate returns to both historical nonlinear regimes still route,
+and novel evidence is refused at full capacity until verified growth expands
+memory. The new regime then promotes while all prior slots remain retained.
+This is bounded continual-memory evidence, not general continual learning.
+Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_factored_reversal_capacity_promoted_2026-08-10/`.

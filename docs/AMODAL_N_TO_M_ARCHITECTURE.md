@@ -6766,3 +6766,23 @@ regime reversals and candidate-capacity pressure.
 
 Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_factored_online_reliability_growth_promoted_2026-08-10/`.
+
+## Adversarial reversals under capacity pressure (2026-08-10)
+
+The reliability-to-growth boundary now survives a three-seed adversarial
+pressure test. After two nonlinear factored regimes were committed, a
+low-error corruption was vetoed without staging a candidate and a fresh
+gate-disabled control accepted it. Clean returns to both historical regimes
+still routed correctly with the production gate active. A third novel regime
+was refused at full two-slot capacity, then admitted only after retention-
+verified growth to three slots. All prior slots remained routable after the
+new promotion; the base, controller, and context encoder stayed frozen, with
+zero old-regime replay and exact persistence.
+
+This closes the current reversal/capacity-pressure gap but remains bounded
+continual-memory evidence. The next weakness is repeated growth and eviction
+over many cycles, where address stability, compression, and retention must be
+shown over a longer lifetime rather than one expansion.
+
+Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_factored_reversal_capacity_promoted_2026-08-10/`.

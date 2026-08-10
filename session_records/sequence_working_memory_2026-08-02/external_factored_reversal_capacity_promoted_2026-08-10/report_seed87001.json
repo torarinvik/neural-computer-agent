@@ -1,0 +1,96 @@
+{
+  "schema": "neural-computer.external-factored-reversal-capacity.v1",
+  "seed": 87001,
+  "configuration": {
+    "regimes": 3,
+    "initial_capacity": 2,
+    "grown_capacity": 3,
+    "train_rows": 16,
+    "corruption_delta": 0.04,
+    "match_tolerance": 0.005,
+    "reliability_threshold": 0.9,
+    "reliability_warmup": 4,
+    "base_updates": 1000,
+    "residual_updates": 400,
+    "claim": "adversarial_reversal_capacity_pressure_v1"
+  },
+  "metrics": {
+    "source_route_status": "staged",
+    "target_route_status": "staged",
+    "clean_source_status": "matched",
+    "clean_target_status": "matched",
+    "corruption_status": "reliability_veto",
+    "fresh_corruption_status": "matched",
+    "source_reversal_status": "matched",
+    "target_reversal_status": "matched",
+    "full_capacity_novel_status": "ambiguous",
+    "growth": {
+      "accepted": true,
+      "source_capacity": 2,
+      "destination_capacity": 3,
+      "context_count": 2,
+      "content_digest_before": "5abde2aa690520eb9d808978f760393236da198c72f95bec00b51239f4c3e0af",
+      "content_digest_after": "5abde2aa690520eb9d808978f760393236da198c72f95bec00b51239f4c3e0af",
+      "reason": "retention-verified capacity growth committed",
+      "schema": "neural-computer.external-transition-model-growth.v1"
+    },
+    "novel_route_status": "staged",
+    "third_promotion": {
+      "accepted": true,
+      "slot_id": 2,
+      "heldout_error": 0.005965914111584425,
+      "reason": "candidate passed factual and retention probes",
+      "schema": "neural-computer.external-factored-transition-promotion.v1",
+      "heldout_rollout_error": null
+    },
+    "post_growth_slots": [
+      0,
+      1,
+      2
+    ],
+    "reliability_observation_count": 48,
+    "base_loss": 8.475113645545207e-06
+  },
+  "gates": {
+    "source_promoted": true,
+    "target_promoted": true,
+    "clean_revisits_route": true,
+    "gate_warmup_reached": true,
+    "corruption_vetoed": true,
+    "corruption_did_not_stage": true,
+    "fresh_gate_disabled_control_matches": true,
+    "legitimate_source_reversal_routes": true,
+    "legitimate_target_reversal_routes": true,
+    "full_capacity_novelty_refused": true,
+    "verified_growth_accepted": true,
+    "novel_candidate_promoted_after_growth": true,
+    "source_retained_after_growth": true,
+    "target_retained_after_growth": true,
+    "third_regime_routes_after_growth": true,
+    "base_frozen": true,
+    "controller_frozen": true,
+    "context_encoder_unchanged": true,
+    "exact_persistence": true,
+    "replay_free": true
+  },
+  "accounting": {
+    "unique_verifier_outcomes": 48,
+    "unique_logical_transition_lifetimes": 96,
+    "base_optimizer_updates": 1000,
+    "residual_optimizer_updates": 0,
+    "reliability_optimizer_updates": 0,
+    "replayed_examples": 0,
+    "old_regime_replay": 0,
+    "controller_optimizer_updates": 0,
+    "context_encoder_optimizer_updates": 0,
+    "wall_seconds": 0.7814668749924749
+  },
+  "digests": {
+    "base": "b797e68c772a8d8636e114fdf7dc39d6f4e62092664ef51e5c1935508c0632a4",
+    "controller": "6a58b5f61a1535f20028d9f97d83e2672b75bbaad62aef367af9f74100956597",
+    "context_encoder": "ad4e44df1103a35add40fc087f07dee113ebbd9de0206859d100b53af8f3b434",
+    "router": "e55564f0b6c58feb4ee466d261adb50836ab4c95941fa12d88df1fb0cab47f6a",
+    "reliability": "0d93422155acd168597043447217469eb8691f25adc9ab2075c46e22a671ae6e"
+  },
+  "promoted": true
+}
