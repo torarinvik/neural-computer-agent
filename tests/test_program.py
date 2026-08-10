@@ -4,6 +4,7 @@ import torch
 from neural_computer import (
     EXTERNAL_PROGRAM_ADMISSION_SCHEMA,
     EXTERNAL_PROGRAM_ARTIFACT_SCHEMA,
+    ExternalMemoryMaintenancePolicy,
     ExternalProgramAdmissionReceipt,
     ExternalProgramArtifact,
     ExternalSequenceProgramMemory,
@@ -271,3 +272,100 @@ def test_program_memory_migrates_legacy_payload_with_default_logical_ids() -> No
 
     assert restored.logical_slot_ids == (0,)
     assert restored.artifact(0).digest() == memory.artifact(0).digest()
+
+
+def test_program_memory_maintenance_policy_executes_real_transactions() -> None:
+    memory = ExternalSequenceProgramMemory(5, content_addressing=True, hard_routing=True)
+    first = _artifact()
+    distinct = ExternalProgramArtifact(
+        codes=first.codes + 10.0,
+        interpreter_schema=first.interpreter_schema,
+        execution_schema=first.execution_schema,
+        output_schema=first.output_schema,
+    )
+    memory.add_artifact(first)
+    memory.add_artifact(first)
+    memory.add_artifact(distinct)
+    memory.protect_file(0)
+    policy = ExternalMemoryMaintenancePolicy(hidden_width=8)
+
+    with torch.no_grad():
+        policy.network[-1].bias.fill_(-10.0)
+        policy.network[-1].bias[1] = 10.0
+    share = memory.propose_maintenance(
+        policy,
+        capacity_limit=3,
+        share_available=True,
+        compression_available=True,
+        evict_available=True,
+        redundancy_pressure=1.0,
+        compression_opportunity=0.5,
+    )
+    assert share.action == "share"
+    shared = memory.apply_maintenance_proposal(
+        share,
+        share_pair=(0, 1),
+        equivalence_probe=lambda survivor, duplicate: survivor.digest()
+        == duplicate.digest(),
+        retention_probe=lambda candidate: candidate.logical_slot_ids == (0, 2),
+    )
+    assert shared.accepted
+    assert memory.logical_slot_ids == (0, 2)
+
+    with torch.no_grad():
+        policy.network[-1].bias.fill_(-10.0)
+        policy.network[-1].bias[3] = 10.0
+    evict = memory.propose_maintenance(
+        policy,
+        capacity_limit=3,
+        evict_available=True,
+    )
+    assert evict.action == "evict"
+    evicted = memory.apply_maintenance_proposal(
+        evict,
+        evict_slot_id=2,
+        retention_probe=lambda candidate: candidate.logical_slot_ids == (0,),
+    )
+    assert evicted.accepted
+    assert memory.logical_slot_ids == (0,)
+
+    with torch.no_grad():
+        policy.network[-1].bias.fill_(-10.0)
+        policy.network[-1].bias[2] = 10.0
+    compress = memory.propose_maintenance(
+        policy,
+        compression_available=True,
+        compression_opportunity=0.5,
+    )
+    assert compress.action == "compress"
+    compressed = memory.apply_maintenance_proposal(
+        compress,
+        retention_probe=lambda candidate: candidate.file_count == 1,
+    )
+    assert compressed.accepted
+    assert compressed.candidate_storage_bytes < compressed.source_storage_bytes
+
+    growth_memory = ExternalSequenceProgramMemory(5)
+    growth_memory.add_artifact(first)
+    with torch.no_grad():
+        policy.network[-1].bias.fill_(-10.0)
+        policy.network[-1].bias[0] = 10.0
+    grow = growth_memory.propose_maintenance(policy, growth_available=True)
+    assert grow.action == "grow"
+    admitted = growth_memory.apply_maintenance_proposal(
+        grow,
+        growth_artifact=distinct,
+        growth_outcomes=[1.0, 1.0],
+        protect_growth=True,
+    )
+    assert admitted.accepted
+    assert growth_memory.file_count == 2
+
+    with torch.no_grad():
+        policy.network[-1].bias.fill_(-10.0)
+        policy.network[-1].bias[4] = 10.0
+    before = growth_memory.digest()
+    deferred = growth_memory.propose_maintenance(policy)
+    assert deferred.action == "defer"
+    assert growth_memory.apply_maintenance_proposal(deferred) is None
+    assert growth_memory.digest() == before

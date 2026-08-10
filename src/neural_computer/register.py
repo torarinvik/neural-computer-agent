@@ -14,8 +14,10 @@ interpreter, rather than adding another whole neural reasoning branch.
 from __future__ import annotations
 
 import hashlib
+import math
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 import torch
 import torch.nn.functional as F
@@ -28,6 +30,12 @@ from .program import (
     ExternalProgramMemoryTransactionReceipt,
     evaluate_external_program_admission,
 )
+
+if TYPE_CHECKING:
+    from .maintenance import (
+        ExternalMemoryMaintenancePolicy,
+        ExternalMemoryMaintenanceProposal,
+    )
 
 EXTERNAL_REGISTER_SCHEMA = "neural-computer.external-register.v4"
 EXTERNAL_REGISTER_INSTRUCTION_SCHEMA = (
@@ -790,6 +798,194 @@ class ExternalSequenceProgramMemory(nn.Module):
             stable_prefix_minimum=receipt.stable_prefix_minimum,
             reason="candidate verified and committed as an external file",
         ).validate()
+
+    @staticmethod
+    def _maintenance_scalar(value: float, *, name: str) -> float:
+        resolved = float(value)
+        if not math.isfinite(resolved) or not 0.0 <= resolved <= 1.0:
+            raise ValueError(f"executable-memory maintenance {name} must lie in [0, 1]")
+        return resolved
+
+    def maintenance_features(
+        self,
+        *,
+        capacity_limit: int | None = None,
+        mean_usage: float = 0.0,
+        mean_age: float = 0.0,
+        mean_prediction_error: float = 0.0,
+        max_prediction_error: float = 0.0,
+        binding_pressure: float = 0.0,
+        provisional_pressure: float = 0.0,
+        redundancy_pressure: float = 0.0,
+        compression_opportunity: float = 0.0,
+    ) -> torch.Tensor:
+        """Return generic storage telemetry for the maintenance policy.
+
+        The executable bank owns file count and protection, while callers may
+        provide normalized usage, age, verifier-error, binding, redundancy,
+        and compression telemetry from their external ledger.  No task,
+        modality, protocol, or file meaning is assigned to a feature.
+        """
+
+        if capacity_limit is not None and capacity_limit < 1:
+            raise ValueError("executable-memory maintenance capacity must be positive")
+        denominator = max(1, capacity_limit if capacity_limit is not None else self.file_count)
+        logical_fraction = min(self.file_count / float(denominator), 1.0)
+        physical_fraction = logical_fraction
+        capacity_pressure = float(
+            capacity_limit is not None and self.file_count >= capacity_limit
+        )
+        return torch.tensor(
+            [
+                capacity_pressure,
+                logical_fraction,
+                physical_fraction,
+                0.0,
+                self._maintenance_scalar(mean_usage, name="mean_usage"),
+                self._maintenance_scalar(mean_age, name="mean_age"),
+                self._maintenance_scalar(
+                    mean_prediction_error,
+                    name="mean_prediction_error",
+                ),
+                self._maintenance_scalar(
+                    max_prediction_error,
+                    name="max_prediction_error",
+                ),
+                self._maintenance_scalar(binding_pressure, name="binding_pressure"),
+                self._maintenance_scalar(
+                    provisional_pressure,
+                    name="provisional_pressure",
+                ),
+                self._maintenance_scalar(
+                    redundancy_pressure,
+                    name="redundancy_pressure",
+                ),
+                self._maintenance_scalar(
+                    compression_opportunity,
+                    name="compression_opportunity",
+                ),
+            ],
+            dtype=torch.float32,
+        )
+
+    def propose_maintenance(
+        self,
+        policy: ExternalMemoryMaintenancePolicy,
+        *,
+        capacity_limit: int | None = None,
+        growth_available: bool = False,
+        share_available: bool = False,
+        compression_available: bool = False,
+        evict_available: bool = False,
+        mean_usage: float = 0.0,
+        mean_age: float = 0.0,
+        mean_prediction_error: float = 0.0,
+        max_prediction_error: float = 0.0,
+        binding_pressure: float = 0.0,
+        provisional_pressure: float = 0.0,
+        redundancy_pressure: float = 0.0,
+        compression_opportunity: float = 0.0,
+        sample: bool = False,
+        generator: torch.Generator | None = None,
+    ) -> ExternalMemoryMaintenanceProposal:
+        """Select one legal executable-memory operation without mutating files."""
+
+        from .maintenance import ExternalMemoryMaintenancePolicy
+
+        if not isinstance(policy, ExternalMemoryMaintenancePolicy):
+            raise TypeError("executable-memory maintenance policy is invalid")
+        availability = (
+            growth_available,
+            share_available,
+            compression_available,
+            evict_available,
+            True,
+        )
+        if not all(isinstance(value, bool) for value in availability):
+            raise TypeError("executable-memory maintenance availability must be bool")
+        features = self.maintenance_features(
+            capacity_limit=capacity_limit,
+            mean_usage=mean_usage,
+            mean_age=mean_age,
+            mean_prediction_error=mean_prediction_error,
+            max_prediction_error=max_prediction_error,
+            binding_pressure=binding_pressure,
+            provisional_pressure=provisional_pressure,
+            redundancy_pressure=redundancy_pressure,
+            compression_opportunity=compression_opportunity,
+        )
+        return policy.propose(
+            features,
+            torch.tensor(availability, dtype=torch.bool),
+            sample=sample,
+            generator=generator,
+        )
+
+    def apply_maintenance_proposal(
+        self,
+        proposal: ExternalMemoryMaintenanceProposal,
+        *,
+        retention_probe: Callable[[ExternalSequenceProgramMemory], bool] | None = None,
+        share_pair: tuple[int, int] | None = None,
+        equivalence_probe: Callable[[ExternalProgramArtifact, ExternalProgramArtifact], bool]
+        | None = None,
+        evict_slot_id: int | None = None,
+        growth_artifact: ExternalProgramArtifact | None = None,
+        growth_outcomes: torch.Tensor | Sequence[float] | None = None,
+        growth_threshold: float = 0.8,
+        growth_min_observations: int = 1,
+        growth_min_stable_observations: int = 1,
+        compression_dtype: torch.dtype | str = torch.float16,
+        protect_growth: bool = False,
+    ) -> ExternalProgramAdmissionReceipt | ExternalProgramMemoryTransactionReceipt | None:
+        """Execute one proposal through verifier-gated file transactions.
+
+        The policy chooses only the generic operation.  Candidate artifacts,
+        opaque logical IDs, equivalence probes, and retention probes stay on
+        the external-memory side and remain authoritative for commitment.
+        ``defer`` is an explicit no-op; ``grow`` uses the normal admission
+        transaction and the other actions use the lifecycle transactions.
+        """
+
+        from .maintenance import ExternalMemoryMaintenanceProposal
+
+        if not isinstance(proposal, ExternalMemoryMaintenanceProposal):
+            raise TypeError("executable-memory maintenance proposal is invalid")
+        proposal.validate()
+        if proposal.action == "defer":
+            return None
+        if proposal.action == "grow":
+            if growth_artifact is None or growth_outcomes is None:
+                raise ValueError("executable-memory growth needs an artifact and outcomes")
+            return self.admit_verified_artifact(
+                growth_artifact,
+                growth_outcomes,
+                threshold=growth_threshold,
+                min_observations=growth_min_observations,
+                min_stable_observations=growth_min_stable_observations,
+                protect=protect_growth,
+            )
+        if retention_probe is None:
+            raise ValueError("executable-memory maintenance needs a retention probe")
+        if proposal.action == "share":
+            if share_pair is None or equivalence_probe is None:
+                raise ValueError("executable-memory sharing needs an equivalent pair and probe")
+            return self.consolidate_verified(
+                share_pair[0],
+                share_pair[1],
+                equivalence_probe,
+                retention_probe,
+            )
+        if proposal.action == "compress":
+            return self.compress_verified(
+                dtype=compression_dtype,
+                retention_probe=retention_probe,
+            )
+        if proposal.action == "evict":
+            if evict_slot_id is None:
+                raise ValueError("executable-memory eviction needs a logical slot ID")
+            return self.evict_verified(evict_slot_id, retention_probe)
+        raise ValueError(f"unsupported executable-memory maintenance action: {proposal.action}")
 
     def _state_storage_bytes(self) -> int:
         return sum(

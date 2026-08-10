@@ -8813,3 +8813,27 @@ zero-controller-update gates. This promotes a bounded external-memory
 lifecycle contract. Learned maintenance-policy selection, unbounded growth,
 learned compression, arbitrary new computation, and general continual
 learning remain unqualified.
+
+## Learned executable-memory maintenance (2026-08-10)
+
+The generic `ExternalMemoryMaintenancePolicy` is now connected to
+`ExternalSequenceProgramMemory` through a narrow adapter. It consumes the same
+12-field storage telemetry contract and a memory-owned structural mask, then
+chooses `grow`, `share`, `compress`, `evict`, or `defer`. It never receives
+file IDs, task labels, modalities, protocol actions, raw verifier rows, or
+candidate semantics. The selected operation is still committed only by the
+existing verifier-gated copy-on-write transaction.
+
+The three-seed promotion is archived in
+`session_records/sequence_working_memory_2026-08-02/external_program_memory_maintenance_promoted_2026-08-10/`.
+Held-out utility reaches `1.0000` after replay-free online policy updates,
+beating fresh and shuffled-verifier controls on every seed, while the
+interpreter/controller remain frozen. This is the intended CPU-plus-files
+separation: the controller supplies stable computation and the external
+memory policy learns lifecycle economics around it.
+
+The result is bounded learned maintenance over executable files, not learned
+compression, autonomous verification, unrestricted growth, arbitrary program
+induction, or general continual learning. The next decisive pressure is to
+join maintenance with persistent multi-step hypothesis acquisition on real
+Brain Workshop family streams and charge retention/storage cost in the utility.

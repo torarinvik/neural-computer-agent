@@ -1128,3 +1128,25 @@ general continual learning. The next high-ROI test is to make maintenance
 choice itself outcome-driven over a longer nonstationary Brain Workshop
 stream, charging the verifier and storage costs and comparing against a fresh
 memory control.
+
+## Learned maintenance over executable files (2026-08-10)
+
+That next seam is now implemented. `ExternalSequenceProgramMemory` exposes
+generic telemetry, a structural action mask, and proposal/application methods
+for the replaceable `ExternalMemoryMaintenancePolicy`. The policy learns from
+one scalar transaction utility at a time; the file store owns opaque logical
+IDs, candidate artifacts, equivalence probes, retention probes, and all
+copy-on-write commits.
+
+The promoted three-seed record is
+`session_records/sequence_working_memory_2026-08-02/external_program_memory_maintenance_promoted_2026-08-10/`.
+The learned policy reaches perfect held-out phase utility on every seed,
+beats both fresh and shuffled-verifier controls, observes real grow/share/
+compress/evict transactions, and uses zero replay and zero controller updates.
+
+This is a bounded lifecycle-policy result. It does not yet show that the
+policy learns when to retain arbitrary newly acquired capabilities under a
+long nonstationary Brain Workshop stream, nor that it solves general
+continual learning. The next experiment must combine executable hypothesis
+frontiers, maintenance cost, and complete-prefix retention on genuinely
+rendered families.

@@ -1423,3 +1423,19 @@ It demonstrates safe bounded lifecycle management with a frozen controller,
 zero replay, and zero controller updates. It does not claim learned
 maintenance selection, learned compression, unrestricted growth, arbitrary
 new computation, or general continual learning.
+
+## Learned executable-memory maintenance
+
+`ExternalSequenceProgramMemory.maintenance_features()`,
+`propose_maintenance()`, and `apply_maintenance_proposal()` connect the
+generic memory-side maintenance learner to real executable-file transactions.
+The adapter exposes only generic storage telemetry and a structural action
+mask. `grow`, `share`, `compress`, and `evict` still require the independent
+verifier-gated admission, equivalence, retention, or checksum paths; `defer`
+is a non-mutating no-op. The controller and interpreter remain unaware of
+logical file IDs and maintenance decisions.
+
+The promoted audit is archived at
+`session_records/sequence_working_memory_2026-08-02/external_program_memory_maintenance_promoted_2026-08-10/`.
+It qualifies replay-free learned lifecycle choice on a bounded executable
+workload, not general continual learning or unrestricted program acquisition.
