@@ -2423,6 +2423,25 @@ class PolicyFreeAmodalRuntime:
             raise RuntimeError("policy-free runtime has no goal-fragment stager")
         return self.goal_stager.observe(candidate, outcome, eligible=eligible)
 
+    def observe_goal_fragment_state(
+        self,
+        state: torch.Tensor,
+        outcome: torch.Tensor | float,
+        *,
+        mask: torch.Tensor | None = None,
+        eligible: bool = True,
+    ) -> ExternalGoalFragmentObservationReceipt:
+        """Stage one learned terminal state without a caller-side wrapper."""
+
+        if self.goal_stager is None:
+            raise RuntimeError("policy-free runtime has no goal-fragment stager")
+        return self.goal_stager.observe_state(
+            state,
+            outcome,
+            mask=mask,
+            eligible=eligible,
+        )
+
     def admit_goal_fragment_verified(
         self,
         candidate_digest: str,

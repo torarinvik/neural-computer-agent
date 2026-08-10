@@ -254,7 +254,7 @@ def test_policy_free_runtime_stages_goal_from_external_scalar_outcomes() -> None
         torch.ones(12),
         torch.ones(12, dtype=torch.bool),
     )
-    policy_free.observe_goal_fragment(candidate, 1.0)
+    policy_free.observe_goal_fragment_state(torch.ones(12), 1.0)
     policy_free.observe_goal_fragment(candidate, 1.0)
     admission = policy_free.admit_goal_fragment_verified(
         candidate.digest(state_width=12),

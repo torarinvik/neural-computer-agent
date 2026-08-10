@@ -124,6 +124,31 @@ class ExternalGoalFragmentCandidate:
     masks: torch.Tensor
     schema: str = EXTERNAL_GOAL_FRAGMENT_CANDIDATE_SCHEMA
 
+    @classmethod
+    def from_state(
+        cls,
+        state: torch.Tensor,
+        *,
+        mask: torch.Tensor | None = None,
+    ) -> ExternalGoalFragmentCandidate:
+        """Create a candidate from one learned terminal state.
+
+        The state is already inside the learned representation boundary.  The
+        optional mask is an opaque learned relevance mask; when omitted, the
+        candidate constrains every coordinate without assigning any meaning
+        to those coordinates.
+        """
+
+        if state.ndim == 2 and state.shape[0] == 1:
+            state = state.squeeze(0)
+        if state.ndim != 1:
+            raise ValueError("goal-fragment candidate state must contain one row")
+        if mask is None:
+            mask = torch.ones(state.shape, dtype=torch.bool, device=state.device)
+        elif mask.ndim == 2 and mask.shape[0] == 1:
+            mask = mask.squeeze(0)
+        return cls(state, mask)
+
     def validate(self, *, state_width: int) -> ExternalGoalFragmentCandidate:
         if self.schema != EXTERNAL_GOAL_FRAGMENT_CANDIDATE_SCHEMA:
             raise ValueError("unsupported goal-fragment candidate schema")
@@ -699,6 +724,19 @@ class ExternalGoalFragmentStager:
             stable_observations=stable_observations,
             ready=ready,
         ).validate()
+
+    def observe_state(
+        self,
+        state: torch.Tensor,
+        outcome: torch.Tensor | float,
+        *,
+        mask: torch.Tensor | None = None,
+        eligible: bool = True,
+    ) -> ExternalGoalFragmentObservationReceipt:
+        """Stage one learned state directly from a fresh scalar outcome."""
+
+        candidate = ExternalGoalFragmentCandidate.from_state(state, mask=mask)
+        return self.observe(candidate, outcome, eligible=eligible)
 
     def candidate(self, digest: str) -> ExternalGoalFragmentCandidate:
         """Return a detached pending candidate by opaque content digest."""
