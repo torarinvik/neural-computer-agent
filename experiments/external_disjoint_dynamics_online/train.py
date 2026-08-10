@@ -132,13 +132,45 @@ def _stream_rows(
     *,
     regime_index: int,
     partial_evidence: bool,
+    noise_std: float = 0.0,
+    noise_seed: int = 0,
 ) -> list[ExternalTransitionObservation]:
+    if noise_std < 0.0:
+        raise ValueError("stream noise standard deviation cannot be negative")
     selected = _rows(
         observation,
         None if not partial_evidence else TARGET_COVERING_ROW_INDICES[regime_index],
     )
     repeats = (ADMISSION_OBSERVATIONS + len(selected) - 1) // len(selected)
-    return (selected * repeats)[:ADMISSION_OBSERVATIONS]
+    stream = (selected * repeats)[:ADMISSION_OBSERVATIONS]
+    if noise_std == 0.0:
+        return stream
+    noisy: list[ExternalTransitionObservation] = []
+    for row_index, item in enumerate(stream):
+        generator = torch.Generator().manual_seed(noise_seed + row_index)
+        noisy.append(
+            ExternalTransitionObservation(
+                state=item.state
+                + noise_std
+                * torch.randn(
+                    item.state.shape,
+                    generator=generator,
+                    device=item.state.device,
+                    dtype=item.state.dtype,
+                ),
+                intention=item.intention,
+                next_state=item.next_state
+                + noise_std
+                * torch.randn(
+                    item.next_state.shape,
+                    generator=generator,
+                    device=item.next_state.device,
+                    dtype=item.next_state.dtype,
+                ),
+                confidence=item.confidence,
+            )
+        )
+    return noisy
 
 
 def _train_context_encoder(
@@ -267,9 +299,12 @@ def run(
     *,
     sequence_repeats: int = 1,
     partial_evidence: bool = False,
+    stream_noise_std: float = 0.0,
 ) -> dict[str, object]:
     if sequence_repeats < 1:
         raise ValueError("sequence repeats must be positive")
+    if stream_noise_std < 0.0:
+        raise ValueError("stream noise standard deviation cannot be negative")
     begun = time.perf_counter()
     torch.manual_seed(seed)
     state_codes, intention_codes, observations = _fixture(seed)
@@ -374,12 +409,14 @@ def run(
     old_slot_updates = 0
     trace: list[dict[str, object]] = []
 
-    for regime in sequence:
+    for sequence_position, regime in enumerate(sequence):
         regime_index = REGIME_NAMES.index(regime)
         for row in _stream_rows(
             observations[regime],
             regime_index=regime_index,
             partial_evidence=partial_evidence,
+            noise_std=stream_noise_std,
+            noise_seed=seed + sequence_position * 1009,
         ):
             result = router.observe(row)
             route_counts[f"{regime}:{result.status}"] += 1
@@ -542,6 +579,7 @@ def run(
             "policy": "none_external_disjoint_online_context_model_search_v1",
             "sequence_repeats": sequence_repeats,
             "partial_evidence": partial_evidence,
+            "stream_noise_std": stream_noise_std,
             "observed_transition_rows": {
                 name: (
                     len(TARGET_COVERING_ROW_INDICES[index])
@@ -617,12 +655,14 @@ def main() -> None:
     parser.add_argument("--report-out", type=Path, required=True)
     parser.add_argument("--sequence-repeats", type=int, default=1)
     parser.add_argument("--partial-evidence", action="store_true")
+    parser.add_argument("--stream-noise-std", type=float, default=0.0)
     args = parser.parse_args()
     run(
         args.seed,
         args.report_out,
         sequence_repeats=args.sequence_repeats,
         partial_evidence=args.partial_evidence,
+        stream_noise_std=args.stream_noise_std,
     )
 
 

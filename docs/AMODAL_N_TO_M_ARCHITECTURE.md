@@ -4838,6 +4838,25 @@ context discovery, unrestricted memory growth, learned consolidation or
 compression, or general continual learning. Reports and accounting are in
 `session_records/sequence_working_memory_2026-08-02/external_disjoint_dynamics_partial_evidence_promoted_2026-08-10/`.
 
+## Noisy partial-evidence disjoint-dynamics retention (2026-08-10)
+
+The partial-evidence fixture was then combined with Gaussian perturbations of
+standard deviation `0.02` on every observed state and next-state tensor. Across
+three seeds, `25` of `56` transition rows were observed and `31` withheld, with
+four alternating rounds. Every seed admitted both novel regimes once, routed
+each seven times after admission, and retained `1.0` planner mastery. Warm
+target fitting used `20/20`, `14/15`, and `20/19` updates versus fresh
+`44/43`, `40/35`, and `30/33`; source slots stayed byte-stable, old-slot
+updates were zero, the controller stayed frozen, and persistence was exact.
+
+This promotes one bounded noisy target-covering partial-evidence condition over
+finite opaque transition tables. The mask is verifier-private and selected so
+the measured targets remain solvable, and the noise is synthetic at one fixed
+level. It does not establish arbitrary missingness, real multimodal noise,
+unrestricted memory growth, learned consolidation or compression, or general
+continual learning. Reports and accounting are in
+`session_records/sequence_working_memory_2026-08-02/external_disjoint_dynamics_noisy_partial_promoted_2026-08-10/`.
+
 ## Copy-on-write transfer challenger for disjoint compounding (2026-08-09)
 
 The exported session's next-step requirement was seed-widening on genuinely
