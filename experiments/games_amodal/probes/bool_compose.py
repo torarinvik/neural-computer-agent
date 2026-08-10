@@ -69,6 +69,19 @@ parser.add_argument(
          "A curriculum gets reading established on the readable task "
          "first, then extends it — the bootstrapping F120 identified.")
 parser.add_argument(
+    "--two-phase", type=float, default=0.0,
+    help="F75-F79's FROZEN PLANT + AMORTISED READING, applied here. "
+         "Train the plant on ORACLE entries for this fraction of "
+         "updates, then FREEZE it and train only the reader through "
+         "it. F135 measured the plant's side solved (0.9983 with "
+         "bound oracle entries) and the reader's side dead (own == "
+         "stranger to four decimals) — the classic F106 deadlock, "
+         "where a bad reader gives the plant no reason to use entries "
+         "and an entry-ignoring plant gives the reader no gradient. "
+         "Phase 1 breaks it by building a plant that DEMANDS a "
+         "well-formed entry; phase 2 then has a fixed target to aim "
+         "at. Requires --iterate --bind-params.")
+parser.add_argument(
     "--bind-params", action="store_true",
     help="decode the entry ONCE into one explicit parameter vector "
          "per piece token, then step on (latent, bound parameter) with "
@@ -319,7 +332,14 @@ def reader_examples(world: dict, generator: torch.Generator):
 
 
 data_gen = torch.Generator().manual_seed(args.seed * 6700417)
+phase_one = int(args.train_updates * args.two_phase)
 for update in range(args.train_updates):
+    if args.two_phase > 0 and update == phase_one:
+        # freeze the plant; from here only the reader learns, and it
+        # must produce entries the FIXED plant can already bind
+        for parameter in plant.parameters():
+            parameter.requires_grad_(False)
+        optimizer = torch.optim.Adam(reader.parameters(), lr=args.lr)
     world = train_worlds[int(torch.randint(
         0, len(train_worlds), (1,), generator=data_gen))]
     pool = train_programs
@@ -329,7 +349,9 @@ for update in range(args.train_updates):
         pool = [p for p in train_programs if len(p) <= cap] or train_programs
     program = pool[int(torch.randint(
         0, len(pool), (1,), generator=data_gen))]
-    entry = (oracle(oracle_raw(world)) if args.oracle_entry
+    use_oracle = args.oracle_entry or (
+        args.two_phase > 0 and update < phase_one)
+    entry = (oracle(oracle_raw(world)) if use_oracle
              else reader(*reader_examples(world, data_gen)))
     x = torch.randint(0, 1 << W, (args.batch_size,), generator=data_gen)
     y = bits_of(apply_program(world, program, x))
