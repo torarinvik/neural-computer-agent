@@ -1165,6 +1165,13 @@ per-file recurrent state bank is updated only for its assigned rows. This is
 important for measuring multiple Brain Workshop families together rather than
 silently forcing a single-family batch.
 
+Executable-memory routing now uses the post-step learned event trajectory by
+default: the replaceable address adapter receives masked mean/max statistics
+over the current event window in addition to the controller representation.
+Final-state-only routing remains an explicit compatibility control. This
+strengthens route identifiability without exposing raw modality formats or
+logical file IDs to the controller.
+
 The controller-plus-file working state is also restartable. A versioned
 tensor-only checkpoint preserves the controller event window and workspace
 together with every logical file's recurrent register state, while executable

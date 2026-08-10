@@ -1294,7 +1294,7 @@ class ExternalControllerTrajectoryQueryAdapter(nn.Module):
         return query
 
 
-EXTERNAL_PROGRAM_RUNTIME_SCHEMA = "neural-computer.external-program-runtime.v3"
+EXTERNAL_PROGRAM_RUNTIME_SCHEMA = "neural-computer.external-program-runtime.v4"
 EXTERNAL_PROGRAM_RUNTIME_STATE_SCHEMA = (
     "neural-computer.external-program-runtime-state.v1"
 )
@@ -1435,7 +1435,11 @@ class ExternalProgramAmodalRuntime(nn.Module):
         *,
         program: ExternalProgramArtifact | None = None,
         program_memory: ExternalSequenceProgramMemory | None = None,
-        program_query_adapter: ExternalControllerStateAdapter | None = None,
+        program_query_adapter: (
+            ExternalControllerStateAdapter
+            | ExternalControllerTrajectoryQueryAdapter
+            | None
+        ) = None,
     ) -> None:
         super().__init__()
         if not isinstance(runtime, AmodalControllerRuntime):
@@ -1468,18 +1472,29 @@ class ExternalProgramAmodalRuntime(nn.Module):
                 raise ValueError("program memory instruction width does not match machine")
             if len(program_memory.programs) < 1:
                 raise ValueError("program memory must contain at least one artifact")
-        if program_query_adapter is not None and (
-            program_query_adapter.controller_feature_width != controller_feature_width
-            or program_query_adapter.state_width != machine.instruction_width
+        if program_query_adapter is not None and not isinstance(
+            program_query_adapter,
+            (ExternalControllerStateAdapter, ExternalControllerTrajectoryQueryAdapter),
         ):
-            raise ValueError("program query adapter does not match controller or machine")
+            raise TypeError("program query adapter has an incompatible type")
+        if program_query_adapter is not None:
+            adapter_width = (
+                program_query_adapter.state_width
+                if isinstance(program_query_adapter, ExternalControllerStateAdapter)
+                else program_query_adapter.query_width
+            )
+            if (
+                program_query_adapter.controller_feature_width != controller_feature_width
+                or adapter_width != machine.instruction_width
+            ):
+                raise ValueError("program query adapter does not match controller or machine")
         self.runtime = runtime
         self.machine = machine
         self.program = program
         self.program_memory = program_memory
         self.program_query_adapter = program_query_adapter or (
-            ExternalControllerStateAdapter(
-                controller_feature_width,
+            ExternalControllerTrajectoryQueryAdapter(
+                runtime.controller.width,
                 machine.instruction_width,
             )
             if program_memory is not None
@@ -1545,6 +1560,7 @@ class ExternalProgramAmodalRuntime(nn.Module):
     def _select_program(
         self,
         controller_output: ControllerOutput,
+        controller_state: ControllerState,
     ) -> tuple[torch.Tensor, torch.Tensor]:
         if self.program is not None:
             batch_size = controller_output.state_representation.shape[0]
@@ -1564,7 +1580,13 @@ class ExternalProgramAmodalRuntime(nn.Module):
             )
         if self.program_memory is None or self.program_query_adapter is None:
             raise RuntimeError("external program runtime has no program source")
-        query = self.program_query_adapter(controller_output)
+        if isinstance(
+            self.program_query_adapter,
+            ExternalControllerTrajectoryQueryAdapter,
+        ):
+            query = self.program_query_adapter(controller_output, controller_state)
+        else:
+            query = self.program_query_adapter(controller_output)
         selected = self.program_memory.route_weights(query).argmax(dim=-1)
         logical_ids = torch.tensor(
             [self.program_memory.logical_slot_id(int(slot)) for slot in selected],
@@ -1634,7 +1656,10 @@ class ExternalProgramAmodalRuntime(nn.Module):
             disable_workspace=disable_workspace,
             memory_scope=memory_scope,
         )
-        selected_logical_ids, selected_slots = self._select_program(controller_output)
+        selected_logical_ids, selected_slots = self._select_program(
+            controller_output,
+            next_controller,
+        )
         present = collection.present.any(dim=1)
         program_states = dict(state.program_states)
         snapshots: list[ExternalExecutionSnapshot] = []

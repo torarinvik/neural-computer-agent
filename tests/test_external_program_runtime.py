@@ -9,6 +9,8 @@ from neural_computer import (
     AmodalEventCollection,
     ControllerFeedback,
     ExternalCapabilityRegisterMachine,
+    ExternalControllerStateAdapter,
+    ExternalControllerTrajectoryQueryAdapter,
     ExternalProgramAmodalRuntime,
     ExternalProgramArtifact,
     ExternalProgramRuntimeState,
@@ -58,6 +60,21 @@ class _PartitionedProgramMemory(ExternalSequenceProgramMemory):
         return weights
 
 
+class _RecordingTrajectoryQueryAdapter(ExternalControllerTrajectoryQueryAdapter):
+    def __init__(self):
+        super().__init__(4, 5)
+        self.seen_present = None
+
+    def forward(self, output, state):
+        self.seen_present = state.event_window.present.detach().clone()
+        return torch.zeros(
+            output.state_representation.shape[0],
+            self.query_width,
+            device=output.state_representation.device,
+            dtype=output.state_representation.dtype,
+        )
+
+
 def _feedback(batch_size: int) -> ControllerFeedback:
     return ControllerFeedback(
         action=torch.zeros(batch_size, 3),
@@ -75,7 +92,11 @@ def _artifact() -> ExternalProgramArtifact:
     )
 
 
-def _runtime(*, memory: ExternalSequenceProgramMemory | None = None):
+def _runtime(
+    *,
+    memory: ExternalSequenceProgramMemory | None = None,
+    program_query_adapter=None,
+):
     controller = AmodalCognitiveController(
         width=4,
         workspace_slots=2,
@@ -98,6 +119,7 @@ def _runtime(*, memory: ExternalSequenceProgramMemory | None = None):
         machine,
         program=_artifact() if memory is None else None,
         program_memory=memory,
+        program_query_adapter=program_query_adapter,
     )
 
 
@@ -115,7 +137,7 @@ def test_external_program_runtime_routes_file_result_to_decoders_without_core_mu
         _feedback(2),
     )
 
-    assert output.schema == "neural-computer.external-program-runtime.v3"
+    assert output.schema == "neural-computer.external-program-runtime.v4"
     assert output.execution.program_digest is not None
     assert len(output.execution.program_digest) == 64
     assert len(output.execution.trace) == 3
@@ -146,6 +168,47 @@ def test_external_program_memory_selects_file_without_exposing_slot_to_controlle
         "opaque_content_routed_external_program_memory_v1"
     )
     assert "selected_program_slot" not in agent.configuration()["machine"]
+
+
+def test_external_program_runtime_default_route_query_keeps_current_event_window():
+    torch.manual_seed(9030)
+    memory = ExternalSequenceProgramMemory(5, content_addressing=True, hard_routing=True)
+    memory.add_artifact(_artifact())
+    adapter = _RecordingTrajectoryQueryAdapter()
+    _runtime_module, _machine, agent = _runtime(
+        memory=memory,
+        program_query_adapter=adapter,
+    )
+    agent.step_events(
+        [AmodalEvent(torch.randn(1, 4))],
+        agent.initial_state(1, device="cpu"),
+        _feedback(1),
+    )
+
+    assert adapter.seen_present is not None
+    assert adapter.seen_present.any().item()
+    assert agent.configuration()["program_query_adapter"]["schema"] == (
+        "neural-computer.external-controller-trajectory-query-adapter.v1"
+    )
+
+
+def test_external_program_runtime_allows_explicit_final_state_route_adapter():
+    memory = ExternalSequenceProgramMemory(5, content_addressing=True, hard_routing=True)
+    memory.add_artifact(_artifact())
+    adapter = ExternalControllerStateAdapter(12, 5)
+    _runtime_module, _machine, agent = _runtime(
+        memory=memory,
+        program_query_adapter=adapter,
+    )
+    agent.step_events(
+        [AmodalEvent(torch.randn(1, 4))],
+        agent.initial_state(1, device="cpu"),
+        _feedback(1),
+    )
+
+    assert agent.configuration()["program_query_adapter"]["schema"] == (
+        "neural-computer.external-controller-state-adapter.v1"
+    )
 
 
 def test_external_program_runtime_supports_mixed_file_schedule_in_one_batch():

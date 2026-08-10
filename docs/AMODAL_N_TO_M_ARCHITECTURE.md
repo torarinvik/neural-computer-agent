@@ -8854,11 +8854,15 @@ alternating routes, state non-interference, verified retirement, and reload of
 stable IDs. It is still a bounded runtime integrity result, not evidence of
 general program acquisition or general continual learning.
 
-Runtime schema v3 additionally supports mixed batch schedules. Each row may
-select a different logical file; the executor is invoked with a row mask per
-file, and the runtime merges only the resulting output rows while retaining
-the individual execution snapshots. This removes the prior requirement to
-partition a multi-family batch before the controller can run it.
+Runtime schema v4 supports mixed batch schedules and makes trajectory-aware
+addressing the default. Each row may select a different logical file; the
+executor is invoked with a row mask per file, and the runtime merges only the
+resulting output rows while retaining the individual execution snapshots. The
+default route query uses the post-step controller representation plus masked
+mean/max statistics over the current learned event window. A final-state-only
+adapter remains an explicit compatibility option. This removes the prior
+requirement to partition a multi-family batch before the controller can run it
+and preserves more evidence for route identification.
 
 ## Durable controller-plus-file working state (2026-08-10)
 
