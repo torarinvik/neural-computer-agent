@@ -6514,3 +6514,12 @@ input/output overlaps with running means and proposes a slot only when enough
 overlaps agree and none contradict. It is a proposal accelerator rather than a
 learned semantic identity system; partial-read and promotion gates remain the
 authority, and the index must be invalidated with its logical slot.
+
+The first randomized-missingness pressure test for this boundary also passes:
+five seeds presented four nonlinear regimes through two disjoint random
+seven-row windows. All random partial reads routed correctly, mixed-regime
+evidence remained ambiguous, and the sparse index persisted `56` unique facts
+per seed. The result is bounded synthetic missingness handling; it does not
+establish arbitrary real multimodal missingness or learned semantic identity.
+Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_factored_random_missingness_promoted_2026-08-10/`.

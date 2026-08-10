@@ -1,0 +1,197 @@
+{
+  "schema": "neural-computer.external-factored-random-missingness.v1",
+  "seed": 83044,
+  "configuration": {
+    "regime_count": 4,
+    "observed_rows": 14,
+    "window_rows": 7,
+    "heldout_rows": 4,
+    "mask": "seeded_random_permutation_v1",
+    "residual_model_family": "random_feature_sufficient_statistics_v1",
+    "claim": "bounded-factored-random-missingness-identity-v1"
+  },
+  "metrics": {
+    "orders": {
+      "0": [
+        3,
+        12,
+        5,
+        0,
+        13,
+        11,
+        9,
+        10,
+        2,
+        8,
+        1,
+        4,
+        6,
+        7
+      ],
+      "1": [
+        9,
+        11,
+        2,
+        12,
+        1,
+        7,
+        6,
+        13,
+        4,
+        8,
+        3,
+        0,
+        5,
+        10
+      ],
+      "2": [
+        11,
+        12,
+        8,
+        2,
+        3,
+        7,
+        9,
+        0,
+        10,
+        5,
+        4,
+        1,
+        13,
+        6
+      ],
+      "3": [
+        3,
+        8,
+        10,
+        4,
+        6,
+        9,
+        7,
+        0,
+        13,
+        2,
+        11,
+        5,
+        12,
+        1
+      ]
+    },
+    "stream_statuses": {
+      "0": [
+        "staged",
+        "staged",
+        "staged",
+        "staged",
+        "staged",
+        "staged",
+        "staged",
+        "staged"
+      ],
+      "1": [
+        "staged",
+        "staged",
+        "staged",
+        "staged",
+        "staged",
+        "staged",
+        "staged",
+        "staged"
+      ],
+      "2": [
+        "staged",
+        "staged",
+        "staged",
+        "staged",
+        "staged",
+        "staged",
+        "staged",
+        "staged"
+      ],
+      "3": [
+        "staged",
+        "staged",
+        "staged",
+        "staged",
+        "staged",
+        "staged",
+        "staged",
+        "staged"
+      ]
+    },
+    "promotion_receipts": [
+      {
+        "accepted": true,
+        "slot_id": 0,
+        "heldout_error": 0.00042933280928991735,
+        "reason": "candidate passed factual and retention probes",
+        "schema": "neural-computer.external-factored-transition-promotion.v1"
+      },
+      {
+        "accepted": true,
+        "slot_id": 1,
+        "heldout_error": 0.00020233739633113146,
+        "reason": "candidate passed factual and retention probes",
+        "schema": "neural-computer.external-factored-transition-promotion.v1"
+      },
+      {
+        "accepted": true,
+        "slot_id": 2,
+        "heldout_error": 0.0008752610301598907,
+        "reason": "candidate passed factual and retention probes",
+        "schema": "neural-computer.external-factored-transition-promotion.v1"
+      },
+      {
+        "accepted": true,
+        "slot_id": 3,
+        "heldout_error": 0.0008228454971686006,
+        "reason": "candidate passed factual and retention probes",
+        "schema": "neural-computer.external-factored-transition-promotion.v1"
+      }
+    ],
+    "random_partial_routes": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "mixed_status": "ambiguous",
+    "retained_heldout_mse": {
+      "0": 0.00042933280928991735,
+      "1": 0.00020233739633113146,
+      "2": 0.0008752610301598907,
+      "3": 0.0008228454971686006
+    },
+    "sparse_records": 56
+  },
+  "gates": {
+    "all_regimes_promoted": true,
+    "random_windows_stage_and_continue": true,
+    "heldout_retention": true,
+    "random_partial_routes_correct": true,
+    "mixed_partial_is_ambiguous": true,
+    "sparse_identity_persisted": true,
+    "base_unchanged": true,
+    "controller_unchanged": true,
+    "context_encoder_unchanged": true,
+    "replay_free": true
+  },
+  "accounting": {
+    "base_optimizer_updates": 0,
+    "residual_optimizer_updates": 0,
+    "residual_statistics_updates": 8,
+    "controller_optimizer_updates": 0,
+    "context_encoder_optimizer_updates": 0,
+    "old_regime_replay": 0,
+    "unique_observed_rows": 56,
+    "unique_heldout_rows": 16,
+    "wall_seconds": 0.06845249998150393
+  },
+  "digests": {
+    "base": "5dc291a2783d524fdec132e7823c73e3b11904ce54072b0e280e1a260ca0945d",
+    "controller": "5a554bab147d4dacbea21780b04b76cae114da64ba6685e46f3c787835bdc02b",
+    "context_encoder": "46c1e1bf582b8fc0f2975e11930f492fb9994c92dc71f691a478e572b2dd11b9",
+    "router": "ac67b05de35006f17840c9f980aceb9a11f200d219af9e0b31e52ec7fc1bd0c5"
+  },
+  "promoted": true
+}

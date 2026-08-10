@@ -1,0 +1,197 @@
+{
+  "schema": "neural-computer.external-factored-random-missingness.v1",
+  "seed": 83042,
+  "configuration": {
+    "regime_count": 4,
+    "observed_rows": 14,
+    "window_rows": 7,
+    "heldout_rows": 4,
+    "mask": "seeded_random_permutation_v1",
+    "residual_model_family": "random_feature_sufficient_statistics_v1",
+    "claim": "bounded-factored-random-missingness-identity-v1"
+  },
+  "metrics": {
+    "orders": {
+      "0": [
+        7,
+        9,
+        4,
+        6,
+        8,
+        10,
+        1,
+        13,
+        5,
+        12,
+        0,
+        3,
+        11,
+        2
+      ],
+      "1": [
+        4,
+        2,
+        5,
+        11,
+        1,
+        6,
+        8,
+        12,
+        13,
+        9,
+        0,
+        3,
+        7,
+        10
+      ],
+      "2": [
+        11,
+        4,
+        1,
+        3,
+        12,
+        8,
+        0,
+        7,
+        13,
+        2,
+        5,
+        9,
+        10,
+        6
+      ],
+      "3": [
+        0,
+        7,
+        12,
+        1,
+        4,
+        9,
+        3,
+        13,
+        8,
+        5,
+        11,
+        2,
+        10,
+        6
+      ]
+    },
+    "stream_statuses": {
+      "0": [
+        "staged",
+        "staged",
+        "staged",
+        "staged",
+        "staged",
+        "staged",
+        "staged",
+        "staged"
+      ],
+      "1": [
+        "staged",
+        "staged",
+        "staged",
+        "staged",
+        "staged",
+        "staged",
+        "staged",
+        "staged"
+      ],
+      "2": [
+        "staged",
+        "staged",
+        "staged",
+        "staged",
+        "staged",
+        "staged",
+        "staged",
+        "staged"
+      ],
+      "3": [
+        "staged",
+        "staged",
+        "staged",
+        "staged",
+        "staged",
+        "staged",
+        "staged",
+        "staged"
+      ]
+    },
+    "promotion_receipts": [
+      {
+        "accepted": true,
+        "slot_id": 0,
+        "heldout_error": 0.0026450788136571646,
+        "reason": "candidate passed factual and retention probes",
+        "schema": "neural-computer.external-factored-transition-promotion.v1"
+      },
+      {
+        "accepted": true,
+        "slot_id": 1,
+        "heldout_error": 0.0033724093809723854,
+        "reason": "candidate passed factual and retention probes",
+        "schema": "neural-computer.external-factored-transition-promotion.v1"
+      },
+      {
+        "accepted": true,
+        "slot_id": 2,
+        "heldout_error": 0.0048717777244746685,
+        "reason": "candidate passed factual and retention probes",
+        "schema": "neural-computer.external-factored-transition-promotion.v1"
+      },
+      {
+        "accepted": true,
+        "slot_id": 3,
+        "heldout_error": 0.0028291328344494104,
+        "reason": "candidate passed factual and retention probes",
+        "schema": "neural-computer.external-factored-transition-promotion.v1"
+      }
+    ],
+    "random_partial_routes": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "mixed_status": "ambiguous",
+    "retained_heldout_mse": {
+      "0": 0.0026450788136571646,
+      "1": 0.0033724093809723854,
+      "2": 0.0048717777244746685,
+      "3": 0.0028291328344494104
+    },
+    "sparse_records": 56
+  },
+  "gates": {
+    "all_regimes_promoted": true,
+    "random_windows_stage_and_continue": true,
+    "heldout_retention": true,
+    "random_partial_routes_correct": true,
+    "mixed_partial_is_ambiguous": true,
+    "sparse_identity_persisted": true,
+    "base_unchanged": true,
+    "controller_unchanged": true,
+    "context_encoder_unchanged": true,
+    "replay_free": true
+  },
+  "accounting": {
+    "base_optimizer_updates": 0,
+    "residual_optimizer_updates": 0,
+    "residual_statistics_updates": 8,
+    "controller_optimizer_updates": 0,
+    "context_encoder_optimizer_updates": 0,
+    "old_regime_replay": 0,
+    "unique_observed_rows": 56,
+    "unique_heldout_rows": 16,
+    "wall_seconds": 0.0701371249742806
+  },
+  "digests": {
+    "base": "5dc291a2783d524fdec132e7823c73e3b11904ce54072b0e280e1a260ca0945d",
+    "controller": "24535c25ec6e1fa85abfed5efb98c6ec7cb8363f8fb120ad6dc94306328dda57",
+    "context_encoder": "892d48298c29725c3a5daf0e61b8ab965cadd644854ecf6cd76a6b3846f07fd5",
+    "router": "65f8faa0bb058eff1a87a594cc63e0a8db41d563e17d3cb87d3d9f361c226815"
+  },
+  "promoted": true
+}

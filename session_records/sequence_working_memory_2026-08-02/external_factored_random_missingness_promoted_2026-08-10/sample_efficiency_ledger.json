@@ -1,0 +1,31 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "external_factored_random_missingness_promoted_2026-08-10",
+  "claim": "bounded-factored-random-missingness-identity-v1",
+  "replicates": 5,
+  "seeds": [83041, 83042, 83043, 83044, 83045],
+  "stable_gates": {
+    "all_regimes_promoted": 5,
+    "random_windows_stage_and_continue": 5,
+    "heldout_retention": 5,
+    "random_partial_routes_correct": 5,
+    "mixed_partial_is_ambiguous": 5,
+    "sparse_identity_persisted": 5,
+    "base_unchanged": 5,
+    "controller_unchanged": 5,
+    "context_encoder_unchanged": 5,
+    "replay_free": 5
+  },
+  "accounting": {
+    "unique_observed_rows_per_seed": 56,
+    "unique_heldout_rows_per_seed": 16,
+    "residual_statistics_updates_per_seed": 8,
+    "base_optimizer_updates_per_seed": 0,
+    "controller_optimizer_updates_per_seed": 0,
+    "context_encoder_optimizer_updates_per_seed": 0,
+    "old_regime_replay_per_seed": 0,
+    "sparse_identity_records_per_seed": 56,
+    "fresh_control": "not measured; no positive-transfer claim"
+  },
+  "boundary": "bounded randomized partial-window factual identity; no claim of arbitrary real missingness, learned semantic identity, or general continual learning"
+}
