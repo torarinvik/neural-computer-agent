@@ -2574,3 +2574,18 @@ rollout was rejected without changing live content or capacity. This is a
 small affine pressure test, not general continual learning. Evidence is
 archived in
 `session_records/sequence_working_memory_2026-08-02/external_recursive_candidate_promotion_verified_2026-08-10/`.
+
+The recursive promotion gate also survived the harder nonlinear partial and
+ambiguous stream. Across three seeds, four regimes were acquired from partial
+windows, contradictory evidence was quarantined and resolved once, recursive
+rollout errors stayed below `0.003`, and all prior slots remained retained.
+This remains bounded factual-memory evidence, not general continual learning.
+Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_partial_ambiguous_open_world_rollout_verified_2026-08-10/`.
+
+The same nonlinear stream now tolerates a bounded sparse noisy row without
+staging a new candidate: across three seeds, robust routing reused the existing
+slot, preserved partial/ambiguous quarantine behavior, and kept recursive
+rollout error below `0.003`. This is bounded robust factual routing, not learned
+noise adaptation or general continual learning. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_partial_ambiguous_noisy_robust_rollout_verified_2026-08-10/`.

@@ -578,6 +578,59 @@ def test_router_auto_grows_only_after_verified_candidate_promotion() -> None:
     assert rejected_router.bank.content_digest() == before_rejection
 
 
+def test_router_robust_inlier_resolution_tolerates_sparse_noise_but_blocks_contradiction() -> None:
+    source = _affine_observation(4)
+    context = torch.tensor([1.0, 0.0, 0.0, 0.0])
+    bank = ExternalTransitionModelBank(
+        2,
+        1,
+        4,
+        model_family="affine_sufficient_statistics_v1",
+        affine_ridge=1e-7,
+    )
+    slot = bank.ensure_context(context)
+    bank.adaptation_step(
+        source,
+        context.unsqueeze(0).expand(source.state.shape[0], -1),
+        None,
+    )
+    encoder = ExternalTransitionContextEncoder(2, 1, hidden_width=8, context_width=4)
+    robust = ExternalOnlineTransitionContextRouter(
+        bank,
+        encoder,
+        match_tolerance=1e-8,
+        match_margin=0.0,
+        minimum_inlier_fraction=0.75,
+        outlier_tolerance=0.5,
+        admission_observations=4,
+    )
+    sparse_noise = ExternalTransitionObservation(
+        state=source.state,
+        intention=source.intention,
+        next_state=source.next_state.clone(),
+        confidence=source.confidence,
+    )
+    sparse_noise.next_state[0] += 1.0
+    assert robust._best_slot(sparse_noise) is not None
+
+    contradiction = ExternalTransitionObservation(
+        state=source.state,
+        intention=source.intention,
+        next_state=source.next_state.clone(),
+        confidence=source.confidence,
+    )
+    contradiction.next_state[:2] += 1.0
+    assert robust._best_slot(contradiction) is None
+
+    restored = ExternalOnlineTransitionContextRouter.from_payload(
+        robust.state_payload()
+    )
+    assert restored.configuration()["minimum_inlier_fraction"] == pytest.approx(0.75)
+    assert restored.configuration()["outlier_tolerance"] == pytest.approx(0.5)
+    assert restored._best_slot(sparse_noise) is not None
+    assert slot == 0
+
+
 def test_bank_selects_smallest_verified_model_family_without_mutating_candidates() -> None:
     torch.manual_seed(1303)
     observation = _affine_observation(12)

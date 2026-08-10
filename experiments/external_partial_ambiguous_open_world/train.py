@@ -37,6 +37,7 @@ from experiments.external_nonlinear_drift_learned_context.train import (
     TRAIN_ROWS,
     _fixture,
     _row,
+    _transition,
 )
 from neural_computer import (
     AmodalCognitiveController,
@@ -45,6 +46,7 @@ from neural_computer import (
     ExternalTransitionContextEncoder,
     ExternalTransitionModelBank,
     ExternalTransitionObservation,
+    ExternalTransitionRollout,
 )
 
 CONTEXT_WIDTH = 12
@@ -58,6 +60,10 @@ PROVISIONAL_TOLERANCE = LOSS_THRESHOLD
 # small numerical margin after copy-on-write bank serialization.
 PREDICTION_TOLERANCE = 0.03
 QUARANTINE_CAPACITY = ADMISSION_ROWS
+ROLLOUT_HORIZON = 3
+ROLLOUT_TOLERANCE = 0.003
+ROBUST_MINIMUM_INLIER_FRACTION = 0.75
+ROBUST_OUTLIER_TOLERANCE = 0.5
 
 
 def _digest(module: torch.nn.Module) -> str:
@@ -78,6 +84,24 @@ def _error(
 ) -> float:
     context_batch = context.unsqueeze(0).expand(observation.state.shape[0], -1)
     return float(bank.loss(observation, context_batch).detach())
+
+
+def _rollout(seed: int, regime: int) -> ExternalTransitionRollout:
+    """Build a verifier-owned recursive probe from the opaque regime fixture."""
+
+    del seed
+    initial = torch.tensor([0.17, -0.23])
+    intentions = torch.tensor([[0.31], [-0.44], [0.22]])
+    state = initial.unsqueeze(0)
+    expected: list[torch.Tensor] = []
+    for intention in intentions:
+        state = _transition(regime, state, intention.unsqueeze(0))
+        expected.append(state[0])
+    return ExternalTransitionRollout(
+        initial_state=initial,
+        intentions=intentions,
+        expected_states=torch.stack(expected),
+    )
 
 
 def _new_bank(capacity: int) -> ExternalTransitionModelBank:
@@ -209,7 +233,9 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
         bank,
         encoder,
         match_tolerance=MATCH_TOLERANCE,
-        match_margin=0.005,
+        match_margin=0.0,
+        minimum_inlier_fraction=ROBUST_MINIMUM_INLIER_FRACTION,
+        outlier_tolerance=ROBUST_OUTLIER_TOLERANCE,
         continuation_tolerance=MATCH_TOLERANCE,
         provisional_continuation_tolerance=PROVISIONAL_TOLERANCE,
         provisional_match_margin=0.001,
@@ -257,6 +283,8 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
                 retained_names=tuple(committed_contexts),
             ),
             prediction_tolerance=PREDICTION_TOLERANCE,
+            heldout_rollout=_rollout(seed, NAMES.index(name)),
+            rollout_error_tolerance=ROLLOUT_TOLERANCE,
         )
         if not receipt.accepted or receipt.slot_index is None:
             raise RuntimeError(f"{name} promotion failed: {receipt.reason}")
@@ -268,6 +296,7 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
                 "name": name,
                 "slot_id": bank.slot_id_at(receipt.slot_index),
                 "heldout_error": _error(bank, heldout[name], context),
+                "rollout_error": receipt.heldout_rollout_error,
                 "address_version": router.address_adapter.version
                 if router.address_adapter is not None
                 else None,
@@ -382,6 +411,8 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
         ),
         prediction_tolerance=PREDICTION_TOLERANCE,
         candidate_index=0,
+        heldout_rollout=_rollout(seed, 1),
+        rollout_error_tolerance=ROLLOUT_TOLERANCE,
     )
     if not first_receipt.accepted or first_receipt.slot_index is None:
         raise RuntimeError(f"first concurrent promotion failed: {first_receipt.reason}")
@@ -393,6 +424,7 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
             "name": NAMES[1],
             "slot_id": bank.slot_id_at(first_receipt.slot_index),
             "heldout_error": _error(bank, heldout[NAMES[1]], first_context),
+            "rollout_error": first_receipt.heldout_rollout_error,
             "address_version": router.address_adapter.version
             if router.address_adapter is not None
             else None,
@@ -409,6 +441,8 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
         ),
         prediction_tolerance=PREDICTION_TOLERANCE,
         candidate_index=0,
+        heldout_rollout=_rollout(seed, 2),
+        rollout_error_tolerance=ROLLOUT_TOLERANCE,
     )
     if not second_receipt.accepted or second_receipt.slot_index is None:
         retained_errors = {
@@ -427,6 +461,7 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
             "name": NAMES[2],
             "slot_id": bank.slot_id_at(second_receipt.slot_index),
             "heldout_error": _error(bank, heldout[NAMES[2]], second_context),
+            "rollout_error": second_receipt.heldout_rollout_error,
             "address_version": router.address_adapter.version
             if router.address_adapter is not None
             else None,
@@ -461,6 +496,8 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
             retained_names=tuple(committed_contexts),
         ),
         prediction_tolerance=PREDICTION_TOLERANCE,
+        heldout_rollout=_rollout(seed, 3),
+        rollout_error_tolerance=ROLLOUT_TOLERANCE,
     )
     if not final_receipt.accepted or final_receipt.slot_index is None:
         candidate_error = float(
@@ -476,7 +513,9 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
         )
         raise RuntimeError(
             f"final regime promotion failed: {final_receipt.reason}; "
-            f"candidate_error={candidate_error}; statuses={dict(final_statuses)}; "
+            f"candidate_error={candidate_error}; "
+            f"rollout_error={final_receipt.heldout_rollout_error}; "
+            f"statuses={dict(final_statuses)}; "
             f"evidence={router.provisional_evidence_count(0)}"
         )
     committed_contexts[NAMES[3]] = final_context
@@ -487,6 +526,7 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
             "name": NAMES[3],
             "slot_id": bank.slot_id_at(final_receipt.slot_index),
             "heldout_error": _error(bank, heldout[NAMES[3]], final_context),
+            "rollout_error": final_receipt.heldout_rollout_error,
             "address_version": router.address_adapter.version
             if router.address_adapter is not None
             else None,
@@ -516,6 +556,26 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
                 "heldout_error": _error(bank, heldout[name], committed_contexts[name]),
             }
         )
+
+    noisy_revisit = ExternalTransitionObservation(
+        state=observations[NAMES[0]].state[ADMISSION_ROWS : 2 * ADMISSION_ROWS],
+        intention=observations[NAMES[0]].intention[ADMISSION_ROWS : 2 * ADMISSION_ROWS],
+        next_state=observations[NAMES[0]].next_state[
+            ADMISSION_ROWS : 2 * ADMISSION_ROWS
+        ].clone(),
+        confidence=torch.ones(ADMISSION_ROWS),
+    )
+    noisy_revisit.next_state[0, 0] += 1.1
+    noisy_statuses, _noisy_results = _consume_rows(
+        router,
+        noisy_revisit,
+        count=ADMISSION_ROWS,
+    )
+    noisy_reuse = (
+        noisy_statuses["matched"] >= 1
+        and noisy_statuses["capacity"] == 0
+        and router.bank.context_count == REGIME_COUNT
+    )
 
     # Corruption control uses a copy with one extra capacity slot so the
     # held-out rejection gate—not capacity exhaustion—decides the result.
@@ -560,9 +620,15 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
             float(record["heldout_error"]) < PREDICTION_TOLERANCE
             for record in acquisition_records
         ),
+        "all_recursive_rollouts_pass": all(
+            record["rollout_error"] is not None
+            and float(record["rollout_error"]) <= ROLLOUT_TOLERANCE
+            for record in acquisition_records
+        ),
         "revisits_match_existing_slots": all(
             bool(record["matched_existing_slot"]) for record in revisit_records
         ),
+        "sparse_noise_reuses_existing_slot": noisy_reuse,
         "all_prior_slots_retained": prior_retained,
         "corruption_rejected_without_bank_write": corruption_rejected,
         "no_raw_candidate_rows_retained": (
@@ -604,6 +670,10 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
             "model_family": RANDOM_FEATURE_FAMILY,
             "address_update": "copy_on_write_current_bundle_anchor_separation_v1",
             "evidence_policy": "streaming_statistics_once_then_bounded_quarantine",
+            "recursive_rollout_horizon": ROLLOUT_HORIZON,
+            "recursive_rollout_error_tolerance": ROLLOUT_TOLERANCE,
+            "robust_minimum_inlier_fraction": ROBUST_MINIMUM_INLIER_FRACTION,
+            "robust_outlier_tolerance": ROBUST_OUTLIER_TOLERANCE,
         },
         "gates": gates,
         "promoted": all(gates.values()),
@@ -616,6 +686,10 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
             "resolution_statuses": dict(resolve_statuses),
         },
         "revisits": revisit_records,
+        "noisy_revisit": {
+            "statuses": dict(noisy_statuses),
+            "reused_existing_slot": noisy_reuse,
+        },
         "corruption_control": {
             "statuses": dict(corruption_statuses),
             "accepted": corruption_receipt.accepted,

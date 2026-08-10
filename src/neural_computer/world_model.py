@@ -4985,6 +4985,8 @@ class ExternalOnlineTransitionContextRouter:
         *,
         match_tolerance: float = 0.05,
         match_margin: float = 0.01,
+        minimum_inlier_fraction: float = 1.0,
+        outlier_tolerance: float | None = None,
         admission_observations: int = 12,
         max_contexts: int | None = None,
         auto_grow: bool = False,
@@ -5034,6 +5036,14 @@ class ExternalOnlineTransitionContextRouter:
             raise ValueError("online context match tolerance cannot be negative")
         if match_margin < 0.0:
             raise ValueError("online context match margin cannot be negative")
+        if not 0.0 < minimum_inlier_fraction <= 1.0:
+            raise ValueError("online context minimum inlier fraction must lie in (0, 1]")
+        if outlier_tolerance is not None and outlier_tolerance < 0.0:
+            raise ValueError("online context outlier tolerance cannot be negative")
+        if minimum_inlier_fraction < 1.0 and outlier_tolerance is None:
+            raise ValueError(
+                "robust routing requires an explicit outlier tolerance"
+            )
         if continuation_tolerance is not None and continuation_tolerance < 0.0:
             raise ValueError("online context continuation tolerance cannot be negative")
         if (
@@ -5117,6 +5127,10 @@ class ExternalOnlineTransitionContextRouter:
         self.context_encoder = context_encoder
         self.match_tolerance = float(match_tolerance)
         self.match_margin = float(match_margin)
+        self.minimum_inlier_fraction = float(minimum_inlier_fraction)
+        self.outlier_tolerance = (
+            None if outlier_tolerance is None else float(outlier_tolerance)
+        )
         self.admission_observations = int(admission_observations)
         self.max_contexts = max_contexts
         self.auto_grow = auto_grow
@@ -5235,6 +5249,8 @@ class ExternalOnlineTransitionContextRouter:
             "context_width": self.bank.context_width,
             "match_tolerance": self.match_tolerance,
             "match_margin": self.match_margin,
+            "minimum_inlier_fraction": self.minimum_inlier_fraction,
+            "outlier_tolerance": self.outlier_tolerance,
             "admission_observations": self.admission_observations,
             "max_contexts": self.max_contexts,
             "auto_grow": self.auto_grow,
@@ -5521,9 +5537,7 @@ class ExternalOnlineTransitionContextRouter:
                 observation.intention,
                 context_batch,
             )
-            error = float(
-                (prediction - observation.next_state).square().mean().detach()
-            )
+            error = self._robust_error(prediction, observation.next_state)
             candidates.append((error, index, context))
         route_query_vector: torch.Tensor | None = None
         if self.route_query is None:
@@ -5587,7 +5601,22 @@ class ExternalOnlineTransitionContextRouter:
             observation.intention,
             context_batch,
         )
-        return float((prediction - observation.next_state).square().mean().detach())
+        return self._robust_error(prediction, observation.next_state)
+
+    def _robust_error(
+        self,
+        prediction: torch.Tensor,
+        observed: torch.Tensor,
+    ) -> float:
+        """Score a bundle while optionally rejecting sparse contradictions."""
+
+        errors = (prediction - observed).square().mean(dim=-1)
+        if self.outlier_tolerance is None:
+            return float(errors.mean().detach())
+        inliers = errors <= self.outlier_tolerance
+        if float(inliers.float().mean()) < self.minimum_inlier_fraction:
+            return float("inf")
+        return float(errors[inliers].mean().detach())
 
     def _record_sparse_evidence(
         self,
@@ -5773,9 +5802,7 @@ class ExternalOnlineTransitionContextRouter:
         best_error = float("inf")
         for model in candidate.models().values():
             prediction = model(observation.state, observation.intention)
-            error = float(
-                (prediction - observation.next_state).square().mean().detach()
-            )
+            error = self._robust_error(prediction, observation.next_state)
             if (
                 self.evidence_evaluator is not None
                 and candidate.evidence_count >= self.evidence_gate_min_evidence
@@ -6743,6 +6770,14 @@ class ExternalOnlineTransitionContextRouter:
             encoder,
             match_tolerance=float(configuration["match_tolerance"]),
             match_margin=float(configuration["match_margin"]),
+            minimum_inlier_fraction=float(
+                configuration.get("minimum_inlier_fraction", 1.0)
+            ),
+            outlier_tolerance=(
+                None
+                if configuration.get("outlier_tolerance") is None
+                else float(configuration["outlier_tolerance"])
+            ),
             admission_observations=int(configuration["admission_observations"]),
             max_contexts=(
                 None

@@ -6641,3 +6641,52 @@ verification must remain reliable without replaying old observations.
 
 Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_recursive_candidate_promotion_verified_2026-08-10/`.
+
+## Recursive promotion under partial and ambiguous nonlinear evidence (2026-08-10)
+
+The recursive promotion invariant was applied to the existing harder
+open-world stream rather than only to the affine smoke test. Four nonlinear
+regimes arrived through partial windows; two candidates were isolated
+concurrently, a contradictory bundle was quarantined outside candidate state,
+and later opaque factual evidence resolved it once. Every candidate promotion
+also passed a three-step verifier-owned rollout probe.
+
+Across three seeds, maximum recursive rollout error was `0.000845`, `0.001634`,
+and `0.000526`, under the `0.003` gate. The controller and context encoder
+remained frozen, model updates were streaming sufficient-statistics updates,
+old-regime replay was zero, prior slots remained byte-stable, and corruption
+was rejected without a bank write.
+
+This strengthens the bounded claim from “partial identity plus one-step
+promotion” to “partial identity plus recursive promotion verification.” It
+still does not establish general continual learning: the evidence is synthetic,
+the nonlinear basis is fixed, the stream is finite, and noisy multimodal
+candidate formation remains the next bottleneck.
+
+Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_partial_ambiguous_open_world_rollout_verified_2026-08-10/`.
+
+## Robust inlier routing for sparse noisy evidence (2026-08-10)
+
+The online factual router now has an explicit opt-in robust aggregation mode.
+`minimum_inlier_fraction` and `outlier_tolerance` are versioned configuration,
+persist through checkpoints, and apply to committed-slot routing and provisional
+candidate continuation. The default remains the legacy mean-error behavior for
+checkpoint compatibility. In robust mode, a candidate is eligible only when
+enough rows fall within the configured inlier tolerance; the route score is
+computed over those inliers, so a bounded sparse outlier cannot dominate while
+a larger contradiction cannot be silently averaged into identity.
+
+The nonlinear partial/ambiguous stream was rerun across three seeds with a
+`0.75` inlier fraction and `0.5` outlier tolerance. A deliberately corrupted
+row in a partial revisit reused the existing slot on every seed without
+capacity growth or candidate staging. The prior quarantine, recursive rollout,
+retention, corruption, frozen-controller, and zero-replay gates remained true.
+
+This promotes robust routing infrastructure under a fixed threshold, not
+learned noise adaptation. The next bottleneck is learning reliability or delay
+from verifier outcomes while preventing that plastic state from changing old
+identities.
+
+Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_partial_ambiguous_noisy_robust_rollout_verified_2026-08-10/`.

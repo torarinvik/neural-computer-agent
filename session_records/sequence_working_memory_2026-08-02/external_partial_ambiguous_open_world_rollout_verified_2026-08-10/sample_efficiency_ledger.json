@@ -1,0 +1,28 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "external_partial_ambiguous_open_world_rollout_verified",
+  "decision": "promote",
+  "claim_boundary": "three-seed recursive-gated nonlinear factual identity under partial and ambiguous evidence; not general continual learning",
+  "seeds": [82501, 82502, 82503],
+  "accounting": {
+    "unique_verifier_bits_per_seed": 512,
+    "unique_logical_lifetimes_per_seed": 512,
+    "context_encoder_optimizer_updates": 0,
+    "address_adapter_optimizer_updates": 60,
+    "model_statistics_updates": 16,
+    "replayed_examples": 0,
+    "old_regime_replay": 0,
+    "controller_optimizer_updates": 0,
+    "recursive_rollout_horizon": 3,
+    "recursive_rollout_error_threshold": 0.003
+  },
+  "gates": {
+    "all_three_seeds_promoted": true,
+    "partial_and_ambiguous_evidence_controls": true,
+    "all_recursive_rollouts_pass": true,
+    "all_prior_slots_retained": true,
+    "corruption_rejected_without_bank_write": true,
+    "controller_frozen": true,
+    "exact_router_persistence": true
+  }
+}
