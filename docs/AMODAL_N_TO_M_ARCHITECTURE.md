@@ -4440,6 +4440,14 @@ existential opaque predicate: the best verifier score for any member is the
 terminal objective. This supports goal fragments without assigning semantics
 to latent coordinates.
 
+The planner also exposes an active disambiguation primitive. When several
+factual slots remain compatible with the current evidence, it can select the
+opaque intention whose predicted consequences disagree most across those
+slots. The caller executes that intention and routes the observed consequence
+through the ordinary verifier; no task policy or slot label is injected. This
+is the model-based form of probe addressing and remains a diagnostic
+capability until it passes a causal probe-versus-random control.
+
 The first matched two-seed pressure test froze the controller, trained the
 external model for `1,200` source updates, then acquired three target goals
 with zero target optimizer updates and zero replay. All target and retention

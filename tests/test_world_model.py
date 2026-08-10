@@ -1899,6 +1899,41 @@ def test_planner_goal_set_uses_learned_verifier_as_existential_predicate() -> No
     assert result.scores.item() < -0.9
 
 
+def test_planner_selects_active_intention_that_disambiguates_model_slots() -> None:
+    bank = ExternalTransitionModelBank(
+        1,
+        1,
+        2,
+        model_family="affine_sufficient_statistics_v1",
+        affine_ridge=1e-7,
+    )
+    contexts = (torch.tensor([1.0, 0.0]), torch.tensor([0.0, 1.0]))
+    for index, context in enumerate(contexts):
+        slot = bank.ensure_context(context)
+        state = torch.tensor([[0.0], [0.0]])
+        intention = torch.tensor([[0.0], [1.0]])
+        next_state = (
+            torch.zeros_like(intention) if index == 0 else intention.clone()
+        )
+        bank.adaptation_step(
+            ExternalTransitionObservation(state, intention, next_state),
+            bank.context_at(slot).unsqueeze(0).expand(2, -1),
+            None,
+        )
+
+    planner = ExternalModelBasedPlanner(bank)
+    result = planner.select_disambiguating_intention(
+        bank,
+        torch.zeros(1, 1),
+        torch.tensor([[0.0], [1.0]]),
+    )
+
+    assert result.selected_intention_index == 1
+    assert result.selected_intention.item() == 1.0
+    assert result.disagreement_scores[1] > result.disagreement_scores[0]
+    assert result.predicted_next_states.shape == (2, 2, 1)
+
+
 def test_context_resolver_reuses_consistent_facts_and_allocates_new_regime() -> None:
     memory = ExternalTransitionMemory(1, 1, context_width=2)
     resolver = ExternalContextAddressResolver(2, address_seed=1204)
