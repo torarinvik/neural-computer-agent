@@ -6408,3 +6408,29 @@ as the current replay-free default for this boundary.
 
 Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_factored_nonlinear_drift_promoted_2026-08-10/`.
+
+## Factored external-memory lifecycle (2026-08-10)
+
+The canonical factored router now owns the external residual bank's lifecycle
+boundary. A learned residual model may declare a bounded capacity; the router
+keeps that capacity synchronized with its admission limit, exposes
+retention-verified growth, delegates independently gated storage-compression
+selection, and evicts by stable logical slot ID while repairing its local route
+cache. The router and bank therefore cannot silently disagree about whether a
+slot exists or which physical index represents it.
+
+The five-seed pressure test in
+`experiments/external_factored_memory_lifecycle/` admitted two regimes at
+capacity two, grew to four, admitted two more, selected and round-tripped
+`float16_stats` compression, evicted middle slot `1`, and admitted a fifth
+regime as slot `4`. Every seed preserved and routed all surviving regimes,
+including after persistence. No controller, base, or context-encoder updates
+or old-regime replay were used.
+
+This removes a concrete implementation bottleneck, but it is not automatic
+memory management. Capacity growth, compression, and eviction are still
+caller-selected and verifier-gated; the next gap is learned context/version
+formation under missing, contradictory, and genuinely open-world evidence.
+
+Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_factored_memory_lifecycle_promoted_2026-08-10/`.

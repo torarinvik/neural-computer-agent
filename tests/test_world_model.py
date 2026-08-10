@@ -2002,6 +2002,75 @@ def test_factored_random_feature_residual_is_replay_free_and_persistent() -> Non
     assert restored.residual_bank.models[0].sample_count.item() == 4
 
 
+def test_factored_router_owns_verified_growth_compression_and_stable_eviction() -> None:
+    torch.manual_seed(777)
+    model = ExternalFactoredTransitionModel(
+        1,
+        1,
+        2,
+        hidden_width=8,
+        residual_mode=EXTERNAL_FACTORED_TRANSITION_LEARNED_RESIDUAL_MODE,
+        residual_model_family=EXTERNAL_TRANSITION_RANDOM_FEATURE_MODEL_FAMILY,
+        residual_random_feature_width=32,
+        residual_random_feature_seed=777,
+        residual_ridge=0.01,
+        residual_capacity=1,
+    )
+    for parameter in model.base.parameters():
+        parameter.data.zero_()
+    model.freeze_base()
+    router = ExternalFactoredTransitionRouter(
+        model,
+        ExternalTransitionContextEncoder(1, 1, hidden_width=8, context_width=2),
+        max_contexts=1,
+        match_tolerance=0.005,
+        match_margin=0.0,
+    )
+
+    def observation(offset: float, values: torch.Tensor) -> ExternalTransitionObservation:
+        return ExternalTransitionObservation(
+            state=values,
+            intention=torch.ones_like(values),
+            next_state=0.2 * values + offset,
+        )
+
+    def rows(item: ExternalTransitionObservation) -> list[ExternalTransitionObservation]:
+        return [
+            ExternalTransitionObservation(
+                state=item.state[index : index + 1],
+                intention=item.intention[index : index + 1],
+                next_state=item.next_state[index : index + 1],
+            )
+            for index in range(item.state.shape[0])
+        ]
+
+    source = observation(0.0, torch.tensor([[-1.0], [0.0], [1.0]]))
+    source_heldout = observation(0.0, torch.tensor([[-0.5], [0.5]]))
+    target = observation(1.0, torch.tensor([[-1.0], [0.0], [1.0]]))
+    target_heldout = observation(1.0, torch.tensor([[-0.5], [0.5]]))
+    assert router.route_bundle(rows(source)).status == "staged"
+    assert router.promote_staged_candidate(source_heldout, lambda _candidate: True).accepted
+
+    grown = router.grow_verified(2, lambda candidate: candidate.context_count == 1)
+    assert grown.accepted
+    assert router.max_contexts == 2
+    assert router.model.residual_capacity == 2
+    assert router.route_bundle(rows(target)).status == "staged"
+    assert router.promote_staged_candidate(target_heldout, lambda _candidate: True).accepted
+
+    compressed = router.select_compression_verified(
+        ["float16_stats"],
+        retention_probe=lambda candidate: candidate.context_count == 2,
+    )
+    assert compressed.accepted
+    evicted = router.evict_verified_id(
+        0,
+        lambda candidate: candidate.slot_ids in {(0, 1), (1,)},
+    )
+    assert evicted.accepted
+    assert router.slot_ids == (1,)
+
+
 def test_factored_router_stages_promotes_and_reuses_opaque_context() -> None:
     model = ExternalFactoredTransitionModel(1, 1, 2, hidden_width=8)
     model.freeze_base()

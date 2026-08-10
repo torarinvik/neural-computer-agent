@@ -18,6 +18,9 @@ from .world_model import (
     ExternalTransitionMemory,
     ExternalTransitionModel,
     ExternalTransitionModelBank,
+    ExternalTransitionModelCompressionSelection,
+    ExternalTransitionModelEvictionReceipt,
+    ExternalTransitionModelGrowthReceipt,
     ExternalTransitionObservation,
 )
 
@@ -63,6 +66,7 @@ class ExternalFactoredTransitionModel(nn.Module):
         residual_ridge: float = 1e-5,
         residual_random_feature_width: int = 128,
         residual_random_feature_seed: int = 0,
+        residual_capacity: int | None = None,
     ) -> None:
         super().__init__()
         if min(state_width, intention_width, context_width, hidden_width) < 1:
@@ -86,6 +90,8 @@ class ExternalFactoredTransitionModel(nn.Module):
             raise ValueError("factored residual ridge must be positive")
         if residual_random_feature_width < 1:
             raise ValueError("factored residual random-feature width must be positive")
+        if residual_capacity is not None and residual_capacity < 1:
+            raise ValueError("factored residual capacity must be positive")
         if residual_model_family not in {
             EXTERNAL_TRANSITION_NONLINEAR_MODEL_FAMILY,
             EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY,
@@ -99,6 +105,9 @@ class ExternalFactoredTransitionModel(nn.Module):
         self.residual_ridge = float(residual_ridge)
         self.residual_random_feature_width = int(residual_random_feature_width)
         self.residual_random_feature_seed = int(residual_random_feature_seed)
+        self.residual_capacity = (
+            None if residual_capacity is None else int(residual_capacity)
+        )
         self.base = ExternalTransitionModel(
             self.state_width,
             self.intention_width,
@@ -125,6 +134,7 @@ class ExternalFactoredTransitionModel(nn.Module):
                 adaptation_learning_rate=self.residual_learning_rate,
                 random_feature_width=self.residual_random_feature_width,
                 random_feature_seed=self.residual_random_feature_seed,
+                capacity=self.residual_capacity,
             )
         )
 
@@ -142,6 +152,7 @@ class ExternalFactoredTransitionModel(nn.Module):
             "residual_ridge": self.residual_ridge,
             "residual_random_feature_width": self.residual_random_feature_width,
             "residual_random_feature_seed": self.residual_random_feature_seed,
+            "residual_capacity": self.residual_capacity,
             "representation": "frozen_shared_base_plus_opaque_context_residual_v2",
             "behavior": "derived_by_external_search_not_stored_policy_v1",
             "base": self.base.configuration(),
@@ -425,6 +436,11 @@ class ExternalFactoredTransitionModel(nn.Module):
             residual_random_feature_seed=int(
                 configuration.get("residual_random_feature_seed", 0)
             ),
+            residual_capacity=(
+                None
+                if configuration.get("residual_capacity") is None
+                else int(configuration["residual_capacity"])
+            ),
         )
         cls._load_state(model.base, base_state)
         residual_store_state = {
@@ -536,6 +552,17 @@ class ExternalFactoredTransitionRouter:
             raise ValueError("factored router admission observations must be positive")
         if max_contexts is not None and max_contexts < 1:
             raise ValueError("factored router capacity must be positive")
+        bank_capacity = (
+            None if model.residual_bank is None else model.residual_bank.capacity
+        )
+        if max_contexts is None and bank_capacity is not None:
+            max_contexts = bank_capacity
+        elif (
+            max_contexts is not None
+            and bank_capacity is not None
+            and max_contexts != bank_capacity
+        ):
+            raise ValueError("factored router and residual-bank capacities differ")
         if (
             not isinstance(residual_adaptation_updates, int)
             or isinstance(residual_adaptation_updates, bool)
@@ -573,6 +600,69 @@ class ExternalFactoredTransitionRouter:
     @property
     def pending_observations(self) -> int:
         return sum(item.state.shape[0] for item in self._pending)
+
+    def grow_verified(
+        self,
+        destination_capacity: int,
+        retention_probe: Callable[[ExternalTransitionModelBank], bool],
+    ) -> ExternalTransitionModelGrowthReceipt:
+        """Grow the factored router and external bank as one verified transaction."""
+
+        if self.max_contexts is None:
+            raise ValueError("factored router requires an explicit maximum for growth")
+        if self.model.residual_bank is None:
+            raise ValueError("factored growth requires a learned residual bank")
+        if self.model.residual_bank.capacity != self.max_contexts:
+            raise ValueError("factored router and residual-bank capacities are out of sync")
+        receipt = self.model.residual_bank.grow_verified(
+            destination_capacity,
+            retention_probe,
+        )
+        if receipt.accepted:
+            self.max_contexts = destination_capacity
+            self.model.residual_capacity = destination_capacity
+        return receipt
+
+    def evict_verified_id(
+        self,
+        slot_id: int,
+        retention_probe: Callable[[ExternalTransitionModelBank], bool],
+    ) -> ExternalTransitionModelEvictionReceipt:
+        """Evict one logical residual slot and repair the factored route cache."""
+
+        if self.model.residual_bank is None:
+            raise ValueError("factored eviction requires a learned residual bank")
+        if tuple(self._slot_ids) != self.model.residual_bank.slot_ids:
+            raise RuntimeError("factored router and residual-bank slot addresses differ")
+        receipt = self.model.residual_bank.evict_verified_id(
+            slot_id,
+            retention_probe,
+        )
+        if receipt.accepted:
+            try:
+                index = self._slot_ids.index(slot_id)
+            except ValueError as error:
+                raise RuntimeError(
+                    "factored eviction removed an unknown router slot"
+                ) from error
+            del self._slot_ids[index]
+            del self._contexts[index]
+        return receipt
+
+    def select_compression_verified(
+        self,
+        codecs: Sequence[torch.dtype | str],
+        *,
+        retention_probe: Callable[[ExternalTransitionModelBank], bool] | None = None,
+    ) -> ExternalTransitionModelCompressionSelection:
+        """Select the smallest retained storage codec for external residuals."""
+
+        if self.model.residual_bank is None:
+            raise ValueError("factored compression requires a learned residual bank")
+        return self.model.residual_bank.select_compression_verified(
+            codecs,
+            retention_probe=retention_probe,
+        )
 
     @staticmethod
     def _clone_observation(
