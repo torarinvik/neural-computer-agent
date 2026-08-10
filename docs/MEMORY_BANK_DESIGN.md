@@ -6104,3 +6104,58 @@ plant can bind. The plant's side is done at 0.9983.
 
 Probe 235 is `bool_compose.py --iterate --bind-params`, oracle and
 learned-reader arms.
+
+**F136 (probe 236). Two-phase training is a null, and worse than joint:
+0.4973 per-bit against joint's 0.5283 (chance 0.5000). Freezing an
+oracle-built plant does not give the reader a learnable target.** Both
+phase splits (50% and 75% of updates on oracle entries before
+freezing) leave own-entry and stranger-entry accuracy identical to
+three decimals.
+
+The reason is visible in F135's own mechanism. Binding requires the
+entry to land in a NARROW region of entry space — the frozen plant
+decodes it through one linear map into parameter vectors it has
+learned to apply exactly. Hitting that region from observations, with
+only task loss as a signal, is a much harder search than the
+re-attention architecture posed, where the plant could extract partial
+information in many ways.
+
+**F137 (probe 237). And the depth ladder confirms that trade directly:
+under the OLD re-attention architecture reading is weakly alive and
+NON-monotonic in depth, peaking at 2 before collapsing at 4.**
+
+| depth (re-attend, learned reader, 256 worlds) | own | stranger | gap |
+| ---: | ---: | ---: | ---: |
+| 1 (seed 69316) | 0.6096 | 0.5794 | +0.0302 |
+| 1 (seed 69317) | 0.6123 | 0.5860 | +0.0263 |
+| 2 | 0.6674 | 0.6222 | **+0.0453** |
+| 4 | — | — | +0.0000 |
+
+Not a smooth decay, so gradient reach alone does not explain it — a
+knee between 2 and 4 fits representational collapse better. But the
+more useful reading is the comparison ACROSS architectures:
+
+| architecture | execution ceiling (oracle) | reading gap (learned) |
+| --- | ---: | ---: |
+| re-attend per step | 0.5548 | +0.03 to +0.05 |
+| bind once (F135) | **0.9983** | **+0.0000** |
+
+**The two architectures fail in opposite places, and neither is
+strictly better yet.** Re-attention reads a little and executes not at
+all; binding executes almost perfectly and reads not at all. The
+mechanism explains both: re-attention offers many partial paths to
+use an entry (easy to learn, impossible to compound), binding offers
+one exact path (impossible to find by search, perfect once found).
+
+That is a genuinely useful diagnosis rather than a defeat, because it
+names what to build: keep binding's execution and give the reader a
+route to the narrow target. The distillation arm decides which half
+is at fault — train the reader to match the oracle entry directly (a
+privileged target, so a DIAGNOSTIC and not a mechanism), then evaluate
+task performance through the frozen plant using reader entries. If
+performance jumps toward 0.99, the reader is capable and only the
+training signal is missing; if it does not, the reader or its inputs
+cannot represent what binding needs, and the entry interface itself
+has to change.
+
+Probe 236 is `--two-phase 0.5/0.75`; probe 237 is the depth ladder.
