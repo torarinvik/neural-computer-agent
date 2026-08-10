@@ -17,6 +17,7 @@ from neural_computer import (
     ExternalModelBasedPlanner,
     ExternalTransitionModelBank,
     ExternalTransitionObservation,
+    ExternalTransitionRollout,
 )
 
 STATE_WIDTH = 8
@@ -27,6 +28,7 @@ POSITION_COUNT = 8
 SOURCE_UPDATES = 1200
 TARGET_UPDATES = 300
 LOSS_THRESHOLD = 0.01
+ROLLOUT_ERROR_THRESHOLD = 0.05
 REGIME_DELTAS = ((-1, 1), (-2, 2), (-3, 3), (-4, 4))
 REGIME_TARGETS = (
     ((0, 3), (3, 0), (1, 4)),
@@ -114,19 +116,30 @@ def _train_slot(
     return final_loss, updates
 
 
+def _execute_plan_path(
+    intentions: torch.Tensor,
+    intention_codes: torch.Tensor,
+    start: int,
+    deltas: tuple[int, int],
+) -> list[int]:
+    position = start
+    path = [position]
+    for intention in intentions:
+        action = int(
+            torch.linalg.vector_norm(intention_codes - intention, dim=-1).argmin()
+        )
+        position = min(POSITION_COUNT - 1, max(0, position + deltas[action]))
+        path.append(position)
+    return path
+
+
 def _execute_plan(
     intentions: torch.Tensor,
     intention_codes: torch.Tensor,
     start: int,
     deltas: tuple[int, int],
 ) -> int:
-    position = start
-    for intention in intentions:
-        action = int(
-            torch.linalg.vector_norm(intention_codes - intention, dim=-1).argmin()
-        )
-        position = min(POSITION_COUNT - 1, max(0, position + deltas[action]))
-    return position
+    return _execute_plan_path(intentions, intention_codes, start, deltas)[-1]
 
 
 def _evaluate(
@@ -142,6 +155,7 @@ def _evaluate(
     predicted_final: list[int] = []
     expanded_nodes = 0
     latencies: list[float] = []
+    rollout_errors: list[float] = []
     for start, goal in targets:
         begun = time.perf_counter()
         result = planner.plan(
@@ -153,7 +167,19 @@ def _evaluate(
         )
         latencies.append(time.perf_counter() - begun)
         expanded_nodes += result.expanded_nodes
-        final = _execute_plan(result.intentions[0], intention_codes, start, deltas)
+        path = _execute_plan_path(result.intentions[0], intention_codes, start, deltas)
+        final = path[-1]
+        rollout = ExternalTransitionRollout(
+            initial_state=state_codes[start],
+            intentions=result.intentions[0],
+            expected_states=state_codes[torch.tensor(path[1:])],
+        )
+        rollout_errors.append(
+            planner.rollout_error(
+                rollout,
+                transition_context=context.unsqueeze(0),
+            )
+        )
         predicted_final.append(final)
         successes.append(final == goal)
     return {
@@ -162,6 +188,8 @@ def _evaluate(
         "predicted_final_positions": predicted_final,
         "expanded_nodes": expanded_nodes,
         "mean_latency_seconds": sum(latencies) / len(latencies),
+        "rollout_errors": rollout_errors,
+        "max_rollout_error": max(rollout_errors),
     }
 
 
@@ -211,6 +239,7 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
     all_fresh_mastery = True
     all_warm_faster = True
     all_prior_retained = True
+    all_multi_step_rollouts_verified = True
 
     for regime_index in range(1, len(REGIME_DELTAS)):
         context = contexts[regime_index]
@@ -249,6 +278,9 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
             context,
             REGIME_DELTAS[regime_index],
             REGIME_TARGETS[regime_index],
+        )
+        all_multi_step_rollouts_verified = all_multi_step_rollouts_verified and (
+            float(after["max_rollout_error"]) <= ROLLOUT_ERROR_THRESHOLD
         )
 
         fresh = _new_bank()
@@ -351,6 +383,7 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
         "all_prior_regimes_retained_and_byte_stable": all_prior_retained,
         "old_regime_replay_during_adaptation_zero": True,
         "planner_is_inference_only": True,
+        "all_multi_step_rollouts_verified": all_multi_step_rollouts_verified,
     }
     report = {
         "schema": "neural-computer.external-transition-model-compounding-pressure-test.v1",
@@ -368,6 +401,7 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
             "source_updates": SOURCE_UPDATES,
             "target_update_budget": TARGET_UPDATES,
             "loss_threshold": LOSS_THRESHOLD,
+            "rollout_error_threshold": ROLLOUT_ERROR_THRESHOLD,
             "policy": "none_external_transition_model_compounding_search_v1",
         },
         "gates": gates,

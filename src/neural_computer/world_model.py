@@ -44,6 +44,9 @@ if TYPE_CHECKING:
 EXTERNAL_TRANSITION_OBSERVATION_SCHEMA = (
     "neural-computer.external-transition-observation.v1"
 )
+EXTERNAL_TRANSITION_ROLLOUT_SCHEMA = (
+    "neural-computer.external-transition-rollout.v1"
+)
 EXTERNAL_TRANSITION_MODEL_SCHEMA = "neural-computer.external-transition-model.v1"
 EXTERNAL_TRANSITION_MEMORY_SCHEMA = "neural-computer.external-transition-memory.v1"
 EXTERNAL_CONTEXT_ADDRESS_RESOLVER_SCHEMA = (
@@ -209,6 +212,70 @@ class ExternalTransitionObservation:
                 raise ValueError("transition confidence must be finite")
             if bool(torch.any(self.confidence < 0)):
                 raise ValueError("transition confidence cannot be negative")
+        return self
+
+
+@dataclass(frozen=True)
+class ExternalTransitionRollout:
+    """Opaque held-out trajectory used to verify multi-step model behavior.
+
+    ``expected_states[step]`` is the observed state after applying
+    ``intentions[step]`` to the preceding state.  The model is rolled forward
+    recursively, so later errors include compounding error from earlier
+    predictions.  This is a verifier-owned probe; it is not retained as model
+    memory or exposed to the controller.
+    """
+
+    initial_state: torch.Tensor
+    intentions: torch.Tensor
+    expected_states: torch.Tensor
+    confidence: torch.Tensor | None = None
+    schema: str = EXTERNAL_TRANSITION_ROLLOUT_SCHEMA
+
+    @property
+    def horizon(self) -> int:
+        return int(self.intentions.shape[0])
+
+    def validate(
+        self,
+        *,
+        state_width: int,
+        intention_width: int,
+    ) -> ExternalTransitionRollout:
+        if self.schema != EXTERNAL_TRANSITION_ROLLOUT_SCHEMA:
+            raise ValueError("unsupported transition-rollout schema")
+        _validate_tensor(
+            self.initial_state,
+            name="rollout initial state",
+            ndim=1,
+            width=state_width,
+        )
+        _validate_tensor(
+            self.intentions,
+            name="rollout intentions",
+            ndim=2,
+            width=intention_width,
+        )
+        _validate_tensor(
+            self.expected_states,
+            name="rollout expected states",
+            ndim=2,
+            width=state_width,
+        )
+        if self.intentions.shape[0] < 1:
+            raise ValueError("transition rollout must contain one step")
+        if self.expected_states.shape[0] != self.intentions.shape[0]:
+            raise ValueError("rollout intentions and expected states differ")
+        if self.confidence is not None:
+            if self.confidence.shape not in (
+                (self.horizon,),
+                (self.horizon, 1),
+            ):
+                raise ValueError("rollout confidence must match the horizon")
+            if not bool(torch.isfinite(self.confidence).all()):
+                raise ValueError("rollout confidence must be finite")
+            if bool(torch.any(self.confidence < 0)):
+                raise ValueError("rollout confidence cannot be negative")
         return self
 
 
@@ -8522,6 +8589,63 @@ class ExternalModelBasedPlanner:
             raise TypeError("transition model does not expose contextual prediction")
         return predictor(state, intention, context)
 
+    @torch.no_grad()
+    def rollout_error(
+        self,
+        rollout: ExternalTransitionRollout,
+        *,
+        transition_context: torch.Tensor | None = None,
+    ) -> float:
+        """Measure recursive held-out trajectory error for this model.
+
+        Unlike one-step transition loss, this probe feeds each prediction into
+        the next step. It therefore measures deployed multi-step behavior,
+        including compounding error, without writing the probe into the model.
+        """
+
+        rollout.validate(
+            state_width=self.model.state_width,
+            intention_width=self.model.intention_width,
+        )
+        if transition_context is not None:
+            context_width = getattr(self.model, "context_width", None)
+            if not isinstance(context_width, int) or context_width < 1:
+                raise ValueError("transition model does not accept a context")
+            _validate_tensor(
+                transition_context,
+                name="transition_context",
+                ndim=2,
+                width=context_width,
+            )
+            if transition_context.shape != (1, context_width):
+                raise ValueError("rollout transition context must contain one row")
+
+        state = rollout.initial_state.unsqueeze(0)
+        expected = rollout.expected_states.to(state)
+        intentions = rollout.intentions.to(state)
+        if transition_context is not None:
+            transition_context = transition_context.to(state)
+        confidence = (
+            torch.ones(rollout.horizon, device=state.device, dtype=state.dtype)
+            if rollout.confidence is None
+            else rollout.confidence.reshape(-1).to(state)
+        )
+        predictions: list[torch.Tensor] = []
+        for step in range(rollout.horizon):
+            prediction = self._predict(
+                state,
+                intentions[step : step + 1],
+                transition_context,
+            )
+            predictions.append(prediction.squeeze(0))
+            state = prediction
+        errors = (torch.stack(predictions) - expected).square().mean(dim=-1)
+        return float(
+            (errors * confidence).sum()
+            .div(confidence.sum().clamp_min(1e-12))
+            .detach()
+        )
+
     def plan(
         self,
         state: torch.Tensor,
@@ -8941,6 +9065,7 @@ __all__ = [
     "EXTERNAL_TRANSITION_OBSERVATION_SCHEMA",
     "EXTERNAL_TRANSITION_PROBE_SCHEMA",
     "EXTERNAL_TRANSITION_RANDOM_FEATURE_MODEL_FAMILY",
+    "EXTERNAL_TRANSITION_ROLLOUT_SCHEMA",
     "ExternalContextAddressResolver",
     "ExternalContextResolution",
     "ExternalContextualEvidenceCalibrator",
@@ -8967,6 +9092,7 @@ __all__ = [
     "ExternalTransitionModelPriorSelectionReceipt",
     "ExternalTransitionObservation",
     "ExternalTransitionProbeResult",
+    "ExternalTransitionRollout",
     "GoalConditionedModelSelection",
     "ModelBasedPlanningResult",
 ]

@@ -2555,3 +2555,13 @@ rejected without a bank write, and controller/encoder pretraining/old-regime
 replay remained zero. This is bounded automatic external-memory growth, not
 unrestricted continual learning. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_open_world_auto_growth_promoted_2026-08-10/`.
+
+The policy-free transition-model compounding audit now also gates promotion on
+recursive held-out planner rollouts. Across three seeds, each adapted target
+reached deployed mastery, retained earlier models byte-for-byte, beat matched
+fresh learning, and stayed below `0.05` recursive rollout error. This closes a
+measurement weakness identified in the exported session: one-step model loss
+alone is not sufficient evidence of multi-step deployed capability. The result
+still covers one finite nested dynamics family, not general continual learning.
+Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_transition_model_compounding_rollout_verified_promoted_2026-08-10/`.

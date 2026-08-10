@@ -25,6 +25,7 @@ from neural_computer import (
     ExternalTransitionModelLifetimePolicy,
     ExternalTransitionModelPriorSelectionReceipt,
     ExternalTransitionObservation,
+    ExternalTransitionRollout,
     ExternalTransitionRouteMemory,
     ExternalTransitionRouteQuery,
     OpaqueCandidateGrowthRouter,
@@ -744,6 +745,37 @@ def test_planner_derives_behavior_by_search_and_accepts_variable_candidates() ->
     )
     assert shorter.intentions.shape == (1, 1, 1)
     assert shorter.intentions[0, 0, 0].item() == 2.0
+
+
+def test_planner_rollout_error_measures_recursive_heldout_behavior() -> None:
+    planner = ExternalModelBasedPlanner(_AdditiveTransitionModel(), beam_width=1)
+    rollout = ExternalTransitionRollout(
+        initial_state=torch.tensor([0.0]),
+        intentions=torch.tensor([[1.0], [1.0], [1.0]]),
+        expected_states=torch.tensor([[1.0], [2.0], [3.0]]),
+        confidence=torch.tensor([1.0, 2.0, 1.0]),
+    )
+
+    assert planner.rollout_error(rollout) == 0.0
+
+    corrupted = ExternalTransitionRollout(
+        initial_state=rollout.initial_state,
+        intentions=rollout.intentions,
+        expected_states=torch.tensor([[1.0], [2.0], [4.0]]),
+    )
+    assert planner.rollout_error(corrupted) == pytest.approx(1.0 / 3.0)
+
+
+def test_planner_rollout_error_rejects_mismatched_horizon() -> None:
+    planner = ExternalModelBasedPlanner(_AdditiveTransitionModel(), beam_width=1)
+    with pytest.raises(ValueError, match="differ"):
+        planner.rollout_error(
+            ExternalTransitionRollout(
+                initial_state=torch.zeros(1),
+                intentions=torch.ones(2, 1),
+                expected_states=torch.ones(1, 1),
+            )
+        )
 
 
 def test_planner_can_trade_terminal_success_for_lower_opaque_step_cost() -> None:

@@ -6592,3 +6592,29 @@ synthetic transition family.
 
 Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_open_world_auto_growth_promoted_2026-08-10/`.
+
+## Recursive deployed-rollout verification (2026-08-10)
+
+The exported session highlighted a measurement hazard: a transition model can
+look good under one-step loss while its predictions compound into a bad
+planner. The canonical `ExternalModelBasedPlanner` now exposes a versioned
+`ExternalTransitionRollout` probe. It is verifier-owned, accepts only opaque
+state/intention tensors and optional external context, recursively feeds each
+prediction into the next step, and reports confidence-weighted held-out state
+error. The probe is never written to model memory.
+
+The policy-free compounding audit uses this boundary as a promotion gate in
+addition to deployed planner mastery and retention. Across three seeds every
+adapted target passed recursive rollout error below `0.05`, while the controller
+remained frozen, old-regime replay remained zero, and prior model bytes stayed
+stable. Zero-shot rollout error is reported separately so new knowledge is not
+confused with post-adaptation mastery.
+
+This promotes a reusable verification boundary and a bounded nested-dynamics
+result. It does not establish general continual learning, unrestricted memory
+growth, or arbitrary multi-step transfer. The next meaningful pressure test is
+to apply the same recursive gate to broader, noisy, partially observed dynamics
+and to candidate promotion—not only to already selected model slots.
+
+Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_transition_model_compounding_rollout_verified_promoted_2026-08-10/`.

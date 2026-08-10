@@ -1,0 +1,428 @@
+{
+  "schema": "neural-computer.external-transition-model-compounding-pressure-test.v1",
+  "seed": 70312,
+  "configuration": {
+    "state_width": 8,
+    "intention_width": 4,
+    "context_width": 6,
+    "hidden_width": 48,
+    "regime_deltas": [
+      [
+        -1,
+        1
+      ],
+      [
+        -2,
+        2
+      ],
+      [
+        -3,
+        3
+      ],
+      [
+        -4,
+        4
+      ]
+    ],
+    "targets_by_regime": [
+      [
+        [
+          0,
+          3
+        ],
+        [
+          3,
+          0
+        ],
+        [
+          1,
+          4
+        ]
+      ],
+      [
+        [
+          0,
+          6
+        ],
+        [
+          6,
+          0
+        ],
+        [
+          1,
+          7
+        ]
+      ],
+      [
+        [
+          0,
+          6
+        ],
+        [
+          6,
+          0
+        ],
+        [
+          1,
+          7
+        ]
+      ],
+      [
+        [
+          0,
+          4
+        ],
+        [
+          4,
+          0
+        ],
+        [
+          1,
+          5
+        ]
+      ]
+    ],
+    "horizon": 3,
+    "source_updates": 1200,
+    "target_update_budget": 300,
+    "loss_threshold": 0.01,
+    "rollout_error_threshold": 0.05,
+    "policy": "none_external_transition_model_compounding_search_v1"
+  },
+  "gates": {
+    "controller_unchanged": true,
+    "source_model_learns": true,
+    "all_warm_regimes_mastered": true,
+    "fresh_controls_mastered": true,
+    "warm_beats_fresh_every_target": true,
+    "all_prior_regimes_retained_and_byte_stable": true,
+    "old_regime_replay_during_adaptation_zero": true,
+    "planner_is_inference_only": true,
+    "all_multi_step_rollouts_verified": true
+  },
+  "promoted": true,
+  "source": {
+    "optimizer_updates": 1200,
+    "logical_transition_lifetimes": 16,
+    "replayed_examples": 19184,
+    "loss": 9.975977445719764e-05,
+    "model_digest": "adafbd2cc01c91238cd39d2b45247000aceb8adca643cb011f197f4f78aac37a"
+  },
+  "sequential_targets": [
+    {
+      "regime_index": 1,
+      "deltas": [
+        -2,
+        2
+      ],
+      "zero_shot": {
+        "successes": [
+          false,
+          true,
+          false
+        ],
+        "mastery": 0.3333333333333333,
+        "predicted_final_positions": [
+          2,
+          0,
+          0
+        ],
+        "expanded_nodes": 42,
+        "mean_latency_seconds": 0.0013147359907937546,
+        "rollout_errors": [
+          0.10437379032373428,
+          0.20258729159832,
+          0.1257666051387787
+        ],
+        "max_rollout_error": 0.20258729159832
+      },
+      "warm": {
+        "optimizer_updates": 25,
+        "loss": 0.009012901224195957,
+        "result": {
+          "successes": [
+            true,
+            true,
+            true
+          ],
+          "mastery": 1.0,
+          "predicted_final_positions": [
+            6,
+            0,
+            7
+          ],
+          "expanded_nodes": 42,
+          "mean_latency_seconds": 0.0009892499850442011,
+          "rollout_errors": [
+            0.02140016295015812,
+            0.018367290496826172,
+            0.013701516203582287
+          ],
+          "max_rollout_error": 0.02140016295015812
+        }
+      },
+      "fresh": {
+        "optimizer_updates": 35,
+        "loss": 0.00781542994081974,
+        "result": {
+          "successes": [
+            true,
+            true,
+            true
+          ],
+          "mastery": 1.0,
+          "predicted_final_positions": [
+            6,
+            0,
+            7
+          ],
+          "expanded_nodes": 42,
+          "mean_latency_seconds": 0.0009947359988776345,
+          "rollout_errors": [
+            0.043916523456573486,
+            0.006148740649223328,
+            0.03076653927564621
+          ],
+          "max_rollout_error": 0.043916523456573486
+        }
+      },
+      "retained_prefix": [
+        {
+          "regime_index": 0,
+          "mastery": 1.0,
+          "digest_stable": true
+        },
+        {
+          "regime_index": 1,
+          "mastery": 1.0,
+          "digest_stable": true
+        }
+      ],
+      "cumulative_cost": {
+        "warm_model_updates": 1225,
+        "fresh_model_updates": 1235,
+        "warm_search_expansions": 42,
+        "fresh_search_expansions": 42
+      }
+    },
+    {
+      "regime_index": 2,
+      "deltas": [
+        -3,
+        3
+      ],
+      "zero_shot": {
+        "successes": [
+          false,
+          true,
+          true
+        ],
+        "mastery": 0.6666666666666666,
+        "predicted_final_positions": [
+          7,
+          0,
+          7
+        ],
+        "expanded_nodes": 42,
+        "mean_latency_seconds": 0.0010348470144284267,
+        "rollout_errors": [
+          0.2374745011329651,
+          0.19529151916503906,
+          0.13408146798610687
+        ],
+        "max_rollout_error": 0.2374745011329651
+      },
+      "warm": {
+        "optimizer_updates": 22,
+        "loss": 0.00951650831848383,
+        "result": {
+          "successes": [
+            true,
+            true,
+            true
+          ],
+          "mastery": 1.0,
+          "predicted_final_positions": [
+            6,
+            0,
+            7
+          ],
+          "expanded_nodes": 42,
+          "mean_latency_seconds": 0.0012759446593311925,
+          "rollout_errors": [
+            0.018309978768229485,
+            0.009843303821980953,
+            0.005552327260375023
+          ],
+          "max_rollout_error": 0.018309978768229485
+        }
+      },
+      "fresh": {
+        "optimizer_updates": 38,
+        "loss": 0.009842023253440857,
+        "result": {
+          "successes": [
+            true,
+            true,
+            true
+          ],
+          "mastery": 1.0,
+          "predicted_final_positions": [
+            6,
+            0,
+            7
+          ],
+          "expanded_nodes": 42,
+          "mean_latency_seconds": 0.001028680339610825,
+          "rollout_errors": [
+            0.020352208986878395,
+            0.017651302739977837,
+            0.008806184865534306
+          ],
+          "max_rollout_error": 0.020352208986878395
+        }
+      },
+      "retained_prefix": [
+        {
+          "regime_index": 0,
+          "mastery": 1.0,
+          "digest_stable": true
+        },
+        {
+          "regime_index": 1,
+          "mastery": 1.0,
+          "digest_stable": true
+        },
+        {
+          "regime_index": 2,
+          "mastery": 1.0,
+          "digest_stable": true
+        }
+      ],
+      "cumulative_cost": {
+        "warm_model_updates": 1247,
+        "fresh_model_updates": 1273,
+        "warm_search_expansions": 42,
+        "fresh_search_expansions": 42
+      }
+    },
+    {
+      "regime_index": 3,
+      "deltas": [
+        -4,
+        4
+      ],
+      "zero_shot": {
+        "successes": [
+          false,
+          true,
+          true
+        ],
+        "mastery": 0.6666666666666666,
+        "predicted_final_positions": [
+          7,
+          0,
+          5
+        ],
+        "expanded_nodes": 42,
+        "mean_latency_seconds": 0.0012223889934830368,
+        "rollout_errors": [
+          0.15544845163822174,
+          0.12096503376960754,
+          0.07037495821714401
+        ],
+        "max_rollout_error": 0.15544845163822174
+      },
+      "warm": {
+        "optimizer_updates": 17,
+        "loss": 0.009361124597489834,
+        "result": {
+          "successes": [
+            true,
+            true,
+            true
+          ],
+          "mastery": 1.0,
+          "predicted_final_positions": [
+            4,
+            0,
+            5
+          ],
+          "expanded_nodes": 42,
+          "mean_latency_seconds": 0.001130291687635084,
+          "rollout_errors": [
+            0.006825041491538286,
+            0.008012169040739536,
+            0.039095744490623474
+          ],
+          "max_rollout_error": 0.039095744490623474
+        }
+      },
+      "fresh": {
+        "optimizer_updates": 41,
+        "loss": 0.009269217029213905,
+        "result": {
+          "successes": [
+            true,
+            true,
+            true
+          ],
+          "mastery": 1.0,
+          "predicted_final_positions": [
+            4,
+            0,
+            5
+          ],
+          "expanded_nodes": 42,
+          "mean_latency_seconds": 0.0012254166649654508,
+          "rollout_errors": [
+            0.007741363253444433,
+            0.009131784550845623,
+            0.01764564774930477
+          ],
+          "max_rollout_error": 0.01764564774930477
+        }
+      },
+      "retained_prefix": [
+        {
+          "regime_index": 0,
+          "mastery": 1.0,
+          "digest_stable": true
+        },
+        {
+          "regime_index": 1,
+          "mastery": 1.0,
+          "digest_stable": true
+        },
+        {
+          "regime_index": 2,
+          "mastery": 1.0,
+          "digest_stable": true
+        },
+        {
+          "regime_index": 3,
+          "mastery": 1.0,
+          "digest_stable": true
+        }
+      ],
+      "cumulative_cost": {
+        "warm_model_updates": 1264,
+        "fresh_model_updates": 1314,
+        "warm_search_expansions": 42,
+        "fresh_search_expansions": 42
+      }
+    }
+  ],
+  "accounting": {
+    "controller_optimizer_updates": 0,
+    "old_regime_replay_during_target_adaptation": 0,
+    "source_acquisition_charged_in_cumulative_cost": true,
+    "search_compute_reported_as_expanded_nodes": true,
+    "unique_verifier_bits_per_regime": 16
+  },
+  "digests": {
+    "controller": "93493516a39aabaa1b7ea1cdca05c215ee6e7326e5216f7c4275578adf829685",
+    "bank": "c76e954ac901e144f8e7a9c1c3a93f6ad281866e58b1595a330d1b2aeac6be30"
+  },
+  "elapsed_seconds": 3.4690544580225833
+}
