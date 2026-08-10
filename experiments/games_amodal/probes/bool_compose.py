@@ -248,7 +248,9 @@ class OracleEntry(torch.nn.Module):
 
 reader = Reader(args.dim, args.bank_tokens)
 plant = Plant(args.dim, args.max_len)
-ORACLE_WIDTH = W + 1
+# b as exact bits (already unambiguous) + k ONE-HOT rather than k/W:
+# a scalar shift would make all worlds sharing b collinear.
+ORACLE_WIDTH = W + W
 oracle = OracleEntry(args.dim, args.bank_tokens, ORACLE_WIDTH)
 optimizer = torch.optim.Adam(
     list(reader.parameters()) + list(plant.parameters())
@@ -256,8 +258,9 @@ optimizer = torch.optim.Adam(
 
 
 def oracle_raw(world: dict) -> torch.Tensor:
-    return torch.cat([bits_of(torch.tensor([world["b"]])),
-                            torch.tensor([[world["k"] / W]]).float()], dim=-1)
+    shift = torch.zeros(1, W)
+    shift[0, world["k"]] = 1.0
+    return torch.cat([bits_of(torch.tensor([world["b"]])), shift], dim=-1)
 
 worlds = make_worlds()
 select = torch.Generator().manual_seed(args.seed * 15485863)

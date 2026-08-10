@@ -239,7 +239,12 @@ class OracleEntry(torch.nn.Module):
 
 reader = Reader(args.dim, args.bank_tokens)
 plant = Plant(args.dim, args.max_len)
-ORACLE_WIDTH = 2
+# One-hot, NOT scalars: a/M and b/M would place all worlds' entries on
+# a 2-dimensional manifold and force the plant to carve modular
+# arithmetic out of a continuous line — the oracle arm could then fail
+# for reasons that have nothing to do with reading, which is the whole
+# quantity it is meant to isolate.
+ORACLE_WIDTH = 2 * M
 oracle = OracleEntry(args.dim, args.bank_tokens, ORACLE_WIDTH)
 optimizer = torch.optim.Adam(
     list(reader.parameters()) + list(plant.parameters())
@@ -247,7 +252,10 @@ optimizer = torch.optim.Adam(
 
 
 def oracle_raw(world: dict) -> torch.Tensor:
-    return torch.tensor([[world["a"] / M, world["b"] / M]]).float()
+    raw = torch.zeros(1, 2 * M)
+    raw[0, world["a"]] = 1.0
+    raw[0, M + world["b"]] = 1.0
+    return raw
 
 worlds = make_worlds()
 select = torch.Generator().manual_seed(args.seed * 15485863)
