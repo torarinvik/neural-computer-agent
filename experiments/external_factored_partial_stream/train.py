@@ -282,6 +282,31 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
         match_margin=0.0,
     )
     released = router.drain_quarantine()
+    growth = router.grow_verified(
+        CAPACITY + 1,
+        lambda candidate: all(
+            regime in candidate.slot_ids
+            and _bank_mse(candidate, heldout[regime], regime)
+            <= PREDICTION_TOLERANCE
+            for regime in range(REGIME_COUNT)
+        ),
+    )
+    committed_digest_before_candidate = router.model.digest()
+    novel_anchor = _observation(
+        streams[0].state[:1],
+        streams[0].intention[:1],
+        streams[0].next_state[:1] + torch.tensor([[0.25, -0.25]]),
+    )
+    assert router.quarantine_partial_bundle((novel_anchor,)).accepted
+    staged_novel = router.route_bundle((novel_anchor,))
+    candidate_resolved_rows = router.resolve_quarantine_to_candidate(
+        match_tolerance=PREDICTION_TOLERANCE,
+    )
+    candidate_state_persisted = (
+        ExternalFactoredTransitionRouter.from_payload(
+            router.state_payload()
+        ).candidate_active
+    )
     retained_errors = {
         regime: _bank_mse(router.model.residual_bank, heldout[regime], regime)
         for regime in range(REGIME_COUNT)
@@ -318,6 +343,13 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
         "quarantine_retains_corruption": corrupted_quarantine_receipt.accepted
         and unresolved_slots == ()
         and len(released) == 1,
+        "quarantine_resolves_into_isolated_candidate": growth.accepted
+        and staged_novel.status == "staged"
+        and candidate_resolved_rows == 1
+        and router.quarantined_observations == 0
+        and router.candidate_active
+        and candidate_state_persisted
+        and router.model.digest() == committed_digest_before_candidate,
         "base_unchanged": model.base.digest() == base_digest and model.base_frozen,
         "controller_unchanged": controller_digest == _digest_module(controller),
         "context_encoder_unchanged": encoder_digest == encoder.digest(),
@@ -350,6 +382,9 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
             "quarantine_resolved_slots": resolved_slots,
             "quarantine_unresolved_slots": unresolved_slots,
             "corrupted_quarantine_receipt": corrupted_quarantine_receipt.__dict__,
+            "candidate_growth_receipt": growth.__dict__,
+            "candidate_resolved_rows": candidate_resolved_rows,
+            "candidate_state_persisted": candidate_state_persisted,
             "retained_heldout_mse": retained_errors,
             "slot_ids": list(router.slot_ids),
         },

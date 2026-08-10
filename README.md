@@ -2524,3 +2524,11 @@ retained the original slot, routed back to it later, and rejected corrupted
 evidence without a bank write. This remains a bounded result; richer
 nonlinear drift and learned address formation are next. See
 `session_records/sequence_working_memory_2026-08-02/external_partial_drift_streaming_model_promoted_2026-08-10/`.
+
+The factored quarantine boundary now also supports later-evidence absorption
+into an isolated candidate. Across five seeds, a quarantined opaque novel
+bundle was consumed exactly once after a later bundle staged its copy-on-write
+factual candidate; committed model state stayed byte-stable and candidate
+payload persistence was exact. This is a safety and credit-accumulation
+primitive, not learned open-world identity or automatic version promotion. See
+`session_records/sequence_working_memory_2026-08-02/external_factored_quarantine_candidate_resolution_promoted_2026-08-10/`.

@@ -1108,6 +1108,60 @@ class ExternalFactoredTransitionRouter:
         self._quarantine = unresolved
         return tuple(resolved)
 
+    def resolve_quarantine_to_candidate(
+        self,
+        *,
+        match_tolerance: float = 0.05,
+    ) -> int:
+        """Consume quarantined bundles that now fit the isolated candidate.
+
+        A later evidence bundle may make a novel stream identifiable and
+        create ``_candidate_model`` while an earlier bundle remains in
+        quarantine.  This method tests each retained bundle against that
+        candidate, then writes only independently agreeing bundles to the
+        copy-on-write model.  The live model, committed contexts, and route
+        addresses are unchanged until ``promote_staged_candidate`` passes its
+        independent held-out and retention gates.
+
+        The quarantined bundle itself is never used as its own promotion gate;
+        callers must still provide separate held-out evidence when promoting.
+        """
+
+        if self._candidate_model is None or self._candidate_context is None:
+            raise RuntimeError("factored router has no staged candidate")
+        if self._pending:
+            raise RuntimeError(
+                "cannot resolve quarantine with pending factored evidence"
+            )
+        if match_tolerance < 0.0:
+            raise ValueError("candidate quarantine match tolerance cannot be negative")
+        resolved_rows = 0
+        unresolved: list[ExternalTransitionObservation] = []
+        for item in self._quarantine:
+            context_batch = self._candidate_context.to(item.state).unsqueeze(0)
+            prediction = self._candidate_model.predict_with_context(
+                item.state,
+                item.intention,
+                context_batch.expand(item.state.shape[0], -1),
+            )
+            errors = (prediction - item.next_state).square().mean(dim=-1)
+            if bool(torch.any(errors > match_tolerance)):
+                unresolved.append(item)
+                continue
+            self._candidate_model.write_residual(
+                item,
+                context=self._candidate_context,
+            )
+            if self._candidate_model.residual_bank is not None:
+                self._candidate_model.fit_residual(
+                    item,
+                    context=self._candidate_context,
+                    updates=self.residual_adaptation_updates,
+                )
+            resolved_rows += int(item.state.shape[0])
+        self._quarantine = unresolved
+        return resolved_rows
+
     def promote_staged_candidate(
         self,
         heldout: ExternalTransitionObservation,

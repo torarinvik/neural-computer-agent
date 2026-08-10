@@ -2123,6 +2123,33 @@ def test_factored_router_owns_verified_growth_compression_and_stable_eviction() 
     assert router.slot_ids == (1,)
 
 
+def test_factored_router_resolves_quarantine_into_isolated_candidate() -> None:
+    model = ExternalFactoredTransitionModel(1, 1, 2, hidden_width=8)
+    for parameter in model.base.parameters():
+        parameter.data.zero_()
+    model.freeze_base()
+    encoder = ExternalTransitionContextEncoder(1, 1, hidden_width=8, context_width=2)
+    router = ExternalFactoredTransitionRouter(
+        model,
+        encoder,
+        max_contexts=1,
+        quarantine_capacity=2,
+    )
+    anchor = ExternalTransitionObservation(
+        state=torch.tensor([[0.0]]),
+        intention=torch.tensor([[1.0]]),
+        next_state=torch.tensor([[1.0]]),
+    )
+    assert router.quarantine_partial_bundle((anchor,)).accepted
+    live_digest = router.model.digest()
+    assert router.route_bundle((anchor,)).status == "staged"
+    assert router.candidate_active
+    assert router.resolve_quarantine_to_candidate(match_tolerance=1e-6) == 1
+    assert router.quarantined_observations == 0
+    assert router.candidate_active
+    assert router.model.digest() == live_digest
+
+
 def test_factored_router_stages_promotes_and_reuses_opaque_context() -> None:
     model = ExternalFactoredTransitionModel(1, 1, 2, hidden_width=8)
     model.freeze_base()

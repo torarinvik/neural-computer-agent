@@ -6495,3 +6495,15 @@ retained a corrupted bundle without any model write. This is a safe recovery
 primitive, not the learned open-world resolver still required by the
 architecture. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_factored_quarantine_resolver_promoted_2026-08-10/`.
+
+The resolver now also handles a later-evidence candidate path. If a novel
+bundle is quarantined before a subsequent bundle stages a copy-on-write factual
+candidate, `resolve_quarantine_to_candidate()` tests the retained bundle
+against that isolated candidate and consumes it once only when its predictions
+agree. Five seeds passed this continuation, exact candidate persistence, and
+committed-model byte stability. The candidate remains unpromoted until a
+separate held-out factual and retention gate passes. This closes a concrete
+quarantine credit-accumulation hole; it is not the learned open-world identity
+resolver or automatic new-version policy still required by the architecture.
+Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_factored_quarantine_candidate_resolution_promoted_2026-08-10/`.
