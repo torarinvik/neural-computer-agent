@@ -8002,3 +8002,28 @@ promote general continual learning. Promotion still requires fresh and
 policy-based controls, zero-shot target capability, held-out model
 verification, model-corruption controls, search-depth/latency accounting,
 and stable retention over a genuinely novel multi-target stream.
+
+## External opaque intention repertoire (2026-08-10)
+
+The policy-free seam no longer requires a caller-authored candidate tensor at
+execution time. `ExternalIntentionRepertoire` is an append-only external
+memory of observed opaque intention vectors. It deduplicates vectors by a
+versioned representation-space threshold, keeps outcome and exact logging
+propensity sufficient statistics without replay, and round-trips through a
+checksummed payload. The controller and decoder interfaces remain unchanged.
+
+The repertoire is deliberately not a reward-ranked policy. Verified entries
+are exposed as a runtime-sized candidate set and factual model search derives
+the action sequence for the current opaque goal. A novel controller intention
+is marked as ephemeral exploration and is excluded from verified search by
+default; it can be enabled explicitly or used as the safe fallback when the
+repertoire is empty. The three-seed promoted audit under
+`session_records/sequence_working_memory_2026-08-02/policy_free_intention_repertoire_promoted_2026-08-10/`
+reaches every held-out goal, beats the matched empty-repertoire learner, and
+keeps the controller/model frozen.
+
+This promotes external candidate retrieval and exploration isolation, not
+arbitrary intention synthesis, learned verifier design, unrestricted growth,
+or general continual learning. The next pressure is to acquire new intention
+vectors from partially observed experience and verify them before they enter
+the deployed candidate set.

@@ -401,3 +401,25 @@ verification probes remain replaceable external components. The next
 promotion must measure model-free controller behavior against this path on a
 nontrivial held-out stream, with zero-shot capability, search expansions,
 latency, target updates, lifetime cost, and retention reported separately.
+
+## External opaque intention repertoire (2026-08-10)
+
+Candidate formation is now an independent memory boundary rather than a
+caller-owned action list. `ExternalIntentionRepertoire` stores observed
+controller-output vectors, merges only near-duplicate opaque entries, and
+accumulates verifier/propensity statistics without replay or controller
+updates. `PolicyFreeAmodalRuntime` can therefore retrieve a variable-sized
+candidate set from external experience and pass it directly to factual model
+search.
+
+The boundary includes an important safety rule: an unverified controller seed
+is not mixed into verified candidates by default. It remains available as an
+explicit exploration option and as the fallback for an empty repertoire. This
+prevents unknown output vectors from poisoning beam search while preserving a
+path for later verifier-gated acquisition. The promoted audit is archived in
+`session_records/sequence_working_memory_2026-08-02/policy_free_intention_repertoire_promoted_2026-08-10/`.
+
+The result is still bounded candidate retrieval, not general continual
+learning. The unresolved frontier is learning new intention content and its
+representation from partial multimodal experience, then admitting it only
+after held-out factual and retention checks.

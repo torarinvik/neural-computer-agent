@@ -20,6 +20,11 @@ from .controller import (
     ControllerOutput,
     ControllerState,
 )
+from .intention import (
+    ExternalIntentionObservationReceipt,
+    ExternalIntentionProposal,
+    ExternalIntentionRepertoire,
+)
 from .interface import (
     EVENT_SCHEMA,
     INTENTION_SCHEMA,
@@ -1193,6 +1198,7 @@ class PolicyFreeRuntimeOutput:
     state: torch.Tensor
     goal_state: torch.Tensor
     selected_slot_id: int | None
+    proposal: ExternalIntentionProposal | None = None
     schema: str = POLICY_FREE_RUNTIME_SCHEMA
 
 
@@ -1215,6 +1221,8 @@ class PolicyFreeAmodalRuntime:
         planner: ExternalModelBasedPlanner,
         *,
         state_adapter: ExternalControllerStateAdapter | None = None,
+        intention_repertoire: ExternalIntentionRepertoire | None = None,
+        include_exploration_seed: bool = False,
     ) -> None:
         if not isinstance(runtime, AmodalControllerRuntime):
             raise TypeError("policy-free runtime requires an amodal controller runtime")
@@ -1231,9 +1239,17 @@ class PolicyFreeAmodalRuntime:
             raise ValueError("policy-free state adapter output width does not match planner")
         if planner.model.intention_width != runtime.intention_width:
             raise ValueError("policy-free planner intention width does not match runtime")
+        if intention_repertoire is not None and (
+            intention_repertoire.width != runtime.intention_width
+        ):
+            raise ValueError("intention repertoire width does not match runtime")
+        if not isinstance(include_exploration_seed, bool):
+            raise TypeError("policy-free exploration-seed flag must be boolean")
         self.runtime = runtime
         self.planner = planner
         self.state_adapter = selected_adapter
+        self.intention_repertoire = intention_repertoire
+        self.include_exploration_seed = include_exploration_seed
 
     @property
     def controller(self) -> AmodalCognitiveController:
@@ -1245,7 +1261,11 @@ class PolicyFreeAmodalRuntime:
             "behavior": "factual_model_search_no_stored_policy_v1",
             "controller_intention": "diagnostic_only_not_decoded_v1",
             "goal_input": "opaque_external_destination_state_or_goal_set_v1",
-            "candidate_intentions": "runtime_variable_opaque_learned_set_v1",
+            "candidate_intentions": (
+                "external_append_only_intention_repertoire_v1"
+                if self.intention_repertoire is not None
+                else "runtime_variable_opaque_caller_set_v1"
+            ),
             "retrieval": (
                 "goal_conditioned_bank_search_before_adaptation_v1"
                 if isinstance(self.planner.model, ExternalTransitionModelBank)
@@ -1254,7 +1274,33 @@ class PolicyFreeAmodalRuntime:
             "runtime": self.runtime.configuration(),
             "planner": self.planner.configuration(),
             "state_adapter": self.state_adapter.configuration(),
+            "intention_repertoire": (
+                None
+                if self.intention_repertoire is None
+                else self.intention_repertoire.configuration()
+            ),
+            "include_exploration_seed": self.include_exploration_seed,
         }
+
+    def observe_intention(
+        self,
+        intention: torch.Tensor | IntentEvent,
+        *,
+        utility: torch.Tensor | float | None = None,
+        propensity: torch.Tensor | float | None = None,
+        timestamp: torch.Tensor | int | None = None,
+    ) -> ExternalIntentionObservationReceipt:
+        """Commit post-execution opaque experience to external memory."""
+
+        if self.intention_repertoire is None:
+            raise RuntimeError("policy-free runtime has no intention repertoire")
+        payload = intention.payload if isinstance(intention, IntentEvent) else intention
+        return self.intention_repertoire.observe(
+            payload,
+            utility=utility,
+            propensity=propensity,
+            timestamp=timestamp,
+        )
 
     def step_events(
         self,
@@ -1262,7 +1308,7 @@ class PolicyFreeAmodalRuntime:
         state: ControllerState,
         feedback: ControllerFeedback,
         goal_state: torch.Tensor,
-        candidate_intentions: torch.Tensor,
+        candidate_intentions: torch.Tensor | None = None,
         *,
         horizon: int,
         beam_width: int | None = None,
@@ -1293,6 +1339,20 @@ class PolicyFreeAmodalRuntime:
             memory_write_gradient=memory_write_gradient,
         )
         model_state = self.state_adapter(controller_output)
+        proposal = None
+        if candidate_intentions is None:
+            if self.intention_repertoire is None:
+                raise ValueError(
+                    "candidate intentions are required when no external repertoire is configured"
+                )
+            proposal = self.intention_repertoire.propose(
+                controller_output.intention.payload,
+                include_seed=(
+                    self.include_exploration_seed
+                    or self.intention_repertoire.record_count == 0
+                ),
+            )
+            candidate_intentions = proposal.intentions
         if isinstance(self.planner.model, ExternalTransitionModelBank):
             if transition_context is not None:
                 raise ValueError(
@@ -1336,6 +1396,7 @@ class PolicyFreeAmodalRuntime:
                 state=model_state,
                 goal_state=goal_state.detach().clone(),
                 selected_slot_id=selected_slot_id,
+                proposal=proposal,
             ),
             next_state,
         )
