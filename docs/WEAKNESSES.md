@@ -6,32 +6,30 @@ rung promotes, rejects, or qualifies. Ordered by severity.
 
 ## Open
 
-0. **SOLVED IN THE CLEAN SETTING, OPEN WITH READING — composition is
-   an INTERFACE property (F121). Iterating one piece at a time through
-   a shared step function took held-out program composition from
-   chance to perfect: 0.0794 -> 1.0000.** F119 had established the
-   defect (one-shot interface fits 18 composite functions at 1.0000
-   and generalises to none); F121 shows the same model, same parameter
-   count, no intermediate supervision, gets every unseen arrangement
-   right once the step function is shared across positions. Evidence:
-   `iterated_composition_v1_2026-08-10`.
-   Strengthened by F125: trained on lengths 1-3 only, the iterated
-   plant answers all sixteen unseen LENGTH-4 programs at 1.0000, so
-   within-length interpolation is excluded and the step extends to
-   unseen depths.
-   Still open, in priority order:
-   (a) **does the BANK feed it?** THE remaining question. Every
-       composition success (F121, F125) is single-world, where the
-       step needs no per-world content; every multi-world arm (F120,
-       F122, F124) has reading dead. Oracle-entry arms running: if
-       execution works with a KNOWN world, reading is the sole
-       constraint and the target is unambiguous.
-   (b) ~~one seed on F121/F125~~ CLOSED: seed 69317 replicates at
-       1.0000 / 1.0000; two seeds plus the length-extrapolation split
-       all at ceiling;
-   (c) **carry it back to the games**: the beam search already applies
-       a learned step repeatedly, so the games may already have the
-       right interface — worth checking rather than assuming.
+0. **THE READER'S TRAINING SIGNAL — the last piece, and it is now the
+   only one.** Everything else in the composition mechanism is
+   measured working: a shared per-element step composes and extends to
+   unseen arrangements and unseen depths on two unrelated function
+   families (F121, F125, F133, all at 1.0000); binding the entry ONCE
+   instead of re-attending it per step gives 0.9983 per-bit
+   conditioned execution at depth 4 across 256 worlds (F135); and the
+   reader can produce entries that drive 0.9723 / 0.9478 on HELD-OUT
+   worlds when given a consistent target (F138).
+   What does not work is training the reader without a privileged
+   target: task loss through a frozen plant gives 0.4973 (F136), joint
+   training gives own == stranger (F135). Binding buys execution at
+   the cost of a narrow entry target that task loss cannot search for.
+   Next: contrastive reader pre-training (running) — entries from the
+   same world agree, entries from different worlds do not. That is the
+   property distillation actually supplied, and it needs no privileged
+   parameters, only knowing which observations came from one world.
+   If it works, the mechanism is complete end-to-end without
+   privileged information.
+
+0-carry. **Carry the binding result to the games.** The games' beam
+   search re-consults the entry at every rollout step, which is
+   exactly the pattern F135 measured as the depth killer. Untested
+   there; worth checking before any further games tuning.
 
 0-lesson. **The ignorance objective is toothless when the model is
    bad (F120).** It penalises being accurate WITHOUT the entry; a
