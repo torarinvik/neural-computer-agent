@@ -5659,3 +5659,46 @@ What is now settled about composition, and what is not:
     are running against it.
 
 Probe 225 is `math_compose.py --iterate --train-max-len 3`, 1 seed.
+
+**F126 (probe 226, interim — one cell of a 2x2). Oracle entries do NOT
+rescue the one-shot interface at 256 worlds: 0.0672 against 0.0619 for
+the learned reader, chance 0.0435.** Handing the plant the world's true
+(a, b) as clean one-hot codes moves nothing. **Perfect world knowledge
+does not fix multi-world composition when the interface is one-shot** —
+which reframes the multi-world failure: it is not primarily a reading
+failure. F119's diagnosis holds at scale.
+
+The likely causal order, stated as a hypothesis to be tested by the
+remaining cells rather than asserted: reading dies BECAUSE execution
+is impossible. There is nothing to gain from learning to read an entry
+whose contents the interface could not use. If so, F120/F122/F124's
+"reading is dead" is a symptom and F119's interface defect is the
+disease — and the ignorance objective's toothlessness (F120) is the
+same fact seen from the optimiser's side.
+
+Wiring sanity check that makes the cell interpretable: with oracle
+entries own-entry accuracy (0.0459 / 0.0473) sits slightly ABOVE
+stranger (0.0423 / 0.0446), where the learned reader gave values
+identical to four decimals. The plant does distinguish informative
+entries; it just cannot use what it distinguishes.
+
+The design being completed before any conclusion is drawn:
+
+|            | learned reader | oracle entry |
+| ---------- | ---: | ---: |
+| one-shot   | 0.0619 (F122) | **0.0672 (here)** |
+| iterated   | running | running |
+
+Plus a world-count ladder (4/16/64 worlds, iterate + oracle entry) to
+locate WHERE execution breaks between 1 world (perfect, F121/F125) and
+256 (chance): a smooth decline indicates capacity, a cliff indicates
+something categorical.
+
+A measurement correction earned along the way: the first version of
+this arm encoded the oracle as scalars a/M and b/M, which places all
+256 worlds on a 2-dimensional manifold and would have made the oracle
+fail for reasons unrelated to reading — the exact quantity it exists
+to isolate. Caught before the runs finished; re-run with one-hot codes
+(width 2M = 46, verified distinct per world). Recorded because the
+instrument nearly produced a confident wrong answer, which is this
+session's most frequent failure mode.
