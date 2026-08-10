@@ -8525,7 +8525,11 @@ and `11/19` updates against matched fresh learners, for ratios `2.5556` and
 exact-reload, protected-retention, held-out prefix verification, and zero-
 replay gates. The audit qualifies bounded overlapping-mask transfer and
 non-destructive masked reversal, not arbitrary missing-stream cognition,
-unrestricted growth, compression, or general continual learning. The current
-The halfway-switch gradual curriculum is archived as a rejection in
+unrestricted growth, compression, or general continual learning. The
+halfway-switch gradual curriculum is archived as a rejection in
 `session_records/policy_free_intention_masked_routing_gradual_rejected_2026-08-10/`
-and is the next curriculum design bottleneck.
+and the seven-stage mask-drift curriculum is archived in
+`session_records/policy_free_intention_masked_routing_multistage_rejected_2026-08-10/`.
+Both reject sequential mutation of one nonlinear cell across evidence
+distributions. The next architectural boundary is versioned or factored
+reusable computation across those distributions.

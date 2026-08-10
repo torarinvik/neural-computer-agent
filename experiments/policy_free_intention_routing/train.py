@@ -38,6 +38,7 @@ MAX_UPDATES = 240
 REVERSAL_UPDATES = 260
 CONTROL_UPDATES = 160
 GRADUAL_MASK_SWITCH_UPDATE = MAX_UPDATES // 2
+MULTI_STAGE_MASK_STAGE_UPDATES = 34
 SOURCE_CONTEXT_MASK = torch.tensor(
     [True, False, True, False, True, False, True, False, True, False, True, False]
 )
@@ -47,6 +48,38 @@ OVERLAP_SUCCESSOR_CONTEXT_MASK = torch.tensor(
     [True, True, True, True, True, False, True, False, False, True, False, True]
 )
 OVERLAP_REVERSAL_CONTEXT_MASK = OVERLAP_SUCCESSOR_CONTEXT_MASK.clone()
+
+
+def _mask_from_indices(*indices: int) -> torch.Tensor:
+    mask = torch.zeros(base.STATE_WIDTH, dtype=torch.bool)
+    mask[list(indices)] = True
+    return mask
+
+
+MULTI_STAGE_MASK_SCHEDULE = (
+    (1, SOURCE_CONTEXT_MASK.clone()),
+    (1 + MULTI_STAGE_MASK_STAGE_UPDATES, _mask_from_indices(0, 1, 2, 4, 6, 8, 10)),
+    (
+        1 + 2 * MULTI_STAGE_MASK_STAGE_UPDATES,
+        _mask_from_indices(0, 1, 2, 3, 4, 6, 8, 10),
+    ),
+    (
+        1 + 3 * MULTI_STAGE_MASK_STAGE_UPDATES,
+        _mask_from_indices(0, 1, 2, 3, 4, 6, 8, 9, 10),
+    ),
+    (
+        1 + 4 * MULTI_STAGE_MASK_STAGE_UPDATES,
+        _mask_from_indices(0, 1, 2, 3, 4, 6, 8, 9, 10, 11),
+    ),
+    (
+        1 + 5 * MULTI_STAGE_MASK_STAGE_UPDATES,
+        _mask_from_indices(0, 1, 2, 3, 4, 6, 9, 10, 11),
+    ),
+    (
+        1 + 6 * MULTI_STAGE_MASK_STAGE_UPDATES,
+        OVERLAP_SUCCESSOR_CONTEXT_MASK.clone(),
+    ),
+)
 
 
 def _mask_label(context_mask: torch.Tensor | None) -> str:
@@ -67,7 +100,7 @@ def _mask_configuration(
 ]:
     """Return source/successor/reversal masks and an optional successor schedule."""
 
-    valid_curricula = {"complementary", "overlapping", "gradual"}
+    valid_curricula = {"complementary", "overlapping", "gradual", "multi_stage"}
     if mask_curriculum not in valid_curricula:
         raise ValueError(f"unsupported mask curriculum: {mask_curriculum}")
     if not masked_context:
@@ -88,14 +121,20 @@ def _mask_configuration(
             OVERLAP_REVERSAL_CONTEXT_MASK.clone(),
             None,
         )
+    if mask_curriculum == "gradual":
+        successor_schedule = (
+            (1, SOURCE_CONTEXT_MASK.clone()),
+            (GRADUAL_MASK_SWITCH_UPDATE, OVERLAP_SUCCESSOR_CONTEXT_MASK.clone()),
+        )
+    else:
+        successor_schedule = tuple(
+            (start, mask.clone()) for start, mask in MULTI_STAGE_MASK_SCHEDULE
+        )
     return (
         SOURCE_CONTEXT_MASK.clone(),
         OVERLAP_SUCCESSOR_CONTEXT_MASK.clone(),
         OVERLAP_REVERSAL_CONTEXT_MASK.clone(),
-        (
-            (1, SOURCE_CONTEXT_MASK.clone()),
-            (GRADUAL_MASK_SWITCH_UPDATE, OVERLAP_SUCCESSOR_CONTEXT_MASK.clone()),
-        ),
+        successor_schedule,
     )
 
 
@@ -892,8 +931,8 @@ def run(
         ),
         "mask_curriculum_exercised": (
             not masked_context
-            or mask_curriculum != "gradual"
-            or len(successor["context_mask_patterns"]) == 2
+            or len(successor["context_mask_patterns"])
+            == (1 if successor_mask_schedule is None else len(successor_mask_schedule))
         ),
         "overlapping_observation_patterns_present": (
             not masked_context
@@ -1034,7 +1073,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--mask-curriculum",
-        choices=("complementary", "overlapping", "gradual"),
+        choices=("complementary", "overlapping", "gradual", "multi_stage"),
         default="complementary",
         help="observation-mask schedule used with --masked-context",
     )

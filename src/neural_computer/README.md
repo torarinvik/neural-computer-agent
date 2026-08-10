@@ -1278,5 +1278,10 @@ The overlapping-mask audit now promotes this boundary across two seeds; see
 `session_records/policy_free_intention_masked_routing_overlap_promoted_2026-08-10/`.
 The halfway-switch gradual curriculum is archived as a rejection in
 `session_records/policy_free_intention_masked_routing_gradual_rejected_2026-08-10/`.
+The seven-stage mask-drift curriculum is also rejected in
+`session_records/policy_free_intention_masked_routing_multistage_rejected_2026-08-10/`:
+the single cell does not remain stable when evidence distributions change
+sequentially. The next architectural step is versioned or factored reusable
+computation across those distributions.
 Arbitrary missing-stream reasoning, unrestricted growth, compression, and
 general continual learning remain unqualified.
