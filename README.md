@@ -2728,3 +2728,13 @@ This promotes bounded same-stream factual versioning and reactivation. It does
 not establish arbitrary regime discovery, unbounded growth, learned
 compression, or general continual learning. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_online_context_versioning_promoted_2026-08-10/`.
+
+The consolidation lifecycle is now copy-on-write safe as well. Across three
+seeds, two equivalent external transition contexts shared one physical model,
+then a later update to one logical context detached only that context while
+the source model stayed byte-stable. Distinct transition functions were still
+rejected, persistence was exact, and the controller and consolidation path
+performed zero optimizer updates. This promotes storage-sharing lifecycle
+safety, not semantic merging or unrestricted continual learning. Evidence is
+archived in
+`session_records/sequence_working_memory_2026-08-02/external_transition_model_consolidation_cow_promoted_2026-08-10/`.

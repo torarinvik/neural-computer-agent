@@ -171,6 +171,19 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
     duplicate_after = _loss(bank, source, duplicate_context)
     target_after = _loss(bank, target, target_context)
     physical_after_equivalent = bank.physical_model_count
+    source_digest_before_copy_on_write = bank.models[source_index].digest()
+    copy_on_write_optimizer = torch.optim.Adam(
+        bank.models[duplicate_index].parameters(),
+        lr=0.1,
+    )
+    bank.adaptation_step(
+        target,
+        bank.context_at(duplicate_index).unsqueeze(0).expand(target.state.shape[0], -1),
+        copy_on_write_optimizer,
+    )
+    source_after_copy_on_write = _loss(bank, source, source_context)
+    copy_on_write_aliases = bank.model_aliases()
+    physical_after_copy_on_write = bank.physical_model_count
     distinct_before = bank.content_digest()
     distinct = bank.consolidate_verified(
         source_index,
@@ -187,20 +200,27 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
         "target_model_learns": target_loss < TARGET_LOSS_THRESHOLD,
         "equivalent_consolidation_accepted": equivalent.accepted,
         "equivalent_physical_sharing": physical_after_equivalent == physical_before - 1,
-        "contexts_preserved": bank.context_count == 3 and bank.model_aliases() == [0, 0, 2],
+        "contexts_preserved": bank.context_count == 3 and copy_on_write_aliases == [0, 1, 2],
         "equivalent_retention": (
             source_after < TARGET_LOSS_THRESHOLD
             and duplicate_after < TARGET_LOSS_THRESHOLD
             and target_after < TARGET_LOSS_THRESHOLD
         ),
+        "copy_on_write_isolates_later_update": (
+            copy_on_write_aliases == [0, 1, 2]
+            and physical_after_copy_on_write == physical_before
+            and bank.models[source_index].digest()
+            == source_digest_before_copy_on_write
+            and source_after_copy_on_write < TARGET_LOSS_THRESHOLD
+        ),
         "distinct_consolidation_rejected": not distinct.accepted,
         "distinct_physical_count_unchanged": physical_after_rejection
-        == physical_after_equivalent,
+        == physical_after_copy_on_write,
         "wrong_context_control": wrong_context_mse > TARGET_LOSS_THRESHOLD,
         "persistence_exact": (
             restored.content_digest() == bank.content_digest()
-            and restored.model_aliases() == [0, 0, 2]
-            and restored.physical_model_count == 2
+            and restored.model_aliases() == [0, 1, 2]
+            and restored.physical_model_count == 3
         ),
         "zero_consolidation_optimizer_updates": True,
     }
@@ -214,7 +234,7 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
             "source_updates": SOURCE_UPDATES,
             "target_updates": TARGET_UPDATES,
             "prediction_tolerance": 1e-8,
-            "policy": "equivalence_verified_parameter_sharing_no_semantic_merge_v1",
+            "policy": "equivalence_verified_parameter_sharing_copy_on_write_v2",
         },
         "gates": gates,
         "promoted": all(gates.values()),
@@ -232,9 +252,14 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
             },
             "content_digest_before": equivalent_before,
             "physical_models_after": physical_after_equivalent,
+            "physical_models_after_copy_on_write": physical_after_copy_on_write,
+            "copy_on_write_optimizer_updates": 1,
             "source_loss_after": source_after,
             "duplicate_loss_after": duplicate_after,
             "target_loss_after": target_after,
+            "source_loss_after_copy_on_write": source_after_copy_on_write,
+            "copy_on_write_aliases": copy_on_write_aliases,
+            "physical_models_after_copy_on_write": physical_after_copy_on_write,
             "replayed_examples": 0,
         },
         "distinct_rejection": {
@@ -250,6 +275,7 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
         "accounting": {
             "controller_parameter_updates": 0,
             "consolidation_optimizer_updates": 0,
+            "copy_on_write_optimizer_updates": 1,
             "source_replayed_examples": POSITION_COUNT * 2 * (source_updates - 1),
             "target_replayed_examples": POSITION_COUNT * 2 * (target_updates - 1),
             "contexts_preserved": bank.context_count,

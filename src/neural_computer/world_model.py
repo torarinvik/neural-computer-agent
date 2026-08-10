@@ -733,6 +733,51 @@ class ExternalTransitionModelBank(nn.Module):
         except ValueError as error:
             raise KeyError(f"unknown transition-model slot ID: {slot_id}") from error
 
+    def _ensure_private_model(self, index: int) -> bool:
+        """Detach one aliased logical slot before a write."""
+
+        if not 0 <= index < self.context_count:
+            raise IndexError("transition-model context is out of range")
+        model = self.models[index]
+        if not any(
+            other != index and self.models[other] is model
+            for other in range(self.context_count)
+        ):
+            return False
+        detached = self._new_model(self._model_families[index])
+        detached.load_state_dict(model.state_dict())
+        self.models[index] = detached
+        return True
+
+    @staticmethod
+    def _optimizer_matches_model(
+        optimizer: torch.optim.Optimizer | None,
+        model: nn.Module,
+    ) -> bool:
+        if optimizer is None:
+            return False
+        model_parameters = {id(parameter) for parameter in model.parameters()}
+        optimizer_parameters = {
+            id(parameter)
+            for group in optimizer.param_groups
+            for parameter in group["params"]
+        }
+        return bool(model_parameters) and model_parameters <= optimizer_parameters
+
+    @staticmethod
+    def _rebind_optimizer(
+        optimizer: torch.optim.Optimizer | None,
+        model: nn.Module,
+    ) -> torch.optim.Optimizer | None:
+        """Recreate a caller optimizer over a copy-on-write model."""
+
+        if optimizer is None:
+            return None
+        try:
+            return type(optimizer)(model.parameters(), **optimizer.defaults)
+        except (TypeError, ValueError):
+            return None
+
     def select_model_family_verified(
         self,
         candidates: Mapping[str, nn.Module],
@@ -1538,6 +1583,7 @@ class ExternalTransitionModelBank(nn.Module):
         self.record_lifetime_observations(lifetime_slot_ids, lifetime_errors)
         for index in sorted(set(indices)):
             rows = [row for row, selected in enumerate(indices) if selected == index]
+            detached = self._ensure_private_model(index)
             subset = self._observation_rows(observation, rows)
             model = self.models[index]
             if hasattr(model, "observe"):
@@ -1547,6 +1593,11 @@ class ExternalTransitionModelBank(nn.Module):
             selected_optimizer = (
                 optimizer.get(index) if isinstance(optimizer, Mapping) else optimizer
             )
+            if detached or not self._optimizer_matches_model(selected_optimizer, model):
+                selected_optimizer = self._rebind_optimizer(
+                    selected_optimizer,
+                    model,
+                )
             if selected_optimizer is None:
                 selected_optimizer = torch.optim.SGD(
                     model.parameters(),
@@ -1571,8 +1622,9 @@ class ExternalTransitionModelBank(nn.Module):
 
         Context keys and indices remain intact. The second context is made an
         alias of the first model object, reducing physical parameter storage
-        without forcing callers to rewrite opaque addresses. Distinct factual
-        functions are rejected before mutation.
+        without forcing callers to rewrite opaque addresses. A later update to
+        either aliased context detaches that context copy-on-write. Distinct
+        factual functions are rejected before mutation.
         """
 
         if not 0 <= first < self.context_count or not 0 <= second < self.context_count:

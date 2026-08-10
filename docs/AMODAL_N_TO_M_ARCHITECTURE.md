@@ -6992,3 +6992,22 @@ versioning result. It does not establish arbitrary regime discovery, learned
 compression, unbounded growth, or general continual learning. The reports and
 ledger are archived in
 `session_records/sequence_working_memory_2026-08-02/external_online_context_versioning_promoted_2026-08-10/`.
+
+## Copy-on-write after factual-model consolidation (2026-08-10)
+
+The external model bank's verifier-gated parameter sharing now has an explicit
+copy-on-write boundary. Across three seeds, two equivalent opaque contexts
+shared one physical model after held-out verification, reducing three physical
+models to two while preserving both logical addresses. A later adaptation to
+the second context detached only that context; the source model remained
+byte-stable and all three contexts became independent again. Distinct source
+and target functions were rejected without mutation, and persistence preserved
+the post-detachment state.
+
+This fixes a dangerous consolidation lifecycle hole: parameter sharing is now
+temporary storage compression, not shared plasticity that can overwrite an
+unrelated context. The controller and consolidation transaction used zero
+optimizer updates. It remains a bounded storage-sharing result, not semantic
+merging, unrestricted growth, or general continual learning. Evidence and the
+accounting ledger are archived in
+`session_records/sequence_working_memory_2026-08-02/external_transition_model_consolidation_cow_promoted_2026-08-10/`.

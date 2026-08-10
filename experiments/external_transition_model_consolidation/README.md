@@ -1,4 +1,4 @@
-# External transition-model consolidation
+# External transition-model consolidation with copy-on-write
 
 This pressure test checks the safe consolidation boundary for the external
 transition bank. Two slots with identical factual behavior are verified on
@@ -8,9 +8,11 @@ slot are presented to the same consolidation operation and must be rejected
 without mutation.
 
 The controller is frozen, consolidation performs zero optimizer updates, and
-the payload round-trip must preserve aliasing and behavior. This is parameter
-sharing, not semantic merging: distinct transition functions are never merged
-just to reduce the slot count.
+the payload round-trip must preserve aliasing and behavior. A later update to
+the formerly shared second slot must detach only that slot, leaving the source
+model byte-stable. This is parameter sharing with copy-on-write, not semantic
+merging: distinct transition functions are never merged just to reduce the
+slot count.
 
 ```text
 .venv/bin/python experiments/external_transition_model_consolidation/train.py \

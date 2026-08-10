@@ -1302,6 +1302,39 @@ def test_transition_model_bank_consolidation_shares_only_equivalent_models() -> 
     assert rejected_bank.physical_model_count == 2
 
 
+def test_transition_model_consolidation_is_copy_on_write_after_later_adaptation() -> None:
+    torch.manual_seed(12125)
+    bank = ExternalTransitionModelBank(2, 1, 3, hidden_width=8)
+    first = bank.ensure_context(torch.tensor([1.0, 0.0, 0.0]))
+    second = bank.ensure_context(
+        torch.tensor([0.0, 1.0, 0.0]),
+        initialize_from=first,
+    )
+    heldout = ExternalTransitionObservation(
+        state=torch.randn(5, 2),
+        intention=torch.randn(5, 1),
+        next_state=torch.randn(5, 2),
+    )
+    assert bank.consolidate_verified(first, second, [heldout]).accepted
+    first_digest = bank.models[first].digest()
+    optimizer = torch.optim.Adam(bank.models[second].parameters(), lr=0.1)
+    update = ExternalTransitionObservation(
+        state=torch.randn(5, 2),
+        intention=torch.randn(5, 1),
+        next_state=torch.ones(5, 2),
+    )
+
+    bank.adaptation_step(
+        update,
+        bank.context_at(second).unsqueeze(0).expand(5, -1),
+        optimizer,
+    )
+
+    assert bank.model_aliases() == [0, 1]
+    assert bank.models[first].digest() == first_digest
+    assert bank.models[second].digest() != first_digest
+
+
 def test_transition_model_bank_compression_requires_retention_and_round_trips() -> None:
     torch.manual_seed(1213)
     bank = ExternalTransitionModelBank(2, 1, 2, hidden_width=8, capacity=2)
