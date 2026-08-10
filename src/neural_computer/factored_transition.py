@@ -571,7 +571,7 @@ class ExternalFactoredTransitionRouter:
         observation: ExternalTransitionObservation,
         retention_probe: Callable[[ExternalFactoredTransitionModel], bool],
         *,
-        heldout: ExternalTransitionObservation | None = None,
+        heldout: ExternalTransitionObservation,
         prediction_tolerance: float = 0.05,
     ) -> FactoredTransitionPromotionReceipt:
         """Add a verified unseen fact to an already-bound logical slot.
@@ -601,19 +601,18 @@ class ExternalFactoredTransitionRouter:
             self.model.state_payload()
         )
         candidate.write_residual(observation, context=context)
-        verifier_observation = observation if heldout is None else heldout
-        verifier_observation.validate(
+        heldout.validate(
             state_width=self.model.state_width,
             intention_width=self.model.intention_width,
         )
-        context_batch = context.to(verifier_observation.state).unsqueeze(0)
+        context_batch = context.to(heldout.state).unsqueeze(0)
         prediction = candidate.predict_with_context(
-            verifier_observation.state,
-            verifier_observation.intention,
-            context_batch.expand(verifier_observation.state.shape[0], -1),
+            heldout.state,
+            heldout.intention,
+            context_batch.expand(heldout.state.shape[0], -1),
         )
         error = float(
-            (prediction - verifier_observation.next_state).square().mean().detach()
+            (prediction - heldout.next_state).square().mean().detach()
         )
         accepted = error <= prediction_tolerance and bool(retention_probe(candidate))
         if accepted:

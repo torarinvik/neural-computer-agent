@@ -6332,3 +6332,12 @@ evidence. It does not establish automatic context formation, arbitrary
 missingness, unbounded residual growth, compression, or general continual
 learning. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_factored_transition_residual_promoted_2026-08-10/`.
+
+The router also exposes a bound-stream copy-on-write update path. Once an
+opaque slot is already owned by a stream binding, a new fact can be staged on
+an isolated model copy without asking the identity router to rediscover the
+slot. The update is committed only after a separate held-out factual
+observation and a caller-owned retention probe pass; the API deliberately
+does not permit the admitted row to serve as its own held-out gate. This is a
+reusable safety boundary, not yet a promoted claim about automatic online
+learning.

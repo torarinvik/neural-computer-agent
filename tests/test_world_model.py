@@ -1939,6 +1939,7 @@ def test_factored_router_stages_promotes_and_reuses_opaque_context() -> None:
         0,
         unseen,
         lambda candidate: candidate.residual_record_count == 3,
+        heldout=second,
         prediction_tolerance=1e-6,
     )
     assert updated.accepted
@@ -1954,6 +1955,7 @@ def test_factored_router_stages_promotes_and_reuses_opaque_context() -> None:
             next_state=torch.tensor([[999.0]]),
         ),
         lambda _candidate: False,
+        heldout=second,
     )
     assert not rejected.accepted
     assert router.model.digest() == before_rejected_update
