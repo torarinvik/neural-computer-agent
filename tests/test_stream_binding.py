@@ -3,6 +3,9 @@ from __future__ import annotations
 import torch
 
 from experiments.external_learned_stream_binding.train import run as run_pressure_test
+from experiments.external_learned_stream_binding_factual_lifecycle.train import (
+    run as run_factual_lifecycle_pressure_test,
+)
 from experiments.external_learned_stream_binding_lifecycle.train import (
     run as run_lifecycle_pressure_test,
 )
@@ -343,3 +346,14 @@ def test_outcome_trained_lifecycle_pressure_test_passes() -> None:
     assert report["gates"]["learned_safe_policy"] is True
     assert report["gates"]["contradiction_prefers_hold"] is True
     assert report["gates"]["outcome_shuffle_control_lower"] is True
+
+
+def test_joint_binding_factual_lifecycle_pressure_test_passes() -> None:
+    report = run_factual_lifecycle_pressure_test(2501)
+    assert report["promoted"] is True
+    assert report["gates"]["learned_joint_proposal_correct"] is True
+    assert report["gates"]["wrong_heldout_rejection_atomic"] is True
+    assert report["gates"]["sibling_factual_slot_retained"] is True
+    assert report["gates"]["drift_does_not_mutate_factual_bank"] is True
+    assert "conflict" in report["drift"]["statuses"]
+    assert all(status == "matched" for status in report["drift"]["binding_statuses"])

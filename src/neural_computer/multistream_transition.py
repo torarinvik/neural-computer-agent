@@ -200,6 +200,12 @@ class ExternalMultiStreamTransitionContextRouter:
         child = self._streams.get(stream_id)
         return 0 if child is None else child.quarantined_observations
 
+    def bound_slot_id(self, stream_key: torch.Tensor) -> int | None:
+        """Return the stable factual slot currently preferred by one stream."""
+
+        stream_id = self._stream_id(stream_key)
+        return self._bound_slot_ids.get(stream_id)
+
     def provisional_model_at(
         self,
         stream_key: torch.Tensor,
@@ -314,6 +320,11 @@ class ExternalMultiStreamTransitionContextRouter:
     def state_payload(self) -> dict[str, object]:
         """Serialize shared memory once and stream-local transient state."""
 
+        # Persist the logical slot address and its current physical cache
+        # together.  A child can retain only ``active_slot_id`` after a bank
+        # eviction/replacement; normalizing the physical index before taking
+        # the snapshot keeps save/load byte-exact.
+        self._refresh_children()
         shared = self.router.fork_stream().state_payload()
         transient_keys = (
             "address_adapter",
@@ -401,7 +412,11 @@ class ExternalMultiStreamTransitionContextRouter:
             ):
                 raise TypeError("multi-stream stream state is invalid")
             stream_key = torch.tensor(item["stream_key"], dtype=torch.float32)
-            stream_id = router._stream_id(stream_key)
+            _validate_stream_key(stream_key, width=stream_key_width)
+            # The serialized key is already the rounded canonical stream ID.
+            # Normalizing it a second time can move the final float32 bit and
+            # make an otherwise valid payload fail exact round-trip checks.
+            stream_id = tuple(round(float(value), 7) for value in stream_key.tolist())
             if stream_id in router._streams:
                 raise ValueError("multi-stream stream keys are duplicated")
             bound_slot_id = item.get("bound_slot_id")

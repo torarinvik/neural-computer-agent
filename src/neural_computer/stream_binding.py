@@ -43,6 +43,9 @@ EXTERNAL_STREAM_BINDING_RETIREMENT_SCHEMA = (
 EXTERNAL_STREAM_BINDING_REPLACEMENT_SCHEMA = (
     "neural-computer.external-stream-binding-replacement.v1"
 )
+EXTERNAL_STREAM_BINDING_FACTUAL_REPLACEMENT_SCHEMA = (
+    "neural-computer.external-stream-binding-factual-replacement.v1"
+)
 EXTERNAL_STREAM_BINDING_LIFECYCLE_POLICY_SCHEMA = (
     "neural-computer.external-stream-binding-lifecycle-policy.v1"
 )
@@ -85,6 +88,25 @@ def _payload_digest(*values: object) -> str:
     digest = hashlib.sha256()
     for value in values:
         _digest_value(digest, value)
+    return digest.hexdigest()
+
+
+def _retained_factual_digest(
+    bank: Any,
+    *,
+    excluded_slot_ids: set[int],
+) -> str:
+    """Digest retained factual slots without including the replacement slot."""
+
+    digest = hashlib.sha256()
+    for slot_id in bank.slot_ids:
+        if slot_id in excluded_slot_ids:
+            continue
+        index = bank.physical_index_for_slot_id(slot_id)
+        digest.update(str(slot_id).encode("utf-8"))
+        _digest_value(digest, bank.context_at(index))
+        digest.update(bank.model_family_at(index).encode("utf-8"))
+        digest.update(bank.models[index].digest().encode("utf-8"))
     return digest.hexdigest()
 
 
@@ -285,6 +307,74 @@ class ExternalStreamBindingReplacementReceipt:
             raise ValueError("stream-binding replacement observation count is invalid")
         if self.accepted and self.track_id is None:
             raise ValueError("accepted stream-binding replacement needs a track ID")
+        return self
+
+
+@dataclass(frozen=True)
+class ExternalStreamBindingFactualReplacementReceipt:
+    """Atomic binding replacement plus held-out factual-model promotion."""
+
+    accepted: bool
+    provisional_id: int
+    retired_track_id: int
+    track_id: int | None
+    retired_slot_id: int | None
+    slot_id: int | None
+    heldout_error: float
+    retention_outcome: float
+    binding_digest_before: str
+    binding_digest_after: str
+    router_digest_before: str
+    router_digest_after: str
+    reason: str
+    schema: str = EXTERNAL_STREAM_BINDING_FACTUAL_REPLACEMENT_SCHEMA
+
+    def validate(self) -> ExternalStreamBindingFactualReplacementReceipt:
+        if self.schema != EXTERNAL_STREAM_BINDING_FACTUAL_REPLACEMENT_SCHEMA:
+            raise ValueError("unsupported stream-binding factual replacement schema")
+        for name, value in (
+            ("provisional ID", self.provisional_id),
+            ("retired track ID", self.retired_track_id),
+        ):
+            if (
+                not isinstance(value, int)
+                or isinstance(value, bool)
+                or value < 0
+            ):
+                raise ValueError(f"stream-binding factual replacement {name} is invalid")
+        for name, value in (
+            ("track ID", self.track_id),
+            ("retired slot ID", self.retired_slot_id),
+            ("slot ID", self.slot_id),
+        ):
+            if value is not None and (
+                not isinstance(value, int)
+                or isinstance(value, bool)
+                or value < 0
+            ):
+                raise ValueError(f"stream-binding factual replacement {name} is invalid")
+        if (
+            (not math.isfinite(self.heldout_error) and self.heldout_error != float("inf"))
+            or self.heldout_error < 0.0
+        ):
+            raise ValueError("stream-binding factual replacement held-out error is invalid")
+        if not math.isfinite(self.retention_outcome) or not 0.0 <= self.retention_outcome <= 1.0:
+            raise ValueError("stream-binding factual replacement outcome is invalid")
+        for name, value in (
+            ("binding digest before", self.binding_digest_before),
+            ("binding digest after", self.binding_digest_after),
+            ("router digest before", self.router_digest_before),
+            ("router digest after", self.router_digest_after),
+        ):
+            if not isinstance(value, str) or not value:
+                raise ValueError(f"stream-binding factual replacement {name} is missing")
+        if not isinstance(self.reason, str) or not self.reason:
+            raise ValueError("stream-binding factual replacement reason is missing")
+        if self.accepted and any(
+            value is None
+            for value in (self.track_id, self.retired_slot_id, self.slot_id)
+        ):
+            raise ValueError("accepted stream-binding factual replacement is incomplete")
         return self
 
 
@@ -1113,6 +1203,23 @@ class ExternalOnlineStreamBindingMemory:
             "reliability": self._reliability(entry),
         }
 
+    def provisional_observation(self, provisional_id: int) -> ExternalTransitionObservation:
+        """Return a detached bounded evidence window for external factual routing."""
+
+        if provisional_id not in self._provisional:
+            raise KeyError(provisional_id)
+        observation = self._window_with(self._provisional[provisional_id])
+        return ExternalTransitionObservation(
+            state=observation.state.detach().cpu().clone(),
+            intention=observation.intention.detach().cpu().clone(),
+            next_state=observation.next_state.detach().cpu().clone(),
+            confidence=(
+                None
+                if observation.confidence is None
+                else observation.confidence.detach().cpu().clone()
+            ),
+        )
+
     def lifecycle_candidate_features(
         self,
     ) -> tuple[tuple[tuple[int, int], ...], torch.Tensor]:
@@ -1700,6 +1807,257 @@ class ExternalLearnedMultiStreamTransitionContextRouter:
             acceptance_threshold=acceptance_threshold,
         )
 
+    def replace_with_factual_candidate(
+        self,
+        proposal: ExternalStreamBindingLifecycleProposal,
+        heldout_observation: ExternalTransitionObservation,
+        verifier_outcome: torch.Tensor | float,
+        *,
+        prediction_tolerance: float = 0.05,
+        acceptance_threshold: float = 1.0,
+    ) -> ExternalStreamBindingFactualReplacementReceipt:
+        """Jointly replace a binding and its factual model on isolated copies.
+
+        The policy chooses only the anonymous binding pair. The external
+        router replays no old controller state: it consumes the provisional
+        evidence once, checks an independent held-out observation, and commits
+        the binding plus factual-bank replacement together only when the
+        scalar retention outcome authorizes the transaction.
+        """
+
+        proposal.validate(feature_width=self.binding.stream_key_width * 2 + 11)
+        heldout_observation.validate(
+            state_width=self.router.bank.state_width,
+            intention_width=self.router.bank.intention_width,
+        )
+        if prediction_tolerance < 0.0 or not math.isfinite(prediction_tolerance):
+            raise ValueError("joint factual replacement prediction tolerance is invalid")
+        if isinstance(verifier_outcome, torch.Tensor):
+            values = verifier_outcome.detach().reshape(-1)
+            if values.numel() != 1:
+                raise ValueError("joint factual replacement outcomes must be scalar")
+            outcome = float(values[0])
+        else:
+            outcome = float(verifier_outcome)
+        if not math.isfinite(outcome) or not 0.0 <= outcome <= 1.0:
+            raise ValueError("joint factual replacement outcomes must lie in [0, 1]")
+        if (
+            not math.isfinite(acceptance_threshold)
+            or not 0.0 <= acceptance_threshold <= 1.0
+        ):
+            raise ValueError("joint factual replacement acceptance threshold is invalid")
+        binding_before = self.binding.digest()
+        router_before = self.router.digest()
+        selected_provisional_id = proposal.selected_provisional_id
+        selected_track_id = proposal.selected_track_id
+        if selected_provisional_id is None or selected_track_id is None:
+            return ExternalStreamBindingFactualReplacementReceipt(
+                accepted=False,
+                provisional_id=0,
+                retired_track_id=0,
+                track_id=None,
+                retired_slot_id=None,
+                slot_id=None,
+                heldout_error=float("inf"),
+                retention_outcome=outcome,
+                binding_digest_before=binding_before,
+                binding_digest_after=binding_before,
+                router_digest_before=router_before,
+                router_digest_after=router_before,
+                reason="policy_hold",
+            ).validate()
+
+        if outcome < acceptance_threshold:
+            return ExternalStreamBindingFactualReplacementReceipt(
+                accepted=False,
+                provisional_id=selected_provisional_id,
+                retired_track_id=selected_track_id,
+                track_id=None,
+                retired_slot_id=None,
+                slot_id=None,
+                heldout_error=float("inf"),
+                retention_outcome=outcome,
+                binding_digest_before=binding_before,
+                binding_digest_after=binding_before,
+                router_digest_before=router_before,
+                router_digest_after=router_before,
+                reason="verifier_outcome_rejected",
+            ).validate()
+
+        retired_state = self.binding.track_state(selected_track_id)
+        retired_slot_id = self.router.bound_slot_id(retired_state["stream_key"])
+        if retired_slot_id is None:
+            return ExternalStreamBindingFactualReplacementReceipt(
+                accepted=False,
+                provisional_id=selected_provisional_id,
+                retired_track_id=selected_track_id,
+                track_id=None,
+                retired_slot_id=None,
+                slot_id=None,
+                heldout_error=float("inf"),
+                retention_outcome=outcome,
+                binding_digest_before=binding_before,
+                binding_digest_after=binding_before,
+                router_digest_before=router_before,
+                router_digest_after=router_before,
+                reason="retired_track_has_no_factual_slot",
+            ).validate()
+        retained_factual_digest = _retained_factual_digest(
+            self.router.bank,
+            excluded_slot_ids={retired_slot_id},
+        )
+
+        provisional_observation = self.binding.provisional_observation(
+            selected_provisional_id
+        )
+        candidate_binding = ExternalOnlineStreamBindingMemory.from_payload(
+            self.binding.state_payload()
+        )
+        binding_receipt = candidate_binding.replace_on_verifier_outcome(
+            selected_provisional_id,
+            selected_track_id,
+            outcome,
+            acceptance_threshold=acceptance_threshold,
+        )
+        if not binding_receipt.accepted or binding_receipt.track_id is None:
+            return ExternalStreamBindingFactualReplacementReceipt(
+                accepted=False,
+                provisional_id=selected_provisional_id,
+                retired_track_id=selected_track_id,
+                track_id=None,
+                retired_slot_id=retired_slot_id,
+                slot_id=None,
+                heldout_error=float("inf"),
+                retention_outcome=outcome,
+                binding_digest_before=binding_before,
+                binding_digest_after=binding_before,
+                router_digest_before=router_before,
+                router_digest_after=router_before,
+                reason="binding_replacement_failed",
+            ).validate()
+
+        new_key = candidate_binding.track_state(binding_receipt.track_id)["stream_key"]
+        candidate_router = ExternalMultiStreamTransitionContextRouter.from_payload(
+            self.router.state_payload()
+        )
+        eviction = candidate_router.evict_verified_id(
+            retired_slot_id,
+            lambda _candidate: True,
+        )
+        if not bool(getattr(eviction, "accepted", False)):
+            return ExternalStreamBindingFactualReplacementReceipt(
+                accepted=False,
+                provisional_id=selected_provisional_id,
+                retired_track_id=selected_track_id,
+                track_id=None,
+                retired_slot_id=retired_slot_id,
+                slot_id=None,
+                heldout_error=float("inf"),
+                retention_outcome=outcome,
+                binding_digest_before=binding_before,
+                binding_digest_after=binding_before,
+                router_digest_before=router_before,
+                router_digest_after=router_before,
+                reason="factual_slot_eviction_failed",
+            ).validate()
+
+        for row_index in range(provisional_observation.state.shape[0]):
+            confidence = (
+                None
+                if provisional_observation.confidence is None
+                else provisional_observation.confidence[row_index : row_index + 1]
+            )
+            row = ExternalTransitionObservation(
+                state=provisional_observation.state[row_index : row_index + 1],
+                intention=provisional_observation.intention[row_index : row_index + 1],
+                next_state=provisional_observation.next_state[row_index : row_index + 1],
+                confidence=confidence,
+            )
+            routed = candidate_router.observe(row, new_key)
+            if routed.result.status == "staged":
+                candidate_router.adaptation_step(
+                    routed,
+                    None,
+                    replay_evidence=False,
+                )
+        if candidate_router.provisional_candidate_count == 0:
+            return ExternalStreamBindingFactualReplacementReceipt(
+                accepted=False,
+                provisional_id=selected_provisional_id,
+                retired_track_id=selected_track_id,
+                track_id=None,
+                retired_slot_id=retired_slot_id,
+                slot_id=None,
+                heldout_error=float("inf"),
+                retention_outcome=outcome,
+                binding_digest_before=binding_before,
+                binding_digest_after=binding_before,
+                router_digest_before=router_before,
+                router_digest_after=router_before,
+                reason="provisional_factual_candidate_not_staged",
+            ).validate()
+        factual_receipt = candidate_router.promote_staged_candidate(
+            new_key,
+            heldout_observation,
+            lambda _candidate: True,
+            prediction_tolerance=prediction_tolerance,
+        )
+        if not bool(getattr(factual_receipt, "accepted", False)):
+            return ExternalStreamBindingFactualReplacementReceipt(
+                accepted=False,
+                provisional_id=selected_provisional_id,
+                retired_track_id=selected_track_id,
+                track_id=None,
+                retired_slot_id=retired_slot_id,
+                slot_id=None,
+                heldout_error=float(getattr(factual_receipt, "heldout_error", float("inf"))),
+                retention_outcome=outcome,
+                binding_digest_before=binding_before,
+                binding_digest_after=binding_before,
+                router_digest_before=router_before,
+                router_digest_after=router_before,
+                reason="heldout_factual_candidate_rejected",
+            ).validate()
+
+        replacement_slot_id = getattr(factual_receipt, "slot_id", None)
+        if replacement_slot_id is None or _retained_factual_digest(
+            candidate_router.bank,
+            excluded_slot_ids={replacement_slot_id},
+        ) != retained_factual_digest:
+            return ExternalStreamBindingFactualReplacementReceipt(
+                accepted=False,
+                provisional_id=selected_provisional_id,
+                retired_track_id=selected_track_id,
+                track_id=None,
+                retired_slot_id=retired_slot_id,
+                slot_id=replacement_slot_id,
+                heldout_error=float(getattr(factual_receipt, "heldout_error", float("inf"))),
+                retention_outcome=outcome,
+                binding_digest_before=binding_before,
+                binding_digest_after=binding_before,
+                router_digest_before=router_before,
+                router_digest_after=router_before,
+                reason="retained_factual_state_changed",
+            ).validate()
+
+        self.binding = candidate_binding
+        self.router = candidate_router
+        return ExternalStreamBindingFactualReplacementReceipt(
+            accepted=True,
+            provisional_id=selected_provisional_id,
+            retired_track_id=selected_track_id,
+            track_id=binding_receipt.track_id,
+            retired_slot_id=retired_slot_id,
+            slot_id=getattr(factual_receipt, "slot_id", None),
+            heldout_error=float(getattr(factual_receipt, "heldout_error", float("inf"))),
+            retention_outcome=outcome,
+            binding_digest_before=binding_before,
+            binding_digest_after=self.binding.digest(),
+            router_digest_before=router_before,
+            router_digest_after=self.router.digest(),
+            reason="joint_binding_and_factual_replacement_committed",
+        ).validate()
+
     def adaptation_step(
         self,
         result: ExternalLearnedMultiStreamTransitionResult,
@@ -1796,6 +2154,7 @@ class ExternalLearnedMultiStreamTransitionContextRouter:
 
 __all__ = [
     "EXTERNAL_LEARNED_MULTI_STREAM_ROUTER_SCHEMA",
+    "EXTERNAL_STREAM_BINDING_FACTUAL_REPLACEMENT_SCHEMA",
     "EXTERNAL_STREAM_BINDING_LIFECYCLE_POLICY_SCHEMA",
     "EXTERNAL_STREAM_BINDING_LIFECYCLE_PROPOSAL_SCHEMA",
     "EXTERNAL_STREAM_BINDING_MEMORY_SCHEMA",
@@ -1805,6 +2164,7 @@ __all__ = [
     "ExternalLearnedMultiStreamTransitionContextRouter",
     "ExternalLearnedMultiStreamTransitionResult",
     "ExternalOnlineStreamBindingMemory",
+    "ExternalStreamBindingFactualReplacementReceipt",
     "ExternalStreamBindingLifecyclePolicy",
     "ExternalStreamBindingLifecycleProposal",
     "ExternalStreamBindingPromotionReceipt",

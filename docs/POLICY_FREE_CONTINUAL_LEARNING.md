@@ -210,3 +210,34 @@ shuffled controls `0.125`/`0.2083`. The result promotes outcome-trained
 proposal ranking and atomic retention safety only. Learned verifier design,
 autonomous eviction policy, unrestricted growth, and general continual
 learning remain open.
+
+## Joint learned binding and factual retention (2026-08-10)
+
+The binding policy is now coupled to the factual memory boundary through
+`ExternalLearnedMultiStreamTransitionContextRouter.replace_with_factual_candidate`.
+The policy still proposes only an anonymous provisional/live pair. The external
+memory layer performs the consequential work on copy-on-write binding and
+multi-stream factual-router state: it evicts the retired factual slot, consumes
+the provisional evidence once with streaming affine sufficient statistics,
+checks an independent held-out transition, and commits both replacements only
+after the scalar verifier outcome authorizes the transaction. A scalar rejection
+or a wrong held-out transition leaves both memories byte-stable.
+
+The two-seed audit in
+`experiments/external_learned_stream_binding_factual_lifecycle/` uses five
+anonymous streams, two live identities, three delayed provisional identities,
+zero factual replay, zero controller updates, and zero factual optimizer
+updates. Seeds `2501` and `2502` both learned the correct joint proposal,
+rejected scalar and wrong-held-out replacements atomically, retained the
+sibling factual slot, routed the new slot, reloaded exactly, and kept the
+binding encoder and controller frozen. A drift control keeps identity matched,
+returns an actual factual `conflict`, and leaves the factual-bank content digest
+unchanged. Each run records 483 scalar verifier bits: 480 policy-training
+outcomes plus three transaction outcomes.
+
+This promotes a bounded joint binding/factual transaction. It does not promote
+learned verifier design, autonomous eviction economics, unrestricted memory
+growth, arbitrary drift recovery, or general continual learning. The next
+pressure point is to vary the factual model family, delay law, and open-set
+arrival process while measuring retention and transfer against matched-fresh
+controls.

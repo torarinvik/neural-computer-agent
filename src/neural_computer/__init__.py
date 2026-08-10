@@ -359,6 +359,7 @@ from .runtime import (
 from .state_store import OPAQUE_STATE_STORE_SCHEMA, PersistentOpaqueStateStore
 from .stream_binding import (
     EXTERNAL_LEARNED_MULTI_STREAM_ROUTER_SCHEMA,
+    EXTERNAL_STREAM_BINDING_FACTUAL_REPLACEMENT_SCHEMA,
     EXTERNAL_STREAM_BINDING_LIFECYCLE_POLICY_SCHEMA,
     EXTERNAL_STREAM_BINDING_LIFECYCLE_PROPOSAL_SCHEMA,
     EXTERNAL_STREAM_BINDING_MEMORY_SCHEMA,
@@ -368,6 +369,7 @@ from .stream_binding import (
     ExternalLearnedMultiStreamTransitionContextRouter,
     ExternalLearnedMultiStreamTransitionResult,
     ExternalOnlineStreamBindingMemory,
+    ExternalStreamBindingFactualReplacementReceipt,
     ExternalStreamBindingLifecyclePolicy,
     ExternalStreamBindingLifecycleProposal,
     ExternalStreamBindingPromotionReceipt,
@@ -558,6 +560,7 @@ __all__ = [
     "EXTERNAL_REGISTER_SHARED_STABLE_RELATIONAL_MODE",
     "EXTERNAL_REGISTER_STATE_SCHEMA",
     "EXTERNAL_REPRESENTATION_SPACE_SCHEMA",
+    "EXTERNAL_STREAM_BINDING_FACTUAL_REPLACEMENT_SCHEMA",
     "EXTERNAL_STREAM_BINDING_LIFECYCLE_POLICY_SCHEMA",
     "EXTERNAL_STREAM_BINDING_LIFECYCLE_PROPOSAL_SCHEMA",
     "EXTERNAL_STREAM_BINDING_MEMORY_SCHEMA",
@@ -737,6 +740,7 @@ __all__ = [
     "ExternalSequenceProgramMemory",
     "ExternalSparseTransitionEvidenceIndex",
     "ExternalSparseTransitionEvidenceProposal",
+    "ExternalStreamBindingFactualReplacementReceipt",
     "ExternalStreamBindingLifecyclePolicy",
     "ExternalStreamBindingLifecycleProposal",
     "ExternalStreamBindingPromotionReceipt",

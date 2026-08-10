@@ -1,0 +1,78 @@
+{
+  "schema": "neural-computer.external-learned-stream-binding-factual-lifecycle-pressure-test.v1",
+  "seed": 2502,
+  "promoted": true,
+  "elapsed_seconds": 9.19098783400841,
+  "configuration": {
+    "streams": 5,
+    "live_streams": 2,
+    "provisional_streams": 3,
+    "identity_updates": 280,
+    "policy_updates": 480,
+    "factual_model_family": "affine_sufficient_statistics_v1",
+    "factual_replay": 0,
+    "controller_optimizer_updates": 0
+  },
+  "identity": {
+    "contrastive_loss": 0.0004207537858746946,
+    "encoder_digest": "61e277ef65bae9560b1c64d4ec53b58c9e5c26715189937633baab83d49d809d",
+    "optimizer_updates": 280
+  },
+  "policy_training": {
+    "accepted_outcomes": 276,
+    "mean_loss": 1.2783678078834781,
+    "optimizer_updates": 480,
+    "replayed_examples": 0,
+    "unique_verifier_bits": 480
+  },
+  "proposal": {
+    "correct": true,
+    "fresh_correct": false,
+    "selected_propensity": 1.0,
+    "selected_provisional_id": 0,
+    "selected_track_id": 1
+  },
+  "replacement": {
+    "accepted": true,
+    "heldout_error": 0.3310873806476593,
+    "retired_slot_id": 1,
+    "slot_id": 2,
+    "scalar_rejection_reason": "verifier_outcome_rejected",
+    "wrong_heldout_reason": "heldout_factual_candidate_rejected"
+  },
+  "drift": {
+    "binding_statuses": ["matched", "matched", "matched", "matched"],
+    "statuses": ["pending", "conflict", "pending", "capacity"],
+    "bank_digest_before": "972e157b39f18aa4669aad93ef336d16702c245e407775105caf57e8731f8ea0",
+    "bank_digest_after": "972e157b39f18aa4669aad93ef336d16702c245e407775105caf57e8731f8ea0",
+    "bank_unchanged": true
+  },
+  "persistence": {"exact": true},
+  "gates": {
+    "binding_encoder_frozen": true,
+    "controller_frozen_unchanged": true,
+    "delayed_provisional_streams_isolated": true,
+    "drift_does_not_mutate_factual_bank": true,
+    "fresh_control_not_identical": true,
+    "identity_loss_converged": true,
+    "joint_persistence_exact": true,
+    "joint_replacement_committed": true,
+    "learned_joint_proposal_correct": true,
+    "new_factual_slot_routed": true,
+    "scalar_rejection_atomic": true,
+    "sibling_factual_slot_retained": true,
+    "wrong_heldout_rejection_atomic": true
+  },
+  "accounting": {
+    "unique_verifier_bits": 483,
+    "lifecycle_verifier_bits": 3,
+    "unique_logical_lifetimes": 2400,
+    "identity_optimizer_updates": 280,
+    "policy_optimizer_updates": 480,
+    "factual_optimizer_updates": 0,
+    "controller_optimizer_updates": 0,
+    "deployment_optimizer_updates": 0,
+    "replayed_examples": 0
+  },
+  "claim_boundary": "bounded joint learned binding and factual replacement under a held-out gate; not general drift recovery, unrestricted growth, learned verifier design, or general continual learning"
+}

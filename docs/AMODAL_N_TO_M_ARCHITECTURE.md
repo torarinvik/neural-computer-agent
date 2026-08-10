@@ -7817,3 +7817,32 @@ arbitrary identity discovery, or general continual learning. The next pressure
 point is to couple the learned proposal policy to held-out factual model
 retention under real drift and delayed contradiction, then measure whether it
 reduces verified experience per newly retained capability.
+
+## Joint learned binding and factual replacement (2026-08-10)
+
+The next boundary is now implemented as one external transaction rather than
+two loosely coordinated commits. `ExternalLearnedMultiStreamTransitionContextRouter`
+accepts a learned lifecycle proposal plus an independent held-out transition
+and stages the binding replacement and factual-bank replacement on isolated
+copies. The candidate consumes provisional evidence once through the
+`streaming_statistics` factual path, verifies the held-out prediction, and
+commits the new anonymous track and factual slot together. The frozen
+controller sees neither the raw transition nor the lifecycle action.
+
+The replicated pressure test in
+`experiments/external_learned_stream_binding_factual_lifecycle/` exercises five
+interleaved anonymous streams: two live, three delayed provisional, one
+policy-selected replacement, and one retained sibling. Seeds `2501` and
+`2502` both pass learned proposal selection, scalar rejection atomicity,
+wrong-held-out rejection, sibling retention, new-slot routing, exact
+persistence, frozen-controller/encoder, and factual-bank drift-isolation
+gates. The drift control keeps the learned identity matched while the factual
+router returns `conflict`; the bank content digest does not change. The run
+uses zero replay, zero factual optimizer updates, and zero controller updates.
+
+This is a narrow protocol and memory invariant: learned anonymous binding can
+be coupled to held-out factual retention without allowing a failed candidate to
+damage existing knowledge. It is not evidence of unrestricted memory growth,
+general drift recovery, learned verifier design, or general continual learning.
+The next experiment should vary model families and arrival/delay laws and
+compare stable retention and transfer against a matched-fresh learner.
