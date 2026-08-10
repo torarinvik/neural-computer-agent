@@ -58,6 +58,17 @@ parser.add_argument("--worlds", type=int, default=64)
 parser.add_argument("--held-worlds", type=int, default=8)
 parser.add_argument("--max-len", type=int, default=4)
 parser.add_argument(
+    "--curriculum", type=float, default=0.0,
+    help="ramp the maximum program LENGTH from 1 to --max-len over "
+         "this fraction of training. Measured motivation: only 11%% of "
+         "updates land on length-1 programs and 67%% on length>=3, so "
+         "the model spends almost all its time on the hardest form of "
+         "a task it cannot yet do at all. F114 showed reading works "
+         "when the plant's job is a SINGLE application; F120 showed "
+         "the ignorance objective is toothless while the model is bad. "
+         "A curriculum gets reading established on the readable task "
+         "first, then extends it — the bootstrapping F120 identified.")
+parser.add_argument(
     "--oracle-entry", action="store_true",
     help="ORACLE SUBSTITUTION on the entry (the F110 technique that "
          "settled the games): replace the reader's output with the "
@@ -270,8 +281,13 @@ data_gen = torch.Generator().manual_seed(args.seed * 6700417)
 for update in range(args.train_updates):
     world = train_worlds[int(torch.randint(
         0, len(train_worlds), (1,), generator=data_gen))]
-    program = train_programs[int(torch.randint(
-        0, len(train_programs), (1,), generator=data_gen))]
+    pool = train_programs
+    if args.curriculum > 0:
+        ramp = update / max(1.0, args.train_updates * args.curriculum)
+        cap = min(args.max_len, 1 + int(ramp * args.max_len))
+        pool = [p for p in train_programs if len(p) <= cap] or train_programs
+    program = pool[int(torch.randint(
+        0, len(pool), (1,), generator=data_gen))]
     entry = (oracle(oracle_raw(world)) if args.oracle_entry
              else reader(*reader_examples(world, data_gen)))
     x = torch.randint(0, 1 << W, (args.batch_size,), generator=data_gen)
