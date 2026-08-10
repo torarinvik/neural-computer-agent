@@ -1,0 +1,62 @@
+{
+  "schema": "neural-computer.policy-free-intention-admission.v1",
+  "claim_boundary": "heldout verifier-gated acquisition of one opaque intention vector; not arbitrary intention synthesis or general continual learning",
+  "seed": 85202,
+  "configuration": {
+    "initial_repertoire_count": 4,
+    "new_intention": [
+      0.5,
+      0.5
+    ],
+    "rejected_intention": [
+      0.5,
+      -0.5
+    ],
+    "goal": [
+      1.5,
+      1.5
+    ],
+    "horizon": 3,
+    "candidate_intentions_argument": "omitted_at_runtime"
+  },
+  "gates": {
+    "pre_admission_goal_not_mastered": true,
+    "heldout_factual_probe_passed": true,
+    "new_intention_admitted": true,
+    "post_admission_goal_mastered": true,
+    "retained_vectors_unchanged": true,
+    "rejected_candidate_failed_heldout_probe": true,
+    "rejected_candidate_atomic": true,
+    "controller_frozen": true,
+    "model_unchanged": true,
+    "exact_repertoire_persistence": true,
+    "zero_replayed_examples": true
+  },
+  "promoted": true,
+  "metrics": {
+    "before_displacement": [
+      1.0,
+      2.0
+    ],
+    "after_displacement": [
+      1.5,
+      1.5
+    ],
+    "heldout_error": 3.2322245330533225e-14,
+    "rejected_error": 0.01500000525265932,
+    "admission_entry_index": 4,
+    "rejected_record_count": 5,
+    "before_expanded_nodes": 52,
+    "after_expanded_nodes": 70
+  },
+  "accounting": {
+    "unique_verifier_bits": 6,
+    "unique_logical_lifetimes": 70,
+    "factual_statistics_updates": 1,
+    "intention_admission_transactions": 2,
+    "optimizer_updates": 0,
+    "controller_optimizer_updates": 0,
+    "replayed_examples": 0,
+    "wall_seconds": 0.02192895795451477
+  }
+}

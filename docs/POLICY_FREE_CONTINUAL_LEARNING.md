@@ -423,3 +423,24 @@ The result is still bounded candidate retrieval, not general continual
 learning. The unresolved frontier is learning new intention content and its
 representation from partial multimodal experience, then admitting it only
 after held-out factual and retention checks.
+
+## Verifier-gated intention admission (2026-08-10)
+
+New output content now has an explicit transactional path. A novel opaque
+vector is staged on a copy of `ExternalIntentionRepertoire`; a caller-owned
+held-out verifier can validate factual consequences and write the scalar
+outcome to the staged entry. The transaction commits only if all retained
+entries are unchanged and exactly one candidate was added. Rejected candidates
+and verifiers that mutate old entries are complete no-ops.
+
+The promoted audit under
+`session_records/sequence_working_memory_2026-08-02/policy_free_intention_admission_promoted_2026-08-10/`
+demonstrates one real capability boundary: a goal unreachable with the
+existing repertoire is mastered after one verified new intention is admitted,
+while a mismatched intention is refused. The controller, factual model, and
+old repertoire entries remain stable with zero replay.
+
+This closes safe admission, not candidate invention. General continual
+learning still requires an external proposer that can generate useful new
+intention content from partial multimodal evidence and an outcome-only active
+exploration loop that can discover it efficiently.

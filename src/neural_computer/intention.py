@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import hashlib
 import math
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
@@ -28,6 +28,9 @@ EXTERNAL_INTENTION_REPERTOIRE_SCHEMA = (
 EXTERNAL_INTENTION_PROPOSAL_SCHEMA = "neural-computer.external-intention-proposal.v1"
 EXTERNAL_INTENTION_OBSERVATION_SCHEMA = (
     "neural-computer.external-intention-observation.v1"
+)
+EXTERNAL_INTENTION_ADMISSION_SCHEMA = (
+    "neural-computer.external-intention-admission.v1"
 )
 
 
@@ -138,6 +141,43 @@ class ExternalIntentionObservationReceipt:
             raise ValueError("intention-observation receipt version is invalid")
         if not isinstance(self.content_digest, str) or not self.content_digest:
             raise ValueError("intention-observation digest is missing")
+        return self
+
+
+@dataclass(frozen=True)
+class ExternalIntentionAdmissionReceipt:
+    """Copy-on-write admission result for one novel opaque intention."""
+
+    accepted: bool
+    entry_index: int | None
+    source_record_count: int
+    destination_record_count: int
+    source_digest: str
+    candidate_digest: str
+    destination_digest: str
+    reason: str
+    schema: str = EXTERNAL_INTENTION_ADMISSION_SCHEMA
+
+    def validate(self) -> ExternalIntentionAdmissionReceipt:
+        if self.schema != EXTERNAL_INTENTION_ADMISSION_SCHEMA:
+            raise ValueError("unsupported intention-admission schema")
+        if min(self.source_record_count, self.destination_record_count) < 0:
+            raise ValueError("intention-admission record counts cannot be negative")
+        if self.accepted:
+            if self.entry_index is None or self.entry_index < 0:
+                raise ValueError("accepted intention admission has no entry index")
+            if self.destination_record_count != self.source_record_count + 1:
+                raise ValueError("accepted intention admission has wrong growth")
+        elif self.entry_index is not None:
+            raise ValueError("rejected intention admission has an entry index")
+        for name, value in (
+            ("source_digest", self.source_digest),
+            ("candidate_digest", self.candidate_digest),
+            ("destination_digest", self.destination_digest),
+            ("reason", self.reason),
+        ):
+            if not isinstance(value, str) or not value:
+                raise ValueError(f"intention-admission {name} is missing")
         return self
 
 
@@ -287,6 +327,122 @@ class ExternalIntentionRepertoire:
             if self._entry_similarity(stored, intention) >= self.merge_cosine:
                 return index
         return None
+
+    def _prefix_digest(self, count: int) -> str:
+        if not isinstance(count, int) or count < 0 or count > self.record_count:
+            raise ValueError("intention prefix count is invalid")
+        digest = hashlib.sha256()
+        digest.update(self.schema.encode("utf-8"))
+        digest.update(str(self.width).encode("utf-8"))
+        digest.update(str(count).encode("utf-8"))
+        tensors = self.statistics()
+        for name in sorted(tensors):
+            value = tensors[name][:count].detach().cpu().contiguous()
+            digest.update(name.encode("utf-8"))
+            digest.update(str(value.dtype).encode("utf-8"))
+            digest.update(repr(tuple(value.shape)).encode("utf-8"))
+            digest.update(value.numpy().tobytes())
+        return digest.hexdigest()
+
+    def admit_verified(
+        self,
+        intention: torch.Tensor,
+        verifier: Callable[[ExternalIntentionRepertoire], bool],
+        *,
+        reason: str = "caller_owned_heldout_verifier",
+    ) -> ExternalIntentionAdmissionReceipt:
+        """Admit one novel vector only through an isolated verifier transaction.
+
+        ``verifier`` receives a copy containing the staged vector. It may run
+        an independent held-out factual probe and may record the new outcome
+        on that copy. Existing entries must remain byte-equivalent and the
+        verifier may not add a second entry. Rejection, including a mutating
+        verifier, leaves the live repertoire unchanged.
+        """
+
+        if not callable(verifier):
+            raise TypeError("intention admission verifier must be callable")
+        if not isinstance(reason, str) or not reason:
+            raise ValueError("intention admission reason is missing")
+        normalized, _utility, _propensity, _timestamp = self._validate_batch(
+            intention,
+            None,
+            None,
+            None,
+        )
+        if normalized.shape[0] != 1:
+            raise ValueError("intention admission accepts one vector")
+        candidate_intention = normalized[0]
+        source_count = self.record_count
+        source_digest = self.content_digest()
+        if self._find_entry(candidate_intention) is not None:
+            return ExternalIntentionAdmissionReceipt(
+                accepted=False,
+                entry_index=None,
+                source_record_count=source_count,
+                destination_record_count=source_count,
+                source_digest=source_digest,
+                candidate_digest=source_digest,
+                destination_digest=source_digest,
+                reason="intention already exists in verified repertoire",
+            ).validate()
+
+        candidate = ExternalIntentionRepertoire.from_payload(self.payload())
+        candidate.observe(candidate_intention)
+        candidate_digest = candidate.content_digest()
+        accepted = bool(verifier(candidate))
+        prefix_unchanged = candidate._prefix_digest(source_count) == self._prefix_digest(
+            source_count
+        )
+        shape_unchanged = candidate.record_count == source_count + 1
+        staged_vector_unchanged = shape_unchanged and torch.equal(
+            candidate.statistics()["intentions"][source_count], candidate_intention
+        )
+        accepted = accepted and prefix_unchanged and shape_unchanged and staged_vector_unchanged
+        if accepted:
+            self._copy_from(candidate)
+            destination_digest = self.content_digest()
+            return ExternalIntentionAdmissionReceipt(
+                accepted=True,
+                entry_index=source_count,
+                source_record_count=source_count,
+                destination_record_count=self.record_count,
+                source_digest=source_digest,
+                candidate_digest=candidate_digest,
+                destination_digest=destination_digest,
+                reason=reason,
+            ).validate()
+        return ExternalIntentionAdmissionReceipt(
+            accepted=False,
+            entry_index=None,
+            source_record_count=source_count,
+            destination_record_count=source_count,
+            source_digest=source_digest,
+            candidate_digest=candidate_digest,
+            destination_digest=source_digest,
+            reason=(
+                "heldout verifier rejected or mutated retained intention state"
+            ),
+        ).validate()
+
+    def _copy_from(self, other: ExternalIntentionRepertoire) -> None:
+        if not isinstance(other, ExternalIntentionRepertoire):
+            raise TypeError("intention repertoire replacement must use same type")
+        if self.width != other.width or self.merge_cosine != other.merge_cosine:
+            raise ValueError("intention repertoire replacement configuration differs")
+        other.validate_state()
+        self._intentions = [row.clone() for row in other._intentions]
+        self._attempts = list(other._attempts)
+        self._outcome_counts = list(other._outcome_counts)
+        self._utility_sums = list(other._utility_sums)
+        self._utility_square_sums = list(other._utility_square_sums)
+        self._propensity_sums = list(other._propensity_sums)
+        self._inverse_propensity_utility_sums = list(
+            other._inverse_propensity_utility_sums
+        )
+        self._last_propensities = list(other._last_propensities)
+        self._last_seen = list(other._last_seen)
+        self._version = other._version
 
     def observe(
         self,
@@ -642,9 +798,11 @@ class ExternalIntentionRepertoire:
 
 
 __all__ = [
+    "EXTERNAL_INTENTION_ADMISSION_SCHEMA",
     "EXTERNAL_INTENTION_OBSERVATION_SCHEMA",
     "EXTERNAL_INTENTION_PROPOSAL_SCHEMA",
     "EXTERNAL_INTENTION_REPERTOIRE_SCHEMA",
+    "ExternalIntentionAdmissionReceipt",
     "ExternalIntentionObservationReceipt",
     "ExternalIntentionProposal",
     "ExternalIntentionRepertoire",

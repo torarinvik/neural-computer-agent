@@ -158,9 +158,11 @@ from .growth import (
 )
 from .growth_prior import GROWTH_PRIOR_SCHEMA, ExternalGrowthPrior
 from .intention import (
+    EXTERNAL_INTENTION_ADMISSION_SCHEMA,
     EXTERNAL_INTENTION_OBSERVATION_SCHEMA,
     EXTERNAL_INTENTION_PROPOSAL_SCHEMA,
     EXTERNAL_INTENTION_REPERTOIRE_SCHEMA,
+    ExternalIntentionAdmissionReceipt,
     ExternalIntentionObservationReceipt,
     ExternalIntentionProposal,
     ExternalIntentionRepertoire,
@@ -555,6 +557,7 @@ __all__ = [
     "EXTERNAL_GOAL_REPRESENTATION_ALIGNMENT_VERIFICATION_SCHEMA",
     "EXTERNAL_GOAL_REPRESENTATION_RANDOM_FEATURE_ALIGNMENT_SCHEMA",
     "EXTERNAL_GOAL_REPRESENTATION_RANDOM_FEATURE_GROWTH_SCHEMA",
+    "EXTERNAL_INTENTION_ADMISSION_SCHEMA",
     "EXTERNAL_INTENTION_OBSERVATION_SCHEMA",
     "EXTERNAL_INTENTION_PROPOSAL_SCHEMA",
     "EXTERNAL_INTENTION_REPERTOIRE_SCHEMA",
@@ -744,6 +747,7 @@ __all__ = [
     "ExternalGoalRepresentationRandomFeatureAlignmentStatistics",
     "ExternalGoalRepresentationRandomFeatureGrowthReceipt",
     "ExternalGrowthPrior",
+    "ExternalIntentionAdmissionReceipt",
     "ExternalIntentionObservationReceipt",
     "ExternalIntentionProposal",
     "ExternalIntentionRepertoire",

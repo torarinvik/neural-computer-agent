@@ -79,6 +79,43 @@ def test_repertoire_grows_from_opaque_outcomes_without_reward_ranking() -> None:
         ExternalIntentionRepertoire.from_payload(corrupt)
 
 
+def test_verified_intention_admission_is_copy_on_write_and_retention_safe() -> None:
+    repertoire = ExternalIntentionRepertoire(2)
+    repertoire.observe(torch.tensor([[1.0, 0.0], [0.0, 1.0]]))
+    candidate_intention = torch.tensor([0.5, 0.5])
+
+    def accept(candidate: ExternalIntentionRepertoire) -> bool:
+        candidate.observe(candidate_intention, utility=1.0, propensity=1.0)
+        return True
+
+    accepted = repertoire.admit_verified(candidate_intention, accept)
+    assert accepted.accepted
+    assert accepted.entry_index == 2
+    assert repertoire.record_count == 3
+    assert accepted.destination_digest == repertoire.content_digest()
+
+    rejected_digest = repertoire.content_digest()
+    rejected = repertoire.admit_verified(
+        torch.tensor([0.25, -0.75]),
+        lambda candidate: False,
+    )
+    assert not rejected.accepted
+    assert rejected.source_digest == rejected.destination_digest == rejected_digest
+    assert repertoire.content_digest() == rejected_digest
+
+    def mutating_verifier(candidate: ExternalIntentionRepertoire) -> bool:
+        candidate.observe(torch.tensor([1.0, 0.0]), utility=0.0)
+        return True
+
+    mutation_rejected = repertoire.admit_verified(
+        torch.tensor([-0.5, 0.5]),
+        mutating_verifier,
+    )
+    assert not mutation_rejected.accepted
+    assert mutation_rejected.source_digest == rejected_digest
+    assert repertoire.content_digest() == rejected_digest
+
+
 def test_policy_free_runtime_can_source_candidates_from_external_repertoire() -> None:
     torch.manual_seed(19)
     controller = AmodalCognitiveController(

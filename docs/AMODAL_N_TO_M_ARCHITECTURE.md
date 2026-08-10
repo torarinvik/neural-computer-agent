@@ -8027,3 +8027,24 @@ arbitrary intention synthesis, learned verifier design, unrestricted growth,
 or general continual learning. The next pressure is to acquire new intention
 vectors from partially observed experience and verify them before they enter
 the deployed candidate set.
+
+## Verifier-gated intention admission (2026-08-10)
+
+`ExternalIntentionRepertoire.admit_verified` now applies the same
+copy-on-write discipline used by factual model growth to output content. A
+novel opaque vector is staged on an isolated repertoire copy; a caller-owned
+held-out verifier may test it and record its scalar outcome, but every prior
+entry must remain byte-equivalent and exactly one new entry may be added.
+Rejected or mutating candidates leave the live repertoire unchanged.
+
+The three-seed audit in
+`session_records/sequence_working_memory_2026-08-02/policy_free_intention_admission_promoted_2026-08-10/`
+shows the causal value of the boundary: a diagonal goal is not mastered with
+the retained repertoire, becomes mastered after verified admission of one new
+opaque intention, and a mismatched candidate is rejected. The controller and
+factual model remain frozen.
+
+This is verified new-intention storage, not a learned generator of arbitrary
+output programs. The next pressure is to make the candidate source itself
+emerge from partial experience and active exploration while retaining the same
+held-out admission and complete-retention gates.
