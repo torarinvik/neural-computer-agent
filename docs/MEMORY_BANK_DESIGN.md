@@ -6253,3 +6253,47 @@ drops, part of F135's headline was an artefact and the ledger must say
 so.
 
 Probe 239 is `--contrastive 0.25/0.5`, 3 arms.
+
+**F140 (probe 240). My F139 hypothesis is REFUTED, and the refutation
+is more useful than the hypothesis would have been: giving the binder
+capacity does not help the contrastive code and it DESTROYS the oracle
+result — 0.9983 down to 0.6196.** The binder was the only change.
+
+| binder | oracle entry | contrastive entry |
+| --- | ---: | ---: |
+| linear (F135/F139) | **0.9983** | 0.6136 / 0.6287 |
+| nonlinear MLP (F140) | **0.6196** | 0.5616 / 0.6324 |
+
+Two conclusions, one reassuring and one corrective:
+
+  * **F135's ceiling is genuine, not a matching artefact.** I suspected
+    the 0.9983 came from a linear decoder trivially inverting a linear
+    encoder. If that were the story, adding decoder capacity would
+    have preserved or improved it. It collapsed instead, so the linear
+    binder is doing real work rather than exploiting a pairing.
+  * **Capacity in the conditioning path hurts — for the fourth time in
+    this project.** F77 (FiLM), F89 (more bank tokens), F79 (larger
+    pools with small diversity), now F140. The consistent shape: any
+    extra freedom in HOW context is applied gets spent on fitting
+    rather than on conditioning. This is now reliable enough to use as
+    a prior rather than re-testing each time — when a
+    context-conditioned path underperforms, the answer is never more
+    capacity in that path.
+
+So the contrastive shortfall is not decoder expressiveness. A
+contrastive code is discriminative but arbitrarily arranged, the
+binder must stay simple, and a simple binder needs a code that is
+already shaped for it — which nothing in the contrastive phase
+supplies, because the plant does not exist yet when the reader is
+being pre-trained.
+
+The correction that follows: **stop making it a phase.** Run the
+contrastive term as an AUXILIARY loss alongside task loss, so the task
+supplies the code's SHAPE while the contrastive term supplies the
+GRADIENT that breaks F106's deadlock, with neither waiting for the
+other. This is the first scheme in the sequence where the two
+requirements on the entry — be discriminative, be bindable — are
+optimised at the same time rather than in series. Weights 0.3, 1.0,
+3.0 running.
+
+Probe 240 is `--deep-binder`, oracle and contrastive arms.
