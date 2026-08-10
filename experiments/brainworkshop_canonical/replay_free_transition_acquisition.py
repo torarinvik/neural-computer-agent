@@ -22,6 +22,8 @@ import torch.nn.functional as F
 
 from neural_computer import (
     EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY,
+    EXTERNAL_TRANSITION_MIXED_MODEL_FAMILY,
+    EXTERNAL_TRANSITION_RANDOM_FEATURE_MODEL_FAMILY,
     ContentAddressedMemory,
     ControllerFeedback,
     ExternalControllerEventWindowStateAdapter,
@@ -607,6 +609,7 @@ def run_online_transition_discovery_audit(
     affine_ridge: float = 1e-5,
     window_gain: float = 0.15,
     promotion_heldout_lifetimes: int = 3,
+    context_aggregation: str = "last_token",
 ) -> OnlineTransitionDiscoveryReport:
     """Discover and learn a novel rendered family without replay or a task label.
 
@@ -625,6 +628,8 @@ def run_online_transition_discovery_audit(
         raise ValueError("online transition discovery needs a continuation lifetime")
     if promotion_heldout_lifetimes < 2:
         raise ValueError("online transition promotion needs multiple held-out lifetimes")
+    if context_aggregation not in {"last_token", "mean_pool"}:
+        raise ValueError("online transition context aggregation is unsupported")
     if affine_ridge <= 0.0 or not math.isfinite(float(affine_ridge)):
         raise ValueError("online transition affine ridge must be finite and positive")
     agent = CanonicalBrainWorkshopAgent(
@@ -648,11 +653,17 @@ def run_online_transition_discovery_audit(
         state_width=state_adapter.state_width,
         intention_width=agent.controller.intention_width,
         context_width=agent.controller.width,
-        model_family=EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY,
+        model_family=EXTERNAL_TRANSITION_MIXED_MODEL_FAMILY,
         affine_ridge=affine_ridge,
     )
     source_context = _opaque_context(agent, 6)
-    source_index = bank.ensure_context(source_context)
+    # The source is a known replay-free baseline.  Keep it explicitly affine
+    # while allowing each novel external slot to choose among replay-free
+    # sufficient-statistics families under the promotion verifier.
+    source_index = bank.ensure_context(
+        source_context,
+        model_family=EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY,
+    )
     policy_free = PolicyFreeAmodalRuntime(
         agent.runtime,
         ExternalModelBasedPlanner(bank, beam_width=4),
@@ -705,6 +716,7 @@ def run_online_transition_discovery_audit(
         bank.intention_width,
         hidden_width=max(16, bank.state_width),
         context_width=bank.context_width,
+        aggregation=context_aggregation,
     )
     router = ExternalOnlineTransitionContextRouter(
         bank,
@@ -715,7 +727,14 @@ def run_online_transition_discovery_audit(
         continuation_tolerance=0.05,
         defer_admission=True,
         max_contexts=2,
+        candidate_model_families=(
+            EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY,
+            EXTERNAL_TRANSITION_RANDOM_FEATURE_MODEL_FAMILY,
+        ),
         provisional_evidence_policy="streaming_statistics",
+        provisional_context_similarity_threshold=0.98,
+        provisional_context_similarity_margin=0.005,
+        provisional_context_error_tolerance=0.15,
         prior_selection_probe=(
             lambda transfer, fresh, observation: (
                 float(transfer.loss(observation).detach()),
@@ -729,6 +748,7 @@ def run_online_transition_discovery_audit(
     # candidate outside the committed bank until the held-out gate passes.
     discovery = None
     target_result = None
+    target_candidate_staged = False
     for lifetime in range(target_training_lifetimes):
         target_rollout, bits = _run_lifetime(
             agent,
@@ -746,24 +766,30 @@ def run_online_transition_discovery_audit(
         routed = _route_rollout(router, target_rollout, adapt=True)
         if discovery is None:
             discovery = routed
+        target_candidate_staged = target_candidate_staged or routed.status == "staged"
         target_result = routed
     source_error_after = planner.rollout_error(
         source_heldout,
         transition_context=source_context.unsqueeze(0),
     )
-    discovery_status = "not_staged" if discovery is None else discovery.status
+    discovery_status = (
+        "staged"
+        if target_candidate_staged
+        else "not_staged"
+        if discovery is None
+        else discovery.status
+    )
     if (
         discovery is None
         or target_result is None
-        or discovery.context is None
-        or discovery.status != "staged"
+        or not target_candidate_staged
         or router.provisional_candidate_count != 1
     ):
         unchanged = controller_before == _controller_digest(agent)
         source_stable = source_digest == bank.models[source_index].digest()
         return OnlineTransitionDiscoveryReport(
             schema=(
-                "neural-computer.brainworkshop-online-transition-discovery-audit.v4"
+                "neural-computer.brainworkshop-online-transition-discovery-audit.v5"
             ),
             status="online_replay_free_transition_discovery_boundary_failed",
             controller_unchanged=unchanged,
@@ -846,10 +872,13 @@ def run_online_transition_discovery_audit(
             state_width=bank.state_width,
             intention_width=bank.intention_width,
             context_width=bank.context_width,
-            model_family=EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY,
+            model_family=EXTERNAL_TRANSITION_MIXED_MODEL_FAMILY,
             affine_ridge=affine_ridge,
         )
-        fresh_probe_bank.ensure_context(candidate_context)
+        fresh_probe_bank.ensure_context(
+            candidate_context,
+            model_family=EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY,
+        )
         fresh_planner = ExternalModelBasedPlanner(fresh_probe_bank, beam_width=4)
         for heldout in promotion_holdouts:
             candidate_error = candidate_planner.rollout_error(
@@ -882,7 +911,7 @@ def run_online_transition_discovery_audit(
         source_stable = source_digest == bank.models[source_index].digest()
         return OnlineTransitionDiscoveryReport(
             schema=(
-                "neural-computer.brainworkshop-online-transition-discovery-audit.v4"
+                "neural-computer.brainworkshop-online-transition-discovery-audit.v5"
             ),
             status="online_replay_free_transition_discovery_boundary_failed",
             controller_unchanged=unchanged,
@@ -948,10 +977,13 @@ def run_online_transition_discovery_audit(
         state_width=bank.state_width,
         intention_width=bank.intention_width,
         context_width=bank.context_width,
-        model_family=EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY,
+        model_family=EXTERNAL_TRANSITION_MIXED_MODEL_FAMILY,
         affine_ridge=affine_ridge,
     )
-    fresh_bank.ensure_context(target_context)
+    fresh_bank.ensure_context(
+        target_context,
+        model_family=EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY,
+    )
     fresh_target_error = ExternalModelBasedPlanner(
         fresh_bank,
         beam_width=4,
@@ -975,7 +1007,7 @@ def run_online_transition_discovery_audit(
     )
     return OnlineTransitionDiscoveryReport(
         schema=(
-            "neural-computer.brainworkshop-online-transition-discovery-audit.v4"
+            "neural-computer.brainworkshop-online-transition-discovery-audit.v5"
         ),
         status=(
             "online_replay_free_transition_discovery_boundary"

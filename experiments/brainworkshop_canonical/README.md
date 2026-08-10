@@ -299,3 +299,11 @@ commit gate before a post-promotion route lifetime. It is deliberately a
 boundary audit rather than a general continual-learning claim; the seed
 ledger is in
 `session_records/multi_lifetime_transition_promotion_2026-08-11/sample_efficiency_ledger.json`.
+
+The current v5 harness additionally keeps provisional candidates attached by
+an opaque context-continuity proposal when strict prediction matching is
+temporarily too narrow, and verifies target candidates across affine and
+random-feature replay-free model families. This reduces provisional capacity
+loss but has not improved the six-seed promotion rate beyond `2/6`; it remains
+an engineering boundary rather than a capability claim. Its accounting is in
+`session_records/context_continuity_mixed_transition_2026-08-11/sample_efficiency_ledger.json`.

@@ -671,10 +671,19 @@ class ExternalTransitionModelBank(nn.Module):
     def replay_free_updates(self) -> bool:
         """Whether this bank family consumes each observation once in-place."""
 
-        return self.model_family in {
+        replay_free_families = {
             EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY,
             EXTERNAL_TRANSITION_RANDOM_FEATURE_MODEL_FAMILY,
         }
+        if self.model_family == EXTERNAL_TRANSITION_MIXED_MODEL_FAMILY:
+            # A mixed bank is replay-free only when every committed slot has
+            # selected a sufficient-statistics family.  The bank may still
+            # offer other candidate families to an isolated verifier, but a
+            # nonlinear slot must never be hidden behind a replay-free claim.
+            return bool(self._model_families) and all(
+                family in replay_free_families for family in self._model_families
+            )
+        return self.model_family in replay_free_families
 
     def _new_model(self, model_family: str | None = None) -> nn.Module:
         selected_family = self.model_family if model_family is None else model_family
@@ -5895,6 +5904,9 @@ class ExternalOnlineTransitionContextRouter:
         provisional_continuation_tolerance: float | None = None,
         provisional_evidence_policy: str = "cumulative_replay",
         provisional_match_margin: float = 0.0,
+        provisional_context_similarity_threshold: float | None = None,
+        provisional_context_similarity_margin: float = 0.0,
+        provisional_context_error_tolerance: float | None = None,
         ambiguous_evidence_policy: str = "discard",
         quarantine_capacity: int = 0,
         evidence_evaluator: nn.Module | None = None,
@@ -5963,6 +5975,23 @@ class ExternalOnlineTransitionContextRouter:
             )
         if provisional_match_margin < 0.0:
             raise ValueError("provisional context match margin cannot be negative")
+        if provisional_context_similarity_threshold is not None and not (
+            -1.0 <= provisional_context_similarity_threshold <= 1.0
+        ):
+            raise ValueError(
+                "provisional context similarity threshold must lie in [-1, 1]"
+            )
+        if provisional_context_similarity_margin < 0.0:
+            raise ValueError(
+                "provisional context similarity margin cannot be negative"
+            )
+        if (
+            provisional_context_error_tolerance is not None
+            and provisional_context_error_tolerance < 0.0
+        ):
+            raise ValueError(
+                "provisional context error tolerance cannot be negative"
+            )
         if ambiguous_evidence_policy not in {"discard", "quarantine"}:
             raise ValueError("ambiguous evidence policy must be discard or quarantine")
         if quarantine_capacity < 0:
@@ -6049,6 +6078,19 @@ class ExternalOnlineTransitionContextRouter:
         self.defer_admission = bool(defer_admission)
         self.provisional_evidence_policy = str(provisional_evidence_policy)
         self.provisional_match_margin = float(provisional_match_margin)
+        self.provisional_context_similarity_threshold = (
+            None
+            if provisional_context_similarity_threshold is None
+            else float(provisional_context_similarity_threshold)
+        )
+        self.provisional_context_similarity_margin = float(
+            provisional_context_similarity_margin
+        )
+        self.provisional_context_error_tolerance = float(
+            self.provisional_continuation_tolerance
+            if provisional_context_error_tolerance is None
+            else provisional_context_error_tolerance
+        )
         self.ambiguous_evidence_policy = str(ambiguous_evidence_policy)
         self.quarantine_capacity = int(quarantine_capacity)
         self.evidence_evaluator = evidence_evaluator
@@ -6185,6 +6227,15 @@ class ExternalOnlineTransitionContextRouter:
             "continuation_tolerance": self.continuation_tolerance,
             "provisional_continuation_tolerance": self.provisional_continuation_tolerance,
             "provisional_match_margin": self.provisional_match_margin,
+            "provisional_context_similarity_threshold": (
+                self.provisional_context_similarity_threshold
+            ),
+            "provisional_context_similarity_margin": (
+                self.provisional_context_similarity_margin
+            ),
+            "provisional_context_error_tolerance": (
+                self.provisional_context_error_tolerance
+            ),
             "conflict_patience": self.conflict_patience,
             "defer_admission": self.defer_admission,
             "candidate_model_families": list(self.candidate_model_families),
@@ -6901,6 +6952,57 @@ class ExternalOnlineTransitionContextRouter:
                 unresolved.append(observation)
         self._ambiguous_quarantine = unresolved
 
+    def _provisional_context_match(
+        self,
+        observation: ExternalTransitionObservation,
+    ) -> tuple[int, float, float] | None:
+        """Find a provisional candidate by opaque context continuity.
+
+        Prediction error remains a required bound, but it is not the only
+        route signal for an uncommitted candidate.  A new lifetime can begin
+        with a shifted state distribution before its one-pass model has seen
+        enough rows to predict within the ordinary continuation tolerance.
+        The context encoder provides a read-only identity proposal; a
+        similarity threshold and margin keep it from becoming a semantic
+        label or a correctness bypass.
+        """
+
+        threshold = self.provisional_context_similarity_threshold
+        if threshold is None or not self._provisional_candidates:
+            return None
+        with torch.no_grad():
+            query = torch.nn.functional.normalize(
+                self.context_encoder.encode_observation(observation),
+                dim=0,
+            )
+            similarities = torch.stack(
+                [
+                    torch.nn.functional.cosine_similarity(
+                        query,
+                        torch.nn.functional.normalize(candidate.context, dim=0),
+                        dim=0,
+                    )
+                    for candidate in self._provisional_candidates
+                ]
+            )
+        best_index = int(similarities.argmax().item())
+        ordered = torch.sort(similarities, descending=True).values
+        margin = (
+            float("inf")
+            if ordered.numel() == 1
+            else float((ordered[0] - ordered[1]).detach())
+        )
+        similarity = float(similarities[best_index].detach())
+        if similarity < threshold or (
+            margin < self.provisional_context_similarity_margin
+        ):
+            return None
+        candidate = self._provisional_candidates[best_index]
+        error = self._candidate_error(candidate, observation)
+        if error > self.provisional_context_error_tolerance:
+            return None
+        return best_index, similarity, error
+
     def observe(
         self,
         observation: ExternalTransitionObservation,
@@ -7122,6 +7224,15 @@ class ExternalOnlineTransitionContextRouter:
                     if len(ordered_candidate_errors) == 1
                     else ordered_candidate_errors[1] - ordered_candidate_errors[0]
                 )
+                context_match = self._provisional_context_match(bundle)
+                if context_match is not None:
+                    context_index, _similarity, _context_error = context_match
+                    self._resolve_quarantine(anchor_candidate_index=context_index)
+                    self._pending.clear()
+                    return self._staged_result(
+                        bundle,
+                        candidate_index=context_index,
+                    )
                 if candidate_error <= self.provisional_continuation_tolerance:
                     if candidate_margin < self.provisional_match_margin:
                         stored = self._quarantine_bundle(bundle)
@@ -7940,6 +8051,20 @@ class ExternalOnlineTransitionContextRouter:
             ),
             provisional_match_margin=float(
                 configuration.get("provisional_match_margin", 0.0)
+            ),
+            provisional_context_similarity_threshold=(
+                None
+                if configuration.get("provisional_context_similarity_threshold")
+                is None
+                else float(configuration["provisional_context_similarity_threshold"])
+            ),
+            provisional_context_similarity_margin=float(
+                configuration.get("provisional_context_similarity_margin", 0.0)
+            ),
+            provisional_context_error_tolerance=(
+                None
+                if configuration.get("provisional_context_error_tolerance") is None
+                else float(configuration["provisional_context_error_tolerance"])
             ),
             ambiguous_evidence_policy=str(
                 configuration.get("ambiguous_evidence_policy", "discard")

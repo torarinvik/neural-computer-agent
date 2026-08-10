@@ -1552,6 +1552,16 @@ single lucky lifetime. The rendered Brain Workshop audit uses three staged
 holdouts plus a post-promotion route lifetime; its seed-mixed result remains a
 bounded safety boundary rather than a claim of general continual learning.
 
+The online transition router also supports an explicitly external provisional
+context-continuity route. A shifted candidate stream can remain attached to its
+isolated staged slot when opaque context similarity and a bounded factual error
+agree, even if strict one-step continuation has not stabilized. This route is
+read-only with respect to committed memory and is margin/threshold gated. The
+replay-free audit uses a mixed bank that selects between affine and
+random-feature sufficient-statistics candidates; its accounting reports a
+mixed bank as replay-free only when all committed slots are actually
+replay-free.
+
 ## Opaque goal-fragment memory
 
 `ExternalGoalFragmentMemory` stores destinations outside the fixed controller.

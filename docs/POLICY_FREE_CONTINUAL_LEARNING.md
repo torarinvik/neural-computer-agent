@@ -1418,3 +1418,27 @@ stronger safety boundary, not a general continual-learning result. The next
 bottleneck is route/context generalization on unseen target trajectories: the
 factual slot can be correct on its promotion prefix while the router still
 rejects a later trajectory as unrouteable.
+
+## Provisional context continuity and replay-free family selection (2026-08-11)
+
+The online router now has an explicit external continuity path for staged
+candidates. When a new lifetime shifts the one-step state distribution before
+the candidate model has reached the strict continuation tolerance, a read-only
+opaque context-similarity proposal may keep routing evidence to the existing
+candidate. A similarity threshold, candidate prediction bound, and optional
+margin are all required; this path never writes to a committed slot and never
+enters the controller.
+
+The discovery harness also uses a mixed external bank whose target candidates
+are selected only between affine and random-feature sufficient-statistics
+models. The source remains explicitly affine. A mixed bank reports
+`replay_free_updates` only when every committed slot is in a replay-free family,
+so a nonlinear slot cannot be hidden behind the accounting claim.
+
+The six-seed default rerun remains `2/6` complete passes. Context continuity
+prevents provisional-candidate capacity loss on some shifted lifetimes, but
+does not yet make multi-lifetime held-out promotion reliable; one promoted seed
+still loses on the later recovery lifetime. This is retained as an
+implementation and safety gain, not a learned capability promotion. The
+decision ledger is in
+`session_records/context_continuity_mixed_transition_2026-08-11/sample_efficiency_ledger.json`.

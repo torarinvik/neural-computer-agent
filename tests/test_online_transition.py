@@ -1049,6 +1049,91 @@ def test_mixed_bank_keeps_affine_and_nonlinear_slots_independently() -> None:
     assert restored.model_family_at(affine_index) == "affine_sufficient_statistics_v1"
     assert restored.model_family_at(nonlinear_index) == "nonlinear_mlp_v1"
     assert restored.content_digest() == bank.content_digest()
+    assert not bank.replay_free_updates
+
+
+def test_mixed_bank_is_replay_free_when_all_committed_slots_are_statistics() -> None:
+    bank = ExternalTransitionModelBank(
+        2,
+        1,
+        3,
+        model_family="mixed_verified_v1",
+    )
+    bank.ensure_context(
+        torch.tensor([1.0, 0.0, 0.0]),
+        model_family="affine_sufficient_statistics_v1",
+    )
+    bank.ensure_context(
+        torch.tensor([0.0, 1.0, 0.0]),
+        model_family="random_feature_sufficient_statistics_v1",
+    )
+    assert bank.replay_free_updates
+
+
+def test_provisional_context_continuity_routes_shifted_candidate_without_new_slot() -> None:
+    torch.manual_seed(1340)
+    bank = ExternalTransitionModelBank(
+        2,
+        1,
+        4,
+        model_family="mixed_verified_v1",
+        affine_ridge=1e-7,
+    )
+    router = ExternalOnlineTransitionContextRouter(
+        bank,
+        ExternalTransitionContextEncoder(2, 1, hidden_width=8, context_width=4),
+        match_tolerance=1e-8,
+        continuation_tolerance=1e-8,
+        provisional_continuation_tolerance=1e-8,
+        admission_observations=4,
+        defer_admission=True,
+        candidate_model_families=(
+            "affine_sufficient_statistics_v1",
+            "random_feature_sufficient_statistics_v1",
+        ),
+        provisional_evidence_policy="streaming_statistics",
+        provisional_context_similarity_threshold=0.9,
+        provisional_context_error_tolerance=0.5,
+    )
+    observation = _affine_observation(8)
+    rows = [
+        ExternalTransitionObservation(
+            state=observation.state[row : row + 1],
+            intention=observation.intention[row : row + 1],
+            next_state=observation.next_state[row : row + 1],
+            confidence=torch.ones(1),
+        )
+        for row in range(8)
+    ]
+    for row in rows[:4]:
+        result = router.observe(row)
+        if result.status == "staged":
+            router.adaptation_step(result, None, replay_evidence=False)
+    assert router.provisional_candidate_count == 1
+
+    shifted = [
+        ExternalTransitionObservation(
+            state=row.state,
+            intention=row.intention,
+            next_state=row.next_state + 0.01,
+            confidence=row.confidence,
+        )
+        for row in rows[4:]
+    ]
+    result = None
+    for row in shifted:
+        result = router.observe(row)
+    assert result is not None
+    assert result.status == "staged"
+    assert result.slot_index == 0
+    assert router.provisional_candidate_count == 1
+    router.adaptation_step(result, None, replay_evidence=False)
+    assert router.provisional_evidence_count(0) == 8
+    restored = ExternalOnlineTransitionContextRouter.from_payload(
+        router.state_payload()
+    )
+    assert restored.provisional_context_similarity_threshold == 0.9
+    assert restored.provisional_context_error_tolerance == 0.5
 
 
 def test_replay_free_statistics_slots_do_not_copy_prior_regime_evidence() -> None:
