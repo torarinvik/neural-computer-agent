@@ -71,6 +71,18 @@ parser.add_argument(
          "A curriculum gets reading established on the readable task "
          "first, then extends it — the bootstrapping F120 identified.")
 parser.add_argument(
+    "--bind-params", action="store_true",
+    help="decode the entry ONCE into one explicit parameter vector "
+         "per piece token, then step on (latent, bound parameter) with "
+         "no further access to the entry. F134 measured that a plant "
+         "given the world exactly still fails above depth 1 (0.5587 "
+         "per-bit vs 1.0000 at one world) while the entry is "
+         "re-attended at every step — so the same parameters are "
+         "re-extracted on each application and any extraction error "
+         "compounds with depth. An interpreter binds its arguments "
+         "once and then runs the loop; this does the same. Requires "
+         "--iterate.")
+parser.add_argument(
     "--oracle-entry", action="store_true",
     help="ORACLE SUBSTITUTION on the entry (the F110 technique that "
          "settled the games): replace the reader's output with the "
@@ -195,6 +207,21 @@ class Plant(torch.nn.Module):
                 dropout=0.0, norm_first=True) for _ in range(3)])
         self.norm = torch.nn.LayerNorm(dim)
         self.head = torch.nn.Linear(dim, M)
+        self.binder = torch.nn.Linear(dim, 2 * dim)
+        self.apply_bound = torch.nn.Sequential(
+            torch.nn.Linear(2 * dim, 2 * dim), torch.nn.ReLU(),
+            torch.nn.Linear(2 * dim, dim))
+
+    def bind(self, entry) -> torch.Tensor:
+        """entry -> (2, dim): one bound parameter vector per piece."""
+        return self.binder(entry.mean(dim=0)).view(2, -1)
+
+    def step_bound(self, token: int, hidden, params) -> torch.Tensor:
+        """One piece applied using its ALREADY-BOUND parameter. The
+        entry is not consulted here — that is the point."""
+        return self.apply_bound(torch.cat(
+            [hidden, params[token].unsqueeze(0).expand(
+                hidden.shape[0], -1)], dim=-1))
 
     def step(self, token: int, hidden, entry):
         """One piece applied to the latent. Shared across positions and
@@ -208,6 +235,12 @@ class Plant(torch.nn.Module):
         return self.norm(row[:, -1])
 
     def forward(self, program: tuple, x, entry) -> torch.Tensor:
+        if args.iterate and args.bind_params and entry is not None:
+            params = self.bind(entry)
+            hidden = self.value(x)
+            for token in reversed(program):
+                hidden = self.step_bound(token, hidden, params)
+            return self.head(self.norm(hidden))
         if args.iterate:
             hidden = self.value(x)
             for token in reversed(program):
