@@ -6210,3 +6210,46 @@ in entry space by search; a contrastive objective asks it only to be
 CONSISTENT and DISCRIMINATIVE, and then lets the plant come to it.
 
 Probe 238 is `--two-phase 0.5 --distill`, 2 seeds.
+
+**F139 (probe 239). Contrastive reader pre-training is the best
+NON-PRIVILEGED result so far — it beats every other reader training
+scheme — but it recovers only a fraction of what distillation showed
+possible.** Reader trained alone so that two readings of the SAME
+world agree and different worlds do not (InfoNCE, batch of 8 worlds,
+verified to behave correctly before launch), then frozen, then the
+plant trained to bind its code. Held-out worlds, per-bit:
+
+| reader training | own | stranger | gap |
+| --- | ---: | ---: | ---: |
+| distilled onto oracle entry (PRIVILEGED, F138) | 0.9723 | 0.549 | +0.42 |
+| **contrastive 0.5 (F139)** | **0.6136** | 0.538 | **+0.076** |
+| **contrastive 0.25, seed 69317** | **0.6287** | 0.580 | +0.049 |
+| contrastive 0.25, seed 69316 | 0.5646 | 0.541 | +0.024 |
+| joint training (F135) | 0.5283 | 0.5283 | +0.000 |
+| task loss through frozen plant (F136) | 0.4973 | — | +0.000 |
+
+So the ordering is unambiguous — contrastive > joint > task-loss, and
+contrastive is the first non-privileged scheme with a real gap — but
+0.61 against 0.97 means most of the achievable performance is still
+unclaimed.
+
+**The likely reason is a matching artefact I should have anticipated
+in F135.** The oracle entry is a LINEAR projection of one-hot world
+parameters, and the binder that decodes it is a single LINEAR map. A
+linear decoder inverting a linear encoder is trivial, so the 0.9983
+ceiling was measured under the friendliest possible pairing. A
+contrastive code identifies the world just as well but arranges it
+arbitrarily, and a linear binder cannot decode an arbitrary
+arrangement. On that account contrastive is not producing worse
+information, only differently-shaped information, and the binder is
+the component that must change.
+
+Two arms test exactly that, with the binder as the only variable:
+a nonlinear (MLP) binder on F139's contrastive setting, and — the
+control that matters for honesty — a nonlinear binder with the ORACLE
+entry, to check whether the 0.9983 ceiling itself survives when the
+encoder/decoder pairing is no longer matched. If the oracle ceiling
+drops, part of F135's headline was an artefact and the ledger must say
+so.
+
+Probe 239 is `--contrastive 0.25/0.5`, 3 arms.
