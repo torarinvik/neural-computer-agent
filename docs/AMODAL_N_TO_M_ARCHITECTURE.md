@@ -5939,9 +5939,41 @@ control succeeded where a grid formulation stalled because the instruction and
 state codes were easier to distinguish. This does not justify hand-assigned
 semantics in the controller, but it does require frontends to preserve
 separability and experiments to test instruction encoding as a first-class
-factor. The next high-ROI work is therefore model-first partial/drifting
-evidence and longer alternating model-bank growth—not another action-policy
-consolidation variant.
+factor. The next high-ROI work is therefore universal goal-space
+generalization, followed by model-first partial/drifting evidence and longer
+alternating model-bank growth—not another action-policy consolidation variant.
+
+## Universal opaque-goal search (2026-08-10)
+
+The exported games session exposed a failure mode that finite-goal executor
+tests can hide: if only a few goals are presented, an unconditional habit can
+score well while ignoring the instruction. The new
+`experiments/external_universal_goal_reacher/` audit therefore trains only a
+factual external transition model from one-pass opaque state/intention/
+next-state observations. It gives the planner no goal labels, then evaluates
+`24` held-out goals from `5` starting states each. A finite-goal habit control
+sees only nine training targets.
+
+Across seeds `84001`, `84002`, `84003`, and `84004`, the factual model plus
+goal-conditioned search reached all `120/120` held-out trials. Goal-shuffled
+evaluation and the finite-goal habit both reached `0/120`; random floors were
+`0.033`, `0.017`, `0.000`, and `0.017`. The controller and factual model were
+unchanged during search, persistence was exact, optimizer updates and replay
+were zero, and each search expanded `44,640` nodes.
+
+This audit also fixed a real planner bottleneck. Terminal-only beam search can
+prune every useful prefix on a long horizon when intermediate candidates tie.
+`ExternalModelBasedPlanner.plan(..., goal_progress_weight=...)` now exposes an
+explicit opt-in intermediate heuristic using the same opaque terminal goal
+measure. It remains disabled by default because latent-space progress is not
+universally meaningful.
+
+This promotes bounded held-out goal-space generalization of behavior derived
+from replay-free factual knowledge and the opt-in search heuristic. It does
+not establish a learned cross-modal goal evaluator, arbitrary nonlinear goal
+abstraction, unrestricted planning, or general continual learning. Reports
+and checksums are archived in
+`session_records/sequence_working_memory_2026-08-02/external_universal_goal_reacher_promoted_2026-08-10/`.
 
 ## Seed-widened policy-free model compounding (2026-08-10)
 

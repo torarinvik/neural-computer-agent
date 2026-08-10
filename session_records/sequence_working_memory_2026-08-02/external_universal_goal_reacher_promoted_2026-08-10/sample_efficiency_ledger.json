@@ -1,0 +1,25 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "external-universal-goal-reacher",
+  "status": "promoted_bounded_goal_space_generalization",
+  "seeds": [84001, 84002, 84003, 84004],
+  "unique_verifier_bits_per_seed": 120,
+  "unique_logical_lifetimes_per_seed": 243,
+  "transition_rows_consumed_once_per_seed": 123,
+  "external_model_statistics_updates_per_seed": 1,
+  "optimizer_updates_per_seed": 0,
+  "replayed_examples_per_seed": 0,
+  "old_memory_replay_per_seed": 0,
+  "heldout_mastery_by_seed": [1.0, 1.0, 1.0, 1.0],
+  "goal_shuffled_mastery_by_seed": [0.0, 0.0, 0.0, 0.0],
+  "finite_goal_habit_mastery_by_seed": [0.0, 0.0, 0.0, 0.0],
+  "random_floor_by_seed": [
+    0.03333333333333333,
+    0.016666666666666666,
+    0.0,
+    0.016666666666666666
+  ],
+  "transfer_ratio_against_fresh_learner": null,
+  "claim_boundary": "held-out goal-space generalization of behavior derived from a replay-free factual transition model; not a learned goal evaluator, unrestricted planning, or general continual learning",
+  "next_test": "repeat with learned cross-modal goal representations, nonlinear or partially observed dynamics, and matched fresh-model controls"
+}

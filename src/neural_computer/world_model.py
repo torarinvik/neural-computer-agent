@@ -9215,6 +9215,7 @@ class ExternalModelBasedPlanner:
                 else "terminal_opaque_goal_state_match_v1"
             ),
             "policy": "none_behavior_derived_at_inference_v1",
+            "heuristic": "caller_opt_in_goal_progress_v1",
             "cost_input": "optional_nonnegative_opaque_intention_costs_v1",
             "representation_space_schema": EXTERNAL_REPRESENTATION_SPACE_SCHEMA,
             "state_space_id": self.state_space_id,
@@ -9302,6 +9303,7 @@ class ExternalModelBasedPlanner:
         transition_context: torch.Tensor | None = None,
         intention_costs: torch.Tensor | None = None,
         step_cost_weight: float = 0.0,
+        goal_progress_weight: float = 0.0,
     ) -> ModelBasedPlanningResult:
         """Return the lowest-scoring candidate sequence.
 
@@ -9314,11 +9316,20 @@ class ExternalModelBasedPlanner:
         goal error plus the accumulated opaque step cost.  Costs are caller-
         supplied transport/verifier scalars; they are never interpreted as
         protocol IDs or semantic action fields.  The planner is inference-
-        only and does not mutate the model.
+        only and does not mutate the model.  When ``goal_progress_weight`` is
+        positive, the caller explicitly opts into the same opaque goal
+        evaluator as an intermediate search heuristic.  This is useful for
+        horizons where terminal-only beam search would prune every useful
+        prefix; it is disabled by default because latent-space progress is
+        not universally meaningful.
         """
 
         if not math.isfinite(float(step_cost_weight)) or step_cost_weight < 0.0:
             raise ValueError("planner step_cost_weight must be finite and non-negative")
+        if not math.isfinite(float(goal_progress_weight)) or goal_progress_weight < 0.0:
+            raise ValueError(
+                "planner goal progress weight must be finite and non-negative"
+            )
 
         _validate_tensor(
             state,
@@ -9484,6 +9495,10 @@ class ExternalModelBasedPlanner:
                             if row_costs is not None:
                                 score = score + step_cost_weight * row_costs[
                                     candidate_index
+                                ]
+                            if goal_progress_weight > 0.0 and _step < horizon - 1:
+                                score = score + goal_progress_weight * terminal_scores[
+                                    parent_index, candidate_index
                                 ]
                             if _step == horizon - 1:
                                 score = score + terminal_scores[

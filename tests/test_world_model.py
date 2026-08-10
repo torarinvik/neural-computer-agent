@@ -748,6 +748,36 @@ def test_planner_derives_behavior_by_search_and_accepts_variable_candidates() ->
     assert shorter.intentions[0, 0, 0].item() == 2.0
 
 
+def test_planner_can_opt_into_goal_progress_heuristic_for_long_horizons() -> None:
+    planner = ExternalModelBasedPlanner(_AdditiveTransitionModel(), beam_width=4)
+    state = torch.zeros(1, 1)
+    goal = torch.full((1, 1), 10.0)
+    candidates = torch.tensor([[-1.0], [0.0], [1.0]])
+
+    terminal_only = planner.plan(
+        state,
+        goal,
+        candidates,
+        horizon=10,
+    )
+    heuristic = planner.plan(
+        state,
+        goal,
+        candidates,
+        horizon=10,
+        goal_progress_weight=1.0,
+    )
+
+    # Terminal-only beam search prunes the useful prefix when every
+    # intermediate score is tied. The opt-in opaque progress heuristic keeps
+    # the goal-directed prefix without changing the planner's default.
+    assert not torch.equal(
+        terminal_only.intentions[0, :, 0], torch.ones(10)
+    )
+    assert torch.equal(heuristic.intentions[0, :, 0], torch.ones(10))
+    assert heuristic.predicted_states[0, -1, 0].item() == 10.0
+
+
 def test_planner_rollout_error_measures_recursive_heldout_behavior() -> None:
     planner = ExternalModelBasedPlanner(_AdditiveTransitionModel(), beam_width=1)
     rollout = ExternalTransitionRollout(
