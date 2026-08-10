@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import torch
 
+from experiments.external_learned_binding_factual_growth.train import (
+    run as run_factual_growth_pressure_test,
+)
 from experiments.external_learned_stream_binding.train import run as run_pressure_test
 from experiments.external_learned_stream_binding_factual_lifecycle.train import (
     run as run_factual_lifecycle_pressure_test,
@@ -11,6 +14,7 @@ from experiments.external_learned_stream_binding_lifecycle.train import (
 )
 from neural_computer import (
     EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY,
+    EXTERNAL_TRANSITION_RANDOM_FEATURE_MODEL_FAMILY,
     ExternalLearnedMultiStreamTransitionContextRouter,
     ExternalMultiStreamTransitionContextRouter,
     ExternalOnlineStreamBindingMemory,
@@ -357,3 +361,110 @@ def test_joint_binding_factual_lifecycle_pressure_test_passes() -> None:
     assert report["gates"]["drift_does_not_mutate_factual_bank"] is True
     assert "conflict" in report["drift"]["statuses"]
     assert all(status == "matched" for status in report["drift"]["binding_statuses"])
+
+
+def test_joint_binding_factual_growth_pressure_test_passes() -> None:
+    report = run_factual_growth_pressure_test(2601)
+    assert report["promoted"] is True
+    assert report["gates"]["learned_beats_fresh_control"] is True
+    assert report["gates"]["learned_beats_shuffled_control"] is True
+    assert report["gates"]["binding_capacity_grew"] is True
+    assert report["gates"]["factual_capacity_grew"] is True
+    assert report["gates"]["source_factual_slot_retained"] is True
+    assert report["gates"]["new_slots_routed"] is True
+    assert report["gates"]["joint_persistence_exact"] is True
+    assert report["gates"]["controller_frozen_unchanged"] is True
+
+
+def test_joint_binding_factual_growth_is_atomic_and_persistent() -> None:
+    encoder, observations = _fixture(506, stream_count=3)
+    bank = ExternalTransitionModelBank(
+        2,
+        1,
+        4,
+        model_family="mixed_verified_v1",
+        affine_ridge=1e-7,
+        random_feature_width=32,
+        random_feature_seed=7,
+        capacity=1,
+    )
+    single = ExternalOnlineTransitionContextRouter(
+        bank,
+        encoder,
+        admission_observations=2,
+        max_contexts=1,
+        defer_admission=True,
+        continuation_tolerance=0.5,
+        candidate_model_families=(
+            EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY,
+            EXTERNAL_TRANSITION_RANDOM_FEATURE_MODEL_FAMILY,
+        ),
+        provisional_evidence_policy="streaming_statistics",
+    )
+    router = ExternalLearnedMultiStreamTransitionContextRouter(
+        ExternalOnlineStreamBindingMemory(
+            encoder,
+            window_capacity=4,
+            max_streams=1,
+            provisional_capacity=2,
+            match_tolerance=0.55,
+            new_track_tolerance=0.7,
+            provisional_tolerance=0.7,
+            match_margin=0.05,
+        ),
+        ExternalMultiStreamTransitionContextRouter(single, stream_key_width=4),
+    )
+    staged = None
+    for row_index in range(2):
+        result = router.observe(_row(observations[0], row_index))
+        if result.routing is not None and result.routing.result.status == "staged":
+            staged = result
+            router.adaptation_step(result, None, replay_evidence=False)
+    assert staged is not None
+    source_receipt = router.promote_staged_candidate(
+        staged,
+        _row(observations[0], 2),
+        lambda candidate: candidate.context_count == 1,
+        prediction_tolerance=100.0,
+    )
+    assert source_receipt.accepted
+
+    provisional = [router.observe(_row(observations[1], row)) for row in range(2)]
+    assert all(result.binding.status == "provisional" for result in provisional)
+    policy = ExternalStreamBindingLifecyclePolicy(4, hidden_width=16, learning_rate=0.02)
+    proposal = policy.propose(router.binding, sample=False)
+    before_binding = router.binding.digest()
+    before_router = router.digest()
+    rejected = router.grow_with_factual_candidate(
+        proposal,
+        _row(observations[1], 2),
+        0.0,
+        prediction_tolerance=100.0,
+    )
+    assert not rejected.accepted
+    assert rejected.reason == "verifier_outcome_rejected"
+    assert router.binding.digest() == before_binding
+    assert router.digest() == before_router
+
+    accepted = router.grow_with_factual_candidate(
+        proposal,
+        _row(observations[1], 2),
+        1.0,
+        prediction_tolerance=100.0,
+    )
+    assert accepted.accepted
+    assert accepted.track_id is not None
+    assert accepted.slot_id is not None
+    assert router.binding.max_streams == 2
+    assert router.binding.stream_count == 2
+    assert router.router.bank.capacity == 2
+    assert router.router.bank.context_count == 2
+    assert router.binding.provisional_count == 0
+    assert router.router.bank.model_family_at(0) in {
+        EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY,
+        EXTERNAL_TRANSITION_RANDOM_FEATURE_MODEL_FAMILY,
+    }
+    restored = ExternalLearnedMultiStreamTransitionContextRouter.from_payload(
+        router.state_payload()
+    )
+    assert restored.digest() == router.digest()

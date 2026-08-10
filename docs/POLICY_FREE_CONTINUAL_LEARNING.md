@@ -241,3 +241,32 @@ growth, arbitrary drift recovery, or general continual learning. The next
 pressure point is to vary the factual model family, delay law, and open-set
 arrival process while measuring retention and transfer against matched-fresh
 controls.
+
+## Joint learned binding and factual-memory growth (2026-08-10)
+
+The external boundary now supports verified append-only growth rather than only
+replacement. `ExternalLearnedMultiStreamTransitionContextRouter` grows the
+anonymous live-track capacity and the shared factual-bank capacity in one
+copy-on-write transaction. A provisional identity is promoted only after its
+held-out factual candidate passes, and the complete prior binding/model floor is
+byte-stable on the candidate copy. The controller, event encoder, and factual
+models remain frozen during deployment; the new knowledge is external state.
+
+The pressure test in `experiments/external_learned_binding_factual_growth/`
+uses six-row delayed open-set evidence, two sequential growth transactions,
+fresh and outcome-shuffled proposal controls, scalar and wrong-held-out
+atomic-rejection controls, exact persistence, and zero replay/controller/
+factual-optimizer updates. Across seeds `2601`, `2602`, and `2603`, all gates
+passed. The learned policy reached accuracies `1.0`, `0.75`, and `1.0`; fresh
+controls reached `0.0`, `0.0`, and `0.0`; shuffled controls reached
+`0.375`, `0.125`, and `0.2917`. The first new slot selected the affine
+sufficient-statistics family; the nonlinear second stream selected the
+random-feature family, demonstrating that the held-out verifier—not the
+stream identity—selects the external computation family.
+
+This promotes bounded replay-free external growth with retained prior slots and
+learned anonymous proposal ranking. It does not establish unrestricted memory
+growth, learned verifier design, arbitrary new computation beyond the registered
+candidate families, or general continual learning. The next requirement is to
+make growth repeat over more than two additions while measuring stable
+retention, transfer against a matched fresh learner, and memory compression.

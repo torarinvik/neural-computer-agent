@@ -7846,3 +7846,36 @@ damage existing knowledge. It is not evidence of unrestricted memory growth,
 general drift recovery, learned verifier design, or general continual learning.
 The next experiment should vary model families and arrival/delay laws and
 compare stable retention and transfer against a matched-fresh learner.
+
+## Joint learned binding and factual growth (2026-08-10)
+
+The external memory boundary now supports verified growth as well as bounded
+replacement. `ExternalLearnedMultiStreamTransitionContextRouter.grow_with_factual_candidate`
+performs stream-capacity growth, factual-bank-capacity growth, provisional-track
+admission, and held-out factual promotion on isolated copies. Existing live
+tracks and factual slots are digested before the transaction and must remain
+byte-stable before the new state can commit. A rejected scalar outcome, a
+wrong-held-out stream, or a failed retention probe is a complete no-op.
+
+The promoted audit is
+`experiments/external_learned_binding_factual_growth/`, archived under
+`session_records/sequence_working_memory_2026-08-02/external_learned_binding_factual_growth_promoted_2026-08-10/`.
+Across seeds `2601`, `2602`, and `2603`, it performs two delayed open-set
+growth transactions with zero replay, zero factual optimizer updates, and zero
+controller updates. Learned proposal selection beats both a fresh policy and a
+verifier-outcome-shuffled policy on every seed. A scalar rejection and a wrong
+held-out candidate remain atomic; the original factual slot remains unchanged;
+both new slots route after promotion; and save/load is checksum-exact.
+
+The factual challenger also makes the external compute boundary explicit: the
+affine candidate is retained for the first stream, while the nonlinear second
+stream selects the registered random-feature sufficient-statistics candidate
+under the tighter held-out verifier. The family is selected from factual
+generalization, not from stream identity or a task label.
+
+This promotes bounded replay-free external memory growth and mixed-family
+candidate selection. It does not promote unrestricted memory growth, a learned
+verifier, arbitrary new computation outside the registered candidate families,
+or general continual learning. The next rung is repeated growth over a longer
+sequence with stable-retention prefixes, compression/consolidation probes, and
+matched-fresh transfer accounting.

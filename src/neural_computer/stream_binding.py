@@ -46,6 +46,12 @@ EXTERNAL_STREAM_BINDING_REPLACEMENT_SCHEMA = (
 EXTERNAL_STREAM_BINDING_FACTUAL_REPLACEMENT_SCHEMA = (
     "neural-computer.external-stream-binding-factual-replacement.v1"
 )
+EXTERNAL_STREAM_BINDING_GROWTH_SCHEMA = (
+    "neural-computer.external-stream-binding-growth.v1"
+)
+EXTERNAL_STREAM_BINDING_FACTUAL_GROWTH_SCHEMA = (
+    "neural-computer.external-stream-binding-factual-growth.v1"
+)
 EXTERNAL_STREAM_BINDING_LIFECYCLE_POLICY_SCHEMA = (
     "neural-computer.external-stream-binding-lifecycle-policy.v1"
 )
@@ -108,6 +114,18 @@ def _retained_factual_digest(
         digest.update(bank.model_family_at(index).encode("utf-8"))
         digest.update(bank.models[index].digest().encode("utf-8"))
     return digest.hexdigest()
+
+
+def _retained_binding_digest(
+    memory: Any,
+    *,
+    track_ids: tuple[int, ...],
+) -> str:
+    """Digest selected live tracks while ignoring capacity metadata."""
+
+    return _payload_digest(
+        tuple((track_id, memory.track_state(track_id)) for track_id in track_ids)
+    )
 
 
 def _normalize_key(key: torch.Tensor, *, width: int) -> torch.Tensor:
@@ -375,6 +393,136 @@ class ExternalStreamBindingFactualReplacementReceipt:
             for value in (self.track_id, self.retired_slot_id, self.slot_id)
         ):
             raise ValueError("accepted stream-binding factual replacement is incomplete")
+        return self
+
+
+@dataclass(frozen=True)
+class ExternalStreamBindingGrowthReceipt:
+    """Verifier-gated growth of anonymous live-stream capacity."""
+
+    accepted: bool
+    source_capacity: int
+    destination_capacity: int
+    content_digest_before: str
+    content_digest_after: str
+    reason: str
+    schema: str = EXTERNAL_STREAM_BINDING_GROWTH_SCHEMA
+
+    def validate(self) -> ExternalStreamBindingGrowthReceipt:
+        if self.schema != EXTERNAL_STREAM_BINDING_GROWTH_SCHEMA:
+            raise ValueError("unsupported stream-binding growth schema")
+        for name, value in (
+            ("source capacity", self.source_capacity),
+            ("destination capacity", self.destination_capacity),
+        ):
+            if (
+                not isinstance(value, int)
+                or isinstance(value, bool)
+                or value < 1
+            ):
+                raise ValueError(f"stream-binding {name} is invalid")
+        if self.accepted and self.destination_capacity <= self.source_capacity:
+            raise ValueError("accepted stream-binding growth did not increase capacity")
+        for name, value in (
+            ("content digest before", self.content_digest_before),
+            ("content digest after", self.content_digest_after),
+        ):
+            if not isinstance(value, str) or not value:
+                raise ValueError(f"stream-binding {name} is missing")
+        if not isinstance(self.reason, str) or not self.reason:
+            raise ValueError("stream-binding growth reason is missing")
+        return self
+
+
+@dataclass(frozen=True)
+class ExternalStreamBindingFactualGrowthReceipt:
+    """Atomic anonymous-track admission plus factual-bank growth."""
+
+    accepted: bool
+    provisional_id: int
+    track_id: int | None
+    slot_id: int | None
+    heldout_error: float
+    retention_outcome: float
+    source_stream_capacity: int
+    destination_stream_capacity: int
+    source_factual_capacity: int | None
+    destination_factual_capacity: int | None
+    binding_digest_before: str
+    binding_digest_after: str
+    router_digest_before: str
+    router_digest_after: str
+    reason: str
+    schema: str = EXTERNAL_STREAM_BINDING_FACTUAL_GROWTH_SCHEMA
+
+    def validate(self) -> ExternalStreamBindingFactualGrowthReceipt:
+        if self.schema != EXTERNAL_STREAM_BINDING_FACTUAL_GROWTH_SCHEMA:
+            raise ValueError("unsupported stream-binding factual growth schema")
+        if (
+            not isinstance(self.provisional_id, int)
+            or isinstance(self.provisional_id, bool)
+            or self.provisional_id < 0
+        ):
+            raise ValueError("stream-binding factual growth provisional ID is invalid")
+        if self.track_id is not None and (
+            not isinstance(self.track_id, int)
+            or isinstance(self.track_id, bool)
+            or self.track_id < 0
+        ):
+            raise ValueError("stream-binding factual growth track ID is invalid")
+        if self.slot_id is not None and (
+            not isinstance(self.slot_id, int)
+            or isinstance(self.slot_id, bool)
+            or self.slot_id < 0
+        ):
+            raise ValueError("stream-binding factual growth slot ID is invalid")
+        if (
+            (not math.isfinite(self.heldout_error) and self.heldout_error != float("inf"))
+            or self.heldout_error < 0.0
+        ):
+            raise ValueError("stream-binding factual growth held-out error is invalid")
+        if not math.isfinite(self.retention_outcome) or not 0.0 <= self.retention_outcome <= 1.0:
+            raise ValueError("stream-binding factual growth outcome is invalid")
+        for name, value in (
+            ("source stream capacity", self.source_stream_capacity),
+            ("destination stream capacity", self.destination_stream_capacity),
+        ):
+            if (
+                not isinstance(value, int)
+                or isinstance(value, bool)
+                or value < 1
+            ):
+                raise ValueError(f"stream-binding factual growth {name} is invalid")
+        if self.destination_stream_capacity <= self.source_stream_capacity:
+            raise ValueError("stream-binding factual growth did not increase stream capacity")
+        for name, value in (
+            ("source factual capacity", self.source_factual_capacity),
+            ("destination factual capacity", self.destination_factual_capacity),
+        ):
+            if value is not None and (
+                not isinstance(value, int)
+                or isinstance(value, bool)
+                or value < 1
+            ):
+                raise ValueError(f"stream-binding factual growth {name} is invalid")
+        if (
+            self.source_factual_capacity is not None
+            and self.destination_factual_capacity is not None
+            and self.destination_factual_capacity <= self.source_factual_capacity
+        ):
+            raise ValueError("stream-binding factual growth did not increase factual capacity")
+        for name, value in (
+            ("binding digest before", self.binding_digest_before),
+            ("binding digest after", self.binding_digest_after),
+            ("router digest before", self.router_digest_before),
+            ("router digest after", self.router_digest_after),
+        ):
+            if not isinstance(value, str) or not value:
+                raise ValueError(f"stream-binding factual growth {name} is missing")
+        if not isinstance(self.reason, str) or not self.reason:
+            raise ValueError("stream-binding factual growth reason is missing")
+        if self.accepted and (self.track_id is None or self.slot_id is None):
+            raise ValueError("accepted stream-binding factual growth is incomplete")
         return self
 
 
@@ -1413,6 +1561,51 @@ class ExternalOnlineStreamBindingMemory:
             observation_count=observation_count,
         ).validate()
 
+    def grow_verified(
+        self,
+        destination_capacity: int,
+        retention_probe: Callable[[ExternalOnlineStreamBindingMemory], bool],
+    ) -> ExternalStreamBindingGrowthReceipt:
+        """Grow live-stream capacity only on a retention-verified copy."""
+
+        if (
+            not isinstance(destination_capacity, int)
+            or isinstance(destination_capacity, bool)
+            or destination_capacity <= self.max_streams
+        ):
+            raise ValueError(
+                "stream-binding destination capacity must exceed current capacity"
+            )
+        if not callable(retention_probe):
+            raise TypeError("stream-binding growth retention probe is invalid")
+        source_capacity = self.max_streams
+        before = self.digest()
+        candidate = type(self).from_payload(self.state_payload())
+        candidate.max_streams = destination_capacity
+        candidate_before_probe = candidate.digest()
+        if (
+            not bool(retention_probe(candidate))
+            or candidate.digest() != candidate_before_probe
+        ):
+            return ExternalStreamBindingGrowthReceipt(
+                accepted=False,
+                source_capacity=source_capacity,
+                destination_capacity=source_capacity,
+                content_digest_before=before,
+                content_digest_after=before,
+                reason="retention_probe_rejected",
+            ).validate()
+        self.max_streams = destination_capacity
+        after = self.digest()
+        return ExternalStreamBindingGrowthReceipt(
+            accepted=True,
+            source_capacity=source_capacity,
+            destination_capacity=destination_capacity,
+            content_digest_before=before,
+            content_digest_after=after,
+            reason="retention-verified stream-binding capacity growth committed",
+        ).validate()
+
     def promote_provisional_track(
         self,
         provisional_id: int,
@@ -2058,6 +2251,275 @@ class ExternalLearnedMultiStreamTransitionContextRouter:
             reason="joint_binding_and_factual_replacement_committed",
         ).validate()
 
+    def grow_with_factual_candidate(
+        self,
+        proposal: ExternalStreamBindingLifecycleProposal,
+        heldout_observation: ExternalTransitionObservation,
+        verifier_outcome: torch.Tensor | float,
+        *,
+        destination_stream_capacity: int | None = None,
+        destination_factual_capacity: int | None = None,
+        prediction_tolerance: float = 0.05,
+        acceptance_threshold: float = 1.0,
+    ) -> ExternalStreamBindingFactualGrowthReceipt:
+        """Atomically grow anonymous binding and factual capacity.
+
+        The proposal identifies which provisional evidence is worth verifying;
+        it does not select a semantic task or a controller branch. Both memory
+        layers grow on isolated copies. The candidate factual family is chosen
+        by the router's existing held-out challenger, and every pre-existing
+        binding/model slot is checked byte-for-byte before commit.
+        """
+
+        proposal.validate(feature_width=self.binding.stream_key_width * 2 + 11)
+        heldout_observation.validate(
+            state_width=self.router.bank.state_width,
+            intention_width=self.router.bank.intention_width,
+        )
+        if prediction_tolerance < 0.0 or not math.isfinite(prediction_tolerance):
+            raise ValueError("factual growth prediction tolerance is invalid")
+        if isinstance(verifier_outcome, torch.Tensor):
+            values = verifier_outcome.detach().reshape(-1)
+            if values.numel() != 1:
+                raise ValueError("factual growth outcomes must be scalar")
+            outcome = float(values[0])
+        else:
+            outcome = float(verifier_outcome)
+        if not math.isfinite(outcome) or not 0.0 <= outcome <= 1.0:
+            raise ValueError("factual growth outcomes must lie in [0, 1]")
+        if (
+            not math.isfinite(acceptance_threshold)
+            or not 0.0 <= acceptance_threshold <= 1.0
+        ):
+            raise ValueError("factual growth acceptance threshold is invalid")
+
+        source_stream_capacity = self.binding.max_streams
+        destination_stream_capacity = (
+            source_stream_capacity + 1
+            if destination_stream_capacity is None
+            else destination_stream_capacity
+        )
+        if (
+            not isinstance(destination_stream_capacity, int)
+            or isinstance(destination_stream_capacity, bool)
+            or destination_stream_capacity <= source_stream_capacity
+        ):
+            raise ValueError(
+                "factual growth destination stream capacity must exceed current capacity"
+            )
+        source_factual_capacity = self.router.bank.capacity
+        if source_factual_capacity is None:
+            if destination_factual_capacity is not None:
+                raise ValueError(
+                    "unbounded factual memory cannot receive a destination capacity"
+                )
+        else:
+            destination_factual_capacity = (
+                source_factual_capacity + 1
+                if destination_factual_capacity is None
+                else destination_factual_capacity
+            )
+            if (
+                not isinstance(destination_factual_capacity, int)
+                or isinstance(destination_factual_capacity, bool)
+                or destination_factual_capacity <= source_factual_capacity
+            ):
+                raise ValueError(
+                    "factual growth destination capacity must exceed current capacity"
+                )
+
+        binding_before = self.binding.digest()
+        router_before = self.router.digest()
+        selected_provisional_id = proposal.selected_provisional_id
+        if selected_provisional_id is None:
+            return ExternalStreamBindingFactualGrowthReceipt(
+                accepted=False,
+                provisional_id=0,
+                track_id=None,
+                slot_id=None,
+                heldout_error=float("inf"),
+                retention_outcome=outcome,
+                source_stream_capacity=source_stream_capacity,
+                destination_stream_capacity=destination_stream_capacity,
+                source_factual_capacity=source_factual_capacity,
+                destination_factual_capacity=destination_factual_capacity,
+                binding_digest_before=binding_before,
+                binding_digest_after=binding_before,
+                router_digest_before=router_before,
+                router_digest_after=router_before,
+                reason="policy_hold",
+            ).validate()
+
+        def rejected(
+            reason: str,
+            *,
+            heldout_error: float = float("inf"),
+            track_id: int | None = None,
+            slot_id: int | None = None,
+        ) -> ExternalStreamBindingFactualGrowthReceipt:
+            return ExternalStreamBindingFactualGrowthReceipt(
+                accepted=False,
+                provisional_id=selected_provisional_id,
+                track_id=track_id,
+                slot_id=slot_id,
+                heldout_error=heldout_error,
+                retention_outcome=outcome,
+                source_stream_capacity=source_stream_capacity,
+                destination_stream_capacity=destination_stream_capacity,
+                source_factual_capacity=source_factual_capacity,
+                destination_factual_capacity=destination_factual_capacity,
+                binding_digest_before=binding_before,
+                binding_digest_after=binding_before,
+                router_digest_before=router_before,
+                router_digest_after=router_before,
+                reason=reason,
+            ).validate()
+
+        if outcome < acceptance_threshold:
+            return rejected("verifier_outcome_rejected")
+        if selected_provisional_id not in self.binding.provisional_ids:
+            return rejected("unknown_provisional")
+
+        provisional_observation = self.binding.provisional_observation(
+            selected_provisional_id
+        )
+        retained_track_ids = self.binding.track_ids
+        retained_binding_digest = _retained_binding_digest(
+            self.binding,
+            track_ids=retained_track_ids,
+        )
+        retained_slot_ids = self.router.bank.slot_ids
+        retained_factual_digest = _retained_factual_digest(
+            self.router.bank,
+            excluded_slot_ids=set(),
+        )
+        candidate_binding = ExternalOnlineStreamBindingMemory.from_payload(
+            self.binding.state_payload()
+        )
+        binding_growth = candidate_binding.grow_verified(
+            destination_stream_capacity,
+            lambda candidate: _retained_binding_digest(
+                candidate,
+                track_ids=retained_track_ids,
+            )
+            == retained_binding_digest,
+        )
+        if not binding_growth.accepted:
+            return rejected("binding_capacity_growth_failed")
+        binding_promotion = candidate_binding.promote_provisional_track(
+            selected_provisional_id,
+            lambda candidate: (
+                candidate.stream_count == len(retained_track_ids) + 1
+                and _retained_binding_digest(
+                    candidate,
+                    track_ids=retained_track_ids,
+                )
+                == retained_binding_digest
+            ),
+        )
+        if not binding_promotion.accepted or binding_promotion.track_id is None:
+            return rejected("binding_growth_admission_failed")
+        new_key = candidate_binding.track_state(binding_promotion.track_id)["stream_key"]
+
+        candidate_router = ExternalMultiStreamTransitionContextRouter.from_payload(
+            self.router.state_payload()
+        )
+        if destination_factual_capacity is not None:
+            factual_growth = candidate_router.grow_verified(
+                destination_factual_capacity,
+                lambda candidate: _retained_factual_digest(
+                    candidate,
+                    excluded_slot_ids=set(),
+                )
+                == retained_factual_digest,
+            )
+            if not bool(getattr(factual_growth, "accepted", False)):
+                return rejected("factual_capacity_growth_failed")
+
+        for row_index in range(provisional_observation.state.shape[0]):
+            confidence = (
+                None
+                if provisional_observation.confidence is None
+                else provisional_observation.confidence[row_index : row_index + 1]
+            )
+            row = ExternalTransitionObservation(
+                state=provisional_observation.state[row_index : row_index + 1],
+                intention=provisional_observation.intention[row_index : row_index + 1],
+                next_state=provisional_observation.next_state[row_index : row_index + 1],
+                confidence=confidence,
+            )
+            routed = candidate_router.observe(row, new_key)
+            if routed.result.status == "staged":
+                candidate_router.adaptation_step(
+                    routed,
+                    None,
+                    replay_evidence=False,
+                )
+        if candidate_router.provisional_candidate_count == 0:
+            return rejected("provisional_factual_candidate_not_staged")
+
+        def factual_retention_probe(candidate: Any) -> bool:
+            new_slot_ids = set(candidate.slot_ids) - set(retained_slot_ids)
+            return (
+                len(new_slot_ids) == 1
+                and set(retained_slot_ids).issubset(set(candidate.slot_ids))
+                and _retained_factual_digest(
+                    candidate,
+                    excluded_slot_ids=new_slot_ids,
+                )
+                == retained_factual_digest
+            )
+
+        factual_receipt = candidate_router.promote_staged_candidate(
+            new_key,
+            heldout_observation,
+            factual_retention_probe,
+            prediction_tolerance=prediction_tolerance,
+        )
+        if not factual_receipt.accepted or factual_receipt.slot_id is None:
+            return rejected(
+                "heldout_factual_candidate_rejected",
+                heldout_error=factual_receipt.heldout_error,
+            )
+        final_new_slot_ids = set(candidate_router.bank.slot_ids) - set(retained_slot_ids)
+        if (
+            final_new_slot_ids != {factual_receipt.slot_id}
+            or _retained_factual_digest(
+                candidate_router.bank,
+                excluded_slot_ids=final_new_slot_ids,
+            )
+            != retained_factual_digest
+            or _retained_binding_digest(
+                candidate_binding,
+                track_ids=retained_track_ids,
+            )
+            != retained_binding_digest
+        ):
+            return rejected(
+                "retained_state_changed",
+                heldout_error=factual_receipt.heldout_error,
+            )
+
+        self.binding = candidate_binding
+        self.router = candidate_router
+        return ExternalStreamBindingFactualGrowthReceipt(
+            accepted=True,
+            provisional_id=selected_provisional_id,
+            track_id=binding_promotion.track_id,
+            slot_id=factual_receipt.slot_id,
+            heldout_error=factual_receipt.heldout_error,
+            retention_outcome=outcome,
+            source_stream_capacity=source_stream_capacity,
+            destination_stream_capacity=destination_stream_capacity,
+            source_factual_capacity=source_factual_capacity,
+            destination_factual_capacity=destination_factual_capacity,
+            binding_digest_before=binding_before,
+            binding_digest_after=self.binding.digest(),
+            router_digest_before=router_before,
+            router_digest_after=self.router.digest(),
+            reason="joint_binding_and_factual_growth_committed",
+        ).validate()
+
     def adaptation_step(
         self,
         result: ExternalLearnedMultiStreamTransitionResult,
@@ -2154,7 +2616,9 @@ class ExternalLearnedMultiStreamTransitionContextRouter:
 
 __all__ = [
     "EXTERNAL_LEARNED_MULTI_STREAM_ROUTER_SCHEMA",
+    "EXTERNAL_STREAM_BINDING_FACTUAL_GROWTH_SCHEMA",
     "EXTERNAL_STREAM_BINDING_FACTUAL_REPLACEMENT_SCHEMA",
+    "EXTERNAL_STREAM_BINDING_GROWTH_SCHEMA",
     "EXTERNAL_STREAM_BINDING_LIFECYCLE_POLICY_SCHEMA",
     "EXTERNAL_STREAM_BINDING_LIFECYCLE_PROPOSAL_SCHEMA",
     "EXTERNAL_STREAM_BINDING_MEMORY_SCHEMA",
@@ -2164,7 +2628,9 @@ __all__ = [
     "ExternalLearnedMultiStreamTransitionContextRouter",
     "ExternalLearnedMultiStreamTransitionResult",
     "ExternalOnlineStreamBindingMemory",
+    "ExternalStreamBindingFactualGrowthReceipt",
     "ExternalStreamBindingFactualReplacementReceipt",
+    "ExternalStreamBindingGrowthReceipt",
     "ExternalStreamBindingLifecyclePolicy",
     "ExternalStreamBindingLifecycleProposal",
     "ExternalStreamBindingPromotionReceipt",

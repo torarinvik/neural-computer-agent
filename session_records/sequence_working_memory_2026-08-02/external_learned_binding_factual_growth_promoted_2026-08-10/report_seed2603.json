@@ -1,0 +1,184 @@
+{
+  "schema": "neural-computer.external-learned-binding-factual-growth-pressure-test.v1",
+  "seed": 2603,
+  "promoted": true,
+  "identity": {
+    "contrastive_loss": 0.00011617596464930102,
+    "optimizer_updates": 240,
+    "encoder_digest": "c8c66289093e840ceccf9ca7cf77a256121c2371410894faf2027073422c12d4"
+  },
+  "configuration": {
+    "streams": 4,
+    "initial_live_streams": 1,
+    "growth_transactions": 2,
+    "initial_factual_capacity": 1,
+    "final_factual_capacity": 3,
+    "model_families": [
+      "affine_sufficient_statistics_v1",
+      "random_feature_sufficient_statistics_v1"
+    ],
+    "replay_free_factual_candidates": true
+  },
+  "policy_training": {
+    "optimizer_updates": 320,
+    "accepted_outcomes": 225,
+    "mean_loss": 0.9208866928864154,
+    "unique_verifier_bits": 10560,
+    "replayed_examples": 0,
+    "shuffle_outcomes": false
+  },
+  "shuffled_policy_training": {
+    "optimizer_updates": 320,
+    "accepted_outcomes": 154,
+    "mean_loss": 2.8960862174630164,
+    "unique_verifier_bits": 10560,
+    "replayed_examples": 0,
+    "shuffle_outcomes": true
+  },
+  "proposal_control": {
+    "learned_correct_count": 2,
+    "fresh_correct_count": 0,
+    "shuffled_correct_count": 0,
+    "learned_first_stream": 1,
+    "learned_second_stream": 2,
+    "fresh_first_stream": 2,
+    "fresh_second_stream": 3,
+    "shuffled_first_stream": 3,
+    "shuffled_second_stream": 3,
+    "learned_control": {
+      "episodes": 24,
+      "correct": 24,
+      "accuracy": 1.0,
+      "verifier_bits": 768
+    },
+    "fresh_control": {
+      "episodes": 24,
+      "correct": 12,
+      "accuracy": 0.5,
+      "verifier_bits": 768
+    },
+    "shuffled_control": {
+      "episodes": 24,
+      "correct": 7,
+      "accuracy": 0.2916666666666667,
+      "verifier_bits": 768
+    }
+  },
+  "growth": {
+    "first": {
+      "accepted": true,
+      "track_id": 1,
+      "slot_id": 1,
+      "heldout_error": 1.5366026673291344e-08,
+      "destination_stream_capacity": 2,
+      "destination_factual_capacity": 2
+    },
+    "second": {
+      "accepted": true,
+      "track_id": 2,
+      "slot_id": 2,
+      "heldout_error": 0.061847835779190063,
+      "destination_stream_capacity": 3,
+      "destination_factual_capacity": 3
+    },
+    "scalar_rejection_reason": "verifier_outcome_rejected",
+    "wrong_heldout_reason": "heldout_factual_candidate_rejected",
+    "model_families": [
+      "affine_sufficient_statistics_v1",
+      "affine_sufficient_statistics_v1",
+      "random_feature_sufficient_statistics_v1"
+    ]
+  },
+  "retention": {
+    "source_slot_id": 0,
+    "source_model_digest_unchanged": true,
+    "routed_slot_ids": [
+      1,
+      2
+    ],
+    "route_statuses": [
+      "pending",
+      "pending",
+      "pending",
+      "pending",
+      "pending",
+      "continuation",
+      "pending",
+      "pending",
+      "pending",
+      "pending",
+      "pending",
+      "continuation"
+    ],
+    "route_stable_slot_ids": [
+      null,
+      null,
+      null,
+      null,
+      null,
+      1,
+      null,
+      null,
+      null,
+      null,
+      null,
+      2
+    ],
+    "route_prediction_errors": [
+      null,
+      null,
+      null,
+      null,
+      null,
+      1.5366026673291344e-08,
+      null,
+      null,
+      null,
+      null,
+      null,
+      0.061847835779190063
+    ],
+    "mean_delays": [
+      1.4,
+      3.01708984375,
+      3.527294921875
+    ]
+  },
+  "gates": {
+    "identity_loss_converged": true,
+    "learned_first_growth_proposal_correct": true,
+    "learned_second_growth_proposal_correct": true,
+    "learned_beats_fresh_control": true,
+    "learned_beats_shuffled_control": true,
+    "scalar_rejection_atomic": true,
+    "wrong_heldout_rejection_atomic": true,
+    "first_growth_committed": true,
+    "second_growth_committed": true,
+    "binding_capacity_grew": true,
+    "factual_capacity_grew": true,
+    "open_set_provisional_evidence_isolated": true,
+    "source_factual_slot_retained": true,
+    "new_slots_routed": true,
+    "delays_learned": true,
+    "model_families_are_external": true,
+    "joint_persistence_exact": true,
+    "controller_frozen_unchanged": true,
+    "binding_encoder_frozen": true
+  },
+  "accounting": {
+    "identity_optimizer_updates": 240,
+    "policy_optimizer_updates": 320,
+    "shuffled_policy_optimizer_updates": 320,
+    "factual_optimizer_updates": 0,
+    "controller_optimizer_updates": 0,
+    "replayed_examples": 0,
+    "policy_verifier_bits": 10560,
+    "shuffled_policy_verifier_bits": 10560,
+    "deployment_transaction_verifier_bits": 4,
+    "control_verifier_bits": 2304,
+    "unique_verifier_bits": 23428,
+    "unique_logical_lifetimes": 1280
+  },
+  "claim_boundary": "bounded learned anonymous binding and replay-free factual-memory growth under held-out retention; not unrestricted growth, learned verifier design, arbitrary new computation, or general continual learning",
+  "elapsed_seconds": 11.53551429201616
+}

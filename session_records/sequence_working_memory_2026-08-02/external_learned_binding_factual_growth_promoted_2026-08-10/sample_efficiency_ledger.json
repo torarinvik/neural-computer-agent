@@ -1,0 +1,52 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "external_learned_binding_factual_growth_promoted_2026-08-10",
+  "status": "promoted_bounded_joint_binding_factual_growth",
+  "population_seeds": [2601, 2602, 2603],
+  "anonymous_streams_per_episode": 4,
+  "initial_live_streams_per_episode": 1,
+  "growth_transactions_per_seed": 2,
+  "initial_factual_capacity": 1,
+  "final_factual_capacity": 3,
+  "identity_optimizer_updates_per_seed": 240,
+  "policy_optimizer_updates_per_seed": 320,
+  "shuffled_policy_optimizer_updates_per_seed": 320,
+  "factual_optimizer_updates_per_seed": 0,
+  "controller_optimizer_updates_per_seed": 0,
+  "total_optimizer_updates": 2640,
+  "replayed_examples": 0,
+  "policy_verifier_bits_per_seed": 10560,
+  "shuffled_policy_verifier_bits_per_seed": 10560,
+  "deployment_transaction_verifier_bits_per_seed": 4,
+  "control_verifier_bits_per_seed": 2304,
+  "unique_verifier_bits_per_seed": 23428,
+  "total_unique_verifier_bits": 70284,
+  "unique_logical_lifetimes_per_seed": 1280,
+  "total_unique_logical_lifetimes": 3840,
+  "wall_time_seconds": [11.903200625034515, 10.942703375010751, 10.48488045798149],
+  "stable_bits_to_threshold": null,
+  "retention_on_mastered_primitives": "scalar and wrong-held-out rejection leave both external memories unchanged; source factual slot and all prior binding tracks survive accepted growth",
+  "transfer_ratio_against_fresh_learner": null,
+  "learned_control_accuracy": [1.0, 0.75, 1.0],
+  "fresh_control_accuracy": [0.0, 0.0, 0.5],
+  "shuffled_control_accuracy": [0.375, 0.125, 0.2916666666666667],
+  "model_families_per_seed": [
+    [
+      "affine_sufficient_statistics_v1",
+      "affine_sufficient_statistics_v1",
+      "random_feature_sufficient_statistics_v1"
+    ],
+    [
+      "affine_sufficient_statistics_v1",
+      "affine_sufficient_statistics_v1",
+      "random_feature_sufficient_statistics_v1"
+    ],
+    [
+      "affine_sufficient_statistics_v1",
+      "affine_sufficient_statistics_v1",
+      "random_feature_sufficient_statistics_v1"
+    ]
+  ],
+  "promotion_gates_passed": [true, true, true],
+  "claim_boundary": "Promoted bounded replay-free external binding/factual growth under held-out retention and matched controls only; unrestricted growth, learned verifier design, arbitrary new computation, and general continual learning remain unqualified."
+}
