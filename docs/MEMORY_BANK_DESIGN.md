@@ -5353,3 +5353,28 @@ Fix queued: seek the two planes with equal probability during
 collection, leaving everything else fixed.
 
 Probe 218 is `game_slots.py --signed-entry` (2-channel), 3 seeds.
+
+**Measurement correction (2026-08-10). The "% of headroom" metric has
+broken and must be retired for the games ladder.** It was defined as
+entry effect (own-entry minus twin-entry reward) divided by the
+floor-to-oracle span +0.2272. Recomputed across the ladder:
+
+    F111 +0.1037 =  45.6%
+    F113 +0.2458 = 108.2%
+    F118 +0.2714 = 119.5%
+
+Past 100% it is measuring the wrong thing: the twin arm now falls far
+BELOW the context-free floor (-0.16 to -0.19 against -0.0318), because
+an agent that confidently applies the inverted rule seeks poison rather
+than merely wandering. The denominator assumed the twin arm sits at
+floor. The effect size is real and still the right CAUSAL statistic —
+it is what separates reading from not-reading — but it is not a
+fraction of anything.
+
+Standing rule from here: report games progress as HELD-OUT REWARD
+against the two oracle references (+0.1234 through the learned search,
++0.1954 with true dynamics too), and report entry effect separately as
+an unnormalised causal magnitude. On that honest scale the ladder is:
+-0.0205 (F109) -> +0.0069 (F111) -> +0.0816 (F113) -> +0.0947 (F118),
+against +0.1234; i.e. 77% of the oracle-value target, not 119% of
+anything.
