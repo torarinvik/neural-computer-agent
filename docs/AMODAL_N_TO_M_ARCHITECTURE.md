@@ -8313,6 +8313,18 @@ inventing useful new intention vectors from partial multimodal experience.
 Learned candidate generation, equivalence discovery, unrestricted growth, and
 general continual learning remain unqualified.
 
+An opt-in adaptive evidence-version curriculum now addresses the fixed
+boundary in the earlier rejection. Each of seven masks must pass stage-local
+mastery and a held-out prefix verifier before a protected copy-on-write child
+is created. The child copies reusable content and the route key on previously
+observed dimensions; the sole unqualified child receives a temporary `0.75`
+exploration floor so discovery remains caller-free. With a four-update stage
+minimum, three seeds pass all retention, reversal, causal, persistence,
+frozen-core, and zero-replay gates, with warm/fresh successor updates of
+`39/50`, `42/44`, and `34/55`. This promotes bounded adaptive sequential
+reuse, not arbitrary distribution shift or general continual learning. See
+`session_records/policy_free_intention_masked_routing_adaptive_promoted_2026-08-10/`.
+
 The external generator now adds an opt-in factorized masked-content boundary.
 In `mask_stable_content` mode, observation masks remain explicit evidence for
 routing and retention but are disconnected from the mutable nonlinear hidden

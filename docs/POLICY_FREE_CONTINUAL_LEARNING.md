@@ -852,3 +852,29 @@ versioned curriculum still reaches its final stage at a fixed update boundary
 and has no replicated warm-over-fresh speedup. Unrestricted memory growth,
 learned compression, arbitrary new computation, and general continual
 learning remain unqualified.
+
+## Adaptive sequential evidence-version growth (2026-08-10)
+
+The fixed-boundary versioned curriculum was replaced by an opt-in adaptive
+stage protocol. Each of seven observation-mask versions must reach mastery,
+pass an independent eight-outcome held-out prefix verifier, and only then
+fork the next protected external cell. The fork copies both the reusable
+factorized content and the route key on previously observed dimensions; the
+sole unqualified child receives a `0.75` exploration floor so caller-free
+routing can discover it without a task-specific cell index. Each stage has a
+four-update minimum, and the fresh control uses the identical protocol.
+
+The three-seed audit is archived in
+`session_records/policy_free_intention_masked_routing_adaptive_promoted_2026-08-10/`.
+All seeds pass stage completion, source/successor retention, caller-free
+routing, reversal, shuffled reward/action, missing-evidence, corruption,
+persistence, frozen-core, and zero-replay gates. Warm/fresh successor
+acquisition is `39/50`, `42/44`, and `34/55` updates, for transfer ratios
+`1.282`, `1.048`, and `1.618`; each run grows nine external cells and spends
+`128` held-out stage-verifier bits.
+
+This promotes bounded adaptive sequential reuse across a known seven-stage
+evidence curriculum. It does not establish arbitrary distribution shift,
+unrestricted growth, learned compression, arbitrary new computation, or
+general continual learning. The next pressure is novel mask ordering and
+unseen evidence combinations rather than another fixed schedule.

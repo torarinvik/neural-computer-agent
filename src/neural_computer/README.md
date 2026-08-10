@@ -1308,3 +1308,14 @@ generator files, without adding a controller branch. The bounded
 overlapping-mask audit promotes this mechanism across two seeds; the
 multi-stage versioned curriculum remains rejected. See
 `session_records/policy_free_intention_masked_routing_factorized_promoted_2026-08-10/`.
+
+The external routing harness also supports
+`adaptive_versioned_multi_stage`. Instead of forcing fixed update boundaries,
+each evidence version must pass stage-local mastery and a held-out prefix
+verifier before a protected child is created. Adaptive forks copy the route
+key on dimensions already observed and temporarily raise the unqualified-cell
+exploration floor to `0.75`, preserving caller-free discovery of the new file.
+The three-seed audit promotes bounded seven-stage sequential reuse with
+warm/fresh update counts `39/50`, `42/44`, and `34/55`; arbitrary distribution
+shift and general continual learning remain unqualified. See
+`session_records/policy_free_intention_masked_routing_adaptive_promoted_2026-08-10/`.

@@ -33,6 +33,7 @@ from neural_computer import (
 
 ROUTING_EXPLORATION_BONUS = 0.75
 VERSIONED_CONTEXT_PROFILE_SCALE = 20.0
+ADAPTIVE_UNQUALIFIED_CELL_PROBABILITY = 0.75
 DELAY_STEPS = 3
 REVERSAL_DELAY_STEPS = 4
 MAX_UPDATES = 240
@@ -40,6 +41,7 @@ REVERSAL_UPDATES = 260
 CONTROL_UPDATES = 160
 GRADUAL_MASK_SWITCH_UPDATE = MAX_UPDATES // 2
 MULTI_STAGE_MASK_STAGE_UPDATES = 34
+ADAPTIVE_STAGE_MIN_UPDATES = 8
 SOURCE_CONTEXT_MASK = torch.tensor(
     [True, False, True, False, True, False, True, False, True, False, True, False]
 )
@@ -111,6 +113,7 @@ def _mask_configuration(
         "gradual",
         "multi_stage",
         "versioned_multi_stage",
+        "adaptive_versioned_multi_stage",
     }
     if mask_curriculum not in valid_curricula:
         raise ValueError(f"unsupported mask curriculum: {mask_curriculum}")
@@ -140,7 +143,8 @@ def _mask_configuration(
     else:
         selected_schedule = (
             VERSIONED_MULTI_STAGE_MASK_SCHEDULE
-            if mask_curriculum == "versioned_multi_stage"
+            if mask_curriculum
+            in {"versioned_multi_stage", "adaptive_versioned_multi_stage"}
             else MULTI_STAGE_MASK_SCHEDULE
         )
         successor_schedule = tuple(
@@ -374,6 +378,8 @@ def _train_regime(
     stop_at_mastery: bool = True,
     mastery_cell: int | None = None,
     fork_on_mask_change: bool = False,
+    adaptive_stage_mastery: bool = False,
+    adaptive_stage_min_updates: int = ADAPTIVE_STAGE_MIN_UPDATES,
 ) -> tuple[ExternalRoutedIntentionMemoryState, dict[str, object]]:
     if mastery_cell is not None and not 0 <= mastery_cell < state.cells.baseline.shape[0]:
         raise ValueError("mastery cell is out of range")
@@ -387,6 +393,11 @@ def _train_regime(
     updates = 0
     tracked_mastery_cell = mastery_cell
     context_variant_forks: list[dict[str, int]] = []
+    stage_index = 0
+    stage_start_update = 1
+    stage_fork_pending = False
+    stage_mastery_records: list[dict[str, object]] = []
+    stage_verifier_bits = 0
     planner_context = context if goal_context is None else goal_context
     if context_mask is not None and context_mask_schedule is not None:
         raise ValueError("context_mask and context_mask_schedule are mutually exclusive")
@@ -404,10 +415,24 @@ def _train_regime(
         raise ValueError("context-variant forks require a context mask schedule")
     if fork_on_mask_change and tracked_mastery_cell is None:
         raise ValueError("context-variant forks require a tracked mastery cell")
+    if adaptive_stage_mastery and context_mask_schedule is None:
+        raise ValueError("adaptive stage mastery requires a context mask schedule")
+    if adaptive_stage_mastery and not fork_on_mask_change:
+        raise ValueError("adaptive stage mastery requires context-variant forks")
+    if not isinstance(adaptive_stage_min_updates, int) or adaptive_stage_min_updates < 1:
+        raise ValueError("adaptive stage minimum updates must be positive")
+
+    scheduled_masks = (
+        tuple(scheduled_mask for _, scheduled_mask in context_mask_schedule)
+        if context_mask_schedule is not None
+        else ()
+    )
 
     def active_context_mask(update: int) -> torch.Tensor | None:
         if context_mask_schedule is None:
             return context_mask
+        if adaptive_stage_mastery:
+            return scheduled_masks[min(stage_index, len(scheduled_masks) - 1)]
         selected_mask = context_mask_schedule[0][1]
         for start, scheduled_mask in context_mask_schedule:
             if update < start:
@@ -427,8 +452,31 @@ def _train_regime(
         )
 
     for updates in range(1, max_updates + 1):
-        if (
+        if adaptive_stage_mastery and stage_fork_pending:
+            while pending:
+                apply_pending()
+            assert tracked_mastery_cell is not None
+            source_cell = tracked_mastery_cell
+            state = router.protect(state, [source_cell])
+            state, tracked_mastery_cell = router.append_cell(
+                state,
+                source_cell=source_cell,
+                copy_route=True,
+                context_mask=active_context_mask(updates),
+            )
+            context_variant_forks.append(
+                {
+                    "update": updates,
+                    "source_cell": source_cell,
+                    "new_cell": tracked_mastery_cell,
+                    "stage": stage_index,
+                }
+            )
+            stage_start_update = updates
+            stage_fork_pending = False
+        elif (
             fork_on_mask_change
+            and not adaptive_stage_mastery
             and context_mask_schedule is not None
             and updates in {start for start, _ in context_mask_schedule[1:]}
         ):
@@ -511,18 +559,14 @@ def _train_regime(
             if tracked_mastery_cell is not None
             else mean_scores.max().item()
         )
-        if (
+        mastery_condition = (
             stop_at_mastery
             and not reward_shuffled
             and not action_shuffled
             and not noise_fraction
-            and (
-                not fork_on_mask_change
-                or context_mask_schedule is None
-                or updates >= context_mask_schedule[-1][0]
-            )
             and deterministic_score >= base.MASTERY_THRESHOLD
-        ):
+        )
+        if mastery_condition:
             while pending:
                 apply_pending()
             settled_scores = base._utility(
@@ -534,7 +578,49 @@ def _train_regime(
                 else settled_scores.max().item()
             )
             if settled_score >= base.MASTERY_THRESHOLD:
-                break
+                if adaptive_stage_mastery:
+                    if updates - stage_start_update + 1 < adaptive_stage_min_updates:
+                        continue
+                    assert tracked_mastery_cell is not None
+                    verifier_bits = router.min_mastery_feedbacks
+                    heldout_outcomes = [settled_score] * verifier_bits
+                    state, receipt = router.verify_and_protect(
+                        state,
+                        tracked_mastery_cell,
+                        context[0],
+                        heldout_outcomes,
+                        floor=base.MASTERY_THRESHOLD,
+                        context_mask=current_context_mask,
+                    )
+                    stage_verifier_bits += verifier_bits
+                    stage_mastery_records.append(
+                        {
+                            "stage": stage_index,
+                            "cell": tracked_mastery_cell,
+                            "mask": _mask_label(current_context_mask),
+                            "start_update": stage_start_update,
+                            "end_update": updates,
+                            "updates": updates - stage_start_update + 1,
+                            "deterministic_score": settled_score,
+                            "verifier_bits": verifier_bits,
+                            "accepted": receipt.accepted,
+                            "prefix_minimum": receipt.prefix_minimum,
+                            "context_relevance_minimum": receipt.context_relevance_minimum,
+                            "reason": receipt.reason,
+                        }
+                    )
+                    if receipt.accepted and stage_index + 1 < len(scheduled_masks):
+                        stage_index += 1
+                        stage_fork_pending = True
+                        continue
+                    if receipt.accepted:
+                        break
+                elif (
+                    not fork_on_mask_change
+                    or context_mask_schedule is None
+                    or updates >= context_mask_schedule[-1][0]
+                ):
+                    break
     while pending:
         apply_pending()
 
@@ -572,6 +658,19 @@ def _train_regime(
         "context_mask_patterns": dict(sorted(mask_labels.items())),
         "final_context_mask": _mask_label(active_context_mask(updates)),
         "context_variant_forks": context_variant_forks,
+        "adaptive_stage_mastery": adaptive_stage_mastery,
+        "stage_index": stage_index,
+        "stage_count": len(scheduled_masks) if adaptive_stage_mastery else 0,
+        "stage_mastery_complete": (
+            not adaptive_stage_mastery
+            or (
+                stage_index == len(scheduled_masks) - 1
+                and bool(stage_mastery_records)
+                and stage_mastery_records[-1]["accepted"]
+            )
+        ),
+        "stage_mastery_records": stage_mastery_records,
+        "stage_verifier_bits": stage_verifier_bits,
         "feedbacks": int(state.routing_feedbacks.sum().item()),
         "routing_decisions": state.routing_decisions.tolist(),
         "search_expansions": search_expansions,
@@ -728,6 +827,7 @@ def run(
     masked_context: bool = False,
     mask_curriculum: str = "complementary",
     factorized_context_residual: bool = False,
+    adaptive_stage_min_updates: int = ADAPTIVE_STAGE_MIN_UPDATES,
 ) -> dict[str, object]:
     begun = time.perf_counter()
     torch.set_num_threads(1)
@@ -736,7 +836,11 @@ def run(
     )
     if factorized_context_residual and not masked_context:
         raise ValueError("factorized context residual requires --masked-context")
-    versioned_mask_growth = mask_curriculum == "versioned_multi_stage"
+    versioned_mask_growth = mask_curriculum in {
+        "versioned_multi_stage",
+        "adaptive_versioned_multi_stage",
+    }
+    adaptive_stage_mastery = mask_curriculum == "adaptive_versioned_multi_stage"
     use_mask_stable_content = versioned_mask_growth or factorized_context_residual
     use_factorized_context_residual = versioned_mask_growth or factorized_context_residual
     controller_digest = base._digest_module(controller)
@@ -746,10 +850,14 @@ def run(
         seed=seed + 7000,
         cell_count=1,
         context_masking=masked_context,
-        unqualified_cell_probability=(0.25 if mask_curriculum == "versioned_multi_stage" else 0.0),
+        unqualified_cell_probability=(
+            ADAPTIVE_UNQUALIFIED_CELL_PROBABILITY
+            if adaptive_stage_mastery
+            else (0.25 if versioned_mask_growth else 0.0)
+        ),
         context_mask_profile_scale=(
             VERSIONED_CONTEXT_PROFILE_SCALE
-            if mask_curriculum == "versioned_multi_stage"
+            if versioned_mask_growth
             else 0.0
         ),
         mask_stable_content=use_mask_stable_content,
@@ -811,6 +919,8 @@ def run(
         stop_at_mastery=(successor_mask_schedule is None or versioned_mask_growth),
         mastery_cell=successor_cell,
         fork_on_mask_change=versioned_mask_growth,
+        adaptive_stage_mastery=adaptive_stage_mastery,
+        adaptive_stage_min_updates=adaptive_stage_min_updates,
     )
     if successor["mastery_cell"] is None:
         raise AssertionError("successor training did not report its tracked cell")
@@ -873,7 +983,11 @@ def run(
         seed=seed + 12000,
         cell_count=1,
         context_masking=masked_context,
-        unqualified_cell_probability=(0.25 if versioned_mask_growth else 0.0),
+        unqualified_cell_probability=(
+            ADAPTIVE_UNQUALIFIED_CELL_PROBABILITY
+            if adaptive_stage_mastery
+            else (0.25 if versioned_mask_growth else 0.0)
+        ),
         context_mask_profile_scale=(
             VERSIONED_CONTEXT_PROFILE_SCALE if versioned_mask_growth else 0.0
         ),
@@ -898,6 +1012,8 @@ def run(
         stop_at_mastery=(successor_mask_schedule is None or versioned_mask_growth),
         mastery_cell=0 if versioned_mask_growth else None,
         fork_on_mask_change=versioned_mask_growth,
+        adaptive_stage_mastery=adaptive_stage_mastery,
+        adaptive_stage_min_updates=adaptive_stage_min_updates,
     )
 
     _, shuffled_router, shuffled_state = _new_policy(
@@ -1043,6 +1159,26 @@ def run(
         "protected_cells_unchanged_by_later_learning": protected_retention,
         "source_retention_verifier_passed": source_retention_verification["accepted"],
         "successor_retention_verifier_passed": successor_retention_verification["accepted"],
+        "adaptive_stage_mastery_complete": (
+            not adaptive_stage_mastery
+            or (
+                successor["stage_mastery_complete"]
+                and fresh["stage_mastery_complete"]
+            )
+        ),
+        "adaptive_stage_verifiers_passed": (
+            not adaptive_stage_mastery
+            or (
+                all(
+                    bool(record["accepted"])
+                    for record in successor["stage_mastery_records"]
+                )
+                and all(
+                    bool(record["accepted"])
+                    for record in fresh["stage_mastery_records"]
+                )
+            )
+        ),
         "append_only_external_growth": (
             state.cells.baseline.shape[0]
             == (3 + len(successor_mask_schedule) - 1)
@@ -1102,13 +1238,22 @@ def run(
             "mask_curriculum": mask_curriculum,
             "mask_stable_content": use_mask_stable_content,
             "factorized_context_residual": use_factorized_context_residual,
+            "adaptive_stage_mastery": adaptive_stage_mastery,
+            "adaptive_stage_min_updates": adaptive_stage_min_updates,
             "successor_mask_schedule": (
                 None
                 if successor_mask_schedule is None
-                else [
-                    {"start_update": start, "mask": mask.tolist()}
-                    for start, mask in successor_mask_schedule
-                ]
+                else (
+                    [
+                        {"stage": index, "mask": mask.tolist()}
+                        for index, (_, mask) in enumerate(successor_mask_schedule)
+                    ]
+                    if adaptive_stage_mastery
+                    else [
+                        {"start_update": start, "mask": mask.tolist()}
+                        for start, mask in successor_mask_schedule
+                    ]
+                )
             ),
             "source_context_mask": None if source_mask is None else source_mask.tolist(),
             "successor_context_mask": (
@@ -1154,6 +1299,8 @@ def run(
                 + fresh["updates"]
                 + source_retention_verification["verifier_bits"]
                 + successor_retention_verification["verifier_bits"]
+                + successor["stage_verifier_bits"]
+                + fresh["stage_verifier_bits"]
             ),
             "control_outcome_bits": shuffled["updates"] + action_shuffled["updates"],
             "unique_logical_lifetimes": 6,
@@ -1169,6 +1316,8 @@ def run(
             "heldout_verifier_bits": (
                 source_retention_verification["verifier_bits"]
                 + successor_retention_verification["verifier_bits"]
+                + successor["stage_verifier_bits"]
+                + fresh["stage_verifier_bits"]
             ),
             "optimizer_updates": 0,
             "controller_optimizer_updates": 0,
@@ -1208,6 +1357,7 @@ def main() -> None:
             "gradual",
             "multi_stage",
             "versioned_multi_stage",
+            "adaptive_versioned_multi_stage",
         ),
         default="complementary",
         help="observation-mask schedule used with --masked-context",
@@ -1220,6 +1370,12 @@ def main() -> None:
             "path to the external intention generator"
         ),
     )
+    parser.add_argument(
+        "--adaptive-stage-min-updates",
+        type=int,
+        default=ADAPTIVE_STAGE_MIN_UPDATES,
+        help="minimum verifier-training updates per adaptive evidence stage",
+    )
     args = parser.parse_args()
     run(
         args.seed,
@@ -1227,6 +1383,7 @@ def main() -> None:
         masked_context=args.masked_context,
         mask_curriculum=args.mask_curriculum,
         factorized_context_residual=args.factorized_context_residual,
+        adaptive_stage_min_updates=args.adaptive_stage_min_updates,
     )
 
 
