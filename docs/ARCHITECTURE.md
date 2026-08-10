@@ -91,6 +91,41 @@ Two boundaries measured with it, both of which cost a probe to learn:
   law governs whether an expressible rule is READ or MEMORISED; it
   says nothing about whether composites are expressible at all.
 
+**And the plant must BIND its context ONCE (F135).** Settled
+2026-08-10. Re-consulting the entry at every step means re-deriving
+the same parameters on each application; the errors compound with
+depth, which is why conditioned execution was fine at depth 1 and gone
+by depth 4. Decoding the entry once into explicit per-piece parameters
+and then stepping on (latent, bound parameter) takes 256-world,
+depth-4 execution from 0.5548 to **0.9983** per-bit on held-out worlds,
+with a stranger's entry left at 0.547 — so the effect is causal on
+supplying the right world, not a model that stopped needing context.
+
+**The rule these three findings share, and the most transferable thing
+this project has produced: do the context-dependent work ONCE, then
+iterate something fixed.**
+
+- F67 — store facts, derive behaviour by search; do not store a policy.
+- F121 — apply one piece at a time through a shared step; do not learn
+  the composite.
+- F135 — bind the parameters once; do not re-read them per step.
+
+Each failure was re-doing per-step what belonged per-task.
+
+Two constraints measured alongside it:
+
+- **The binder must stay SIMPLE (F140).** A nonlinear binder drops the
+  same measurement from 0.9983 to 0.6196. This is the fourth instance
+  of capacity in the conditioning path hurting (F77 FiLM, F79 pool
+  size, F89 bank tokens, F140 binder), and it is now a prior rather
+  than a hypothesis: when a context-conditioned path underperforms,
+  the answer is never more capacity in that path.
+- **The reader is capable; its training signal is not (F138).** Given
+  a consistent target, the reader produces entries driving 0.9723 on
+  held-out worlds. Under task loss alone it produces entries
+  indistinguishable from a stranger's. The open problem is entirely
+  the signal.
+
 Consequence for the build: check expressibility in the interface —
 one single-world, reading-off fit run — BEFORE spending arms on
 diversity, capacity, or budget.
