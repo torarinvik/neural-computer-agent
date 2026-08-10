@@ -647,6 +647,12 @@ class ExternalFactoredTransitionRouter:
 
         return sum(item.state.shape[0] for item in self._quarantine)
 
+    @property
+    def quarantined_bundles(self) -> int:
+        """Return the number of unresolved evidence bundles retained."""
+
+        return len(self._quarantine)
+
     def grow_verified(
         self,
         destination_capacity: int,
@@ -1052,16 +1058,21 @@ class ExternalFactoredTransitionRouter:
             reason="unresolved evidence retained outside committed memory",
         ).validate()
 
-    def drain_quarantine(self) -> ExternalTransitionObservation | None:
-        """Release retained evidence for an explicit caller-owned decision."""
+    def peek_quarantine(self) -> tuple[ExternalTransitionObservation, ...]:
+        """Read retained bundles without combining or mutating them."""
+
+        return tuple(self._clone_observation(item) for item in self._quarantine)
+
+    def drain_quarantine(self) -> tuple[ExternalTransitionObservation, ...]:
+        """Release retained bundles for an explicit caller-owned decision."""
 
         if self._candidate_model is not None or self._pending:
             raise RuntimeError("cannot drain quarantine while factored evidence is staged")
         if not self._quarantine:
-            return None
-        merged = self._merge(self._quarantine)
+            return ()
+        released = self.peek_quarantine()
         self._quarantine.clear()
-        return merged
+        return released
 
     def promote_staged_candidate(
         self,

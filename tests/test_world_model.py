@@ -2081,12 +2081,16 @@ def test_factored_router_owns_verified_growth_compression_and_stable_eviction() 
     quarantined = router.quarantine_partial_bundle(rows(source)[:1] + rows(target)[:1])
     assert quarantined.accepted
     assert router.quarantined_observations == 2
+    assert router.quarantined_bundles == 2
     restored_quarantine = ExternalFactoredTransitionRouter.from_payload(
         router.state_payload()
     )
     assert restored_quarantine.quarantined_observations == 2
+    assert restored_quarantine.quarantined_bundles == 2
+    assert len(router.peek_quarantine()) == 2
     drained = router.drain_quarantine()
-    assert drained is not None and drained.state.shape[0] == 2
+    assert len(drained) == 2
+    assert all(item.state.shape[0] == 1 for item in drained)
     assert router.quarantined_observations == 0
 
     compressed = router.select_compression_verified(
