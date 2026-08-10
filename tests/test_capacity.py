@@ -99,3 +99,47 @@ def test_capacity_planner_returns_one_plan_per_bank() -> None:
     assert isinstance(plans, tuple)
     assert len(plans) == 2
     assert all(plan.action in {"admit", "evict", "consolidate", "grow"} for plan in plans)
+
+
+def test_capacity_planner_learns_from_one_verifier_utility_without_mutating_memory() -> None:
+    bank = _bank(batch=1, capacity=4)
+    incoming_key = torch.nn.functional.normalize(torch.randn(1, 6), dim=-1)
+    incoming_value = torch.randn(1, 6)
+    protected = torch.tensor([[True, False, False, False]], dtype=torch.bool)
+    planner = OpaqueCapacityPlanner(width=6, hidden=16, learning_rate=0.05)
+    plan = planner.propose(bank, incoming_key, incoming_value, protected)
+    source = {
+        name: value.detach().clone()
+        for name, value in planner.state_dict().items()
+    }
+    source_bank = {
+        name: value.detach().clone()
+        for name, value in (
+            ("keys", bank.keys),
+            ("values", bank.values),
+            ("strengths", bank.strengths),
+            ("timestamps", bank.timestamps),
+            ("occupied", bank.occupied),
+        )
+    }
+    loss = planner.adaptation_step(
+        bank,
+        incoming_key,
+        incoming_value,
+        protected,
+        plan,
+        verifier_utility=1.0,
+    )
+    assert torch.isfinite(torch.tensor(loss))
+    assert any(
+        not torch.equal(source[name], value)
+        for name, value in planner.state_dict().items()
+    )
+    assert torch.equal(bank.keys, source_bank["keys"])
+    assert torch.equal(bank.values, source_bank["values"])
+    assert torch.equal(bank.strengths, source_bank["strengths"])
+    assert torch.equal(bank.timestamps, source_bank["timestamps"])
+    assert torch.equal(bank.occupied, source_bank["occupied"])
+    assert planner.configuration()["updates"] == (
+        "single_verifier_utility_without_replay_v1"
+    )

@@ -8,6 +8,7 @@ behavior verifier remain authoritative at the transaction boundary.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 
 import torch
@@ -60,12 +61,16 @@ class OpaqueCapacityPlanner(nn.Module):
         *,
         width: int,
         hidden: int = 64,
+        learning_rate: float = 1e-2,
     ) -> None:
         super().__init__()
         if min(width, hidden) < 1:
             raise ValueError("capacity planner widths must be positive")
+        if learning_rate <= 0.0 or not math.isfinite(learning_rate):
+            raise ValueError("capacity planner learning rate must be positive")
         self.width = int(width)
         self.hidden = int(hidden)
+        self.learning_rate = float(learning_rate)
         row_width = 2 * self.width + 2
         incoming_width = 2 * self.width
         self.row_width = row_width
@@ -89,13 +94,15 @@ class OpaqueCapacityPlanner(nn.Module):
             nn.Linear(hidden, 1),
         )
 
-    def configuration(self) -> dict[str, int | str | tuple[str, ...]]:
+    def configuration(self) -> dict[str, int | float | str | tuple[str, ...]]:
         return {
             "schema": self.schema,
             "width": self.width,
             "hidden": self.hidden,
+            "learning_rate": self.learning_rate,
             "actions": ADMISSION_ACTIONS,
             "row_features": "key_value_strength_relative_age",
+            "updates": "single_verifier_utility_without_replay_v1",
         }
 
     def _validate_inputs(
@@ -245,11 +252,23 @@ class OpaqueCapacityPlanner(nn.Module):
         protected: torch.Tensor,
         *,
         consolidation_available: torch.Tensor | None = None,
+        explore: bool = False,
+        temperature: float = 1.0,
+        generator: torch.Generator | None = None,
     ) -> CapacityPlan | tuple[CapacityPlan, ...]:
-        """Return the highest-scoring safe action for one or more banks."""
+        """Return a deterministic or exploratory safe action proposal.
+
+        ``explore=True`` samples from the masked action/selector
+        distributions for online verifier learning. Deployment defaults to
+        deterministic argmax selection.
+        """
 
         if bank.keys.shape[0] < 1:
             raise ValueError("capacity planner requires at least one bank")
+        if not isinstance(explore, bool):
+            raise TypeError("capacity planner explore flag must be boolean")
+        if temperature <= 0.0 or not math.isfinite(temperature):
+            raise ValueError("capacity planner proposal temperature must be positive")
         output = self(
             bank,
             incoming_key,
@@ -261,21 +280,60 @@ class OpaqueCapacityPlanner(nn.Module):
         for batch_index in range(bank.keys.shape[0]):
             available = output.available_actions[batch_index]
             logits = output.action_logits[batch_index].masked_fill(~available, -torch.inf)
-            action_index = int(logits.argmax())
+            if explore:
+                action_distribution = torch.softmax(logits / temperature, dim=-1)
+                action_index = int(
+                    torch.multinomial(
+                        action_distribution,
+                        1,
+                        generator=generator,
+                    )
+                )
+            else:
+                action_index = int(logits.argmax())
             eviction_index: int | None = None
             pair: tuple[int, int] | None = None
             score = logits[action_index]
             if action_index == 1:
-                eviction_index = int(output.eviction_scores[batch_index].argmax())
+                eviction_logits = output.eviction_scores[batch_index]
+                if explore:
+                    eviction_distribution = torch.softmax(
+                        eviction_logits / temperature,
+                        dim=-1,
+                    )
+                    eviction_index = int(
+                        torch.multinomial(
+                            eviction_distribution,
+                            1,
+                            generator=generator,
+                        )
+                    )
+                else:
+                    eviction_index = int(eviction_logits.argmax())
                 score = output.eviction_scores[batch_index, eviction_index]
             elif action_index == 2:
                 pair_scores = output.pair_scores[batch_index].masked_fill(
                     ~torch.triu(
-                        torch.ones_like(output.valid_pairs[batch_index]), diagonal=1
+                        torch.ones_like(output.valid_pairs[batch_index]),
+                        diagonal=1,
                     ),
                     -torch.inf,
                 )
-                flat_index = int(pair_scores.reshape(-1).argmax())
+                flat_scores = pair_scores.reshape(-1)
+                if explore:
+                    pair_distribution = torch.softmax(
+                        flat_scores / temperature,
+                        dim=-1,
+                    )
+                    flat_index = int(
+                        torch.multinomial(
+                            pair_distribution,
+                            1,
+                            generator=generator,
+                        )
+                    )
+                else:
+                    flat_index = int(flat_scores.argmax())
                 first, second = divmod(flat_index, pair_scores.shape[1])
                 pair = (first, second)
                 score = pair_scores[first, second]
@@ -289,6 +347,103 @@ class OpaqueCapacityPlanner(nn.Module):
                 )
             )
         return plans[0] if len(plans) == 1 else tuple(plans)
+
+    def adaptation_step(
+        self,
+        bank: MemoryCandidates,
+        incoming_key: torch.Tensor,
+        incoming_value: torch.Tensor,
+        protected: torch.Tensor,
+        plan: CapacityPlan,
+        verifier_utility: float,
+        *,
+        consolidation_available: torch.Tensor | None = None,
+        optimizer: torch.optim.Optimizer | None = None,
+    ) -> float:
+        """Update the policy from one verifier utility bit without replay.
+
+        Utility is a scalar in ``[0, 1]`` supplied by an external behavior
+        verifier.  The selected action, eviction row, or consolidation pair
+        is reinforced when utility is high and suppressed when utility is
+        low.  No memory row, controller parameter, or old example is stored
+        or modified by this method.
+        """
+
+        if bank.keys.shape[0] != 1:
+            raise ValueError("capacity planner adaptation requires one bank")
+        if not isinstance(plan, CapacityPlan):
+            raise TypeError("capacity planner adaptation plan is invalid")
+        if not math.isfinite(verifier_utility) or not 0.0 <= verifier_utility <= 1.0:
+            raise ValueError("capacity planner verifier utility must lie in [0, 1]")
+        if not 0 <= plan.action_index < len(ADMISSION_ACTIONS):
+            raise ValueError("capacity planner plan action index is invalid")
+        if plan.action != ADMISSION_ACTIONS[plan.action_index]:
+            raise ValueError("capacity planner plan action does not match its index")
+        output = self(
+            bank,
+            incoming_key,
+            incoming_value,
+            protected,
+            consolidation_available=consolidation_available,
+        )
+        if not bool(output.available_actions[0, plan.action_index]):
+            raise ValueError("capacity planner plan action is unavailable")
+        action_logits = output.action_logits[0].masked_fill(
+            ~output.available_actions[0],
+            -torch.inf,
+        )
+        action_probability = torch.softmax(action_logits, dim=-1)[
+            plan.action_index
+        ].clamp(1e-6, 1.0 - 1e-6)
+        action_log_probability = torch.log(action_probability)
+        advantage = verifier_utility - 0.5
+        loss = -advantage * action_log_probability
+
+        if plan.action_index == 1:
+            if plan.eviction_index is None or plan.pair is not None:
+                raise ValueError("capacity planner eviction plan fields are invalid")
+            if not bool(output.valid_evictions[0, plan.eviction_index]):
+                raise ValueError("capacity planner eviction plan row is invalid")
+            selector_logits = output.eviction_scores[0]
+            selector_log_probability = torch.log_softmax(selector_logits, dim=-1)[
+                plan.eviction_index
+            ]
+            loss = loss - advantage * selector_log_probability
+        elif plan.action_index == 2:
+            if plan.pair is None or plan.eviction_index is not None:
+                raise ValueError("capacity planner consolidation plan fields are invalid")
+            first, second = plan.pair
+            capacity = bank.keys.shape[1]
+            if not 0 <= first < second < capacity:
+                raise ValueError("capacity planner consolidation pair is invalid")
+            valid_pairs = output.valid_pairs[0] & torch.triu(
+                torch.ones_like(output.valid_pairs[0]),
+                diagonal=1,
+            )
+            if not bool(valid_pairs[first, second]):
+                raise ValueError("capacity planner consolidation pair is unavailable")
+            selector_logits = output.pair_scores[0].masked_fill(
+                ~valid_pairs,
+                -torch.inf,
+            ).reshape(-1)
+            pair_index = first * capacity + second
+            selector_log_probability = torch.log_softmax(selector_logits, dim=-1)[
+                pair_index
+            ]
+            loss = loss - advantage * selector_log_probability
+        elif plan.eviction_index is not None or plan.pair is not None:
+            raise ValueError("capacity planner non-selector plan fields are invalid")
+
+        selected_optimizer = optimizer
+        if selected_optimizer is None:
+            selected_optimizer = torch.optim.SGD(
+                self.parameters(),
+                lr=self.learning_rate,
+            )
+        selected_optimizer.zero_grad()
+        loss.backward()
+        selected_optimizer.step()
+        return float(loss.detach())
 
 
 __all__ = [

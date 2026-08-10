@@ -7442,3 +7442,26 @@ identity, or general continual learning. The next pressure point is learned
 capacity allocation and consolidation over longer streams with interference,
 reversal, and bounded storage. Evidence and accounting are archived in
 `session_records/sequence_working_memory_2026-08-02/external_goal_representation_alignment_masked_consolidation_promoted_2026-08-10/`.
+
+## Replay-free online verifier-utility learning for capacity planning (2026-08-10)
+
+The opaque capacity planner now supports exploratory masked proposals and a
+single-verifier-utility adaptation step. The update changes planner weights
+only; it does not mutate memory or the frozen controller. This makes the
+capacity policy itself an independently trainable, replaceable component at
+the memory boundary.
+
+Across seeds `85501`, `85502`, `85503`, and `85504`, online utility improved
+from `0.52`–`0.67` to `1.0` and remained above `0.95` in the measured stable
+tail. Deterministic held-out transfer was `1.0` for every trained planner,
+versus `0.0`–`0.42` for fresh planners. Each seed used 600 unique verifier
+utilities, 600 optimizer updates, zero replay, and a frozen controller.
+
+This promotes online learning of a bounded capacity-maintenance policy for
+one redundant-pair consolidation regime. It does not establish a universal
+capacity policy, autonomous verifier design, unbounded memory growth, or
+general continual learning. The next pressure test must mix admission,
+eviction, growth, and consolidation utilities over longer interfering
+route-memory streams with reversal controls. Evidence and accounting are
+archived in
+`session_records/sequence_working_memory_2026-08-02/opaque_capacity_planner_online_utility_promoted_2026-08-10/`.
