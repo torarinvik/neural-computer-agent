@@ -89,6 +89,7 @@ from .representation import (
 from .world_model import (
     ExternalModelBasedPlanner,
     ExternalTransitionModelBank,
+    ExternalTransitionObservation,
     ModelBasedPlanningResult,
 )
 
@@ -2541,6 +2542,49 @@ class PolicyFreeAmodalRuntime:
             contexts.detach(),
             slots.detach(),
             outcome_values.detach().to(dtype=torch.float32),
+        )
+
+    def transition_observation(
+        self,
+        output: PolicyFreeRuntimeOutput,
+        successor: PolicyFreeRuntimeOutput,
+        *,
+        confidence: torch.Tensor | None = None,
+    ) -> ExternalTransitionObservation:
+        """Build one opaque self-supervised transition row bundle.
+
+        ``output.intention`` is the model-derived intention that was exposed
+        to the decoder; ``successor.state`` is the next learned planner state
+        observed after the environment returned another event.  The helper
+        deliberately accepts no raw action, reward label, task name, or
+        protocol metadata.  External transition banks can consume the result
+        while the controller remains frozen.
+        """
+
+        if not isinstance(output, PolicyFreeRuntimeOutput) or not isinstance(
+            successor, PolicyFreeRuntimeOutput
+        ):
+            raise TypeError("transition observations need policy-free outputs")
+        if output.state.ndim != 2 or successor.state.ndim != 2:
+            raise ValueError("policy-free transition states must be two-dimensional")
+        if output.state.shape != successor.state.shape:
+            raise ValueError("policy-free transition states must have equal shapes")
+        intention = output.intention.payload
+        if intention.ndim != 2 or intention.shape[0] != output.state.shape[0]:
+            raise ValueError("policy-free intention batch does not match state batch")
+        if intention.shape[1] != self.runtime.intention_width:
+            raise ValueError("policy-free intention width does not match runtime")
+        observation = ExternalTransitionObservation(
+            state=output.state.detach().clone(),
+            intention=intention.detach().clone(),
+            next_state=successor.state.detach().clone(),
+            confidence=(
+                None if confidence is None else confidence.detach().clone()
+            ),
+        )
+        return observation.validate(
+            state_width=self.planner.model.state_width,
+            intention_width=self.runtime.intention_width,
         )
 
     def observe_goal_fragment(

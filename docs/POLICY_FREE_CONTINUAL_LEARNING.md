@@ -1305,3 +1305,19 @@ be discovered from arbitrary rendered experience, that a frozen core can
 invent new computation, or that Brain Workshop acquisition improves on a
 fresh learner. Those claims still require held-out acquisition curves and
 complete-prefix retention controls.
+
+## Opaque transition-observation bridge (2026-08-11)
+
+The policy-free runtime now exposes `transition_observation(output,
+successor)`. It packages the current planner-space state, the intention that
+was exposed to the decoder, and the next planner-space state into the existing
+`ExternalTransitionObservation` schema. A caller may attach only a generic
+confidence scalar. Raw keypresses, rewards, task names, and verifier answers
+are deliberately absent.
+
+This is the correct training seam for external affine, random-feature, or
+neural transition-model banks: collect a fresh row once, update only the
+selected external slot, and preserve the controller. It does not itself prove
+that the learned model transfers to a new task; that still requires recursive
+held-out rollout error, planner success, fresh-learner comparison, and
+complete-prefix retention.

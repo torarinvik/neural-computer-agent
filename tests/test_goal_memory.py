@@ -10,6 +10,7 @@ from neural_computer import (
     ExternalGoalFragmentMemory,
     ExternalGoalFragmentStager,
     ExternalModelBasedPlanner,
+    ExternalTransitionObservation,
     PersistentOpaqueContextRouteEvidence,
     PolicyFreeAmodalRuntime,
 )
@@ -150,6 +151,15 @@ def test_policy_free_runtime_routes_goal_fragments_from_opaque_context_evidence(
     )
     assert route.has_context(context[0])
     assert route.preferred_slots(context).tolist() == [1]
+    transition = policy_free.transition_observation(
+        output,
+        output,
+        confidence=torch.ones(1),
+    )
+    assert isinstance(transition, ExternalTransitionObservation)
+    assert torch.equal(transition.state, output.state)
+    assert torch.equal(transition.intention, output.intention.payload)
+    assert torch.equal(transition.next_state, output.state)
     for name, value in controller.state_dict().items():
         assert torch.equal(value, controller_before[name])
 

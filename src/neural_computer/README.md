@@ -160,6 +160,15 @@ versioned, and serializable; the controller remains frozen and receives no
 fragment address. This is a verified routing boundary, not yet general goal
 discovery or arbitrary new computation.
 
+`PolicyFreeAmodalRuntime.transition_observation()` is the matching world-model
+seam. Given consecutive policy-free outputs, it creates an opaque
+`ExternalTransitionObservation` containing only learned planner state,
+decoder-facing intention, next learned state, and optional generic
+confidence. External transition-model banks can consume that row without
+letting protocol actions or verifier answers enter the controller. Recursive
+held-out model rollout and fresh-learner transfer remain required before
+claiming general continual learning.
+
 The canonical runner exposes the route table through a versioned
 `route_state_payload()` / `load_route_state_payload()` boundary. Reloading it
 validates slot count and context width and does not load or mutate controller
