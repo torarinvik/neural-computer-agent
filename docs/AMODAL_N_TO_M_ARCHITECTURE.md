@@ -6031,6 +6031,33 @@ learning. The next bottleneck is migration across changed event/goal bases
 without replaying old verifier outcomes. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_one_pass_goal_evaluator_promoted_2026-08-10/`.
 
+## Replay-free goal-memory representation migration (2026-08-10)
+
+The next pressure test changes the frontend representation rather than
+retraining the goal memory. A two-dimensional affine replacement frontend is
+aligned back into the frozen one-dimensional goal space by
+`ExternalGoalRepresentationAlignmentStatistics`, an independent one-pass
+normal-equation component trained only on paired replacement/source tensors.
+The old verifier outcomes remain in `ExternalGoalEvaluatorStatistics` and are
+not replayed.
+
+Across seeds `84301`, `84302`, `84303`, and `84304`, migrated planning reached
+`1.000` mastery on every seed. Held-out verifier positives were all at least
+`0.999` and negatives were at most `0.032`; shuffled-alignment mastery was at
+most `0.058`, missing-alignment mastery was `0.017` on every seed, and
+corrupted-goal mastery was `0.0` on every seed. Reward-shuffled evaluator
+mastery was `0.0`, `0.0`, `0.0`, and `0.15`.
+
+The alignment consumed `96` paired tensors once, while the old goal memory
+consumed its `648` verifier outcomes once. The controller, factual model,
+verifier memory, and alignment state were unchanged during search; both
+external memories persisted exactly. This promotes a bounded learned
+alignment migration path, not arbitrary nonlinear migration, unsupervised
+cross-modal grounding, unrestricted memory growth, or general continual
+learning. The next bottleneck is evidence-gated handling of nonlinear or
+partially observed frontend drift. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_goal_representation_migration_promoted_2026-08-10/`.
+
 ## Seed-widened policy-free model compounding (2026-08-10)
 
 The nested factual-model compounding rung was widened from two to four seeds.

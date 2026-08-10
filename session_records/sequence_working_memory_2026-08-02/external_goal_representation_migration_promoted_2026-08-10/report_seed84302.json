@@ -1,0 +1,107 @@
+{
+  "schema": "neural-computer.external-goal-representation-migration.v1",
+  "claim_boundary": "one-pass external goal memory reused through a learned frontend alignment; not arbitrary nonlinear migration, cross-modal grounding, or general continual learning",
+  "seed": 84302,
+  "configuration": {
+    "old_representation_width": 1,
+    "new_representation_width": 2,
+    "alignment": "one-pass_affine_new_to_old_with_bias_v1",
+    "alignment_rows": 96,
+    "alignment_noise_std": 0.002,
+    "old_verifier": "one_pass_graded_goal_statistics_v2",
+    "horizon": 32,
+    "beam_width": 4,
+    "goal_progress_weight": 1.0,
+    "reward_shuffle_seed_offset": 700001
+  },
+  "gates": {
+    "heldout_verifier_positive": true,
+    "heldout_verifier_negative": true,
+    "migrated_goal_mastery": true,
+    "beats_shuffled_alignment": true,
+    "beats_missing_alignment": true,
+    "beats_reward_shuffle": true,
+    "corruption_is_not_equivalent": true,
+    "one_pass_verifier_update": true,
+    "one_pass_alignment_update": true,
+    "evaluator_unchanged_during_search": true,
+    "adapter_unchanged_during_search": true,
+    "model_unchanged_during_search": true,
+    "exact_evaluator_persistence": true,
+    "exact_adapter_persistence": true,
+    "controller_frozen": true
+  },
+  "promoted": true,
+  "metrics": {
+    "heldout_verifier": {
+      "minimum_positive_probability": 0.9987510442733765,
+      "maximum_negative_probability": 0.02981896698474884
+    },
+    "migrated_goal_mastery": {
+      "mastery": 1.0,
+      "successful_trials": 120,
+      "trial_count": 120,
+      "expanded_nodes": 44640,
+      "mean_latency_seconds": 0.007833517677014849
+    },
+    "shuffled_alignment": {
+      "mastery": 0.058333333333333334,
+      "successful_trials": 7,
+      "trial_count": 120,
+      "expanded_nodes": 44640,
+      "mean_latency_seconds": 0.008107818735394783
+    },
+    "missing_alignment": {
+      "mastery": 0.016666666666666666,
+      "successful_trials": 2,
+      "trial_count": 120,
+      "expanded_nodes": 44640,
+      "mean_latency_seconds": 0.008314531241194346
+    },
+    "reward_shuffled_evaluator": {
+      "mastery": 0.0,
+      "successful_trials": 0,
+      "trial_count": 120,
+      "expanded_nodes": 44640,
+      "mean_latency_seconds": 0.007744512880162801
+    },
+    "corrupted_goal": {
+      "mastery": 0.0,
+      "successful_trials": 0,
+      "trial_count": 120,
+      "expanded_nodes": 44640,
+      "mean_latency_seconds": 0.00788671355646026
+    },
+    "statistics_training": {
+      "unique_verifier_outcomes": 648,
+      "verifier_statistics_updates": 1,
+      "verifier_replayed_rows": 0,
+      "outcome_min": 5.602796449011294e-09,
+      "outcome_max": 0.9975274205207825
+    },
+    "alignment_training": {
+      "unique_alignment_pairs": 96,
+      "alignment_statistics_updates": 1,
+      "replayed_alignment_pairs": 0
+    },
+    "shuffled_alignment_training": {
+      "unique_alignment_pairs": 96,
+      "alignment_statistics_updates": 1,
+      "replayed_alignment_pairs": 0
+    },
+    "reward_shuffled_outcomes": 648
+  },
+  "accounting": {
+    "unique_verifier_outcomes": 648,
+    "unique_alignment_pairs": 96,
+    "transition_rows_consumed_once": 123,
+    "verifier_statistics_updates": 1,
+    "alignment_statistics_updates": 1,
+    "old_verifier_replay": 0,
+    "old_alignment_replay": 0,
+    "controller_optimizer_updates": 0,
+    "planner_search_expansions": 44640,
+    "mean_search_latency_seconds": 0.007833517677014849,
+    "wall_seconds": 4.996028082969133
+  }
+}

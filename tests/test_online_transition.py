@@ -6,6 +6,7 @@ import torch
 from neural_computer import (
     ExternalAffineTransitionStatistics,
     ExternalGoalEvaluatorStatistics,
+    ExternalGoalRepresentationAlignmentStatistics,
     ExternalOnlineTransitionContextRouter,
     ExternalRandomFeatureTransitionStatistics,
     ExternalTransitionContextEncoder,
@@ -64,6 +65,25 @@ def test_goal_evaluator_statistics_learns_once_and_persists_exactly() -> None:
     assert float(torch.sigmoid(evaluator(state[[1, 3, 5]], goal[[1, 3, 5]])).max()) < 0.2
     assert restored.digest() == before
     assert torch.equal(restored(state, goal), evaluator(state, goal))
+
+
+def test_goal_alignment_statistics_learns_once_and_persists_exactly() -> None:
+    adapter = ExternalGoalRepresentationAlignmentStatistics(2, 1, ridge=1e-4)
+    source = torch.tensor(
+        [[-1.0, 1.0], [0.0, 1.0], [1.0, 1.0], [2.0, 1.0]]
+    )
+    target = torch.tensor([[-2.0], [0.0], [2.0], [4.0]])
+
+    adapter.observe(source, target)
+    before = adapter.digest()
+    restored = ExternalGoalRepresentationAlignmentStatistics.from_payload(
+        adapter.state_payload()
+    )
+
+    assert adapter.sample_count.item() == source.shape[0]
+    assert torch.allclose(adapter(source), target, atol=1e-3)
+    assert restored.digest() == before
+    assert torch.equal(restored(source), adapter(source))
 class _DeterministicEvidenceGate(torch.nn.Module):
     """Test-only replaceable evaluator with an opaque factual boundary."""
 
