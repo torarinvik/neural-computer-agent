@@ -106,8 +106,15 @@ def test_policy_free_runtime_routes_goal_fragments_from_opaque_context_evidence(
     preview, _ = runtime.step_events(event, state, feedback)
     context = preview.controller.state_representation.detach()
     goal_memory = ExternalGoalFragmentMemory(12)
-    goal_memory.append(torch.ones(12), torch.ones(12, dtype=torch.bool))
-    goal_memory.append(-torch.ones(12), torch.ones(12, dtype=torch.bool))
+    positive_goal = context[0].clone()
+    positive_goal[0] += 1.0
+    negative_goal = context[0].clone()
+    negative_goal[0] -= 1.0
+    goal_mask = torch.tensor(
+        [True, False, False, False, False, False, False, False, False, False, False, False]
+    )
+    goal_memory.append(positive_goal, goal_mask)
+    goal_memory.append(negative_goal, goal_mask)
     route = PersistentOpaqueContextRouteEvidence(
         width=12,
         mastery_threshold=0.75,
@@ -131,12 +138,16 @@ def test_policy_free_runtime_routes_goal_fragments_from_opaque_context_evidence(
         state,
         feedback,
         None,
-        torch.tensor([[0.0, 0.0], [1.0, 0.0]]),
+        torch.tensor([[1.0, 0.0], [-1.0, 0.0], [0.0, 1.0], [0.0, -1.0]]),
         horizon=1,
     )
 
     assert output.goal_fragment_indices is not None
     assert output.goal_fragment_indices.tolist() == [[1]]
+    assert torch.allclose(output.intention.payload, torch.tensor([[-1.0, 0.0]]))
+    assert torch.allclose(
+        output.planning.predicted_states[0, -1, 0], negative_goal[0]
+    )
     assert route.has_context(context[0])
     assert route.preferred_slots(context).tolist() == [1]
     for name, value in controller.state_dict().items():
@@ -151,7 +162,7 @@ def test_policy_free_runtime_routes_goal_fragments_from_opaque_context_evidence(
         state,
         feedback,
         None,
-        torch.tensor([[0.0, 0.0], [1.0, 0.0]]),
+        torch.tensor([[1.0, 0.0], [-1.0, 0.0], [0.0, 1.0], [0.0, -1.0]]),
         horizon=1,
     )
     assert fresh_output.goal_fragment_indices.tolist() == [[0]]
@@ -166,10 +177,14 @@ def test_policy_free_runtime_routes_goal_fragments_from_opaque_context_evidence(
         state,
         feedback,
         None,
-        torch.tensor([[0.0, 0.0], [1.0, 0.0]]),
+        torch.tensor([[1.0, 0.0], [-1.0, 0.0], [0.0, 1.0], [0.0, -1.0]]),
         horizon=1,
     )
     assert reversed_output.goal_fragment_indices.tolist() == [[0]]
+    assert torch.allclose(reversed_output.intention.payload, torch.tensor([[1.0, 0.0]]))
+    assert torch.allclose(
+        reversed_output.planning.predicted_states[0, -1, 0], positive_goal[0]
+    )
     assert route.payload()["contexts"]
 
 
