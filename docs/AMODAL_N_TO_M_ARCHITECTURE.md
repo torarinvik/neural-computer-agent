@@ -8448,3 +8448,35 @@ replacement improvement, not evidence of arbitrary new computation or general
 continual learning. Behavior verification, retention gates, and explicit
 instruction/basis routing remain required before a loaded artifact becomes
 deployed capability.
+
+## Explicit partial-context contract for external learning (2026-08-10)
+
+The external intention learner now has an opt-in masked-context ABI. A caller
+may provide an opaque context together with a boolean observation mask; the
+memory-side learner receives `[observed values, observation mask, bias]` while
+the controller width and event-token boundary remain unchanged. Dense callers
+continue to use the original `[context, bias]` feature layout and existing
+generator files remain loadable.
+
+This matters for continual learning because an absent feature must not become a
+learned zero. Value credit is zero for unobserved dimensions, while the mask
+channel lets the external learner distinguish “not observed” from an observed
+zero. The route score uses observed values only. Routed retention state also
+keeps per-dimension observation masses, so partial prototypes update only the
+dimensions actually seen and survive append, protection, reversal, and tensor-
+only reload. Older routed-memory v1 payloads migrate with zero observed mass;
+v2--v3 payloads are known dense-context files, so their existing total masses
+are expanded across every context dimension to preserve their old behavior.
+
+The focused causal tests cover masked feature construction, missing-value
+gradient exclusion, partial retention prototypes, exact reload, and v3
+migration; the repository suite remains green at 612 tests. This is a safety
+and information-preservation boundary, not a claim of arbitrary missing-stream
+reasoning: the next experiment must test partial contexts under delayed/noisy
+outcomes, contradictory streams, fresh controls, reversal, and stable-prefix
+retention with the required verifier-bit and replay accounting.
+
+`PolicyFreeAmodalRuntime.observe(..., intention_context_mask=...)` forwards the
+same mask to whichever external generator, memory, or router is active. This
+keeps partial-evidence handling on the replaceable memory side while leaving
+the controller's canonical input/output contract unchanged.

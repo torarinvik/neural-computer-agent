@@ -100,3 +100,27 @@ def test_memory_sparse_proposal_credits_physical_cell_id() -> None:
     assert torch.equal(state.output_weights[0], before.output_weights[0])
     assert torch.equal(state.output_weights[1], before.output_weights[1])
     assert not torch.equal(state.output_weights[2], before.output_weights[2])
+
+
+def test_masked_memory_preserves_observation_mask_in_candidate_features() -> None:
+    memory = ExternalOutcomeIntentionMemory(
+        ExternalOutcomeIntentionGenerator(
+            context_width=4,
+            intention_width=2,
+            hidden_width=8,
+            context_masking=True,
+        )
+    )
+    state = memory.initial_state(1)
+    proposal = memory.propose(
+        state,
+        torch.tensor([[1.0, 2.0, 3.0, 4.0]]),
+        context_mask=torch.tensor([[True, False, True, False]]),
+    )
+
+    assert torch.equal(
+        proposal.features,
+        torch.tensor([[1.0, 0.0, 3.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0]]),
+    )
+    assert torch.equal(proposal.input_weight_gradients[:, :, :, 1], torch.zeros(1, 1, 8))
+    assert torch.equal(proposal.input_weight_gradients[:, :, :, 3], torch.zeros(1, 1, 8))

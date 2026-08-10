@@ -1767,6 +1767,7 @@ class PolicyFreeAmodalRuntime:
         generator_state: ExternalOutcomeIntentionGeneratorState | None = None,
         intention_memory_state: ExternalOutcomeIntentionGeneratorState | None = None,
         intention_router_state: ExternalRoutedIntentionMemoryState | None = None,
+        intention_context_mask: torch.Tensor | None = None,
     ) -> tuple[PolicyFreeRuntimeOutput, ControllerState]:
         collection = self.runtime.input_bus(events)
         controller_output, next_state = self.runtime.controller.step(
@@ -1812,6 +1813,7 @@ class PolicyFreeAmodalRuntime:
             intention_generation = self.intention_generator.propose(
                 generator_state,
                 model_state,
+                context_mask=intention_context_mask,
             )
             if self.entry_binding_repertoire is not None:
                 raise ValueError(
@@ -1825,6 +1827,7 @@ class PolicyFreeAmodalRuntime:
             intention_memory_generation = self.intention_memory.propose(
                 intention_memory_state,
                 model_state,
+                context_mask=intention_context_mask,
             )
             if self.entry_binding_repertoire is not None:
                 raise ValueError(
@@ -1838,6 +1841,7 @@ class PolicyFreeAmodalRuntime:
             intention_routing = self.intention_router.propose(
                 intention_router_state,
                 route_query,
+                context_mask=intention_context_mask,
             )
             if self.entry_binding_repertoire is not None:
                 raise ValueError(

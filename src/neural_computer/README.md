@@ -1250,3 +1250,17 @@ can be checksummed, moved between interpreters, and reloaded through
 shared interpreter. Instruction vectors and compute capacity are now both
 portable external files; retention and behavior verification still decide
 whether a loaded slot is deployable.
+
+The external intention learner also supports an opt-in `context_masking=True`
+mode. Callers pass `context_mask=` alongside an opaque context; the memory
+learner receives explicit observed-value and observation-mask channels, so
+missing dimensions are not silently learned as zeros. Routing credit uses only
+observed values, and retention prototypes keep per-dimension observation mass.
+Dense mode remains backward-compatible. Routed-memory v1 payloads migrate with
+empty observation history, while v2--v3 dense payloads preserve their old
+prototype behavior. This makes partial evidence safer; it is not yet general
+missing-stream cognition or general continual learning.
+
+The canonical policy-free runtime forwards this contract through
+`observe(..., intention_context_mask=...)`, so the controller remains frozen
+while the replaceable memory side receives the evidence mask.

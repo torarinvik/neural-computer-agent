@@ -3,6 +3,7 @@ import torch
 from neural_computer import (
     EXTERNAL_ROUTED_INTENTION_MEMORY_SCHEMA_V1,
     EXTERNAL_ROUTED_INTENTION_MEMORY_SCHEMA_V2,
+    EXTERNAL_ROUTED_INTENTION_MEMORY_SCHEMA_V3,
     ExternalOutcomeIntentionGenerator,
     ExternalOutcomeIntentionMemory,
     ExternalOutcomeIntentionRouter,
@@ -252,3 +253,57 @@ def test_verified_context_prototype_restores_address_for_protected_cell() -> Non
 
     assert receipt.accepted
     assert float(proposal.route_probabilities[0, 0]) > 0.65
+
+
+def test_router_tracks_partial_retention_without_learning_missing_dimensions() -> None:
+    memory = ExternalOutcomeIntentionMemory(
+        ExternalOutcomeIntentionGenerator(
+            context_width=4,
+            intention_width=2,
+            hidden_width=8,
+            context_masking=True,
+        )
+    )
+    router = ExternalOutcomeIntentionRouter(
+        memory,
+        exploration_bonus=0.0,
+        unqualified_cell_probability=0.0,
+    )
+    state = router.initial_state(1)
+    context = torch.tensor([[1.0, 2.0, 3.0, 4.0]])
+    mask = torch.tensor([[True, False, True, False]])
+    proposal = router.propose(
+        state,
+        context,
+        context_mask=mask,
+        generator=torch.Generator().manual_seed(23),
+    )
+    state = router.record_decision(state, proposal)
+    state = router.apply_feedback(state, proposal, torch.ones(1))
+    selected = int(proposal.selected_cells.item())
+
+    assert torch.equal(
+        state.retention_context_observed_masses[selected],
+        torch.tensor([1.0, 0.0, 1.0, 0.0]),
+    )
+    assert torch.equal(
+        state.retention_context_prototypes[selected],
+        torch.tensor([1.0, 0.0, 3.0, 0.0]),
+    )
+    payload = router.state_payload(state)
+    restored = router.state_from_payload(payload)
+    assert torch.equal(
+        restored.retention_context_observed_masses,
+        state.retention_context_observed_masses,
+    )
+
+    legacy = dict(payload)
+    legacy["schema"] = EXTERNAL_ROUTED_INTENTION_MEMORY_SCHEMA_V3
+    legacy.pop("retention_context_observed_masses")
+    migrated = router.state_from_payload(legacy)
+    assert torch.equal(
+        migrated.retention_context_observed_masses,
+        state.retention_context_masses.unsqueeze(-1).expand_as(
+            state.retention_context_observed_masses
+        ),
+    )

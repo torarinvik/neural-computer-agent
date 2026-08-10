@@ -66,6 +66,7 @@ class ExternalIntentionMemoryProposal:
         batch: int | None = None,
         cell_count: int | None = None,
         candidate_count: int | None = None,
+        feature_width: int | None = None,
     ) -> ExternalIntentionMemoryProposal:
         if self.schema != EXTERNAL_INTENTION_MEMORY_PROPOSAL_SCHEMA:
             raise ValueError("unsupported intention-memory proposal schema")
@@ -88,9 +89,12 @@ class ExternalIntentionMemoryProposal:
             self.cell_indices[0] < 0 or self.cell_indices[-1] >= cell_count
         ):
             raise ValueError("intention-memory proposal cell index is out of range")
+        expected_feature_width = context_width + 1 if feature_width is None else feature_width
+        if expected_feature_width < context_width + 1:
+            raise ValueError("intention-memory feature width is invalid")
         expected = {
             "means": (proposal_batch, proposal_cells, intention_width),
-            "features": (proposal_batch, context_width + 1),
+            "features": (proposal_batch, expected_feature_width),
             "hidden": (proposal_batch, proposal_cells, hidden_width),
             "noise": (proposal_batch, proposal_cells, intention_width),
             "log_propensities": (proposal_batch, proposal_cells),
@@ -98,7 +102,7 @@ class ExternalIntentionMemoryProposal:
                 proposal_batch,
                 proposal_cells,
                 hidden_width,
-                context_width + 1,
+                expected_feature_width,
             ),
             "input_bias_gradients": (proposal_batch, proposal_cells, hidden_width),
             "output_weight_gradients": (
@@ -151,6 +155,10 @@ class ExternalOutcomeIntentionMemory:
     @property
     def hidden_width(self) -> int:
         return self.generator.hidden_width
+
+    @property
+    def feature_width(self) -> int:
+        return self.generator.feature_width
 
     def configuration(self) -> dict[str, object]:
         return {
@@ -223,6 +231,7 @@ class ExternalOutcomeIntentionMemory:
         *,
         cell_indices: torch.Tensor | list[int] | tuple[int, ...] | None = None,
         generator: torch.Generator | None = None,
+        context_mask: torch.Tensor | None = None,
     ) -> ExternalIntentionMemoryProposal:
         """Sample selected external cells for every controller context.
 
@@ -236,6 +245,7 @@ class ExternalOutcomeIntentionMemory:
             context_width=self.context_width,
             intention_width=self.intention_width,
             hidden_width=self.hidden_width,
+            feature_width=self.feature_width,
         )
         self._validate_context(context, state)
         batch = context.shape[0]
@@ -270,12 +280,10 @@ class ExternalOutcomeIntentionMemory:
         output_weights = state.output_weights.index_select(0, index_tensor)
         output_bias = state.output_bias.index_select(0, index_tensor)
         candidate_cells = len(selected_indices)
-        features = torch.cat(
-            (
-                context,
-                torch.ones(batch, 1, device=context.device, dtype=context.dtype),
-            ),
-            dim=-1,
+        features, _, _ = self.generator.context_features(
+            context,
+            context_mask,
+            batch_size=batch,
         )
         hidden = torch.tanh(
             torch.einsum("bf,chf->bch", features, input_weights)
@@ -330,6 +338,7 @@ class ExternalOutcomeIntentionMemory:
             batch=batch,
             cell_count=cells,
             candidate_count=candidate_cells,
+            feature_width=self.feature_width,
         )
 
     def record_decision(
@@ -364,6 +373,7 @@ class ExternalOutcomeIntentionMemory:
             context_width=self.context_width,
             intention_width=self.intention_width,
             hidden_width=self.hidden_width,
+            feature_width=self.feature_width,
         )
         return next_state
 
@@ -495,6 +505,7 @@ class ExternalOutcomeIntentionMemory:
             context_width=self.context_width,
             intention_width=self.intention_width,
             hidden_width=self.hidden_width,
+            feature_width=self.feature_width,
         )
         return next_state
 
@@ -507,12 +518,14 @@ class ExternalOutcomeIntentionMemory:
             context_width=self.context_width,
             intention_width=self.intention_width,
             hidden_width=self.hidden_width,
+            feature_width=self.feature_width,
         )
         proposal.validate(
             context_width=self.context_width,
             intention_width=self.intention_width,
             hidden_width=self.hidden_width,
             cell_count=state.baseline.shape[0],
+            feature_width=self.feature_width,
         )
         if proposal.intentions.device != state.baseline.device:
             raise ValueError("intention-memory proposal is on the wrong device")
@@ -521,18 +534,16 @@ class ExternalOutcomeIntentionMemory:
         self,
         state: ExternalOutcomeIntentionGeneratorState,
         context: torch.Tensor,
+        *,
+        context_mask: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """Read deterministic means for every external cell."""
 
         self._validate_state_and_context(state, context)
-        features = torch.cat(
-            (
-                context,
-                torch.ones(
-                    context.shape[0], 1, device=context.device, dtype=context.dtype
-                ),
-            ),
-            dim=-1,
+        features, _, _ = self.generator.context_features(
+            context,
+            context_mask,
+            batch_size=context.shape[0],
         )
         hidden = torch.tanh(
             torch.einsum("bf,chf->bch", features, state.input_weights)
@@ -549,6 +560,7 @@ class ExternalOutcomeIntentionMemory:
             context_width=self.context_width,
             intention_width=self.intention_width,
             hidden_width=self.hidden_width,
+            feature_width=self.feature_width,
         )
         self._validate_context(context, state)
 

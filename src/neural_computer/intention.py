@@ -152,19 +152,23 @@ class ExternalOutcomeIntentionGeneratorState:
         context_width: int,
         intention_width: int,
         hidden_width: int,
+        feature_width: int | None = None,
     ) -> None:
+        expected_feature_width = context_width + 1 if feature_width is None else feature_width
+        if expected_feature_width < context_width + 1:
+            raise ValueError("intention generator feature width is invalid")
         if not isinstance(self.baseline, torch.Tensor) or self.baseline.ndim != 1:
             raise ValueError("intention generator baseline has the wrong shape")
         batch_size = self.baseline.shape[0]
         expected = {
-            "input_weights": (batch_size, hidden_width, context_width + 1),
+            "input_weights": (batch_size, hidden_width, expected_feature_width),
             "input_bias": (batch_size, hidden_width),
             "output_weights": (batch_size, intention_width, hidden_width),
             "output_bias": (batch_size, intention_width),
             "input_weight_eligibility": (
                 batch_size,
                 hidden_width,
-                context_width + 1,
+                expected_feature_width,
             ),
             "input_bias_eligibility": (batch_size, hidden_width),
             "output_weight_eligibility": (
@@ -245,6 +249,7 @@ class ExternalIntentionGenerationProposal:
         intention_width: int,
         hidden_width: int,
         batch: int | None = None,
+        feature_width: int | None = None,
     ) -> ExternalIntentionGenerationProposal:
         if self.schema != EXTERNAL_INTENTION_GENERATION_PROPOSAL_SCHEMA:
             raise ValueError("unsupported intention-generation proposal schema")
@@ -252,10 +257,13 @@ class ExternalIntentionGenerationProposal:
             float(self.noise_scale)
         ) or float(self.noise_scale) <= 0.0:
             raise ValueError("intention-generation noise scale is invalid")
+        expected_feature_width = context_width + 1 if feature_width is None else feature_width
+        if expected_feature_width < context_width + 1:
+            raise ValueError("generated intention feature width is invalid")
         expected = {
             "intentions": (intention_width,),
             "means": (intention_width,),
-            "features": (context_width + 1,),
+            "features": (expected_feature_width,),
             "hidden": (hidden_width,),
             "noise": (intention_width,),
             "log_propensities": (),
@@ -314,6 +322,7 @@ class ExternalOutcomeIntentionGenerator:
         initial_baseline: float = 0.5,
         noise_scale: float = 0.5,
         initial_parameter_scale: float = 0.05,
+        context_masking: bool = False,
     ) -> None:
         dimensions = (context_width, intention_width, hidden_width)
         if min(dimensions) < 1:
@@ -330,6 +339,8 @@ class ExternalOutcomeIntentionGenerator:
             raise ValueError("intention generator noise scale is invalid")
         if not math.isfinite(initial_parameter_scale) or initial_parameter_scale <= 0.0:
             raise ValueError("intention generator parameter scale is invalid")
+        if not isinstance(context_masking, bool):
+            raise TypeError("intention generator context masking must be boolean")
         self.context_width = int(context_width)
         self.intention_width = int(intention_width)
         self.hidden_width = int(hidden_width)
@@ -339,6 +350,13 @@ class ExternalOutcomeIntentionGenerator:
         self.initial_baseline = float(initial_baseline)
         self.noise_scale = float(noise_scale)
         self.initial_parameter_scale = float(initial_parameter_scale)
+        self.context_masking = bool(context_masking)
+
+    @property
+    def feature_width(self) -> int:
+        """Width of the external learner's explicit context feature vector."""
+
+        return 2 * self.context_width + 1 if self.context_masking else self.context_width + 1
 
     def configuration(self) -> dict[str, int | float | str]:
         return {
@@ -346,7 +364,8 @@ class ExternalOutcomeIntentionGenerator:
             "context_width": self.context_width,
             "intention_width": self.intention_width,
             "hidden_width": self.hidden_width,
-            "feature_width": self.context_width + 1,
+            "feature_width": self.feature_width,
+            "context_masking": self.context_masking,
             "initial_learning_rate": self.initial_learning_rate,
             "initial_trace_decay": self.initial_trace_decay,
             "initial_baseline_rate": self.initial_baseline_rate,
@@ -368,7 +387,7 @@ class ExternalOutcomeIntentionGenerator:
     ) -> ExternalOutcomeIntentionGeneratorState:
         if batch_size < 1:
             raise ValueError("intention generator batch size must be positive")
-        feature_width = self.context_width + 1
+        feature_width = self.feature_width
         input_weights = self.initial_parameter_scale * torch.randn(
             batch_size,
             self.hidden_width,
@@ -410,6 +429,7 @@ class ExternalOutcomeIntentionGenerator:
             context_width=self.context_width,
             intention_width=self.intention_width,
             hidden_width=self.hidden_width,
+            feature_width=self.feature_width,
         )
 
     def _validate_context(
@@ -424,6 +444,61 @@ class ExternalOutcomeIntentionGenerator:
             raise ValueError("intention generator context batch differs")
         if not bool(torch.isfinite(context).all()):
             raise ValueError("intention generator context must be finite")
+
+    def context_features(
+        self,
+        context: torch.Tensor,
+        context_mask: torch.Tensor | None = None,
+        *,
+        batch_size: int | None = None,
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Return learned features, observed values, and the explicit mask.
+
+        Masked mode adds a learned-visible observation channel while preserving
+        the original opaque value width.  The bias feature remains last so
+        dense v1 callers retain their exact parameter layout.
+        """
+
+        self._validate_context(context, batch_size=batch_size)
+        if context_mask is None:
+            mask = torch.ones(
+                context.shape,
+                dtype=torch.bool,
+                device=context.device,
+            )
+        else:
+            if not self.context_masking:
+                raise ValueError(
+                    "context_mask requires intention generator context_masking=True"
+                )
+            if context_mask.shape != context.shape or context_mask.dtype != torch.bool:
+                raise ValueError("intention generator context mask must be boolean [batch,width]")
+            if context_mask.device != context.device:
+                raise ValueError("intention generator context mask is on the wrong device")
+            mask = context_mask
+        observed_context = context * mask.to(dtype=context.dtype)
+        if self.context_masking:
+            features = torch.cat(
+                (
+                    observed_context,
+                    mask.to(dtype=context.dtype),
+                    torch.ones(
+                        context.shape[0], 1, device=context.device, dtype=context.dtype
+                    ),
+                ),
+                dim=-1,
+            )
+        else:
+            features = torch.cat(
+                (
+                    observed_context if context_mask is not None else context,
+                    torch.ones(
+                        context.shape[0], 1, device=context.device, dtype=context.dtype
+                    ),
+                ),
+                dim=-1,
+            )
+        return features, observed_context, mask
 
     def _validate_presence(
         self,
@@ -441,17 +516,19 @@ class ExternalOutcomeIntentionGenerator:
         self,
         state: ExternalOutcomeIntentionGeneratorState,
         context: torch.Tensor,
+        *,
+        context_mask: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """Read the current deterministic generator mean without mutation."""
 
         self._validate_state(state)
-        self._validate_context(context, batch_size=state.baseline.shape[0])
+        features, _, _ = self.context_features(
+            context,
+            context_mask,
+            batch_size=state.baseline.shape[0],
+        )
         if context.device != state.input_weights.device:
             raise ValueError("intention generator context is on the wrong device")
-        features = torch.cat(
-            (context, torch.ones(context.shape[0], 1, device=context.device, dtype=context.dtype)),
-            dim=-1,
-        )
         hidden = torch.tanh(
             torch.einsum("bf,bhf->bh", features, state.input_weights)
             + state.input_bias
@@ -464,18 +541,19 @@ class ExternalOutcomeIntentionGenerator:
         context: torch.Tensor,
         *,
         generator: torch.Generator | None = None,
+        context_mask: torch.Tensor | None = None,
     ) -> ExternalIntentionGenerationProposal:
         """Sample one novel intention per external generator cell."""
 
         self._validate_state(state)
         batch_size = state.baseline.shape[0]
-        self._validate_context(context, batch_size=batch_size)
+        features, _, _ = self.context_features(
+            context,
+            context_mask,
+            batch_size=batch_size,
+        )
         if context.device != state.input_weights.device:
             raise ValueError("intention generator context is on the wrong device")
-        features = torch.cat(
-            (context, torch.ones(batch_size, 1, device=context.device, dtype=context.dtype)),
-            dim=-1,
-        )
         hidden = torch.tanh(
             torch.einsum("bf,bhf->bh", features, state.input_weights)
             + state.input_bias
@@ -507,6 +585,7 @@ class ExternalOutcomeIntentionGenerator:
             intention_width=self.intention_width,
             hidden_width=self.hidden_width,
             batch=batch_size,
+            feature_width=self.feature_width,
         )
 
     def _proposal_gradients(
@@ -548,6 +627,7 @@ class ExternalOutcomeIntentionGenerator:
             intention_width=self.intention_width,
             hidden_width=self.hidden_width,
             batch=state.baseline.shape[0],
+            feature_width=self.feature_width,
         )
         if proposal.intentions.device != state.baseline.device:
             raise ValueError("intention generator proposal is on the wrong device")
@@ -850,6 +930,10 @@ class ExternalOutcomeIntentionGenerator:
             )
         ):
             raise ValueError("intention-generator state dimensions do not match")
+        if configuration.get("feature_width", self.context_width + 1) != self.feature_width:
+            raise ValueError("intention-generator state feature width does not match")
+        if configuration.get("context_masking", False) != self.context_masking:
+            raise ValueError("intention-generator state masking mode does not match")
         names = (
             "input_weights",
             "input_bias",

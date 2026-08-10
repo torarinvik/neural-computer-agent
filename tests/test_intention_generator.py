@@ -147,3 +147,35 @@ def test_generator_appends_copy_on_write_cell_without_touching_old_cell() -> Non
     )
     assert torch.equal(grown.output_weights[0], protected.output_weights[0])
     assert not torch.equal(grown.output_weights[1], new_before)
+
+
+def test_masked_generator_keeps_missing_values_out_of_value_credit() -> None:
+    generator = ExternalOutcomeIntentionGenerator(
+        context_width=4,
+        intention_width=2,
+        hidden_width=8,
+        initial_trace_decay=0.5,
+        context_masking=True,
+    )
+    state = generator.initial_state(1)
+    context = torch.tensor([[1.0, 2.0, 3.0, 4.0]])
+    mask = torch.tensor([[True, False, True, False]])
+    proposal = generator.propose(
+        state,
+        context,
+        context_mask=mask,
+        generator=torch.Generator().manual_seed(19),
+    )
+
+    assert proposal.features.shape == (1, 9)
+    assert torch.equal(
+        proposal.features,
+        torch.tensor([[1.0, 0.0, 3.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0]]),
+    )
+    state = generator.record_decision(state, proposal)
+    assert torch.equal(state.input_weight_eligibility[:, :, 1], torch.zeros(1, 8))
+    assert torch.equal(state.input_weight_eligibility[:, :, 3], torch.zeros(1, 8))
+
+    restored = generator.state_from_payload(generator.state_payload(state))
+    assert torch.equal(restored.input_weights, state.input_weights)
+    assert restored.input_weights.shape[-1] == 9

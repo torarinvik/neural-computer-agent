@@ -375,6 +375,7 @@ def test_policy_free_runtime_injects_external_generated_candidate_and_feedback()
         intention_width=2,
         hidden_width=8,
         noise_scale=0.4,
+        context_masking=True,
     )
     generator_state = generator.initial_state(1)
     repertoire = ExternalIntentionRepertoire(2)
@@ -394,10 +395,17 @@ def test_policy_free_runtime_injects_external_generated_candidate_and_feedback()
         horizon=1,
         beam_width=4,
         generator_state=generator_state,
+        intention_context_mask=torch.tensor(
+            [[True, True, True, True, True, True, False, False, False, False, False, False]]
+        ),
     )
 
     assert output.intention_generation is not None
     assert output.intention_generation.intentions.shape == (1, 2)
+    assert torch.equal(
+        output.intention_generation.features[0, 12:24],
+        torch.tensor([1.0] * 6 + [0.0] * 6),
+    )
     assert output.planning.expanded_nodes > 0
     assert output.planning.candidate_indices is not None
     assert output.planning.candidate_indices.shape == (1, 1)
