@@ -21,6 +21,7 @@
     "candidate_resolver_controller_updates_per_seed": 0,
     "candidate_resolver_base_updates_per_seed": 0,
     "candidate_bundles_resolved_per_seed": 1,
+    "sparse_identity_records_per_seed": 56,
     "candidate_resolver_replay_per_seed": 0,
     "fresh_control": "not measured; no positive-transfer claim"
   },

@@ -15,6 +15,7 @@ from .world_model import (
     EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY,
     EXTERNAL_TRANSITION_NONLINEAR_MODEL_FAMILY,
     EXTERNAL_TRANSITION_RANDOM_FEATURE_MODEL_FAMILY,
+    ExternalSparseTransitionEvidenceIndex,
     ExternalTransitionContextEncoder,
     ExternalTransitionMemory,
     ExternalTransitionModel,
@@ -569,6 +570,7 @@ class ExternalFactoredTransitionRouter:
         max_contexts: int | None = None,
         residual_adaptation_updates: int = 16,
         quarantine_capacity: int = 0,
+        sparse_evidence: ExternalSparseTransitionEvidenceIndex | None = None,
     ) -> None:
         if not isinstance(model, ExternalFactoredTransitionModel):
             raise TypeError("factored router requires a factored transition model")
@@ -607,6 +609,11 @@ class ExternalFactoredTransitionRouter:
             or quarantine_capacity < 0
         ):
             raise ValueError("factored quarantine capacity must be non-negative")
+        if sparse_evidence is not None and (
+            sparse_evidence.state_width != model.state_width
+            or sparse_evidence.intention_width != model.intention_width
+        ):
+            raise ValueError("factored sparse evidence and model widths differ")
         self.model = model
         self.context_encoder = context_encoder
         self.match_tolerance = float(match_tolerance)
@@ -615,6 +622,7 @@ class ExternalFactoredTransitionRouter:
         self.max_contexts = max_contexts
         self.residual_adaptation_updates = int(residual_adaptation_updates)
         self.quarantine_capacity = int(quarantine_capacity)
+        self.sparse_evidence = sparse_evidence
         self._contexts: list[torch.Tensor] = []
         self._slot_ids: list[int] = []
         self._next_slot_id = 0
@@ -622,6 +630,7 @@ class ExternalFactoredTransitionRouter:
         self._quarantine: list[ExternalTransitionObservation] = []
         self._candidate_model: ExternalFactoredTransitionModel | None = None
         self._candidate_context: torch.Tensor | None = None
+        self._candidate_evidence: list[ExternalTransitionObservation] = []
 
     @property
     def contexts(self) -> torch.Tensor:
@@ -699,6 +708,8 @@ class ExternalFactoredTransitionRouter:
                 ) from error
             del self._slot_ids[index]
             del self._contexts[index]
+            if self.sparse_evidence is not None:
+                self.sparse_evidence.unregister_slot(slot_id)
         return receipt
 
     def select_compression_verified(
@@ -783,6 +794,17 @@ class ExternalFactoredTransitionRouter:
             return None
         return self._slot_ids[best], errors[best], margin
 
+    def _sparse_proposal(
+        self,
+        observation: ExternalTransitionObservation,
+    ) -> int | None:
+        """Return a contradiction-free sparse factual identity proposal."""
+
+        if self.sparse_evidence is None or not self._slot_ids:
+            return None
+        proposal = self.sparse_evidence.propose(observation, self._slot_ids)
+        return proposal.selected_slot_id
+
     def _stage_candidate(self) -> FactoredTransitionRouteResult:
         evidence = self._merge(self._pending)
         context = self.context_encoder.encode_observation(evidence).detach()
@@ -798,6 +820,7 @@ class ExternalFactoredTransitionRouter:
             )
         self._candidate_model = candidate
         self._candidate_context = context
+        self._candidate_evidence = [self._clone_observation(evidence)]
         self._pending.clear()
         return FactoredTransitionRouteResult(
             status="staged",
@@ -831,6 +854,7 @@ class ExternalFactoredTransitionRouter:
                     context=self._candidate_context,
                     updates=self.residual_adaptation_updates,
                 )
+            self._candidate_evidence.append(self._clone_observation(observation))
             return FactoredTransitionRouteResult(
                 status="staged",
                 slot_id=None,
@@ -838,8 +862,14 @@ class ExternalFactoredTransitionRouter:
                 pending_observations=0,
             ).validate(context_width=self.model.context_width)
         matched = self._route_existing(observation)
+        if matched is None:
+            sparse_slot = self._sparse_proposal(observation)
+            if sparse_slot is not None:
+                matched = (sparse_slot, 0.0, float("inf"))
         if matched is not None:
             slot_id, _error, _margin = matched
+            if self.sparse_evidence is not None:
+                self.sparse_evidence.record(slot_id, observation)
             return FactoredTransitionRouteResult(
                 status="matched",
                 slot_id=slot_id,
@@ -898,10 +928,21 @@ class ExternalFactoredTransitionRouter:
         )
         if matched is not None:
             slot_id, _error, _margin = matched
+            if self.sparse_evidence is not None:
+                self.sparse_evidence.record(slot_id, merged)
             return FactoredTransitionRouteResult(
                 status="matched",
                 slot_id=slot_id,
                 context=self._contexts[self._slot_ids.index(slot_id)].clone(),
+                pending_observations=0,
+            ).validate(context_width=self.model.context_width)
+        sparse_slot = self._sparse_proposal(merged)
+        if sparse_slot is not None:
+            self.sparse_evidence.record(sparse_slot, merged)
+            return FactoredTransitionRouteResult(
+                status="matched",
+                slot_id=sparse_slot,
+                context=self._contexts[self._slot_ids.index(sparse_slot)].clone(),
                 pending_observations=0,
             ).validate(context_width=self.model.context_width)
         if self.max_contexts is not None and len(self._contexts) >= self.max_contexts:
@@ -964,6 +1005,15 @@ class ExternalFactoredTransitionRouter:
                 intention_width=self.model.intention_width,
             )
         merged = self._merge(cloned)
+        sparse_slot = self._sparse_proposal(merged)
+        if sparse_slot is not None:
+            context_index = self._slot_ids.index(sparse_slot)
+            return FactoredTransitionRouteResult(
+                status="matched",
+                slot_id=sparse_slot,
+                context=self._contexts[context_index].clone(),
+                pending_observations=0,
+            ).validate(context_width=self.model.context_width)
         required_matches = max(1, math.ceil(merged.state.shape[0] * min_match_fraction))
         eligible: list[tuple[int, float, float]] = []
         for index, context in enumerate(self._contexts):
@@ -1158,6 +1208,7 @@ class ExternalFactoredTransitionRouter:
                     context=self._candidate_context,
                     updates=self.residual_adaptation_updates,
                 )
+            self._candidate_evidence.append(self._clone_observation(item))
             resolved_rows += int(item.state.shape[0])
         self._quarantine = unresolved
         return resolved_rows
@@ -1190,9 +1241,14 @@ class ExternalFactoredTransitionRouter:
             self._next_slot_id += 1
             self._contexts.append(self._candidate_context.detach().clone())
             self._slot_ids.append(slot_id)
+            if self.sparse_evidence is not None:
+                self.sparse_evidence.register_slot(slot_id)
+                for evidence in self._candidate_evidence:
+                    self.sparse_evidence.record(slot_id, evidence)
             self.model = self._candidate_model
             self._candidate_model = None
             self._candidate_context = None
+            self._candidate_evidence = []
             return FactoredTransitionPromotionReceipt(
                 accepted=True,
                 slot_id=slot_id,
@@ -1201,6 +1257,7 @@ class ExternalFactoredTransitionRouter:
             ).validate()
         self._candidate_model = None
         self._candidate_context = None
+        self._candidate_evidence = []
         return FactoredTransitionPromotionReceipt(
             accepted=False,
             slot_id=None,
@@ -1266,6 +1323,8 @@ class ExternalFactoredTransitionRouter:
         accepted = error <= prediction_tolerance and bool(retention_probe(candidate))
         if accepted:
             self.model = candidate
+            if self.sparse_evidence is not None:
+                self.sparse_evidence.record(slot_id, observation)
             return FactoredTransitionPromotionReceipt(
                 accepted=True,
                 slot_id=slot_id,
@@ -1288,6 +1347,11 @@ class ExternalFactoredTransitionRouter:
             "max_contexts": self.max_contexts,
             "residual_adaptation_updates": self.residual_adaptation_updates,
             "quarantine_capacity": self.quarantine_capacity,
+            "sparse_evidence": (
+                None
+                if self.sparse_evidence is None
+                else self.sparse_evidence.configuration()
+            ),
             "quarantined_observations": self.quarantined_observations,
             "slot_ids": list(self._slot_ids),
             "behavior": "copy_on_write_residual_admission_v1",
@@ -1313,6 +1377,11 @@ class ExternalFactoredTransitionRouter:
                 digest.update(
                     item.confidence.detach().cpu().contiguous().numpy().tobytes()
                 )
+        if self.sparse_evidence is not None:
+            digest.update(self.sparse_evidence.digest().encode("utf-8"))
+        for item in self._candidate_evidence:
+            for value in (item.state, item.intention, item.next_state):
+                digest.update(value.detach().cpu().contiguous().numpy().tobytes())
         return digest.hexdigest()
 
     def state_payload(self) -> dict[str, object]:
@@ -1360,6 +1429,24 @@ class ExternalFactoredTransitionRouter:
                 }
                 for item in self._quarantine
             ],
+            "candidate_evidence": [
+                {
+                    "state": item.state.tolist(),
+                    "intention": item.intention.tolist(),
+                    "next_state": item.next_state.tolist(),
+                    "confidence": (
+                        None
+                        if item.confidence is None
+                        else item.confidence.tolist()
+                    ),
+                }
+                for item in self._candidate_evidence
+            ],
+            "sparse_evidence": (
+                None
+                if self.sparse_evidence is None
+                else self.sparse_evidence.state_payload()
+            ),
             "sha256": self.digest(),
         }
 
@@ -1390,6 +1477,13 @@ class ExternalFactoredTransitionRouter:
                 configuration.get("residual_adaptation_updates", 16)
             ),
             quarantine_capacity=int(configuration.get("quarantine_capacity", 0)),
+            sparse_evidence=(
+                None
+                if payload.get("sparse_evidence") is None
+                else ExternalSparseTransitionEvidenceIndex.from_payload(
+                    payload["sparse_evidence"]
+                )
+            ),
         )
         router._contexts = [
             torch.tensor(values, dtype=torch.float32)
@@ -1409,6 +1503,20 @@ class ExternalFactoredTransitionRouter:
             if candidate_context is None
             else torch.tensor(candidate_context, dtype=torch.float32)
         )
+        router._candidate_evidence = []
+        for item in payload.get("candidate_evidence", []):
+            router._candidate_evidence.append(
+                ExternalTransitionObservation(
+                    state=torch.tensor(item["state"], dtype=torch.float32),
+                    intention=torch.tensor(item["intention"], dtype=torch.float32),
+                    next_state=torch.tensor(item["next_state"], dtype=torch.float32),
+                    confidence=(
+                        None
+                        if item.get("confidence") is None
+                        else torch.tensor(item["confidence"], dtype=torch.float32)
+                    ),
+                )
+            )
         router._pending = []
         for item in payload.get("pending", []):
             router._pending.append(

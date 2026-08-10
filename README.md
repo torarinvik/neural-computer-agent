@@ -2532,3 +2532,6 @@ factual candidate; committed model state stayed byte-stable and candidate
 payload persistence was exact. This is a safety and credit-accumulation
 primitive, not learned open-world identity or automatic version promotion. See
 `session_records/sequence_working_memory_2026-08-02/external_factored_quarantine_candidate_resolution_promoted_2026-08-10/`.
+The same boundary can attach a persisted contradiction-aware sparse factual
+overlap index; it accelerates identity proposals but does not replace factual
+verification or promotion gates.

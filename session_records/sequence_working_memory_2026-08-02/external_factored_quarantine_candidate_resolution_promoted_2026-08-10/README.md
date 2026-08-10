@@ -17,3 +17,8 @@ This promotes safe later-evidence absorption into an isolated factual
 candidate. It does not establish a learned open-world identity resolver,
 automatic version formation, or general continual learning.
 
+The same run attached a persistent sparse factual-overlap index to the
+factored router. It retained `56` unique stream facts per seed and passed
+round-trip identity checks. The index is a contradiction-aware proposal
+accelerator; factual verification and independent promotion probes remain
+authoritative.

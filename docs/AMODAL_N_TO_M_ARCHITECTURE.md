@@ -6507,3 +6507,10 @@ quarantine credit-accumulation hole; it is not the learned open-world identity
 resolver or automatic new-version policy still required by the architecture.
 Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_factored_quarantine_candidate_resolution_promoted_2026-08-10/`.
+
+The factored router can optionally attach the persistent
+`ExternalSparseTransitionEvidenceIndex`. It stores unique opaque factual
+input/output overlaps with running means and proposes a slot only when enough
+overlaps agree and none contradict. It is a proposal accelerator rather than a
+learned semantic identity system; partial-read and promotion gates remain the
+authority, and the index must be invalidated with its logical slot.

@@ -17,6 +17,7 @@ from neural_computer import (
     AmodalCognitiveController,
     ExternalFactoredTransitionModel,
     ExternalFactoredTransitionRouter,
+    ExternalSparseTransitionEvidenceIndex,
     ExternalTransitionContextEncoder,
     ExternalTransitionModelBank,
     ExternalTransitionObservation,
@@ -208,6 +209,14 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
         max_contexts=CAPACITY,
         residual_adaptation_updates=RESIDUAL_UPDATES,
         quarantine_capacity=8,
+        sparse_evidence=ExternalSparseTransitionEvidenceIndex(
+            STATE_WIDTH,
+            INTENTION_WIDTH,
+            input_match_tolerance=1e-6,
+            output_match_tolerance=PREDICTION_TOLERANCE,
+            minimum_matches=1,
+            minimum_match_fraction=0.5,
+        ),
     )
 
     promotion_receipts: list[dict[str, object]] = []
@@ -292,13 +301,17 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
         ),
     )
     committed_digest_before_candidate = router.model.digest()
+    if not growth.accepted:
+        raise RuntimeError(f"candidate capacity growth failed: {growth.reason}")
     novel_anchor = _observation(
         streams[0].state[:1],
         streams[0].intention[:1],
-        streams[0].next_state[:1] + torch.tensor([[0.25, -0.25]]),
+        streams[0].next_state[:1] + torch.tensor([[0.4, -0.6]]),
     )
     assert router.quarantine_partial_bundle((novel_anchor,)).accepted
     staged_novel = router.route_bundle((novel_anchor,))
+    if staged_novel.status != "staged":
+        raise RuntimeError(f"novel candidate was not staged: {staged_novel.status}")
     candidate_resolved_rows = router.resolve_quarantine_to_candidate(
         match_tolerance=PREDICTION_TOLERANCE,
     )
@@ -350,6 +363,17 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
         and router.candidate_active
         and candidate_state_persisted
         and router.model.digest() == committed_digest_before_candidate,
+        "sparse_identity_persisted": (
+            router.sparse_evidence is not None
+            and router.sparse_evidence.record_count >= REGIME_COUNT * STREAM_ROWS
+            and ExternalFactoredTransitionRouter.from_payload(
+                router.state_payload()
+            ).sparse_evidence is not None
+            and ExternalFactoredTransitionRouter.from_payload(
+                router.state_payload()
+            ).sparse_evidence.digest()
+            == router.sparse_evidence.digest()
+        ),
         "base_unchanged": model.base.digest() == base_digest and model.base_frozen,
         "controller_unchanged": controller_digest == _digest_module(controller),
         "context_encoder_unchanged": encoder_digest == encoder.digest(),
@@ -385,6 +409,11 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
             "candidate_growth_receipt": growth.__dict__,
             "candidate_resolved_rows": candidate_resolved_rows,
             "candidate_state_persisted": candidate_state_persisted,
+            "sparse_evidence_records": (
+                0
+                if router.sparse_evidence is None
+                else router.sparse_evidence.record_count
+            ),
             "retained_heldout_mse": retained_errors,
             "slot_ids": list(router.slot_ids),
         },
