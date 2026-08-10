@@ -5268,3 +5268,34 @@ larger modulus or the multiplicative family before drawing conclusions
 that need many rules.
 
 Probe 215 is `math_twins.py` sweep, 2 seeds x 3 arms.
+
+**F116 (probe 216). The polarity scalar SIGN-SPLITS — F113's "never
+negative" hypothesis is refuted — and the true defect is that salience
+is a single channel keyed to the plane-1 object, so inverted worlds can
+only avoid, never seek.** Logging tanh(polarity(entry)) per held-out
+world (seeds 69316/69318):
+
+    normal worlds:  +0.99 +1.00 +1.00 +0.55 +1.00  (one outlier -0.98)
+    inverted (~):   -1.00 -1.00 -0.99 -1.00 -1.00 -1.00
+
+Near-perfect sign separation — agreeing with the math ground (F114)
+that the reader distinguishes twins fine. The asymmetry mechanism is
+now exact: the slot state defines slots 2/3 as the nearest PLANE-1
+object, salience(state) learns "worth peaks near plane-1", and the
+sign flips that one attraction. On ~ worlds sign=-1 correctly repels
+from plane-1 (the poison) — but no term exists that can promote the
+plane-2 object, so top=food is 0.000 on every ~ world and their reward
+is pure avoidance (~0). One salience channel cannot express "seek the
+OTHER object".
+
+Third seed confirms F113 behaviourally: held-out +0.0357 / +0.1027 /
++0.1064 (mean +0.0816 vs F111 +0.0069; oracle-value target +0.1234),
+twin penalty -0.126 / -0.181 / -0.185.
+
+Fix is architecturally minimal: per-plane salience channels, each with
+its own entry-derived polarity — value += sum_i tanh(polarity_i(entry))
+* salience_i(state), i over the two object planes. Inverted worlds then
+promote plane-2 with the same machinery normal worlds use for plane-1.
+
+Probe 216 is `game_slots.py --signed-entry` with polarity logging,
+seeds 69316/69318.
