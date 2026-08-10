@@ -7326,6 +7326,30 @@ verifier-gated consolidation and eviction, and transfer to unseen partial-
 window patterns. Evidence and accounting are archived in
 `session_records/sequence_working_memory_2026-08-02/external_goal_representation_alignment_masked_prototype_promoted_2026-08-10/`.
 
+## Verifier-gated masked-prototype replacement under capacity (2026-08-10)
+
+Masked identity memory now has an atomic replacement transaction for full
+per-slot capacity. A novel partial anchor is staged on a copy; the least-
+supported prototype is replaced only if an external retention probe preserves
+the existing opaque routes and the new route. A rejected probe leaves the
+live digest, masks, counts, and drop telemetry unchanged. The bank exposes
+this transaction through caller-free anchor selection, so runtime updates do
+not require frontend or slot IDs.
+
+Across seeds `85101`, `85102`, `85103`, and `85104`, unsafe replacements were
+rejected without mutation, accepted replacements retained both core routes and
+the prior masked route, and the new masked route persisted after reload.
+Affine mastery was `1.0`; nonlinear mastery was `0.9917`–`1.0`. The controller,
+factual model, and verifier stayed frozen and replay was zero.
+
+This promotes bounded verifier-gated masked-prototype replacement under fixed
+capacity. It does not establish autonomous retention policy, unbounded growth,
+semantic open-world identity, or general continual learning. The next
+pressure test composes replacement with multi-slot masked growth,
+verifier-gated consolidation, unseen-mask transfer, and reversal recovery.
+Evidence and accounting are archived in
+`session_records/sequence_working_memory_2026-08-02/external_goal_representation_alignment_masked_capacity_promoted_2026-08-10/`.
+
 ## Persistent masked identity prototypes (2026-08-10)
 
 The external route-memory boundary now persists an observed-dimension mask

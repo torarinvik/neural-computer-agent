@@ -262,6 +262,56 @@ def test_transition_route_memory_learns_masked_prototypes_and_restores_them() ->
     assert query.selected_slot_id == 10
 
 
+def test_transition_route_memory_replacement_is_atomic_and_retention_gated() -> None:
+    memory = ExternalTransitionRouteMemory(
+        4,
+        max_prototypes_per_slot=2,
+        merge_cosine=0.99,
+    )
+    memory.register_slot(10, prototype=torch.tensor([1.0, 0.0, 0.0, 0.0]))
+    assert memory.observe(10, torch.tensor([1.0, 0.0, 0.0, 0.0]))
+    assert memory.observe(10, torch.tensor([0.0, 0.0, 1.0, 0.0]))
+    assert memory.prototype_count(10) == 2
+    source_digest = memory.digest()
+    new_query = torch.tensor([0.0, 0.0, 0.0, 1.0])
+    rejected = memory.replace_verified(
+        10,
+        new_query,
+        retention_probe=lambda _candidate: False,
+    )
+    assert not rejected.accepted
+    assert memory.digest() == source_digest
+    assert memory.prototype_count(10) == 2
+
+    def retention_probe(candidate: ExternalTransitionRouteMemory) -> bool:
+        return (
+            candidate.propose(
+                torch.tensor([1.0, 0.0, 0.0, 0.0]),
+                (10,),
+                minimum_score=0.9,
+            ).selected_slot_id
+            == 10
+            and candidate.propose(
+                new_query,
+                (10,),
+                minimum_score=0.9,
+            ).selected_slot_id
+            == 10
+        )
+
+    accepted = memory.replace_verified(
+        10,
+        new_query,
+        retention_probe=retention_probe,
+    )
+    assert accepted.accepted
+    assert accepted.replaced_index == 1
+    assert memory.prototype_count(10) == 2
+    restored = ExternalTransitionRouteMemory.from_payload(memory.state_payload())
+    assert restored.digest() == memory.digest()
+    assert restored.propose(new_query, (10,), minimum_score=0.9).selected_slot_id == 10
+
+
 def test_transition_route_query_can_use_slot_local_prototype_memory() -> None:
     memory = ExternalTransitionRouteMemory(4)
     query = ExternalTransitionRouteQuery(

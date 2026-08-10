@@ -990,6 +990,7 @@ class ExternalGoalRepresentationAlignmentBank(nn.Module):
         verifier_accepted: bool,
         minimum_score: float | None = None,
         minimum_margin: float | None = None,
+        retention_probe: Callable[[ExternalTransitionRouteMemory], bool] | None = None,
     ) -> ExternalGoalRepresentationIdentityAnchorReceipt:
         """Select and learn an identity anchor without a caller slot ID.
 
@@ -1006,6 +1007,8 @@ class ExternalGoalRepresentationAlignmentBank(nn.Module):
         self._validate_identity_signature_mask(signature_mask)
         if not isinstance(verifier_accepted, bool):
             raise TypeError("identity anchor verifier decision must be boolean")
+        if retention_probe is not None and not callable(retention_probe):
+            raise TypeError("identity anchor retention probe is invalid")
         source_digest = self.digest()
         proposal = self.propose_identity_slot(
             signature,
@@ -1058,14 +1061,24 @@ class ExternalGoalRepresentationAlignmentBank(nn.Module):
                 destination_digest=source_digest,
                 reason="verifier rejected proposed identity anchor; state unchanged",
             ).validate()
-        anchor_update_stored = self.identity_memory.observe(
-            selected,
-            signature,
-            query_mask=signature_mask,
-        )
+        if retention_probe is None:
+            anchor_update_stored = self.identity_memory.observe(
+                selected,
+                signature,
+                query_mask=signature_mask,
+            )
+        else:
+            replacement = self.identity_memory.replace_verified(
+                selected,
+                signature,
+                query_mask=signature_mask,
+                retention_probe=retention_probe,
+            )
+            anchor_update_stored = replacement.accepted
         resolved = 0
         remaining = self.identity_quarantined_count
-        _, resolved, remaining = self._consume_identity_quarantine(selected)
+        if anchor_update_stored:
+            _, resolved, remaining = self._consume_identity_quarantine(selected)
         destination_digest = self.digest()
         return ExternalGoalRepresentationIdentityAnchorReceipt(
             accepted=anchor_update_stored or resolved > 0,

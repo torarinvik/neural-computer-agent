@@ -83,6 +83,9 @@ EXTERNAL_TRANSITION_ROUTE_QUERY_SCHEMA = (
 EXTERNAL_TRANSITION_ROUTE_MEMORY_SCHEMA = (
     "neural-computer.external-transition-route-memory.v1"
 )
+EXTERNAL_TRANSITION_ROUTE_MEMORY_REPLACEMENT_SCHEMA = (
+    "neural-computer.external-transition-route-memory-replacement.v1"
+)
 EXTERNAL_TRANSITION_SPARSE_EVIDENCE_SCHEMA = (
     "neural-computer.external-transition-sparse-evidence.v1"
 )
@@ -3407,6 +3410,49 @@ class ExternalTransitionRouteQueryProposal:
         return self
 
 
+@dataclass(frozen=True)
+class ExternalTransitionRouteMemoryReplacementReceipt:
+    """Atomic verifier-gated insertion, merge, or masked-prototype replacement."""
+
+    accepted: bool
+    slot_id: int
+    replaced_index: int | None
+    source_prototype_count: int
+    destination_prototype_count: int
+    source_digest: str
+    destination_digest: str
+    query_digest: str
+    reason: str
+    schema: str = EXTERNAL_TRANSITION_ROUTE_MEMORY_REPLACEMENT_SCHEMA
+
+    def validate(self) -> ExternalTransitionRouteMemoryReplacementReceipt:
+        if self.schema != EXTERNAL_TRANSITION_ROUTE_MEMORY_REPLACEMENT_SCHEMA:
+            raise ValueError("unsupported transition route-memory replacement schema")
+        if self.slot_id < 0 or min(
+            self.source_prototype_count,
+            self.destination_prototype_count,
+        ) < 0:
+            raise ValueError("transition route-memory replacement counts are invalid")
+        if self.replaced_index is not None and self.replaced_index < 0:
+            raise ValueError("transition route-memory replacement index is invalid")
+        if self.accepted and self.destination_prototype_count not in {
+            self.source_prototype_count,
+            self.source_prototype_count + 1,
+        }:
+            raise ValueError("accepted transition route-memory replacement count is invalid")
+        if not self.accepted and self.destination_prototype_count != self.source_prototype_count:
+            raise ValueError("rejected transition route-memory replacement mutated count")
+        for name, value in (
+            ("source_digest", self.source_digest),
+            ("destination_digest", self.destination_digest),
+            ("query_digest", self.query_digest),
+            ("reason", self.reason),
+        ):
+            if not isinstance(value, str) or not value:
+                raise ValueError(f"transition route-memory replacement {name} is missing")
+        return self
+
+
 class ExternalTransitionRouteMemory:
     """Bounded slot-local prototypes for continual opaque route identity.
 
@@ -3654,6 +3700,101 @@ class ExternalTransitionRouteMemory:
         self._dropped_queries[slot_id] += 1
         self._version += 1
         return False
+
+    @staticmethod
+    def _query_digest(
+        query: torch.Tensor,
+        query_mask: torch.Tensor | None,
+    ) -> str:
+        digest = hashlib.sha256()
+        detached = query.detach().cpu().contiguous()
+        digest.update(str(detached.dtype).encode("utf-8"))
+        digest.update(repr(tuple(detached.shape)).encode("utf-8"))
+        digest.update(detached.numpy().tobytes())
+        if query_mask is not None:
+            mask = query_mask.detach().cpu().contiguous()
+            digest.update(b"masked-query-v1")
+            digest.update(mask.numpy().tobytes())
+        return digest.hexdigest()
+
+    def replace_verified(
+        self,
+        slot_id: int,
+        query: torch.Tensor,
+        *,
+        query_mask: torch.Tensor | None = None,
+        retention_probe: Callable[[ExternalTransitionRouteMemory], bool],
+    ) -> ExternalTransitionRouteMemoryReplacementReceipt:
+        """Commit new route evidence only when a candidate retains old routes.
+
+        A novel query is appended while capacity is available.  When the
+        per-slot budget is full, the least-supported prototype is replaced on
+        a copy and committed only if the verifier accepts the candidate.  A
+        failed probe leaves every live field and digest unchanged.
+        """
+
+        self._validate_slot_id(slot_id)
+        if slot_id not in self._prototypes:
+            raise KeyError(f"unknown transition route-memory slot: {slot_id}")
+        if not callable(retention_probe):
+            raise TypeError("transition route-memory retention probe is invalid")
+        self._normalize(query, query_mask)
+        source_digest = self.digest()
+        query_digest = self._query_digest(query, query_mask)
+        source_count = self.prototype_count(slot_id)
+        candidate = self.from_payload(self.state_payload())
+        stored = candidate.observe(slot_id, query, query_mask=query_mask)
+        replaced_index: int | None = None
+        if not stored:
+            prototypes = candidate._prototypes[slot_id]
+            prototype_masks = candidate._prototype_masks[slot_id]
+            counts = candidate._counts[slot_id]
+            replaced_index = min(
+                range(len(prototypes)),
+                key=lambda index: (counts[index], index),
+            )
+            normalized, observed_mask = candidate._normalize(query, query_mask)
+            del prototypes[replaced_index]
+            del prototype_masks[replaced_index]
+            del counts[replaced_index]
+            prototypes.append(normalized)
+            prototype_masks.append(
+                None if query_mask is None else observed_mask
+            )
+            counts.append(1)
+            candidate._version += 1
+            reason = "capacity replacement candidate requires verifier retention probe"
+        else:
+            reason = "new route evidence candidate requires verifier retention probe"
+        if not bool(retention_probe(candidate)):
+            return ExternalTransitionRouteMemoryReplacementReceipt(
+                accepted=False,
+                slot_id=slot_id,
+                replaced_index=replaced_index,
+                source_prototype_count=source_count,
+                destination_prototype_count=source_count,
+                source_digest=source_digest,
+                destination_digest=source_digest,
+                query_digest=query_digest,
+                reason="verifier retention probe rejected route-memory candidate",
+            ).validate()
+        self._prototypes = candidate._prototypes
+        self._prototype_masks = candidate._prototype_masks
+        self._counts = candidate._counts
+        self._dropped_queries = candidate._dropped_queries
+        self._version = candidate._version
+        destination_digest = self.digest()
+        return ExternalTransitionRouteMemoryReplacementReceipt(
+            accepted=True,
+            slot_id=slot_id,
+            replaced_index=replaced_index,
+            source_prototype_count=source_count,
+            destination_prototype_count=self.prototype_count(slot_id),
+            source_digest=source_digest,
+            destination_digest=destination_digest,
+            query_digest=query_digest,
+            reason=reason.replace("requires verifier retention probe", "passed verifier retention probe"),
+        ).validate()
 
     def prototype_count(self, slot_id: int) -> int:
         self._validate_slot_id(slot_id)
