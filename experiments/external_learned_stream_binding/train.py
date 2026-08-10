@@ -29,6 +29,7 @@ CONTEXT_WIDTH = 4
 STREAM_COUNT = 3
 ROWS = 6
 IDENTITY_UPDATES = 240
+OPEN_SET_STREAM_COUNT = 4
 
 
 def _digest_module(module: torch.nn.Module) -> str:
@@ -109,6 +110,129 @@ def _new_binding(
         new_track_tolerance=0.7,
         match_margin=0.05,
     )
+
+
+def _open_set_fixture(seed: int) -> list[ExternalTransitionObservation]:
+    generator = torch.Generator().manual_seed(seed + 10_000)
+    observations: list[ExternalTransitionObservation] = []
+    for stream in range(OPEN_SET_STREAM_COUNT):
+        state = torch.randn(ROWS, STATE_WIDTH, generator=generator)
+        state[:, 1] += stream * 5.0
+        intention = torch.randn(ROWS, INTENTION_WIDTH, generator=generator)
+        next_state = state + intention * torch.tensor([0.2 + stream, 1.0])
+        observations.append(
+            ExternalTransitionObservation(
+                state,
+                intention,
+                next_state,
+                torch.ones(ROWS),
+            )
+        )
+    return observations
+
+
+def _run_open_set(seed: int) -> dict[str, object]:
+    observations = _open_set_fixture(seed)
+    encoder = ExternalTransitionContextEncoder(
+        STATE_WIDTH,
+        INTENTION_WIDTH,
+        hidden_width=16,
+        context_width=CONTEXT_WIDTH,
+    )
+    identity_loss = _train_identity(encoder, observations)
+    encoder.eval()
+    binding = ExternalOnlineStreamBindingMemory(
+        encoder,
+        window_capacity=4,
+        max_streams=3,
+        provisional_capacity=2,
+        match_tolerance=0.55,
+        new_track_tolerance=0.7,
+        provisional_tolerance=0.7,
+        match_margin=0.05,
+    )
+    initial_statuses: list[str] = []
+    for stream in range(3):
+        initial_statuses.append(
+            binding.observe(
+                _row(observations[stream], 0),
+                timestamp=float(stream),
+            ).status
+        )
+        binding.observe(
+            _row(observations[stream], 1),
+            timestamp=float(stream) + 1.0,
+        )
+    live_before_open_set = binding.track_ids
+    timestamps = (10.0, 11.5, 11.8, 14.2, 14.7, 18.0)
+    provisional_results = [
+        binding.observe(
+            _row(observations[3], row_index),
+            timestamp=timestamps[row_index],
+        )
+        for row_index in range(ROWS)
+    ]
+    for result in provisional_results:
+        binding.observe_verifier_outcome(result, 1.0)
+    provisional_id = provisional_results[0].provisional_id
+    if provisional_id is None:
+        raise RuntimeError("open-set stream did not enter provisional memory")
+    rejected_retirement = binding.retire_verified_track(1, lambda _: False)
+    failed_admission = binding.promote_provisional_track(
+        provisional_id,
+        lambda _: False,
+    )
+    retired = binding.retire_verified_track(1, lambda candidate: candidate.stream_count == 2)
+    promoted = binding.promote_provisional_track(
+        provisional_id,
+        lambda candidate: candidate.stream_count == 3,
+    )
+    restored = ExternalOnlineStreamBindingMemory.from_payload(binding.state_payload())
+    gates = {
+        "open_identity_loss_converged": identity_loss < 0.05,
+        "initial_live_tracks_complete": initial_statuses == ["new", "new", "new"],
+        "open_arrival_quarantined": all(
+            result.status == "provisional" for result in provisional_results
+        ),
+        "open_set_did_not_mutate_live_tracks": (
+            live_before_open_set == (0, 1, 2)
+            and binding.track_ids == (0, 2, 3)
+        ),
+        "retirement_rejection_safe": (
+            not rejected_retirement.accepted
+            and rejected_retirement.reason == "retention_probe_rejected"
+        ),
+        "admission_rejection_safe": (
+            not failed_admission.accepted
+            and failed_admission.reason == "live_capacity_full"
+        ),
+        "verified_retirement_and_admission": retired.accepted and promoted.accepted,
+        "irregular_delay_estimated": all(
+            binding.track_state(track_id)["mean_delay"] is not None
+            for track_id in binding.track_ids
+        ),
+        "provisional_persistence_exact": restored.digest() == binding.digest(),
+    }
+    return {
+        "gates": gates,
+        "promoted": all(gates.values()),
+        "identity_loss": identity_loss,
+        "identity_optimizer_updates": IDENTITY_UPDATES,
+        "initial_statuses": initial_statuses,
+        "provisional_statuses": [result.status for result in provisional_results],
+        "provisional_id": provisional_id,
+        "delay_estimates": [
+            binding.track_state(track_id)["mean_delay"]
+            for track_id in binding.track_ids
+        ],
+        "retirement_rejection": rejected_retirement.reason,
+        "failed_admission": failed_admission.reason,
+        "retired_track": retired.track_id,
+        "promoted_track": promoted.track_id,
+        "live_track_ids": binding.track_ids,
+        "provisional_ids_after_promotion": binding.provisional_ids,
+        "replayed_examples": 0,
+    }
 
 
 def _new_router(
@@ -247,6 +371,7 @@ def run(seed: int) -> dict[str, object]:
         fresh_router,
         observations,
     )
+    open_set = _run_open_set(seed)
 
     restored = ExternalLearnedMultiStreamTransitionContextRouter.from_payload(
         router.state_payload()
@@ -281,6 +406,7 @@ def run(seed: int) -> dict[str, object]:
         "persistence_exact": persistence_exact,
         "checksum_rejected": checksum_rejected,
     }
+    gates.update(open_set["gates"])
     return {
         "schema": "neural-computer.external-learned-stream-binding-pressure-test.v1",
         "seed": seed,
@@ -303,6 +429,7 @@ def run(seed: int) -> dict[str, object]:
             "fresh_assignments": fresh_assignments,
             "encoder_digest": encoder_digest,
         },
+        "open_set": open_set,
         "transport": {
             "statuses": statuses,
             "missing_statuses": missing_statuses,
@@ -323,9 +450,18 @@ def run(seed: int) -> dict[str, object]:
         },
         "accounting": {
             "unique_verifier_bits": ROWS * STREAM_COUNT,
+            "open_set_unique_verifier_bits": len(open_set["provisional_statuses"]),
+            "total_unique_verifier_bits": (
+                ROWS * STREAM_COUNT + len(open_set["provisional_statuses"])
+            ),
             "unique_logical_lifetimes": STREAM_COUNT,
+            "open_set_unique_logical_lifetimes": OPEN_SET_STREAM_COUNT,
+            "total_unique_logical_lifetimes": STREAM_COUNT + OPEN_SET_STREAM_COUNT,
             "identity_optimizer_updates": IDENTITY_UPDATES,
+            "open_set_identity_optimizer_updates": open_set["identity_optimizer_updates"],
             "external_memory_updates": ROWS * STREAM_COUNT,
+            "provisional_memory_updates": ROWS,
+            "deployment_optimizer_updates": 0,
             "controller_optimizer_updates": 0,
             "replayed_examples": 0,
         },

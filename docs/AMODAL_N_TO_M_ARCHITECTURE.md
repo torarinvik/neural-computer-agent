@@ -6525,6 +6525,39 @@ does not permit the admitted row to serve as its own held-out gate. This is a
 reusable safety boundary, not yet a promoted claim about automatic online
 learning.
 
+## Open-set binding and retention-safe lifecycle (2026-08-10)
+
+`ExternalOnlineStreamBindingMemory` now has an explicit open-set lifecycle.
+When live capacity is full, evidence that does not match a live anonymous
+track enters bounded provisional memory. The result carries only a provisional
+ID; it cannot expose a live key or reach the factual router. Subsequent
+arrivals update only that provisional's bounded observations, prototype,
+delay estimate, and verifier sufficient statistics. Provisional state is
+therefore useful evidence without becoming an authority by accident.
+
+Admission and retirement are copy-on-write transactions. A caller-owned
+retention probe must approve a provisional promotion or live-track retirement;
+rejected probes leave the complete binding state unchanged. The serialized
+state includes live tracks and provisional tracks with schema/versioned
+configuration and recursive tensor checksums, so a restart preserves the
+quarantine boundary exactly.
+
+The open-set pressure test in `experiments/external_learned_stream_binding/`
+uses four anonymous streams with capacity for three live tracks. Across seeds
+`2301` and `2302`, the fourth stream remained provisional through six arrivals
+with irregular timestamps, failed admission and retirement probes preserved
+live state, and verified retirement followed by promotion admitted it while
+the sibling tracks remained intact. All gates passed and persistence was
+exact. The encoder and controller were frozen during deployment; provisional
+updates used six fresh verifier outcomes and zero replay.
+
+This promotes a bounded learned open-set transport lifecycle, not open-ended
+identity discovery, learned eviction policy, arbitrary drift handling,
+unrestricted memory growth, or general continual learning. The next pressure
+point is to learn the retention/admission evidence policy and to stress
+multiple simultaneous provisional identities, contradiction, drift, and
+capacity pressure without caller-designed probes.
+
 For unbound input, `ExternalFactoredTransitionRouter.route_bundle` provides
 the safer atomic boundary: the full opaque evidence bundle is compared with
 all retained factual slots before novel evidence is staged. This avoids

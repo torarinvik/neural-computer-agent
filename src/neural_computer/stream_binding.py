@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import hashlib
 import math
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
@@ -32,10 +32,16 @@ from .world_model import (
 )
 
 EXTERNAL_STREAM_BINDING_MEMORY_SCHEMA = (
-    "neural-computer.external-stream-binding-memory.v1"
+    "neural-computer.external-stream-binding-memory.v2"
+)
+EXTERNAL_STREAM_BINDING_PROMOTION_SCHEMA = (
+    "neural-computer.external-stream-binding-promotion.v1"
+)
+EXTERNAL_STREAM_BINDING_RETIREMENT_SCHEMA = (
+    "neural-computer.external-stream-binding-retirement.v1"
 )
 EXTERNAL_LEARNED_MULTI_STREAM_ROUTER_SCHEMA = (
-    "neural-computer.external-learned-multi-stream-router.v1"
+    "neural-computer.external-learned-multi-stream-router.v2"
 )
 
 
@@ -129,6 +135,7 @@ class ExternalStreamBindingResult:
     reliability: float
     estimated_delay: float | None
     observation_count: int
+    provisional_id: int | None = None
     schema: str = EXTERNAL_STREAM_BINDING_MEMORY_SCHEMA
 
     def validate(
@@ -136,19 +143,39 @@ class ExternalStreamBindingResult:
     ) -> ExternalStreamBindingResult:
         if self.schema != EXTERNAL_STREAM_BINDING_MEMORY_SCHEMA:
             raise ValueError("unsupported stream-binding result schema")
-        if self.status not in {"new", "matched", "ambiguous", "capacity"}:
+        if self.status not in {"new", "matched", "ambiguous", "capacity", "provisional"}:
             raise ValueError("unsupported stream-binding result status")
         if self.stream_key is None:
             if self.status in {"new", "matched"}:
                 raise ValueError("bound stream results require a stream key")
         else:
             _normalize_key(self.stream_key, width=stream_key_width)
+        if self.status in {"ambiguous", "capacity", "provisional"} and self.stream_key is not None:
+            raise ValueError("unresolved stream results cannot carry a live key")
         if self.track_id is not None and (
             not isinstance(self.track_id, int)
             or isinstance(self.track_id, bool)
             or self.track_id < 0
         ):
             raise ValueError("stream-binding track ID is invalid")
+        if self.provisional_id is not None and (
+            not isinstance(self.provisional_id, int)
+            or isinstance(self.provisional_id, bool)
+            or self.provisional_id < 0
+        ):
+            raise ValueError("stream-binding provisional ID is invalid")
+        if self.status in {"new", "matched"} and self.provisional_id is not None:
+            raise ValueError("live stream results cannot carry a provisional ID")
+        if self.status in {"new", "matched"} and self.track_id is None:
+            raise ValueError("live stream results require a track ID")
+        if self.status in {"ambiguous", "capacity"} and (
+            self.track_id is not None or self.provisional_id is not None
+        ):
+            raise ValueError("unresolved stream results cannot carry an ID")
+        if self.status == "provisional" and self.provisional_id is None:
+            raise ValueError("provisional results require a provisional ID")
+        if self.status == "provisional" and self.track_id is not None:
+            raise ValueError("provisional results cannot carry a live track ID")
         for name, value in (
             ("similarity", self.similarity),
             ("margin", self.margin),
@@ -163,6 +190,52 @@ class ExternalStreamBindingResult:
             raise ValueError("stream-binding delay cannot be negative")
         if self.observation_count < 0:
             raise ValueError("stream-binding observation count cannot be negative")
+        return self
+
+
+@dataclass(frozen=True)
+class ExternalStreamBindingPromotionReceipt:
+    """Transactional admission/retirement result for an external track."""
+
+    accepted: bool
+    provisional_id: int
+    track_id: int | None
+    reason: str
+    observation_count: int
+    schema: str = EXTERNAL_STREAM_BINDING_PROMOTION_SCHEMA
+
+    def validate(self) -> ExternalStreamBindingPromotionReceipt:
+        if self.schema != EXTERNAL_STREAM_BINDING_PROMOTION_SCHEMA:
+            raise ValueError("unsupported stream-binding promotion schema")
+        if self.provisional_id < 0:
+            raise ValueError("stream-binding provisional ID cannot be negative")
+        if self.track_id is not None and self.track_id < 0:
+            raise ValueError("stream-binding track ID cannot be negative")
+        if not isinstance(self.reason, str) or not self.reason:
+            raise ValueError("stream-binding promotion reason is missing")
+        if self.observation_count < 0:
+            raise ValueError("stream-binding observation count cannot be negative")
+        if self.accepted and self.track_id is None:
+            raise ValueError("accepted stream-binding promotion needs a track ID")
+        return self
+
+
+@dataclass(frozen=True)
+class ExternalStreamBindingRetirementReceipt:
+    """Transactional, retention-gated removal of one live binding track."""
+
+    accepted: bool
+    track_id: int
+    reason: str
+    schema: str = EXTERNAL_STREAM_BINDING_RETIREMENT_SCHEMA
+
+    def validate(self) -> ExternalStreamBindingRetirementReceipt:
+        if self.schema != EXTERNAL_STREAM_BINDING_RETIREMENT_SCHEMA:
+            raise ValueError("unsupported stream-binding retirement schema")
+        if self.track_id < 0:
+            raise ValueError("stream-binding track ID cannot be negative")
+        if not isinstance(self.reason, str) or not self.reason:
+            raise ValueError("stream-binding retirement reason is missing")
         return self
 
 
@@ -215,8 +288,10 @@ class ExternalOnlineStreamBindingMemory:
         *,
         window_capacity: int = 4,
         max_streams: int = 32,
+        provisional_capacity: int = 8,
         match_tolerance: float = 0.75,
         new_track_tolerance: float | None = None,
+        provisional_tolerance: float | None = None,
         match_margin: float = 0.05,
         prototype_decay: float = 0.25,
         delay_decay: float = 0.25,
@@ -225,7 +300,7 @@ class ExternalOnlineStreamBindingMemory:
     ) -> None:
         if not isinstance(encoder, ExternalTransitionContextEncoder):
             raise TypeError("stream binding requires a transition context encoder")
-        if window_capacity < 1 or max_streams < 1:
+        if window_capacity < 1 or max_streams < 1 or provisional_capacity < 1:
             raise ValueError("stream binding capacities must be positive")
         if not 0.0 < match_tolerance <= 1.0:
             raise ValueError("stream binding match tolerance must be in (0, 1]")
@@ -233,6 +308,10 @@ class ExternalOnlineStreamBindingMemory:
             new_track_tolerance = match_tolerance
         if not 0.0 < new_track_tolerance <= 1.0:
             raise ValueError("stream binding new-track tolerance must be in (0, 1]")
+        if provisional_tolerance is None:
+            provisional_tolerance = match_tolerance
+        if not 0.0 < provisional_tolerance <= 1.0:
+            raise ValueError("stream binding provisional tolerance must be in (0, 1]")
         if match_margin < 0.0 or match_margin > 1.0:
             raise ValueError("stream binding match margin must lie in [0, 1]")
         if not 0.0 < prototype_decay <= 1.0:
@@ -252,15 +331,19 @@ class ExternalOnlineStreamBindingMemory:
         self.stream_key_width = encoder.context_width
         self.window_capacity = int(window_capacity)
         self.max_streams = int(max_streams)
+        self.provisional_capacity = int(provisional_capacity)
         self.match_tolerance = float(match_tolerance)
         self.new_track_tolerance = float(new_track_tolerance)
+        self.provisional_tolerance = float(provisional_tolerance)
         self.match_margin = float(match_margin)
         self.prototype_decay = float(prototype_decay)
         self.delay_decay = float(delay_decay)
         self.reliability_prior = float(reliability_prior)
         self.reliability_warmup = int(reliability_warmup)
         self._next_track_id = 0
+        self._next_provisional_id = 0
         self._tracks: dict[int, dict[str, Any]] = {}
+        self._provisional: dict[int, dict[str, Any]] = {}
 
     @property
     def stream_count(self) -> int:
@@ -270,6 +353,14 @@ class ExternalOnlineStreamBindingMemory:
     def track_ids(self) -> tuple[int, ...]:
         return tuple(sorted(self._tracks))
 
+    @property
+    def provisional_count(self) -> int:
+        return len(self._provisional)
+
+    @property
+    def provisional_ids(self) -> tuple[int, ...]:
+        return tuple(sorted(self._provisional))
+
     def configuration(self) -> dict[str, int | float | str]:
         return {
             "schema": self.schema,
@@ -278,8 +369,10 @@ class ExternalOnlineStreamBindingMemory:
             "stream_key_width": self.stream_key_width,
             "window_capacity": self.window_capacity,
             "max_streams": self.max_streams,
+            "provisional_capacity": self.provisional_capacity,
             "match_tolerance": self.match_tolerance,
             "new_track_tolerance": self.new_track_tolerance,
+            "provisional_tolerance": self.provisional_tolerance,
             "match_margin": self.match_margin,
             "prototype_decay": self.prototype_decay,
             "delay_decay": self.delay_decay,
@@ -365,6 +458,102 @@ class ExternalOnlineStreamBindingMemory:
             positive + negative + 2.0 * self.reliability_prior
         )
 
+    def _new_entry(
+        self,
+        observation: ExternalTransitionObservation,
+        timestamp: float | None,
+    ) -> dict[str, Any]:
+        with torch.no_grad():
+            key = self.encoder.encode_observation(observation).detach().cpu()
+        return {
+            "stream_key": _normalize_key(key, width=self.stream_key_width),
+            "prototype": key.detach().cpu(),
+            "observations": observation,
+            "last_timestamp": timestamp,
+            "mean_delay": None,
+            "delay_count": 0,
+            "positive_count": 0.0,
+            "negative_count": 0.0,
+        }
+
+    def _stage_provisional(
+        self,
+        observation: ExternalTransitionObservation,
+        timestamp: float | None,
+        *,
+        similarity: float | None,
+        margin: float | None,
+    ) -> ExternalStreamBindingResult:
+        with torch.no_grad():
+            candidate = self.encoder.encode_observation(observation).detach()
+        ranked: list[tuple[float, int]] = []
+        for provisional_id, entry in self._provisional.items():
+            prototype = _normalize_key(
+                entry["prototype"], width=self.stream_key_width
+            ).to(candidate)
+            ranked.append((float(torch.dot(candidate, prototype)), provisional_id))
+        ranked.sort(key=lambda item: (-item[0], item[1]))
+        if ranked and ranked[0][0] >= self.provisional_tolerance:
+            provisional_id = ranked[0][1]
+            entry = self._provisional[provisional_id]
+            previous_timestamp = entry["last_timestamp"]
+            if timestamp is not None and previous_timestamp is not None:
+                delta = timestamp - float(previous_timestamp)
+                if delta >= 0.0:
+                    if entry["mean_delay"] is None:
+                        entry["mean_delay"] = delta
+                    else:
+                        decay = self.delay_decay
+                        entry["mean_delay"] = (
+                            (1.0 - decay) * float(entry["mean_delay"])
+                            + decay * delta
+                        )
+                    entry["delay_count"] += 1
+            entry["last_timestamp"] = timestamp
+            entry["observations"] = self._window_with(entry, observation)
+            entry["prototype"] = torch.nn.functional.normalize(
+                (1.0 - self.prototype_decay) * entry["prototype"]
+                + self.prototype_decay * candidate.detach().cpu(),
+                dim=0,
+            )
+            return ExternalStreamBindingResult(
+                stream_key=None,
+                track_id=None,
+                provisional_id=provisional_id,
+                status="provisional",
+                similarity=ranked[0][0],
+                margin=margin,
+                reliability=self._reliability(entry),
+                estimated_delay=entry["mean_delay"],
+                observation_count=int(entry["observations"].state.shape[0]),
+            ).validate(stream_key_width=self.stream_key_width)
+        if self.provisional_count >= self.provisional_capacity:
+            return ExternalStreamBindingResult(
+                stream_key=None,
+                track_id=None,
+                provisional_id=None,
+                status="capacity",
+                similarity=similarity,
+                margin=margin,
+                reliability=0.5,
+                estimated_delay=None,
+                observation_count=0,
+            ).validate(stream_key_width=self.stream_key_width)
+        provisional_id = self._next_provisional_id
+        self._next_provisional_id += 1
+        self._provisional[provisional_id] = self._new_entry(observation, timestamp)
+        return ExternalStreamBindingResult(
+            stream_key=None,
+            track_id=None,
+            provisional_id=provisional_id,
+            status="provisional",
+            similarity=similarity,
+            margin=margin,
+            reliability=0.5,
+            estimated_delay=None,
+            observation_count=1,
+        ).validate(stream_key_width=self.stream_key_width)
+
     def _temporal_score(
         self, track: Mapping[str, Any], timestamp: float | None
     ) -> float:
@@ -419,16 +608,12 @@ class ExternalOnlineStreamBindingMemory:
         ranked = self._rank(observation, current_timestamp)
         if not ranked:
             if self.stream_count >= self.max_streams:
-                return ExternalStreamBindingResult(
-                    stream_key=None,
-                    track_id=None,
-                    status="capacity",
+                return self._stage_provisional(
+                    observation,
+                    current_timestamp,
                     similarity=None,
                     margin=None,
-                    reliability=0.5,
-                    estimated_delay=None,
-                    observation_count=0,
-                ).validate(stream_key_width=self.stream_key_width)
+                )
             with torch.no_grad():
                 key = self.encoder.encode_observation(observation).detach().cpu()
             track_id = self._next_track_id
@@ -464,16 +649,12 @@ class ExternalOnlineStreamBindingMemory:
         )
         if best_score < threshold:
             if self.stream_count >= self.max_streams:
-                return ExternalStreamBindingResult(
-                    stream_key=None,
-                    track_id=None,
-                    status="capacity",
+                return self._stage_provisional(
+                    observation,
+                    current_timestamp,
                     similarity=best_similarity,
                     margin=margin,
-                    reliability=self._reliability(self._tracks[best_id]),
-                    estimated_delay=self._tracks[best_id]["mean_delay"],
-                    observation_count=0,
-                ).validate(stream_key_width=self.stream_key_width)
+                )
             with torch.no_grad():
                 key = self.encoder.encode_observation(observation).detach().cpu()
             track_id = self._next_track_id
@@ -549,12 +730,19 @@ class ExternalOnlineStreamBindingMemory:
         """Consume one scalar same-track verifier outcome without replay."""
 
         result.validate(stream_key_width=self.stream_key_width)
-        if result.track_id is None or result.track_id not in self._tracks:
-            raise ValueError("verifier outcomes require a live binding track")
         value = float(outcome.detach().reshape(-1)[0]) if isinstance(outcome, torch.Tensor) else float(outcome)
         if not math.isfinite(value) or value < 0.0 or value > 1.0:
             raise ValueError("binding verifier outcomes must lie in [0, 1]")
-        track = self._tracks[result.track_id]
+        if result.track_id is not None:
+            if result.track_id not in self._tracks:
+                raise ValueError("verifier outcome refers to an unknown live track")
+            track = self._tracks[result.track_id]
+        elif result.provisional_id is not None:
+            if result.provisional_id not in self._provisional:
+                raise ValueError("verifier outcome refers to an unknown provisional")
+            track = self._provisional[result.provisional_id]
+        else:
+            raise ValueError("verifier outcomes require a live or provisional track")
         track["positive_count"] += value
         track["negative_count"] += 1.0 - value
 
@@ -575,6 +763,132 @@ class ExternalOnlineStreamBindingMemory:
             "reliability": self._reliability(track),
         }
 
+    def provisional_state(self, provisional_id: int) -> dict[str, object]:
+        if provisional_id not in self._provisional:
+            raise KeyError(provisional_id)
+        entry = self._provisional[provisional_id]
+        return {
+            "provisional_id": provisional_id,
+            "stream_key": entry["stream_key"].clone(),
+            "prototype": entry["prototype"].clone(),
+            "observation_count": int(entry["observations"].state.shape[0]),
+            "last_timestamp": entry["last_timestamp"],
+            "mean_delay": entry["mean_delay"],
+            "delay_count": int(entry["delay_count"]),
+            "positive_count": float(entry["positive_count"]),
+            "negative_count": float(entry["negative_count"]),
+            "reliability": self._reliability(entry),
+        }
+
+    def promote_provisional_track(
+        self,
+        provisional_id: int,
+        retention_probe: Callable[[ExternalOnlineStreamBindingMemory], bool],
+    ) -> ExternalStreamBindingPromotionReceipt:
+        """Admit one quarantined stream only through a retention gate."""
+
+        if provisional_id not in self._provisional:
+            return ExternalStreamBindingPromotionReceipt(
+                accepted=False,
+                provisional_id=provisional_id,
+                track_id=None,
+                reason="unknown_provisional",
+                observation_count=0,
+            ).validate()
+        if self.stream_count >= self.max_streams:
+            return ExternalStreamBindingPromotionReceipt(
+                accepted=False,
+                provisional_id=provisional_id,
+                track_id=None,
+                reason="live_capacity_full",
+                observation_count=int(
+                    self._provisional[provisional_id]["observations"].state.shape[0]
+                ),
+            ).validate()
+        candidate = type(self).from_payload(self.state_payload())
+        entry = candidate._provisional.pop(provisional_id)
+        track_id = candidate._next_track_id
+        candidate._next_track_id += 1
+        candidate._tracks[track_id] = entry
+        observation_count = int(entry["observations"].state.shape[0])
+        if not bool(retention_probe(candidate)):
+            return ExternalStreamBindingPromotionReceipt(
+                accepted=False,
+                provisional_id=provisional_id,
+                track_id=None,
+                reason="retention_probe_rejected",
+                observation_count=observation_count,
+            ).validate()
+        self._tracks = candidate._tracks
+        self._provisional = candidate._provisional
+        self._next_track_id = candidate._next_track_id
+        self._next_provisional_id = candidate._next_provisional_id
+        return ExternalStreamBindingPromotionReceipt(
+            accepted=True,
+            provisional_id=provisional_id,
+            track_id=track_id,
+            reason="verified_new_stream",
+            observation_count=observation_count,
+        ).validate()
+
+    def retire_verified_track(
+        self,
+        track_id: int,
+        retention_probe: Callable[[ExternalOnlineStreamBindingMemory], bool],
+    ) -> ExternalStreamBindingRetirementReceipt:
+        """Remove one live track only after a complete-retention probe."""
+
+        if track_id not in self._tracks:
+            return ExternalStreamBindingRetirementReceipt(
+                accepted=False,
+                track_id=track_id,
+                reason="unknown_track",
+            ).validate()
+        candidate = type(self).from_payload(self.state_payload())
+        candidate._tracks.pop(track_id)
+        if not bool(retention_probe(candidate)):
+            return ExternalStreamBindingRetirementReceipt(
+                accepted=False,
+                track_id=track_id,
+                reason="retention_probe_rejected",
+            ).validate()
+        self._tracks = candidate._tracks
+        self._provisional = candidate._provisional
+        self._next_track_id = candidate._next_track_id
+        self._next_provisional_id = candidate._next_provisional_id
+        return ExternalStreamBindingRetirementReceipt(
+            accepted=True,
+            track_id=track_id,
+            reason="verified_retirement",
+        ).validate()
+
+    @staticmethod
+    def _entry_payload(
+        identifier: int,
+        entry: Mapping[str, Any],
+        *,
+        identifier_name: str,
+    ) -> dict[str, object]:
+        observation = entry["observations"]
+        return {
+            identifier_name: identifier,
+            "stream_key": entry["stream_key"].clone(),
+            "prototype": entry["prototype"].clone(),
+            "observation": {
+                "state": observation.state.detach().cpu().clone(),
+                "intention": observation.intention.detach().cpu().clone(),
+                "next_state": observation.next_state.detach().cpu().clone(),
+                "confidence": None
+                if observation.confidence is None
+                else observation.confidence.detach().cpu().clone(),
+            },
+            "last_timestamp": entry["last_timestamp"],
+            "mean_delay": entry["mean_delay"],
+            "delay_count": entry["delay_count"],
+            "positive_count": entry["positive_count"],
+            "negative_count": entry["negative_count"],
+        }
+
     def configuration_payload(self) -> dict[str, object]:
         return {
             "configuration": self.configuration(),
@@ -582,39 +896,39 @@ class ExternalOnlineStreamBindingMemory:
         }
 
     def state_payload(self) -> dict[str, object]:
-        tracks: list[dict[str, object]] = []
-        for track_id in sorted(self._tracks):
-            track = self._tracks[track_id]
-            observation = track["observations"]
-            tracks.append(
-                {
-                    "track_id": track_id,
-                    "stream_key": track["stream_key"].clone(),
-                    "prototype": track["prototype"].clone(),
-                    "observation": {
-                        "state": observation.state.detach().cpu().clone(),
-                        "intention": observation.intention.detach().cpu().clone(),
-                        "next_state": observation.next_state.detach().cpu().clone(),
-                        "confidence": None
-                        if observation.confidence is None
-                        else observation.confidence.detach().cpu().clone(),
-                    },
-                    "last_timestamp": track["last_timestamp"],
-                    "mean_delay": track["mean_delay"],
-                    "delay_count": track["delay_count"],
-                    "positive_count": track["positive_count"],
-                    "negative_count": track["negative_count"],
-                }
+        tracks = [
+            self._entry_payload(
+                track_id,
+                self._tracks[track_id],
+                identifier_name="track_id",
             )
+            for track_id in sorted(self._tracks)
+        ]
+        provisional = [
+            self._entry_payload(
+                provisional_id,
+                self._provisional[provisional_id],
+                identifier_name="provisional_id",
+            )
+            for provisional_id in sorted(self._provisional)
+        ]
         payload: dict[str, object] = {
             "schema": self.schema,
             "configuration": self.configuration(),
             "encoder": self.encoder.state_payload(),
             "next_track_id": self._next_track_id,
+            "next_provisional_id": self._next_provisional_id,
             "tracks": tracks,
+            "provisional": provisional,
         }
         payload["sha256"] = _payload_digest(
-            payload["schema"], payload["configuration"], payload["encoder"], payload["next_track_id"], payload["tracks"]
+            payload["schema"],
+            payload["configuration"],
+            payload["encoder"],
+            payload["next_track_id"],
+            payload["next_provisional_id"],
+            payload["tracks"],
+            payload["provisional"],
         )
         return payload
 
@@ -630,15 +944,23 @@ class ExternalOnlineStreamBindingMemory:
         configuration = payload.get("configuration")
         encoder_payload = payload.get("encoder")
         tracks = payload.get("tracks")
-        if not isinstance(configuration, Mapping) or not isinstance(encoder_payload, Mapping) or not isinstance(tracks, list):
+        provisional = payload.get("provisional")
+        if (
+            not isinstance(configuration, Mapping)
+            or not isinstance(encoder_payload, Mapping)
+            or not isinstance(tracks, list)
+            or not isinstance(provisional, list)
+        ):
             raise TypeError("stream-binding memory payload is incomplete")
         encoder = ExternalTransitionContextEncoder.from_payload(encoder_payload)
         expected = cls(
             encoder,
             window_capacity=int(configuration["window_capacity"]),
             max_streams=int(configuration["max_streams"]),
+            provisional_capacity=int(configuration["provisional_capacity"]),
             match_tolerance=float(configuration["match_tolerance"]),
             new_track_tolerance=float(configuration["new_track_tolerance"]),
+            provisional_tolerance=float(configuration["provisional_tolerance"]),
             match_margin=float(configuration["match_margin"]),
             prototype_decay=float(configuration["prototype_decay"]),
             delay_decay=float(configuration["delay_decay"]),
@@ -650,50 +972,91 @@ class ExternalOnlineStreamBindingMemory:
         expected._next_track_id = int(payload.get("next_track_id", 0))
         if expected._next_track_id < 0:
             raise ValueError("stream-binding next track ID is invalid")
-        seen: set[int] = set()
-        for item in tracks:
-            if not isinstance(item, Mapping):
-                raise TypeError("stream-binding track is invalid")
-            track_id = item.get("track_id")
-            if not isinstance(track_id, int) or isinstance(track_id, bool) or track_id < 0 or track_id in seen:
-                raise ValueError("stream-binding track ID is invalid or duplicated")
-            observation_payload = item.get("observation")
-            if not isinstance(observation_payload, Mapping):
-                raise TypeError("stream-binding observation is invalid")
-            observation = ExternalTransitionObservation(
-                state=observation_payload["state"],
-                intention=observation_payload["intention"],
-                next_state=observation_payload["next_state"],
-                confidence=observation_payload.get("confidence"),
-            )
-            expected._validate_observation(observation, single_arrival=False)
-            if observation.state.shape[0] > expected.window_capacity:
-                raise ValueError("stream-binding observation window exceeds capacity")
-            stream_key = _copy_valid_key(item["stream_key"], width=expected.stream_key_width)
-            prototype = _copy_valid_key(item["prototype"], width=expected.stream_key_width)
-            last_timestamp = item.get("last_timestamp")
-            mean_delay = item.get("mean_delay")
-            for name, value in (("last_timestamp", last_timestamp), ("mean_delay", mean_delay)):
-                if value is not None and (not isinstance(value, (int, float)) or not math.isfinite(float(value))):
-                    raise ValueError(f"stream-binding {name} is invalid")
-            if mean_delay is not None and float(mean_delay) < 0:
-                raise ValueError("stream-binding mean delay cannot be negative")
-            delay_count = int(item.get("delay_count", 0))
-            positive_count = float(item.get("positive_count", 0.0))
-            negative_count = float(item.get("negative_count", 0.0))
-            if delay_count < 0 or positive_count < 0 or negative_count < 0:
-                raise ValueError("stream-binding sufficient statistics are invalid")
-            expected._tracks[track_id] = {
-                "stream_key": stream_key,
-                "prototype": prototype,
-                "observations": observation,
-                "last_timestamp": None if last_timestamp is None else float(last_timestamp),
-                "mean_delay": None if mean_delay is None else float(mean_delay),
-                "delay_count": delay_count,
-                "positive_count": positive_count,
-                "negative_count": negative_count,
-            }
-            seen.add(track_id)
+
+        def restore_entries(
+            entries: list[object],
+            *,
+            identifier_name: str,
+            destination: dict[int, dict[str, Any]],
+        ) -> set[int]:
+            seen: set[int] = set()
+            for item in entries:
+                if not isinstance(item, Mapping):
+                    raise TypeError("stream-binding entry is invalid")
+                identifier = item.get(identifier_name)
+                if (
+                    not isinstance(identifier, int)
+                    or isinstance(identifier, bool)
+                    or identifier < 0
+                    or identifier in seen
+                ):
+                    raise ValueError("stream-binding entry ID is invalid or duplicated")
+                observation_payload = item.get("observation")
+                if not isinstance(observation_payload, Mapping):
+                    raise TypeError("stream-binding observation is invalid")
+                observation = ExternalTransitionObservation(
+                    state=observation_payload["state"],
+                    intention=observation_payload["intention"],
+                    next_state=observation_payload["next_state"],
+                    confidence=observation_payload.get("confidence"),
+                )
+                expected._validate_observation(observation, single_arrival=False)
+                if observation.state.shape[0] > expected.window_capacity:
+                    raise ValueError("stream-binding observation window exceeds capacity")
+                stream_key = _copy_valid_key(
+                    item["stream_key"], width=expected.stream_key_width
+                )
+                prototype = _copy_valid_key(
+                    item["prototype"], width=expected.stream_key_width
+                )
+                last_timestamp = item.get("last_timestamp")
+                mean_delay = item.get("mean_delay")
+                for name, value in (
+                    ("last_timestamp", last_timestamp),
+                    ("mean_delay", mean_delay),
+                ):
+                    if value is not None and (
+                        not isinstance(value, (int, float))
+                        or not math.isfinite(float(value))
+                    ):
+                        raise ValueError(f"stream-binding {name} is invalid")
+                if mean_delay is not None and float(mean_delay) < 0:
+                    raise ValueError("stream-binding mean delay cannot be negative")
+                delay_count = int(item.get("delay_count", 0))
+                positive_count = float(item.get("positive_count", 0.0))
+                negative_count = float(item.get("negative_count", 0.0))
+                if delay_count < 0 or positive_count < 0 or negative_count < 0:
+                    raise ValueError("stream-binding sufficient statistics are invalid")
+                destination[identifier] = {
+                    "stream_key": stream_key,
+                    "prototype": prototype,
+                    "observations": observation,
+                    "last_timestamp": (
+                        None if last_timestamp is None else float(last_timestamp)
+                    ),
+                    "mean_delay": None if mean_delay is None else float(mean_delay),
+                    "delay_count": delay_count,
+                    "positive_count": positive_count,
+                    "negative_count": negative_count,
+                }
+                seen.add(identifier)
+            return seen
+
+        seen = restore_entries(
+            tracks,
+            identifier_name="track_id",
+            destination=expected._tracks,
+        )
+        provisional_seen = restore_entries(
+            provisional,
+            identifier_name="provisional_id",
+            destination=expected._provisional,
+        )
+        expected._next_provisional_id = int(payload.get("next_provisional_id", 0))
+        if expected._next_provisional_id < 0:
+            raise ValueError("stream-binding next provisional ID is invalid")
+        if expected._next_provisional_id <= max(provisional_seen, default=-1):
+            raise ValueError("stream-binding next provisional ID must exceed entries")
         if expected._next_track_id <= max(seen, default=-1):
             raise ValueError("stream-binding next track ID must exceed live tracks")
         expected_payload = expected.state_payload()
@@ -760,6 +1123,35 @@ class ExternalLearnedMultiStreamTransitionContextRouter:
             intention_width=self.router.bank.intention_width,
             context_width=self.router.bank.context_width,
         )
+
+    def promote_provisional_track(
+        self,
+        result: ExternalLearnedMultiStreamTransitionResult,
+        retention_probe: Callable[[ExternalOnlineStreamBindingMemory], bool],
+    ) -> ExternalStreamBindingPromotionReceipt:
+        """Admit a quarantined identity before factual routing consumes it."""
+
+        result.validate(
+            stream_key_width=self.router.stream_key_width,
+            state_width=self.router.bank.state_width,
+            intention_width=self.router.bank.intention_width,
+            context_width=self.router.bank.context_width,
+        )
+        if result.binding.provisional_id is None:
+            raise ValueError("result does not contain a provisional binding")
+        return self.binding.promote_provisional_track(
+            result.binding.provisional_id,
+            retention_probe,
+        )
+
+    def retire_verified_track(
+        self,
+        track_id: int,
+        retention_probe: Callable[[ExternalOnlineStreamBindingMemory], bool],
+    ) -> ExternalStreamBindingRetirementReceipt:
+        """Retire a binding only after its complete retention probe passes."""
+
+        return self.binding.retire_verified_track(track_id, retention_probe)
 
     def adaptation_step(
         self,
@@ -858,8 +1250,12 @@ class ExternalLearnedMultiStreamTransitionContextRouter:
 __all__ = [
     "EXTERNAL_LEARNED_MULTI_STREAM_ROUTER_SCHEMA",
     "EXTERNAL_STREAM_BINDING_MEMORY_SCHEMA",
+    "EXTERNAL_STREAM_BINDING_PROMOTION_SCHEMA",
+    "EXTERNAL_STREAM_BINDING_RETIREMENT_SCHEMA",
     "ExternalLearnedMultiStreamTransitionContextRouter",
     "ExternalLearnedMultiStreamTransitionResult",
     "ExternalOnlineStreamBindingMemory",
+    "ExternalStreamBindingPromotionReceipt",
     "ExternalStreamBindingResult",
+    "ExternalStreamBindingRetirementReceipt",
 ]

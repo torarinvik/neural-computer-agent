@@ -156,3 +156,30 @@ This qualifies a bounded learned identity/binding boundary, not general
 continual learning. The next pressure must vary encoders, stream counts, delay
 laws, open-set arrivals, and contradictory evidence while retaining the
 factual router's held-out promotion and complete-retention gates.
+
+## Open-set learned binding with transactional replacement (2026-08-10)
+
+The learned binding boundary now distinguishes evidence collection from
+identity admission. `ExternalOnlineStreamBindingMemory` keeps a bounded set of
+anonymous provisional tracks when live capacity is exhausted. Provisional
+tracks can collect observations, delay statistics, and verifier outcomes, but
+they cannot emit a live stream key or mutate the shared factual model bank.
+
+Promotion and retirement use copy-on-write state plus a caller-owned retention
+probe. A failed probe is a no-op over the entire binding state, not merely over
+one prototype. This is the memory-side analogue of retaining every mastered
+primitive while learning a new one: replace only after the candidate proves
+that the retained floor is intact. The result is a versioned, checksummed
+boundary suitable for a growing external memory, while the controller remains
+frozen and protocol-agnostic.
+
+The two-seed open-set audit (`2301`, `2302`) used four anonymous streams, three
+live slots, six irregularly timed arrivals for the fourth stream, zero replay,
+and zero controller updates. Both seeds quarantined the unseen stream,
+rejected unsafe admission and retirement without mutation, then admitted it
+after verified retirement and exact persistence. This promotes bounded
+open-set lifecycle safety only. It does not claim that the system has learned
+when to evict, discovered arbitrary identities, handled unrestricted drift, or
+achieved general continual learning. The next step is an outcome-trained
+retention/admission challenger with simultaneous provisional identities and
+adversarial contradiction controls.

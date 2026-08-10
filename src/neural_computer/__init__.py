@@ -360,10 +360,14 @@ from .state_store import OPAQUE_STATE_STORE_SCHEMA, PersistentOpaqueStateStore
 from .stream_binding import (
     EXTERNAL_LEARNED_MULTI_STREAM_ROUTER_SCHEMA,
     EXTERNAL_STREAM_BINDING_MEMORY_SCHEMA,
+    EXTERNAL_STREAM_BINDING_PROMOTION_SCHEMA,
+    EXTERNAL_STREAM_BINDING_RETIREMENT_SCHEMA,
     ExternalLearnedMultiStreamTransitionContextRouter,
     ExternalLearnedMultiStreamTransitionResult,
     ExternalOnlineStreamBindingMemory,
+    ExternalStreamBindingPromotionReceipt,
     ExternalStreamBindingResult,
+    ExternalStreamBindingRetirementReceipt,
 )
 from .world_model import (
     DEFAULT_INTENTION_SPACE_ID,
@@ -549,6 +553,8 @@ __all__ = [
     "EXTERNAL_REGISTER_STATE_SCHEMA",
     "EXTERNAL_REPRESENTATION_SPACE_SCHEMA",
     "EXTERNAL_STREAM_BINDING_MEMORY_SCHEMA",
+    "EXTERNAL_STREAM_BINDING_PROMOTION_SCHEMA",
+    "EXTERNAL_STREAM_BINDING_RETIREMENT_SCHEMA",
     "EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY",
     "EXTERNAL_TRANSITION_AFFINE_STATISTICS_SCHEMA",
     "EXTERNAL_TRANSITION_CONTEXT_ADDRESS_ADAPTER_SCHEMA",
@@ -722,7 +728,9 @@ __all__ = [
     "ExternalSequenceProgramMemory",
     "ExternalSparseTransitionEvidenceIndex",
     "ExternalSparseTransitionEvidenceProposal",
+    "ExternalStreamBindingPromotionReceipt",
     "ExternalStreamBindingResult",
+    "ExternalStreamBindingRetirementReceipt",
     "ExternalTransitionContextAddressAdapter",
     "ExternalTransitionContextEncoder",
     "ExternalTransitionEvidenceCalibrator",

@@ -15,7 +15,10 @@ from neural_computer import (
 )
 
 
-def _fixture(seed: int = 501) -> tuple[ExternalTransitionContextEncoder, list[ExternalTransitionObservation]]:
+def _fixture(
+    seed: int = 501,
+    stream_count: int = 3,
+) -> tuple[ExternalTransitionContextEncoder, list[ExternalTransitionObservation]]:
     torch.manual_seed(seed)
     encoder = ExternalTransitionContextEncoder(
         2,
@@ -24,7 +27,7 @@ def _fixture(seed: int = 501) -> tuple[ExternalTransitionContextEncoder, list[Ex
         context_width=4,
     )
     observations: list[ExternalTransitionObservation] = []
-    for stream in range(3):
+    for stream in range(stream_count):
         state = torch.randn(6, 2)
         state[:, 1] += stream * 5.0
         intention = torch.randn(6, 1)
@@ -174,3 +177,76 @@ def test_learned_binding_pressure_test_passes() -> None:
     assert report["gates"]["learned_assignment_consistent"] is True
     assert report["gates"]["learned_beats_fresh"] is True
     assert report["gates"]["binding_encoder_frozen"] is True
+
+
+def test_open_set_arrival_is_quarantined_until_retention_safe_admission() -> None:
+    encoder, observations = _fixture(503, stream_count=4)
+    optimizer = torch.optim.Adam(encoder.parameters(), lr=0.01)
+    for update in range(180):
+        left = []
+        right = []
+        for stream, observation in enumerate(observations):
+            left.append(
+                encoder.encode_observation(
+                    _row(observation, (update + stream) % 6)
+                )
+            )
+            right.append(
+                encoder.encode_observation(
+                    _row(observation, (update * 3 + stream + 1) % 6)
+                )
+            )
+        loss = encoder.contrastive_loss(torch.stack(left), torch.stack(right))
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+    encoder.eval()
+    memory = ExternalOnlineStreamBindingMemory(
+        encoder,
+        window_capacity=4,
+        max_streams=3,
+        provisional_capacity=2,
+        match_tolerance=0.55,
+        new_track_tolerance=0.7,
+        provisional_tolerance=0.7,
+        match_margin=0.05,
+    )
+    for stream in range(3):
+        assert memory.observe(_row(observations[stream], 0)).status == "new"
+
+    provisional_results = [
+        memory.observe(_row(observations[3], index), timestamp=10 + index)
+        for index in range(6)
+    ]
+    assert all(result.status == "provisional" for result in provisional_results)
+    provisional_id = provisional_results[0].provisional_id
+    assert provisional_id is not None
+    assert all(result.provisional_id == provisional_id for result in provisional_results)
+    assert memory.track_ids == (0, 1, 2)
+    assert memory.provisional_ids == (provisional_id,)
+
+    rejected = memory.promote_provisional_track(provisional_id, lambda _: False)
+    assert not rejected.accepted
+    assert rejected.reason == "live_capacity_full"
+    assert memory.provisional_ids == (provisional_id,)
+
+    rejected_retirement = memory.retire_verified_track(1, lambda _: False)
+    assert not rejected_retirement.accepted
+    assert memory.track_ids == (0, 1, 2)
+
+    retired = memory.retire_verified_track(1, lambda candidate: candidate.stream_count == 2)
+    assert retired.accepted
+    rejected = memory.promote_provisional_track(provisional_id, lambda _: False)
+    assert not rejected.accepted
+    assert rejected.reason == "retention_probe_rejected"
+    promoted = memory.promote_provisional_track(
+        provisional_id,
+        lambda candidate: candidate.stream_count == 3,
+    )
+    assert promoted.accepted
+    assert promoted.track_id is not None
+    assert memory.track_ids == (0, 2, promoted.track_id)
+    assert memory.provisional_ids == ()
+
+    restored = ExternalOnlineStreamBindingMemory.from_payload(memory.state_payload())
+    assert restored.digest() == memory.digest()
