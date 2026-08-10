@@ -5686,8 +5686,12 @@ The design being completed before any conclusion is drawn:
 
 |            | learned reader | oracle entry |
 | ---------- | ---: | ---: |
-| one-shot   | 0.0619 (F122) | **0.0672 (here)** |
-| iterated   | running | running |
+| one-shot   | 0.0619 (F122) | 0.0672 |
+| iterated   | **0.0581** | running |
+
+Three of four cells are now in and all sit at chance (0.0435). Neither
+lever alone helps at 256 worlds: not the interface that solved the
+single-world case at 1.0000, and not perfect world knowledge.
 
 Plus a world-count ladder (4/16/64 worlds, iterate + oracle entry) to
 locate WHERE execution breaks between 1 world (perfect, F121/F125) and
@@ -5702,3 +5706,28 @@ to isolate. Caught before the runs finished; re-run with one-hot codes
 (width 2M = 46, verified distinct per world). Recorded because the
 instrument nearly produced a confident wrong answer, which is this
 session's most frequent failure mode.
+
+**The decomposition this forces (probe 227, running).** One world with
+two pieces composes perfectly (F121/F125, 1.0000, both seeds, and to
+unseen depth). 256 worlds with two pieces is chance in three of four
+cells. But F114's `math_twins` READS fine at multi-world scale — own
+0.41-0.50 against chance 0.0625, twin accuracy exactly 0.0000 — with
+ONE piece and ONE application. So the difference between the working
+and failing regimes is two changes at once, and they have never been
+separated:
+
+  * **two pieces instead of one** — the entry must now carry two
+    parameters and the step must select between them by token;
+  * **depth up to four instead of one** — the parameter must survive
+    being applied repeatedly through a latent.
+
+`--max-len 1` holds depth at one while keeping two pieces and 256
+worlds. If reading works there, disentangling two pieces from one
+entry is fine and DEPTH is the constraint; if it fails there, the
+entry cannot carry two parameters at once and the problem is nothing
+to do with composition.
+
+This is the general shape of the mistake worth avoiding: the failing
+configuration differed from the working one in more than one way, and
+until they are separated any story about the cause is a guess. F117
+cost three arms to exactly this error.
