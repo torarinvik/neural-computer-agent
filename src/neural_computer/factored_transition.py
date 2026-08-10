@@ -15,6 +15,7 @@ from .world_model import (
     EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY,
     EXTERNAL_TRANSITION_NONLINEAR_MODEL_FAMILY,
     EXTERNAL_TRANSITION_RANDOM_FEATURE_MODEL_FAMILY,
+    ExternalModelBasedPlanner,
     ExternalSparseTransitionEvidenceIndex,
     ExternalTransitionContextEncoder,
     ExternalTransitionMemory,
@@ -24,6 +25,7 @@ from .world_model import (
     ExternalTransitionModelEvictionReceipt,
     ExternalTransitionModelGrowthReceipt,
     ExternalTransitionObservation,
+    ExternalTransitionRollout,
 )
 
 EXTERNAL_FACTORED_TRANSITION_MODEL_SCHEMA = (
@@ -508,6 +510,7 @@ class FactoredTransitionPromotionReceipt:
     heldout_error: float
     reason: str
     schema: str = EXTERNAL_FACTORED_TRANSITION_PROMOTION_SCHEMA
+    heldout_rollout_error: float | None = None
 
     def validate(self) -> FactoredTransitionPromotionReceipt:
         if self.schema != EXTERNAL_FACTORED_TRANSITION_PROMOTION_SCHEMA:
@@ -516,6 +519,11 @@ class FactoredTransitionPromotionReceipt:
             raise ValueError("factored promotion slot ID is invalid")
         if not torch.isfinite(torch.tensor(self.heldout_error)) or self.heldout_error < 0.0:
             raise ValueError("factored promotion heldout error is invalid")
+        if self.heldout_rollout_error is not None and (
+            not torch.isfinite(torch.tensor(self.heldout_rollout_error))
+            or self.heldout_rollout_error < 0.0
+        ):
+            raise ValueError("factored promotion rollout error is invalid")
         if not self.reason:
             raise ValueError("factored promotion reason is missing")
         return self
@@ -1231,11 +1239,19 @@ class ExternalFactoredTransitionRouter:
         retention_probe: Any,
         *,
         prediction_tolerance: float = 0.05,
+        heldout_rollout: ExternalTransitionRollout | None = None,
+        rollout_error_tolerance: float | None = None,
     ) -> FactoredTransitionPromotionReceipt:
         """Commit only a candidate that passes current and retention probes."""
 
         if self._candidate_model is None or self._candidate_context is None:
             raise RuntimeError("factored router has no staged candidate")
+        if rollout_error_tolerance is not None and rollout_error_tolerance < 0.0:
+            raise ValueError("factored candidate rollout tolerance cannot be negative")
+        if heldout_rollout is None and rollout_error_tolerance is not None:
+            raise ValueError(
+                "rollout error tolerance requires a held-out transition rollout"
+            )
         heldout.validate(
             state_width=self.model.state_width,
             intention_width=self.model.intention_width,
@@ -1247,6 +1263,24 @@ class ExternalFactoredTransitionRouter:
             context_batch.expand(heldout.state.shape[0], -1),
         )
         error = float((prediction - heldout.next_state).square().mean().detach())
+        heldout_rollout_error: float | None = None
+        if heldout_rollout is not None:
+            heldout_rollout.validate(
+                state_width=self.model.state_width,
+                intention_width=self.model.intention_width,
+            )
+            rollout_error_tolerance = (
+                prediction_tolerance
+                if rollout_error_tolerance is None
+                else rollout_error_tolerance
+            )
+            heldout_rollout_error = ExternalModelBasedPlanner(
+                self._candidate_model,
+                beam_width=1,
+            ).rollout_error(
+                heldout_rollout,
+                transition_context=self._candidate_context.unsqueeze(0),
+            )
         grows_capacity = (
             self.auto_grow
             and self.max_contexts is not None
@@ -1261,7 +1295,19 @@ class ExternalFactoredTransitionRouter:
         ):
             self._candidate_model.residual_bank.capacity = destination_capacity
             self._candidate_model.residual_capacity = destination_capacity
-        accepted = error <= prediction_tolerance and bool(retention_probe(self._candidate_model))
+        accepted = (
+            error <= prediction_tolerance
+            and (
+                heldout_rollout_error is None
+                or heldout_rollout_error <= rollout_error_tolerance
+            )
+            and bool(retention_probe(self._candidate_model))
+        )
+        rollout_failed = (
+            heldout_rollout_error is not None
+            and rollout_error_tolerance is not None
+            and heldout_rollout_error > rollout_error_tolerance
+        )
         if accepted:
             slot_id = self._next_slot_id
             self._next_slot_id += 1
@@ -1282,10 +1328,15 @@ class ExternalFactoredTransitionRouter:
                 slot_id=slot_id,
                 heldout_error=error,
                 reason=(
-                    "candidate passed factual and retention probes with capacity growth"
+                    "candidate passed factual, recursive rollout, and retention probes with capacity growth"
+                    if destination_capacity is not None and heldout_rollout_error is not None
+                    else "candidate passed factual, recursive rollout, and retention probes"
+                    if heldout_rollout_error is not None
+                    else "candidate passed factual and retention probes with capacity growth"
                     if destination_capacity is not None
                     else "candidate passed factual and retention probes"
                 ),
+                heldout_rollout_error=heldout_rollout_error,
             ).validate()
         self._candidate_model = None
         self._candidate_context = None
@@ -1294,7 +1345,12 @@ class ExternalFactoredTransitionRouter:
             accepted=False,
             slot_id=None,
             heldout_error=error,
-            reason="candidate failed factual or retention probe",
+            reason=(
+                "candidate failed recursive rollout probe"
+                if rollout_failed
+                else "candidate failed factual or retention probe"
+            ),
+            heldout_rollout_error=heldout_rollout_error,
         ).validate()
 
     def update_bound_slot(

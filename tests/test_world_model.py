@@ -2224,6 +2224,12 @@ def test_factored_router_auto_grows_on_verified_novel_bundle() -> None:
         source[0],
         lambda candidate: candidate.residual_record_count == 2,
         prediction_tolerance=1e-6,
+        heldout_rollout=ExternalTransitionRollout(
+            initial_state=torch.tensor([0.0]),
+            intentions=torch.ones(1, 1),
+            expected_states=torch.tensor([[0.0]]),
+        ),
+        rollout_error_tolerance=1e-6,
     ).accepted
     assert router.max_contexts == 1
 
@@ -2233,6 +2239,30 @@ def test_factored_router_auto_grows_on_verified_novel_bundle() -> None:
         target[0],
         lambda candidate: candidate.residual_record_count == 4,
         prediction_tolerance=1e-6,
+        heldout_rollout=ExternalTransitionRollout(
+            initial_state=torch.tensor([0.0]),
+            intentions=torch.ones(1, 1),
+            expected_states=torch.tensor([[999.0]]),
+        ),
+        rollout_error_tolerance=1e-6,
+    )
+    assert not target_receipt.accepted
+    assert target_receipt.heldout_rollout_error is not None
+    assert "recursive" in target_receipt.reason
+    assert router.max_contexts == 1
+    assert router.model.digest() == before_target
+
+    assert router.route_bundle(target).status == "staged"
+    target_receipt = router.promote_staged_candidate(
+        target[0],
+        lambda candidate: candidate.residual_record_count == 4,
+        prediction_tolerance=1e-6,
+        heldout_rollout=ExternalTransitionRollout(
+            initial_state=torch.tensor([0.0]),
+            intentions=torch.ones(1, 1),
+            expected_states=torch.tensor([[10.0]]),
+        ),
+        rollout_error_tolerance=1e-6,
     )
     assert target_receipt.accepted
     assert "capacity growth" in target_receipt.reason

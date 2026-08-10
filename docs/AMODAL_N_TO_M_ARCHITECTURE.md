@@ -6618,3 +6618,26 @@ and to candidate promotion—not only to already selected model slots.
 
 Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_transition_model_compounding_rollout_verified_promoted_2026-08-10/`.
+
+## Recursive rollout as a candidate-promotion invariant (2026-08-10)
+
+The recursive rollout probe is now accepted directly by both canonical factual
+promotion boundaries: `ExternalOnlineTransitionContextRouter` and
+`ExternalFactoredTransitionRouter`. When supplied, a candidate must pass its
+one-step held-out observation, recursive held-out rollout, and retention probe
+before its model, address, slot, or capacity metadata can reach live state.
+The rollout executes against an isolated candidate bank/model and an opaque
+transition context; it never becomes model memory.
+
+The three-seed pressure test promoted a source and target affine regime,
+automatically grew capacity from `1` to `2` only after the target passed the
+recursive gate, and rejected a candidate with a valid one-step fit but a
+corrupted later rollout. Rejection left live content and capacity unchanged.
+
+This is a stronger promotion invariant, not a claim of general continual
+learning. The next bottleneck is the same gate under noisy, partial,
+contradictory nonlinear evidence, where candidate identity and rollout
+verification must remain reliable without replaying old observations.
+
+Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_recursive_candidate_promotion_verified_2026-08-10/`.

@@ -2841,6 +2841,7 @@ class ExternalTransitionModelCandidateReceipt:
     reason: str
     slot_id: int | None = None
     schema: str = EXTERNAL_TRANSITION_MODEL_CANDIDATE_SCHEMA
+    heldout_rollout_error: float | None = None
 
     def validate(self) -> ExternalTransitionModelCandidateReceipt:
         if self.schema != EXTERNAL_TRANSITION_MODEL_CANDIDATE_SCHEMA:
@@ -2853,6 +2854,11 @@ class ExternalTransitionModelCandidateReceipt:
             raise ValueError("transition-model candidate slot ID is invalid")
         if not math.isfinite(self.heldout_error) and self.accepted:
             raise ValueError("accepted transition-model candidate error is invalid")
+        if self.heldout_rollout_error is not None and (
+            not math.isfinite(self.heldout_rollout_error)
+            or self.heldout_rollout_error < 0.0
+        ):
+            raise ValueError("transition-model candidate rollout error is invalid")
         if not isinstance(self.candidate_digest, str) or not self.candidate_digest:
             raise ValueError("transition-model candidate digest is missing")
         if not isinstance(self.reason, str) or not self.reason:
@@ -6229,6 +6235,8 @@ class ExternalOnlineTransitionContextRouter:
         prediction_tolerance: float = 0.05,
         candidate_index: int = 0,
         destination_capacity: int | None = None,
+        heldout_rollout: ExternalTransitionRollout | None = None,
+        rollout_error_tolerance: float | None = None,
     ) -> ExternalTransitionModelCandidateReceipt:
         """Commit a provisional model only after held-out and retention proof.
 
@@ -6241,6 +6249,17 @@ class ExternalOnlineTransitionContextRouter:
 
         if prediction_tolerance < 0.0:
             raise ValueError("candidate prediction tolerance cannot be negative")
+        if rollout_error_tolerance is not None and rollout_error_tolerance < 0.0:
+            raise ValueError("candidate rollout tolerance cannot be negative")
+        if heldout_rollout is None and rollout_error_tolerance is not None:
+            raise ValueError(
+                "rollout error tolerance requires a held-out transition rollout"
+            )
+        if heldout_rollout is not None:
+            heldout_rollout.validate(
+                state_width=self.bank.state_width,
+                intention_width=self.bank.intention_width,
+            )
         if destination_capacity is not None:
             if not isinstance(destination_capacity, int):
                 raise TypeError("destination capacity must be an integer")
@@ -6388,6 +6407,32 @@ class ExternalOnlineTransitionContextRouter:
                 content_digest_after=before,
                 reason="held-out candidate prediction failed",
             ).validate()
+        heldout_rollout_error: float | None = None
+        if heldout_rollout is not None:
+            rollout_error_tolerance = (
+                prediction_tolerance
+                if rollout_error_tolerance is None
+                else rollout_error_tolerance
+            )
+            heldout_rollout_error = ExternalModelBasedPlanner(
+                candidate_bank,
+                beam_width=1,
+            ).rollout_error(
+                heldout_rollout,
+                transition_context=context.unsqueeze(0),
+            )
+            if heldout_rollout_error > rollout_error_tolerance:
+                return ExternalTransitionModelCandidateReceipt(
+                    accepted=False,
+                    slot_index=None,
+                    context_count=self.bank.context_count,
+                    heldout_error=heldout_error,
+                    candidate_digest=candidate_digest,
+                    content_digest_before=before,
+                    content_digest_after=before,
+                    reason="held-out recursive candidate rollout failed",
+                    heldout_rollout_error=heldout_rollout_error,
+                ).validate()
         if not bool(retention_probe(candidate_bank)):
             return ExternalTransitionModelCandidateReceipt(
                 accepted=False,
@@ -6398,6 +6443,7 @@ class ExternalOnlineTransitionContextRouter:
                 content_digest_before=before,
                 content_digest_after=before,
                 reason="candidate retention probe failed",
+                heldout_rollout_error=heldout_rollout_error,
             ).validate()
 
         promoted_model = self.bank._new_model(selected_family)
@@ -6441,11 +6487,18 @@ class ExternalOnlineTransitionContextRouter:
             content_digest_after=after,
             slot_id=self.bank.slot_id_at(slot_index),
             reason=(
-                "held-out and retention-verified candidate promotion with "
+                "held-out, recursive-rollout, and retention-verified candidate "
+                "promotion with capacity growth committed"
+                if destination_capacity is not None and heldout_rollout_error is not None
+                else "held-out, recursive-rollout, and retention-verified candidate "
+                "promotion committed"
+                if heldout_rollout_error is not None
+                else "held-out and retention-verified candidate promotion with "
                 "capacity growth committed"
                 if destination_capacity is not None
                 else "held-out and retention-verified candidate promotion committed"
             ),
+            heldout_rollout_error=heldout_rollout_error,
         ).validate()
 
     @staticmethod

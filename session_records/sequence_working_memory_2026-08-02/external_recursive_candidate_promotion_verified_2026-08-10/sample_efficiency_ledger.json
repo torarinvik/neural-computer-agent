@@ -1,0 +1,23 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "external_recursive_candidate_promotion_verified",
+  "decision": "promote",
+  "claim_boundary": "three-seed recursive rollout-gated copy-on-write promotion on a tiny affine dynamics family; not general continual learning",
+  "seeds": [84001, 84002, 84003],
+  "accounting": {
+    "unique_verifier_bits_per_seed": 12,
+    "unique_logical_lifetimes_per_seed": 12,
+    "candidate_statistics_updates_per_seed": 12,
+    "controller_optimizer_updates": 0,
+    "old_regime_replay_during_target_adaptation": 0,
+    "recursive_rollout_error_threshold": 0.000001
+  },
+  "gates": {
+    "all_three_seeds_promoted": true,
+    "source_and_target_recursive_promotions": true,
+    "automatic_growth_after_verified_acceptance": true,
+    "corrupted_recursive_candidate_rejected": true,
+    "rejected_candidate_did_not_write_live_state": true,
+    "controller_frozen": true
+  }
+}

@@ -2565,3 +2565,12 @@ alone is not sufficient evidence of multi-step deployed capability. The result
 still covers one finite nested dynamics family, not general continual learning.
 Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_transition_model_compounding_rollout_verified_promoted_2026-08-10/`.
+
+Recursive rollout verification is now part of the copy-on-write candidate
+promotion transaction itself. Across three seeds, a target regime grew
+external capacity only after one-step fit, recursive rollout, and retention
+passed; a corrupted candidate that passed one-step fit but failed recursive
+rollout was rejected without changing live content or capacity. This is a
+small affine pressure test, not general continual learning. Evidence is
+archived in
+`session_records/sequence_working_memory_2026-08-02/external_recursive_candidate_promotion_verified_2026-08-10/`.

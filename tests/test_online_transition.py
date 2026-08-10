@@ -11,6 +11,7 @@ from neural_computer import (
     ExternalTransitionModelBank,
     ExternalTransitionModelLifetimePolicy,
     ExternalTransitionObservation,
+    ExternalTransitionRollout,
 )
 
 
@@ -29,6 +30,19 @@ def _affine_observation(rows: int = 8) -> ExternalTransitionObservation:
     )
 
 
+def _affine_rollout(scale: float = 1.0) -> ExternalTransitionRollout:
+    weights = torch.tensor(
+        [[1.0, 0.2], [-0.3, 0.8], [0.7, -1.1], [0.4, -0.6]]
+    ) * scale
+    initial = torch.tensor([0.0, 1.0 / 7.0])
+    intentions = torch.tensor([[0.0]])
+    features = torch.cat((initial, intentions[0], torch.ones(1)))
+    expected = (features @ weights).unsqueeze(0)
+    return ExternalTransitionRollout(
+        initial_state=initial,
+        intentions=intentions,
+        expected_states=expected,
+    )
 class _DeterministicEvidenceGate(torch.nn.Module):
     """Test-only replaceable evaluator with an opaque factual boundary."""
 
@@ -502,6 +516,8 @@ def test_router_auto_grows_only_after_verified_candidate_promotion() -> None:
         source,
         lambda candidate: candidate.context_count == 1,
         prediction_tolerance=1e-8,
+        heldout_rollout=_affine_rollout(),
+        rollout_error_tolerance=1e-8,
     )
     assert source_receipt.accepted
     assert router.bank.capacity == 1
