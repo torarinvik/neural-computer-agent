@@ -1357,7 +1357,8 @@ the source slot present, the target rendered lifetime initially behaves through
 the known source model; its opaque transition rows are routed to the online
 external context router. The router stages a new target slot, consumes each
 six-row bundle once through affine sufficient statistics, and commits the slot
-only after a held-out prediction, recursive probe, and source-retention gate.
+only after a held-out prediction, recursive probe, source-retention gate, and
+matched fresh-candidate challenger.
 The default passing seed measured target error `0.00943` versus fresh `0.08691`,
 source error `0.37234 -> 0.37234`, `24` one-pass rows, and zero replay across
 `7` logical lifetimes. The three-seed ledger contains one passing run; nearby

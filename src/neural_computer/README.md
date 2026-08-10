@@ -180,7 +180,7 @@ not yet end-task acquisition or arbitrary goal discovery.
 The online discovery rung then starts with only the source transition slot.
 Target rendered transitions are staged under a newly inferred opaque context,
 learned once by the replay-free affine bank, and committed only after held-out,
-recursive, and source-retention gates. A passing seed routes later target
+recursive, source-retention, and matched fresh-candidate gates. A passing seed routes later target
 lifetimes back to the new slot while the source remains byte-stable. This
 boundary passes on one seed but is not promoted yet because neighboring seeds
 are rejected by the candidate gate; the next work is robust discovery followed

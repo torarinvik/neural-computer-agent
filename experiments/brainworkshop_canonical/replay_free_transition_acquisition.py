@@ -701,6 +701,12 @@ def run_online_transition_discovery_audit(
         defer_admission=True,
         max_contexts=2,
         provisional_evidence_policy="streaming_statistics",
+        prior_selection_probe=(
+            lambda transfer, fresh, observation: (
+                float(transfer.loss(observation).detach()),
+                float(fresh.loss(observation).detach()),
+            )
+        ),
     )
 
     # Acquire the target while still behaving through the known source slot.
@@ -742,7 +748,7 @@ def run_online_transition_discovery_audit(
         source_stable = source_digest == bank.models[source_index].digest()
         return OnlineTransitionDiscoveryReport(
             schema=(
-                "neural-computer.brainworkshop-online-transition-discovery-audit.v2"
+                "neural-computer.brainworkshop-online-transition-discovery-audit.v3"
             ),
             status="online_replay_free_transition_discovery_boundary_failed",
             controller_unchanged=unchanged,
@@ -818,7 +824,22 @@ def run_online_transition_discovery_audit(
             candidate_rollout,
             transition_context=candidate_context.unsqueeze(0),
         )
-        return candidate_error <= 0.2
+        fresh_probe_bank = ExternalTransitionModelBank(
+            state_width=bank.state_width,
+            intention_width=bank.intention_width,
+            context_width=bank.context_width,
+            model_family=EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY,
+            affine_ridge=affine_ridge,
+        )
+        fresh_probe_bank.ensure_context(candidate_context)
+        fresh_error = ExternalModelBasedPlanner(
+            fresh_probe_bank,
+            beam_width=4,
+        ).rollout_error(
+            candidate_rollout,
+            transition_context=candidate_context.unsqueeze(0),
+        )
+        return candidate_error <= 0.2 and candidate_error < fresh_error
 
     promotion = router.promote_staged_candidate(
         promotion_observation,
@@ -834,7 +855,7 @@ def run_online_transition_discovery_audit(
         source_stable = source_digest == bank.models[source_index].digest()
         return OnlineTransitionDiscoveryReport(
             schema=(
-                "neural-computer.brainworkshop-online-transition-discovery-audit.v2"
+                "neural-computer.brainworkshop-online-transition-discovery-audit.v3"
             ),
             status="online_replay_free_transition_discovery_boundary_failed",
             controller_unchanged=unchanged,
@@ -921,7 +942,7 @@ def run_online_transition_discovery_audit(
     )
     return OnlineTransitionDiscoveryReport(
         schema=(
-            "neural-computer.brainworkshop-online-transition-discovery-audit.v2"
+            "neural-computer.brainworkshop-online-transition-discovery-audit.v3"
         ),
         status=(
             "online_replay_free_transition_discovery_boundary"

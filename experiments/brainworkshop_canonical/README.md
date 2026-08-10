@@ -290,7 +290,7 @@ PYTHONPATH=src uv run python -m experiments.brainworkshop_canonical.replay_free_
 
 This starts with only a source factual slot, stages a novel rendered target
 slot from opaque transition evidence, and commits it only after held-out,
-recursive, and source-retention gates. It checks one-pass learning, route
-recovery, and source retention. It is deliberately a boundary audit rather
+recursive, source-retention, and matched fresh-candidate gates. It checks
+one-pass learning, route recovery, and source retention. It is deliberately a boundary audit rather
 than a general continual-learning claim; the seed ledger is in
 `session_records/online_transition_discovery_2026-08-11/sample_efficiency_ledger.json`.
