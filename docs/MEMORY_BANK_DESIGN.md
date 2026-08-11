@@ -7985,3 +7985,65 @@ So the filter is not wrong; it answers a question the stopping rule is
 not asking. It should pay at `--fit-target 1.0`, which is a separate
 measurement and cheap to make. Caught in a smoke test before spending
 real compute, by asking why the predicted 1.5-2.4x did not appear.
+
+## F164 — the reader's gap is a BUDGET problem with a seed-dependent
+## ceiling, and the curve is smooth, not grokking
+
+Two long runs, finally read. `bool_compose.py --iterate --bind-params
+--contrastive-aux 1.0`, at 200k updates (five times the standard 40k)
+and at 150k with held-out evaluation every 2500.
+
+This settles the question F147 and F154 left open: is the reader's
+shortfall an **amortization gap** — the network cannot express what an
+optimised entry can — or is it **slow optimization**? F138 had shown
+the reader is CAPABLE, reaching 0.9723 when distilled from a privileged
+entry while ordinary task-loss training stayed near chance.
+
+**It is budget.** Exact-match on held-out programs, trained worlds:
+
+| updates | seed 69316 | seed 69317 |
+| --- | ---: | ---: |
+| 40k (F133 era) | ~0.33 | ~0.35 |
+| 150k | 0.3934 | 0.8672 |
+| 200k | 0.3776 | **0.9372** |
+
+Seed 69317 at 200k reaches 0.9372, against F138's privileged-entry
+ceiling of 0.9723. The amortization gap is not fixed and not large —
+it very nearly closes with more steps.
+
+**The curve is smooth and saturating. It is NOT grokking.** Per-bit
+accuracy on held-out programs, sampled every 2500 updates:
+
+```
+seed 69316   0.489  0.650  0.803  0.809  0.723  0.787  0.829  0.824  0.857  0.840  0.842  0.819
+seed 69317   0.495  0.588  0.829  0.881  0.844  0.917  0.937  0.922  0.955  0.943  0.922  0.901
+                0    12.5k   25k  37.5k    50k  62.5k    75k  87.5k   100k 112.5k   125k 137.5k
+```
+
+Both rise steadily from bit-chance, both bend over by 25k, and neither
+shows the flat-then-jump shape that would have implicated a delayed
+generalisation mechanism. So the weight-decay clock and the grokking
+literature are the wrong frame for this, and the sixteen probes spent
+on mechanism substitutes — semi-amortization, refinement, codebooks,
+contrastive variants — were all attacking a problem whose answer was
+"run it longer".
+
+**The new question is the CEILING, not the gap.** The two seeds
+converge to visibly different asymptotes, 0.84 and 0.95 per-bit, and
+that difference survives 137,500 updates rather than closing. Seed
+variance at this scale is not noise around one solution; it is two
+different solutions. Both runs also show a late DECLINE — 69317 peaks
+at 0.955 by 100k and falls to 0.901 by 137.5k — so more budget past the
+peak is not free either.
+
+Causal nulls hold throughout: withheld entry 0.005-0.009 against 0.0039
+chance, and the stranger-entry control at 0.25 on the strong seed
+against 0.73 with its own entry. The entry is doing the work.
+
+**What this changes.** "The reader cannot learn to read" is retired.
+The live questions are why two seeds settle at different ceilings, and
+what the late decline is. Both are about the optimisation trajectory
+rather than about the architecture, which is a much better place to be
+than where this track has been since F117.
+
+Probes 260 and 261 are `sat-200k` and `cv-shape`, 2 seeds each.

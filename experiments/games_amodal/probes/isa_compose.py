@@ -187,6 +187,17 @@ parser.add_argument(
          "check costs no forward pass, so it converts search cost from "
          "candidates PROPOSED into candidates EVALUATED, and the report "
          "carries both.")
+parser.add_argument(
+    "--infer-moduli", action="store_true",
+    help="OBSERVE each slot's modulus instead of searching it. Implies "
+         "--moduli for the interpreter, which must still be trained on "
+         "all of them, but the SEARCH fixes m per slot from the largest "
+         "value that slot is ever seen holding. F162 showed the modulus "
+         "argument buys expressibility (+0.0439 on short-ranged "
+         "families) and costs a seven-times wider search (-0.0108 on "
+         "full-range ones). This should keep the first and remove the "
+         "second, because the instruction space returns to its original "
+         "size once m is determined by i.")
 parser.add_argument("--curve-every", type=int, default=0)
 parser.add_argument("--json", default="")
 args = parser.parse_args()
@@ -211,7 +222,8 @@ NOPS = len(OPS)
 # an instruction becomes (op, i, j, m) and the interpreter learns
 # modular arithmetic parameterised by m exactly as it already learns
 # which slot to touch.
-MODULI = tuple(range(2, VALUES + 1)) if args.moduli else (VALUES,)
+MODULI = (tuple(range(2, VALUES + 1))
+          if (args.moduli or args.infer_moduli) else (VALUES,))
 NMOD = len(MODULI)
 
 
@@ -248,7 +260,19 @@ def run_program(program: list, state: torch.Tensor) -> torch.Tensor:
     return state
 
 
-def random_program(generator: torch.Generator, length: int) -> list:
+def random_program(generator: torch.Generator, length: int,
+                   mod_of_slot: list | None = None) -> list:
+    """`mod_of_slot` fixes each slot's modulus instead of searching it.
+
+    F162 measured the modulus argument buying +0.0439 fit on families
+    whose value range is narrower than VALUES and costing -0.0108 on
+    families at full range, with zero crossovers in fourteen — the
+    expressibility is real and the price is a seven-times wider search
+    that most families cannot use. But the modulus never had to be
+    SEARCHED: each slot's value range is visible in the transitions.
+    Reading it off the data names no domain, so this keeps the
+    expressibility and returns the instruction space to its original
+    size."""
     out = []
     for _ in range(length):
         op = int(torch.randint(0, NOPS, (1,), generator=generator))
@@ -256,7 +280,10 @@ def random_program(generator: torch.Generator, length: int) -> list:
         j = int(torch.randint(0, SLOTS, (1,), generator=generator))
         if i == j:
             j = (j + 1) % SLOTS
-        m = int(torch.randint(0, NMOD, (1,), generator=generator))
+        if mod_of_slot is not None:
+            m = mod_of_slot[i]
+        else:
+            m = int(torch.randint(0, NMOD, (1,), generator=generator))
         out.append((op, i, j, m))
     return out
 
@@ -425,6 +452,24 @@ if args.synthesize:
             seen |= written_slots(instruction)
         return needs <= seen
 
+    def infer_moduli(*tensors) -> list:
+        """Each slot's modulus, read straight off the observations.
+
+        The largest value a slot is ever seen holding fixes its range,
+        so `m_i = max observed + 1`. Clamped into the legal set. This is
+        a statistic of the data, not knowledge of any task: the same
+        line runs for a dial-turning rule family and a foraging grid."""
+        stack = torch.cat([t for t in tensors], dim=0)
+        out = []
+        for slot in range(SLOTS):
+            column = stack[:, slot]
+            column = column[column < VALUES]
+            wanted = (int(column.max()) + 1) if column.numel() else VALUES
+            wanted = min(max(wanted, MODULI[0]), MODULI[-1])
+            # nearest legal modulus at or above the observed range
+            out.append(min(k for k, m in enumerate(MODULI) if m >= wanted))
+        return out
+
     def covers_set(candidate, needs: set) -> bool:
         """`covers` without the global flag, so an ARM can turn the
         filter on while the other arms keep the old behaviour and stay
@@ -459,9 +504,11 @@ if args.synthesize:
                 continue
             src, dst = states[keep], nexts[keep]
             needs = writes_needed(src, dst)
+            fixed = infer_moduli(src, dst) if args.infer_moduli else None
             best, best_score, evaluated = None, -1.0, 0
             while evaluated < args.synthesize:
-                candidate = random_program(generator, args.program_len)
+                candidate = random_program(generator, args.program_len,
+                                           fixed)
                 proposed_total += 1
                 if not covers(candidate, needs):
                     continue
