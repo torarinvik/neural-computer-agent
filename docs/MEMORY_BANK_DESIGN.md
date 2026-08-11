@@ -7701,3 +7701,88 @@ of the library arms rather than acted on mid-run.
 architectural conclusions are ours; their new work (a fail-closed
 planner path, an active causal selector that failed at three seeds)
 addresses mechanisms this repository does not have.
+
+## F159 — the library, measured properly: storing programs pays a
+## little, learning statistics pays nothing
+
+F157's null was on the implementation, and the fix it named turned out
+to be the wrong fix. Recorded in full because the wrong turn is the
+informative part.
+
+**The first fix could not fire.** Weight fragments by usefulness, keep
+one only if it shortens description length — that was F157's plan and
+it is DreamCoder's mechanism. Implemented over CONCRETE instruction
+sequences it added ZERO fragments across nine families, and the arm
+came out byte-identical to its own control. The arithmetic says why:
+with NOPS x SLOTS x (SLOTS-1) = 210 distinct instructions, an exact
+three-instruction run recurring twice across ~36 winning programs is a
+coincidence we should never expect to observe. Caught in the smoke
+test, before the compute.
+
+**Fragments became OP-SKETCHES**: program shapes with arguments left
+free, filled from learned slot marginals at proposal time.
+"CINC then SWAP" recurs even when the slots differ, and it does — the
+library grows 7 -> 153 with counts up to 13. Untrained, the sketch
+proposer is EXACTLY uniform over the concrete atoms, so the arms start
+from the same distribution and differ only in what they learn.
+
+**Two harness faults, both found by reading results rather than by
+review.**
+
+1. *Pairing.* Search and observation sampling shared one generator.
+   The search consumes a different number of draws in every arm, so
+   from the second family onward each arm was solving a DIFFERENT
+   observation sample. Per-family costs were not comparable at all.
+   The observer is now seeded per family index.
+2. *Concentration collapse.* Raw usefulness counts are ~24 per family,
+   against a prior of 1, so ONE success made a used operation outweigh
+   an unused one ten to one. The learned arms then spent the entire
+   4000-candidate budget on families the uniform control solved in 30.
+   Evidence is now one vote per family, with the strength swept
+   instead of guessed.
+
+**Three seeds, eight arms, two sequences.** Ratios are arm cost over
+frozen-control cost, so below 1.0 is cheaper.
+
+| arm | diverse | related |
+| --- | ---: | ---: |
+| uniform — stores whole programs | **0.929** | **0.707** |
+| sketch@4 | 1.034 | 0.782 |
+| marginal@1 — instruction statistics only | 0.974 | 0.981 |
+| sketch@1 | 1.012 | 1.001 |
+| marginal@0 / marginal@4 / sketch@0 | 0.97-1.00 | 0.96-0.99 |
+
+**What survives.** `uniform` is below 1.0 in 6 of 6 sequence-seed
+cells, at roughly 7% on the diverse sequence (0.899, 0.984, 0.903).
+Every arm that learns STATISTICS about which instructions are good is
+null, and several are worse than not learning at all. That is the
+opposite of the direction the sketch machinery was built for.
+
+**What does not survive, and it is the number that looked best.** One
+seed had `uniform` at 0.288 on the related sequence with a textbook
+reuse curve — costs of 429, 43, 302, 35 where frozen paid 8048, 3071,
+6912, 8001. The next two seeds read 0.940 and 0.892. Reported here
+only because it was already reported as promising, and because the
+cause is now known: the related families were drawn from the RUN seed,
+so "related" meant a different geometry per seed and the between-seed
+variance was task variance, not search variance. The task set is now
+fixed across seeds.
+
+**F157's null was directionally right and I over-called it.** Its
+paired per-family ratio was 0.944; this measurement gives 0.929 on a
+different statistic. Both are small, both below 1. F157 had no power
+to distinguish that from zero and I called it a null; the honest
+description was always "too small to resolve at two seeds".
+
+**What is not yet established, and it is the whole claim.** A stored
+winner is a FULL-LENGTH element, so drawing one fills the program in a
+single pick — that changes the proposal distribution whatever the
+element contains. The 7% could be element length rather than reuse.
+Probe 258 adds the causal null (`shuffled`: same count, same lengths,
+RANDOM contents) and an instrument that observes the mechanism
+directly rather than inferring it from cost — how many winning
+programs were LITERALLY produced by an earlier family. The frozen arm
+reads 0 recalled, so it is the coincidence baseline, and any nonzero
+recall elsewhere is genuine reuse.
+
+Probe 257 is `isa_compose.py --library-arms`, 3 seeds, 8 arms.

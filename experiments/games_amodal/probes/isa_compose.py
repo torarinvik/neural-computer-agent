@@ -150,6 +150,16 @@ parser.add_argument(
          "condition where reuse is least able to help by construction, "
          "so a null there alone cannot distinguish a broken library from "
          "tasks with nothing in common.")
+parser.add_argument(
+    "--arms", default="",
+    help="comma-separated subset of arm labels to run. Three seeds "
+         "found the statistics arms null, so spending their compute on "
+         "more SEEDS of the arms that moved is the better trade — a 7 "
+         "percent effect needs seeds, not more variants.")
+parser.add_argument("--related-seed", type=int, default=20260811,
+                    help="draw for the related sequence, held FIXED "
+                         "across run seeds so the task set is a "
+                         "constant and only search varies")
 parser.add_argument("--fit-target", type=float, default=0.95,
                     help="search stops once a candidate reaches this "
                          "fit, so COST (candidates tried) is the "
@@ -720,6 +730,19 @@ if args.synthesize:
                 for program in winners:
                     library.append(program)
                 continue
+            if kind == "shuffled":
+                # THE CAUSAL NULL for storing programs. A stored winner
+                # is a full-length element, and drawing one fills the
+                # whole program in a single pick — which changes the
+                # proposal distribution whatever the element CONTAINS.
+                # So append the same number of full-length elements
+                # drawn at RANDOM. If this matches the arm that stores
+                # real winners, the gain is a sampling artefact of
+                # element length and not reuse at all.
+                for _ in winners:
+                    library.append(tuple(random_program(
+                        generator, args.program_len)))
+                continue
             proposer.observe(winners, solved)
         return {"sequence": sequence, "started": started,
                 "ended": proposer.size() if proposer else len(library),
@@ -784,20 +807,39 @@ if args.synthesize:
                             RandomFamily(random_family_spec(gen))))
         sequences["diverse"] = diverse
         if args.related_families:
+            # SAME task set in every seed. Drawing these from the run
+            # seed made "related" mean a different geometry per seed,
+            # and per-family cost swings two orders of magnitude, so
+            # the between-seed variance was task variance rather than
+            # search variance — which is what made one seed read 0.288
+            # and the next 0.892 on the identical arm. Fixing the draw
+            # leaves the plant and the search RNG as the only things
+            # that differ.
+            fixed = torch.Generator().manual_seed(args.related_seed)
             sequences["related"] = [
                 (f"rel{index}", RandomFamily(spec)) for index, spec
-                in enumerate(related_specs(gen, args.related_families))]
+                in enumerate(related_specs(fixed,
+                                           args.related_families))]
         # (kind, marginal mass, stored-program weight). Mass is fixed at
         # one vote per family throughout; the SWEEP is on how much
         # weight a stored program carries, because that is what the
         # first corrected seed made the live question.
         arms = [("frozen", 0.0, 0.0), ("uniform", 0.0, 0.0),
+                ("shuffled", 0.0, 0.0),
                 ("marginal", 1.0, 0.0), ("sketch", 1.0, 0.0)]
         arms += [("sketch", 1.0, float(w))
                  for w in args.exact_weight.split(",") if float(w) > 0]
-        labels = [f"{kind}" if kind in ("frozen", "uniform")
+        labels = [kind if kind in ("frozen", "uniform", "shuffled")
                   else f"{kind}-e{exact:g}"
                   for kind, _, exact in arms]
+        if args.arms:
+            keep = set(args.arms.split(","))
+            missing = keep - set(labels)
+            if missing:
+                raise SystemExit(f"unknown arms {sorted(missing)}; "
+                                 f"available: {labels}")
+            arms = [a for a, l in zip(arms, labels) if l in keep]
+            labels = [l for l in labels if l in keep]
         report["library_arms"] = {
             tag: {label: library_run(arm, seq, args.synthesize,
                                      args.seed * 7907)
