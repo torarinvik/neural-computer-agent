@@ -1785,3 +1785,10 @@ validation at the new gain.
 The gain screen is recorded separately in
 `session_records/window_gain_screen_2026-08-11/`; it rejects changing the
 global default on this evidence.
+
+Widening the one-step held-out model-family tolerance from `0.05` to `0.10`
+or `0.15` produced the same hard-regime complete gates (`5/8` active,
+`4/8` passive) under the same evidence budget. The gate is therefore not
+being rescued by a looser threshold; recursive and retention checks remain
+the correct boundary. This negative screen is recorded in
+`session_records/promotion_tolerance_screen_2026-08-11/`.
