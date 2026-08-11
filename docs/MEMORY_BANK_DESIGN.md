@@ -8381,3 +8381,50 @@ unresolved. A system that must search thousands of candidates per
 action is also not yet a system that has LEARNED anything from having
 solved a family before — F161 measured that transfer honestly at about
 a tenth of the search cost.
+
+## F170 — the equality-guard hole does NOT exist, so the guard should
+## not be built
+
+The next expressiveness extension under discussion was an equality
+guard, `CINC_EQ i,j,v`, on the reasoning that our conditionals gate
+only on "slot j is non-zero" and so cannot express an effect that fires
+when a slot holds a PARTICULAR value. That is true of the basis. The
+question is whether it costs anything, and the rule this project has
+earned is to find the failure signature BEFORE extending — which is
+exactly why the modulus was worth adding, since `toggle` failed loudly
+first.
+
+Three seeds, inferred modulus, with `walled` and two procedurally gated
+families added as synthesis targets:
+
+| family | held-out | identity floor | margin | per seed |
+| --- | ---: | ---: | ---: | --- |
+| walled | 0.9160 | 0.6107 | +0.3053 | 0.914, 0.926, 0.908 |
+| gate0 | 0.9796 | 0.6799 | +0.2997 | 0.949, 0.990, 1.000 |
+| gate1 | 0.9863 | 0.4501 | +0.5363 | 0.973, 1.000, 0.986 |
+| the seven plain families | 0.9781 | 0.5525 | +0.4256 | — |
+
+**Gated 0.9607 against plain 0.9781.** Two of the three gated families
+fit as well as anything else in the set — `gate1` at 0.9863 is above
+five of the seven plain families. There is no gated failure to fix.
+
+`walled` is the weakest of all ten families, and reproducibly so:
+0.914, 0.926, 0.908 is far too tight to be noise. But it is weakest by
+about four points against a family it clears its own identity floor by
+thirty, and one family four points down does not justify a new
+instruction class whose cost would be a wider search on all ten. F92's
+"decisive failure" on walled was measured in a different probe with a
+learned policy; it does not reproduce as an expressibility failure
+here.
+
+**Recorded as a negative that prevented a build.** The guard was the
+third priority on an outside recommendation and it looked well
+motivated. Measuring first cost three runs; building it first would
+have cost an instruction-set change, a retrain, and the same
+extrapolation debate the modulus is still having — for a hole that is
+not there.
+
+The rule generalises and is worth stating plainly: **an extension needs
+a failure signature, not an argument.** The modulus had one — toggle at
+exactly 50% on the slots it touched, arithmetic, no network. The guard
+has an argument and no signature.
