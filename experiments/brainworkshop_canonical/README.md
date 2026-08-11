@@ -335,3 +335,19 @@ recover, all eight beat a matched fresh challenger, and source retention stays
 `24/24`, with zero replay and zero optimizer updates. This is a bounded route
 recovery improvement, not general continual learning. The full ledger is in
 `session_records/recency_window_preferred_recovery_2026-08-11/sample_efficiency_ledger.json`.
+
+The downstream destination-composition rung can be run with:
+
+```bash
+PYTHONPATH=src uv run python -m experiments.brainworkshop_canonical.goal_conditioned_planning
+```
+
+It freezes the controller and decoder, learns a replay-free factual transition
+slot from rendered lifetimes, admits a learned state as an opaque goal file,
+and compares goal-conditioned search with a matched fresh factual slot. Seed
+`93` measured `0.01062` trained terminal error versus `0.07726` fresh, with
+zero replay and zero optimizer updates. This qualifies downstream use of a
+goal fragment, not end-task mastery or general continual learning; the next
+pressure test is a multi-step, structurally diverse acquisition curve. Seeds
+`91`, `92`, and `93` all passed the bounded rung; the ledger is in
+`session_records/goal_conditioned_planning_2026-08-11/sample_efficiency_ledger.json`.

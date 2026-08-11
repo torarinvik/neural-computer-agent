@@ -8971,3 +8971,24 @@ raw and adjusted errors in a v2 receipt. With all costs zero, the historical
 error-only behavior and v1 receipt remain unchanged. This turns “retrieve
 before adapting” into a reversible, auditable decision rule rather than an
 unmeasured preference.
+
+## Goal-conditioned downstream planning boundary (2026-08-11)
+
+The canonical Brain Workshop harness now exercises the missing composition
+step after goal-fragment admission. The controller, frontend, and decoder are
+frozen; an affine external factual slot consumes three rendered lifetimes once
+through sufficient statistics. A state from a held-out learned trajectory is
+staged as an opaque goal fragment using a deterministic goal-distance probe,
+then admitted copy-on-write and supplied to `ExternalModelBasedPlanner`.
+
+On seed `93`, the learned factual slot planned to the admitted destination with
+terminal error `0.01062`, compared with `0.07726` for a matched fresh slot using
+the same destination file and candidate intention set. The run consumed `18`
+transition rows and `16` unique rendered verifier bits, replayed no examples,
+performed no optimizer updates, and left the controller byte-stable. Missing
+evidence and a corrupted candidate were rejected. The result qualifies only
+the downstream CPU/files composition: it does not establish multi-step goal
+discovery, end-task Brain Workshop mastery, arbitrary new computation,
+unrestricted growth, or general continual learning. The three-seed replication
+(`91`, `92`, `93`) passed the same bounded gates; the ledger is
+`session_records/goal_conditioned_planning_2026-08-11/sample_efficiency_ledger.json`.

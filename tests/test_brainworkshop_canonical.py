@@ -9,6 +9,9 @@ from experiments.brainworkshop_canonical import (
     NBackVerifier,
     train_reward_only,
 )
+from experiments.brainworkshop_canonical.goal_conditioned_planning import (
+    run_goal_conditioned_planning_audit,
+)
 from experiments.brainworkshop_canonical.goal_fragment_staging import (
     run_goal_fragment_staging_audit,
 )
@@ -147,6 +150,24 @@ def test_goal_fragment_staging_uses_real_verifier_bits_without_controller_update
     assert not report.fresh_candidate_accepted
     assert not report.inverted_outcome_accepted
     assert not report.reversal_accepted
+
+
+def test_admitted_goal_fragment_changes_frozen_core_downstream_planning() -> None:
+    report = run_goal_conditioned_planning_audit(seed=93)
+
+    assert report.status == "goal_conditioned_external_planning_boundary"
+    assert report.controller_unchanged
+    assert report.replay_free_bank
+    assert report.goal_fragment_admitted
+    assert report.goal_fragment_used
+    assert report.trained_planner_improved_over_fresh
+    assert report.trained_terminal_error < report.fresh_terminal_error
+    assert report.transition_rows_consumed_once == 18
+    assert report.unique_verifier_bits == 16
+    assert report.optimizer_updates == 0
+    assert report.replayed_examples == 0
+    assert report.missing_evidence_rejected
+    assert report.corrupted_goal_rejected
 
 
 def test_rendered_transition_acquisition_improves_heldout_error_without_replay() -> None:

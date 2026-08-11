@@ -1504,3 +1504,26 @@ unchanged controller. The gain is deliberately bounded: it removes one
 post-promotion route failure but does not establish general continual learning.
 The full accounting is in
 `session_records/recency_window_preferred_recovery_2026-08-11/sample_efficiency_ledger.json`.
+
+## Goal-conditioned downstream planning (2026-08-11)
+
+`experiments/brainworkshop_canonical/goal_conditioned_planning.py` now closes
+the immediate destination-memory gap. The controller, rendered frontend, and
+keypress decoder are frozen. Three fresh rendered lifetimes teach an external
+affine transition slot one row at a time; a held-out learned planner state is
+staged through `ExternalGoalFragmentStager` using a deterministic opaque goal
+probe, admitted copy-on-write into `ExternalGoalFragmentMemory`, and passed to
+the ordinary model-based planner. A matched fresh transition bank receives the
+same goal file and candidate intentions.
+
+The canonical seed measured trained terminal goal error `0.01062` versus
+`0.07726` for the fresh bank, with `18` transition rows consumed once, `16`
+unique rendered verifier bits, zero optimizer updates, zero replayed examples,
+an unchanged controller, and one durable goal fragment. Missing-evidence and
+corrupted-goal candidates were rejected. This promotes composition of learned
+external facts with an admitted destination, not Brain Workshop mastery:
+multi-step goal acquisition, arbitrary computation, unrestricted memory growth,
+positive transfer across structurally diverse families, and general continual
+learning remain open. The three-seed replication (`91`, `92`, `93`) passed all
+the same bounded gates; its complete accounting is in
+`session_records/goal_conditioned_planning_2026-08-11/sample_efficiency_ledger.json`.
