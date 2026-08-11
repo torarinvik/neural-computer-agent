@@ -378,6 +378,25 @@ def test_active_discovery_reports_a_changed_target_regime() -> None:
     assert report.replayed_examples == 0
 
 
+def test_active_discovery_handles_a_disappearing_provisional_candidate() -> None:
+    report = run_online_transition_discovery_audit(
+        seed=84,
+        window_statistics="masked_mean_and_max_v1",
+        window_gain=0.05,
+        goal_conditioned=True,
+        prior_selection_fresh_cost=1.0,
+        prior_selection_cost_weight=0.2,
+        discovery_probe_mode="active",
+        target_n_back=5,
+        target_cue_symbol=6,
+    )
+
+    assert report.target_promotion_accepted is False
+    assert report.target_promotion_reason == "no provisional target candidate was staged"
+    assert report.controller_unchanged
+    assert report.replayed_examples == 0
+
+
 def test_online_transition_discovery_can_learn_external_selection_cost() -> None:
     report = run_online_transition_discovery_audit(
         seed=91,

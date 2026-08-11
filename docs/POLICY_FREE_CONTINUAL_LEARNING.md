@@ -1739,3 +1739,21 @@ claim of universal transfer or general continual learning. The remaining
 binding weakness is reliable held-out model identification and credit
 assignment under regime change. The ledger is in
 `session_records/active_discovery_transfer_2026-08-11/`.
+
+## Masked context transfer on a harder target regime (2026-08-11)
+
+The harder n-back-5 target exposed that the recency/latest context summary was
+not the only viable boundary. A matched screen of the existing
+`masked_mean_and_max_v1` summary gave active discovery `11/24` complete target
+gates versus `7/24` for passive exposure, with five active wins, one active
+loss, and eighteen ties. Both arms retained the source slot in `24/24` runs,
+consumed `678` transition rows once, used `102` probe rows, replayed zero
+examples, and left the controller unchanged. Active consumed `416` unique
+verifier bits; passive consumed `405`.
+
+This promotes the masked context summary as a targeted evidence-routing option
+for the harder regime, not as a universal default. Candidate staging remains
+the largest failure class (`7` active and `9` passive rejections), so the next
+high-ROI change is a better pre-admission evidence/credit boundary rather than
+more model capacity. The ledger is in
+`session_records/active_discovery_masked_transfer_2026-08-11/`.

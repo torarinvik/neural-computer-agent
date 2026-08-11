@@ -1156,7 +1156,11 @@ def run_online_transition_discovery_audit(
                 and prior_receipt.schema.endswith("prior-selection.v2")
             )
         target_result = routed
-    if discovery_probe_mode != "none" and target_candidate_staged:
+    if (
+        discovery_probe_mode != "none"
+        and target_candidate_staged
+        and router.provisional_candidate_count
+    ):
         candidate_context = router.provisional_context_at(0)
         active_probe_bank = ExternalTransitionModelBank.from_payload(bank.payload())
         active_probe_index = active_probe_bank.ensure_context(
