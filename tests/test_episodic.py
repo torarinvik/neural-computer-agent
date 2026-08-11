@@ -21,6 +21,7 @@ from neural_computer import (
     ExternalComputeCandidateScreen,
     ExternalFastWeightCapabilityProgram,
     ExternalProgramFastCell,
+    ExternalWorkingMemoryCell,
     IntentEvent,
     LearnedComputeCandidateScreen,
     LearnedOpaqueCandidateKeyMemory,
@@ -1316,6 +1317,70 @@ def test_adaptive_relation_reader_can_expand_without_losing_shared_weights() -> 
     assert expanded.age_embedding.shape == (7, 8)
     for name, value in before.items():
         assert torch.equal(value, dict(expanded.named_parameters())[name])
+
+
+def test_external_working_memory_cell_reads_before_write_and_persists() -> None:
+    cell = ExternalWorkingMemoryCell(
+        event_width=4,
+        action_width=2,
+        memory_capacity=3,
+        context_width=6,
+        hidden=8,
+    )
+    state = cell.initial_state(1, device="cpu")
+    first_event = torch.randn(1, 4)
+    first_action = torch.tensor([[1.0, 0.0]])
+    first_outcome = torch.ones(1)
+
+    before = state.events.clone()
+    before_read = cell.read(first_event, state)
+    context, next_state = cell.step(
+        first_event,
+        first_action,
+        first_outcome,
+        state,
+    )
+
+    assert context.shape == (1, 6)
+    assert torch.equal(state.events, before)
+    assert torch.allclose(context, before_read)
+    assert torch.equal(next_state.events[:, -1], first_event)
+    assert bool(next_state.present[:, -1].all())
+
+    payload = cell.state_payload(next_state)
+    restored = cell.state_from_payload(payload)
+    assert all(
+        torch.equal(getattr(restored, name), getattr(next_state, name))
+        for name in ("events", "actions", "outcomes", "present")
+    )
+
+
+def test_external_working_memory_cell_grows_from_the_newest_rows() -> None:
+    cell = ExternalWorkingMemoryCell(
+        event_width=3,
+        action_width=2,
+        memory_capacity=2,
+        context_width=5,
+        hidden=7,
+    )
+    state = cell.initial_state(1, device="cpu")
+    rows = []
+    for index in range(2):
+        event = torch.full((1, 3), float(index + 1))
+        rows.append(event)
+        _, state = cell.step(
+            event,
+            torch.zeros(1, 2),
+            torch.ones(1),
+            state,
+        )
+
+    grown = cell.grow(4)
+    grown_state = cell.grow_state(state, 4)
+    assert grown.memory_capacity == 4
+    assert torch.equal(grown_state.events[:, -2], rows[0])
+    assert torch.equal(grown_state.events[:, -1], rows[1])
+    assert not bool(grown_state.present[:, :2].any())
 
 
 def test_paired_event_credit_loss_returns_detached_counterfactual_advantage() -> None:

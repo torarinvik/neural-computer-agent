@@ -1600,6 +1600,14 @@ is a rendered Brain Workshop transfer audit with complete-prefix retention and
 zero-replay controls. See
 `session_records/external_program_fast_cell_transfer_2026-08-11/`.
 
+The canonical runtime now also accepts `ExternalWorkingMemoryCell` as a
+versioned causal memory boundary. It reads old state before appending the
+current learned event/action/outcome row, supports tensor-only persistence and
+capacity growth, and is independent of controller weights. The replicated
+causal audit reaches `1.0` fresh-state n-back-2 accuracy on two seeds with a
+frozen codec; n-back-3 remains at chance. See
+`session_records/brainworkshop_causal_working_memory_transfer_2026-08-11/`.
+
 The policy-free factual seam also exposes
 `ExternalControllerEventWindowStateAdapter`. It preserves the compact opaque
 controller state while folding bounded event-window statistics into the same

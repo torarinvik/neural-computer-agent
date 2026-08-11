@@ -21,6 +21,7 @@ from neural_computer import (
     ExternalIntentionObservationReceipt,
     ExternalIntentionProposal,
     ExternalIntentionRepertoire,
+    ExternalWorkingMemoryCell,
     KeypressDecoder,
     KeypressEncoder,
     OnlineEpisodicRelationReader,
@@ -132,6 +133,7 @@ class CanonicalBrainWorkshopAgent(nn.Module):
         reader_kind: str = "context",
         seed: int = 0,
         intention_repertoire: ExternalIntentionRepertoire | None = None,
+        working_memory_cell: ExternalWorkingMemoryCell | None = None,
     ) -> None:
         super().__init__()
         if n_back < 1:
@@ -198,13 +200,28 @@ class CanonicalBrainWorkshopAgent(nn.Module):
             if intention_repertoire is not None
             else ExternalIntentionRepertoire(intention_width)
         )
-        self.relation_reader = OnlineEpisodicRelationReader(
-            event_width,
-            NBackVerifier.action_count,
-            memory_capacity=max(2, n_back + 1),
-            context_width=event_width,
-            hidden=max(16, event_width),
-        )
+        if working_memory_cell is not None:
+            if reader_kind != "relation":
+                raise ValueError(
+                    "an external working-memory cell requires relation reader mode"
+                )
+            if (
+                working_memory_cell.event_width != event_width
+                or working_memory_cell.action_width != NBackVerifier.action_count
+                or working_memory_cell.context_width != event_width
+            ):
+                raise ValueError(
+                    "working-memory cell dimensions do not match the canonical agent"
+                )
+            self.relation_reader = working_memory_cell
+        else:
+            self.relation_reader = OnlineEpisodicRelationReader(
+                event_width,
+                NBackVerifier.action_count,
+                memory_capacity=max(2, n_back + 1),
+                context_width=event_width,
+                hidden=max(16, event_width),
+            )
         self.extensions = nn.ModuleList()
         self.route_evidence = PersistentOpaqueRouteEvidence()
         self.route_evidence.append_slot()
@@ -224,6 +241,14 @@ class CanonicalBrainWorkshopAgent(nn.Module):
             if self.reader_kind == "context"
             else self.relation_reader
         )
+
+    @property
+    def working_memory_cell(self) -> ExternalWorkingMemoryCell | None:
+        """Return the versioned causal cell when one owns relation state."""
+
+        if isinstance(self.relation_reader, ExternalWorkingMemoryCell):
+            return self.relation_reader
+        return None
 
     @property
     def keypress_decoder(self) -> KeypressDecoder:

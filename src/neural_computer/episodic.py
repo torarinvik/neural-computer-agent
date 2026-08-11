@@ -11,6 +11,7 @@ is not a controller branch or a symbolic task solver.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 
 import torch
@@ -38,6 +39,11 @@ class OnlineEpisodicRelationState:
     actions: torch.Tensor
     outcomes: torch.Tensor
     present: torch.Tensor
+
+
+EXTERNAL_WORKING_MEMORY_CELL_SCHEMA = (
+    "neural-computer.external-working-memory-cell.v1"
+)
 
 
 def _validate_episode_inputs(
@@ -686,6 +692,261 @@ class AdaptiveOnlineEpisodicRelationReader(OnlineEpisodicRelationReader):
             present=torch.cat((state.present[:, 1:], present.unsqueeze(1)), dim=1),
         )
         return context, next_state
+
+
+class ExternalWorkingMemoryCell(nn.Module):
+    """Versioned external working memory with an explicit causal boundary.
+
+    The cell owns the learned relation codec while its event/action/outcome
+    window is runtime state.  :meth:`step` reads the current event against the
+    old state and only then appends the current row.  This makes it impossible
+    for a memory audit to claim action-production capability by reading a value
+    after the same value was written.
+
+    The payload contains only learned event tensors, opaque actions, scalar
+    outcomes, and presence.  It is therefore a memory file, not a controller
+    checkpoint or a modality-specific branch.  Capacity can grow by padding
+    the oldest side of the window while preserving the newest logical rows.
+    """
+
+    schema = EXTERNAL_WORKING_MEMORY_CELL_SCHEMA
+
+    def __init__(
+        self,
+        event_width: int,
+        action_width: int,
+        *,
+        memory_capacity: int = 8,
+        context_width: int = 32,
+        hidden: int = 64,
+    ) -> None:
+        super().__init__()
+        if min(
+            event_width,
+            action_width,
+            memory_capacity,
+            context_width,
+            hidden,
+        ) < 1:
+            raise ValueError("working-memory cell dimensions must be positive")
+        self.event_width = int(event_width)
+        self.action_width = int(action_width)
+        self.memory_capacity = int(memory_capacity)
+        self.context_width = int(context_width)
+        self.hidden = int(hidden)
+        self.reader = AdaptiveOnlineEpisodicRelationReader(
+            event_width,
+            action_width,
+            memory_capacity=memory_capacity,
+            context_width=context_width,
+            hidden=hidden,
+        )
+
+    def configuration(self) -> dict[str, int | str]:
+        return {
+            "schema": self.schema,
+            "event_width": self.event_width,
+            "action_width": self.action_width,
+            "memory_capacity": self.memory_capacity,
+            "context_width": self.context_width,
+            "hidden": self.hidden,
+            "reader_schema": self.reader.schema,
+            "read_order": "read_old_state_then_append_current_row_v1",
+            "state": "external_tensor_window_v1",
+            "write_fields": "learned_event_opaque_action_scalar_outcome_presence_v1",
+        }
+
+    def initial_state(
+        self,
+        batch_size: int,
+        *,
+        device: torch.device | str,
+        dtype: torch.dtype = torch.float32,
+    ) -> OnlineEpisodicRelationState:
+        return self.reader.initial_state(
+            batch_size,
+            device=device,
+            dtype=dtype,
+        )
+
+    def step(
+        self,
+        event: torch.Tensor,
+        action: torch.Tensor,
+        outcome: torch.Tensor,
+        state: OnlineEpisodicRelationState,
+        present: torch.Tensor | None = None,
+    ) -> tuple[torch.Tensor, OnlineEpisodicRelationState]:
+        """Read against ``state`` and append the current row afterward."""
+
+        return self.reader.step(event, action, outcome, state, present)
+
+    def read(
+        self,
+        event: torch.Tensor,
+        state: OnlineEpisodicRelationState,
+    ) -> torch.Tensor:
+        """Read current context without changing external state."""
+
+        action = torch.zeros(
+            event.shape[0],
+            self.action_width,
+            device=event.device,
+            dtype=event.dtype,
+        )
+        outcome = torch.zeros(event.shape[0], device=event.device, dtype=event.dtype)
+        present = torch.zeros(event.shape[0], dtype=torch.bool, device=event.device)
+        context, _ = self.reader.step(event, action, outcome, state, present)
+        return context
+
+    def grow_state(
+        self,
+        state: OnlineEpisodicRelationState,
+        memory_capacity: int,
+    ) -> OnlineEpisodicRelationState:
+        """Grow state without discarding the newest logical rows."""
+
+        if memory_capacity <= self.memory_capacity:
+            raise ValueError("working-memory growth must increase capacity")
+        if state.events.shape[1] != self.memory_capacity:
+            raise ValueError("working-memory state capacity does not match cell")
+        batch_size = state.events.shape[0]
+        device = state.events.device
+        dtype = state.events.dtype
+        events = torch.zeros(
+            batch_size,
+            memory_capacity,
+            self.event_width,
+            device=device,
+            dtype=dtype,
+        )
+        actions = torch.zeros(
+            batch_size,
+            memory_capacity,
+            self.action_width,
+            device=device,
+            dtype=dtype,
+        )
+        outcomes = torch.zeros(
+            batch_size,
+            memory_capacity,
+            device=device,
+            dtype=dtype,
+        )
+        present = torch.zeros(
+            batch_size,
+            memory_capacity,
+            dtype=torch.bool,
+            device=device,
+        )
+        old_start = memory_capacity - self.memory_capacity
+        events[:, old_start:] = state.events
+        actions[:, old_start:] = state.actions
+        outcomes[:, old_start:] = state.outcomes
+        present[:, old_start:] = state.present
+        return OnlineEpisodicRelationState(events, actions, outcomes, present)
+
+    def grow(self, memory_capacity: int) -> ExternalWorkingMemoryCell:
+        """Return a larger cell while preserving learned relation weights."""
+
+        if memory_capacity <= self.memory_capacity:
+            raise ValueError("working-memory growth must increase capacity")
+        expanded = ExternalWorkingMemoryCell(
+            self.event_width,
+            self.action_width,
+            memory_capacity=memory_capacity,
+            context_width=self.context_width,
+            hidden=self.hidden,
+        )
+        with torch.no_grad():
+            for name, parameter in self.reader.named_parameters():
+                if name == "age_embedding":
+                    old_age = parameter.detach().T.unsqueeze(0)
+                    expanded_age = F.interpolate(
+                        old_age,
+                        size=memory_capacity,
+                        mode="linear",
+                        align_corners=True,
+                    ).squeeze(0).T
+                    expanded.reader.age_embedding.copy_(expanded_age)
+                else:
+                    dict(expanded.reader.named_parameters())[name].copy_(
+                        parameter.detach()
+                    )
+        return expanded
+
+    def state_payload(self, state: OnlineEpisodicRelationState) -> dict[str, object]:
+        """Serialize only external working-memory state tensors."""
+
+        self._validate_state(state)
+        return {
+            "schema": self.schema,
+            "configuration": self.configuration(),
+            "events": state.events.detach().cpu().clone(),
+            "actions": state.actions.detach().cpu().clone(),
+            "outcomes": state.outcomes.detach().cpu().clone(),
+            "present": state.present.detach().cpu().clone(),
+        }
+
+    def state_from_payload(
+        self,
+        payload: Mapping[str, object],
+    ) -> OnlineEpisodicRelationState:
+        if payload.get("schema") != self.schema:
+            raise ValueError("unsupported working-memory cell state schema")
+        configuration = payload.get("configuration")
+        if not isinstance(configuration, Mapping):
+            raise TypeError("working-memory cell configuration is invalid")
+        expected = self.configuration()
+        for name in (
+            "schema",
+            "event_width",
+            "action_width",
+            "memory_capacity",
+            "context_width",
+            "hidden",
+        ):
+            if configuration.get(name) != expected[name]:
+                raise ValueError("working-memory cell configuration does not match")
+        tensors = {
+            name: payload.get(name)
+            for name in ("events", "actions", "outcomes", "present")
+        }
+        if not all(isinstance(value, torch.Tensor) for value in tensors.values()):
+            raise TypeError("working-memory state payload must contain tensors")
+        state = OnlineEpisodicRelationState(
+            tensors["events"],
+            tensors["actions"],
+            tensors["outcomes"],
+            tensors["present"],
+        )
+        self._validate_state(state)
+        return state
+
+    def _validate_state(self, state: OnlineEpisodicRelationState) -> None:
+        if state.events.ndim != 3 or state.events.shape[1:] != (
+            self.memory_capacity,
+            self.event_width,
+        ):
+            raise ValueError("working-memory state events have the wrong shape")
+        if state.actions.shape != (
+            state.events.shape[0],
+            self.memory_capacity,
+            self.action_width,
+        ):
+            raise ValueError("working-memory state actions have the wrong shape")
+        if state.outcomes.shape != (
+            state.events.shape[0],
+            self.memory_capacity,
+        ) or state.present.shape != state.outcomes.shape:
+            raise ValueError("working-memory state rows have the wrong shape")
+        if state.present.dtype is not torch.bool:
+            raise TypeError("working-memory state presence must be boolean")
+        if not all(
+            bool(torch.isfinite(value).all())
+            for value in (state.events, state.actions, state.outcomes)
+        ):
+            raise ValueError("working-memory state must be finite")
 
 
 class EpisodicIntentAdapter(nn.Module):

@@ -9688,3 +9688,27 @@ complete-prefix retention, shuffled outcomes, route switching, missing
 evidence, corruption, and zero-replay transfer across genuinely new rules.
 Evidence is archived under
 `session_records/external_program_fast_cell_transfer_2026-08-11/`.
+
+## Causal external working-memory transfer (2026-08-11)
+
+The working-memory boundary is now explicit in the canonical Brain Workshop
+runtime as `ExternalWorkingMemoryCell`. It owns a versioned external tensor
+window of learned event payloads, opaque actions, scalar outcomes, and
+presence. Its causal contract is strict: it reads the current event against
+the old state, emits context for action selection, and only then appends the
+current row. State persistence and capacity growth preserve the newest
+logical rows without touching controller weights.
+
+The two-seed rendered audit trained the replaceable codec on fresh n-back-2
+lifetime outcomes and then froze both controller and codec. Fresh external
+state reached `1.0000/1.0000` on both seeds, while matched fresh controls were
+`0.5000/0.5000`; shuffled-outcome and history-reset controls remained near
+chance. This promotes causal memory-state transfer and corrects the earlier
+post-write reconstruction measurement.
+
+The n-back-3 probe remained near chance, so longer rule transfer is explicitly
+not promoted. The next high-ROI experiment is protected external rule growth:
+acquire n-back-3 in a new memory file while retaining and causally rechecking
+n-back-2, then test route discovery, reversal, reload, and zero-replay
+complete-prefix retention. Evidence is in
+`session_records/brainworkshop_causal_working_memory_transfer_2026-08-11/`.

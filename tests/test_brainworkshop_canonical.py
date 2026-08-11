@@ -27,6 +27,7 @@ from experiments.brainworkshop_canonical.replay_free_transition_acquisition impo
 from neural_computer import (
     AdaptiveOnlineEpisodicRelationReader,
     ExternalTransitionRollout,
+    ExternalWorkingMemoryCell,
     RetentionPolicyConfig,
 )
 
@@ -378,6 +379,36 @@ def test_relation_reader_can_replace_gru_context_in_canonical_runner() -> None:
     rollout = agent.rollout(NBackVerifier(batch_size=2, n_back=2, steps=4, seed=29))
     assert rollout.context.shape == (2, 8)
     assert agent.reader_kind == "relation"
+
+
+def test_canonical_runner_can_use_versioned_external_working_memory_cell() -> None:
+    cell = ExternalWorkingMemoryCell(
+        event_width=8,
+        action_width=2,
+        memory_capacity=4,
+        context_width=8,
+        hidden=16,
+    )
+    agent = CanonicalBrainWorkshopAgent(
+        n_back=2,
+        event_width=8,
+        intention_width=4,
+        feedback_width=4,
+        reader_kind="relation",
+        working_memory_cell=cell,
+        seed=17,
+    )
+
+    rollout = agent.rollout(
+        NBackVerifier(batch_size=2, n_back=2, steps=5, seed=29),
+        record_retention=False,
+    )
+
+    assert agent.working_memory_cell is cell
+    assert rollout.context.shape == (2, 8)
+    assert cell.configuration()["read_order"] == (
+        "read_old_state_then_append_current_row_v1"
+    )
 
 
 def test_appended_slot_uses_shared_bus_and_exact_mixture_propensity() -> None:

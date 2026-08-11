@@ -450,3 +450,19 @@ intentionally rejected: `8/9` target slots promote, but one seed fails to
 stage its third regime and close partial evidence remains ambiguous. This is
 the correct safe failure, not a reason to force a route. The ledger is in
 `session_records/factored_residual_sequence_pressure_2026-08-11/sample_efficiency_ledger.json`.
+
+The causal external working-memory transfer audit can be run with:
+
+```bash
+PYTHONPATH=src uv run python -m experiments.brainworkshop_canonical.causal_working_memory_transfer \
+  --seed 17 --report-out /tmp/causal-working-memory-transfer-17.json
+```
+
+It trains one replaceable working-memory codec on fresh n-back-2 lifetimes,
+freezes it, and evaluates fresh external state through the canonical causal
+read-before-write loop. Seeds `17` and `18` both reach `1.0` n-back-2
+fresh-state accuracy versus `0.5` matched fresh controls, while shuffled
+outcomes and history reset remain near chance. The n-back-3 probe stays near
+chance, so this promotes causal memory-state transfer but not longer-rule
+generalization. Evidence is archived in
+`session_records/brainworkshop_causal_working_memory_transfer_2026-08-11/`.
