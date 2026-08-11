@@ -258,7 +258,13 @@ def random_program(generator, length):
 
 
 interp = Interpreter()
-opt = torch.optim.Adam(interp.parameters(), lr=1e-3, weight_decay=0.01)
+# AdamW, NOT Adam. With weight_decay=0.01 the two are not
+# interchangeable: Adam folds the decay into the gradient so the
+# adaptive scaling amplifies it on exactly the parameters with small
+# sparse gradients — the instruction embeddings — and the interpreter
+# never learns its own instruction set. Measured: 0.38 against 0.83 at
+# a fifth of the budget, loss pinned at 1.7 against uniform 2.079.
+opt = torch.optim.AdamW(interp.parameters(), lr=1e-3, weight_decay=0.01)
 train_gen = torch.Generator().manual_seed(args.seed * 104729)
 for _ in range(args.interpreter_updates):
     prog = random_program(train_gen, 6)

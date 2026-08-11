@@ -9358,3 +9358,57 @@ point.** The bank arm produced the exact number the architecture
 predicts — 0.0000 forgetting, on all eight runs — and it is the most
 flattering result available. The check says it is unreadable. A control
 that only gets consulted when the news is bad is not a control.
+
+## F183 — the interpreter failure was `Adam` where the reference uses
+## `AdamW`, and weight decay is what made it fatal
+
+F182 withheld the continual-learning result because its faithfulness
+check returned 0.39-0.45 against `isa_compose`'s published 0.9896. The
+cause is one word.
+
+**Four hypotheses eliminated in order, each by a measurement:**
+
+1. *Interaction with the weights arm.* Isolating the interpreter
+   reproduced **exactly 0.4524** — byte-identical. Ruled out.
+2. *A bad initialisation basin*, which F164 had already documented in
+   the reader at 0.9372 against 0.3776. Four seeds returned 0.4056,
+   0.4067, 0.4151, 0.3846. **Every seed fails identically**, so it is
+   systematic, not a basin. Ruled out — and this was the hypothesis I
+   most expected to be right.
+3. *RNG position*, since my copy builds its interpreter after the
+   weights arm's model. Setting the seed immediately before
+   construction changed 0.3828 to 0.3809. Ruled out.
+4. *Op semantics, training loop, sampling, evaluation.* Compared line
+   by line against the reference; all match.
+
+**The difference: `torch.optim.Adam` against `torch.optim.AdamW`.**
+
+| | seed 69316 | seed 7 | loss trace |
+| --- | ---: | ---: | --- |
+| AdamW | **0.8301** | **0.8030** | 2.20 -> 0.59 |
+| Adam | 0.3812 | 0.3912 | 2.24 -> 1.88, stuck |
+
+At 8,000 updates, a fifth of the reference budget. The Adam loss never
+leaves the neighbourhood of uniform (2.079) while AdamW's descends past
+0.6.
+
+**Why weight decay is what makes it fatal, and this is the part that
+transfers.** Adam folds L2 into the gradient before the adaptive
+rescaling, so the penalty is amplified on precisely the parameters
+whose gradients are small and sparse — the op, argument and modulus
+embeddings, each of which sees a gradient only when its own token
+appears. AdamW decouples it. The interpreter therefore cannot learn its
+own instruction set: it is being pulled toward zero faster than the
+signal accumulates.
+
+**And F154 is what set the trap.** That finding established weight
+decay 0.01 as optimal — measured under AdamW. Carrying the VALUE across
+to Adam inverts its effect. **A hyperparameter tuned under one
+optimiser is not portable to another**, and 0.01 was not a neutral
+default here but the specific number that made the failure severe.
+
+**The check is the finding.** Without it the bank arm would have
+reported 0.0000 forgetting — the exact number the architecture predicts
+and the most flattering result available — from an interpreter that had
+learned nothing. The measurement that caught it cost twenty lines and
+compared against a number already in the ledger.
