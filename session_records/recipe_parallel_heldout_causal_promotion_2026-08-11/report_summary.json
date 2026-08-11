@@ -1,0 +1,45 @@
+{
+  "schema": "neural-computer.recipe-expressibility-audit.v4-composition-summary",
+  "source": "in_repository_run",
+  "seeds": [70421, 70422],
+  "updates": 1500,
+  "batch_size": 64,
+  "randomized_slot_domains": true,
+  "holdout": {
+    "target": "parallel(inc(slot=0,modulus=2),inc(slot=1,modulus=2))",
+    "reversed_child_order_excluded": true,
+    "excluded_from_parallel_training": true
+  },
+  "stable_parallel_target_updates_at_0_9": {
+    "seed70421_atomic_control": null,
+    "seed70421_parallel_training": 300,
+    "seed70422_atomic_control": null,
+    "seed70422_parallel_training": 300
+  },
+  "final_parallel_target_scores": {
+    "seed70421_atomic_control": 0.0,
+    "seed70421_parallel_training": 1.0,
+    "seed70422_atomic_control": 0.0,
+    "seed70422_parallel_training": 1.0
+  },
+  "old_basis_retention": {
+    "promoted_as_sample_efficiency_gain": false,
+    "reason": "old-basis curves remain a separate training-distribution comparison"
+  },
+  "accounting": {
+    "unique_verifier_bits_per_arm": 192000,
+    "unique_logical_lifetimes_per_arm": 192000,
+    "optimizer_updates_per_arm": 1500,
+    "replayed_examples_per_arm": 0,
+    "latency_seconds_per_arm": null,
+    "transfer_ratio_against_fresh_learner": null,
+    "retention_on_mastered_primitives": "arithmetic probes retained; old-basis promotion not claimed",
+    "wall_time_seconds": {
+      "seed70421_atomic": 17.133391791954637,
+      "seed70421_parallel": 17.921803207951598,
+      "seed70422_atomic": 27.434874083963223,
+      "seed70422_parallel": 31.714727292070165
+    }
+  },
+  "claim_boundary": "Promoted held-out parallel composition as a narrow causal composition capability; not a promotion of old-basis sample efficiency, arbitrary computation, general continual learning, or unrestricted memory growth."
+}

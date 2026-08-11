@@ -6,6 +6,8 @@ from experiments.recipe_expressibility.audit import (
     INSTRUCTION_FEATURE_WIDTH,
     SLOT_VALUES,
     LearnedRecipeInterpreter,
+    _instruction,
+    _is_parallel_target,
     _sample_slot_values,
     evaluate_arithmetic_target,
     evaluate_single_modulus_target,
@@ -48,6 +50,19 @@ def test_randomized_domains_preserve_the_profile_without_fixed_positions() -> No
 
     assert all(sorted(sample) == sorted(SLOT_VALUES) for sample in samples)
     assert any(sample != SLOT_VALUES for sample in samples)
+
+
+def test_parallel_holdout_rejects_the_target_in_both_child_orders() -> None:
+    generator = torch.Generator().manual_seed(13)
+
+    for _ in range(256):
+        instruction = _instruction(
+            generator,
+            allow_parallel=True,
+            slot_values=SLOT_VALUES,
+            holdout_parallel_target=True,
+        )
+        assert not _is_parallel_target(instruction)
 
 
 def test_random_batch_targets_match_the_opaque_instruction_execution() -> None:

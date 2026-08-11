@@ -8,6 +8,7 @@ answer is present in its weights.  The audit separates three questions:
 * does a generic parallel-composition extension preserve that ability?
 * can the interpreter preserve an explicit modulus across mixed value
   domains?
+* can a parallel composition be learned when the exact target is held out?
 
 This is deliberately a small proving ground for the controller-as-CPU
 boundary.  It does not claim that a neural interpreter is already the
@@ -157,27 +158,42 @@ def _instruction(
     *,
     allow_parallel: bool,
     slot_values: tuple[int, ...] = SLOT_VALUES,
+    holdout_parallel_target: bool = False,
 ) -> RecipeInstruction:
     if allow_parallel and _randint(generator, 5) == 0:
-        for _ in range(32):
+        for _ in range(64):
             left = _atomic_instruction(generator, slot_values=slot_values)
             right = _atomic_instruction(generator, slot_values=slot_values)
+            candidate = RecipeInstruction("parallel", children=(left, right))
+            if holdout_parallel_target and _is_parallel_target(candidate):
+                continue
             if (
                 left.written_slots()
                 and right.written_slots()
                 and not left.written_slots() & right.written_slots()
             ):
-                return RecipeInstruction("parallel", children=(left, right))
+                return candidate
         # A deterministic fallback keeps the sampler total if the random
         # attempts happen to choose overlapping effects.
         return RecipeInstruction(
             "parallel",
             children=(
                 RecipeInstruction("inc", 0, modulus=slot_values[0]),
-                RecipeInstruction("inc", 1, modulus=slot_values[1]),
+                RecipeInstruction("inc", 2, modulus=slot_values[2]),
             ),
         )
     return _atomic_instruction(generator, slot_values=slot_values)
+
+
+def _is_parallel_target(instruction: RecipeInstruction) -> bool:
+    if instruction.op != "parallel" or instruction.children is None:
+        return False
+    first, second = instruction.children
+    if first.op != "inc" or second.op != "inc":
+        return False
+    if first.modulus != 2 or second.modulus != 2:
+        return False
+    return {first.first, second.first} == {0, 1}
 
 
 def _atomic_features(instruction: RecipeInstruction) -> torch.Tensor:
@@ -218,6 +234,7 @@ def sample_batch(
     allow_parallel: bool,
     slot_values: tuple[int, ...] = SLOT_VALUES,
     randomize_domains: bool = True,
+    holdout_parallel_target: bool = False,
 ) -> Batch:
     domain_rows = tuple(
         _sample_slot_values(generator, slot_values)
@@ -245,6 +262,7 @@ def sample_batch(
                 generator,
                 allow_parallel=allow_parallel,
                 slot_values=row_slot_values,
+                holdout_parallel_target=holdout_parallel_target,
             )
             row_features.append(instruction_features(instruction))
             state = instruction.apply(state, values=row_slot_values)
@@ -323,6 +341,7 @@ def evaluate(
     length: int,
     slot_values: tuple[int, ...] = SLOT_VALUES,
     randomize_domains: bool = True,
+    holdout_parallel_target: bool = False,
     batches: int = 8,
     batch_size: int = 128,
 ) -> float:
@@ -336,6 +355,7 @@ def evaluate(
             allow_parallel=allow_parallel,
             slot_values=slot_values,
             randomize_domains=randomize_domains,
+            holdout_parallel_target=holdout_parallel_target,
         )
         scores.append(_loss_and_accuracy(model, batch)[1])
     return float(sum(scores) / len(scores))
@@ -348,6 +368,7 @@ def evaluate_parallel_target(
     seed: int,
     slot_values: tuple[int, ...] = SLOT_VALUES,
     randomize_domains: bool = True,
+    holdout_parallel_target: bool = False,
     batch_size: int = 128,
     batches: int = 8,
 ) -> float:
@@ -393,6 +414,7 @@ def evaluate_arithmetic_target(
     condition_slot: int | None = None,
     slot_values: tuple[int, ...] = SLOT_VALUES,
     randomize_domains: bool = True,
+    holdout_parallel_target: bool = False,
     batch_size: int = 128,
     batches: int = 8,
 ) -> float:
@@ -478,6 +500,7 @@ def train_arm(
     allow_parallel: bool,
     slot_values: tuple[int, ...] = SLOT_VALUES,
     randomize_domains: bool = True,
+    holdout_parallel_target: bool = False,
     updates: int,
     batch_size: int,
     hidden: int,
@@ -498,6 +521,7 @@ def train_arm(
             allow_parallel=allow_parallel,
             slot_values=slot_values,
             randomize_domains=randomize_domains,
+            holdout_parallel_target=holdout_parallel_target,
         )
         loss, _ = _loss_and_accuracy(model, batch)
         optimizer.zero_grad(set_to_none=True)
@@ -623,6 +647,7 @@ def train_arm(
     return {
         "seed": seed,
         "allow_parallel": allow_parallel,
+        "holdout_parallel_target": holdout_parallel_target,
         "updates": updates,
         "batch_size": batch_size,
         "hidden": hidden,
@@ -663,6 +688,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                 allow_parallel=allow_parallel,
                 slot_values=SLOT_VALUES,
                 randomize_domains=True,
+                holdout_parallel_target=allow_parallel,
                 updates=args.updates,
                 batch_size=args.batch_size,
                 hidden=args.hidden,
@@ -672,13 +698,14 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         )
     )
     return {
-        "schema": "neural-computer.recipe-expressibility-audit.v3",
+        "schema": "neural-computer.recipe-expressibility-audit.v4",
         "source": "in_repository_run",
         "configuration": {
             "slots": SLOTS,
             "values": VALUES,
             "slot_values": SLOT_VALUES,
             "randomized_slot_domains": True,
+            "parallel_target_held_out_from_parallel_training": True,
             "training_program_length": 2,
             "double_length": 4,
             "random_programs_only": True,

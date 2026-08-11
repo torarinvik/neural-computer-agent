@@ -135,3 +135,14 @@ finishes near `0.5` in every arm. This promotes explicit modulus use across
 the arithmetic family, not merely one increment template. Evidence is
 archived in
 `session_records/recipe_arithmetic_family_causal_promotion_2026-08-11/`.
+
+## Held-out composition promotion
+
+The parallel-training arm now excludes the exact target
+`PARALLEL(INC(0,m=2), INC(1,m=2))` from its random-program stream, including
+the reversed child order. At 1,500 updates, both parallel arms reach stable
+exact target execution by update `300`, while both atomic-only arms remain at
+zero. This promotes narrow held-out parallel composition, not a claim that
+the richer arm learns the old basis faster: its old-basis curves remain a
+separate training-distribution comparison. Evidence is archived in
+`session_records/recipe_parallel_heldout_causal_promotion_2026-08-11/`.
