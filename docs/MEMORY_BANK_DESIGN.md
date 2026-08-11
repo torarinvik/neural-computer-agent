@@ -7257,3 +7257,40 @@ The general lesson, which is worth more than the probe: when
 generalising an architecture, check that the generalisation is not
 just a NEW specialisation. The bitwise version would have produced
 real numbers on a real capability and taught us nothing transferable.
+
+**F153 (probe 251). The instruction-set plant's first result was a
+BUG, not a finding — and our own F128 rule caught it in one command.**
+Three arms came back at 0.1215 / 0.1270 / 0.1280 slot accuracy against
+a uniform chance of 0.1250 and an IDENTITY floor of 0.44-0.47. So it
+scored at chance, and well below simply copying the input unchanged,
+after 40,000 updates.
+
+The learning curve settled it before any interpretation: flat from
+update 0 (0.1304) to update 37,500 (0.1203), total range 0.0215. A
+model that never moves is not a hard task, it is a broken one.
+
+**The check that found it is the rule F128 earned**: before spending
+anything on diversity or mechanism, verify the target function is
+expressible in the interface at all. Trained on ONE fixed program,
+the plant sat at loss 2.0823 — and ln(8) = 2.079, i.e. exactly uniform
+output. It could not fit a single program.
+
+**Cause: no residual path.** A length-6 program through a 3-layer step
+is 18 effective layers with nothing to skip through. Adding
+`latent = norm(latent + step(...))` — one term — takes the same model
+from 0.1146 to **1.0000** on a single program in 1500 steps, and the
+full probe from flat-at-0.12-after-40k to 0.4432 after 1500 updates.
+
+**Why this is worth a finding rather than a silent fix.** The three
+failed arms included a controlled comparison (with and without
+conditionals) that looked perfectly consistent — all three at chance,
+tight agreement across seeds. A broken model produces beautifully
+reproducible nulls, and the seed discipline that protects against
+noise offers no protection at all against this. What protected against
+it was an ABSOLUTE reference: the identity baseline. Scoring below
+"do nothing" is impossible to rationalise, and I put that baseline in
+because F104 and F145 had already taught the lesson. Without it, 0.12
+against a 0.125 uniform chance would have read as an ordinary null and
+the instruction-set route would have been wrongly abandoned.
+
+Probe 251 is `isa_compose.py`, 3 arms, retracted and re-running.
