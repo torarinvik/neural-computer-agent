@@ -16,6 +16,7 @@ from typing import Any
 
 import torch
 from torch import nn
+from torch.distributions import Categorical
 
 EXTERNAL_TEMPORAL_HISTORY_SCHEMA = (
     "neural-computer.external-temporal-history.v1"
@@ -25,6 +26,9 @@ EXTERNAL_TEMPORAL_HISTORY_READ_SCHEMA = (
 )
 EXTERNAL_TEMPORAL_HISTORY_APPEND_SCHEMA = (
     "neural-computer.external-temporal-history-append.v1"
+)
+EXTERNAL_TEMPORAL_OFFSET_SELECTOR_SCHEMA = (
+    "neural-computer.external-temporal-offset-selector.v1"
 )
 
 
@@ -89,6 +93,65 @@ class ExternalTemporalHistoryRead:
         if bool(torch.any(self.positions < -1)):
             raise ValueError("temporal history positions cannot be below -1")
         return self
+
+
+class ExternalTemporalOffsetSelector(nn.Module):
+    """Learned opaque distribution over positive relative history offsets.
+
+    The selector is external file state, not controller computation.  Offset
+    ``1`` denotes the immediately preceding stored token; the selector never
+    receives a depth, family name, target bit, or physical memory address.
+    Scalar-outcome trainers may use the returned log probability for credit
+    assignment while the memory itself remains a separate replaceable object.
+    """
+
+    schema = EXTERNAL_TEMPORAL_OFFSET_SELECTOR_SCHEMA
+
+    def __init__(self, offset_count: int, *, initial_scale: float = 0.0) -> None:
+        super().__init__()
+        if offset_count < 1:
+            raise ValueError("temporal offset count must be positive")
+        if initial_scale < 0.0:
+            raise ValueError("temporal offset initial scale cannot be negative")
+        self.offset_count = int(offset_count)
+        self.initial_scale = float(initial_scale)
+        self.logits = nn.Parameter(torch.zeros(self.offset_count))
+        if initial_scale:
+            nn.init.normal_(self.logits, std=initial_scale)
+
+    def configuration(self) -> dict[str, int | float | str]:
+        return {
+            "schema": self.schema,
+            "offset_count": self.offset_count,
+            "initial_scale": self.initial_scale,
+            "offset_domain": "positive_relative_offsets_starting_at_one",
+            "training": "scalar_outcome_policy_credit_external_state_v1",
+        }
+
+    def forward(
+        self,
+        batch_size: int,
+        *,
+        sample: bool,
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        if batch_size < 1:
+            raise ValueError("temporal offset selector batch must be positive")
+        probabilities = self.logits.softmax(dim=-1)
+        if sample:
+            distribution = Categorical(
+                probs=probabilities.expand(batch_size, -1)
+            )
+            choices = distribution.sample()
+            log_probability = distribution.log_prob(choices)
+        else:
+            choices = probabilities.argmax().expand(batch_size)
+            log_probability = torch.zeros(
+                batch_size,
+                device=self.logits.device,
+                dtype=self.logits.dtype,
+            )
+        entropy = -(probabilities * probabilities.clamp_min(1e-8).log()).sum()
+        return choices + 1, log_probability, entropy
 
 
 class ExternalTemporalHistoryMemory(nn.Module):

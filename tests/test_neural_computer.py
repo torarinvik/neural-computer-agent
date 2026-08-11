@@ -23,6 +23,7 @@ from neural_computer import (
     EventWaitStatistics,
     ExecutableArtifactMemory,
     ExternalTemporalHistoryMemory,
+    ExternalTemporalOffsetSelector,
     MemoryBackend,
     MemoryQuery,
     OpaqueProtocolDecoder,
@@ -897,6 +898,18 @@ def test_external_temporal_memory_contract_probe_passes(tmp_path) -> None:
     assert report["status"] == "promoted_memory_contract"
     assert all(report["gates"].values())
     assert report["accounting"]["optimizer_updates"] == 0
+
+
+def test_external_temporal_offset_selector_is_opaque_and_trainable() -> None:
+    selector = ExternalTemporalOffsetSelector(4)
+    offsets, log_probability, entropy = selector(6, sample=True)
+    assert offsets.shape == (6,)
+    assert log_probability.shape == (6,)
+    assert bool(torch.all((offsets >= 1) & (offsets <= 4)))
+    assert torch.isfinite(entropy)
+    assert selector.configuration()["offset_domain"] == (
+        "positive_relative_offsets_starting_at_one"
+    )
 
 
 def test_persistent_append_only_memory_reloads_growth_and_rejects_corruption(

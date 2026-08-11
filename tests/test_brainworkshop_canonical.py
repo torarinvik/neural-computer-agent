@@ -104,7 +104,13 @@ def test_nback_targets_are_balanced_and_time_shuffle_preserves_balance() -> None
 
 
 def test_cross_family_verifier_generates_generic_deeper_nback_targets() -> None:
-    for family, depth in (("nback2", 2), ("nback3", 3), ("nback4", 4)):
+    for family, depth in (
+        ("nback2", 2),
+        ("nback3", 3),
+        ("nback4", 4),
+        ("nback5", 5),
+        ("nback8", 8),
+    ):
         verifier = CrossFamilyVerifier(
             family=family,
             batch_size=5,
@@ -318,6 +324,35 @@ def test_external_compute_open_growth_smoke_rejects_unmastered_source_cleanly(
     assert report["gates"]["frozen_controller"]
     assert report["gates"]["frozen_event_encoder"]
     assert report["gates"]["zero_replayed_examples"]
+
+
+def test_external_temporal_offset_growth_smoke_keeps_addressing_external(
+    tmp_path,
+) -> None:
+    from experiments.brainworkshop_canonical.external_temporal_offset_growth import (
+        run,
+    )
+
+    report = run(
+        argparse.Namespace(
+            report_out=tmp_path / "temporal-offset-growth.json",
+            seed=17,
+            updates=2,
+            batch_size=2,
+            steps=14,
+            retention_lifetimes=1,
+            learning_rate=3e-3,
+            entropy_weight=0.01,
+        )
+    )
+
+    assert report["schema"] == (
+        "neural-computer.brainworkshop-external-temporal-offset-growth.v1"
+    )
+    assert report["gates"]["old_file_unchanged"]
+    assert report["gates"]["frozen_controller"]
+    assert report["gates"]["frozen_event_encoder"]
+    assert report["accounting"]["replayed_examples"] == 0
 
 
 def test_binary_switch_family_has_a_valid_chance_baseline() -> None:

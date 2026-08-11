@@ -897,3 +897,18 @@ bits or optimizer updates and does not claim learned addressing. The next
 capability experiment must train the offset selector from scalar outcomes.
 Evidence is archived in
 `session_records/brainworkshop_external_temporal_memory_contract_2026-08-12/`.
+
+## Outcome-only learned temporal offset growth (2026-08-12)
+
+The next step trains an external file to choose a relative history offset from
+scalar outcomes. A frozen-controller n-back-4 file is retained while a fresh
+n-back-5 file learns its offset policy over offsets 1–8. Seeds `17` and `18`
+both selected offset `5` on every evaluated lifetime and passed direct mastery,
+old-file retention, wrong-offset, missing-history, shuffled-outcome, frozen
+core/frontend, and zero-replay gates.
+
+This promotes one narrow learned-addressing mechanism, not general memory
+search. The selector is currently a single global offset distribution per
+external file; query-conditioned content addressing and multiple useful
+offsets remain open. Evidence and separate accounting are archived in
+`session_records/brainworkshop_external_temporal_offset_growth_promoted_2026-08-12/`.

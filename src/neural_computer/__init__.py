@@ -569,9 +569,11 @@ from .temporal_memory import (
     EXTERNAL_TEMPORAL_HISTORY_APPEND_SCHEMA,
     EXTERNAL_TEMPORAL_HISTORY_READ_SCHEMA,
     EXTERNAL_TEMPORAL_HISTORY_SCHEMA,
+    EXTERNAL_TEMPORAL_OFFSET_SELECTOR_SCHEMA,
     ExternalTemporalHistoryAppendReceipt,
     ExternalTemporalHistoryMemory,
     ExternalTemporalHistoryRead,
+    ExternalTemporalOffsetSelector,
 )
 from .world_model import (
     DEFAULT_INTENTION_SPACE_ID,
@@ -850,6 +852,7 @@ __all__ = [
     "EXTERNAL_TEMPORAL_HISTORY_APPEND_SCHEMA",
     "EXTERNAL_TEMPORAL_HISTORY_READ_SCHEMA",
     "EXTERNAL_TEMPORAL_HISTORY_SCHEMA",
+    "EXTERNAL_TEMPORAL_OFFSET_SELECTOR_SCHEMA",
     "EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY",
     "EXTERNAL_TRANSITION_AFFINE_STATISTICS_SCHEMA",
     "EXTERNAL_TRANSITION_CONTEXT_ADDRESS_ADAPTER_SCHEMA",
@@ -1126,6 +1129,7 @@ __all__ = [
     "ExternalTemporalHistoryAppendReceipt",
     "ExternalTemporalHistoryMemory",
     "ExternalTemporalHistoryRead",
+    "ExternalTemporalOffsetSelector",
     "ExternalTransitionContextAddressAdapter",
     "ExternalTransitionContextEncoder",
     "ExternalTransitionEvidenceCalibrator",

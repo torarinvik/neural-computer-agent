@@ -10238,3 +10238,26 @@ from scalar outcomes. It must show that the selector discovers useful history
 addresses, survives wrong-offset and missing-history controls, and improves a
 held-out learning curve without replaying mastered sequences. Evidence is in
 `session_records/brainworkshop_external_temporal_memory_contract_2026-08-12/`.
+
+## Outcome-only learned temporal offset growth (2026-08-12)
+
+The first learned user of the temporal store is an external offset policy. It
+selects one positive relative offset from an opaque categorical distribution,
+reads that learned event tensor, and receives scalar policy credit alongside
+attempted-output credit. The controller and event frontend remain frozen.
+
+Across seeds `17` and `18`, a fresh n-back-5 file selected offset `5` on all
+eight fresh lifetimes and reached minimum accuracies `1.0000` and `0.9132`.
+The previously mastered n-back-4 file remained at `1.0000`; forced wrong-offset
+accuracy stayed below `0.685`, missing-history stayed below the `0.80` mastery
+threshold, shuffled-outcome controls stayed below `0.660`, and replay was zero.
+
+This qualifies scalar-credit discovery of one global relative offset in an
+isolated external file. It does not qualify conditional addressing, content
+search, multiple competing memories, learned compression, or general
+continual learning. The next pressure test must make the address policy
+context-conditioned and force it to choose among multiple useful offsets or
+content keys while protecting earlier files.
+
+Evidence and accounting are archived in
+`session_records/brainworkshop_external_temporal_offset_growth_promoted_2026-08-12/`.
