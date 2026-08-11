@@ -18,5 +18,10 @@ A separate 24-seed width screen increased the replay-free random-feature basis
 from 128 to 256. It fell from `14/24` to `13/24` complete passes, so capacity
 alone is rejected as the next intervention.
 
+Admission timing shows the same tradeoff. Staging after one row fell to
+`8/24`; staging after three rows reached `12/24`; the six-row baseline reached
+`14/24`. Early candidate writes therefore destabilize identity before the
+promotion evidence is reliable.
+
 Claim boundary: negative architecture-screening evidence, not a claim about
 general neural external memory or general continual learning.

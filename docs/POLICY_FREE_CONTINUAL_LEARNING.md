@@ -1699,3 +1699,23 @@ and credit assignment—especially selecting informative actions/queries and
 forming a stable context before model updates—rather than adding another
 unverified memory branch. Evidence is in
 `session_records/external_memory_update_screen_2026-08-11/`.
+
+## Active discovery evidence acquisition (2026-08-11)
+
+The discovery harness now exposes a read-only active-evidence seam. Once an
+isolated target candidate exists, an external model-disagreement selector
+chooses an opaque intention; the normal frozen controller and decoder execute
+it, and the resulting transition is routed back to the isolated candidate.
+The matched passive control receives the same extra lifetime and rows but uses
+the ordinary candidate-intention pool. No promotion threshold or retention
+gate is relaxed.
+
+Across two independent 24-seed blocks, active discovery passed `33/48`
+complete gates versus `28/48` for passive matched exposure. There were six
+active wins and one active loss. Source retention passed in `48/48` runs for
+both arms; both controllers stayed unchanged, replay was zero, and both
+consumed `1,440` transition rows once. Active evidence therefore improves the
+actual acquisition gate, not just a diagnostic metric, but it costs an extra
+lifetime and remains seed-sensitive. This promotes a narrow causal active
+evidence mechanism, not general continual learning. The full ledger is in
+`session_records/online_active_discovery_probe_2026-08-11/`.

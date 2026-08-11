@@ -31,5 +31,22 @@
       "candidate_retention_probe_failed": 2
     }
   },
+  "admission_timing_arms": {
+    "one_row": {
+      "complete_passes": 8,
+      "total_runs": 24,
+      "unique_verifier_bits_total": 630,
+      "transition_rows_consumed_once_total": 516,
+      "replayed_examples_total": 0
+    },
+    "three_rows": {
+      "complete_passes": 12,
+      "total_runs": 24,
+      "unique_verifier_bits_total": 651,
+      "transition_rows_consumed_once_total": 528,
+      "replayed_examples_total": 0
+    },
+    "baseline_six_rows_complete_passes": 14
+  },
   "claim_boundary": "Rejects these current external-memory update and capacity interventions; the next bottleneck remains evidence routing and credit assignment."
 }

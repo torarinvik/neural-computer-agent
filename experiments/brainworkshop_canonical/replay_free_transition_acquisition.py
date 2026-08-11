@@ -146,6 +146,9 @@ class OnlineTransitionDiscoveryReport:
     context_encoder_rows_consumed_once: int = 0
     external_memory_update_mode: str = "sufficient_statistics"
     external_memory_optimizer_updates: int = 0
+    admission_observations: int = 0
+    discovery_probe_mode: str = "none"
+    discovery_probe_rows: int = 0
     goal_conditioned: bool = False
     target_goal_fragment_admitted: bool = False
     target_goal_fragment_used: bool = False
@@ -282,6 +285,97 @@ def _run_lifetime(
     )
 
 
+def _run_active_discovery_lifetime(
+    agent: CanonicalBrainWorkshopAgent,
+    policy_free: PolicyFreeAmodalRuntime,
+    probe_bank: ExternalTransitionModelBank,
+    source_context: torch.Tensor,
+    *,
+    source_slot_id: int,
+    target_slot_id: int,
+    n_back: int,
+    steps: int,
+    seed: int,
+    cue_symbol: int,
+    candidate_intentions: torch.Tensor,
+) -> tuple[ExternalTransitionRollout, int]:
+    """Run one fresh lifetime with read-only disagreement-selected intentions."""
+
+    if source_slot_id == target_slot_id:
+        raise ValueError("active discovery probe requires distinct model slots")
+    verifier = NBackVerifier(
+        batch_size=1,
+        n_back=n_back,
+        steps=steps,
+        symbol_count=4,
+        cue_symbol=cue_symbol,
+        seed=seed,
+    )
+    verifier.reset()
+    if isinstance(agent.runtime.memory, ContentAddressedMemory):
+        agent.runtime.memory.clear()
+    state = agent.initial_state(1, device=verifier.device)
+    feedback = agent.initial_feedback(1, device=verifier.device)
+    goal_state = torch.zeros(1, probe_bank.state_width, device=verifier.device)
+    previous = None
+    outputs = []
+    unique_verifier_bits = 0
+    probe_planner = ExternalModelBasedPlanner(probe_bank, beam_width=1)
+    while not verifier.done:
+        events = agent.runtime.encode_streams({"stimulus": verifier.observation()})
+        current_candidates = candidate_intentions
+        if previous is not None:
+            probe = probe_planner.select_disambiguating_intention(
+                probe_bank,
+                previous.state,
+                candidate_intentions,
+                candidate_slot_ids=(source_slot_id, target_slot_id),
+            )
+            current_candidates = probe.selected_intention.unsqueeze(0)
+        output, next_state = policy_free.step_events(
+            events,
+            state,
+            feedback,
+            goal_state,
+            current_candidates,
+            horizon=1,
+            beam_width=1,
+            transition_context=source_context.unsqueeze(0),
+        )
+        outputs.append(output)
+        decision = agent.keypress_decoder.decide_from_logits(
+            output.decoded["keypress"],
+            sample=False,
+        )
+        scored = verifier.score(decision.key_index)
+        unique_verifier_bits += int(scored.eligible.sum())
+        feedback = ControllerFeedback(
+            action=agent.keypress_encoder(decision.key_index),
+            reward=scored.reward,
+            propensity=decision.propensity,
+            has_feedback=scored.eligible.to(scored.reward.dtype),
+        )
+        state = next_state
+        previous = output
+    if len(outputs) < 2:
+        raise RuntimeError("active transition audit lifetime needs one transition")
+    return (
+        ExternalTransitionRollout(
+            initial_state=outputs[0].state[0].detach().clone(),
+            intentions=torch.cat(
+                [output.intention.payload for output in outputs[:-1]], dim=0
+            ).detach(),
+            expected_states=torch.cat(
+                [output.state for output in outputs[1:]], dim=0
+            ).detach(),
+        ).validate(
+            state_width=probe_bank.state_width,
+            intention_width=probe_bank.intention_width,
+        ),
+        unique_verifier_bits,
+    )
+
+
 def _rollout_observations(
     rollout: ExternalTransitionRollout,
 ) -> list[ExternalTransitionObservation]:
@@ -342,7 +436,11 @@ def _route_rollout(
             )
         ):
             router.adaptation_step(result, None, replay_evidence=False)
-            if optimizer_update_counter is not None and result.status == "staged":
+            if (
+                optimizer_update_counter is not None
+                and result.status == "staged"
+                and router.provisional_evidence_policy == "streaming_gradient"
+            ):
                 optimizer_update_counter[0] += 1
     if result is None:
         raise RuntimeError("online transition routing needs a non-empty rollout")
@@ -700,6 +798,8 @@ def run_online_transition_discovery_audit(
     random_feature_width: int = 128,
     pretrain_context_encoder: bool = False,
     external_memory_update_mode: str = "sufficient_statistics",
+    admission_observations: int | None = None,
+    discovery_probe_mode: str = "none",
 ) -> OnlineTransitionDiscoveryReport:
     """Discover and learn a novel rendered family without replay or a task label.
 
@@ -756,11 +856,22 @@ def run_online_transition_discovery_audit(
         raise ValueError("random feature width must be a positive integer")
     if not isinstance(pretrain_context_encoder, bool):
         raise TypeError("context encoder pretraining flag must be boolean")
+    if discovery_probe_mode not in {"none", "active", "passive"}:
+        raise ValueError("unsupported discovery probe mode")
     if external_memory_update_mode not in {
         "sufficient_statistics",
         "streaming_gradient",
     }:
         raise ValueError("unsupported external-memory update mode")
+    selected_admission_observations = (
+        steps if admission_observations is None else admission_observations
+    )
+    if (
+        not isinstance(selected_admission_observations, int)
+        or isinstance(selected_admission_observations, bool)
+        or selected_admission_observations < 1
+    ):
+        raise ValueError("online admission observations must be positive")
     if goal_horizon < 1 or goal_horizon > steps - 1:
         raise ValueError("online goal horizon must fit held-out transitions")
     if goal_verifier_threshold <= 0.0 or not math.isfinite(
@@ -962,7 +1073,7 @@ def run_online_transition_discovery_audit(
     router = ExternalOnlineTransitionContextRouter(
         bank,
         context_encoder,
-        admission_observations=steps,
+        admission_observations=selected_admission_observations,
         match_tolerance=routing_match_tolerance,
         match_margin=0.0,
         continuation_tolerance=routing_match_tolerance,
@@ -997,6 +1108,7 @@ def run_online_transition_discovery_audit(
     target_candidate_staged = False
     prior_selection_cost_aware = False
     external_memory_optimizer_updates = [0]
+    active_probe_rows = 0
     for lifetime in range(target_training_lifetimes):
         target_rollout, bits = _run_lifetime(
             agent,
@@ -1028,6 +1140,54 @@ def run_online_transition_discovery_audit(
                 and prior_receipt.schema.endswith("prior-selection.v2")
             )
         target_result = routed
+    if discovery_probe_mode != "none" and target_candidate_staged:
+        candidate_context = router.provisional_context_at(0)
+        active_probe_bank = ExternalTransitionModelBank.from_payload(bank.payload())
+        active_probe_index = active_probe_bank.ensure_context(
+            candidate_context,
+            model_family=candidate_model_families[0],
+        )
+        active_probe_bank.models[active_probe_index].load_state_dict(
+            router.provisional_model_at(0).state_dict()
+        )
+        if discovery_probe_mode == "active":
+            active_probe_rollout, active_probe_bits = (
+                _run_active_discovery_lifetime(
+                    agent,
+                    policy_free,
+                    active_probe_bank,
+                    source_context,
+                    source_slot_id=active_probe_bank.slot_id_at(source_index),
+                    target_slot_id=active_probe_bank.slot_id_at(active_probe_index),
+                    n_back=3,
+                    steps=steps,
+                    seed=seed + 22000,
+                    cue_symbol=7,
+                    candidate_intentions=candidate_intentions,
+                )
+            )
+        else:
+            active_probe_rollout, active_probe_bits = _run_lifetime(
+                agent,
+                policy_free,
+                bank,
+                source_context,
+                n_back=3,
+                steps=steps,
+                seed=seed + 22000,
+                cue_symbol=7,
+                candidate_intentions=candidate_intentions,
+                learn=False,
+            )
+        unique_bits += active_probe_bits
+        active_probe_rows = active_probe_rollout.horizon
+        target_result = _route_rollout(
+            router,
+            active_probe_rollout,
+            adapt=True,
+            adapt_committed=False,
+            optimizer_update_counter=external_memory_optimizer_updates,
+        )
     source_error_after = planner.rollout_error(
         source_heldout,
         transition_context=source_context.unsqueeze(0),
@@ -1065,10 +1225,17 @@ def run_online_transition_discovery_audit(
             source_training_lifetimes=source_training_lifetimes,
             target_training_lifetimes=target_training_lifetimes,
             total_logical_lifetimes=(
-                source_training_lifetimes + target_training_lifetimes + 1
+                source_training_lifetimes
+                + target_training_lifetimes
+                + 1
+                + (1 if active_probe_rows else 0)
             ),
             unique_verifier_bits=unique_bits,
-            transition_rows_consumed_once=source_training_lifetimes * steps,
+            transition_rows_consumed_once=(
+                source_training_lifetimes * steps
+                + target_training_lifetimes * steps
+                + active_probe_rows
+            ),
             replayed_examples=0,
             external_slot_count=bank.context_count,
             source_sample_count=int(bank.models[source_index].sample_count),
@@ -1099,6 +1266,9 @@ def run_online_transition_discovery_audit(
             context_encoder_rows_consumed_once=context_encoder_rows_consumed_once,
             external_memory_update_mode=external_memory_update_mode,
             external_memory_optimizer_updates=external_memory_optimizer_updates[0],
+            admission_observations=selected_admission_observations,
+            discovery_probe_mode=discovery_probe_mode,
+            discovery_probe_rows=active_probe_rows,
         )
 
     candidate_context = router.provisional_context_at(0)
@@ -1242,11 +1412,13 @@ def run_online_transition_discovery_audit(
                 + target_training_lifetimes
                 + promotion_heldout_lifetimes
                 + 1
+                + (1 if active_probe_rows else 0)
             ),
             unique_verifier_bits=unique_bits,
             transition_rows_consumed_once=(
                 source_training_lifetimes * steps
                 + target_training_lifetimes * steps
+                + active_probe_rows
             ),
             replayed_examples=0,
             external_slot_count=bank.context_count,
@@ -1276,6 +1448,9 @@ def run_online_transition_discovery_audit(
             context_encoder_rows_consumed_once=context_encoder_rows_consumed_once,
             external_memory_update_mode=external_memory_update_mode,
             external_memory_optimizer_updates=external_memory_optimizer_updates[0],
+            admission_observations=selected_admission_observations,
+            discovery_probe_mode=discovery_probe_mode,
+            discovery_probe_rows=active_probe_rows,
         )
 
     target_context = bank.context_at(promotion.slot_index)
@@ -1479,10 +1654,13 @@ def run_online_transition_discovery_audit(
             + target_training_lifetimes
             + promotion_heldout_lifetimes
             + 2
+            + (1 if active_probe_rows else 0)
         ),
         unique_verifier_bits=unique_bits,
         transition_rows_consumed_once=(
-            source_training_lifetimes * steps + target_training_lifetimes * steps
+            source_training_lifetimes * steps
+            + target_training_lifetimes * steps
+            + active_probe_rows
         ),
         replayed_examples=0,
         external_slot_count=bank.context_count,
@@ -1521,6 +1699,9 @@ def run_online_transition_discovery_audit(
         context_encoder_rows_consumed_once=context_encoder_rows_consumed_once,
         external_memory_update_mode=external_memory_update_mode,
         external_memory_optimizer_updates=external_memory_optimizer_updates[0],
+        admission_observations=selected_admission_observations,
+        discovery_probe_mode=discovery_probe_mode,
+        discovery_probe_rows=active_probe_rows,
     )
 
 
@@ -1569,6 +1750,12 @@ def main() -> None:
         choices=("sufficient_statistics", "streaming_gradient"),
         default="sufficient_statistics",
     )
+    parser.add_argument("--admission-observations", type=int)
+    parser.add_argument(
+        "--discovery-probe-mode",
+        choices=("none", "active", "passive"),
+        default="none",
+    )
     parser.add_argument("--steps", type=int, default=6)
     args = parser.parse_args()
     if args.audit == "nonstationary":
@@ -1603,6 +1790,8 @@ def main() -> None:
             random_feature_width=args.random_feature_width,
             pretrain_context_encoder=args.pretrain_context_encoder,
             external_memory_update_mode=args.external_memory_update_mode,
+            admission_observations=args.admission_observations,
+            discovery_probe_mode=args.discovery_probe_mode,
         )
     else:
         report = run_replay_free_transition_acquisition_audit(
