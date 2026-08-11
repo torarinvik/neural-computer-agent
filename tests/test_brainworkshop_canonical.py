@@ -728,6 +728,34 @@ def test_route_state_round_trips_without_loading_controller_weights() -> None:
         assert torch.equal(value, controller_before[name])
 
 
+def test_route_state_rejects_incompatible_learned_event_representation() -> None:
+    agent = CanonicalBrainWorkshopAgent(
+        symbol_count=7,
+        n_back=2,
+        event_width=8,
+        intention_width=4,
+        feedback_width=4,
+        reader_kind="relation",
+        seed=17,
+    )
+    agent.add_relation_capability(n_back=3, seed=23)
+    payload = agent.route_state_payload()
+
+    restored = CanonicalBrainWorkshopAgent(
+        symbol_count=7,
+        n_back=2,
+        event_width=8,
+        intention_width=4,
+        feedback_width=4,
+        reader_kind="relation",
+        seed=18,
+    )
+    restored.add_relation_capability(n_back=3, seed=23)
+
+    with pytest.raises(ValueError, match="learned event representation"):
+        restored.load_route_state_payload(payload)
+
+
 def test_canonical_intention_memory_is_external_and_reloadable() -> None:
     agent = CanonicalBrainWorkshopAgent(
         n_back=2,

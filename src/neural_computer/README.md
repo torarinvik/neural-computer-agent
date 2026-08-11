@@ -229,6 +229,13 @@ The canonical runner exposes the route table through a versioned
 validates slot count and context width and does not load or mutate controller
 weights.
 
+The canonical Brain Workshop route payload is now `brainworkshop-route-state.v2`:
+it also records the learned-event encoder configuration and a digest of that
+encoder's state. A route table paired with an incompatible event
+representation is rejected explicitly instead of silently treating every cue
+as unseen. This keeps route memory external and replaceable while making
+representation migration a separately testable ABI operation.
+
 Route evidence also has explicit reversal patience: repeated low outcomes can
 retire a stale context-to-slot preference while retaining the underlying
 capability row. `observe_batch()` reduces repeated context/slot attempts to

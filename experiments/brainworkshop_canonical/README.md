@@ -487,3 +487,23 @@ unrestricted memory growth, and compression remain open.
 
 The full reports and accounting ledger are archived in
 `session_records/brainworkshop_causal_rule_growth_2026-08-11/`.
+
+## Causal repeated depth growth (2026-08-11)
+
+`causal_depth_growth.py` extends the protected-file audit through three
+external working-memory files: n-back-2, n-back-3, and n-back-4. The shared
+controller, event encoder, and every earlier cell/adapter/decoder are frozen
+before the next file is acquired. All three rendered cues route to the correct
+opaque slot, while shuffled cues fail to target the intended slot.
+
+Seeds `17` and `18` both retain every rule at `1.0000` across eight fresh
+lifetime probes. Both pass exact route reload, explicit rejection of a route
+payload paired with an incompatible learned-event encoder, copied-table
+reversal, protected-prefix digests, and zero replay. The full evidence and
+ledger are archived in
+`session_records/brainworkshop_causal_depth_growth_2026-08-11/`.
+
+This promotes repeated bounded rule growth, not general continual learning.
+The next pressure test must vary the rule family and cue representation on
+held-out lifetimes; fixed n-back depth plus a fixed rendered cue family is not
+yet arbitrary rule acquisition.

@@ -9743,3 +9743,33 @@ event representation must be restored with its compatible encoder version;
 representation migration is the next ABI pressure point. Evidence and the
 sample-efficiency ledger are archived in
 `session_records/brainworkshop_causal_rule_growth_2026-08-11/`.
+
+## Causal repeated depth growth and route-representation ABI (2026-08-11)
+
+The next audit extends protected external rule growth through a three-file
+prefix. It trains n-back-2, appends an isolated n-back-3
+`ExternalWorkingMemoryCell`, freezes the acquired prefix, then appends an
+isolated n-back-4 cell. The controller, learned event encoder, and every
+earlier cell, adapter, and decoder remain frozen before each later acquisition.
+Rendered cues `4`, `5`, and `6` are ordinary frontend observations; the
+controller and route ledger receive only learned event tensors, opaque slot
+indices, and scalar verifier outcomes.
+
+Seeds `17` and `18` both retain all three rules at `1.0000` across eight fresh
+lifetime probes and route all three cues at `1.0000`. Shuffled-cue target-slot
+selection was only `0.3523/0.4489/0.2273` on seed `17` and
+`0.4034/0.4631/0.2074` on seed `18`. Protected-prefix digests and the shared
+controller stayed unchanged, route state reloaded exactly with its compatible
+encoder, incompatible encoder state was rejected, reversal mutated only a
+copied table, and all `1,152` optimizer updates used zero replayed examples.
+This promotes repeated bounded rule growth, not arbitrary rule induction,
+unrestricted memory growth, compression, or general continual learning. The
+reports and accounting ledger are in
+`session_records/brainworkshop_causal_depth_growth_2026-08-11/`.
+
+The route-state ABI is now `brainworkshop-route-state.v2`. Because context
+keys are learned event representations, the payload carries a versioned
+encoder configuration and a digest of its learned state. Loading a route table
+with a mismatched representation fails explicitly instead of silently falling
+back to append order. This preserves the useful independence of external route
+memory while making representation migration a deliberate, testable operation.

@@ -1,0 +1,58 @@
+{
+  "schema": "neural-computer.brainworkshop-causal-depth-growth.v1",
+  "claim_boundary": "A frozen controller acquires n-back-3 and n-back-4 as separate causal external files while preserving n-back-2 and earlier new files. This is repeated bounded rule growth, not arbitrary rule induction, unrestricted memory growth, or general continual learning.",
+  "seed": 18,
+  "rules": [
+    {"n_back": 2, "cue_symbol": 4, "slot": 0},
+    {"n_back": 3, "cue_symbol": 5, "slot": 1},
+    {"n_back": 4, "cue_symbol": 6, "slot": 2}
+  ],
+  "source_updates": 64,
+  "target_updates_per_growth": 256,
+  "batch_size": 32,
+  "steps": 10,
+  "retention_minima": {"2": 1.0, "3": 1.0, "4": 1.0},
+  "routed": {
+    "4": {"accuracy": 1.0, "selected_slot_fraction": 1.0},
+    "5": {"accuracy": 1.0, "selected_slot_fraction": 1.0},
+    "6": {"accuracy": 1.0, "selected_slot_fraction": 1.0}
+  },
+  "cue_shuffled_controls": {
+    "4": {"accuracy": 0.75, "selected_slot_fraction": 0.40340909361839294},
+    "5": {"accuracy": 0.8571428656578064, "selected_slot_fraction": 0.4630681872367859},
+    "6": {"accuracy": 0.6770833730697632, "selected_slot_fraction": 0.20738635957241058}
+  },
+  "route_orders": {
+    "original": {"4": [0, 1, 2], "5": [1, 2, 0], "6": [2, 1, 0]},
+    "restored": {"4": [0, 1, 2], "5": [1, 2, 0], "6": [2, 1, 0]},
+    "reversal_copy": [0, 1, 2],
+    "live_latest": [2, 1, 0]
+  },
+  "gates": {
+    "source_mastery_before_growth": true,
+    "source_complete_prefix_retention": true,
+    "target_mastery": true,
+    "protected_prefixes_unchanged": true,
+    "source_codec_unchanged_after_all_growth": true,
+    "first_target_codec_unchanged_during_second_growth": true,
+    "controller_unchanged": true,
+    "all_final_retention": true,
+    "all_routes_recovered": true,
+    "cue_separates_routes": true,
+    "cue_shuffled_controls_not_targeted": true,
+    "route_reload_exact": true,
+    "incompatible_route_representation_rejected": true,
+    "route_reversal_is_non_destructive": true,
+    "zero_replayed_examples": true
+  },
+  "promoted": true,
+  "accounting": {
+    "unique_verifier_bits_training": 122880,
+    "unique_verifier_bits_audit": 17472,
+    "unique_logical_lifetimes_training": 18432,
+    "unique_logical_lifetimes_audit": 2496,
+    "optimizer_updates": 576,
+    "replayed_examples": 0,
+    "wall_seconds": 88.1000710829976
+  }
+}

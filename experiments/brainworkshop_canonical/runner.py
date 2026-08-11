@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 from dataclasses import dataclass
 
 import torch
@@ -33,7 +34,7 @@ from neural_computer import (
 
 from .environment import BrainWorkshopEventEncoder, NBackVerifier
 
-ROUTE_STATE_SCHEMA = "neural-computer.brainworkshop-route-state.v1"
+ROUTE_STATE_SCHEMA = "neural-computer.brainworkshop-route-state.v2"
 INTENTION_STATE_SCHEMA = "neural-computer.brainworkshop-intention-state.v1"
 
 
@@ -294,6 +295,37 @@ class CanonicalBrainWorkshopAgent(nn.Module):
             self.extensions[slot - 1].capability_key.detach(), dim=0
         )
 
+    @staticmethod
+    def _module_digest(module: nn.Module) -> str:
+        """Hash a learned module without serializing its weights into state."""
+
+        digest = hashlib.sha256()
+        for name, value in sorted(module.state_dict().items()):
+            tensor = value.detach().cpu().contiguous()
+            digest.update(name.encode())
+            digest.update(str(tensor.dtype).encode("ascii"))
+            digest.update(repr(tuple(tensor.shape)).encode("ascii"))
+            digest.update(tensor.numpy().tobytes())
+        return digest.hexdigest()
+
+    def _event_representation_contract(self) -> dict[str, object]:
+        """Describe the encoder version required by context-keyed routes."""
+
+        if "stimulus" not in self.runtime.encoders:
+            raise ValueError("canonical runtime has no stimulus event encoder")
+        encoder = self.runtime.encoders["stimulus"]
+        configuration_method = getattr(encoder, "configuration", None)
+        if not callable(configuration_method):
+            raise TypeError("stimulus encoder does not expose a versioned configuration")
+        configuration = configuration_method()
+        if not isinstance(configuration, dict):
+            raise TypeError("stimulus encoder configuration must be a dictionary")
+        return {
+            "schema": "neural-computer.learned-event-representation-contract.v1",
+            "encoder_configuration": configuration,
+            "encoder_state_digest": self._module_digest(encoder),
+        }
+
     def extension_decoder(self, slot: int) -> KeypressDecoder:
         """Return the output-bus decoder owned by an appended slot."""
 
@@ -495,11 +527,12 @@ class CanonicalBrainWorkshopAgent(nn.Module):
         }
 
     def route_state_payload(self) -> dict[str, object]:
-        """Return independently reloadable external route state."""
+        """Return external route state plus its learned-key compatibility ABI."""
 
         return {
             "schema": ROUTE_STATE_SCHEMA,
             "slot_count": len(self.extensions) + 1,
+            "event_representation": self._event_representation_contract(),
             "route_evidence": self.route_evidence.payload(),
             "context_route_evidence": self.context_route_evidence.payload(),
         }
@@ -509,6 +542,10 @@ class CanonicalBrainWorkshopAgent(nn.Module):
 
         if payload.get("schema") != ROUTE_STATE_SCHEMA:
             raise ValueError("route-state schema is incompatible")
+        if payload.get("event_representation") != self._event_representation_contract():
+            raise ValueError(
+                "route-state learned event representation is incompatible"
+            )
         slot_count = payload.get("slot_count")
         if slot_count != len(self.extensions) + 1:
             raise ValueError("route-state slot count does not match the agent")
