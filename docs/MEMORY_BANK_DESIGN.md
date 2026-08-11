@@ -7598,3 +7598,106 @@ learned proposer, which is the reader's real job in this architecture.
 
 Probe 255 is `isa_compose.py --library`, growth and frozen arms,
 2 seeds.
+
+## F158 — select-vs-invent, confirmed by a VARIANCE collapse
+
+The arm F155 was contrasted against, finally read. `bool_compose.py
+--novel-ops` holds out sixteen worlds whose OPERATIONS the plant has
+never executed: same (b, k) parameters, but XOR-mask becomes ADD and
+rotate-LEFT becomes rotate-RIGHT. Everything else is the F135
+bind-once architecture that reaches 0.9983 on known operations.
+
+| worlds | seed 69316 | seed 69317 |
+| --- | ---: | ---: |
+| known ops, trained programs | 0.4151 | 0.3550 |
+| known ops, HELD-OUT programs | 0.3302 | 0.3478 |
+| novel ops, trained programs | 0.2228 | 0.1208 |
+| novel ops, HELD-OUT programs | 0.0052 | 0.1436 |
+| withheld-entry control (novel) | 0.0033 | 0.0064 |
+
+Chance is 0.0039. Composition over KNOWN operations generalises to
+unseen programs on both seeds (0.33, 0.35 — some 85x chance). Novel
+operations do not, and the two seeds disagree so violently on the
+headline number (0.0052 vs 0.1436) that the mean is not the finding.
+
+**The finding is in the variance.** Within each seed the novel-op
+accuracy is nearly IDENTICAL across all sixteen worlds — 0.2057-0.2378
+for one seed, 0.0825-0.1406 for the other. A model reading each world
+from its own entry cannot produce that; per-world accuracy would vary
+with the world. So the entry stops carrying usable information exactly
+when the operations change.
+
+**One hypothesis with a checkable signature, tested and refuted.** If
+the plant read (b, k) correctly and then executed THE OPERATIONS IT WAS
+TRAINED ON, its accuracy would equal the agreement rate between trained
+and novel semantics — computable with no model at all. That baseline
+gets the qualitative pattern right on both seeds, including seed
+69317's surprising inversion where held-out programs beat trained ones
+(baseline 0.0992 vs 0.0448; measured 0.1436 vs 0.1208). But it predicts
+per-world standard deviations of 0.0749 / 0.0477 against measured
+0.0071 / 0.0132 — an order of magnitude too much spread — and the
+per-world correlations are inconsistent in sign (+0.344, -0.090,
+-0.172, -0.559). The plant is not executing trained semantics on read
+parameters. It has fallen back on something world-independent.
+
+Recorded as the negative half of F155's contrast, and it is a real
+one: the recipe architecture never has to invent an operation, because
+a new world is a new ARRANGEMENT of a basis the interpreter already
+executes. This probe measures the cost of the alternative.
+
+Probe 256 is `bool_compose.py --novel-ops`, 2 seeds, 40k updates. The
+refuted baseline is `nvops_signature.py` — arithmetic only, no
+network.
+
+**Codex log, final 10% (2026-08-11). One transferable audit, checked
+here and clean; the rest is our own work reflected back.**
+
+**Provenance, again and explicitly.** The log states its own source:
+"I extracted the session at transcript.jsonl ... It is from the
+separate `neural-computer-agent-games` repo." That is US. Its
+"strongly validated findings" list — policy-in-weights interferes,
+model-plus-search is robust, separate structure from content, bind
+once then iterate, goal-factored memory composes, rules versus
+episodic exceptions, internal diagnostics beat reward curves — is our
+own ledger restated, and the numbers it quotes (0.573 vs 0.441,
+0.977 -> 0.695 -> 0.441, the 27 exceptions, 0.97 distilled) are ours.
+It is not corroboration and must never be counted as a second source.
+The genuinely independent content is only what Codex did in ITS OWN
+repository.
+
+**The one transferable audit: fail closed on unknown.** Codex found
+that its planner treated a content-addressed MISS as an ordinary
+prediction, so an unknown transition silently became a zero-valued
+state and could WIN the search. That is a real bug class and worth
+checking here rather than assuming.
+
+**Checked, and it does not bite.** Our analogue is the unused-slot
+sentinel: `used = (states < VALUES).all(dim=0)` is computed from the
+OBSERVED states, and successors are clamped `where(nexts < VALUES,
+nexts, 0)`. If a slot were unused in states but sentinel in
+successors, the truth would silently become 0 and a candidate could
+"match" it. Ran the check across 19 families — seven hand-made
+(line, dial, toggle, perm, grid, walled, chaos) and twelve
+procedural — over every state and every action: **zero mask
+mismatches.** The mask derived from states equals the mask derived
+from successors in every family, so no undefined target is ever
+scored as a match. Recorded as an audit that came back clean, not as
+a fix.
+
+**One methodological point worth keeping.** Codex's active-selection
+arm failed three seeds, and the diagnosis was that a deterministic
+ARGMAX probe cannot see a state change unless the logits cross the
+decision boundary — sub-threshold changes are invisible to it. Our
+synthesis search scores candidates by argmax slot match, so it has
+the same blindness in principle. It matters less here than there,
+because our search is random proposal with best-of-N rather than
+hill-climbing, so there is no landscape to be flattened. Where it
+COULD bite is what the library learns from: a family that never
+reaches `--fit-target` still contributes its best candidate to the
+statistics, and that candidate may be noise. Noted as a known limit
+of the library arms rather than acted on mid-run.
+
+**Nothing in this section changes the current direction.** Their
+architectural conclusions are ours; their new work (a fail-closed
+planner path, an active causal selector that failed at three seeds)
+addresses mechanisms this repository does not have.

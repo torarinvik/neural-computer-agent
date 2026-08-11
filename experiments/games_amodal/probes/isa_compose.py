@@ -104,6 +104,29 @@ parser.add_argument(
          "is doing the work and not the ordering.")
 parser.add_argument("--no-growth", action="store_true",
                     help="control: never add fragments to the library")
+parser.add_argument(
+    "--library-arms", action="store_true",
+    help="run the four library policies against ONE shared plant. F157 "
+         "measured growth-vs-frozen and found a null, for a reason "
+         "stated before the run: fragments were appended to a "
+         "UNIFORMLY sampled pool, so the library grew 210 -> 242 and "
+         "every useful fragment went from 1-in-210 to 1-in-242. "
+         "Accumulation is not a library; COMPRESSION is. This runs "
+         "frozen / uniform / prims / weighted in one process so the "
+         "arms differ only in proposal policy.")
+parser.add_argument(
+    "--extra-families", type=int, default=0,
+    help="additional procedural families appended to the sequence. "
+         "F157's paired test had 7 families and per-family cost spanning "
+         "two orders of magnitude, so it had almost no power; reuse can "
+         "only pay off on families that come LATER in the sequence.")
+parser.add_argument(
+    "--related-families", type=int, default=0,
+    help="also run the whole arm comparison on a sequence of families "
+         "that SHARE their state geometry. The diverse sequence is the "
+         "condition where reuse is least able to help by construction, "
+         "so a null there alone cannot distinguish a broken library from "
+         "tasks with nothing in common.")
 parser.add_argument("--fit-target", type=float, default=0.95,
                     help="search stops once a candidate reaches this "
                          "fit, so COST (candidates tried) is the "
@@ -349,10 +372,16 @@ if args.synthesize:
                 "held_out": round(hits / max(total, 1), 4),
                 "identity": round(identity / max(total, 1), 4)}
 
-    def search_with_library(family, library, generator, budget):
+    def search_with_library(family, library, weights, generator, budget):
         """Propose programs by concatenating LIBRARY FRAGMENTS. Returns
         the recipe and the number of candidates tried — cost is the
-        measurement here, not accuracy."""
+        measurement here, not accuracy.
+
+        `weights` is None for uniform proposal (F157's behaviour) or a
+        per-fragment usefulness count. Weighted proposal is the whole
+        point of the fix: F157 appended fragments to a UNIFORMLY sampled
+        pool, so every added fragment made every other fragment RARER,
+        and the library got bigger without getting better."""
         states, acts, nexts = observe(family, args.observations,
                                       generator)
         used = (states < VALUES).all(dim=0)
@@ -360,6 +389,10 @@ if args.synthesize:
                              torch.zeros_like(states))
         nexts = torch.where(nexts < VALUES, nexts,
                             torch.zeros_like(nexts))
+        # sampling distribution is fixed for the whole family, so build
+        # it once rather than per candidate
+        table = (torch.tensor(weights, dtype=torch.float)
+                 if weights is not None else None)
         recipe, tried_total, fits = {}, 0, []
         for action in range(family.actions):
             keep = acts == action
@@ -372,9 +405,13 @@ if args.synthesize:
                 # is long enough; a fragment may be a whole past recipe
                 candidate: list = []
                 while len(candidate) < args.program_len:
-                    pick = library[int(torch.randint(
-                        0, len(library), (1,), generator=generator))]
-                    candidate = candidate + list(pick)
+                    if table is None:
+                        slot = int(torch.randint(
+                            0, len(library), (1,), generator=generator))
+                    else:
+                        slot = int(torch.multinomial(
+                            table, 1, generator=generator))
+                    candidate = candidate + list(library[slot])
                 candidate = candidate[:args.program_len]
                 tried += 1
                 with torch.no_grad():
@@ -390,6 +427,229 @@ if args.synthesize:
             tried_total += tried
         return recipe, tried_total, sum(fits) / max(len(fits), 1)
 
+    def occurrences(fragment: tuple, program: tuple) -> int:
+        """How many times `fragment` appears CONTIGUOUSLY in `program`."""
+        width = len(fragment)
+        return sum(1 for start in range(len(program) - width + 1)
+                   if program[start:start + width] == fragment)
+
+    def sub_fragments(program: tuple) -> list:
+        """Every contiguous sub-program of length 2 or more. Whole-recipe
+        fragments alone cannot compose — an exact past solution rarely
+        solves a new family, whereas a recurring PAIR shortens the
+        effective search depth of every program built from it."""
+        out = []
+        for start in range(len(program)):
+            for stop in range(start + 2, len(program) + 1):
+                out.append(program[start:stop])
+        return out
+
+    def pays_for_itself(fragment: tuple, solved: list) -> bool:
+        """Minimum description length, in instructions. Naming a
+        fragment costs its own length once; each later use spends one
+        token instead of `len(fragment)`. Keep it only if the arithmetic
+        comes out positive — this is what makes the library a
+        COMPRESSION of what has been solved rather than a pile of it."""
+        used = sum(occurrences(fragment, program) for program in solved)
+        return used * (len(fragment) - 1) - len(fragment) > 0
+
+    # ops that actually read each argument field, so the marginals are
+    # not polluted by slots a NOOP never touched
+    USES_I = tuple(o != "NOOP" for o in OPS)
+    USES_J = tuple(o in ("CINC", "CDEC", "COPY", "SWAP") for o in OPS)
+
+    class Proposer:
+        """A proposal distribution over programs, fitted to what has
+        actually solved past families.
+
+        Three statistics, all over the AMODAL instruction basis and so
+        domain-general by the same argument as the basis itself:
+
+          op marginal    which operations pay off at all
+          slot marginals which slots solved programs actually touch
+          SKETCHES       op-sequences that recur, arguments left FREE
+
+        The sketch is the piece F157 was missing, and the reason the
+        first attempt at this fix added ZERO fragments across nine
+        families. Held as a CONCRETE instruction sequence, a fragment
+        can essentially never recur: there are NOPS*SLOTS*(SLOTS-1)
+        distinct instructions, so two winning programs sharing an exact
+        three-instruction run is a coincidence we should never expect to
+        see. Held as a SKETCH, "increment then compare" recurs even when
+        the slots differ, and the arguments come from the marginals.
+
+        Untrained, this is EXACTLY uniform over the concrete atoms —
+        uniform op times uniform slots is the frozen arm's distribution.
+        The arms therefore start from the same proposal and differ only
+        in what they learn from what worked."""
+
+        def __init__(self, use_sketches: bool):
+            self.use_sketches = use_sketches
+            self.parts = [(op,) for op in range(NOPS)]   # length-1 = ops
+            self.weight = [1.0] * NOPS
+            self.exact: list = []          # whole past winning programs
+            self.exact_weight: list = []
+            self.i_count = [1.0] * SLOTS
+            self.j_count = [1.0] * SLOTS
+            self.known = {(op,) for op in range(NOPS)}
+
+        def size(self) -> int:
+            return len(self.parts) + len(self.exact)
+
+        def tables(self):
+            return (torch.tensor(self.weight + self.exact_weight),
+                    torch.tensor(self.i_count), torch.tensor(self.j_count),
+                    torch.tensor([float(len(p)) for p in self.parts]
+                                 + [float(len(p)) for p in self.exact]))
+
+        def draw(self, tables, generator) -> list:
+            """One program of args.program_len instructions."""
+            element, islot, jslot, widths = tables
+            out: list = []
+            while len(out) < args.program_len:
+                # only draw among elements that FIT the space left.
+                # Without this a stored program is chopped whenever
+                # something was drawn before it, so exact reuse could
+                # never pay off and the arm would look null for a
+                # bookkeeping reason rather than a real one. The
+                # length-1 ops always fit, so this can never empty.
+                room = widths <= (args.program_len - len(out))
+                pick = int(torch.multinomial(element * room, 1,
+                                             generator=generator))
+                if pick >= len(self.parts):
+                    out = out + list(self.exact[pick - len(self.parts)])
+                    continue
+                for op in self.parts[pick]:
+                    i = int(torch.multinomial(islot, 1,
+                                              generator=generator))
+                    masked = jslot.clone()
+                    masked[i] = 0.0        # the basis forbids i == j
+                    j = int(torch.multinomial(masked, 1,
+                                              generator=generator))
+                    out.append((op, i, j))
+            return out[:args.program_len]
+
+        def observe(self, winners: list, solved: list) -> None:
+            """Fit the statistics to programs that WORKED."""
+            for program in winners:
+                for op, i, j in program:
+                    if USES_I[op]:
+                        self.i_count[i] += 1.0
+                    if USES_J[op]:
+                        self.j_count[j] += 1.0
+            shapes = [tuple(op for op, _, _ in p) for p in solved]
+            fresh = [tuple(op for op, _, _ in p) for p in winners]
+            for slot, part in enumerate(self.parts):
+                self.weight[slot] += sum(occurrences(part, shape)
+                                         for shape in fresh)
+            if not self.use_sketches:
+                return
+            for program in winners:
+                self.exact.append(tuple(program))
+                self.exact_weight.append(1.0)
+            for shape in fresh:
+                for part in sub_fragments(shape):
+                    if part in self.known:
+                        continue
+                    if not pays_for_itself(part, shapes):
+                        continue
+                    self.known.add(part)
+                    self.parts.append(part)
+                    self.weight.append(float(sum(
+                        occurrences(part, s) for s in shapes)))
+
+    def search_with_proposer(family, proposer, generator, budget):
+        """Identical to search_with_library except for where candidates
+        come from. Cost is still counted in plant forward passes, which
+        is what makes the arms comparable."""
+        states, acts, nexts = observe(family, args.observations,
+                                      generator)
+        used = (states < VALUES).all(dim=0)
+        states = torch.where(states < VALUES, states,
+                             torch.zeros_like(states))
+        nexts = torch.where(nexts < VALUES, nexts,
+                            torch.zeros_like(nexts))
+        tables = proposer.tables()
+        recipe, tried_total, fits = {}, 0, []
+        for action in range(family.actions):
+            keep = acts == action
+            if int(keep.sum()) < 4:
+                continue
+            src, dst = states[keep], nexts[keep]
+            best, best_score, tried = None, -1.0, 0
+            while tried < budget:
+                candidate = proposer.draw(tables, generator)
+                tried += 1
+                with torch.no_grad():
+                    got = plant(candidate, src).argmax(-1)
+                score = float((got[:, used] == dst[:, used])
+                              .float().mean())
+                if score > best_score:
+                    best, best_score = candidate, score
+                if best_score >= args.fit_target:
+                    break
+            recipe[action] = best
+            fits.append(best_score)
+            tried_total += tried
+        return recipe, tried_total, sum(fits) / max(len(fits), 1)
+
+    def library_run(mode: str, targets: list, budget: int, seed: int):
+        """One pass over the family SEQUENCE under one library policy.
+
+        Four policies, forming an attribution ladder:
+          frozen    concrete atoms, uniform            (F157 control)
+          uniform   + whole recipes, uniform           (F157 growth arm)
+          marginal  op and slot marginals only, no stored programs
+          sketch    + MDL-selected op-sketches + exact past winners
+
+        `marginal` is the control that decides how the result reads: it
+        learns WHICH INSTRUCTIONS pay off without storing a single
+        program. If `sketch` only matches it, the gain is instruction
+        statistics rather than program reuse, and that distinction is
+        the entire reason this arm exists."""
+        atoms = [tuple([(op, i, j)]) for op in range(NOPS)
+                 for i in range(SLOTS) for j in range(SLOTS) if i != j]
+        proposer = (Proposer(mode == "sketch")
+                    if mode in ("marginal", "sketch") else None)
+        library, weights, solved, sequence = atoms, None, [], []
+        started = proposer.size() if proposer else len(atoms)
+        # per-arm generator seeded identically, so the arms see the SAME
+        # observations for the same family and the comparison is paired
+        generator = torch.Generator().manual_seed(seed)
+        for name, family in targets:
+            if proposer is not None:
+                recipe, tried, fit = search_with_proposer(
+                    family, proposer, generator, budget)
+            else:
+                recipe, tried, fit = search_with_library(
+                    family, library, weights, generator, budget)
+            actions = max(1, sum(1 for v in recipe.values()
+                                 if v is not None))
+            sequence.append({
+                "family": name, "candidates_tried": tried,
+                "fit": round(fit, 4),
+                "library_size": (proposer.size() if proposer
+                                 else len(library)),
+                "saturated": tried >= budget * actions})
+            winners = [tuple(program) for program in recipe.values()
+                       if program]
+            if mode == "frozen" or not winners:
+                continue
+            solved.extend(winners)
+            if mode == "uniform":
+                for program in winners:
+                    library.append(program)
+                continue
+            proposer.observe(winners, solved)
+        return {"sequence": sequence, "started": started,
+                "ended": proposer.size() if proposer else len(library),
+                "total_candidates": sum(s["candidates_tried"]
+                                        for s in sequence),
+                "sketches": (sorted(
+                    ("+".join(OPS[o] for o in p), round(w, 1))
+                    for p, w in zip(proposer.parts, proposer.weight)
+                    if len(p) > 1) if proposer else [])}
+
     gen = torch.Generator().manual_seed(args.seed * 104729)
     targets = [("line", Family("line")), ("dial", Family("dial")),
                ("toggle", Family("toggle")), ("perm", Family("perm")),
@@ -397,8 +657,61 @@ if args.synthesize:
     for index in range(2):
         targets.append((f"proc{index}",
                         RandomFamily(random_family_spec(gen))))
-    report["synthesis"] = {name: synthesise(fam, gen)
-                           for name, fam in targets}
+    if not args.library_arms:
+        report["synthesis"] = {name: synthesise(fam, gen)
+                               for name, fam in targets}
+
+    def related_specs(generator, count: int) -> list:
+        """Families sharing the state GEOMETRY but not the action
+        effects: same slot count, value count and space, independently
+        drawn ops.
+
+        Reuse can only pay to the extent that solved programs say
+        something about unsolved ones. A sequence of families chosen to
+        share as little as possible — which is what BREADTH asks for —
+        is therefore the condition under which reuse is least able to
+        help, and reporting a null there without this contrast would
+        confuse 'reuse does not work' with 'these tasks share nothing'.
+        Shared structure has to be a knob, not an assumption."""
+        base = random_family_spec(generator)
+        out, attempts = [base], 0
+        while len(out) < count:
+            attempts += 1
+            if attempts > 20000:
+                # the 17-hour lesson: a uniqueness loop that cannot be
+                # satisfied must fail loudly, not spin
+                raise SystemExit(
+                    f"could not draw {count} families matching "
+                    f"slots={base['slots']} values={base['values']} "
+                    f"space={base['space']} in {attempts} attempts")
+            spec = random_family_spec(generator)
+            if (spec["slots"] == base["slots"]
+                    and spec["values"] == base["values"]
+                    and spec["space"] == base["space"]):
+                out.append(spec)
+        return out
+
+    if args.library_arms:
+        # every arm searches against the SAME frozen plant, which
+        # removes training variance from the comparison entirely and
+        # costs one training run instead of eight
+        sequences = {}
+        diverse = list(targets)
+        for index in range(args.extra_families):
+            diverse.append((f"extra{index}",
+                            RandomFamily(random_family_spec(gen))))
+        sequences["diverse"] = diverse
+        if args.related_families:
+            sequences["related"] = [
+                (f"rel{index}", RandomFamily(spec)) for index, spec
+                in enumerate(related_specs(gen, args.related_families))]
+        report["library_arms"] = {
+            tag: {mode: library_run(mode, seq, args.synthesize,
+                                    args.seed * 7907)
+                  for mode in ("frozen", "uniform", "marginal", "sketch")}
+            for tag, seq in sequences.items()}
+        report["library_families"] = {
+            tag: [n for n, _ in seq] for tag, seq in sequences.items()}
 
     if args.library:
         # every single instruction is a fragment to begin with
@@ -409,7 +722,7 @@ if args.synthesize:
         sequence = []
         for name, family in targets:
             recipe, tried, fit = search_with_library(
-                family, library, gen, budget=args.synthesize)
+                family, library, None, gen, budget=args.synthesize)
             sequence.append({
                 "family": name, "candidates_tried": tried,
                 "fit": round(fit, 4), "library_size": len(library)})
