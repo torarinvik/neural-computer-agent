@@ -570,3 +570,93 @@ against the corrected baseline.
    pathway both still use it.
 4. **Explicit alignment/uniformity terms** (§9).
 5. **Discrete codebook** (§5, re-running after the F146 collapse fix).
+
+---
+
+# Addendum 3, 2026-08-11: after three mechanism nulls
+
+Semi-amortization (§8), the discrete codebook (§5) and the widened
+state (§10) all measured null. Only longer training moved anything.
+That changes what is worth reading.
+
+## 15. The games' planning objective was simply WRONG (F151)
+
+Not a bottleneck needing literature so much as a bug the literature
+names the correct form of. TD-MPC and infinite-horizon MPPI state the
+standard decision-time planning objective explicitly: **estimate
+short-term rewards from model rollouts, and long-term return with a
+TERMINAL value function** — sum gamma^d r(s_d,a_d) over the horizon,
+then add gamma^H V(s_H). The value enters ONCE, at the end.
+
+Ours summed an H-step-return prediction at every depth, giving r_3 a
+weight of 2.916 where 0.729 is correct (F151). The literature's form
+is exactly the fix, and it names the missing component precisely: an
+immediate-reward head, which we do not have because F111 replaced the
+3-class outcome head with a return head and nothing kept the one-step
+quantity.
+
+This also reframes F110's "search and dynamics residual" as possibly
+neither: a residual attributed to search QUALITY may be search
+ARITHMETIC. The `--score terminal` arms running now are the cheap test
+and the reward-plus-bootstrap head is the real fix.
+
+Sources:
+[TD-MPC: Temporal Difference Learning for Model Predictive Control](https://proceedings.mlr.press/v162/hansen22a/hansen22a.pdf),
+[MPC and RL: A Unified Framework Based on Dynamic Programming](https://arxiv.org/html/2406.00592v3),
+[MPC with Differentiable World Models for Offline RL](https://arxiv.org/html/2603.22430v1)
+
+## 16. The reader's "only training helps" pattern may be GROKKING
+
+**What we measured.** 40k updates 0.7795, 100k updates 0.8704, with
+exact-match rising 0.2498 -> 0.4228. Three mechanism interventions did
+nothing; time did a lot.
+
+**What the literature describes.** Grokking: a model first memorises,
+then sits on a plateau where aggregate loss barely moves, then
+transitions to generalisation — described as being pushed away from
+memorisation toward simpler, more general representations. Originally
+found on ALGORITHMIC tasks, which is what our probes are.
+
+**Why this is a hypothesis and not yet a finding.** We have three
+points on a curve (40k, 100k, and 200k running) measured only at the
+END of training. Grokking is a claim about the SHAPE of a curve — a
+plateau followed by a transition — and we have never plotted held-out
+performance against training step even once. Two very different
+stories fit our three points equally well:
+  * smooth logarithmic improvement, in which case the ceiling is
+    approached slowly and the "amortization gap" is just budget;
+  * a phase transition, in which case there is a specific step count
+    where reading appears and everything before it is wasted.
+
+They imply opposite things about what to do next, and distinguishing
+them costs one instrumented run rather than another mechanism.
+
+**Concrete gap in our instrumentation, which this exposes.** Every
+probe in this project reports only final numbers. We have run
+hundreds of arms and never once looked at a learning curve. That is
+why "it needed more training" was invisible until a run happened to be
+longer, and why the shape question is currently unanswerable from
+anything on disk.
+
+Sources:
+[Towards Understanding Grokking: An Effective Theory of Representation Learning (NeurIPS 2022)](https://papers.neurips.cc/paper_files/paper/2022/file/dfc310e81992d2e4cedc09ac47eff13e-Paper-Conference.pdf),
+[Two Speeds of Learning: Representation-Readout Decomposition of Grokking](https://arxiv.org/html/2605.27078),
+[A Two-Phase Perspective on Deep Learning Dynamics](https://arxiv.org/pdf/2504.12700),
+[Grokking overview](https://www.emergentmind.com/topics/grokking)
+
+---
+
+## Ranking after addendum 3
+
+1. **Instrument the learning curve** (§16) — periodic held-out
+   evaluation during training. Answers the grokking-vs-slow-convergence
+   question, makes every future run more informative, and is the
+   cheapest item ever added to this page. It should have existed from
+   the start.
+2. **Reward head + terminal bootstrap** (§15) — the literature's
+   standard planning objective, replacing a measured 4x over-counting.
+3. **Context-reconstruction check** (§11) — implemented, awaiting a
+   run that includes it.
+4. Retired for now: semi-amortization, codebook, widened state — all
+   measured null (F148, F149). Alignment/uniformity terms (§9) remain
+   untested but drop below the two items above.
