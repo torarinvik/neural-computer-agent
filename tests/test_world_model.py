@@ -31,6 +31,7 @@ from neural_computer import (
     ExternalTransitionModelLifetimePolicy,
     ExternalTransitionModelPriorSelectionReceipt,
     ExternalTransitionObservation,
+    ExternalTransitionProbeContextualUtilityMemory,
     ExternalTransitionProbeUtilityMemory,
     ExternalTransitionRollout,
     ExternalTransitionRouteMemory,
@@ -3920,6 +3921,29 @@ def test_planner_selects_active_intention_that_disambiguates_model_slots() -> No
     assert overridden.utility_confidence_scores is not None
     assert overridden.utility_confidence_scores[0] > 0.9
 
+    contextual_utility = ExternalTransitionProbeContextualUtilityMemory(
+        intention_width=1,
+        context_width=3,
+        intention_merge_cosine=0.99,
+        context_merge_cosine=0.99,
+        context_kernel_floor=0.75,
+    )
+    for _ in range(20):
+        contextual_utility.observe(
+            torch.tensor([[0.0], [1.0]]),
+            result.utility_profiles[:, 1:],
+            utility=torch.tensor([1.0, 0.0]),
+        )
+    contextual_result = planner.select_disambiguating_intention(
+        bank,
+        torch.zeros(1, 1),
+        torch.tensor([[0.0], [1.0]]),
+        utility_memory=contextual_utility,
+    )
+    assert contextual_result.selected_intention_index == 0
+    assert contextual_result.utility_confidence_scores is not None
+    assert contextual_result.utility_confidence_scores[0] > 0.9
+
 
 def test_transition_support_statistics_calibrate_opaque_leverage_without_replay() -> None:
     support = ExternalTransitionSupportStatistics(
@@ -3974,6 +3998,54 @@ def test_probe_utility_memory_learns_scalar_resolution_without_replay() -> None:
     restored = ExternalTransitionProbeUtilityMemory.from_payload(memory.payload())
     assert restored.content_digest() == memory.content_digest()
     assert torch.allclose(restored.scores(torch.tensor([[1.0, 0.0], [0.0, 1.0]])), scores[:2])
+
+
+def test_contextual_probe_utility_transfers_only_across_related_opaque_contexts() -> None:
+    memory = ExternalTransitionProbeContextualUtilityMemory(
+        intention_width=2,
+        context_width=2,
+        intention_merge_cosine=0.99,
+        context_merge_cosine=0.99,
+        context_kernel_floor=0.70,
+    )
+    intention = torch.tensor([[1.0, 0.0]])
+    context = torch.tensor([[1.0, 0.0]])
+    for _ in range(8):
+        memory.observe(intention, context, utility=1.0)
+
+    scores, confidence = memory.scores_and_confidence(
+        torch.tensor([[1.0, 0.0], [0.0, 1.0], [1.0, 0.0]]),
+        torch.tensor(
+            [
+                [0.98, 0.20],
+                [1.0, 0.0],
+                [0.0, 1.0],
+            ]
+        ),
+    )
+    assert scores[0] > 0.80
+    assert confidence[0] > 0.70
+    assert scores[1].item() == pytest.approx(0.5)
+    assert confidence[1].item() == pytest.approx(0.0)
+    assert scores[2].item() == pytest.approx(0.5)
+    assert confidence[2].item() == pytest.approx(0.0)
+
+    memory.observe(
+        torch.tensor([[1.0, 0.0], [1.0, 0.0]]),
+        torch.tensor([[0.98, 0.20], [0.0, 1.0]]),
+        utility=torch.tensor([0.0, 0.0]),
+        outcome_mask=torch.tensor([False, False]),
+    )
+    assert memory.observed_outcome_count == 8
+    restored = ExternalTransitionProbeContextualUtilityMemory.from_payload(
+        memory.payload()
+    )
+    assert restored.content_digest() == memory.content_digest()
+    restored_scores, restored_confidence = restored.scores_and_confidence(
+        torch.tensor([[1.0, 0.0]]), torch.tensor([[0.98, 0.20]])
+    )
+    assert torch.allclose(restored_scores, scores[:1])
+    assert torch.allclose(restored_confidence, confidence[:1])
 
 
 def test_planner_selects_a_fixed_opaque_probe_sequence() -> None:

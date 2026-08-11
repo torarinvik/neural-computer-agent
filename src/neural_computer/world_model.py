@@ -80,6 +80,9 @@ EXTERNAL_TRANSITION_SUPPORT_STATISTICS_SCHEMA = (
 EXTERNAL_TRANSITION_PROBE_UTILITY_MEMORY_SCHEMA = (
     "neural-computer.external-transition-probe-utility-memory.v1"
 )
+EXTERNAL_TRANSITION_PROBE_CONTEXTUAL_UTILITY_MEMORY_SCHEMA = (
+    "neural-computer.external-transition-probe-contextual-utility-memory.v1"
+)
 EXTERNAL_CONTEXTUAL_TRANSITION_EVIDENCE_STATISTICS_SCHEMA = (
     "neural-computer.contextual-transition-evidence-statistics.v1"
 )
@@ -6776,7 +6779,11 @@ class ExternalOnlineTransitionContextRouter:
         candidate_slot_ids: Sequence[int] | None = None,
         probe_state: torch.Tensor | None = None,
         support_statistics: ExternalTransitionSupportStatistics | None = None,
-        utility_memory: ExternalTransitionProbeUtilityMemory | None = None,
+        utility_memory: (
+            ExternalTransitionProbeUtilityMemory
+            | ExternalTransitionProbeContextualUtilityMemory
+            | None
+        ) = None,
     ) -> ExternalTransitionProbeResult:
         """Request an active probe for an ambiguously routed evidence window.
 
@@ -10511,6 +10518,471 @@ class ExternalTransitionProbeUtilityMemory:
         return memory
 
 
+class ExternalTransitionProbeContextualUtilityMemory:
+    """Replay-free utility transfer across related opaque uncertainty contexts.
+
+    The key is factored into an opaque intention and an opaque context vector
+    derived by the external model evaluator.  Outcomes are retained only as
+    bounded sufficient statistics; the context vectors are addresses, not
+    semantic labels.  Querying an intention in a nearby context receives a
+    kernel-weighted posterior, while unrelated intentions receive the neutral
+    prior.  This creates transfer without making the controller inspect task
+    identity, target slots, protocol actions, or raw verifier evidence.
+    """
+
+    schema = EXTERNAL_TRANSITION_PROBE_CONTEXTUAL_UTILITY_MEMORY_SCHEMA
+
+    def __init__(
+        self,
+        intention_width: int,
+        context_width: int,
+        *,
+        intention_merge_cosine: float = 0.999,
+        context_merge_cosine: float = 0.99,
+        context_kernel_floor: float = 0.75,
+        prior_strength: float = 1.0,
+        max_entries: int | None = None,
+    ) -> None:
+        for name, value in (
+            ("intention width", intention_width),
+            ("context width", context_width),
+        ):
+            if not isinstance(value, int) or isinstance(value, bool) or value < 1:
+                raise ValueError(f"probe contextual utility {name} must be positive")
+        for name, value in (
+            ("intention merge cosine", intention_merge_cosine),
+            ("context merge cosine", context_merge_cosine),
+        ):
+            if not 0.0 <= value <= 1.0 or not math.isfinite(value):
+                raise ValueError(f"probe contextual utility {name} is invalid")
+        if (
+            not 0.0 <= context_kernel_floor < 1.0
+            or not math.isfinite(context_kernel_floor)
+        ):
+            raise ValueError("probe contextual utility context kernel floor is invalid")
+        if prior_strength <= 0.0 or not math.isfinite(prior_strength):
+            raise ValueError("probe contextual utility prior strength is invalid")
+        if max_entries is not None and (
+            not isinstance(max_entries, int)
+            or isinstance(max_entries, bool)
+            or max_entries < 1
+        ):
+            raise ValueError("probe contextual utility maximum entries is invalid")
+        self.intention_width = int(intention_width)
+        self.context_width = int(context_width)
+        self.intention_merge_cosine = float(intention_merge_cosine)
+        self.context_merge_cosine = float(context_merge_cosine)
+        self.context_kernel_floor = float(context_kernel_floor)
+        self.prior_strength = float(prior_strength)
+        self.max_entries = max_entries
+        self._intentions: list[torch.Tensor] = []
+        self._contexts: list[torch.Tensor] = []
+        self._attempts: list[int] = []
+        self._outcome_counts: list[int] = []
+        self._utility_sums: list[float] = []
+        self._version = 0
+
+    def configuration(self) -> dict[str, int | float | str | None]:
+        return {
+            "schema": self.schema,
+            "intention_width": self.intention_width,
+            "context_width": self.context_width,
+            "intention_merge_cosine": self.intention_merge_cosine,
+            "context_merge_cosine": self.context_merge_cosine,
+            "context_kernel_floor": self.context_kernel_floor,
+            "prior_strength": self.prior_strength,
+            "max_entries": self.max_entries,
+            "storage": (
+                "opaque_intention_context_kernel_scalar_resolution_"
+                "sufficient_statistics_v1"
+            ),
+            "unknown_prior": "neutral_half_v1",
+            "learning": "one_pass_fresh_route_outcomes_without_replay_v1",
+        }
+
+    @property
+    def record_count(self) -> int:
+        return len(self._intentions)
+
+    @property
+    def version(self) -> int:
+        return self._version
+
+    @property
+    def observed_outcome_count(self) -> int:
+        return sum(self._outcome_counts)
+
+    def _validate_keys(
+        self,
+        intentions: torch.Tensor,
+        contexts: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        if intentions.ndim == 1:
+            intentions = intentions.unsqueeze(0)
+        if contexts.ndim == 1:
+            contexts = contexts.unsqueeze(0)
+        _validate_tensor(
+            intentions,
+            name="contextual probe utility intentions",
+            ndim=2,
+            width=self.intention_width,
+        )
+        _validate_tensor(
+            contexts,
+            name="contextual probe utility contexts",
+            ndim=2,
+            width=self.context_width,
+        )
+        if intentions.shape[0] != contexts.shape[0]:
+            raise ValueError("contextual probe utility keys are misaligned")
+        return (
+            intentions.detach().to(device="cpu", dtype=torch.float32).contiguous(),
+            contexts.detach().to(device="cpu", dtype=torch.float32).contiguous(),
+        )
+
+    def _validate_observations(
+        self,
+        batch: int,
+        utility: torch.Tensor | float | None,
+        outcome_mask: torch.Tensor | bool | None,
+    ) -> tuple[torch.Tensor | None, torch.Tensor]:
+        if utility is None:
+            utility_values = None
+        elif isinstance(utility, torch.Tensor):
+            if utility.ndim == 0:
+                utility_values = utility.reshape(1).expand(batch)
+            elif utility.shape == (batch,) or utility.shape == (batch, 1):
+                utility_values = utility.reshape(batch)
+            else:
+                raise ValueError(
+                    "contextual probe utility outcomes must contain one value per key"
+                )
+            utility_values = utility.detach().to(device="cpu", dtype=torch.float64)
+        else:
+            utility_values = torch.full((batch,), float(utility), dtype=torch.float64)
+        if utility_values is not None and (
+            not bool(torch.isfinite(utility_values).all())
+            or bool(torch.any(utility_values < 0.0) or torch.any(utility_values > 1.0))
+        ):
+            raise ValueError("contextual probe utility outcomes must lie in [0, 1]")
+        if outcome_mask is None:
+            present = torch.full(
+                (batch,), utility_values is not None, dtype=torch.bool
+            )
+        elif isinstance(outcome_mask, torch.Tensor):
+            if outcome_mask.ndim == 0:
+                present = outcome_mask.reshape(1).expand(batch)
+            elif outcome_mask.shape == (batch,) or outcome_mask.shape == (batch, 1):
+                present = outcome_mask.reshape(batch)
+            else:
+                raise ValueError("contextual probe utility outcome mask is misaligned")
+            if present.dtype != torch.bool:
+                raise TypeError("contextual probe utility outcome mask must be boolean")
+            present = present.detach().to(device="cpu")
+        elif isinstance(outcome_mask, bool):
+            present = torch.full((batch,), outcome_mask, dtype=torch.bool)
+        else:
+            raise TypeError("contextual probe utility outcome mask must be boolean")
+        if utility_values is None and bool(present.any()):
+            raise ValueError("contextual probe utility presence requires utility values")
+        return utility_values, present
+
+    @staticmethod
+    def _similarity(left: torch.Tensor, right: torch.Tensor) -> float:
+        left_norm = torch.linalg.vector_norm(left)
+        right_norm = torch.linalg.vector_norm(right)
+        if float(left_norm) <= 1e-12 or float(right_norm) <= 1e-12:
+            return 1.0 if torch.equal(left, right) else -1.0
+        return float(torch.dot(left, right) / (left_norm * right_norm))
+
+    def _find_entry(self, intention: torch.Tensor, context: torch.Tensor) -> int | None:
+        for index, stored in enumerate(self._intentions):
+            if self._similarity(stored, intention) < self.intention_merge_cosine:
+                continue
+            if (
+                self._similarity(self._contexts[index], context)
+                >= self.context_merge_cosine
+            ):
+                return index
+        return None
+
+    def _context_weight(self, similarity: float) -> float:
+        if similarity < self.context_kernel_floor:
+            return 0.0
+        span = 1.0 - self.context_kernel_floor
+        return ((similarity - self.context_kernel_floor) / span) ** 2
+
+    def validate_state(self) -> None:
+        count = self.record_count
+        if not isinstance(self._version, int) or self._version < 0:
+            raise ValueError("contextual probe utility memory version is invalid")
+        if any(
+            len(values) != count
+            for values in (
+                self._contexts,
+                self._attempts,
+                self._outcome_counts,
+                self._utility_sums,
+            )
+        ):
+            raise ValueError("contextual probe utility statistics are misaligned")
+        for intention, context in zip(self._intentions, self._contexts, strict=True):
+            _validate_tensor(
+                intention,
+                name="stored contextual probe utility intention",
+                ndim=1,
+                width=self.intention_width,
+            )
+            _validate_tensor(
+                context,
+                name="stored contextual probe utility context",
+                ndim=1,
+                width=self.context_width,
+            )
+        if any(not isinstance(value, int) or value < 0 for value in self._attempts):
+            raise ValueError("contextual probe utility attempt counts are invalid")
+        if any(
+            not isinstance(value, int)
+            or value < 0
+            or value > attempt
+            for value, attempt in zip(
+                self._outcome_counts, self._attempts, strict=True
+            )
+        ):
+            raise ValueError("contextual probe utility outcome counts are invalid")
+        if not all(math.isfinite(float(value)) for value in self._utility_sums):
+            raise ValueError("contextual probe utility sums are not finite")
+        if any(
+            value < 0.0 or value > count
+            for value, count in zip(
+                self._utility_sums, self._outcome_counts, strict=True
+            )
+        ):
+            raise ValueError("contextual probe utility sums are outside observed support")
+        if self.max_entries is not None and count > self.max_entries:
+            raise ValueError("contextual probe utility memory exceeds capacity")
+
+    def observe(
+        self,
+        intentions: torch.Tensor,
+        contexts: torch.Tensor,
+        *,
+        utility: torch.Tensor | float | None = None,
+        outcome_mask: torch.Tensor | bool | None = None,
+    ) -> None:
+        """Consume fresh scalar outcomes without retaining replay examples."""
+
+        normalized_intentions, normalized_contexts = self._validate_keys(
+            intentions, contexts
+        )
+        utility_values, present = self._validate_observations(
+            normalized_intentions.shape[0], utility, outcome_mask
+        )
+        self._version += 1
+        for row_index, (intention, context) in enumerate(
+            zip(normalized_intentions, normalized_contexts, strict=True)
+        ):
+            entry_index = self._find_entry(intention, context)
+            if entry_index is None:
+                if self.max_entries is not None and self.record_count >= self.max_entries:
+                    raise RuntimeError("contextual probe utility memory capacity exhausted")
+                self._intentions.append(intention.clone())
+                self._contexts.append(context.clone())
+                self._attempts.append(0)
+                self._outcome_counts.append(0)
+                self._utility_sums.append(0.0)
+                entry_index = self.record_count - 1
+            self._attempts[entry_index] += 1
+            if utility_values is not None and bool(present[row_index]):
+                self._outcome_counts[entry_index] += 1
+                self._utility_sums[entry_index] += float(utility_values[row_index])
+        self.validate_state()
+
+    def scores_and_confidence(
+        self,
+        candidate_intentions: torch.Tensor,
+        candidate_contexts: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        """Return context-kernel posteriors and effective evidence confidence."""
+
+        intentions, contexts = self._validate_keys(
+            candidate_intentions, candidate_contexts
+        )
+        values: list[float] = []
+        confidences: list[float] = []
+        for intention, context in zip(intentions, contexts, strict=True):
+            effective_count = 0.0
+            effective_sum = 0.0
+            for index, stored_intention in enumerate(self._intentions):
+                if (
+                    self._similarity(stored_intention, intention)
+                    < self.intention_merge_cosine
+                ):
+                    continue
+                weight = self._context_weight(
+                    self._similarity(self._contexts[index], context)
+                )
+                effective_count += weight * self._outcome_counts[index]
+                effective_sum += weight * self._utility_sums[index]
+            values.append(
+                (self.prior_strength + effective_sum)
+                / (2.0 * self.prior_strength + effective_count)
+            )
+            confidences.append(
+                effective_count / (2.0 * self.prior_strength + effective_count)
+            )
+        return (
+            torch.tensor(values, dtype=torch.float32, device=candidate_intentions.device),
+            torch.tensor(
+                confidences,
+                dtype=torch.float32,
+                device=candidate_intentions.device,
+            ),
+        )
+
+    def scores(
+        self,
+        candidate_intentions: torch.Tensor,
+        candidate_contexts: torch.Tensor,
+    ) -> torch.Tensor:
+        scores, _confidence = self.scores_and_confidence(
+            candidate_intentions, candidate_contexts
+        )
+        return scores
+
+    def statistics(self) -> dict[str, torch.Tensor]:
+        self.validate_state()
+        empty_intentions = torch.empty(
+            (0, self.intention_width), dtype=torch.float32
+        )
+        empty_contexts = torch.empty((0, self.context_width), dtype=torch.float32)
+        return {
+            "intentions": (
+                torch.stack(self._intentions)
+                if self._intentions
+                else empty_intentions
+            ),
+            "contexts": torch.stack(self._contexts) if self._contexts else empty_contexts,
+            "attempts": torch.tensor(self._attempts, dtype=torch.long),
+            "outcome_counts": torch.tensor(self._outcome_counts, dtype=torch.long),
+            "utility_sums": torch.tensor(self._utility_sums, dtype=torch.float64),
+        }
+
+    @staticmethod
+    def _digest_payload(payload: Mapping[str, Any]) -> str:
+        digest = hashlib.sha256()
+        for key in sorted(payload):
+            value = payload[key]
+            digest.update(key.encode("utf-8"))
+            if isinstance(value, torch.Tensor):
+                detached = value.detach().cpu().contiguous()
+                digest.update(str(detached.dtype).encode("utf-8"))
+                digest.update(repr(tuple(detached.shape)).encode("utf-8"))
+                digest.update(detached.numpy().tobytes())
+            else:
+                digest.update(repr(value).encode("utf-8"))
+        return digest.hexdigest()
+
+    def payload_without_digest(self) -> dict[str, Any]:
+        self.validate_state()
+        return {
+            **self.configuration(),
+            "version": self._version,
+            **self.statistics(),
+        }
+
+    def content_digest(self) -> str:
+        return self._digest_payload(self.payload_without_digest())
+
+    def payload(self) -> dict[str, Any]:
+        payload = self.payload_without_digest()
+        payload["sha256"] = self.content_digest()
+        return payload
+
+    @classmethod
+    def from_payload(
+        cls,
+        payload: Mapping[str, Any],
+    ) -> ExternalTransitionProbeContextualUtilityMemory:
+        if not isinstance(payload, Mapping) or payload.get("schema") != cls.schema:
+            raise ValueError("unsupported contextual probe utility memory payload")
+        required = {
+            "intention_width",
+            "context_width",
+            "intention_merge_cosine",
+            "context_merge_cosine",
+            "context_kernel_floor",
+            "prior_strength",
+            "max_entries",
+            "version",
+            "intentions",
+            "contexts",
+            "attempts",
+            "outcome_counts",
+            "utility_sums",
+            "sha256",
+        }
+        if not required.issubset(payload):
+            raise ValueError("contextual probe utility memory payload is incomplete")
+        memory = cls(
+            int(payload["intention_width"]),
+            int(payload["context_width"]),
+            intention_merge_cosine=float(payload["intention_merge_cosine"]),
+            context_merge_cosine=float(payload["context_merge_cosine"]),
+            context_kernel_floor=float(payload["context_kernel_floor"]),
+            prior_strength=float(payload["prior_strength"]),
+            max_entries=(
+                None
+                if payload["max_entries"] is None
+                else int(payload["max_entries"])
+            ),
+        )
+        intentions = payload["intentions"]
+        contexts = payload["contexts"]
+        if (
+            not isinstance(intentions, torch.Tensor)
+            or not isinstance(contexts, torch.Tensor)
+            or intentions.ndim != 2
+            or contexts.ndim != 2
+        ):
+            raise ValueError("contextual probe utility keys are invalid")
+        count = intentions.shape[0]
+        if intentions.shape[1] != memory.intention_width or contexts.shape != (
+            count,
+            memory.context_width,
+        ):
+            raise ValueError("contextual probe utility key widths differ")
+        tensors = {
+            name: payload[name]
+            for name in ("attempts", "outcome_counts", "utility_sums")
+        }
+        if any(
+            not isinstance(value, torch.Tensor) or value.shape[0] != count
+            for value in tensors.values()
+        ):
+            raise ValueError("contextual probe utility statistics are misaligned")
+        memory._intentions = [
+            row.detach().to(device="cpu", dtype=torch.float32).contiguous()
+            for row in intentions
+        ]
+        memory._contexts = [
+            row.detach().to(device="cpu", dtype=torch.float32).contiguous()
+            for row in contexts
+        ]
+        memory._attempts = [int(value) for value in tensors["attempts"].tolist()]
+        memory._outcome_counts = [
+            int(value) for value in tensors["outcome_counts"].tolist()
+        ]
+        memory._utility_sums = [
+            float(value) for value in tensors["utility_sums"].tolist()
+        ]
+        memory._version = int(payload["version"])
+        memory.validate_state()
+        if payload["sha256"] != memory.content_digest():
+            raise ValueError("contextual probe utility memory checksum mismatch")
+        return memory
+
+
 class ExternalTransitionEvidenceCalibrator(nn.Module):
     """Trainable scalar calibration state around a frozen evidence evaluator."""
 
@@ -11868,6 +12340,25 @@ def _probe_utility_profiles(
     )
 
 
+def _score_probe_utility_memory(
+    utility_memory: ExternalTransitionProbeUtilityMemory
+    | ExternalTransitionProbeContextualUtilityMemory,
+    candidate_intentions: torch.Tensor,
+    utility_profiles: torch.Tensor,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """Query either exact-key or context-transfer utility without branching at callers."""
+
+    if isinstance(utility_memory, ExternalTransitionProbeUtilityMemory):
+        return utility_memory.scores_and_confidence(utility_profiles)
+    if isinstance(utility_memory, ExternalTransitionProbeContextualUtilityMemory):
+        context_start = candidate_intentions.shape[1]
+        return utility_memory.scores_and_confidence(
+            candidate_intentions,
+            utility_profiles[:, context_start:],
+        )
+    raise TypeError("transition utility memory has an invalid type")
+
+
 @dataclass(frozen=True)
 class GoalConditionedModelSelection:
     """Goal-reachability ranking over stable external model addresses."""
@@ -12441,7 +12932,11 @@ class ExternalModelBasedPlanner:
         *,
         candidate_slot_ids: Sequence[int] | None = None,
         support_statistics: ExternalTransitionSupportStatistics | None = None,
-        utility_memory: ExternalTransitionProbeUtilityMemory | None = None,
+        utility_memory: (
+            ExternalTransitionProbeUtilityMemory
+            | ExternalTransitionProbeContextualUtilityMemory
+            | None
+        ) = None,
     ) -> ExternalTransitionProbeResult:
         """Choose an opaque intention with reliable model disagreement.
 
@@ -12539,10 +13034,12 @@ class ExternalModelBasedPlanner:
             utility_scores = None
             utility_confidence_scores = None
         else:
-            if not isinstance(utility_memory, ExternalTransitionProbeUtilityMemory):
-                raise TypeError("transition utility memory has an invalid type")
             utility_scores, utility_confidence_scores = (
-                utility_memory.scores_and_confidence(utility_profiles)
+                _score_probe_utility_memory(
+                    utility_memory,
+                    candidate_intentions,
+                    utility_profiles,
+                )
             )
             base_max = selection_scores.detach().max().clamp_min(1e-12)
             normalized_base = selection_scores / base_max
@@ -12828,6 +13325,7 @@ __all__ = [
     "EXTERNAL_TRANSITION_MODEL_SCHEMA",
     "EXTERNAL_TRANSITION_NONLINEAR_MODEL_FAMILY",
     "EXTERNAL_TRANSITION_OBSERVATION_SCHEMA",
+    "EXTERNAL_TRANSITION_PROBE_CONTEXTUAL_UTILITY_MEMORY_SCHEMA",
     "EXTERNAL_TRANSITION_PROBE_SCHEMA",
     "EXTERNAL_TRANSITION_PROBE_SEQUENCE_SCHEMA",
     "EXTERNAL_TRANSITION_PROBE_UTILITY_MEMORY_SCHEMA",
@@ -12860,6 +13358,7 @@ __all__ = [
     "ExternalTransitionModelMigrationReceipt",
     "ExternalTransitionModelPriorSelectionReceipt",
     "ExternalTransitionObservation",
+    "ExternalTransitionProbeContextualUtilityMemory",
     "ExternalTransitionProbeResult",
     "ExternalTransitionProbeSequenceResult",
     "ExternalTransitionProbeUtilityMemory",

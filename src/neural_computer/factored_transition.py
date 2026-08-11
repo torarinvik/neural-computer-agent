@@ -27,6 +27,7 @@ from .world_model import (
     ExternalTransitionModelEvictionReceipt,
     ExternalTransitionModelGrowthReceipt,
     ExternalTransitionObservation,
+    ExternalTransitionProbeContextualUtilityMemory,
     ExternalTransitionProbeResult,
     ExternalTransitionProbeSequenceResult,
     ExternalTransitionProbeUtilityMemory,
@@ -34,6 +35,7 @@ from .world_model import (
     ExternalTransitionRouteQuery,
     ExternalTransitionSupportStatistics,
     _probe_utility_profiles,
+    _score_probe_utility_memory,
 )
 
 EXTERNAL_FACTORED_TRANSITION_MODEL_SCHEMA = (
@@ -1505,7 +1507,11 @@ class ExternalFactoredTransitionRouter:
         candidate_slot_ids: Sequence[int] | None = None,
         probe_state: torch.Tensor | None = None,
         support_statistics: ExternalTransitionSupportStatistics | None = None,
-        utility_memory: ExternalTransitionProbeUtilityMemory | None = None,
+        utility_memory: (
+            ExternalTransitionProbeUtilityMemory
+            | ExternalTransitionProbeContextualUtilityMemory
+            | None
+        ) = None,
     ) -> ExternalTransitionProbeResult:
         """Select an opaque intention with reliable slot disagreement.
 
@@ -1625,8 +1631,6 @@ class ExternalFactoredTransitionRouter:
             utility_scores = None
             utility_confidence_scores = None
         else:
-            if not isinstance(utility_memory, ExternalTransitionProbeUtilityMemory):
-                raise TypeError("transition utility memory has an invalid type")
             utility_profiles = _probe_utility_profiles(
                 candidate_intentions,
                 disagreement_scores,
@@ -1634,7 +1638,11 @@ class ExternalFactoredTransitionRouter:
                 support_scores,
             )
             utility_scores, utility_confidence_scores = (
-                utility_memory.scores_and_confidence(utility_profiles)
+                _score_probe_utility_memory(
+                    utility_memory,
+                    candidate_intentions,
+                    utility_profiles,
+                )
             )
             base_max = selection_scores.detach().max().clamp_min(1e-12)
             normalized_base = selection_scores / base_max

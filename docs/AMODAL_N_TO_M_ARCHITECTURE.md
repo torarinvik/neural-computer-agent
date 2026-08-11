@@ -9332,3 +9332,26 @@ not another selector feature: it is repeated, transferable evidence across
 uncertainty contexts so that utility can be estimated reliably without replay.
 Evidence is in
 `session_records/factored_active_probe_profile_utility_pressure_2026-08-11/sample_efficiency_ledger.json`.
+
+## Context-transfer diagnostic utility (2026-08-11)
+
+The external utility boundary now has a second, explicitly separate memory
+implementation: `ExternalTransitionProbeContextualUtilityMemory`. It factors
+each address into an opaque intention and an opaque uncertainty-context vector,
+then uses a bounded cosine kernel to transfer only scalar resolution outcomes
+between related contexts. It stores no task identity, target slot, protocol
+action, raw verifier stream, or replay trajectory. Effective evidence counts
+control confidence, and unrelated intentions or distant contexts remain at the
+neutral prior.
+
+The causal unit test confirms the intended behavior, including persistence and
+missing-outcome handling. The matched-exposure fresh rendered Brain Workshop
+arm used four calibration outcomes per candidate: active recovery remained
+`2/3` versus `1/3` passive, identical to the exact-profile control, at 720
+verifier bits, 150 logical lifetimes, and 768 consumed transition rows. The
+boundary is retained as a reusable memory primitive but is not promoted as a
+capability gain. The next experiment must hold opaque intentions stable across
+genuinely different uncertainty contexts and make transfer causally necessary;
+more kernel capacity or calibration repeats alone is not justified. Evidence
+is in
+`session_records/factored_active_probe_context_transfer_pressure_2026-08-11/sample_efficiency_ledger.json`.

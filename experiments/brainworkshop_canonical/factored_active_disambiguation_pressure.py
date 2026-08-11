@@ -38,6 +38,7 @@ from neural_computer import (
     ExternalModelBasedPlanner,
     ExternalTransitionContextEncoder,
     ExternalTransitionObservation,
+    ExternalTransitionProbeContextualUtilityMemory,
     ExternalTransitionProbeUtilityMemory,
     ExternalTransitionRollout,
     ExternalTransitionSupportStatistics,
@@ -111,6 +112,8 @@ class ActiveDisambiguationPressureResult:
     candidate_intention_source: str = "seed_pool"
     support_calibration_rows: int = 0
     utility_calibration_observations: int = 0
+    utility_memory_kind: str = "profile_exact"
+    utility_calibration_repeats: int = 1
 
     def payload(self) -> dict[str, object]:
         return asdict(self)
@@ -151,6 +154,37 @@ def _diagnostic_probe_utility(trial: ActiveDisambiguationTrial) -> float:
         return 1.0
     gap = max(0.0, errors[1] - errors[0])
     return gap / (gap + errors[0] + 1e-6)
+
+
+def _observe_probe_utility(
+    utility_memory: (
+        ExternalTransitionProbeUtilityMemory
+        | ExternalTransitionProbeContextualUtilityMemory
+    ),
+    candidate_intentions: torch.Tensor,
+    trial: ActiveDisambiguationTrial,
+) -> None:
+    """Write one fresh scalar outcome into the selected external utility memory."""
+
+    if not trial.selected_probe_profile:
+        raise RuntimeError("utility observation is missing its opaque probe profile")
+    profile = torch.tensor(trial.selected_probe_profile[0], dtype=torch.float32)
+    utility = _diagnostic_probe_utility(trial)
+    if isinstance(utility_memory, ExternalTransitionProbeUtilityMemory):
+        utility_memory.observe(profile.unsqueeze(0), utility=utility)
+        return
+    if isinstance(utility_memory, ExternalTransitionProbeContextualUtilityMemory):
+        selected_index = trial.selected_intention_index
+        if not 0 <= selected_index < candidate_intentions.shape[0]:
+            raise RuntimeError("utility observation selected intention is invalid")
+        intention_width = candidate_intentions.shape[1]
+        utility_memory.observe(
+            candidate_intentions[selected_index].unsqueeze(0),
+            profile[intention_width:].unsqueeze(0),
+            utility=utility,
+        )
+        return
+    raise TypeError("unsupported probe utility memory")
 
 
 @torch.no_grad()
@@ -219,7 +253,11 @@ def _execute_probe_trial(
     probe_contradiction_tolerance: float,
     probe_horizon: int = 1,
     support_statistics: ExternalTransitionSupportStatistics | None = None,
-    utility_memory: ExternalTransitionProbeUtilityMemory | None = None,
+    utility_memory: (
+        ExternalTransitionProbeUtilityMemory
+        | ExternalTransitionProbeContextualUtilityMemory
+        | None
+    ) = None,
     forced_intention_index: int | None = None,
 ) -> tuple[ActiveDisambiguationTrial, bool, int, int]:
     """Run one fresh verifier until an opaque active/passive probe executes."""
@@ -506,11 +544,21 @@ def run_active_disambiguation_pressure(
     steps: int = 9,
     random_feature_width: int = 128,
     probe_horizon: int = 1,
+    utility_memory_kind: str = "profile_exact",
+    utility_calibration_repeats: int = 1,
 ) -> ActiveDisambiguationPressureResult:
     """Audit active disambiguation on fresh rendered verifier evidence."""
 
-    if min(training_lifetimes, steps, random_feature_width, probe_horizon) < 1:
+    if min(
+        training_lifetimes,
+        steps,
+        random_feature_width,
+        probe_horizon,
+        utility_calibration_repeats,
+    ) < 1:
         raise ValueError("active disambiguation pressure budgets must be positive")
+    if utility_memory_kind not in {"profile_exact", "context_transfer"}:
+        raise ValueError("unsupported active-probe utility memory kind")
     started = time.perf_counter()
     torch.manual_seed(seed)
     agent = CanonicalBrainWorkshopAgent(
@@ -689,14 +737,26 @@ def run_active_disambiguation_pressure(
         )
         support_calibration_lifetimes += 1
 
-    utility_memory = ExternalTransitionProbeUtilityMemory(
-        key_width=agent.controller.intention_width + 3,
-        merge_cosine=0.95,
-        prior_strength=1.0,
-    )
+    if utility_memory_kind == "profile_exact":
+        utility_memory: (
+            ExternalTransitionProbeUtilityMemory
+            | ExternalTransitionProbeContextualUtilityMemory
+        ) = ExternalTransitionProbeUtilityMemory(
+            key_width=agent.controller.intention_width + 3,
+            merge_cosine=0.95,
+            prior_strength=1.0,
+        )
+    else:
+        utility_memory = ExternalTransitionProbeContextualUtilityMemory(
+            intention_width=agent.controller.intention_width,
+            context_width=3,
+            intention_merge_cosine=0.99,
+            context_merge_cosine=0.99,
+            context_kernel_floor=0.75,
+            prior_strength=1.0,
+        )
     utility_calibration_observations = 0
     utility_calibration_lifetimes = 0
-    utility_calibration_repeats = 1
     for candidate_index in range(min(6, candidate_intentions.shape[0])):
         for repeat_index in range(utility_calibration_repeats):
             calibration_trial, _recovered, calibration_bits, calibration_lifetimes = (
@@ -723,12 +783,10 @@ def run_active_disambiguation_pressure(
                     forced_intention_index=candidate_index,
                 )
             )
-            utility_memory.observe(
-                torch.tensor(
-                    calibration_trial.selected_probe_profile[0],
-                    dtype=torch.float32,
-                ).unsqueeze(0),
-                utility=_diagnostic_probe_utility(calibration_trial),
+            _observe_probe_utility(
+                utility_memory,
+                candidate_intentions,
+                calibration_trial,
             )
             unique_verifier_bits += calibration_bits
             utility_calibration_observations += 1
@@ -773,12 +831,7 @@ def run_active_disambiguation_pressure(
         )
     )
     for trial in (active_trial, passive_trial):
-        utility_memory.observe(
-            torch.tensor(trial.selected_probe_profile[0], dtype=torch.float32).unsqueeze(
-                0
-            ),
-            utility=_diagnostic_probe_utility(trial),
-        )
+        _observe_probe_utility(utility_memory, candidate_intentions, trial)
     return ActiveDisambiguationPressureResult(
         seed=seed,
         status=(
@@ -822,6 +875,8 @@ def run_active_disambiguation_pressure(
         ),
         support_calibration_rows=support_calibration_rows,
         utility_calibration_observations=utility_calibration_observations,
+        utility_memory_kind=utility_memory_kind,
+        utility_calibration_repeats=utility_calibration_repeats,
     )
 
 
@@ -832,6 +887,12 @@ def main() -> None:
     parser.add_argument("--steps", type=int, default=9)
     parser.add_argument("--random-feature-width", type=int, default=128)
     parser.add_argument("--probe-horizon", type=int, default=1)
+    parser.add_argument(
+        "--utility-memory-kind",
+        choices=("profile_exact", "context_transfer"),
+        default="profile_exact",
+    )
+    parser.add_argument("--utility-calibration-repeats", type=int, default=1)
     parser.add_argument("--output", type=Path, default=None)
     args = parser.parse_args()
     result = run_active_disambiguation_pressure(
@@ -840,6 +901,8 @@ def main() -> None:
         steps=args.steps,
         random_feature_width=args.random_feature_width,
         probe_horizon=args.probe_horizon,
+        utility_memory_kind=args.utility_memory_kind,
+        utility_calibration_repeats=args.utility_calibration_repeats,
     )
     payload = result.payload()
     print(json.dumps(payload, indent=2, sort_keys=True))
