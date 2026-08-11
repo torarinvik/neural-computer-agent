@@ -74,6 +74,21 @@ parser.add_argument(
          "conditionals every program is a fixed permutation of the "
          "state, so this measures how much of any success is the "
          "branching rather than the sequencing.")
+parser.add_argument(
+    "--synthesize", type=int, default=0,
+    help="after training the interpreter, SYNTHESISE recipes for real "
+         "task families by SEARCH and evaluate them. This is the half "
+         "that makes the architecture honest: the interpreter is "
+         "trained only on random programs over random states, so no "
+         "world ever touches its weights, and a new world is handled "
+         "by FINDING a program that explains it rather than by "
+         "learning one. Nothing trains during synthesis — the search "
+         "proposes candidate programs, scores them with the frozen "
+         "interpreter against observed transitions, and keeps the "
+         "best. That is the wake phase of DreamCoder and it is also "
+         "our own F87 rule: keys address, consequences verify. The "
+         "value is the number of candidate programs to try per action.")
+parser.add_argument("--observations", type=int, default=64)
 parser.add_argument("--curve-every", type=int, default=0)
 parser.add_argument("--json", default="")
 args = parser.parse_args()
@@ -240,6 +255,91 @@ report = {
 }
 report.update(evaluate(held, "held_out_programs"))
 report.update(evaluate(longer, "double_length_programs"))
+
+if args.synthesize:
+    # Real task families, expressed in the SAME amodal slots. A world's
+    # recipe is one program PER ACTION: an action IS a recipe.
+    from experiments.games_amodal.probes.schema_families import (
+        Family, RandomFamily, random_family_spec)
+
+    def observe(family, count, generator):
+        size = len(family.states)
+        idx = torch.randint(0, size, (count,), generator=generator)
+        act = torch.randint(0, family.actions, (count,),
+                            generator=generator)
+        nxt = torch.tensor([family.table[int(s)][int(a)]
+                            for s, a in zip(idx, act)])
+        return family.slot_values(idx), act, family.slot_values(nxt)
+
+    def synthesise(family, generator) -> dict:
+        """Search for a program per action. The frozen interpreter is
+        the only predictor used, so this measures the interpreter's
+        usefulness as a search substrate, not ground-truth fitting."""
+        states, acts, nexts = observe(family, args.observations,
+                                      generator)
+        # A family using fewer than SLOTS slots marks the rest with the
+        # sentinel VALUES. Filtering ROWS on that drops every row for
+        # such a family; the right move is to mask SLOTS — clamp the
+        # unused ones to 0 on input and ignore them when scoring.
+        used = (states < VALUES).all(dim=0)
+        if int(used.sum()) == 0:
+            return {"fit": None, "reason": "no usable slots"}
+        states = torch.where(states < VALUES, states,
+                             torch.zeros_like(states))
+        nexts = torch.where(nexts < VALUES, nexts,
+                            torch.zeros_like(nexts))
+        recipe, fits = {}, []
+        for action in range(family.actions):
+            keep = acts == action
+            if int(keep.sum()) < 4:
+                continue
+            src, dst = states[keep], nexts[keep]
+            best, best_score = None, -1.0
+            for _ in range(args.synthesize):
+                candidate = random_program(generator, args.program_len)
+                with torch.no_grad():
+                    got = plant(candidate, src).argmax(-1)
+                score = float((got[:, used] == dst[:, used])
+                              .float().mean())
+                if score > best_score:
+                    best, best_score = candidate, score
+            recipe[action] = best
+            fits.append(best_score)
+        # held-out check: the recipe was chosen on one sample, score it
+        # on a fresh one
+        held_gen = torch.Generator().manual_seed(args.seed + 4242)
+        hs, ha, hn = observe(family, 256, held_gen)
+        hs = torch.where(hs < VALUES, hs, torch.zeros_like(hs))
+        hn = torch.where(hn < VALUES, hn, torch.zeros_like(hn))
+        hits = total = 0
+        for action, candidate in recipe.items():
+            keep = ha == action
+            if not bool(keep.any()):
+                continue
+            with torch.no_grad():
+                got = plant(candidate, hs[keep]).argmax(-1)
+            hits += int((got[:, used] == hn[keep][:, used]).sum())
+            total += int(keep.sum()) * int(used.sum())
+        identity = 0
+        for action, candidate in recipe.items():
+            keep = ha == action
+            if bool(keep.any()):
+                identity += int((hs[keep][:, used]
+                                 == hn[keep][:, used]).sum())
+        return {"search_fit": round(sum(fits) / max(len(fits), 1), 4),
+                "held_out": round(hits / max(total, 1), 4),
+                "identity": round(identity / max(total, 1), 4)}
+
+    gen = torch.Generator().manual_seed(args.seed * 104729)
+    targets = [("line", Family("line")), ("dial", Family("dial")),
+               ("toggle", Family("toggle")), ("perm", Family("perm")),
+               ("grid", Family("grid"))]
+    for index in range(2):
+        targets.append((f"proc{index}",
+                        RandomFamily(random_family_spec(gen))))
+    report["synthesis"] = {name: synthesise(fam, gen)
+                           for name, fam in targets}
+
 print(json.dumps(report, indent=2))
 if args.json:
     with open(args.json, "w") as handle:
