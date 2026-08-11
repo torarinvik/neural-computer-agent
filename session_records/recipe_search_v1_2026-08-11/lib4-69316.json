@@ -1,0 +1,1621 @@
+{
+  "seed": 69316,
+  "slots": 6,
+  "values": 8,
+  "program_len": 6,
+  "instructions": [
+    "NOOP",
+    "INC",
+    "DEC",
+    "CINC",
+    "CDEC",
+    "COPY",
+    "SWAP"
+  ],
+  "no_conditionals": false,
+  "chance_slots": 0.125,
+  "identity_baseline_slots": 0.467,
+  "curve": [],
+  "held_out_programs_slots": 0.9993,
+  "held_out_programs_exact": 0.9958,
+  "double_length_programs_slots": 0.9958,
+  "double_length_programs_exact": 0.9766,
+  "library_arms": {
+    "diverse": {
+      "frozen": {
+        "sequence": [
+          {
+            "family": "line",
+            "candidates_tried": 4111,
+            "fit": 0.9595,
+            "library_size": 210,
+            "winners": 2,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "dial",
+            "candidates_tried": 313,
+            "fit": 1.0,
+            "library_size": 210,
+            "winners": 6,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "toggle",
+            "candidates_tried": 21502,
+            "fit": 0.8859,
+            "library_size": 210,
+            "winners": 6,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "perm",
+            "candidates_tried": 1415,
+            "fit": 0.9681,
+            "library_size": 210,
+            "winners": 3,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "grid",
+            "candidates_tried": 4122,
+            "fit": 0.9617,
+            "library_size": 210,
+            "winners": 4,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "proc0",
+            "candidates_tried": 8691,
+            "fit": 0.9677,
+            "library_size": 210,
+            "winners": 5,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "proc1",
+            "candidates_tried": 12962,
+            "fit": 0.9602,
+            "library_size": 210,
+            "winners": 6,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "extra0",
+            "candidates_tried": 6033,
+            "fit": 0.9333,
+            "library_size": 210,
+            "winners": 5,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "extra1",
+            "candidates_tried": 8667,
+            "fit": 0.9463,
+            "library_size": 210,
+            "winners": 3,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "extra2",
+            "candidates_tried": 88,
+            "fit": 1.0,
+            "library_size": 210,
+            "winners": 2,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "extra3",
+            "candidates_tried": 1411,
+            "fit": 1.0,
+            "library_size": 210,
+            "winners": 2,
+            "recalled": 0,
+            "saturated": false
+          }
+        ],
+        "started": 210,
+        "ended": 210,
+        "total_candidates": 69315,
+        "recalled_total": 0,
+        "winners_total": 44,
+        "sketches": []
+      },
+      "uniform": {
+        "sequence": [
+          {
+            "family": "line",
+            "candidates_tried": 4111,
+            "fit": 0.9595,
+            "library_size": 210,
+            "winners": 2,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "dial",
+            "candidates_tried": 297,
+            "fit": 0.9938,
+            "library_size": 212,
+            "winners": 6,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "toggle",
+            "candidates_tried": 24000,
+            "fit": 0.8692,
+            "library_size": 218,
+            "winners": 6,
+            "recalled": 0,
+            "saturated": true
+          },
+          {
+            "family": "perm",
+            "candidates_tried": 1557,
+            "fit": 1.0,
+            "library_size": 224,
+            "winners": 3,
+            "recalled": 1,
+            "saturated": false
+          },
+          {
+            "family": "grid",
+            "candidates_tried": 4086,
+            "fit": 0.9617,
+            "library_size": 227,
+            "winners": 4,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "proc0",
+            "candidates_tried": 4541,
+            "fit": 0.9784,
+            "library_size": 231,
+            "winners": 5,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "proc1",
+            "candidates_tried": 12193,
+            "fit": 0.9602,
+            "library_size": 236,
+            "winners": 6,
+            "recalled": 1,
+            "saturated": false
+          },
+          {
+            "family": "extra0",
+            "candidates_tried": 5821,
+            "fit": 0.9333,
+            "library_size": 242,
+            "winners": 5,
+            "recalled": 1,
+            "saturated": false
+          },
+          {
+            "family": "extra1",
+            "candidates_tried": 5545,
+            "fit": 0.9591,
+            "library_size": 247,
+            "winners": 3,
+            "recalled": 2,
+            "saturated": false
+          },
+          {
+            "family": "extra2",
+            "candidates_tried": 82,
+            "fit": 0.9762,
+            "library_size": 250,
+            "winners": 2,
+            "recalled": 1,
+            "saturated": false
+          },
+          {
+            "family": "extra3",
+            "candidates_tried": 100,
+            "fit": 1.0,
+            "library_size": 252,
+            "winners": 2,
+            "recalled": 1,
+            "saturated": false
+          }
+        ],
+        "started": 210,
+        "ended": 254,
+        "total_candidates": 62333,
+        "recalled_total": 7,
+        "winners_total": 44,
+        "sketches": []
+      },
+      "shuffled": {
+        "sequence": [
+          {
+            "family": "line",
+            "candidates_tried": 4111,
+            "fit": 0.9595,
+            "library_size": 210,
+            "winners": 2,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "dial",
+            "candidates_tried": 291,
+            "fit": 0.9938,
+            "library_size": 212,
+            "winners": 6,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "toggle",
+            "candidates_tried": 24000,
+            "fit": 0.8667,
+            "library_size": 218,
+            "winners": 6,
+            "recalled": 0,
+            "saturated": true
+          },
+          {
+            "family": "perm",
+            "candidates_tried": 4749,
+            "fit": 1.0,
+            "library_size": 224,
+            "winners": 3,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "grid",
+            "candidates_tried": 4108,
+            "fit": 0.9617,
+            "library_size": 227,
+            "winners": 4,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "proc0",
+            "candidates_tried": 8794,
+            "fit": 0.9677,
+            "library_size": 231,
+            "winners": 5,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "proc1",
+            "candidates_tried": 13532,
+            "fit": 0.9602,
+            "library_size": 236,
+            "winners": 6,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "extra0",
+            "candidates_tried": 8960,
+            "fit": 0.9111,
+            "library_size": 242,
+            "winners": 5,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "extra1",
+            "candidates_tried": 7855,
+            "fit": 0.9591,
+            "library_size": 247,
+            "winners": 3,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "extra2",
+            "candidates_tried": 101,
+            "fit": 1.0,
+            "library_size": 250,
+            "winners": 2,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "extra3",
+            "candidates_tried": 220,
+            "fit": 1.0,
+            "library_size": 252,
+            "winners": 2,
+            "recalled": 0,
+            "saturated": false
+          }
+        ],
+        "started": 210,
+        "ended": 254,
+        "total_candidates": 76721,
+        "recalled_total": 0,
+        "winners_total": 44,
+        "sketches": []
+      },
+      "sketch-e4": {
+        "sequence": [
+          {
+            "family": "line",
+            "candidates_tried": 4323,
+            "fit": 0.9595,
+            "library_size": 7,
+            "winners": 2,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "dial",
+            "candidates_tried": 609,
+            "fit": 1.0,
+            "library_size": 9,
+            "winners": 6,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "toggle",
+            "candidates_tried": 24000,
+            "fit": 0.8413,
+            "library_size": 23,
+            "winners": 6,
+            "recalled": 0,
+            "saturated": true
+          },
+          {
+            "family": "perm",
+            "candidates_tried": 6581,
+            "fit": 0.9461,
+            "library_size": 43,
+            "winners": 3,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "grid",
+            "candidates_tried": 396,
+            "fit": 0.9911,
+            "library_size": 49,
+            "winners": 4,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "proc0",
+            "candidates_tried": 8204,
+            "fit": 0.9677,
+            "library_size": 57,
+            "winners": 5,
+            "recalled": 1,
+            "saturated": false
+          },
+          {
+            "family": "proc1",
+            "candidates_tried": 16083,
+            "fit": 0.9417,
+            "library_size": 77,
+            "winners": 6,
+            "recalled": 1,
+            "saturated": false
+          },
+          {
+            "family": "extra0",
+            "candidates_tried": 8019,
+            "fit": 0.9111,
+            "library_size": 98,
+            "winners": 5,
+            "recalled": 4,
+            "saturated": false
+          },
+          {
+            "family": "extra1",
+            "candidates_tried": 4836,
+            "fit": 0.9776,
+            "library_size": 120,
+            "winners": 3,
+            "recalled": 1,
+            "saturated": false
+          },
+          {
+            "family": "extra2",
+            "candidates_tried": 84,
+            "fit": 1.0,
+            "library_size": 134,
+            "winners": 2,
+            "recalled": 1,
+            "saturated": false
+          },
+          {
+            "family": "extra3",
+            "candidates_tried": 352,
+            "fit": 1.0,
+            "library_size": 136,
+            "winners": 2,
+            "recalled": 2,
+            "saturated": false
+          }
+        ],
+        "started": 7,
+        "ended": 146,
+        "total_candidates": 73487,
+        "recalled_total": 10,
+        "winners_total": 44,
+        "sketches": [
+          [
+            "CDEC+CDEC",
+            1.2
+          ],
+          [
+            "CDEC+CDEC+COPY",
+            1.0
+          ],
+          [
+            "CDEC+CINC",
+            1.1
+          ],
+          [
+            "CDEC+CINC+COPY",
+            1.0
+          ],
+          [
+            "CDEC+CINC+COPY+CDEC",
+            1.0
+          ],
+          [
+            "CDEC+CINC+INC",
+            1.1
+          ],
+          [
+            "CDEC+CINC+INC+DEC",
+            1.0
+          ],
+          [
+            "CDEC+COPY",
+            1.1
+          ],
+          [
+            "CDEC+COPY+COPY",
+            1.0
+          ],
+          [
+            "CDEC+COPY+COPY+CDEC",
+            1.0
+          ],
+          [
+            "CDEC+COPY+COPY+CDEC+INC",
+            1.0
+          ],
+          [
+            "CDEC+COPY+COPY+CDEC+INC+INC",
+            1.0
+          ],
+          [
+            "CDEC+INC",
+            1.0
+          ],
+          [
+            "CDEC+INC+COPY",
+            1.0
+          ],
+          [
+            "CDEC+INC+COPY+DEC",
+            1.0
+          ],
+          [
+            "CDEC+INC+INC",
+            1.0
+          ],
+          [
+            "CINC+CDEC",
+            1.0
+          ],
+          [
+            "CINC+CDEC+CINC",
+            1.0
+          ],
+          [
+            "CINC+CDEC+CINC+INC",
+            1.0
+          ],
+          [
+            "CINC+CDEC+CINC+INC+DEC",
+            1.0
+          ],
+          [
+            "CINC+COPY",
+            1.0
+          ],
+          [
+            "CINC+COPY+CDEC",
+            1.0
+          ],
+          [
+            "CINC+INC",
+            1.2
+          ],
+          [
+            "CINC+INC+CDEC",
+            1.1
+          ],
+          [
+            "CINC+INC+CDEC+CDEC",
+            1.0
+          ],
+          [
+            "CINC+INC+DEC",
+            1.0
+          ],
+          [
+            "COPY+CDEC",
+            1.1
+          ],
+          [
+            "COPY+CDEC+INC",
+            1.0
+          ],
+          [
+            "COPY+CDEC+INC+INC",
+            1.0
+          ],
+          [
+            "COPY+CINC",
+            1.0
+          ],
+          [
+            "COPY+CINC+INC",
+            1.0
+          ],
+          [
+            "COPY+CINC+INC+CDEC",
+            1.0
+          ],
+          [
+            "COPY+CINC+INC+CDEC+CDEC",
+            1.0
+          ],
+          [
+            "COPY+COPY",
+            1.2
+          ],
+          [
+            "COPY+COPY+CDEC",
+            1.0
+          ],
+          [
+            "COPY+COPY+CDEC+INC",
+            1.0
+          ],
+          [
+            "COPY+COPY+CDEC+INC+INC",
+            1.0
+          ],
+          [
+            "COPY+COPY+CINC",
+            1.0
+          ],
+          [
+            "COPY+COPY+CINC+INC",
+            1.0
+          ],
+          [
+            "COPY+COPY+CINC+INC+CDEC",
+            1.0
+          ],
+          [
+            "COPY+COPY+CINC+INC+CDEC+CDEC",
+            1.0
+          ],
+          [
+            "COPY+COPY+COPY",
+            1.0
+          ],
+          [
+            "COPY+COPY+COPY+DEC",
+            1.0
+          ],
+          [
+            "COPY+COPY+COPY+DEC+INC",
+            1.0
+          ],
+          [
+            "COPY+COPY+COPY+DEC+INC+INC",
+            1.0
+          ],
+          [
+            "COPY+COPY+DEC",
+            1.0
+          ],
+          [
+            "COPY+COPY+DEC+INC",
+            1.0
+          ],
+          [
+            "COPY+COPY+DEC+INC+INC",
+            1.0
+          ],
+          [
+            "COPY+DEC",
+            1.3
+          ],
+          [
+            "COPY+DEC+INC",
+            1.3
+          ],
+          [
+            "COPY+DEC+INC+INC",
+            1.1
+          ],
+          [
+            "COPY+DEC+INC+SWAP",
+            1.1
+          ],
+          [
+            "COPY+DEC+INC+SWAP+CINC",
+            1.0
+          ],
+          [
+            "COPY+DEC+INC+SWAP+CINC+INC",
+            1.0
+          ],
+          [
+            "DEC+CDEC",
+            1.1
+          ],
+          [
+            "DEC+CDEC+CDEC",
+            1.0
+          ],
+          [
+            "DEC+CDEC+INC",
+            1.0
+          ],
+          [
+            "DEC+INC",
+            1.3
+          ],
+          [
+            "DEC+INC+CDEC",
+            1.0
+          ],
+          [
+            "DEC+INC+CDEC+CINC",
+            1.0
+          ],
+          [
+            "DEC+INC+CDEC+CINC+COPY",
+            1.0
+          ],
+          [
+            "DEC+INC+CDEC+CINC+COPY+CDEC",
+            1.0
+          ],
+          [
+            "DEC+INC+COPY",
+            1.0
+          ],
+          [
+            "DEC+INC+COPY+DEC",
+            1.0
+          ],
+          [
+            "DEC+INC+COPY+DEC+INC",
+            1.0
+          ],
+          [
+            "DEC+INC+INC",
+            1.1
+          ],
+          [
+            "DEC+INC+SWAP",
+            1.1
+          ],
+          [
+            "DEC+INC+SWAP+CINC",
+            1.0
+          ],
+          [
+            "DEC+INC+SWAP+CINC+INC",
+            1.0
+          ],
+          [
+            "DEC+NOOP",
+            1.1
+          ],
+          [
+            "DEC+NOOP+DEC",
+            1.1
+          ],
+          [
+            "DEC+NOOP+DEC+CDEC",
+            1.0
+          ],
+          [
+            "INC+CDEC",
+            1.2
+          ],
+          [
+            "INC+CDEC+CDEC",
+            1.1
+          ],
+          [
+            "INC+CDEC+CINC",
+            1.1
+          ],
+          [
+            "INC+CDEC+CINC+COPY",
+            1.0
+          ],
+          [
+            "INC+CDEC+CINC+COPY+CDEC",
+            1.0
+          ],
+          [
+            "INC+CINC",
+            1.0
+          ],
+          [
+            "INC+CINC+CDEC",
+            1.0
+          ],
+          [
+            "INC+CINC+CDEC+CINC",
+            1.0
+          ],
+          [
+            "INC+CINC+CDEC+CINC+INC",
+            1.0
+          ],
+          [
+            "INC+CINC+CDEC+CINC+INC+DEC",
+            1.0
+          ],
+          [
+            "INC+COPY",
+            1.1
+          ],
+          [
+            "INC+COPY+DEC",
+            1.1
+          ],
+          [
+            "INC+COPY+DEC+INC",
+            1.0
+          ],
+          [
+            "INC+DEC",
+            1.1
+          ],
+          [
+            "INC+INC",
+            1.1
+          ],
+          [
+            "INC+INC+CDEC",
+            1.0
+          ],
+          [
+            "INC+SWAP",
+            1.1
+          ],
+          [
+            "INC+SWAP+CINC",
+            1.0
+          ],
+          [
+            "INC+SWAP+CINC+INC",
+            1.0
+          ],
+          [
+            "NOOP+DEC",
+            1.1
+          ],
+          [
+            "NOOP+DEC+CDEC",
+            1.1
+          ],
+          [
+            "NOOP+DEC+CDEC+CDEC",
+            1.0
+          ],
+          [
+            "SWAP+CINC+INC",
+            1.0
+          ]
+        ]
+      }
+    },
+    "related": {
+      "frozen": {
+        "sequence": [
+          {
+            "family": "rel0",
+            "candidates_tried": 16652,
+            "fit": 0.9501,
+            "library_size": 210,
+            "winners": 6,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "rel1",
+            "candidates_tried": 12000,
+            "fit": 0.9129,
+            "library_size": 210,
+            "winners": 3,
+            "recalled": 0,
+            "saturated": true
+          },
+          {
+            "family": "rel2",
+            "candidates_tried": 8373,
+            "fit": 0.9567,
+            "library_size": 210,
+            "winners": 5,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "rel3",
+            "candidates_tried": 8373,
+            "fit": 0.9451,
+            "library_size": 210,
+            "winners": 3,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "rel4",
+            "candidates_tried": 8265,
+            "fit": 0.938,
+            "library_size": 210,
+            "winners": 3,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "rel5",
+            "candidates_tried": 5693,
+            "fit": 0.965,
+            "library_size": 210,
+            "winners": 6,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "rel6",
+            "candidates_tried": 9157,
+            "fit": 0.9452,
+            "library_size": 210,
+            "winners": 3,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "rel7",
+            "candidates_tried": 17327,
+            "fit": 0.955,
+            "library_size": 210,
+            "winners": 6,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "rel8",
+            "candidates_tried": 8601,
+            "fit": 0.9638,
+            "library_size": 210,
+            "winners": 4,
+            "recalled": 0,
+            "saturated": false
+          }
+        ],
+        "started": 210,
+        "ended": 210,
+        "total_candidates": 94441,
+        "recalled_total": 0,
+        "winners_total": 39,
+        "sketches": []
+      },
+      "uniform": {
+        "sequence": [
+          {
+            "family": "rel0",
+            "candidates_tried": 16652,
+            "fit": 0.9501,
+            "library_size": 210,
+            "winners": 6,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "rel1",
+            "candidates_tried": 9331,
+            "fit": 0.9208,
+            "library_size": 216,
+            "winners": 3,
+            "recalled": 1,
+            "saturated": false
+          },
+          {
+            "family": "rel2",
+            "candidates_tried": 8480,
+            "fit": 0.9542,
+            "library_size": 219,
+            "winners": 5,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "rel3",
+            "candidates_tried": 8198,
+            "fit": 0.9451,
+            "library_size": 224,
+            "winners": 3,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "rel4",
+            "candidates_tried": 8258,
+            "fit": 0.9222,
+            "library_size": 227,
+            "winners": 3,
+            "recalled": 1,
+            "saturated": false
+          },
+          {
+            "family": "rel5",
+            "candidates_tried": 4298,
+            "fit": 0.965,
+            "library_size": 230,
+            "winners": 6,
+            "recalled": 1,
+            "saturated": false
+          },
+          {
+            "family": "rel6",
+            "candidates_tried": 4161,
+            "fit": 0.966,
+            "library_size": 236,
+            "winners": 3,
+            "recalled": 1,
+            "saturated": false
+          },
+          {
+            "family": "rel7",
+            "candidates_tried": 16894,
+            "fit": 0.9387,
+            "library_size": 239,
+            "winners": 6,
+            "recalled": 2,
+            "saturated": false
+          },
+          {
+            "family": "rel8",
+            "candidates_tried": 4165,
+            "fit": 0.9816,
+            "library_size": 245,
+            "winners": 4,
+            "recalled": 2,
+            "saturated": false
+          }
+        ],
+        "started": 210,
+        "ended": 249,
+        "total_candidates": 80437,
+        "recalled_total": 8,
+        "winners_total": 39,
+        "sketches": []
+      },
+      "shuffled": {
+        "sequence": [
+          {
+            "family": "rel0",
+            "candidates_tried": 16652,
+            "fit": 0.9501,
+            "library_size": 210,
+            "winners": 6,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "rel1",
+            "candidates_tried": 12000,
+            "fit": 0.9129,
+            "library_size": 216,
+            "winners": 3,
+            "recalled": 0,
+            "saturated": true
+          },
+          {
+            "family": "rel2",
+            "candidates_tried": 8594,
+            "fit": 0.9633,
+            "library_size": 219,
+            "winners": 5,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "rel3",
+            "candidates_tried": 9033,
+            "fit": 0.9451,
+            "library_size": 224,
+            "winners": 3,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "rel4",
+            "candidates_tried": 10969,
+            "fit": 0.938,
+            "library_size": 227,
+            "winners": 3,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "rel5",
+            "candidates_tried": 5333,
+            "fit": 0.965,
+            "library_size": 230,
+            "winners": 6,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "rel6",
+            "candidates_tried": 12000,
+            "fit": 0.9412,
+            "library_size": 236,
+            "winners": 3,
+            "recalled": 0,
+            "saturated": true
+          },
+          {
+            "family": "rel7",
+            "candidates_tried": 20018,
+            "fit": 0.9304,
+            "library_size": 239,
+            "winners": 6,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "rel8",
+            "candidates_tried": 8553,
+            "fit": 0.9638,
+            "library_size": 245,
+            "winners": 4,
+            "recalled": 0,
+            "saturated": false
+          }
+        ],
+        "started": 210,
+        "ended": 249,
+        "total_candidates": 103152,
+        "recalled_total": 0,
+        "winners_total": 39,
+        "sketches": []
+      },
+      "sketch-e4": {
+        "sequence": [
+          {
+            "family": "rel0",
+            "candidates_tried": 15744,
+            "fit": 0.9615,
+            "library_size": 7,
+            "winners": 6,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "rel1",
+            "candidates_tried": 12000,
+            "fit": 0.9129,
+            "library_size": 18,
+            "winners": 3,
+            "recalled": 0,
+            "saturated": true
+          },
+          {
+            "family": "rel2",
+            "candidates_tried": 8374,
+            "fit": 0.9567,
+            "library_size": 27,
+            "winners": 5,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "rel3",
+            "candidates_tried": 8067,
+            "fit": 0.9451,
+            "library_size": 44,
+            "winners": 3,
+            "recalled": 1,
+            "saturated": false
+          },
+          {
+            "family": "rel4",
+            "candidates_tried": 8027,
+            "fit": 0.9305,
+            "library_size": 59,
+            "winners": 3,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "rel5",
+            "candidates_tried": 4108,
+            "fit": 0.965,
+            "library_size": 64,
+            "winners": 6,
+            "recalled": 1,
+            "saturated": false
+          },
+          {
+            "family": "rel6",
+            "candidates_tried": 12000,
+            "fit": 0.9412,
+            "library_size": 79,
+            "winners": 3,
+            "recalled": 2,
+            "saturated": true
+          },
+          {
+            "family": "rel7",
+            "candidates_tried": 20002,
+            "fit": 0.9304,
+            "library_size": 101,
+            "winners": 6,
+            "recalled": 2,
+            "saturated": false
+          },
+          {
+            "family": "rel8",
+            "candidates_tried": 4595,
+            "fit": 0.9816,
+            "library_size": 123,
+            "winners": 4,
+            "recalled": 1,
+            "saturated": false
+          }
+        ],
+        "started": 7,
+        "ended": 142,
+        "total_candidates": 92917,
+        "recalled_total": 7,
+        "winners_total": 39,
+        "sketches": [
+          [
+            "CDEC+CINC+INC",
+            1.0
+          ],
+          [
+            "CDEC+DEC+NOOP",
+            1.0
+          ],
+          [
+            "CINC+DEC",
+            1.0
+          ],
+          [
+            "CINC+DEC+INC",
+            1.0
+          ],
+          [
+            "CINC+DEC+INC+CINC",
+            1.0
+          ],
+          [
+            "CINC+DEC+INC+CINC+NOOP",
+            1.0
+          ],
+          [
+            "CINC+INC",
+            1.1
+          ],
+          [
+            "CINC+INC+CINC",
+            1.0
+          ],
+          [
+            "CINC+INC+NOOP",
+            1.0
+          ],
+          [
+            "CINC+NOOP",
+            1.4
+          ],
+          [
+            "CINC+NOOP+CDEC",
+            1.0
+          ],
+          [
+            "CINC+NOOP+CINC",
+            1.1
+          ],
+          [
+            "CINC+NOOP+CINC+DEC",
+            1.0
+          ],
+          [
+            "CINC+NOOP+CINC+NOOP",
+            1.0
+          ],
+          [
+            "CINC+NOOP+CINC+NOOP+CINC",
+            1.0
+          ],
+          [
+            "CINC+NOOP+CINC+NOOP+CINC+DEC",
+            1.0
+          ],
+          [
+            "CINC+NOOP+CINC+SWAP",
+            1.0
+          ],
+          [
+            "CINC+NOOP+DEC",
+            1.0
+          ],
+          [
+            "CINC+NOOP+NOOP",
+            1.1
+          ],
+          [
+            "CINC+NOOP+NOOP+INC",
+            1.0
+          ],
+          [
+            "CINC+NOOP+NOOP+INC+SWAP",
+            1.0
+          ],
+          [
+            "CINC+NOOP+NOOP+INC+SWAP+DEC",
+            1.0
+          ],
+          [
+            "COPY+NOOP",
+            1.1
+          ],
+          [
+            "COPY+NOOP+CINC",
+            1.0
+          ],
+          [
+            "COPY+NOOP+CINC+NOOP",
+            1.0
+          ],
+          [
+            "COPY+NOOP+COPY",
+            1.1
+          ],
+          [
+            "DEC+INC",
+            1.0
+          ],
+          [
+            "DEC+INC+CINC",
+            1.0
+          ],
+          [
+            "DEC+INC+CINC+NOOP",
+            1.0
+          ],
+          [
+            "INC+CINC",
+            1.1
+          ],
+          [
+            "INC+CINC+NOOP",
+            1.1
+          ],
+          [
+            "INC+CINC+NOOP+CDEC",
+            1.0
+          ],
+          [
+            "INC+CINC+NOOP+DEC",
+            1.0
+          ],
+          [
+            "INC+COPY+NOOP",
+            1.0
+          ],
+          [
+            "INC+INC",
+            1.0
+          ],
+          [
+            "INC+INC+CINC",
+            1.0
+          ],
+          [
+            "INC+INC+CINC+NOOP",
+            1.0
+          ],
+          [
+            "INC+INC+CINC+NOOP+CDEC",
+            1.0
+          ],
+          [
+            "INC+NOOP",
+            1.0
+          ],
+          [
+            "INC+SWAP",
+            1.2
+          ],
+          [
+            "INC+SWAP+COPY",
+            1.0
+          ],
+          [
+            "INC+SWAP+COPY+NOOP",
+            1.0
+          ],
+          [
+            "INC+SWAP+COPY+NOOP+COPY",
+            1.0
+          ],
+          [
+            "INC+SWAP+DEC",
+            1.0
+          ],
+          [
+            "INC+SWAP+INC",
+            1.0
+          ],
+          [
+            "INC+SWAP+INC+CINC",
+            1.0
+          ],
+          [
+            "INC+SWAP+INC+CINC+NOOP",
+            1.0
+          ],
+          [
+            "INC+SWAP+INC+CINC+NOOP+DEC",
+            1.0
+          ],
+          [
+            "NOOP+CDEC",
+            1.0
+          ],
+          [
+            "NOOP+CINC",
+            1.3
+          ],
+          [
+            "NOOP+CINC+DEC",
+            1.1
+          ],
+          [
+            "NOOP+CINC+DEC+INC",
+            1.0
+          ],
+          [
+            "NOOP+CINC+DEC+INC+CINC",
+            1.0
+          ],
+          [
+            "NOOP+CINC+DEC+INC+CINC+NOOP",
+            1.0
+          ],
+          [
+            "NOOP+CINC+INC",
+            1.0
+          ],
+          [
+            "NOOP+CINC+NOOP",
+            1.1
+          ],
+          [
+            "NOOP+CINC+NOOP+CINC",
+            1.1
+          ],
+          [
+            "NOOP+CINC+NOOP+CINC+DEC",
+            1.0
+          ],
+          [
+            "NOOP+CINC+NOOP+CINC+SWAP",
+            1.0
+          ],
+          [
+            "NOOP+CINC+SWAP",
+            1.0
+          ],
+          [
+            "NOOP+COPY",
+            1.2
+          ],
+          [
+            "NOOP+COPY+NOOP",
+            1.0
+          ],
+          [
+            "NOOP+COPY+NOOP+COPY",
+            1.0
+          ],
+          [
+            "NOOP+INC",
+            1.2
+          ],
+          [
+            "NOOP+INC+INC",
+            1.0
+          ],
+          [
+            "NOOP+INC+INC+CINC",
+            1.0
+          ],
+          [
+            "NOOP+INC+INC+CINC+NOOP",
+            1.0
+          ],
+          [
+            "NOOP+INC+INC+CINC+NOOP+CDEC",
+            1.0
+          ],
+          [
+            "NOOP+INC+SWAP",
+            1.1
+          ],
+          [
+            "NOOP+INC+SWAP+COPY",
+            1.0
+          ],
+          [
+            "NOOP+INC+SWAP+COPY+NOOP",
+            1.0
+          ],
+          [
+            "NOOP+INC+SWAP+COPY+NOOP+COPY",
+            1.0
+          ],
+          [
+            "NOOP+INC+SWAP+DEC",
+            1.0
+          ],
+          [
+            "NOOP+NOOP",
+            1.6
+          ],
+          [
+            "NOOP+NOOP+CDEC",
+            1.0
+          ],
+          [
+            "NOOP+NOOP+CINC",
+            1.0
+          ],
+          [
+            "NOOP+NOOP+CINC+INC",
+            1.0
+          ],
+          [
+            "NOOP+NOOP+COPY",
+            1.0
+          ],
+          [
+            "NOOP+NOOP+COPY+NOOP",
+            1.0
+          ],
+          [
+            "NOOP+NOOP+COPY+NOOP+COPY",
+            1.0
+          ],
+          [
+            "NOOP+NOOP+INC",
+            1.1
+          ],
+          [
+            "NOOP+NOOP+INC+SWAP",
+            1.1
+          ],
+          [
+            "NOOP+NOOP+INC+SWAP+DEC",
+            1.0
+          ],
+          [
+            "NOOP+NOOP+NOOP",
+            1.2
+          ],
+          [
+            "NOOP+NOOP+NOOP+CDEC",
+            1.0
+          ],
+          [
+            "NOOP+NOOP+NOOP+NOOP",
+            1.1
+          ],
+          [
+            "NOOP+NOOP+NOOP+NOOP+NOOP",
+            1.0
+          ],
+          [
+            "SWAP+COPY",
+            1.0
+          ],
+          [
+            "SWAP+COPY+NOOP",
+            1.0
+          ],
+          [
+            "SWAP+COPY+NOOP+COPY",
+            1.0
+          ],
+          [
+            "SWAP+DEC",
+            1.0
+          ],
+          [
+            "SWAP+INC+CINC",
+            1.0
+          ],
+          [
+            "SWAP+INC+CINC+NOOP",
+            1.0
+          ],
+          [
+            "SWAP+INC+CINC+NOOP+DEC",
+            1.0
+          ],
+          [
+            "SWAP+NOOP",
+            1.0
+          ],
+          [
+            "SWAP+NOOP+NOOP",
+            1.0
+          ]
+        ]
+      }
+    }
+  },
+  "library_families": {
+    "diverse": [
+      "line",
+      "dial",
+      "toggle",
+      "perm",
+      "grid",
+      "proc0",
+      "proc1",
+      "extra0",
+      "extra1",
+      "extra2",
+      "extra3"
+    ],
+    "related": [
+      "rel0",
+      "rel1",
+      "rel2",
+      "rel3",
+      "rel4",
+      "rel5",
+      "rel6",
+      "rel7",
+      "rel8"
+    ]
+  }
+}

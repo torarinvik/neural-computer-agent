@@ -216,6 +216,14 @@ parser.add_argument(
          "PARTICULAR value cannot be written. Measure the failure "
          "before extending the basis; that ordering is why the modulus "
          "was worth adding.")
+parser.add_argument(
+    "--enum-budget", type=float, default=0.25,
+    help="fraction of an action's budget the enumeration may spend "
+         "before falling back to sampling. F173's entire loss was a "
+         "failed enumeration paid for in full; every WIN it recorded "
+         "arrived within 328 calls, so capping keeps the wins and "
+         "bounds the loss at 1+f rather than the 2.2x measured. 1.0 "
+         "recovers F173's uncapped behaviour.")
 parser.add_argument("--curve-every", type=int, default=0)
 parser.add_argument("--json", default="")
 args = parser.parse_args()
@@ -735,12 +743,26 @@ if args.synthesize:
                 # candidate clears the target, so a family with a short
                 # recipe pays the size of the instruction set instead of
                 # a fraction of an exponential.
+                # CAP the enumeration rather than exhausting it. The
+                # whole loss in F173 was "paid for a failed enumeration,
+                # then sampled anyway", and interleaving one-for-one
+                # would bound that at 2x while HALVING every win.
+                # Capping is strictly better here because the wins are
+                # all early: the most expensive successful enumeration
+                # observed was toggle at 328 calls, and depth 1 is only
+                # about 60, so a quarter of a 4000 budget keeps every
+                # win on record and bounds the loss at 1.25x instead of
+                # the 2.2x measured.
+                ceiling = max(1, int(budget * args.enum_budget))
                 stop = False
                 for depth in (1, 2):
                     if stop:
                         break
                     for cand in enumerate_programs(
                             writes_needed(src, dst), moduli, depth):
+                        if tried >= ceiling:
+                            stop = True
+                            break
                         proposed += 1
                         tried += 1
                         with torch.no_grad():

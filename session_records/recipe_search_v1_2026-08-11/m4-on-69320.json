@@ -1,0 +1,82 @@
+{
+  "seed": 69320,
+  "slots": 6,
+  "values": 8,
+  "threads": 1,
+  "program_len": 6,
+  "instructions": [
+    "NOOP",
+    "INC",
+    "DEC",
+    "CINC",
+    "CDEC",
+    "COPY",
+    "SWAP"
+  ],
+  "no_conditionals": false,
+  "chance_slots": 0.125,
+  "identity_baseline_slots": 0.4034,
+  "curve": [],
+  "held_out_programs_slots": 0.9869,
+  "held_out_programs_exact": 0.9238,
+  "double_length_programs_slots": 0.9429,
+  "double_length_programs_exact": 0.7417,
+  "synthesis": {
+    "line": {
+      "search_fit": 0.9306,
+      "held_out": 0.9297,
+      "identity": 0.1328,
+      "proposed": 8000,
+      "evaluated": 8000,
+      "kept_fraction": 1.0
+    },
+    "dial": {
+      "search_fit": 1.0,
+      "held_out": 0.9935,
+      "identity": 0.6667,
+      "proposed": 24000,
+      "evaluated": 24000,
+      "kept_fraction": 1.0
+    },
+    "toggle": {
+      "search_fit": 0.8983,
+      "held_out": 0.8737,
+      "identity": 0.6986,
+      "proposed": 24000,
+      "evaluated": 24000,
+      "kept_fraction": 1.0
+    },
+    "perm": {
+      "search_fit": 1.0,
+      "held_out": 1.0,
+      "identity": 0.5,
+      "proposed": 12000,
+      "evaluated": 12000,
+      "kept_fraction": 1.0
+    },
+    "grid": {
+      "search_fit": 0.9545,
+      "held_out": 0.9219,
+      "identity": 0.5664,
+      "proposed": 16000,
+      "evaluated": 16000,
+      "kept_fraction": 1.0
+    },
+    "proc0": {
+      "search_fit": 1.0,
+      "held_out": 1.0,
+      "identity": 0.8594,
+      "proposed": 12000,
+      "evaluated": 12000,
+      "kept_fraction": 1.0
+    },
+    "proc1": {
+      "search_fit": 1.0,
+      "held_out": 0.9854,
+      "identity": 0.8262,
+      "proposed": 24000,
+      "evaluated": 24000,
+      "kept_fraction": 1.0
+    }
+  }
+}

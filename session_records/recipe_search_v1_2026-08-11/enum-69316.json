@@ -1,0 +1,864 @@
+{
+  "seed": 69316,
+  "slots": 6,
+  "values": 8,
+  "threads": 1,
+  "program_len": 6,
+  "instructions": [
+    "NOOP",
+    "INC",
+    "DEC",
+    "CINC",
+    "CDEC",
+    "COPY",
+    "SWAP"
+  ],
+  "no_conditionals": false,
+  "chance_slots": 0.125,
+  "identity_baseline_slots": 0.3986,
+  "curve": [],
+  "held_out_programs_slots": 0.9834,
+  "held_out_programs_exact": 0.906,
+  "double_length_programs_slots": 0.8871,
+  "double_length_programs_exact": 0.5269,
+  "library_arms": {
+    "diverse": {
+      "frozen": {
+        "sequence": [
+          {
+            "family": "line",
+            "candidates_tried": 4313,
+            "fit": 0.9595,
+            "library_size": 1470,
+            "winners": 2,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "dial",
+            "candidates_tried": 2790,
+            "fit": 0.9944,
+            "library_size": 1470,
+            "winners": 6,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "toggle",
+            "candidates_tried": 19184,
+            "fit": 0.9196,
+            "library_size": 1470,
+            "winners": 6,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "perm",
+            "candidates_tried": 4202,
+            "fit": 0.9902,
+            "library_size": 1470,
+            "winners": 3,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "grid",
+            "candidates_tried": 4184,
+            "fit": 0.9617,
+            "library_size": 1470,
+            "winners": 4,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "proc0",
+            "candidates_tried": 5460,
+            "fit": 0.9805,
+            "library_size": 1470,
+            "winners": 5,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "proc1",
+            "candidates_tried": 9589,
+            "fit": 0.9828,
+            "library_size": 1470,
+            "winners": 6,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "extra0",
+            "candidates_tried": 2414,
+            "fit": 1.0,
+            "library_size": 1470,
+            "winners": 5,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "extra1",
+            "candidates_tried": 8132,
+            "fit": 0.9567,
+            "library_size": 1470,
+            "winners": 3,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "extra2",
+            "candidates_tried": 129,
+            "fit": 0.9815,
+            "library_size": 1470,
+            "winners": 2,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "extra3",
+            "candidates_tried": 274,
+            "fit": 1.0,
+            "library_size": 1470,
+            "winners": 2,
+            "recalled": 0,
+            "saturated": false
+          }
+        ],
+        "started": 1470,
+        "ended": 1470,
+        "total_candidates": 60671,
+        "proposed_total": 60671,
+        "recalled_total": 0,
+        "winners_total": 44,
+        "sketches": []
+      },
+      "cover": {
+        "sequence": [
+          {
+            "family": "line",
+            "candidates_tried": 4211,
+            "fit": 0.9595,
+            "library_size": 1470,
+            "winners": 2,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "dial",
+            "candidates_tried": 1926,
+            "fit": 0.9851,
+            "library_size": 1470,
+            "winners": 6,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "toggle",
+            "candidates_tried": 17618,
+            "fit": 0.9405,
+            "library_size": 1470,
+            "winners": 6,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "perm",
+            "candidates_tried": 860,
+            "fit": 0.984,
+            "library_size": 1470,
+            "winners": 3,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "grid",
+            "candidates_tried": 4187,
+            "fit": 0.952,
+            "library_size": 1470,
+            "winners": 4,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "proc0",
+            "candidates_tried": 4838,
+            "fit": 0.9909,
+            "library_size": 1470,
+            "winners": 5,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "proc1",
+            "candidates_tried": 8555,
+            "fit": 0.9769,
+            "library_size": 1470,
+            "winners": 6,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "extra0",
+            "candidates_tried": 3452,
+            "fit": 1.0,
+            "library_size": 1470,
+            "winners": 5,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "extra1",
+            "candidates_tried": 4554,
+            "fit": 0.9646,
+            "library_size": 1470,
+            "winners": 3,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "extra2",
+            "candidates_tried": 194,
+            "fit": 1.0,
+            "library_size": 1470,
+            "winners": 2,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "extra3",
+            "candidates_tried": 225,
+            "fit": 1.0,
+            "library_size": 1470,
+            "winners": 2,
+            "recalled": 0,
+            "saturated": false
+          }
+        ],
+        "started": 1470,
+        "ended": 1470,
+        "total_candidates": 50620,
+        "proposed_total": 91264,
+        "recalled_total": 0,
+        "winners_total": 44,
+        "sketches": []
+      },
+      "enum": {
+        "sequence": [
+          {
+            "family": "line",
+            "candidates_tried": 5243,
+            "fit": 0.9595,
+            "library_size": 1470,
+            "winners": 2,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "dial",
+            "candidates_tried": 21,
+            "fit": 1.0,
+            "library_size": 1470,
+            "winners": 6,
+            "recalled": 1,
+            "saturated": false
+          },
+          {
+            "family": "toggle",
+            "candidates_tried": 331,
+            "fit": 1.0,
+            "library_size": 1470,
+            "winners": 6,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "perm",
+            "candidates_tried": 156,
+            "fit": 1.0,
+            "library_size": 1470,
+            "winners": 3,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "grid",
+            "candidates_tried": 4013,
+            "fit": 0.9617,
+            "library_size": 1470,
+            "winners": 4,
+            "recalled": 4,
+            "saturated": false
+          },
+          {
+            "family": "proc0",
+            "candidates_tried": 2778,
+            "fit": 1.0,
+            "library_size": 1470,
+            "winners": 5,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "proc1",
+            "candidates_tried": 1902,
+            "fit": 0.9871,
+            "library_size": 1470,
+            "winners": 6,
+            "recalled": 1,
+            "saturated": false
+          },
+          {
+            "family": "extra0",
+            "candidates_tried": 6564,
+            "fit": 0.9778,
+            "library_size": 1470,
+            "winners": 5,
+            "recalled": 1,
+            "saturated": false
+          },
+          {
+            "family": "extra1",
+            "candidates_tried": 4779,
+            "fit": 0.9696,
+            "library_size": 1470,
+            "winners": 3,
+            "recalled": 1,
+            "saturated": false
+          },
+          {
+            "family": "extra2",
+            "candidates_tried": 68,
+            "fit": 1.0,
+            "library_size": 1470,
+            "winners": 2,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "extra3",
+            "candidates_tried": 1102,
+            "fit": 1.0,
+            "library_size": 1470,
+            "winners": 2,
+            "recalled": 0,
+            "saturated": false
+          }
+        ],
+        "started": 1470,
+        "ended": 1470,
+        "total_candidates": 26957,
+        "proposed_total": 26957,
+        "recalled_total": 8,
+        "winners_total": 44,
+        "sketches": []
+      },
+      "enum+store": {
+        "sequence": [
+          {
+            "family": "line",
+            "candidates_tried": 5243,
+            "fit": 0.9595,
+            "library_size": 1470,
+            "winners": 2,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "dial",
+            "candidates_tried": 21,
+            "fit": 1.0,
+            "library_size": 1472,
+            "winners": 6,
+            "recalled": 1,
+            "saturated": false
+          },
+          {
+            "family": "toggle",
+            "candidates_tried": 331,
+            "fit": 1.0,
+            "library_size": 1478,
+            "winners": 6,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "perm",
+            "candidates_tried": 156,
+            "fit": 1.0,
+            "library_size": 1484,
+            "winners": 3,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "grid",
+            "candidates_tried": 3336,
+            "fit": 0.9837,
+            "library_size": 1487,
+            "winners": 4,
+            "recalled": 3,
+            "saturated": false
+          },
+          {
+            "family": "proc0",
+            "candidates_tried": 2611,
+            "fit": 0.9964,
+            "library_size": 1491,
+            "winners": 5,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "proc1",
+            "candidates_tried": 4302,
+            "fit": 0.9836,
+            "library_size": 1496,
+            "winners": 6,
+            "recalled": 1,
+            "saturated": false
+          },
+          {
+            "family": "extra0",
+            "candidates_tried": 5983,
+            "fit": 0.9778,
+            "library_size": 1502,
+            "winners": 5,
+            "recalled": 1,
+            "saturated": false
+          },
+          {
+            "family": "extra1",
+            "candidates_tried": 4779,
+            "fit": 0.9696,
+            "library_size": 1507,
+            "winners": 3,
+            "recalled": 1,
+            "saturated": false
+          },
+          {
+            "family": "extra2",
+            "candidates_tried": 68,
+            "fit": 1.0,
+            "library_size": 1510,
+            "winners": 2,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "extra3",
+            "candidates_tried": 1064,
+            "fit": 1.0,
+            "library_size": 1512,
+            "winners": 2,
+            "recalled": 0,
+            "saturated": false
+          }
+        ],
+        "started": 1470,
+        "ended": 1514,
+        "total_candidates": 27894,
+        "proposed_total": 27894,
+        "recalled_total": 7,
+        "winners_total": 44,
+        "sketches": []
+      }
+    },
+    "related": {
+      "frozen": {
+        "sequence": [
+          {
+            "family": "rel0",
+            "candidates_tried": 9635,
+            "fit": 0.9823,
+            "library_size": 1470,
+            "winners": 6,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "rel1",
+            "candidates_tried": 7886,
+            "fit": 0.9802,
+            "library_size": 1470,
+            "winners": 3,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "rel2",
+            "candidates_tried": 4077,
+            "fit": 0.9804,
+            "library_size": 1470,
+            "winners": 5,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "rel3",
+            "candidates_tried": 5138,
+            "fit": 0.9683,
+            "library_size": 1470,
+            "winners": 3,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "rel4",
+            "candidates_tried": 9047,
+            "fit": 0.9693,
+            "library_size": 1470,
+            "winners": 3,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "rel5",
+            "candidates_tried": 1093,
+            "fit": 0.977,
+            "library_size": 1470,
+            "winners": 6,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "rel6",
+            "candidates_tried": 5439,
+            "fit": 0.9673,
+            "library_size": 1470,
+            "winners": 3,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "rel7",
+            "candidates_tried": 9209,
+            "fit": 0.9788,
+            "library_size": 1470,
+            "winners": 6,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "rel8",
+            "candidates_tried": 8039,
+            "fit": 0.9682,
+            "library_size": 1470,
+            "winners": 4,
+            "recalled": 0,
+            "saturated": false
+          }
+        ],
+        "started": 1470,
+        "ended": 1470,
+        "total_candidates": 59563,
+        "proposed_total": 59563,
+        "recalled_total": 0,
+        "winners_total": 39,
+        "sketches": []
+      },
+      "cover": {
+        "sequence": [
+          {
+            "family": "rel0",
+            "candidates_tried": 10443,
+            "fit": 0.982,
+            "library_size": 1470,
+            "winners": 6,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "rel1",
+            "candidates_tried": 7731,
+            "fit": 0.9802,
+            "library_size": 1470,
+            "winners": 3,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "rel2",
+            "candidates_tried": 1546,
+            "fit": 1.0,
+            "library_size": 1470,
+            "winners": 5,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "rel3",
+            "candidates_tried": 3082,
+            "fit": 1.0,
+            "library_size": 1470,
+            "winners": 3,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "rel4",
+            "candidates_tried": 4091,
+            "fit": 1.0,
+            "library_size": 1470,
+            "winners": 3,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "rel5",
+            "candidates_tried": 2904,
+            "fit": 0.9816,
+            "library_size": 1470,
+            "winners": 6,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "rel6",
+            "candidates_tried": 6532,
+            "fit": 0.9802,
+            "library_size": 1470,
+            "winners": 3,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "rel7",
+            "candidates_tried": 9715,
+            "fit": 0.9681,
+            "library_size": 1470,
+            "winners": 6,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "rel8",
+            "candidates_tried": 8635,
+            "fit": 0.9674,
+            "library_size": 1470,
+            "winners": 4,
+            "recalled": 0,
+            "saturated": false
+          }
+        ],
+        "started": 1470,
+        "ended": 1470,
+        "total_candidates": 54679,
+        "proposed_total": 82528,
+        "recalled_total": 0,
+        "winners_total": 39,
+        "sketches": []
+      },
+      "enum": {
+        "sequence": [
+          {
+            "family": "rel0",
+            "candidates_tried": 1170,
+            "fit": 0.9895,
+            "library_size": 1470,
+            "winners": 6,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "rel1",
+            "candidates_tried": 886,
+            "fit": 1.0,
+            "library_size": 1470,
+            "winners": 3,
+            "recalled": 1,
+            "saturated": false
+          },
+          {
+            "family": "rel2",
+            "candidates_tried": 102,
+            "fit": 1.0,
+            "library_size": 1470,
+            "winners": 5,
+            "recalled": 3,
+            "saturated": false
+          },
+          {
+            "family": "rel3",
+            "candidates_tried": 64,
+            "fit": 0.9951,
+            "library_size": 1470,
+            "winners": 3,
+            "recalled": 2,
+            "saturated": false
+          },
+          {
+            "family": "rel4",
+            "candidates_tried": 4885,
+            "fit": 0.9693,
+            "library_size": 1470,
+            "winners": 3,
+            "recalled": 2,
+            "saturated": false
+          },
+          {
+            "family": "rel5",
+            "candidates_tried": 51,
+            "fit": 0.9924,
+            "library_size": 1470,
+            "winners": 6,
+            "recalled": 5,
+            "saturated": false
+          },
+          {
+            "family": "rel6",
+            "candidates_tried": 2856,
+            "fit": 0.9958,
+            "library_size": 1470,
+            "winners": 3,
+            "recalled": 2,
+            "saturated": false
+          },
+          {
+            "family": "rel7",
+            "candidates_tried": 8029,
+            "fit": 0.9821,
+            "library_size": 1470,
+            "winners": 6,
+            "recalled": 4,
+            "saturated": false
+          },
+          {
+            "family": "rel8",
+            "candidates_tried": 4080,
+            "fit": 0.9866,
+            "library_size": 1470,
+            "winners": 4,
+            "recalled": 4,
+            "saturated": false
+          }
+        ],
+        "started": 1470,
+        "ended": 1470,
+        "total_candidates": 22123,
+        "proposed_total": 22123,
+        "recalled_total": 23,
+        "winners_total": 39,
+        "sketches": []
+      },
+      "enum+store": {
+        "sequence": [
+          {
+            "family": "rel0",
+            "candidates_tried": 1170,
+            "fit": 0.9895,
+            "library_size": 1470,
+            "winners": 6,
+            "recalled": 0,
+            "saturated": false
+          },
+          {
+            "family": "rel1",
+            "candidates_tried": 886,
+            "fit": 1.0,
+            "library_size": 1476,
+            "winners": 3,
+            "recalled": 1,
+            "saturated": false
+          },
+          {
+            "family": "rel2",
+            "candidates_tried": 102,
+            "fit": 1.0,
+            "library_size": 1479,
+            "winners": 5,
+            "recalled": 3,
+            "saturated": false
+          },
+          {
+            "family": "rel3",
+            "candidates_tried": 64,
+            "fit": 0.9951,
+            "library_size": 1484,
+            "winners": 3,
+            "recalled": 2,
+            "saturated": false
+          },
+          {
+            "family": "rel4",
+            "candidates_tried": 4885,
+            "fit": 0.9693,
+            "library_size": 1487,
+            "winners": 3,
+            "recalled": 2,
+            "saturated": false
+          },
+          {
+            "family": "rel5",
+            "candidates_tried": 51,
+            "fit": 0.9924,
+            "library_size": 1490,
+            "winners": 6,
+            "recalled": 5,
+            "saturated": false
+          },
+          {
+            "family": "rel6",
+            "candidates_tried": 2456,
+            "fit": 0.9958,
+            "library_size": 1496,
+            "winners": 3,
+            "recalled": 2,
+            "saturated": false
+          },
+          {
+            "family": "rel7",
+            "candidates_tried": 7713,
+            "fit": 0.9904,
+            "library_size": 1499,
+            "winners": 6,
+            "recalled": 4,
+            "saturated": false
+          },
+          {
+            "family": "rel8",
+            "candidates_tried": 1722,
+            "fit": 1.0,
+            "library_size": 1505,
+            "winners": 4,
+            "recalled": 4,
+            "saturated": false
+          }
+        ],
+        "started": 1470,
+        "ended": 1509,
+        "total_candidates": 19049,
+        "proposed_total": 19049,
+        "recalled_total": 23,
+        "winners_total": 39,
+        "sketches": []
+      }
+    }
+  },
+  "library_families": {
+    "diverse": [
+      "line",
+      "dial",
+      "toggle",
+      "perm",
+      "grid",
+      "proc0",
+      "proc1",
+      "extra0",
+      "extra1",
+      "extra2",
+      "extra3"
+    ],
+    "related": [
+      "rel0",
+      "rel1",
+      "rel2",
+      "rel3",
+      "rel4",
+      "rel5",
+      "rel6",
+      "rel7",
+      "rel8"
+    ]
+  }
+}

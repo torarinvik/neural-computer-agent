@@ -1,0 +1,60 @@
+{
+  "seed": 69317,
+  "slots": 6,
+  "values": 8,
+  "program_len": 6,
+  "instructions": [
+    "NOOP",
+    "INC",
+    "DEC",
+    "CINC",
+    "CDEC",
+    "COPY",
+    "SWAP"
+  ],
+  "no_conditionals": false,
+  "chance_slots": 0.125,
+  "identity_baseline_slots": 0.4065,
+  "curve": [],
+  "held_out_programs_slots": 0.9818,
+  "held_out_programs_exact": 0.9009,
+  "double_length_programs_slots": 0.9071,
+  "double_length_programs_exact": 0.6021,
+  "synthesis": {
+    "line": {
+      "search_fit": 0.9,
+      "held_out": 0.9453,
+      "identity": 0.1211
+    },
+    "dial": {
+      "search_fit": 1.0,
+      "held_out": 0.9831,
+      "identity": 0.6667
+    },
+    "toggle": {
+      "search_fit": 0.9088,
+      "held_out": 0.8659,
+      "identity": 0.696
+    },
+    "perm": {
+      "search_fit": 1.0,
+      "held_out": 0.9951,
+      "identity": 0.5
+    },
+    "grid": {
+      "search_fit": 0.9587,
+      "held_out": 0.9512,
+      "identity": 0.5566
+    },
+    "proc0": {
+      "search_fit": 1.0,
+      "held_out": 0.9648,
+      "identity": 0.1211
+    },
+    "proc1": {
+      "search_fit": 1.0,
+      "held_out": 1.0,
+      "identity": 0.3633
+    }
+  }
+}
