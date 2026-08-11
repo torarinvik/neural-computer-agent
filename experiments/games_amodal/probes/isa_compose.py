@@ -89,6 +89,25 @@ parser.add_argument(
          "our own F87 rule: keys address, consequences verify. The "
          "value is the number of candidate programs to try per action.")
 parser.add_argument("--observations", type=int, default=64)
+parser.add_argument(
+    "--library", action="store_true",
+    help="LIBRARY LEARNING. Solve families in SEQUENCE, composing "
+         "candidate programs from a growing library of FRAGMENTS "
+         "rather than from raw instructions, and add each solved "
+         "program back as a fragment. F155 found recipes by random "
+         "proposal over 252^6 raw programs, which works at length 6 "
+         "and cannot scale. The claim to test is the founding "
+         "objective itself: if stored programs are reusable, the "
+         "search cost for family N should FALL as N grows. The "
+         "control is the same sequence with the library frozen at the "
+         "primitives — if cost is flat there and falling here, reuse "
+         "is doing the work and not the ordering.")
+parser.add_argument("--no-growth", action="store_true",
+                    help="control: never add fragments to the library")
+parser.add_argument("--fit-target", type=float, default=0.95,
+                    help="search stops once a candidate reaches this "
+                         "fit, so COST (candidates tried) is the "
+                         "measurement rather than final accuracy")
 parser.add_argument("--curve-every", type=int, default=0)
 parser.add_argument("--json", default="")
 args = parser.parse_args()
@@ -330,6 +349,47 @@ if args.synthesize:
                 "held_out": round(hits / max(total, 1), 4),
                 "identity": round(identity / max(total, 1), 4)}
 
+    def search_with_library(family, library, generator, budget):
+        """Propose programs by concatenating LIBRARY FRAGMENTS. Returns
+        the recipe and the number of candidates tried — cost is the
+        measurement here, not accuracy."""
+        states, acts, nexts = observe(family, args.observations,
+                                      generator)
+        used = (states < VALUES).all(dim=0)
+        states = torch.where(states < VALUES, states,
+                             torch.zeros_like(states))
+        nexts = torch.where(nexts < VALUES, nexts,
+                            torch.zeros_like(nexts))
+        recipe, tried_total, fits = {}, 0, []
+        for action in range(family.actions):
+            keep = acts == action
+            if int(keep.sum()) < 4:
+                continue
+            src, dst = states[keep], nexts[keep]
+            best, best_score, tried = None, -1.0, 0
+            while tried < budget:
+                # build a candidate by concatenating fragments until it
+                # is long enough; a fragment may be a whole past recipe
+                candidate: list = []
+                while len(candidate) < args.program_len:
+                    pick = library[int(torch.randint(
+                        0, len(library), (1,), generator=generator))]
+                    candidate = candidate + list(pick)
+                candidate = candidate[:args.program_len]
+                tried += 1
+                with torch.no_grad():
+                    got = plant(candidate, src).argmax(-1)
+                score = float((got[:, used] == dst[:, used])
+                              .float().mean())
+                if score > best_score:
+                    best, best_score = candidate, score
+                if best_score >= args.fit_target:
+                    break
+            recipe[action] = best
+            fits.append(best_score)
+            tried_total += tried
+        return recipe, tried_total, sum(fits) / max(len(fits), 1)
+
     gen = torch.Generator().manual_seed(args.seed * 104729)
     targets = [("line", Family("line")), ("dial", Family("dial")),
                ("toggle", Family("toggle")), ("perm", Family("perm")),
@@ -339,6 +399,27 @@ if args.synthesize:
                         RandomFamily(random_family_spec(gen))))
     report["synthesis"] = {name: synthesise(fam, gen)
                            for name, fam in targets}
+
+    if args.library:
+        # every single instruction is a fragment to begin with
+        library = [[(op, i, j)] for op in range(NOPS)
+                   for i in range(SLOTS) for j in range(SLOTS)
+                   if i != j]
+        started = len(library)
+        sequence = []
+        for name, family in targets:
+            recipe, tried, fit = search_with_library(
+                family, library, gen, budget=args.synthesize)
+            sequence.append({
+                "family": name, "candidates_tried": tried,
+                "fit": round(fit, 4), "library_size": len(library)})
+            if not args.no_growth:
+                for program in recipe.values():
+                    if program:
+                        library.append(list(program))
+        report["library_sequence"] = sequence
+        report["library_started"] = started
+        report["library_ended"] = len(library)
 
 print(json.dumps(report, indent=2))
 if args.json:
