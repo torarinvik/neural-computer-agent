@@ -158,7 +158,9 @@ from .fragments import (
     PERSISTENT_EXTERNAL_SKILL_FRAGMENT_BANK_SCHEMA,
     ExternalSkillFragmentArtifact,
     ExternalSkillFragmentBank,
+    ExternalSkillFragmentCombiner,
     ExternalSkillFragmentComposition,
+    ExternalSkillFragmentExecutionTrace,
     ExternalSkillFragmentRoute,
 )
 from .goal_alignment import (
@@ -1041,7 +1043,9 @@ __all__ = [
     "ExternalSignedEntryValueModel",
     "ExternalSkillFragmentArtifact",
     "ExternalSkillFragmentBank",
+    "ExternalSkillFragmentCombiner",
     "ExternalSkillFragmentComposition",
+    "ExternalSkillFragmentExecutionTrace",
     "ExternalSkillFragmentRoute",
     "ExternalSparseTransitionEvidenceIndex",
     "ExternalSparseTransitionEvidenceProposal",

@@ -1,0 +1,53 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "external_skill_fragment_composition_amodal_2026-08-11",
+  "date": "2026-08-11",
+  "status": "promoted_bounded_reusable_compositional_transfer",
+  "claim_boundary": "Two-seed positive stable-prefix transfer for a two-fragment opaque external composition; not general continual learning, unrestricted growth, arbitrary program induction, or compression.",
+  "configuration": {
+    "seeds": [69316, 69317],
+    "parent_updates": 64,
+    "primitive_updates_per_fragment": 64,
+    "composition_updates": 128,
+    "batch_size": 32,
+    "span": 3,
+    "audit_count": 128,
+    "eval_every": 16,
+    "mastery_threshold": 0.8,
+    "fragment_grammar": [["reverse", "rotate"], ["rotate", "reverse"]],
+    "trace_combiner": "external_gru_trace_combiner_v1",
+    "code_materialization": "normalized_shared_basis_code_v1",
+    "controller_frozen_during_growth": true,
+    "replayed_examples": 0
+  },
+  "aggregate": {
+    "inherited_stable_bits": [6144, 9216],
+    "fresh_stable_bits": [24576, 12288],
+    "transfer_ratio_fresh_over_inherited": [4.0, 1.3333333333333333],
+    "composition_accuracy": [0.9661458134651184, 0.9947916865348816],
+    "wrong_order_accuracy": [0.7708333134651184, 0.7630208134651184],
+    "zero_fragment_accuracy": [0.6510416865348816, 0.6744791865348816],
+    "reward_shuffled_accuracy": [0.6796875, 0.3307291567325592],
+    "reverse_before": [0.8802083134651184, 0.8854166865348816],
+    "reverse_after": [0.8828125, 0.8932291865348816],
+    "unique_verifier_bits_per_seed": 135168,
+    "training_unique_verifier_bits_per_seed": 122880,
+    "audit_unique_verifier_bits_per_seed": 12288,
+    "unique_logical_lifetimes_per_seed": 20480,
+    "optimizer_updates_per_seed": 576,
+    "replayed_examples_per_seed": 0,
+    "all_promotion_gates_passed": true
+  },
+  "controls": {
+    "fresh_pixel_rerender": true,
+    "operation_cue_ablated": true,
+    "wrong_order_is_non_commutative": true,
+    "reward_shuffled": true,
+    "zero_fragment_codes": true,
+    "frozen_parent_digest": true,
+    "route_resolution": true,
+    "row_permutation_equivariance": true,
+    "replayed_examples": 0
+  },
+  "interpretation": "The external interpreter trace and learned combiner provide a reusable, order-sensitive computation seam that produces replicated positive stable-prefix transfer. The result is a bounded compositional memory/compute gain; it does not show that memory can supply arbitrary new computation or that the full controller supports general continual learning."
+}

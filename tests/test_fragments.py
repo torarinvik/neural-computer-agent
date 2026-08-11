@@ -7,6 +7,7 @@ from neural_computer import (
     ExternalCapabilityRegisterMachine,
     ExternalSkillFragmentArtifact,
     ExternalSkillFragmentBank,
+    ExternalSkillFragmentCombiner,
 )
 
 
@@ -68,6 +69,10 @@ def test_fragment_bank_routes_and_composes_reusable_shared_basis_data() -> None:
     expected = torch.cat((bank.fragment_codes(0), bank.fragment_codes(1)), dim=0)
     assert torch.allclose(composition.codes[0, : expected.shape[0]], expected)
     assert composition.mask[0, : expected.shape[0]].all()
+    assert torch.allclose(
+        bank.fragment_codes(0).norm(dim=-1),
+        torch.full((2,), bank.code_norm),
+    )
 
 
 def test_fragment_route_is_permutation_equivariant_and_has_no_task_identity() -> None:
@@ -235,6 +240,33 @@ def test_shared_register_interpreter_executes_variable_length_fragment_chain() -
 
     assert result.shape == (2, 6)
     assert torch.isfinite(result).all()
+
+
+def test_fragment_execution_trace_is_ordered_and_combiner_is_raw_event_free() -> None:
+    bank = _bank()
+    composition = bank.compose_indices(torch.tensor([[0, 1], [1, 2]]))
+    machine = ExternalCapabilityRegisterMachine(
+        event_width=1,
+        action_width=1,
+        intention_width=2,
+        register_width=6,
+        instruction_width=6,
+        interpreter_hidden=8,
+    )
+
+    trace = machine.execute_fragment_composition_trace(
+        torch.zeros(2, 6),
+        composition,
+    )
+    combiner = ExternalSkillFragmentCombiner(6, 4, hidden=8)
+    combined = combiner(trace)
+
+    assert trace.states.shape == (2, 3, 6)
+    assert trace.mask.tolist() == [[True, True, True], [True, True, False]]
+    assert torch.allclose(trace.final_state[0], trace.states[0, 2])
+    assert torch.allclose(trace.final_state[1], trace.states[1, 1])
+    assert combined.shape == (2, 4)
+    assert torch.isfinite(combined).all()
 
 
 def test_shared_register_interpreter_rejects_forged_out_of_bank_fragment() -> None:

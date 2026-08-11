@@ -32,6 +32,7 @@ from experiments.working_memory_continuous.canonical_growth_pressure_test import
 from neural_computer import (
     ExternalCapabilityRegisterMachine,
     ExternalSkillFragmentBank,
+    ExternalSkillFragmentCombiner,
     OpaqueProtocolDecoder,
     paired_counterfactual_ranking_loss,
 )
@@ -80,7 +81,7 @@ def _batch(
     # procedure instead of letting the decoder read a task cue from its
     # observed register state.
     query_frames = batch.query_frames.clone()
-    query_frames[:, :, :, 1:4, :28] = 0.0
+    query_frames[:, :, :, 1:27, :28] = 0.0
     return replace(batch, query_frames=query_frames)
 
 
@@ -120,8 +121,8 @@ def _composition(
         return bank.compose_queries(selected)
     if selected is None:
         raise ValueError("dynamic composition requires opaque route queries")
-    indices = torch.tensor(selected, dtype=torch.int64).unsqueeze(0).expand(
-        batch_size, -1
+    indices = (
+        torch.tensor(selected, dtype=torch.int64).unsqueeze(0).expand(batch_size, -1)
     )
     return bank.compose_indices(indices)
 
@@ -137,6 +138,7 @@ def _rollout(
     train_decoder: bool,
     shuffle_outcomes: bool = False,
     zero_codes: bool = False,
+    combiner: ExternalSkillFragmentCombiner | None = None,
 ) -> tuple[torch.Tensor, torch.Tensor]:
     device = batch.input_frames.device
     batch_size = batch.batch_size
@@ -194,13 +196,14 @@ def _rollout(
             state=register_state,
             present=present,
         )
-        executed = machine.execute_fragment_composition(
+        trace = machine.execute_fragment_composition_trace(
             register,
             composition,
             event_window=observed.event_window,
             event_window_mask=observed.event_window_mask,
         )
         register_state = observed
+        executed = trace.final_state if combiner is None else combiner(trace)
         return decoder(executed)
 
     quiet = _feedback(
@@ -245,7 +248,9 @@ def _rollout(
         rewards.append(reward)
         previous_action = F.one_hot(action, ACTION_WIDTH).to(logits.dtype)
         previous_reward = reward.roll(1) if shuffle_outcomes else reward
-        previous_propensity = behavior.gather(1, action.unsqueeze(1)).squeeze(1).detach()
+        previous_propensity = (
+            behavior.gather(1, action.unsqueeze(1)).squeeze(1).detach()
+        )
         previous_has_feedback = torch.ones_like(previous_reward)
     return torch.stack(losses).mean(), torch.stack(rewards, dim=1)
 
@@ -257,7 +262,7 @@ def _train_stage(
     decoder: OpaqueProtocolDecoder,
     *,
     operation: str,
-    selected: tuple[int, ...],
+    selected: tuple[int, ...] | None,
     updates: int,
     batch_size: int,
     span: int,
@@ -265,7 +270,23 @@ def _train_stage(
     trainable: list[nn.Parameter],
     shuffle_outcomes: bool = False,
     generated_compositions=None,
+    auxiliary_operation: str | None = None,
+    auxiliary_selected: tuple[int, ...] | None = None,
+    auxiliary_generated_compositions=None,
+    auxiliary_weight: float = 1.0,
+    combiner: ExternalSkillFragmentCombiner | None = None,
+    eval_every: int = 0,
+    audit_count: int = 0,
+    audit_seed: int = 0,
 ) -> list[dict[str, float | int]]:
+    if auxiliary_weight < 0.0:
+        raise ValueError("auxiliary fragment-stage weight cannot be negative")
+    if auxiliary_operation is None and auxiliary_selected is not None:
+        raise ValueError("auxiliary selection requires an auxiliary operation")
+    if eval_every < 0 or audit_count < 0:
+        raise ValueError("fragment evaluation settings cannot be negative")
+    if eval_every and not audit_count:
+        raise ValueError("fragment evaluation requires a positive audit count")
     parameters = [parameter for parameter in trainable if parameter.requires_grad]
     if not parameters:
         raise ValueError("fragment stage has no trainable parameters")
@@ -288,7 +309,28 @@ def _train_stage(
             selected,
             train_decoder=True,
             shuffle_outcomes=shuffle_outcomes,
+            combiner=combiner,
         )
+        if auxiliary_operation is not None:
+            auxiliary_batch = _batch(
+                operation=auxiliary_operation,
+                count=batch_size,
+                span=span,
+                seed=seed + 5_000_003 + update * 20_021,
+                generated_compositions=auxiliary_generated_compositions,
+            )
+            auxiliary_loss, _ = _rollout(
+                parent,
+                machine,
+                bank,
+                decoder,
+                auxiliary_batch,
+                auxiliary_selected,
+                train_decoder=True,
+                shuffle_outcomes=shuffle_outcomes,
+                combiner=combiner,
+            )
+            loss = loss + auxiliary_weight * auxiliary_loss
         optimizer.zero_grad(set_to_none=True)
         loss.backward()
         torch.nn.utils.clip_grad_norm_(parameters, 1.0)
@@ -298,10 +340,43 @@ def _train_stage(
                 "update": update,
                 "training_accuracy": float(rewards.mean()),
                 "loss": float(loss.detach()),
-                "unique_verifier_bits": update * batch_size * span * 2,
+                "unique_verifier_bits": update
+                * batch_size
+                * span
+                * 2
+                * (2 if auxiliary_operation is not None else 1),
             }
         )
+        if eval_every and (update % eval_every == 0 or update == updates):
+            history[-1]["heldout_accuracy"] = _accuracy(
+                parent,
+                machine,
+                bank,
+                decoder,
+                operation=operation,
+                selected=selected,
+                count=audit_count,
+                span=span,
+                seed=audit_seed + update,
+                generated_compositions=generated_compositions,
+                combiner=combiner,
+            )
     return history
+
+
+def _stable_bits(
+    history: list[dict[str, float | int]],
+    *,
+    threshold: float,
+    bits_per_update: int,
+) -> int | None:
+    measured = [row for row in history if "heldout_accuracy" in row]
+    for index, row in enumerate(measured):
+        if all(
+            float(later["heldout_accuracy"]) >= threshold for later in measured[index:]
+        ):
+            return int(row["update"]) * bits_per_update
+    return None
 
 
 @torch.no_grad()
@@ -319,6 +394,7 @@ def _accuracy(
     shuffle_outcomes: bool = False,
     generated_compositions=None,
     zero_codes: bool = False,
+    combiner: ExternalSkillFragmentCombiner | None = None,
 ) -> float:
     batch = _batch(
         operation=operation,
@@ -338,6 +414,7 @@ def _accuracy(
             train_decoder=False,
             shuffle_outcomes=shuffle_outcomes,
             zero_codes=zero_codes,
+            combiner=combiner,
         )[1].mean()
     )
 
@@ -420,6 +497,9 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             bank.coefficients[1],
             *rotate_decoder.parameters(),
         ],
+        auxiliary_operation="generated_composition",
+        auxiliary_selected=None,
+        auxiliary_generated_compositions=COMPOSITION_GRAMMAR,
     )
     reverse_after = _accuracy(
         parent,
@@ -446,6 +526,11 @@ def run(args: argparse.Namespace) -> dict[str, object]:
 
     for parameter in bank.parameters():
         parameter.requires_grad_(False)
+    composition_combiner = ExternalSkillFragmentCombiner(
+        REGISTER_WIDTH,
+        REGISTER_WIDTH,
+        hidden=64,
+    )
     composition_decoder = OpaqueProtocolDecoder(REGISTER_WIDTH, ACTION_WIDTH, hidden=16)
     composition_history = _train_stage(
         parent,
@@ -458,8 +543,15 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         batch_size=args.batch_size,
         span=args.span,
         seed=args.seed + 40_000,
-        trainable=list(composition_decoder.parameters()),
+        trainable=[
+            *composition_combiner.parameters(),
+            *composition_decoder.parameters(),
+        ],
         generated_compositions=COMPOSITION_GRAMMAR,
+        combiner=composition_combiner,
+        eval_every=args.eval_every,
+        audit_count=args.audit_count,
+        audit_seed=args.seed + 40_500,
     )
     composition_accuracy = _accuracy(
         parent,
@@ -472,6 +564,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         span=args.span,
         seed=args.seed + 41_000,
         generated_compositions=COMPOSITION_GRAMMAR,
+        combiner=composition_combiner,
     )
     wrong_order_accuracy = _accuracy(
         parent,
@@ -484,6 +577,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         span=args.span,
         seed=args.seed + 42_000,
         generated_compositions=COMPOSITION_GRAMMAR,
+        combiner=composition_combiner,
     )
     zero_fragment_accuracy = _accuracy(
         parent,
@@ -497,6 +591,12 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         seed=args.seed + 42_500,
         generated_compositions=COMPOSITION_GRAMMAR,
         zero_codes=True,
+        combiner=composition_combiner,
+    )
+    shuffled_combiner = ExternalSkillFragmentCombiner(
+        REGISTER_WIDTH,
+        REGISTER_WIDTH,
+        hidden=64,
     )
     shuffled_decoder = OpaqueProtocolDecoder(REGISTER_WIDTH, ACTION_WIDTH, hidden=16)
     shuffled_history = _train_stage(
@@ -510,9 +610,13 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         batch_size=args.batch_size,
         span=args.span,
         seed=args.seed + 43_000,
-        trainable=list(shuffled_decoder.parameters()),
+        trainable=[
+            *shuffled_combiner.parameters(),
+            *shuffled_decoder.parameters(),
+        ],
         shuffle_outcomes=True,
         generated_compositions=COMPOSITION_GRAMMAR,
+        combiner=shuffled_combiner,
     )
     shuffled_accuracy = _accuracy(
         parent,
@@ -525,6 +629,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         span=args.span,
         seed=args.seed + 44_000,
         generated_compositions=COMPOSITION_GRAMMAR,
+        combiner=shuffled_combiner,
     )
 
     fresh_machine = _machine()
@@ -533,6 +638,11 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     fresh_bank.add_fragment(
         torch.randn(1, fresh_bank.basis_count) * 0.05,
         F.normalize(torch.randn(INTENTION_WIDTH), dim=0),
+    )
+    fresh_combiner = ExternalSkillFragmentCombiner(
+        REGISTER_WIDTH,
+        REGISTER_WIDTH,
+        hidden=64,
     )
     fresh_decoder = OpaqueProtocolDecoder(REGISTER_WIDTH, ACTION_WIDTH, hidden=16)
     fresh_history = _train_stage(
@@ -550,9 +660,14 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             *fresh_machine.parameters(),
             fresh_bank.shared_basis,
             *fresh_bank.coefficients,
+            *fresh_combiner.parameters(),
             *fresh_decoder.parameters(),
         ],
         generated_compositions=COMPOSITION_GRAMMAR,
+        combiner=fresh_combiner,
+        eval_every=args.eval_every,
+        audit_count=args.audit_count,
+        audit_seed=args.seed + 45_500,
     )
     fresh_accuracy = _accuracy(
         parent,
@@ -565,11 +680,44 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         span=args.span,
         seed=args.seed + 46_000,
         generated_compositions=COMPOSITION_GRAMMAR,
+        combiner=fresh_combiner,
     )
 
     route_queries = torch.stack((bank.keys[0].detach(), bank.keys[1].detach()))
     routed = bank.compose_queries(route_queries.unsqueeze(0))
     parent_digest_after = _digest(parent.controller)
+    bits_per_update = args.batch_size * args.span * 2
+    composition_stable_bits = _stable_bits(
+        composition_history,
+        threshold=args.mastery_threshold,
+        bits_per_update=bits_per_update,
+    )
+    fresh_stable_bits = _stable_bits(
+        fresh_history,
+        threshold=args.mastery_threshold,
+        bits_per_update=bits_per_update,
+    )
+    transfer_ratio = (
+        float(fresh_stable_bits) / float(composition_stable_bits)
+        if composition_stable_bits and fresh_stable_bits
+        else None
+    )
+    training_batches = (
+        args.parent_updates
+        + 2 * args.primitive_updates
+        + args.primitive_updates
+        + 3 * args.composition_updates
+    )
+    eval_points = (
+        sum(
+            1
+            for update in range(1, args.composition_updates + 1)
+            if update % args.eval_every == 0 or update == args.composition_updates
+        )
+        if args.eval_every
+        else 0
+    )
+    audit_batches = 2 * eval_points  # composition and fresh curves
     report = {
         "schema": "neural-computer.external-skill-fragment-composition-report.v1",
         "claim_boundary": (
@@ -579,6 +727,10 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         ),
         "seed": args.seed,
         "span": args.span,
+        "batch_size": args.batch_size,
+        "audit_count": args.audit_count,
+        "eval_every": args.eval_every,
+        "mastery_threshold": args.mastery_threshold,
         "parent_progress": parent_progress,
         "reverse": {
             "before": reverse_before,
@@ -597,29 +749,24 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "history": shuffled_history,
         },
         "fresh": {"accuracy": fresh_accuracy, "history": fresh_history},
+        "stable_bits_to_threshold": composition_stable_bits,
+        "fresh_stable_bits_to_threshold": fresh_stable_bits,
+        "transfer_ratio_fresh_over_inherited": transfer_ratio,
         "routing": {
             "selected_indices": routed.fragment_indices.tolist(),
             "route_scores": routed.route_scores.tolist(),
         },
         "accounting": {
             "unique_verifier_bits": (
-                (
-                    args.parent_updates
-                    + 2 * args.primitive_updates
-                    + 2 * args.composition_updates
-                    + args.composition_updates
-                )
-                * args.batch_size
-                * args.span
-                * 2
+                training_batches * bits_per_update
+                + audit_batches * args.audit_count * args.span * 2
+            ),
+            "training_unique_verifier_bits": training_batches * bits_per_update,
+            "audit_unique_verifier_bits": (
+                audit_batches * args.audit_count * args.span * 2
             ),
             "unique_logical_lifetimes": (
-                (
-                    args.parent_updates
-                    + 2 * args.primitive_updates
-                    + 3 * args.composition_updates
-                )
-                * args.batch_size
+                training_batches * args.batch_size
             ),
             "optimizer_updates": (
                 args.parent_updates
@@ -631,6 +778,13 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         },
         "gates": {
             "reverse_retained": reverse_after >= reverse_before - 0.05,
+            "composition_stable": composition_stable_bits is not None,
+            "fresh_stable": fresh_stable_bits is not None,
+            "positive_stable_transfer": (
+                composition_stable_bits is not None
+                and fresh_stable_bits is not None
+                and fresh_stable_bits > composition_stable_bits
+            ),
             "composition_mastered": composition_accuracy >= args.mastery_threshold,
             "wrong_order_rejected": wrong_order_accuracy < args.mastery_threshold,
             "no_fragment_bypass": zero_fragment_accuracy < args.mastery_threshold,
@@ -657,7 +811,7 @@ def main() -> None:
     parser.add_argument("--batch-size", type=int, default=64)
     parser.add_argument("--span", type=int, default=3)
     parser.add_argument("--audit-count", type=int, default=256)
-    parser.add_argument("--eval-every", type=int, default=0)
+    parser.add_argument("--eval-every", type=int, default=8)
     parser.add_argument("--mastery-threshold", type=float, default=0.80)
     parser.add_argument("--report-out", type=Path)
     print(json.dumps(run(parser.parse_args()), indent=2))

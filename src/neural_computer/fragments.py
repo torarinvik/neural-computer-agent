@@ -36,6 +36,7 @@ EXTERNAL_SKILL_FRAGMENT_ROUTE_SCHEMA = "neural-computer.skill-fragment-route.v1"
 EXTERNAL_SKILL_FRAGMENT_COMPOSITION_SCHEMA = (
     "neural-computer.skill-fragment-composition.v2"
 )
+EXTERNAL_SKILL_FRAGMENT_TRACE_SCHEMA = "neural-computer.skill-fragment-trace.v1"
 PERSISTENT_EXTERNAL_SKILL_FRAGMENT_BANK_SCHEMA = (
     "neural-computer.persistent-skill-fragment-bank.v1"
 )
@@ -239,6 +240,121 @@ class ExternalSkillFragmentComposition:
         return self
 
 
+@dataclass(frozen=True)
+class ExternalSkillFragmentExecutionTrace:
+    """Padded post-instruction states for one external serial execution."""
+
+    states: torch.Tensor
+    mask: torch.Tensor
+    fragment_indices: torch.Tensor
+    route_scores: torch.Tensor
+    bank_fragment_count: int
+    schema: str = EXTERNAL_SKILL_FRAGMENT_TRACE_SCHEMA
+
+    def validate(
+        self,
+        *,
+        batch_size: int,
+        register_width: int,
+    ) -> ExternalSkillFragmentExecutionTrace:
+        if self.schema != EXTERNAL_SKILL_FRAGMENT_TRACE_SCHEMA:
+            raise ValueError("unsupported fragment execution trace schema")
+        if (
+            self.states.ndim != 3
+            or self.states.shape[0] != batch_size
+            or self.states.shape[1] < 1
+            or self.states.shape[2] != register_width
+        ):
+            raise ValueError("fragment execution trace states have the wrong shape")
+        if self.mask.shape != self.states.shape[:2] or self.mask.dtype != torch.bool:
+            raise ValueError("fragment execution trace mask has the wrong shape")
+        if not bool(self.mask.any(dim=1).all()):
+            raise ValueError("fragment execution trace cannot contain empty rows")
+        if self.fragment_indices.ndim != 2 or self.route_scores.shape != self.fragment_indices.shape:
+            raise ValueError("fragment execution trace route tensors must be [batch, steps]")
+        if self.fragment_indices.shape[0] != batch_size or self.fragment_indices.dtype != torch.int64:
+            raise ValueError("fragment execution trace route shape is invalid")
+        if self.bank_fragment_count < 1 or bool((self.fragment_indices < 0).any()) or bool(
+            (self.fragment_indices >= self.bank_fragment_count).any()
+        ):
+            raise ValueError("fragment execution trace index is outside the bank")
+        if not bool(torch.isfinite(self.states).all()) or not bool(
+            torch.isfinite(self.route_scores).all()
+        ):
+            raise ValueError("fragment execution trace values must be finite")
+        return self
+
+    @property
+    def final_state(self) -> torch.Tensor:
+        """Return the last valid post-instruction state for each row."""
+
+        if self.states.ndim != 3 or self.mask.shape != self.states.shape[:2]:
+            raise ValueError("fragment execution trace is not shape-valid")
+        last = self.mask.sum(dim=1).to(dtype=torch.int64) - 1
+        return self.states[
+            torch.arange(self.states.shape[0], device=self.states.device), last
+        ]
+
+
+class ExternalSkillFragmentCombiner(nn.Module):
+    """Learned order-sensitive combiner over executed fragment states.
+
+    This is deliberately outside the controller.  It receives only the
+    post-instruction state trace and its transport mask; it cannot inspect raw
+    events, feedback, fragment indices, or verifier metadata.  A growing bank
+    can therefore train or replace this shared combiner independently while
+    the controller remains frozen.
+    """
+
+    schema = "neural-computer.skill-fragment-combiner.v1"
+
+    def __init__(
+        self,
+        register_width: int,
+        output_width: int,
+        *,
+        hidden: int = 64,
+    ) -> None:
+        super().__init__()
+        if min(register_width, output_width, hidden) < 1:
+            raise ValueError("fragment combiner dimensions must be positive")
+        self.register_width = int(register_width)
+        self.output_width = int(output_width)
+        self.hidden = int(hidden)
+        self.cell = nn.GRUCell(self.register_width, self.hidden)
+        self.output = nn.Linear(self.hidden, self.output_width)
+
+    def configuration(self) -> dict[str, int | str]:
+        return {
+            "schema": self.schema,
+            "register_width": self.register_width,
+            "output_width": self.output_width,
+            "hidden": self.hidden,
+            "input": "post_instruction_state_trace_only_v1",
+            "order": "causal_gru_cell_v1",
+        }
+
+    def forward(self, trace: ExternalSkillFragmentExecutionTrace) -> torch.Tensor:
+        trace.validate(
+            batch_size=trace.states.shape[0],
+            register_width=self.register_width,
+        )
+        hidden = torch.zeros(
+            trace.states.shape[0],
+            self.hidden,
+            device=trace.states.device,
+            dtype=trace.states.dtype,
+        )
+        for state, present in zip(
+            trace.states.transpose(0, 1),
+            trace.mask.transpose(0, 1),
+            strict=True,
+        ):
+            proposal = self.cell(state, hidden)
+            hidden = torch.where(present.unsqueeze(-1), proposal, hidden)
+        return self.output(hidden)
+
+
 class ExternalSkillFragmentBank(nn.Module):
     """Growing bank of reusable fragments over one shared operator basis.
 
@@ -259,15 +375,19 @@ class ExternalSkillFragmentBank(nn.Module):
         key_width: int | None = None,
         router_hidden: int = 64,
         max_fragment_steps: int = 16,
+        code_norm: float = 1.0,
     ) -> None:
         super().__init__()
         if min(instruction_width, basis_count, router_hidden, max_fragment_steps) < 1:
             raise ValueError("fragment bank dimensions must be positive")
+        if code_norm <= 0.0:
+            raise ValueError("fragment code norm must be positive")
         self.instruction_width = int(instruction_width)
         self.basis_count = int(basis_count)
         self.key_width = int(instruction_width if key_width is None else key_width)
         self.router_hidden = int(router_hidden)
         self.max_fragment_steps = int(max_fragment_steps)
+        self.code_norm = float(code_norm)
         self.shared_basis = nn.Parameter(
             torch.randn(self.basis_count, self.instruction_width) * 0.02
         )
@@ -290,9 +410,11 @@ class ExternalSkillFragmentBank(nn.Module):
             "key_width": self.key_width,
             "router_hidden": self.router_hidden,
             "max_fragment_steps": self.max_fragment_steps,
+            "code_norm": self.code_norm,
             "fragment_count": len(self.coefficients),
             "unit": "opaque_reusable_shared_basis_fragment_v1",
             "basis": "append_expandable_shared_operator_basis_v1",
+            "materialization": "normalized_shared_basis_code_v1",
             "composition": "opaque_route_then_serial_fragment_chain_v1",
             "routing": "cosine_address_plus_outcome_trained_equivariant_residual_v1",
             "basis_growth": "append_only_protected_shared_basis_v1",
@@ -360,7 +482,10 @@ class ExternalSkillFragmentBank(nn.Module):
 
         if not 0 <= index < self.fragment_count:
             raise IndexError("fragment index is outside the bank")
-        return self.coefficients[index] @ self.shared_basis
+        raw = self.coefficients[index] @ self.shared_basis
+        nonzero = raw.norm(dim=-1, keepdim=True) > 1e-8
+        normalized = torch.nn.functional.normalize(raw, dim=-1, eps=1e-8)
+        return torch.where(nonzero, normalized * self.code_norm, raw)
 
     def _all_keys(self, *, device: torch.device, dtype: torch.dtype) -> torch.Tensor:
         if not self.fragment_count:
@@ -640,6 +765,7 @@ class ExternalSkillFragmentBank(nn.Module):
             key_width=int(configuration.get("key_width", -1)),
             router_hidden=int(configuration.get("router_hidden", -1)),
             max_fragment_steps=int(configuration.get("max_fragment_steps", -1)),
+            code_norm=float(configuration.get("code_norm", 1.0)),
         )
         if basis.shape != bank.shared_basis.shape:
             raise ValueError("fragment shared basis shape mismatch")
@@ -720,6 +846,8 @@ __all__ = [
     "PERSISTENT_EXTERNAL_SKILL_FRAGMENT_BANK_SCHEMA",
     "ExternalSkillFragmentArtifact",
     "ExternalSkillFragmentBank",
+    "ExternalSkillFragmentCombiner",
     "ExternalSkillFragmentComposition",
+    "ExternalSkillFragmentExecutionTrace",
     "ExternalSkillFragmentRoute",
 ]

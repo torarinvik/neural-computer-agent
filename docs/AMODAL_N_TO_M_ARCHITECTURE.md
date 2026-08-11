@@ -538,6 +538,43 @@ claims require fresh rendered-event experiments with stable-prefix mastery,
 wrong-fragment and blank-bank controls, route permutation, reward-shuffled,
 missing-evidence, memory-corruption, fresh-learner, and zero-replay accounting.
 
+### Replicated trace-combiner result (2026-08-11)
+
+The first implementation that made the boundary causally useful exposed a
+missing computational seam: executing a chain and returning only its final
+register state gave the downstream decoder no learned way to distinguish the
+ordered intermediate transformations. The canonical external path now has
+three stages:
+
+```text
+opaque event/intention query
+        -> external fragment bank
+        -> shared register interpreter trace
+        -> external trace combiner
+        -> intention/output decoder
+```
+
+`ExternalSkillFragmentExecutionTrace` preserves ordered post-instruction states
+and padding masks, while `ExternalSkillFragmentCombiner` reads only that trace
+and remains outside the frozen controller. This is still one external memory
+and compute boundary: it does not introduce a task-specific reasoning branch,
+raw-event shortcut, verifier metadata, or protocol-shaped controller input.
+Normalized fragment-code materialization is part of the boundary contract. It
+prevents independently learned coefficient rows and basis rows from producing
+numerically negligible instructions solely because their product scale is small.
+
+The fresh-rendered audit
+`experiments/external_skill_fragment_composition_amodal/` passed on seeds 69316
+and 69317 at 128 composition updates. Stable inherited-versus-fresh verifier
+bits were `(6,144, 24,576)` and `(9,216, 12,288)`, respectively; every seed
+passed old-fragment retention, reversed-order rejection, zero-code ablation,
+reward-shuffled rejection, frozen-parent digest, no-replay, and route-resolution
+gates. This promotes bounded reusable compositional transfer only. It does not
+promote arbitrary new computation, unrestricted memory growth, compression, or
+general continual learning. The remaining high-ROI test is expansion beyond a
+two-fragment grammar with independently held-out programs and an external
+combiner that must retain all earlier primitives.
+
 The first variable-deliberation outcome-only rung is recorded under
 `session_records/deliberation_amodal_2026-08-03/`. It validates the bounded
 runtime path but is rejected as a learned capability promotion: the controller

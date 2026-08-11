@@ -3289,7 +3289,35 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         before the opaque chain reaches the interpreter.
         """
 
-        from .fragments import ExternalSkillFragmentComposition
+        return self.execute_fragment_composition_trace(
+            register,
+            composition,
+            event_window=event_window,
+            event_window_mask=event_window_mask,
+            meta_context=meta_context,
+            sequence_operator_memory=sequence_operator_memory,
+            sequence_operator_slot=sequence_operator_slot,
+            sequence_operator_route_query=sequence_operator_route_query,
+        ).final_state
+
+    def execute_fragment_composition_trace(
+        self,
+        register: torch.Tensor,
+        composition: object,
+        *,
+        event_window: torch.Tensor | None = None,
+        event_window_mask: torch.Tensor | None = None,
+        meta_context: torch.Tensor | None = None,
+        sequence_operator_memory: ExternalSequenceOperatorMemory | None = None,
+        sequence_operator_slot: int | None = None,
+        sequence_operator_route_query: torch.Tensor | None = None,
+    ) -> object:
+        """Execute a fragment chain and retain only post-instruction states."""
+
+        from .fragments import (
+            ExternalSkillFragmentComposition,
+            ExternalSkillFragmentExecutionTrace,
+        )
 
         if not isinstance(composition, ExternalSkillFragmentComposition):
             raise TypeError("fragment composition must use the versioned composition contract")
@@ -3300,32 +3328,46 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         )
         if register.ndim != 2 or register.shape[1] != self.register_width:
             raise ValueError("register has the wrong shape for fragment composition")
-        outputs: list[torch.Tensor] = []
+        traces: list[torch.Tensor] = []
         for row in range(register.shape[0]):
             codes = composition.codes[row][composition.mask[row]]
             if codes.shape[0] < 1:
                 raise ValueError("fragment composition cannot be empty")
-            outputs.append(
-                self.execute_code_chain(
-                    register[row : row + 1],
-                    codes.unsqueeze(0),
-                    event_window=event_window[row : row + 1]
-                    if event_window is not None
-                    else None,
-                    event_window_mask=event_window_mask[row : row + 1]
-                    if event_window_mask is not None
-                    else None,
-                    meta_context=meta_context[row : row + 1]
-                    if meta_context is not None
-                    else None,
-                    sequence_operator_memory=sequence_operator_memory,
-                    sequence_operator_slot=sequence_operator_slot,
-                    sequence_operator_route_query=sequence_operator_route_query[row : row + 1]
-                    if sequence_operator_route_query is not None
-                    else None,
-                )
+            _executed, trace = self.execute_code_chain_trace(
+                register[row : row + 1],
+                codes.unsqueeze(0),
+                event_window=event_window[row : row + 1]
+                if event_window is not None
+                else None,
+                event_window_mask=event_window_mask[row : row + 1]
+                if event_window_mask is not None
+                else None,
+                meta_context=meta_context[row : row + 1]
+                if meta_context is not None
+                else None,
+                sequence_operator_memory=sequence_operator_memory,
+                sequence_operator_slot=sequence_operator_slot,
+                sequence_operator_route_query=sequence_operator_route_query[row : row + 1]
+                if sequence_operator_route_query is not None
+                else None,
             )
-        return torch.cat(outputs, dim=0)
+            traces.append(torch.cat(trace, dim=0))
+        states = torch.nn.utils.rnn.pad_sequence(traces, batch_first=True)
+        mask = torch.nn.utils.rnn.pad_sequence(
+            [torch.ones(trace.shape[0], dtype=torch.bool, device=trace.device) for trace in traces],
+            batch_first=True,
+            padding_value=False,
+        )
+        return ExternalSkillFragmentExecutionTrace(
+            states=states,
+            mask=mask,
+            fragment_indices=composition.fragment_indices,
+            route_scores=composition.route_scores,
+            bank_fragment_count=composition.bank_fragment_count,
+        ).validate(
+            batch_size=register.shape[0],
+            register_width=self.register_width,
+        )
 
     def execute_code_chain_trace(
         self,

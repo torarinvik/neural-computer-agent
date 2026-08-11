@@ -1,0 +1,30 @@
+{
+  "schema": "neural-computer.external-skill-fragment-composition-summary.v1",
+  "seed": 69317,
+  "updates": {
+    "parent": 64,
+    "primitive": 64,
+    "composition": 128
+  },
+  "stable_bits_to_threshold": 9216,
+  "fresh_stable_bits_to_threshold": 12288,
+  "transfer_ratio_fresh_over_inherited": 1.3333333333333333,
+  "accuracy": {
+    "composition": 0.9947916865348816,
+    "wrong_order": 0.7630208134651184,
+    "zero_fragment": 0.6744791865348816,
+    "reward_shuffled": 0.3307291567325592,
+    "reverse_before": 0.8854166865348816,
+    "reverse_after": 0.8932291865348816,
+    "fresh": 0.8671875
+  },
+  "accounting": {
+    "unique_verifier_bits": 135168,
+    "training_unique_verifier_bits": 122880,
+    "audit_unique_verifier_bits": 12288,
+    "unique_logical_lifetimes": 20480,
+    "optimizer_updates": 576,
+    "replayed_examples": 0
+  },
+  "promoted": true
+}

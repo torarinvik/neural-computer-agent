@@ -1,13 +1,13 @@
 # External skill fragment composition
 
-This is the first empirical pressure test for the compositional fragment-bank
+This is the replicated pressure test for the compositional fragment-bank
 boundary. A parent amodal controller is trained on forward reproduction and
 then frozen. A shared external register interpreter and one coefficient row
 acquire `reverse` from fresh rendered events; a second coefficient row then
 acquires `rotate` without replaying the first task. The held-out
-`reverse -> rotate` procedure is learned by a fresh decoder over the frozen
-serial chain. A matched fresh interpreter learns the same held-out procedure
-from scratch.
+`reverse -> rotate` procedure is learned by an external trace combiner and
+decoder over the frozen serial chain. A matched fresh interpreter learns the
+same held-out procedure from scratch.
 
 The bank stores short coefficient sequences over one shared instruction basis.
 It does not store task-sized neural modules, and the controller never receives
@@ -20,7 +20,7 @@ The audit is diagnostic until it passes all gates on replicated seeds:
 
 - old `reverse` retention after the new fragment is acquired;
 - held-out serial composition beats a matched fresh learner in stable
-  verifier-bit cost;
+  verifier-bit cost, measured at repeated held-out prefixes;
 - reversed fragment order and shuffled outcomes fail the composition gate;
 - zeroed fragment codes fail, proving the decoder is not using register content
   as a fragment bypass;
@@ -29,8 +29,20 @@ The audit is diagnostic until it passes all gates on replicated seeds:
 - fragment routing remains row-permutation equivariant;
 - exact bank persistence/reload and checksum rejection.
 
-Passing this audit would establish bounded reusable composition, not arbitrary
-program induction, unrestricted memory growth, or general continual learning.
+The 128-update audit passed on seeds 69316 and 69317. Inherited composition
+reached stable mastery in 6,144 and 9,216 verifier bits; matched fresh learners
+needed 24,576 and 12,288 bits. The replicated geometric-mean advantage is
+therefore positive, but this establishes only bounded reusable composition—not
+arbitrary program induction, unrestricted memory growth, or general continual
+learning.
+
+The important implementation lesson is that the fragment code is not itself a
+complete intention. The interpreter emits an ordered execution trace, and a
+small external combiner learns how to read that trace before the output decoder
+acts. This keeps the controller frozen while preserving a trainable path for
+composition-specific credit assignment. Code materialization is normalized at
+the external boundary so coefficient/basis scale does not silently turn every
+fragment into a near-zero instruction.
 
 Run a short smoke rung with:
 
@@ -39,4 +51,16 @@ PYTHONPATH=src:. .venv/bin/python experiments/external_skill_fragment_compositio
   --parent-updates 8 --primitive-updates 8 --composition-updates 8 \
   --batch-size 32 --audit-count 128 --eval-every 4 \
   --report-out /tmp/fragment-composition-smoke.json
+```
+
+Reproduce the promoted audit with two matched seeds:
+
+```bash
+for seed in 69316 69317; do
+  PYTHONPATH=src:. .venv/bin/python -m \
+    experiments.external_skill_fragment_composition_amodal.train \
+    --seed "$seed" --parent-updates 64 --primitive-updates 64 \
+    --composition-updates 128 --batch-size 32 --span 3 --audit-count 128 \
+    --eval-every 16 --report-out "/tmp/fragment-composition-$seed.json"
+done
 ```

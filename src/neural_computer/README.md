@@ -140,17 +140,21 @@ controller; cue-absent task inference remains unqualified.
 `ExternalSkillFragmentBank` is the compositional growth boundary. Its rows are
 reusable opaque coefficient sequences over one shared operator basis, not
 task-sized policy modules. A learned event/intention query routes to fragment
-rows, and `ExternalCapabilityRegisterMachine.execute_fragment_composition()`
-executes the resulting variable-length chain after removing transport padding.
+rows, and `ExternalCapabilityRegisterMachine.execute_fragment_composition_trace()`
+executes the resulting variable-length chain after removing transport padding
+while preserving an opaque post-instruction state trace. The external
+`ExternalSkillFragmentCombiner` can consume that trace before an output decoder
+without unfreezing or resizing the controller.
 Appending a fragment grows only external state; it does not resize the
 controller, interpreter, or decoder. If the current shared basis is saturated,
 `grow_basis()` appends new instruction directions and zero-pads old
 coefficients, while `freeze_basis_prefix()` protects mastered directions from
 later candidate updates. The bank supports outcome-only route refinement, row
 permutation audits, protected rows, atomic disk persistence, and checksum
-recovery. This is the structural foundation for compounding reuse; positive
-transfer and arbitrary program induction still require fresh verifier-gated
-experiments.
+recovery. Fragment codes are normalized at materialization so small learned
+coefficient/basis products cannot collapse the external instruction signal.
+This is the structural foundation for compounding reuse; positive transfer and
+arbitrary program induction still require fresh verifier-gated experiments.
 
 `ExternalGoalFragmentStager` is the corresponding acquisition boundary for
 factual destinations. It stages an opaque learned-state target and updates
