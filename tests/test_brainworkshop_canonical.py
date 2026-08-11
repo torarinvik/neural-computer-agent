@@ -323,6 +323,20 @@ def test_recency_window_transition_discovery_is_an_explicit_transfer_mode() -> N
     assert report.replayed_examples == 0
 
 
+def test_streaming_gradient_external_memory_is_accounted_separately() -> None:
+    report = run_online_transition_discovery_audit(
+        seed=91,
+        window_statistics="recency_weighted_and_latest_v1",
+        window_gain=0.05,
+        external_memory_update_mode="streaming_gradient",
+    )
+
+    assert report.external_memory_update_mode == "streaming_gradient"
+    assert report.external_memory_optimizer_updates == 2
+    assert report.controller_unchanged
+    assert report.replayed_examples == 0
+
+
 def test_online_transition_discovery_can_learn_external_selection_cost() -> None:
     report = run_online_transition_discovery_audit(
         seed=91,

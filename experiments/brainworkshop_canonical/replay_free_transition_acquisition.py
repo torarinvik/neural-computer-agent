@@ -23,6 +23,7 @@ import torch.nn.functional as F
 from neural_computer import (
     EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY,
     EXTERNAL_TRANSITION_MIXED_MODEL_FAMILY,
+    EXTERNAL_TRANSITION_NONLINEAR_MODEL_FAMILY,
     EXTERNAL_TRANSITION_RANDOM_FEATURE_MODEL_FAMILY,
     ContentAddressedMemory,
     ControllerFeedback,
@@ -143,6 +144,8 @@ class OnlineTransitionDiscoveryReport:
     pretrain_context_encoder: bool = False
     context_encoder_optimizer_updates: int = 0
     context_encoder_rows_consumed_once: int = 0
+    external_memory_update_mode: str = "sufficient_statistics"
+    external_memory_optimizer_updates: int = 0
     goal_conditioned: bool = False
     target_goal_fragment_admitted: bool = False
     target_goal_fragment_used: bool = False
@@ -311,6 +314,7 @@ def _route_rollout(
     adapt_committed: bool = True,
     preferred_slot_id: int | None = None,
     preferred_continuation_tolerance: float | None = None,
+    optimizer_update_counter: list[int] | None = None,
 ) -> ExternalOnlineTransitionContextResult:
     """Route a rollout with separately controlled provisional/committed writes.
 
@@ -338,6 +342,8 @@ def _route_rollout(
             )
         ):
             router.adaptation_step(result, None, replay_evidence=False)
+            if optimizer_update_counter is not None and result.status == "staged":
+                optimizer_update_counter[0] += 1
     if result is None:
         raise RuntimeError("online transition routing needs a non-empty rollout")
     return result
@@ -693,16 +699,20 @@ def run_online_transition_discovery_audit(
     adaptive_address: bool = False,
     random_feature_width: int = 128,
     pretrain_context_encoder: bool = False,
+    external_memory_update_mode: str = "sufficient_statistics",
 ) -> OnlineTransitionDiscoveryReport:
     """Discover and learn a novel rendered family without replay or a task label.
 
     The target lifetime initially plans through the already-known source slot.
     Only its opaque transition observations reach the online router.  The
     router stages a new external slot, consumes each training bundle once
-    through replay-free sufficient statistics, and commits the discovered context
-    only after multiple independent held-out lifetimes, recursive prediction,
-    and source-retention probes. Cue symbols and n-back values remain
-    verifier-private diagnostics and never enter the router.
+    through either replay-free sufficient statistics or a caller-selected
+    one-pass gradient memory, and commits the discovered context only after
+    multiple independent held-out lifetimes, recursive prediction, and
+    source-retention probes. Cue symbols and n-back values remain
+    verifier-private diagnostics and never enter the router. The gradient arm
+    is an explicit external-memory control; it is not counted as a
+    sufficient-statistics or replay-free-bank result.
 
     With ``goal_conditioned=True``, the promoted target slot must additionally
     admit and use an opaque multi-step goal fragment against a matched fresh
@@ -746,6 +756,11 @@ def run_online_transition_discovery_audit(
         raise ValueError("random feature width must be a positive integer")
     if not isinstance(pretrain_context_encoder, bool):
         raise TypeError("context encoder pretraining flag must be boolean")
+    if external_memory_update_mode not in {
+        "sufficient_statistics",
+        "streaming_gradient",
+    }:
+        raise ValueError("unsupported external-memory update mode")
     if goal_horizon < 1 or goal_horizon > steps - 1:
         raise ValueError("online goal horizon must fit held-out transitions")
     if goal_verifier_threshold <= 0.0 or not math.isfinite(
@@ -812,10 +827,19 @@ def run_online_transition_discovery_audit(
         affine_ridge=affine_ridge,
         random_feature_width=random_feature_width,
     )
+    if external_memory_update_mode == "streaming_gradient":
+        candidate_model_families = (EXTERNAL_TRANSITION_NONLINEAR_MODEL_FAMILY,)
+        provisional_evidence_policy = "streaming_gradient"
+    else:
+        candidate_model_families = (
+            EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY,
+            EXTERNAL_TRANSITION_RANDOM_FEATURE_MODEL_FAMILY,
+        )
+        provisional_evidence_policy = "streaming_statistics"
     source_context = _opaque_context(agent, 6)
-    # The source is a known replay-free baseline.  Keep it explicitly affine
-    # while allowing each novel external slot to choose among replay-free
-    # sufficient-statistics families under the promotion verifier.
+    # The source is a known replay-free baseline. Keep it explicitly affine;
+    # the target arm either selects among replay-free sufficient-statistics
+    # families or exercises the isolated streaming-gradient control.
     source_index = bank.ensure_context(
         source_context,
         model_family=EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY,
@@ -946,10 +970,9 @@ def run_online_transition_discovery_audit(
         defer_admission=True,
         max_contexts=2,
         candidate_model_families=(
-            EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY,
-            EXTERNAL_TRANSITION_RANDOM_FEATURE_MODEL_FAMILY,
+            *candidate_model_families,
         ),
-        provisional_evidence_policy="streaming_statistics",
+        provisional_evidence_policy=provisional_evidence_policy,
         provisional_context_similarity_threshold=0.98,
         provisional_context_similarity_margin=0.005,
         provisional_context_error_tolerance=0.15,
@@ -973,6 +996,7 @@ def run_online_transition_discovery_audit(
     target_result = None
     target_candidate_staged = False
     prior_selection_cost_aware = False
+    external_memory_optimizer_updates = [0]
     for lifetime in range(target_training_lifetimes):
         target_rollout, bits = _run_lifetime(
             agent,
@@ -992,6 +1016,7 @@ def run_online_transition_discovery_audit(
             target_rollout,
             adapt=True,
             adapt_committed=False,
+            optimizer_update_counter=external_memory_optimizer_updates,
         )
         if discovery is None:
             discovery = routed
@@ -1072,6 +1097,8 @@ def run_online_transition_discovery_audit(
             prior_selection_cost_ledger_used=prior_cost_ledger is not None,
             context_encoder_optimizer_updates=context_encoder_optimizer_updates,
             context_encoder_rows_consumed_once=context_encoder_rows_consumed_once,
+            external_memory_update_mode=external_memory_update_mode,
+            external_memory_optimizer_updates=external_memory_optimizer_updates[0],
         )
 
     candidate_context = router.provisional_context_at(0)
@@ -1081,7 +1108,7 @@ def run_online_transition_discovery_audit(
     shadow_bank = ExternalTransitionModelBank.from_payload(bank.payload())
     shadow_index = shadow_bank.ensure_context(
         candidate_context,
-        model_family=EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY,
+        model_family=candidate_model_families[0],
     )
     shadow_bank.models[shadow_index].load_state_dict(
         router.provisional_model_at(0).state_dict()
@@ -1247,6 +1274,8 @@ def run_online_transition_discovery_audit(
             prior_selection_cost_ledger_used=prior_cost_ledger is not None,
             context_encoder_optimizer_updates=context_encoder_optimizer_updates,
             context_encoder_rows_consumed_once=context_encoder_rows_consumed_once,
+            external_memory_update_mode=external_memory_update_mode,
+            external_memory_optimizer_updates=external_memory_optimizer_updates[0],
         )
 
     target_context = bank.context_at(promotion.slot_index)
@@ -1490,6 +1519,8 @@ def run_online_transition_discovery_audit(
         ),
         context_encoder_optimizer_updates=context_encoder_optimizer_updates,
         context_encoder_rows_consumed_once=context_encoder_rows_consumed_once,
+        external_memory_update_mode=external_memory_update_mode,
+        external_memory_optimizer_updates=external_memory_optimizer_updates[0],
     )
 
 
@@ -1533,6 +1564,11 @@ def main() -> None:
     parser.add_argument("--routing-match-tolerance", type=float, default=0.02)
     parser.add_argument("--random-feature-width", type=int, default=128)
     parser.add_argument("--pretrain-context-encoder", action="store_true")
+    parser.add_argument(
+        "--external-memory-update-mode",
+        choices=("sufficient_statistics", "streaming_gradient"),
+        default="sufficient_statistics",
+    )
     parser.add_argument("--steps", type=int, default=6)
     args = parser.parse_args()
     if args.audit == "nonstationary":
@@ -1566,6 +1602,7 @@ def main() -> None:
             routing_match_tolerance=args.routing_match_tolerance,
             random_feature_width=args.random_feature_width,
             pretrain_context_encoder=args.pretrain_context_encoder,
+            external_memory_update_mode=args.external_memory_update_mode,
         )
     else:
         report = run_replay_free_transition_acquisition_audit(

@@ -1664,3 +1664,38 @@ This is the strongest current online CPU/files result, but it remains bounded:
 the complete-pass rate is `9/24`, the target family is still a controlled
 rendered pressure test, and arbitrary computation, unrestricted growth,
 universal positive transfer, and general continual learning remain open.
+
+## Current-code online discovery rerun (2026-08-11)
+
+A fresh 24-seed rerun of the same committed route, using the recency/latest
+state boundary, write firewall, preferred recovery, and cost-aware goal gate,
+completed `14/24` runs. Source-memory retention passed in `24/24` runs; the
+controller stayed byte-identical; `690` unique verifier bits and `576`
+transition rows were consumed once; replay and optimizer updates were zero.
+The rejected seeds were `80, 82, 83, 86, 88, 90, 93, 94, 96, 98`.
+
+This is not merged with the earlier `9/24` ledger. The disagreement between
+two nominally identical aggregates is evidence that the route acquisition path
+still has stochastic or under-specified boundary behavior. The binding failure
+modes in the current rerun are held-out model-family verification, recursive
+candidate rollout, and candidate retention—not source forgetting. The full
+current-code ledger is in
+`session_records/online_goal_conditioned_discovery_current_rerun_2026-08-11/sample_efficiency_ledger.json`.
+
+## External-memory update and capacity screen (2026-08-11)
+
+Two tempting interventions were tested and rejected. A trainable nonlinear
+external transition memory, updated only from fresh staged evidence while the
+controller stayed frozen, completed `0/5` six-target-lifetime runs. It made
+`27` external-memory optimizer updates, consumed `240` transition rows once,
+replayed zero examples, and failed every independent held-out model-family
+gate. Increasing the replay-free random-feature basis from `128` to `256`
+reduced the current 24-seed complete-pass rate from `14/24` to `13/24`.
+
+These controls do not show that dynamic neural memory is impossible. They show
+that a small online gradient memory or more basis capacity does not solve the
+present bottleneck. The next high-ROI intervention is better evidence routing
+and credit assignment—especially selecting informative actions/queries and
+forming a stable context before model updates—rather than adding another
+unverified memory branch. Evidence is in
+`session_records/external_memory_update_screen_2026-08-11/`.
