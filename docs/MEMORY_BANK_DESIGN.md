@@ -8715,3 +8715,53 @@ cap. All three were sound arguments about where cost goes, and all
 three were wrong about a system whose parts interact. The pattern is
 specific enough to name: **each assumed a component's cost could be
 removed without changing what the rest of the system then does.**
+
+## F176 — my explanation for F175 is refuted, and the search cost is
+## not distributed the way every previous finding assumed
+
+F175 guessed that capping hurt the related sequence because those
+recipes are found BETWEEN 400 and 930 calls, so the cap converted wins
+into fallbacks. Recording the distribution rather than reasoning about
+it, over four seeds with the `cover` control reproducing at
+0.893/0.840:
+
+| sequence | successes | below 400 | 400-930 | above 930 |
+| --- | ---: | ---: | ---: | ---: |
+| diverse | 152 | 146 (96%) | 6 (4%) | 0 |
+| related | 136 | 128 (94%) | 8 (6%) | 0 |
+
+**Refuted.** At most 6% of successes fall in the band the cap would
+have cut — far too few to explain a 0.406 -> 0.503 degradation. That
+leaves the mechanism F175 already established as the sole explanation:
+a failed enumeration raises the best score the fallback sampling starts
+from, so cutting it lengthens what follows.
+
+**The number that matters is not the one I went looking for.**
+
+| | actions | mean cost | share of total cost |
+| --- | ---: | ---: | ---: |
+| enumeration SUCCEEDS | 288 (84.5%) | 57.6 | 9.2% |
+| enumeration FAILS | 53 (15.5%) | 3090.6 | **90.8%** |
+
+**Ninety-one percent of all search cost sits in fifteen percent of
+actions, and a failing action costs 54 times a succeeding one.** The
+median successful enumeration terminates at the SIXTH candidate. Half
+of every action in the benchmark is solved by the sixth thing tried.
+
+**This reframes every search result in the ledger.** F161, F171 and
+F173 all measured mean cost, and a mean over a distribution this skewed
+is a measurement of the tail wearing the name of the average. Reuse at
+0.929, the filter at 0.879, enumeration at 0.425 — all of these are
+almost entirely statements about the 15% of actions where enumeration
+fails, because the other 85% contribute a twelfth of the total. None of
+those numbers is wrong; what is wrong is reading them as "search got
+cheaper" when what they say is "the tail got cheaper".
+
+**And it says what to work on.** There is no general search problem
+here to solve. There is a specific, small, identifiable set of actions
+whose recipes are longer than depth 2, and everything else is already
+essentially free. Making the common case faster cannot buy more than
+9% however clever it is. The whole remaining budget lives in a set that
+can be ENUMERATED and inspected rather than reasoned about — which is
+the next thing to do, and the instrument for it already exists, since
+an action that produces no `enum_hits` entry is exactly a member.
