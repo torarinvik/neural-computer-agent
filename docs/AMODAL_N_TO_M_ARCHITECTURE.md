@@ -660,6 +660,29 @@ provide a curriculum of fresh opaque orders to the same shared learner, with
 stable-prefix and fresh-learner accounting. Allocating one new combiner per
 target would conceal this limitation and is not the canonical architecture.
 
+### Shared operator-algebra diagnostic (2026-08-11)
+
+The first attempt to address that bottleneck adds a replaceable external
+`ExternalSkillFragmentOperatorCombiner`. It summarizes each rich learner-view
+segment and applies one code-conditioned low-rank state transition to a shared
+composition state; it has no fragment-index, verifier, or depth-specific input
+and persists through a versioned checksum-validated memory file.
+
+At the matched seed-69316 64/256/128 audit, shared training accuracy was
+`0.6849/0.7266/0.7786` and held-out accuracy was `0.6016/0.5833/0.7083`.
+Wrong-order accuracy remained `0.6563/0.6745/0.7214`, so the learner had not
+acquired reliable ordered binding. Frozen-parent, frozen-bank, zero-code,
+missing-evidence, reward-shuffled, persistence, and zero-replay controls passed,
+but no stable prefix or capability promotion was reached. The durable decision
+record is `session_records/external_skill_fragment_operator_algebra_rejected_2026-08-11/`.
+
+The ABI and persistence seam are retained as infrastructure; the low-rank
+operator is not promoted as a learned composition law. The immediate bottleneck
+is now ordered credit assignment: the learner can fit some target behavior but
+does not consistently distinguish a valid sequence from a cyclically shifted
+one. The next experiment should use a smaller curriculum with explicit paired
+order contrasts before increasing depth or memory capacity.
+
 The first variable-deliberation outcome-only rung is recorded under
 `session_records/deliberation_amodal_2026-08-03/`. It validates the bounded
 runtime path but is rejected as a learned capability promotion: the controller

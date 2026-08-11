@@ -9,6 +9,7 @@ from neural_computer import (
     ExternalSkillFragmentBank,
     ExternalSkillFragmentCombiner,
     ExternalSkillFragmentGrowthCombiner,
+    ExternalSkillFragmentOperatorCombiner,
     ExternalSkillFragmentProgramCombiner,
     ExternalSkillFragmentSegmentCombiner,
 )
@@ -349,6 +350,49 @@ def test_rich_fragment_trace_preserves_opaque_codes_and_transition_deltas() -> N
     assert segmented.shape == (2, 4)
     assert torch.isfinite(combined).all()
     assert torch.isfinite(segmented).all()
+
+
+def test_operator_combiner_shares_transition_algebra_and_round_trips() -> None:
+    bank = _bank()
+    machine = ExternalCapabilityRegisterMachine(
+        event_width=1,
+        action_width=1,
+        intention_width=2,
+        register_width=6,
+        instruction_width=6,
+        interpreter_hidden=8,
+    )
+    trace = machine.execute_fragment_composition_trace(
+        torch.zeros(2, 6),
+        bank.compose_indices(torch.tensor([[0, 1], [1, 2]])),
+        include_codes=True,
+    ).learner_view()
+    combiner = ExternalSkillFragmentOperatorCombiner(6, 6, 4, hidden=8, operator_rank=3)
+    output = combiner(trace)
+    restored = ExternalSkillFragmentOperatorCombiner.from_payload(combiner.payload())
+
+    assert output.shape == (2, 4)
+    assert torch.isfinite(output).all()
+    assert restored.configuration() == combiner.configuration()
+    assert torch.allclose(output, restored(trace))
+    payload = combiner.payload()
+    first_weight = next(iter(payload["state"]["weights"].values()))
+    first_weight.view(-1)[0] += 1.0
+    with pytest.raises(ValueError, match="checksum mismatch"):
+        ExternalSkillFragmentOperatorCombiner.from_payload(payload)
+
+
+def test_operator_combiner_disk_persistence_is_atomic_and_restartable(tmp_path) -> None:
+    combiner = ExternalSkillFragmentOperatorCombiner(6, 6, 4, hidden=8, operator_rank=3)
+    path = tmp_path / "operator-memory" / "combiner.pt"
+
+    digest = combiner.save(path)
+    restored = ExternalSkillFragmentOperatorCombiner.load(path)
+
+    assert path.is_file()
+    assert digest == combiner.payload()["sha256"]
+    assert restored.payload()["sha256"] == digest
+    assert restored.configuration() == combiner.configuration()
 
 
 def test_growth_combiner_appends_zero_impact_depth_slots_and_protects_prefix() -> None:

@@ -43,11 +43,17 @@ EXTERNAL_SKILL_FRAGMENT_RICH_TRACE_SCHEMA = (
 EXTERNAL_SKILL_FRAGMENT_GROWTH_SCHEMA = (
     "neural-computer.skill-fragment-growth-combiner.v2"
 )
+EXTERNAL_SKILL_FRAGMENT_OPERATOR_SCHEMA = (
+    "neural-computer.skill-fragment-operator-combiner.v1"
+)
 PERSISTENT_EXTERNAL_SKILL_FRAGMENT_BANK_SCHEMA = (
     "neural-computer.persistent-skill-fragment-bank.v1"
 )
 PERSISTENT_EXTERNAL_SKILL_FRAGMENT_GROWTH_SCHEMA = (
     "neural-computer.persistent-skill-fragment-growth.v2"
+)
+PERSISTENT_EXTERNAL_SKILL_FRAGMENT_OPERATOR_SCHEMA = (
+    "neural-computer.persistent-skill-fragment-operator.v1"
 )
 
 
@@ -777,6 +783,281 @@ class ExternalSkillFragmentSegmentCombiner(nn.Module):
                 active_segment.unsqueeze(-1), proposal, outer_hidden
             )
         return self.output(outer_hidden)
+
+
+class ExternalSkillFragmentOperatorCombiner(nn.Module):
+    """Apply one reusable learned operator algebra across fragment segments.
+
+    The combiner receives only rich learned execution evidence.  Each opaque
+    segment is summarized, converted into a low-rank state transition, and
+    applied to one persistent composition state.  The transition weights are
+    shared across every segment and every composition depth; no depth slot,
+    fragment index, route score, or verifier field enters the computation.
+    This is an external replaceable codec, not a new controller branch.
+    """
+
+    schema = EXTERNAL_SKILL_FRAGMENT_OPERATOR_SCHEMA
+    requires_instruction_codes = True
+
+    def __init__(
+        self,
+        register_width: int,
+        instruction_width: int,
+        output_width: int,
+        *,
+        hidden: int = 64,
+        operator_rank: int = 8,
+    ) -> None:
+        super().__init__()
+        if min(register_width, instruction_width, output_width, hidden, operator_rank) < 1:
+            raise ValueError("operator combiner dimensions must be positive")
+        self.register_width = int(register_width)
+        self.instruction_width = int(instruction_width)
+        self.output_width = int(output_width)
+        self.hidden = int(hidden)
+        self.operator_rank = int(operator_rank)
+        self.step_input = nn.Sequential(
+            nn.Linear(register_width * 2 + instruction_width, hidden),
+            nn.GELU(),
+            nn.LayerNorm(hidden),
+        )
+        self.step_cell = nn.GRUCell(hidden, hidden)
+        self.segment_input = nn.Sequential(
+            nn.Linear(register_width + hidden, hidden),
+            nn.GELU(),
+            nn.LayerNorm(hidden),
+        )
+        self.operator_input = nn.Sequential(
+            nn.Linear(hidden + register_width, hidden),
+            nn.GELU(),
+            nn.LayerNorm(hidden),
+        )
+        self.operator_left = nn.Linear(hidden, output_width * operator_rank)
+        self.operator_right = nn.Linear(hidden, operator_rank * output_width)
+        self.operator_bias = nn.Linear(hidden, output_width)
+        self.operator_gate = nn.Linear(hidden, output_width)
+        nn.init.constant_(self.operator_gate.bias, -2.0)
+        self.readout = nn.Sequential(
+            nn.Linear(output_width + register_width, hidden),
+            nn.GELU(),
+            nn.LayerNorm(hidden),
+            nn.Linear(hidden, output_width),
+        )
+
+    def configuration(self) -> dict[str, int | str | bool]:
+        return {
+            "schema": self.schema,
+            "register_width": self.register_width,
+            "instruction_width": self.instruction_width,
+            "output_width": self.output_width,
+            "hidden": self.hidden,
+            "operator_rank": self.operator_rank,
+            "input": "rich_segment_trace_only_v1",
+            "composition": "shared_code_conditioned_low_rank_state_transition_v1",
+            "uses_fragment_indices": False,
+            "uses_verifier_metadata": False,
+            "uses_depth_slots": False,
+        }
+
+    def forward(
+        self,
+        trace: ExternalSkillFragmentExecutionTrace | ExternalSkillFragmentLearnerTrace,
+    ) -> torch.Tensor:
+        if isinstance(trace, ExternalSkillFragmentExecutionTrace):
+            trace = trace.learner_view()
+        trace.validate(
+            batch_size=trace.states.shape[0],
+            register_width=self.register_width,
+        )
+        if (
+            trace.instruction_codes is None
+            or trace.transition_deltas is None
+            or trace.fragment_step_counts is None
+        ):
+            raise ValueError("operator combiner requires a rich fragment trace")
+        if trace.instruction_codes.shape[2] != self.instruction_width:
+            raise ValueError("operator combiner instruction width does not match trace")
+        batch_size, max_steps, _ = trace.states.shape
+        segment_count = trace.fragment_step_counts.shape[1]
+        outer_state = torch.zeros(
+            batch_size,
+            self.output_width,
+            device=trace.states.device,
+            dtype=trace.states.dtype,
+        )
+        last_state = torch.zeros(
+            batch_size,
+            self.register_width,
+            device=trace.states.device,
+            dtype=trace.states.dtype,
+        )
+        row_ids = torch.arange(batch_size, device=trace.states.device)
+        for segment in range(segment_count):
+            starts = trace.fragment_step_counts[:, :segment].sum(dim=1)
+            lengths = trace.fragment_step_counts[:, segment]
+            active_segment = lengths > 0
+            inner_state = torch.zeros(
+                batch_size,
+                self.hidden,
+                device=trace.states.device,
+                dtype=trace.states.dtype,
+            )
+            for position in range(max_steps):
+                active_step = (
+                    active_segment
+                    & (position >= starts)
+                    & (position < starts + lengths)
+                    & trace.mask[:, position]
+                )
+                token = self.step_input(
+                    torch.cat(
+                        (
+                            trace.states[:, position],
+                            trace.transition_deltas[:, position],
+                            trace.instruction_codes[:, position],
+                        ),
+                        dim=-1,
+                    )
+                )
+                proposal = self.step_cell(token, inner_state)
+                inner_state = torch.where(
+                    active_step.unsqueeze(-1), proposal, inner_state
+                )
+            final_positions = (starts + lengths - 1).clamp(0, max_steps - 1)
+            final_segment_state = trace.states[row_ids, final_positions]
+            segment_summary = self.segment_input(
+                torch.cat((final_segment_state, inner_state), dim=-1)
+            )
+            operator_token = self.operator_input(
+                torch.cat((segment_summary, final_segment_state), dim=-1)
+            )
+            left = torch.tanh(self.operator_left(operator_token)).reshape(
+                batch_size, self.output_width, self.operator_rank
+            )
+            right = torch.tanh(self.operator_right(operator_token)).reshape(
+                batch_size, self.operator_rank, self.output_width
+            )
+            projected = torch.einsum("bo,bro->br", outer_state, right)
+            proposal = torch.einsum("br,bor->bo", projected, left)
+            proposal = proposal + self.operator_bias(operator_token)
+            gate = torch.sigmoid(self.operator_gate(operator_token))
+            updated = outer_state + gate * torch.tanh(proposal)
+            outer_state = torch.where(
+                active_segment.unsqueeze(-1), updated, outer_state
+            )
+            last_state = torch.where(
+                active_segment.unsqueeze(-1), final_segment_state, last_state
+            )
+        return self.readout(torch.cat((outer_state, last_state), dim=-1))
+
+    def payload(self) -> dict[str, Any]:
+        """Return a checksummed controller-independent external snapshot."""
+
+        state = {
+            "weights": {
+                name: value.detach().cpu().clone()
+                for name, value in self.state_dict().items()
+            }
+        }
+        return {
+            "schema": self.schema,
+            "configuration": self.configuration(),
+            "state": state,
+            "sha256": self._snapshot_digest(state),
+        }
+
+    def _snapshot_digest(self, state: Mapping[str, Any]) -> str:
+        digest = hashlib.sha256()
+        digest.update(
+            json.dumps(
+                self.configuration(), sort_keys=True, separators=(",", ":")
+            ).encode("utf-8")
+        )
+        weights = state.get("weights")
+        if not isinstance(weights, Mapping):
+            raise TypeError("operator combiner weights are malformed")
+        for name, value in sorted(weights.items()):
+            if not isinstance(value, torch.Tensor):
+                raise TypeError("operator combiner weight is malformed")
+            digest.update(name.encode("utf-8"))
+            _digest_tensor(digest, value)
+        return digest.hexdigest()
+
+    @classmethod
+    def from_payload(
+        cls, payload: Mapping[str, Any]
+    ) -> ExternalSkillFragmentOperatorCombiner:
+        if not isinstance(payload, Mapping) or payload.get("schema") != cls.schema:
+            raise ValueError("unsupported operator combiner payload")
+        configuration = payload.get("configuration")
+        state = payload.get("state")
+        if not isinstance(configuration, Mapping) or not isinstance(state, Mapping):
+            raise TypeError("operator combiner payload is incomplete")
+        combiner = cls(
+            int(configuration.get("register_width", -1)),
+            int(configuration.get("instruction_width", -1)),
+            int(configuration.get("output_width", -1)),
+            hidden=int(configuration.get("hidden", -1)),
+            operator_rank=int(configuration.get("operator_rank", -1)),
+        )
+        weights = state.get("weights")
+        if not isinstance(weights, Mapping) or set(weights) != set(combiner.state_dict()):
+            raise ValueError("operator combiner state keys do not match configuration")
+        combiner.load_state_dict(
+            {name: value.to(device="cpu") for name, value in weights.items()},
+            strict=True,
+        )
+        if dict(configuration) != combiner.configuration():
+            raise ValueError("operator combiner configuration mismatch")
+        expected = payload.get("sha256")
+        if not isinstance(expected, str) or expected != combiner._snapshot_digest(state):
+            raise ValueError("operator combiner checksum mismatch")
+        return combiner
+
+    def save(self, path: Path) -> str:
+        """Atomically persist the independent external operator memory."""
+
+        destination = Path(path)
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "format": PERSISTENT_EXTERNAL_SKILL_FRAGMENT_OPERATOR_SCHEMA,
+            "operator": self.payload(),
+        }
+        descriptor, temporary_name = tempfile.mkstemp(
+            dir=destination.parent,
+            prefix=f".{destination.name}.",
+            suffix=".tmp",
+        )
+        os.close(descriptor)
+        temporary = Path(temporary_name)
+        try:
+            torch.save(payload, temporary)
+            with temporary.open("rb") as stream:
+                os.fsync(stream.fileno())
+            temporary.replace(destination)
+        finally:
+            temporary.unlink(missing_ok=True)
+        return str(payload["operator"]["sha256"])
+
+    @classmethod
+    def load(
+        cls,
+        path: Path,
+        *,
+        map_location: torch.device | str = "cpu",
+    ) -> ExternalSkillFragmentOperatorCombiner:
+        """Reload operator memory only after schema and checksum validation."""
+
+        payload = torch.load(Path(path), map_location=map_location, weights_only=False)
+        if (
+            not isinstance(payload, Mapping)
+            or payload.get("format") != PERSISTENT_EXTERNAL_SKILL_FRAGMENT_OPERATOR_SCHEMA
+        ):
+            raise ValueError("unsupported persistent fragment operator format")
+        operator_payload = payload.get("operator")
+        if not isinstance(operator_payload, Mapping):
+            raise TypeError("persistent fragment operator is missing its payload")
+        return cls.from_payload(operator_payload)
 
 
 class ExternalSkillFragmentGrowthCombiner(nn.Module):
@@ -1597,11 +1878,13 @@ __all__ = [
     "EXTERNAL_SKILL_FRAGMENT_BANK_SCHEMA",
     "EXTERNAL_SKILL_FRAGMENT_COMPOSITION_SCHEMA",
     "EXTERNAL_SKILL_FRAGMENT_GROWTH_SCHEMA",
+    "EXTERNAL_SKILL_FRAGMENT_OPERATOR_SCHEMA",
     "EXTERNAL_SKILL_FRAGMENT_RICH_TRACE_SCHEMA",
     "EXTERNAL_SKILL_FRAGMENT_ROUTE_SCHEMA",
     "EXTERNAL_SKILL_FRAGMENT_SCHEMA",
     "PERSISTENT_EXTERNAL_SKILL_FRAGMENT_BANK_SCHEMA",
     "PERSISTENT_EXTERNAL_SKILL_FRAGMENT_GROWTH_SCHEMA",
+    "PERSISTENT_EXTERNAL_SKILL_FRAGMENT_OPERATOR_SCHEMA",
     "ExternalSkillFragmentArtifact",
     "ExternalSkillFragmentBank",
     "ExternalSkillFragmentCombiner",

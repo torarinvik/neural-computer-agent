@@ -49,6 +49,7 @@ from experiments.working_memory_continuous.canonical_growth_pressure_test import
 )
 from neural_computer import (
     ExternalSkillFragmentBank,
+    ExternalSkillFragmentOperatorCombiner,
     ExternalSkillFragmentSegmentCombiner,
     OpaqueProtocolDecoder,
 )
@@ -109,6 +110,18 @@ def _specs(
     orders: tuple[tuple[int, ...], ...],
 ) -> tuple[tuple[tuple[int, ...], tuple[str, ...]], ...]:
     return tuple((order, _program(order)) for order in orders)
+
+
+def _make_combiner(mode: str) -> nn.Module:
+    if mode == "segment":
+        return ExternalSkillFragmentSegmentCombiner(
+            REGISTER_WIDTH, 16, REGISTER_WIDTH, hidden=64
+        )
+    if mode == "operator":
+        return ExternalSkillFragmentOperatorCombiner(
+            REGISTER_WIDTH, 16, REGISTER_WIDTH, hidden=64, operator_rank=8
+        )
+    raise ValueError(f"unsupported composition combiner mode: {mode}")
 
 
 def _shared_train_stage(
@@ -346,9 +359,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     bits_per_update = args.batch_size * args.span * 2
 
     torch.manual_seed(args.seed + 100_000)
-    shared_combiner = ExternalSkillFragmentSegmentCombiner(
-        REGISTER_WIDTH, 16, REGISTER_WIDTH, hidden=64
-    )
+    shared_combiner = _make_combiner(args.combiner_mode)
     shared_decoder = OpaqueProtocolDecoder(REGISTER_WIDTH, ACTION_WIDTH, hidden=16)
     shared_history = _shared_train_stage(
         parent,
@@ -429,9 +440,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     )
 
     torch.manual_seed(args.seed + 110_000)
-    shuffled_combiner = ExternalSkillFragmentSegmentCombiner(
-        REGISTER_WIDTH, 16, REGISTER_WIDTH, hidden=64
-    )
+    shuffled_combiner = _make_combiner(args.combiner_mode)
     shuffled_decoder = OpaqueProtocolDecoder(REGISTER_WIDTH, ACTION_WIDTH, hidden=16)
     _shared_train_stage(
         parent,
@@ -466,9 +475,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     torch.manual_seed(args.seed + 120_000)
     fresh_machine = _machine()
     fresh_bank = _bank_with_fragments(args.seed + 2, len(PRIMITIVES))
-    fresh_combiner = ExternalSkillFragmentSegmentCombiner(
-        REGISTER_WIDTH, 16, REGISTER_WIDTH, hidden=64
-    )
+    fresh_combiner = _make_combiner(args.combiner_mode)
     fresh_decoder = OpaqueProtocolDecoder(REGISTER_WIDTH, ACTION_WIDTH, hidden=16)
     fresh_history = _shared_train_stage(
         parent,
@@ -620,6 +627,12 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "zero_fragment_accuracy": shared_zero_accuracy,
             "missing_evidence_accuracy": shared_missing_accuracy,
             "history": shared_history,
+            "combiner_mode": args.combiner_mode,
+            "combiner_configuration": (
+                shared_combiner.configuration()
+                if hasattr(shared_combiner, "configuration")
+                else None
+            ),
             "combiner_count": 1,
             "decoder_count": 1,
         },
@@ -628,6 +641,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "train_accuracy": fresh_train_accuracy,
             "heldout_accuracy": fresh_heldout_accuracy,
             "history": fresh_history,
+            "combiner_mode": args.combiner_mode,
             "combiner_count": 1,
             "decoder_count": 1,
         },
@@ -675,6 +689,12 @@ def main() -> None:
     parser.add_argument("--parent-updates", type=int, default=64)
     parser.add_argument("--primitive-updates", type=int, default=256)
     parser.add_argument("--composition-updates", type=int, default=128)
+    parser.add_argument(
+        "--combiner-mode",
+        choices=("segment", "operator"),
+        default="segment",
+        help="external composition codec to pressure-test",
+    )
     parser.add_argument(
         "--curriculum",
         action="store_true",

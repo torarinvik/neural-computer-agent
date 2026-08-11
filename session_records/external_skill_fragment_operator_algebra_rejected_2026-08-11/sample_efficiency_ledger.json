@@ -1,0 +1,50 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "external_skill_fragment_operator_algebra_rejected_2026-08-11",
+  "date": "2026-08-11",
+  "status": "rejected_operator_algebra_no_generalization",
+  "claim_boundary": "A shared code-conditioned low-rank operator combiner did not pass stable mastery, held-out order, or wrong-order controls; this is not general continual learning.",
+  "configuration": {
+    "seed": 69316,
+    "parent_updates": 64,
+    "primitive_updates": 256,
+    "composition_updates": 128,
+    "batch_size": 32,
+    "span": 3,
+    "audit_count": 128,
+    "mastery_threshold": 0.8,
+    "combiner": "neural-computer.skill-fragment-operator-combiner.v1",
+    "operator_rank": 8,
+    "controller_frozen_during_growth": true,
+    "acquired_bank_frozen_during_targets": true,
+    "replayed_examples": 0
+  },
+  "aggregate": {
+    "shared_train_accuracy": [0.6848958135, 0.7265625, 0.7786458135],
+    "shared_heldout_accuracy": [0.6015625, 0.5833333135, 0.7083333135],
+    "wrong_order_accuracy": [0.65625, 0.6744791865, 0.7213541865],
+    "zero_code_accuracy": [0.5390625, 0.5364583135, 0.6666666865],
+    "missing_evidence_accuracy": [0.46875, 0.5026041865, 0.5],
+    "reward_shuffled_accuracy": [0.4427083433, 0.4869791567, 0.5416666865],
+    "shared_stable_bits_to_threshold": null,
+    "fresh_stable_bits_to_threshold": null,
+    "unique_verifier_bits": 449280,
+    "unique_logical_lifetimes": 71680,
+    "optimizer_updates": 2240,
+    "replayed_examples": 0,
+    "wall_seconds": 256.759566333
+  },
+  "controls": {
+    "fresh_pixel_rerender": true,
+    "wrong_order_rejected": false,
+    "zero_fragment_codes_rejected": true,
+    "missing_sequence_evidence_rejected": true,
+    "reward_shuffled_rejected": true,
+    "frozen_parent_digest": true,
+    "frozen_acquired_bank_digest": true,
+    "persistence_and_corruption": true,
+    "one_shared_external_learner": true,
+    "replayed_examples": 0
+  },
+  "decision": "Reject as a capability promotion; retain the versioned ABI and persistence implementation only."
+}

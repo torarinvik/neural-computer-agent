@@ -143,6 +143,21 @@ The batched variable-length transport path reduced wall time from 496.5 to
 decision record and accounting ledger are in
 `session_records/external_skill_fragment_shared_multi_target_v2_2026-08-11/`.
 
+`--combiner-mode operator` swaps in one code-conditioned low-rank state
+transition shared across every opaque segment and composition depth. The matched
+seed-69316 run was rejected: training accuracy was
+`0.6849/0.7266/0.7786`, held-out accuracy was `0.6016/0.5833/0.7083`, and
+wrong-order accuracy remained `0.6563/0.6745/0.7214`. No stable prefix was
+reached. Frozen-parent, frozen-bank, zero-code, missing-evidence,
+reward-shuffled, persistence, and zero-replay controls passed, but the operator
+did not improve verified capability. The full decision record is in
+`session_records/external_skill_fragment_operator_algebra_rejected_2026-08-11/`.
+
+The operator ABI and atomic checksummed persistence are retained as
+infrastructure, not as a promoted learned composition law. The next experiment
+should isolate ordered credit assignment with a smaller contrastive curriculum
+before scaling depth or adding more memory capacity.
+
 ```bash
 PYTHONPATH=src:. .venv/bin/python -m \
   experiments.external_skill_fragment_composition_amodal.train_shared_multi_target \
