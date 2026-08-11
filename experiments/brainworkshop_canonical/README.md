@@ -749,3 +749,34 @@ PYTHONPATH=src:. ./.venv/bin/python -m experiments.brainworkshop_canonical.exter
   --route-calibration-lifetimes 8 --batch-size 32 --retention-lifetimes 4 \
   --seed 17 --report-out /tmp/brainworkshop-external-compute-route-bank.json
 ```
+
+## Failure-driven same-cue external route reversal (2026-08-11)
+
+`external_compute_route_reversal.py` tests the next nonstationary-memory
+pressure point. A `symbol_parity` file is first mastered behind cue `7`, and a
+`triplet_parity` file is acquired behind cue `8`. The verifier then changes the
+task behind cue `7` to the replacement family. The controller and event
+frontend remain frozen. A parallel probe runs both opaque files and gives route
+memory only terminal scalar episode outcomes; four consecutive failures then
+demote the stale route and prefer the replacement for the same learned cue.
+
+Seeds `17` and `18` both pass changed same-cue mastery (`0.8750` and `1.0000`),
+old-file forced retention (`1.0000` on both), exact route reload, frozen
+controller/frontend, byte-identical files, and zero replay. An unseen cue stays
+near chance (`0.5099` and `0.5107`) and does not select the replacement.
+
+This promotes failure-driven bounded route reversal with retained old
+computation. It does not yet establish unrestricted memory growth, arbitrary
+new computation, semantic ambiguity resolution, or general continual learning.
+Raw reports and accounting are archived in
+`session_records/brainworkshop_external_compute_route_reversal_promoted_2026-08-11/`.
+
+Run one calibrated seed with:
+
+```bash
+PYTHONPATH=src:. ./.venv/bin/python -m experiments.brainworkshop_canonical.external_compute_route_reversal \
+  --source-updates 192 --target-updates 256 --route-updates 256 \
+  --calibration-lifetimes 8 --transition-batches 12 --batch-size 32 \
+  --retention-lifetimes 4 --seed 17 \
+  --report-out /tmp/brainworkshop-external-compute-route-reversal.json
+```

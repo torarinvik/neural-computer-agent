@@ -27,6 +27,9 @@ from experiments.brainworkshop_canonical.external_compute_route import (
 from experiments.brainworkshop_canonical.external_compute_route_bank import (
     run as run_external_compute_route_bank,
 )
+from experiments.brainworkshop_canonical.external_compute_route_reversal import (
+    run as run_external_compute_route_reversal,
+)
 from experiments.brainworkshop_canonical.goal_conditioned_planning import (
     run_goal_conditioned_planning_audit,
 )
@@ -217,6 +220,38 @@ def test_external_compute_route_bank_smoke_preserves_append_only_file_boundaries
     assert report["gates"]["frozen_controller"]
     assert report["gates"]["frozen_event_encoder"]
     assert report["accounting"]["replayed_examples"] == 0
+
+
+def test_external_compute_route_reversal_smoke_preserves_file_boundaries(
+    tmp_path,
+) -> None:
+    report = run_external_compute_route_reversal(
+        argparse.Namespace(
+            report_out=tmp_path / "external-compute-route-reversal.json",
+            seed=17,
+            source_updates=2,
+            target_updates=2,
+            route_updates=4,
+            calibration_lifetimes=8,
+            transition_batches=8,
+            batch_size=32,
+            retention_lifetimes=1,
+            learning_rate=1e-2,
+            reversal_threshold=0.65,
+            reversal_patience=4,
+        )
+    )
+
+    assert report["schema"] == (
+        "neural-computer.brainworkshop-external-compute-route-reversal.v1"
+    )
+    assert report["gates"]["old_file_unchanged"]
+    assert report["gates"]["replacement_file_unchanged_during_reversal"]
+    assert report["gates"]["frozen_controller"]
+    assert report["gates"]["frozen_event_encoder"]
+    assert report["gates"]["zero_replayed_examples"]
+    assert report["transition"][-1]["slot_0_fraction"] == 0.5
+    assert report["transition"][-1]["slot_1_fraction"] == 0.5
 
 
 def test_binary_switch_family_has_a_valid_chance_baseline() -> None:

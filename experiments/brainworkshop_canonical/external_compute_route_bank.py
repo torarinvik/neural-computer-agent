@@ -70,6 +70,7 @@ def _routed_episode(
     seed: int,
     slot_count: int,
     exploration: float,
+    probe_all: bool = False,
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
     """Run one rendered lifetime through one outcome-selected file."""
 
@@ -110,11 +111,14 @@ def _routed_episode(
             )
         if selected_slot is None:
             route_key = collection.payload[:, 0].detach().clone()
-            selected_slot = evidence.preferred_slots(route_key)
-            if exploration:
-                newest = torch.full_like(selected_slot, slot_count - 1)
-                explore = torch.rand(batch_size) < exploration
-                selected_slot = torch.where(explore, newest, selected_slot)
+            if probe_all:
+                selected_slot = torch.arange(batch_size, dtype=torch.long) % slot_count
+            else:
+                selected_slot = evidence.preferred_slots(route_key)
+                if exploration:
+                    newest = torch.full_like(selected_slot, slot_count - 1)
+                    explore = torch.rand(batch_size) < exploration
+                    selected_slot = torch.where(explore, newest, selected_slot)
 
         slot_logits: list[torch.Tensor] = []
         for slot in range(slot_count):
