@@ -8219,11 +8219,20 @@ searched one. Observing beats searching where the expressibility is
 actually used.
 
 **Hypothesis 1b — inferring removes the full-range search penalty.
-NOT ESTABLISHED, and F166 said it was.** Over all four seeds the
-full-range families read +0.0044, i.e. penalty gone. Over only the
-seeds whose arms are genuinely paired they read **-0.0088 against
--0.0041 searched** — the penalty is not removed and may be slightly
-worse. n=6 is too few to call either way. Three fresh seeds running.
+STILL NOT ESTABLISHED after three more seeds, and F166 said it was.**
+Over all four original seeds the full-range families read +0.0044,
+penalty gone. Pooled over the five seeds whose arms are genuinely
+paired, with thread count pinned: **-0.0014 observed against -0.0040
+searched, n=15**. The penalty shrinks by about two thirds but does not
+reach zero, and both numbers are small enough to be indistinguishable
+from nothing. The honest statement is that observing the modulus does
+not COST anything on families that cannot use it — not that it repays
+them.
+
+Hypothesis 1a strengthens on the same pooled data: **+0.0485 observed
+against +0.0285 searched over 20 family-seeds.** Observing beats
+searching wherever the expressibility is actually used, and that is
+now five clean seeds.
 
 **Hypothesis 2 — inferring repairs long-horizon extrapolation.
 REFUTED, and it was right to keep it separate.**
@@ -8235,7 +8244,26 @@ REFUTED, and it was right to keep it separate.**
 | modulus observed | 0.9887 | 0.9373 | +0.0513 |
 
 Removing the search dilution left extrapolation exactly where the
-searched arm had it, 0.9373 against 0.9368. On exact-match the loss is
+searched arm had it, 0.9373 against 0.9368.
+
+**CORRECTION — that comparison was VACUOUS and should never have been
+run as a test.** The searched and observed arms SHARE THEIR TRAINING;
+they differ only in how the search proposes moduli. Their interpreter
+metrics are therefore identical by construction, and match to the digit
+at every cleanly paired seed. "Inferring does not repair extrapolation"
+could not have come out any other way. It is a tautology wearing the
+costume of a refutation, and I reported it as a finding.
+
+The comparison that means something is no-modulus against modulus,
+which really are different instruction sets and different plants. Over
+seven seeds: 0.9632 against 0.9409, paired difference **+0.0222 with sd
+0.0578**, no-modulus better in 6 of 7. So an extrapolation cost is
+probably real, but it is THREE TIMES SMALLER than the 0.049 reported
+from four seeds and it sits inside its own spread. Note also which arm
+is unstable: no-modulus ranges 0.8210-0.9997 while modulus stays inside
+0.9071-0.9644. The wider instruction set extrapolates slightly worse on
+average and considerably more RELIABLY, which is not what "a wider
+instruction set is harder to extrapolate from" predicts. On exact-match the loss is
 starker still: 0.93 without the modulus against 0.71 with it either
 way. So the extrapolation cost is a property of an interpreter trained
 on a seven-times wider instruction set at the same budget, and it has
