@@ -77,6 +77,9 @@ EXTERNAL_TRANSITION_EVIDENCE_STATISTICS_SCHEMA = (
 EXTERNAL_TRANSITION_SUPPORT_STATISTICS_SCHEMA = (
     "neural-computer.external-transition-support-statistics.v1"
 )
+EXTERNAL_TRANSITION_PROBE_UTILITY_MEMORY_SCHEMA = (
+    "neural-computer.external-transition-probe-utility-memory.v1"
+)
 EXTERNAL_CONTEXTUAL_TRANSITION_EVIDENCE_STATISTICS_SCHEMA = (
     "neural-computer.contextual-transition-evidence-statistics.v1"
 )
@@ -6758,6 +6761,7 @@ class ExternalOnlineTransitionContextRouter:
             "active_probe": (
                 "read_only_uncertainty_weighted_model_disagreement_request_v1"
             ),
+            "active_probe_utility": "caller_owned_external_scalar_resolution_memory_v1",
             "active_probe_sequence": (
                 "read_only_beam_search_uncertainty_weighted_probe_sequence_v1"
             ),
@@ -6772,6 +6776,7 @@ class ExternalOnlineTransitionContextRouter:
         candidate_slot_ids: Sequence[int] | None = None,
         probe_state: torch.Tensor | None = None,
         support_statistics: ExternalTransitionSupportStatistics | None = None,
+        utility_memory: ExternalTransitionProbeUtilityMemory | None = None,
     ) -> ExternalTransitionProbeResult:
         """Request an active probe for an ambiguously routed evidence window.
 
@@ -6824,6 +6829,7 @@ class ExternalOnlineTransitionContextRouter:
             candidate_intentions,
             candidate_slot_ids=slot_ids,
             support_statistics=support_statistics,
+            utility_memory=utility_memory,
         )
 
     @torch.no_grad()
@@ -10134,6 +10140,345 @@ class ExternalTransitionSupportStatistics(nn.Module):
         return restored
 
 
+class ExternalTransitionProbeUtilityMemory:
+    """External scalar utility memory for opaque diagnostic intentions.
+
+    This memory is deliberately distinct from verifier reward memory.  A
+    caller records only whether a fresh factual probe resolved its current
+    ambiguity; no target slot, task label, protocol action, or trajectory is
+    retained.  Candidate vectors are opaque addresses, and unknown addresses
+    receive a neutral prior so this memory cannot turn into a hidden policy.
+    """
+
+    schema = EXTERNAL_TRANSITION_PROBE_UTILITY_MEMORY_SCHEMA
+
+    def __init__(
+        self,
+        intention_width: int,
+        *,
+        merge_cosine: float = 0.999,
+        prior_strength: float = 1.0,
+        max_entries: int | None = None,
+    ) -> None:
+        if (
+            not isinstance(intention_width, int)
+            or isinstance(intention_width, bool)
+            or intention_width < 1
+        ):
+            raise ValueError("probe utility intention width must be positive")
+        if not 0.0 <= merge_cosine <= 1.0 or not math.isfinite(merge_cosine):
+            raise ValueError("probe utility merge cosine is invalid")
+        if prior_strength <= 0.0 or not math.isfinite(prior_strength):
+            raise ValueError("probe utility prior strength is invalid")
+        if max_entries is not None and (
+            not isinstance(max_entries, int)
+            or isinstance(max_entries, bool)
+            or max_entries < 1
+        ):
+            raise ValueError("probe utility maximum entries must be positive")
+        self.intention_width = int(intention_width)
+        self.merge_cosine = float(merge_cosine)
+        self.prior_strength = float(prior_strength)
+        self.max_entries = max_entries
+        self._intentions: list[torch.Tensor] = []
+        self._attempts: list[int] = []
+        self._outcome_counts: list[int] = []
+        self._utility_sums: list[float] = []
+        self._version = 0
+
+    def configuration(self) -> dict[str, int | float | str | None]:
+        return {
+            "schema": self.schema,
+            "intention_width": self.intention_width,
+            "merge_cosine": self.merge_cosine,
+            "prior_strength": self.prior_strength,
+            "max_entries": self.max_entries,
+            "storage": "opaque_intention_scalar_resolution_sufficient_statistics_v1",
+            "unknown_prior": "neutral_half_v1",
+            "learning": "one_pass_fresh_route_outcomes_without_replay_v1",
+        }
+
+    @property
+    def record_count(self) -> int:
+        return len(self._intentions)
+
+    @property
+    def version(self) -> int:
+        return self._version
+
+    @property
+    def observed_outcome_count(self) -> int:
+        return sum(self._outcome_counts)
+
+    def _validate_intentions(self, intentions: torch.Tensor) -> torch.Tensor:
+        if intentions.ndim == 1:
+            intentions = intentions.unsqueeze(0)
+        _validate_tensor(
+            intentions,
+            name="probe utility intentions",
+            ndim=2,
+            width=self.intention_width,
+        )
+        return intentions.detach().to(device="cpu", dtype=torch.float32).contiguous()
+
+    def _validate_observations(
+        self,
+        intentions: torch.Tensor,
+        utility: torch.Tensor | float | None,
+        outcome_mask: torch.Tensor | bool | None,
+    ) -> tuple[torch.Tensor | None, torch.Tensor]:
+        batch = intentions.shape[0]
+        if utility is None:
+            utility_values = None
+        elif isinstance(utility, torch.Tensor):
+            if utility.ndim == 0:
+                utility_values = utility.reshape(1).expand(batch)
+            elif utility.shape == (batch,) or utility.shape == (batch, 1):
+                utility_values = utility.reshape(batch)
+            else:
+                raise ValueError("probe utility outcomes must contain one value per intention")
+            utility_values = utility_values.detach().to(device="cpu", dtype=torch.float64)
+        else:
+            utility_values = torch.full(
+                (batch,),
+                float(utility),
+                dtype=torch.float64,
+            )
+        if utility_values is not None and (
+            not bool(torch.isfinite(utility_values).all())
+            or bool(torch.any(utility_values < 0.0) or torch.any(utility_values > 1.0))
+        ):
+            raise ValueError("probe utility outcomes must lie in [0, 1]")
+        if outcome_mask is None:
+            present = torch.full(
+                (batch,),
+                utility_values is not None,
+                dtype=torch.bool,
+            )
+        elif isinstance(outcome_mask, torch.Tensor):
+            if outcome_mask.ndim == 0:
+                present = outcome_mask.reshape(1).expand(batch)
+            elif outcome_mask.shape == (batch,) or outcome_mask.shape == (batch, 1):
+                present = outcome_mask.reshape(batch)
+            else:
+                raise ValueError("probe utility outcome mask is misaligned")
+            if present.dtype != torch.bool:
+                raise TypeError("probe utility outcome mask must be boolean")
+            present = present.detach().to(device="cpu")
+        elif isinstance(outcome_mask, bool):
+            present = torch.full((batch,), outcome_mask, dtype=torch.bool)
+        else:
+            raise TypeError("probe utility outcome mask must be boolean")
+        if utility_values is None and bool(present.any()):
+            raise ValueError("probe utility presence requires utility values")
+        return utility_values, present
+
+    @staticmethod
+    def _similarity(left: torch.Tensor, right: torch.Tensor) -> float:
+        left_norm = torch.linalg.vector_norm(left)
+        right_norm = torch.linalg.vector_norm(right)
+        if float(left_norm) <= 1e-12 or float(right_norm) <= 1e-12:
+            return 1.0 if torch.equal(left, right) else -1.0
+        return float(torch.dot(left, right) / (left_norm * right_norm))
+
+    def _find_entry(self, intention: torch.Tensor) -> int | None:
+        for index, stored in enumerate(self._intentions):
+            if self._similarity(stored, intention) >= self.merge_cosine:
+                return index
+        return None
+
+    def validate_state(self) -> None:
+        count = self.record_count
+        if not isinstance(self._version, int) or self._version < 0:
+            raise ValueError("probe utility memory version is invalid")
+        if any(
+            len(values) != count
+            for values in (self._attempts, self._outcome_counts, self._utility_sums)
+        ):
+            raise ValueError("probe utility statistics are misaligned")
+        for row in self._intentions:
+            _validate_tensor(row, name="stored probe utility intention", ndim=1, width=self.intention_width)
+        if any(not isinstance(value, int) or value < 0 for value in self._attempts):
+            raise ValueError("probe utility attempt counts are invalid")
+        if any(
+            not isinstance(value, int)
+            or value < 0
+            or value > attempt
+            for value, attempt in zip(self._outcome_counts, self._attempts, strict=True)
+        ):
+            raise ValueError("probe utility outcome counts are invalid")
+        if not all(math.isfinite(float(value)) for value in self._utility_sums):
+            raise ValueError("probe utility sums are not finite")
+        if any(
+            value < 0.0 or value > count
+            for value, count in zip(self._utility_sums, self._outcome_counts, strict=True)
+        ):
+            raise ValueError("probe utility sums are outside observed support")
+        if self.max_entries is not None and count > self.max_entries:
+            raise ValueError("probe utility memory exceeds configured capacity")
+
+    def observe(
+        self,
+        intentions: torch.Tensor,
+        *,
+        utility: torch.Tensor | float | None = None,
+        outcome_mask: torch.Tensor | bool | None = None,
+    ) -> None:
+        """Consume fresh route-resolution outcomes without retaining examples."""
+
+        normalized = self._validate_intentions(intentions)
+        utility_values, present = self._validate_observations(
+            normalized,
+            utility,
+            outcome_mask,
+        )
+        self._version += 1
+        for row_index, intention in enumerate(normalized):
+            entry_index = self._find_entry(intention)
+            if entry_index is None:
+                if self.max_entries is not None and self.record_count >= self.max_entries:
+                    raise RuntimeError("probe utility memory capacity exhausted")
+                self._intentions.append(intention.clone())
+                self._attempts.append(0)
+                self._outcome_counts.append(0)
+                self._utility_sums.append(0.0)
+                entry_index = self.record_count - 1
+            self._attempts[entry_index] += 1
+            if utility_values is not None and bool(present[row_index]):
+                self._outcome_counts[entry_index] += 1
+                self._utility_sums[entry_index] += float(utility_values[row_index])
+        self.validate_state()
+
+    def scores(self, candidate_intentions: torch.Tensor) -> torch.Tensor:
+        """Return neutral-prior or empirical diagnostic utility per candidate."""
+
+        normalized = self._validate_intentions(candidate_intentions)
+        values = []
+        for intention in normalized:
+            index = self._find_entry(intention)
+            if index is None:
+                values.append(0.5)
+                continue
+            values.append(
+                (
+                    self.prior_strength + self._utility_sums[index]
+                )
+                / (
+                    (2.0 * self.prior_strength)
+                    + self._outcome_counts[index]
+                )
+            )
+        return torch.tensor(values, dtype=torch.float32, device=candidate_intentions.device)
+
+    def statistics(self) -> dict[str, torch.Tensor]:
+        self.validate_state()
+        intentions = (
+            torch.stack(self._intentions)
+            if self._intentions
+            else torch.empty((0, self.intention_width), dtype=torch.float32)
+        )
+        return {
+            "intentions": intentions.detach().clone(),
+            "attempts": torch.tensor(self._attempts, dtype=torch.long),
+            "outcome_counts": torch.tensor(self._outcome_counts, dtype=torch.long),
+            "utility_sums": torch.tensor(self._utility_sums, dtype=torch.float64),
+        }
+
+    @staticmethod
+    def _digest_payload(payload: Mapping[str, Any]) -> str:
+        digest = hashlib.sha256()
+        for key in sorted(payload):
+            value = payload[key]
+            digest.update(key.encode("utf-8"))
+            if isinstance(value, torch.Tensor):
+                detached = value.detach().cpu().contiguous()
+                digest.update(str(detached.dtype).encode("utf-8"))
+                digest.update(repr(tuple(detached.shape)).encode("utf-8"))
+                digest.update(detached.numpy().tobytes())
+            else:
+                digest.update(repr(value).encode("utf-8"))
+        return digest.hexdigest()
+
+    def payload_without_digest(self) -> dict[str, Any]:
+        self.validate_state()
+        return {
+            **self.configuration(),
+            "version": self._version,
+            **self.statistics(),
+        }
+
+    def content_digest(self) -> str:
+        return self._digest_payload(self.payload_without_digest())
+
+    def payload(self) -> dict[str, Any]:
+        payload = self.payload_without_digest()
+        payload["sha256"] = self.content_digest()
+        return payload
+
+    @classmethod
+    def from_payload(
+        cls,
+        payload: Mapping[str, Any],
+    ) -> ExternalTransitionProbeUtilityMemory:
+        if not isinstance(payload, Mapping) or payload.get("schema") != cls.schema:
+            raise ValueError("unsupported probe utility memory payload")
+        required = {
+            "intention_width",
+            "merge_cosine",
+            "prior_strength",
+            "max_entries",
+            "version",
+            "intentions",
+            "attempts",
+            "outcome_counts",
+            "utility_sums",
+            "sha256",
+        }
+        if not required.issubset(payload):
+            raise ValueError("probe utility memory payload is incomplete")
+        memory = cls(
+            int(payload["intention_width"]),
+            merge_cosine=float(payload["merge_cosine"]),
+            prior_strength=float(payload["prior_strength"]),
+            max_entries=(
+                None
+                if payload["max_entries"] is None
+                else int(payload["max_entries"])
+            ),
+        )
+        intentions = payload["intentions"]
+        if not isinstance(intentions, torch.Tensor) or intentions.ndim != 2:
+            raise ValueError("probe utility memory intentions are invalid")
+        count = intentions.shape[0]
+        if intentions.shape[1] != memory.intention_width:
+            raise ValueError("probe utility memory intention width differs")
+        tensors = {
+            name: payload[name]
+            for name in ("attempts", "outcome_counts", "utility_sums")
+        }
+        if any(
+            not isinstance(value, torch.Tensor) or value.shape[0] != count
+            for value in tensors.values()
+        ):
+            raise ValueError("probe utility memory statistics are misaligned")
+        memory._intentions = [
+            row.detach().to(device="cpu", dtype=torch.float32).contiguous()
+            for row in intentions
+        ]
+        memory._attempts = [int(value) for value in tensors["attempts"].tolist()]
+        memory._outcome_counts = [
+            int(value) for value in tensors["outcome_counts"].tolist()
+        ]
+        memory._utility_sums = [
+            float(value) for value in tensors["utility_sums"].tolist()
+        ]
+        memory._version = int(payload["version"])
+        memory.validate_state()
+        if payload["sha256"] != memory.content_digest():
+            raise ValueError("probe utility memory checksum mismatch")
+        return memory
+
+
 class ExternalTransitionEvidenceCalibrator(nn.Module):
     """Trainable scalar calibration state around a frozen evidence evaluator."""
 
@@ -11320,6 +11665,7 @@ class ExternalTransitionProbeResult:
     predicted_next_states: torch.Tensor
     candidate_slot_ids: tuple[int, ...]
     support_scores: torch.Tensor | None = None
+    utility_scores: torch.Tensor | None = None
     schema: str = EXTERNAL_TRANSITION_PROBE_SCHEMA
 
     def validate(
@@ -11356,6 +11702,14 @@ class ExternalTransitionProbeResult:
                 or torch.any(self.support_scores > 1.0)
             ):
                 raise ValueError("transition-probe support scores are invalid")
+        if self.utility_scores is not None:
+            if self.utility_scores.shape != self.disagreement_scores.shape:
+                raise ValueError("transition-probe utility scores are misaligned")
+            if not bool(torch.isfinite(self.utility_scores).all()) or bool(
+                torch.any(self.utility_scores < 0.0)
+                or torch.any(self.utility_scores > 1.0)
+            ):
+                raise ValueError("transition-probe utility scores are invalid")
         if not 0 <= self.selected_intention_index < self.disagreement_scores.shape[0]:
             raise ValueError("transition-probe selected intention is invalid")
         for name, value in (
@@ -11538,6 +11892,7 @@ class ExternalModelBasedPlanner:
             ),
             "policy": "none_behavior_derived_at_inference_v1",
             "heuristic": "caller_opt_in_goal_progress_v1",
+            "active_probe_utility": "optional_external_scalar_resolution_memory_v1",
             "cost_input": "optional_nonnegative_opaque_intention_costs_v1",
             "entry_value": (
                 "none"
@@ -11998,6 +12353,7 @@ class ExternalModelBasedPlanner:
         *,
         candidate_slot_ids: Sequence[int] | None = None,
         support_statistics: ExternalTransitionSupportStatistics | None = None,
+        utility_memory: ExternalTransitionProbeUtilityMemory | None = None,
     ) -> ExternalTransitionProbeResult:
         """Choose an opaque intention with reliable model disagreement.
 
@@ -12085,6 +12441,15 @@ class ExternalModelBasedPlanner:
             # observations are useful calibration, but must not erase the
             # conservative extrapolation penalty before they are well sampled.
             selection_scores = disagreement_scores * reliability * support_scores
+        if utility_memory is None:
+            utility_scores = None
+        else:
+            if not isinstance(utility_memory, ExternalTransitionProbeUtilityMemory):
+                raise TypeError("transition utility memory has an invalid type")
+            utility_scores = utility_memory.scores(candidate_intentions)
+            # The neutral 0.5 prior multiplies by one.  Learned utility can
+            # modulate evidence-seeking disagreement, but cannot create it.
+            selection_scores = selection_scores * (0.5 + utility_scores)
         selected_index = int(selection_scores.argmax())
         return ExternalTransitionProbeResult(
             selected_intention=candidate_intentions[selected_index].detach().clone(),
@@ -12094,6 +12459,9 @@ class ExternalModelBasedPlanner:
             candidate_slot_ids=slot_ids,
             support_scores=(
                 None if support_scores is None else support_scores.detach().clone()
+            ),
+            utility_scores=(
+                None if utility_scores is None else utility_scores.detach().clone()
             ),
         ).validate(
             state_width=self.model.state_width,
@@ -12353,6 +12721,7 @@ __all__ = [
     "EXTERNAL_TRANSITION_OBSERVATION_SCHEMA",
     "EXTERNAL_TRANSITION_PROBE_SCHEMA",
     "EXTERNAL_TRANSITION_PROBE_SEQUENCE_SCHEMA",
+    "EXTERNAL_TRANSITION_PROBE_UTILITY_MEMORY_SCHEMA",
     "EXTERNAL_TRANSITION_RANDOM_FEATURE_MODEL_FAMILY",
     "EXTERNAL_TRANSITION_ROLLOUT_SCHEMA",
     "ExternalContextAddressResolver",
@@ -12384,6 +12753,7 @@ __all__ = [
     "ExternalTransitionObservation",
     "ExternalTransitionProbeResult",
     "ExternalTransitionProbeSequenceResult",
+    "ExternalTransitionProbeUtilityMemory",
     "ExternalTransitionRollout",
     "ExternalTransitionSupportStatistics",
     "GoalConditionedModelSelection",

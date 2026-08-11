@@ -38,6 +38,7 @@ from neural_computer import (
     ExternalModelBasedPlanner,
     ExternalTransitionContextEncoder,
     ExternalTransitionObservation,
+    ExternalTransitionProbeUtilityMemory,
     ExternalTransitionRollout,
     ExternalTransitionSupportStatistics,
     PolicyFreeAmodalRuntime,
@@ -77,6 +78,7 @@ class ActiveDisambiguationTrial:
     probe_model_errors_by_step: tuple[tuple[float, ...], ...] = ()
     selected_probe_leverage: tuple[float, ...] = ()
     selected_probe_support: tuple[float, ...] = ()
+    selected_probe_utility: tuple[float, ...] = ()
 
     def payload(self) -> dict[str, object]:
         return asdict(self)
@@ -106,6 +108,7 @@ class ActiveDisambiguationPressureResult:
     probe_horizon: int = 1
     candidate_intention_source: str = "seed_pool"
     support_calibration_rows: int = 0
+    utility_calibration_observations: int = 0
 
     def payload(self) -> dict[str, object]:
         return asdict(self)
@@ -134,6 +137,18 @@ def _feedback(
         propensity=decision.propensity,
         has_feedback=scored.eligible.to(scored.reward.dtype),
     )
+
+
+def _diagnostic_probe_utility(trial: ActiveDisambiguationTrial) -> float:
+    """Convert a route verifier result into a scalar resolution quality."""
+
+    if trial.strict_route_status != "matched":
+        return 0.0
+    errors = sorted(float(error) for error in trial.probe_model_errors)
+    if len(errors) < 2:
+        return 1.0
+    gap = max(0.0, errors[1] - errors[0])
+    return gap / (gap + errors[0] + 1e-6)
 
 
 @torch.no_grad()
@@ -202,6 +217,8 @@ def _execute_probe_trial(
     probe_contradiction_tolerance: float,
     probe_horizon: int = 1,
     support_statistics: ExternalTransitionSupportStatistics | None = None,
+    utility_memory: ExternalTransitionProbeUtilityMemory | None = None,
+    forced_intention_index: int | None = None,
 ) -> tuple[ActiveDisambiguationTrial, bool, int, int]:
     """Run one fresh verifier until an opaque active/passive probe executes."""
 
@@ -262,6 +279,7 @@ def _execute_probe_trial(
                 selection_disagreements: list[float] = []
                 selected_probe_leverage: list[float] = []
                 selected_probe_support: list[float] = []
+                selected_probe_utility: list[float] = []
                 decoder_state_free = True
                 scored = None
                 for probe_index in range(probe_horizon):
@@ -271,13 +289,19 @@ def _execute_probe_trial(
                         candidate_slot_ids=(0, target_slot_id),
                         probe_state=current_output.state,
                         support_statistics=support_statistics,
+                        utility_memory=utility_memory,
                     )
                     disagreement = probe.disagreement_scores
-                    selected_index = (
-                        probe.selected_intention_index
-                        if active
-                        else int(disagreement.argmin())
-                    )
+                    if forced_intention_index is not None:
+                        if not 0 <= forced_intention_index < candidate_intentions.shape[0]:
+                            raise ValueError("forced probe intention index is invalid")
+                        selected_index = forced_intention_index
+                    else:
+                        selected_index = (
+                            probe.selected_intention_index
+                            if active
+                            else int(disagreement.argmin())
+                        )
                     disagreement_value = float(disagreement[selected_index])
                     selected_intention = candidate_intentions[selected_index]
                     if router.model.residual_bank is None:
@@ -299,6 +323,11 @@ def _execute_probe_trial(
                         0.0
                         if probe.support_scores is None
                         else float(probe.support_scores[selected_index])
+                    )
+                    selected_probe_utility.append(
+                        0.5
+                        if probe.utility_scores is None
+                        else float(probe.utility_scores[selected_index])
                     )
                     selected_indices.append(selected_index)
                     selection_disagreements.append(disagreement_value)
@@ -431,6 +460,7 @@ def _execute_probe_trial(
                     probe_model_errors_by_step=probe_model_errors_by_step,
                     selected_probe_leverage=tuple(selected_probe_leverage),
                     selected_probe_support=tuple(selected_probe_support),
+                    selected_probe_utility=tuple(selected_probe_utility),
                 )
                 target_recovered = (
                     strict_route.status == "matched"
@@ -641,6 +671,48 @@ def run_active_disambiguation_pressure(
         )
         support_calibration_lifetimes += 1
 
+    utility_memory = ExternalTransitionProbeUtilityMemory(
+        agent.controller.intention_width,
+        merge_cosine=0.999,
+        prior_strength=1.0,
+    )
+    utility_calibration_observations = 0
+    utility_calibration_lifetimes = 0
+    utility_calibration_repeats = 1
+    for candidate_index in range(min(6, candidate_intentions.shape[0])):
+        for repeat_index in range(utility_calibration_repeats):
+            calibration_trial, _recovered, calibration_bits, calibration_lifetimes = (
+                _execute_probe_trial(
+                    agent=agent,
+                    policy=_policy(agent, router.model, state_adapter),
+                    router=router,
+                    verifier_seed=(
+                        seed
+                        + 26000
+                        + (candidate_index * utility_calibration_repeats)
+                        + repeat_index
+                    ),
+                    source_context=source_context,
+                    candidate_intentions=candidate_intentions,
+                    target_slot_id=target_slot_id,
+                    probe_transition_index=3,
+                    active=True,
+                    ambiguity_tolerance=0.70,
+                    probe_match_tolerance=0.30,
+                    probe_contradiction_tolerance=0.40,
+                    probe_horizon=1,
+                    support_statistics=support_statistics,
+                    forced_intention_index=candidate_index,
+                )
+            )
+            utility_memory.observe(
+                candidate_intentions[candidate_index].unsqueeze(0),
+                utility=_diagnostic_probe_utility(calibration_trial),
+            )
+            unique_verifier_bits += calibration_bits
+            utility_calibration_observations += 1
+            utility_calibration_lifetimes += calibration_lifetimes
+
     active_trial, active_recovered, active_bits, active_lifetimes = (
         _execute_probe_trial(
             agent=agent,
@@ -657,6 +729,7 @@ def run_active_disambiguation_pressure(
             probe_contradiction_tolerance=0.40,
             probe_horizon=probe_horizon,
             support_statistics=support_statistics,
+            utility_memory=utility_memory,
         )
     )
     passive_trial, passive_recovered, passive_bits, passive_lifetimes = (
@@ -675,8 +748,14 @@ def run_active_disambiguation_pressure(
             probe_contradiction_tolerance=0.40,
             probe_horizon=probe_horizon,
             support_statistics=support_statistics,
+            utility_memory=utility_memory,
         )
     )
+    for trial in (active_trial, passive_trial):
+        utility_memory.observe(
+            candidate_intentions[trial.selected_intention_index].unsqueeze(0),
+            utility=_diagnostic_probe_utility(trial),
+        )
     return ActiveDisambiguationPressureResult(
         seed=seed,
         status=(
@@ -699,10 +778,16 @@ def run_active_disambiguation_pressure(
             (training_lifetimes * 2 * 2)
             + 2
             + support_calibration_lifetimes
+            + utility_calibration_lifetimes
             + active_lifetimes
             + passive_lifetimes
         ),
-        transition_rows_consumed_once=transition_rows + active_lifetimes + passive_lifetimes,
+        transition_rows_consumed_once=(
+            transition_rows
+            + utility_calibration_lifetimes
+            + active_lifetimes
+            + passive_lifetimes
+        ),
         optimizer_updates=0,
         replayed_examples=0,
         wall_time_seconds=time.perf_counter() - started,
@@ -713,6 +798,7 @@ def run_active_disambiguation_pressure(
             else "seed_pool"
         ),
         support_calibration_rows=support_calibration_rows,
+        utility_calibration_observations=utility_calibration_observations,
     )
 
 

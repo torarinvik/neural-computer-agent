@@ -31,6 +31,7 @@ from neural_computer import (
     ExternalTransitionModelLifetimePolicy,
     ExternalTransitionModelPriorSelectionReceipt,
     ExternalTransitionObservation,
+    ExternalTransitionProbeUtilityMemory,
     ExternalTransitionRollout,
     ExternalTransitionRouteMemory,
     ExternalTransitionRouteQuery,
@@ -3892,6 +3893,18 @@ def test_planner_selects_active_intention_that_disambiguates_model_slots() -> No
     assert result.disagreement_scores[1] > result.disagreement_scores[0]
     assert result.predicted_next_states.shape == (2, 2, 1)
 
+    utility_memory = ExternalTransitionProbeUtilityMemory(1)
+    utility_memory.observe(torch.tensor([[1.0]]), utility=1.0)
+    utility_result = planner.select_disambiguating_intention(
+        bank,
+        torch.zeros(1, 1),
+        torch.tensor([[0.0], [1.0]]),
+        utility_memory=utility_memory,
+    )
+    assert utility_result.selected_intention_index == 1
+    assert utility_result.utility_scores is not None
+    assert utility_result.utility_scores[1] > utility_result.utility_scores[0]
+
 
 def test_transition_support_statistics_calibrate_opaque_leverage_without_replay() -> None:
     support = ExternalTransitionSupportStatistics(
@@ -3926,6 +3939,26 @@ def test_transition_support_statistics_calibrate_opaque_leverage_without_replay(
 
     planner = ExternalModelBasedPlanner(_AdditiveTransitionModel())
     assert planner.configuration()["policy"] == "none_behavior_derived_at_inference_v1"
+
+
+def test_probe_utility_memory_learns_scalar_resolution_without_replay() -> None:
+    memory = ExternalTransitionProbeUtilityMemory(2, merge_cosine=0.99)
+    memory.observe(torch.tensor([[1.0, 0.0]]), utility=1.0)
+    memory.observe(torch.tensor([[0.0, 1.0]]), utility=0.0)
+    memory.observe(
+        torch.tensor([[1.0, 0.0], [0.0, 1.0]]),
+        utility=torch.tensor([0.0, 1.0]),
+        outcome_mask=torch.tensor([False, True]),
+    )
+
+    scores = memory.scores(torch.tensor([[1.0, 0.0], [0.0, 1.0], [1.0, 1.0]]))
+    assert scores[0] > scores[1]
+    assert scores[2].item() == pytest.approx(0.5)
+    assert memory.observed_outcome_count == 3
+
+    restored = ExternalTransitionProbeUtilityMemory.from_payload(memory.payload())
+    assert restored.content_digest() == memory.content_digest()
+    assert torch.allclose(restored.scores(torch.tensor([[1.0, 0.0], [0.0, 1.0]])), scores[:2])
 
 
 def test_planner_selects_a_fixed_opaque_probe_sequence() -> None:

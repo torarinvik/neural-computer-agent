@@ -29,6 +29,7 @@ from .world_model import (
     ExternalTransitionObservation,
     ExternalTransitionProbeResult,
     ExternalTransitionProbeSequenceResult,
+    ExternalTransitionProbeUtilityMemory,
     ExternalTransitionRollout,
     ExternalTransitionRouteQuery,
     ExternalTransitionSupportStatistics,
@@ -1503,6 +1504,7 @@ class ExternalFactoredTransitionRouter:
         candidate_slot_ids: Sequence[int] | None = None,
         probe_state: torch.Tensor | None = None,
         support_statistics: ExternalTransitionSupportStatistics | None = None,
+        utility_memory: ExternalTransitionProbeUtilityMemory | None = None,
     ) -> ExternalTransitionProbeResult:
         """Select an opaque intention with reliable slot disagreement.
 
@@ -1618,6 +1620,13 @@ class ExternalFactoredTransitionRouter:
             # Treat online support as a calibration factor on the established
             # leverage prior; sparse observations must not erase that prior.
             selection_scores = disagreement_scores * reliability * support_scores
+        if utility_memory is None:
+            utility_scores = None
+        else:
+            if not isinstance(utility_memory, ExternalTransitionProbeUtilityMemory):
+                raise TypeError("transition utility memory has an invalid type")
+            utility_scores = utility_memory.scores(candidate_intentions)
+            selection_scores = selection_scores * (0.5 + utility_scores)
         selected_index = int(selection_scores.argmax())
         return ExternalTransitionProbeResult(
             selected_intention=candidate_intentions[selected_index].detach().clone(),
@@ -1627,6 +1636,9 @@ class ExternalFactoredTransitionRouter:
             candidate_slot_ids=slot_ids,
             support_scores=(
                 None if support_scores is None else support_scores.detach().clone()
+            ),
+            utility_scores=(
+                None if utility_scores is None else utility_scores.detach().clone()
             ),
         ).validate(
             state_width=self.model.state_width,

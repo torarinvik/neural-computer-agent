@@ -9290,3 +9290,23 @@ gain. The next useful experiment must learn outcome-conditioned diagnostic
 utility or coverage that discriminates candidate intentions; adding more
 support bins or probe horizon alone is not justified. Evidence is in
 `session_records/factored_active_support_calibration_pressure_2026-08-11/sample_efficiency_ledger.json`.
+
+## Outcome-conditioned diagnostic utility memory (2026-08-11)
+
+The probe boundary now supports an independent
+`ExternalTransitionProbeUtilityMemory`. It consumes only a fresh scalar
+resolution-quality outcome and keeps opaque candidate vectors with
+sufficient statistics; missing outcomes remain missing. Its neutral prior
+means unknown candidates do not alter the established disagreement and
+leverage selector. The memory is serializable with a checksum and never
+touches controller, decoder, or factual-model state.
+
+The fresh audit used a route-resolution margin rather than a target-slot
+label. Active recovery remained `2/3` versus `1/3` for the passive control,
+matching the support-only baseline, but exposure increased to 630 verifier
+bits and 105 logical lifetimes. The global intention address is therefore
+not promoted as a capability gain. The result localizes the next bottleneck:
+diagnostic utility depends on the current factual ambiguity and model
+coverage, so the memory key must become context- or probe-profile-conditioned.
+Evidence is in
+`session_records/factored_active_probe_utility_pressure_2026-08-11/sample_efficiency_ledger.json`.
