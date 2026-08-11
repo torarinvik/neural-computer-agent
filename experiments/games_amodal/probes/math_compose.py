@@ -71,6 +71,23 @@ parser.add_argument(
          "A curriculum gets reading established on the readable task "
          "first, then extends it — the bootstrapping F120 identified.")
 parser.add_argument(
+    "--refine", type=int, default=0,
+    help="SEMI-AMORTIZATION (Kim et al. 2018), ranked first in the "
+         "LITERATURE.md addendum. Take the reader's entry as an "
+         "INITIALISATION and run this many gradient steps on the ENTRY "
+         "ITSELF, against the same example rows the reader already "
+         "saw, through the frozen plant. F138 measured the "
+         "approximation gap closed (the reader CAN represent the "
+         "needed entry, 0.9723 when distilled) and everything since is "
+         "the amortization gap: one forward pass failing to find what "
+         "the family can express. Refinement attacks that quantity "
+         "directly. NOTE this does not break the architecture: the "
+         "gradient moves the ENTRY, which is data in an external "
+         "store, and never the plant's weights. No privileged "
+         "information is used, only the learner's own observations.")
+parser.add_argument(
+    "--refine-lr", type=float, default=0.05)
+parser.add_argument(
     "--codebook", type=int, default=0,
     help="quantise the entry to the nearest of K learned codes "
          "(VQ-VAE style, straight-through gradient + commitment loss). "
@@ -580,9 +597,29 @@ def entry_of(world: dict, offset: int = 0) -> torch.Tensor:
             return oracle(oracle_raw(world))
     generator = torch.Generator().manual_seed(
         args.seed * 31 + hash(world["name"]) % 100000 + offset)
+    pieces, xs_all, ys_all = reader_examples(world, generator)
     with torch.no_grad():
-        read = reader(*reader_examples(world, generator))
-        return codebook(read) if codebook is not None else read
+        read = reader(pieces, xs_all, ys_all)
+        read = codebook(read) if codebook is not None else read
+    if args.refine <= 0:
+        return read
+    # semi-amortisation: polish the ENTRY against the rows the reader
+    # already saw. The plant is frozen; only this tensor moves.
+    working = read.clone().detach().requires_grad_(True)
+    refiner = torch.optim.Adam([working], lr=args.refine_lr)
+    for _ in range(args.refine):
+        total = torch.zeros(())
+        for token in (F, G):
+            keep = (pieces == token)
+            if not bool(keep.any()):
+                continue
+            xs, ys = xs_all[keep], ys_all[keep]
+            total = total + torch.nn.functional.cross_entropy(
+                plant((token,), xs, working), ys)
+        refiner.zero_grad()
+        total.backward()
+        refiner.step()
+    return working.detach()
 
 
 stranger_gen = torch.Generator().manual_seed(args.seed * 32452843)
