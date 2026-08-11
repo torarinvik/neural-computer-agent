@@ -9183,6 +9183,7 @@ historical keys and the factual transition model unchanged until explicit
 caller-owned verification. The factored router can optionally persist these
 addresses through a proposal-only route query. A learned address may resolve
 only a close factual tie; it cannot override a decisive factual prediction or
+force an ambiguous route.
 
 The same router now exposes a read-only disambiguation-probe primitive. Given
 plausible opaque slots and candidate intentions, it selects the intention with
@@ -9190,7 +9191,9 @@ the largest predicted next-state disagreement. The caller must execute that
 intention and submit its fresh observed consequence through the ordinary
 factual and promotion gates; the probe itself never writes memory or chooses a
 device protocol. This adds an active-evidence path without turning the
-controller into a hand-written solver.
+controller into a hand-written solver. The corresponding runtime boundary is
+AmodalControllerRuntime.decode_intention() and its policy-free wrapper: it
+decodes a caller-owned opaque intention without running the controller again.
 
 The corresponding pressure arm uses fresh post-promotion evidence and counts
 the address optimizer update and additional lifetimes separately. Seeds 91, 92,

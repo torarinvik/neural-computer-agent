@@ -9,6 +9,7 @@ from neural_computer import (
     AmodalEvent,
     AmodalOutputBus,
     ControllerFeedback,
+    IntentEvent,
     KeypressDecoder,
     KeypressEncoder,
     OpaqueProtocolDecoder,
@@ -67,3 +68,28 @@ def test_keypress_decoder_is_a_replaceable_output_bus_backend() -> None:
     )
     assert output.decoded["keypress"].shape == (2, 2)
     assert output.decoded["other"].shape == (2, 3)
+
+
+def test_runtime_decodes_caller_owned_opaque_intention_without_controller_tick() -> None:
+    controller = AmodalCognitiveController(
+        width=8, workspace_slots=1, intention_width=4, feedback_width=3
+    )
+    runtime = AmodalControllerRuntime(
+        controller,
+        output_bus=AmodalOutputBus({"keypress": KeypressDecoder(4, 2)}),
+    )
+    before = {
+        name: value.detach().clone() for name, value in controller.state_dict().items()
+    }
+    intention = torch.randn(4)
+
+    decoded = runtime.decode_intention(intention)
+    decoded_event = runtime.decode_intention(
+        IntentEvent(payload=intention.unsqueeze(0))
+    )
+
+    assert decoded["keypress"].shape == (1, 2)
+    assert torch.equal(decoded["keypress"], decoded_event["keypress"])
+    assert all(torch.equal(value, controller.state_dict()[name]) for name, value in before.items())
+    with pytest.raises(ValueError, match="shape"):
+        runtime.decode_intention(torch.randn(2, 2, 4))

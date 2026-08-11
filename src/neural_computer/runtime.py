@@ -677,6 +677,32 @@ class AmodalControllerRuntime(nn.Module):
     def register_decoder(self, name: str, decoder: nn.Module) -> None:
         self.output_bus.register_decoder(name, decoder)
 
+    def decode_intention(
+        self,
+        intention: IntentEvent | torch.Tensor,
+    ) -> dict[str, torch.Tensor]:
+        """Decode a caller-owned opaque intention through the output bus.
+
+        This is the execution boundary for active evidence: a router or
+        external planner may propose an intention, while the caller remains
+        responsible for executing the returned protocol outputs and reporting
+        the observed outcome. No controller state, memory, or protocol policy
+        is changed by decoding.
+        """
+
+        if isinstance(intention, IntentEvent):
+            event = intention.validate(width=self.intention_width)
+        elif isinstance(intention, torch.Tensor):
+            payload = intention
+            if payload.ndim == 1:
+                payload = payload.unsqueeze(0)
+            if payload.ndim != 2:
+                raise ValueError("opaque intention must have shape [batch, width]")
+            event = IntentEvent(payload=payload).validate(width=self.intention_width)
+        else:
+            raise TypeError("opaque intention must be an IntentEvent or tensor")
+        return self.output_bus(event)
+
     def window_buffer(
         self,
         stream_names: Sequence[str],
@@ -2581,6 +2607,14 @@ class PolicyFreeAmodalRuntime:
     @property
     def controller(self) -> AmodalCognitiveController:
         return self.runtime.controller
+
+    def decode_intention(
+        self,
+        intention: IntentEvent | torch.Tensor,
+    ) -> dict[str, torch.Tensor]:
+        """Decode a caller-owned opaque intention without another controller tick."""
+
+        return self.runtime.decode_intention(intention)
 
     def _adapt_state(
         self,
