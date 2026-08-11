@@ -194,6 +194,43 @@ def test_sparse_transition_evidence_preserves_conflicting_drift_versions() -> No
     assert restored.propose(drift, (4,)).selected_slot_id == 4
 
 
+def test_factored_sparse_proposal_cannot_bypass_factual_verification() -> None:
+    model = ExternalFactoredTransitionModel(
+        1,
+        1,
+        2,
+        residual_mode=EXTERNAL_FACTORED_TRANSITION_EXACT_RESIDUAL_MODE,
+    )
+    for parameter in model.base.parameters():
+        parameter.data.zero_()
+    model.freeze_base()
+    sparse = ExternalSparseTransitionEvidenceIndex(
+        1,
+        1,
+        input_match_tolerance=1e-6,
+        output_match_tolerance=1e-6,
+        minimum_matches=1,
+        minimum_match_fraction=1.0,
+    )
+    router = ExternalFactoredTransitionRouter(
+        model,
+        ExternalTransitionContextEncoder(1, 1, hidden_width=8, context_width=2),
+        max_contexts=1,
+        match_tolerance=0.01,
+        sparse_evidence=sparse,
+    )
+    router._contexts = [torch.zeros(2)]
+    router._slot_ids = [0]
+    observation = ExternalTransitionObservation(
+        state=torch.zeros(1, 1),
+        intention=torch.zeros(1, 1),
+        next_state=torch.ones(1, 1),
+    )
+    sparse.record(0, observation)
+    assert sparse.propose(observation, (0,)).selected_slot_id == 0
+    assert router.route_partial_bundle((observation,)).status == "ambiguous"
+
+
 def test_transition_route_memory_is_slot_local_bounded_and_persistent() -> None:
     memory = ExternalTransitionRouteMemory(
         4,
@@ -3126,6 +3163,181 @@ def test_factored_router_prefix_address_update_isolated_from_factual_memory() ->
     )
     assert restored.digest() == candidate.digest()
     torch.random.set_rng_state(rng_state)
+
+
+def test_factored_partial_route_uses_address_only_for_close_factual_ties() -> None:
+    torch.manual_seed(780)
+    model = ExternalFactoredTransitionModel(
+        1,
+        1,
+        2,
+        residual_mode=EXTERNAL_FACTORED_TRANSITION_EXACT_RESIDUAL_MODE,
+    )
+    for parameter in model.base.parameters():
+        parameter.data.zero_()
+    model.freeze_base()
+    encoder = ExternalTransitionContextEncoder(1, 1, hidden_width=8, context_width=2)
+    adapter = ExternalTransitionContextAddressAdapter(encoder)
+    route_memory = ExternalTransitionRouteMemory(2)
+    router = ExternalFactoredTransitionRouter(
+        model,
+        encoder,
+        max_contexts=2,
+        match_tolerance=0.01,
+        match_margin=0.01,
+        address_adapter=adapter,
+        route_query=ExternalTransitionRouteQuery(
+            2,
+            minimum_score=0.0,
+            route_memory=route_memory,
+        ),
+    )
+    source = ExternalTransitionObservation(
+        state=torch.tensor([[0.0], [0.0]]),
+        intention=torch.tensor([[0.0], [1.0]]),
+        next_state=torch.tensor([[0.0], [0.0]]),
+    )
+    target = ExternalTransitionObservation(
+        state=torch.tensor([[1.0], [0.0]]),
+        intention=torch.tensor([[0.0], [1.0]]),
+        next_state=torch.tensor([[1.0], [10.0]]),
+    )
+    assert router.route_bundle((source,)).status == "staged"
+    assert router.promote_staged_candidate(source, lambda _candidate: True).accepted
+    assert router.route_bundle((target,)).status == "staged"
+    assert router.promote_staged_candidate(target, lambda _candidate: True).accepted
+
+    tie = ExternalTransitionObservation(
+        state=torch.tensor([[0.0]]),
+        intention=torch.tensor([[0.0]]),
+        next_state=torch.tensor([[0.0]]),
+    )
+    query = adapter.encode_observation(tie)
+    route_memory.unregister_slot(0)
+    route_memory.unregister_slot(1)
+    route_memory.register_slot(0, prototype=query)
+    route_memory.register_slot(1, prototype=query)
+    assert router.route_partial_bundle((tie,)).status == "ambiguous"
+
+    route_memory.unregister_slot(0)
+    route_memory.unregister_slot(1)
+    route_memory.register_slot(0, prototype=query)
+    route_memory.register_slot(1, prototype=-query)
+    before_digest = router.digest()
+    resolved = router.route_partial_sequence(((tie,), (tie,)))
+    assert resolved.status == "matched"
+    assert resolved.slot_id == 0
+    assert router.digest() == before_digest
+
+    contradictory = ExternalTransitionObservation(
+        state=tie.state,
+        intention=tie.intention,
+        next_state=torch.tensor([[5.0]]),
+    )
+    assert router.route_partial_bundle((contradictory,)).status == "ambiguous"
+
+
+def test_factored_partial_sequence_horizon_decay_preserves_bound_identity() -> None:
+    model = ExternalFactoredTransitionModel(
+        1,
+        1,
+        2,
+        residual_mode=EXTERNAL_FACTORED_TRANSITION_EXACT_RESIDUAL_MODE,
+    )
+    for parameter in model.base.parameters():
+        parameter.data.zero_()
+    model.freeze_base()
+    encoder = ExternalTransitionContextEncoder(1, 1, hidden_width=8, context_width=2)
+    router = ExternalFactoredTransitionRouter(
+        model,
+        encoder,
+        match_tolerance=0.1,
+        match_margin=0.0,
+    )
+    router._contexts = [
+        torch.tensor([1.0, 0.0]),
+        torch.tensor([0.0, 1.0]),
+    ]
+    router._slot_ids = [0, 1]
+
+    close_stable_tie = False
+
+    def predict(
+        state: torch.Tensor,
+        _intention: torch.Tensor,
+        context: torch.Tensor,
+    ) -> torch.Tensor:
+        slot_zero = context[:, :1] > 0.5
+        slot_zero_error = torch.where(
+            state < 2.0,
+            torch.zeros_like(state),
+            torch.full_like(state, 0.09),
+        )
+        slot_one_error = torch.where(
+            state < 2.0,
+            torch.full_like(state, 0.04),
+            torch.where(
+                torch.tensor(close_stable_tie, device=state.device),
+                torch.full_like(state, 0.1),
+                torch.zeros_like(state),
+            ),
+        )
+        return torch.where(slot_zero, slot_zero_error, slot_one_error)
+
+    model.predict_with_context = predict  # type: ignore[method-assign]
+    rows = tuple(
+        ExternalTransitionObservation(
+            state=torch.tensor([[float(index)]]),
+            intention=torch.zeros(1, 1),
+            next_state=torch.zeros(1, 1),
+        )
+        for index in range(4)
+    )
+    before_digest = router.digest()
+    unweighted = router.route_partial_sequence(
+        (rows[:2], rows[2:]),
+        match_tolerance=0.1,
+        confirmation_bundles=2,
+    )
+    assert unweighted.status == "ambiguous"
+
+    weighted = router.route_partial_sequence(
+        (rows[:2], rows[2:]),
+        match_tolerance=0.1,
+        confirmation_bundles=2,
+        horizon_decay=0.2,
+    )
+    assert weighted.status == "matched"
+    assert weighted.slot_id == 0
+    assert router.digest() == before_digest
+
+    close_stable_tie = True
+    router.match_margin = 0.01
+    stable = router.route_partial_sequence(
+        (rows[:2], rows[2:]),
+        match_tolerance=0.1,
+        confirmation_bundles=2,
+        stable_identity_confirmation=True,
+    )
+    assert stable.status == "matched"
+    assert stable.slot_id == 0
+    assert router.digest() == before_digest
+
+    contradictory = rows[-1]
+    contradictory = ExternalTransitionObservation(
+        state=contradictory.state,
+        intention=contradictory.intention,
+        next_state=torch.ones(1, 1),
+    )
+    assert (
+        router.route_partial_sequence(
+            (rows[:2], rows[2:3], (contradictory,)),
+            match_tolerance=0.1,
+            confirmation_bundles=2,
+            horizon_decay=0.2,
+        ).status
+        == "ambiguous"
+    )
 
 
 def test_factored_disambiguation_probe_resolves_an_opaque_factual_tie() -> None:

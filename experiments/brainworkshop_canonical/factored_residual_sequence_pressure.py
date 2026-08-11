@@ -78,6 +78,9 @@ class SequencePressureResult:
     reversal_passed: bool
     address_update_passed: bool
     address_update_loss: float | None
+    address_adaptation_steps: int
+    missing_evidence_horizon_decay: float
+    missing_evidence_stable_confirmation: bool
     missing_evidence_passed: bool
     memory_corruption_rejected: bool
     controller_unchanged: bool
@@ -142,6 +145,9 @@ def run_factored_residual_sequence_pressure(
     recency_decay: float = 0.75,
     adaptive_address: bool = False,
     adaptive_address_learning_rate: float = 0.003,
+    adaptive_address_adaptation_steps: int = 1,
+    missing_evidence_horizon_decay: float = 1.0,
+    missing_evidence_stable_confirmation: bool = False,
     residual_model_family: str = EXTERNAL_TRANSITION_RANDOM_FEATURE_MODEL_FAMILY,
     residual_random_feature_width: int = 128,
     residual_ridge_candidates: Sequence[float] | None = None,
@@ -176,6 +182,23 @@ def run_factored_residual_sequence_pressure(
         or not math.isfinite(adaptive_address_learning_rate)
     ):
         raise ValueError("factored sequence adaptive address rate must be positive")
+    if (
+        not isinstance(adaptive_address_adaptation_steps, int)
+        or isinstance(adaptive_address_adaptation_steps, bool)
+        or adaptive_address_adaptation_steps < 1
+    ):
+        raise ValueError("factored sequence adaptive address steps must be positive")
+    if (
+        not math.isfinite(missing_evidence_horizon_decay)
+        or not 0.0 < missing_evidence_horizon_decay <= 1.0
+    ):
+        raise ValueError(
+            "factored sequence missing-evidence horizon decay must lie in (0, 1]"
+        )
+    if not isinstance(missing_evidence_stable_confirmation, bool):
+        raise TypeError(
+            "factored sequence stable identity confirmation must be boolean"
+        )
     if residual_random_feature_width < 1:
         raise ValueError("factored sequence residual width must be positive")
     if residual_model_family not in {
@@ -286,7 +309,7 @@ def run_factored_residual_sequence_pressure(
         ExternalTransitionContextAddressAdapter(
             context_encoder,
             learning_rate=adaptive_address_learning_rate,
-            adaptation_steps=1,
+            adaptation_steps=adaptive_address_adaptation_steps,
         )
         if adaptive_address
         else None
@@ -676,6 +699,8 @@ def run_factored_residual_sequence_pressure(
                 ),
                 min_match_fraction=1.0,
                 match_tolerance=recursive_error_bound,
+                horizon_decay=missing_evidence_horizon_decay,
+                stable_identity_confirmation=missing_evidence_stable_confirmation,
             )
             missing_evidence_passed = missing_evidence_passed and (
                 result.status == "matched"
@@ -722,6 +747,9 @@ def run_factored_residual_sequence_pressure(
         reversal_passed=reversal_passed,
         address_update_passed=address_update_passed,
         address_update_loss=address_update_loss,
+        address_adaptation_steps=adaptive_address_adaptation_steps,
+        missing_evidence_horizon_decay=missing_evidence_horizon_decay,
+        missing_evidence_stable_confirmation=missing_evidence_stable_confirmation,
         missing_evidence_passed=missing_evidence_passed,
         memory_corruption_rejected=memory_corruption_rejected,
         controller_unchanged=controller_unchanged,
@@ -737,7 +765,11 @@ def run_factored_residual_sequence_pressure(
             + address_lifetimes
         ),
         transition_rows_consumed_once=transition_rows,
-        optimizer_updates=(1 if address_lifetimes else 0),
+        optimizer_updates=(
+            address_lifetimes * adaptive_address_adaptation_steps
+            if address_lifetimes
+            else 0
+        ),
         replayed_examples=0,
         reversal_errors=tuple(reversal_errors),
     )
@@ -764,6 +796,16 @@ def main() -> None:
         type=float,
         default=0.003,
     )
+    parser.add_argument("--adaptive-address-adaptation-steps", type=int, default=1)
+    parser.add_argument(
+        "--missing-evidence-horizon-decay",
+        type=float,
+        default=1.0,
+    )
+    parser.add_argument(
+        "--missing-evidence-stable-confirmation",
+        action="store_true",
+    )
     args = parser.parse_args()
     started = time.monotonic()
     results = [
@@ -771,6 +813,11 @@ def main() -> None:
             seed=seed,
             adaptive_address=args.adaptive_address,
             adaptive_address_learning_rate=args.adaptive_address_learning_rate,
+            adaptive_address_adaptation_steps=args.adaptive_address_adaptation_steps,
+            missing_evidence_horizon_decay=args.missing_evidence_horizon_decay,
+            missing_evidence_stable_confirmation=(
+                args.missing_evidence_stable_confirmation
+            ),
             context_aggregation=args.context_aggregation,
             recency_decay=args.recency_decay,
         )

@@ -1,0 +1,268 @@
+{
+  "schema": "neural-computer.brainworkshop-factored-residual-sequence-pressure.v1",
+  "status": "factored_residual_sequence_pressure_failed",
+  "results": [
+    {
+      "seed": 91,
+      "status": "factored_residual_sequence_pressure_passed",
+      "regimes": [
+        {
+          "index": 0,
+          "n_back": 3,
+          "cue_symbol": 7,
+          "staged": true,
+          "promoted": true,
+          "candidate_errors": [
+            0.008118602447211742,
+            0.012113812379539013
+          ],
+          "fresh_errors": [
+            0.04616423323750496,
+            0.052182696759700775
+          ],
+          "fresh_improvement": true,
+          "prior_retention": true,
+          "selected_residual_ridge": 0.001,
+          "context_count_after": 1
+        },
+        {
+          "index": 1,
+          "n_back": 4,
+          "cue_symbol": 8,
+          "staged": true,
+          "promoted": true,
+          "candidate_errors": [
+            0.009032887406647205,
+            0.01569521799683571
+          ],
+          "fresh_errors": [
+            0.05255436897277832,
+            0.06903733313083649
+          ],
+          "fresh_improvement": true,
+          "prior_retention": true,
+          "selected_residual_ridge": 0.01,
+          "context_count_after": 2
+        },
+        {
+          "index": 2,
+          "n_back": 5,
+          "cue_symbol": 9,
+          "staged": true,
+          "promoted": true,
+          "candidate_errors": [
+            0.006509703584015369,
+            0.013097372837364674
+          ],
+          "fresh_errors": [
+            0.07670556008815765,
+            0.04491820186376572
+          ],
+          "fresh_improvement": true,
+          "prior_retention": true,
+          "selected_residual_ridge": 0.001,
+          "context_count_after": 3
+        }
+      ],
+      "source_retained": true,
+      "reversal_passed": true,
+      "address_update_passed": true,
+      "address_update_loss": null,
+      "address_adaptation_steps": 1,
+      "missing_evidence_horizon_decay": 1.0,
+      "missing_evidence_stable_confirmation": true,
+      "missing_evidence_passed": true,
+      "memory_corruption_rejected": true,
+      "controller_unchanged": true,
+      "base_frozen": true,
+      "final_context_count": 3,
+      "unique_verifier_bits": 122,
+      "logical_lifetimes": 19,
+      "transition_rows_consumed_once": 90,
+      "optimizer_updates": 0,
+      "replayed_examples": 0,
+      "reversal_errors": [
+        0.010994215495884418,
+        0.004923281259834766,
+        0.011550020426511765
+      ]
+    },
+    {
+      "seed": 92,
+      "status": "factored_residual_sequence_pressure_rejected",
+      "regimes": [
+        {
+          "index": 0,
+          "n_back": 3,
+          "cue_symbol": 7,
+          "staged": true,
+          "promoted": true,
+          "candidate_errors": [
+            0.013678329065442085,
+            0.017936311662197113
+          ],
+          "fresh_errors": [
+            0.029653817415237427,
+            0.047350674867630005
+          ],
+          "fresh_improvement": true,
+          "prior_retention": true,
+          "selected_residual_ridge": 0.1,
+          "context_count_after": 1
+        },
+        {
+          "index": 1,
+          "n_back": 4,
+          "cue_symbol": 8,
+          "staged": true,
+          "promoted": true,
+          "candidate_errors": [
+            0.016320155933499336,
+            0.007963648065924644
+          ],
+          "fresh_errors": [
+            0.038721248507499695,
+            0.046903423964977264
+          ],
+          "fresh_improvement": true,
+          "prior_retention": true,
+          "selected_residual_ridge": 1.0,
+          "context_count_after": 2
+        },
+        {
+          "index": 2,
+          "n_back": 5,
+          "cue_symbol": 9,
+          "staged": false,
+          "promoted": false,
+          "candidate_errors": [],
+          "fresh_errors": [],
+          "fresh_improvement": false,
+          "prior_retention": false,
+          "selected_residual_ridge": null,
+          "context_count_after": 2
+        }
+      ],
+      "source_retained": false,
+      "reversal_passed": false,
+      "address_update_passed": true,
+      "address_update_loss": null,
+      "address_adaptation_steps": 1,
+      "missing_evidence_horizon_decay": 1.0,
+      "missing_evidence_stable_confirmation": true,
+      "missing_evidence_passed": false,
+      "memory_corruption_rejected": false,
+      "controller_unchanged": true,
+      "base_frozen": true,
+      "final_context_count": 2,
+      "unique_verifier_bits": 94,
+      "logical_lifetimes": 16,
+      "transition_rows_consumed_once": 90,
+      "optimizer_updates": 0,
+      "replayed_examples": 0,
+      "reversal_errors": []
+    },
+    {
+      "seed": 93,
+      "status": "factored_residual_sequence_pressure_rejected",
+      "regimes": [
+        {
+          "index": 0,
+          "n_back": 3,
+          "cue_symbol": 7,
+          "staged": true,
+          "promoted": true,
+          "candidate_errors": [
+            0.03601358085870743,
+            0.038156233727931976
+          ],
+          "fresh_errors": [
+            0.062234628945589066,
+            0.09101394563913345
+          ],
+          "fresh_improvement": true,
+          "prior_retention": true,
+          "selected_residual_ridge": 1.0,
+          "context_count_after": 1
+        },
+        {
+          "index": 1,
+          "n_back": 4,
+          "cue_symbol": 8,
+          "staged": true,
+          "promoted": true,
+          "candidate_errors": [
+            0.02921222522854805,
+            0.09347827732563019
+          ],
+          "fresh_errors": [
+            0.08829400688409805,
+            0.09016445279121399
+          ],
+          "fresh_improvement": true,
+          "prior_retention": true,
+          "selected_residual_ridge": 10.0,
+          "context_count_after": 2
+        },
+        {
+          "index": 2,
+          "n_back": 5,
+          "cue_symbol": 9,
+          "staged": true,
+          "promoted": true,
+          "candidate_errors": [
+            0.024240728467702866,
+            0.022753896191716194
+          ],
+          "fresh_errors": [
+            0.06995188444852829,
+            0.061218440532684326
+          ],
+          "fresh_improvement": true,
+          "prior_retention": true,
+          "selected_residual_ridge": 0.01,
+          "context_count_after": 3
+        }
+      ],
+      "source_retained": true,
+      "reversal_passed": true,
+      "address_update_passed": true,
+      "address_update_loss": null,
+      "address_adaptation_steps": 1,
+      "missing_evidence_horizon_decay": 1.0,
+      "missing_evidence_stable_confirmation": true,
+      "missing_evidence_passed": false,
+      "memory_corruption_rejected": true,
+      "controller_unchanged": true,
+      "base_frozen": true,
+      "final_context_count": 3,
+      "unique_verifier_bits": 122,
+      "logical_lifetimes": 19,
+      "transition_rows_consumed_once": 90,
+      "optimizer_updates": 0,
+      "replayed_examples": 0,
+      "reversal_errors": [
+        0.04273161292076111,
+        0.007699919398874044,
+        0.04410956799983978
+      ]
+    }
+  ],
+  "aggregate": {
+    "complete_passes": 1,
+    "total_runs": 3,
+    "regime_promotions": 8,
+    "source_retention_passes": 2,
+    "reversal_passes": 2,
+    "address_update_passes": 3,
+    "missing_evidence_passes": 1,
+    "memory_corruption_rejection_passes": 2,
+    "controller_unchanged_all_runs": true,
+    "unique_verifier_bits_total": 338,
+    "logical_lifetimes_total": 54,
+    "transition_rows_consumed_once_total": 270,
+    "optimizer_updates_total": 0,
+    "replayed_examples_total": 0,
+    "wall_time_seconds": 3.387
+  }
+}

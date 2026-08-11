@@ -1,0 +1,220 @@
+{
+  "schema": "neural-computer.brainworkshop-factored-residual-sequence-pressure.v1",
+  "status": "factored_residual_sequence_pressure_failed",
+  "results": [
+    {
+      "seed": 94,
+      "status": "factored_residual_sequence_pressure_rejected",
+      "regimes": [
+        {
+          "index": 0,
+          "n_back": 3,
+          "cue_symbol": 7,
+          "staged": true,
+          "promoted": true,
+          "candidate_errors": [
+            0.01748359017074108,
+            0.03384823352098465
+          ],
+          "fresh_errors": [
+            0.04929976910352707,
+            0.07233859598636627
+          ],
+          "fresh_improvement": true,
+          "prior_retention": true,
+          "selected_residual_ridge": 10.0,
+          "context_count_after": 1
+        },
+        {
+          "index": 1,
+          "n_back": 4,
+          "cue_symbol": 8,
+          "staged": false,
+          "promoted": false,
+          "candidate_errors": [],
+          "fresh_errors": [],
+          "fresh_improvement": false,
+          "prior_retention": false,
+          "selected_residual_ridge": null,
+          "context_count_after": 1
+        }
+      ],
+      "source_retained": false,
+      "reversal_passed": false,
+      "address_update_passed": true,
+      "address_update_loss": null,
+      "address_adaptation_steps": 1,
+      "missing_evidence_horizon_decay": 1.0,
+      "missing_evidence_stable_confirmation": false,
+      "missing_evidence_passed": false,
+      "memory_corruption_rejected": false,
+      "controller_unchanged": true,
+      "base_frozen": true,
+      "final_context_count": 1,
+      "unique_verifier_bits": 72,
+      "logical_lifetimes": 16,
+      "transition_rows_consumed_once": 70,
+      "optimizer_updates": 0,
+      "replayed_examples": 0,
+      "reversal_errors": []
+    },
+    {
+      "seed": 95,
+      "status": "factored_residual_sequence_pressure_passed",
+      "regimes": [
+        {
+          "index": 0,
+          "n_back": 3,
+          "cue_symbol": 7,
+          "staged": true,
+          "promoted": true,
+          "candidate_errors": [
+            0.010222280398011208,
+            0.02618263103067875
+          ],
+          "fresh_errors": [
+            0.3096752166748047,
+            0.36224597692489624
+          ],
+          "fresh_improvement": true,
+          "prior_retention": true,
+          "selected_residual_ridge": 0.01,
+          "context_count_after": 1
+        },
+        {
+          "index": 1,
+          "n_back": 4,
+          "cue_symbol": 8,
+          "staged": true,
+          "promoted": true,
+          "candidate_errors": [
+            0.030317053198814392,
+            0.09148553758859634
+          ],
+          "fresh_errors": [
+            0.13866816461086273,
+            0.16775280237197876
+          ],
+          "fresh_improvement": true,
+          "prior_retention": true,
+          "selected_residual_ridge": 0.01,
+          "context_count_after": 2
+        },
+        {
+          "index": 2,
+          "n_back": 5,
+          "cue_symbol": 9,
+          "staged": true,
+          "promoted": true,
+          "candidate_errors": [
+            0.01123091857880354,
+            0.01879565417766571
+          ],
+          "fresh_errors": [
+            0.3672630786895752,
+            0.30492743849754333
+          ],
+          "fresh_improvement": true,
+          "prior_retention": true,
+          "selected_residual_ridge": 0.1,
+          "context_count_after": 3
+        }
+      ],
+      "source_retained": true,
+      "reversal_passed": true,
+      "address_update_passed": true,
+      "address_update_loss": null,
+      "address_adaptation_steps": 1,
+      "missing_evidence_horizon_decay": 1.0,
+      "missing_evidence_stable_confirmation": false,
+      "missing_evidence_passed": true,
+      "memory_corruption_rejected": true,
+      "controller_unchanged": true,
+      "base_frozen": true,
+      "final_context_count": 3,
+      "unique_verifier_bits": 122,
+      "logical_lifetimes": 19,
+      "transition_rows_consumed_once": 90,
+      "optimizer_updates": 0,
+      "replayed_examples": 0,
+      "reversal_errors": [
+        0.01009634230285883,
+        0.04994421452283859,
+        0.02448011375963688
+      ]
+    },
+    {
+      "seed": 96,
+      "status": "factored_residual_sequence_pressure_rejected",
+      "regimes": [
+        {
+          "index": 0,
+          "n_back": 3,
+          "cue_symbol": 7,
+          "staged": true,
+          "promoted": true,
+          "candidate_errors": [
+            0.009131742641329765,
+            0.02338552474975586
+          ],
+          "fresh_errors": [
+            0.06479759514331818,
+            0.17221181094646454
+          ],
+          "fresh_improvement": true,
+          "prior_retention": true,
+          "selected_residual_ridge": 0.1,
+          "context_count_after": 1
+        },
+        {
+          "index": 1,
+          "n_back": 4,
+          "cue_symbol": 8,
+          "staged": false,
+          "promoted": false,
+          "candidate_errors": [],
+          "fresh_errors": [],
+          "fresh_improvement": false,
+          "prior_retention": false,
+          "selected_residual_ridge": null,
+          "context_count_after": 1
+        }
+      ],
+      "source_retained": false,
+      "reversal_passed": false,
+      "address_update_passed": true,
+      "address_update_loss": null,
+      "address_adaptation_steps": 1,
+      "missing_evidence_horizon_decay": 1.0,
+      "missing_evidence_stable_confirmation": false,
+      "missing_evidence_passed": false,
+      "memory_corruption_rejected": false,
+      "controller_unchanged": true,
+      "base_frozen": true,
+      "final_context_count": 1,
+      "unique_verifier_bits": 72,
+      "logical_lifetimes": 16,
+      "transition_rows_consumed_once": 70,
+      "optimizer_updates": 0,
+      "replayed_examples": 0,
+      "reversal_errors": []
+    }
+  ],
+  "aggregate": {
+    "complete_passes": 1,
+    "total_runs": 3,
+    "regime_promotions": 5,
+    "source_retention_passes": 1,
+    "reversal_passes": 1,
+    "address_update_passes": 3,
+    "missing_evidence_passes": 1,
+    "memory_corruption_rejection_passes": 1,
+    "controller_unchanged_all_runs": true,
+    "unique_verifier_bits_total": 266,
+    "logical_lifetimes_total": 51,
+    "transition_rows_consumed_once_total": 230,
+    "optimizer_updates_total": 0,
+    "replayed_examples_total": 0,
+    "wall_time_seconds": 2.616
+  }
+}

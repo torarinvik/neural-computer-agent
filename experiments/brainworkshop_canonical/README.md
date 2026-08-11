@@ -451,6 +451,14 @@ stage its third regime and close partial evidence remains ambiguous. This is
 the correct safe failure, not a reason to force a route. The ledger is in
 `session_records/factored_residual_sequence_pressure_2026-08-11/sample_efficiency_ledger.json`.
 
+For the explicit cross-prefix identity-confirmation diagnostic, add
+`--missing-evidence-stable-confirmation`. It permits close per-prefix factual
+margins only when the same slot remains the winner across the confirmation
+sequence; contradictions and slot flips still refuse. The six-seed matched
+diagnostic is archived under
+`session_records/factored_stable_identity_confirmation_2026-08-11/` and is not
+promoted because the fresh-seed replication was tied.
+
 The causal external working-memory transfer audit can be run with:
 
 ```bash

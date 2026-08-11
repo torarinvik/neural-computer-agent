@@ -3739,14 +3739,17 @@ class ExternalTransitionContextEncoder(nn.Module):
         *,
         learning_rate: float = 0.003,
         temperature: float = 0.1,
+        steps: int = 1,
     ) -> tuple[ExternalTransitionContextEncoder, float]:
         """Adapt addresses from one-pass prefixes without mutating this encoder.
 
         Each regime supplies one or more caller-owned evidence prefixes and a
-        full opaque bundle.  Prefixes are trained to resolve to their own full
-        bundle key and away from other regimes.  The update is copy-on-write:
+        full opaque bundle. Prefixes are trained to resolve to their own full
+        bundle key and away from other regimes. The update is copy-on-write:
         historical addresses and the live encoder remain byte-stable until a
-        caller explicitly verifies and promotes the returned candidate.
+        caller explicitly verifies and promotes the returned candidate. The
+        caller may spend several fresh-evidence optimizer steps on this
+        isolated candidate; the live encoder and historical keys never change.
 
         Prefixes are fresh views at this boundary.  The method retains neither
         observations nor optimizer state, so callers can account for the
@@ -3755,6 +3758,8 @@ class ExternalTransitionContextEncoder(nn.Module):
 
         if learning_rate <= 0.0 or not math.isfinite(learning_rate):
             raise ValueError("context adaptation learning rate must be positive")
+        if not isinstance(steps, int) or isinstance(steps, bool) or steps < 1:
+            raise ValueError("context prefix-alignment steps must be positive")
         if not isinstance(prefix_observations, Sequence) or isinstance(
             prefix_observations, (str, bytes)
         ):
@@ -3792,28 +3797,34 @@ class ExternalTransitionContextEncoder(nn.Module):
             self.state_payload()
         )
         optimizer = torch.optim.Adam(candidate.parameters(), lr=learning_rate)
-        prefix_contexts = torch.stack(
-            [
-                torch.stack(
-                    [candidate.encode_observation(observation) for observation in regime]
-                )
-                for regime in prefix_observations
-            ]
-        )
-        full_contexts = torch.stack(
-            [
-                candidate.encode_observation(observation)
-                for observation in full_observations
-            ]
-        )
-        loss = candidate.prefix_alignment_loss(
-            prefix_contexts,
-            full_contexts,
-            temperature=temperature,
-        )
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
+        with torch.no_grad():
+            full_targets = torch.stack(
+                [
+                    candidate.encode_observation(observation)
+                    for observation in full_observations
+                ]
+            ).detach()
+        loss = torch.zeros((), dtype=torch.float32)
+        for _step in range(steps):
+            prefix_contexts = torch.stack(
+                [
+                    torch.stack(
+                        [
+                            candidate.encode_observation(observation)
+                            for observation in regime
+                        ]
+                    )
+                    for regime in prefix_observations
+                ]
+            )
+            loss = candidate.prefix_alignment_loss(
+                prefix_contexts,
+                full_targets,
+                temperature=temperature,
+            )
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
         return candidate, float(loss.detach())
 
     def state_payload(self) -> dict[str, Any]:
@@ -5645,6 +5656,29 @@ class ExternalTransitionRouteQuery(nn.Module):
         if self.route_memory is not None:
             self.route_memory.unregister_slot(slot_id)
 
+    def replace_slot_adapter(
+        self,
+        slot_id: int,
+        address_adapter: ExternalTransitionContextAddressAdapter,
+    ) -> None:
+        """Replace one query adapter while preserving its opaque route key."""
+
+        if not isinstance(slot_id, int) or isinstance(slot_id, bool) or slot_id < 0:
+            raise ValueError("transition route-query slot ID is invalid")
+        if self.route_memory is not None:
+            raise RuntimeError(
+                "prototype route memory does not retain per-slot address adapters"
+            )
+        if slot_id not in self._slot_adapters:
+            raise KeyError(f"unknown transition route-query slot ID: {slot_id}")
+        if address_adapter.context_width != self.context_width:
+            raise ValueError("transition route-query adapter width differs")
+        self._slot_adapters[slot_id] = (
+            ExternalTransitionContextAddressAdapter.from_payload(
+                address_adapter.state_payload()
+            )
+        )
+
     def record_verified(self, slot_id: int, query: torch.Tensor) -> bool:
         """Add only verifier-approved query state to slot-local route memory."""
 
@@ -6136,14 +6170,16 @@ class ExternalTransitionContextAddressAdapter(nn.Module):
         full_observations: Sequence[ExternalTransitionObservation],
         *,
         temperature: float = 0.1,
+        steps: int | None = None,
     ) -> tuple[ExternalTransitionContextAddressAdapter, float]:
         """Adapt a versioned address index from variable-length evidence.
 
         The encoder update is isolated from both the live adapter and its
-        historical keys.  A caller may promote the returned adapter only
-        after checking address stability and factual retention on independent
-        evidence.  The optimizer budget is exactly one update and the input
-        observations are not retained by the adapter.
+        historical keys. A caller may promote the returned adapter only after
+        checking address stability and factual retention on independent
+        evidence. The optimizer budget is ``steps`` when supplied, otherwise
+        the adapter's configured ``adaptation_steps``. Input observations are
+        not retained by the adapter.
         """
 
         candidate = ExternalTransitionContextAddressAdapter.from_payload(
@@ -6156,6 +6192,7 @@ class ExternalTransitionContextAddressAdapter(nn.Module):
             full_observations,
             learning_rate=self.learning_rate,
             temperature=temperature,
+            steps=self.adaptation_steps if steps is None else steps,
         )
         return candidate, loss
 

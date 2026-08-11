@@ -33,6 +33,7 @@ from .world_model import (
     ExternalTransitionProbeUtilityMemory,
     ExternalTransitionRollout,
     ExternalTransitionRouteQuery,
+    ExternalTransitionRouteQueryProposal,
     ExternalTransitionSupportStatistics,
     _probe_utility_profiles,
     _score_probe_utility_memory,
@@ -990,21 +991,60 @@ class ExternalFactoredTransitionRouter:
             if self.route_query is None or self.address_adapter is None:
                 return None
             with torch.no_grad():
-                address_query = self.address_adapter.encode_observation(observation)
+                fallback_query = self._route_query_fallback(observation)
                 proposal = self.route_query.propose_observation(
                     observation,
                     self.contexts,
                     self.slot_ids,
-                    fallback_query=address_query,
+                    fallback_query=fallback_query,
                 )
             address_margin = proposal.margin
+            eligible_slot_ids = tuple(
+                self._slot_ids[index]
+                for index, error in enumerate(errors)
+                if error <= tolerance
+            )
             if (
-                proposal.selected_slot_id != self._slot_ids[best]
+                proposal.selected_slot_id not in eligible_slot_ids
                 or address_margin is None
                 or address_margin < margin_floor
             ):
                 return None
+            selected_index = self._slot_ids.index(proposal.selected_slot_id)
+            return proposal.selected_slot_id, errors[selected_index], margin
         return self._slot_ids[best], errors[best], margin
+
+    def _address_proposal(
+        self,
+        observation: ExternalTransitionObservation,
+    ) -> ExternalTransitionRouteQueryProposal | None:
+        """Return a non-authoritative address proposal for a close factual tie."""
+
+        if self.route_query is None or self.address_adapter is None:
+            return None
+        with torch.no_grad():
+            fallback_query = self._route_query_fallback(observation)
+            return self.route_query.propose_observation(
+                observation,
+                self.contexts,
+                self.slot_ids,
+                fallback_query=fallback_query,
+            )
+
+    def _route_query_fallback(
+        self,
+        observation: ExternalTransitionObservation,
+    ) -> torch.Tensor | None:
+        """Build a fallback only for route-query modes that consume one."""
+
+        if self.route_query is None or self.address_adapter is None:
+            return None
+        if (
+            self.route_query.route_memory is None
+            and self.route_query.learned_scorer is None
+        ):
+            return None
+        return self.route_query.route_feature(self.address_adapter, observation)
 
     def _evidence_probability(
         self,
@@ -1085,14 +1125,28 @@ class ExternalFactoredTransitionRouter:
     def _sparse_proposal(
         self,
         observation: ExternalTransitionObservation,
+        *,
+        min_match_fraction: float = 1.0,
+        match_tolerance: float | None = None,
+        contradiction_tolerance: float | None = None,
     ) -> int | None:
-        """Return a contradiction-free sparse factual identity proposal."""
+        """Return a sparse proposal only after factual verification."""
 
         if self.sparse_evidence is None or not self._slot_ids:
             return None
+        tolerance = self.match_tolerance if match_tolerance is None else match_tolerance
+        contradiction_floor = (
+            tolerance
+            if contradiction_tolerance is None
+            else contradiction_tolerance
+        )
+        if not 0.0 < min_match_fraction <= 1.0:
+            raise ValueError("sparse proposal match fraction must lie in (0, 1]")
+        if tolerance < 0.0 or contradiction_floor < tolerance:
+            raise ValueError("sparse proposal tolerances are invalid")
         proposal = self.sparse_evidence.propose(observation, self._slot_ids)
         slot_id = proposal.selected_slot_id
-        if slot_id is None or not self.committed_evidence_gate:
+        if slot_id is None:
             return slot_id
         context = self._contexts[self._slot_ids.index(slot_id)]
         prediction = self.model.predict_with_context(
@@ -1102,6 +1156,17 @@ class ExternalFactoredTransitionRouter:
                 observation.state.shape[0], -1
             ),
         )
+        errors = (prediction - observation.next_state).square().mean(dim=-1)
+        required_matches = max(
+            1,
+            math.ceil(observation.state.shape[0] * min_match_fraction),
+        )
+        if int((errors <= tolerance).sum()) < required_matches or bool(
+            torch.any(errors > contradiction_floor)
+        ):
+            return None
+        if not self.committed_evidence_gate:
+            return slot_id
         error = float((prediction - observation.next_state).square().mean().detach())
         if not self._evidence_allows(
             prediction,
@@ -1278,7 +1343,14 @@ class ExternalFactoredTransitionRouter:
             ).validate(context_width=self.model.context_width)
         if self._last_reliability_veto:
             return self._quarantine_reliability_veto(merged)
-        sparse_slot = self._sparse_proposal(merged)
+        sparse_slot = self._sparse_proposal(
+            merged,
+            match_tolerance=(
+                self.match_tolerance
+                if match_tolerance is None
+                else match_tolerance
+            ),
+        )
         if self._last_reliability_veto:
             return self._quarantine_reliability_veto(merged)
         if sparse_slot is not None:
@@ -1311,6 +1383,7 @@ class ExternalFactoredTransitionRouter:
         match_tolerance: float = 0.05,
         contradiction_tolerance: float | None = None,
         match_margin: float | None = None,
+        horizon_decay: float = 1.0,
     ) -> FactoredTransitionRouteResult:
         """Read-route partial evidence without admitting a new memory slot.
 
@@ -1337,6 +1410,8 @@ class ExternalFactoredTransitionRouter:
             )
         if match_margin is not None and match_margin < 0.0:
             raise ValueError("partial route match margin cannot be negative")
+        if not math.isfinite(horizon_decay) or not 0.0 < horizon_decay <= 1.0:
+            raise ValueError("partial route horizon decay must lie in (0, 1]")
         if self._candidate_model is not None or self._pending:
             raise RuntimeError("cannot partial-route while factored evidence is staged")
         if not observations or not self._contexts:
@@ -1354,7 +1429,12 @@ class ExternalFactoredTransitionRouter:
             )
         merged = self._merge(cloned)
         self._last_reliability_veto = False
-        sparse_slot = self._sparse_proposal(merged)
+        sparse_slot = self._sparse_proposal(
+            merged,
+            min_match_fraction=min_match_fraction,
+            match_tolerance=match_tolerance,
+            contradiction_tolerance=contradiction_floor,
+        )
         if self._last_reliability_veto:
             return FactoredTransitionRouteResult(
                 status="reliability_veto",
@@ -1393,10 +1473,25 @@ class ExternalFactoredTransitionRouter:
             contradictory = bool(torch.any(errors > contradiction_floor))
             if matched < required_matches or contradictory:
                 continue
+            weights = torch.pow(
+                torch.tensor(
+                    horizon_decay,
+                    dtype=errors.dtype,
+                    device=errors.device,
+                ),
+                torch.arange(
+                    errors.shape[0],
+                    dtype=errors.dtype,
+                    device=errors.device,
+                ),
+            )
+            weighted_error = float(
+                (errors * weights).sum().detach() / weights.sum().detach()
+            )
             eligible.append(
                 (
                     self._slot_ids[index],
-                    float(errors.mean().detach()),
+                    weighted_error,
                     float(errors.max().detach()),
                 )
             )
@@ -1416,12 +1511,21 @@ class ExternalFactoredTransitionRouter:
         )
         margin_floor = self.match_margin if match_margin is None else match_margin
         if margin < margin_floor:
-            return FactoredTransitionRouteResult(
-                status="ambiguous",
-                slot_id=None,
-                context=None,
-                pending_observations=0,
-            ).validate(context_width=self.model.context_width)
+            proposal = self._address_proposal(merged)
+            eligible_slot_ids = {slot_id for slot_id, _error, _maximum in eligible}
+            if (
+                proposal is None
+                or proposal.selected_slot_id not in eligible_slot_ids
+                or proposal.margin is None
+                or proposal.margin < margin_floor
+            ):
+                return FactoredTransitionRouteResult(
+                    status="ambiguous",
+                    slot_id=None,
+                    context=None,
+                    pending_observations=0,
+                ).validate(context_width=self.model.context_width)
+            best_slot = proposal.selected_slot_id
         context_index = self._slot_ids.index(best_slot)
         return FactoredTransitionRouteResult(
             status="matched",
@@ -1439,6 +1543,8 @@ class ExternalFactoredTransitionRouter:
         contradiction_tolerance: float | None = None,
         match_margin: float | None = None,
         confirmation_bundles: int = 2,
+        horizon_decay: float = 1.0,
+        stable_identity_confirmation: bool = False,
     ) -> FactoredTransitionRouteResult:
         """Resolve one stream by accumulating read-only partial evidence.
 
@@ -1447,8 +1553,11 @@ class ExternalFactoredTransitionRouter:
         requires the requested number of bundles before accepting a route. A
         prior decisive slot that flips under later evidence is treated as
         unstable and refused. No candidate, route key, or model state is
-        written. If evidence remains ambiguous, the final result is an
-        explicit refusal rather than a forced identity guess.
+        written. If ``stable_identity_confirmation`` is enabled, each prefix
+        may be a close factual tie, but the same factual winner must persist
+        across all confirmation bundles. Contradictions still veto the route.
+        If evidence remains ambiguous, the final result is an explicit
+        refusal rather than a forced identity guess.
         """
 
         if not bundles:
@@ -1459,9 +1568,16 @@ class ExternalFactoredTransitionRouter:
             or confirmation_bundles < 1
         ):
             raise ValueError("factored partial confirmation count must be positive")
+        if not math.isfinite(horizon_decay) or not 0.0 < horizon_decay <= 1.0:
+            raise ValueError("factored partial horizon decay must lie in (0, 1]")
+        if not isinstance(stable_identity_confirmation, bool):
+            raise TypeError("factored partial identity confirmation must be boolean")
         cumulative: list[ExternalTransitionObservation] = []
         result: FactoredTransitionRouteResult | None = None
         matched_slots: list[int] = []
+        effective_match_margin = (
+            0.0 if stable_identity_confirmation else match_margin
+        )
         for bundle in bundles:
             if not bundle:
                 raise ValueError("factored partial sequence bundles cannot be empty")
@@ -1471,7 +1587,8 @@ class ExternalFactoredTransitionRouter:
                 min_match_fraction=min_match_fraction,
                 match_tolerance=match_tolerance,
                 contradiction_tolerance=contradiction_tolerance,
-                match_margin=match_margin,
+                match_margin=effective_match_margin,
+                horizon_decay=horizon_decay,
             )
             if result.status == "reliability_veto":
                 return result
@@ -2152,16 +2269,12 @@ class ExternalFactoredTransitionRouter:
         if candidate.route_query is None:
             raise RuntimeError("factored address candidate lost its route query")
         candidate.address_adapter = candidate_adapter
-        for slot_id, observation in zip(self._slot_ids, full, strict=True):
-            candidate.route_query.unregister_slot(slot_id)
-            candidate.route_query.register_slot(
-                slot_id,
-                candidate_adapter,
-                route_key=candidate.route_query.route_feature(
+        if candidate.route_query.route_memory is None:
+            for slot_id in self._slot_ids:
+                candidate.route_query.replace_slot_adapter(
+                    slot_id,
                     candidate_adapter,
-                    observation,
-                ),
-            )
+                )
         return candidate, loss
 
     def update_bound_slot(

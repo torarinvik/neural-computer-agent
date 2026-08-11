@@ -9452,6 +9452,30 @@ prefix evidence should improve route confidence while retaining safe
 ambiguity refusal. Evidence is in
 `session_records/factored_residual_sequence_pressure_2026-08-11/sample_efficiency_ledger.json`.
 
+## Stable identity confirmation (2026-08-11)
+
+`route_partial_sequence()` now has an explicit opt-in
+`stable_identity_confirmation` policy. It evaluates each cumulative prefix
+with the factual model, allows a close per-prefix margin, and accepts only
+when the same factual slot wins across all confirmation bundles. A slot flip,
+contradiction, reliability veto, or missing winner remains an explicit
+refusal. The path is read-only and does not rewrite route keys, contexts, or
+the model.
+
+The prefix address update was hardened at the same boundary: full-view keys
+are fixed targets during copy-on-write alignment, and learned query adapters
+replace the adapter view while preserving historical opaque route keys. This
+implements the export's “bind once, then iterate fixed” principle without
+making the address learner authoritative.
+
+The matched six-seed diagnostic recovered `2/6` complete gates with stable
+confirmation versus `1/6` baseline; the fresh-seed replication was tied
+(`1/3` versus `1/3`). This is a seed-sensitive verifier signal, not a
+promoted capability gain or evidence of general continual learning. Keep the
+policy opt-in until it improves a held-out learning curve and survives fresh
+replication. Reports are in
+`session_records/factored_stable_identity_confirmation_2026-08-11/`.
+
 ## Copy-on-write prefix address learning (2026-08-11)
 
 The external context boundary now supports a versioned one-pass
