@@ -160,6 +160,8 @@ def _rollout(
     credit_head: nn.Module | None = None,
     leave_one_out_credit_weight: float = 0.0,
     return_causal_signal: bool = False,
+    counterfactual_temperature: float = 1.0,
+    counterfactual_samples: int = 1,
 ) -> tuple[torch.Tensor, torch.Tensor] | tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     if prefix_loss_weight < 0.0 or not torch.isfinite(
         torch.tensor(prefix_loss_weight)
@@ -192,6 +194,14 @@ def _rollout(
             raise ValueError("an external credit head requires a positive weight")
         if combiner is None or not hasattr(combiner, "forward_leave_one_out"):
             raise ValueError("leave-one-out credit requires a serial combiner")
+    if not torch.isfinite(torch.tensor(counterfactual_temperature)) or counterfactual_temperature <= 0.0:
+        raise ValueError("counterfactual temperature must be finite and positive")
+    if (
+        not isinstance(counterfactual_samples, int)
+        or isinstance(counterfactual_samples, bool)
+        or counterfactual_samples < 1
+    ):
+        raise ValueError("counterfactual samples must be a positive integer")
     device = batch.input_frames.device
     batch_size = batch.batch_size
     parent_state = parent.initial_state(batch_size, device=device)
@@ -351,15 +361,15 @@ def _rollout(
                 prefix_utilities.reshape(-1, prefix_utilities.shape[-1]),
             )
             losses.append(prefix_loss_weight * prefix_loss)
-        probabilities = logits.softmax(dim=-1)
+        probabilities = (logits / counterfactual_temperature).softmax(dim=-1)
         behavior = probabilities * 0.9 + 0.05
         common_uniform = (
-            torch.rand(batch_size, device=device)
+            torch.rand(counterfactual_samples, batch_size, device=device)
             if leave_one_out_states is not None and train_decoder
             else None
         )
         if train_decoder and common_uniform is not None:
-            action = (common_uniform >= behavior[:, 0]).to(torch.long)
+            action = (common_uniform[0] >= behavior[:, 0]).to(torch.long)
         else:
             action = (
                 torch.multinomial(behavior, 1).squeeze(1)
@@ -374,26 +384,45 @@ def _rollout(
                 leave_one_out_states.reshape(-1, leave_one_out_states.shape[-1])
             ).reshape(batch_size, segment_count, -1)
             leave_one_out_behavior = (
-                leave_one_out_logits.softmax(dim=-1) * 0.9 + 0.05
+                (leave_one_out_logits / counterfactual_temperature).softmax(dim=-1)
+                * 0.9
+                + 0.05
             )
             if common_uniform is not None:
                 leave_one_out_action = (
-                    common_uniform.unsqueeze(1)
-                    >= leave_one_out_behavior[:, :, 0]
+                    common_uniform[:, :, None]
+                    >= leave_one_out_behavior[None, :, :, 0]
                 ).to(torch.long)
+                intact_reward_samples = (
+                    common_uniform >= behavior[None, :, 0]
+                ).to(torch.long) == correct[None, :]
+                leave_one_out_reward_samples = (
+                    leave_one_out_action == correct[None, :, None]
+                )
             else:
                 leave_one_out_action = leave_one_out_logits.argmax(dim=-1)
-            leave_one_out_reward = (
-                leave_one_out_action == correct.unsqueeze(1)
-            ).to(logits.dtype)
+                intact_reward_samples = reward.unsqueeze(0).to(torch.bool)
+                leave_one_out_reward_samples = (
+                    leave_one_out_action == correct.unsqueeze(1)
+                ).unsqueeze(0)
+            intact_reward_mean = intact_reward_samples.to(logits.dtype).mean(dim=0)
+            leave_one_out_reward = leave_one_out_reward_samples.to(logits.dtype).mean(
+                dim=0
+            )
             if return_causal_signal:
                 causal_signals.append(
-                    (reward.unsqueeze(1) - leave_one_out_reward).abs().detach()
+                    (
+                        intact_reward_samples.to(logits.dtype)[:, :, None]
+                        - leave_one_out_reward_samples.to(logits.dtype)
+                    )
+                    .abs()
+                    .mean(dim=0)
+                    .detach()
                 )
             if credit_head is not None:
                 credit_utilities = torch.stack(
                     (
-                        reward.unsqueeze(1).expand(-1, segment_count),
+                        intact_reward_mean.unsqueeze(1).expand(-1, segment_count),
                         leave_one_out_reward,
                     ),
                     dim=-1,

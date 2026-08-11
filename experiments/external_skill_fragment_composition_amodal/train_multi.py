@@ -470,7 +470,12 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         seed=args.seed + 130_000,
     )
 
-    persistence_dir = args.report_out.parent / "persistence"
+    # Keep concurrent seed runs isolated.  A shared sibling directory makes
+    # corruption audits race: one process can overwrite the checkpoint while
+    # another is loading it, producing a false persistence failure.
+    persistence_dir = args.report_out.with_name(
+        f"{args.report_out.stem}.persistence"
+    )
     if persistence_dir.exists():
         shutil.rmtree(persistence_dir)
     persistence_dir.mkdir(parents=True, exist_ok=True)

@@ -9872,6 +9872,45 @@ and matched accounting, but first improve verifier-gated counterfactual
 sensitivity or delayed credit. Evidence is archived under
 `session_records/external_skill_fragment_active_selection_rejected_2026-08-11/`.
 
+### Stochastic multi-sample causal selection diagnostic (2026-08-11)
+
+The active-selection probe was strengthened to use a temperature-`0.5`
+stochastic policy and four common-random verifier samples per candidate. This
+resolved the measurement problem: answer-changing signal became materially
+larger. The active arm nevertheless failed to convert that signal into
+ordered execution. Across seeds `41/42/43`, active held-out accuracy was
+`0.4792/0.5208/0.5000`, `0.5833/0.4583/0.5625`, and
+`0.5417/0.4792/0.4792`; the matched passive arm was
+`0.5208/0.4792/0.5000`, `0.6042/0.4375/0.4792`, and
+`0.5625/0.4375/0.4792`. Neither arm reached a stable prefix.
+
+Each seed consumed `165,456` unique verifier bits, including `138,240`
+stochastic selection/intervention bits, with zero replay and `120` optimizer
+updates. The result rejects selection—not the probe—as the missing mechanism:
+the learner can now measure answer-changing interventions, but does not learn a
+reusable ordered execution law from choosing them. Retain the multi-sample
+probe for future audits; the next implementation must improve the external
+execution state/operator representation itself. Evidence is archived under
+`session_records/external_skill_fragment_stochastic_selection_rejected_2026-08-11/`.
+
+### Direct terminal-trace baseline (2026-08-11)
+
+The register interpreter's terminal state was tested directly, without an
+additional learned composition codec. This asks whether the learned combiner
+itself is destroying ordered information. Across seeds `41/42/43`, held-out
+order accuracy was `0.5208/0.4792/0.5000`, `0.5833/0.3542/0.5000`, and
+`0.5208/0.4792/0.4583`. The direct trace did not produce a stable prefix or a
+positive held-out transfer result. Wrong-order, missing-evidence,
+reward-shuffled, and persistence controls remained structurally valid.
+
+Each seed used `13,392` unique verifier bits and `120` optimizer updates, with
+zero replay. This rejects the hypothesis that the learned composition codec
+is the sole bottleneck: bypassing it does not recover ordered held-out
+execution. The next implementation should therefore improve the factual
+external execution/model representation rather than add another selector or
+combiner variant. Evidence is archived under
+`session_records/external_skill_fragment_trace_baseline_rejected_2026-08-11/`.
+
 ## Per-file fast plasticity at the executable boundary (2026-08-11)
 
 The CPU-plus-files runtime now has an explicit path for external state that can

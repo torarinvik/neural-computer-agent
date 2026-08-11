@@ -206,13 +206,16 @@ def _causal_selection_bits(
     batch_size: int,
     span: int,
     candidate_multiplier: int,
+    probe_samples: int,
 ) -> int:
     """Count verifier bits spent probing candidates plus interventions."""
 
     target_count = len(specs)
     segment_count = sum(len(program) for _, program in specs)
     candidate_rows = batch_size * candidate_multiplier * target_count
-    return updates * span * (2 * candidate_rows + batch_size * candidate_multiplier * segment_count)
+    return updates * span * probe_samples * (
+        candidate_rows + batch_size * candidate_multiplier * segment_count
+    )
 
 
 def _specs(
@@ -291,7 +294,12 @@ def _causal_prefix_targets(
     return torch.stack(prefix_batches, dim=1)
 
 
-def _make_combiner(mode: str) -> nn.Module:
+def _make_combiner(mode: str) -> nn.Module | None:
+    if mode == "trace":
+        # The register interpreter already emits a learned terminal state.
+        # This diagnostic keeps that state intact and tests whether an extra
+        # learned composition codec is destroying ordered information.
+        return None
     if mode == "segment":
         return ExternalSkillFragmentSegmentCombiner(
             REGISTER_WIDTH, 16, REGISTER_WIDTH, hidden=64
@@ -334,11 +342,17 @@ def _make_prefix_credit_head() -> nn.Module:
     return head
 
 
+def _parameters(module: nn.Module | None) -> tuple[nn.Parameter, ...]:
+    """Return trainable parameters for a codec, including the trace baseline."""
+
+    return () if module is None else tuple(module.parameters())
+
+
 def _shared_train_stage(
     parent,
     machine,
     bank: ExternalSkillFragmentBank,
-    combiner: nn.Module,
+    combiner: nn.Module | None,
     decoder: OpaqueProtocolDecoder,
     *,
     specs: tuple[tuple[tuple[int, ...], tuple[str, ...]], ...],
@@ -357,6 +371,8 @@ def _shared_train_stage(
     credit_head: nn.Module | None = None,
     causal_selection: str = "none",
     causal_candidate_multiplier: int = 2,
+    causal_probe_temperature: float = 0.5,
+    causal_probe_samples: int = 4,
 ) -> list[dict[str, object]]:
     """Train one combiner/decoder on fresh samples from every target order."""
 
@@ -382,6 +398,14 @@ def _shared_train_stage(
         raise ValueError("causal selection must be none, active, or passive")
     if causal_selection != "none" and causal_candidate_multiplier < 1:
         raise ValueError("causal candidate multiplier must be positive")
+    if not math.isfinite(causal_probe_temperature) or causal_probe_temperature <= 0.0:
+        raise ValueError("causal probe temperature must be finite and positive")
+    if (
+        not isinstance(causal_probe_samples, int)
+        or isinstance(causal_probe_samples, bool)
+        or causal_probe_samples < 1
+    ):
+        raise ValueError("causal probe samples must be a positive integer")
     optimizer = torch.optim.AdamW(parameters, lr=3e-3, weight_decay=1e-5)
     history: list[dict[str, object]] = []
     for update in range(1, updates + 1):
@@ -423,13 +447,15 @@ def _shared_train_stage(
                     decoder,
                     candidate_batch,
                     selected=None,
-                    train_decoder=False,
+                    train_decoder=True,
                     combiner=combiner,
                     route_programs=orders,
                     include_instruction_codes=True,
                     credit_head=credit_head,
                     leave_one_out_credit_weight=leave_one_out_credit_weight,
                     return_causal_signal=True,
+                    counterfactual_temperature=causal_probe_temperature,
+                    counterfactual_samples=causal_probe_samples,
                 )
                 batch, selection_stats = _select_causal_rows(
                     candidate_batch,
@@ -529,6 +555,8 @@ def _shared_train_stage(
         )
         row["causal_selection"] = causal_selection
         row["causal_candidate_multiplier"] = causal_candidate_multiplier
+        row["causal_probe_temperature"] = causal_probe_temperature
+        row["causal_probe_samples"] = causal_probe_samples
         if selection_observations:
             row["causal_selection_candidate_rows"] = sum(
                 int(observation["candidate_rows"])
@@ -575,7 +603,7 @@ def _evaluate_specs(
     parent,
     machine,
     bank: ExternalSkillFragmentBank,
-    combiner: nn.Module,
+    combiner: nn.Module | None,
     decoder: OpaqueProtocolDecoder,
     *,
     specs: tuple[tuple[tuple[int, ...], tuple[str, ...]], ...],
@@ -699,6 +727,11 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         args.prefix_credit_weight or args.leave_one_out_credit_weight
     ) and args.combiner_mode not in ("serial", "serial_shared"):
         raise ValueError("causal serial credit requires a serial combiner mode")
+    if args.causal_selection != "none" and args.combiner_mode not in (
+        "serial",
+        "serial_shared",
+    ):
+        raise ValueError("causal selection requires a serial combiner mode")
     if args.prefix_credit_weight and args.leave_one_out_credit_weight:
         raise ValueError("choose direct prefix credit or leave-one-out credit")
     if (
@@ -712,6 +745,10 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         raise ValueError("causal selection must be none, active, or passive")
     if args.causal_selection != "none" and args.causal_candidate_multiplier < 1:
         raise ValueError("causal candidate multiplier must be positive")
+    if not math.isfinite(args.causal_probe_temperature) or args.causal_probe_temperature <= 0.0:
+        raise ValueError("causal probe temperature must be finite and positive")
+    if args.causal_probe_samples < 1:
+        raise ValueError("causal probe samples must be positive")
 
     parent = _runtime(seed=args.seed, growth=False)
     _, parent_progress = _train_with_progress(
@@ -759,7 +796,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         span=args.span,
         seed=args.seed + 100_000,
         trainable=[
-            *shared_combiner.parameters(),
+            *_parameters(shared_combiner),
             *shared_decoder.parameters(),
             *(
                 shared_credit_head.parameters()
@@ -776,6 +813,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         credit_head=shared_credit_head,
         causal_selection=args.causal_selection,
         causal_candidate_multiplier=args.causal_candidate_multiplier,
+        causal_probe_temperature=args.causal_probe_temperature,
+        causal_probe_samples=args.causal_probe_samples,
     )
     shared_train_accuracy = _evaluate_specs(
         parent,
@@ -859,7 +898,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         span=args.span,
         seed=args.seed + 110_000,
         trainable=[
-            *shuffled_combiner.parameters(),
+            *_parameters(shuffled_combiner),
             *shuffled_decoder.parameters(),
             *(
                 shuffled_credit_head.parameters()
@@ -877,6 +916,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         credit_head=shuffled_credit_head,
         causal_selection=args.causal_selection,
         causal_candidate_multiplier=args.causal_candidate_multiplier,
+        causal_probe_temperature=args.causal_probe_temperature,
+        causal_probe_samples=args.causal_probe_samples,
     )
     shuffled_accuracy = _evaluate_specs(
         parent,
@@ -914,7 +955,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             *fresh_machine.parameters(),
             fresh_bank.shared_basis,
             *fresh_bank.coefficients,
-            *fresh_combiner.parameters(),
+            *_parameters(fresh_combiner),
             *fresh_decoder.parameters(),
             *(
                 fresh_credit_head.parameters()
@@ -931,6 +972,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         credit_head=fresh_credit_head,
         causal_selection=args.causal_selection,
         causal_candidate_multiplier=args.causal_candidate_multiplier,
+        causal_probe_temperature=args.causal_probe_temperature,
+        causal_probe_samples=args.causal_probe_samples,
     )
     fresh_train_accuracy = _evaluate_specs(
         parent,
@@ -965,7 +1008,12 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     )
     bank_digest_after = bank.payload()["sha256"]
 
-    persistence_dir = args.report_out.parent / "persistence"
+    # Keep concurrent seed runs isolated.  A shared sibling directory makes
+    # corruption audits race: one process can overwrite the checkpoint while
+    # another is loading it, producing a false persistence failure.
+    persistence_dir = args.report_out.with_name(
+        f"{args.report_out.stem}.persistence"
+    )
     if persistence_dir.exists():
         shutil.rmtree(persistence_dir)
     persistence_dir.mkdir(parents=True, exist_ok=True)
@@ -1023,6 +1071,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             batch_size=args.batch_size,
             span=args.span,
             candidate_multiplier=args.causal_candidate_multiplier,
+            probe_samples=args.causal_probe_samples,
         )
         if args.causal_selection != "none"
         else 0
@@ -1123,13 +1172,15 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             ),
             "causal_selection": args.causal_selection,
             "causal_selection_protocol": (
-                "common_render_answer_change_top_k_v1"
+                "common_render_stochastic_answer_change_top_k_v2"
                 if args.causal_selection == "active"
-                else "common_render_matched_random_k_v1"
+                else "common_render_stochastic_matched_random_k_v2"
                 if args.causal_selection == "passive"
                 else None
             ),
             "causal_candidate_multiplier": args.causal_candidate_multiplier,
+            "causal_probe_temperature": args.causal_probe_temperature,
+            "causal_probe_samples": args.causal_probe_samples,
         },
         "reward_shuffled": {"accuracy": shuffled_accuracy},
         "fresh": {
@@ -1144,6 +1195,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "leave_one_out_credit_weight": args.leave_one_out_credit_weight,
             "causal_selection": args.causal_selection,
             "causal_candidate_multiplier": args.causal_candidate_multiplier,
+            "causal_probe_temperature": args.causal_probe_temperature,
+            "causal_probe_samples": args.causal_probe_samples,
         },
         "acquired_bank": {
             "sha256_before_targets": bank_digest_before,
@@ -1226,9 +1279,9 @@ def main() -> None:
     parser.add_argument("--composition-updates", type=int, default=128)
     parser.add_argument(
         "--combiner-mode",
-        choices=("segment", "serial", "serial_shared", "operator"),
+        choices=("trace", "segment", "serial", "serial_shared", "operator"),
         default="segment",
-        help="external composition codec to pressure-test",
+        help="external composition codec or direct interpreter trace to pressure-test",
     )
     parser.add_argument(
         "--curriculum",
@@ -1269,6 +1322,18 @@ def main() -> None:
         type=int,
         default=2,
         help="candidate rows probed per trained row for causal selection",
+    )
+    parser.add_argument(
+        "--causal-probe-temperature",
+        type=float,
+        default=0.5,
+        help="temperature for stochastic trainer-only causal probes",
+    )
+    parser.add_argument(
+        "--causal-probe-samples",
+        type=int,
+        default=4,
+        help="common-random samples per candidate causal probe",
     )
     args = parser.parse_args()
     print(json.dumps(run(args), indent=2))

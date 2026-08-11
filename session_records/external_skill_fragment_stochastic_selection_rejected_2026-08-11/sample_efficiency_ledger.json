@@ -1,0 +1,53 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "external_skill_fragment_stochastic_selection_rejected_2026-08-11",
+  "date": "2026-08-11",
+  "status": "rejected_stochastic_active_selection_no_transfer",
+  "claim_boundary": "Four-sample stochastic causal selection increased intervention signal but did not improve held-out ordered composition or stable-prefix transfer across three seeds.",
+  "configuration": {
+    "seeds": [41, 42, 43],
+    "parent_updates": 8,
+    "primitive_updates": 16,
+    "composition_updates": 16,
+    "batch_size": 8,
+    "span": 3,
+    "combiner": "serial",
+    "leave_one_out_credit_weight": 0.5,
+    "candidate_multiplier": 2,
+    "probe_temperature": 0.5,
+    "probe_samples": 4,
+    "active_protocol": "common_render_stochastic_answer_change_top_k_v2",
+    "passive_protocol": "common_render_stochastic_matched_random_k_v2"
+  },
+  "aggregate": {
+    "active_heldout_accuracy": [
+      [0.4791666567, 0.5208333135, 0.5],
+      [0.5833333135, 0.4583333433, 0.5625],
+      [0.5416666865, 0.4791666567, 0.4791666567]
+    ],
+    "passive_heldout_accuracy": [
+      [0.5208333135, 0.4791666567, 0.5],
+      [0.6041666865, 0.4375, 0.4791666567],
+      [0.5625, 0.4375, 0.4791666567]
+    ],
+    "active_stable_prefixes": 0,
+    "passive_stable_prefixes": 0,
+    "unique_verifier_bits_per_seed": 165456,
+    "stochastic_selection_bits_per_seed": 138240,
+    "leave_one_out_training_bits_per_seed": 13824,
+    "optimizer_updates_per_seed": 120,
+    "replayed_examples": 0,
+    "wall_seconds_per_seed": [45.8876, 46.0875, 45.8902, 45.7550, 46.1518, 45.7502]
+  },
+  "controls": {
+    "fresh_pixel_rerender": true,
+    "wrong_order_audited": true,
+    "missing_evidence_audited": true,
+    "reward_shuffled_audited": true,
+    "frozen_parent_digest": true,
+    "frozen_acquired_bank_digest": true,
+    "persistence_and_corruption_audited": true,
+    "replayed_examples": 0
+  },
+  "decision": "Reject stochastic active selection; retain the causal probe and pivot to external execution-state/operator learning."
+}
