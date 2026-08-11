@@ -1,0 +1,106 @@
+{
+  "seed": 69317,
+  "slots": 6,
+  "values": 8,
+  "program_len": 6,
+  "instructions": [
+    "NOOP",
+    "INC",
+    "DEC",
+    "CINC",
+    "CDEC",
+    "COPY",
+    "SWAP"
+  ],
+  "no_conditionals": false,
+  "chance_slots": 0.125,
+  "identity_baseline_slots": 0.444,
+  "curve": [],
+  "held_out_programs_slots": 0.9999,
+  "held_out_programs_exact": 0.9993,
+  "double_length_programs_slots": 0.999,
+  "double_length_programs_exact": 0.9946,
+  "synthesis": {
+    "line": {
+      "search_fit": 0.9,
+      "held_out": 0.9453,
+      "identity": 0.1211
+    },
+    "dial": {
+      "search_fit": 1.0,
+      "held_out": 0.987,
+      "identity": 0.6667
+    },
+    "toggle": {
+      "search_fit": 0.8815,
+      "held_out": 0.8431,
+      "identity": 0.696
+    },
+    "perm": {
+      "search_fit": 1.0,
+      "held_out": 1.0,
+      "identity": 0.5
+    },
+    "grid": {
+      "search_fit": 0.9743,
+      "held_out": 0.9785,
+      "identity": 0.5566
+    },
+    "proc0": {
+      "search_fit": 0.9487,
+      "held_out": 0.918,
+      "identity": 0.1211
+    },
+    "proc1": {
+      "search_fit": 0.8631,
+      "held_out": 0.8281,
+      "identity": 0.3633
+    }
+  },
+  "library_sequence": [
+    {
+      "family": "line",
+      "candidates_tried": 4143,
+      "fit": 0.9286,
+      "library_size": 210
+    },
+    {
+      "family": "dial",
+      "candidates_tried": 288,
+      "fit": 1.0,
+      "library_size": 212
+    },
+    {
+      "family": "toggle",
+      "candidates_tried": 20137,
+      "fit": 0.8905,
+      "library_size": 218
+    },
+    {
+      "family": "perm",
+      "candidates_tried": 1785,
+      "fit": 1.0,
+      "library_size": 224
+    },
+    {
+      "family": "grid",
+      "candidates_tried": 1981,
+      "fit": 0.983,
+      "library_size": 227
+    },
+    {
+      "family": "proc0",
+      "candidates_tried": 8129,
+      "fit": 0.9501,
+      "library_size": 231
+    },
+    {
+      "family": "proc1",
+      "candidates_tried": 12053,
+      "fit": 0.8169,
+      "library_size": 237
+    }
+  ],
+  "library_started": 210,
+  "library_ended": 243
+}

@@ -1,0 +1,106 @@
+{
+  "seed": 69316,
+  "slots": 6,
+  "values": 8,
+  "program_len": 6,
+  "instructions": [
+    "NOOP",
+    "INC",
+    "DEC",
+    "CINC",
+    "CDEC",
+    "COPY",
+    "SWAP"
+  ],
+  "no_conditionals": false,
+  "chance_slots": 0.125,
+  "identity_baseline_slots": 0.467,
+  "curve": [],
+  "held_out_programs_slots": 0.9997,
+  "held_out_programs_exact": 0.9983,
+  "double_length_programs_slots": 0.9989,
+  "double_length_programs_exact": 0.9937,
+  "synthesis": {
+    "line": {
+      "search_fit": 0.8939,
+      "held_out": 0.9375,
+      "identity": 0.1055
+    },
+    "dial": {
+      "search_fit": 1.0,
+      "held_out": 1.0,
+      "identity": 0.6667
+    },
+    "toggle": {
+      "search_fit": 0.8835,
+      "held_out": 0.8203,
+      "identity": 0.7044
+    },
+    "perm": {
+      "search_fit": 1.0,
+      "held_out": 1.0,
+      "identity": 0.5
+    },
+    "grid": {
+      "search_fit": 0.9644,
+      "held_out": 0.9668,
+      "identity": 0.5566
+    },
+    "proc0": {
+      "search_fit": 0.9639,
+      "held_out": 0.9277,
+      "identity": 0.8682
+    },
+    "proc1": {
+      "search_fit": 0.9628,
+      "held_out": 0.9385,
+      "identity": 0.8057
+    }
+  },
+  "library_sequence": [
+    {
+      "family": "line",
+      "candidates_tried": 4316,
+      "fit": 0.9028,
+      "library_size": 210
+    },
+    {
+      "family": "dial",
+      "candidates_tried": 411,
+      "fit": 1.0,
+      "library_size": 210
+    },
+    {
+      "family": "toggle",
+      "candidates_tried": 24000,
+      "fit": 0.8752,
+      "library_size": 210
+    },
+    {
+      "family": "perm",
+      "candidates_tried": 2964,
+      "fit": 1.0,
+      "library_size": 210
+    },
+    {
+      "family": "grid",
+      "candidates_tried": 4730,
+      "fit": 0.9764,
+      "library_size": 210
+    },
+    {
+      "family": "proc0",
+      "candidates_tried": 11496,
+      "fit": 0.9623,
+      "library_size": 210
+    },
+    {
+      "family": "proc1",
+      "candidates_tried": 14621,
+      "fit": 0.9493,
+      "library_size": 210
+    }
+  ],
+  "library_started": 210,
+  "library_ended": 210
+}

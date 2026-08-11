@@ -7549,3 +7549,52 @@ Method note: this analysis cost one command against runs already on
 disk, and it is the fourth time today that checking existing data
 settled a question before compute was allocated (F150, the F144 cost
 table, the F145 radius test, this).
+
+**F157 (probe 255). Library reuse as implemented is a NULL: paired
+cost ratio 0.944, cheaper in 7 of 11 comparable cases, with a spread
+from 0.14 to 2.33. Storing solved recipes and sampling them uniformly
+does not make later search meaningfully cheaper.**
+
+Paired per family, same seed, same order, growth vs frozen library
+(candidates tried; lower is cheaper):
+
+| family | seed | grow | frozen | ratio |
+| --- | ---: | ---: | ---: | ---: |
+| dial | 69316 / 69317 | 514 / 288 | 411 / 452 | 1.25 / 0.64 |
+| perm | 69316 / 69317 | 417 / 1785 | 2964 / 1492 | **0.14** / 1.20 |
+| grid | 69316 / 69317 | 1215 / 1981 | 4730 / 851 | 0.26 / **2.33** |
+| proc0 | 69316 / 69317 | 12084 / 8129 | 11496 / 9206 | 1.05 / 0.88 |
+| proc1 | 69316 / 69317 | 10432 / 12053 | 14621 / 12071 | 0.71 / 1.00 |
+
+The two largest effects point in OPPOSITE directions on the same
+family across seeds (grid: 0.26 and 2.33), which is the signature of
+noise rather than mechanism. Mean 0.944 is well inside that spread.
+
+**The failure was predicted before the run, which is the useful
+part.** When launching this I recorded: "fragments are appended whole
+and chosen uniformly, so the library grows but doesn't get COMPRESSED
+— useful fragments get diluted, and if the growth arm shows no gain
+that is the first thing to fix rather than evidence against reuse."
+The library grew 210 -> 242 entries, so a genuinely useful fragment
+went from 1-in-210 to 1-in-242 sampling probability. Adding good
+fragments to a uniformly-sampled pool makes each one RARER. The design
+could not have worked, and saying so in advance is what makes this a
+null on the implementation rather than on the idea.
+
+**What the data also shows about the search itself.** Cost is
+dominated by the family, not by position: `dial` costs ~300-500
+candidates and `toggle` saturates the 24,000 budget in three of four
+runs. So the search's difficulty range spans nearly two orders of
+magnitude, and `toggle` — the family F155 already flagged as least
+likely to be exactly expressible in this basis — is the one that
+cannot be solved at all. Expressibility, not search strategy, is what
+bounds that case.
+
+**Next, in order:** (a) weight fragment sampling by usefulness rather
+than uniformly — the minimum viable version of DreamCoder's
+compression, and the direct fix for dilution; (b) keep a fragment only
+if it shortens total description length across solved recipes; (c) a
+learned proposer, which is the reader's real job in this architecture.
+
+Probe 255 is `isa_compose.py --library`, growth and frozen arms,
+2 seeds.
