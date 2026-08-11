@@ -1429,6 +1429,12 @@ both the physical source and the cost policy. The three-seed audit is
 archived at
 `session_records/policy_free_intention_learned_cost_promoted_2026-08-10/`.
 
+Factual transition-bank prior selection also accepts optional opaque transfer
+and fresh acquisition costs. Its v2 receipt records raw and cost-adjusted
+probe errors, while zero costs retain the v1 error-only behavior. The choice is
+copy-on-write and reversible, so a costly warm prior cannot silently displace a
+cheaper fresh challenger or mutate a mastered source.
+
 `ExternalSequenceProgramMemory.admit_verified_artifact()` is the matching
 memory-side file transaction. It stages an ABI-checked artifact, consumes only
 ordered scalar verifier outcomes, and appends it only after a stable prefix

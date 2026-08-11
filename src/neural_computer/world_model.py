@@ -150,6 +150,9 @@ EXTERNAL_TRANSITION_MODEL_MIGRATION_SCHEMA = (
 EXTERNAL_TRANSITION_MODEL_PRIOR_SELECTION_SCHEMA = (
     "neural-computer.external-transition-model-prior-selection.v1"
 )
+EXTERNAL_TRANSITION_MODEL_PRIOR_SELECTION_COST_SCHEMA = (
+    "neural-computer.external-transition-model-prior-selection.v2"
+)
 
 EXTERNAL_TRANSITION_NONLINEAR_MODEL_FAMILY = "nonlinear_mlp_v1"
 EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY = "affine_sufficient_statistics_v1"
@@ -547,10 +550,18 @@ class ExternalTransitionModelPriorSelectionReceipt:
     source_model_digest: str
     selected_model_digest: str
     reason: str
+    transfer_cost: float = 0.0
+    fresh_cost: float = 0.0
+    cost_weight: float = 0.0
+    transfer_adjusted_error: float | None = None
+    fresh_adjusted_error: float | None = None
     schema: str = EXTERNAL_TRANSITION_MODEL_PRIOR_SELECTION_SCHEMA
 
     def validate(self) -> ExternalTransitionModelPriorSelectionReceipt:
-        if self.schema != EXTERNAL_TRANSITION_MODEL_PRIOR_SELECTION_SCHEMA:
+        if self.schema not in {
+            EXTERNAL_TRANSITION_MODEL_PRIOR_SELECTION_SCHEMA,
+            EXTERNAL_TRANSITION_MODEL_PRIOR_SELECTION_COST_SCHEMA,
+        }:
             raise ValueError("unsupported transition-model prior-selection schema")
         if self.selected_initialization not in {"transfer", "fresh"}:
             raise ValueError("transition-model prior selection is invalid")
@@ -583,6 +594,29 @@ class ExternalTransitionModelPriorSelectionReceipt:
         ):
             if not isinstance(value, str) or not value:
                 raise ValueError(f"transition-model prior {name} is missing")
+        for name, value in (
+            ("transfer_cost", self.transfer_cost),
+            ("fresh_cost", self.fresh_cost),
+            ("cost_weight", self.cost_weight),
+        ):
+            if (
+                not isinstance(value, (float, int))
+                or isinstance(value, bool)
+                or not math.isfinite(float(value))
+                or float(value) < 0.0
+            ):
+                raise ValueError(f"transition-model prior {name} is invalid")
+        for name, value in (
+            ("transfer_adjusted_error", self.transfer_adjusted_error),
+            ("fresh_adjusted_error", self.fresh_adjusted_error),
+        ):
+            if value is not None and (
+                not isinstance(value, (float, int))
+                or isinstance(value, bool)
+                or not math.isfinite(float(value))
+                or float(value) < 0.0
+            ):
+                raise ValueError(f"transition-model prior {name} is invalid")
         return self
 
 
@@ -854,6 +888,9 @@ class ExternalTransitionModelBank(nn.Module):
         *,
         probe_updates: int = 0,
         fresh_candidate: nn.Module | None = None,
+        transfer_cost: float = 0.0,
+        fresh_cost: float = 0.0,
+        cost_weight: float = 0.0,
     ) -> tuple[ExternalTransitionModelPriorSelectionReceipt, nn.Module]:
         """Select transfer or fresh initialization without mutating the bank.
 
@@ -869,7 +906,9 @@ class ExternalTransitionModelBank(nn.Module):
         supplied, the probe mutates that candidate in place, allowing the
         caller to preserve a byte-identical pre-probe clone for a matched fresh
         control.  The candidate remains outside the bank until the caller
-        explicitly commits it.
+        explicitly commits it.  Optional nonnegative costs let a caller select
+        on factual probe error plus acquisition cost; zero costs preserve the
+        historical error-only decision.
         """
 
         if not 0 <= source_index < self.context_count:
@@ -880,6 +919,18 @@ class ExternalTransitionModelBank(nn.Module):
             raise TypeError("transition-model prior probe updates must be an integer")
         if probe_updates < 0:
             raise ValueError("transition-model prior probe updates cannot be negative")
+        for name, value in (
+            ("transfer_cost", transfer_cost),
+            ("fresh_cost", fresh_cost),
+            ("cost_weight", cost_weight),
+        ):
+            if (
+                not isinstance(value, (float, int))
+                or isinstance(value, bool)
+                or not math.isfinite(float(value))
+                or float(value) < 0.0
+            ):
+                raise ValueError(f"transition-model prior {name} is invalid")
         observation.validate(
             state_width=self.state_width,
             intention_width=self.intention_width,
@@ -919,8 +970,18 @@ class ExternalTransitionModelBank(nn.Module):
             raise ValueError("transition-model prior probe errors must be finite")
         if self.models[source_index].digest() != source_digest:
             raise RuntimeError("transition-model prior probe mutated the source slot")
+        cost_aware = any(
+            float(value) != 0.0
+            for value in (transfer_cost, fresh_cost, cost_weight)
+        )
+        transfer_adjusted_error = transfer_error + float(cost_weight) * float(
+            transfer_cost
+        )
+        fresh_adjusted_error = fresh_error + float(cost_weight) * float(fresh_cost)
         selected_initialization = (
-            "transfer" if transfer_error <= fresh_error else "fresh"
+            "transfer"
+            if transfer_adjusted_error <= fresh_adjusted_error
+            else "fresh"
         )
         selected = transfer if selected_initialization == "transfer" else fresh
         if any(
@@ -928,6 +989,18 @@ class ExternalTransitionModelBank(nn.Module):
             for value in selected.state_dict().values()
         ):
             raise ValueError("transition-model prior probe produced non-finite weights")
+        if selected_initialization == "transfer":
+            reason = (
+                "transfer prior passed the cost-aware factual challenger"
+                if cost_aware
+                else "transfer prior passed the factual challenger"
+            )
+        else:
+            reason = (
+                "fresh initialization won the cost-aware factual challenger"
+                if cost_aware
+                else "fresh initialization won the factual challenger"
+            )
         receipt = ExternalTransitionModelPriorSelectionReceipt(
             selected_initialization=selected_initialization,
             source_slot_id=self.slot_id_at(source_index),
@@ -936,10 +1009,18 @@ class ExternalTransitionModelBank(nn.Module):
             probe_updates=probe_updates,
             source_model_digest=source_digest,
             selected_model_digest=selected.digest(),
-            reason=(
-                "transfer prior passed the factual challenger"
-                if selected_initialization == "transfer"
-                else "fresh initialization won the factual challenger"
+            reason=reason,
+            transfer_cost=float(transfer_cost),
+            fresh_cost=float(fresh_cost),
+            cost_weight=float(cost_weight),
+            transfer_adjusted_error=(
+                transfer_adjusted_error if cost_aware else None
+            ),
+            fresh_adjusted_error=fresh_adjusted_error if cost_aware else None,
+            schema=(
+                EXTERNAL_TRANSITION_MODEL_PRIOR_SELECTION_COST_SCHEMA
+                if cost_aware
+                else EXTERNAL_TRANSITION_MODEL_PRIOR_SELECTION_SCHEMA
             ),
         )
         return receipt.validate(), selected
@@ -7849,6 +7930,11 @@ class ExternalOnlineTransitionContextRouter:
             "source_model_digest": receipt.source_model_digest,
             "selected_model_digest": receipt.selected_model_digest,
             "reason": receipt.reason,
+            "transfer_cost": receipt.transfer_cost,
+            "fresh_cost": receipt.fresh_cost,
+            "cost_weight": receipt.cost_weight,
+            "transfer_adjusted_error": receipt.transfer_adjusted_error,
+            "fresh_adjusted_error": receipt.fresh_adjusted_error,
         }
 
     @staticmethod
@@ -7868,6 +7954,19 @@ class ExternalOnlineTransitionContextRouter:
             source_model_digest=str(payload["source_model_digest"]),
             selected_model_digest=str(payload["selected_model_digest"]),
             reason=str(payload["reason"]),
+            transfer_cost=float(payload.get("transfer_cost", 0.0)),
+            fresh_cost=float(payload.get("fresh_cost", 0.0)),
+            cost_weight=float(payload.get("cost_weight", 0.0)),
+            transfer_adjusted_error=(
+                None
+                if payload.get("transfer_adjusted_error") is None
+                else float(payload["transfer_adjusted_error"])
+            ),
+            fresh_adjusted_error=(
+                None
+                if payload.get("fresh_adjusted_error") is None
+                else float(payload["fresh_adjusted_error"])
+            ),
             schema=str(
                 payload.get("schema", EXTERNAL_TRANSITION_MODEL_PRIOR_SELECTION_SCHEMA)
             ),
@@ -11186,6 +11285,7 @@ __all__ = [
     "EXTERNAL_TRANSITION_MODEL_FAMILY_SELECTION_SCHEMA",
     "EXTERNAL_TRANSITION_MODEL_GROWTH_SCHEMA",
     "EXTERNAL_TRANSITION_MODEL_MIGRATION_SCHEMA",
+    "EXTERNAL_TRANSITION_MODEL_PRIOR_SELECTION_COST_SCHEMA",
     "EXTERNAL_TRANSITION_MODEL_PRIOR_SELECTION_SCHEMA",
     "EXTERNAL_TRANSITION_MODEL_SCHEMA",
     "EXTERNAL_TRANSITION_NONLINEAR_MODEL_FAMILY",

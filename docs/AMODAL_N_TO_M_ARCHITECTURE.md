@@ -8962,3 +8962,12 @@ and stable-prefix retention separate, and must retain the fresh, shuffled,
 missing-evidence, corruption, and reversal controls. The new causal route
 contract improves information preservation, but it is not itself evidence of
 general continual learning or universal positive transfer.
+
+The factual-bank prior challenger now has the same explicit cost boundary. A
+caller may supply opaque transfer and fresh acquisition-cost estimates plus a
+nonnegative cost weight; the copy-on-write probe selects the lower
+`prediction_error + cost_weight * acquisition_cost` candidate and records both
+raw and adjusted errors in a v2 receipt. With all costs zero, the historical
+error-only behavior and v1 receipt remain unchanged. This turns “retrieve
+before adapting” into a reversible, auditable decision rule rather than an
+unmeasured preference.
