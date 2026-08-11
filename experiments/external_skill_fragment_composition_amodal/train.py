@@ -159,7 +159,8 @@ def _rollout(
     prefix_loss_weight: float = 0.0,
     credit_head: nn.Module | None = None,
     leave_one_out_credit_weight: float = 0.0,
-) -> tuple[torch.Tensor, torch.Tensor]:
+    return_causal_signal: bool = False,
+) -> tuple[torch.Tensor, torch.Tensor] | tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     if prefix_loss_weight < 0.0 or not torch.isfinite(
         torch.tensor(prefix_loss_weight)
     ):
@@ -229,6 +230,7 @@ def _rollout(
         composition = replace(composition, codes=torch.zeros_like(composition.codes))
     losses: list[torch.Tensor] = []
     rewards: list[torch.Tensor] = []
+    causal_signals: list[torch.Tensor] = []
 
     def tick(
         frame: torch.Tensor, feedback
@@ -267,15 +269,22 @@ def _rollout(
             executed = trace.final_state
         else:
             learner_trace = trace.learner_view()
-            if prefix_targets is not None or credit_head is not None:
+            if (
+                prefix_targets is not None
+                or credit_head is not None
+                or return_causal_signal
+            ):
                 prefix_states = combiner.forward_prefixes(learner_trace)
-            if credit_head is not None:
-                credit_scores = credit_head(prefix_states).squeeze(-1)
+            if credit_head is not None or return_causal_signal:
+                if credit_head is not None:
+                    credit_scores = credit_head(prefix_states).squeeze(-1)
                 leave_one_out_states = combiner.forward_leave_one_out(
                     learner_trace, credit_scores
                 )
-                executed = combiner.forward_with_gates(
-                    learner_trace, credit_scores
+                executed = (
+                    combiner.forward_with_gates(learner_trace, credit_scores)
+                    if credit_scores is not None
+                    else prefix_states[:, -1]
                 )
             elif prefix_states is not None:
                 executed = prefix_states[:, -1]
@@ -377,29 +386,39 @@ def _rollout(
             leave_one_out_reward = (
                 leave_one_out_action == correct.unsqueeze(1)
             ).to(logits.dtype)
-            credit_utilities = torch.stack(
-                (
-                    reward.unsqueeze(1).expand(-1, segment_count),
-                    leave_one_out_reward,
-                ),
-                dim=-1,
-            )
-            if invert_targets:
-                credit_utilities = 1.0 - credit_utilities
-            if shuffle_outcomes:
-                credit_utilities = credit_utilities.roll(1, dims=0)
-            credit_loss, _ = factorized_counterfactual_policy_loss(
-                credit_scores,
-                credit_utilities,
-            )
-            losses.append(leave_one_out_credit_weight * credit_loss)
+            if return_causal_signal:
+                causal_signals.append(
+                    (reward.unsqueeze(1) - leave_one_out_reward).abs().detach()
+                )
+            if credit_head is not None:
+                credit_utilities = torch.stack(
+                    (
+                        reward.unsqueeze(1).expand(-1, segment_count),
+                        leave_one_out_reward,
+                    ),
+                    dim=-1,
+                )
+                if invert_targets:
+                    credit_utilities = 1.0 - credit_utilities
+                if shuffle_outcomes:
+                    credit_utilities = credit_utilities.roll(1, dims=0)
+                credit_loss, _ = factorized_counterfactual_policy_loss(
+                    credit_scores,
+                    credit_utilities,
+                )
+                losses.append(leave_one_out_credit_weight * credit_loss)
         previous_action = F.one_hot(action, ACTION_WIDTH).to(logits.dtype)
         previous_reward = reward.roll(1) if shuffle_outcomes else reward
         previous_propensity = (
             behavior.gather(1, action.unsqueeze(1)).squeeze(1).detach()
         )
         previous_has_feedback = torch.ones_like(previous_reward)
-    return torch.stack(losses).mean(), torch.stack(rewards, dim=1)
+    result = (torch.stack(losses).mean(), torch.stack(rewards, dim=1))
+    if return_causal_signal:
+        if not causal_signals:
+            raise RuntimeError("causal signal requested without serial interventions")
+        return (*result, torch.stack(causal_signals, dim=1))
+    return result
 
 
 def _train_stage(

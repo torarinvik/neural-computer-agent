@@ -1,0 +1,52 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "external_skill_fragment_active_selection_rejected_2026-08-11",
+  "date": "2026-08-11",
+  "status": "rejected_active_selection_no_transfer",
+  "claim_boundary": "Matched active causal row selection did not improve bounded held-out ordered composition or stable-prefix transfer across three seeds.",
+  "configuration": {
+    "seeds": [41, 42, 43],
+    "parent_updates": 8,
+    "primitive_updates": 16,
+    "composition_updates": 16,
+    "batch_size": 8,
+    "span": 3,
+    "audit_count": 16,
+    "combiner": "serial",
+    "leave_one_out_credit_weight": 0.5,
+    "candidate_multiplier": 2,
+    "active_protocol": "common_render_answer_change_top_k_v1",
+    "passive_protocol": "common_render_matched_random_k_v1"
+  },
+  "aggregate": {
+    "active_heldout_accuracy": [
+      [0.5208333135, 0.4791666567, 0.5],
+      [0.6041666865, 0.4583333433, 0.5],
+      [0.5625, 0.4375, 0.6041666865]
+    ],
+    "passive_heldout_accuracy": [
+      [0.5208333135, 0.4791666567, 0.5],
+      [0.6041666865, 0.4375, 0.5],
+      [0.5625, 0.4375, 0.6041666865]
+    ],
+    "active_stable_prefixes": 0,
+    "passive_stable_prefixes": 0,
+    "unique_verifier_bits_per_seed": 68688,
+    "candidate_selection_bits_per_seed": 41472,
+    "leave_one_out_training_bits_per_seed": 13824,
+    "optimizer_updates_per_seed": 120,
+    "replayed_examples": 0,
+    "wall_seconds_per_seed": [40.8892, 40.7013, 40.9898, 41.2485, 41.8583, 41.4405]
+  },
+  "controls": {
+    "fresh_pixel_rerender": true,
+    "wrong_order_audited": true,
+    "missing_evidence_audited": true,
+    "reward_shuffled_audited": true,
+    "frozen_parent_digest": true,
+    "frozen_acquired_bank_digest": true,
+    "persistence_and_corruption_audited": true,
+    "replayed_examples": 0
+  },
+  "decision": "Reject active selection as the current credit-assignment fix; retain the boundary and accounting for future intervention-sensitive training."
+}

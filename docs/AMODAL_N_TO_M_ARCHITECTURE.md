@@ -9843,6 +9843,35 @@ compare that active arm against a passive paired control. More state capacity
 is not justified until this signal transfers to held-out orders. Evidence is in
 `session_records/external_skill_fragment_leave_one_out_rejected_2026-08-11/`.
 
+### Active causal sequence selection diagnostic (2026-08-11)
+
+The proposed next step was implemented as a trainer-only data-curation
+mechanism. For every training update, a larger pool of fresh pixel-rerendered
+candidate sequences is evaluated with common-render,
+leave-one-transition-out verifier outcomes. The active arm keeps the highest
+answer-changing rows per opaque target; a passive arm pays for the same probe
+and keeps a matched random subset. Candidate/intervention outcomes remain
+verifier-private and do not become controller inputs, combiner features, or
+decoder metadata.
+
+The three-seed matched rung used a serial combiner, leave-one-out credit weight
+`0.5`, candidate multiplier `2`, updates `8/16/16`, batch size `8`, span `3`,
+and audit count `16`. Active held-out order accuracy was
+`0.5208/0.4792/0.5000`, `0.6042/0.4583/0.5000`, and
+`0.5625/0.4375/0.6042`; passive was
+`0.5208/0.4792/0.5000`, `0.6042/0.4375/0.5000`, and
+`0.5625/0.4375/0.6042`. Neither arm reached a stable prefix. Each seed used
+`68,688` unique verifier bits, including `41,472` selection/intervention bits,
+with zero replay and `120` optimizer updates.
+
+Active selection is therefore rejected as the current composition fix. The
+selected causal signal was usually zero or unstable, so the bottleneck is not
+which rows are selected; it is that the learner rarely produces informative,
+answer-changing counterfactuals on held-out contexts. Retain the selection ABI
+and matched accounting, but first improve verifier-gated counterfactual
+sensitivity or delayed credit. Evidence is archived under
+`session_records/external_skill_fragment_active_selection_rejected_2026-08-11/`.
+
 ## Per-file fast plasticity at the executable boundary (2026-08-11)
 
 The CPU-plus-files runtime now has an explicit path for external state that can

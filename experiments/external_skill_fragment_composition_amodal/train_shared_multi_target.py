@@ -18,6 +18,7 @@ import argparse
 import json
 import math
 import shutil
+from dataclasses import replace
 from pathlib import Path
 from time import perf_counter
 
@@ -124,6 +125,94 @@ def _group_composition_ids(target_count: int, examples_per_target: int) -> torch
     return torch.arange(target_count, dtype=torch.long).repeat_interleave(
         examples_per_target
     )
+
+
+def _subset_batch(batch, rows: torch.Tensor):
+    """Keep a balanced subset without changing the rendered transport ABI."""
+
+    rows = rows.to(device=batch.input_frames.device, dtype=torch.long)
+    return replace(
+        batch,
+        input_frames=batch.input_frames.index_select(0, rows),
+        distractor_frames=batch.distractor_frames.index_select(0, rows),
+        query_frames=batch.query_frames.index_select(0, rows),
+        correct_actions=batch.correct_actions.index_select(0, rows),
+        sequence=batch.sequence.index_select(0, rows),
+        operation_bits=batch.operation_bits.index_select(0, rows),
+        seeds=batch.seeds.index_select(0, rows),
+    )
+
+
+def _select_causal_rows(
+    batch,
+    causal_signal: torch.Tensor,
+    composition_ids: torch.Tensor,
+    *,
+    examples_per_target: int,
+    mode: str,
+    seed: int,
+) -> tuple[object, dict[str, object]]:
+    """Select answer-changing examples, with a matched passive control.
+
+    ``causal_signal`` is produced by common-render, common-policy
+    leave-one-transition-out verifier outcomes.  The selection is trainer-only
+    data curation: neither the signal nor the verifier answers cross the
+    deployed combiner/decoder boundary.  Passive selection still pays for the
+    same candidate probe and chooses an equal-budget random subset.
+    """
+
+    if mode not in ("active", "passive"):
+        raise ValueError("causal row selection mode must be active or passive")
+    if examples_per_target < 1:
+        raise ValueError("causal selection examples per target must be positive")
+    if causal_signal.ndim != 3 or causal_signal.shape[0] != batch.batch_size:
+        raise ValueError("causal signal must have shape [batch, queries, segments]")
+    if composition_ids.shape != (batch.batch_size,):
+        raise ValueError("composition IDs must align with candidate rows")
+    scores = causal_signal.float().mean(dim=(1, 2))
+    target_count = int(composition_ids.max().item()) + 1
+    generator = torch.Generator(device=composition_ids.device)
+    generator.manual_seed(seed)
+    selected: list[torch.Tensor] = []
+    for target in range(target_count):
+        candidates = torch.nonzero(composition_ids == target, as_tuple=False).flatten()
+        if candidates.numel() < examples_per_target:
+            raise ValueError("causal candidate pool is smaller than the requested subset")
+        if mode == "active":
+            chosen = candidates[torch.topk(
+                scores[candidates], examples_per_target, largest=True, sorted=True
+            ).indices]
+        else:
+            permutation = torch.randperm(candidates.numel(), generator=generator)
+            chosen = candidates[permutation[:examples_per_target]]
+        selected.append(chosen)
+    rows = torch.cat(selected)
+    selected_scores = scores[rows]
+    stats = {
+        "mode": mode,
+        "candidate_rows": batch.batch_size,
+        "selected_rows": int(rows.numel()),
+        "candidate_mean_causal_signal": float(scores.mean()),
+        "selected_mean_causal_signal": float(selected_scores.mean()),
+        "selected_max_causal_signal": float(selected_scores.max()),
+    }
+    return _subset_batch(batch, rows), stats
+
+
+def _causal_selection_bits(
+    specs: tuple[tuple[tuple[int, ...], tuple[str, ...]], ...],
+    *,
+    updates: int,
+    batch_size: int,
+    span: int,
+    candidate_multiplier: int,
+) -> int:
+    """Count verifier bits spent probing candidates plus interventions."""
+
+    target_count = len(specs)
+    segment_count = sum(len(program) for _, program in specs)
+    candidate_rows = batch_size * candidate_multiplier * target_count
+    return updates * span * (2 * candidate_rows + batch_size * candidate_multiplier * segment_count)
 
 
 def _specs(
@@ -266,6 +355,8 @@ def _shared_train_stage(
     prefix_credit_weight: float = 0.0,
     leave_one_out_credit_weight: float = 0.0,
     credit_head: nn.Module | None = None,
+    causal_selection: str = "none",
+    causal_candidate_multiplier: int = 2,
 ) -> list[dict[str, object]]:
     """Train one combiner/decoder on fresh samples from every target order."""
 
@@ -287,26 +378,68 @@ def _shared_train_stage(
         raise ValueError("leave-one-out credit requires an external credit head")
     if credit_head is not None and not leave_one_out_credit_weight:
         raise ValueError("an external credit head requires a positive weight")
+    if causal_selection not in ("none", "active", "passive"):
+        raise ValueError("causal selection must be none, active, or passive")
+    if causal_selection != "none" and causal_candidate_multiplier < 1:
+        raise ValueError("causal candidate multiplier must be positive")
     optimizer = torch.optim.AdamW(parameters, lr=3e-3, weight_decay=1e-5)
     history: list[dict[str, object]] = []
     for update in range(1, updates + 1):
         losses: list[torch.Tensor] = []
         rewards: list[torch.Tensor] = []
+        selection_observations: list[dict[str, object]] = []
         for group_index, group in enumerate(_spec_groups_by_length(specs)):
             orders = tuple(order for order, _ in group)
             programs = tuple(program for _, program in group)
             count = batch_size * len(group)
-            batch = _batch(
-                operation="generated_composition",
-                count=count,
-                span=span,
-                seed=seed + update * 10_007 + group_index * 1_000_003,
-                generated_compositions=programs,
-                generated_composition_ids_override=_group_composition_ids(
-                    len(group), batch_size
-                ),
-            )
             composition_ids = _group_composition_ids(len(group), batch_size)
+            selection_stats = None
+            if causal_selection == "none":
+                batch = _batch(
+                    operation="generated_composition",
+                    count=count,
+                    span=span,
+                    seed=seed + update * 10_007 + group_index * 1_000_003,
+                    generated_compositions=programs,
+                    generated_composition_ids_override=composition_ids,
+                )
+            else:
+                candidate_per_target = batch_size * causal_candidate_multiplier
+                candidate_ids = _group_composition_ids(
+                    len(group), candidate_per_target
+                )
+                candidate_batch = _batch(
+                    operation="generated_composition",
+                    count=candidate_per_target * len(group),
+                    span=span,
+                    seed=seed + update * 10_007 + group_index * 1_000_003,
+                    generated_compositions=programs,
+                    generated_composition_ids_override=candidate_ids,
+                )
+                _, _, causal_signal = _rollout(
+                    parent,
+                    machine,
+                    bank,
+                    decoder,
+                    candidate_batch,
+                    selected=None,
+                    train_decoder=False,
+                    combiner=combiner,
+                    route_programs=orders,
+                    include_instruction_codes=True,
+                    credit_head=credit_head,
+                    leave_one_out_credit_weight=leave_one_out_credit_weight,
+                    return_causal_signal=True,
+                )
+                batch, selection_stats = _select_causal_rows(
+                    candidate_batch,
+                    causal_signal,
+                    candidate_ids,
+                    examples_per_target=batch_size,
+                    mode=causal_selection,
+                    seed=seed + update * 97_003 + group_index * 1_000_033,
+                )
+                composition_ids = _group_composition_ids(len(group), batch_size)
             prefix_targets = (
                 _causal_prefix_targets(
                     batch,
@@ -336,6 +469,8 @@ def _shared_train_stage(
             )
             losses.append(loss)
             rewards.append(target_rewards)
+            if selection_stats is not None:
+                selection_observations.append(selection_stats)
             if order_contrast_weight and any(len(order) > 1 for order in orders):
                 contrast_loss, _ = _rollout(
                     parent,
@@ -392,6 +527,31 @@ def _shared_train_stage(
             if leave_one_out_credit_weight
             else 0
         )
+        row["causal_selection"] = causal_selection
+        row["causal_candidate_multiplier"] = causal_candidate_multiplier
+        if selection_observations:
+            row["causal_selection_candidate_rows"] = sum(
+                int(observation["candidate_rows"])
+                for observation in selection_observations
+            )
+            row["causal_selection_selected_rows"] = sum(
+                int(observation["selected_rows"])
+                for observation in selection_observations
+            )
+            row["causal_selection_candidate_mean"] = float(
+                sum(
+                    float(observation["candidate_mean_causal_signal"])
+                    for observation in selection_observations
+                )
+                / len(selection_observations)
+            )
+            row["causal_selection_selected_mean"] = float(
+                sum(
+                    float(observation["selected_mean_causal_signal"])
+                    for observation in selection_observations
+                )
+                / len(selection_observations)
+            )
         if eval_every and (update % eval_every == 0 or update == updates):
             heldout = _evaluate_specs(
                 parent,
@@ -548,6 +708,10 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         raise ValueError(
             "leave-one-out credit weight must be finite and non-negative"
         )
+    if args.causal_selection not in ("none", "active", "passive"):
+        raise ValueError("causal selection must be none, active, or passive")
+    if args.causal_selection != "none" and args.causal_candidate_multiplier < 1:
+        raise ValueError("causal candidate multiplier must be positive")
 
     parent = _runtime(seed=args.seed, growth=False)
     _, parent_progress = _train_with_progress(
@@ -610,6 +774,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         prefix_credit_weight=args.prefix_credit_weight,
         leave_one_out_credit_weight=args.leave_one_out_credit_weight,
         credit_head=shared_credit_head,
+        causal_selection=args.causal_selection,
+        causal_candidate_multiplier=args.causal_candidate_multiplier,
     )
     shared_train_accuracy = _evaluate_specs(
         parent,
@@ -709,6 +875,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         prefix_credit_weight=args.prefix_credit_weight,
         leave_one_out_credit_weight=args.leave_one_out_credit_weight,
         credit_head=shuffled_credit_head,
+        causal_selection=args.causal_selection,
+        causal_candidate_multiplier=args.causal_candidate_multiplier,
     )
     shuffled_accuracy = _evaluate_specs(
         parent,
@@ -761,6 +929,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         prefix_credit_weight=args.prefix_credit_weight,
         leave_one_out_credit_weight=args.leave_one_out_credit_weight,
         credit_head=fresh_credit_head,
+        causal_selection=args.causal_selection,
+        causal_candidate_multiplier=args.causal_candidate_multiplier,
     )
     fresh_train_accuracy = _evaluate_specs(
         parent,
@@ -843,6 +1013,27 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         * args.span
         * sum(len(program) for _, program in train_specs)
         if args.leave_one_out_credit_weight
+        else 0
+    )
+    causal_selection_training_bits = (
+        3
+        * _causal_selection_bits(
+            train_specs,
+            updates=args.composition_updates,
+            batch_size=args.batch_size,
+            span=args.span,
+            candidate_multiplier=args.causal_candidate_multiplier,
+        )
+        if args.causal_selection != "none"
+        else 0
+    )
+    causal_selection_candidate_lifetimes = (
+        3
+        * args.composition_updates
+        * args.batch_size
+        * args.causal_candidate_multiplier
+        * target_count
+        if args.causal_selection != "none"
         else 0
     )
     audit_batches = (
@@ -930,6 +1121,15 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                 if args.leave_one_out_credit_weight
                 else None
             ),
+            "causal_selection": args.causal_selection,
+            "causal_selection_protocol": (
+                "common_render_answer_change_top_k_v1"
+                if args.causal_selection == "active"
+                else "common_render_matched_random_k_v1"
+                if args.causal_selection == "passive"
+                else None
+            ),
+            "causal_candidate_multiplier": args.causal_candidate_multiplier,
         },
         "reward_shuffled": {"accuracy": shuffled_accuracy},
         "fresh": {
@@ -942,6 +1142,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "order_contrast_weight": args.order_contrast_weight,
             "prefix_credit_weight": args.prefix_credit_weight,
             "leave_one_out_credit_weight": args.leave_one_out_credit_weight,
+            "causal_selection": args.causal_selection,
+            "causal_candidate_multiplier": args.causal_candidate_multiplier,
         },
         "acquired_bank": {
             "sha256_before_targets": bank_digest_before,
@@ -958,19 +1160,23 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "unique_verifier_bits": (training_batches + audit_batches)
             * bits_per_update
             + prefix_credit_training_bits
-            + leave_one_out_credit_training_bits,
+            + leave_one_out_credit_training_bits
+            + causal_selection_training_bits,
             "training_unique_verifier_bits": training_batches * bits_per_update
             + prefix_credit_training_bits
-            + leave_one_out_credit_training_bits,
+            + leave_one_out_credit_training_bits
+            + causal_selection_training_bits,
             "prefix_credit_unique_verifier_bits": prefix_credit_training_bits,
             "leave_one_out_credit_unique_verifier_bits": (
                 leave_one_out_credit_training_bits
             ),
+            "causal_selection_unique_verifier_bits": causal_selection_training_bits,
             "audit_unique_verifier_bits": audit_batches
             * args.audit_count
             * args.span
             * 2,
             "unique_logical_lifetimes": training_batches * args.batch_size,
+            "causal_selection_candidate_lifetimes": causal_selection_candidate_lifetimes,
             "audit_logical_lifetimes": audit_batches * args.audit_count,
             "optimizer_updates": (
                 args.parent_updates
@@ -1051,6 +1257,18 @@ def main() -> None:
         type=float,
         default=0.0,
         help="weight common-random final utility for omitting each transition",
+    )
+    parser.add_argument(
+        "--causal-selection",
+        choices=("none", "active", "passive"),
+        default="none",
+        help="select answer-changing candidates or use the matched passive control",
+    )
+    parser.add_argument(
+        "--causal-candidate-multiplier",
+        type=int,
+        default=2,
+        help="candidate rows probed per trained row for causal selection",
     )
     args = parser.parse_args()
     print(json.dumps(run(args), indent=2))
