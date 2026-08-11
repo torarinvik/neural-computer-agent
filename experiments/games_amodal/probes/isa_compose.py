@@ -674,12 +674,24 @@ if args.synthesize:
         # is the reuse mechanism stated as an enumeration — if a
         # two-instruction prefix is already known, the third instruction
         # costs the size of the pool rather than its cube.
+        # Every PROPER PREFIX of a stored program, not just the whole
+        # thing. F157 and F159 both turned on this and I half-applied it
+        # here: a stored solution to family 1 is [shared prefix] +
+        # [family-1 instruction], so reusing it WHOLE gives a program
+        # one instruction too long and one instruction wrong. What a
+        # later family needs is the stored program's own prefix. A bank
+        # that can only be replayed entire is barely a bank; the
+        # composable unit is the sub-program.
+        starts, seen_start = [], set()
         for stored in (prefixes or []):
-            room = args.program_len - len(stored)
-            if room <= 0:
-                continue
+            for cut in range(1, len(stored) + 1):
+                head = tuple(stored[:cut])
+                if len(head) < args.program_len and head not in seen_start:
+                    seen_start.add(head)
+                    starts.append(head)
+        for head in starts:
             for one in pool:
-                tail = list(stored) + [one]
+                tail = list(head) + [one]
                 yield tail + pad[:args.program_len - len(tail)]
         for first in pool:
             for second in pool:
