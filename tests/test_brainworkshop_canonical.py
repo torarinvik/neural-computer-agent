@@ -357,6 +357,27 @@ def test_active_discovery_probe_improves_the_external_evidence_boundary() -> Non
     assert report.external_memory_optimizer_updates == 0
 
 
+def test_active_discovery_reports_a_changed_target_regime() -> None:
+    report = run_online_transition_discovery_audit(
+        seed=91,
+        window_statistics="recency_weighted_and_latest_v1",
+        window_gain=0.05,
+        goal_conditioned=True,
+        prior_selection_fresh_cost=1.0,
+        prior_selection_cost_weight=0.2,
+        discovery_probe_mode="active",
+        target_n_back=4,
+        target_cue_symbol=5,
+    )
+
+    assert report.target_n_back == 4
+    assert report.target_cue_symbol == 5
+    assert report.discovery_probe_mode == "active"
+    assert report.source_slot_byte_stable
+    assert report.controller_unchanged
+    assert report.replayed_examples == 0
+
+
 def test_online_transition_discovery_can_learn_external_selection_cost() -> None:
     report = run_online_transition_discovery_audit(
         seed=91,

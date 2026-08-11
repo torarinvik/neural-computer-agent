@@ -149,6 +149,8 @@ class OnlineTransitionDiscoveryReport:
     admission_observations: int = 0
     discovery_probe_mode: str = "none"
     discovery_probe_rows: int = 0
+    target_n_back: int = 3
+    target_cue_symbol: int = 7
     goal_conditioned: bool = False
     target_goal_fragment_admitted: bool = False
     target_goal_fragment_used: bool = False
@@ -800,6 +802,8 @@ def run_online_transition_discovery_audit(
     external_memory_update_mode: str = "sufficient_statistics",
     admission_observations: int | None = None,
     discovery_probe_mode: str = "none",
+    target_n_back: int = 3,
+    target_cue_symbol: int = 7,
 ) -> OnlineTransitionDiscoveryReport:
     """Discover and learn a novel rendered family without replay or a task label.
 
@@ -858,6 +862,18 @@ def run_online_transition_discovery_audit(
         raise TypeError("context encoder pretraining flag must be boolean")
     if discovery_probe_mode not in {"none", "active", "passive"}:
         raise ValueError("unsupported discovery probe mode")
+    if (
+        not isinstance(target_n_back, int)
+        or isinstance(target_n_back, bool)
+        or target_n_back < 1
+    ):
+        raise ValueError("target n-back must be a positive integer")
+    if (
+        not isinstance(target_cue_symbol, int)
+        or isinstance(target_cue_symbol, bool)
+        or not 0 <= target_cue_symbol < 8
+    ):
+        raise ValueError("target cue symbol must lie in the agent symbol range")
     if external_memory_update_mode not in {
         "sufficient_statistics",
         "streaming_gradient",
@@ -1115,10 +1131,10 @@ def run_online_transition_discovery_audit(
             policy_free,
             bank,
             source_context,
-            n_back=3,
+            n_back=target_n_back,
             steps=steps,
             seed=seed + 2000 + lifetime,
-            cue_symbol=7,
+            cue_symbol=target_cue_symbol,
             candidate_intentions=candidate_intentions,
             learn=False,
         )
@@ -1159,10 +1175,10 @@ def run_online_transition_discovery_audit(
                     source_context,
                     source_slot_id=active_probe_bank.slot_id_at(source_index),
                     target_slot_id=active_probe_bank.slot_id_at(active_probe_index),
-                    n_back=3,
+                    n_back=target_n_back,
                     steps=steps,
                     seed=seed + 22000,
-                    cue_symbol=7,
+                    cue_symbol=target_cue_symbol,
                     candidate_intentions=candidate_intentions,
                 )
             )
@@ -1172,10 +1188,10 @@ def run_online_transition_discovery_audit(
                 policy_free,
                 bank,
                 source_context,
-                n_back=3,
+                n_back=target_n_back,
                 steps=steps,
                 seed=seed + 22000,
-                cue_symbol=7,
+                cue_symbol=target_cue_symbol,
                 candidate_intentions=candidate_intentions,
                 learn=False,
             )
@@ -1269,6 +1285,8 @@ def run_online_transition_discovery_audit(
             admission_observations=selected_admission_observations,
             discovery_probe_mode=discovery_probe_mode,
             discovery_probe_rows=active_probe_rows,
+            target_n_back=target_n_back,
+            target_cue_symbol=target_cue_symbol,
         )
 
     candidate_context = router.provisional_context_at(0)
@@ -1295,10 +1313,10 @@ def run_online_transition_discovery_audit(
             shadow_runtime,
             shadow_bank,
             candidate_context,
-            n_back=3,
+            n_back=target_n_back,
             steps=steps,
             seed=seed + 12000 + holdout_index * 2000,
-            cue_symbol=7,
+            cue_symbol=target_cue_symbol,
             candidate_intentions=candidate_intentions,
             learn=False,
         )
@@ -1451,6 +1469,8 @@ def run_online_transition_discovery_audit(
             admission_observations=selected_admission_observations,
             discovery_probe_mode=discovery_probe_mode,
             discovery_probe_rows=active_probe_rows,
+            target_n_back=target_n_back,
+            target_cue_symbol=target_cue_symbol,
         )
 
     target_context = bank.context_at(promotion.slot_index)
@@ -1459,10 +1479,10 @@ def run_online_transition_discovery_audit(
         policy_free,
         bank,
         target_context,
-        n_back=3,
+        n_back=target_n_back,
         steps=steps,
         seed=seed + 12000 + promotion_heldout_lifetimes * 2000 + 1000,
-        cue_symbol=7,
+        cue_symbol=target_cue_symbol,
         candidate_intentions=candidate_intentions,
         learn=False,
     )
@@ -1702,6 +1722,8 @@ def run_online_transition_discovery_audit(
         admission_observations=selected_admission_observations,
         discovery_probe_mode=discovery_probe_mode,
         discovery_probe_rows=active_probe_rows,
+        target_n_back=target_n_back,
+        target_cue_symbol=target_cue_symbol,
     )
 
 
@@ -1756,6 +1778,8 @@ def main() -> None:
         choices=("none", "active", "passive"),
         default="none",
     )
+    parser.add_argument("--target-n-back", type=int, default=3)
+    parser.add_argument("--target-cue-symbol", type=int, default=7)
     parser.add_argument("--steps", type=int, default=6)
     args = parser.parse_args()
     if args.audit == "nonstationary":
@@ -1792,6 +1816,8 @@ def main() -> None:
             external_memory_update_mode=args.external_memory_update_mode,
             admission_observations=args.admission_observations,
             discovery_probe_mode=args.discovery_probe_mode,
+            target_n_back=args.target_n_back,
+            target_cue_symbol=args.target_cue_symbol,
         )
     else:
         report = run_replay_free_transition_acquisition_audit(

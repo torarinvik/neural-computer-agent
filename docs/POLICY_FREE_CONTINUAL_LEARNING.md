@@ -1719,3 +1719,23 @@ actual acquisition gate, not just a diagnostic metric, but it costs an extra
 lifetime and remains seed-sensitive. This promotes a narrow causal active
 evidence mechanism, not general continual learning. The full ledger is in
 `session_records/online_active_discovery_probe_2026-08-11/`.
+
+## Active discovery transfer to a new target regime (2026-08-11)
+
+The active-evidence seam was then tested against a changed target regime rather
+than only the original target: rendered n-back-4 with a different opaque cue.
+The passive arm received the same extra lifetime, candidate bank, and cost;
+only the active arm selected its probe by model disagreement. Across seeds
+`80–103`, active discovery completed `16/24` full target gates versus `14/24`
+for passive matched exposure. Source retention passed in `24/24` runs for both
+arms. The active arm consumed `600` unique verifier bits, `714` transition
+rows once, and `138` probe rows; the passive arm consumed `592` bits and the
+same rows. Replay and optimizer updates were zero, and the controller stayed
+unchanged.
+
+This is a narrow positive transfer result: active evidence helps on one new
+regime under matched exposure while preserving the source slot. It is not a
+claim of universal transfer or general continual learning. The remaining
+binding weakness is reliable held-out model identification and credit
+assignment under regime change. The ledger is in
+`session_records/active_discovery_transfer_2026-08-11/`.
