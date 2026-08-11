@@ -505,6 +505,15 @@ def test_serial_combiner_updates_external_state_at_each_fragment_boundary() -> N
 
     assert torch.allclose(single_before, single_after)
     assert not torch.allclose(pair_before, pair_after)
+    prefixes = combiner.forward_prefixes(pair_trace)
+    assert prefixes.shape == (2, 2, 4)
+    assert torch.allclose(prefixes[:, -1], combiner(pair_trace))
+    gate_logits = torch.full((2, 2), 20.0)
+    gated = combiner.forward_with_gates(pair_trace, gate_logits)
+    assert torch.allclose(gated, combiner(pair_trace), atol=1e-5)
+    leave_one_out = combiner.forward_leave_one_out(pair_trace, gate_logits)
+    assert leave_one_out.shape == (2, 2, 4)
+    assert not torch.allclose(leave_one_out[:, 0], gated)
     assert combiner.configuration()["execution"] == (
         "serial_segment_state_transition_v1"
     )

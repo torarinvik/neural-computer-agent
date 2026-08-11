@@ -168,6 +168,40 @@ def _spec_groups_by_length(
     return tuple(groups)
 
 
+def _causal_prefix_targets(
+    batch,
+    programs: tuple[tuple[str, ...], ...],
+    composition_ids: torch.Tensor,
+    *,
+    seed: int,
+) -> torch.Tensor:
+    """Render verifier outcomes for every causal prefix of each program.
+
+    The prefix targets remain trainer-owned deterministic verifier answers.
+    The learner receives only the scalar action utilities produced from these
+    fresh prefix lifetimes; no operation name or target tensor crosses the
+    combiner boundary.
+    """
+
+    if not programs or len({len(program) for program in programs}) != 1:
+        raise ValueError("prefix targets require nonempty equal-depth programs")
+    prefix_batches = []
+    for depth in range(1, len(programs[0]) + 1):
+        prefixes = tuple(program[:depth] for program in programs)
+        prefix_batch = _batch(
+            operation="generated_composition",
+            count=batch.batch_size,
+            span=batch.span,
+            seed=seed + depth * 7_919,
+            generated_compositions=prefixes,
+            generated_composition_ids_override=composition_ids,
+            operation_bits_override=batch.operation_bits,
+            sequence_override=batch.sequence,
+        )
+        prefix_batches.append(prefix_batch.correct_actions)
+    return torch.stack(prefix_batches, dim=1)
+
+
 def _make_combiner(mode: str) -> nn.Module:
     if mode == "segment":
         return ExternalSkillFragmentSegmentCombiner(
@@ -197,6 +231,20 @@ def _make_combiner(mode: str) -> nn.Module:
     raise ValueError(f"unsupported composition combiner mode: {mode}")
 
 
+def _make_prefix_credit_head() -> nn.Module:
+    """Create an external transition-use policy with near-identity startup."""
+
+    head = nn.Sequential(
+        nn.Linear(REGISTER_WIDTH, 64),
+        nn.GELU(),
+        nn.LayerNorm(64),
+        nn.Linear(64, 1),
+    )
+    nn.init.zeros_(head[-1].weight)
+    nn.init.constant_(head[-1].bias, 2.0)
+    return head
+
+
 def _shared_train_stage(
     parent,
     machine,
@@ -215,6 +263,9 @@ def _shared_train_stage(
     audit_seed: int,
     shuffle_outcomes: bool = False,
     order_contrast_weight: float = 0.0,
+    prefix_credit_weight: float = 0.0,
+    leave_one_out_credit_weight: float = 0.0,
+    credit_head: nn.Module | None = None,
 ) -> list[dict[str, object]]:
     """Train one combiner/decoder on fresh samples from every target order."""
 
@@ -223,6 +274,19 @@ def _shared_train_stage(
         raise ValueError("shared composition stage has no trainable parameters")
     if not math.isfinite(order_contrast_weight) or order_contrast_weight < 0.0:
         raise ValueError("order contrast weight must be finite and non-negative")
+    if not math.isfinite(prefix_credit_weight) or prefix_credit_weight < 0.0:
+        raise ValueError("prefix credit weight must be finite and non-negative")
+    if (
+        not math.isfinite(leave_one_out_credit_weight)
+        or leave_one_out_credit_weight < 0.0
+    ):
+        raise ValueError(
+            "leave-one-out credit weight must be finite and non-negative"
+        )
+    if leave_one_out_credit_weight and credit_head is None:
+        raise ValueError("leave-one-out credit requires an external credit head")
+    if credit_head is not None and not leave_one_out_credit_weight:
+        raise ValueError("an external credit head requires a positive weight")
     optimizer = torch.optim.AdamW(parameters, lr=3e-3, weight_decay=1e-5)
     history: list[dict[str, object]] = []
     for update in range(1, updates + 1):
@@ -242,6 +306,17 @@ def _shared_train_stage(
                     len(group), batch_size
                 ),
             )
+            composition_ids = _group_composition_ids(len(group), batch_size)
+            prefix_targets = (
+                _causal_prefix_targets(
+                    batch,
+                    programs,
+                    composition_ids,
+                    seed=seed + update * 30_011 + group_index * 2_000_003,
+                )
+                if prefix_credit_weight
+                else None
+            )
             loss, target_rewards = _rollout(
                 parent,
                 machine,
@@ -254,6 +329,10 @@ def _shared_train_stage(
                 combiner=combiner,
                 route_programs=orders,
                 include_instruction_codes=True,
+                prefix_targets=prefix_targets,
+                prefix_loss_weight=prefix_credit_weight,
+                credit_head=credit_head,
+                leave_one_out_credit_weight=leave_one_out_credit_weight,
             )
             losses.append(loss)
             rewards.append(target_rewards)
@@ -271,6 +350,10 @@ def _shared_train_stage(
                     route_programs=_rotate_orders(orders),
                     include_instruction_codes=True,
                     invert_targets=True,
+                    prefix_targets=prefix_targets,
+                    prefix_loss_weight=prefix_credit_weight,
+                    credit_head=credit_head,
+                    leave_one_out_credit_weight=leave_one_out_credit_weight,
                 )
                 losses.append(order_contrast_weight * contrast_loss)
         loss = torch.stack(losses).mean()
@@ -291,6 +374,22 @@ def _shared_train_stage(
             * 2
             * sum(1 for order, _ in specs if len(order) > 1)
             if order_contrast_weight
+            else 0
+        )
+        row["prefix_credit_rollouts"] = (
+            update
+            * batch_size
+            * span
+            * sum(len(program) for _, program in specs)
+            if prefix_credit_weight
+            else 0
+        )
+        row["leave_one_out_credit_rollouts"] = (
+            update
+            * batch_size
+            * span
+            * sum(len(program) for _, program in specs)
+            if leave_one_out_credit_weight
             else 0
         )
         if eval_every and (update % eval_every == 0 or update == updates):
@@ -434,6 +533,21 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         raise ValueError("batch size and audit count must be even")
     if not math.isfinite(args.order_contrast_weight) or args.order_contrast_weight < 0.0:
         raise ValueError("order contrast weight must be finite and non-negative")
+    if not math.isfinite(args.prefix_credit_weight) or args.prefix_credit_weight < 0.0:
+        raise ValueError("prefix credit weight must be finite and non-negative")
+    if (
+        args.prefix_credit_weight or args.leave_one_out_credit_weight
+    ) and args.combiner_mode not in ("serial", "serial_shared"):
+        raise ValueError("causal serial credit requires a serial combiner mode")
+    if args.prefix_credit_weight and args.leave_one_out_credit_weight:
+        raise ValueError("choose direct prefix credit or leave-one-out credit")
+    if (
+        not math.isfinite(args.leave_one_out_credit_weight)
+        or args.leave_one_out_credit_weight < 0.0
+    ):
+        raise ValueError(
+            "leave-one-out credit weight must be finite and non-negative"
+        )
 
     parent = _runtime(seed=args.seed, growth=False)
     _, parent_progress = _train_with_progress(
@@ -464,6 +578,11 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     torch.manual_seed(args.seed + 100_000)
     shared_combiner = _make_combiner(args.combiner_mode)
     shared_decoder = OpaqueProtocolDecoder(REGISTER_WIDTH, ACTION_WIDTH, hidden=16)
+    shared_credit_head = (
+        _make_prefix_credit_head()
+        if args.leave_one_out_credit_weight
+        else None
+    )
     shared_history = _shared_train_stage(
         parent,
         machine,
@@ -475,11 +594,22 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         batch_size=args.batch_size,
         span=args.span,
         seed=args.seed + 100_000,
-        trainable=[*shared_combiner.parameters(), *shared_decoder.parameters()],
+        trainable=[
+            *shared_combiner.parameters(),
+            *shared_decoder.parameters(),
+            *(
+                shared_credit_head.parameters()
+                if shared_credit_head is not None
+                else ()
+            ),
+        ],
         eval_every=args.eval_every,
         audit_count=args.audit_count,
         audit_seed=args.seed + 101_000,
         order_contrast_weight=args.order_contrast_weight,
+        prefix_credit_weight=args.prefix_credit_weight,
+        leave_one_out_credit_weight=args.leave_one_out_credit_weight,
+        credit_head=shared_credit_head,
     )
     shared_train_accuracy = _evaluate_specs(
         parent,
@@ -546,6 +676,11 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     torch.manual_seed(args.seed + 110_000)
     shuffled_combiner = _make_combiner(args.combiner_mode)
     shuffled_decoder = OpaqueProtocolDecoder(REGISTER_WIDTH, ACTION_WIDTH, hidden=16)
+    shuffled_credit_head = (
+        _make_prefix_credit_head()
+        if args.leave_one_out_credit_weight
+        else None
+    )
     _shared_train_stage(
         parent,
         machine,
@@ -557,12 +692,23 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         batch_size=args.batch_size,
         span=args.span,
         seed=args.seed + 110_000,
-        trainable=[*shuffled_combiner.parameters(), *shuffled_decoder.parameters()],
+        trainable=[
+            *shuffled_combiner.parameters(),
+            *shuffled_decoder.parameters(),
+            *(
+                shuffled_credit_head.parameters()
+                if shuffled_credit_head is not None
+                else ()
+            ),
+        ],
         eval_every=0,
         audit_count=args.audit_count,
         audit_seed=args.seed + 111_000,
         shuffle_outcomes=True,
         order_contrast_weight=args.order_contrast_weight,
+        prefix_credit_weight=args.prefix_credit_weight,
+        leave_one_out_credit_weight=args.leave_one_out_credit_weight,
+        credit_head=shuffled_credit_head,
     )
     shuffled_accuracy = _evaluate_specs(
         parent,
@@ -582,6 +728,9 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     fresh_bank = _bank_with_fragments(args.seed + 2, len(PRIMITIVES))
     fresh_combiner = _make_combiner(args.combiner_mode)
     fresh_decoder = OpaqueProtocolDecoder(REGISTER_WIDTH, ACTION_WIDTH, hidden=16)
+    fresh_credit_head = (
+        _make_prefix_credit_head() if args.leave_one_out_credit_weight else None
+    )
     fresh_history = _shared_train_stage(
         parent,
         fresh_machine,
@@ -599,11 +748,19 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             *fresh_bank.coefficients,
             *fresh_combiner.parameters(),
             *fresh_decoder.parameters(),
+            *(
+                fresh_credit_head.parameters()
+                if fresh_credit_head is not None
+                else ()
+            ),
         ],
         eval_every=args.eval_every,
         audit_count=args.audit_count,
         audit_seed=args.seed + 121_000,
         order_contrast_weight=args.order_contrast_weight,
+        prefix_credit_weight=args.prefix_credit_weight,
+        leave_one_out_credit_weight=args.leave_one_out_credit_weight,
+        credit_head=fresh_credit_head,
     )
     fresh_train_accuracy = _evaluate_specs(
         parent,
@@ -668,6 +825,25 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         args.parent_updates
         + len(PRIMITIVES) * args.primitive_updates
         + 3 * target_count * args.composition_updates
+    )
+    prefix_credit_training_bits = (
+        3
+        * args.composition_updates
+        * args.batch_size
+        * args.span
+        * 2
+        * sum(len(program) for _, program in train_specs)
+        if args.prefix_credit_weight
+        else 0
+    )
+    leave_one_out_credit_training_bits = (
+        3
+        * args.composition_updates
+        * args.batch_size
+        * args.span
+        * sum(len(program) for _, program in train_specs)
+        if args.leave_one_out_credit_weight
+        else 0
     )
     audit_batches = (
         parent_eval_points
@@ -742,6 +918,18 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "decoder_count": 1,
             "order_contrast_weight": args.order_contrast_weight,
             "order_contrast_training_specs": contrast_spec_count,
+            "prefix_credit_weight": args.prefix_credit_weight,
+            "prefix_credit_protocol": (
+                "causal_prefix_verifier_outcomes_v1"
+                if args.prefix_credit_weight
+                else None
+            ),
+            "leave_one_out_credit_weight": args.leave_one_out_credit_weight,
+            "leave_one_out_credit_protocol": (
+                "common_random_leave_one_prefix_out_v1"
+                if args.leave_one_out_credit_weight
+                else None
+            ),
         },
         "reward_shuffled": {"accuracy": shuffled_accuracy},
         "fresh": {
@@ -752,6 +940,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "combiner_count": 1,
             "decoder_count": 1,
             "order_contrast_weight": args.order_contrast_weight,
+            "prefix_credit_weight": args.prefix_credit_weight,
+            "leave_one_out_credit_weight": args.leave_one_out_credit_weight,
         },
         "acquired_bank": {
             "sha256_before_targets": bank_digest_before,
@@ -766,8 +956,16 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         ),
         "accounting": {
             "unique_verifier_bits": (training_batches + audit_batches)
-            * bits_per_update,
-            "training_unique_verifier_bits": training_batches * bits_per_update,
+            * bits_per_update
+            + prefix_credit_training_bits
+            + leave_one_out_credit_training_bits,
+            "training_unique_verifier_bits": training_batches * bits_per_update
+            + prefix_credit_training_bits
+            + leave_one_out_credit_training_bits,
+            "prefix_credit_unique_verifier_bits": prefix_credit_training_bits,
+            "leave_one_out_credit_unique_verifier_bits": (
+                leave_one_out_credit_training_bits
+            ),
             "audit_unique_verifier_bits": audit_batches
             * args.audit_count
             * args.span
@@ -782,6 +980,24 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "counterfactual_rollouts": (
                 3 * contrast_spec_count * args.composition_updates
                 if args.order_contrast_weight
+                else 0
+            ),
+            "prefix_credit_rollouts": (
+                3
+                * args.composition_updates
+                * args.batch_size
+                * args.span
+                * sum(len(program) for _, program in train_specs)
+                if args.prefix_credit_weight
+                else 0
+            ),
+            "leave_one_out_credit_rollouts": (
+                3
+                * args.composition_updates
+                * args.batch_size
+                * args.span
+                * sum(len(program) for _, program in train_specs)
+                if args.leave_one_out_credit_weight
                 else 0
             ),
             "replayed_examples": 0,
@@ -823,6 +1039,18 @@ def main() -> None:
         type=float,
         default=0.0,
         help="weight a trainer-only wrong-order counterfactual loss",
+    )
+    parser.add_argument(
+        "--prefix-credit-weight",
+        type=float,
+        default=0.0,
+        help="weight fresh causal verifier outcomes for every execution prefix",
+    )
+    parser.add_argument(
+        "--leave-one-out-credit-weight",
+        type=float,
+        default=0.0,
+        help="weight common-random final utility for omitting each transition",
     )
     args = parser.parse_args()
     print(json.dumps(run(args), indent=2))

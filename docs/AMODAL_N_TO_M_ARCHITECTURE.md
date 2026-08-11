@@ -9796,6 +9796,53 @@ path while preserving the frozen controller and no-replay accounting. The
 rejected report and ledger are in
 `session_records/external_skill_fragment_serial_state_rejected_2026-08-11/`.
 
+### Direct causal-prefix verifier diagnostic (2026-08-11)
+
+The serial ABI was extended with `forward_prefixes()`, returning one opaque
+external state snapshot after every fragment boundary. A trainer-only
+diagnostic then scored every snapshot against the corresponding prefix task
+using fresh verifier outcomes and the shared action decoder. This was a
+strictly stronger credit signal than final-only training, while keeping the
+controller, register interpreter, and acquired bank frozen.
+
+The source-mastered seed-69316 run used prefix-credit weight `0.25`. Source
+retention remained at least `0.9974`, but held-out accuracy was
+`0.6042/0.4271/0.5234`, no stable prefix was reached, and wrong-order
+accuracy was `0.6354/0.8177/0.7240`. The run consumed `1,334,016` unique
+verifier bits, including `884,736` prefix-credit bits, with zero replay. Short
+matched weights `0.25`, `0.5`, and `1.0` likewise produced no stable prefix.
+
+Direct intermediate decodability is therefore rejected as a learning
+mechanism. `forward_prefixes()` remains useful infrastructure, but it does not
+solve credit assignment: a prefix can be decodable without proving that its
+transition caused the final ordered behavior. The next experiment must use
+common-random leave-one-prefix-out interventions and train transition use from
+paired scalar utility differences. Evidence is archived under
+`session_records/external_skill_fragment_prefix_credit_rejected_2026-08-11/`.
+
+### Common-random leave-one-prefix-out credit diagnostic (2026-08-11)
+
+The next causal intervention omitted each serial transition in turn and
+compared the final action outcome with the intact run under common-random
+sampling. An external transition-use head gated the serial state; only paired
+scalar utility differences trained that head. This is a closer match to the
+actual credit question than direct prefix decodability.
+
+The source-mastered seed-69316 full run retained all primitive files at
+`0.9974` or better, but held-out accuracy was `0.6458/0.4063/0.5599`, no
+stable prefix was reached, and wrong-order accuracy was
+`0.5833/0.8438/0.7161`. It used `891,648` unique verifier bits, including
+`442,368` leave-one-out bits, with zero replay. A matched short rung improved
+mean held-out accuracy from `0.566` to `0.587`, so the mechanism remains a
+useful diagnostic signal, but the full promotion gates reject it.
+
+The causal ABI and external gate are retained. The next experiment should make
+the intervention informative by selecting verifier-private sequences where
+omitting a candidate transition changes the answer with high probability, then
+compare that active arm against a passive paired control. More state capacity
+is not justified until this signal transfers to held-out orders. Evidence is in
+`session_records/external_skill_fragment_leave_one_out_rejected_2026-08-11/`.
+
 ## Per-file fast plasticity at the executable boundary (2026-08-11)
 
 The CPU-plus-files runtime now has an explicit path for external state that can

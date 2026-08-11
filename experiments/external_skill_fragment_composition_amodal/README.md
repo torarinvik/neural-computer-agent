@@ -192,6 +192,44 @@ provide enough credit assignment to discover the ordered execution law.
 The full report, ledger, and checksums are archived in
 `session_records/external_skill_fragment_serial_state_rejected_2026-08-11/`.
 
+### Direct causal-prefix verifier diagnostic
+
+The serial ABI now exposes `forward_prefixes()`, one opaque external state per
+fragment boundary. A trainer-only arm used fresh prefix-task verifier outcomes
+to train the same decoder on every intermediate state. The source-mastered
+seed-69316 run retained source primitives at `0.9974` or better, but held-out
+accuracy was `0.6042/0.4271/0.5234`, no stable prefix was reached, and
+wrong-order accuracy was `0.6354/0.8177/0.7240`. It consumed `1,334,016`
+unique verifier bits (`884,736` from prefix outcomes) and zero replayed
+examples. Matched short weights `0.25`, `0.5`, and `1.0` also failed to reach a
+stable prefix.
+
+This direct prefix-decodability mechanism is rejected. The snapshot ABI is
+retained, but the next credit intervention must compare final verifier utility
+with and without each prefix transition under common-random fresh lifetimes;
+intermediate correctness alone does not establish causal contribution. The
+full report, ledger, and checksums are in
+`session_records/external_skill_fragment_prefix_credit_rejected_2026-08-11/`.
+
+### Common-random leave-one-prefix-out credit diagnostic
+
+The next arm omitted each fragment transition in turn and compared the final
+action under the intact and omitted states with common-random sampling. An
+external transition-use gate was trained only from the paired scalar utility
+difference. The source-mastered seed-69316 run retained primitives at
+`0.9974` or better, but held-out accuracy was `0.6458/0.4063/0.5599`, no
+stable prefix was reached, and wrong-order accuracy was
+`0.5833/0.8438/0.7161`. It consumed `891,648` unique verifier bits, including
+`442,368` leave-one-out bits, with zero replay. A short matched rung improved
+mean held-out accuracy from `0.566` to `0.587`, but the full promotion gates
+failed.
+
+Retain the causal intervention ABI as diagnostic infrastructure. The next
+pressure test should actively choose sequences where a transition omission is
+answer-changing, with a passive paired control; adding memory capacity is not
+justified yet. The report, ledger, and checksums are archived in
+`session_records/external_skill_fragment_leave_one_out_rejected_2026-08-11/`.
+
 ```bash
 PYTHONPATH=src:. .venv/bin/python -m \
   experiments.external_skill_fragment_composition_amodal.train_shared_multi_target \

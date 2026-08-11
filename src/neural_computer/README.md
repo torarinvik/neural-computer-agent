@@ -167,6 +167,21 @@ the source-mastered ordered-composition audit still failed to learn the
 execution law from final outcomes alone; the class is therefore infrastructure,
 not a promoted general-learning result.
 
+`forward_prefixes()` returns the serial external state after each opaque
+fragment boundary for verifier-gated trainers. It is intentionally not part of
+the controller ABI and carries no target, operation, route, or verifier
+metadata. Directly training a shared decoder on those snapshots failed to
+produce ordered transfer; retain the API for causal interventions, not as a
+claim that intermediate decodability solves credit assignment.
+
+`forward_with_gates()` and `forward_leave_one_out()` expose the corresponding
+trainer-only causal seam: an opaque external transition-use policy can gate a
+serial state, and each transition can be omitted for a paired final-outcome
+intervention. The deployed controller receives neither the intervention nor
+its verifier result. The first full audit was rejected for insufficient
+held-out order transfer, so this remains an attribution primitive rather than
+a promoted learning capability.
+
 The multi-fragment closure pressure test in
 `experiments/external_skill_fragment_composition_amodal/train_multi.py` adds a
 crucial lifecycle rule: acquire and stably master one primitive, protect it,

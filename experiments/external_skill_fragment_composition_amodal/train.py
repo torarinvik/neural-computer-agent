@@ -34,6 +34,7 @@ from neural_computer import (
     ExternalSkillFragmentBank,
     ExternalSkillFragmentCombiner,
     OpaqueProtocolDecoder,
+    factorized_counterfactual_policy_loss,
     paired_counterfactual_ranking_loss,
 )
 
@@ -73,6 +74,7 @@ def _batch(
     blank_sequence: bool = False,
     operation_bits_override: torch.Tensor | None = None,
     generated_composition_ids_override: torch.Tensor | None = None,
+    sequence_override: torch.Tensor | None = None,
 ):
     batch = generate_sequence_memory_batch(
         count,
@@ -84,6 +86,7 @@ def _batch(
         blank_sequence=blank_sequence,
         operation_bits_override=operation_bits_override,
         generated_composition_ids_override=generated_composition_ids_override,
+        sequence_override=sequence_override,
     )
     # Remove only generic operation-cue pixels from the rendered query. Keep
     # the ordinal marker at x=28:31 and all sequence evidence. This is a valid
@@ -152,7 +155,42 @@ def _rollout(
     route_programs: tuple[tuple[int, ...], ...] | None = None,
     include_instruction_codes: bool = False,
     invert_targets: bool = False,
+    prefix_targets: torch.Tensor | None = None,
+    prefix_loss_weight: float = 0.0,
+    credit_head: nn.Module | None = None,
+    leave_one_out_credit_weight: float = 0.0,
 ) -> tuple[torch.Tensor, torch.Tensor]:
+    if prefix_loss_weight < 0.0 or not torch.isfinite(
+        torch.tensor(prefix_loss_weight)
+    ):
+        raise ValueError("prefix loss weight must be finite and non-negative")
+    if leave_one_out_credit_weight < 0.0 or not torch.isfinite(
+        torch.tensor(leave_one_out_credit_weight)
+    ):
+        raise ValueError(
+            "leave-one-out credit weight must be finite and non-negative"
+        )
+    if prefix_targets is not None:
+        if prefix_loss_weight <= 0.0:
+            raise ValueError("prefix targets require a positive prefix loss weight")
+        if combiner is None or not hasattr(combiner, "forward_prefixes"):
+            raise ValueError("prefix targets require a serial prefix-state combiner")
+        if prefix_targets.ndim != 3 or prefix_targets.shape[0] != batch.batch_size:
+            raise ValueError(
+                "prefix targets must have shape [batch, segments, query_steps]"
+            )
+        if prefix_targets.shape[2] != batch.correct_actions.shape[1]:
+            raise ValueError("prefix target query length does not match the batch")
+        if bool(((prefix_targets != 0) & (prefix_targets != 1)).any()):
+            raise ValueError("prefix targets must contain binary verifier actions")
+        prefix_targets = prefix_targets.to(device=batch.input_frames.device)
+    if leave_one_out_credit_weight and credit_head is None:
+        raise ValueError("leave-one-out credit requires an external credit head")
+    if credit_head is not None:
+        if leave_one_out_credit_weight <= 0.0:
+            raise ValueError("an external credit head requires a positive weight")
+        if combiner is None or not hasattr(combiner, "forward_leave_one_out"):
+            raise ValueError("leave-one-out credit requires a serial combiner")
     device = batch.input_frames.device
     batch_size = batch.batch_size
     parent_state = parent.initial_state(batch_size, device=device)
@@ -192,7 +230,14 @@ def _rollout(
     losses: list[torch.Tensor] = []
     rewards: list[torch.Tensor] = []
 
-    def tick(frame: torch.Tensor, feedback) -> torch.Tensor:
+    def tick(
+        frame: torch.Tensor, feedback
+    ) -> tuple[
+        torch.Tensor,
+        torch.Tensor | None,
+        torch.Tensor | None,
+        torch.Tensor | None,
+    ]:
         nonlocal parent_state, register_state
         with torch.no_grad():
             event = parent.encoders["vision"](frame)
@@ -215,10 +260,28 @@ def _rollout(
             include_codes=include_instruction_codes,
         )
         register_state = observed
-        executed = (
-            trace.final_state if combiner is None else combiner(trace.learner_view())
-        )
-        return decoder(executed)
+        prefix_states: torch.Tensor | None = None
+        credit_scores: torch.Tensor | None = None
+        leave_one_out_states: torch.Tensor | None = None
+        if combiner is None:
+            executed = trace.final_state
+        else:
+            learner_trace = trace.learner_view()
+            if prefix_targets is not None or credit_head is not None:
+                prefix_states = combiner.forward_prefixes(learner_trace)
+            if credit_head is not None:
+                credit_scores = credit_head(prefix_states).squeeze(-1)
+                leave_one_out_states = combiner.forward_leave_one_out(
+                    learner_trace, credit_scores
+                )
+                executed = combiner.forward_with_gates(
+                    learner_trace, credit_scores
+                )
+            elif prefix_states is not None:
+                executed = prefix_states[:, -1]
+            else:
+                executed = combiner(learner_trace)
+        return decoder(executed), prefix_states, credit_scores, leave_one_out_states
 
     quiet = _feedback(
         previous_action,
@@ -231,10 +294,12 @@ def _rollout(
     for frame in batch.distractor_frames.transpose(0, 1):
         tick(frame, quiet)
 
-    for frame, correct in zip(
-        batch.query_frames.transpose(0, 1),
-        batch.correct_actions.transpose(0, 1),
-        strict=True,
+    for query_index, (frame, correct) in enumerate(
+        zip(
+            batch.query_frames.transpose(0, 1),
+            batch.correct_actions.transpose(0, 1),
+            strict=True,
+        )
     ):
         feedback = _feedback(
             previous_action,
@@ -242,7 +307,9 @@ def _rollout(
             previous_propensity,
             previous_has_feedback,
         )
-        logits = tick(frame, feedback)
+        logits, prefix_states, credit_scores, leave_one_out_states = tick(
+            frame, feedback
+        )
         attempted = torch.tensor([[0, 1]], dtype=torch.long, device=device).expand(
             batch_size, -1
         )
@@ -253,15 +320,79 @@ def _rollout(
             utilities = utilities.roll(1, dims=0)
         loss, _ = paired_counterfactual_ranking_loss(logits, attempted, utilities)
         losses.append(loss)
+        if prefix_states is not None and prefix_targets is not None:
+            segment_count = prefix_states.shape[1]
+            prefix_logits = decoder(
+                prefix_states.reshape(-1, prefix_states.shape[-1])
+            ).reshape(batch_size, segment_count, -1)
+            prefix_attempted = torch.tensor(
+                [[0, 1]], dtype=torch.long, device=device
+            ).view(1, 1, -1).expand(batch_size, segment_count, -1)
+            prefix_utilities = (
+                prefix_attempted
+                == prefix_targets[:, :, query_index].unsqueeze(-1)
+            ).to(prefix_logits.dtype)
+            if invert_targets:
+                prefix_utilities = 1.0 - prefix_utilities
+            if shuffle_outcomes:
+                prefix_utilities = prefix_utilities.roll(1, dims=0)
+            prefix_loss, _ = paired_counterfactual_ranking_loss(
+                prefix_logits.reshape(-1, prefix_logits.shape[-1]),
+                prefix_attempted.reshape(-1, prefix_attempted.shape[-1]),
+                prefix_utilities.reshape(-1, prefix_utilities.shape[-1]),
+            )
+            losses.append(prefix_loss_weight * prefix_loss)
         probabilities = logits.softmax(dim=-1)
         behavior = probabilities * 0.9 + 0.05
-        action = (
-            torch.multinomial(behavior, 1).squeeze(1)
-            if train_decoder
-            else logits.argmax(dim=-1)
+        common_uniform = (
+            torch.rand(batch_size, device=device)
+            if leave_one_out_states is not None and train_decoder
+            else None
         )
+        if train_decoder and common_uniform is not None:
+            action = (common_uniform >= behavior[:, 0]).to(torch.long)
+        else:
+            action = (
+                torch.multinomial(behavior, 1).squeeze(1)
+                if train_decoder
+                else logits.argmax(dim=-1)
+            )
         reward = (action == correct).to(logits.dtype)
         rewards.append(reward)
+        if leave_one_out_states is not None:
+            segment_count = leave_one_out_states.shape[1]
+            leave_one_out_logits = decoder(
+                leave_one_out_states.reshape(-1, leave_one_out_states.shape[-1])
+            ).reshape(batch_size, segment_count, -1)
+            leave_one_out_behavior = (
+                leave_one_out_logits.softmax(dim=-1) * 0.9 + 0.05
+            )
+            if common_uniform is not None:
+                leave_one_out_action = (
+                    common_uniform.unsqueeze(1)
+                    >= leave_one_out_behavior[:, :, 0]
+                ).to(torch.long)
+            else:
+                leave_one_out_action = leave_one_out_logits.argmax(dim=-1)
+            leave_one_out_reward = (
+                leave_one_out_action == correct.unsqueeze(1)
+            ).to(logits.dtype)
+            credit_utilities = torch.stack(
+                (
+                    reward.unsqueeze(1).expand(-1, segment_count),
+                    leave_one_out_reward,
+                ),
+                dim=-1,
+            )
+            if invert_targets:
+                credit_utilities = 1.0 - credit_utilities
+            if shuffle_outcomes:
+                credit_utilities = credit_utilities.roll(1, dims=0)
+            credit_loss, _ = factorized_counterfactual_policy_loss(
+                credit_scores,
+                credit_utilities,
+            )
+            losses.append(leave_one_out_credit_weight * credit_loss)
         previous_action = F.one_hot(action, ACTION_WIDTH).to(logits.dtype)
         previous_reward = reward.roll(1) if shuffle_outcomes else reward
         previous_propensity = (

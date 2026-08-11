@@ -1,0 +1,53 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "external_skill_fragment_prefix_credit_rejected_2026-08-11",
+  "date": "2026-08-11",
+  "status": "rejected_direct_prefix_credit_no_order_generalization",
+  "claim_boundary": "Directly decoding every serial execution prefix did not produce stable held-out order mastery; this is not general continual learning.",
+  "configuration": {
+    "seed": 69316,
+    "parent_updates": 64,
+    "primitive_updates": 256,
+    "composition_updates": 128,
+    "batch_size": 32,
+    "span": 3,
+    "audit_count": 128,
+    "mastery_threshold": 0.8,
+    "combiner": "neural-computer.skill-fragment-serial-combiner.v1",
+    "prefix_credit_weight": 0.25,
+    "prefix_credit_protocol": "causal_prefix_verifier_outcomes_v1",
+    "controller_frozen_during_growth": true,
+    "acquired_bank_frozen_during_targets": true,
+    "replayed_examples": 0
+  },
+  "aggregate": {
+    "source_before_min": 1.0,
+    "source_after_min": 0.9973958135,
+    "shared_train_accuracy": [0.5677083135, 0.8359375, 0.9270833135],
+    "shared_heldout_accuracy": [0.6041666865, 0.4270833433, 0.5234375],
+    "wrong_order_accuracy": [0.6354166865, 0.8177083135, 0.7239583135],
+    "shared_stable_bits_to_threshold": null,
+    "fresh_stable_bits_to_threshold": null,
+    "unique_verifier_bits": 1334016,
+    "prefix_credit_unique_verifier_bits": 884736,
+    "unique_logical_lifetimes": 71680,
+    "audit_logical_lifetimes": 12800,
+    "optimizer_updates": 1472,
+    "replayed_examples": 0,
+    "wall_seconds": 424.473271292
+  },
+  "controls": {
+    "fresh_pixel_rerender": true,
+    "source_primitive_mastery": true,
+    "wrong_order_rejected": false,
+    "zero_fragment_codes_rejected": true,
+    "missing_sequence_evidence_rejected": true,
+    "reward_shuffled_rejected": true,
+    "frozen_parent_digest": true,
+    "frozen_acquired_bank_digest": true,
+    "persistence_and_corruption": true,
+    "one_shared_external_serial_state": true,
+    "replayed_examples": 0
+  },
+  "decision": "Reject direct prefix decodability as a capability promotion; retain the prefix-state ABI only."
+}

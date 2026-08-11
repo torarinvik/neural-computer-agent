@@ -1206,6 +1206,8 @@ class ExternalSkillFragmentSerialCombiner(nn.Module):
             "uses_fragment_indices": False,
             "uses_verifier_metadata": False,
             "state_input": "previous_external_state_plus_segment_summary_v1",
+            "prefix_state_snapshots": "forward_prefixes_v1",
+            "causal_intervention": "leave_one_prefix_out_v1",
         }
 
     def _segment_summaries(
@@ -1258,10 +1260,64 @@ class ExternalSkillFragmentSerialCombiner(nn.Module):
             ))
         return tuple(summaries)
 
-    def forward(
+    def _run_segment_summaries(
+        self,
+        summaries: tuple[torch.Tensor, ...],
+        *,
+        gate_logits: torch.Tensor | None = None,
+        skip_index: int | None = None,
+    ) -> torch.Tensor:
+        """Return the external state after every executed segment."""
+
+        if not summaries:
+            raise ValueError("serial combiner requires at least one segment")
+        required_slots = 1 if self.step_sharing == "shared" else len(summaries)
+        if self.step_count < required_slots:
+            raise ValueError("serial combiner has no slot for the requested depth")
+        batch_size = summaries[0].shape[0]
+        if gate_logits is not None:
+            if gate_logits.shape != (batch_size, len(summaries)):
+                raise ValueError(
+                    "serial combiner gate logits must have shape [batch, segments]"
+                )
+            if not bool(torch.isfinite(gate_logits).all()):
+                raise ValueError("serial combiner gate logits must be finite")
+        if skip_index is not None and not 0 <= skip_index < len(summaries):
+            raise ValueError("serial combiner skip index is out of range")
+        state = torch.zeros(
+            batch_size,
+            self.output_width,
+            device=summaries[0].device,
+            dtype=summaries[0].dtype,
+        )
+        prefixes: list[torch.Tensor] = []
+        if self.step_sharing == "shared":
+            slot = self.step_slots[0]
+            for index, summary in enumerate(summaries):
+                proposal = slot(state, summary)
+                if skip_index != index:
+                    if gate_logits is None:
+                        state = proposal
+                    else:
+                        gate = torch.sigmoid(gate_logits[:, index]).unsqueeze(-1)
+                        state = state + gate * (proposal - state)
+                prefixes.append(state)
+        else:
+            for index, summary in enumerate(summaries):
+                proposal = self.step_slots[index](state, summary)
+                if skip_index != index:
+                    if gate_logits is None:
+                        state = proposal
+                    else:
+                        gate = torch.sigmoid(gate_logits[:, index]).unsqueeze(-1)
+                        state = state + gate * (proposal - state)
+                prefixes.append(state)
+        return torch.stack(prefixes, dim=1)
+
+    def _validated_summaries(
         self,
         trace: ExternalSkillFragmentExecutionTrace | ExternalSkillFragmentLearnerTrace,
-    ) -> torch.Tensor:
+    ) -> tuple[torch.Tensor, ...]:
         if isinstance(trace, ExternalSkillFragmentExecutionTrace):
             trace = trace.learner_view()
         trace.validate(
@@ -1276,24 +1332,58 @@ class ExternalSkillFragmentSerialCombiner(nn.Module):
             raise ValueError("serial combiner requires a rich fragment trace")
         if trace.instruction_codes.shape[2] != self.instruction_width:
             raise ValueError("serial combiner instruction width does not match trace")
-        summaries = self._segment_summaries(trace)
-        required_slots = 1 if self.step_sharing == "shared" else len(summaries)
-        if self.step_count < required_slots:
-            raise ValueError("serial combiner has no slot for the requested depth")
-        state = torch.zeros(
-            trace.states.shape[0],
-            self.output_width,
-            device=trace.states.device,
-            dtype=trace.states.dtype,
+        return self._segment_summaries(trace)
+
+    def forward_prefixes(
+        self,
+        trace: ExternalSkillFragmentExecutionTrace | ExternalSkillFragmentLearnerTrace,
+    ) -> torch.Tensor:
+        """Return one opaque external state snapshot per fragment boundary.
+
+        The snapshots are a trainer-facing execution aid.  A verifier may
+        score each snapshot on a fresh causal prefix task without exposing the
+        prefix target, intervention, or verifier metadata to this module.
+        ``forward`` remains the canonical final-state interface.
+        """
+
+        return self._run_segment_summaries(self._validated_summaries(trace))
+
+    def forward_with_gates(
+        self,
+        trace: ExternalSkillFragmentExecutionTrace | ExternalSkillFragmentLearnerTrace,
+        gate_logits: torch.Tensor,
+    ) -> torch.Tensor:
+        """Execute the trace with an external, opaque transition-use policy."""
+
+        return self._run_segment_summaries(
+            self._validated_summaries(trace), gate_logits=gate_logits
+        )[:, -1]
+
+    def forward_leave_one_out(
+        self,
+        trace: ExternalSkillFragmentExecutionTrace | ExternalSkillFragmentLearnerTrace,
+        gate_logits: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        """Return final states with each segment transition omitted in turn."""
+
+        summaries = self._validated_summaries(trace)
+        return torch.stack(
+            tuple(
+                self._run_segment_summaries(
+                    summaries,
+                    gate_logits=gate_logits,
+                    skip_index=index,
+                )[:, -1]
+                for index in range(len(summaries))
+            ),
+            dim=1,
         )
-        if self.step_sharing == "shared":
-            slot = self.step_slots[0]
-            for summary in summaries:
-                state = slot(state, summary)
-        else:
-            for index, summary in enumerate(summaries):
-                state = self.step_slots[index](state, summary)
-        return state
+
+    def forward(
+        self,
+        trace: ExternalSkillFragmentExecutionTrace | ExternalSkillFragmentLearnerTrace,
+    ) -> torch.Tensor:
+        return self.forward_prefixes(trace)[:, -1]
 
     def payload(self) -> dict[str, Any]:
         """Return a checksummed, controller-independent serial memory snapshot."""
