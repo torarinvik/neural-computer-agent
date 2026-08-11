@@ -9099,3 +9099,14 @@ learning. Ten runs still do not pass, and the remaining failures are held-out
 model-fit, recursive candidate-stability, or retention failures. The next
 pressure test must improve the staged candidate's factual fit without replaying
 rows or changing the promotion gates.
+
+Two direct controls narrow that next design. Preserving the complete temporal
+window summary in a naive `5x` external state made `0/24` runs pass because the
+one-pass candidate model became too large for the available evidence. Replacing
+the sufficient-statistics candidates with a fresh nonlinear streaming optimizer
+also produced `0` complete passes on its diagnostic subset. The existing
+factored residual-memory components are therefore the next target: freeze
+source computation, learn only a compact context-local residual in external
+memory, and verify it under the unchanged held-out and retention gates. These
+negative controls are archived in
+`session_records/online_goal_conditioned_discovery_representation_pressure_2026-08-11/sample_efficiency_ledger.json`.

@@ -1,0 +1,40 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "brainworkshop_online_goal_conditioned_discovery_representation_pressure_v1",
+  "date": "2026-08-11",
+  "status": "decisively_rejected_representation_variants",
+  "claim_boundary": "negative controls for frozen-core online external transition acquisition; no capability gain claimed",
+  "baseline": {
+    "routing_match_tolerance": 0.02,
+    "compressed_state_width": "3x_controller_width",
+    "candidate_families": ["affine_sufficient_statistics_v1", "random_feature_sufficient_statistics_v1"],
+    "complete_passes": "14/24"
+  },
+  "rejected_variants": {
+    "lossless_window_features": {
+      "seeds": [80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103],
+      "state_width": "5x_controller_width",
+      "complete_passes": 0,
+      "rejection_reason": "no provisional model family passed held-out verification",
+      "source_retention_passes": 24,
+      "unique_verifier_bits_total": 648,
+      "logical_lifetimes_total": 192,
+      "transition_rows_consumed_once_total": 576,
+      "optimizer_updates_total": 0,
+      "replayed_examples_total": 0,
+      "controller_unchanged_all_runs": true,
+      "interpretation": "Naively preserving all temporal features increases the external model dimension beyond what the current one-pass evidence budget can fit. More information without a compact learned factorization is harmful at this rung."
+    },
+    "streaming_gradient_nonlinear_candidate": {
+      "seeds_tested": [80, 81, 82, 84, 85, 87, 89, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103],
+      "complete_passes": 0,
+      "observed_outcomes": {
+        "heldout_model_fit_rejected": 18,
+        "candidate_retention_rejected": 1,
+        "bookkeeping_incompatibility": 2
+      },
+      "interpretation": "Replacing sufficient statistics with a fresh nonlinear optimizer does not solve the evidence-budget problem and was not promoted. The two bookkeeping failures are implementation work, not capability evidence."
+    }
+  },
+  "next_target": "compact_factored_residual_candidate_with_frozen_source_computation_and_one_pass_external_target_residuals"
+}
