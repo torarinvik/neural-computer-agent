@@ -13,12 +13,14 @@ from experiments.brainworkshop_canonical.goal_fragment_staging import (
     run_goal_fragment_staging_audit,
 )
 from experiments.brainworkshop_canonical.replay_free_transition_acquisition import (
+    _route_rollout,
     run_nonstationary_transition_retention_audit,
     run_online_transition_discovery_audit,
     run_replay_free_transition_acquisition_audit,
 )
 from neural_computer import (
     AdaptiveOnlineEpisodicRelationReader,
+    ExternalTransitionRollout,
     RetentionPolicyConfig,
 )
 
@@ -222,6 +224,38 @@ def test_recency_window_transition_discovery_is_an_explicit_transfer_mode() -> N
     assert report.target_route_recovered
     assert report.target_model_improved_on_heldout
     assert report.replayed_examples == 0
+
+
+def test_transition_discovery_firewall_skips_committed_slot_updates() -> None:
+    class RouterProbe:
+        def __init__(self) -> None:
+            self.statuses = iter(("matched", "staged"))
+            self.adapted: list[str] = []
+
+        def observe(self, _observation: object) -> object:
+            return type("Result", (), {"status": next(self.statuses)})()
+
+        def adaptation_step(
+            self,
+            result: object,
+            _optimizer: object,
+            *,
+            replay_evidence: bool,
+        ) -> float:
+            assert replay_evidence is False
+            self.adapted.append(result.status)
+            return 0.0
+
+    rollout = ExternalTransitionRollout(
+        initial_state=torch.zeros(2),
+        intentions=torch.zeros(2, 1),
+        expected_states=torch.zeros(2, 2),
+    )
+    router = RouterProbe()
+    result = _route_rollout(router, rollout, adapt=True, adapt_committed=False)
+
+    assert result.status == "staged"
+    assert router.adapted == ["staged"]
 
 
 def test_relation_reader_can_replace_gru_context_in_canonical_runner() -> None:

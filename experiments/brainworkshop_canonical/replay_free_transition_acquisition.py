@@ -277,20 +277,26 @@ def _route_rollout(
     rollout: ExternalTransitionRollout,
     *,
     adapt: bool,
+    adapt_committed: bool = True,
 ) -> ExternalOnlineTransitionContextResult:
-    """Route a fresh rollout and optionally consume each admitted bundle once."""
+    """Route a rollout with separately controlled provisional/committed writes.
+
+    Discovery can consume staged candidate evidence while keeping committed
+    slots read-only. This prevents a temporarily ambiguous novel stream from
+    rewriting a mastered capability before the candidate passes promotion.
+    """
 
     result = None
     for observation in _rollout_observations(rollout):
         result = router.observe(observation)
-        if adapt and result.status in {
-            "admitted",
-            "reused",
-            "matched",
-            "continuation",
-            "sparse_matched",
-            "staged",
-        }:
+        if adapt and (
+            result.status == "staged"
+            or (
+                adapt_committed
+                and result.status
+                in {"admitted", "reused", "matched", "continuation", "sparse_matched"}
+            )
+        ):
             router.adaptation_step(result, None, replay_evidence=False)
     if result is None:
         raise RuntimeError("online transition routing needs a non-empty rollout")
@@ -778,7 +784,12 @@ def run_online_transition_discovery_audit(
             learn=False,
         )
         unique_bits += bits
-        routed = _route_rollout(router, target_rollout, adapt=True)
+        routed = _route_rollout(
+            router,
+            target_rollout,
+            adapt=True,
+            adapt_committed=False,
+        )
         if discovery is None:
             discovery = routed
         target_candidate_staged = target_candidate_staged or routed.status == "staged"

@@ -1460,3 +1460,21 @@ checkpoint and audit behavior stays stable. This is a real transfer
 improvement at the external state seam, but seven recency runs still reject; it
 does not qualify general continual learning. Evidence is in
 `session_records/recency_window_transition_2026-08-11/sample_efficiency_ledger.json`.
+
+## Discovery write firewall (2026-08-11)
+
+During novel-stream discovery, the router now separates provisional writes
+from committed-slot writes. A temporarily matched source slot remains
+read-only; only an isolated staged candidate may consume the discovery rows
+until promotion passes its independent held-out, recursive, and retention
+gates. This makes source preservation a property of the acquisition path,
+rather than a lucky outcome of the factual matcher.
+
+With recency/latest state and the firewall enabled, the 24-seed comparison
+completed `7/24` runs, recovered the route in all seven, and kept the source
+slot byte-stable in `24/24` runs. Eight candidates passed the promotion gate;
+one still failed on the post-promotion route, so the complete-pass rate is the
+binding measure. Zero replay and zero optimizer updates remain enforced. This
+is a stronger continual-memory boundary, not general continual learning. The
+ledger is in
+`session_records/recency_window_isolated_transition_2026-08-11/sample_efficiency_ledger.json`.

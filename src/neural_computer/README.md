@@ -1569,6 +1569,12 @@ information without resizing the controller or planner state. It is selected
 by `window_statistics`, `window_gain`, and `recency_decay`; these are memory
 boundary configuration, not modality- or task-specific reasoning branches.
 
+Discovery also exposes a committed-slot write firewall: callers can consume
+rows into isolated provisional candidates while suppressing adaptation of
+temporarily matched committed slots. Promotion is the only path that commits
+the new external model. This keeps source retention independent of transient
+route ambiguity.
+
 ## Opaque goal-fragment memory
 
 `ExternalGoalFragmentMemory` stores destinations outside the fixed controller.

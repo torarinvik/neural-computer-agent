@@ -318,3 +318,11 @@ existing checkpoint and audit behavior stays stable. Seven recency runs still
 reject, so this remains a bounded transfer result rather than general
 continual learning. The full ledger is in
 `session_records/recency_window_transition_2026-08-11/sample_efficiency_ledger.json`.
+
+The discovery harness now uses a write firewall during target acquisition:
+provisional candidates continue to learn one-pass evidence, while source slots
+remain read-only until promotion. With recency/latest state, seeds 80–103
+complete `7/24` runs and retain the source slot in `24/24`; eight candidates
+pass promotion but one fails later route recovery. This is an improved bounded
+memory boundary, not general continual learning. The full accounting is in
+`session_records/recency_window_isolated_transition_2026-08-11/sample_efficiency_ledger.json`.
