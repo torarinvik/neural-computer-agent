@@ -6816,7 +6816,7 @@ class ExternalOnlineTransitionContextRouter:
             "sparse_evidence_role": (
                 "disabled"
                 if self.sparse_evidence is None
-                else "overlap_proposal_unknown_rows_ignored_contradictions_block_v1"
+                else "overlap_proposal_unknown_rows_ignored_contradictions_veto_v1"
             ),
             "sparse_evidence_requires_full_capacity": (
                 self.sparse_evidence_requires_full_capacity
@@ -7176,12 +7176,17 @@ class ExternalOnlineTransitionContextRouter:
     def _best_slot(
         self,
         observation: ExternalTransitionObservation,
+        *,
+        excluded_slot_ids: set[int] | None = None,
     ) -> tuple[int, float, float, torch.Tensor] | None:
         self._last_reliability_veto = False
         if self.bank.context_count == 0:
             return None
+        excluded = set() if excluded_slot_ids is None else set(excluded_slot_ids)
         candidates: list[tuple[float, int, torch.Tensor]] = []
         for index in range(self.bank.context_count):
+            if self.bank.slot_id_at(index) in excluded:
+                continue
             context = self.bank.context_at(index).to(observation.state)
             context_batch = context.unsqueeze(0).expand(observation.state.shape[0], -1)
             prediction = self.bank(
@@ -7250,6 +7255,28 @@ class ExternalOnlineTransitionContextRouter:
             )
         self._record_sparse_evidence(index, observation)
         return index, error, margin, context
+
+    def _sparse_contradiction_slot_ids(
+        self,
+        observation: ExternalTransitionObservation,
+    ) -> set[int]:
+        """Return committed slots contradicted by exact opaque consequence facts.
+
+        Sparse evidence is a proposal accelerator, but a verified contradictory
+        consequence must be stronger than an aggregate residual match.  This
+        keeps mean pooling from hiding one identity-breaking row.  Unknown
+        inputs do not veto anything; only an overlapping input with a stored
+        incompatible outcome does.
+        """
+
+        if self.sparse_evidence is None:
+            return set()
+        contradicted: set[int] = set()
+        for slot_id in self.bank.slot_ids:
+            proposal = self.sparse_evidence.propose(observation, (slot_id,))
+            if proposal.contradictory_observations:
+                contradicted.add(slot_id)
+        return contradicted
 
     def _slot_error(
         self,
@@ -7717,6 +7744,7 @@ class ExternalOnlineTransitionContextRouter:
             return self._pending_result()
 
         bundle = self._merge_observations(self._pending)
+        sparse_contradicted = self._sparse_contradiction_slot_ids(bundle)
         if preferred_slot_id is not None:
             if (
                 not isinstance(preferred_slot_id, int)
@@ -7730,7 +7758,10 @@ class ExternalOnlineTransitionContextRouter:
                 )
             except KeyError:
                 preferred_index = None
-            if preferred_index is not None:
+            if (
+                preferred_index is not None
+                and preferred_slot_id not in sparse_contradicted
+            ):
                 preferred_context = self.bank.context_at(preferred_index)
                 preferred_context_batch = preferred_context.to(bundle.state).unsqueeze(
                     0
@@ -7771,7 +7802,10 @@ class ExternalOnlineTransitionContextRouter:
                         intention_width=self.bank.intention_width,
                         context_width=self.bank.context_width,
                     )
-        match = self._best_slot(bundle)
+        match = self._best_slot(
+            bundle,
+            excluded_slot_ids=sparse_contradicted,
+        )
         if match is not None:
             index, error, _margin, context = match
             self._pending.clear()
@@ -7850,6 +7884,7 @@ class ExternalOnlineTransitionContextRouter:
         if (
             self._active_slot is not None
             and self._active_slot < self.bank.context_count
+            and self.bank.slot_id_at(self._active_slot) not in sparse_contradicted
         ):
             active_error = self._slot_error(self._active_slot, bundle)
             active_context = self.bank.context_at(self._active_slot)

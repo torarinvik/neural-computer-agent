@@ -1446,6 +1446,22 @@ routing failures. The result is retained as a replaceable blueprint, while the
 next bottleneck is calibration learned from generic verifier residuals rather
 than a fixed absolute routing threshold.
 
+## Consequence-verified sparse routing (2026-08-11)
+
+When an external `ExternalSparseTransitionEvidenceIndex` is available, the
+online factual router now checks overlapping opaque `(state, intention)` facts
+before aggregate model-error routing. A stored incompatible consequence vetoes
+that committed slot; unknown inputs remain unknown and do not veto a route.
+This implements the export's strongest retrieval lesson—address first, then
+verify the consequence—without exposing labels or adding a task branch.
+
+The adversarial unit probe demonstrates the intended boundary: one
+contradictory row remains below the aggregate mean-error threshold, but the
+sparse consequence veto excludes the slot. This is a mechanistic safety gain,
+not a promoted continual-learning result; the next experiment must measure
+whether the veto improves open-set discovery without rejecting valid noisy
+continuations.
+
 ## Window-aware factual state boundary (2026-08-11)
 
 The external state seam now has a second replaceable contract,

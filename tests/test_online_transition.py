@@ -12,6 +12,7 @@ from neural_computer import (
     ExternalGoalRepresentationRandomFeatureGrowthReceipt,
     ExternalOnlineTransitionContextRouter,
     ExternalRandomFeatureTransitionStatistics,
+    ExternalSparseTransitionEvidenceIndex,
     ExternalTransitionContextEncoder,
     ExternalTransitionEvidenceStatistics,
     ExternalTransitionModelBank,
@@ -863,6 +864,51 @@ def test_router_robust_inlier_resolution_tolerates_sparse_noise_but_blocks_contr
     assert restored.configuration()["outlier_tolerance"] == pytest.approx(0.5)
     assert restored._best_slot(sparse_noise) is not None
     assert slot == 0
+
+
+def test_sparse_consequence_contradiction_vetoes_mean_error_match() -> None:
+    source = _affine_observation(4)
+    context = torch.tensor([1.0, 0.0, 0.0, 0.0])
+    bank = ExternalTransitionModelBank(
+        2,
+        1,
+        4,
+        model_family="affine_sufficient_statistics_v1",
+        affine_ridge=1e-7,
+    )
+    slot = bank.ensure_context(context)
+    bank.adaptation_step(
+        source,
+        context.unsqueeze(0).expand(source.state.shape[0], -1),
+        None,
+    )
+    sparse = ExternalSparseTransitionEvidenceIndex(
+        2,
+        1,
+        input_match_tolerance=1e-8,
+        output_match_tolerance=1e-8,
+        minimum_matches=1,
+        minimum_match_fraction=1.0,
+    )
+    sparse.record(bank.slot_id_at(slot), source)
+    router = ExternalOnlineTransitionContextRouter(
+        bank,
+        ExternalTransitionContextEncoder(2, 1, hidden_width=8, context_width=4),
+        match_tolerance=0.01,
+        admission_observations=4,
+        sparse_evidence=sparse,
+        sparse_evidence_requires_full_capacity=False,
+    )
+    contradiction = ExternalTransitionObservation(
+        state=source.state,
+        intention=source.intention,
+        next_state=source.next_state.clone(),
+    )
+    contradiction.next_state[0] += 0.1
+    assert router._best_slot(contradiction) is not None
+    excluded = router._sparse_contradiction_slot_ids(contradiction)
+    assert excluded == {bank.slot_id_at(slot)}
+    assert router._best_slot(contradiction, excluded_slot_ids=excluded) is None
 
 
 def test_committed_reliability_gate_vetoes_corruption_without_mutating_identity() -> None:
