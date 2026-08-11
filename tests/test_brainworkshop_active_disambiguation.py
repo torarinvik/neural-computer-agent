@@ -36,6 +36,7 @@ def test_context_transfer_probe_memory_preserves_read_only_boundary() -> None:
         random_feature_width=128,
         utility_memory_kind="context_transfer",
         utility_calibration_repeats=4,
+        utility_calibration_time_shuffle=False,
     )
 
     assert result.status == "active_probe_resolved_fresh_target"
@@ -45,6 +46,7 @@ def test_context_transfer_probe_memory_preserves_read_only_boundary() -> None:
     assert result.controller_unchanged
     assert result.utility_memory_kind == "context_transfer"
     assert result.utility_calibration_repeats == 4
+    assert not result.utility_calibration_time_shuffle
     assert result.utility_calibration_observations == 16
     assert result.optimizer_updates == 0
     assert result.replayed_examples == 0

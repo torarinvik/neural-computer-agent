@@ -9355,3 +9355,21 @@ genuinely different uncertainty contexts and make transfer causally necessary;
 more kernel capacity or calibration repeats alone is not justified. Evidence
 is in
 `session_records/factored_active_probe_context_transfer_pressure_2026-08-11/sample_efficiency_ledger.json`.
+
+## Context-shift transfer audit (2026-08-11)
+
+The transfer boundary was tested under an explicit distribution shift: utility
+was calibrated on fresh rendered Brain Workshop lifetimes with target timing
+order unshuffled, then queried on fresh lifetimes with timing order shuffled.
+The candidate intentions remained opaque and the controller, decoder, factual
+router, and probe request stayed read-only. This rules out a trivial
+same-profile lookup explanation for any transfer signal.
+
+At four calibration outcomes per candidate, the contextual memory still
+recovered `2/3` active targets versus `1/3` passive, exactly matching the
+matched exact-profile control at 720 verifier bits, 150 logical lifetimes, and
+768 consumed rows. It is therefore not promoted. The evidence narrows the
+problem: transferring scalar utility is insufficient when the underlying
+factual probe model does not make the consequence informative enough to identify
+a better intention. Evidence is in
+`session_records/factored_active_probe_context_shift_pressure_2026-08-11/sample_efficiency_ledger.json`.

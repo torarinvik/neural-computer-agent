@@ -114,6 +114,7 @@ class ActiveDisambiguationPressureResult:
     utility_calibration_observations: int = 0
     utility_memory_kind: str = "profile_exact"
     utility_calibration_repeats: int = 1
+    utility_calibration_time_shuffle: bool = True
 
     def payload(self) -> dict[str, object]:
         return asdict(self)
@@ -252,6 +253,7 @@ def _execute_probe_trial(
     probe_match_tolerance: float,
     probe_contradiction_tolerance: float,
     probe_horizon: int = 1,
+    verifier_time_shuffle: bool = True,
     support_statistics: ExternalTransitionSupportStatistics | None = None,
     utility_memory: (
         ExternalTransitionProbeUtilityMemory
@@ -271,7 +273,7 @@ def _execute_probe_trial(
         steps=9,
         symbol_count=4,
         cue_symbol=6,
-        time_shuffle=True,
+        time_shuffle=verifier_time_shuffle,
         seed=verifier_seed,
     )
     verifier.reset()
@@ -546,6 +548,7 @@ def run_active_disambiguation_pressure(
     probe_horizon: int = 1,
     utility_memory_kind: str = "profile_exact",
     utility_calibration_repeats: int = 1,
+    utility_calibration_time_shuffle: bool = True,
 ) -> ActiveDisambiguationPressureResult:
     """Audit active disambiguation on fresh rendered verifier evidence."""
 
@@ -779,6 +782,7 @@ def run_active_disambiguation_pressure(
                     probe_match_tolerance=0.30,
                     probe_contradiction_tolerance=0.40,
                     probe_horizon=1,
+                    verifier_time_shuffle=utility_calibration_time_shuffle,
                     support_statistics=support_statistics,
                     forced_intention_index=candidate_index,
                 )
@@ -877,6 +881,7 @@ def run_active_disambiguation_pressure(
         utility_calibration_observations=utility_calibration_observations,
         utility_memory_kind=utility_memory_kind,
         utility_calibration_repeats=utility_calibration_repeats,
+        utility_calibration_time_shuffle=utility_calibration_time_shuffle,
     )
 
 
@@ -893,6 +898,11 @@ def main() -> None:
         default="profile_exact",
     )
     parser.add_argument("--utility-calibration-repeats", type=int, default=1)
+    parser.add_argument(
+        "--utility-calibration-time-shuffle",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+    )
     parser.add_argument("--output", type=Path, default=None)
     args = parser.parse_args()
     result = run_active_disambiguation_pressure(
@@ -903,6 +913,7 @@ def main() -> None:
         probe_horizon=args.probe_horizon,
         utility_memory_kind=args.utility_memory_kind,
         utility_calibration_repeats=args.utility_calibration_repeats,
+        utility_calibration_time_shuffle=args.utility_calibration_time_shuffle,
     )
     payload = result.payload()
     print(json.dumps(payload, indent=2, sort_keys=True))
