@@ -1,0 +1,581 @@
+"""Composable external skill fragments for the amodal neural computer.
+
+The durable unit in this module is deliberately smaller than a task policy.
+An :class:`ExternalSkillFragmentArtifact` stores coefficients over one shared
+opaque operator basis.  A memory-side router selects fragments from learned
+queries, and the shared register interpreter executes the resulting ordered
+chain.  The controller never sees a fragment index, task name, raw stream, or
+device protocol.
+
+This is an architecture boundary, not a claim that arbitrary programs have
+been learned.  The shared basis and the route/composition policy are
+replaceable external state; the controller remains fixed-size and the bank
+may grow by appending fragment rows.
+"""
+
+from __future__ import annotations
+
+import hashlib
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
+from typing import Any
+
+import torch
+from torch import nn
+from torch.nn.utils.rnn import pad_sequence
+
+from .addressing import OpaqueCandidateGrowthRouter
+
+EXTERNAL_SKILL_FRAGMENT_SCHEMA = "neural-computer.skill-fragment.v1"
+EXTERNAL_SKILL_FRAGMENT_BANK_SCHEMA = "neural-computer.skill-fragment-bank.v1"
+EXTERNAL_SKILL_FRAGMENT_ROUTE_SCHEMA = "neural-computer.skill-fragment-route.v1"
+EXTERNAL_SKILL_FRAGMENT_COMPOSITION_SCHEMA = (
+    "neural-computer.skill-fragment-composition.v1"
+)
+
+
+def _digest_tensor(digest: Any, value: torch.Tensor) -> None:
+    detached = value.detach().cpu().contiguous()
+    digest.update(str(detached.dtype).encode("utf-8"))
+    digest.update(repr(tuple(detached.shape)).encode("utf-8"))
+    digest.update(detached.numpy().tobytes())
+
+
+def _validate_digest(value: str, *, name: str) -> None:
+    if len(value) != 64:
+        raise ValueError(f"{name} must be a SHA-256 digest")
+    try:
+        int(value, 16)
+    except ValueError as error:
+        raise ValueError(f"{name} must be a SHA-256 digest") from error
+
+
+@dataclass(frozen=True)
+class ExternalSkillFragmentArtifact:
+    """Portable opaque coefficients for one reusable fragment.
+
+    ``coefficients`` are not a task-specific parameter block.  They select a
+    short sequence of operators from the bank's shared basis.  ``key`` is an
+    opaque address learned from attempted scalar outcomes.  Parent digests are
+    provenance only; they do not encode task or modality identity.
+    """
+
+    coefficients: torch.Tensor
+    key: torch.Tensor
+    parent_digests: tuple[str, ...] = ()
+    schema: str = EXTERNAL_SKILL_FRAGMENT_SCHEMA
+
+    def __post_init__(self) -> None:
+        if self.schema != EXTERNAL_SKILL_FRAGMENT_SCHEMA:
+            raise ValueError("unsupported skill fragment schema")
+        if (
+            not isinstance(self.coefficients, torch.Tensor)
+            or self.coefficients.ndim != 2
+            or self.coefficients.shape[0] < 1
+            or self.coefficients.shape[1] < 1
+        ):
+            raise ValueError("fragment coefficients must have shape [steps, basis]")
+        if not isinstance(self.key, torch.Tensor) or self.key.ndim != 1:
+            raise ValueError("fragment key must have shape [key_width]")
+        if not bool(torch.isfinite(self.coefficients).all()) or not bool(
+            torch.isfinite(self.key).all()
+        ):
+            raise ValueError("fragment tensors must be finite")
+        if not isinstance(self.parent_digests, tuple):
+            raise TypeError("fragment parent digests must be a tuple")
+        for digest in self.parent_digests:
+            _validate_digest(digest, name="fragment parent digest")
+
+    @property
+    def step_count(self) -> int:
+        return int(self.coefficients.shape[0])
+
+    @property
+    def basis_count(self) -> int:
+        return int(self.coefficients.shape[1])
+
+    @property
+    def key_width(self) -> int:
+        return int(self.key.shape[0])
+
+    def configuration(self) -> dict[str, Any]:
+        return {
+            "schema": EXTERNAL_SKILL_FRAGMENT_SCHEMA,
+            "step_count": self.step_count,
+            "basis_count": self.basis_count,
+            "key_width": self.key_width,
+            "representation": "opaque_shared_basis_coefficients_v1",
+            "parents": len(self.parent_digests),
+        }
+
+    def digest(self) -> str:
+        digest = hashlib.sha256()
+        digest.update(self.schema.encode("utf-8"))
+        _digest_tensor(digest, self.coefficients)
+        _digest_tensor(digest, self.key)
+        for parent in self.parent_digests:
+            digest.update(parent.encode("ascii"))
+        return digest.hexdigest()
+
+    def payload(self) -> dict[str, Any]:
+        return {
+            "schema": self.schema,
+            "configuration": self.configuration(),
+            "coefficients": self.coefficients.detach().cpu().clone(),
+            "key": self.key.detach().cpu().clone(),
+            "parent_digests": list(self.parent_digests),
+            "sha256": self.digest(),
+        }
+
+    @classmethod
+    def from_payload(cls, payload: Mapping[str, Any]) -> ExternalSkillFragmentArtifact:
+        if not isinstance(payload, Mapping):
+            raise TypeError("fragment payload must be a mapping")
+        coefficients = payload.get("coefficients")
+        key = payload.get("key")
+        if not isinstance(coefficients, torch.Tensor) or not isinstance(key, torch.Tensor):
+            raise TypeError("fragment payload must contain tensor coefficients and key")
+        configuration = payload.get("configuration")
+        if not isinstance(configuration, Mapping):
+            raise TypeError("fragment configuration is missing")
+        artifact = cls(
+            coefficients=coefficients,
+            key=key,
+            parent_digests=tuple(payload.get("parent_digests", ())),
+            schema=str(payload.get("schema", "")),
+        )
+        if configuration.get("schema") != EXTERNAL_SKILL_FRAGMENT_SCHEMA:
+            raise ValueError("fragment configuration schema mismatch")
+        if int(configuration.get("step_count", -1)) != artifact.step_count:
+            raise ValueError("fragment step-count metadata mismatch")
+        if int(configuration.get("basis_count", -1)) != artifact.basis_count:
+            raise ValueError("fragment basis-count metadata mismatch")
+        if int(configuration.get("key_width", -1)) != artifact.key_width:
+            raise ValueError("fragment key-width metadata mismatch")
+        expected = payload.get("sha256")
+        if not isinstance(expected, str) or expected != artifact.digest():
+            raise ValueError("fragment checksum mismatch")
+        return artifact
+
+
+@dataclass(frozen=True)
+class ExternalSkillFragmentRoute:
+    """Opaque route scores and physical positions for one query batch."""
+
+    indices: torch.Tensor
+    scores: torch.Tensor
+    weights: torch.Tensor
+    schema: str = EXTERNAL_SKILL_FRAGMENT_ROUTE_SCHEMA
+
+    def validate(self, *, batch_size: int, fragment_count: int) -> ExternalSkillFragmentRoute:
+        if self.schema != EXTERNAL_SKILL_FRAGMENT_ROUTE_SCHEMA:
+            raise ValueError("unsupported fragment route schema")
+        if self.indices.ndim != 2 or self.scores.shape != self.indices.shape:
+            raise ValueError("fragment route indices and scores must be [batch, top_k]")
+        if self.weights.shape != self.indices.shape:
+            raise ValueError("fragment route weights must align with indices")
+        if self.indices.shape[0] != batch_size or self.indices.dtype != torch.int64:
+            raise ValueError("fragment route batch or index dtype is invalid")
+        if fragment_count < 1 or bool((self.indices < 0).any()) or bool(
+            (self.indices >= fragment_count).any()
+        ):
+            raise ValueError("fragment route index is outside the bank")
+        if not bool(torch.isfinite(self.scores).all()) or not bool(
+            torch.isfinite(self.weights).all()
+        ):
+            raise ValueError("fragment route values must be finite")
+        if not bool(torch.allclose(self.weights.sum(-1), torch.ones(batch_size, device=self.weights.device), atol=1e-5)):
+            raise ValueError("fragment route weights must sum to one")
+        return self
+
+
+@dataclass(frozen=True)
+class ExternalSkillFragmentComposition:
+    """Padded executable chain produced by opaque fragment queries."""
+
+    fragment_indices: torch.Tensor
+    route_scores: torch.Tensor
+    codes: torch.Tensor
+    mask: torch.Tensor
+    schema: str = EXTERNAL_SKILL_FRAGMENT_COMPOSITION_SCHEMA
+
+    def validate(
+        self,
+        *,
+        batch_size: int,
+        instruction_width: int,
+        fragment_count: int,
+    ) -> ExternalSkillFragmentComposition:
+        if self.schema != EXTERNAL_SKILL_FRAGMENT_COMPOSITION_SCHEMA:
+            raise ValueError("unsupported fragment composition schema")
+        if self.fragment_indices.ndim != 2 or self.route_scores.shape != self.fragment_indices.shape:
+            raise ValueError("fragment composition route tensors must be [batch, steps]")
+        if self.fragment_indices.shape[0] != batch_size or self.fragment_indices.dtype != torch.int64:
+            raise ValueError("fragment composition route shape is invalid")
+        if self.codes.ndim != 3 or self.codes.shape[0] != batch_size or self.codes.shape[2] != instruction_width:
+            raise ValueError("fragment composition codes have the wrong shape")
+        if self.mask.shape != self.codes.shape[:2] or self.mask.dtype != torch.bool:
+            raise ValueError("fragment composition mask has the wrong shape")
+        if bool((self.fragment_indices < 0).any()) or bool(
+            (self.fragment_indices >= fragment_count).any()
+        ):
+            raise ValueError("fragment composition index is outside the bank")
+        if not bool(torch.isfinite(self.codes).all()) or not bool(
+            torch.isfinite(self.route_scores).all()
+        ):
+            raise ValueError("fragment composition values must be finite")
+        return self
+
+
+class ExternalSkillFragmentBank(nn.Module):
+    """Growing bank of reusable fragments over one shared operator basis.
+
+    The bank is intentionally separate from the controller.  Appending a
+    fragment adds coefficient/key data only; the shared basis, router ABI,
+    controller, and output interfaces retain their shapes.  Routing is
+    content-addressed by default and can be refined by an outcome-trained,
+    permutation-equivariant residual scorer after evidence enables it.
+    """
+
+    schema = EXTERNAL_SKILL_FRAGMENT_BANK_SCHEMA
+
+    def __init__(
+        self,
+        instruction_width: int,
+        basis_count: int,
+        *,
+        key_width: int | None = None,
+        router_hidden: int = 64,
+        max_fragment_steps: int = 16,
+    ) -> None:
+        super().__init__()
+        if min(instruction_width, basis_count, router_hidden, max_fragment_steps) < 1:
+            raise ValueError("fragment bank dimensions must be positive")
+        self.instruction_width = int(instruction_width)
+        self.basis_count = int(basis_count)
+        self.key_width = int(instruction_width if key_width is None else key_width)
+        self.router_hidden = int(router_hidden)
+        self.max_fragment_steps = int(max_fragment_steps)
+        self.shared_basis = nn.Parameter(
+            torch.randn(self.basis_count, self.instruction_width) * 0.02
+        )
+        self.router = OpaqueCandidateGrowthRouter(self.key_width, hidden=router_hidden)
+        self.coefficients = nn.ParameterList()
+        self.keys = nn.ParameterList()
+        self._parent_digests: list[tuple[str, ...]] = []
+        self._protected: list[bool] = []
+        self._logical_ids: list[int] = []
+        self._next_logical_id = 0
+        self.register_buffer("learned_routing_enabled", torch.tensor(False, dtype=torch.bool))
+
+    def configuration(self) -> dict[str, Any]:
+        return {
+            "schema": self.schema,
+            "instruction_width": self.instruction_width,
+            "basis_count": self.basis_count,
+            "key_width": self.key_width,
+            "router_hidden": self.router_hidden,
+            "max_fragment_steps": self.max_fragment_steps,
+            "fragment_count": len(self.coefficients),
+            "unit": "opaque_reusable_shared_basis_fragment_v1",
+            "basis": "one_shared_operator_basis_v1",
+            "composition": "opaque_route_then_serial_fragment_chain_v1",
+            "routing": "cosine_address_plus_outcome_trained_equivariant_residual_v1",
+            "storage": "append_only_external_state_v1",
+        }
+
+    @property
+    def fragment_count(self) -> int:
+        return len(self.coefficients)
+
+    @property
+    def logical_ids(self) -> tuple[int, ...]:
+        return tuple(self._logical_ids)
+
+    def _validate_fragment(self, artifact: ExternalSkillFragmentArtifact) -> None:
+        if artifact.basis_count != self.basis_count or artifact.key_width != self.key_width:
+            raise ValueError("fragment dimensions do not match the bank")
+        if artifact.step_count > self.max_fragment_steps:
+            raise ValueError("fragment exceeds the bank's maximum step count")
+
+    def add_fragment(
+        self,
+        coefficients: torch.Tensor,
+        key: torch.Tensor,
+        *,
+        parent_digests: Sequence[str] = (),
+    ) -> int:
+        """Append one reusable fragment without changing shared dimensions."""
+
+        artifact = ExternalSkillFragmentArtifact(
+            coefficients=coefficients.detach().clone(),
+            key=key.detach().clone(),
+            parent_digests=tuple(parent_digests),
+        )
+        self._validate_fragment(artifact)
+        self.coefficients.append(nn.Parameter(artifact.coefficients.clone()))
+        self.keys.append(nn.Parameter(artifact.key.clone()))
+        self._parent_digests.append(artifact.parent_digests)
+        self._protected.append(False)
+        self._logical_ids.append(self._next_logical_id)
+        self._next_logical_id += 1
+        return self.fragment_count - 1
+
+    def add_artifact(self, artifact: ExternalSkillFragmentArtifact) -> int:
+        if not isinstance(artifact, ExternalSkillFragmentArtifact):
+            raise TypeError("fragment bank requires a skill fragment artifact")
+        self._validate_fragment(artifact)
+        return self.add_fragment(
+            artifact.coefficients,
+            artifact.key,
+            parent_digests=artifact.parent_digests,
+        )
+
+    def artifact(self, index: int) -> ExternalSkillFragmentArtifact:
+        if not 0 <= index < self.fragment_count:
+            raise IndexError("fragment index is outside the bank")
+        return ExternalSkillFragmentArtifact(
+            coefficients=self.coefficients[index].detach(),
+            key=self.keys[index].detach(),
+            parent_digests=self._parent_digests[index],
+        )
+
+    def fragment_codes(self, index: int) -> torch.Tensor:
+        """Materialize one fragment's shared-basis instruction sequence."""
+
+        if not 0 <= index < self.fragment_count:
+            raise IndexError("fragment index is outside the bank")
+        return self.coefficients[index] @ self.shared_basis
+
+    def _all_keys(self, *, device: torch.device, dtype: torch.dtype) -> torch.Tensor:
+        if not self.fragment_count:
+            raise ValueError("fragment bank has no fragments")
+        return torch.stack(tuple(key.to(device=device, dtype=dtype) for key in self.keys))
+
+    def route_scores(self, query: torch.Tensor) -> torch.Tensor:
+        """Return one opaque score per fragment row."""
+
+        if query.ndim != 2 or query.shape[1] != self.key_width:
+            raise ValueError(f"fragment query must have shape [batch, {self.key_width}]")
+        if not bool(torch.isfinite(query).all()):
+            raise ValueError("fragment query must be finite")
+        keys = self._all_keys(device=query.device, dtype=query.dtype)
+        base = torch.nn.functional.cosine_similarity(query.unsqueeze(1), keys.unsqueeze(0), dim=-1)
+        if not bool(self.learned_routing_enabled.item()):
+            return base
+        return base + self.router(query, keys)
+
+    def route(self, query: torch.Tensor, *, top_k: int = 1) -> ExternalSkillFragmentRoute:
+        """Address fragments with a row-permutation-equivariant learned query."""
+
+        if top_k < 1 or top_k > self.fragment_count:
+            raise ValueError("fragment route top_k is outside the bank")
+        scores = self.route_scores(query)
+        values, indices = torch.topk(scores, top_k, dim=-1, largest=True, sorted=True)
+        weights = torch.softmax(values, dim=-1)
+        return ExternalSkillFragmentRoute(
+            indices=indices.to(dtype=torch.int64),
+            scores=values,
+            weights=weights,
+        ).validate(batch_size=query.shape[0], fragment_count=self.fragment_count)
+
+    def enable_learned_routing(self) -> None:
+        """Enable the outcome-trained residual after fresh evidence exists."""
+
+        self.learned_routing_enabled.fill_(True)
+
+    def outcome_ranking_loss(
+        self,
+        query: torch.Tensor,
+        outcomes: torch.Tensor,
+    ) -> tuple[torch.Tensor, int]:
+        """Train route refinement from paired attempted scalar outcomes only."""
+
+        scores = self.route_scores(query)
+        if outcomes.ndim == 1:
+            outcomes = outcomes.unsqueeze(0)
+        if outcomes.shape != scores.shape:
+            raise ValueError("fragment outcomes must align with route scores")
+        if not bool(torch.isfinite(outcomes).all()) or not bool(
+            ((outcomes >= 0.0) & (outcomes <= 1.0)).all()
+        ):
+            raise ValueError("fragment outcomes must lie in [0, 1]")
+        outcome_delta = outcomes.unsqueeze(2) - outcomes.unsqueeze(1)
+        score_delta = scores.unsqueeze(2) - scores.unsqueeze(1)
+        informative = outcome_delta > 0.0
+        count = int(informative.sum().detach().cpu().item())
+        if count == 0:
+            return scores.sum() * 0.0, 0
+        loss = torch.nn.functional.softplus(
+            -outcome_delta[informative].detach() * score_delta[informative]
+        ).mean()
+        return loss, count
+
+    def compose_indices(self, fragment_indices: torch.Tensor) -> ExternalSkillFragmentComposition:
+        """Materialize a serial chain from opaque row positions.
+
+        Row positions are memory-side bookkeeping.  Deployed callers should
+        normally obtain them through :meth:`compose_queries`, not provide a
+        task-labelled slot.  Each row is independently padded so fragments of
+        different lengths remain separately bindable.
+        """
+
+        if fragment_indices.ndim != 2 or fragment_indices.dtype not in (
+            torch.int32,
+            torch.int64,
+        ):
+            raise ValueError("fragment indices must have shape [batch, steps]")
+        if fragment_indices.shape[1] < 1 or bool((fragment_indices < 0).any()) or bool(
+            (fragment_indices >= self.fragment_count).any()
+        ):
+            raise ValueError("fragment index is outside the bank")
+        rows: list[torch.Tensor] = []
+        masks: list[torch.Tensor] = []
+        for selected in fragment_indices.to(dtype=torch.int64):
+            pieces = [self.fragment_codes(int(index)) for index in selected.tolist()]
+            row = torch.cat(pieces, dim=0)
+            rows.append(row)
+            masks.append(torch.ones(row.shape[0], dtype=torch.bool, device=row.device))
+        codes = pad_sequence(rows, batch_first=True)
+        mask = pad_sequence(masks, batch_first=True, padding_value=False)
+        route_scores = torch.zeros(
+            fragment_indices.shape,
+            dtype=codes.dtype,
+            device=codes.device,
+        )
+        return ExternalSkillFragmentComposition(
+            fragment_indices=fragment_indices.to(device=codes.device, dtype=torch.int64),
+            route_scores=route_scores,
+            codes=codes,
+            mask=mask,
+        ).validate(
+            batch_size=fragment_indices.shape[0],
+            instruction_width=self.instruction_width,
+            fragment_count=self.fragment_count,
+        )
+
+    def compose_queries(self, queries: torch.Tensor) -> ExternalSkillFragmentComposition:
+        """Route one opaque query per serial composition step and execute later."""
+
+        if queries.ndim != 3 or queries.shape[2] != self.key_width:
+            raise ValueError(f"fragment queries must have shape [batch, steps, {self.key_width}]")
+        route_indices: list[torch.Tensor] = []
+        route_scores: list[torch.Tensor] = []
+        for step in range(queries.shape[1]):
+            result = self.route(queries[:, step], top_k=1)
+            route_indices.append(result.indices[:, 0])
+            route_scores.append(result.scores[:, 0])
+        indices = torch.stack(route_indices, dim=1)
+        composition = self.compose_indices(indices)
+        return ExternalSkillFragmentComposition(
+            fragment_indices=composition.fragment_indices,
+            route_scores=torch.stack(route_scores, dim=1),
+            codes=composition.codes,
+            mask=composition.mask,
+        ).validate(
+            batch_size=queries.shape[0],
+            instruction_width=self.instruction_width,
+            fragment_count=self.fragment_count,
+        )
+
+    def protect(self, index: int) -> None:
+        if not 0 <= index < self.fragment_count:
+            raise IndexError("fragment index is outside the bank")
+        self._protected[index] = True
+
+    def protection_mask(self) -> torch.Tensor:
+        return torch.tensor(tuple(self._protected), dtype=torch.bool)
+
+    def payload(self) -> dict[str, Any]:
+        """Return a checksummed external-memory snapshot."""
+
+        state = {
+            "shared_basis": self.shared_basis.detach().cpu().clone(),
+            "router": {
+                name: value.detach().cpu().clone()
+                for name, value in self.router.state_dict().items()
+            },
+            "fragments": [self.artifact(index).payload() for index in range(self.fragment_count)],
+            "protected": list(self._protected),
+            "logical_ids": list(self._logical_ids),
+            "next_logical_id": self._next_logical_id,
+            "learned_routing_enabled": bool(self.learned_routing_enabled.item()),
+        }
+        return {
+            "schema": self.schema,
+            "configuration": self.configuration(),
+            "state": state,
+            "sha256": self._snapshot_digest(state),
+        }
+
+    def _snapshot_digest(self, state: Mapping[str, Any]) -> str:
+        digest = hashlib.sha256()
+        digest.update(repr(self.configuration()).encode("utf-8"))
+        shared_basis = state.get("shared_basis")
+        router_state = state.get("router")
+        fragments = state.get("fragments")
+        if not isinstance(shared_basis, torch.Tensor) or not isinstance(router_state, Mapping):
+            raise TypeError("fragment bank snapshot state is malformed")
+        if not isinstance(fragments, list):
+            raise TypeError("fragment bank snapshot fragments are malformed")
+        _digest_tensor(digest, shared_basis)
+        for name, value in sorted(router_state.items()):
+            digest.update(name.encode("utf-8"))
+            _digest_tensor(digest, value)
+        for fragment in fragments:
+            digest.update(str(fragment["sha256"]).encode("ascii"))
+        return digest.hexdigest()
+
+    @classmethod
+    def from_payload(cls, payload: Mapping[str, Any]) -> ExternalSkillFragmentBank:
+        if not isinstance(payload, Mapping) or payload.get("schema") != cls.schema:
+            raise ValueError("unsupported fragment bank payload")
+        configuration = payload.get("configuration")
+        state = payload.get("state")
+        if not isinstance(configuration, Mapping) or not isinstance(state, Mapping):
+            raise TypeError("fragment bank payload is incomplete")
+        basis = state.get("shared_basis")
+        router_state = state.get("router")
+        fragments = state.get("fragments")
+        if not isinstance(basis, torch.Tensor) or not isinstance(router_state, Mapping) or not isinstance(fragments, list):
+            raise TypeError("fragment bank state is malformed")
+        bank = cls(
+            int(configuration.get("instruction_width", -1)),
+            int(configuration.get("basis_count", -1)),
+            key_width=int(configuration.get("key_width", -1)),
+            router_hidden=int(configuration.get("router_hidden", -1)),
+            max_fragment_steps=int(configuration.get("max_fragment_steps", -1)),
+        )
+        if basis.shape != bank.shared_basis.shape:
+            raise ValueError("fragment shared basis shape mismatch")
+        bank.shared_basis.data.copy_(basis.to(bank.shared_basis))
+        bank.router.load_state_dict(
+            {name: value.to(device="cpu") for name, value in router_state.items()},
+            strict=True,
+        )
+        for fragment_payload in fragments:
+            bank.add_artifact(ExternalSkillFragmentArtifact.from_payload(fragment_payload))
+        protected = state.get("protected", [])
+        logical_ids = state.get("logical_ids", [])
+        if len(protected) != bank.fragment_count or len(logical_ids) != bank.fragment_count:
+            raise ValueError("fragment bank lifecycle state does not align")
+        bank._protected = [bool(value) for value in protected]
+        bank._logical_ids = [int(value) for value in logical_ids]
+        bank._next_logical_id = int(state.get("next_logical_id", bank.fragment_count))
+        bank.learned_routing_enabled.fill_(bool(state.get("learned_routing_enabled", False)))
+        expected = payload.get("sha256")
+        if not isinstance(expected, str) or expected != bank._snapshot_digest(state):
+            raise ValueError("fragment bank checksum mismatch")
+        return bank
+
+
+__all__ = [
+    "EXTERNAL_SKILL_FRAGMENT_BANK_SCHEMA",
+    "EXTERNAL_SKILL_FRAGMENT_COMPOSITION_SCHEMA",
+    "EXTERNAL_SKILL_FRAGMENT_ROUTE_SCHEMA",
+    "EXTERNAL_SKILL_FRAGMENT_SCHEMA",
+    "ExternalSkillFragmentArtifact",
+    "ExternalSkillFragmentBank",
+    "ExternalSkillFragmentComposition",
+    "ExternalSkillFragmentRoute",
+]

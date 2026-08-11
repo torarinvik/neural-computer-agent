@@ -3268,6 +3268,65 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         )
         return executed
 
+    def execute_fragment_composition(
+        self,
+        register: torch.Tensor,
+        composition: object,
+        *,
+        event_window: torch.Tensor | None = None,
+        event_window_mask: torch.Tensor | None = None,
+        meta_context: torch.Tensor | None = None,
+        sequence_operator_memory: ExternalSequenceOperatorMemory | None = None,
+        sequence_operator_slot: int | None = None,
+        sequence_operator_route_query: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        """Execute a fragment-bank chain while ignoring only padding.
+
+        ``composition`` is intentionally accepted at the shared execution
+        seam rather than importing a bank into the interpreter.  The bank
+        owns addressing and growth; this machine owns execution.  Each row
+        can contain a different number of instructions, so padding is removed
+        before the opaque chain reaches the interpreter.
+        """
+
+        from .fragments import ExternalSkillFragmentComposition
+
+        if not isinstance(composition, ExternalSkillFragmentComposition):
+            raise TypeError("fragment composition must use the versioned composition contract")
+        composition.validate(
+            batch_size=register.shape[0],
+            instruction_width=self.instruction_width,
+            fragment_count=int(composition.fragment_indices.max().item()) + 1,
+        )
+        if register.ndim != 2 or register.shape[1] != self.register_width:
+            raise ValueError("register has the wrong shape for fragment composition")
+        outputs: list[torch.Tensor] = []
+        for row in range(register.shape[0]):
+            codes = composition.codes[row][composition.mask[row]]
+            if codes.shape[0] < 1:
+                raise ValueError("fragment composition cannot be empty")
+            outputs.append(
+                self.execute_code_chain(
+                    register[row : row + 1],
+                    codes.unsqueeze(0),
+                    event_window=event_window[row : row + 1]
+                    if event_window is not None
+                    else None,
+                    event_window_mask=event_window_mask[row : row + 1]
+                    if event_window_mask is not None
+                    else None,
+                    meta_context=meta_context[row : row + 1]
+                    if meta_context is not None
+                    else None,
+                    sequence_operator_memory=sequence_operator_memory,
+                    sequence_operator_slot=sequence_operator_slot,
+                    sequence_operator_route_query=sequence_operator_route_query[row : row + 1]
+                    if sequence_operator_route_query is not None
+                    else None,
+                )
+            )
+        return torch.cat(outputs, dim=0)
+
     def execute_code_chain_trace(
         self,
         register: torch.Tensor,

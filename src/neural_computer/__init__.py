@@ -150,6 +150,16 @@ from .factored_transition import (
     FactoredTransitionQuarantineReceipt,
     FactoredTransitionRouteResult,
 )
+from .fragments import (
+    EXTERNAL_SKILL_FRAGMENT_BANK_SCHEMA,
+    EXTERNAL_SKILL_FRAGMENT_COMPOSITION_SCHEMA,
+    EXTERNAL_SKILL_FRAGMENT_ROUTE_SCHEMA,
+    EXTERNAL_SKILL_FRAGMENT_SCHEMA,
+    ExternalSkillFragmentArtifact,
+    ExternalSkillFragmentBank,
+    ExternalSkillFragmentComposition,
+    ExternalSkillFragmentRoute,
+)
 from .goal_alignment import (
     EXTERNAL_GOAL_REPRESENTATION_ALIGNMENT_BANK_ADMISSION_SCHEMA,
     EXTERNAL_GOAL_REPRESENTATION_ALIGNMENT_BANK_EVICTION_SCHEMA,
@@ -774,6 +784,10 @@ __all__ = [
     "EXTERNAL_SEQUENCE_PROGRAM_MEMORY_COMPRESSED_SCHEMA",
     "EXTERNAL_SEQUENCE_PROGRAM_MEMORY_SCHEMA",
     "EXTERNAL_SIGNED_ENTRY_VALUE_SCHEMA",
+    "EXTERNAL_SKILL_FRAGMENT_BANK_SCHEMA",
+    "EXTERNAL_SKILL_FRAGMENT_COMPOSITION_SCHEMA",
+    "EXTERNAL_SKILL_FRAGMENT_ROUTE_SCHEMA",
+    "EXTERNAL_SKILL_FRAGMENT_SCHEMA",
     "EXTERNAL_STREAM_BINDING_FACTUAL_CONSOLIDATION_SCHEMA",
     "EXTERNAL_STREAM_BINDING_FACTUAL_GROWTH_SCHEMA",
     "EXTERNAL_STREAM_BINDING_FACTUAL_REPLACEMENT_SCHEMA",
@@ -1023,6 +1037,10 @@ __all__ = [
     "ExternalSequenceOperatorMemory",
     "ExternalSequenceProgramMemory",
     "ExternalSignedEntryValueModel",
+    "ExternalSkillFragmentArtifact",
+    "ExternalSkillFragmentBank",
+    "ExternalSkillFragmentComposition",
+    "ExternalSkillFragmentRoute",
     "ExternalSparseTransitionEvidenceIndex",
     "ExternalSparseTransitionEvidenceProposal",
     "ExternalStreamBindingFactualConsolidationReceipt",

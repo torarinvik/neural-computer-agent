@@ -137,6 +137,18 @@ reads from explicit calibration writes. The canonical Brain Workshop audit
 promotes three cue-conditioned short-lifetime slots without changing the
 controller; cue-absent task inference remains unqualified.
 
+`ExternalSkillFragmentBank` is the compositional growth boundary. Its rows are
+reusable opaque coefficient sequences over one shared operator basis, not
+task-sized policy modules. A learned event/intention query routes to fragment
+rows, and `ExternalCapabilityRegisterMachine.execute_fragment_composition()`
+executes the resulting variable-length chain after removing transport padding.
+Appending a fragment grows only external state; it does not resize the
+controller, interpreter, or decoder. The bank supports outcome-only route
+refinement, row permutation audits, protected rows, persistence, and checksum
+recovery. This is the structural foundation for compounding reuse; positive
+transfer and arbitrary program induction still require fresh verifier-gated
+experiments.
+
 `ExternalGoalFragmentStager` is the corresponding acquisition boundary for
 factual destinations. It stages an opaque learned-state target and updates
 only scalar sufficient statistics from fresh eligible verifier outcomes. A

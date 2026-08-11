@@ -468,6 +468,67 @@ controller still receives only learned events, opaque attempted actions, and
 scalar verifier outcomes. Any use of the mechanism must retain fresh old-skill
 audits, shuffled-outcome controls, and unique-experience accounting.
 
+## Composable fragment bank boundary (2026-08-11)
+
+The durable unit of external growth is now defined as a **reusable fragment**,
+not a task-sized program. This distinction is normative:
+
+- the bank owns one shared opaque operator basis;
+- a fragment stores only a short coefficient sequence over that basis and an
+  opaque address key;
+- a composition query retrieves fragments by learned event/intention evidence;
+- the shared register interpreter executes the resulting ordered chain;
+- the controller and all output adapters keep their parameter shapes;
+- fragment rows may grow, persist, be protected, or be replaced outside the
+  controller.
+
+There must be no architectural concept called `snake_program`,
+`pong_program`, or an equivalent task-indexed skill branch. A game, task, or
+modality may be the verifier's source of experience, but it is not a storage
+schema. Repeated structure earns reuse only when independently acquired
+fragments are selected and composed by fresh opaque evidence. Parent digests
+are provenance and checksums, not semantic labels.
+
+The production seam is `ExternalSkillFragmentBank` plus
+`ExternalCapabilityRegisterMachine.execute_fragment_composition()`. The bank
+routes with cosine address evidence and an optional outcome-trained,
+permutation-equivariant residual scorer. The returned composition is padded
+only at the transport boundary; the interpreter removes padding before
+execution, so variable fragment lengths do not become learned no-op
+instructions. Composition is therefore serial and order-sensitive by design;
+any future commutative or simultaneous composition operator needs its own
+causal audit.
+
+This design combines the strongest lessons from the architecture review:
+
+1. **Shared basis before task artifacts.** Independent full-task modules tend
+   to coexist without discovering common factors. A common basis gives later
+   fragments a place to reuse operators while retaining independently
+   addressable external coefficients.
+2. **Trained routing before arithmetic.** Raw summation of opaque vectors is
+   compact but interference-prone. The safe default is content-addressed
+   selection and serial execution; learned residual routing may be enabled only
+   after fresh scalar-outcome evidence. Any weighted blending or discrete
+   multi-fragment search must be measured separately.
+3. **Fast working state and durable fragments stay separate.** The fragment
+   bank is long-term external state; the register is a transient execution
+   snapshot. Observed evidence must not be overwritten by execution results,
+   and downstream fragments must not reread raw events.
+4. **Composition is not arbitrary new computation.** Fragments can select and
+   recombine computation the shared interpreter already expresses. New
+   algorithmic depth still requires verified training of the shared meta-
+   machinery or a separately admitted external compute basis. Theoretical
+   universality is an expressibility target, not a current capability claim.
+
+The current unit tests establish only the structural boundary: shared-basis
+materialization, route permutation equivariance, outcome-only route gradients,
+variable-length execution, append-without-resize, persistence, and checksum
+validation. They do **not** promote positive transfer, arbitrary program
+induction, unrestricted memory growth, or general continual learning. Those
+claims require fresh rendered-event experiments with stable-prefix mastery,
+wrong-fragment and blank-bank controls, route permutation, reward-shuffled,
+missing-evidence, memory-corruption, fresh-learner, and zero-replay accounting.
+
 The first variable-deliberation outcome-only rung is recorded under
 `session_records/deliberation_amodal_2026-08-03/`. It validates the bounded
 runtime path but is rejected as a learned capability promotion: the controller
