@@ -481,6 +481,41 @@ def test_adaptive_slot_can_grow_its_external_window() -> None:
         assert torch.equal(value, controller_before[name])
 
 
+def test_appended_capability_can_use_and_grow_versioned_working_memory_cell() -> None:
+    cell = ExternalWorkingMemoryCell(
+        event_width=8,
+        action_width=2,
+        memory_capacity=4,
+        context_width=8,
+        hidden=16,
+    )
+    agent = CanonicalBrainWorkshopAgent(
+        n_back=2,
+        event_width=8,
+        intention_width=4,
+        feedback_width=4,
+        reader_kind="relation",
+        seed=17,
+    )
+    slot = agent.add_adaptive_relation_capability(
+        memory_capacity=4,
+        seed=23,
+        working_memory_cell=cell,
+    )
+
+    agent.expand_adaptive_relation_capability(slot, memory_capacity=5)
+
+    extension = agent.extensions[slot - 1]
+    assert isinstance(extension.reader, ExternalWorkingMemoryCell)
+    assert extension.reader.memory_capacity == 5
+    rollout = agent.rollout(
+        NBackVerifier(batch_size=2, n_back=3, steps=6, seed=29),
+        forced_slot=slot,
+        record_retention=False,
+    )
+    assert torch.equal(rollout.selected_slots, torch.ones_like(rollout.selected_slots))
+
+
 def test_failed_adaptive_growth_resets_only_the_unmastered_external_slot() -> None:
     agent = CanonicalBrainWorkshopAgent(
         n_back=2,

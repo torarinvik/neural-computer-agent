@@ -79,24 +79,37 @@ class RelationCapabilityExtension(nn.Module):
         adaptive_reader: bool,
         decoder_name: str,
         seed: int,
+        working_memory_cell: ExternalWorkingMemoryCell | None = None,
     ) -> None:
         super().__init__()
         if memory_capacity < 1:
             raise ValueError("extension memory capacity must be positive")
         with torch.random.fork_rng():
             torch.manual_seed(seed)
-            reader_type = (
-                AdaptiveOnlineEpisodicRelationReader
-                if adaptive_reader
-                else OnlineEpisodicRelationReader
-            )
-            self.reader = reader_type(
-                event_width,
-                action_width,
-                memory_capacity=memory_capacity,
-                context_width=event_width,
-                hidden=max(16, event_width),
-            )
+            if working_memory_cell is None:
+                reader_type = (
+                    AdaptiveOnlineEpisodicRelationReader
+                    if adaptive_reader
+                    else OnlineEpisodicRelationReader
+                )
+                self.reader = reader_type(
+                    event_width,
+                    action_width,
+                    memory_capacity=memory_capacity,
+                    context_width=event_width,
+                    hidden=max(16, event_width),
+                )
+            else:
+                if (
+                    working_memory_cell.event_width != event_width
+                    or working_memory_cell.action_width != action_width
+                    or working_memory_cell.memory_capacity != memory_capacity
+                    or working_memory_cell.context_width != event_width
+                ):
+                    raise ValueError(
+                        "working-memory cell dimensions do not match extension"
+                    )
+                self.reader = working_memory_cell
             self.intent_adapter = EpisodicIntentAdapter(
                 event_width,
                 intention_width,
@@ -299,6 +312,7 @@ class CanonicalBrainWorkshopAgent(nn.Module):
         memory_capacity: int,
         seed: int,
         adaptive_reader: bool = False,
+        working_memory_cell: ExternalWorkingMemoryCell | None = None,
     ) -> int:
         """Append one relation capability without changing the core width."""
 
@@ -312,6 +326,7 @@ class CanonicalBrainWorkshopAgent(nn.Module):
             adaptive_reader=adaptive_reader,
             decoder_name=decoder_name,
             seed=seed,
+            working_memory_cell=working_memory_cell,
         )
         decoder = KeypressDecoder(
             self.controller.intention_width,
@@ -345,6 +360,7 @@ class CanonicalBrainWorkshopAgent(nn.Module):
         *,
         memory_capacity: int,
         seed: int,
+        working_memory_cell: ExternalWorkingMemoryCell | None = None,
     ) -> int:
         """Append a generic bounded-window capability without task metadata."""
 
@@ -354,6 +370,7 @@ class CanonicalBrainWorkshopAgent(nn.Module):
             memory_capacity=memory_capacity,
             seed=seed,
             adaptive_reader=True,
+            working_memory_cell=working_memory_cell,
         )
 
     def expand_adaptive_relation_capability(
@@ -376,12 +393,26 @@ class CanonicalBrainWorkshopAgent(nn.Module):
         if slot < 1 or slot > len(self.extensions):
             raise IndexError("adaptive capability slot is outside the bank")
         extension = self.extensions[slot - 1]
-        if not isinstance(extension.reader, AdaptiveOnlineEpisodicRelationReader):
+        if not isinstance(
+            extension.reader,
+            (AdaptiveOnlineEpisodicRelationReader, ExternalWorkingMemoryCell),
+        ):
             raise TypeError("only adaptive relation capabilities can grow")
         if reset_failed_reader:
             replacement_seed = (
                 int(torch.initial_seed()) if reset_seed is None else int(reset_seed)
             )
+            working_memory_cell = None
+            if isinstance(extension.reader, ExternalWorkingMemoryCell):
+                with torch.random.fork_rng():
+                    torch.manual_seed(replacement_seed)
+                    working_memory_cell = ExternalWorkingMemoryCell(
+                        self.controller.width,
+                        NBackVerifier.action_count,
+                        memory_capacity=memory_capacity,
+                        context_width=self.controller.width,
+                        hidden=extension.reader.hidden,
+                    )
             replacement = RelationCapabilityExtension(
                 event_width=self.controller.width,
                 intention_width=self.controller.intention_width,
@@ -390,6 +421,7 @@ class CanonicalBrainWorkshopAgent(nn.Module):
                 adaptive_reader=True,
                 decoder_name=extension.decoder_name,
                 seed=replacement_seed,
+                working_memory_cell=working_memory_cell,
             )
             self.extensions[slot - 1] = replacement
             with torch.random.fork_rng():
@@ -402,10 +434,13 @@ class CanonicalBrainWorkshopAgent(nn.Module):
                     )
                 )
             return
-        extension.reader = extension.reader.expand_capacity(
-            memory_capacity,
-            preserve_weights=True,
-        )
+        if isinstance(extension.reader, ExternalWorkingMemoryCell):
+            extension.reader = extension.reader.grow(memory_capacity)
+        else:
+            extension.reader = extension.reader.expand_capacity(
+                memory_capacity,
+                preserve_weights=True,
+            )
         extension.memory_capacity = memory_capacity
 
     def replace_unprotected_adaptive_relation_capability(
@@ -427,7 +462,10 @@ class CanonicalBrainWorkshopAgent(nn.Module):
         if slot < 1 or slot > len(self.extensions):
             raise IndexError("adaptive capability slot is outside the bank")
         extension = self.extensions[slot - 1]
-        if not isinstance(extension.reader, AdaptiveOnlineEpisodicRelationReader):
+        if not isinstance(
+            extension.reader,
+            (AdaptiveOnlineEpisodicRelationReader, ExternalWorkingMemoryCell),
+        ):
             raise TypeError("only adaptive relation capabilities can be replaced")
         if memory_capacity < 1:
             raise ValueError("replacement memory capacity must be positive")

@@ -466,3 +466,24 @@ outcomes and history reset remain near chance. The n-back-3 probe stays near
 chance, so this promotes causal memory-state transfer but not longer-rule
 generalization. Evidence is archived in
 `session_records/brainworkshop_causal_working_memory_transfer_2026-08-11/`.
+
+## Causal protected external rule growth (2026-08-11)
+
+The next pressure test is implemented in `causal_rule_growth.py`. It trains a
+source n-back-2 working-memory cell, appends a separate n-back-3
+`ExternalWorkingMemoryCell`, freezes the source cell and controller, and
+learns the target route from rendered cue events. The target cell is the only
+new trainable memory-side capacity. The audit also checks exact route-state
+reload with the compatible learned-event encoder and tests that reversal
+evidence on a copied route table cannot mutate the live route table.
+
+Seeds `17` and `18` both pass complete-prefix retention, new-rule mastery,
+unchanged controller/source-codec digests, cue-conditioned route separation,
+reload, reversal, and zero replay. The shuffled-cue control selects the target
+slot only `0.5398` and `0.5540` of the time. This promotes bounded protected
+rule growth, not general continual learning: route state is keyed by a
+versioned learned-event representation, and arbitrary rule induction,
+unrestricted memory growth, and compression remain open.
+
+The full reports and accounting ledger are archived in
+`session_records/brainworkshop_causal_rule_growth_2026-08-11/`.

@@ -9712,3 +9712,34 @@ acquire n-back-3 in a new memory file while retaining and causally rechecking
 n-back-2, then test route discovery, reversal, reload, and zero-replay
 complete-prefix retention. Evidence is in
 `session_records/brainworkshop_causal_working_memory_transfer_2026-08-11/`.
+
+## Causal protected external rule growth (2026-08-11)
+
+The follow-up now promotes the first bounded rule-growth transaction over the
+new working-memory ABI. A source n-back-2 capability is trained once. A
+separate `ExternalWorkingMemoryCell` is appended for n-back-3, and the source
+cell, controller, and source adapters are frozen before target acquisition.
+The two cells are selected by ordinary rendered cue symbols that enter through
+the learned stimulus encoder; no rule ID or verifier metadata is passed to the
+controller or route table. The route table receives only learned event keys,
+opaque slot indices, and scalar verifier outcomes.
+
+Across seeds `17` and `18`, all eight source retention lifetimes before and
+after growth and all eight target lifetimes reached `1.0000`. Both routed
+source and target rollouts reached `1.0000` accuracy and selected the intended
+slot on every batch. The cue-shuffled control selected the target slot only
+`0.5398` and `0.5540` of the time. Controller and source-codec digests were
+unchanged; route state reloaded exactly with the compatible learned-event
+encoder; patient reversal evidence changed only a copied route table; and each
+seed used `64` source plus `256` target optimizer updates with zero replayed
+examples. The reports contain the authoritative accounting (`73,728` verifier
+bits and `10,240` logical lifetimes per seed).
+
+This promotes a precise capability: frozen shared computation can acquire a
+new causal external rule file while protecting and routing an earlier file.
+It does not promote arbitrary rule induction, unrestricted memory growth,
+compression, or general continual learning. A route table keyed by a learned
+event representation must be restored with its compatible encoder version;
+representation migration is the next ABI pressure point. Evidence and the
+sample-efficiency ledger are archived in
+`session_records/brainworkshop_causal_rule_growth_2026-08-11/`.
