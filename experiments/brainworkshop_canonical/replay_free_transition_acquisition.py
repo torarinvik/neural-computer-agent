@@ -137,6 +137,10 @@ class OnlineTransitionDiscoveryReport:
     recency_decay: float
     context_aggregation: str
     adaptive_address: bool = False
+    random_feature_width: int = 128
+    pretrain_context_encoder: bool = False
+    context_encoder_optimizer_updates: int = 0
+    context_encoder_rows_consumed_once: int = 0
     goal_conditioned: bool = False
     target_goal_fragment_admitted: bool = False
     target_goal_fragment_used: bool = False
@@ -341,6 +345,23 @@ def _rollout_bundle(
     ).validate(
         state_width=rollout.initial_state.shape[0],
         intention_width=rollout.intentions.shape[1],
+    )
+
+
+def _context_view(
+    observation: ExternalTransitionObservation,
+    scale: float = 0.01,
+) -> ExternalTransitionObservation:
+    """Create one deterministic front-end perturbation without storing rows."""
+
+    return ExternalTransitionObservation(
+        state=observation.state + scale * torch.tanh(observation.state),
+        intention=observation.intention,
+        next_state=observation.next_state + scale * torch.tanh(observation.next_state),
+        confidence=observation.confidence,
+    ).validate(
+        state_width=observation.state.shape[1],
+        intention_width=observation.intention.shape[1],
     )
 
 
@@ -656,6 +677,8 @@ def run_online_transition_discovery_audit(
     prior_selection_cost_initial: float = 0.25,
     prior_selection_cost_decision_weight: float = 1.0,
     adaptive_address: bool = False,
+    random_feature_width: int = 128,
+    pretrain_context_encoder: bool = False,
 ) -> OnlineTransitionDiscoveryReport:
     """Discover and learn a novel rendered family without replay or a task label.
 
@@ -696,6 +719,14 @@ def run_online_transition_discovery_audit(
         raise TypeError("learned prior-selection cost flag must be boolean")
     if not isinstance(adaptive_address, bool):
         raise TypeError("adaptive address flag must be boolean")
+    if (
+        not isinstance(random_feature_width, int)
+        or isinstance(random_feature_width, bool)
+        or random_feature_width < 1
+    ):
+        raise ValueError("random feature width must be a positive integer")
+    if not isinstance(pretrain_context_encoder, bool):
+        raise TypeError("context encoder pretraining flag must be boolean")
     if goal_horizon < 1 or goal_horizon > steps - 1:
         raise ValueError("online goal horizon must fit held-out transitions")
     if goal_verifier_threshold <= 0.0 or not math.isfinite(
@@ -756,6 +787,7 @@ def run_online_transition_discovery_audit(
         context_width=agent.controller.width,
         model_family=EXTERNAL_TRANSITION_MIXED_MODEL_FAMILY,
         affine_ridge=affine_ridge,
+        random_feature_width=random_feature_width,
     )
     source_context = _opaque_context(agent, 6)
     # The source is a known replay-free baseline.  Keep it explicitly affine
@@ -819,6 +851,47 @@ def run_online_transition_discovery_audit(
         context_width=bank.context_width,
         aggregation=context_aggregation,
     )
+    context_encoder_optimizer_updates = 0
+    context_encoder_rows_consumed_once = 0
+    if pretrain_context_encoder:
+        source_context_rollout, source_context_bits = _run_lifetime(
+            agent,
+            policy_free,
+            bank,
+            source_context,
+            n_back=2,
+            steps=steps,
+            seed=seed + 13000,
+            cue_symbol=6,
+            candidate_intentions=candidate_intentions,
+            learn=False,
+        )
+        auxiliary_context_rollout, auxiliary_context_bits = _run_lifetime(
+            agent,
+            policy_free,
+            bank,
+            source_context,
+            n_back=1,
+            steps=steps,
+            seed=seed + 14000,
+            cue_symbol=5,
+            candidate_intentions=candidate_intentions,
+            learn=False,
+        )
+        unique_bits += source_context_bits + auxiliary_context_bits
+        left_views = [
+            _rollout_bundle(source_context_rollout),
+            _rollout_bundle(auxiliary_context_rollout),
+        ]
+        right_views = [_context_view(view) for view in left_views]
+        context_encoder, _context_loss = context_encoder.copy_on_write_contrastive_step(
+            left_views,
+            right_views,
+        )
+        context_encoder_optimizer_updates = 1
+        context_encoder_rows_consumed_once = sum(
+            int(view.state.shape[0]) for view in left_views
+        )
     prior_cost_ledger = (
         ExternalRoutedIntentionCostLedger.create(
             bank.context_width,
@@ -966,10 +1039,14 @@ def run_online_transition_discovery_audit(
             recency_decay=recency_decay,
             context_aggregation=context_aggregation,
             adaptive_address=adaptive_address,
+            random_feature_width=random_feature_width,
+            pretrain_context_encoder=pretrain_context_encoder,
             goal_conditioned=goal_conditioned,
             target_goal_horizon=goal_horizon if goal_conditioned else 0,
             prior_selection_cost_aware=prior_selection_cost_aware,
             prior_selection_cost_ledger_used=prior_cost_ledger is not None,
+            context_encoder_optimizer_updates=context_encoder_optimizer_updates,
+            context_encoder_rows_consumed_once=context_encoder_rows_consumed_once,
         )
 
     candidate_context = router.provisional_context_at(0)
@@ -1028,12 +1105,15 @@ def run_online_transition_discovery_audit(
             context_width=bank.context_width,
             model_family=EXTERNAL_TRANSITION_MIXED_MODEL_FAMILY,
             affine_ridge=affine_ridge,
+            random_feature_width=random_feature_width,
         )
         fresh_probe_bank.ensure_context(
             candidate_route_context,
             model_family=EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY,
         )
         fresh_planner = ExternalModelBasedPlanner(fresh_probe_bank, beam_width=4)
+        candidate_errors: list[float] = []
+        fresh_errors: list[float] = []
         for heldout in promotion_holdouts:
             candidate_error = candidate_planner.rollout_error(
                 heldout,
@@ -1043,9 +1123,25 @@ def run_online_transition_discovery_audit(
                 heldout,
                 transition_context=candidate_route_context.unsqueeze(0),
             )
-            if candidate_error > 0.2 or candidate_error >= fresh_error:
+            if candidate_error > 0.2:
                 return False
-        return True
+            candidate_errors.append(candidate_error)
+            fresh_errors.append(fresh_error)
+        if not candidate_errors:
+            return False
+        wins = sum(
+            candidate_error < fresh_error
+            for candidate_error, fresh_error in zip(
+                candidate_errors,
+                fresh_errors,
+                strict=True,
+            )
+        )
+        return (
+            wins >= (len(candidate_errors) + 1) // 2
+            and math.fsum(candidate_errors) / len(candidate_errors)
+            < math.fsum(fresh_errors) / len(fresh_errors)
+        )
 
     promotion = router.promote_staged_candidate(
         promotion_observations[0],
@@ -1117,10 +1213,14 @@ def run_online_transition_discovery_audit(
             recency_decay=recency_decay,
             context_aggregation=context_aggregation,
             adaptive_address=adaptive_address,
+            random_feature_width=random_feature_width,
+            pretrain_context_encoder=pretrain_context_encoder,
             goal_conditioned=goal_conditioned,
             target_goal_horizon=goal_horizon if goal_conditioned else 0,
             prior_selection_cost_aware=prior_selection_cost_aware,
             prior_selection_cost_ledger_used=prior_cost_ledger is not None,
+            context_encoder_optimizer_updates=context_encoder_optimizer_updates,
+            context_encoder_rows_consumed_once=context_encoder_rows_consumed_once,
         )
 
     target_context = bank.context_at(promotion.slot_index)
@@ -1157,6 +1257,7 @@ def run_online_transition_discovery_audit(
         context_width=bank.context_width,
         model_family=EXTERNAL_TRANSITION_MIXED_MODEL_FAMILY,
         affine_ridge=affine_ridge,
+        random_feature_width=random_feature_width,
     )
     fresh_bank.ensure_context(
         target_context,
@@ -1345,6 +1446,8 @@ def run_online_transition_discovery_audit(
         recency_decay=recency_decay,
         context_aggregation=context_aggregation,
         adaptive_address=adaptive_address,
+        random_feature_width=random_feature_width,
+        pretrain_context_encoder=pretrain_context_encoder,
         goal_conditioned=goal_conditioned,
         target_goal_fragment_admitted=goal_fragment_admitted,
         target_goal_fragment_used=goal_fragment_used,
@@ -1358,6 +1461,8 @@ def run_online_transition_discovery_audit(
         prior_selection_cost_observed=(
             promotion.prior_selection_cost_observation is not None
         ),
+        context_encoder_optimizer_updates=context_encoder_optimizer_updates,
+        context_encoder_rows_consumed_once=context_encoder_rows_consumed_once,
     )
 
 
@@ -1394,6 +1499,8 @@ def main() -> None:
         "--prior-selection-cost-decision-weight", type=float, default=1.0
     )
     parser.add_argument("--adaptive-address", action="store_true")
+    parser.add_argument("--random-feature-width", type=int, default=128)
+    parser.add_argument("--pretrain-context-encoder", action="store_true")
     parser.add_argument("--steps", type=int, default=6)
     args = parser.parse_args()
     if args.audit == "nonstationary":
@@ -1424,6 +1531,8 @@ def main() -> None:
             prior_selection_cost_initial=args.prior_selection_cost_initial,
             prior_selection_cost_decision_weight=args.prior_selection_cost_decision_weight,
             adaptive_address=args.adaptive_address,
+            random_feature_width=args.random_feature_width,
+            pretrain_context_encoder=args.pretrain_context_encoder,
         )
     else:
         report = run_replay_free_transition_acquisition_audit(

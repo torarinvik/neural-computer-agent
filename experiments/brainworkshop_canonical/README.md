@@ -389,3 +389,23 @@ bottleneck.
 The optional `--adaptive-address` flag exercises copy-on-write key adaptation;
 its candidate key is resolved from the post-holdout bank before retention
 verification, preserving historical addresses without changing the controller.
+
+The promotion verifier now evaluates the three independent recursive holdouts
+as a conservative aggregate: every candidate rollout must remain below the
+absolute error bound, the candidate must win a majority of fresh comparisons,
+and its mean error must be lower than the matched fresh challenger. This avoids
+letting one noisy lifetime veto an otherwise retained capability without
+removing the catastrophic-regression bound. On the same seeds `80–103`, the
+complete gate rose from `9/24` to `10/24`; source retention stayed `24/24`,
+with `624` unique verifier bits, `504` transition rows consumed once, zero
+replay, zero optimizer updates, and an unchanged controller. This is a bounded
+promotion-stability gain, not general continual learning. The ledger is in
+`session_records/online_goal_conditioned_discovery_aggregate_retention_2026-08-11/sample_efficiency_ledger.json`.
+
+The external context encoder also exposes a copy-on-write contrastive update
+contract that consumes one fresh paired-view batch and performs exactly one
+optimizer update without retaining rows. One-pass pretraining did not improve
+the current discovery pass rate, so it remains a reusable memory-side seam and
+is not a promoted capability claim. Random-feature widths `128–1024` likewise
+did not change the failing seeds; staged evidence coherence, not model width,
+is the active bottleneck.

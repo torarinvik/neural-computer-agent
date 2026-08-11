@@ -9048,3 +9048,30 @@ An opt-in three-seed learned-cost smoke reached the complete gate on `1/3`
 seeds. The other two were rejected before any cost observation, so this does
 not promote learned acquisition economics; it identifies stable target
 discovery and promotion as the next architectural pressure.
+
+## Aggregate retention verification and one-pass context adaptation (2026-08-11)
+
+The online discovery verifier now treats independent recursive holdouts as a
+small evidence set rather than a fail-fast sequence. A staged candidate must
+remain below the absolute recursive error bound on every holdout, beat a
+matched fresh challenger on a majority of holdouts, and have lower mean error
+than that challenger. This preserves a hard catastrophic-regression guard
+while reducing sensitivity to one noisy rollout. Under the unchanged
+recency/latest, cost-aware, frozen-controller configuration, the complete
+24-seed result improved from `9/24` to `10/24`; source retention remained
+`24/24`, with `624` unique verifier bits, `504` transition rows consumed once,
+zero replay, zero optimizer updates, and an unchanged controller. The complete
+ledger is
+`session_records/online_goal_conditioned_discovery_aggregate_retention_2026-08-11/sample_efficiency_ledger.json`.
+
+The external context encoder now has an explicit copy-on-write contrastive
+adaptation boundary. It consumes a fresh paired opaque-view batch, performs
+exactly one optimizer update, retains no observations, and returns a candidate
+encoder whose digest can be verified before any route key is changed. This is
+the correct contract for future online address learning while committed keys
+remain immutable. The first one-pass pressure test did not improve discovery
+pass rate, so it is retained as an interface seam rather than promoted as a
+capability gain. Random-feature widths `128`, `256`, `512`, and `1024` also
+left the failing-seed outcomes unchanged; the active bottleneck is coherent
+staged evidence and held-out model fit, not external model width. The result
+remains bounded online acquisition, not general continual learning.

@@ -3509,6 +3509,78 @@ class ExternalTransitionContextEncoder(nn.Module):
         reverse = (-positive + torch.logsumexp(reverse_logits, dim=-1)).mean()
         return 0.5 * (prefix_to_full + reverse)
 
+    def contrastive_adaptation_step(
+        self,
+        left_observations: Sequence[ExternalTransitionObservation],
+        right_observations: Sequence[ExternalTransitionObservation],
+        optimizer: torch.optim.Optimizer,
+        *,
+        temperature: float = 0.1,
+    ) -> float:
+        """Consume one fresh paired-view batch and update the encoder once.
+
+        The caller owns the optimizer and must provide fresh opaque views. The
+        method retains no observations and performs exactly one update, making
+        replay accounting explicit at the external memory boundary.
+        """
+
+        if not isinstance(left_observations, Sequence) or isinstance(
+            left_observations, (str, bytes)
+        ):
+            raise TypeError("context adaptation left views must be a sequence")
+        if not isinstance(right_observations, Sequence) or isinstance(
+            right_observations, (str, bytes)
+        ):
+            raise TypeError("context adaptation right views must be a sequence")
+        if len(left_observations) != len(right_observations):
+            raise ValueError("context adaptation paired view counts differ")
+        if len(left_observations) < 2:
+            raise ValueError("context adaptation needs at least two paired views")
+        if not isinstance(optimizer, torch.optim.Optimizer):
+            raise TypeError("context adaptation optimizer is invalid")
+        left_contexts: list[torch.Tensor] = []
+        right_contexts: list[torch.Tensor] = []
+        for left, right in zip(left_observations, right_observations, strict=True):
+            if not isinstance(left, ExternalTransitionObservation) or not isinstance(
+                right, ExternalTransitionObservation
+            ):
+                raise TypeError("context adaptation views must be observations")
+            left_contexts.append(self.encode_observation(left))
+            right_contexts.append(self.encode_observation(right))
+        loss = self.contrastive_loss(
+            torch.stack(left_contexts),
+            torch.stack(right_contexts),
+            temperature=temperature,
+        )
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        return float(loss.detach())
+
+    def copy_on_write_contrastive_step(
+        self,
+        left_observations: Sequence[ExternalTransitionObservation],
+        right_observations: Sequence[ExternalTransitionObservation],
+        *,
+        learning_rate: float = 0.003,
+        temperature: float = 0.1,
+    ) -> tuple[ExternalTransitionContextEncoder, float]:
+        """Return one verified-free candidate update without mutating this encoder."""
+
+        if learning_rate <= 0.0 or not math.isfinite(learning_rate):
+            raise ValueError("context adaptation learning rate must be positive")
+        candidate = ExternalTransitionContextEncoder.from_payload(
+            self.state_payload()
+        )
+        optimizer = torch.optim.Adam(candidate.parameters(), lr=learning_rate)
+        loss = candidate.contrastive_adaptation_step(
+            left_observations,
+            right_observations,
+            optimizer,
+            temperature=temperature,
+        )
+        return candidate, loss
+
     def state_payload(self) -> dict[str, Any]:
         return {
             "schema": self.schema,

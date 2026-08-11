@@ -297,8 +297,21 @@ def test_online_transition_discovery_can_learn_external_selection_cost() -> None
     assert report.prior_selection_cost_observed
     assert report.prior_selection_cost_aware
 
-    rejected = run_online_transition_discovery_audit(
+    promoted = run_online_transition_discovery_audit(
         seed=92,
+        window_statistics="recency_weighted_and_latest_v1",
+        window_gain=0.05,
+        goal_conditioned=True,
+        learned_prior_selection_cost=True,
+    )
+    assert promoted.status == "online_replay_free_transition_discovery_boundary"
+    assert promoted.goal_conditioned
+    assert promoted.target_goal_horizon == 2
+    assert promoted.prior_selection_cost_ledger_used
+    assert promoted.prior_selection_cost_observed
+
+    rejected = run_online_transition_discovery_audit(
+        seed=93,
         window_statistics="recency_weighted_and_latest_v1",
         window_gain=0.05,
         goal_conditioned=True,

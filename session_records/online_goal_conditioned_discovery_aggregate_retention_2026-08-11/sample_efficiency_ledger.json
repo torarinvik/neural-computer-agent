@@ -1,0 +1,77 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "brainworkshop_online_goal_conditioned_discovery_aggregate_retention_v1",
+  "date": "2026-08-11",
+  "status": "bounded_online_goal_conditioned_discovery_aggregate_retention_promoted",
+  "claim_boundary": "online opaque context discovery plus cost-aware replay-free target goal use with robust multi-lifetime retention verification; not general continual learning",
+  "configuration": {
+    "seeds": [80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103],
+    "steps": 6,
+    "source_training_lifetimes": 2,
+    "target_training_lifetimes": 2,
+    "promotion_heldout_lifetimes": 3,
+    "state_statistics": "recency_weighted_and_latest_v1",
+    "window_gain": 0.05,
+    "recency_decay": 0.75,
+    "goal_conditioned": true,
+    "goal_horizon": 2,
+    "goal_verifier_threshold": 0.05,
+    "prior_selection_transfer_cost": 0.0,
+    "prior_selection_fresh_cost": 1.0,
+    "prior_selection_cost_weight": 0.2,
+    "random_feature_width": 128,
+    "committed_slot_updates_during_discovery": false,
+    "controller_frozen": true,
+    "optimizer_updates": 0,
+    "replayed_examples": 0,
+    "retention_gate": "all_rollouts_below_absolute_bound_and_candidate_wins_majority_with_lower_mean_error"
+  },
+  "baseline_comparison": {
+    "previous_gate": "candidate_must_beat_fresh_on_every_independent_heldout_rollout",
+    "previous_complete_passes": 9,
+    "new_complete_passes": 10,
+    "delta_complete_passes": 1
+  },
+  "passing_seeds": [85, 89, 91, 92, 95, 99, 100, 101, 102, 103],
+  "rejected_seeds": [80, 81, 82, 83, 84, 86, 87, 88, 90, 93, 94, 96, 97, 98],
+  "aggregate": {
+    "complete_passes": 10,
+    "total_runs": 24,
+    "promotion_acceptances": 10,
+    "route_recovery_passes": 10,
+    "target_goal_admission_passes": 10,
+    "target_goal_use_passes": 10,
+    "target_goal_fresh_challenger_improvement_passes": 10,
+    "source_retention_passes": 24,
+    "controller_unchanged_all_runs": true,
+    "unique_verifier_bits_total": 624,
+    "logical_lifetimes_total": 184,
+    "transition_rows_consumed_once_total": 504,
+    "optimizer_updates_total": 0,
+    "replayed_examples_total": 0,
+    "wall_time_seconds": 2.5
+  },
+  "rejection_reasons": {
+    "no provisional model family passed held-out verification": 2,
+    "no provisional target candidate was staged": 6,
+    "held-out recursive candidate rollout failed": 2,
+    "no provisional candidate is staged": 2,
+    "candidate retention probe failed": 2
+  },
+  "rejected_variants": {
+    "random_feature_width_pressure": {
+      "widths": [128, 256, 512, 1024],
+      "seeds": [92, 93, 103],
+      "result": "no outcome change before aggregate-retention gate; capacity is not the active bottleneck"
+    },
+    "one_pass_context_encoder_pretraining": {
+      "seeds": [91, 92, 93, 95, 99, 100, 101, 102, 103],
+      "result": "same complete-pass subset as baseline; retained as an external contract, not promoted as a capability gain"
+    },
+    "copy_on_write_adaptive_address": {
+      "seeds": [91, 92, 93, 95, 99, 100, 101, 102, 103],
+      "result": "6/9 versus 7/9 baseline; rejected as a capability gain"
+    }
+  },
+  "interpretation": "A robust multi-lifetime retention verifier converts one noisy per-lifetime rejection into a conservative aggregate decision while retaining an absolute recursive-error bound. The gain is a bounded promotion-stability improvement, not evidence of universal positive transfer, arbitrary new computation, unrestricted memory growth, or general continual learning. The next bottleneck is staged evidence acquisition and held-out model fit."
+}

@@ -1,3 +1,4 @@
+import math
 from collections.abc import Callable
 
 import pytest
@@ -888,6 +889,45 @@ def test_transition_context_encoder_is_opaque_normalized_and_persistent() -> Non
     assert restored.configuration() == encoder.configuration()
     assert restored.digest() == encoder.digest()
     assert torch.equal(restored.encode_observation(observation), context)
+
+
+def test_transition_context_encoder_copy_on_write_adaptation_is_one_pass() -> None:
+    torch.manual_seed(1205)
+    encoder = ExternalTransitionContextEncoder(
+        2,
+        1,
+        hidden_width=8,
+        context_width=5,
+    )
+    left = [
+        ExternalTransitionObservation(
+            state=torch.randn(4, 2),
+            intention=torch.randn(4, 1),
+            next_state=torch.randn(4, 2),
+            confidence=torch.ones(4),
+        )
+        for _ in range(2)
+    ]
+    right = [
+        ExternalTransitionObservation(
+            state=observation.state + 0.01 * torch.tanh(observation.state),
+            intention=observation.intention,
+            next_state=observation.next_state
+            + 0.01 * torch.tanh(observation.next_state),
+            confidence=observation.confidence,
+        )
+        for observation in left
+    ]
+    before_digest = encoder.digest()
+    candidate, loss = encoder.copy_on_write_contrastive_step(left, right)
+
+    assert math.isfinite(loss)
+    assert encoder.digest() == before_digest
+    assert candidate.digest() != before_digest
+    restored = ExternalTransitionContextEncoder.from_payload(
+        candidate.state_payload()
+    )
+    assert restored.digest() == candidate.digest()
 
 
 def test_transition_context_mean_pool_is_permutation_invariant_and_persistent() -> None:
