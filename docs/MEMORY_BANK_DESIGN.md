@@ -8589,3 +8589,50 @@ where the saving comes from.
 **The obvious next move.** The loss is entirely "paid for a failed
 enumeration, then sampled anyway". Interleaving enumerated and sampled
 candidates bounds the worst case at 2x while keeping most of the win.
+
+## F174 — the enumeration cap was sized from the wrong half of the data
+
+F173 ended with an obvious improvement: the whole loss was "paid for a
+failed enumeration, then sampled anyway", so cap the enumeration. I set
+the cap at a quarter of the per-action budget, reasoning that every WIN
+on record arrived within 328 calls while the enumeration can run to
+3600.
+
+Four seeds later the capped and uncapped arms were **identical to the
+digit**, arm by arm and family by family. The byte-identical tell
+again, and this time it was not a flag failing to reach the code — the
+cap is there and correct. It simply never binds.
+
+**Why, and it is the exact inverse of the intended effect.** The
+enumeration size per action is `(NOPS-1) x |changed slots| x (SLOTS-1)`,
+plus its square at depth 2. So:
+
+| |changed| | enumeration per action | against a cap of 1000 |
+| ---: | ---: | --- |
+| 1 | 930 | never binds |
+| 2 | 3660 | binds |
+
+Every family that LOSES — line, grid, proc0, proc1's cheap actions —
+changes exactly ONE slot per action, so its enumeration is 930 and
+slips under the cap. Every family where the cap binds — toggle, perm —
+is one that WINS. **The cap was cutting the winners and sparing the
+losers.**
+
+**The mistake is worth naming precisely.** I chose the parameter from
+the distribution of WIN costs (all ≤328) and never looked at the
+distribution of LOSS costs (930 per action). Those two are unrelated
+quantities: the first is where a successful enumeration terminates, the
+second is how large the enumeration is when it fails. Sizing a
+threshold from one and applying it to the other has no reason to work,
+and the arithmetic was available before the run — 6 x 1 x 5 = 30, and
+30 + 900 = 930, against a cap of 1000.
+
+A cap of 0.1 (400 calls) binds on the 930 while still clearing every
+win on record at 328. Predicted: the six losing families lose roughly
+half their wasted enumeration, and the aggregate improves from 0.425.
+
+**What saved this was the instrument, not the reasoning.** Byte-
+identical output has now caught four things. A result that had merely
+been *disappointing* rather than *impossible* would have been written
+up as "capping does not help", which is true and useless, instead of
+"the cap was set above the quantity it was meant to bound".

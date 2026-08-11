@@ -217,7 +217,7 @@ parser.add_argument(
          "before extending the basis; that ordering is why the modulus "
          "was worth adding.")
 parser.add_argument(
-    "--enum-budget", type=float, default=0.25,
+    "--enum-budget", type=float, default=0.1,
     help="fraction of an action's budget the enumeration may spend "
          "before falling back to sampling. F173's entire loss was a "
          "failed enumeration paid for in full; every WIN it recorded "
