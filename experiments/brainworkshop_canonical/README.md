@@ -934,3 +934,24 @@ addressing. It does not yet establish multiple useful addresses under one
 context, content search, learned compression, unrestricted memory growth, or
 general continual learning. Evidence and accounting are archived in
 `session_records/brainworkshop_external_temporal_context_route_growth_promoted_2026-08-12/`.
+
+## Same-cue query-conditioned temporal address growth (2026-08-12)
+
+`external_temporal_query_address_growth.py` removes the cue-to-file shortcut.
+Every episode has the same rendered cue; the first learned query event is the
+opaque context key. A source external file first learns a generic temporal
+readout and offset 4 from scalar outcomes. The entire file is then frozen, and
+the external context-keyed route table must acquire offset 5 for a new query
+without replay or readout updates.
+
+Seeds `17` and `18` both retained the source query at accuracy `1.0000`,
+acquired the target query at `1.0000`, and selected offsets 4 and 5 on every
+retained lifetime. Unknown-query, wrong-offset, missing-history,
+shuffled-outcome, exact-reload, frozen-readout, frozen-core, and zero-replay
+gates all passed.
+
+This promotes bounded same-cue multi-address acquisition through learned
+event keys. The next boundary is content-conditioned retrieval beyond exact
+query keys, followed by learned compression and capacity pressure. Evidence
+and accounting are archived in
+`session_records/brainworkshop_external_temporal_query_address_growth_promoted_2026-08-12/`.

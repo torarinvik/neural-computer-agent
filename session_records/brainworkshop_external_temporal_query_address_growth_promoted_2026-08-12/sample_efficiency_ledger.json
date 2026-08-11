@@ -1,0 +1,33 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment_id": "brainworkshop-external-temporal-query-address-growth-2026-08-12",
+  "status": "promoted_temporal_query_address_growth",
+  "source": "in_repository_run",
+  "seeds": [17, 18],
+  "unique_verifier_bits_per_seed": 313856,
+  "control_verifier_bits_per_seed": 147456,
+  "unique_logical_lifetimes_per_seed": 33024,
+  "optimizer_updates_per_seed": 512,
+  "route_memory_updates_per_seed": 520,
+  "replayed_examples_per_seed": 0,
+  "source_accuracy": [1.0, 1.0],
+  "target_accuracy": [1.0, 1.0],
+  "source_offsets": [4, 4],
+  "target_offsets": [5, 5],
+  "controls": {
+    "two_seeds": true,
+    "same_rendered_cue": true,
+    "learned_query_event_keys": true,
+    "scalar_outcomes_only": true,
+    "unknown_query_fallback": true,
+    "wrong_offset_negative": true,
+    "missing_history_negative": true,
+    "shuffled_outcome_negative": true,
+    "exact_route_reload": true,
+    "readout_frozen_before_target": true,
+    "frozen_controller": true,
+    "frozen_event_encoder": true,
+    "zero_replay": true
+  },
+  "claim_boundary": "Promoted bounded same-cue query-conditioned multi-offset acquisition; not content search, compression, unrestricted memory growth, arbitrary new computation, or general continual learning."
+}

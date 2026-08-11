@@ -10285,3 +10285,22 @@ learning. The unresolved pressure point is same-context binding of multiple
 useful addresses (or content keys), followed by learned compression and
 capacity pressure. Evidence and accounting are archived in
 `session_records/brainworkshop_external_temporal_context_route_growth_promoted_2026-08-12/`.
+
+## Same-cue query-conditioned temporal address growth
+
+The stronger address test holds the rendered cue constant and varies only a
+learned query event. A source external capability file first acquires a
+generic temporal readout and offset 4 from scalar outcomes. The file is then
+frozen. A memory-side context-keyed address table must acquire offset 5 for a
+new query event, while retaining offset 4 for the old query, without replay or
+readout updates.
+
+Across seeds `17` and `18`, both query-conditioned addresses selected their
+correct offsets on every retained lifetime and both source and target reached
+`1.0000`. Unknown-query fallback, wrong-offset, missing-history,
+shuffled-outcome, exact reload, frozen readout/controller/frontend, and zero
+replay all passed. This qualifies bounded same-cue multi-address acquisition
+through learned event keys. It does not yet qualify content search over
+unseen-but-related keys, learned compression, unrestricted memory growth, or
+general continual learning. Evidence and accounting are archived in
+`session_records/brainworkshop_external_temporal_query_address_growth_promoted_2026-08-12/`.

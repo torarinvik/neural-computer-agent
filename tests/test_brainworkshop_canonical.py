@@ -386,6 +386,37 @@ def test_external_temporal_context_route_growth_smoke_composes_external_addresse
     assert report["accounting"]["replayed_examples"] == 0
 
 
+def test_external_temporal_query_address_growth_smoke_freezes_readout_on_growth(
+    tmp_path,
+) -> None:
+    from experiments.brainworkshop_canonical.external_temporal_query_address_growth import (
+        run,
+    )
+
+    report = run(
+        argparse.Namespace(
+            report_out=tmp_path / "temporal-query-address-growth.json",
+            seed=17,
+            source_updates=2,
+            target_updates=2,
+            route_calibration_lifetimes=1,
+            batch_size=2,
+            data_steps=14,
+            retention_lifetimes=1,
+            learning_rate=3e-3,
+            entropy_weight=0.01,
+        )
+    )
+
+    assert report["schema"] == (
+        "neural-computer.brainworkshop-external-temporal-query-address-growth.v1"
+    )
+    assert report["gates"]["readout_frozen_during_growth"]
+    assert report["gates"]["route_reload_exact"]
+    assert report["gates"]["controller_frozen"]
+    assert report["accounting"]["replayed_examples"] == 0
+
+
 def test_binary_switch_family_has_a_valid_chance_baseline() -> None:
     verifier = CrossFamilyVerifier(
         family="switch_binary",
