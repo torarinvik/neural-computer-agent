@@ -160,7 +160,7 @@ class ExternalMultiStreamTransitionContextRouter:
             "stream_key_width": self.stream_key_width,
             "identity": "normalized_opaque_stream_key_v1",
             "shared": (
-                "bank_context_encoder_route_query_sparse_evidence_evaluator"
+                "bank_context_encoder_route_query_sparse_evidence_evaluator_cost_ledger"
             ),
             "isolated": (
                 "pending_active_slot_quarantine_address_adapter_candidates"
@@ -457,7 +457,7 @@ class ExternalMultiStreamTransitionContextRouter:
             "stream_key_width": stream_key_width,
             "identity": "normalized_opaque_stream_key_v1",
             "shared": (
-                "bank_context_encoder_route_query_sparse_evidence_evaluator"
+                "bank_context_encoder_route_query_sparse_evidence_evaluator_cost_ledger"
             ),
             "isolated": (
                 "pending_active_slot_quarantine_address_adapter_candidates"
@@ -512,6 +512,7 @@ class ExternalMultiStreamTransitionContextRouter:
             child.route_query = base.route_query
             child.sparse_evidence = base.sparse_evidence
             child.evidence_evaluator = base.evidence_evaluator
+            child.prior_selection_cost_ledger = base.prior_selection_cost_ledger
             router._streams[stream_id] = child
             if bound_slot_id is not None:
                 router._bound_slot_ids[stream_id] = bound_slot_id

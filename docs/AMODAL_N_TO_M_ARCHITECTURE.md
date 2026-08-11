@@ -8972,6 +8972,17 @@ error-only behavior and v1 receipt remain unchanged. This turns “retrieve
 before adapting” into a reversible, auditable decision rule rather than an
 unmeasured preference.
 
+The online transition router can now replace those caller-supplied estimates
+with a shared `ExternalRoutedIntentionCostLedger`. The ledger is external
+mutable memory: it predicts transfer/fresh continuation cost from masked opaque
+candidate context, verified source coverage, and bank size; after a candidate
+passes held-out and retention verification, the caller may submit one
+normalized completed cost and update only the branch that was selected. The
+ledger is shared across stream-local routers, checkpointed with its own
+versioned payload, and excluded from the controller and factual model bank.
+Rejected candidates do not update it. This is a learned acquisition-policy
+contract, not evidence of broad cost prediction or general continual learning.
+
 ## Goal-conditioned downstream planning boundary (2026-08-11)
 
 The canonical Brain Workshop harness now exercises the missing composition

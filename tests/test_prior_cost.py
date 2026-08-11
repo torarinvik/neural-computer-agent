@@ -2,9 +2,38 @@ import pytest
 import torch
 
 from neural_computer import (
+    ExternalRoutedIntentionCostLedger,
     ExternalRoutedIntentionCostModel,
     ExternalRoutedIntentionCostModelState,
 )
+
+
+def test_cost_ledger_updates_selected_branch_and_round_trips() -> None:
+    ledger = ExternalRoutedIntentionCostLedger.create(
+        2,
+        initial_cost=0.5,
+        decision_weight=0.7,
+    )
+    context = torch.tensor([[0.4, -0.1]])
+    receipt = ledger.observe(
+        context,
+        selected_initialization="transfer",
+        observed_cost=0.0,
+        cell_count=3,
+    )
+
+    assert receipt.selected_initialization == "transfer"
+    assert receipt.predicted_cost == pytest.approx(0.5)
+    assert receipt.transfer_cost_after < receipt.predicted_cost
+    assert receipt.fresh_cost_after == pytest.approx(0.5)
+    assert ledger.configuration()["decision_weight"] == pytest.approx(0.7)
+
+    restored = ExternalRoutedIntentionCostLedger.from_payload(ledger.state_payload())
+    assert restored.configuration() == ledger.configuration()
+    assert restored.estimate(context, cell_count=3) == ledger.estimate(
+        context,
+        cell_count=3,
+    )
 
 
 def test_cost_model_is_opaque_replay_free_and_branch_local() -> None:

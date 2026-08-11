@@ -20,6 +20,12 @@ import torch
 EXTERNAL_ROUTED_INTENTION_COST_MODEL_SCHEMA = (
     "neural-computer.external-routed-intention-cost-model.v1"
 )
+EXTERNAL_ROUTED_INTENTION_COST_LEDGER_SCHEMA = (
+    "neural-computer.external-routed-intention-cost-ledger.v1"
+)
+EXTERNAL_ROUTED_INTENTION_COST_OBSERVATION_SCHEMA = (
+    "neural-computer.external-routed-intention-cost-observation.v1"
+)
 
 
 def _digest_state(state: Mapping[str, torch.Tensor]) -> str:
@@ -133,6 +139,41 @@ class ExternalRoutedIntentionCostEstimate:
         ):
             if not isinstance(value, int) or isinstance(value, bool) or value < 0:
                 raise ValueError(f"routed intention {name} is invalid")
+        return self
+
+
+@dataclass(frozen=True)
+class ExternalRoutedIntentionCostObservationReceipt:
+    """Receipt for one replay-free update of the selected cost branch."""
+
+    selected_initialization: str
+    observed_cost: float
+    predicted_cost: float
+    transfer_cost_after: float
+    fresh_cost_after: float
+    transfer_observations: int
+    fresh_observations: int
+    schema: str = EXTERNAL_ROUTED_INTENTION_COST_OBSERVATION_SCHEMA
+
+    def validate(self) -> ExternalRoutedIntentionCostObservationReceipt:
+        if self.schema != EXTERNAL_ROUTED_INTENTION_COST_OBSERVATION_SCHEMA:
+            raise ValueError("unsupported routed intention cost observation schema")
+        if self.selected_initialization not in {"transfer", "fresh"}:
+            raise ValueError("routed intention cost observation branch is invalid")
+        for name, value in (
+            ("observed_cost", self.observed_cost),
+            ("predicted_cost", self.predicted_cost),
+            ("transfer_cost_after", self.transfer_cost_after),
+            ("fresh_cost_after", self.fresh_cost_after),
+        ):
+            if not math.isfinite(float(value)) or not 0.0 <= float(value) <= 1.0:
+                raise ValueError(f"routed intention cost observation {name} is invalid")
+        for name, value in (
+            ("transfer_observations", self.transfer_observations),
+            ("fresh_observations", self.fresh_observations),
+        ):
+            if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+                raise ValueError(f"routed intention cost observation {name} is invalid")
         return self
 
 
@@ -363,9 +404,180 @@ class ExternalRoutedIntentionCostModel:
         return state
 
 
+class ExternalRoutedIntentionCostLedger:
+    """Shared mutable memory-side state for learned acquisition economics.
+
+    The ledger is separate from the controller and from factual transition
+    content. It predicts transfer/fresh continuation cost from an opaque
+    candidate context, then updates only the branch selected by a verified
+    admission. Streams may share one ledger while retaining their own pending
+    evidence and candidates.
+    """
+
+    schema = EXTERNAL_ROUTED_INTENTION_COST_LEDGER_SCHEMA
+
+    def __init__(
+        self,
+        model: ExternalRoutedIntentionCostModel,
+        state: ExternalRoutedIntentionCostModelState | None = None,
+        *,
+        decision_weight: float = 1.0,
+    ) -> None:
+        if not isinstance(model, ExternalRoutedIntentionCostModel):
+            raise TypeError("routed intention cost ledger requires its cost model")
+        if state is None:
+            state = model.initial_state()
+        state.validate(feature_width=model.feature_width)
+        if not math.isfinite(decision_weight) or decision_weight < 0.0:
+            raise ValueError("routed intention cost ledger decision weight is invalid")
+        self.model = model
+        self.state = state
+        self.decision_weight = float(decision_weight)
+
+    @classmethod
+    def create(
+        cls,
+        context_width: int,
+        *,
+        learning_rate: float = 0.35,
+        initial_cost: float = 0.25,
+        decision_weight: float = 1.0,
+        device: torch.device | str = "cpu",
+        dtype: torch.dtype = torch.float32,
+    ) -> ExternalRoutedIntentionCostLedger:
+        model = ExternalRoutedIntentionCostModel(
+            context_width,
+            learning_rate=learning_rate,
+            initial_cost=initial_cost,
+        )
+        return cls(
+            model,
+            model.initial_state(device=device, dtype=dtype),
+            decision_weight=decision_weight,
+        )
+
+    @property
+    def context_width(self) -> int:
+        return self.model.context_width
+
+    def configuration(self) -> dict[str, int | float | str | dict[str, object]]:
+        return {
+            "schema": self.schema,
+            "model": self.model.configuration(),
+            "decision_weight": self.decision_weight,
+            "ownership": "shared_external_memory_policy_not_controller_state_v1",
+        }
+
+    def estimate(
+        self,
+        context: torch.Tensor,
+        *,
+        context_mask: torch.Tensor | None = None,
+        source_coverage: float = 1.0,
+        cell_count: int = 1,
+    ) -> ExternalRoutedIntentionCostEstimate:
+        return self.model.estimate(
+            self.state,
+            context,
+            context_mask=context_mask,
+            source_coverage=source_coverage,
+            cell_count=cell_count,
+        )
+
+    def observe(
+        self,
+        context: torch.Tensor,
+        *,
+        context_mask: torch.Tensor | None = None,
+        source_coverage: float = 1.0,
+        cell_count: int = 1,
+        selected_initialization: str,
+        observed_cost: float,
+    ) -> ExternalRoutedIntentionCostObservationReceipt:
+        before = self.estimate(
+            context,
+            context_mask=context_mask,
+            source_coverage=source_coverage,
+            cell_count=cell_count,
+        )
+        self.state = self.model.observe(
+            self.state,
+            context,
+            context_mask=context_mask,
+            source_coverage=source_coverage,
+            cell_count=cell_count,
+            selected_initialization=selected_initialization,
+            observed_cost=observed_cost,
+        )
+        after = self.estimate(
+            context,
+            context_mask=context_mask,
+            source_coverage=source_coverage,
+            cell_count=cell_count,
+        )
+        predicted = (
+            before.transfer_cost
+            if selected_initialization == "transfer"
+            else before.fresh_cost
+        )
+        return ExternalRoutedIntentionCostObservationReceipt(
+            selected_initialization=selected_initialization,
+            observed_cost=float(observed_cost),
+            predicted_cost=predicted,
+            transfer_cost_after=after.transfer_cost,
+            fresh_cost_after=after.fresh_cost,
+            transfer_observations=after.transfer_observations,
+            fresh_observations=after.fresh_observations,
+        ).validate()
+
+    def state_payload(self) -> dict[str, Any]:
+        return {
+            "schema": self.schema,
+            "configuration": self.configuration(),
+            "model_state": self.model.state_payload(self.state),
+        }
+
+    @classmethod
+    def from_payload(
+        cls,
+        payload: Mapping[str, Any],
+    ) -> ExternalRoutedIntentionCostLedger:
+        if not isinstance(payload, Mapping) or payload.get("schema") != cls.schema:
+            raise ValueError("unsupported routed intention cost ledger payload")
+        configuration = payload.get("configuration")
+        model_payload = payload.get("model_state")
+        if not isinstance(configuration, Mapping) or not isinstance(
+            model_payload, Mapping
+        ):
+            raise TypeError("routed intention cost ledger payload is incomplete")
+        model_configuration = configuration.get("model")
+        if not isinstance(model_configuration, Mapping):
+            raise TypeError("routed intention cost ledger model configuration is missing")
+        model = ExternalRoutedIntentionCostModel(
+            int(model_configuration["context_width"]),
+            learning_rate=float(model_configuration["learning_rate"]),
+            initial_cost=float(model_configuration["initial_cost"]),
+        )
+        if dict(model_configuration) != model.configuration():
+            raise ValueError("routed intention cost ledger model configuration mismatch")
+        state = model.state_from_payload(model_payload)
+        ledger = cls(
+            model,
+            state,
+            decision_weight=float(configuration["decision_weight"]),
+        )
+        if dict(configuration) != ledger.configuration():
+            raise ValueError("routed intention cost ledger configuration mismatch")
+        return ledger
+
+
 __all__ = [
+    "EXTERNAL_ROUTED_INTENTION_COST_LEDGER_SCHEMA",
     "EXTERNAL_ROUTED_INTENTION_COST_MODEL_SCHEMA",
+    "EXTERNAL_ROUTED_INTENTION_COST_OBSERVATION_SCHEMA",
     "ExternalRoutedIntentionCostEstimate",
+    "ExternalRoutedIntentionCostLedger",
     "ExternalRoutedIntentionCostModel",
     "ExternalRoutedIntentionCostModelState",
+    "ExternalRoutedIntentionCostObservationReceipt",
 ]

@@ -34,6 +34,10 @@ from .memory import (
     MemoryQuery,
     MemoryWriteReceipt,
 )
+from .prior_cost import (
+    ExternalRoutedIntentionCostLedger,
+    ExternalRoutedIntentionCostObservationReceipt,
+)
 from .representation import (
     DEFAULT_INTENTION_SPACE_ID,
     DEFAULT_MEMORY_VALUE_SPACE_ID,
@@ -3094,6 +3098,7 @@ class ExternalTransitionModelCandidateReceipt:
     slot_id: int | None = None
     schema: str = EXTERNAL_TRANSITION_MODEL_CANDIDATE_SCHEMA
     heldout_rollout_error: float | None = None
+    prior_selection_cost_observation: ExternalRoutedIntentionCostObservationReceipt | None = None
 
     def validate(self) -> ExternalTransitionModelCandidateReceipt:
         if self.schema != EXTERNAL_TRANSITION_MODEL_CANDIDATE_SCHEMA:
@@ -3111,6 +3116,8 @@ class ExternalTransitionModelCandidateReceipt:
             or self.heldout_rollout_error < 0.0
         ):
             raise ValueError("transition-model candidate rollout error is invalid")
+        if self.prior_selection_cost_observation is not None:
+            self.prior_selection_cost_observation.validate()
         if not isinstance(self.candidate_digest, str) or not self.candidate_digest:
             raise ValueError("transition-model candidate digest is missing")
         if not isinstance(self.reason, str) or not self.reason:
@@ -6006,6 +6013,7 @@ class ExternalOnlineTransitionContextRouter:
         prior_selection_transfer_cost: float = 0.0,
         prior_selection_fresh_cost: float = 0.0,
         prior_selection_cost_weight: float = 0.0,
+        prior_selection_cost_ledger: ExternalRoutedIntentionCostLedger | None = None,
     ) -> None:
         if (
             bank.state_width != context_encoder.state_width
@@ -6100,6 +6108,14 @@ class ExternalOnlineTransitionContextRouter:
             )
         if prior_selection_probe is not None and not callable(prior_selection_probe):
             raise TypeError("prior selection probe must be callable")
+        if prior_selection_cost_ledger is not None and not isinstance(
+            prior_selection_cost_ledger, ExternalRoutedIntentionCostLedger
+        ):
+            raise TypeError("prior selection cost ledger must be an external ledger")
+        if prior_selection_cost_ledger is not None and (
+            prior_selection_cost_ledger.context_width != bank.context_width
+        ):
+            raise ValueError("prior selection cost ledger and bank widths differ")
         for name, value in (
             ("prior_selection_transfer_cost", prior_selection_transfer_cost),
             ("prior_selection_fresh_cost", prior_selection_fresh_cost),
@@ -6124,6 +6140,16 @@ class ExternalOnlineTransitionContextRouter:
             )
         ):
             raise ValueError("prior selection costs require a prior selection probe")
+        if prior_selection_cost_ledger is not None and any(
+            float(value) != 0.0
+            for value in (
+                prior_selection_transfer_cost,
+                prior_selection_fresh_cost,
+            )
+        ):
+            raise ValueError(
+                "learned prior selection costs cannot mix with static branch costs"
+            )
         if evidence_evaluator is not None and (
             not hasattr(evidence_evaluator, "state_width")
             or int(evidence_evaluator.state_width) != bank.state_width
@@ -6216,6 +6242,7 @@ class ExternalOnlineTransitionContextRouter:
         self.prior_selection_transfer_cost = float(prior_selection_transfer_cost)
         self.prior_selection_fresh_cost = float(prior_selection_fresh_cost)
         self.prior_selection_cost_weight = float(prior_selection_cost_weight)
+        self.prior_selection_cost_ledger = prior_selection_cost_ledger
         self.candidate_model_families = families
         self._pending: list[ExternalTransitionObservation] = []
         self._active_slot: int | None = None
@@ -6272,6 +6299,7 @@ class ExternalOnlineTransitionContextRouter:
         child.route_query = self.route_query
         child.sparse_evidence = self.sparse_evidence
         child.evidence_evaluator = self.evidence_evaluator
+        child.prior_selection_cost_ledger = self.prior_selection_cost_ledger
         child._pending = []
         child._active_slot = None
         child._active_slot_id = None
@@ -6311,6 +6339,30 @@ class ExternalOnlineTransitionContextRouter:
         if not 0 <= candidate_index < len(self._provisional_candidates):
             raise IndexError("provisional candidate index is out of range")
         return self._provisional_candidates[candidate_index].prior_selection
+
+    def _prior_selection_costs(
+        self,
+        context: torch.Tensor,
+    ) -> tuple[float, float, float]:
+        """Resolve static or learned costs without exposing semantics upstream."""
+
+        if self.prior_selection_cost_ledger is None:
+            return (
+                self.prior_selection_transfer_cost,
+                self.prior_selection_fresh_cost,
+                self.prior_selection_cost_weight,
+            )
+        estimate = self.prior_selection_cost_ledger.estimate(
+            context,
+            source_coverage=1.0,
+            cell_count=max(1, self.bank.context_count),
+        )
+        weight = (
+            self.prior_selection_cost_weight
+            if self.prior_selection_cost_weight != 0.0
+            else self.prior_selection_cost_ledger.decision_weight
+        )
+        return estimate.transfer_cost, estimate.fresh_cost, weight
 
     @property
     def _provisional_context(self) -> torch.Tensor | None:
@@ -6379,7 +6431,10 @@ class ExternalOnlineTransitionContextRouter:
                 self.sparse_evidence_requires_full_capacity
             ),
             "prior_selection": (
-                "verified_transfer_vs_fresh_cost_aware_v2"
+                "verified_transfer_vs_fresh_learned_cost_v1"
+                if self.prior_selection_probe is not None
+                and self.prior_selection_cost_ledger is not None
+                else "verified_transfer_vs_fresh_cost_aware_v2"
                 if self.prior_selection_probe is not None
                 and any(
                     value != 0.0
@@ -6397,6 +6452,11 @@ class ExternalOnlineTransitionContextRouter:
             "prior_selection_transfer_cost": self.prior_selection_transfer_cost,
             "prior_selection_fresh_cost": self.prior_selection_fresh_cost,
             "prior_selection_cost_weight": self.prior_selection_cost_weight,
+            "prior_selection_cost_ledger": (
+                None
+                if self.prior_selection_cost_ledger is None
+                else self.prior_selection_cost_ledger.configuration()
+            ),
             "writes": "caller_owned_slot_only_v1",
             "provisional_evidence": (
                 "cumulative_verified_window_v1"
@@ -6916,15 +6976,18 @@ class ExternalOnlineTransitionContextRouter:
             prior_family = self.bank.model_family_at(prior_index)
             primary_family = self.candidate_model_families[0]
             if primary_family == prior_family:
+                transfer_cost, fresh_cost, cost_weight = self._prior_selection_costs(
+                    context
+                )
                 prior_selection, selected_model = (
                     self.bank.select_verified_transfer_prior(
                         prior_index,
                         observation,
                         self.prior_selection_probe,
                         probe_updates=self.prior_selection_probe_updates,
-                        transfer_cost=self.prior_selection_transfer_cost,
-                        fresh_cost=self.prior_selection_fresh_cost,
-                        cost_weight=self.prior_selection_cost_weight,
+                        transfer_cost=transfer_cost,
+                        fresh_cost=fresh_cost,
+                        cost_weight=cost_weight,
                     )
                 )
                 models[primary_family].load_state_dict(selected_model.state_dict())
@@ -7631,6 +7694,7 @@ class ExternalOnlineTransitionContextRouter:
         additional_heldout_observations: Sequence[ExternalTransitionObservation]
         | None = None,
         additional_heldout_rollouts: Sequence[ExternalTransitionRollout] | None = None,
+        prior_selection_observed_cost: float | None = None,
     ) -> ExternalTransitionModelCandidateReceipt:
         """Commit a provisional model only after held-out and retention proof.
 
@@ -7645,6 +7709,14 @@ class ExternalOnlineTransitionContextRouter:
             raise ValueError("candidate prediction tolerance cannot be negative")
         if rollout_error_tolerance is not None and rollout_error_tolerance < 0.0:
             raise ValueError("candidate rollout tolerance cannot be negative")
+        if prior_selection_observed_cost is not None and (
+            self.prior_selection_cost_ledger is None
+            or not math.isfinite(float(prior_selection_observed_cost))
+            or not 0.0 <= float(prior_selection_observed_cost) <= 1.0
+        ):
+            raise ValueError(
+                "observed prior-selection cost requires a normalized external ledger"
+            )
         if heldout_rollout is None and additional_heldout_rollouts:
             raise ValueError(
                 "additional held-out rollouts require a primary held-out rollout"
@@ -7866,6 +7938,23 @@ class ExternalOnlineTransitionContextRouter:
                 heldout_rollout_error=heldout_rollout_error,
             ).validate()
 
+        prior_cost_observation: ExternalRoutedIntentionCostObservationReceipt | None = None
+        updated_cost_state = None
+        if prior_selection_observed_cost is not None:
+            if candidate.prior_selection is None:
+                raise ValueError(
+                    "observed prior-selection cost requires a prior-selection receipt"
+                )
+            ledger_candidate = copy.deepcopy(self.prior_selection_cost_ledger)
+            prior_cost_observation = ledger_candidate.observe(
+                context,
+                selected_initialization=candidate.prior_selection.selected_initialization,
+                observed_cost=float(prior_selection_observed_cost),
+                source_coverage=1.0,
+                cell_count=max(1, self.bank.context_count),
+            )
+            updated_cost_state = ledger_candidate.state
+
         promoted_model = self.bank._new_model(selected_family)
         promoted_model.load_state_dict(model.state_dict())
         if candidate.address_adapter is not None:
@@ -7892,6 +7981,8 @@ class ExternalOnlineTransitionContextRouter:
             self.bank.capacity = destination_capacity
             if self.max_contexts is not None:
                 self.max_contexts = destination_capacity
+        if updated_cost_state is not None:
+            self.prior_selection_cost_ledger.state = updated_cost_state
         after = self.bank.content_digest()
         slot_index = self.bank.context_count - 1
         self._set_active_slot(slot_index)
@@ -7919,6 +8010,7 @@ class ExternalOnlineTransitionContextRouter:
                 else "held-out and retention-verified candidate promotion committed"
             ),
             heldout_rollout_error=heldout_rollout_error,
+            prior_selection_cost_observation=prior_cost_observation,
         ).validate()
 
     @staticmethod
@@ -8075,6 +8167,11 @@ class ExternalOnlineTransitionContextRouter:
             "route_query": (
                 None if self.route_query is None else self.route_query.state_payload()
             ),
+            "prior_selection_cost_ledger": (
+                None
+                if self.prior_selection_cost_ledger is None
+                else self.prior_selection_cost_ledger.state_payload()
+            ),
             "sparse_evidence": (
                 None
                 if self.sparse_evidence is None
@@ -8132,6 +8229,7 @@ class ExternalOnlineTransitionContextRouter:
         encoder_payload = payload.get("context_encoder")
         address_adapter_payload = payload.get("address_adapter")
         route_query_payload = payload.get("route_query")
+        cost_ledger_payload = payload.get("prior_selection_cost_ledger")
         sparse_evidence_payload = payload.get("sparse_evidence")
         pending_payload = payload.get("pending")
         ambiguous_quarantine_payload = payload.get("ambiguous_quarantine", [])
@@ -8169,6 +8267,20 @@ class ExternalOnlineTransitionContextRouter:
             if route_query_payload is None
             else ExternalTransitionRouteQuery.from_payload(route_query_payload)
         )
+        cost_ledger = (
+            None
+            if cost_ledger_payload is None
+            else ExternalRoutedIntentionCostLedger.from_payload(cost_ledger_payload)
+        )
+        serialized_ledger_configuration = configuration.get(
+            "prior_selection_cost_ledger"
+        )
+        if (cost_ledger is None) != (serialized_ledger_configuration is None):
+            raise ValueError("online transition cost-ledger payload/configuration differ")
+        if cost_ledger is not None and serialized_ledger_configuration != (
+            cost_ledger.configuration()
+        ):
+            raise ValueError("online transition cost-ledger configuration mismatch")
         sparse_evidence = (
             None
             if sparse_evidence_payload is None
@@ -8266,6 +8378,7 @@ class ExternalOnlineTransitionContextRouter:
             prior_selection_cost_weight=float(
                 configuration.get("prior_selection_cost_weight", 0.0)
             ),
+            prior_selection_cost_ledger=cost_ledger,
         )
         for row_payload in pending_payload:
             row = cls._observation_from_payload(row_payload)

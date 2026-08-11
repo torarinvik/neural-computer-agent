@@ -15,6 +15,7 @@ from neural_computer import (
     ExternalModelBasedPlanner,
     ExternalOnlineContextAddressResolver,
     ExternalOnlineTransitionContextRouter,
+    ExternalRoutedIntentionCostLedger,
     ExternalSignedEntryValueModel,
     ExternalSparseTransitionEvidenceIndex,
     ExternalTransitionContextAddressAdapter,
@@ -671,6 +672,67 @@ def test_online_router_verified_prior_selection_is_isolated_and_persistent() -> 
     assert restored_receipt is not None
     assert restored_receipt.selected_model_digest == receipt.selected_model_digest
     assert restored.configuration() == router.configuration()
+
+
+def test_online_router_learned_cost_ledger_updates_only_after_verified_promotion() -> None:
+    torch.manual_seed(1214)
+    bank = ExternalTransitionModelBank(2, 1, 4, hidden_width=8, capacity=2)
+    encoder = ExternalTransitionContextEncoder(2, 1, hidden_width=6, context_width=4)
+    bank.ensure_context(torch.tensor([1.0, 0.0, 0.0, 0.0]))
+    ledger = ExternalRoutedIntentionCostLedger.create(4, initial_cost=0.5)
+
+    def probe(
+        _transfer: torch.nn.Module,
+        _fresh: torch.nn.Module,
+        _observation: ExternalTransitionObservation,
+    ) -> tuple[float, float]:
+        return 0.1, 0.2
+
+    router = ExternalOnlineTransitionContextRouter(
+        bank,
+        encoder,
+        match_tolerance=0.0,
+        match_margin=0.0,
+        admission_observations=1,
+        max_contexts=2,
+        defer_admission=True,
+        candidate_model_families=("nonlinear_mlp_v1",),
+        provisional_evidence_policy="streaming_gradient",
+        prior_selection_probe=probe,
+        prior_selection_cost_ledger=ledger,
+    )
+    observation = ExternalTransitionObservation(
+        state=torch.randn(1, 2),
+        intention=torch.randn(1, 1),
+        next_state=torch.randn(1, 2),
+    )
+    result = router.observe(observation)
+    assert result.status == "staged"
+    prior = router.provisional_prior_selection_at(0)
+    assert prior is not None
+    assert prior.schema.endswith("prior-selection.v2")
+    assert prior.transfer_cost == pytest.approx(0.5)
+    assert int(ledger.state.transfer_observations.item()) == 0
+
+    promoted = router.promote_staged_candidate(
+        observation,
+        lambda _candidate_bank: True,
+        prediction_tolerance=1e9,
+        prior_selection_observed_cost=0.0,
+    )
+    assert promoted.accepted
+    assert promoted.prior_selection_cost_observation is not None
+    assert int(ledger.state.transfer_observations.item()) == 1
+    assert bank.context_count == 2
+
+    restored = ExternalOnlineTransitionContextRouter.from_payload(
+        router.state_payload(),
+        prior_selection_probe=probe,
+    )
+    assert restored.prior_selection_cost_ledger is not None
+    assert int(
+        restored.prior_selection_cost_ledger.state.transfer_observations.item()
+    ) == 1
 
 
 def test_learned_transition_route_query_is_persistent_and_opaque() -> None:

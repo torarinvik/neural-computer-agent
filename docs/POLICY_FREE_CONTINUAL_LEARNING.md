@@ -995,6 +995,17 @@ stream remains a small synthetic family matrix. The next pressure is a larger
 and genuinely non-synthetic family stream in which predicted cost can be
 tested against held-out acquisition curves.
 
+The same contract is now available at the online factual-transition boundary
+through `ExternalRoutedIntentionCostLedger`. It is shared external state, not a
+controller branch: the router estimates transfer/fresh continuation cost from
+masked opaque candidate context and bank telemetry, then updates only the
+selected branch after a held-out and retention-verified promotion receives one
+normalized completed-cost observation. The ledger persists independently and
+rejected candidates leave it unchanged. This removes another caller-side cost
+schedule, but still requires a larger held-out family stream to demonstrate
+that predicted costs improve acquisition rather than merely producing a valid
+receipt.
+
 ## Canonical external computation runtime seam (2026-08-10)
 
 The CPU-plus-files architecture now has a first-class execution boundary.

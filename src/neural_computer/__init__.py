@@ -361,10 +361,14 @@ from .policies import (
     EventWaitStatistics,
 )
 from .prior_cost import (
+    EXTERNAL_ROUTED_INTENTION_COST_LEDGER_SCHEMA,
     EXTERNAL_ROUTED_INTENTION_COST_MODEL_SCHEMA,
+    EXTERNAL_ROUTED_INTENTION_COST_OBSERVATION_SCHEMA,
     ExternalRoutedIntentionCostEstimate,
+    ExternalRoutedIntentionCostLedger,
     ExternalRoutedIntentionCostModel,
     ExternalRoutedIntentionCostModelState,
+    ExternalRoutedIntentionCostObservationReceipt,
 )
 from .program import (
     EXTERNAL_PROGRAM_ADMISSION_SCHEMA,
@@ -746,7 +750,9 @@ __all__ = [
     "EXTERNAL_REGISTER_SHARED_STABLE_RELATIONAL_MODE",
     "EXTERNAL_REGISTER_STATE_SCHEMA",
     "EXTERNAL_REPRESENTATION_SPACE_SCHEMA",
+    "EXTERNAL_ROUTED_INTENTION_COST_LEDGER_SCHEMA",
     "EXTERNAL_ROUTED_INTENTION_COST_MODEL_SCHEMA",
+    "EXTERNAL_ROUTED_INTENTION_COST_OBSERVATION_SCHEMA",
     "EXTERNAL_ROUTED_INTENTION_MEMORY_SCHEMA",
     "EXTERNAL_ROUTED_INTENTION_MEMORY_SCHEMA_V1",
     "EXTERNAL_ROUTED_INTENTION_MEMORY_SCHEMA_V2",
@@ -992,8 +998,10 @@ __all__ = [
     "ExternalRegisterInstruction",
     "ExternalRegisterState",
     "ExternalRoutedIntentionCostEstimate",
+    "ExternalRoutedIntentionCostLedger",
     "ExternalRoutedIntentionCostModel",
     "ExternalRoutedIntentionCostModelState",
+    "ExternalRoutedIntentionCostObservationReceipt",
     "ExternalRoutedIntentionMemoryState",
     "ExternalRoutedIntentionPriorSelectionReceipt",
     "ExternalRoutedIntentionProposal",

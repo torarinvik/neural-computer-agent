@@ -1429,6 +1429,13 @@ both the physical source and the cost policy. The three-seed audit is
 archived at
 `session_records/policy_free_intention_learned_cost_promoted_2026-08-10/`.
 
+`ExternalRoutedIntentionCostLedger` is the stateful form used by online factual
+transition routing. It shares one versioned cost policy across stream-local
+routers, updates only after a candidate passes held-out and retention
+verification, and persists independently from the controller and factual model
+bank. This is an external learning-memory seam; it is not yet evidence that
+cost prediction generalizes across broad task families.
+
 Factual transition-bank prior selection also accepts optional opaque transfer
 and fresh acquisition costs. Its v2 receipt records raw and cost-adjusted
 probe errors, while zero costs retain the v1 error-only behavior. The choice is
