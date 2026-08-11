@@ -111,6 +111,9 @@ def _train_and_evaluate_candidate(
     retention_lifetimes: int,
     seed: int,
     learning_rate: float,
+    entropy_weight: float,
+    credit_mode: str,
+    shuffle_outcomes: bool = False,
 ) -> tuple[list[dict[str, float | int]], list[dict[str, float | int]]]:
     """Train one isolated candidate and return its history and fresh probes."""
 
@@ -131,6 +134,9 @@ def _train_and_evaluate_candidate(
         steps=14,
         seed=seed,
         learning_rate=learning_rate,
+        entropy_weight=entropy_weight,
+        credit_mode=credit_mode,
+        shuffle_outcomes=shuffle_outcomes,
     )
     _set_requires_grad(all_modules, False)
     fresh = _evaluate(
@@ -216,6 +222,8 @@ def _status(
 
 
 def run(args: argparse.Namespace) -> dict[str, object]:
+    entropy_weight = float(getattr(args, "entropy_weight", 0.01))
+    credit_mode = str(getattr(args, "credit_mode", "attempted_bce"))
     if not 1 <= args.target_file_count <= len(OPEN_SCHEDULE):
         raise ValueError("target file count exceeds the calibrated schedule")
     if not args.target_file_count <= args.candidate_budget <= len(OPEN_SCHEDULE):
@@ -234,6 +242,10 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         raise ValueError("the calibrated open-growth harness requires batch size 32")
     if args.learning_rate <= 0.0:
         raise ValueError("learning rate must be positive")
+    if entropy_weight < 0.0:
+        raise ValueError("entropy weight cannot be negative")
+    if credit_mode not in {"reinforce", "attempted_bce"}:
+        raise ValueError("unsupported open-growth credit mode")
     if not 0.0 <= args.reversal_threshold <= 1.0:
         raise ValueError("reversal threshold must lie in [0, 1]")
     if args.reversal_patience < 1:
@@ -273,6 +285,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             retention_lifetimes=args.retention_lifetimes,
             seed=args.seed + 10_000 * (attempt_index + 1),
             learning_rate=args.learning_rate,
+            entropy_weight=entropy_weight,
+            credit_mode=credit_mode,
         )
         attempted_training_bits += args.batch_size * args.file_updates * (
             14 - RULES[family].warmup
@@ -352,6 +366,22 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     accepted_count = len(accepted_schedule)
     if accepted_count < 1:
         raise RuntimeError("source compute file was not admitted")
+
+    shuffled_control_system = _build(args.seed + 800_000, slot_count=1)
+    shuffled_control_history, shuffled_control = _train_and_evaluate_candidate(
+        shuffled_control_system,
+        slot=0,
+        family="nback2",
+        cue_symbol=9,
+        updates=args.file_updates,
+        batch_size=args.batch_size,
+        retention_lifetimes=args.retention_lifetimes,
+        seed=args.seed + 810_000,
+        learning_rate=args.learning_rate,
+        entropy_weight=entropy_weight,
+        credit_mode=credit_mode,
+        shuffle_outcomes=True,
+    )
 
     evidence = PersistentOpaqueContextRouteEvidence(
         EVENT_WIDTH,
@@ -477,6 +507,10 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         ]
         >= ROUTE_SELECTION_THRESHOLD,
         "unknown_context_near_chance": unknown["accuracy"] < 0.70,
+        "reward_shuffled_nback2_control_rejects_mastery": max(
+            float(row["accuracy"]) for row in shuffled_control
+        )
+        < ROUTE_MASTERY_THRESHOLD,
         "route_reload_exact": changed_same_cue == restored_changed,
         "all_admitted_files_unchanged_during_routing": file_digests
         == file_digests_after,
@@ -507,6 +541,11 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "route_feedback": "terminal_scalar_episode_accuracy",
             "route_memory": "persistent_opaque_context_route_evidence_v1",
             "candidate_policy": "append_probe_admit_or_rollback",
+            "candidate_training": (
+                "scalar_attempted_outcome_credit_with_optional_entropy_v1"
+            ),
+            "entropy_weight": entropy_weight,
+            "credit_mode": credit_mode,
             "target_file_count": args.target_file_count,
             "candidate_budget": args.candidate_budget,
             "accepted_file_count": accepted_count,
@@ -526,6 +565,11 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "direct": direct,
         "routed": routed,
         "route_history_tails": [history[-5:] for history in route_histories],
+        "reward_shuffled_nback2_control": {
+            "history_tail": shuffled_control_history[-5:],
+            "evaluation": shuffled_control,
+            "replayed_examples": 0,
+        },
         "old_status_before": {
             "attempts": list(old_status_before.attempts),
             "protected": list(old_status_before.protected),
@@ -547,6 +591,10 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "gates": gates,
         "accounting": {
             "unique_verifier_bits": training_bits,
+            "control_verifier_bits": args.batch_size
+            * args.file_updates
+            * (14 - RULES["nback2"].warmup),
+            "control_logical_lifetimes": args.batch_size * args.file_updates,
             "audit_verifier_bits": sum(
                 int(row["unique_verifier_bits"])
                 for rows in direct
@@ -563,6 +611,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                 + args.transition_batches
             ),
             "optimizer_updates": attempted_optimizer_updates,
+            "control_optimizer_updates": args.file_updates,
+            "control_replayed_examples": 0,
             "route_memory_updates": args.route_calibration_lifetimes
             + (accepted_count - 1) * args.route_updates
             + args.transition_batches * accepted_count,
@@ -596,6 +646,12 @@ def main() -> None:
     parser.add_argument("--batch-size", type=int, default=32)
     parser.add_argument("--retention-lifetimes", type=int, default=4)
     parser.add_argument("--learning-rate", type=float, default=3e-3)
+    parser.add_argument("--entropy-weight", type=float, default=0.01)
+    parser.add_argument(
+        "--credit-mode",
+        choices=("attempted_bce", "reinforce"),
+        default="attempted_bce",
+    )
     parser.add_argument("--reversal-threshold", type=float, default=0.65)
     parser.add_argument("--reversal-patience", type=int, default=4)
     parser.add_argument("--report-out", type=Path, required=True)

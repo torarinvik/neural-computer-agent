@@ -781,7 +781,7 @@ PYTHONPATH=src:. ./.venv/bin/python -m experiments.brainworkshop_canonical.exter
   --report-out /tmp/brainworkshop-external-compute-route-reversal.json
 ```
 
-## Outcome-gated open external-compute growth (2026-08-11)
+## Outcome-gated open external-compute growth baseline (2026-08-11)
 
 `external_compute_open_growth.py` removes the fixed-bank assumption from the
 canonical growth harness. It starts with one file, trains each fresh candidate
@@ -811,5 +811,37 @@ PYTHONPATH=src:. ./.venv/bin/python -m experiments.brainworkshop_canonical.exter
   --file-updates 192 --route-updates 256 \
   --route-calibration-lifetimes 8 --transition-batches 12 \
   --batch-size 32 --retention-lifetimes 4 --seed 17 \
+  --credit-mode reinforce --entropy-weight 0.0 \
   --report-out /tmp/brainworkshop-external-compute-open-growth.json
+```
+
+## Attempted-outcome credit for external n-back acquisition (2026-08-12)
+
+The previous reinforce objective could represent n-back-2 but collapsed to its
+75% majority-action baseline. The generic `attempted_bce` mode now trains the
+logit of the action actually attempted against only that action's scalar
+outcome, with a small entropy term for exploration. A matched fresh candidate
+trained on shuffled outcomes remains below mastery.
+
+Seeds `17` and `18` both admit and route five files, including n-back-2.
+Direct n-back-2 accuracy is `1.0000` on both; the weakest routed-file
+accuracy is `0.8828` and `1.0000`. Same-cue reversal, old-file retention,
+exact reload, frozen controller/frontend, and zero replay all pass. The
+shuffled-feedback control maxima are `0.4479` and `0.2760`.
+
+This promotes outcome-only scalar credit for a reusable external working-memory
+capability, not arbitrary computation or general continual learning. Evidence
+and separate control accounting are archived in
+`session_records/brainworkshop_external_compute_nback2_credit_promoted_2026-08-12/`.
+
+Run the calibrated credit promotion with:
+
+```bash
+PYTHONPATH=src:. ./.venv/bin/python -m experiments.brainworkshop_canonical.external_compute_open_growth \
+  --target-file-count 5 --candidate-budget 5 \
+  --file-updates 192 --route-updates 256 \
+  --route-calibration-lifetimes 8 --transition-batches 12 \
+  --batch-size 32 --retention-lifetimes 4 --seed 17 \
+  --credit-mode attempted_bce --entropy-weight 0.01 \
+  --report-out /tmp/brainworkshop-external-compute-nback2-credit.json
 ```

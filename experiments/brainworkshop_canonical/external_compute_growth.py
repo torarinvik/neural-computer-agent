@@ -201,11 +201,18 @@ def _episode(
     seed: int,
     train: bool,
     reset_external_each_step: bool = False,
+    entropy_weight: float = 0.0,
+    credit_mode: str = "reinforce",
+    shuffle_outcomes: bool = False,
 ) -> tuple[torch.Tensor, torch.Tensor, int]:
     """Run one fresh verifier lifetime through INPUT -> PROCESS -> OUTPUT."""
 
     if family not in RULES:
         raise ValueError("unsupported external compute audit family")
+    if entropy_weight < 0.0:
+        raise ValueError("entropy weight cannot be negative")
+    if credit_mode not in {"reinforce", "attempted_bce"}:
+        raise ValueError("unsupported external compute credit mode")
     verifier = CrossFamilyVerifier(
         family=family,
         batch_size=batch_size,
@@ -221,6 +228,9 @@ def _episode(
     feedback = agent.initial_feedback(batch_size, device="cpu")
     previous_action = torch.zeros(batch_size, ACTION_COUNT)
     log_probabilities: list[torch.Tensor] = []
+    selected_logits: list[torch.Tensor] = []
+    entropies: list[torch.Tensor] = []
+    delivered_rewards: list[torch.Tensor] = []
     rewards: list[torch.Tensor] = []
     eligible: list[torch.Tensor] = []
 
@@ -246,34 +256,61 @@ def _episode(
         intention = IntentEvent(system.readouts[slot](executed))
         logits = system.decoders[slot](intention)
         probabilities = logits.softmax(dim=-1)
+        entropy = -(probabilities * probabilities.clamp_min(1e-8).log()).sum(
+            dim=-1
+        )
         action = (
             torch.multinomial(probabilities, 1).squeeze(-1)
             if train
             else logits.argmax(dim=-1)
         )
+        selected_logits.append(
+            logits.gather(1, action[:, None]).squeeze(1)
+        )
         propensity = probabilities.gather(1, action[:, None]).squeeze(1)
         scored = verifier.score(action)
+        delivered_reward = (
+            scored.reward.roll(1) if shuffle_outcomes else scored.reward
+        )
         log_probabilities.append(propensity.clamp_min(1e-8).log())
+        entropies.append(entropy)
         rewards.append(scored.reward)
+        delivered_rewards.append(delivered_reward)
         eligible.append(scored.eligible)
         feedback = ControllerFeedback(
             action=agent.keypress_encoder(action),
-            reward=scored.reward,
+            reward=delivered_reward,
             propensity=propensity,
             has_feedback=torch.ones(batch_size),
         )
         previous_action = F.one_hot(action, ACTION_COUNT).to(torch.float32)
 
     reward_tensor = torch.stack(rewards, dim=1)
+    delivered_reward_tensor = torch.stack(delivered_rewards, dim=1)
     eligible_tensor = torch.stack(eligible, dim=1)
     log_probability_tensor = torch.stack(log_probabilities, dim=1)
     denominator = eligible_tensor.sum().clamp_min(1.0)
     accuracy = (reward_tensor * eligible_tensor).sum() / denominator
-    loss = -(
-        ((reward_tensor - 0.5).detach() * log_probability_tensor * eligible_tensor)
-        .sum()
-        / denominator
-    )
+    if credit_mode == "attempted_bce":
+        selected_logit_tensor = torch.stack(selected_logits, dim=1)
+        loss = F.binary_cross_entropy_with_logits(
+            selected_logit_tensor[eligible_tensor],
+            delivered_reward_tensor[eligible_tensor],
+        )
+    else:
+        loss = -(
+            (
+                (delivered_reward_tensor - 0.5).detach()
+                * log_probability_tensor
+                * eligible_tensor
+            ).sum()
+            / denominator
+        )
+    if entropy_weight:
+        entropy_tensor = torch.stack(entropies, dim=1)
+        loss = loss - entropy_weight * (
+            (entropy_tensor * eligible_tensor).sum() / denominator
+        )
     return loss, accuracy, int(eligible_tensor.sum().item())
 
 
@@ -288,6 +325,9 @@ def _train_stage(
     steps: int,
     seed: int,
     learning_rate: float,
+    entropy_weight: float = 0.0,
+    credit_mode: str = "reinforce",
+    shuffle_outcomes: bool = False,
 ) -> list[dict[str, float | int]]:
     modules = _common_modules(system) + _slot_modules(system, slot)
     optimizer = torch.optim.Adam(_parameters(modules), lr=learning_rate)
@@ -303,6 +343,9 @@ def _train_stage(
             steps=steps,
             seed=seed + update,
             train=True,
+            entropy_weight=entropy_weight,
+            credit_mode=credit_mode,
+            shuffle_outcomes=shuffle_outcomes,
         )
         optimizer.zero_grad(set_to_none=True)
         loss.backward()

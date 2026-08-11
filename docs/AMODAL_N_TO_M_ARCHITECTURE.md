@@ -10149,7 +10149,7 @@ Across seeds `17` and `18`, five files were admitted from six candidates.
 The `nback2` candidate failed stable mastery in both seeds and was rolled
 back; a later `symbol_parity_odd` candidate reused that physical slot. All
 five direct and routed files passed, same-context replacement reached
-`1.0000), old-file forced retention remained `1.0000), route reload was
+1.0000, old-file forced retention remained 1.0000, route reload was
 exact, and replay was zero. The weakest routed-file accuracy was `0.8693`.
 The corrected accounting includes the rejected candidate: each seed used
 `880,128` unique training verifier bits, `23,552` audit bits, `70,272`
@@ -10161,3 +10161,27 @@ schedule and does not establish unrestricted physical growth, arbitrary
 program induction, learned compression, or general continual learning.
 Evidence and the sample-efficiency ledger are in
 `session_records/brainworkshop_external_compute_open_growth_promoted_2026-08-11/`.
+
+## Attempted-outcome scalar credit for external n-back acquisition (2026-08-12)
+
+The open-growth audit isolated a learning-dynamics bottleneck. The external
+event window already contained enough information for n-back-2: a discarded
+diagnostic probe decoded it perfectly, while the original reinforce objective
+collapsed to the 75% majority-action policy. The canonical external-file
+trainer now exposes an outcome-only `attempted_bce` update. It trains only
+the logit for the action actually attempted against that action's deterministic
+scalar verifier outcome; no correct-action or unattempted-action target is
+constructed. A small entropy term preserves exploration.
+
+Across seeds `17` and `18`, five files were admitted and routed, including
+n-back-2 at 1.0000 direct accuracy in both seeds. The weakest routed-file
+accuracy was 0.8828 and 1.0000; same-context reversal and old-file
+retention were 1.0000, route reload was exact, and replay was zero. A
+matched shuffled-feedback n-back-2 control remained below mastery at maximum
+0.4479 and 0.2760, supporting causal use of attempted scalar outcomes.
+
+This promotes a reusable scalar-credit mechanism for one external
+working-memory capability. It does not establish arbitrary program induction,
+unrestricted growth, consolidation, or general continual learning. Evidence
+and separate control accounting are in
+`session_records/brainworkshop_external_compute_nback2_credit_promoted_2026-08-12/`.
