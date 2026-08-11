@@ -1,0 +1,36 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment_id": "brainworkshop-external-temporal-context-route-growth-2026-08-12",
+  "status": "promoted_temporal_context_route_growth",
+  "source": "in_repository_run",
+  "seeds": [17, 18],
+  "unique_verifier_bits_per_seed": 387584,
+  "control_verifier_bits_per_seed": 73728,
+  "unique_logical_lifetimes_per_seed": 41216,
+  "optimizer_updates_per_seed": 1024,
+  "route_memory_updates_per_seed": 264,
+  "replayed_examples_per_seed": 0,
+  "routed_old_accuracy": [1.0, 1.0],
+  "routed_new_accuracy": [1.0, 0.951388880610466],
+  "routed_old_selection": [1.0, 1.0],
+  "routed_new_selection": [1.0, 1.0],
+  "learned_offsets": {
+    "source_nback4": [4, 4],
+    "target_nback5": [5, 5]
+  },
+  "controls": {
+    "two_seeds": true,
+    "scalar_outcomes_only": true,
+    "unknown_context_fallback": true,
+    "wrong_file_negative": true,
+    "wrong_offset_negative": true,
+    "missing_history_negative": true,
+    "shuffled_route_feedback_negative": true,
+    "exact_route_reload": true,
+    "protected_old_file": true,
+    "frozen_controller": true,
+    "frozen_event_encoder": true,
+    "zero_replay": true
+  },
+  "claim_boundary": "Promoted bounded context-conditioned routing into isolated external temporal capability files; not same-context multi-address binding, content search, compression, unrestricted memory growth, arbitrary new computation, or general continual learning."
+}

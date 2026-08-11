@@ -10261,3 +10261,27 @@ content keys while protecting earlier files.
 
 Evidence and accounting are archived in
 `session_records/brainworkshop_external_temporal_offset_growth_promoted_2026-08-12/`.
+
+## Context-conditioned temporal route growth
+
+The next composition uses the existing memory-side
+`PersistentOpaqueContextRouteEvidence` table to select among isolated
+external temporal capability files. The route query is a normalized learned
+event tensor, not a task identifier. Each selected file reads its own
+append-only temporal history and learns its own relative offset from scalar
+episode outcomes. The controller and event encoder remain frozen; the old
+file is protected before the new file is acquired and no old sequence is
+replayed.
+
+The two-seed promotion at cues `11` and `12` learned n-back-4 and n-back-5
+files with offsets `4` and `5`. Both contexts selected the correct file on
+every evaluated lifetime; routed target accuracies were `1.0000` and
+`0.9514`, while the retained source stayed at `1.0000`. Unknown-context
+fallback, wrong-file, wrong-offset, missing-history, shuffled route feedback,
+exact route reload, frozen-core, and zero-replay controls passed.
+
+This is bounded context-conditioned external routing, not general continual
+learning. The unresolved pressure point is same-context binding of multiple
+useful addresses (or content keys), followed by learned compression and
+capacity pressure. Evidence and accounting are archived in
+`session_records/brainworkshop_external_temporal_context_route_growth_promoted_2026-08-12/`.

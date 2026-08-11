@@ -151,6 +151,7 @@ def _episode(
     seed: int,
     train: bool,
     entropy_weight: float,
+    cue_symbol: int = TARGET_CUE,
     shuffle_outcomes: bool = False,
     forced_offset: int | None = None,
     reset_memory_each_step: bool = False,
@@ -161,7 +162,7 @@ def _episode(
         family=family,
         batch_size=batch_size,
         steps=steps,
-        cue_symbol=TARGET_CUE,
+        cue_symbol=cue_symbol,
         seed=seed,
     )
     verifier.reset()
@@ -267,6 +268,7 @@ def _train_file(
     seed: int,
     learning_rate: float,
     entropy_weight: float,
+    cue_symbol: int = TARGET_CUE,
     shuffle_outcomes: bool = False,
 ) -> list[dict[str, float | int]]:
     optimizer = torch.optim.Adam(file.parameters(), lr=learning_rate)
@@ -282,6 +284,7 @@ def _train_file(
             seed=seed + update,
             train=True,
             entropy_weight=entropy_weight,
+            cue_symbol=cue_symbol,
             shuffle_outcomes=shuffle_outcomes,
         )
         optimizer.zero_grad(set_to_none=True)
@@ -310,6 +313,7 @@ def _evaluate(
     steps: int,
     seed: int,
     lifetimes: int,
+    cue_symbol: int = TARGET_CUE,
     forced_offset: int | None = None,
     reset_memory_each_step: bool = False,
 ) -> list[dict[str, float | int | list[int]]]:
@@ -324,6 +328,7 @@ def _evaluate(
             seed=seed + lifetime,
             train=False,
             entropy_weight=0.0,
+            cue_symbol=cue_symbol,
             forced_offset=forced_offset,
             reset_memory_each_step=reset_memory_each_step,
         )

@@ -912,3 +912,25 @@ search. The selector is currently a single global offset distribution per
 external file; query-conditioned content addressing and multiple useful
 offsets remain open. Evidence and separate accounting are archived in
 `session_records/brainworkshop_external_temporal_offset_growth_promoted_2026-08-12/`.
+
+## Context-conditioned temporal route growth (2026-08-12)
+
+`external_temporal_context_route_growth.py` composes the temporal offset file
+with `PersistentOpaqueContextRouteEvidence`. A normalized learned event tensor
+is the opaque context key; a terminal scalar episode outcome teaches the route
+table which isolated temporal capability file to select. The controller and
+event encoder remain frozen, and the source file is protected before the
+target file is acquired.
+
+Seeds `17` and `18` both mastered n-back-4 at cue `11` and n-back-5 at cue
+`12`, learned file-local offsets `4` and `5`, selected the correct file at
+`1.0000` on every routed lifetime, and retained the source at `1.0000`.
+Target routed accuracy was `1.0000` and `0.9514`. Unknown-context fallback,
+wrong-file, wrong-offset, missing-history, shuffled-route-feedback, exact
+reload, frozen-core, and zero-replay gates all passed.
+
+This promotes bounded composition of context routing and learned temporal
+addressing. It does not yet establish multiple useful addresses under one
+context, content search, learned compression, unrestricted memory growth, or
+general continual learning. Evidence and accounting are archived in
+`session_records/brainworkshop_external_temporal_context_route_growth_promoted_2026-08-12/`.

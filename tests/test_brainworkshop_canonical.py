@@ -355,6 +355,37 @@ def test_external_temporal_offset_growth_smoke_keeps_addressing_external(
     assert report["accounting"]["replayed_examples"] == 0
 
 
+def test_external_temporal_context_route_growth_smoke_composes_external_addresses(
+    tmp_path,
+) -> None:
+    from experiments.brainworkshop_canonical.external_temporal_context_route_growth import (
+        run,
+    )
+
+    report = run(
+        argparse.Namespace(
+            report_out=tmp_path / "temporal-context-route-growth.json",
+            seed=17,
+            file_updates=2,
+            route_updates=2,
+            route_calibration_lifetimes=1,
+            batch_size=2,
+            steps=14,
+            retention_lifetimes=1,
+            learning_rate=3e-3,
+            entropy_weight=0.01,
+        )
+    )
+
+    assert report["schema"] == (
+        "neural-computer.brainworkshop-external-temporal-context-route-growth.v1"
+    )
+    assert report["gates"]["route_reload_exact"]
+    assert report["gates"]["frozen_controller"]
+    assert report["gates"]["frozen_event_encoder"]
+    assert report["accounting"]["replayed_examples"] == 0
+
+
 def test_binary_switch_family_has_a_valid_chance_baseline() -> None:
     verifier = CrossFamilyVerifier(
         family="switch_binary",
