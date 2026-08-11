@@ -709,6 +709,7 @@ if args.synthesize:
                  if weights is not None else None)
         recipe, tried_total, fits = {}, 0, []
         proposed_total_lib: list = []
+        enum_hits: list = []
         for action in range(family.actions):
             keep = acts == action
             if int(keep.sum()) < 4:
@@ -758,6 +759,7 @@ if args.synthesize:
                 # win on record and bounds the loss at 1.25x instead of
                 # the 2.2x measured.
                 ceiling = max(1, int(budget * args.enum_budget))
+                enum_start = tried
                 stop = False
                 for depth in (1, 2):
                     if stop:
@@ -776,6 +778,16 @@ if args.synthesize:
                         if sc > best_score:
                             best, best_score = cand, sc
                         if best_score >= args.fit_target or tried >= budget:
+                            # WHERE a successful enumeration terminates.
+                            # F175 could not settle why capping hurt the
+                            # related sequence because this was never
+                            # recorded: the guess was that those recipes
+                            # are found BETWEEN 400 and 930, so a cap
+                            # converts wins into fallbacks. A guess about
+                            # a distribution is settled by recording the
+                            # distribution.
+                            if best_score >= args.fit_target:
+                                enum_hits.append(tried - enum_start)
                             stop = True
                             break
             while tried < budget and best_score < args.fit_target:
@@ -818,7 +830,7 @@ if args.synthesize:
             tried_total += tried
             proposed_total_lib.append(proposed)
         return (recipe, tried_total, sum(fits) / max(len(fits), 1),
-                sum(proposed_total_lib))
+                sum(proposed_total_lib), enum_hits)
 
     def occurrences(fragment: tuple, program: tuple) -> int:
         """How many times `fragment` appears CONTIGUOUSLY in `program`."""
@@ -1066,9 +1078,9 @@ if args.synthesize:
             if proposer is not None:
                 recipe, tried, fit = search_with_proposer(
                     family, proposer, observer, generator, budget)
-                proposals = tried
+                proposals, hits = tried, []
             else:
-                recipe, tried, fit, proposals = search_with_library(
+                recipe, tried, fit, proposals, hits = search_with_library(
                     family, library, weights, observer, generator, budget,
                     effect_index=(kind == "effect"),
                     cover=kind.startswith("cover"),
@@ -1096,6 +1108,7 @@ if args.synthesize:
                 "library_size": (proposer.size() if proposer
                                  else len(library)),
                 "winners": len(winners), "recalled": recalled,
+                "enum_hits": hits,
                 "saturated": tried >= budget * actions})
             stored.update(winners)
             if kind in ("frozen", "effect", "cover", "bound", "enum") \
@@ -1259,7 +1272,7 @@ if args.synthesize:
         started = len(library)
         sequence = []
         for name, family in targets:
-            recipe, tried, fit, _ = search_with_library(
+            recipe, tried, fit, _, _ = search_with_library(
                 family, library, None, gen, gen, budget=args.synthesize)
             sequence.append({
                 "family": name, "candidates_tried": tried,
