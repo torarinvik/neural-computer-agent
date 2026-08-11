@@ -2729,6 +2729,15 @@ def test_factored_random_feature_residual_is_replay_free_and_persistent() -> Non
     assert restored.residual_bank is not None
     assert restored.residual_bank.models[0].sample_count.item() == 4
 
+    reparameterized = model.reparameterized_residual_ridge(context, 0.1)
+    assert reparameterized.base.digest() == base_before
+    assert reparameterized.residual_bank is not None
+    assert reparameterized.residual_bank.models[0].ridge == 0.1
+    restored_reparameterized = ExternalFactoredTransitionModel.from_payload(
+        reparameterized.state_payload()
+    )
+    assert restored_reparameterized.digest() == reparameterized.digest()
+
 
 def test_factored_router_owns_verified_growth_compression_and_stable_eviction() -> None:
     torch.manual_seed(777)
@@ -3290,6 +3299,62 @@ def test_factored_router_routes_opaque_bundles_atomically() -> None:
     assert staged.pending_observations == 0
     assert router.candidate_active
     assert router.pending_observations == 0
+
+
+def test_factored_router_accumulates_partial_evidence_without_forcing_identity() -> None:
+    torch.manual_seed(4001)
+    model = ExternalFactoredTransitionModel(1, 1, 2, hidden_width=8)
+    model.freeze_base()
+    encoder = ExternalTransitionContextEncoder(1, 1, hidden_width=8, context_width=2)
+    router = ExternalFactoredTransitionRouter(
+        model,
+        encoder,
+        max_contexts=2,
+        match_tolerance=0.05,
+        match_margin=0.01,
+    )
+    source = (
+        ExternalTransitionObservation(
+            state=torch.tensor([[0.0]]),
+            intention=torch.tensor([[1.0]]),
+            next_state=torch.tensor([[1.0]]),
+        ),
+        ExternalTransitionObservation(
+            state=torch.tensor([[1.0]]),
+            intention=torch.tensor([[1.0]]),
+            next_state=torch.tensor([[2.0]]),
+        ),
+    )
+    target = (
+        source[0],
+        ExternalTransitionObservation(
+            state=torch.tensor([[1.0]]),
+            intention=torch.tensor([[1.0]]),
+            next_state=torch.tensor([[3.0]]),
+        ),
+    )
+    assert router.route_bundle(source).status == "staged"
+    assert router.promote_staged_candidate(
+        source[0],
+        lambda _candidate: True,
+        prediction_tolerance=0.05,
+    ).accepted
+    assert router.route_bundle(target).status == "staged"
+    assert router.promote_staged_candidate(
+        target[0],
+        lambda _candidate: True,
+        prediction_tolerance=0.05,
+    ).accepted
+
+    digest_before = router.digest()
+    ambiguous = router.route_partial_bundle((target[0],))
+    assert ambiguous.status == "ambiguous"
+    resolved = router.route_partial_sequence(
+        ((target[0],), (target[1],)),
+    )
+    assert resolved.status == "matched"
+    assert resolved.slot_id == 1
+    assert router.digest() == digest_before
 
 
 def test_factored_router_learns_external_residual_functions_without_base_updates() -> (

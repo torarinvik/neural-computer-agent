@@ -9142,3 +9142,33 @@ multiple target regimes and longer horizons, then test whether an external
 residual can acquire genuinely new computation rather than only correcting a
 shared transition basis. Evidence and accounting are in
 `session_records/factored_residual_base_pressure_2026-08-11/sample_efficiency_ledger.json`.
+
+## Cumulative partial routing and long-horizon sequence pressure (2026-08-11)
+
+The factored router now exposes `route_partial_sequence()`. It preserves the
+boundaries of one caller-owned stream, accumulates later partial bundles in a
+read-only view, and resolves only when a committed factual slot is decisive.
+An unresolved near-tie remains `ambiguous`; the method never writes a route,
+stages a candidate, or changes model state. This closes a missing-evidence API
+gap without weakening ambiguity refusal. The sufficient-statistics residual
+families also expose analytic copy-on-write ridge reparameterization, allowing
+a verifier to select regularization for a new slot without replaying any
+transition rows.
+
+The longer pressure audit is
+`experiments/brainworkshop_canonical/factored_residual_sequence_pressure.py`.
+With ten-step lifetimes, three sequential n-back regimes, two independent
+holdouts per regime, and ridge candidates `0.001`, `0.01`, `0.1`, `1`, and `10`,
+the complete gate passed `0/3` seeds. Eight of nine target slots promoted and
+every promoted prefix retained its earlier source behavior and beat its fresh
+challenger. The failure was informative: one seed could not stage its third
+regime, and the missing-evidence route correctly refused a close factual
+near-tie. Reversal and checksum-corruption controls passed on every fully
+promoted run; the controller stayed unchanged, with zero replay and zero
+optimizer updates.
+
+This is a rejected long-horizon gate, not a capability promotion. The next
+architecture target is learned opaque identity under close alternatives:
+prefix evidence should improve route confidence while retaining safe
+ambiguity refusal. Evidence is in
+`session_records/factored_residual_sequence_pressure_2026-08-11/sample_efficiency_ledger.json`.

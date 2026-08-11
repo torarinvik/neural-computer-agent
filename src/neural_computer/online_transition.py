@@ -789,6 +789,7 @@ class ExternalAffineTransitionStatistics(nn.Module):
             "representation": "opaque_affine_sufficient_statistics_v1",
             "updates": "single_pass_weighted_normal_equations_v1",
             "storage": "normal_and_target_matrices_only_v1",
+            "regularization": "analytic_copy_on_write_ridge_reparameterization_v1",
         }
 
     def _features(
@@ -840,6 +841,31 @@ class ExternalAffineTransitionStatistics(nn.Module):
         """Return the solved factual predictor for representation-aware storage."""
 
         return self._weights().detach().clone()
+
+    def reparameterized_ridge(
+        self,
+        ridge: float,
+    ) -> ExternalAffineTransitionStatistics:
+        """Return a copy with a new ridge without replaying observations.
+
+        The sufficient statistics contain the accumulated unregularized
+        normal matrix plus the construction ridge.  Adjusting its diagonal is
+        therefore an analytic regularization change, not another pass over
+        stored examples.
+        """
+
+        if ridge <= 0.0 or not math.isfinite(ridge):
+            raise ValueError("affine transition ridge must be finite and positive")
+        candidate = self.from_payload(self.state_payload())
+        delta = float(ridge) - candidate.ridge
+        identity = torch.eye(
+            candidate.normal_matrix.shape[0],
+            device=candidate.normal_matrix.device,
+            dtype=candidate.normal_matrix.dtype,
+        )
+        candidate.normal_matrix = candidate.normal_matrix + delta * identity
+        candidate.ridge = float(ridge)
+        return candidate
 
     def forward(self, state: torch.Tensor, intention: torch.Tensor) -> torch.Tensor:
         features = self._features(state, intention).to(self.normal_matrix)
@@ -1010,6 +1036,7 @@ class ExternalRandomFeatureTransitionStatistics(nn.Module):
             "representation": "opaque_frozen_random_features_v1",
             "updates": "single_pass_weighted_normal_equations_v1",
             "storage": "frozen_features_and_sufficient_statistics_v1",
+            "regularization": "analytic_copy_on_write_ridge_reparameterization_v1",
         }
 
     def _features(
@@ -1058,6 +1085,27 @@ class ExternalRandomFeatureTransitionStatistics(nn.Module):
         """Return the solved factual predictor for representation-aware storage."""
 
         return self._weights().detach().clone()
+
+    def reparameterized_ridge(
+        self,
+        ridge: float,
+    ) -> ExternalRandomFeatureTransitionStatistics:
+        """Return a copy with a new ridge without replaying observations."""
+
+        if ridge <= 0.0 or not math.isfinite(ridge):
+            raise ValueError(
+                "random-feature transition ridge must be finite and positive"
+            )
+        candidate = self.from_payload(self.state_payload())
+        delta = float(ridge) - candidate.ridge
+        identity = torch.eye(
+            candidate.normal_matrix.shape[0],
+            device=candidate.normal_matrix.device,
+            dtype=candidate.normal_matrix.dtype,
+        )
+        candidate.normal_matrix = candidate.normal_matrix + delta * identity
+        candidate.ridge = float(ridge)
+        return candidate
 
     def _grow_features(self, destination_width: int) -> None:
         if not isinstance(destination_width, int):

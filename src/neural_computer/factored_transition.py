@@ -168,6 +168,9 @@ class ExternalFactoredTransitionModel(nn.Module):
             "residual_capacity": self.residual_capacity,
             "representation": "frozen_shared_base_plus_opaque_context_residual_v2",
             "behavior": "derived_by_external_search_not_stored_policy_v1",
+            "residual_regularization": (
+                "analytic_copy_on_write_ridge_reparameterization_v1"
+            ),
             "base": self.base.configuration(),
             "base_model_schema": str(
                 getattr(self.base, "schema", type(self.base).__name__)
@@ -290,6 +293,44 @@ class ExternalFactoredTransitionModel(nn.Module):
                 selected_optimizer,
             )
         return final_loss, updates
+
+    def reparameterized_residual_ridge(
+        self,
+        context: torch.Tensor,
+        ridge: float,
+    ) -> ExternalFactoredTransitionModel:
+        """Return a copy with one sufficient-statistics slot re-regularized.
+
+        This is a memory-side copy-on-write operation.  It changes only the
+        analytic ridge of the addressed affine or random-feature residual
+        slot; no observation rows are replayed and the shared base remains
+        byte-identical.
+        """
+
+        if self.residual_bank is None:
+            raise RuntimeError("exact residual memory has no reparameterizable ridge")
+        candidate = self.from_payload(self.state_payload())
+        if context.ndim == 1:
+            context = context.unsqueeze(0)
+        if context.ndim != 2 or context.shape[0] != 1:
+            raise ValueError("residual ridge context must contain one row")
+        normalized = torch.nn.functional.normalize(context.detach().cpu(), dim=-1)[0]
+        stored_contexts = candidate.residual_bank.contexts
+        if stored_contexts.numel() == 0:
+            raise KeyError("residual ridge context is not registered")
+        distances = torch.linalg.vector_norm(stored_contexts - normalized, dim=-1)
+        slot_index = int(distances.argmin())
+        if float(distances[slot_index]) > candidate.residual_bank.matching_tolerance:
+            raise KeyError("residual ridge context is not registered")
+        reparameterize = getattr(
+            candidate.residual_bank.models[slot_index],
+            "reparameterized_ridge",
+            None,
+        )
+        if not callable(reparameterize):
+            raise TypeError("residual slot does not support ridge reparameterization")
+        candidate.residual_bank.models[slot_index] = reparameterize(ridge)
+        return candidate
 
     def predict_with_context(
         self,
@@ -1341,6 +1382,46 @@ class ExternalFactoredTransitionRouter:
             pending_observations=0,
         ).validate(context_width=self.model.context_width)
 
+    def route_partial_sequence(
+        self,
+        bundles: Sequence[Sequence[ExternalTransitionObservation]],
+        *,
+        min_match_fraction: float = 1.0,
+        match_tolerance: float = 0.05,
+        contradiction_tolerance: float | None = None,
+        match_margin: float | None = None,
+    ) -> FactoredTransitionRouteResult:
+        """Resolve one stream by accumulating read-only partial evidence.
+
+        Each bundle belongs to one caller-owned stream and remains separate at
+        the API boundary.  The router first tests the earliest evidence, then
+        cumulatively adds later bundles until one committed context is
+        decisive.  No candidate, route key, or model state is written.  If
+        evidence remains ambiguous, the final result is an explicit refusal
+        rather than a forced identity guess.
+        """
+
+        if not bundles:
+            raise ValueError("factored partial sequence cannot be empty")
+        cumulative: list[ExternalTransitionObservation] = []
+        result: FactoredTransitionRouteResult | None = None
+        for bundle in bundles:
+            if not bundle:
+                raise ValueError("factored partial sequence bundles cannot be empty")
+            cumulative.extend(self._clone_observation(item) for item in bundle)
+            result = self.route_partial_bundle(
+                cumulative,
+                min_match_fraction=min_match_fraction,
+                match_tolerance=match_tolerance,
+                contradiction_tolerance=contradiction_tolerance,
+                match_margin=match_margin,
+            )
+            if result.status in {"matched", "reliability_veto"}:
+                return result
+        if result is None:
+            raise RuntimeError("factored partial sequence produced no route result")
+        return result
+
     def quarantine_partial_bundle(
         self,
         observations: Sequence[ExternalTransitionObservation],
@@ -1703,6 +1784,7 @@ class ExternalFactoredTransitionRouter:
                 if self.sparse_evidence is None
                 else self.sparse_evidence.configuration()
             ),
+            "partial_route": "read_only_cumulative_evidence_v1",
             "quarantined_observations": self.quarantined_observations,
             "slot_ids": list(self._slot_ids),
             "behavior": "copy_on_write_residual_admission_v1",

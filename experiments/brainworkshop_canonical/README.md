@@ -436,3 +436,17 @@ audit used `189` unique verifier bits, `216` one-pass transition rows, zero
 replay, and zero optimizer updates. This is a bounded factored external-memory
 gain, not general continual learning; the ledger is in
 `session_records/factored_residual_base_pressure_2026-08-11/sample_efficiency_ledger.json`.
+
+The stricter multi-regime sequence audit can be run with:
+
+```bash
+PYTHONPATH=src:. uv run python -m experiments.brainworkshop_canonical.factored_residual_sequence_pressure
+```
+
+It uses ten-step lifetimes, three sequential opaque regimes, independent
+recursive holdouts, analytic copy-on-write ridge selection, reversal, partial
+evidence, and checksum-corruption controls. The current three-seed gate is
+intentionally rejected: `8/9` target slots promote, but one seed fails to
+stage its third regime and close partial evidence remains ambiguous. This is
+the correct safe failure, not a reason to force a route. The ledger is in
+`session_records/factored_residual_sequence_pressure_2026-08-11/sample_efficiency_ledger.json`.
