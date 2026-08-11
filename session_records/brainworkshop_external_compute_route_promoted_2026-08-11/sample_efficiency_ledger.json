@@ -1,0 +1,29 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "brainworkshop_external_compute_route_promoted_2026-08-11",
+  "claim_boundary": "cue-conditioned outcome-only routing over isolated external compute files",
+  "seeds": [17, 18],
+  "per_seed": {
+    "unique_training_verifier_bits": 269824,
+    "audit_verifier_bits": 9216,
+    "optimizer_updates": 448,
+    "route_memory_updates": 264,
+    "replayed_examples": 0,
+    "logical_lifetimes": 22784,
+    "retention_threshold": 0.8
+  },
+  "routed_target_accuracy": {
+    "17": 0.8671874701976776,
+    "18": 1.0
+  },
+  "unseen_cue_accuracy": {
+    "17": 0.5014204606413841,
+    "18": 0.4964488744735718
+  },
+  "notes": [
+    "Source and target files remain unchanged during route learning.",
+    "The source context ledger row remains unchanged after target discovery.",
+    "Unknown contexts use append-order fallback and do not select the newest file.",
+    "Route state reload reproduces target selection and accuracy exactly."
+  ]
+}

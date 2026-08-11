@@ -111,6 +111,31 @@ def test_external_outcome_credit_assigns_delayed_feedback_to_external_policy() -
     )
 
 
+def test_external_outcome_credit_supports_independent_batched_trajectories() -> None:
+    rule = ExternalOutcomeCreditPlasticity(
+        feature_width=3,
+        action_count=2,
+        initial_learning_rate=0.2,
+        initial_trace_decay=0.8,
+    )
+    state = rule.initial_state(4)
+    state = rule.record_decision(
+        state,
+        torch.eye(3).repeat(2, 1)[:4],
+        torch.tensor([0, 1, 0, 1]),
+        torch.full((4,), 0.5),
+    )
+    updated = rule.apply_feedback(
+        state,
+        torch.ones(4),
+        terminal=torch.ones(4, dtype=torch.bool),
+    )
+
+    assert updated.policy.shape == (4, 3, 2)
+    assert bool(torch.isfinite(updated.policy).all())
+    assert bool(torch.any(updated.policy != 0.0))
+
+
 def test_external_outcome_credit_missing_feedback_preserves_external_state() -> None:
     rule = ExternalOutcomeCreditPlasticity(feature_width=2, action_count=2)
     state = rule.record_decision(

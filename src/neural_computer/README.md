@@ -284,6 +284,13 @@ preferred, and the old capability remains independently retained. A separate
 same-cue replacement audit is also promoted. These are bounded
 failure-driven external-memory results, not general continual learning.
 
+The delayed score-function route credit path is batch-safe: each trajectory's
+feature gradient is expanded across the action axis before updating its
+independent eligibility tensor. This keeps batched route learning equivalent
+to independent single-trajectory updates while preserving exact propensities.
+Content-addressed context evidence remains the conservative choice when
+unknown keys must fall back rather than generalize to a newly appended file.
+
 `AdaptiveOnlineEpisodicRelationReader` is the generic capability blueprint for
 the next growth rung. It scores each present event/action/outcome row before
 mixing relation contexts, so one fixed external window can learn different

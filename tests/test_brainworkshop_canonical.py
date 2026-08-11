@@ -18,6 +18,9 @@ from experiments.brainworkshop_canonical.environment import NBackVerifierStep
 from experiments.brainworkshop_canonical.external_compute_growth import (
     run as run_external_compute_growth,
 )
+from experiments.brainworkshop_canonical.external_compute_route import (
+    run as run_external_compute_route,
+)
 from experiments.brainworkshop_canonical.goal_conditioned_planning import (
     run_goal_conditioned_planning_audit,
 )
@@ -153,6 +156,33 @@ def test_external_compute_growth_smoke_keeps_the_frozen_core_boundary(tmp_path) 
     assert report["gates"]["frozen_event_encoder"]
     assert report["accounting"]["replayed_examples"] == 0
     assert report["accounting"]["optimizer_updates"] == 4
+
+
+def test_external_compute_route_smoke_uses_content_addressed_outcome_evidence(
+    tmp_path,
+) -> None:
+    report = run_external_compute_route(
+        argparse.Namespace(
+            report_out=tmp_path / "external-compute-route.json",
+            seed=17,
+            source_updates=2,
+            target_updates=2,
+            route_updates=4,
+            route_calibration_lifetimes=8,
+            batch_size=32,
+            retention_lifetimes=1,
+            learning_rate=1e-2,
+        )
+    )
+
+    assert report["schema"] == (
+        "neural-computer.brainworkshop-external-compute-route.v2"
+    )
+    assert report["gates"]["protected_source_context_unchanged"]
+    assert report["gates"]["route_reload_exact"]
+    assert report["gates"]["frozen_controller"]
+    assert report["gates"]["frozen_event_encoder"]
+    assert report["accounting"]["replayed_examples"] == 0
 
 
 def test_canonical_rollout_uses_keypress_and_retention_boundaries() -> None:

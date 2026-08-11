@@ -677,3 +677,36 @@ PYTHONPATH=src:. ./.venv/bin/python -m experiments.brainworkshop_canonical.exter
   --batch-size 32 --steps 14 --retention-lifetimes 4 --seed 17 \
   --report-out /tmp/brainworkshop-external-compute-growth.json
 ```
+
+## Content-addressed external compute-file route discovery (2026-08-11)
+
+`external_compute_route.py` removes the explicit file selection. It first
+calibrates and protects the `symbol_parity` file under rendered cue `7`, then
+appends the `triplet_parity` file under cue `8`. A
+`PersistentOpaqueContextRouteEvidence` table learns one independent scalar
+route ledger per learned event key. Unknown cue `9` falls back to append order,
+so an unrecognized context cannot activate the newest file through accidental
+linear generalization.
+
+Seeds `17` and `18` both pass direct file mastery, routed source/target
+mastery, exact source/target slot selection, unseen-cue fallback, no-file
+chance control, route reload, protected source context, immutable files,
+frozen controller/frontend, and zero replay. Routed target accuracy was
+`0.8672` and `1.0000`; unseen-cue accuracy remained near chance at
+`0.5014` and `0.4964`. This promotes cue-conditioned outcome-only route
+discovery over isolated generic compute files, not arbitrary program
+induction, unrestricted memory growth, or general continual learning.
+
+Each seed used `269,824` training verifier bits, `9,216` audit bits, `448`
+optimizer updates for file acquisition, `264` external route-memory updates,
+and zero replayed examples. Evidence is archived in
+`session_records/brainworkshop_external_compute_route_promoted_2026-08-11/`.
+
+Run it with:
+
+```bash
+PYTHONPATH=src:. ./.venv/bin/python -m experiments.brainworkshop_canonical.external_compute_route \
+  --source-updates 192 --target-updates 256 --route-updates 256 \
+  --route-calibration-lifetimes 8 --batch-size 32 --retention-lifetimes 4 \
+  --seed 17 --report-out /tmp/brainworkshop-external-compute-route.json
+```

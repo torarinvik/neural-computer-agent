@@ -790,7 +790,9 @@ class ExternalOutcomeCreditPlasticity(nn.Module):
         one_hot = F.one_hot(choice.to(torch.long), self.action_count).to(
             dtype=features.dtype
         )
-        score_gradient = features.unsqueeze(-1) * (one_hot - probabilities)
+        score_gradient = features.unsqueeze(-1) * (
+            one_hot.unsqueeze(1) - probabilities.unsqueeze(1)
+        )
         trace_decay = self.trace_decay.to(dtype=features.dtype)
         next_eligibility = (
             trace_decay * state.eligibility
