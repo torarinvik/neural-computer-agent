@@ -69,6 +69,22 @@ parser.add_argument(
          "A curriculum gets reading established on the readable task "
          "first, then extends it — the bootstrapping F120 identified.")
 parser.add_argument(
+    "--novel-ops", action="store_true",
+    help="SELECT-vs-INVENT test. Training worlds use the usual "
+         "operations (XOR-with-mask, rotate-left); HELD-OUT worlds use "
+         "genuinely different ones the plant has never executed "
+         "(ADD-mod-2^W, rotate-RIGHT), parameterised the same way and "
+         "demonstrated to the reader exactly as before. The Codex log "
+         "reports its most robust boundary, reproduced from three "
+         "directions, as: external context can SELECT existing "
+         "computation but cannot INVENT new computation. Every "
+         "composition result in this project reuses operations the "
+         "plant already knows, so we have never tested it. If held-out "
+         "worlds work here, context can supply new computation and the "
+         "boundary is wrong for our setting; if they collapse to "
+         "stranger level while trained-world worlds hold, the boundary "
+         "is real and it bounds the whole bank thesis.")
+parser.add_argument(
     "--weight-decay", type=float, default=0.0,
     help="AdamW weight decay. Zero in every probe this project has "
          "ever run — 22 probe files, not one sets it. The grokking "
@@ -291,9 +307,17 @@ def make_worlds() -> list[dict]:
 def apply_piece(world: dict, token: int, x: torch.Tensor,
                 swapped: bool) -> torch.Tensor:
     is_f = (token == F) != swapped
+    mask = (1 << W) - 1
+    if world.get("novel"):
+        # same parameterisation, different operations: addition instead
+        # of XOR, rotate RIGHT instead of left
+        if is_f:
+            return (x + world["b"]) & mask
+        k = world["k"]
+        return ((x >> k) | (x << (W - k))) & mask
     if is_f:
         return x ^ world["b"]
-    k, mask = world["k"], (1 << W) - 1
+    k = world["k"]
     return ((x << k) | (x >> (W - k))) & mask
 
 
@@ -523,6 +547,9 @@ held_index = set(torch.randperm(
     len(worlds), generator=select)[:args.held_worlds].tolist())
 train_worlds = [w for i, w in enumerate(worlds) if i not in held_index]
 held_worlds = [w for i, w in enumerate(worlds) if i in held_index]
+if args.novel_ops:
+    for w in held_worlds:
+        w["novel"] = True
 train_programs, held_programs = all_programs()
 
 
