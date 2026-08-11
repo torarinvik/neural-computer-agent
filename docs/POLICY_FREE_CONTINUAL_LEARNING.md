@@ -1478,3 +1478,21 @@ binding measure. Zero replay and zero optimizer updates remain enforced. This
 is a stronger continual-memory boundary, not general continual learning. The
 ledger is in
 `session_records/recency_window_isolated_transition_2026-08-11/sample_efficiency_ledger.json`.
+
+## Verified post-promotion continuation binding (2026-08-11)
+
+The discovery caller now retains the promoted opaque slot identity for the
+first post-promotion continuation lifetime. It may request a bounded,
+caller-owned continuation tolerance (`0.15`) for that lifetime, but the router
+still verifies the factual prediction and rejects non-finite or negative
+tolerances. This is a verified external route binding, not a task label,
+semantic address, global matcher relaxation, or committed-memory write.
+
+The 24-seed recency/latest plus write-firewall audit completed `8/24` runs,
+versus `7/24` before this seam. All eight promotions recovered their route and
+beat their matched fresh challenger; source memory remained byte-stable in
+`24/24` runs, with zero replayed examples, zero optimizer updates, and an
+unchanged controller. The gain is deliberately bounded: it removes one
+post-promotion route failure but does not establish general continual learning.
+The full accounting is in
+`session_records/recency_window_preferred_recovery_2026-08-11/sample_efficiency_ledger.json`.

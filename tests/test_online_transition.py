@@ -584,6 +584,50 @@ def test_router_stages_and_promotes_affine_candidate_without_optimizer() -> None
     assert router.bank.models[0].sample_count.item() == 4
 
 
+def test_verified_preferred_slot_can_use_explicit_bounded_continuation_tolerance() -> None:
+    bank = ExternalTransitionModelBank(
+        2,
+        1,
+        4,
+        model_family="affine_sufficient_statistics_v1",
+        affine_ridge=1e-7,
+    )
+    context = torch.tensor([1.0, 0.0, 0.0, 0.0])
+    slot_index = bank.ensure_context(context)
+    source = _affine_observation(4)
+    bank.adaptation_step(source, context.unsqueeze(0).expand(4, -1), None)
+    router = ExternalOnlineTransitionContextRouter(
+        bank,
+        ExternalTransitionContextEncoder(2, 1, hidden_width=8, context_width=4),
+        match_tolerance=1e-8,
+        continuation_tolerance=1e-8,
+        admission_observations=4,
+    )
+    shifted = ExternalTransitionObservation(
+        state=source.state,
+        intention=source.intention,
+        next_state=source.next_state + 0.1,
+        confidence=source.confidence,
+    )
+    result = None
+    for row in range(4):
+        result = router.observe(
+            ExternalTransitionObservation(
+                state=shifted.state[row : row + 1],
+                intention=shifted.intention[row : row + 1],
+                next_state=shifted.next_state[row : row + 1],
+                confidence=torch.ones(1),
+            ),
+            preferred_slot_id=bank.slot_id_at(slot_index),
+            preferred_continuation_tolerance=0.05,
+        )
+    assert result is not None
+    assert result.status == "continuation"
+    assert result.stable_slot_id == bank.slot_id_at(slot_index)
+    assert result.prediction_error is not None
+    assert result.prediction_error > router.continuation_tolerance
+
+
 def test_promotion_requires_all_independent_heldout_lifetimes() -> None:
     bank = ExternalTransitionModelBank(
         2,

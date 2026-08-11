@@ -206,7 +206,7 @@ def test_online_transition_discovery_grows_target_slot_without_replay() -> None:
     assert report.external_slot_count == 2
     assert report.target_discovery_status == "staged"
     assert report.target_continuation_status == "staged"
-    assert report.target_heldout_status == "matched"
+    assert report.target_heldout_status == "continuation"
 
 
 def test_recency_window_transition_discovery_is_an_explicit_transfer_mode() -> None:

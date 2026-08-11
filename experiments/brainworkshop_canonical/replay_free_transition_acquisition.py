@@ -278,6 +278,8 @@ def _route_rollout(
     *,
     adapt: bool,
     adapt_committed: bool = True,
+    preferred_slot_id: int | None = None,
+    preferred_continuation_tolerance: float | None = None,
 ) -> ExternalOnlineTransitionContextResult:
     """Route a rollout with separately controlled provisional/committed writes.
 
@@ -288,7 +290,14 @@ def _route_rollout(
 
     result = None
     for observation in _rollout_observations(rollout):
-        result = router.observe(observation)
+        observe_kwargs = {}
+        if preferred_slot_id is not None:
+            observe_kwargs["preferred_slot_id"] = preferred_slot_id
+        if preferred_continuation_tolerance is not None:
+            observe_kwargs["preferred_continuation_tolerance"] = (
+                preferred_continuation_tolerance
+            )
+        result = router.observe(observation, **observe_kwargs)
         if adapt and (
             result.status == "staged"
             or (
@@ -999,7 +1008,13 @@ def run_online_transition_discovery_audit(
         learn=False,
     )
     unique_bits += recovery_bits
-    target_recovery_result = _route_rollout(router, target_recovery, adapt=False)
+    target_recovery_result = _route_rollout(
+        router,
+        target_recovery,
+        adapt=False,
+        preferred_slot_id=promotion.slot_id,
+        preferred_continuation_tolerance=0.15,
+    )
     trained_target_error = ExternalModelBasedPlanner(
         bank,
         beam_width=4,

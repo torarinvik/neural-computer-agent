@@ -7008,6 +7008,7 @@ class ExternalOnlineTransitionContextRouter:
         observation: ExternalTransitionObservation,
         *,
         preferred_slot_id: int | None = None,
+        preferred_continuation_tolerance: float | None = None,
     ) -> ExternalOnlineTransitionContextResult:
         """Route one current-stream row without accepting a regime label.
 
@@ -7018,6 +7019,14 @@ class ExternalOnlineTransitionContextRouter:
         a shared bank from assigning a low-error stream to another slot merely
         because that slot happens to be globally closest.
         """
+
+        if preferred_continuation_tolerance is not None and (
+            preferred_continuation_tolerance < 0.0
+            or not math.isfinite(preferred_continuation_tolerance)
+        ):
+            raise ValueError(
+                "preferred continuation tolerance must be finite and non-negative"
+            )
 
         self._refresh_active_slot()
         observation.validate(
@@ -7058,7 +7067,12 @@ class ExternalOnlineTransitionContextRouter:
                     preferred_prediction,
                     bundle.next_state,
                 )
-                if preferred_error <= self.continuation_tolerance and self._evidence_allows(
+                continuation_tolerance = (
+                    self.continuation_tolerance
+                    if preferred_continuation_tolerance is None
+                    else preferred_continuation_tolerance
+                )
+                if preferred_error <= continuation_tolerance and self._evidence_allows(
                     preferred_prediction,
                     bundle.next_state,
                     context=preferred_context,

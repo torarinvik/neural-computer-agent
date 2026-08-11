@@ -326,3 +326,12 @@ complete `7/24` runs and retain the source slot in `24/24`; eight candidates
 pass promotion but one fails later route recovery. This is an improved bounded
 memory boundary, not general continual learning. The full accounting is in
 `session_records/recency_window_isolated_transition_2026-08-11/sample_efficiency_ledger.json`.
+
+The v8 continuation seam keeps the promoted opaque slot bound for the first
+post-promotion recovery lifetime and permits only a bounded caller-owned
+continuation tolerance. It does not relax global matching or write to committed
+memory. The same 24 seeds complete `8/24` runs: all eight promoted routes
+recover, all eight beat a matched fresh challenger, and source retention stays
+`24/24`, with zero replay and zero optimizer updates. This is a bounded route
+recovery improvement, not general continual learning. The full ledger is in
+`session_records/recency_window_preferred_recovery_2026-08-11/sample_efficiency_ledger.json`.
