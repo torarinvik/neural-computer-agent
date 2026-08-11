@@ -609,5 +609,33 @@ PYTHONPATH=src:. ./.venv/bin/python \
   --audit online-discovery --goal-conditioned \
   --window-statistics ordered_payload_and_presence_v1 \
   --routing-match-tolerance 0.005 --seed 93 \
-  --report-out /tmp/brainworkshop-transition-discovery-93.json
+--report-out /tmp/brainworkshop-transition-discovery-93.json
 ```
+
+## Held-out rule-family frontier: triplet parity (2026-08-11)
+
+`cross_family_rule_growth.py` now accepts the target rule family and cue as
+arguments, so the cross-family audit is no longer hard-coded to one target.
+The learner-facing protocol remains unchanged: rendered symbol events, opaque
+keypress actions/feedback, and scalar verifier outcomes only. The target
+family is verifier-private orchestration, not controller metadata.
+
+The first genuinely held-out target, `triplet_parity`, exposes the next real
+boundary. With the existing four-family architecture and 256 target updates,
+forced target execution reached only `63.4--66.8%`; 512 updates improved this
+to `68.2--73.0%` but still missed the `80%` mastery gate. Prior n-back-2,
+pair-parity, and switching files stayed at `100%`, and their prefix digests,
+controller, and encoder remained unchanged. Held-out cue routing did not
+recover because the target file itself was not mastered.
+
+A same-cue curriculum warmup on `parity2` before `triplet_parity` was worse,
+ending at `48.6--54.8%`. Reusing one mutable external file across changing
+rules causes interference; it is not compositional learning. The audit also
+corrects the `prefix_retention` gate so it measures only protected prior
+families rather than accidentally including the new target.
+
+This rejects further route tuning as the immediate answer. The next high-ROI
+architecture task is a generic executable/compositional external capability
+that can acquire a new temporal rule from scalar outcomes, while retaining
+the protected family files. Evidence and accounting are in
+`session_records/brainworkshop_cross_family_triplet_frontier_2026-08-11/`.

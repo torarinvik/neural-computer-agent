@@ -1012,6 +1012,12 @@ def test_cross_family_growth_smoke_keeps_route_and_core_boundaries(tmp_path) -> 
             discovery_lifetimes=1,
             retention_lifetimes=1,
             learning_rate=1e-2,
+            target_family="triplet_parity",
+            training_cue=7,
+            heldout_cue=8,
+            shuffled_cue=9,
+            target_warmup_family="parity2",
+            target_warmup_updates=1,
         )
     )
 
@@ -1023,4 +1029,6 @@ def test_cross_family_growth_smoke_keeps_route_and_core_boundaries(tmp_path) -> 
     assert report["gates"]["route_reload_exact"] is True
     assert report["gates"]["incompatible_route_representation_rejected"] is True
     assert report["gates"]["zero_replayed_examples"] is True
-    assert report["accounting"]["optimizer_updates"] == 4
+    assert report["training_rule"]["family"] == "triplet_parity"
+    assert report["target_warmup"]["family"] == "parity2"
+    assert report["accounting"]["optimizer_updates"] == 5

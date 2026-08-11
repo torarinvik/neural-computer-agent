@@ -39,9 +39,9 @@ ACTION_COUNT = 2
 SYMBOL_COUNT = 4
 
 PREFIX_RULES = (("nback2", 4), ("parity2", 5), ("switch", 6))
-TRAINING_RULE = ("symbol_parity", 7)
-HELDOUT_CUE = 8
-SHUFFLED_CUE = 9
+DEFAULT_TRAINING_RULE = ("symbol_parity", 7)
+DEFAULT_HELDOUT_CUE = 8
+DEFAULT_SHUFFLED_CUE = 9
 
 
 @dataclass(frozen=True)
@@ -335,6 +335,12 @@ def _orders(agent: CanonicalBrainWorkshopAgent, cues: tuple[int, ...]) -> dict[s
 
 
 def run(args: argparse.Namespace) -> dict[str, object]:
+    target_family = getattr(args, "target_family", DEFAULT_TRAINING_RULE[0])
+    training_cue = int(getattr(args, "training_cue", DEFAULT_TRAINING_RULE[1]))
+    heldout_cue = int(getattr(args, "heldout_cue", DEFAULT_HELDOUT_CUE))
+    shuffled_cue = int(getattr(args, "shuffled_cue", DEFAULT_SHUFFLED_CUE))
+    target_warmup_family = getattr(args, "target_warmup_family", None)
+    target_warmup_updates = int(getattr(args, "target_warmup_updates", 0))
     if min(
         args.source_updates,
         args.target_updates,
@@ -347,6 +353,20 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         raise ValueError("cross-family budgets must be positive")
     if args.learning_rate <= 0.0:
         raise ValueError("learning rate must be positive")
+    if target_family not in RULES:
+        raise ValueError("target family is not supported")
+    if target_family in {family for family, _ in PREFIX_RULES}:
+        raise ValueError("target family must be distinct from the protected prefix")
+    if target_warmup_family is not None and target_warmup_family not in RULES:
+        raise ValueError("target warmup family is not supported")
+    if target_warmup_updates < 0:
+        raise ValueError("target warmup updates cannot be negative")
+    if target_warmup_family is None and target_warmup_updates:
+        raise ValueError("target warmup updates require a warmup family")
+    if min(training_cue, heldout_cue, shuffled_cue) < SYMBOL_COUNT:
+        raise ValueError("target cues must be outside the symbol vocabulary")
+    if len({training_cue, heldout_cue, shuffled_cue}) != 3:
+        raise ValueError("target cues must be distinct")
     started = perf_counter()
     agent = _agent(args.seed)
     controller_before = _digest(agent.controller)
@@ -354,6 +374,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     slots = [0]
     histories: list[RewardOnlyUpdate] = []
     prefix_rules = tuple(PREFIX_RULES)
+    training_rule = (target_family, training_cue)
 
     histories.extend(
         _train_slot(
@@ -392,12 +413,26 @@ def run(args: argparse.Namespace) -> dict[str, object]:
 
     target_slot = _append_cell(agent, capacity=6, seed=args.seed + 800)
     target_prefix_before = _protected_digest(agent, range(target_slot))
+    if target_warmup_family is not None and target_warmup_updates:
+        histories.extend(
+            _train_slot(
+                agent,
+                slot=target_slot,
+                family=target_warmup_family,
+                cue_symbol=training_rule[1],
+                updates=target_warmup_updates,
+                batch_size=args.batch_size,
+                steps=args.steps,
+                seed=args.seed + 850,
+                learning_rate=args.learning_rate,
+            )
+        )
     histories.extend(
         _train_slot(
             agent,
             slot=target_slot,
-            family=TRAINING_RULE[0],
-            cue_symbol=TRAINING_RULE[1],
+            family=training_rule[0],
+            cue_symbol=training_rule[1],
             updates=args.target_updates,
             batch_size=args.batch_size,
             steps=args.steps,
@@ -409,7 +444,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     _freeze_external(agent)
 
     retention: dict[str, list[dict[str, float]]] = {}
-    for index, (family, cue) in enumerate((*prefix_rules, TRAINING_RULE)):
+    for index, (family, cue) in enumerate((*prefix_rules, training_rule)):
         slot = slots[index] if index < len(slots) else target_slot
         retention[family] = [
             _score(
@@ -440,12 +475,12 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                 expected_slot=slots[index],
                 route_failure_patience=1,
             )
-    heldout_before = agent.context_route_evidence.has_context(_key(agent, HELDOUT_CUE))
+    heldout_before = agent.context_route_evidence.has_context(_key(agent, heldout_cue))
     discovery = [
         _score(
             agent,
-            family=TRAINING_RULE[0],
-            cue_symbol=HELDOUT_CUE,
+            family=training_rule[0],
+            cue_symbol=heldout_cue,
             slot=None,
             seed=args.seed + 30000 + lifetime,
             batch_size=args.batch_size,
@@ -457,11 +492,11 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         )
         for lifetime in range(args.discovery_lifetimes)
     ]
-    heldout_after = agent.context_route_evidence.has_context(_key(agent, HELDOUT_CUE))
+    heldout_after = agent.context_route_evidence.has_context(_key(agent, heldout_cue))
     recovered = _score(
         agent,
-        family=TRAINING_RULE[0],
-        cue_symbol=HELDOUT_CUE,
+        family=training_rule[0],
+        cue_symbol=heldout_cue,
         slot=None,
         seed=args.seed + 40000,
         batch_size=args.batch_size,
@@ -471,8 +506,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     )
     shuffled = _score(
         agent,
-        family=TRAINING_RULE[0],
-        cue_symbol=SHUFFLED_CUE,
+        family=training_rule[0],
+        cue_symbol=shuffled_cue,
         slot=None,
         seed=args.seed + 41000,
         batch_size=args.batch_size,
@@ -480,7 +515,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         route=True,
         expected_slot=target_slot,
     )
-    orders = _orders(agent, (*[cue for _, cue in prefix_rules], HELDOUT_CUE))
+    orders = _orders(agent, (*[cue for _, cue in prefix_rules], heldout_cue))
     expected_order = [target_slot, 2, 1, 0]
     route_payload = agent.route_state_payload()
     restored = _agent(args.seed + 50000)
@@ -491,7 +526,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     )
     restored.load_route_state_payload(route_payload)
     restored_orders = _orders(
-        restored, (*[cue for _, cue in prefix_rules], HELDOUT_CUE)
+        restored, (*[cue for _, cue in prefix_rules], heldout_cue)
     )
     incompatible = _agent(args.seed + 60000)
     for index, capacity in enumerate((4, 5, 6), start=1):
@@ -505,12 +540,11 @@ def run(args: argparse.Namespace) -> dict[str, object]:
 
     controller_after = _digest(agent.controller)
     encoder_after = _digest(agent.runtime.encoders["stimulus"])
-    prefix_retained = all(
-        _stable(rows) for rows in retention.values()
-    )
     gates = {
-        "prefix_retention": prefix_retained,
-        "new_family_mastery": _stable(retention[TRAINING_RULE[0]]),
+        "prefix_retention": all(
+            _stable(retention[family]) for family, _ in prefix_rules
+        ),
+        "new_family_mastery": _stable(retention[training_rule[0]]),
         "prefix_unchanged_during_growth": all(
             before == _protected_digest(agent, range(prefix_count))
             for before, prefix_count in prefix_before
@@ -525,7 +559,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             recovered["accuracy"] >= MASTERY_THRESHOLD
             and recovered["selected_slot_fraction"] >= 0.99
         ),
-        "heldout_route_order_learned": orders[str(HELDOUT_CUE)] == expected_order,
+        "heldout_route_order_learned": orders[str(heldout_cue)] == expected_order,
         "cue_shuffle_does_not_select_target": (
             shuffled["selected_slot_fraction"] < 0.75
         ),
@@ -550,10 +584,15 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             for index, (family, cue) in enumerate(prefix_rules)
         ],
         "training_rule": {
-            "family": TRAINING_RULE[0],
-            "training_cue": TRAINING_RULE[1],
-            "heldout_cue": HELDOUT_CUE,
+            "family": training_rule[0],
+            "training_cue": training_rule[1],
+            "heldout_cue": heldout_cue,
             "slot": target_slot,
+        },
+        "target_warmup": {
+            "family": target_warmup_family,
+            "updates": target_warmup_updates,
+            "cue_symbol": training_rule[1],
         },
         "retention": retention,
         "discovery": discovery,
@@ -569,7 +608,10 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                 for family, updates in (
                     [(prefix_rules[0][0], args.source_updates)]
                     + [(family, args.target_updates) for family, _ in prefix_rules[1:]]
-                    + [(TRAINING_RULE[0], args.target_updates)]
+                    + ([(target_warmup_family, target_warmup_updates)]
+                       if target_warmup_family is not None
+                       else [])
+                    + [(training_rule[0], args.target_updates)]
                 )
             ),
             "unique_verifier_bits_audit": args.batch_size
@@ -577,17 +619,17 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                 args.retention_lifetimes
                 * sum(
                     args.steps - RULES[family].warmup
-                    for family, _ in (*prefix_rules, TRAINING_RULE)
+                    for family, _ in (*prefix_rules, training_rule)
                 )
                 + args.calibration_lifetimes
                 * sum(args.steps - RULES[family].warmup for family, _ in prefix_rules)
                 + (args.discovery_lifetimes + 2)
-                * (args.steps - RULES[TRAINING_RULE[0]].warmup)
+                * (args.steps - RULES[training_rule[0]].warmup)
             ),
             "unique_logical_lifetimes_training": args.batch_size * len(histories),
             "unique_logical_lifetimes_audit": args.batch_size
             * (
-                args.retention_lifetimes * len((*prefix_rules, TRAINING_RULE))
+                args.retention_lifetimes * len((*prefix_rules, training_rule))
                 + args.calibration_lifetimes * len(prefix_rules)
                 + args.discovery_lifetimes
                 + 2
@@ -615,6 +657,20 @@ def main() -> None:
     parser.add_argument("--discovery-lifetimes", type=int, default=32)
     parser.add_argument("--retention-lifetimes", type=int, default=4)
     parser.add_argument("--learning-rate", type=float, default=1e-2)
+    parser.add_argument(
+        "--target-family",
+        choices=tuple(RULES),
+        default=DEFAULT_TRAINING_RULE[0],
+    )
+    parser.add_argument("--training-cue", type=int, default=DEFAULT_TRAINING_RULE[1])
+    parser.add_argument("--heldout-cue", type=int, default=DEFAULT_HELDOUT_CUE)
+    parser.add_argument("--shuffled-cue", type=int, default=DEFAULT_SHUFFLED_CUE)
+    parser.add_argument(
+        "--target-warmup-family",
+        choices=tuple(RULES),
+        default=None,
+    )
+    parser.add_argument("--target-warmup-updates", type=int, default=0)
     run(parser.parse_args())
 
 
