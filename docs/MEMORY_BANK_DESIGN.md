@@ -9302,3 +9302,59 @@ and it is flagged as an anomaly to chase rather than explained away.
 ten families and on the mean, but a family whose search fit moved in an
 impossible direction is a reason to find out why before promoting the
 setting.
+
+## F182 — the continual-learning result is WITHHELD: its own
+## faithfulness check failed
+
+`continual.py` put both architectures on one family sequence. The
+weights arm behaved exactly as predicted and the bank arm's control
+came back exactly right. **The result is still not reportable**, and
+the reason is the check that was built to make it reportable.
+
+| prediction | outcome |
+| --- | --- |
+| P1 bank forgetting EXACTLY 0.0000 | **confirmed on all 8 runs** |
+| P2 weights forget a lot without replay | **confirmed, 0.6048** |
+| P3 replay substantially closes it | **confirmed, 0.1099** |
+| P4 bank is worse at learning time | confirmed — but see below |
+
+Weights forgetting without replay is 0.6048 and with replay 0.1099, so
+**replay recovers 82% of what is lost**. That is the honest number the
+control existed to produce: the bank's advantage over the standard
+remedy is the remaining 0.11, not the headline 0.60. And the weights
+arm at the end sits at 0.3952, BELOW its own identity floor of 0.5156 —
+it forgets past the point of copying the input.
+
+**But the bank arm cannot be read.** The interpreter faithfulness check
+— the same measurement `isa_compose` publishes at **0.9896** — returns
+**0.4524, 0.4062, 0.3855, 0.4234** across the four seeds. Whatever the
+bank arm's 0.4322 at learning time is measuring, it is not the
+architecture; it is a broken or unconverged interpreter. Reporting
+"zero forgetting" from it would be reporting perfect retention of
+something that never worked.
+
+**What the check has already ruled out.** Isolating the interpreter
+(one family, one weights update, same 40k budget) reproduces
+**exactly 0.4524** — byte-identical to the full run. So it is
+deterministic, independent of the weights arm, and not a contention or
+ordering artefact. Op semantics, training loop, optimiser settings,
+program sampling and evaluation were compared line by line against
+`isa_compose` and match.
+
+**The live hypothesis is not a bug but a BASIN, and it is already in
+this ledger.** F164 measured exactly this shape in the reader: one seed
+reaching 0.9372 and another 0.3776 after the SAME 200k updates, with
+the conclusion that sufficient optimisation closes the gap only on a
+favourable trajectory and that reliability is unresolved. My copy
+constructs its interpreter at a different point in the global RNG
+stream than `isa_compose` does — after the weights arm's model is
+built — so it starts from a different initialisation. Four seeds are
+running to tell a basin apart from a bug: if some reach 0.99 and others
+0.4, this is F164 reappearing in a second component and is a finding
+rather than a defect.
+
+**Recorded now, before the answer, because the discipline is the
+point.** The bank arm produced the exact number the architecture
+predicts — 0.0000 forgetting, on all eight runs — and it is the most
+flattering result available. The check says it is unreadable. A control
+that only gets consulted when the news is bad is not a control.
