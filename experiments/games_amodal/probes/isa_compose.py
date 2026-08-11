@@ -164,6 +164,17 @@ parser.add_argument("--fit-target", type=float, default=0.95,
                     help="search stops once a candidate reaches this "
                          "fit, so COST (candidates tried) is the "
                          "measurement rather than final accuracy")
+parser.add_argument(
+    "--moduli", action="store_true",
+    help="give every instruction a MODULUS argument, so an instruction "
+         "is (op, i, j, m) and INC/DEC wrap at m rather than at a global "
+         "VALUES. F160 found this is the real expressibility hole: "
+         "`toggle` holds two values per slot, so INC mod 8 is right "
+         "exactly half the time, and `perm` needs only swaps and is "
+         "therefore immune and scores 1.0000. This widens the "
+         "per-instruction space from NOPS*SLOTS*(SLOTS-1) to that times "
+         "VALUES-1, so the honest accounting is expressibility gained "
+         "against search made harder.")
 parser.add_argument("--curve-every", type=int, default=0)
 parser.add_argument("--json", default="")
 args = parser.parse_args()
@@ -179,24 +190,38 @@ if args.no_conditionals:
 NOPS = len(OPS)
 
 
+# Legal moduli an instruction may carry. F160: the instructions did
+# arithmetic mod VALUES while every family carries its OWN value count,
+# so INC on a slot holding 1 in a two-valued family gave 2 instead of
+# 0 — right when the value was 0 and wrong when it was 1, verified at
+# exactly 50% on toggle. The modulus is observable in the data and
+# names no domain, so making it an ARGUMENT is the domain-general fix:
+# an instruction becomes (op, i, j, m) and the interpreter learns
+# modular arithmetic parameterised by m exactly as it already learns
+# which slot to touch.
+MODULI = tuple(range(2, VALUES + 1)) if args.moduli else (VALUES,)
+NMOD = len(MODULI)
+
+
 def run_instruction(state: torch.Tensor, op: int, i: int,
-                    j: int) -> torch.Tensor:
+                    j: int, m: int = 0) -> torch.Tensor:
     """Ground truth. `state` is (batch, SLOTS) of integers < VALUES."""
     name = OPS[op]
+    modulus = MODULI[m]
     out = state.clone()
     if name == "NOOP":
         return out
     if name == "INC":
-        out[:, i] = (state[:, i] + 1) % VALUES
+        out[:, i] = (state[:, i] + 1) % modulus
     elif name == "DEC":
-        out[:, i] = (state[:, i] - 1) % VALUES
+        out[:, i] = (state[:, i] - 1) % modulus
     elif name == "CINC":
         gate = state[:, j] != 0
-        out[:, i] = torch.where(gate, (state[:, i] + 1) % VALUES,
+        out[:, i] = torch.where(gate, (state[:, i] + 1) % modulus,
                                 state[:, i])
     elif name == "CDEC":
         gate = state[:, j] != 0
-        out[:, i] = torch.where(gate, (state[:, i] - 1) % VALUES,
+        out[:, i] = torch.where(gate, (state[:, i] - 1) % modulus,
                                 state[:, i])
     elif name == "COPY":
         out[:, i] = state[:, j]
@@ -206,8 +231,8 @@ def run_instruction(state: torch.Tensor, op: int, i: int,
 
 
 def run_program(program: list, state: torch.Tensor) -> torch.Tensor:
-    for op, i, j in program:
-        state = run_instruction(state, op, i, j)
+    for op, i, j, m in program:
+        state = run_instruction(state, op, i, j, m)
     return state
 
 
@@ -219,7 +244,8 @@ def random_program(generator: torch.Generator, length: int) -> list:
         j = int(torch.randint(0, SLOTS, (1,), generator=generator))
         if i == j:
             j = (j + 1) % SLOTS
-        out.append((op, i, j))
+        m = int(torch.randint(0, NMOD, (1,), generator=generator))
+        out.append((op, i, j, m))
     return out
 
 
@@ -238,6 +264,7 @@ class Plant(torch.nn.Module):
         self.op = torch.nn.Embedding(NOPS, dim)
         self.arg_i = torch.nn.Embedding(SLOTS, dim)
         self.arg_j = torch.nn.Embedding(SLOTS, dim)
+        self.arg_m = torch.nn.Embedding(NMOD, dim)
         self.step = torch.nn.Sequential(
             torch.nn.Linear(2 * dim, 2 * dim), torch.nn.ReLU(),
             torch.nn.Linear(2 * dim, 2 * dim), torch.nn.ReLU(),
@@ -249,10 +276,11 @@ class Plant(torch.nn.Module):
         onehot = torch.nn.functional.one_hot(
             state, VALUES).float().view(state.shape[0], -1)
         latent = self.load(onehot)
-        for op, i, j in program:
+        for op, i, j, m in program:
             code = (self.op(torch.tensor(op))
                     + self.arg_i(torch.tensor(i))
-                    + self.arg_j(torch.tensor(j)))
+                    + self.arg_j(torch.tensor(j))
+                    + self.arg_m(torch.tensor(m)))
             code = code.unsqueeze(0).expand(latent.shape[0], -1)
             # RESIDUAL. Without this the stack is program_len x 3 = 18
             # effective layers with no skip path, and it cannot fit even
@@ -452,7 +480,8 @@ if args.synthesize:
                 writes = set((src != dst).any(dim=0).nonzero()
                              .flatten().tolist())
                 pool = [f for f in library
-                        if all(i in writes for _, i, _ in f)] or library
+                        if all(i in writes
+                               for _, i, _, _ in f)] or library
             best, best_score, tried = None, -1.0, 0
             while tried < budget:
                 # build a candidate by concatenating fragments until it
@@ -591,7 +620,11 @@ if args.synthesize:
                     masked[i] = 0.0        # the basis forbids i == j
                     j = int(torch.multinomial(masked, 1,
                                               generator=generator))
-                    out.append((op, i, j))
+                    # uniform, so an untrained proposer stays exactly
+                    # uniform over the concrete atoms
+                    m = int(torch.randint(0, NMOD, (1,),
+                                          generator=generator))
+                    out.append((op, i, j, m))
             return out[:args.program_len]
 
         def observe(self, winners: list, solved: list) -> None:
@@ -618,7 +651,7 @@ if args.synthesize:
             islot: dict = {}
             jslot: dict = {}
             for program in winners:
-                for op, i, j in program:
+                for op, i, j, _ in program:
                     if USES_I[op]:
                         islot[i] = islot.get(i, 0) + 1
                     if USES_J[op]:
@@ -699,8 +732,9 @@ if args.synthesize:
         program. If `sketch` only matches it, the gain is instruction
         statistics rather than program reuse, and that distinction is
         the entire reason this arm exists."""
-        atoms = [tuple([(op, i, j)]) for op in range(NOPS)
-                 for i in range(SLOTS) for j in range(SLOTS) if i != j]
+        atoms = [tuple([(op, i, j, m)]) for op in range(NOPS)
+                 for i in range(SLOTS) for j in range(SLOTS) if i != j
+                 for m in range(NMOD)]
         kind, mass, exact_mass = mode
         proposer = (Proposer(kind == "sketch", mass, exact_mass)
                     if kind in ("marginal", "sketch") else None)
@@ -872,7 +906,7 @@ if args.synthesize:
 
     if args.library:
         # every single instruction is a fragment to begin with
-        library = [[(op, i, j)] for op in range(NOPS)
+        library = [[(op, i, j, 0)] for op in range(NOPS)
                    for i in range(SLOTS) for j in range(SLOTS)
                    if i != j]
         started = len(library)
