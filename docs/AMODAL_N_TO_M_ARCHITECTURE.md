@@ -628,6 +628,38 @@ programs and varying composition depth, then test whether a shared external
 learner can amortize acquisition without turning target-specific combiners into
 an unbounded collection of adapters.
 
+### Shared-composition pressure test and learner-view isolation (2026-08-11)
+
+The next implementation makes the richer execution boundary explicit. A
+versioned trace may carry learned instruction codes, transition deltas, and
+opaque fragment segment lengths, which preserves operator evidence and file
+boundaries without exposing raw events or verifier metadata. Routing receipts
+remain on the memory side: `ExternalSkillFragmentLearnerTrace` is a separate
+learner ABI that contains no fragment indices, route scores, or bank
+cardinality. This makes the no-address-shortcut rule enforceable rather than a
+property of one combiner implementation. Variable-length rows are grouped by
+executable length in the register transport path, preserving exact semantics
+while avoiding one interpreter call per batch row.
+
+One shared segment-aware combiner and decoder were then trained across three
+opaque orders with three held-out orders, while the parent and acquired bank
+were frozen. The shared learner reached `0.6536/0.9531/0.7760` on training
+orders and `0.6276/0.5182/0.6094` on held-out orders; it did not reach a stable
+prefix. Wrong-order, zero-code, missing-evidence, reward-shuffled,
+frozen-digest, persistence/corruption, and zero-replay controls passed, but the
+capability gate is rejected. The batched transport reduced this audit from
+496.5 to 353.5 seconds, which is an implementation gain rather than a learned
+capability gain. State-only traces, rich flat traces, an atomic-anchor loss,
+and a six-order/64-update coverage rung were also rejected; their durable
+decision record is `session_records/external_skill_fragment_shared_multi_target_v2_2026-08-11/`.
+
+The result sharpens the bottleneck: the acquired files are isolated and
+reusable, but one learner has not yet inferred a general composition law from
+the available order coverage. The next rung must vary composition depth and
+provide a curriculum of fresh opaque orders to the same shared learner, with
+stable-prefix and fresh-learner accounting. Allocating one new combiner per
+target would conceal this limitation and is not the canonical architecture.
+
 The first variable-deliberation outcome-only rung is recorded under
 `session_records/deliberation_amodal_2026-08-03/`. It validates the bounded
 runtime path but is rejected as a learned capability promotion: the controller

@@ -67,12 +67,8 @@ EXTERNAL_REGISTER_SHARED_BANKED_MODE = "factorized_shared_banked"
 EXTERNAL_REGISTER_SHARED_CANONICAL_MODE = "factorized_shared_canonical"
 EXTERNAL_REGISTER_SHARED_ROLE_BOUND_MODE = "factorized_shared_role_bound"
 EXTERNAL_REGISTER_SHARED_RELATIONAL_MODE = "factorized_shared_relational"
-EXTERNAL_REGISTER_SHARED_STABLE_RELATIONAL_MODE = (
-    "factorized_shared_stable_relational"
-)
-EXTERNAL_REGISTER_SHARED_OPERATOR_BASIS_MODE = (
-    "factorized_shared_operator_basis"
-)
+EXTERNAL_REGISTER_SHARED_STABLE_RELATIONAL_MODE = "factorized_shared_stable_relational"
+EXTERNAL_REGISTER_SHARED_OPERATOR_BASIS_MODE = "factorized_shared_operator_basis"
 EXTERNAL_SEQUENCE_MEMORY_SCHEMA = "neural-computer.external-sequence-memory.v1"
 LEGACY_EXTERNAL_SEQUENCE_PROGRAM_MEMORY_SCHEMA = (
     "neural-computer.external-sequence-program-memory.v1"
@@ -144,9 +140,7 @@ class LearnedRegisterRoleBinding(nn.Module):
         self.instruction_conditioned = bool(instruction_conditioned)
         self.role_width = self.register_width // self.role_count
         self.role_seed = nn.Parameter(torch.randn(role_count, self.role_width) * 0.02)
-        self.state_tokens = nn.Linear(
-            register_width, role_count * self.role_width
-        )
+        self.state_tokens = nn.Linear(register_width, role_count * self.role_width)
         self.key = nn.Linear(self.role_width, self.role_width)
         self.value = nn.Linear(self.role_width, self.role_width)
         self.query = nn.Linear(instruction_width, self.role_width)
@@ -180,9 +174,9 @@ class LearnedRegisterRoleBinding(nn.Module):
         queries = self.role_seed.unsqueeze(0)
         if self.instruction_conditioned:
             queries = queries + self.query(code).unsqueeze(1)
-        scores = torch.einsum(
-            "brd,btd->brt", queries, self.key(tokens)
-        ).div(self.role_width**0.5)
+        scores = torch.einsum("brd,btd->brt", queries, self.key(tokens)).div(
+            self.role_width**0.5
+        )
         weights = torch.softmax(scores, dim=-1)
         attended = torch.einsum("brt,btd->brd", weights, self.value(tokens))
         roles = self.contract(attended + queries)
@@ -250,13 +244,11 @@ class InstructionConditionedRelationalTransition(nn.Module):
     ) -> torch.Tensor:
         roles = self.binding(register, code)
         queries = roles + self.query(code).unsqueeze(1)
-        scores = torch.einsum(
-            "brd,btd->brt", queries, self.key(roles)
-        ).div(self.role_width**0.5)
-        weights = torch.softmax(scores, dim=-1)
-        mixed = roles + torch.einsum(
-            "brt,btd->brd", weights, self.value(roles)
+        scores = torch.einsum("brd,btd->brt", queries, self.key(roles)).div(
+            self.role_width**0.5
         )
+        weights = torch.softmax(scores, dim=-1)
+        mixed = roles + torch.einsum("brt,btd->brd", weights, self.value(roles))
         proposal = self.output(mixed.flatten(1))
         return proposal * torch.sigmoid(self.gate(code))
 
@@ -271,7 +263,9 @@ class CanonicalRegisterReadout(nn.Module):
     register; no operation, modality, or verifier metadata is available here.
     """
 
-    def __init__(self, register_width: int, output_width: int, *, hidden: int = 64) -> None:
+    def __init__(
+        self, register_width: int, output_width: int, *, hidden: int = 64
+    ) -> None:
         super().__init__()
         if min(register_width, output_width, hidden) < 1:
             raise ValueError("canonical readout dimensions must be positive")
@@ -340,7 +334,9 @@ class ExternalRegisterState:
         ):
             raise ValueError("external register context has the wrong shape")
         if self.initialized.shape != (batch_size,):
-            raise ValueError("external register initialization mask has the wrong shape")
+            raise ValueError(
+                "external register initialization mask has the wrong shape"
+            )
         if self.initialized.dtype is not torch.bool:
             raise ValueError("external register initialization mask must be boolean")
         if self.initialized.device != self.register.device:
@@ -358,9 +354,7 @@ class ExternalRegisterState:
                 raise ValueError("event window and mask must be provided together")
             if event_width is None:
                 raise ValueError("event width is required for an event window")
-            if self.event_window.shape != (
-                batch_size, event_window_size, event_width
-            ):
+            if self.event_window.shape != (batch_size, event_window_size, event_width):
                 raise ValueError("external event window has the wrong shape")
             if self.event_window_mask.shape != (batch_size, event_window_size):
                 raise ValueError("external event window mask has the wrong shape")
@@ -412,7 +406,9 @@ class ExternalRegisterState:
         if event_window_mask is not None and not isinstance(
             event_window_mask, torch.Tensor
         ):
-            raise TypeError("external register event window mask must be a tensor or null")
+            raise TypeError(
+                "external register event window mask must be a tensor or null"
+            )
         return cls(
             register=payload["register"],
             context=payload["context"],
@@ -548,9 +544,7 @@ class ExternalSequenceMemory(nn.Module):
     ) -> torch.Tensor:
         if not 0 <= slot < len(self.slots):
             raise ValueError("sequence memory slot index is out of range")
-        return self.slots[slot].to(device=device, dtype=dtype).expand(
-            batch_size, -1
-        )
+        return self.slots[slot].to(device=device, dtype=dtype).expand(batch_size, -1)
 
 
 class ExternalSequenceProgramMemory(nn.Module):
@@ -593,9 +587,7 @@ class ExternalSequenceProgramMemory(nn.Module):
         self.query_encoder = nn.GRU(
             self.instruction_width, self.router_hidden, batch_first=True
         )
-        self.program_query = nn.Linear(
-            self.router_hidden, self.instruction_width
-        )
+        self.program_query = nn.Linear(self.router_hidden, self.instruction_width)
         self.route_query_encoder = nn.Sequential(
             nn.Linear(self.instruction_width, self.router_hidden),
             nn.GELU(),
@@ -670,9 +662,7 @@ class ExternalSequenceProgramMemory(nn.Module):
         if not 0 <= slot < len(self.programs):
             raise ValueError("sequence program memory slot index is out of range")
         resolved_output_schema = (
-            self._output_schemas[slot]
-            if output_schema is None
-            else output_schema
+            self._output_schemas[slot] if output_schema is None else output_schema
         )
         return ExternalProgramArtifact(
             codes=self.programs[slot].detach(),
@@ -687,16 +677,12 @@ class ExternalSequenceProgramMemory(nn.Module):
             or codes.shape[0] < 1
             or codes.shape[1] != self.instruction_width
         ):
-            raise ValueError(
-                "program codes must have shape [steps, instruction_width]"
-            )
+            raise ValueError("program codes must have shape [steps, instruction_width]")
         if not bool(torch.isfinite(codes).all()):
             raise ValueError("program codes must be finite")
         detached_codes = codes.detach().clone()
         self.programs.append(nn.Parameter(detached_codes.clone()))
-        self.address_programs.append(
-            nn.Parameter(detached_codes, requires_grad=False)
-        )
+        self.address_programs.append(nn.Parameter(detached_codes, requires_grad=False))
         key = nn.Parameter(torch.empty(self.instruction_width))
         nn.init.normal_(key, mean=0.0, std=0.02)
         self.slot_keys.append(key)
@@ -733,7 +719,9 @@ class ExternalSequenceProgramMemory(nn.Module):
         try:
             return self._logical_slot_ids.index(int(slot_id))
         except ValueError as error:
-            raise KeyError("sequence program memory logical ID is not retained") from error
+            raise KeyError(
+                "sequence program memory logical ID is not retained"
+            ) from error
 
     def protection_mask(self) -> torch.Tensor:
         """Return memory-side protection without exposing file semantics."""
@@ -829,7 +817,9 @@ class ExternalSequenceProgramMemory(nn.Module):
 
         if capacity_limit is not None and capacity_limit < 1:
             raise ValueError("executable-memory maintenance capacity must be positive")
-        denominator = max(1, capacity_limit if capacity_limit is not None else self.file_count)
+        denominator = max(
+            1, capacity_limit if capacity_limit is not None else self.file_count
+        )
         logical_fraction = min(self.file_count / float(denominator), 1.0)
         physical_fraction = logical_fraction
         capacity_pressure = float(
@@ -927,7 +917,9 @@ class ExternalSequenceProgramMemory(nn.Module):
         *,
         retention_probe: Callable[[ExternalSequenceProgramMemory], bool] | None = None,
         share_pair: tuple[int, int] | None = None,
-        equivalence_probe: Callable[[ExternalProgramArtifact, ExternalProgramArtifact], bool]
+        equivalence_probe: Callable[
+            [ExternalProgramArtifact, ExternalProgramArtifact], bool
+        ]
         | None = None,
         evict_slot_id: int | None = None,
         growth_artifact: ExternalProgramArtifact | None = None,
@@ -937,7 +929,9 @@ class ExternalSequenceProgramMemory(nn.Module):
         growth_min_stable_observations: int = 1,
         compression_dtype: torch.dtype | str = torch.float16,
         protect_growth: bool = False,
-    ) -> ExternalProgramAdmissionReceipt | ExternalProgramMemoryTransactionReceipt | None:
+    ) -> (
+        ExternalProgramAdmissionReceipt | ExternalProgramMemoryTransactionReceipt | None
+    ):
         """Execute one proposal through verifier-gated file transactions.
 
         The policy chooses only the generic operation.  Candidate artifacts,
@@ -956,7 +950,9 @@ class ExternalSequenceProgramMemory(nn.Module):
             return None
         if proposal.action == "grow":
             if growth_artifact is None or growth_outcomes is None:
-                raise ValueError("executable-memory growth needs an artifact and outcomes")
+                raise ValueError(
+                    "executable-memory growth needs an artifact and outcomes"
+                )
             return self.admit_verified_artifact(
                 growth_artifact,
                 growth_outcomes,
@@ -969,7 +965,9 @@ class ExternalSequenceProgramMemory(nn.Module):
             raise ValueError("executable-memory maintenance needs a retention probe")
         if proposal.action == "share":
             if share_pair is None or equivalence_probe is None:
-                raise ValueError("executable-memory sharing needs an equivalent pair and probe")
+                raise ValueError(
+                    "executable-memory sharing needs an equivalent pair and probe"
+                )
             return self.consolidate_verified(
                 share_pair[0],
                 share_pair[1],
@@ -985,12 +983,13 @@ class ExternalSequenceProgramMemory(nn.Module):
             if evict_slot_id is None:
                 raise ValueError("executable-memory eviction needs a logical slot ID")
             return self.evict_verified(evict_slot_id, retention_probe)
-        raise ValueError(f"unsupported executable-memory maintenance action: {proposal.action}")
+        raise ValueError(
+            f"unsupported executable-memory maintenance action: {proposal.action}"
+        )
 
     def _state_storage_bytes(self) -> int:
         return sum(
-            value.numel() * value.element_size()
-            for value in self.state_dict().values()
+            value.numel() * value.element_size() for value in self.state_dict().values()
         )
 
     @staticmethod
@@ -1042,9 +1041,7 @@ class ExternalSequenceProgramMemory(nn.Module):
             candidate._logical_slot_ids[new_slot] = self._logical_slot_ids[slot]
             with torch.no_grad():
                 candidate.programs[new_slot].copy_(self.programs[slot])
-                candidate.address_programs[new_slot].copy_(
-                    self.address_programs[slot]
-                )
+                candidate.address_programs[new_slot].copy_(self.address_programs[slot])
                 candidate.slot_keys[new_slot].copy_(self.slot_keys[slot])
             candidate.programs[new_slot].requires_grad_(
                 self.programs[slot].requires_grad
@@ -1327,7 +1324,9 @@ class ExternalSequenceProgramMemory(nn.Module):
         from .growth import decompress_growth_artifact
 
         if not isinstance(payload, dict):
-            raise TypeError("compressed external program memory payload must be a dictionary")
+            raise TypeError(
+                "compressed external program memory payload must be a dictionary"
+            )
         if payload.get("schema") != EXTERNAL_SEQUENCE_PROGRAM_MEMORY_COMPRESSED_SCHEMA:
             raise ValueError("unsupported compressed external program memory schema")
         expected = payload.get("sha256")
@@ -1342,15 +1341,23 @@ class ExternalSequenceProgramMemory(nn.Module):
         state = payload.get("state")
         source_sha256 = payload.get("source_sha256")
         if source_schema != cls.schema:
-            raise ValueError("compressed external program memory source schema is incompatible")
+            raise ValueError(
+                "compressed external program memory source schema is incompatible"
+            )
         if not isinstance(configuration, dict) or not isinstance(artifacts, list):
             raise TypeError("compressed external program memory metadata is incomplete")
-        if not isinstance(output_schemas, list) or not isinstance(protected_slots, list):
-            raise TypeError("compressed external program memory slot metadata is invalid")
+        if not isinstance(output_schemas, list) or not isinstance(
+            protected_slots, list
+        ):
+            raise TypeError(
+                "compressed external program memory slot metadata is invalid"
+            )
         if not isinstance(state, dict) or not isinstance(source_sha256, str):
             raise TypeError("compressed external program memory state is invalid")
         if len(source_sha256) != 64:
-            raise ValueError("compressed external program memory source digest is malformed")
+            raise ValueError(
+                "compressed external program memory source digest is malformed"
+            )
         try:
             int(source_sha256, 16)
         except ValueError as error:
@@ -1448,8 +1455,11 @@ class ExternalSequenceProgramMemory(nn.Module):
     ) -> torch.Tensor:
         if not 0 <= slot < len(self.programs):
             raise ValueError("sequence program memory slot index is out of range")
-        return self.programs[slot].to(device=device, dtype=dtype).unsqueeze(0).expand(
-            batch_size, -1, -1
+        return (
+            self.programs[slot]
+            .to(device=device, dtype=dtype)
+            .unsqueeze(0)
+            .expand(batch_size, -1, -1)
         )
 
     def encode_program(self, codes: torch.Tensor) -> torch.Tensor:
@@ -1489,9 +1499,7 @@ class ExternalSequenceProgramMemory(nn.Module):
                 ),
                 dim=0,
             )
-            logits = -(
-                query.unsqueeze(1) - stored.unsqueeze(0)
-            ).square().mean(dim=-1)
+            logits = -(query.unsqueeze(1) - stored.unsqueeze(0)).square().mean(dim=-1)
         else:
             keys = torch.stack(tuple(self.slot_keys), dim=0)
             query_latent = self.route_query_encoder(query)
@@ -1535,7 +1543,9 @@ class ExternalSequenceProgramMemory(nn.Module):
     def digest(self) -> str:
         """Return a checksum over the executable bank and file protection state."""
 
-        return self._digest_components(self.schema, self.configuration(), self.state_dict())
+        return self._digest_components(
+            self.schema, self.configuration(), self.state_dict()
+        )
 
     @staticmethod
     def _digest_components(
@@ -1600,7 +1610,9 @@ class ExternalSequenceProgramMemory(nn.Module):
         protected_slots = payload.get("protected_slots")
         state = payload.get("state")
         if not isinstance(configuration, dict):
-            raise TypeError("sequence program memory configuration must be a dictionary")
+            raise TypeError(
+                "sequence program memory configuration must be a dictionary"
+            )
         if not isinstance(artifacts, list):
             raise TypeError("sequence program memory artifacts must be a list")
         if not isinstance(output_schemas, list):
@@ -1628,10 +1640,11 @@ class ExternalSequenceProgramMemory(nn.Module):
         ):
             raise ValueError("sequence program memory protection has the wrong shape")
         if len(output_schemas) != memory.file_count or any(
-            value is not None and not isinstance(value, str)
-            for value in output_schemas
+            value is not None and not isinstance(value, str) for value in output_schemas
         ):
-            raise ValueError("sequence program memory output schemas have the wrong shape")
+            raise ValueError(
+                "sequence program memory output schemas have the wrong shape"
+            )
         memory._protected_slots = list(protected_slots)
         memory._output_schemas = list(output_schemas)
         logical_slot_ids = configuration.get("logical_slot_ids")
@@ -1640,7 +1653,9 @@ class ExternalSequenceProgramMemory(nn.Module):
         if (
             not isinstance(logical_slot_ids, list)
             or len(logical_slot_ids) != memory.file_count
-            or any(not isinstance(value, int) or value < 0 for value in logical_slot_ids)
+            or any(
+                not isinstance(value, int) or value < 0 for value in logical_slot_ids
+            )
             or len(set(logical_slot_ids)) != len(logical_slot_ids)
         ):
             raise ValueError("sequence program memory logical IDs have the wrong shape")
@@ -1649,9 +1664,8 @@ class ExternalSequenceProgramMemory(nn.Module):
             "next_logical_slot_id",
             max(memory._logical_slot_ids, default=-1) + 1,
         )
-        if (
-            not isinstance(next_logical_slot_id, int)
-            or next_logical_slot_id <= max(memory._logical_slot_ids, default=-1)
+        if not isinstance(next_logical_slot_id, int) or next_logical_slot_id <= max(
+            memory._logical_slot_ids, default=-1
         ):
             raise ValueError("sequence program memory next logical ID is invalid")
         memory._next_logical_slot_id = next_logical_slot_id
@@ -1685,12 +1699,8 @@ class _ExternalSequenceOperatorSlot(nn.Module):
         self.register_width = register_width
         self.instruction_width = instruction_width
         self.operator_rank = operator_rank
-        self.left = nn.Linear(
-            instruction_width, register_width * operator_rank
-        )
-        self.right = nn.Linear(
-            instruction_width, operator_rank * register_width
-        )
+        self.left = nn.Linear(instruction_width, register_width * operator_rank)
+        self.right = nn.Linear(instruction_width, operator_rank * register_width)
         self.bias = nn.Linear(instruction_width, register_width)
         self.gate = nn.Linear(instruction_width, register_width)
         for module in (self.left, self.right, self.bias):
@@ -1699,9 +1709,7 @@ class _ExternalSequenceOperatorSlot(nn.Module):
         nn.init.zeros_(self.gate.weight)
         nn.init.constant_(self.gate.bias, -2.0)
 
-    def residual(
-        self, register: torch.Tensor, code: torch.Tensor
-    ) -> torch.Tensor:
+    def residual(self, register: torch.Tensor, code: torch.Tensor) -> torch.Tensor:
         left = torch.tanh(self.left(code)).reshape(
             register.shape[0], self.register_width, self.operator_rank
         )
@@ -1757,9 +1765,7 @@ class ExternalSequenceOperatorMemory(nn.Module):
             self.router_hidden,
             batch_first=True,
         )
-        self.program_query = nn.Linear(
-            self.router_hidden, self.instruction_width
-        )
+        self.program_query = nn.Linear(self.router_hidden, self.instruction_width)
 
     def configuration(self) -> dict[str, int | str]:
         return {
@@ -1908,7 +1914,9 @@ class ExternalRegisterComputeBasisArtifact:
             if not isinstance(value, torch.Tensor):
                 raise TypeError("compute basis artifact state values must be tensors")
             if not bool(torch.isfinite(value).all()):
-                raise ValueError(f"compute basis artifact state entry {name!r} is non-finite")
+                raise ValueError(
+                    f"compute basis artifact state entry {name!r} is non-finite"
+                )
 
     def _digest(self) -> str:
         digest = hashlib.sha256()
@@ -1934,8 +1942,7 @@ class ExternalRegisterComputeBasisArtifact:
             "schema": self.schema,
             "configuration": dict(self.configuration),
             "state": {
-                name: value.detach().cpu().clone()
-                for name, value in self.state.items()
+                name: value.detach().cpu().clone() for name, value in self.state.items()
             },
             "sha256": self.digest(),
         }
@@ -2090,7 +2097,9 @@ class ExternalRegisterComputeBasis(nn.Module):
             raise ValueError("compute basis artifact state entries are incompatible")
         for name, value in artifact.state.items():
             if value.shape != current[name].shape or value.dtype != current[name].dtype:
-                raise ValueError(f"compute basis artifact state entry {name!r} is incompatible")
+                raise ValueError(
+                    f"compute basis artifact state entry {name!r} is incompatible"
+                )
         basis.load_state_dict(
             {
                 name: value.detach().clone().to(device=current[name].device)
@@ -2115,14 +2124,19 @@ class ExternalRegisterComputeBasis(nn.Module):
             if event_window is None or event_window_mask is None:
                 raise ValueError("event window is required for this compute basis")
             if event_window.shape != (
-                register.shape[0], self.event_window_size, self.event_width
+                register.shape[0],
+                self.event_window_size,
+                self.event_width,
             ):
                 raise ValueError("event window has the wrong shape for compute basis")
-            if event_window_mask.shape != (
-                register.shape[0], self.event_window_size
-            ) or event_window_mask.dtype is not torch.bool:
+            if (
+                event_window_mask.shape != (register.shape[0], self.event_window_size)
+                or event_window_mask.dtype is not torch.bool
+            ):
                 raise ValueError("event window mask has the wrong shape")
-            window = event_window * event_window_mask.unsqueeze(-1).to(event_window.dtype)
+            window = event_window * event_window_mask.unsqueeze(-1).to(
+                event_window.dtype
+            )
         else:
             if event_window is not None or event_window_mask is not None:
                 raise ValueError("event window is unsupported by this compute basis")
@@ -2137,15 +2151,17 @@ class ExternalRegisterComputeBasis(nn.Module):
                 valid = event_window_mask
                 scores = scores.masked_fill(~valid, -1e9)
                 weights = torch.softmax(scores, dim=-1)
-                event_features = (
-                    weights * valid.to(weights.dtype)
-                ).unsqueeze(-1) * values
+                event_features = (weights * valid.to(weights.dtype)).unsqueeze(
+                    -1
+                ) * values
                 event_features = event_features.sum(dim=1)
             else:
                 event_features = (
                     torch.zeros(
-                        register.shape[0], self.event_window_width,
-                        device=register.device, dtype=register.dtype,
+                        register.shape[0],
+                        self.event_window_width,
+                        device=register.device,
+                        dtype=register.dtype,
                     )
                     if window is None
                     else window.flatten(1)
@@ -2287,17 +2303,20 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         operator_basis_count: int = 4,
     ) -> None:
         super().__init__()
-        if min(
-            event_width,
-            action_width,
-            intention_width,
-            register_width,
-            instruction_width,
-            interpreter_hidden,
-            operator_rank,
-            basis_hidden,
-            basis_microsteps,
-        ) < 1:
+        if (
+            min(
+                event_width,
+                action_width,
+                intention_width,
+                register_width,
+                instruction_width,
+                interpreter_hidden,
+                operator_rank,
+                basis_hidden,
+                basis_microsteps,
+            )
+            < 1
+        ):
             raise ValueError("external register dimensions must be positive")
         if basis_event_read_mode not in ("flattened_window", "attention_pool"):
             raise ValueError("unsupported basis event read mode")
@@ -2454,9 +2473,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             )
             nn.init.normal_(self.operator_basis_left, mean=0.0, std=0.02)
             nn.init.normal_(self.operator_basis_right, mean=0.0, std=0.02)
-            nn.init.normal_(
-                self.operator_basis_selector.weight, mean=0.0, std=0.02
-            )
+            nn.init.normal_(self.operator_basis_selector.weight, mean=0.0, std=0.02)
             nn.init.zeros_(self.operator_basis_selector.bias)
             self.operator_normalizer = nn.LayerNorm(register_width)
             self.operator_composition_gate = nn.Linear(
@@ -2522,12 +2539,8 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             self.operator_meta_right = nn.Linear(
                 instruction_width, operator_rank * register_width
             )
-            self.operator_meta_bias = nn.Linear(
-                instruction_width, register_width
-            )
-            self.operator_meta_gate = nn.Linear(
-                instruction_width, register_width
-            )
+            self.operator_meta_bias = nn.Linear(instruction_width, register_width)
+            self.operator_meta_gate = nn.Linear(instruction_width, register_width)
             for module in (
                 self.operator_meta_left,
                 self.operator_meta_right,
@@ -2539,18 +2552,14 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             nn.init.constant_(self.operator_meta_gate.bias, -4.0)
         if operator_mode in ("factorized_film", "factorized_hybrid"):
             self.operator_feature = nn.Linear(register_width, interpreter_hidden)
-            self.operator_modulation = nn.Linear(
-                instruction_width, interpreter_hidden
-            )
+            self.operator_modulation = nn.Linear(instruction_width, interpreter_hidden)
             self.operator_output = nn.Linear(interpreter_hidden, register_width)
             self.operator_gate = nn.Linear(interpreter_hidden * 2, 1)
             if operator_mode == "factorized_film":
                 self.operator_bias = nn.Linear(instruction_width, register_width)
                 nn.init.zeros_(self.operator_bias.bias)
             else:
-                self.operator_film_bias = nn.Linear(
-                    instruction_width, register_width
-                )
+                self.operator_film_bias = nn.Linear(instruction_width, register_width)
                 nn.init.zeros_(self.operator_output.weight)
                 nn.init.zeros_(self.operator_output.bias)
                 nn.init.zeros_(self.operator_film_bias.weight)
@@ -2598,7 +2607,8 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             "execution": "shared_interpreter_serial_instruction_chain_v1",
             "compute_basis": (
                 "neural-computer.external-register-shared-interpreter.v1"
-                if self.operator_mode in (
+                if self.operator_mode
+                in (
                     EXTERNAL_REGISTER_SHARED_INTERPRETER_MODE,
                     EXTERNAL_REGISTER_SHARED_BOUNDED_MODE,
                     EXTERNAL_REGISTER_SHARED_BANKED_MODE,
@@ -2612,7 +2622,8 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             ),
             "basis_binding": (
                 "instruction_vector_selects_shared_interpreter_v1"
-                if self.operator_mode in (
+                if self.operator_mode
+                in (
                     EXTERNAL_REGISTER_SHARED_INTERPRETER_MODE,
                     EXTERNAL_REGISTER_SHARED_BOUNDED_MODE,
                     EXTERNAL_REGISTER_SHARED_BANKED_MODE,
@@ -2637,9 +2648,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         self.instructions.append(instruction)
         return len(self.instructions) - 1
 
-    def add_basis_slot(
-        self, basis: ExternalRegisterComputeBasis | None = None
-    ) -> int:
+    def add_basis_slot(self, basis: ExternalRegisterComputeBasis | None = None) -> int:
         """Append fresh external computation capacity and return its address."""
 
         if basis is None:
@@ -2658,10 +2667,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             or basis.event_window_size != self.event_window_size
             or basis.microsteps != self.basis_microsteps
             or basis.event_read_mode != self.basis_event_read_mode
-            or (
-                self.event_window_size
-                and basis.event_width != self.event_width
-            )
+            or (self.event_window_size and basis.event_width != self.event_width)
         ):
             raise ValueError("basis slot dimensions do not match the machine")
         self.basis_slots.append(basis)
@@ -2690,9 +2696,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             raise IndexError("basis slot index is out of range")
         return self.basis_slots[basis_slot].artifact()
 
-    def add_basis_artifact(
-        self, artifact: ExternalRegisterComputeBasisArtifact
-    ) -> int:
+    def add_basis_artifact(self, artifact: ExternalRegisterComputeBasisArtifact) -> int:
         """Append a verified external slot restored from a portable file."""
 
         basis = ExternalRegisterComputeBasis.from_artifact(
@@ -2717,7 +2721,9 @@ class ExternalCapabilityRegisterMachine(nn.Module):
 
         from .capability import select_reusable_compute_slot
 
-        if any(index < 0 or index >= len(self.basis_slots) for index in candidate_outcomes):
+        if any(
+            index < 0 or index >= len(self.basis_slots) for index in candidate_outcomes
+        ):
             raise ValueError("basis candidate index is out of range")
         return select_reusable_compute_slot(
             candidate_outcomes,
@@ -2738,8 +2744,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
 
         candidate_indices = set(candidate_outcomes) | set(candidate_stable_bits)
         if any(
-            index < 0 or index >= len(self.basis_slots)
-            for index in candidate_indices
+            index < 0 or index >= len(self.basis_slots) for index in candidate_indices
         ):
             raise ValueError("basis candidate index is out of range")
         return select_reusable_compute_slot_by_efficiency(
@@ -2916,19 +2921,22 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         if state.event_window is None or state.event_window_mask is None:
             return (
                 torch.zeros(
-                    event.shape[0], self.event_window_size, self.event_width,
-                    device=event.device, dtype=event.dtype,
+                    event.shape[0],
+                    self.event_window_size,
+                    self.event_width,
+                    device=event.device,
+                    dtype=event.dtype,
                 ),
                 torch.zeros(
-                    event.shape[0], self.event_window_size,
-                    device=event.device, dtype=torch.bool,
+                    event.shape[0],
+                    self.event_window_size,
+                    device=event.device,
+                    dtype=torch.bool,
                 ),
             )
         if not self.event_window_size:
             return state.event_window, state.event_window_mask
-        shifted = torch.cat(
-            (state.event_window[:, 1:], event.unsqueeze(1)), dim=1
-        )
+        shifted = torch.cat((state.event_window[:, 1:], event.unsqueeze(1)), dim=1)
         shifted_mask = torch.cat(
             (state.event_window_mask[:, 1:], present.unsqueeze(1)), dim=1
         )
@@ -3006,9 +3014,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         else:
             if (
                 instruction_code.ndim != 2
-                or instruction_code.shape != (
-                    register.shape[0], self.instruction_width
-                )
+                or instruction_code.shape != (register.shape[0], self.instruction_width)
                 or not bool(torch.isfinite(instruction_code).all())
             ):
                 raise ValueError("instruction code has the wrong shape or values")
@@ -3023,7 +3029,9 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             ):
                 raise ValueError("meta context requires a protected-meta mode")
         if sequence_operator_memory is not None:
-            if (sequence_operator_slot is None) == (sequence_operator_route_query is None):
+            if (sequence_operator_slot is None) == (
+                sequence_operator_route_query is None
+            ):
                 raise ValueError(
                     "sequence operator memory requires exactly one slot or route query"
                 )
@@ -3031,7 +3039,9 @@ class ExternalCapabilityRegisterMachine(nn.Module):
                 "factorized_protected_meta",
                 "factorized_protected_bounded_meta",
             ):
-                raise ValueError("sequence operator memory requires protected-meta mode")
+                raise ValueError(
+                    "sequence operator memory requires protected-meta mode"
+                )
         elif sequence_operator_slot is not None:
             raise ValueError("sequence operator slot requires a memory object")
         elif sequence_operator_route_query is not None:
@@ -3063,9 +3073,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
                 "bki,kri->bkr", projected, self.operator_basis_left
             )
             proposals = proposals + self.operator_basis_bias.unsqueeze(0)
-            mixture = torch.softmax(
-                self.operator_basis_selector(code), dim=-1
-            )
+            mixture = torch.softmax(self.operator_basis_selector(code), dim=-1)
             proposal = torch.einsum("bk,bkr->br", mixture, proposals)
             gate = torch.sigmoid(self.operator_composition_gate(code))
             return register + gate * torch.tanh(proposal)
@@ -3108,7 +3116,8 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         ):
             operator_register = (
                 self.operator_normalizer(register)
-                if self.operator_mode in (
+                if self.operator_mode
+                in (
                     "factorized_bounded_residual",
                     EXTERNAL_REGISTER_SHARED_BOUNDED_MODE,
                     EXTERNAL_REGISTER_SHARED_BANKED_MODE,
@@ -3195,9 +3204,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
                     if self.operator_mode == "factorized_protected_bounded_meta"
                     else register
                 )
-                meta_projected = torch.einsum(
-                    "br,bkr->bk", meta_register, meta_right
-                )
+                meta_projected = torch.einsum("br,bkr->bk", meta_register, meta_right)
                 meta_proposal = torch.einsum(
                     "bk,brk->br", meta_projected, meta_left
                 ) + self.operator_meta_bias(code)
@@ -3212,13 +3219,19 @@ class ExternalCapabilityRegisterMachine(nn.Module):
                         else 0.0
                     )
                     return register + base_gate * (
-                        base + meta_residual + memory_residual + operator_memory_residual
+                        base
+                        + meta_residual
+                        + memory_residual
+                        + operator_memory_residual
                     )
                 residual = 0.5 * meta_gate * torch.tanh(meta_proposal)
                 if meta_context is not None:
                     residual = residual + 0.5 * torch.tanh(meta_context)
                 return (
-                    register + base_proposal + self.operator_bias(code) + residual
+                    register
+                    + base_proposal
+                    + self.operator_bias(code)
+                    + residual
                     + operator_memory_residual
                 )
         if self.operator_mode in ("factorized_film", "factorized_hybrid"):
@@ -3305,6 +3318,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         register: torch.Tensor,
         composition: object,
         *,
+        include_codes: bool = False,
         event_window: torch.Tensor | None = None,
         event_window_mask: torch.Tensor | None = None,
         meta_context: torch.Tensor | None = None,
@@ -3312,7 +3326,12 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         sequence_operator_slot: int | None = None,
         sequence_operator_route_query: torch.Tensor | None = None,
     ) -> object:
-        """Execute a fragment chain and retain only post-instruction states."""
+        """Execute a fragment chain and retain an opaque execution trace.
+
+        ``include_codes`` opt-in adds materialized learned instruction tokens
+        and transition deltas to the trace.  It never adds fragment indices,
+        raw events, or verifier metadata to the learner-facing contract.
+        """
 
         from .fragments import (
             ExternalSkillFragmentComposition,
@@ -3320,7 +3339,9 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         )
 
         if not isinstance(composition, ExternalSkillFragmentComposition):
-            raise TypeError("fragment composition must use the versioned composition contract")
+            raise TypeError(
+                "fragment composition must use the versioned composition contract"
+            )
         composition.validate(
             batch_size=register.shape[0],
             instruction_width=self.instruction_width,
@@ -3328,42 +3349,114 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         )
         if register.ndim != 2 or register.shape[1] != self.register_width:
             raise ValueError("register has the wrong shape for fragment composition")
-        traces: list[torch.Tensor] = []
-        for row in range(register.shape[0]):
-            codes = composition.codes[row][composition.mask[row]]
-            if codes.shape[0] < 1:
-                raise ValueError("fragment composition cannot be empty")
+        # Group rows by executable length so variable-length files retain their
+        # exact semantics without forcing the interpreter through one Python
+        # call per batch item.  The grouping is transport-only; no group ID or
+        # row identity is exposed in the returned learner-facing trace.
+        row_lengths = composition.mask.sum(dim=1).to(dtype=torch.int64)
+        if bool((row_lengths < 1).any()):
+            raise ValueError("fragment composition cannot be empty")
+        rows_by_length: dict[int, list[int]] = {}
+        for row, length in enumerate(row_lengths.detach().cpu().tolist()):
+            rows_by_length.setdefault(int(length), []).append(row)
+        traces: list[torch.Tensor | None] = [None] * register.shape[0]
+        deltas: list[torch.Tensor | None] = [None] * register.shape[0]
+        code_rows: list[torch.Tensor | None] = [None] * register.shape[0]
+        for length, rows in rows_by_length.items():
+            row_ids = torch.tensor(rows, dtype=torch.int64, device=register.device)
+            codes = torch.stack(
+                [composition.codes[row][composition.mask[row]] for row in rows]
+            )
+            if codes.shape[1] != length:
+                raise ValueError("fragment composition mask must select valid codes")
             _executed, trace = self.execute_code_chain_trace(
-                register[row : row + 1],
-                codes.unsqueeze(0),
-                event_window=event_window[row : row + 1]
-                if event_window is not None
-                else None,
-                event_window_mask=event_window_mask[row : row + 1]
-                if event_window_mask is not None
-                else None,
-                meta_context=meta_context[row : row + 1]
-                if meta_context is not None
-                else None,
+                register.index_select(0, row_ids),
+                codes,
+                event_window=(
+                    event_window.index_select(0, row_ids)
+                    if event_window is not None
+                    else None
+                ),
+                event_window_mask=(
+                    event_window_mask.index_select(0, row_ids)
+                    if event_window_mask is not None
+                    else None
+                ),
+                meta_context=(
+                    meta_context.index_select(0, row_ids)
+                    if meta_context is not None
+                    else None
+                ),
                 sequence_operator_memory=sequence_operator_memory,
                 sequence_operator_slot=sequence_operator_slot,
-                sequence_operator_route_query=sequence_operator_route_query[row : row + 1]
-                if sequence_operator_route_query is not None
-                else None,
+                sequence_operator_route_query=(
+                    sequence_operator_route_query.index_select(0, row_ids)
+                    if sequence_operator_route_query is not None
+                    else None
+                ),
             )
-            traces.append(torch.cat(trace, dim=0))
-        states = torch.nn.utils.rnn.pad_sequence(traces, batch_first=True)
+            grouped_states = torch.stack(trace, dim=1)
+            for local, row in enumerate(rows):
+                row_states = grouped_states[local]
+                traces[row] = row_states
+                if include_codes:
+                    previous = torch.cat(
+                        (register[row : row + 1], row_states[:-1]), dim=0
+                    )
+                    deltas[row] = row_states - previous
+                    code_rows[row] = codes[local]
+        if any(value is None for value in traces):
+            raise RuntimeError("fragment execution did not produce every trace row")
+        resolved_traces = [value for value in traces if value is not None]
+        if include_codes and (
+            any(value is None for value in deltas)
+            or any(value is None for value in code_rows)
+        ):
+            raise RuntimeError("rich fragment execution did not produce every row")
+        resolved_deltas = [value for value in deltas if value is not None]
+        resolved_code_rows = [value for value in code_rows if value is not None]
+        states = torch.nn.utils.rnn.pad_sequence(resolved_traces, batch_first=True)
         mask = torch.nn.utils.rnn.pad_sequence(
-            [torch.ones(trace.shape[0], dtype=torch.bool, device=trace.device) for trace in traces],
+            [
+                torch.ones(trace.shape[0], dtype=torch.bool, device=trace.device)
+                for trace in resolved_traces
+            ],
             batch_first=True,
             padding_value=False,
         )
+        instruction_codes = (
+            torch.nn.utils.rnn.pad_sequence(resolved_code_rows, batch_first=True)
+            if include_codes
+            else None
+        )
+        transition_deltas = (
+            torch.nn.utils.rnn.pad_sequence(resolved_deltas, batch_first=True)
+            if include_codes
+            else None
+        )
+        if include_codes and composition.fragment_step_counts is None:
+            raise ValueError("rich fragment traces require fragment segment counts")
+        from .fragments import (
+            EXTERNAL_SKILL_FRAGMENT_RICH_TRACE_SCHEMA,
+            EXTERNAL_SKILL_FRAGMENT_TRACE_SCHEMA,
+        )
+
         return ExternalSkillFragmentExecutionTrace(
             states=states,
             mask=mask,
             fragment_indices=composition.fragment_indices,
             route_scores=composition.route_scores,
             bank_fragment_count=composition.bank_fragment_count,
+            schema=(
+                EXTERNAL_SKILL_FRAGMENT_RICH_TRACE_SCHEMA
+                if include_codes
+                else EXTERNAL_SKILL_FRAGMENT_TRACE_SCHEMA
+            ),
+            instruction_codes=instruction_codes,
+            transition_deltas=transition_deltas,
+            fragment_step_counts=(
+                composition.fragment_step_counts if include_codes else None
+            ),
         ).validate(
             batch_size=register.shape[0],
             register_width=self.register_width,
@@ -3497,9 +3590,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         """
 
         if present is None:
-            present = torch.ones(
-                event.shape[0], dtype=torch.bool, device=event.device
-            )
+            present = torch.ones(event.shape[0], dtype=torch.bool, device=event.device)
         register, observed = self.observe_register(
             event=event,
             action=action,
@@ -3584,9 +3675,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         """
         selected = tuple(instructions)
         selected_basis = (
-            (None,) * len(selected)
-            if basis_slots is None
-            else tuple(basis_slots)
+            (None,) * len(selected) if basis_slots is None else tuple(basis_slots)
         )
         if len(selected_basis) != len(selected):
             raise ValueError("basis slot bindings must match instruction count")
@@ -3604,7 +3693,8 @@ class ExternalCapabilityRegisterMachine(nn.Module):
                 sequence_operator_route_query=sequence_operator_route_query,
                 state_bank=(
                     torch.stack(states, dim=1)
-                    if states and self.operator_mode == EXTERNAL_REGISTER_SHARED_BANKED_MODE
+                    if states
+                    and self.operator_mode == EXTERNAL_REGISTER_SHARED_BANKED_MODE
                     else None
                 ),
             )
@@ -3662,9 +3752,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         """
 
         if present is None:
-            present = torch.ones(
-                event.shape[0], dtype=torch.bool, device=event.device
-            )
+            present = torch.ones(event.shape[0], dtype=torch.bool, device=event.device)
         self._validate_step_inputs(
             event=event,
             action=action,
@@ -3693,9 +3781,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             ),
             torch.where(
                 present.unsqueeze(-1),
-                self.register_writer(
-                    torch.cat((context, state.register), dim=-1)
-                ),
+                self.register_writer(torch.cat((context, state.register), dim=-1)),
                 state.register,
             ),
         )
@@ -3733,9 +3819,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         """
 
         if present is None:
-            present = torch.ones(
-                event.shape[0], dtype=torch.bool, device=event.device
-            )
+            present = torch.ones(event.shape[0], dtype=torch.bool, device=event.device)
         register, next_state = self.observe_register(
             event=event,
             action=action,
@@ -3756,9 +3840,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             sequence_operator_slot=sequence_operator_slot,
             sequence_operator_route_query=sequence_operator_route_query,
         )
-        return torch.where(
-            present.unsqueeze(-1), executed, register
-        ), next_state
+        return torch.where(present.unsqueeze(-1), executed, register), next_state
 
     def read_execute_register_trace(
         self,
@@ -3778,9 +3860,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
     ) -> tuple[torch.Tensor, ExternalRegisterState, tuple[torch.Tensor, ...]]:
         """Read context, execute, and return an opaque intermediate-state bank."""
         if present is None:
-            present = torch.ones(
-                event.shape[0], dtype=torch.bool, device=event.device
-            )
+            present = torch.ones(event.shape[0], dtype=torch.bool, device=event.device)
         register, next_state = self.observe_register(
             event=event,
             action=action,
@@ -3802,12 +3882,9 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             sequence_operator_route_query=sequence_operator_route_query,
         )
         trace = tuple(
-            torch.where(present.unsqueeze(-1), value, register)
-            for value in trace
+            torch.where(present.unsqueeze(-1), value, register) for value in trace
         )
-        return torch.where(
-            present.unsqueeze(-1), executed, register
-        ), next_state, trace
+        return torch.where(present.unsqueeze(-1), executed, register), next_state, trace
 
     def read_execute_register_snapshot(
         self,
@@ -3876,9 +3953,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         """Observe, execute, and expose the learned role bank per step."""
 
         if present is None:
-            present = torch.ones(
-                event.shape[0], dtype=torch.bool, device=event.device
-            )
+            present = torch.ones(event.shape[0], dtype=torch.bool, device=event.device)
         register, next_state = self.observe_register(
             event=event,
             action=action,
@@ -3906,9 +3981,11 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             )
             for value, instruction in zip(role_trace, selected, strict=True)
         )
-        return torch.where(
-            present.unsqueeze(-1), executed, register
-        ), next_state, role_trace
+        return (
+            torch.where(present.unsqueeze(-1), executed, register),
+            next_state,
+            role_trace,
+        )
 
     def to_intention(self, register: torch.Tensor) -> IntentEvent:
         """Project a register to the opaque intention transport boundary."""
@@ -3942,9 +4019,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         """
 
         if present is None:
-            present = torch.ones(
-                event.shape[0], dtype=torch.bool, device=event.device
-            )
+            present = torch.ones(event.shape[0], dtype=torch.bool, device=event.device)
         register, observed_state = self.observe_register(
             event=event,
             action=action,
@@ -3964,9 +4039,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             sequence_operator_slot=sequence_operator_slot,
             sequence_operator_route_query=sequence_operator_route_query,
         )
-        register = torch.where(
-            present.unsqueeze(-1), executed, observed_state.register
-        )
+        register = torch.where(present.unsqueeze(-1), executed, observed_state.register)
         return register, ExternalRegisterState(
             register=register,
             context=observed_state.context,

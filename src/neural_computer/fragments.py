@@ -37,6 +37,9 @@ EXTERNAL_SKILL_FRAGMENT_COMPOSITION_SCHEMA = (
     "neural-computer.skill-fragment-composition.v2"
 )
 EXTERNAL_SKILL_FRAGMENT_TRACE_SCHEMA = "neural-computer.skill-fragment-trace.v1"
+EXTERNAL_SKILL_FRAGMENT_RICH_TRACE_SCHEMA = (
+    "neural-computer.skill-fragment-rich-trace.v2"
+)
 PERSISTENT_EXTERNAL_SKILL_FRAGMENT_BANK_SCHEMA = (
     "neural-computer.persistent-skill-fragment-bank.v1"
 )
@@ -141,7 +144,9 @@ class ExternalSkillFragmentArtifact:
             raise TypeError("fragment payload must be a mapping")
         coefficients = payload.get("coefficients")
         key = payload.get("key")
-        if not isinstance(coefficients, torch.Tensor) or not isinstance(key, torch.Tensor):
+        if not isinstance(coefficients, torch.Tensor) or not isinstance(
+            key, torch.Tensor
+        ):
             raise TypeError("fragment payload must contain tensor coefficients and key")
         configuration = payload.get("configuration")
         if not isinstance(configuration, Mapping):
@@ -175,7 +180,9 @@ class ExternalSkillFragmentRoute:
     weights: torch.Tensor
     schema: str = EXTERNAL_SKILL_FRAGMENT_ROUTE_SCHEMA
 
-    def validate(self, *, batch_size: int, fragment_count: int) -> ExternalSkillFragmentRoute:
+    def validate(
+        self, *, batch_size: int, fragment_count: int
+    ) -> ExternalSkillFragmentRoute:
         if self.schema != EXTERNAL_SKILL_FRAGMENT_ROUTE_SCHEMA:
             raise ValueError("unsupported fragment route schema")
         if self.indices.ndim != 2 or self.scores.shape != self.indices.shape:
@@ -184,15 +191,23 @@ class ExternalSkillFragmentRoute:
             raise ValueError("fragment route weights must align with indices")
         if self.indices.shape[0] != batch_size or self.indices.dtype != torch.int64:
             raise ValueError("fragment route batch or index dtype is invalid")
-        if fragment_count < 1 or bool((self.indices < 0).any()) or bool(
-            (self.indices >= fragment_count).any()
+        if (
+            fragment_count < 1
+            or bool((self.indices < 0).any())
+            or bool((self.indices >= fragment_count).any())
         ):
             raise ValueError("fragment route index is outside the bank")
         if not bool(torch.isfinite(self.scores).all()) or not bool(
             torch.isfinite(self.weights).all()
         ):
             raise ValueError("fragment route values must be finite")
-        if not bool(torch.allclose(self.weights.sum(-1), torch.ones(batch_size, device=self.weights.device), atol=1e-5)):
+        if not bool(
+            torch.allclose(
+                self.weights.sum(-1),
+                torch.ones(batch_size, device=self.weights.device),
+                atol=1e-5,
+            )
+        ):
             raise ValueError("fragment route weights must sum to one")
         return self
 
@@ -207,6 +222,7 @@ class ExternalSkillFragmentComposition:
     mask: torch.Tensor
     schema: str = EXTERNAL_SKILL_FRAGMENT_COMPOSITION_SCHEMA
     bank_fragment_count: int = 0
+    fragment_step_counts: torch.Tensor | None = None
 
     def validate(
         self,
@@ -221,11 +237,23 @@ class ExternalSkillFragmentComposition:
             raise ValueError("fragment composition must declare a nonempty bank")
         if fragment_count != self.bank_fragment_count:
             raise ValueError("fragment composition bank cardinality mismatch")
-        if self.fragment_indices.ndim != 2 or self.route_scores.shape != self.fragment_indices.shape:
-            raise ValueError("fragment composition route tensors must be [batch, steps]")
-        if self.fragment_indices.shape[0] != batch_size or self.fragment_indices.dtype != torch.int64:
+        if (
+            self.fragment_indices.ndim != 2
+            or self.route_scores.shape != self.fragment_indices.shape
+        ):
+            raise ValueError(
+                "fragment composition route tensors must be [batch, steps]"
+            )
+        if (
+            self.fragment_indices.shape[0] != batch_size
+            or self.fragment_indices.dtype != torch.int64
+        ):
             raise ValueError("fragment composition route shape is invalid")
-        if self.codes.ndim != 3 or self.codes.shape[0] != batch_size or self.codes.shape[2] != instruction_width:
+        if (
+            self.codes.ndim != 3
+            or self.codes.shape[0] != batch_size
+            or self.codes.shape[2] != instruction_width
+        ):
             raise ValueError("fragment composition codes have the wrong shape")
         if self.mask.shape != self.codes.shape[:2] or self.mask.dtype != torch.bool:
             raise ValueError("fragment composition mask has the wrong shape")
@@ -237,12 +265,31 @@ class ExternalSkillFragmentComposition:
             torch.isfinite(self.route_scores).all()
         ):
             raise ValueError("fragment composition values must be finite")
+        if self.fragment_step_counts is not None:
+            if (
+                self.fragment_step_counts.ndim != 2
+                or self.fragment_step_counts.shape != self.fragment_indices.shape
+                or self.fragment_step_counts.dtype != torch.int64
+            ):
+                raise ValueError("fragment step counts have the wrong shape")
+            if bool((self.fragment_step_counts < 1).any()) or bool(
+                (self.fragment_step_counts.sum(dim=1) != self.mask.sum(dim=1)).any()
+            ):
+                raise ValueError("fragment step counts do not match composition codes")
         return self
 
 
 @dataclass(frozen=True)
 class ExternalSkillFragmentExecutionTrace:
-    """Padded post-instruction states for one external serial execution."""
+    """Padded evidence for one external serial execution.
+
+    Version one carries only post-instruction states.  Version two may also
+    carry the opaque materialized instruction code and state transition delta
+    for every step.  These are learned external tensors, not fragment indices,
+    raw events, task labels, or verifier metadata.  Keeping the richer form
+    opt-in preserves the original state-only ABI while making compositional
+    generalization possible for consumers that need operator identity.
+    """
 
     states: torch.Tensor
     mask: torch.Tensor
@@ -250,6 +297,9 @@ class ExternalSkillFragmentExecutionTrace:
     route_scores: torch.Tensor
     bank_fragment_count: int
     schema: str = EXTERNAL_SKILL_FRAGMENT_TRACE_SCHEMA
+    instruction_codes: torch.Tensor | None = None
+    transition_deltas: torch.Tensor | None = None
+    fragment_step_counts: torch.Tensor | None = None
 
     def validate(
         self,
@@ -257,7 +307,10 @@ class ExternalSkillFragmentExecutionTrace:
         batch_size: int,
         register_width: int,
     ) -> ExternalSkillFragmentExecutionTrace:
-        if self.schema != EXTERNAL_SKILL_FRAGMENT_TRACE_SCHEMA:
+        if self.schema not in (
+            EXTERNAL_SKILL_FRAGMENT_TRACE_SCHEMA,
+            EXTERNAL_SKILL_FRAGMENT_RICH_TRACE_SCHEMA,
+        ):
             raise ValueError("unsupported fragment execution trace schema")
         if (
             self.states.ndim != 3
@@ -270,18 +323,68 @@ class ExternalSkillFragmentExecutionTrace:
             raise ValueError("fragment execution trace mask has the wrong shape")
         if not bool(self.mask.any(dim=1).all()):
             raise ValueError("fragment execution trace cannot contain empty rows")
-        if self.fragment_indices.ndim != 2 or self.route_scores.shape != self.fragment_indices.shape:
-            raise ValueError("fragment execution trace route tensors must be [batch, steps]")
-        if self.fragment_indices.shape[0] != batch_size or self.fragment_indices.dtype != torch.int64:
+        if (
+            self.fragment_indices.ndim != 2
+            or self.route_scores.shape != self.fragment_indices.shape
+        ):
+            raise ValueError(
+                "fragment execution trace route tensors must be [batch, steps]"
+            )
+        if (
+            self.fragment_indices.shape[0] != batch_size
+            or self.fragment_indices.dtype != torch.int64
+        ):
             raise ValueError("fragment execution trace route shape is invalid")
-        if self.bank_fragment_count < 1 or bool((self.fragment_indices < 0).any()) or bool(
-            (self.fragment_indices >= self.bank_fragment_count).any()
+        if (
+            self.bank_fragment_count < 1
+            or bool((self.fragment_indices < 0).any())
+            or bool((self.fragment_indices >= self.bank_fragment_count).any())
         ):
             raise ValueError("fragment execution trace index is outside the bank")
         if not bool(torch.isfinite(self.states).all()) or not bool(
             torch.isfinite(self.route_scores).all()
         ):
             raise ValueError("fragment execution trace values must be finite")
+        rich = self.schema == EXTERNAL_SKILL_FRAGMENT_RICH_TRACE_SCHEMA
+        if rich != (
+            self.instruction_codes is not None
+            and self.transition_deltas is not None
+            and self.fragment_step_counts is not None
+        ):
+            raise ValueError(
+                "rich fragment traces must carry code, delta, and segment tensors"
+            )
+        if self.instruction_codes is not None:
+            if (
+                self.instruction_codes.ndim != 3
+                or self.instruction_codes.shape[:2] != self.states.shape[:2]
+            ):
+                raise ValueError(
+                    "fragment trace instruction codes have the wrong shape"
+                )
+            if not bool(torch.isfinite(self.instruction_codes).all()):
+                raise ValueError("fragment trace instruction codes must be finite")
+        if self.transition_deltas is not None:
+            if self.transition_deltas.shape != self.states.shape:
+                raise ValueError(
+                    "fragment trace transition deltas have the wrong shape"
+                )
+            if not bool(torch.isfinite(self.transition_deltas).all()):
+                raise ValueError("fragment trace transition deltas must be finite")
+        if self.fragment_step_counts is not None:
+            if (
+                self.fragment_step_counts.ndim != 2
+                or self.fragment_step_counts.shape[0] != batch_size
+                or self.fragment_step_counts.shape[1] != self.fragment_indices.shape[1]
+                or self.fragment_step_counts.dtype != torch.int64
+            ):
+                raise ValueError("fragment trace step counts have the wrong shape")
+            if bool((self.fragment_step_counts < 1).any()):
+                raise ValueError("fragment trace step counts must be positive")
+            if bool(
+                (self.fragment_step_counts.sum(dim=1) != self.mask.sum(dim=1)).any()
+            ):
+                raise ValueError("fragment trace step counts do not match its mask")
         return self
 
     @property
@@ -294,6 +397,112 @@ class ExternalSkillFragmentExecutionTrace:
         return self.states[
             torch.arange(self.states.shape[0], device=self.states.device), last
         ]
+
+    def learner_view(self) -> ExternalSkillFragmentLearnerTrace:
+        """Drop routing receipts before execution evidence reaches a learner."""
+
+        self.validate(
+            batch_size=self.states.shape[0],
+            register_width=self.states.shape[2],
+        )
+        return ExternalSkillFragmentLearnerTrace(
+            states=self.states,
+            mask=self.mask,
+            schema=self.schema,
+            instruction_codes=self.instruction_codes,
+            transition_deltas=self.transition_deltas,
+            fragment_step_counts=self.fragment_step_counts,
+        ).validate(
+            batch_size=self.states.shape[0],
+            register_width=self.states.shape[2],
+        )
+
+
+@dataclass(frozen=True)
+class ExternalSkillFragmentLearnerTrace:
+    """Strict learner view of an external execution.
+
+    Routing receipts stay on the memory side of the boundary.  A combiner
+    receives only learned execution evidence, masks, and structural segment
+    lengths; it cannot inspect physical fragment indices, route scores, bank
+    cardinality, or any other address metadata even if the transport trace
+    carries those fields for diagnostics.
+    """
+
+    states: torch.Tensor
+    mask: torch.Tensor
+    schema: str = EXTERNAL_SKILL_FRAGMENT_TRACE_SCHEMA
+    instruction_codes: torch.Tensor | None = None
+    transition_deltas: torch.Tensor | None = None
+    fragment_step_counts: torch.Tensor | None = None
+
+    def validate(
+        self,
+        *,
+        batch_size: int,
+        register_width: int,
+    ) -> ExternalSkillFragmentLearnerTrace:
+        if self.schema not in (
+            EXTERNAL_SKILL_FRAGMENT_TRACE_SCHEMA,
+            EXTERNAL_SKILL_FRAGMENT_RICH_TRACE_SCHEMA,
+        ):
+            raise ValueError("unsupported fragment learner trace schema")
+        if (
+            self.states.ndim != 3
+            or self.states.shape[0] != batch_size
+            or self.states.shape[1] < 1
+            or self.states.shape[2] != register_width
+        ):
+            raise ValueError("fragment learner trace states have the wrong shape")
+        if self.mask.shape != self.states.shape[:2] or self.mask.dtype != torch.bool:
+            raise ValueError("fragment learner trace mask has the wrong shape")
+        if not bool(self.mask.any(dim=1).all()):
+            raise ValueError("fragment learner trace cannot contain empty rows")
+        if not bool(torch.isfinite(self.states).all()):
+            raise ValueError("fragment learner trace states must be finite")
+        rich = self.schema == EXTERNAL_SKILL_FRAGMENT_RICH_TRACE_SCHEMA
+        if rich != (
+            self.instruction_codes is not None
+            and self.transition_deltas is not None
+            and self.fragment_step_counts is not None
+        ):
+            raise ValueError(
+                "rich fragment learner traces must carry code, delta, and segment tensors"
+            )
+        if self.instruction_codes is not None:
+            if (
+                self.instruction_codes.ndim != 3
+                or self.instruction_codes.shape[:2] != self.states.shape[:2]
+            ):
+                raise ValueError(
+                    "fragment learner trace instruction codes have the wrong shape"
+                )
+            if not bool(torch.isfinite(self.instruction_codes).all()):
+                raise ValueError(
+                    "fragment learner trace instruction codes must be finite"
+                )
+        if self.transition_deltas is not None:
+            if self.transition_deltas.shape != self.states.shape:
+                raise ValueError(
+                    "fragment learner trace transition deltas have the wrong shape"
+                )
+            if not bool(torch.isfinite(self.transition_deltas).all()):
+                raise ValueError(
+                    "fragment learner trace transition deltas must be finite"
+                )
+        if self.fragment_step_counts is not None and (
+            self.fragment_step_counts.ndim != 2
+            or self.fragment_step_counts.shape[0] != batch_size
+            or self.fragment_step_counts.dtype != torch.int64
+            or bool((self.fragment_step_counts < 1).any())
+            or bool(
+                (self.fragment_step_counts.sum(dim=1) != self.mask.sum(dim=1)).any()
+            )
+        ):
+            raise ValueError(
+                "fragment learner trace segment lengths have the wrong shape"
+            )
+        return self
 
 
 class ExternalSkillFragmentCombiner(nn.Module):
@@ -334,7 +543,12 @@ class ExternalSkillFragmentCombiner(nn.Module):
             "order": "causal_gru_cell_v1",
         }
 
-    def forward(self, trace: ExternalSkillFragmentExecutionTrace) -> torch.Tensor:
+    def forward(
+        self,
+        trace: ExternalSkillFragmentExecutionTrace | ExternalSkillFragmentLearnerTrace,
+    ) -> torch.Tensor:
+        if isinstance(trace, ExternalSkillFragmentExecutionTrace):
+            trace = trace.learner_view()
         trace.validate(
             batch_size=trace.states.shape[0],
             register_width=self.register_width,
@@ -353,6 +567,210 @@ class ExternalSkillFragmentCombiner(nn.Module):
             proposal = self.cell(state, hidden)
             hidden = torch.where(present.unsqueeze(-1), proposal, hidden)
         return self.output(hidden)
+
+
+class ExternalSkillFragmentProgramCombiner(nn.Module):
+    """Shared order-sensitive combiner over opaque instruction evidence.
+
+    Unlike :class:`ExternalSkillFragmentCombiner`, this learner receives the
+    post-instruction state, its transition delta, and the learned materialized
+    instruction code for each step.  It still cannot inspect fragment indices,
+    route keys, raw events, feedback, or verifier metadata.  The extra learned
+    token stream preserves enough operator identity for one combiner to learn
+    reusable composition rules instead of memorizing complete state traces.
+    """
+
+    schema = "neural-computer.skill-fragment-program-combiner.v1"
+    requires_instruction_codes = True
+
+    def __init__(
+        self,
+        register_width: int,
+        instruction_width: int,
+        output_width: int,
+        *,
+        hidden: int = 64,
+    ) -> None:
+        super().__init__()
+        if min(register_width, instruction_width, output_width, hidden) < 1:
+            raise ValueError("program combiner dimensions must be positive")
+        self.register_width = int(register_width)
+        self.instruction_width = int(instruction_width)
+        self.output_width = int(output_width)
+        self.hidden = int(hidden)
+        self.input = nn.Sequential(
+            nn.Linear(register_width * 2 + instruction_width, hidden),
+            nn.GELU(),
+            nn.LayerNorm(hidden),
+        )
+        self.cell = nn.GRUCell(hidden, hidden)
+        self.output = nn.Linear(hidden, output_width)
+
+    def configuration(self) -> dict[str, int | str | bool]:
+        return {
+            "schema": self.schema,
+            "register_width": self.register_width,
+            "instruction_width": self.instruction_width,
+            "output_width": self.output_width,
+            "hidden": self.hidden,
+            "input": "post_state_transition_delta_opaque_code_trace_v2",
+            "uses_fragment_indices": False,
+            "uses_verifier_metadata": False,
+            "order": "causal_gru_cell_v1",
+        }
+
+    def forward(
+        self,
+        trace: ExternalSkillFragmentExecutionTrace | ExternalSkillFragmentLearnerTrace,
+    ) -> torch.Tensor:
+        if isinstance(trace, ExternalSkillFragmentExecutionTrace):
+            trace = trace.learner_view()
+        trace.validate(
+            batch_size=trace.states.shape[0],
+            register_width=self.register_width,
+        )
+        if trace.instruction_codes is None or trace.transition_deltas is None:
+            raise ValueError("program combiner requires a rich fragment trace")
+        if trace.instruction_codes.shape[2] != self.instruction_width:
+            raise ValueError("program combiner instruction width does not match trace")
+        hidden = torch.zeros(
+            trace.states.shape[0],
+            self.hidden,
+            device=trace.states.device,
+            dtype=trace.states.dtype,
+        )
+        for state, delta, code, present in zip(
+            trace.states.transpose(0, 1),
+            trace.transition_deltas.transpose(0, 1),
+            trace.instruction_codes.transpose(0, 1),
+            trace.mask.transpose(0, 1),
+            strict=True,
+        ):
+            token = self.input(torch.cat((state, delta, code), dim=-1))
+            proposal = self.cell(token, hidden)
+            hidden = torch.where(present.unsqueeze(-1), proposal, hidden)
+        return self.output(hidden)
+
+
+class ExternalSkillFragmentSegmentCombiner(nn.Module):
+    """Hierarchical combiner that preserves fragment boundaries.
+
+    The inner recurrent cell reads instruction-code steps within one fragment;
+    the outer recurrent cell reads one learned summary per fragment.  Segment
+    lengths are transport metadata from the external bank, not semantic labels,
+    and the learner still receives no fragment indices or verifier information.
+    This prevents variable-length materialization from erasing the boundary
+    between two reusable files before composition learning begins.
+    """
+
+    schema = "neural-computer.skill-fragment-segment-combiner.v1"
+    requires_instruction_codes = True
+
+    def __init__(
+        self,
+        register_width: int,
+        instruction_width: int,
+        output_width: int,
+        *,
+        hidden: int = 64,
+    ) -> None:
+        super().__init__()
+        if min(register_width, instruction_width, output_width, hidden) < 1:
+            raise ValueError("segment combiner dimensions must be positive")
+        self.register_width = int(register_width)
+        self.instruction_width = int(instruction_width)
+        self.output_width = int(output_width)
+        self.hidden = int(hidden)
+        self.step_input = nn.Sequential(
+            nn.Linear(register_width * 2 + instruction_width, hidden),
+            nn.GELU(),
+            nn.LayerNorm(hidden),
+        )
+        self.step_cell = nn.GRUCell(hidden, hidden)
+        self.segment_input = nn.Sequential(
+            nn.Linear(register_width + hidden, hidden),
+            nn.GELU(),
+            nn.LayerNorm(hidden),
+        )
+        self.segment_cell = nn.GRUCell(hidden, hidden)
+        self.output = nn.Linear(hidden, output_width)
+
+    def configuration(self) -> dict[str, int | str | bool]:
+        return {
+            "schema": self.schema,
+            "register_width": self.register_width,
+            "instruction_width": self.instruction_width,
+            "output_width": self.output_width,
+            "hidden": self.hidden,
+            "input": "hierarchical_segment_trace_v2",
+            "uses_fragment_indices": False,
+            "uses_verifier_metadata": False,
+            "inner_order": "causal_gru_cell_v1",
+            "outer_order": "causal_gru_cell_v1",
+        }
+
+    def forward(
+        self,
+        trace: ExternalSkillFragmentExecutionTrace | ExternalSkillFragmentLearnerTrace,
+    ) -> torch.Tensor:
+        if isinstance(trace, ExternalSkillFragmentExecutionTrace):
+            trace = trace.learner_view()
+        trace.validate(
+            batch_size=trace.states.shape[0],
+            register_width=self.register_width,
+        )
+        if (
+            trace.instruction_codes is None
+            or trace.transition_deltas is None
+            or trace.fragment_step_counts is None
+        ):
+            raise ValueError("segment combiner requires a rich fragment trace")
+        if trace.instruction_codes.shape[2] != self.instruction_width:
+            raise ValueError("segment combiner instruction width does not match trace")
+        batch_size, max_steps, _ = trace.states.shape
+        outer_hidden = torch.zeros(
+            batch_size,
+            self.hidden,
+            device=trace.states.device,
+            dtype=trace.states.dtype,
+        )
+        row_ids = torch.arange(batch_size, device=trace.states.device)
+        for segment in range(trace.fragment_step_counts.shape[1]):
+            starts = trace.fragment_step_counts[:, :segment].sum(dim=1)
+            lengths = trace.fragment_step_counts[:, segment]
+            active_segment = lengths > 0
+            inner_hidden = torch.zeros_like(outer_hidden)
+            for position in range(max_steps):
+                active_step = (
+                    active_segment
+                    & (position >= starts)
+                    & (position < starts + lengths)
+                    & trace.mask[:, position]
+                )
+                token = self.step_input(
+                    torch.cat(
+                        (
+                            trace.states[:, position],
+                            trace.transition_deltas[:, position],
+                            trace.instruction_codes[:, position],
+                        ),
+                        dim=-1,
+                    )
+                )
+                proposal = self.step_cell(token, inner_hidden)
+                inner_hidden = torch.where(
+                    active_step.unsqueeze(-1), proposal, inner_hidden
+                )
+            final_positions = (starts + lengths - 1).clamp(0, max_steps - 1)
+            final_states = trace.states[row_ids, final_positions]
+            segment_token = self.segment_input(
+                torch.cat((final_states, inner_hidden), dim=-1)
+            )
+            proposal = self.segment_cell(segment_token, outer_hidden)
+            outer_hidden = torch.where(
+                active_segment.unsqueeze(-1), proposal, outer_hidden
+            )
+        return self.output(outer_hidden)
 
 
 class ExternalSkillFragmentBank(nn.Module):
@@ -400,7 +818,9 @@ class ExternalSkillFragmentBank(nn.Module):
         self._next_logical_id = 0
         self._frozen_basis_rows = 0
         self._basis_freeze_hook: Any | None = None
-        self.register_buffer("learned_routing_enabled", torch.tensor(False, dtype=torch.bool))
+        self.register_buffer(
+            "learned_routing_enabled", torch.tensor(False, dtype=torch.bool)
+        )
 
     def configuration(self) -> dict[str, Any]:
         return {
@@ -430,7 +850,10 @@ class ExternalSkillFragmentBank(nn.Module):
         return tuple(self._logical_ids)
 
     def _validate_fragment(self, artifact: ExternalSkillFragmentArtifact) -> None:
-        if artifact.basis_count != self.basis_count or artifact.key_width != self.key_width:
+        if (
+            artifact.basis_count != self.basis_count
+            or artifact.key_width != self.key_width
+        ):
             raise ValueError("fragment dimensions do not match the bank")
         if artifact.step_count > self.max_fragment_steps:
             raise ValueError("fragment exceeds the bank's maximum step count")
@@ -490,7 +913,9 @@ class ExternalSkillFragmentBank(nn.Module):
     def _all_keys(self, *, device: torch.device, dtype: torch.dtype) -> torch.Tensor:
         if not self.fragment_count:
             raise ValueError("fragment bank has no fragments")
-        return torch.stack(tuple(key.to(device=device, dtype=dtype) for key in self.keys))
+        return torch.stack(
+            tuple(key.to(device=device, dtype=dtype) for key in self.keys)
+        )
 
     def _install_basis_freeze_hook(self) -> None:
         if self._basis_freeze_hook is not None:
@@ -518,12 +943,15 @@ class ExternalSkillFragmentBank(nn.Module):
         if additional_count < 1:
             raise ValueError("basis growth must append at least one direction")
         start = self.basis_count
-        proposal = torch.randn(
-            additional_count,
-            self.instruction_width,
-            device=self.shared_basis.device,
-            dtype=self.shared_basis.dtype,
-        ) * 0.02
+        proposal = (
+            torch.randn(
+                additional_count,
+                self.instruction_width,
+                device=self.shared_basis.device,
+                dtype=self.shared_basis.dtype,
+            )
+            * 0.02
+        )
         old_requires_grad = self.shared_basis.requires_grad
         if self._basis_freeze_hook is not None:
             self._basis_freeze_hook.remove()
@@ -556,16 +984,22 @@ class ExternalSkillFragmentBank(nn.Module):
         """Return one opaque score per fragment row."""
 
         if query.ndim != 2 or query.shape[1] != self.key_width:
-            raise ValueError(f"fragment query must have shape [batch, {self.key_width}]")
+            raise ValueError(
+                f"fragment query must have shape [batch, {self.key_width}]"
+            )
         if not bool(torch.isfinite(query).all()):
             raise ValueError("fragment query must be finite")
         keys = self._all_keys(device=query.device, dtype=query.dtype)
-        base = torch.nn.functional.cosine_similarity(query.unsqueeze(1), keys.unsqueeze(0), dim=-1)
+        base = torch.nn.functional.cosine_similarity(
+            query.unsqueeze(1), keys.unsqueeze(0), dim=-1
+        )
         if not bool(self.learned_routing_enabled.item()):
             return base
         return base + self.router(query, keys)
 
-    def route(self, query: torch.Tensor, *, top_k: int = 1) -> ExternalSkillFragmentRoute:
+    def route(
+        self, query: torch.Tensor, *, top_k: int = 1
+    ) -> ExternalSkillFragmentRoute:
         """Address fragments with a row-permutation-equivariant learned query."""
 
         if top_k < 1 or top_k > self.fragment_count:
@@ -611,7 +1045,9 @@ class ExternalSkillFragmentBank(nn.Module):
         ).mean()
         return loss, count
 
-    def compose_indices(self, fragment_indices: torch.Tensor) -> ExternalSkillFragmentComposition:
+    def compose_indices(
+        self, fragment_indices: torch.Tensor
+    ) -> ExternalSkillFragmentComposition:
         """Materialize a serial chain from opaque row positions.
 
         Row positions are memory-side bookkeeping.  Deployed callers should
@@ -625,17 +1061,27 @@ class ExternalSkillFragmentBank(nn.Module):
             torch.int64,
         ):
             raise ValueError("fragment indices must have shape [batch, steps]")
-        if fragment_indices.shape[1] < 1 or bool((fragment_indices < 0).any()) or bool(
-            (fragment_indices >= self.fragment_count).any()
+        if (
+            fragment_indices.shape[1] < 1
+            or bool((fragment_indices < 0).any())
+            or bool((fragment_indices >= self.fragment_count).any())
         ):
             raise ValueError("fragment index is outside the bank")
         rows: list[torch.Tensor] = []
         masks: list[torch.Tensor] = []
+        step_counts: list[torch.Tensor] = []
         for selected in fragment_indices.to(dtype=torch.int64):
             pieces = [self.fragment_codes(int(index)) for index in selected.tolist()]
             row = torch.cat(pieces, dim=0)
             rows.append(row)
             masks.append(torch.ones(row.shape[0], dtype=torch.bool, device=row.device))
+            step_counts.append(
+                torch.tensor(
+                    [piece.shape[0] for piece in pieces],
+                    dtype=torch.int64,
+                    device=row.device,
+                )
+            )
         codes = pad_sequence(rows, batch_first=True)
         mask = pad_sequence(masks, batch_first=True, padding_value=False)
         route_scores = torch.zeros(
@@ -644,22 +1090,29 @@ class ExternalSkillFragmentBank(nn.Module):
             device=codes.device,
         )
         return ExternalSkillFragmentComposition(
-            fragment_indices=fragment_indices.to(device=codes.device, dtype=torch.int64),
+            fragment_indices=fragment_indices.to(
+                device=codes.device, dtype=torch.int64
+            ),
             route_scores=route_scores,
             codes=codes,
             mask=mask,
             bank_fragment_count=self.fragment_count,
+            fragment_step_counts=torch.stack(step_counts),
         ).validate(
             batch_size=fragment_indices.shape[0],
             instruction_width=self.instruction_width,
             fragment_count=self.fragment_count,
         )
 
-    def compose_queries(self, queries: torch.Tensor) -> ExternalSkillFragmentComposition:
+    def compose_queries(
+        self, queries: torch.Tensor
+    ) -> ExternalSkillFragmentComposition:
         """Route one opaque query per serial composition step and execute later."""
 
         if queries.ndim != 3 or queries.shape[2] != self.key_width:
-            raise ValueError(f"fragment queries must have shape [batch, steps, {self.key_width}]")
+            raise ValueError(
+                f"fragment queries must have shape [batch, steps, {self.key_width}]"
+            )
         route_indices: list[torch.Tensor] = []
         route_scores: list[torch.Tensor] = []
         for step in range(queries.shape[1]):
@@ -674,6 +1127,7 @@ class ExternalSkillFragmentBank(nn.Module):
             codes=composition.codes,
             mask=composition.mask,
             bank_fragment_count=self.fragment_count,
+            fragment_step_counts=composition.fragment_step_counts,
         ).validate(
             batch_size=queries.shape[0],
             instruction_width=self.instruction_width,
@@ -697,7 +1151,9 @@ class ExternalSkillFragmentBank(nn.Module):
                 name: value.detach().cpu().clone()
                 for name, value in self.router.state_dict().items()
             },
-            "fragments": [self.artifact(index).payload() for index in range(self.fragment_count)],
+            "fragments": [
+                self.artifact(index).payload() for index in range(self.fragment_count)
+            ],
             "protected": list(self._protected),
             "logical_ids": list(self._logical_ids),
             "next_logical_id": self._next_logical_id,
@@ -714,14 +1170,16 @@ class ExternalSkillFragmentBank(nn.Module):
     def _snapshot_digest(self, state: Mapping[str, Any]) -> str:
         digest = hashlib.sha256()
         digest.update(
-            json.dumps(self.configuration(), sort_keys=True, separators=(",", ":")).encode(
-                "utf-8"
-            )
+            json.dumps(
+                self.configuration(), sort_keys=True, separators=(",", ":")
+            ).encode("utf-8")
         )
         shared_basis = state.get("shared_basis")
         router_state = state.get("router")
         fragments = state.get("fragments")
-        if not isinstance(shared_basis, torch.Tensor) or not isinstance(router_state, Mapping):
+        if not isinstance(shared_basis, torch.Tensor) or not isinstance(
+            router_state, Mapping
+        ):
             raise TypeError("fragment bank snapshot state is malformed")
         if not isinstance(fragments, list):
             raise TypeError("fragment bank snapshot fragments are malformed")
@@ -740,9 +1198,9 @@ class ExternalSkillFragmentBank(nn.Module):
         ):
             digest.update(name.encode("utf-8"))
             digest.update(
-                json.dumps(state.get(name), sort_keys=True, separators=(",", ":")).encode(
-                    "utf-8"
-                )
+                json.dumps(
+                    state.get(name), sort_keys=True, separators=(",", ":")
+                ).encode("utf-8")
             )
         return digest.hexdigest()
 
@@ -757,7 +1215,11 @@ class ExternalSkillFragmentBank(nn.Module):
         basis = state.get("shared_basis")
         router_state = state.get("router")
         fragments = state.get("fragments")
-        if not isinstance(basis, torch.Tensor) or not isinstance(router_state, Mapping) or not isinstance(fragments, list):
+        if (
+            not isinstance(basis, torch.Tensor)
+            or not isinstance(router_state, Mapping)
+            or not isinstance(fragments, list)
+        ):
             raise TypeError("fragment bank state is malformed")
         bank = cls(
             int(configuration.get("instruction_width", -1)),
@@ -775,10 +1237,15 @@ class ExternalSkillFragmentBank(nn.Module):
             strict=True,
         )
         for fragment_payload in fragments:
-            bank.add_artifact(ExternalSkillFragmentArtifact.from_payload(fragment_payload))
+            bank.add_artifact(
+                ExternalSkillFragmentArtifact.from_payload(fragment_payload)
+            )
         protected = state.get("protected", [])
         logical_ids = state.get("logical_ids", [])
-        if len(protected) != bank.fragment_count or len(logical_ids) != bank.fragment_count:
+        if (
+            len(protected) != bank.fragment_count
+            or len(logical_ids) != bank.fragment_count
+        ):
             raise ValueError("fragment bank lifecycle state does not align")
         bank._protected = [bool(value) for value in protected]
         bank._logical_ids = [int(value) for value in logical_ids]
@@ -787,7 +1254,9 @@ class ExternalSkillFragmentBank(nn.Module):
         if not 0 <= bank._frozen_basis_rows <= bank.basis_count:
             raise ValueError("fragment bank frozen basis prefix is invalid")
         bank._install_basis_freeze_hook()
-        bank.learned_routing_enabled.fill_(bool(state.get("learned_routing_enabled", False)))
+        bank.learned_routing_enabled.fill_(
+            bool(state.get("learned_routing_enabled", False))
+        )
         expected = payload.get("sha256")
         if not isinstance(expected, str) or expected != bank._snapshot_digest(state):
             raise ValueError("fragment bank checksum mismatch")
@@ -828,9 +1297,10 @@ class ExternalSkillFragmentBank(nn.Module):
         """Reload a bank only after validating its schema and full digest."""
 
         payload = torch.load(Path(path), map_location=map_location, weights_only=False)
-        if not isinstance(payload, Mapping) or payload.get(
-            "format"
-        ) != PERSISTENT_EXTERNAL_SKILL_FRAGMENT_BANK_SCHEMA:
+        if (
+            not isinstance(payload, Mapping)
+            or payload.get("format") != PERSISTENT_EXTERNAL_SKILL_FRAGMENT_BANK_SCHEMA
+        ):
             raise ValueError("unsupported persistent fragment bank format")
         bank_payload = payload.get("bank")
         if not isinstance(bank_payload, Mapping):
@@ -841,6 +1311,7 @@ class ExternalSkillFragmentBank(nn.Module):
 __all__ = [
     "EXTERNAL_SKILL_FRAGMENT_BANK_SCHEMA",
     "EXTERNAL_SKILL_FRAGMENT_COMPOSITION_SCHEMA",
+    "EXTERNAL_SKILL_FRAGMENT_RICH_TRACE_SCHEMA",
     "EXTERNAL_SKILL_FRAGMENT_ROUTE_SCHEMA",
     "EXTERNAL_SKILL_FRAGMENT_SCHEMA",
     "PERSISTENT_EXTERNAL_SKILL_FRAGMENT_BANK_SCHEMA",
@@ -849,5 +1320,8 @@ __all__ = [
     "ExternalSkillFragmentCombiner",
     "ExternalSkillFragmentComposition",
     "ExternalSkillFragmentExecutionTrace",
+    "ExternalSkillFragmentLearnerTrace",
+    "ExternalSkillFragmentProgramCombiner",
     "ExternalSkillFragmentRoute",
+    "ExternalSkillFragmentSegmentCombiner",
 ]

@@ -8,6 +8,8 @@ from neural_computer import (
     ExternalSkillFragmentArtifact,
     ExternalSkillFragmentBank,
     ExternalSkillFragmentCombiner,
+    ExternalSkillFragmentProgramCombiner,
+    ExternalSkillFragmentSegmentCombiner,
 )
 
 
@@ -21,7 +23,9 @@ def _bank() -> ExternalSkillFragmentBank:
         max_fragment_steps=4,
     )
     with torch.no_grad():
-        bank.shared_basis.copy_(torch.arange(24, dtype=torch.float32).reshape(4, 6) / 10.0)
+        bank.shared_basis.copy_(
+            torch.arange(24, dtype=torch.float32).reshape(4, 6) / 10.0
+        )
     bank.add_fragment(
         torch.tensor([[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0]]),
         torch.tensor([1.0, 0.0, 0.0, 0.0, 0.0, 0.0]),
@@ -94,12 +98,16 @@ def test_fragment_route_is_permutation_equivariant_and_has_no_task_identity() ->
 
     query = torch.tensor([[0.0, 1.0, 0.0, 0.0, 0.0, 0.0]])
     original_digest = bank.artifact(int(bank.route(query).indices[0, 0])).digest()
-    permuted_digest = permuted.artifact(int(permuted.route(query).indices[0, 0])).digest()
+    permuted_digest = permuted.artifact(
+        int(permuted.route(query).indices[0, 0])
+    ).digest()
 
     assert original_digest == permuted_digest
 
 
-def test_fragment_bank_learned_router_uses_only_outcome_pairs_and_grows_without_resize() -> None:
+def test_fragment_bank_learned_router_uses_only_outcome_pairs_and_grows_without_resize() -> (
+    None
+):
     bank = _bank()
     basis_shape = tuple(bank.shared_basis.shape)
     bank.enable_learned_routing()
@@ -161,7 +169,9 @@ def test_fragment_bank_persistence_preserves_basis_routes_and_composition() -> N
     )
 
 
-def test_fragment_bank_persistence_restores_expandable_basis_protection(tmp_path) -> None:
+def test_fragment_bank_persistence_restores_expandable_basis_protection(
+    tmp_path,
+) -> None:
     bank = _bank()
     old_codes = bank.fragment_codes(0).detach().clone()
     bank.grow_basis(2)
@@ -208,9 +218,9 @@ def test_fragment_bank_checksum_covers_lifecycle_metadata() -> None:
 
 def test_fragment_bank_rejects_checksum_corruption_before_mutation() -> None:
     payload = _bank().payload()
-    payload["state"]["fragments"][0]["coefficients"] = payload["state"][
-        "fragments"
-    ][0]["coefficients"].clone()
+    payload["state"]["fragments"][0]["coefficients"] = payload["state"]["fragments"][0][
+        "coefficients"
+    ].clone()
     payload["state"]["fragments"][0]["coefficients"][0, 0] += 1.0
 
     try:
@@ -242,6 +252,39 @@ def test_shared_register_interpreter_executes_variable_length_fragment_chain() -
     assert torch.isfinite(result).all()
 
 
+def test_batched_fragment_trace_matches_single_row_execution() -> None:
+    bank = _bank()
+    composition = bank.compose_indices(torch.tensor([[0, 1], [1, 2]]))
+    machine = ExternalCapabilityRegisterMachine(
+        event_width=1,
+        action_width=1,
+        intention_width=2,
+        register_width=6,
+        instruction_width=6,
+        interpreter_hidden=8,
+    )
+    register = torch.randn(2, 6)
+    trace = machine.execute_fragment_composition_trace(
+        register,
+        composition,
+        include_codes=True,
+    )
+
+    for row in range(register.shape[0]):
+        codes = composition.codes[row][composition.mask[row]]
+        _executed, expected_trace = machine.execute_code_chain_trace(
+            register[row : row + 1], codes.unsqueeze(0)
+        )
+        expected_states = torch.cat(expected_trace, dim=0)
+        length = expected_states.shape[0]
+        assert torch.allclose(trace.states[row, :length], expected_states)
+        assert torch.allclose(
+            trace.transition_deltas[row, :length],
+            expected_states
+            - torch.cat((register[row : row + 1], expected_states[:-1]), dim=0),
+        )
+
+
 def test_fragment_execution_trace_is_ordered_and_combiner_is_raw_event_free() -> None:
     bank = _bank()
     composition = bank.compose_indices(torch.tensor([[0, 1], [1, 2]]))
@@ -267,6 +310,44 @@ def test_fragment_execution_trace_is_ordered_and_combiner_is_raw_event_free() ->
     assert torch.allclose(trace.final_state[1], trace.states[1, 1])
     assert combined.shape == (2, 4)
     assert torch.isfinite(combined).all()
+
+
+def test_rich_fragment_trace_preserves_opaque_codes_and_transition_deltas() -> None:
+    bank = _bank()
+    composition = bank.compose_indices(torch.tensor([[0, 1], [1, 2]]))
+    machine = ExternalCapabilityRegisterMachine(
+        event_width=1,
+        action_width=1,
+        intention_width=2,
+        register_width=6,
+        instruction_width=6,
+        interpreter_hidden=8,
+    )
+
+    trace = machine.execute_fragment_composition_trace(
+        torch.zeros(2, 6),
+        composition,
+        include_codes=True,
+    )
+    learner_trace = trace.learner_view()
+    combiner = ExternalSkillFragmentProgramCombiner(6, 6, 4, hidden=8)
+    combined = combiner(learner_trace)
+    segment_combiner = ExternalSkillFragmentSegmentCombiner(6, 6, 4, hidden=8)
+    segmented = segment_combiner(learner_trace)
+
+    assert trace.instruction_codes is not None
+    assert trace.transition_deltas is not None
+    assert trace.instruction_codes.shape == trace.states.shape
+    assert trace.transition_deltas.shape == trace.states.shape
+    assert trace.fragment_step_counts is not None
+    assert trace.fragment_step_counts.tolist() == [[2, 1], [1, 1]]
+    assert trace.schema.endswith("rich-trace.v2")
+    assert not hasattr(learner_trace, "fragment_indices")
+    assert not hasattr(learner_trace, "route_scores")
+    assert combined.shape == (2, 4)
+    assert segmented.shape == (2, 4)
+    assert torch.isfinite(combined).all()
+    assert torch.isfinite(segmented).all()
 
 
 def test_shared_register_interpreter_rejects_forged_out_of_bank_fragment() -> None:

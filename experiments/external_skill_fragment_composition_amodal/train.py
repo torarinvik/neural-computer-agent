@@ -143,6 +143,7 @@ def _rollout(
     zero_codes: bool = False,
     combiner: ExternalSkillFragmentCombiner | None = None,
     route_programs: tuple[tuple[int, ...], ...] | None = None,
+    include_instruction_codes: bool = False,
 ) -> tuple[torch.Tensor, torch.Tensor]:
     device = batch.input_frames.device
     batch_size = batch.batch_size
@@ -203,9 +204,12 @@ def _rollout(
             composition,
             event_window=observed.event_window,
             event_window_mask=observed.event_window_mask,
+            include_codes=include_instruction_codes,
         )
         register_state = observed
-        executed = trace.final_state if combiner is None else combiner(trace)
+        executed = (
+            trace.final_state if combiner is None else combiner(trace.learner_view())
+        )
         return decoder(executed)
 
     quiet = _feedback(
@@ -403,6 +407,7 @@ def _accuracy(
     combiner: ExternalSkillFragmentCombiner | None = None,
     route_programs: tuple[tuple[int, ...], ...] | None = None,
     blank_sequence: bool = False,
+    include_instruction_codes: bool = False,
 ) -> float:
     batch = _batch(
         operation=operation,
@@ -425,6 +430,7 @@ def _accuracy(
             zero_codes=zero_codes,
             combiner=combiner,
             route_programs=route_programs,
+            include_instruction_codes=include_instruction_codes,
         )[1].mean()
     )
 

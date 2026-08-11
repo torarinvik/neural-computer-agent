@@ -126,3 +126,27 @@ done
 This is still bounded continual-memory/composition transfer. It does not
 establish arbitrary program induction, unrestricted memory growth, compression,
 or general continual learning.
+
+## Shared-composition pressure test
+
+`train_shared_multi_target.py` deliberately removes the fresh combiner per
+target. One segment-aware external learner and one decoder train across three
+orders while three other orders remain held out. The rich trace carries learned
+codes, transition deltas, and segment lengths; `ExternalSkillFragmentLearnerTrace`
+removes route indices and route scores before the learner sees it.
+
+The 128-update seed-69316 rung was rejected: training accuracy was
+`0.6536/0.9531/0.7760`, held-out accuracy was `0.6276/0.5182/0.6094`, and no
+stable prefix was reached. Controls and frozen-bank/persistence gates passed.
+The batched variable-length transport path reduced wall time from 496.5 to
+353.5 seconds, but that is an implementation gain, not a capability gain. The
+decision record and accounting ledger are in
+`session_records/external_skill_fragment_shared_multi_target_v2_2026-08-11/`.
+
+```bash
+PYTHONPATH=src:. .venv/bin/python -m \
+  experiments.external_skill_fragment_composition_amodal.train_shared_multi_target \
+  --seed 69316 --parent-updates 64 --primitive-updates 256 \
+  --composition-updates 128 --batch-size 32 --span 3 --audit-count 128 \
+  --eval-every 32 --report-out /tmp/fragment-shared-multi-target.json
+```

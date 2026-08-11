@@ -153,6 +153,7 @@ from .factored_transition import (
 from .fragments import (
     EXTERNAL_SKILL_FRAGMENT_BANK_SCHEMA,
     EXTERNAL_SKILL_FRAGMENT_COMPOSITION_SCHEMA,
+    EXTERNAL_SKILL_FRAGMENT_RICH_TRACE_SCHEMA,
     EXTERNAL_SKILL_FRAGMENT_ROUTE_SCHEMA,
     EXTERNAL_SKILL_FRAGMENT_SCHEMA,
     PERSISTENT_EXTERNAL_SKILL_FRAGMENT_BANK_SCHEMA,
@@ -161,7 +162,10 @@ from .fragments import (
     ExternalSkillFragmentCombiner,
     ExternalSkillFragmentComposition,
     ExternalSkillFragmentExecutionTrace,
+    ExternalSkillFragmentLearnerTrace,
+    ExternalSkillFragmentProgramCombiner,
     ExternalSkillFragmentRoute,
+    ExternalSkillFragmentSegmentCombiner,
 )
 from .goal_alignment import (
     EXTERNAL_GOAL_REPRESENTATION_ALIGNMENT_BANK_ADMISSION_SCHEMA,
@@ -789,6 +793,7 @@ __all__ = [
     "EXTERNAL_SIGNED_ENTRY_VALUE_SCHEMA",
     "EXTERNAL_SKILL_FRAGMENT_BANK_SCHEMA",
     "EXTERNAL_SKILL_FRAGMENT_COMPOSITION_SCHEMA",
+    "EXTERNAL_SKILL_FRAGMENT_RICH_TRACE_SCHEMA",
     "EXTERNAL_SKILL_FRAGMENT_ROUTE_SCHEMA",
     "EXTERNAL_SKILL_FRAGMENT_SCHEMA",
     "EXTERNAL_STREAM_BINDING_FACTUAL_CONSOLIDATION_SCHEMA",
@@ -1046,7 +1051,10 @@ __all__ = [
     "ExternalSkillFragmentCombiner",
     "ExternalSkillFragmentComposition",
     "ExternalSkillFragmentExecutionTrace",
+    "ExternalSkillFragmentLearnerTrace",
+    "ExternalSkillFragmentProgramCombiner",
     "ExternalSkillFragmentRoute",
+    "ExternalSkillFragmentSegmentCombiner",
     "ExternalSparseTransitionEvidenceIndex",
     "ExternalSparseTransitionEvidenceProposal",
     "ExternalStreamBindingFactualConsolidationReceipt",
