@@ -6678,3 +6678,40 @@ abstraction is the obvious next suspect and deserves re-testing rather
 than inheriting a verdict from a much weaker system.
 
 Probe 245 is `game_slots.py --depth 6` and `--beam 8`, 2 seeds each.
+
+**Caveat on F144, noticed from run times rather than results
+(2026-08-11). The contrastive batch ladder did NOT hold compute fixed,
+so part of the batch-32 improvement may be a compute effect rather
+than a discrimination effect.** `contrastive_loss` builds two readings
+per world in the batch, so reader forward passes per update scale
+linearly with `--contrastive-batch`:
+
+    batch   8:  16 reader passes per update   1x
+    batch  32:  64 reader passes per update   4x
+    batch  64: 128 reader passes per update   8x
+    batch 128: 256 reader passes per update  16x
+
+Every arm ran 40k updates, so the batch-32 arm did FOUR TIMES the
+reader computation of the batch-8 arm. F144's confirmed improvement
+(0.6237 -> 0.7795) is therefore an improvement at four times the
+reader budget, and the ladder as a whole compares configurations at
+1x, 4x and 16x. The winner being the more expensive arm is exactly
+what a compute effect would look like.
+
+This does not overturn F144 — the result replicated at three seeds and
+the mechanism story is coherent — but it does mean the CAUSE is not
+established. Two readings remain live:
+  * discrimination difficulty (more negatives -> finer code), the
+    interpretation recorded in F144;
+  * reader optimisation budget (more passes -> better reader),
+    which needs no reference to negatives at all.
+
+The discriminating experiment is an equal-COMPUTE comparison: batch 8
+at 160k updates against batch 32 at 40k. If batch 32 still wins, the
+negatives matter; if they tie, it was the budget. Queued.
+
+Noticed because the batch-64 arm has been running over two hours where
+comparable arms took twenty-five minutes, which is 8x — matching the
+table exactly. The run times were the evidence, not the outputs, which
+is a reminder that cost is a measurement too and this project has been
+reading only accuracy.
