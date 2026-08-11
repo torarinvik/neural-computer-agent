@@ -446,6 +446,7 @@ from .recipe_basis import (
     ExpressibilityResult,
     RecipeBasis,
     RecipeInstruction,
+    apply_sequence,
     paired_increment_target,
 )
 from .register import (
@@ -1208,6 +1209,7 @@ __all__ = [
     "StagedCapabilityReceipt",
     "accumulate_current_gradients",
     "apply_consolidation_proposal",
+    "apply_sequence",
     "attempted_outcome_loss",
     "compose_growth_artifacts",
     "compress_growth_artifact",

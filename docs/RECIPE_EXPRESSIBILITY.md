@@ -8,9 +8,15 @@ operation.
 
 ## Architectural decision
 
-The minimal long-term extension should be structural composition, not a
-benchmark-named `PAIR_FLIP` instruction. The candidate is a generic
-`PARALLEL(left, right)` combinator:
+The first required boundary is an explicit arithmetic modulus. Every
+increment/decrement instruction now carries its modulus as data, and the
+runtime validates it against the target slot's observed value domain. A
+single global `VALUES=8` is not a valid substitute: it makes an increment on a
+two-valued slot correct only when that slot currently holds zero.
+
+The separate structural-composition candidate remains a generic
+`PARALLEL(left, right)` combinator, not a benchmark-named `PAIR_FLIP`
+instruction:
 
 - each child is an existing local instruction;
 - both children read the same pre-step register;
@@ -18,23 +24,36 @@ benchmark-named `PAIR_FLIP` instruction. The candidate is a generic
 - both effects commit as one verifier-visible step.
 
 This closes the class of simultaneous independent local effects. A two-valued
-`INC` is a bit flip, so `PARALLEL(INC i, INC j)` is the pair-flip
-specialization without putting “flip” into the architecture.
+`INC` is already a bit flip, so a two-valued pair toggle is expressible as
+`INC(i, m=2); INC(j, m=2)` using existing instructions. `PARALLEL` is only
+needed when those effects must commit as one verifier-visible atomic step.
 
 The ABI is implemented as `neural_computer.RecipeBasis` with an explicit
 `one_instruction_one_verifier_step_v1` atomicity contract. It is an instrument
 for the external computation basis, not a new controller branch or a task
 solver.
 
-## Current mechanical result
+## Corrected modulus result
+
+For slot domains `(2, 2, 8, 8, 8, 8)`, applying the legacy global modulus of
+eight to one increment matches the correct family transition at per-slot
+rates `[0.5, 0.5, 1.0, 1.0, 1.0, 1.0]`. The explicit per-slot modulus makes
+the same transition exact. This is the structural defect behind the earlier
+misreading of the two-valued toggle result. The `RecipeInstruction` ABI now
+uses `(op, i, j, m)` for arithmetic operations, and `RecipeBasis` accepts
+per-slot value domains.
+
+## Separate atomic-composition result
 
 On six slots with eight values, the baseline contains `118` atomic candidates.
 The generic parallel extension contains `5,518` candidates, a `46.8x` larger
-exhaustive search space. The paired-increment target is correctly reported as
-`inexpressible` by the baseline after all `118` candidates are checked and is
-represented by the extension after `119` checks. This establishes the
-diagnostic boundary and exposes the search-cost tradeoff; it is not yet a
-learned-interpreter result.
+exhaustive search space. The simultaneous two-slot increment target is still
+correctly reported as `inexpressible` by the one-instruction atomic baseline
+and represented by the parallel extension. That is an atomicity result, not
+evidence of a missing toggle primitive and not evidence that sequential toggle
+composition was impossible. The prior interpreter reports are therefore
+historical artifacts with corrected interpretation status, not current
+promotion records.
 
 ## Required learned audit before promotion
 
@@ -57,7 +76,9 @@ search or proposal-distribution failure and must be recorded separately.
 
 No promotion should occur until the richer basis's interpreter cost is
 measured against the baseline at matched verifier bits and the extension wins
-on expressibility without a material loss on unseen baseline execution.
+on expressibility without a material loss on unseen baseline execution. The
+next learned audit must first compare explicit per-slot modulus against a
+diagnostic legacy-global-modulus arm on mixed-domain random programs.
 
 The first paired two-seed calibration at 500 updates was correctly rejected as
 undertrained: the parallel target reached `0.8506`/`0.9805`, but old-basis
@@ -66,14 +87,12 @@ length-four curve was lower. The durable result is the harness diagnosis, not
 the score. Evidence is archived in
 `session_records/recipe_interpreter_undertrained_calibration_rejected_2026-08-11/`.
 
-## Narrow promoted result
+## Superseded prior promotion
 
-At the registered 2,500-update rung, the generic parallel arm reached stable
-`>=0.9` old-basis length-two and double-length execution by `1,500` updates on
-both seeds. The atomic baseline reached the same old-basis threshold at `2,000`
-updates on seed `70422` and did not reach it on seed `70421`. The paired target
-was stably learned by both extended arms. This promotes the bounded generic
-composition mechanism under random-program pretraining, with the explicit
-confound that the richer arm also practices a richer program distribution.
+The earlier 2,500-update parallel-composition report used a uniform modulus-8
+world and was described as if it validated a two-valued toggle gap. That
+interpretation is withdrawn. The run remains a valid historical atomicity/
+composition diagnostic, but it is not evidence about the corrected
+mixed-domain modulus problem.
 Evidence is archived in
 `session_records/recipe_parallel_composition_promoted_2026-08-11/`.

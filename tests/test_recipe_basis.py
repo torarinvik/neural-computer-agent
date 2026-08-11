@@ -7,6 +7,7 @@ import pytest
 from neural_computer.recipe_basis import (
     RecipeBasis,
     RecipeInstruction,
+    apply_sequence,
     paired_increment_target,
 )
 
@@ -32,7 +33,7 @@ def test_baseline_fail_closed_reports_atomic_gap() -> None:
 
 
 def test_parallel_composition_closes_generic_pair_effect() -> None:
-    target = paired_increment_target(0, 1)
+    target = paired_increment_target(0, 1, modulus=8)
     result = RecipeBasis(allow_parallel=True).expressibility_probe(
         target,
         states=_pair_states(),
@@ -56,15 +57,47 @@ def test_parallel_requires_disjoint_writes() -> None:
         RecipeInstruction(
             "parallel",
             children=(
-                RecipeInstruction("inc", 0),
-                RecipeInstruction("dec", 0),
+                RecipeInstruction("inc", 0, modulus=8),
+                RecipeInstruction("dec", 0, modulus=8),
             ),
         ).validate(slot_count=6)
+
+
+def test_two_valued_toggle_is_an_existing_increment_sequence() -> None:
+    values = (2, 2, 8, 8, 8, 8)
+    state = (1, 0, 3, 4, 5, 6)
+
+    result = apply_sequence(
+        (
+            RecipeInstruction("inc", 0, modulus=2),
+            RecipeInstruction("inc", 1, modulus=2),
+        ),
+        state,
+        values=values,
+    )
+
+    assert result == (0, 1, 3, 4, 5, 6)
+
+
+def test_arithmetic_rejects_a_hidden_global_modulus() -> None:
+    with pytest.raises(ValueError, match="must match"):
+        RecipeInstruction("inc", 0, modulus=8).apply(
+            (1, 0, 3, 4, 5, 6),
+            values=(2, 2, 8, 8, 8, 8),
+        )
+
+
+def test_modulus_is_observable_in_basis_candidates() -> None:
+    basis = RecipeBasis(slot_values=(2, 2, 8, 8, 8, 8))
+    candidates = basis.atomic_candidates()
+
+    assert RecipeInstruction("inc", 0, modulus=2) in candidates
+    assert RecipeInstruction("inc", 2, modulus=8) in candidates
 
 
 def test_basis_configuration_exposes_atomicity_and_no_task_names() -> None:
     configuration = RecipeBasis(allow_parallel=True).configuration()
 
-    assert configuration["schema"] == "neural-computer.recipe-basis.v1"
+    assert configuration["schema"] == "neural-computer.recipe-basis.v2"
     assert configuration["atomicity"] == "one_instruction_one_verifier_step_v1"
     assert "pair" not in repr(configuration).lower()

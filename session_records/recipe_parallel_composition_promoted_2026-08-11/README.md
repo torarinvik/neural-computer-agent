@@ -1,4 +1,14 @@
-# Generic parallel recipe composition — promoted narrow rung
+# Generic parallel recipe composition — superseded interpretation
+
+**Status: SUPERSEDED AS A TOGGLE-CAPABILITY CLAIM.**
+
+The original report below remains a reproducible historical result for a
+uniform-modulus atomicity/composition probe. Its interpretation as evidence
+that a two-valued toggle required a new pair primitive was incorrect. A
+two-valued toggle is `INC(i, m=2); INC(j, m=2)` using existing instructions.
+The actual defect was the former global modulus-8 assumption. The corrected
+contract is documented in `docs/RECIPE_EXPRESSIBILITY.md` and implemented by
+the explicit per-instruction modulus ABI.
 
 This two-seed in-repository audit tests the expressibility boundary suggested
 by the exported games session. The export's learned-interpreter numbers remain
@@ -12,9 +22,9 @@ enters the learner. The baseline grammar contains `NOOP`, `INC`, `DEC`,
 same pre-step state and commits them atomically.
 
 At the stable-prefix threshold `0.9`, both extended arms reach old-basis
-length-two and double-length execution by update `1,500`. The paired
-increment target—the two-valued pair-flip specialization—is also learned by
-both extended arms. The baseline reaches the old-basis threshold at update
+length-two and double-length execution by update `1,500`. The uniform-modulus
+simultaneous pair-increment target is also learned by both extended arms. The
+baseline reaches the old-basis threshold at update
 `2,000` on seed `70422` and never reaches it within `2,500` updates on seed
 `70421`.
 

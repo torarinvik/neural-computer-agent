@@ -13,12 +13,12 @@ exhausting a budget and minting a bad external file.
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
 from itertools import product
 from typing import Literal
 
-RECIPE_BASIS_SCHEMA = "neural-computer.recipe-basis.v1"
+RECIPE_BASIS_SCHEMA = "neural-computer.recipe-basis.v2"
 RecipeOp = Literal[
     "noop",
     "inc",
@@ -29,6 +29,7 @@ RecipeOp = Literal[
     "swap",
     "parallel",
 ]
+SlotValues = int | Sequence[int]
 
 
 @dataclass(frozen=True)
@@ -44,10 +45,13 @@ class RecipeInstruction:
     op: RecipeOp
     first: int | None = None
     second: int | None = None
+    modulus: int | None = None
     children: tuple[RecipeInstruction, RecipeInstruction] | None = None
 
     def validate(self, *, slot_count: int, allow_parallel: bool = True) -> None:
         if self.op == "parallel":
+            if self.modulus is not None:
+                raise ValueError("parallel instruction cannot have a modulus")
             if not allow_parallel:
                 raise ValueError("parallel instruction is outside this basis")
             if self.children is None or len(self.children) != 2:
@@ -61,6 +65,12 @@ class RecipeInstruction:
             return
         if self.children is not None:
             raise ValueError("atomic instruction cannot contain children")
+        arithmetic = {"inc", "dec", "cinc", "cdec"}
+        if self.op in arithmetic:
+            if self.modulus is None or self.modulus < 2:
+                raise ValueError("arithmetic instruction needs modulus >= 2")
+        elif self.modulus is not None:
+            raise ValueError("only arithmetic instructions can have a modulus")
         if self.op == "noop":
             if self.first is not None or self.second is not None:
                 raise ValueError("noop cannot have slot arguments")
@@ -98,16 +108,20 @@ class RecipeInstruction:
             return frozenset((self.first, self.second))
         raise ValueError(f"unsupported recipe operation: {self.op!r}")
 
-    def apply(self, state: tuple[int, ...], *, values: int) -> tuple[int, ...]:
-        """Apply one instruction without exposing semantic meanings."""
+    def apply(self, state: tuple[int, ...], *, values: SlotValues) -> tuple[int, ...]:
+        """Apply one instruction using explicit per-slot value domains."""
 
         self.validate(slot_count=len(state), allow_parallel=True)
-        if values < 2 or any(value < 0 or value >= values for value in state):
+        slot_values = _normalize_slot_values(values, slot_count=len(state))
+        if any(
+            value < 0 or value >= slot_values[index]
+            for index, value in enumerate(state)
+        ):
             raise ValueError("recipe state values are outside the configured domain")
         if self.op == "parallel":
             assert self.children is not None
-            first = self.children[0].apply(state, values=values)
-            second = self.children[1].apply(state, values=values)
+            first = self.children[0].apply(state, values=slot_values)
+            second = self.children[1].apply(state, values=slot_values)
             merged = list(state)
             for slot in self.children[0].written_slots():
                 merged[slot] = first[slot]
@@ -119,18 +133,24 @@ class RecipeInstruction:
             return state
         assert self.first is not None
         result = list(state)
+        if self.op in {"inc", "dec", "cinc", "cdec"}:
+            assert self.modulus is not None
+            if self.modulus != slot_values[self.first]:
+                raise ValueError(
+                    "arithmetic modulus must match the target slot value domain"
+                )
         if self.op == "inc":
-            result[self.first] = (result[self.first] + 1) % values
+            result[self.first] = (result[self.first] + 1) % self.modulus
         elif self.op == "dec":
-            result[self.first] = (result[self.first] - 1) % values
+            result[self.first] = (result[self.first] - 1) % self.modulus
         elif self.op == "cinc":
             assert self.second is not None
             if state[self.second] != 0:
-                result[self.first] = (result[self.first] + 1) % values
+                result[self.first] = (result[self.first] + 1) % self.modulus
         elif self.op == "cdec":
             assert self.second is not None
             if state[self.second] != 0:
-                result[self.first] = (result[self.first] - 1) % values
+                result[self.first] = (result[self.first] - 1) % self.modulus
         elif self.op == "copy":
             assert self.second is not None
             result[self.first] = state[self.second]
@@ -142,7 +162,24 @@ class RecipeInstruction:
             )
         else:
             raise ValueError(f"unsupported recipe operation: {self.op!r}")
+        if any(
+            value < 0 or value >= slot_values[index]
+            for index, value in enumerate(result)
+        ):
+            raise ValueError("instruction produced an invalid slot value")
         return tuple(result)
+
+
+def _normalize_slot_values(values: SlotValues, *, slot_count: int) -> tuple[int, ...]:
+    if isinstance(values, int):
+        slot_values = (values,) * slot_count
+    else:
+        slot_values = tuple(int(value) for value in values)
+        if len(slot_values) != slot_count:
+            raise ValueError("slot value domains must match the state width")
+    if any(value < 2 for value in slot_values):
+        raise ValueError("slot value domains must be at least two")
+    return slot_values
 
 
 @dataclass(frozen=True)
@@ -173,19 +210,25 @@ class RecipeBasis:
         slot_count: int = 6,
         values: int = 8,
         *,
+        slot_values: Sequence[int] | None = None,
         allow_parallel: bool = False,
     ) -> None:
         if slot_count < 1 or values < 2:
             raise ValueError("recipe basis dimensions must be positive")
         self.slot_count = int(slot_count)
-        self.values = int(values)
+        self.slot_values = _normalize_slot_values(
+            values if slot_values is None else slot_values,
+            slot_count=self.slot_count,
+        )
+        self.values = max(self.slot_values)
         self.allow_parallel = bool(allow_parallel)
 
-    def configuration(self) -> dict[str, int | str | bool]:
+    def configuration(self) -> dict[str, object]:
         return {
             "schema": RECIPE_BASIS_SCHEMA,
             "slot_count": self.slot_count,
             "values": self.values,
+            "slot_values": self.slot_values,
             "allow_parallel": self.allow_parallel,
             "atomicity": "one_instruction_one_verifier_step_v1",
         }
@@ -194,7 +237,14 @@ class RecipeBasis:
         candidates: list[RecipeInstruction] = [RecipeInstruction("noop")]
         for slot in range(self.slot_count):
             candidates.extend(
-                (RecipeInstruction("inc", slot), RecipeInstruction("dec", slot))
+                (
+                    RecipeInstruction(
+                        "inc", slot, modulus=self.slot_values[slot]
+                    ),
+                    RecipeInstruction(
+                        "dec", slot, modulus=self.slot_values[slot]
+                    ),
+                )
             )
         for first in range(self.slot_count):
             for second in range(self.slot_count):
@@ -202,13 +252,28 @@ class RecipeBasis:
                     continue
                 candidates.extend(
                     (
-                        RecipeInstruction("cinc", first, second),
-                        RecipeInstruction("cdec", first, second),
-                        RecipeInstruction("copy", first, second),
+                        RecipeInstruction(
+                            "cinc",
+                            first,
+                            second,
+                            modulus=self.slot_values[first],
+                        ),
+                        RecipeInstruction(
+                            "cdec",
+                            first,
+                            second,
+                            modulus=self.slot_values[first],
+                        ),
+                        *(
+                            (RecipeInstruction("copy", first, second),)
+                            if self.slot_values[second] <= self.slot_values[first]
+                            else ()
+                        ),
                     )
                 )
             for second in range(first + 1, self.slot_count):
-                candidates.append(RecipeInstruction("swap", first, second))
+                if self.slot_values[first] == self.slot_values[second]:
+                    candidates.append(RecipeInstruction("swap", first, second))
         if self.allow_parallel:
             atomic = tuple(candidates)
             for left_index, left in enumerate(atomic):
@@ -237,7 +302,7 @@ class RecipeBasis:
         """
 
         probe_states = tuple(
-            product(range(self.values), repeat=self.slot_count)
+            product(*(range(value) for value in self.slot_values))
             if states is None
             else states
         )
@@ -258,7 +323,8 @@ class RecipeBasis:
                     "invalid", None, 0, f"target transition raised {error!r}"
                 )
             if len(result) != self.slot_count or any(
-                value < 0 or value >= self.values for value in result
+                value < 0 or value >= self.slot_values[index]
+                for index, value in enumerate(result)
             ):
                 return ExpressibilityResult(
                     "invalid", None, 0, "target returns an invalid register state"
@@ -268,7 +334,7 @@ class RecipeBasis:
         candidates = self.atomic_candidates()
         for index, candidate in enumerate(candidates, start=1):
             if all(
-                candidate.apply(tuple(state), values=self.values) == want
+                candidate.apply(tuple(state), values=self.slot_values) == want
                 for state, want in zip(probe_states, expected, strict=True)
             ):
                 return ExpressibilityResult(
@@ -289,28 +355,41 @@ def paired_increment_target(
     first: int,
     second: int,
     *,
-    values: int = 8,
+    modulus: int = 8,
 ) -> Callable[[tuple[int, ...]], tuple[int, ...]]:
     """Return a generic two-slot simultaneous increment effect.
 
-    On a two-valued subdomain, increment is the usual bit flip.  The
-    experiment uses this representative because the structural question is
-    whether one local effect can apply to a group of slots, not whether the
-    basis should contain a benchmark-named ``flip`` primitive.
+    On a two-valued subdomain, increment is the usual bit flip.  The modulus
+    is part of the instruction's data contract; it is not inherited from one
+    global register width.
     """
 
     if first == second:
         raise ValueError("paired target needs two distinct slots")
-    if values < 2:
-        raise ValueError("paired target needs at least two values")
+    if modulus < 2:
+        raise ValueError("paired target needs modulus >= 2")
 
     def target(state: tuple[int, ...]) -> tuple[int, ...]:
         result = list(state)
-        result[first] = (result[first] + 1) % values
-        result[second] = (result[second] + 1) % values
+        result[first] = (result[first] + 1) % modulus
+        result[second] = (result[second] + 1) % modulus
         return tuple(result)
 
     return target
+
+
+def apply_sequence(
+    instructions: Iterable[RecipeInstruction],
+    state: tuple[int, ...],
+    *,
+    values: SlotValues,
+) -> tuple[int, ...]:
+    """Apply an opaque instruction sequence with one explicit value contract."""
+
+    current = state
+    for instruction in instructions:
+        current = instruction.apply(current, values=values)
+    return current
 
 
 __all__ = [
@@ -318,5 +397,6 @@ __all__ = [
     "ExpressibilityResult",
     "RecipeBasis",
     "RecipeInstruction",
+    "apply_sequence",
     "paired_increment_target",
 ]

@@ -6,8 +6,8 @@ answer is present in its weights.  The audit separates three questions:
 
 * can the fixed interpreter execute unseen programs from the old basis?
 * does a generic parallel-composition extension preserve that ability?
-* is a paired local effect absent from the old atomic basis but present in the
-  extension?
+* can the interpreter preserve an explicit modulus across mixed value
+  domains?
 
 This is deliberately a small proving ground for the controller-as-CPU
 boundary.  It does not claim that a neural interpreter is already the
@@ -30,9 +30,11 @@ from neural_computer.recipe_basis import RecipeBasis, RecipeInstruction
 
 SLOTS = 6
 VALUES = 8
+SLOT_VALUES = (2, 2, 8, 8, 8, 8)
 ATOMIC_OPS = ("noop", "inc", "dec", "cinc", "cdec", "copy", "swap")
 OP_TO_ID = {name: index for index, name in enumerate(ATOMIC_OPS)}
-ATOMIC_FEATURE_WIDTH = len(ATOMIC_OPS) + SLOTS + SLOTS
+MODULUS_FEATURE_OFFSET = len(ATOMIC_OPS) + SLOTS + SLOTS
+ATOMIC_FEATURE_WIDTH = MODULUS_FEATURE_OFFSET + VALUES
 INSTRUCTION_FEATURE_WIDTH = ATOMIC_FEATURE_WIDTH * 2
 
 
@@ -40,24 +42,83 @@ def _randint(generator: torch.Generator, high: int) -> int:
     return int(torch.randint(high, (), generator=generator).item())
 
 
-def _atomic_instruction(generator: torch.Generator) -> RecipeInstruction:
+def modulus_boundary(
+    *,
+    slot_values: tuple[int, ...] = SLOT_VALUES,
+    legacy_modulus: int = VALUES,
+) -> dict[str, object]:
+    """Measure the legacy global-modulus mismatch without training a model."""
+
+    legacy_rates: list[float] = []
+    explicit_rates: list[float] = []
+    for modulus in slot_values:
+        states = tuple(range(modulus))
+        expected = tuple((value + 1) % modulus for value in states)
+        legacy = tuple((value + 1) % legacy_modulus for value in states)
+        explicit = tuple((value + 1) % modulus for value in states)
+        legacy_rates.append(
+            sum(actual == want for actual, want in zip(legacy, expected, strict=True))
+            / len(states)
+        )
+        explicit_rates.append(
+            sum(actual == want for actual, want in zip(explicit, expected, strict=True))
+            / len(states)
+        )
+    return {
+        "slot_values": slot_values,
+        "legacy_global_modulus": legacy_modulus,
+        "legacy_match_rates": legacy_rates,
+        "explicit_match_rates": explicit_rates,
+    }
+
+
+def _atomic_instruction(
+    generator: torch.Generator,
+    *,
+    slot_values: tuple[int, ...] = SLOT_VALUES,
+) -> RecipeInstruction:
     op = ATOMIC_OPS[_randint(generator, len(ATOMIC_OPS))]
     if op == "noop":
         return RecipeInstruction(op)
     first = _randint(generator, SLOTS)
     if op in {"cinc", "cdec", "copy", "swap"}:
-        second = _randint(generator, SLOTS - 1)
-        if second >= first:
-            second += 1
+        compatible = tuple(
+            second
+            for second in range(SLOTS)
+            if second != first
+            and (
+                op in {"cinc", "cdec"}
+                or (
+                    op == "copy"
+                    and slot_values[second] <= slot_values[first]
+                )
+                or (op == "swap" and slot_values[second] == slot_values[first])
+            )
+        )
+        if not compatible:
+            return RecipeInstruction("inc", first, modulus=slot_values[first])
+        second = compatible[_randint(generator, len(compatible))]
+        if op in {"cinc", "cdec"}:
+            return RecipeInstruction(
+                op,
+                first,
+                second,
+                modulus=slot_values[first],
+            )
         return RecipeInstruction(op, first, second)
-    return RecipeInstruction(op, first)
+    return RecipeInstruction(op, first, modulus=slot_values[first])
 
 
-def _instruction(generator: torch.Generator, *, allow_parallel: bool) -> RecipeInstruction:
+def _instruction(
+    generator: torch.Generator,
+    *,
+    allow_parallel: bool,
+    slot_values: tuple[int, ...] = SLOT_VALUES,
+) -> RecipeInstruction:
     if allow_parallel and _randint(generator, 5) == 0:
         for _ in range(32):
-            left = _atomic_instruction(generator)
-            right = _atomic_instruction(generator)
+            left = _atomic_instruction(generator, slot_values=slot_values)
+            right = _atomic_instruction(generator, slot_values=slot_values)
             if (
                 left.written_slots()
                 and right.written_slots()
@@ -68,9 +129,12 @@ def _instruction(generator: torch.Generator, *, allow_parallel: bool) -> RecipeI
         # attempts happen to choose overlapping effects.
         return RecipeInstruction(
             "parallel",
-            children=(RecipeInstruction("inc", 0), RecipeInstruction("inc", 1)),
+            children=(
+                RecipeInstruction("inc", 0, modulus=slot_values[0]),
+                RecipeInstruction("inc", 1, modulus=slot_values[1]),
+            ),
         )
-    return _atomic_instruction(generator)
+    return _atomic_instruction(generator, slot_values=slot_values)
 
 
 def _atomic_features(instruction: RecipeInstruction) -> torch.Tensor:
@@ -82,6 +146,8 @@ def _atomic_features(instruction: RecipeInstruction) -> torch.Tensor:
         feature[len(ATOMIC_OPS) + instruction.first] = 1.0
     if instruction.second is not None:
         feature[len(ATOMIC_OPS) + SLOTS + instruction.second] = 1.0
+    if instruction.modulus is not None:
+        feature[MODULUS_FEATURE_OFFSET + instruction.modulus - 2] = 1.0
     return feature
 
 
@@ -107,12 +173,19 @@ def sample_batch(
     batch_size: int,
     length: int,
     allow_parallel: bool,
+    slot_values: tuple[int, ...] = SLOT_VALUES,
 ) -> Batch:
-    initial = torch.randint(
-        VALUES,
-        (batch_size, SLOTS),
-        generator=generator,
-        dtype=torch.long,
+    initial = torch.stack(
+        tuple(
+            torch.randint(
+                value,
+                (batch_size,),
+                generator=generator,
+                dtype=torch.long,
+            )
+            for value in slot_values
+        ),
+        dim=1,
     )
     feature_rows: list[list[torch.Tensor]] = []
     target_rows: list[list[tuple[int, ...]]] = []
@@ -121,9 +194,13 @@ def sample_batch(
         row_features: list[torch.Tensor] = []
         row_targets: list[tuple[int, ...]] = []
         for _ in range(length):
-            instruction = _instruction(generator, allow_parallel=allow_parallel)
+            instruction = _instruction(
+                generator,
+                allow_parallel=allow_parallel,
+                slot_values=slot_values,
+            )
             row_features.append(instruction_features(instruction))
-            state = instruction.apply(state, values=VALUES)
+            state = instruction.apply(state, values=slot_values)
             row_targets.append(state)
         feature_rows.append(row_features)
         target_rows.append(row_targets)
@@ -197,6 +274,7 @@ def evaluate(
     seed: int,
     allow_parallel: bool,
     length: int,
+    slot_values: tuple[int, ...] = SLOT_VALUES,
     batches: int = 8,
     batch_size: int = 128,
 ) -> float:
@@ -208,6 +286,7 @@ def evaluate(
             batch_size=batch_size,
             length=length,
             allow_parallel=allow_parallel,
+            slot_values=slot_values,
         )
         scores.append(_loss_and_accuracy(model, batch)[1])
     return float(sum(scores) / len(scores))
@@ -218,23 +297,36 @@ def evaluate_parallel_target(
     model: LearnedRecipeInterpreter,
     *,
     seed: int,
+    slot_values: tuple[int, ...] = SLOT_VALUES,
     batch_size: int = 128,
     batches: int = 8,
 ) -> float:
     generator = torch.Generator().manual_seed(seed)
     instruction = RecipeInstruction(
         "parallel",
-        children=(RecipeInstruction("inc", 0), RecipeInstruction("inc", 1)),
+        children=(
+            RecipeInstruction("inc", 0, modulus=slot_values[0]),
+            RecipeInstruction("inc", 1, modulus=slot_values[1]),
+        ),
     )
     features = instruction_features(instruction).view(1, 1, -1)
     scores: list[float] = []
     for _ in range(batches):
-        initial = torch.randint(
-            VALUES, (batch_size, SLOTS), generator=generator, dtype=torch.long
+        initial = torch.stack(
+            tuple(
+                torch.randint(
+                    value,
+                    (batch_size,),
+                    generator=generator,
+                    dtype=torch.long,
+                )
+                for value in slot_values
+            ),
+            dim=1,
         )
         targets = initial.clone()
-        targets[:, 0] = (targets[:, 0] + 1) % VALUES
-        targets[:, 1] = (targets[:, 1] + 1) % VALUES
+        targets[:, 0] = (targets[:, 0] + 1) % slot_values[0]
+        targets[:, 1] = (targets[:, 1] + 1) % slot_values[1]
         output = model(initial, features.expand(batch_size, -1, -1))[-1]
         scores.append(float(output.argmax(-1).eq(targets).all(-1).float().mean()))
     return sum(scores) / len(scores)
@@ -244,6 +336,7 @@ def train_arm(
     *,
     seed: int,
     allow_parallel: bool,
+    slot_values: tuple[int, ...] = SLOT_VALUES,
     updates: int,
     batch_size: int,
     hidden: int,
@@ -262,6 +355,7 @@ def train_arm(
             batch_size=batch_size,
             length=2,
             allow_parallel=allow_parallel,
+            slot_values=slot_values,
         )
         loss, _ = _loss_and_accuracy(model, batch)
         optimizer.zero_grad(set_to_none=True)
@@ -277,16 +371,19 @@ def train_arm(
                         seed=seed + 20_000 + update,
                         allow_parallel=False,
                         length=2,
+                        slot_values=slot_values,
                     ),
                     "base_unseen_double_length_4": evaluate(
                         model,
                         seed=seed + 30_000 + update,
                         allow_parallel=False,
                         length=4,
+                        slot_values=slot_values,
                     ),
                     "parallel_target": evaluate_parallel_target(
                         model,
                         seed=seed + 40_000 + update,
+                        slot_values=slot_values,
                     ),
                 }
             )
@@ -331,6 +428,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             train_arm(
                 seed=seed,
                 allow_parallel=allow_parallel,
+                slot_values=SLOT_VALUES,
                 updates=args.updates,
                 batch_size=args.batch_size,
                 hidden=args.hidden,
@@ -345,36 +443,44 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "configuration": {
             "slots": SLOTS,
             "values": VALUES,
+            "slot_values": SLOT_VALUES,
             "training_program_length": 2,
             "double_length": 4,
             "random_programs_only": True,
             "controller_task_labels": False,
         },
+        "modulus_boundary": modulus_boundary(),
         "arms": arms,
         "symbolic_boundary": {
-            "baseline": RecipeBasis(allow_parallel=False)
+            "baseline": RecipeBasis(
+                slot_values=SLOT_VALUES,
+                allow_parallel=False,
+            )
             .expressibility_probe(
                 lambda state: tuple(
-                    (value + 1) % VALUES if index in (0, 1) else value
+                    (value + 1) % 2 if index in (0, 1) else value
                     for index, value in enumerate(state)
                 ),
                 states=tuple(
                     (first, second, 0, 1, 0, 1)
-                    for first in range(VALUES)
-                    for second in range(VALUES)
+                    for first in range(SLOT_VALUES[0])
+                    for second in range(SLOT_VALUES[1])
                 ),
             )
             .status,
-            "parallel": RecipeBasis(allow_parallel=True)
+            "parallel": RecipeBasis(
+                slot_values=SLOT_VALUES,
+                allow_parallel=True,
+            )
             .expressibility_probe(
                 lambda state: tuple(
-                    (value + 1) % VALUES if index in (0, 1) else value
+                    (value + 1) % 2 if index in (0, 1) else value
                     for index, value in enumerate(state)
                 ),
                 states=tuple(
                     (first, second, 0, 1, 0, 1)
-                    for first in range(VALUES)
-                    for second in range(VALUES)
+                    for first in range(SLOT_VALUES[0])
+                    for second in range(SLOT_VALUES[1])
                 ),
             )
             .status,
