@@ -1775,3 +1775,13 @@ cross-regime route-boundary improvement, not Brain Workshop mastery or general
 continual learning. The remaining dominant failures are held-out model-family
 verification and candidate staging on the hardest regime. The full ledger is
 in `session_records/active_discovery_tight_routing_2026-08-11/`.
+
+The promoted three-regime configuration explicitly uses masked-window gain
+`0.05`; a targeted n-back-5 screen preferred it to the historical `0.15` gain
+and a `0.30` gain. It remains an experiment-level setting rather than a global
+default because the historical no-goal route still needs compatibility-level
+validation at the new gain.
+
+The gain screen is recorded separately in
+`session_records/window_gain_screen_2026-08-11/`; it rejects changing the
+global default on this evidence.
