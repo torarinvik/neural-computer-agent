@@ -198,6 +198,15 @@ parser.add_argument(
          "full-range ones). This should keep the first and remove the "
          "second, because the instruction space returns to its original "
          "size once m is determined by i.")
+parser.add_argument(
+    "--fit-bound", action="store_true",
+    help="reject a candidate before running the interpreter when the "
+         "mismatches it CANNOT reach already put it below "
+         "--fit-target. Sound against the objective the search actually "
+         "has, unlike the coverage filter of F163, which was sound for "
+         "EXACT fitting and measured a null (1.029, 1.020) because the "
+         "search stops at 0.95 and was happy with candidates it "
+         "rejected.")
 parser.add_argument("--curve-every", type=int, default=0)
 parser.add_argument("--json", default="")
 args = parser.parse_args()
@@ -470,6 +479,37 @@ if args.synthesize:
             out.append(min(k for k, m in enumerate(MODULI) if m >= wanted))
         return out
 
+    def attainable(candidate, unavoidable, rows: int, slots: int,
+                   used_slots) -> float:
+        """The BEST fit this candidate could possibly reach.
+
+        A slot the candidate never writes keeps its input value, so
+        every row where that slot changed is a mismatch no execution can
+        avoid. Summing those gives an upper bound on fit, and rejecting
+        a candidate whose bound is already below `--fit-target` is sound
+        AGAINST THE OBJECTIVE SEARCH ACTUALLY HAS.
+
+        This is F163's filter repaired. That one required every changed
+        slot to be written, which is sound for EXACT fitting and wrong
+        here: a slot that changes in 2 of 64 rows costs 2 mismatches out
+        of hundreds, and the search stopping at 0.95 was happy to accept
+        it. Measured as a null, 1.029 and 1.020. The bound below permits
+        exactly those candidates and rejects only the ones whose
+        unavoidable error already exceeds the budget.
+
+        One caveat, stated rather than assumed: the bound is exact for
+        GROUND-TRUTH semantics while the search scores with the plant.
+        A candidate the bound rejects could in principle score above
+        target through interpreter error — but that would be selecting a
+        program the interpreter mispredicts, which is not a recipe worth
+        keeping."""
+        written: set = set()
+        for instruction in candidate:
+            written |= written_slots(instruction)
+        missed = sum(unavoidable[s] for s in used_slots
+                     if s not in written)
+        return 1.0 - missed / max(rows * slots, 1)
+
     def covers_set(candidate, needs: set) -> bool:
         """`covers` without the global flag, so an ARM can turn the
         filter on while the other arms keep the old behaviour and stay
@@ -516,12 +556,21 @@ if args.synthesize:
             src, dst = states[keep], nexts[keep]
             needs = writes_needed(src, dst)
             fixed = family_moduli
+            # per-slot mismatch mass, computed ONCE per action
+            live = [k for k in range(SLOTS) if bool(used[k])]
+            unavoidable = {k: int((src[:, k] != dst[:, k]).sum())
+                           for k in live}
+            rows = int(src.shape[0])
             best, best_score, evaluated = None, -1.0, 0
             while evaluated < args.synthesize:
                 candidate = random_program(generator, args.program_len,
                                            fixed)
                 proposed_total += 1
                 if not covers(candidate, needs):
+                    continue
+                if args.fit_bound and attainable(
+                        candidate, unavoidable, rows, len(live),
+                        live) < args.fit_target:
                     continue
                 evaluated += 1
                 with torch.no_grad():
@@ -562,7 +611,8 @@ if args.synthesize:
                     args.synthesize * len(fits) / max(proposed_total, 1), 4)}
 
     def search_with_library(family, library, weights, observer, generator,
-                            budget, effect_index=False, cover=False):
+                            budget, effect_index=False, cover=False,
+                            bound=False):
         """Propose programs by concatenating LIBRARY FRAGMENTS. Returns
         the recipe and the number of candidates tried — cost is the
         measurement here, not accuracy.
@@ -612,6 +662,10 @@ if args.synthesize:
                         if all(i in writes
                                for _, i, _, _ in f)] or library
             needs = writes_needed(src, dst) if cover else set()
+            live = [k for k in range(SLOTS) if bool(used[k])]
+            unavoidable = {k: int((src[:, k] != dst[:, k]).sum())
+                           for k in live}
+            rows = int(src.shape[0])
             best, best_score, tried, proposed = None, -1.0, 0, 0
             while tried < budget:
                 # build a candidate by concatenating fragments until it
@@ -634,6 +688,11 @@ if args.synthesize:
                     if proposed > budget * 50:
                         break          # pathological filter, do not spin
                     continue
+                if bound and attainable(candidate, unavoidable, rows,
+                                        len(live), live) < args.fit_target:
+                    if proposed > budget * 50:
+                        break
+                    continue
                 tried += 1
                 with torch.no_grad():
                     got = plant(candidate, src).argmax(-1)
@@ -647,7 +706,8 @@ if args.synthesize:
             fits.append(best_score)
             tried_total += tried
             proposed_total_lib.append(proposed)
-        return recipe, tried_total, sum(fits) / max(len(fits), 1)
+        return (recipe, tried_total, sum(fits) / max(len(fits), 1),
+                sum(proposed_total_lib))
 
     def occurrences(fragment: tuple, program: tuple) -> int:
         """How many times `fragment` appears CONTIGUOUSLY in `program`."""
@@ -878,6 +938,7 @@ if args.synthesize:
         proposer = (Proposer(kind == "sketch", mass, exact_mass)
                     if kind in ("marginal", "sketch") else None)
         library, weights, solved, sequence = atoms, None, [], []
+        proposed_seq: list = []
         stored: set = set()      # every program any earlier family won
         started = proposer.size() if proposer else len(atoms)
         # Two generators, and they must be SEPARATE. One generator for
@@ -894,11 +955,14 @@ if args.synthesize:
             if proposer is not None:
                 recipe, tried, fit = search_with_proposer(
                     family, proposer, observer, generator, budget)
+                proposals = tried
             else:
-                recipe, tried, fit = search_with_library(
+                recipe, tried, fit, proposals = search_with_library(
                     family, library, weights, observer, generator, budget,
                     effect_index=(kind == "effect"),
-                    cover=kind.startswith("cover"))
+                    cover=kind.startswith("cover"),
+                    bound=kind.startswith("bound"))
+            proposed_seq.append(proposals)
             actions = max(1, sum(1 for v in recipe.values()
                                  if v is not None))
             winners = [tuple(program) for program in recipe.values()
@@ -918,10 +982,11 @@ if args.synthesize:
                 "winners": len(winners), "recalled": recalled,
                 "saturated": tried >= budget * actions})
             stored.update(winners)
-            if kind in ("frozen", "effect", "cover") or not winners:
+            if kind in ("frozen", "effect", "cover", "bound") \
+                    or not winners:
                 continue
             solved.extend(winners)
-            if kind in ("uniform", "cover+store"):
+            if kind in ("uniform", "cover+store", "bound+store"):
                 for program in winners:
                     library.append(program)
                 continue
@@ -943,6 +1008,7 @@ if args.synthesize:
                 "ended": proposer.size() if proposer else len(library),
                 "total_candidates": sum(s["candidates_tried"]
                                         for s in sequence),
+                "proposed_total": sum(proposed_seq),
                 "recalled_total": sum(s["recalled"] for s in sequence),
                 "winners_total": sum(s["winners"] for s in sequence),
                 "sketches": (sorted(
@@ -1022,11 +1088,13 @@ if args.synthesize:
         arms = [("frozen", 0.0, 0.0), ("uniform", 0.0, 0.0),
                 ("shuffled", 0.0, 0.0), ("effect", 0.0, 0.0),
                 ("cover", 0.0, 0.0), ("cover+store", 0.0, 0.0),
+                ("bound", 0.0, 0.0), ("bound+store", 0.0, 0.0),
                 ("marginal", 1.0, 0.0), ("sketch", 1.0, 0.0)]
         arms += [("sketch", 1.0, float(w))
                  for w in args.exact_weight.split(",") if float(w) > 0]
         labels = [kind if kind in ("frozen", "uniform", "shuffled",
-                                   "effect", "cover", "cover+store")
+                                   "effect", "cover", "cover+store",
+                                   "bound", "bound+store")
                   else f"{kind}-e{exact:g}"
                   for kind, _, exact in arms]
         if args.arms:
@@ -1053,7 +1121,7 @@ if args.synthesize:
         started = len(library)
         sequence = []
         for name, family in targets:
-            recipe, tried, fit = search_with_library(
+            recipe, tried, fit, _ = search_with_library(
                 family, library, None, gen, gen, budget=args.synthesize)
             sequence.append({
                 "family": name, "candidates_tried": tried,

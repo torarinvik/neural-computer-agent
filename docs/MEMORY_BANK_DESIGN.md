@@ -7973,18 +7973,34 @@ It prunes hard and costs nothing: 33-58% of candidates rejected with no
 forward pass. And it buys **nothing** — 1.029 and 1.020 against the
 frozen control on evaluations-to-target.
 
-**Why, precisely.** The filter is sound with respect to EXACT fitting,
-but the search does not require exact fitting — it stops at
-`--fit-target 0.95`. A slot counts as changed if it changes in ANY row,
-so a slot that changes in 2 of 64 rows leaves a program that never
-writes it scoring 62/64 on that slot. Such candidates are rejected by
-the filter and were perfectly acceptable to the objective. The filter
-removes candidates the search was happy to take.
+**My first explanation was wrong, and measuring it refuted it.** I
+wrote that the filter is sound for EXACT fitting while the search stops
+at 0.95, so a slot changing in only 2 of 64 rows would leave a program
+scoring 62/64 there and be rejected despite being acceptable. That
+story predicts changed slots with small mismatch mass. There are none.
+Measured across seven families and every action, the mismatch mass of a
+changed slot ranges from 0.167 to 1.000 of the total, and **34 of 34
+exceed the 5% error budget on their own** — the smallest is more than
+three times over.
 
-So the filter is not wrong; it answers a question the stopping rule is
-not asking. It should pay at `--fit-target 1.0`, which is a separate
-measurement and cheap to make. Caught in a smoke test before spending
-real compute, by asking why the predicted 1.5-2.4x did not appear.
+So the repair that story implies — an attainable-fit bound that rejects
+only when UNREACHABLE mismatches already exceed the budget — is
+provably equivalent to the coverage filter on this family
+distribution. Implemented, and it returned byte-identical numbers to
+the coverage arm, which is the tell that two things are the same thing
+rather than the tell that a flag is not wired.
+
+**The real reason is that the measurement could not observe its own
+hypothesis.** Both filter arms were smoke-tested against a plant
+trained 3000 updates, where no search reaches 0.95 and every action
+runs to the full budget: 20814 interpreter calls against 26 action
+slots at a budget of 800 is 20800. When every search saturates, cost is
+the budget by definition and no proposal filter can move it. The null
+measured the budget, not the filter.
+
+The honest status is therefore UNKNOWN rather than null. The filter can
+only pay where searches terminate early, which needs a 40k plant, and
+that measurement is now running.
 
 ## F164 — the reader's gap is a BUDGET problem with a seed-dependent
 ## ceiling, and the curve is smooth, not grokking
