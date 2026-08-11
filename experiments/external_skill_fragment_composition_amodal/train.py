@@ -47,7 +47,9 @@ COMPOSITION_GRAMMAR = (("reverse", "rotate"), ("rotate", "reverse"))
 COMPOSITION_ROUTE_PROGRAMS = ((0, 1), (1, 0))
 
 
-def _machine() -> ExternalCapabilityRegisterMachine:
+def _machine(
+    *, operator_mode: str = "factorized_low_rank"
+) -> ExternalCapabilityRegisterMachine:
     return ExternalCapabilityRegisterMachine(
         EVENT_WIDTH,
         ACTION_WIDTH,
@@ -56,6 +58,7 @@ def _machine() -> ExternalCapabilityRegisterMachine:
         INSTRUCTION_WIDTH,
         interpreter_hidden=64,
         operator_rank=8,
+        operator_mode=operator_mode,
         event_window_size=4,
     )
 
@@ -68,6 +71,8 @@ def _batch(
     seed: int,
     generated_compositions=None,
     blank_sequence: bool = False,
+    operation_bits_override: torch.Tensor | None = None,
+    generated_composition_ids_override: torch.Tensor | None = None,
 ):
     batch = generate_sequence_memory_batch(
         count,
@@ -77,6 +82,8 @@ def _batch(
         operation=operation,
         generated_compositions=generated_compositions,
         blank_sequence=blank_sequence,
+        operation_bits_override=operation_bits_override,
+        generated_composition_ids_override=generated_composition_ids_override,
     )
     # Remove only generic operation-cue pixels from the rendered query. Keep
     # the ordinal marker at x=28:31 and all sequence evidence. This is a valid

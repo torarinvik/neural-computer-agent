@@ -102,6 +102,25 @@ def test_runtime_generated_program_renderer_supports_eight_steps() -> None:
     assert torch.isfinite(batch.query_frames).all()
 
 
+def test_generated_composition_id_override_keeps_routes_and_labels_aligned() -> None:
+    ids = torch.tensor([0, 1, 0, 1], dtype=torch.long)
+    batch = generate_sequence_memory_batch(
+        4,
+        span=4,
+        distractors=1,
+        seed=321,
+        operation="generated_composition",
+        generated_compositions=(("forward",), ("complement",)),
+        generated_composition_ids_override=ids,
+    )
+
+    assert torch.equal(batch.operation_bits, ids)
+    assert torch.equal(batch.correct_actions[ids == 0], batch.sequence[ids == 0])
+    assert torch.equal(
+        batch.correct_actions[ids == 1], 1 - batch.sequence[ids == 1]
+    )
+
+
 def test_sequence_reversal_rerenders_inputs_and_recomputes_order_sensitive_labels() -> None:
     normal = generate_sequence_memory_batch(
         8, span=4, distractors=0, seed=117, operation="prefix_parity",

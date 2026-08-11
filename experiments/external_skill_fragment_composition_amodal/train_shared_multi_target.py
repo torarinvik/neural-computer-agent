@@ -26,7 +26,6 @@ from torch import nn
 from experiments.external_skill_fragment_composition_amodal.train import (
     ACTION_WIDTH,
     REGISTER_WIDTH,
-    _accuracy,
     _batch,
     _digest,
     _fragment_bank,
@@ -140,13 +139,20 @@ def _shared_train_stage(
     for update in range(1, updates + 1):
         losses: list[torch.Tensor] = []
         rewards: list[torch.Tensor] = []
-        for target_index, (order, program) in enumerate(specs):
+        for target_index in range(0, len(specs), 2):
+            group = specs[target_index : target_index + 2]
+            orders = tuple(order for order, _ in group)
+            programs = tuple(program for _, program in group)
+            count = batch_size * len(group)
             batch = _batch(
                 operation="generated_composition",
-                count=batch_size,
+                count=count,
                 span=span,
                 seed=seed + update * 10_007 + target_index * 1_000_003,
-                generated_compositions=(program,),
+                generated_compositions=programs,
+                generated_composition_ids_override=torch.arange(
+                    count, dtype=torch.long
+                ).remainder(len(group)),
             )
             loss, target_rewards = _rollout(
                 parent,
@@ -158,7 +164,7 @@ def _shared_train_stage(
                 train_decoder=True,
                 shuffle_outcomes=shuffle_outcomes,
                 combiner=combiner,
-                route_programs=(order,),
+                route_programs=orders,
                 include_instruction_codes=True,
             )
             losses.append(loss)
@@ -170,30 +176,23 @@ def _shared_train_stage(
         optimizer.step()
         row: dict[str, object] = {
             "update": update,
-            "training_accuracy": float(torch.stack(rewards).mean()),
+            "training_accuracy": float(torch.cat(rewards).mean()),
             "loss": float(loss.detach()),
         }
         row["unique_verifier_bits"] = update * batch_size * span * 2 * len(specs)
         if eval_every and (update % eval_every == 0 or update == updates):
-            heldout = [
-                _accuracy(
-                    parent,
-                    machine,
-                    bank,
-                    decoder,
-                    operation="generated_composition",
-                    selected=None,
-                    count=audit_count,
-                    span=span,
-                    seed=audit_seed + update * 1_009 + target_index * 10_007,
-                    generated_compositions=(program,),
-                    shuffle_outcomes=shuffle_outcomes,
-                    combiner=combiner,
-                    route_programs=(order,),
-                    include_instruction_codes=True,
-                )
-                for target_index, (order, program) in enumerate(specs)
-            ]
+            heldout = _evaluate_specs(
+                parent,
+                machine,
+                bank,
+                combiner,
+                decoder,
+                specs=specs,
+                count=audit_count,
+                span=span,
+                seed=audit_seed + update * 1_009,
+                shuffle_outcomes=shuffle_outcomes,
+            )
             row["heldout_by_target"] = heldout
             row["heldout_accuracy"] = min(heldout)
         history.append(row)
@@ -215,27 +214,44 @@ def _evaluate_specs(
     zero_codes: bool = False,
     blank_sequence: bool = False,
 ) -> list[float]:
-    return [
-        _accuracy(
-            parent,
-            machine,
-            bank,
-            decoder,
-            operation="generated_composition",
-            selected=None,
-            count=count,
-            span=span,
-            seed=seed + index * 10_007,
-            shuffle_outcomes=shuffle_outcomes,
-            generated_compositions=(program,),
-            zero_codes=zero_codes,
-            combiner=combiner,
-            route_programs=(order,),
-            blank_sequence=blank_sequence,
-            include_instruction_codes=True,
-        )
-        for index, (order, program) in enumerate(specs)
-    ]
+    """Evaluate target rows in opaque pairs to reuse frozen traversal work."""
+
+    values: list[float] = []
+    with torch.no_grad():
+        for group_index in range(0, len(specs), 2):
+            group = specs[group_index : group_index + 2]
+            orders = tuple(order for order, _ in group)
+            programs = tuple(program for _, program in group)
+            group_count = count * len(group)
+            batch = _batch(
+                operation="generated_composition",
+                count=group_count,
+                span=span,
+                seed=seed + group_index * 10_007,
+                generated_compositions=programs,
+                blank_sequence=blank_sequence,
+                generated_composition_ids_override=torch.arange(
+                    group_count, dtype=torch.long
+                ).remainder(len(group)),
+            )
+            rewards = _rollout(
+                parent,
+                machine,
+                bank,
+                decoder,
+                batch,
+                selected=None,
+                train_decoder=False,
+                shuffle_outcomes=shuffle_outcomes,
+                zero_codes=zero_codes,
+                combiner=combiner,
+                route_programs=orders,
+                include_instruction_codes=True,
+            )[1]
+            for target_index in range(len(group)):
+                start = target_index * count
+                values.append(float(rewards[start : start + count].mean()))
+    return values
 
 
 def _train_four_fragments(parent, args: argparse.Namespace):
@@ -373,7 +389,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         seed=args.seed + 103_000,
     )
     wrong_specs = tuple(
-        (tuple(reversed(order)), tuple(reversed(program)))
+        (tuple(order[1:]) + (order[0],), program)
         for order, program in train_specs
     )
     shared_wrong_accuracy = _evaluate_specs(

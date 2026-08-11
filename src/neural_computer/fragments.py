@@ -41,13 +41,13 @@ EXTERNAL_SKILL_FRAGMENT_RICH_TRACE_SCHEMA = (
     "neural-computer.skill-fragment-rich-trace.v2"
 )
 EXTERNAL_SKILL_FRAGMENT_GROWTH_SCHEMA = (
-    "neural-computer.skill-fragment-growth-combiner.v1"
+    "neural-computer.skill-fragment-growth-combiner.v2"
 )
 PERSISTENT_EXTERNAL_SKILL_FRAGMENT_BANK_SCHEMA = (
     "neural-computer.persistent-skill-fragment-bank.v1"
 )
 PERSISTENT_EXTERNAL_SKILL_FRAGMENT_GROWTH_SCHEMA = (
-    "neural-computer.persistent-skill-fragment-growth.v1"
+    "neural-computer.persistent-skill-fragment-growth.v2"
 )
 
 
@@ -786,8 +786,11 @@ class ExternalSkillFragmentGrowthCombiner(nn.Module):
     base.  Each newly mastered fragment depth receives one zero-initialized,
     trace-conditioned external residual slot.  A trainer can freeze the base
     and all earlier slots, then train only the newly appended slot on fresh
-    outcomes.  This gives the frozen-memory protocol a real no-replay growth
-    seam without creating a target- or modality-specific reasoning branch.
+    outcomes.  Deeper programs reuse the protected prefix cumulatively, so
+    an admitted composition prior remains useful instead of being discarded
+    at the next structural depth.  This gives the frozen-memory protocol a
+    real no-replay growth seam without creating a target- or modality-specific
+    reasoning branch.
     """
 
     schema = EXTERNAL_SKILL_FRAGMENT_GROWTH_SCHEMA
@@ -800,14 +803,18 @@ class ExternalSkillFragmentGrowthCombiner(nn.Module):
         output_width: int,
         *,
         hidden: int = 64,
+        slot_application: str = "cumulative_prefix",
     ) -> None:
         super().__init__()
         if min(register_width, instruction_width, output_width, hidden) < 1:
             raise ValueError("growth combiner dimensions must be positive")
+        if slot_application not in ("cumulative_prefix", "exact_depth"):
+            raise ValueError("unsupported growth slot application")
         self.register_width = int(register_width)
         self.instruction_width = int(instruction_width)
         self.output_width = int(output_width)
         self.hidden = int(hidden)
+        self.slot_application = slot_application
         self.base = ExternalSkillFragmentSegmentCombiner(
             register_width,
             instruction_width,
@@ -868,7 +875,8 @@ class ExternalSkillFragmentGrowthCombiner(nn.Module):
             "output_width": self.output_width,
             "hidden": self.hidden,
             "base": "shared_segment_encoder_plus_canonical_readout_v1",
-            "growth": "append_only_trace_conditioned_depth_slots_v2",
+            "growth": "append_only_trace_conditioned_depth_prefix_slots_v3",
+            "slot_application": self.slot_application,
             "depth_slots": self.depth_count,
             "protected_depth_prefix": self._protected_depth_count,
             "base_protected": self._base_protected,
@@ -901,7 +909,11 @@ class ExternalSkillFragmentGrowthCombiner(nn.Module):
         base_hidden = self.base(trace)
         output = self.base_output(base_hidden)
         for index, slot in enumerate(self.depth_slots):
-            active = depths == index + 1
+            active = (
+                depths >= index + 1
+                if self.slot_application == "cumulative_prefix"
+                else depths == index + 1
+            )
             if bool(active.any()):
                 residual = slot(trace)
                 output = output + torch.where(
@@ -967,6 +979,9 @@ class ExternalSkillFragmentGrowthCombiner(nn.Module):
             int(configuration.get("instruction_width", -1)),
             int(configuration.get("output_width", -1)),
             hidden=int(configuration.get("hidden", -1)),
+            slot_application=str(
+                configuration.get("slot_application", "exact_depth")
+            ),
         )
         for _ in range(depth_slots):
             combiner.append_depth_slot()

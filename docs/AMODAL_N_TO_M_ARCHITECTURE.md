@@ -9607,3 +9607,29 @@ its report separates training verifier bits from audit exposure and records
 the frozen-parent, frozen-bank, persistence, missing-evidence, and no-replay
 gates. Evidence and rejected acquisition controls belong under
 `session_records/external_skill_fragment_depth_growth_2026-08-11/`.
+
+## Cumulative protected-prefix composition growth (2026-08-11)
+
+The first depth-growth implementation used one residual slot per exact
+composition depth. That preserved mastered behavior but discarded the learned
+depth-2 capacity whenever a depth-3 program ran. The growth combiner is now a
+versioned external-memory ABI with cumulative protected-prefix application:
+deeper traces reuse every admitted slot up to their structural depth, while a
+new slot remains zero-initialized and is the only trainable capacity after the
+prefix is frozen. Exact-depth application remains available as an explicit
+compatibility mode for ablations.
+
+In the matched seed-69316 rendered audit, cumulative prefix reuse preserved the
+atomic/pair/trained-triple minima at `0.9896/0.9688/0.9896` with zero replay and
+unchanged parent/interpreter-bank digests. Held-out triple accuracy improved
+from the exact-depth baseline `[0.5729, 0.5729, 0.3229]` to
+`[0.5833, 0.6042, 0.4688]`. The result is retained as a positive architectural
+gain, not promoted: the held-out gate still fails, so the current bottleneck is
+reusable operator algebra rather than prefix retention.
+
+A joint depth-2 foundation curriculum was rejected in the same audit family.
+Updating old shared computation while learning pairs produced strong pair and
+triple fits but reduced the atomic retention minimum to `0.5208`. This is an
+explicit no-replay catastrophic-forgetting failure and confirms that future
+foundation expansion must be isolated behind protected external capacity or a
+verified copy-on-write transaction.

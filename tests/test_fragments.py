@@ -378,6 +378,19 @@ def test_growth_combiner_appends_zero_impact_depth_slots_and_protects_prefix() -
     assert (first, second) == (0, 1)
     assert torch.allclose(baseline, combiner(single_trace))
     assert combiner(trace).shape == (2, 4)
+    with torch.no_grad():
+        combiner.depth_slots[0].output.weight.zero_()
+        combiner.depth_slots[0].output.bias.fill_(1.0)
+    exact = ExternalSkillFragmentGrowthCombiner(
+        6, 6, 4, hidden=8, slot_application="exact_depth"
+    )
+    exact.append_depth_slot()
+    exact.append_depth_slot()
+    exact.load_state_dict(combiner.state_dict())
+    assert torch.allclose(combiner(single_trace), exact(single_trace))
+    assert torch.allclose(
+        combiner(trace) - exact(trace), torch.ones_like(combiner(trace))
+    )
     combiner.protect_depth_prefix(1)
     trainable = tuple(combiner.depth_slot_parameters(1))
     assert all(parameter.requires_grad for parameter in trainable)

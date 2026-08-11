@@ -173,6 +173,8 @@ def _train_growth_path(
     *,
     seed: int,
     inherited: bool,
+    stage_orders: dict[int, tuple[tuple[int, ...], ...]],
+    foundation_depth: int = 1,
     shuffle_outcomes: bool = False,
 ) -> tuple[
     ExternalSkillFragmentGrowthCombiner,
@@ -193,19 +195,30 @@ def _train_growth_path(
         _freeze(machine)
         _freeze(bank)
 
-    for depth, orders in STAGE_ORDERS.items():
+    for depth, orders in stage_orders.items():
         slot_index = combiner.append_depth_slot()
-        _freeze(combiner)
-        trainable = list(combiner.depth_slot_parameters(slot_index))
-        updates = args.foundation_updates if depth == 1 else args.stage_updates
-        if depth == 1:
-            trainable.extend(combiner.base.parameters())
-            trainable.extend(combiner.base_output.parameters())
+        in_foundation = not inherited and depth <= foundation_depth
+        if in_foundation:
+            # The foundation is allowed to shape the shared interpreter and
+            # every admitted prefix slot from fresh outcomes.  This is the
+            # only phase in which old external capacity is intentionally
+            # trainable; after the foundation, growth is append-only.
+            trainable = list(combiner.parameters())
+            updates = args.foundation_updates
+        else:
+            _freeze(combiner)
+            trainable = list(combiner.depth_slot_parameters(slot_index))
+            updates = args.foundation_updates if depth == 1 else args.stage_updates
+        if depth == 1 and not inherited:
             trainable.extend(decoder.parameters())
-            if not inherited:
-                trainable.extend(machine.parameters())
-                trainable.append(bank.shared_basis)
-                trainable.extend(bank.coefficients)
+            trainable.extend(machine.parameters())
+            trainable.append(bank.shared_basis)
+            trainable.extend(bank.coefficients)
+        elif in_foundation:
+            trainable.extend(machine.parameters())
+            trainable.append(bank.shared_basis)
+            trainable.extend(bank.coefficients)
+            trainable.extend(decoder.parameters())
         for parameter in trainable:
             parameter.requires_grad_(True)
         history = _shared_train_stage(
@@ -226,7 +239,31 @@ def _train_growth_path(
             shuffle_outcomes=shuffle_outcomes,
         )
         histories[depth] = history
-        combiner.protect_depth_prefix()
+        if not (in_foundation and depth < foundation_depth):
+            combiner.protect_depth_prefix()
+            combiner.protect_base()
+            if in_foundation:
+                _freeze(machine)
+                _freeze(bank)
+                _freeze(decoder)
+        if in_foundation and depth == foundation_depth and foundation_depth > 1:
+            # Re-measure the earlier foundation rungs after the final shared
+            # algebra update.  These are the source-retention baselines for
+            # the subsequent frozen-growth phase, not the pre-foundation
+            # curriculum checkpoints.
+            for earlier_depth in range(1, foundation_depth):
+                stage_accuracy[earlier_depth] = _evaluate_specs(
+                    parent,
+                    machine,
+                    bank,
+                    combiner,
+                    decoder,
+                    specs=_program_orders(stage_orders[earlier_depth]),
+                    count=args.audit_count,
+                    span=args.span,
+                    seed=seed + earlier_depth * 13_007,
+                    shuffle_outcomes=shuffle_outcomes,
+                )
         stage_accuracy[depth] = _evaluate_specs(
             parent,
             machine,
@@ -239,9 +276,6 @@ def _train_growth_path(
             seed=seed + depth * 12_007,
             shuffle_outcomes=shuffle_outcomes,
         )
-        if depth == 1 and not inherited:
-            _freeze(machine)
-            _freeze(bank)
     _freeze(combiner)
     _freeze(decoder)
     return combiner, decoder, histories, stage_accuracy
@@ -251,13 +285,14 @@ def _stable_stage_bits(
     histories: dict[int, list[dict[str, object]]],
     *,
     args: argparse.Namespace,
+    stage_orders: dict[int, tuple[tuple[int, ...], ...]],
 ) -> dict[int, int | None]:
     bits_per_update = args.batch_size * args.span * 2
     return {
         depth: _stable_bits(
             history,
             threshold=args.mastery_threshold,
-            bits_per_update=bits_per_update * len(STAGE_ORDERS[depth]),
+            bits_per_update=bits_per_update * len(stage_orders[depth]),
         )
         for depth, history in histories.items()
     }
@@ -266,6 +301,16 @@ def _stable_stage_bits(
 def run(args: argparse.Namespace) -> dict[str, object]:
     started = perf_counter()
     torch.set_num_threads(1)
+    stage_orders = {
+        depth: orders
+        for depth, orders in STAGE_ORDERS.items()
+        if depth <= args.max_depth
+    }
+    heldout_orders = tuple(
+        order for order in HELDOUT_ORDERS if len(order) <= args.max_depth
+    )
+    if args.max_depth < 2:
+        raise ValueError("max-depth must include the depth-2 training rung")
     parent = _runtime(seed=args.seed, growth=False)
     _, parent_progress = _train_with_progress(
         parent,
@@ -281,7 +326,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     parent.eval()
     parent_digest_before = _digest(parent.controller)
     if args.joint_foundation:
-        machine = _machine()
+        machine = _machine(operator_mode=args.operator_mode)
         bank = _joint_bank(args.seed + 1)
         source_decoders = []
         primitive_histories = []
@@ -302,6 +347,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             args,
             seed=args.seed + 100_000,
             inherited=inherited_mode,
+            stage_orders=stage_orders,
+            foundation_depth=args.foundation_depth,
         )
     )
     if args.joint_foundation:
@@ -315,9 +362,9 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         else retention_by_stage[-1]
     )
     train_specs = _program_orders(
-        tuple(order for rows in STAGE_ORDERS.values() for order in rows)
+        tuple(order for rows in stage_orders.values() for order in rows)
     )
-    heldout_specs = _program_orders(HELDOUT_ORDERS)
+    heldout_specs = _program_orders(heldout_orders)
     inherited_train = _evaluate_specs(
         parent,
         machine,
@@ -340,11 +387,19 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         span=args.span,
         seed=args.seed + 151_000,
     )
-    wrong_specs = _program_orders(
-        tuple(
-            tuple(reversed(order)) for rows in STAGE_ORDERS.values() for order in rows
+    wrong_specs = tuple(
+        (
+            order if len(order) < 2 else tuple(order[1:]) + (order[0],),
+            program,
         )
+        for order, program in train_specs
     )
+    wrong_composite_indices = [
+        index
+        for index, (order, _) in enumerate(train_specs)
+        if len(order) == args.max_depth
+        or (args.max_depth < 3 and len(order) >= 2)
+    ]
     wrong_accuracy = _evaluate_specs(
         parent,
         machine,
@@ -381,7 +436,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         blank_sequence=True,
     )
 
-    fresh_machine = _machine()
+    fresh_machine = _machine(operator_mode=args.operator_mode)
     fresh_bank = _bank_with_fragments(args.seed + 2, len(PRIMITIVES))
     fresh_combiner, _fresh_decoder, fresh_histories, fresh_stage = _train_growth_path(
         parent,
@@ -390,9 +445,15 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         args,
         seed=args.seed + 200_000,
         inherited=False,
+        stage_orders=stage_orders,
+        foundation_depth=args.foundation_depth,
     )
-    fresh_stable = _stable_stage_bits(fresh_histories, args=args)
-    inherited_stable = _stable_stage_bits(inherited_histories, args=args)
+    fresh_stable = _stable_stage_bits(
+        fresh_histories, args=args, stage_orders=stage_orders
+    )
+    inherited_stable = _stable_stage_bits(
+        inherited_histories, args=args, stage_orders=stage_orders
+    )
     source_after = (
         {PRIMITIVES[index]: inherited_train[index] for index in range(len(PRIMITIVES))}
         if args.joint_foundation
@@ -425,15 +486,18 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         ),
         "earlier_depths_retained_after_growth": min(inherited_train)
         >= args.mastery_threshold,
-        "heldout_orders_generalize": min(inherited_heldout) >= args.mastery_threshold,
-        "wrong_orders_rejected": max(wrong_accuracy) < args.mastery_threshold,
+        "heldout_orders_generalize": bool(inherited_heldout)
+        and min(inherited_heldout) >= args.mastery_threshold,
+        "wrong_orders_rejected": bool(wrong_composite_indices)
+        and max(wrong_accuracy[index] for index in wrong_composite_indices)
+        < args.mastery_threshold,
         "no_fragment_bypass": max(zero_accuracy) < args.mastery_threshold,
         "missing_evidence_rejected": max(missing_accuracy) < args.mastery_threshold,
         "positive_stable_transfer": all(
             inherited_stable[depth] is not None
             and fresh_stable[depth] is not None
             and inherited_stable[depth] < fresh_stable[depth]
-            for depth in STAGE_ORDERS
+            for depth in stage_orders
         ),
         "one_shared_growth_combiner": True,
         "one_shared_decoder": True,
@@ -442,14 +506,26 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "persistence_exact_and_corruption_rejected": persistence_exact,
         "no_replayed_examples": True,
     }
-    stage_updates = {
+    inherited_stage_updates = {
         depth: args.foundation_updates if depth == 1 else args.stage_updates
-        for depth in STAGE_ORDERS
+        for depth in stage_orders
+    }
+    fresh_stage_updates = {
+        depth: (
+            args.foundation_updates
+            if depth <= args.foundation_depth
+            else args.stage_updates
+        )
+        for depth in stage_orders
     }
     inherited_training_batches = sum(
-        len(STAGE_ORDERS[depth]) * stage_updates[depth] for depth in STAGE_ORDERS
+        len(stage_orders[depth]) * inherited_stage_updates[depth]
+        for depth in stage_orders
     )
-    fresh_training_batches = inherited_training_batches
+    fresh_training_batches = sum(
+        len(stage_orders[depth]) * fresh_stage_updates[depth]
+        for depth in stage_orders
+    )
     parent_training_batches = args.parent_updates
     primitive_training_batches = (
         0 if args.joint_foundation else len(PRIMITIVES) * args.primitive_updates
@@ -463,16 +539,27 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     # Each shared stage evaluates every target at its scheduled checkpoints and
     # once after the stage. The final inherited controls are fresh verifier
     # samples too, so keep them separate from optimizer exposure.
-    growth_stage_audit_batches = sum(
+    inherited_growth_stage_audit_batches = sum(
         2
-        * len(STAGE_ORDERS[depth])
-        * (_eval_points(stage_updates[depth], args.eval_every) + 1)
-        for depth in STAGE_ORDERS
+        * len(stage_orders[depth])
+        * (_eval_points(inherited_stage_updates[depth], args.eval_every) + 1)
+        for depth in stage_orders
+    )
+    fresh_growth_stage_audit_batches = sum(
+        2
+        * len(stage_orders[depth])
+        * (_eval_points(fresh_stage_updates[depth], args.eval_every) + 1)
+        for depth in stage_orders
+    )
+    foundation_retention_audit_batches = (
+        (2 if args.joint_foundation else 1) * max(args.foundation_depth - 1, 0)
     )
     final_inherited_audit_batches = 5 * len(train_specs) + len(heldout_specs)
     source_retention_audit_batches = 0 if args.joint_foundation else len(PRIMITIVES)
     audit_batches = (
-        growth_stage_audit_batches
+        inherited_growth_stage_audit_batches
+        + fresh_growth_stage_audit_batches
+        + foundation_retention_audit_batches
         + final_inherited_audit_batches
         + source_retention_audit_batches
     )
@@ -480,16 +567,20 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     report = {
         "schema": "neural-computer.external-skill-fragment-depth-growth-report.v1",
         "claim_boundary": (
-            "Append-only external residual slots were trained by composition "
-            "depth without replay while the inherited parent and fragment bank "
-            "remained frozen. This does not establish general continual learning."
+            "A shared external composition foundation may be trained through "
+            "the configured foundation depth, after which append-only residual "
+            "slots are trained by composition depth without replay while the "
+            "inherited parent and acquired bank remain frozen. This does not "
+            "establish general continual learning."
         ),
         "seed": args.seed,
+        "operator_mode": args.operator_mode,
+        "foundation_depth": args.foundation_depth,
         "stage_orders": {
             str(depth): [list(order) for order in orders]
-            for depth, orders in STAGE_ORDERS.items()
+            for depth, orders in stage_orders.items()
         },
-        "heldout_orders": [list(order) for order in HELDOUT_ORDERS],
+        "heldout_orders": [list(order) for order in heldout_orders],
         "parent_progress": parent_progress,
         "primitive_histories": primitive_histories,
         "retention_by_stage": retention_by_stage,
@@ -529,7 +620,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "optimizer_updates": (
                 args.parent_updates
                 + primitive_training_batches
-                + 2 * sum(stage_updates.values())
+                + sum(inherited_stage_updates.values())
+                + sum(fresh_stage_updates.values())
             ),
             "replayed_examples": 0,
             "inherited_growth_training_batches": inherited_training_batches,
@@ -557,11 +649,38 @@ def main() -> None:
         action="store_true",
         help="align all atomic files to one shared readout before growth",
     )
+    parser.add_argument(
+        "--operator-mode",
+        choices=(
+            "factorized_low_rank",
+            "factorized_bounded_residual",
+            "factorized_shared_operator_basis",
+        ),
+        default="factorized_low_rank",
+        help="frozen-interpreter state algebra used by the growth audit",
+    )
     parser.add_argument("--batch-size", type=int, default=32)
     parser.add_argument("--span", type=int, default=3)
     parser.add_argument("--audit-count", type=int, default=128)
     parser.add_argument("--eval-every", type=int, default=32)
     parser.add_argument("--mastery-threshold", type=float, default=0.80)
+    parser.add_argument(
+        "--max-depth",
+        type=int,
+        default=4,
+        choices=tuple(STAGE_ORDERS),
+        help="run only through this composition-depth rung",
+    )
+    parser.add_argument(
+        "--foundation-depth",
+        type=int,
+        default=1,
+        choices=tuple(STAGE_ORDERS),
+        help=(
+            "train the shared external interpreter through this depth before "
+            "freezing its prefix and switching to append-only growth"
+        ),
+    )
     args = parser.parse_args()
     if (
         min(
@@ -578,6 +697,8 @@ def main() -> None:
         raise ValueError("all update and audit counts must be positive")
     if args.batch_size % 2 or args.audit_count % 2:
         raise ValueError("batch size and audit count must be even")
+    if args.foundation_depth > args.max_depth:
+        raise ValueError("foundation-depth cannot exceed max-depth")
     print(json.dumps(run(args), indent=2))
 
 

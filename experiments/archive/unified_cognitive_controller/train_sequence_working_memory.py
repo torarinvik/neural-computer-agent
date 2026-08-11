@@ -240,6 +240,7 @@ def generate_sequence_memory_batch(
         operation: str = "mixed", heldout: bool = False,
         generated_composition_ids: tuple[int, ...] | None = None,
         generated_compositions: GeneratedCompositionGrammar | None = None,
+        generated_composition_ids_override: torch.Tensor | None = None,
         position_shift: bool = False,
         position_blend: float = 0.0,
         position_augmentation: bool = False,
@@ -278,6 +279,20 @@ def generate_sequence_memory_batch(
             "prefix_parity, global_parity, rotate, undo_complement, or "
             "producer_global_parity, or generated_composition"
         )
+    if generated_composition_ids_override is not None:
+        if operation != "generated_composition":
+            raise ValueError(
+                "composition ID overrides require generated_composition"
+            )
+        if tuple(generated_composition_ids_override.shape) != (count,):
+            raise ValueError("composition ID override shape does not match batch")
+        if generated_composition_ids_override.dtype not in (
+            torch.int8,
+            torch.int16,
+            torch.int32,
+            torch.int64,
+        ):
+            raise ValueError("composition ID override must be integral")
     if not 0.0 <= position_blend <= 1.0:
         raise ValueError("position blend must be within [0, 1]")
     if position_shift:
@@ -291,11 +306,21 @@ def generate_sequence_memory_batch(
             if generated_composition_ids is None
             else generated_composition_ids
         )
-        pool = torch.tensor(composition_pool, dtype=torch.long)
-        composition_ids = torch.randint(
-            len(composition_pool), (count,), generator=generator
-        )
-        composition_ids = pool[composition_ids]
+        if generated_composition_ids_override is None:
+            pool = torch.tensor(composition_pool, dtype=torch.long)
+            composition_ids = torch.randint(
+                len(composition_pool), (count,), generator=generator
+            )
+            composition_ids = pool[composition_ids]
+        else:
+            composition_ids = generated_composition_ids_override.detach().to(
+                "cpu"
+            ).long().clone()
+            if bool(
+                (composition_ids < 0).any()
+                or (composition_ids >= len(composition_grammar)).any()
+            ):
+                raise ValueError("composition ID override is out of range")
         operation_bits = composition_ids.remainder(2)
     elif operation in (
         "forward", "complement", "complement_reverse", "complement_rotate",
