@@ -721,6 +721,7 @@ def run_online_transition_discovery_audit(
     if window_statistics not in {
         "masked_mean_and_max_v1",
         "recency_weighted_and_latest_v1",
+        "ordered_payload_and_presence_v1",
     }:
         raise ValueError("online transition window statistics are unsupported")
     if recency_decay <= 0.0 or not math.isfinite(float(recency_decay)):
@@ -792,12 +793,16 @@ def run_online_transition_discovery_audit(
     controller_before = _controller_digest(agent)
     for parameter in agent.parameters():
         parameter.requires_grad_(False)
+    ordered_window = window_statistics == "ordered_payload_and_presence_v1"
     state_adapter = ExternalControllerEventWindowStateAdapter(
         agent.controller.width,
-        state_width=agent.controller.width * 3,
+        state_width=None if ordered_window else agent.controller.width * 3,
         window_gain=window_gain,
         window_statistics=window_statistics,
         recency_decay=recency_decay,
+        window_capacity=(
+            agent.controller.event_window_capacity if ordered_window else None
+        ),
     )
     bank = ExternalTransitionModelBank(
         state_width=state_adapter.state_width,
@@ -1503,7 +1508,11 @@ def main() -> None:
     parser.add_argument("--promotion-heldout-lifetimes", type=int, default=3)
     parser.add_argument(
         "--window-statistics",
-        choices=("masked_mean_and_max_v1", "recency_weighted_and_latest_v1"),
+        choices=(
+            "masked_mean_and_max_v1",
+            "recency_weighted_and_latest_v1",
+            "ordered_payload_and_presence_v1",
+        ),
         default="masked_mean_and_max_v1",
     )
     parser.add_argument("--window-gain", type=float, default=0.15)

@@ -1424,6 +1424,28 @@ stable capability gain yet: the remaining problem is reliable online discovery
 and representation conditioning across seeds, followed by goal-conditioned
 end-task acquisition.
 
+## Ordered external state and routing calibration (2026-08-11)
+
+The external state adapter now has an opt-in
+`ordered_payload_and_presence_v1` contract. It preserves bounded learned
+event-token order and explicit empty positions instead of reducing the window
+to mean/max or recency/latest statistics. This is a memory-side state
+contract: it does not resize the controller, expose raw modality data, or add
+a task branch. It is intentionally more expensive in state width and
+evidence, but it is the correct representation when temporal order is part of
+the factual state.
+
+The matched eight-seed online-discovery audit used the same no-replay,
+frozen-controller, held-out recursive-rollout, retention, and goal-fragment
+gates. Ordered state with factual routing tolerance `0.005` improved raw
+candidate admission from `3/8` to `5/8` and complete end-to-end promotion from
+`3/8` to `4/8` relative to the historical pooled-state configuration. The
+improvement is mechanistic but not yet stable enough for capability promotion:
+the remaining failures are candidate rollout, retention, and representation
+routing failures. The result is retained as a replaceable blueprint, while the
+next bottleneck is calibration learned from generic verifier residuals rather
+than a fixed absolute routing threshold.
+
 ## Window-aware factual state boundary (2026-08-11)
 
 The external state seam now has a second replaceable contract,

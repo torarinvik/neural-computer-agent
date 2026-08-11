@@ -549,6 +549,56 @@ def test_event_window_state_adapter_supports_recency_latest_statistics() -> None
     assert adapter.configuration()["recency_decay"] == 0.75
 
 
+def test_event_window_state_adapter_can_preserve_order_and_empty_positions() -> None:
+    torch.manual_seed(20)
+    controller = AmodalCognitiveController(
+        width=4,
+        workspace_slots=2,
+        intention_width=2,
+        feedback_width=3,
+        event_window_capacity=4,
+    )
+    runtime = AmodalControllerRuntime(controller)
+    state = runtime.initial_state(1, device="cpu")
+    output, next_state = runtime.step_events(
+        [AmodalEvent(torch.randn(1, 4))],
+        state,
+        _feedback(),
+    )
+    adapter = ExternalControllerEventWindowStateAdapter(
+        controller.width,
+        window_statistics="ordered_payload_and_presence_v1",
+        window_capacity=4,
+        window_gain=1.0,
+    )
+    adapted = adapter(output.controller, next_state)
+    assert adapted.shape == (1, controller.width * 3 + 4 * (controller.width + 1))
+    assert torch.isfinite(adapted).all()
+    assert adapter.configuration()["window_capacity"] == 4
+
+    swapped = next_state.event_window.payload.clone()
+    swapped[:, 0], swapped[:, 1] = swapped[:, 1].clone(), swapped[:, 0].clone()
+    swapped_state = type(next_state)(
+        hidden=next_state.hidden,
+        workspace=next_state.workspace,
+        latest_event=next_state.latest_event,
+        workspace_usage=next_state.workspace_usage,
+        event_window=type(next_state.event_window)(
+            payload=swapped,
+            present=next_state.event_window.present,
+            confidence=next_state.event_window.confidence,
+            timestamp=next_state.event_window.timestamp,
+            timestamp_present=next_state.event_window.timestamp_present,
+            duration=next_state.event_window.duration,
+            age=next_state.event_window.age,
+            source_key=next_state.event_window.source_key,
+        ),
+        source_trust=next_state.source_trust,
+        growth_registers=next_state.growth_registers,
+    )
+    assert not torch.equal(adapted, adapter(output.controller, swapped_state))
+
+
 def test_policy_free_runtime_injects_external_generated_candidate_and_feedback() -> None:
     torch.manual_seed(16)
     controller = AmodalCognitiveController(

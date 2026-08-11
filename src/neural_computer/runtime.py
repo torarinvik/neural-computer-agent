@@ -1329,6 +1329,14 @@ class ExternalControllerEventWindowStateAdapter(nn.Module):
     entirely opaque: no modality, task, action, or protocol field is
     introduced.
 
+    ``ordered_payload_and_presence_v1`` is the loss-minimizing mode.  It
+    preserves the bounded token order and explicit empty positions at the
+    external seam instead of pooling them.  This is intentionally opt-in: it
+    increases the external state width and therefore the amount of evidence
+    needed by a factual model, but it is the correct representation when
+    temporal order is part of the learned state (for example, working-memory
+    pressure tests).
+
     The adapter is external and replaceable.  Its default identity path makes
     the state contract deterministic and auditable; a caller may provide a
     projection when a planner uses a different state width.  The optional
@@ -1349,6 +1357,7 @@ class ExternalControllerEventWindowStateAdapter(nn.Module):
         window_gain: float = 0.15,
         window_statistics: str = "masked_mean_and_max_v1",
         recency_decay: float = 0.75,
+        window_capacity: int | None = None,
     ) -> None:
         super().__init__()
         if controller_width < 1 or hidden_width < 0 or not math.isfinite(window_gain):
@@ -1356,21 +1365,45 @@ class ExternalControllerEventWindowStateAdapter(nn.Module):
         if window_statistics not in {
             "masked_mean_and_max_v1",
             "recency_weighted_and_latest_v1",
+            "ordered_payload_and_presence_v1",
         }:
             raise ValueError("event-window state-adapter statistics are unsupported")
         if recency_decay <= 0.0 or not math.isfinite(recency_decay):
             raise ValueError("event-window state-adapter recency decay is invalid")
+        if window_capacity is not None and window_capacity < 1:
+            raise ValueError("event-window state-adapter capacity must be positive")
+        if window_statistics == "ordered_payload_and_presence_v1" and (
+            window_capacity is None
+        ):
+            raise ValueError(
+                "ordered event-window statistics require window_capacity"
+            )
         self.controller_width = int(controller_width)
         self.controller_feature_width = self.controller_width * 3
-        self.window_feature_width = self.controller_width * 2
-        self.input_width = self.controller_feature_width + self.window_feature_width
-        self.state_width = self.input_width if state_width is None else int(state_width)
-        if self.state_width < 1:
-            raise ValueError("event-window state-adapter state width must be positive")
         self.hidden_width = int(hidden_width)
         self.window_gain = float(window_gain)
         self.window_statistics = str(window_statistics)
         self.recency_decay = float(recency_decay)
+        self.window_capacity = (
+            None if window_capacity is None else int(window_capacity)
+        )
+        if self.window_statistics == "ordered_payload_and_presence_v1":
+            assert self.window_capacity is not None
+            self.window_feature_width = self.window_capacity * (controller_width + 1)
+        else:
+            self.window_feature_width = self.controller_width * 2
+        self.input_width = self.controller_feature_width + self.window_feature_width
+        self.state_width = self.input_width if state_width is None else int(state_width)
+        if self.state_width < 1:
+            raise ValueError("event-window state-adapter state width must be positive")
+        if (
+            self.window_statistics == "ordered_payload_and_presence_v1"
+            and not hidden_width
+            and self.state_width == self.controller_feature_width
+        ):
+            raise ValueError(
+                "ordered event-window statistics cannot fold into controller width"
+            )
         if hidden_width:
             self.network = nn.Sequential(
                 nn.Linear(self.input_width, hidden_width),
@@ -1399,6 +1432,7 @@ class ExternalControllerEventWindowStateAdapter(nn.Module):
             "window_gain": self.window_gain,
             "window_statistics": self.window_statistics,
             "recency_decay": self.recency_decay,
+            "window_capacity": self.window_capacity,
             "input": "opaque_controller_state_plus_bounded_event_window_v1",
             "statistics": self.window_statistics,
             "behavior": "replaceable_markov_state_projection_not_policy_v1",
@@ -1463,6 +1497,32 @@ class ExternalControllerEventWindowStateAdapter(nn.Module):
         latest = latest * present.any(dim=1, keepdim=True).to(dtype=dtype)
         return recency, latest
 
+    @staticmethod
+    def _ordered_window_features(
+        state: ControllerState,
+        *,
+        batch_size: int,
+        width: int,
+        capacity: int,
+        device: torch.device,
+        dtype: torch.dtype,
+    ) -> torch.Tensor:
+        """Return position-preserving learned tokens plus their presence mask."""
+
+        payload = state.event_window.payload.to(device=device, dtype=dtype)
+        present = state.event_window.present.to(device=device)
+        if payload.ndim != 3 or payload.shape != (batch_size, capacity, width):
+            raise ValueError("ordered event window payload has the wrong shape")
+        if present.shape != (batch_size, capacity) or present.dtype is not torch.bool:
+            raise ValueError("ordered event window presence has the wrong shape")
+        return torch.cat(
+            (
+                payload.reshape(batch_size, capacity * width),
+                present.to(dtype=dtype),
+            ),
+            dim=-1,
+        )
+
     def forward(
         self,
         output: ControllerOutput,
@@ -1481,28 +1541,52 @@ class ExternalControllerEventWindowStateAdapter(nn.Module):
         if not bool(torch.isfinite(representation).all()):
             raise ValueError("controller state representation must be finite")
         if state is None:
-            mean = torch.zeros(
+            window_features = torch.zeros(
+                representation.shape[0],
+                self.window_feature_width,
+                device=representation.device,
+                dtype=representation.dtype,
+            )
+            folded_window_features = torch.zeros(
                 representation.shape[0],
                 self.controller_width,
                 device=representation.device,
                 dtype=representation.dtype,
             )
-            maximum = torch.zeros_like(mean)
         else:
             if not isinstance(state, ControllerState):
                 raise TypeError("event-window state adapter state has the wrong type")
             if state.hidden.ndim != 2 or state.hidden.shape[0] != representation.shape[0]:
                 raise ValueError("event-window state adapter batch does not match")
-            mean, maximum = self._window_statistics(
-                state,
-                batch_size=representation.shape[0],
-                width=self.controller_width,
-                device=representation.device,
-                dtype=representation.dtype,
-                statistics=self.window_statistics,
-                recency_decay=self.recency_decay,
-            )
-        features = torch.cat((representation, mean, maximum), dim=-1)
+            if self.window_statistics == "ordered_payload_and_presence_v1":
+                assert self.window_capacity is not None
+                window_features = self._ordered_window_features(
+                    state,
+                    batch_size=representation.shape[0],
+                    width=self.controller_width,
+                    capacity=self.window_capacity,
+                    device=representation.device,
+                    dtype=representation.dtype,
+                )
+                folded_window_features = window_features
+            else:
+                mean, maximum = self._window_statistics(
+                    state,
+                    batch_size=representation.shape[0],
+                    width=self.controller_width,
+                    device=representation.device,
+                    dtype=representation.dtype,
+                    statistics=self.window_statistics,
+                    recency_decay=self.recency_decay,
+                )
+                window_features = torch.cat((mean, maximum), dim=-1)
+                folded_window_features = mean + maximum
+        feature_window = (
+            self.window_gain * window_features
+            if self.window_statistics == "ordered_payload_and_presence_v1"
+            else window_features
+        )
+        features = torch.cat((representation, feature_window), dim=-1)
         if not bool(torch.isfinite(features).all()):
             raise ValueError("event-window state features must be finite")
         if self.network is None:
@@ -1510,7 +1594,7 @@ class ExternalControllerEventWindowStateAdapter(nn.Module):
                 (
                     representation[:, : 2 * self.controller_width],
                     representation[:, 2 * self.controller_width :]
-                    + self.window_gain * (mean + maximum),
+                    + self.window_gain * folded_window_features,
                 ),
                 dim=-1,
             )

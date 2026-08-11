@@ -1,0 +1,56 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "brainworkshop_ordered_external_state_pressure_v1",
+  "date": "2026-08-11",
+  "status": "rejected_unstable_complete_promotion",
+  "claim_boundary": "Ordered, presence-aware external event-window state improves bounded replay-free factual transition discovery; this does not establish stable end-task acquisition or general continual learning.",
+  "configuration": {
+    "seeds": [93, 94, 95, 96, 97, 98, 99, 100],
+    "steps": 6,
+    "source_training_lifetimes": 2,
+    "target_training_lifetimes": 2,
+    "promotion_heldout_lifetimes": 3,
+    "window_statistics": "ordered_payload_and_presence_v1",
+    "window_gain": 0.15,
+    "routing_match_tolerance": 0.005,
+    "goal_conditioned": true,
+    "controller_frozen": true,
+    "optimizer_updates": 0,
+    "replayed_examples": 0
+  },
+  "accounting": {
+    "ordered_unique_verifier_bits_total": 231,
+    "pooled_unique_verifier_bits_total": 225,
+    "ordered_logical_lifetimes_total": 69,
+    "pooled_logical_lifetimes_total": 67,
+    "ordered_transition_rows_consumed_once_total": 192,
+    "pooled_transition_rows_consumed_once_total": 192,
+    "ordered_wall_time_seconds": 2.148373,
+    "pooled_wall_time_seconds": 2.031238,
+    "gpu_time_seconds": 0.0,
+    "stable_bits_to_threshold": null,
+    "retention_on_mastered_primitives": "source slot byte-stable on candidate transactions; complete gate not stable",
+    "transfer_ratio_against_fresh_learner": null
+  },
+  "comparison": {
+    "pooled_raw_candidate_admissions": "3/8",
+    "ordered_raw_candidate_admissions": "5/8",
+    "pooled_complete_promotions": "3/8",
+    "ordered_complete_promotions": "4/8",
+    "pooled_unique_verifier_bits_by_seed": [30, 27, 27, 30, 27, 27, 27, 30],
+    "ordered_unique_verifier_bits_by_seed": [30, 30, 30, 27, 27, 30, 27, 30],
+    "pooled_complete_gate_by_seed": [true, false, false, true, false, false, false, false],
+    "ordered_complete_gate_by_seed": [true, true, false, false, false, true, false, true]
+  },
+  "controls": {
+    "frozen_controller": true,
+    "frozen_frontend_and_decoder": true,
+    "zero_replay": true,
+    "heldout_recursive_rollout": true,
+    "source_retention_probe": true,
+    "matched_fresh_challenger": true,
+    "goal_fragment_missing_evidence_rejection": true,
+    "memory_corruption_control": "not run in this rung"
+  },
+  "interpretation": "Preserving ordered learned event tokens improves the probability that a novel rendered family is staged and promoted, but fixed-threshold routing and candidate retention remain seed-fragile. Keep the representation as replaceable infrastructure; do not promote the capability until a generic residual-calibrated route gate passes across the full seed set."
+}

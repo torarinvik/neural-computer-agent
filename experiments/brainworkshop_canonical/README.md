@@ -578,3 +578,36 @@ PYTHONPATH=src:. ./.venv/bin/python -m experiments.brainworkshop_canonical.cross
   --calibration-lifetimes 32 --discovery-lifetimes 32 --retention-lifetimes 4 \
   --seed 17 --report-out /tmp/brainworkshop-cross-family-17.json
 ```
+
+## Replay-free factual transition acquisition (2026-08-11)
+
+`replay_free_transition_acquisition.py` is the rendered “CPU/files” pressure
+test. The controller, frontend, and keypress decoder are frozen; each opaque
+transition row is consumed once by an external factual bank, and a planner
+derives behavior from an external goal rather than storing a task policy.
+
+The default short rung improves held-out recursive transition error from
+`0.06614` to `0.02737` with `18` one-pass rows, zero replay, zero optimizer
+updates, and an unchanged controller. The two-family rung retains the source
+slot byte-for-byte while the target improves from `0.04522` fresh error to
+`0.01334`.
+
+The audit also supports the opt-in
+`ordered_payload_and_presence_v1` state adapter, which preserves the bounded
+learned event-token order and empty positions. It improved the matched
+eight-seed raw candidate-admission rate from `3/8` to `5/8` and the complete
+goal-conditioned promotion rate from `3/8` to `4/8` when paired with factual
+routing tolerance `0.005`. This is retained as a qualified representation
+boundary, not promoted as general continual learning: routing calibration and
+reliable held-out candidate retention remain unresolved.
+
+Example:
+
+```bash
+PYTHONPATH=src:. ./.venv/bin/python \
+  -m experiments.brainworkshop_canonical.replay_free_transition_acquisition \
+  --audit online-discovery --goal-conditioned \
+  --window-statistics ordered_payload_and_presence_v1 \
+  --routing-match-tolerance 0.005 --seed 93 \
+  --report-out /tmp/brainworkshop-transition-discovery-93.json
+```
