@@ -406,7 +406,7 @@ if args.synthesize:
                 "identity": round(identity / max(total, 1), 4)}
 
     def search_with_library(family, library, weights, observer, generator,
-                            budget):
+                            budget, effect_index=False):
         """Propose programs by concatenating LIBRARY FRAGMENTS. Returns
         the recipe and the number of candidates tried — cost is the
         measurement here, not accuracy.
@@ -433,6 +433,26 @@ if args.synthesize:
             if int(keep.sum()) < 4:
                 continue
             src, dst = states[keep], nexts[keep]
+            pool = library
+            # `table` is sized to `library`, so weighting and effect
+            # filtering cannot both index the pool. Only the unweighted
+            # path filters.
+            if effect_index and table is None:
+                # EFFECT INDEXING. Only propose instructions that WRITE
+                # to a slot this action actually changed. The constraint
+                # comes from the observations themselves, so it carries
+                # no knowledge of any domain — it is the same move a
+                # planner makes when it retrieves only the rules capable
+                # of producing an unmet goal cell.
+                #
+                # It is a HEURISTIC, not a theorem: a correct program
+                # may write a scratch slot and restore it, and those
+                # solutions are excluded here. That is exactly why this
+                # is an arm rather than a default.
+                writes = set((src != dst).any(dim=0).nonzero()
+                             .flatten().tolist())
+                pool = [f for f in library
+                        if all(i in writes for _, i, _ in f)] or library
             best, best_score, tried = None, -1.0, 0
             while tried < budget:
                 # build a candidate by concatenating fragments until it
@@ -441,11 +461,11 @@ if args.synthesize:
                 while len(candidate) < args.program_len:
                     if table is None:
                         slot = int(torch.randint(
-                            0, len(library), (1,), generator=generator))
+                            0, len(pool), (1,), generator=generator))
                     else:
                         slot = int(torch.multinomial(
                             table, 1, generator=generator))
-                    candidate = candidate + list(library[slot])
+                    candidate = candidate + list(pool[slot])
                 candidate = candidate[:args.program_len]
                 tried += 1
                 with torch.no_grad():
@@ -703,7 +723,8 @@ if args.synthesize:
                     family, proposer, observer, generator, budget)
             else:
                 recipe, tried, fit = search_with_library(
-                    family, library, weights, observer, generator, budget)
+                    family, library, weights, observer, generator, budget,
+                    effect_index=(kind == "effect"))
             actions = max(1, sum(1 for v in recipe.values()
                                  if v is not None))
             winners = [tuple(program) for program in recipe.values()
@@ -723,7 +744,7 @@ if args.synthesize:
                 "winners": len(winners), "recalled": recalled,
                 "saturated": tried >= budget * actions})
             stored.update(winners)
-            if kind == "frozen" or not winners:
+            if kind in ("frozen", "effect") or not winners:
                 continue
             solved.extend(winners)
             if kind == "uniform":
@@ -825,11 +846,12 @@ if args.synthesize:
         # weight a stored program carries, because that is what the
         # first corrected seed made the live question.
         arms = [("frozen", 0.0, 0.0), ("uniform", 0.0, 0.0),
-                ("shuffled", 0.0, 0.0),
+                ("shuffled", 0.0, 0.0), ("effect", 0.0, 0.0),
                 ("marginal", 1.0, 0.0), ("sketch", 1.0, 0.0)]
         arms += [("sketch", 1.0, float(w))
                  for w in args.exact_weight.split(",") if float(w) > 0]
-        labels = [kind if kind in ("frozen", "uniform", "shuffled")
+        labels = [kind if kind in ("frozen", "uniform", "shuffled",
+                                   "effect")
                   else f"{kind}-e{exact:g}"
                   for kind, _, exact in arms]
         if args.arms:

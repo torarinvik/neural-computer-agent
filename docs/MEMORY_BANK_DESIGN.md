@@ -7786,3 +7786,61 @@ reads 0 recalled, so it is the coincidence baseline, and any nonzero
 recall elsewhere is genuine reuse.
 
 Probe 257 is `isa_compose.py --library-arms`, 3 seeds, 8 arms.
+
+## F160 — CORRECTION: the expressibility hole is the MODULUS, not a
+## missing pair operation
+
+I have written twice, including in a prompt sent to the parallel Codex
+agent, that `toggle` is "not exactly expressible in the basis" because
+it flips a PAIR of slots at once and no instruction does that. **That
+is wrong, and the reasoning was wrong in a way worth recording.**
+
+`toggle` has values=2, and at values=2 a bit flip is `(bit + 1) mod 2`,
+which is an increment. So flipping bits 0 and 1 is `INC 0 ; INC 1` —
+two instructions the basis already has. The pair effect was never the
+problem.
+
+**The actual hole: our instructions do arithmetic mod VALUES=8, but
+each family has its OWN value count.** `INC` computes
+`(state[i] + 1) % 8`. On a slot holding 1 in a two-valued family that
+gives 2, not 0. Verified directly: `INC 0 ; INC 1` reproduces toggle's
+action 0 on exactly 50% of states, and the per-slot match rate is
+[0.5, 0.5, 1.0, 1.0, 1.0, 1.0] — the two slots the action touches are
+right half the time and the untouched four are always right. Correct
+when the value is 0, wrong when it is 1.
+
+**The hypothesis has a signature in F155's data and the signature is
+there.** The hole can only bite a family whose recipe needs INC/DEC on
+slots with fewer than VALUES values, so it predicts an ordering rather
+than a simple correlation:
+
+| family | values used | search fit | held out |
+| --- | ---: | ---: | ---: |
+| toggle | 2 | 0.8671 / 0.8802 | 0.8099 / 0.8164 |
+| perm | 4 | 1.0000 / 1.0000 | 1.0000 / 1.0000 |
+| line, dial, grid | 8 | 0.894-1.000 | 0.867-0.994 |
+
+`toggle` is the WORST of the five on both metrics on both seeds, which
+is the prediction. `perm` uses only swaps, so the modulus never enters
+its solution, and it is immune and perfect — which is the sharper half
+of the prediction, because a naive "fewer values is harder" story would
+have put perm in trouble too. The raw correlation of value count with
+fit is only +0.419 precisely because perm breaks it, and perm breaking
+it is the evidence.
+
+**Why this matters more than the version I had wrong.** A missing pair
+operation would be one gap plugged by one new primitive. A global
+modulus is a STRUCTURAL mismatch between an instruction set with fixed
+semantics and a task distribution where each family carries its own
+value range — and it silently degrades every family that increments a
+short-ranged slot, not just the one that fails loudly.
+
+**The fix is domain-general and small**: make the modulus an ARGUMENT,
+so an instruction is `(op, i, j, m)` and the interpreter learns modular
+arithmetic parameterised by m, exactly as it already learns which slot
+to touch. Nothing about any domain enters; the value range is
+observable in the data. Next probe.
+
+Found by taking a suggestion seriously enough to check whether our
+basis really lacked the thing it proposed adding. It did not — and
+looking properly turned up the real hole somewhere else.
