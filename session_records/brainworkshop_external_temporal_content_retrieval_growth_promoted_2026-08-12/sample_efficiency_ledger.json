@@ -1,0 +1,35 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment_id": "brainworkshop-external-temporal-content-retrieval-growth-2026-08-12",
+  "status": "promoted_temporal_content_retrieval_growth",
+  "source": "in_repository_run",
+  "seeds": [17, 18],
+  "unique_verifier_bits_per_seed": 313856,
+  "control_verifier_bits_per_seed": 0,
+  "unique_logical_lifetimes_per_seed": 33024,
+  "optimizer_updates_per_seed": 512,
+  "route_memory_updates_per_seed": 520,
+  "content_memory_writes_per_seed": 2,
+  "replayed_examples_per_seed": 0,
+  "source_accuracy": [1.0, 1.0],
+  "target_accuracy": [1.0, 1.0],
+  "exact_related_route_accuracy": [1.0, 1.0],
+  "source_offsets": [4, 4],
+  "target_offsets": [5, 5],
+  "related_key_cosine_scores": {
+    "seed_17": [0.9711936116, 0.9869793653],
+    "seed_18": [0.9840753675, 0.9869382381]
+  },
+  "controls": {
+    "two_append_only_records": true,
+    "unknown_key_no_hit": true,
+    "clear_removes_hits": true,
+    "exact_reload_preserves_related_routes": true,
+    "checksum_corruption_rejected": true,
+    "frozen_controller": true,
+    "frozen_event_encoder": true,
+    "frozen_external_capability_file": true,
+    "zero_replay": true
+  },
+  "claim_boundary": "Promoted bounded related-key content-addressed retrieval composition; not learned compression, capacity management, unrestricted memory growth, arbitrary new computation, or general continual learning."
+}

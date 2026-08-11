@@ -955,3 +955,21 @@ event keys. The next boundary is content-conditioned retrieval beyond exact
 query keys, followed by learned compression and capacity pressure. Evidence
 and accounting are archived in
 `session_records/brainworkshop_external_temporal_query_address_growth_promoted_2026-08-12/`.
+
+## Related-key temporal content retrieval (2026-08-12)
+
+`external_temporal_content_retrieval_growth.py` composes that address
+capability with the canonical persistent append-only content-addressed memory.
+The memory stores two learned event keys and opaque capability-address values;
+the controller and capability file are frozen before retrieval. Exact keys and
+nearby learned keys (20% normalized perturbation) must recover offsets 4 and 5
+and preserve the source capability. Unknown-key no-hit, clear, reload,
+checksum-corruption, frozen-core, frozen-file, and zero-replay controls are
+part of the promotion gate.
+
+Seeds 17 and 18 each reached `1.0000` on both exact and related-key routes;
+the related-key cosine scores were `0.9712`/`0.9870` and `0.9841`/`0.9869`.
+This qualifies one bounded content-addressed retrieval composition, not learned
+compression, capacity management, arbitrary new computation, or general
+continual learning. Evidence and accounting are archived in
+`session_records/brainworkshop_external_temporal_content_retrieval_growth_promoted_2026-08-12/`.

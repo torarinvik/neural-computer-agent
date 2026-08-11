@@ -10304,3 +10304,25 @@ through learned event keys. It does not yet qualify content search over
 unseen-but-related keys, learned compression, unrestricted memory growth, or
 general continual learning. Evidence and accounting are archived in
 `session_records/brainworkshop_external_temporal_query_address_growth_promoted_2026-08-12/`.
+
+## Related-key temporal content retrieval (2026-08-12)
+
+The next composition uses the canonical persistent
+`AppendOnlyContentAddressedMemory` rather than a route table alone. Two
+learned event keys are stored with opaque external capability-address values;
+the source capability file is frozen before the target route is acquired, and
+the controller and event encoder remain frozen throughout retrieval. Exact
+queries and nearby learned-event queries, produced by a fixed 20% normalized
+perturbation, must recover offsets 4 and 5 through cosine content addressing.
+
+Across seeds `17` and `18`, source and target reached `1.0000` for both exact
+and related-key reads. The memory returned an explicit no-hit for an unknown
+key, preserved related-key routes across an exact reload, removed hits after
+clear, and rejected a checksum-corrupted snapshot. The controller, event
+encoder, and capability file digests were unchanged and replay was zero. This
+is a useful ABI and retrieval result, but it remains bounded content-addressed
+composition:
+it does not qualify learned compression, capacity management, arbitrary new
+computation, or general continual learning. Evidence and accounting are
+archived in
+`session_records/brainworkshop_external_temporal_content_retrieval_growth_promoted_2026-08-12/`.
