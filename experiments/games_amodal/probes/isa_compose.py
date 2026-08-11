@@ -192,6 +192,13 @@ parser.add_argument(
          "failure is a failure of SEARCH rather than of expressibility "
          "— the confound that wrecked every earlier cost measurement.")
 parser.add_argument("--deep-depth", type=int, default=3)
+parser.add_argument(
+    "--enum-depth", type=int, default=2,
+    help="deepest program the enumeration reaches. At 3 it also tries "
+         "every LIBRARY FRAGMENT followed by one new instruction, which "
+         "is the reuse mechanism stated as an enumeration rather than as "
+         "a sampling distribution — the form F186 showed the padded "
+         "bank could not express.")
 parser.add_argument("--related-seed", type=int, default=20260811,
                     help="draw for the related sequence, held FIXED "
                          "across run seeds so the task set is a "
@@ -578,7 +585,8 @@ if args.synthesize:
             out.append(min(k for k, m in enumerate(MODULI) if m >= wanted))
         return out
 
-    def enumerate_programs(needs: set, moduli, depth: int):
+    def enumerate_programs(needs: set, moduli, depth: int,
+                           prefixes=None):
         """Programs of length `depth`, over instructions that WRITE a
         slot the action changed, padded with NOOP to program_len.
 
@@ -612,13 +620,46 @@ if args.synthesize:
                     if i == j:
                         continue
                     pool.append((op, i, j, moduli[i] if moduli else 0))
+        # ops that ignore their j argument produce duplicates across j,
+        # and at depth 3 a duplicate costs a whole inner loop. Dedupe
+        # once here rather than paying for it 24,000 times.
+        unary = {OPS.index(o) for o in ("INC", "DEC", "SINC", "SDEC")
+                 if o in OPS}
+        seen, unique = set(), []
+        for cand in pool:
+            key = (cand[0], cand[1], cand[3]) if cand[0] in unary else cand
+            if key in seen:
+                continue
+            seen.add(key)
+            unique.append(cand)
+        pool = unique
         if depth == 1:
             for one in pool:
                 yield [one] + pad[:args.program_len - 1]
             return
+        if depth == 2:
+            for first in pool:
+                for second in pool:
+                    yield [first, second] + pad[:args.program_len - 2]
+            return
+        # depth 3+, and PREFIXED by anything already in the library.
+        # F186: a bank whose entries cannot compose can only be recalled
+        # whole. Composing each stored fragment with one new instruction
+        # is the reuse mechanism stated as an enumeration — if a
+        # two-instruction prefix is already known, the third instruction
+        # costs the size of the pool rather than its cube.
+        for stored in (prefixes or []):
+            room = args.program_len - len(stored)
+            if room <= 0:
+                continue
+            for one in pool:
+                tail = list(stored) + [one]
+                yield tail + pad[:args.program_len - len(tail)]
         for first in pool:
             for second in pool:
-                yield [first, second] + pad[:args.program_len - 2]
+                for third in pool:
+                    yield [first, second, third] + \
+                        pad[:args.program_len - 3]
 
     def attainable(candidate, unavoidable, rows: int, slots: int,
                    used_slots) -> float:
@@ -853,11 +894,13 @@ if args.synthesize:
                 ceiling = max(1, int(budget * args.enum_budget))
                 enum_start = tried
                 stop = False
-                for depth in (1, 2):
+                for depth in range(1, args.enum_depth + 1):
                     if stop:
                         break
                     for cand in enumerate_programs(
-                            writes_needed(src, dst), moduli, depth):
+                            writes_needed(src, dst), moduli, depth,
+                            prefixes=[f for f in library if 1 < len(f)
+                                      < args.program_len]):
                         if tried >= ceiling:
                             stop = True
                             break
@@ -885,8 +928,16 @@ if args.synthesize:
             while tried < budget and best_score < args.fit_target:
                 # build a candidate by concatenating fragments until it
                 # is long enough; a fragment may be a whole past recipe
+                # Draw a LENGTH, fill it, pad with NOOP. Filling to
+                # program_len and truncating makes every candidate
+                # exactly six instructions, so a three-instruction
+                # solution is unreachable whatever the library holds:
+                # the target needs NOOPs in its tail and concatenation
+                # never produces them.
+                want = 1 + int(torch.randint(
+                    0, args.program_len, (1,), generator=generator))
                 candidate: list = []
-                while len(candidate) < args.program_len:
+                while len(candidate) < want:
                     if table is None:
                         slot = int(torch.randint(
                             0, len(pool), (1,), generator=generator))
@@ -894,7 +945,8 @@ if args.synthesize:
                         slot = int(torch.multinomial(
                             table, 1, generator=generator))
                     candidate = candidate + list(pool[slot])
-                candidate = candidate[:args.program_len]
+                candidate = candidate[:want] + [
+                    (NOOP_OP, 0, 1, 0)] * (args.program_len - want)
                 proposed += 1
                 # SOUND rejection, no forward pass. Cost is counted in
                 # interpreter evaluations because that is what actually
@@ -1210,7 +1262,15 @@ if args.synthesize:
             if kind in ("uniform", "cover+store", "bound+store",
                         "enum+store"):
                 for program in winners:
-                    library.append(program)
+                    # Strip trailing NOOPs before storing. F186: padded
+                    # entries cannot compose, because concatenating one
+                    # with anything overruns the program length — a bank
+                    # whose entries cannot compose can only be recalled
+                    # whole, which is F157's limitation in a new guise.
+                    trimmed = list(program)
+                    while len(trimmed) > 1 and trimmed[-1][0] == NOOP_OP:
+                        trimmed.pop()
+                    library.append(tuple(trimmed))
                 continue
             if kind == "shuffled":
                 # THE CAUSAL NULL for storing programs. A stored winner
@@ -1291,7 +1351,14 @@ if args.synthesize:
         """
 
         def __init__(self, generator, depth: int, slots: int,
-                     values: int, actions: int):
+                     values: int, actions: int, shared=None):
+            """`shared` is a program prefix common to every family in
+            the sequence, which makes the transferable part
+            IDENTIFIABLE: after one family is solved the prefix is in
+            the bank, and a later family needs only what follows it. A
+            bank that cannot exploit a prefix it already holds has
+            failed at something specific, rather than at a task that
+            happened to be too hard."""
             self.slots, self.actions = slots, actions
             self.states = [tuple(t) for t in itertools.product(
                 range(values), repeat=slots)]
@@ -1300,8 +1367,8 @@ if args.synthesize:
             board = torch.tensor(self.states)
             columns = []
             for _ in range(actions):
-                program = []
-                for _ in range(depth):
+                program = list(shared or [])
+                for _ in range(depth - len(program)):
                     op = int(torch.randint(1, NOPS, (1,),
                                            generator=generator))
                     i = int(torch.randint(0, slots, (1,),
@@ -1374,8 +1441,14 @@ if args.synthesize:
             # longer pinned near 23 candidates. This is the only regime
             # in which "having solved A helps on B" can show up at all.
             deep = torch.Generator().manual_seed(args.related_seed * 31)
+            prefix = []
+            for _ in range(max(args.deep_depth - 1, 0)):
+                op = int(torch.randint(1, NOPS, (1,), generator=deep))
+                i = int(torch.randint(0, 4, (1,), generator=deep))
+                prefix.append((op, i, (i + 1) % 4, MODULI.index(4)))
             sequences["deep"] = [
-                (f"deep{k}", DeepFamily(deep, args.deep_depth, 4, 4, 3))
+                (f"deep{k}", DeepFamily(deep, args.deep_depth, 4, 4, 3,
+                                        shared=prefix))
                 for k in range(args.deep_families)]
         if args.related_families:
             # SAME task set in every seed. Drawing these from the run
