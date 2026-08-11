@@ -9132,3 +9132,23 @@ rests on — not the position analysis.
 Recorded because the position table looks like evidence and is not.
 The fix, if the question is ever worth more compute, is to shuffle the
 family order per seed so position and identity are independent.
+
+**Pre-registered for the unified end-to-end run.** `--enumerate-synthesis`
+puts the quality measurement on the same algorithm as the cost
+measurement. Four seeds, saturating basis, inferred modulus, gated
+targets, against the random-sampling numbers already in hand.
+
+1. `toggle` RECOVERS. Its regression to 0.9128 was dilution of random
+   proposal by two extra operations (the corrected F179 reading).
+   Enumeration does not dilute — it finds `INC i mod 2 ; INC j mod 2`
+   at depth 2 regardless of how many operations exist — so toggle
+   should return to at least the 0.9551 the old basis reached.
+2. Families already at 1.0000 stay there.
+3. The mean rises above 0.9790, because the families that lost to
+   dilution get it back while the ones that gained expressibility keep
+   their gain.
+4. Cost per action collapses toward F178's 22.9.
+
+If (1) fails, the corrected F179 reading is also wrong and toggle's
+regression is neither early stopping nor dilution, which would leave no
+candidate explanation standing and make it the thing to chase.

@@ -263,6 +263,16 @@ parser.add_argument(
          "44.5% (n=18). This is the failure signature F170 requires "
          "before extending a basis, and the equality guard did not have "
          "one.")
+parser.add_argument(
+    "--enumerate-synthesis", action="store_true",
+    help="use the SAME enumerating search in the end-to-end synthesis "
+         "that the library arms use. Without it the quality figures "
+         "(F169, F179) describe random sampling while the cost figures "
+         "(F173, F178) describe enumeration — two algorithms reported "
+         "as one system. Also makes --fit-target live on this path, "
+         "which it silently was not: a sweep over 0.95/0.99/1.0 "
+         "returned byte-identical results because nothing here stopped "
+         "early.")
 parser.add_argument("--curve-every", type=int, default=0)
 parser.add_argument("--json", default="")
 args = parser.parse_args()
@@ -682,7 +692,31 @@ if args.synthesize:
                            for k in live}
             rows = int(src.shape[0])
             best, best_score, evaluated = None, -1.0, 0
-            while evaluated < args.synthesize:
+            if args.enumerate_synthesis:
+                # The COST results (F173, F178) come from the
+                # enumerating path and the QUALITY results (F169, F179)
+                # came from this one, which samples at random. Two
+                # different algorithms reported as one system. With this
+                # flag they are the same algorithm, and the end-to-end
+                # figure describes the configuration the cost figure
+                # describes.
+                for depth in (1, 2):
+                    if best_score >= args.fit_target:
+                        break
+                    for cand in enumerate_programs(
+                            writes_needed(src, dst), fixed, depth):
+                        proposed_total += 1
+                        evaluated += 1
+                        with torch.no_grad():
+                            got = plant(cand, src).argmax(-1)
+                        sc = float((got[:, used] == dst[:, used])
+                                   .float().mean())
+                        if sc > best_score:
+                            best, best_score = cand, sc
+                        if best_score >= args.fit_target:
+                            break
+            while evaluated < args.synthesize and \
+                    best_score < args.fit_target:
                 candidate = random_program(generator, args.program_len,
                                            fixed)
                 proposed_total += 1
