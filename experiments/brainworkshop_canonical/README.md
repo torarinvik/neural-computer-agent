@@ -780,3 +780,36 @@ PYTHONPATH=src:. ./.venv/bin/python -m experiments.brainworkshop_canonical.exter
   --retention-lifetimes 4 --seed 17 \
   --report-out /tmp/brainworkshop-external-compute-route-reversal.json
 ```
+
+## Outcome-gated open external-compute growth (2026-08-11)
+
+`external_compute_open_growth.py` removes the fixed-bank assumption from the
+canonical growth harness. It starts with one file, trains each fresh candidate
+in an isolated slot, admits only a stable direct mastery prefix, and rolls
+back an unmastered candidate before trying the next one. The shared
+controller and event encoder are frozen after the source file; route evidence
+is appended only after a candidate is admitted.
+
+Seeds `17` and `18` each admitted five files from six candidates. The
+`nback2` candidate failed stable mastery and was rolled back in both seeds;
+the later `symbol_parity_odd` candidate reused that slot and was admitted.
+All five direct and routed files passed, same-cue reversal passed at `1.0000`,
+old-file retention remained `1.0000`, route reload was exact, and replay was
+zero. The weakest routed-file accuracy was `0.8693`.
+
+This promotes outcome-gated append-only capacity growth with failed-candidate
+rollback and protected-prefix retention. It does not establish unrestricted
+growth, arbitrary program induction, learned compression, or general
+continual learning. Reports and full accounting are archived in
+`session_records/brainworkshop_external_compute_open_growth_promoted_2026-08-11/`.
+
+Run the calibrated promotion with:
+
+```bash
+PYTHONPATH=src:. ./.venv/bin/python -m experiments.brainworkshop_canonical.external_compute_open_growth \
+  --target-file-count 5 --candidate-budget 6 \
+  --file-updates 192 --route-updates 256 \
+  --route-calibration-lifetimes 8 --transition-batches 12 \
+  --batch-size 32 --retention-lifetimes 4 --seed 17 \
+  --report-out /tmp/brainworkshop-external-compute-open-growth.json
+```

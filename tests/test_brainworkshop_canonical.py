@@ -21,6 +21,9 @@ from experiments.brainworkshop_canonical.environment import NBackVerifierStep
 from experiments.brainworkshop_canonical.external_compute_growth import (
     run as run_external_compute_growth,
 )
+from experiments.brainworkshop_canonical.external_compute_open_growth import (
+    run as run_external_compute_open_growth,
+)
 from experiments.brainworkshop_canonical.external_compute_route import (
     run as run_external_compute_route,
 )
@@ -254,6 +257,38 @@ def test_external_compute_route_reversal_smoke_preserves_file_boundaries(
     assert report["transition"][-1]["slot_1_fraction"] == 0.5
 
 
+def test_external_compute_open_growth_smoke_rejects_unmastered_source_cleanly(
+    tmp_path,
+) -> None:
+    report = run_external_compute_open_growth(
+        argparse.Namespace(
+            report_out=tmp_path / "external-compute-open-growth.json",
+            seed=17,
+            target_file_count=2,
+            candidate_budget=2,
+            file_updates=2,
+            route_updates=4,
+            route_calibration_lifetimes=8,
+            transition_batches=4,
+            batch_size=32,
+            retention_lifetimes=1,
+            learning_rate=1e-2,
+            reversal_threshold=0.65,
+            reversal_patience=4,
+        )
+    )
+
+    assert report["schema"] == (
+        "neural-computer.brainworkshop-external-compute-open-growth.v1"
+    )
+    assert report["status"] == "rejected"
+    assert report["architecture"]["accepted_file_count"] == 0
+    assert report["gates"]["rejected_candidate_not_promoted"]
+    assert report["gates"]["frozen_controller"]
+    assert report["gates"]["frozen_event_encoder"]
+    assert report["gates"]["zero_replayed_examples"]
+
+
 def test_binary_switch_family_has_a_valid_chance_baseline() -> None:
     verifier = CrossFamilyVerifier(
         family="switch_binary",
@@ -267,6 +302,29 @@ def test_binary_switch_family_has_a_valid_chance_baseline() -> None:
         verifier.score(torch.zeros(2048, dtype=torch.long))
 
     assert abs(float(verifier._targets.float().mean()) - 0.5) < 0.04
+
+
+def test_odd_symbol_parity_family_is_balanced_and_distinct() -> None:
+    even = CrossFamilyVerifier(
+        family="symbol_parity",
+        batch_size=2048,
+        steps=14,
+        cue_symbol=10,
+        seed=17,
+    )
+    odd = CrossFamilyVerifier(
+        family="symbol_parity_odd",
+        batch_size=2048,
+        steps=14,
+        cue_symbol=10,
+        seed=17,
+    )
+    even.reset()
+    odd.reset()
+
+    assert torch.equal(even._symbols, odd._symbols)
+    assert torch.equal(even._targets, ~odd._targets)
+    assert abs(float(odd._targets.float().mean()) - 0.5) < 0.04
 
 
 def test_canonical_rollout_uses_keypress_and_retention_boundaries() -> None:

@@ -10134,3 +10134,30 @@ learned capability promotion. The next capability claim still requires
 fresh-versus-inherited held-out curves over genuinely different transition
 families, wrong/corrupted/missing-memory controls, exact retention, and equal
 compute accounting.
+
+## Outcome-gated open external-compute growth (2026-08-11)
+
+The canonical Brain Workshop external-compute harness now allocates files
+transactionally instead of preallocating the whole bank. A candidate is
+trained in a fresh slot from rendered events, opaque actions, and scalar
+verifier outcomes. It is admitted only after a stable direct mastery prefix;
+otherwise the newest slot is rolled back and the next candidate is attempted.
+Admitted files and the shared controller/frontend are frozen before later
+growth, and route evidence is appended only after admission.
+
+Across seeds `17` and `18`, five files were admitted from six candidates.
+The `nback2` candidate failed stable mastery in both seeds and was rolled
+back; a later `symbol_parity_odd` candidate reused that physical slot. All
+five direct and routed files passed, same-context replacement reached
+`1.0000), old-file forced retention remained `1.0000), route reload was
+exact, and replay was zero. The weakest routed-file accuracy was `0.8693`.
+The corrected accounting includes the rejected candidate: each seed used
+`880,128` unique training verifier bits, `23,552` audit bits, `70,272`
+logical lifetimes, and `1,152` optimizer updates.
+
+This promotes outcome-gated append-only capacity growth with failed-candidate
+rollback and protected-prefix retention. It remains bounded by the candidate
+schedule and does not establish unrestricted physical growth, arbitrary
+program induction, learned compression, or general continual learning.
+Evidence and the sample-efficiency ledger are in
+`session_records/brainworkshop_external_compute_open_growth_promoted_2026-08-11/`.

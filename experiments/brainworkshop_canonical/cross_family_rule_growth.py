@@ -56,6 +56,7 @@ RULES = {
     "parity2": RuleSpec("parity2", 2),
     "switch": RuleSpec("switch", 1),
     "symbol_parity": RuleSpec("symbol_parity", 0),
+    "symbol_parity_odd": RuleSpec("symbol_parity_odd", 0),
     "triplet_parity": RuleSpec("triplet_parity", 3),
     "switch_binary": RuleSpec("switch_binary", 1, symbol_count=2),
 }
@@ -130,8 +131,9 @@ class CrossFamilyVerifier:
                 ).remainder(2) == 0
             elif self.family in {"switch", "switch_binary"}:
                 target = current != self._symbols[:, position - 1]
-            elif self.family == "symbol_parity":
-                target = current.remainder(2) == 0
+            elif self.family in {"symbol_parity", "symbol_parity_odd"}:
+                parity = 1 if self.family == "symbol_parity_odd" else 0
+                target = current.remainder(2) == parity
             else:
                 target = (
                     self._symbols[:, position - 2]
