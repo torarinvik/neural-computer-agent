@@ -8521,3 +8521,71 @@ known size catches a regime that cannot measure. Both work because they
 fail loudly and cannot be argued with. An experiment needs at least one
 quantity whose expected value is known in advance, or a null result
 from it is uninterpretable.
+
+## F173 — enumeration cuts search cost by 2.4x, and it changes what is
+## being counted rather than shaving a factor
+
+Four seeds, inferred modulus, regime 2.5% saturated. **The positive
+control reproduces**: `cover` reads 0.893 and 0.840 here against its
+established 0.879 and 0.812, so the measurement can detect an effect
+and the other arms can be read.
+
+| arm | diverse | sd | related | sd |
+| --- | ---: | ---: | ---: | ---: |
+| frozen | 1.000 | — | 1.000 | — |
+| coverage filter | 0.893 | 0.039 | 0.840 | 0.056 |
+| **enumeration** | **0.425** | 0.183 | **0.406** | 0.034 |
+| enumeration + stored programs | 0.421 | 0.173 | 0.376 | 0.063 |
+
+Every mechanism before this one — reuse, the filter, the modulus —
+changes which candidates get drawn or discarded, so each shaves a
+constant factor off an exponential. Enumerating by increasing depth
+over instructions that write a changed slot changes what is counted: a
+family whose recipe is one instruction pays the size of the instruction
+set.
+
+**The prediction was recorded before the run and it holds, including
+the failure half.** Big win where the recipe is short, wasteful where
+it is not:
+
+| family | enum/frozen | frozen calls | enum calls |
+| --- | ---: | ---: | ---: |
+| dial | 0.010 | 2538 | 21 |
+| rel3 | 0.013 | 5042 | 64 |
+| toggle | 0.015 | 22151 | 328 |
+| perm | 0.042 | 4032 | 156 |
+| ... | | | |
+| grid | 1.114 | 5856 | 6505 |
+| proc0 | 1.829 | 2389 | 3169 |
+| line | 1.876 | 3660 | 4292 |
+| extra3 | 2.209 | 1405 | 1371 |
+
+**14 families cheaper, 6 more expensive, none in between.** The wins
+run to 100x and the losses are bounded at 2.2x, because a failed
+enumeration costs at most the enumerated set before falling back to
+sampling. That asymmetry is why the aggregate is strongly positive
+despite a third of families being worse.
+
+**`toggle` is the headline.** F157 could not solve it inside a 24,000
+candidate budget and I recorded it as probably inexpressible. F160
+found the real hole was the modulus. It is now the third CHEAPEST
+family in the set: 22,151 calls down to 328, a 67-fold reduction, and
+its recipe is exactly `INC i mod 2 ; INC j mod 2`, which a depth-2
+enumeration finds immediately once the modulus comes from the slot.
+Three findings had to compose to get there and none of them would have
+worked alone.
+
+**An honest deflation of F161.** Stored programs add almost nothing on
+top of enumeration — 0.421 against 0.425, and 0.376 against 0.406.
+Reuse was worth about a tenth against random sampling and is worth
+about nothing against a systematic proposer, because both are answering
+"find a short program that explains this" and enumeration answers it
+better. F161's measurement stands; its IMPORTANCE does not survive a
+better baseline. That is the ordinary fate of a mechanism measured
+against a weak alternative, and it is worth recording as such rather
+than leaving two live results that quietly contradict each other about
+where the saving comes from.
+
+**The obvious next move.** The loss is entirely "paid for a failed
+enumeration, then sampled anyway". Interleaving enumerated and sampled
+candidates bounds the worst case at 2x while keeping most of the win.
