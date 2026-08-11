@@ -9412,3 +9412,45 @@ reported 0.0000 forgetting — the exact number the architecture predicts
 and the most flattering result available — from an interpreter that had
 learned nothing. The measurement that caught it cost twenty lines and
 compared against a number already in the ledger.
+
+## F184 — the bank survives a round trip exactly, and its size is now
+## measured rather than asserted
+
+A bank that exists only inside one process is not a bank. `--bank-path`
+writes it out, reads it back, and re-scores every family from the
+RESTORED copy.
+
+| family | before write | after reload |
+| --- | ---: | ---: |
+| line | 0.8066 | 0.8066 |
+| dial | 0.8607 | 0.8607 |
+| toggle | 0.9134 | 0.9134 |
+| perm | 0.9033 | 0.9033 |
+
+`reload_exact: True`. Not approximately — the same digits, because
+what was written is integers and what reads them is frozen.
+
+**The size claim, now checkable.** 102 instructions across 4 families,
+1,589 bytes of JSON. JSON is a text format and roughly ten times the
+information content: an instruction is one op of nine (4 bits), two
+slot indices of six (3 bits each) and one modulus of seven (3 bits) =
+**13 bits**, so 102 instructions is 1,326 bits or **166 bytes packed**.
+A four-action family at program length 6 is 312 bits — **39 bytes for
+a world's entire dynamics.**
+
+I have previously quoted 216 bits per world. That figure was for the
+SEVEN-operation basis with no modulus argument (3+3+3 = 9 bits per
+instruction). The saturating operations and the modulus raised it to
+312. Correcting it here rather than leaving two numbers in the ledger.
+
+Against the alternative: the entry-vector bank these probes started
+from is `bank_tokens x dim` = 8 x 96 = 768 floats = **24,576 bits** at
+fp32, for the same job. That is 79 times larger, opaque, and it cannot
+be inspected, composed, or written to disk without the model that
+produced it.
+
+**Why this matters for continual learning specifically.** The retention
+result is only interesting if the thing retained is portable. A frozen
+interpreter plus 39 bytes per world is a claim that can be checked by
+reading the file; an activation vector that only means anything inside
+the network that produced it is not.
