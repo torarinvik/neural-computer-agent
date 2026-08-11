@@ -9075,3 +9075,35 @@ found by accident (the modulus, saturation) and each was worth more
 than every search improvement combined. There is no reason to think the
 third does not exist, and the instrument that would find it is a
 per-family cost distribution, which is now permanently wired.
+
+**F180 addendum — checking the "no compounding" claim, and rejecting
+the obvious test for it.** F180 asserts that solving family 20 is no
+cheaper than solving family 2. The obvious check is whether cost falls
+with POSITION in the sequence:
+
+| basis | sequence | r(position, cost per action) | first half | second half |
+| --- | --- | ---: | ---: | ---: |
+| old | diverse | -0.160 | 776.5 | 544.6 |
+| old | related | +0.211 | 272.7 | 852.4 |
+| saturating | diverse | -0.288 | 34.9 | 20.9 |
+| saturating | related | +0.127 | 18.8 | 18.4 |
+
+**That test is confounded and should not be used.** The families appear
+in a FIXED order — line, dial, toggle, perm, grid, proc0, proc1, then
+the extras — so position is entangled with family identity. The diverse
+sequence puts `toggle` (the most expensive family on the old basis)
+fifth and the cheap procedural extras last, which manufactures a
+negative correlation out of ordering alone. The signs disagree between
+sequences, which is what a confounded measurement looks like.
+
+**The sound test is the arm comparison and it was already run.**
+`enum` against `enum+store` is identical in every respect except
+whether solved programs are stored and proposed: same families, same
+order, same observations, same plant. It reads 0.425 against 0.421 on
+the diverse sequence and 0.406 against 0.376 on the related one. That
+is the paired, unconfounded measurement, and it is what F180's claim
+rests on — not the position analysis.
+
+Recorded because the position table looks like evidence and is not.
+The fix, if the question is ever worth more compute, is to shuffle the
+family order per seed so position and identity are independent.
