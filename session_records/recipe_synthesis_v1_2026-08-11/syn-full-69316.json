@@ -1,0 +1,125 @@
+{
+  "seed": 69316,
+  "slots": 6,
+  "values": 8,
+  "program_len": 6,
+  "instructions": [
+    "NOOP",
+    "INC",
+    "DEC",
+    "CINC",
+    "CDEC",
+    "COPY",
+    "SWAP"
+  ],
+  "no_conditionals": false,
+  "chance_slots": 0.125,
+  "identity_baseline_slots": 0.467,
+  "curve": [
+    [
+      0,
+      0.1302
+    ],
+    [
+      2500,
+      0.6112
+    ],
+    [
+      5000,
+      0.9263
+    ],
+    [
+      7500,
+      0.9884
+    ],
+    [
+      10000,
+      0.9946
+    ],
+    [
+      12500,
+      0.9998
+    ],
+    [
+      15000,
+      0.9977
+    ],
+    [
+      17500,
+      0.9479
+    ],
+    [
+      20000,
+      1.0
+    ],
+    [
+      22500,
+      1.0
+    ],
+    [
+      25000,
+      0.9987
+    ],
+    [
+      27500,
+      0.992
+    ],
+    [
+      30000,
+      1.0
+    ],
+    [
+      32500,
+      0.9995
+    ],
+    [
+      35000,
+      0.9777
+    ],
+    [
+      37500,
+      0.9881
+    ]
+  ],
+  "held_out_programs_slots": 0.9978,
+  "held_out_programs_exact": 0.9871,
+  "double_length_programs_slots": 0.9774,
+  "double_length_programs_exact": 0.8721,
+  "synthesis": {
+    "line": {
+      "search_fit": 0.8939,
+      "held_out": 0.9375,
+      "identity": 0.1055
+    },
+    "dial": {
+      "search_fit": 1.0,
+      "held_out": 0.9896,
+      "identity": 0.6667
+    },
+    "toggle": {
+      "search_fit": 0.8671,
+      "held_out": 0.8099,
+      "identity": 0.7044
+    },
+    "perm": {
+      "search_fit": 1.0,
+      "held_out": 1.0,
+      "identity": 0.5
+    },
+    "grid": {
+      "search_fit": 0.98,
+      "held_out": 0.9668,
+      "identity": 0.5566
+    },
+    "proc0": {
+      "search_fit": 0.9443,
+      "held_out": 0.9453,
+      "identity": 0.8682
+    },
+    "proc1": {
+      "search_fit": 0.965,
+      "held_out": 0.9238,
+      "identity": 0.8057
+    }
+  }
+}

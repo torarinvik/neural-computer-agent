@@ -7378,3 +7378,75 @@ optimiser setting we now know to be leaving roughly 0.08 on the table
 at fixed budget — including F148's nulls, which were run at 40k and
 may deserve one re-test at the corrected setting before they are
 final.
+
+**F155 (probe 253). THE RECIPE ARCHITECTURE WORKS END TO END. An
+interpreter trained ONLY on random programs — never on any task —
+executes unseen programs at 0.9978, DOUBLE-LENGTH programs at 0.9774,
+and then has recipes SEARCHED for seven real task families it has
+never seen, reaching 0.9247 mean held-out accuracy against a 0.5229
+identity floor. 14 of 14 recipes beat the floor. Zero gradient steps
+touch any family.**
+
+The interpreter, on programs it never trained on:
+
+| measure | seed 69316 | seed 69317 |
+| --- | ---: | ---: |
+| unseen length-6 programs | 0.9978 | 0.9942 |
+| **unseen length-12 (DOUBLE)** | **0.9774** | **0.9556** |
+| identity floor | 0.467 | 0.444 |
+
+Recipes found by SEARCH for real families, scored on held-out
+transitions (seed 69316 / 69317, gain over that family's identity):
+
+| family | held-out | identity | gain |
+| --- | ---: | ---: | ---: |
+| line | 0.9375 / 0.8672 | 0.11 / 0.12 | +0.83 / +0.75 |
+| dial | 0.9896 / 0.9935 | 0.667 | +0.32 / +0.33 |
+| toggle | 0.8099 / 0.8164 | 0.70 | +0.11 / +0.12 |
+| **perm** | **1.0000 / 1.0000** | 0.500 | +0.50 / +0.50 |
+| grid | 0.9668 / 0.9785 | 0.557 | +0.41 / +0.42 |
+| proc0 | 0.9453 / 0.8672 | 0.87 / 0.12 | +0.08 / +0.75 |
+| proc1 | 0.9238 / 0.8495 | 0.81 / 0.45 | +0.12 / +0.40 |
+
+**What this settles.** The Codex log's most robust boundary — external
+context can SELECT existing computation but cannot INVENT it — is
+FALSE for a plant whose primitives are a basis rather than the task's
+own operations. These seven families were never in the interpreter's
+training distribution in any form; `line`, `dial`, `perm` and `grid`
+are structurally unlike each other and unlike random programs. Their
+rules were nonetheless captured by programs FOUND at deployment, and
+executed by weights that never moved. `perm` at exactly 1.0000 on both
+seeds is the clean case: an exact recipe exists in the basis and the
+search found it.
+
+So the boundary was never about external memory. It was a consequence
+of choosing the task's operations as the plant's primitives, exactly
+as LITERATURE.md §22 predicted, and changing the primitives dissolves
+it.
+
+**What makes the claim strong rather than merely good numbers:**
+  * **no domain in the weights, structurally** — training samples
+    random programs over random states, so there is no world present
+    to memorise, and the plant is bit-identical before and after
+    meeting a family;
+  * **no gradient at acquisition** — a new family is handled by
+    proposing programs and scoring them with the frozen interpreter
+    against observed transitions;
+  * **held-out scoring** — recipes are chosen on one sample of
+    transitions and scored on a fresh one, and search-fit tracks
+    held-out closely (e.g. 1.0000/1.0000 on perm, 0.9800/0.9668 on
+    grid), so the recipes are not fitted to their observation sample;
+  * **per-family identity floors** — these range from 0.11 to 0.87, so
+    a single global baseline would have been meaningless. Every gain
+    is against that family's own do-nothing score.
+
+**What it does NOT show, stated so it is not overread.** Search is
+random proposal over 3000 candidates, which works at program length 6
+and will not scale as written — the space is 252^6. Nothing here
+learns to propose. `toggle` gains least (+0.11) and is the family
+whose rule is least likely to be exactly expressible in this basis, so
+the boundary has moved to expressibility rather than vanished, which
+is what was predicted. And this is execution plus search, not reading:
+no reader infers a recipe from observations, it is found by trying.
+
+Probe 253 is `isa_compose.py --synthesize 3000`, 2 seeds.
