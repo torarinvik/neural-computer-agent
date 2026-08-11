@@ -150,6 +150,19 @@ parser.add_argument(
          "scalar head trained on the observed return, used raw by the "
          "search.")
 parser.add_argument(
+    "--objects", type=int, default=1,
+    help="how many nearest objects per plane the slot state carries. "
+         "F145 measured that search budget buys nothing (depth +0.0015, "
+         "beam -0.0003), so F110's remaining residual sits in the "
+         "MODEL — and the dynamics we actually use are near-exact "
+         "(avatar slots 1.0000, objects frozen to their observed "
+         "layout). What is lossy is this abstraction: with 1 object "
+         "per plane a three-pair world is described by two of its six "
+         "objects while the oracle reads all of them. F109 refuted a "
+         "version of this BACKWARDS, but did so when the value model "
+         "was the binding constraint; that verdict should not be "
+         "inherited now that the value model is finished.")
+parser.add_argument(
     "--bind-value", action="store_true",
     help="F135's BIND-ONCE carried to the games. The beam search calls "
          "the value head at every rollout step with the entry as "
@@ -194,7 +207,7 @@ args = parser.parse_args()
 
 torch.manual_seed(args.seed)
 ACTIONS, PLANES, HEIGHT, WIDTH = 4, 3, 8, 8
-SLOTS, VALUES = 6, 8
+SLOTS, VALUES = 2 + 2 * 2 * args.objects, 8   # avatar + N per plane
 ABSENT = VALUES  # a slot with no object; distinct from value 0
 
 
@@ -249,8 +262,10 @@ def verifier_for(config: FamilyConfig, seed: int) -> FamilyVerifier:
 
 
 def slot_state(screen: torch.Tensor) -> torch.Tensor:
-    """Screen -> six slots. Perception, and a shallow one: argmax for
-    the avatar, nearest-by-Manhattan for each object plane."""
+    """Screen -> slots. Perception, and a shallow one: argmax for the
+    avatar, then the `--objects` nearest by Manhattan distance in each
+    object plane (ties broken by scan order, absent slots left at
+    ABSENT so a world with fewer objects than slots is still valid)."""
     frames = screen.view(-1, PLANES, HEIGHT, WIDTH)
     batch = frames.shape[0]
     out = torch.full((batch, SLOTS), ABSENT, dtype=torch.long)
@@ -263,16 +278,24 @@ def slot_state(screen: torch.Tensor) -> torch.Tensor:
         flat = int(avatar.reshape(-1).argmax())
         ar, ac = flat // WIDTH, flat % WIDTH
         out[row, 0], out[row, 1] = ar, ac
-        for plane, base in ((1, 2), (2, 4)):
+        for plane in (1, 2):
+            base = 2 + 2 * args.objects * (plane - 1)
             mask = frames[row, plane] > 0
             if not bool(mask.any()):
                 continue
             distance = (rows - ar).abs() + (cols - ac).abs()
             distance = torch.where(mask, distance,
                                    torch.full_like(distance, 10_000))
-            nearest = int(distance.reshape(-1).argmin())
-            out[row, base] = nearest // WIDTH
-            out[row, base + 1] = nearest % WIDTH
+            order = distance.reshape(-1).argsort()
+            found = 0
+            for cell in order.tolist():
+                if distance.reshape(-1)[cell] >= 10_000:
+                    break
+                out[row, base + 2 * found] = cell // WIDTH
+                out[row, base + 2 * found + 1] = cell % WIDTH
+                found += 1
+                if found >= args.objects:
+                    break
     return out
 
 
@@ -294,10 +317,11 @@ def seek_actions(states: torch.Tensor, generator) -> torch.Tensor:
                            generator=generator)
     plane = (torch.rand((states.shape[0],), generator=generator)
              < args.seek_plane2).long()
+    stride = 2 * args.objects
     for row in range(states.shape[0]):
-        base = 2 + 2 * int(plane[row])
+        base = 2 + stride * int(plane[row])
         if int(states[row, base]) == ABSENT:
-            base = 6 - base  # other plane's slots if target absent
+            base = 2 + stride - (base - 2)  # other plane if absent
         if int(states[row, base]) == ABSENT or \
                 int(states[row, 0]) == ABSENT:
             continue
@@ -425,7 +449,10 @@ class Outcome(torch.nn.Module):
         # channels, one per object plane — F116 measured that a single
         # channel keys to plane-1 and leaves inverted worlds able to
         # avoid but never to seek the plane-2 object.
-        self.salience = torch.nn.Linear(dim, 2)
+        # one polarity per PLANE (the entry says which plane is
+        # edible); salience is per object slot, and slots belonging to
+        # the same plane share their plane's sign.
+        self.salience = torch.nn.Linear(dim, 2 * args.objects)
         self.polarity = torch.nn.Linear(dim, 2)
         # tied variant: 4 features per object slot (relative row,
         # relative column, absence flag, L1 distance), scored by ONE
@@ -444,7 +471,7 @@ class Outcome(torch.nn.Module):
         its own relation to the avatar, in the same frame for both."""
         avatar = states[:, :2].float()
         rows = []
-        for index in range(2):
+        for index in range(2 * args.objects):
             obj = states[:, 2 + 2 * index:4 + 2 * index].float()
             absent = (obj[:, 0] >= ABSENT).float().unsqueeze(-1)
             delta = (obj - avatar) / float(HEIGHT)
@@ -472,6 +499,8 @@ class Outcome(torch.nn.Module):
             out = self.value_head(pooled).squeeze(-1)
             if signed and entry is not None:
                 sign = torch.tanh(self.polarity(entry.mean(dim=0)))
+                if args.objects > 1:
+                    sign = sign.repeat_interleave(args.objects)
                 if args.tied_salience:
                     weight = self.tied(
                         self.object_features(states)).squeeze(-1)
