@@ -9609,3 +9609,54 @@ Prerequisite now running at a 40k interpreter: does depth-3 enumeration
 solve a depth-3 family when the executor is good enough to show it?
 Until that answers yes there is nothing for a bank to transfer, and
 forward transfer stays unmeasured.
+
+## F188 — the ceiling gate: a regime error hit three times, now caught
+## by the report itself
+
+Three measurements in this session were void because a component OTHER
+than the one under test was the binding constraint:
+
+| finding | what was binding | how it read |
+| --- | --- | --- |
+| F168 | the search budget | every arm cost exactly the budget |
+| F186 | nothing was ever solved | every arm byte-identical |
+| F187 | the interpreter's own accuracy | best fit 0.924 under a 0.95 target |
+
+Each cost a round of runs to diagnose by hand, and each was found only
+because something looked impossible — identical numbers, or a cost that
+equalled the budget exactly.
+
+**The general form.** The search scores candidates WITH the
+interpreter, so the interpreter's own per-slot accuracy is an upper
+bound on any candidate's fit. If that ceiling sits below
+`--fit-target`, no program can be accepted however correct it is, and
+every arm fails for a reason that has nothing to do with the arm.
+
+It is one evaluation to compute. The report now carries:
+
+    fit_ceiling        interpreter accuracy on unseen programs
+    fit_target         the acceptance threshold
+    measurement_valid  ceiling >= target
+    void_reason        stated in words when it is not
+
+Verified firing: at 2,000 updates it reports `fit_ceiling 0.4178`,
+`measurement_valid False`, and the reason. A three-iteration hand
+diagnosis becomes a field.
+
+**This is the third instrument of its kind and they now form a set**,
+each catching a different way a measurement can be uninformative:
+
+* **byte-identical output** — a parameter is not reaching the code, or
+  two things are secretly one thing. Caught the collapsed codebook
+  (F146), the attainable-fit bound being the coverage filter (F163),
+  the modulus non-fix (F166), the unapplied cap (F174), and a patch
+  that silently failed to apply.
+* **a positive control of known size** — `cover` at 0.879/0.812 says
+  whether the regime can detect anything at all (F172).
+* **the ceiling gate** — whether the acceptance threshold is reachable
+  by the executor at all.
+
+The common principle, worth stating once: **an experiment needs at
+least one quantity whose expected value is known in advance.** Every
+null retracted this session failed that test, and every instrument
+above is a different way of supplying one.

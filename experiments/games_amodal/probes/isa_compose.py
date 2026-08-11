@@ -510,6 +510,32 @@ report = {
     "identity_baseline_slots": round(copy_hits / (copy_rows * SLOTS), 4),
     "curve": curve,
 }
+# THE CEILING GATE. Three times now a measurement has been void
+# because a component other than the one under test was the binding
+# constraint: F168 (searches saturate, so cost is the budget), F186
+# (nothing is solved, so nothing is stored), F187 (the interpreter
+# cannot reach the fit target, so nothing counts as solved). Each cost
+# a round of runs to find by hand.
+#
+# The interpreter's own per-slot accuracy is an UPPER BOUND on any
+# search's fit, because the search scores candidates with it. If that
+# ceiling sits below --fit-target then no program can ever be accepted,
+# however correct it is, and every arm will read as failing for a
+# reason that has nothing to do with the arm. Computing it costs one
+# evaluation and turns a three-iteration hand diagnosis into a field in
+# the report.
+ceiling_gen = torch.Generator().manual_seed(args.seed * 6151)
+ceiling_programs = [random_program(ceiling_gen, args.program_len)
+                    for _ in range(16)]
+report["fit_ceiling"] = evaluate(
+    ceiling_programs, "ceiling")["ceiling_slots"]
+report["fit_target"] = args.fit_target
+report["measurement_valid"] = report["fit_ceiling"] >= args.fit_target
+if not report["measurement_valid"]:
+    report["void_reason"] = (
+        f"interpreter ceiling {report['fit_ceiling']} is below "
+        f"--fit-target {args.fit_target}: no program can be accepted, "
+        f"so every arm fails for a reason unrelated to the arm")
 report.update(evaluate(held, "held_out_programs"))
 report.update(evaluate(longer, "double_length_programs"))
 
