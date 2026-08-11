@@ -8935,3 +8935,68 @@ and the gated families included.
 (4) is the control that matters: the identity floor is computed from
 the task and not from the basis, so if it shifts, something is wrong
 with the comparison rather than with the basis.
+
+## F179 — expressibility bought COST, not accuracy; and cheap search
+## converges to its own stopping threshold
+
+The end-to-end re-derivation, four seeds, paired old basis against
+saturating basis, `walled` and gated families included.
+
+| family | old held-out | saturating | delta | prediction |
+| --- | ---: | ---: | ---: | --- |
+| line | 0.9717 | **1.0000** | +0.0283 | P1 |
+| grid | 0.9668 | 0.9922 | +0.0254 | P1 |
+| walled | 0.9141 | 0.9395 | +0.0254 | P3 |
+| gate0 | 0.9847 | 1.0000 | +0.0153 | |
+| dial | 0.9954 | 0.9925 | -0.0029 | P2 |
+| perm | 1.0000 | 1.0000 | 0.0000 | P2 |
+| **toggle** | 0.9551 | **0.9128** | **-0.0423** | P2 |
+| MEAN | 0.9732 | 0.9790 | +0.0058 | |
+
+**P4, the control, is exact.** The identity floor moved by 0.000000 —
+it depends on the families and not on the basis, so the comparison is
+sound. 40/40 above floor in both arms.
+
+**P1 confirmed.** `line` reaches exactly 1.0000 and `grid` 0.9922, the
+two families whose every action became a single exact instruction.
+
+**P3 confirmed, and it pins F92.** `walled` rises by the same +0.0254
+as `grid` and stops at 0.9395 while the rest sit near 0.98. It gets
+the movement and not the wall. The wall is the residue, and it is the
+only thing in this benchmark the basis genuinely cannot express.
+
+**P2 FAILED on `toggle`, consistently: -0.0423 across all four seeds.**
+I recorded in advance that a P2 failure would mean the wider
+instruction set had swamped the benefit. That reading is wrong, and the
+data says why:
+
+| | seed 1 | seed 2 | seed 3 | seed 4 |
+| --- | ---: | ---: | ---: | ---: |
+| toggle search fit, old basis | 0.9802 | 0.9732 | 0.9929 | 0.9833 |
+| toggle search fit, saturating | 0.9546 | 0.9572 | 0.9564 | 0.9516 |
+
+Every saturating value sits in 0.9516-0.9572, just above the
+`--fit-target` of 0.95. That is not degradation, it is **the search
+stopping the moment it clears its threshold**. On the old basis toggle
+had to search thousands of candidates, and a long search keeps
+improving on its best, so it OVERSHOT the target and landed at 0.98.
+Now enumeration clears 0.95 in a couple of dozen candidates and stops
+there.
+
+**So the fit-target is now the binding constraint on quality, and it
+was not before.** That is a consequence of success and it is invisible
+in the aggregate: mean held-out still rose. It also means the headline
+comparison in F178 — "cheaper AND better" — is only true on average.
+Families that used to overshoot now settle.
+
+**The distinction worth keeping.** Adding saturating arithmetic bought
+a 13x reduction in search cost (F178) and +0.0058 in accuracy. Those
+are not the same size and it would be easy to report the first and
+imply the second. The basis was never badly wrong about WHAT these
+families do — the old one approximated them to 0.973 — it was wrong
+about how expensive it is to find out.
+
+Fix is one line and one measurement: raise `--fit-target`, or spend the
+recovered budget continuing to improve after the threshold rather than
+stopping. Cheap search makes a stricter target affordable for the first
+time, which is the more interesting version.
