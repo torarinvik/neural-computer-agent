@@ -9,6 +9,15 @@ The continual-learning specialization of this architecture is defined in
 transition structure, while behavior is derived by opaque model search rather
 than stored as a task policy.
 
+## Evidence provenance
+
+References to the exported games session are architectural provenance and
+hypothesis sources, not independent evidence. Any quantitative or causal
+claim originating only in that export is **SINGLE-SOURCE, UNREPLICATED** until
+an in-repository rerun satisfies the experiment ladder and controls. A claim
+with repository evidence must point to its own `session_records/` report and
+must be scoped to that report's measured task family and controls.
+
 ## One-sentence definition
 
 The target is one modality-independent cognitive controller that consumes a

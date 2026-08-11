@@ -1,7 +1,10 @@
 # Policy-free continual learning architecture
 
-This is the architectural consequence of the latest continual-learning
-pressure tests and the exported games-session findings. The objective is not
+This is the architectural consequence of the latest in-repository
+continual-learning pressure tests and hypotheses extracted from the exported
+games session. The export is a single source; its quantitative results are
+**SINGLE-SOURCE, UNREPLICATED** unless an adjacent section cites an
+in-repository report and controls. The objective is not
 to preserve an arbitrary policy while it is continually rewritten. It is to
 learn reusable factual structure once, then derive behavior for each new goal
 at inference time:

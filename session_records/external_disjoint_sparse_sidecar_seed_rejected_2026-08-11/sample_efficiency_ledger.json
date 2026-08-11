@@ -1,0 +1,52 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment_id": "external-disjoint-sparse-sidecar-seed-rejected-2026-08-11",
+  "status": "diagnostic_rejected_single_seed",
+  "seed": 70411,
+  "source": "in_repository_run",
+  "hypothesis": "Seeding the sparse factual sidecar from verified source observations is sufficient for partial or noisy continuation identity.",
+  "unique_verifier_bits": {
+    "source_and_target_lifetimes_per_regime": 14,
+    "stressed_continuation_rows_observed": {
+      "partial": {"source_a": 6, "source_b": 7, "target_c": 5, "target_d": 7},
+      "random_missingness": {"source_a": 7, "source_b": 7, "target_c": 7, "target_d": 7},
+      "partial_noisy": {"source_a": 6, "source_b": 7, "target_c": 5, "target_d": 7}
+    }
+  },
+  "optimizer_updates": {
+    "controller": 0,
+    "context_encoder": 400,
+    "old_slots_during_target_adaptation": 0
+  },
+  "replayed_examples": {
+    "old_regime_during_target_adaptation": 0,
+    "raw_replayed_examples": 0
+  },
+  "wall_time_seconds": {
+    "clean": 5.0168,
+    "partial": 3.8304,
+    "random_missingness": 4.1842,
+    "noise": 4.6878,
+    "partial_noise": 4.1045
+  },
+  "retention_on_mastered_primitives": {
+    "clean": true,
+    "partial": false,
+    "random_missingness": false,
+    "noise": false,
+    "partial_noise": false
+  },
+  "stable_bits_to_threshold": null,
+  "transfer_ratio_against_fresh_learner": null,
+  "controls": {
+    "clean_control": true,
+    "partial_evidence": true,
+    "random_missingness": true,
+    "stream_noise": true,
+    "controller_frozen": true,
+    "old_slot_byte_stability": true,
+    "wrong_context_factual_control": true,
+    "exact_persistence": true
+  },
+  "claim_boundary": "Single-seed diagnostic rejection of sparse-sidecar initialization as a sufficient open-set identity mechanism; not a general continual-learning claim."
+}

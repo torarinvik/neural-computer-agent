@@ -441,6 +441,13 @@ from .promotion import (
     sha256_files,
     write_promotion_record,
 )
+from .recipe_basis import (
+    RECIPE_BASIS_SCHEMA,
+    ExpressibilityResult,
+    RecipeBasis,
+    RecipeInstruction,
+    paired_increment_target,
+)
 from .register import (
     EXTERNAL_REGISTER_BASIS_ARTIFACT_SCHEMA,
     EXTERNAL_REGISTER_BASIS_SCHEMA,
@@ -894,6 +901,7 @@ __all__ = [
     "POLICY_FREE_RUNTIME_SCHEMA",
     "PROGRAM_MUTATION_OPERATORS",
     "PROMOTION_SCHEMA",
+    "RECIPE_BASIS_SCHEMA",
     "REPRESENTATION_SPACE_SCHEMA",
     "RETENTION_LEDGER_SCHEMA",
     "AdaptiveOnlineEpisodicRelationReader",
@@ -947,6 +955,7 @@ __all__ = [
     "EventWaitPolicy",
     "EventWaitStatistics",
     "ExecutableArtifactMemory",
+    "ExpressibilityResult",
     "ExternalAffineTransitionStatistics",
     "ExternalBoundTransitionModel",
     "ExternalCapabilityComposition",
@@ -1190,6 +1199,8 @@ __all__ = [
     "PromotionEvidence",
     "PromotionGate",
     "PromotionRejected",
+    "RecipeBasis",
+    "RecipeInstruction",
     "RetentionGateDecision",
     "RetentionPolicyConfig",
     "RuntimeMigrationExample",
@@ -1216,6 +1227,7 @@ __all__ = [
     "paired_counterfactual_policy_loss",
     "paired_counterfactual_ranking_loss",
     "paired_event_credit_loss",
+    "paired_increment_target",
     "project_gradient_against_reference",
     "project_parameter_update_against_reference",
     "read_promotion_record",

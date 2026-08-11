@@ -2,12 +2,25 @@
 
 Source: `/Users/torarinvikbjarko/Downloads/session-export-1786446043922`.
 
+## Evidence status
+
+All quantitative results and causal conclusions reported by the exported
+session are **SINGLE-SOURCE, UNREPLICATED** until an equivalent experiment has
+been rerun in this repository with the required controls. This document is a
+source-provenance record and hypothesis catalogue, not a promotion ledger.
+Repository experiments may validate a mechanism inspired by the export, but
+they do not retroactively validate the export's numbers.
+
 This is a distilled research record, not a promotion report. The session
 worked in a games-focused clone of the project and repeatedly compared a
 frozen plant against external task entries. Its most useful conclusions for
 the canonical amodal architecture are below.
 
-## What transferred
+## What transferred as hypotheses
+
+The following are architectural hypotheses and design lessons extracted from
+the export. Their exported empirical support remains **SINGLE-SOURCE,
+UNREPLICATED**.
 
 - The right abstraction is a fixed controller/plant that consumes an external
   entry, not one controller or one policy per game. A keypress decoder is only
@@ -31,9 +44,9 @@ the canonical amodal architecture are below.
   arithmetic task reproduced the games reader's polarity question in minutes,
   making it possible to separate reader capacity from sparse game data.
 
-## The strongest positive result
+## Export-reported positive result — SINGLE-SOURCE, UNREPLICATED
 
-The games session found a more important storage rule than ordinary
+The games session reported a more important storage rule than ordinary
 consolidation: store a factual transition model and derive actions by search;
 do not store a task policy. Policies are preferential and become contradictory
 when the task changes. A transition model is factual and can be incomplete
@@ -53,9 +66,10 @@ This is the best foundation for our controller-as-CPU analogy. The bank may
 grow, while the controller executes a stable vocabulary of operations and the
 planner derives behavior from facts rather than accumulating stale habits.
 
-## The most reusable computation principle
+## Export-reported computation principle — SINGLE-SOURCE, UNREPLICATED
 
-Three independent findings support one rule:
+Three findings within the export support one rule; they are not independent
+replications across this repository:
 
 > Do context-dependent work once, then iterate something fixed.
 
@@ -97,7 +111,7 @@ Context diversity or randomized context-to-behavior bindings are more
 promising ways to prevent default absorption than simply increasing an
 ignorance weight.
 
-## What failed or was corrected
+## Export-reported failures and corrections — SINGLE-SOURCE, UNREPLICATED
 
 - Semi-amortized entry refinement and a discrete codebook were nulls at
   matched two-seed budgets. They should not be treated as improvements merely
@@ -159,7 +173,7 @@ ignorance weight.
 
 ## Current implication for this repository
 
-The canonical repo already has the bind-once operator ABI and durable external
+The canonical repo independently has the bind-once operator ABI and durable external
 file payloads. The new read-adapter diagnostic remains rejected because the
 current generated-composition target can solve without the file. The export
 supports the same next move, with one refinement: the target must require both
@@ -173,7 +187,8 @@ a minimal opaque transition family in which:
 5. the report includes the full held-out learning curve and retention.
 
 This should be treated as a capability-boundary experiment, not yet a claim of
-general continual learning. The export's strongest result is a design guide:
+general continual learning. The export's strongest result is therefore a
+design guide, not a validated result in this repository:
 fixed computation plus growing factual external state is promising, but only
 when causal memory use, cross-family structure, and long-horizon execution are
 all measured separately.
