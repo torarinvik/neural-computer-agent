@@ -7450,3 +7450,59 @@ is what was predicted. And this is execution plus search, not reading:
 no reader infers a recipe from observations, it is found by trying.
 
 Probe 253 is `isa_compose.py --synthesize 3000`, 2 seeds.
+
+**F156 (probe 254). The transfer matrix: the scrambled control comes
+back NEGATIVE, which validates the whole measurement — and the top
+donor is CHAOS, a family with no rule at all.** 13 families x 13
+targets, 2 seeds, plant trained on one source then FROZEN with only a
+bank entry fitted per target.
+
+Donor strength (mean advantage given to OTHER families, over an
+untrained plant):
+
+| source | donor | seeds |
+| --- | ---: | --- |
+| **chaos** | **+0.4883** | +0.4301 / +0.5465 |
+| walled | +0.4335 | +0.4058 / +0.4613 |
+| dial | +0.4215 | +0.3978 / +0.4453 |
+| grid | +0.4201 | +0.3947 / +0.4455 |
+| perm | +0.2680 | +0.2481 / +0.2879 |
+| line | +0.0896 | +0.0934 / +0.0858 |
+| toggle | +0.0874 | +0.1067 / +0.0682 |
+| **scrambled (CONTROL)** | **-0.1741** | -0.1398 / -0.2085 |
+
+**The control is the most important row.** Training on a
+schema-DESTROYED family does not merely fail to help, it actively
+HURTS by -0.17 on both seeds. So the matrix is measuring transferable
+structure and not warm-started weights, and every positive row means
+something. Had scrambled landed near the good donors the whole
+exercise would have been void.
+
+**A confound I checked before believing the ranking, and it is
+partly real.** Donor strength correlates -0.452 with the source's SLOT
+COUNT — narrow families donate more — and +0.285 with state count. The
+two weakest donors are `line` (1 slot) and `toggle` (6 slots), and the
+strongest are 2-slot families. So part of this ranking is structural
+overlap with the target pool rather than "general skill", and the
+donor ranking should NOT yet be read as a curriculum. A clean version
+needs targets matched for slot count, or donor scores computed only
+over targets of a different width.
+
+**Chaos being the top donor is the finding worth chasing.** Chaos is a
+random permutation table — it has NO rule to learn. A plant trained on
+it cannot succeed by internalising dynamics, so the only thing it can
+learn is to READ the entry, which is precisely the general skill this
+project wants and has been installing by hand via the ignorance
+objective (F107). If that reading survives the slot-count control, it
+says something practical: **the highest-ROI pre-training task may be
+one with no learnable rule at all**, because it forbids the shortcut
+the ignorance objective exists to penalise.
+
+Note the tension with the scrambled control, which is ALSO rule-less
+and yet harmful. The difference between them is a real question rather
+than a contradiction: `chaos` is a 64-state, 2-slot table drawn once;
+`scrambled` destroys a specific family's schema while keeping its
+shape. Whatever distinguishes them is the actual mechanism, and it is
+not yet known.
+
+Probe 254 is `transfer_matrix.py`, 13 families, 2 seeds.
