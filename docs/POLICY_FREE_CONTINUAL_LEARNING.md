@@ -1006,6 +1006,20 @@ schedule, but still requires a larger held-out family stream to demonstrate
 that predicted costs improve acquisition rather than merely producing a valid
 receipt.
 
+The canonical online harness exposes this as `--learned-prior-selection-cost`.
+Its promotion transaction submits one normalized verifier/accounting cost only
+after the target passes; the seed-91 smoke test recovered the target, passed
+the goal gate, and persisted an observed cost receipt. This validates wiring,
+not an acquisition improvement.
+
+The three-seed smoke (`91–93`) is intentionally not promoted: `1/3` reached
+verified promotion and committed one cost observation; seeds `92` and `93`
+were rejected upstream by candidate retention/held-out gates before the ledger
+could learn. The complete control ledger is
+`session_records/online_learned_cost_smoke_2026-08-11/sample_efficiency_ledger.json`.
+This isolates the next bottleneck as stable, evidence-driven target discovery
+and promotion rather than cost-model persistence.
+
 ## Canonical external computation runtime seam (2026-08-10)
 
 The CPU-plus-files architecture now has a first-class execution boundary.

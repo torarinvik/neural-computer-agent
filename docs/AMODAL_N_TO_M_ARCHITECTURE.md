@@ -9043,3 +9043,8 @@ transition rows once, replayed no examples, and performed no optimizer updates.
 This is a bounded online-discovery result, not general continual learning or
 universal warm-over-fresh transfer. The complete ledger is
 `session_records/online_goal_conditioned_discovery_2026-08-11/sample_efficiency_ledger.json`.
+
+An opt-in three-seed learned-cost smoke reached the complete gate on `1/3`
+seeds. The other two were rejected before any cost observation, so this does
+not promote learned acquisition economics; it identifies stable target
+discovery and promotion as the next architectural pressure.

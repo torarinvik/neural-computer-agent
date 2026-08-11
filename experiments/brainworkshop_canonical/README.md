@@ -378,3 +378,11 @@ retention, target goal admission/use, and the matched fresh-goal challenger
 with a cost-aware prior receipt; the other fifteen were rejected by the
 complete gate. The ledger is in
 `session_records/online_goal_conditioned_discovery_2026-08-11/sample_efficiency_ledger.json`.
+
+To exercise the replaceable memory-side acquisition policy instead of static
+caller costs, add `--learned-prior-selection-cost`. The router then persists a
+shared opaque cost ledger and updates it only after verified promotion; this is
+a wiring/control mode until held-out multi-family acquisition shows a gain.
+The current seed-91–93 smoke passed `1/3`; the two rejected runs failed before
+ledger observation, so target discovery/promotion stability remains the active
+bottleneck.

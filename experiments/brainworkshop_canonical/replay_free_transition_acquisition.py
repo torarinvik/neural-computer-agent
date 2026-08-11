@@ -30,6 +30,7 @@ from neural_computer import (
     ExternalModelBasedPlanner,
     ExternalOnlineTransitionContextResult,
     ExternalOnlineTransitionContextRouter,
+    ExternalRoutedIntentionCostLedger,
     ExternalTransitionContextEncoder,
     ExternalTransitionModelBank,
     ExternalTransitionObservation,
@@ -143,6 +144,8 @@ class OnlineTransitionDiscoveryReport:
     target_goal_horizon: int = 0
     target_goal_missing_evidence_rejected: bool = False
     prior_selection_cost_aware: bool = False
+    prior_selection_cost_ledger_used: bool = False
+    prior_selection_cost_observed: bool = False
 
     def payload(self) -> dict[str, object]:
         return asdict(self)
@@ -646,6 +649,10 @@ def run_online_transition_discovery_audit(
     prior_selection_transfer_cost: float = 0.0,
     prior_selection_fresh_cost: float = 0.0,
     prior_selection_cost_weight: float = 0.0,
+    learned_prior_selection_cost: bool = False,
+    prior_selection_cost_learning_rate: float = 0.35,
+    prior_selection_cost_initial: float = 0.25,
+    prior_selection_cost_decision_weight: float = 1.0,
 ) -> OnlineTransitionDiscoveryReport:
     """Discover and learn a novel rendered family without replay or a task label.
 
@@ -682,6 +689,8 @@ def run_online_transition_discovery_audit(
         raise ValueError("online transition affine ridge must be finite and positive")
     if not isinstance(goal_conditioned, bool):
         raise TypeError("online goal-conditioned flag must be boolean")
+    if not isinstance(learned_prior_selection_cost, bool):
+        raise TypeError("learned prior-selection cost flag must be boolean")
     if goal_horizon < 1 or goal_horizon > steps - 1:
         raise ValueError("online goal horizon must fit held-out transitions")
     if goal_verifier_threshold <= 0.0 or not math.isfinite(
@@ -700,6 +709,23 @@ def run_online_transition_discovery_audit(
             or float(value) < 0.0
         ):
             raise ValueError(f"{name} must be finite and non-negative")
+    for name, value in (
+        ("prior_selection_cost_learning_rate", prior_selection_cost_learning_rate),
+        ("prior_selection_cost_initial", prior_selection_cost_initial),
+        ("prior_selection_cost_decision_weight", prior_selection_cost_decision_weight),
+    ):
+        if (
+            not isinstance(value, (float, int))
+            or isinstance(value, bool)
+            or not math.isfinite(float(value))
+            or float(value) < 0.0
+        ):
+            raise ValueError(f"{name} must be finite and non-negative")
+    if learned_prior_selection_cost and any(
+        float(value) != 0.0
+        for value in (prior_selection_transfer_cost, prior_selection_fresh_cost)
+    ):
+        raise ValueError("learned prior-selection cost cannot mix with static costs")
     agent = CanonicalBrainWorkshopAgent(
         symbol_count=8,
         event_width=4,
@@ -788,6 +814,16 @@ def run_online_transition_discovery_audit(
         context_width=bank.context_width,
         aggregation=context_aggregation,
     )
+    prior_cost_ledger = (
+        ExternalRoutedIntentionCostLedger.create(
+            bank.context_width,
+            learning_rate=prior_selection_cost_learning_rate,
+            initial_cost=prior_selection_cost_initial,
+            decision_weight=prior_selection_cost_decision_weight,
+        )
+        if learned_prior_selection_cost
+        else None
+    )
     router = ExternalOnlineTransitionContextRouter(
         bank,
         context_encoder,
@@ -814,6 +850,7 @@ def run_online_transition_discovery_audit(
         prior_selection_transfer_cost=prior_selection_transfer_cost,
         prior_selection_fresh_cost=prior_selection_fresh_cost,
         prior_selection_cost_weight=prior_selection_cost_weight,
+        prior_selection_cost_ledger=prior_cost_ledger,
     )
 
     # Acquire the target while still behaving through the known source slot.
@@ -912,6 +949,10 @@ def run_online_transition_discovery_audit(
             window_gain=window_gain,
             recency_decay=recency_decay,
             context_aggregation=context_aggregation,
+            goal_conditioned=goal_conditioned,
+            target_goal_horizon=goal_horizon if goal_conditioned else 0,
+            prior_selection_cost_aware=prior_selection_cost_aware,
+            prior_selection_cost_ledger_used=prior_cost_ledger is not None,
         )
 
     candidate_context = router.provisional_context_at(0)
@@ -990,6 +1031,15 @@ def run_online_transition_discovery_audit(
         rollout_error_tolerance=0.2,
         additional_heldout_observations=tuple(promotion_observations[1:]),
         additional_heldout_rollouts=tuple(promotion_holdouts[1:]),
+        prior_selection_observed_cost=(
+            min(
+                1.0,
+                float(len(promotion_holdouts) * steps)
+                / float(max(1, unique_bits)),
+            )
+            if prior_cost_ledger is not None
+            else None
+        ),
     )
     source_error_after = planner.rollout_error(
         source_heldout,
@@ -1042,6 +1092,10 @@ def run_online_transition_discovery_audit(
             window_gain=window_gain,
             recency_decay=recency_decay,
             context_aggregation=context_aggregation,
+            goal_conditioned=goal_conditioned,
+            target_goal_horizon=goal_horizon if goal_conditioned else 0,
+            prior_selection_cost_aware=prior_selection_cost_aware,
+            prior_selection_cost_ledger_used=prior_cost_ledger is not None,
         )
 
     target_context = bank.context_at(promotion.slot_index)
@@ -1213,6 +1267,10 @@ def run_online_transition_discovery_audit(
             )
             or prior_selection_cost_aware
         )
+        and (
+            not learned_prior_selection_cost
+            or promotion.prior_selection_cost_observation is not None
+        )
     )
     return OnlineTransitionDiscoveryReport(
         schema=(
@@ -1270,6 +1328,10 @@ def run_online_transition_discovery_audit(
         target_goal_horizon=goal_horizon if goal_conditioned else 0,
         target_goal_missing_evidence_rejected=goal_missing_rejected,
         prior_selection_cost_aware=prior_selection_cost_aware,
+        prior_selection_cost_ledger_used=prior_cost_ledger is not None,
+        prior_selection_cost_observed=(
+            promotion.prior_selection_cost_observation is not None
+        ),
     )
 
 
@@ -1299,6 +1361,12 @@ def main() -> None:
     parser.add_argument("--prior-selection-transfer-cost", type=float, default=0.0)
     parser.add_argument("--prior-selection-fresh-cost", type=float, default=0.0)
     parser.add_argument("--prior-selection-cost-weight", type=float, default=0.0)
+    parser.add_argument("--learned-prior-selection-cost", action="store_true")
+    parser.add_argument("--prior-selection-cost-learning-rate", type=float, default=0.35)
+    parser.add_argument("--prior-selection-cost-initial", type=float, default=0.25)
+    parser.add_argument(
+        "--prior-selection-cost-decision-weight", type=float, default=1.0
+    )
     parser.add_argument("--steps", type=int, default=6)
     args = parser.parse_args()
     if args.audit == "nonstationary":
@@ -1324,6 +1392,10 @@ def main() -> None:
             prior_selection_transfer_cost=args.prior_selection_transfer_cost,
             prior_selection_fresh_cost=args.prior_selection_fresh_cost,
             prior_selection_cost_weight=args.prior_selection_cost_weight,
+            learned_prior_selection_cost=args.learned_prior_selection_cost,
+            prior_selection_cost_learning_rate=args.prior_selection_cost_learning_rate,
+            prior_selection_cost_initial=args.prior_selection_cost_initial,
+            prior_selection_cost_decision_weight=args.prior_selection_cost_decision_weight,
         )
     else:
         report = run_replay_free_transition_acquisition_audit(

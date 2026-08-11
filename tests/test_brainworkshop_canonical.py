@@ -283,6 +283,34 @@ def test_recency_window_transition_discovery_is_an_explicit_transfer_mode() -> N
     assert report.replayed_examples == 0
 
 
+def test_online_transition_discovery_can_learn_external_selection_cost() -> None:
+    report = run_online_transition_discovery_audit(
+        seed=91,
+        window_statistics="recency_weighted_and_latest_v1",
+        window_gain=0.05,
+        goal_conditioned=True,
+        learned_prior_selection_cost=True,
+    )
+
+    assert report.status == "online_replay_free_transition_discovery_boundary"
+    assert report.prior_selection_cost_ledger_used
+    assert report.prior_selection_cost_observed
+    assert report.prior_selection_cost_aware
+
+    rejected = run_online_transition_discovery_audit(
+        seed=92,
+        window_statistics="recency_weighted_and_latest_v1",
+        window_gain=0.05,
+        goal_conditioned=True,
+        learned_prior_selection_cost=True,
+    )
+    assert rejected.status.endswith("_failed")
+    assert rejected.goal_conditioned
+    assert rejected.target_goal_horizon == 2
+    assert rejected.prior_selection_cost_ledger_used
+    assert not rejected.prior_selection_cost_observed
+
+
 def test_transition_discovery_firewall_skips_committed_slot_updates() -> None:
     class RouterProbe:
         def __init__(self) -> None:
