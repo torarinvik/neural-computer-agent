@@ -7210,3 +7210,50 @@ head plus terminal bootstrap) remains unbuilt, and on this evidence
 its expected value is low.
 
 Probe 250 is `game_slots.py --score terminal`, 3 seeds.
+
+**A domain-specificity error caught before it entered the ledger
+(2026-08-11).** Building the instruction-set plant from
+LITERATURE.md §23, my first version gave the plant a BITWISE basis —
+AND, OR, XOR, NOT, shift over 8-bit words. It smoke-tested fine and
+was one launch from producing numbers.
+
+It was the wrong machine. A bitwise instruction set produces a
+bit-manipulation specialist: a plant that could never touch the games,
+in a project whose entire premise is ONE amodal controller with
+domain-specific content pushed out to the bank. "Solve it with a
+substrate tailored to the problem" is precisely the failure this
+architecture exists to avoid, and I had reintroduced it while trying
+to generalise the architecture.
+
+**The fix, and why it is the right substrate.** The basis is now the
+procedural operations `schema_families.py` already uses — NOOP, INC,
+DEC, CINC, CDEC, COPY, SWAP over SLOTS x VALUES — promoted from "how
+we generate rule families" to "what the plant executes". That
+interface is domain-general by construction and not by assertion: the
+SAME six-slot, eight-value state already carries both the procedural
+rule families (F71 onward) and the grid games (F102 onward, avatar and
+object coordinates). An instruction set over it must serve a
+dial-turning family and a foraging grid with the same instructions,
+because both are already written in those slots.
+
+Design points recorded while building it:
+
+  * **Conditionals are what make it a basis.** Without CINC/CDEC every
+    program is a fixed permutation of the state and the plant need
+    never branch on content. `--no-conditionals` is the control that
+    separates "learned to sequence" from "learned to branch".
+  * **The floor is the IDENTITY, not uniform chance.** Most
+    instructions touch one slot, so copying the input unchanged scores
+    0.4412 against a uniform 0.1250. Scoring against 0.125 would have
+    made a do-nothing model look like a large success — the same class
+    of error as F104's inversion-invariant policies and F145's
+    baseline discipline. The probe reports both.
+  * **Programs are SUPPLIED, not inferred.** Whether a reader can
+    infer a program from observations is the next question and
+    deliberately excluded; mixing execution with inference is how F117
+    lost three arms.
+
+The general lesson, which is worth more than the probe: when
+generalising an architecture, check that the generalisation is not
+just a NEW specialisation. The bitwise version would have produced
+real numbers on a real capability and taught us nothing transferable.
