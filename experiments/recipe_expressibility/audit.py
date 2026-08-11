@@ -383,24 +383,34 @@ def evaluate_parallel_target(
 
 
 @torch.no_grad()
-def evaluate_single_modulus_target(
+def evaluate_arithmetic_target(
     model: LearnedRecipeInterpreter,
     *,
     seed: int,
+    operation: str,
     target_slot: int,
     instruction_modulus: int | None = None,
+    condition_slot: int | None = None,
     slot_values: tuple[int, ...] = SLOT_VALUES,
     randomize_domains: bool = True,
     batch_size: int = 128,
     batches: int = 8,
 ) -> float:
-    """Evaluate one opaque increment target without parallel composition."""
+    """Evaluate one opaque arithmetic target without parallel composition."""
 
+    if operation not in {"inc", "dec", "cinc", "cdec"}:
+        raise ValueError("unsupported arithmetic probe operation")
+    if operation in {"cinc", "cdec"}:
+        if condition_slot is None or condition_slot == target_slot:
+            raise ValueError("conditional arithmetic needs a distinct condition slot")
+    elif condition_slot is not None:
+        raise ValueError("unconditional arithmetic cannot have a condition slot")
     generator = torch.Generator().manual_seed(seed)
     modulus = slot_values[target_slot]
     instruction = RecipeInstruction(
-        "inc",
+        operation,  # type: ignore[arg-type]
         target_slot,
+        condition_slot,
         modulus=modulus if instruction_modulus is None else instruction_modulus,
     )
     features = instruction_features(instruction).view(1, 1, -1)
@@ -417,12 +427,49 @@ def evaluate_single_modulus_target(
             slot_values=row_slot_values,
         )
         targets = initial.clone()
-        targets[:, target_slot] = (
-            targets[:, target_slot] + 1
+        if operation in {"inc", "cinc"}:
+            delta = 1
+        else:
+            delta = -1
+        if operation in {"cinc", "cdec"}:
+            assert condition_slot is not None
+            active = initial[:, condition_slot] != 0
+        else:
+            active = torch.ones(batch_size, dtype=torch.bool)
+        updated = targets[:, target_slot].clone()
+        updated[active] = (
+            updated[active] + delta
         ) % row_slot_values[target_slot]
+        targets[:, target_slot] = updated
         output = model(initial, features.expand(batch_size, -1, -1))[-1]
         scores.append(float(output.argmax(-1).eq(targets).all(-1).float().mean()))
     return sum(scores) / len(scores)
+
+
+def evaluate_single_modulus_target(
+    model: LearnedRecipeInterpreter,
+    *,
+    seed: int,
+    target_slot: int,
+    instruction_modulus: int | None = None,
+    slot_values: tuple[int, ...] = SLOT_VALUES,
+    randomize_domains: bool = True,
+    batch_size: int = 128,
+    batches: int = 8,
+) -> float:
+    """Evaluate one opaque increment target without parallel composition."""
+
+    return evaluate_arithmetic_target(
+        model,
+        seed=seed,
+        operation="inc",
+        target_slot=target_slot,
+        instruction_modulus=instruction_modulus,
+        slot_values=slot_values,
+        randomize_domains=randomize_domains,
+        batch_size=batch_size,
+        batches=batches,
+    )
 
 
 def train_arm(
@@ -505,6 +552,64 @@ def train_arm(
                         slot_values=slot_values,
                         randomize_domains=randomize_domains,
                     ),
+                    "dec_target_m2": evaluate_arithmetic_target(
+                        model,
+                        seed=seed + 80_000 + update,
+                        operation="dec",
+                        target_slot=0,
+                        slot_values=slot_values,
+                        randomize_domains=randomize_domains,
+                        batches=4,
+                    ),
+                    "dec_target_m8": evaluate_arithmetic_target(
+                        model,
+                        seed=seed + 90_000 + update,
+                        operation="dec",
+                        target_slot=2,
+                        slot_values=slot_values,
+                        randomize_domains=randomize_domains,
+                        batches=4,
+                    ),
+                    "cinc_target_m2": evaluate_arithmetic_target(
+                        model,
+                        seed=seed + 100_000 + update,
+                        operation="cinc",
+                        target_slot=0,
+                        condition_slot=1,
+                        slot_values=slot_values,
+                        randomize_domains=randomize_domains,
+                        batches=4,
+                    ),
+                    "cinc_target_m8": evaluate_arithmetic_target(
+                        model,
+                        seed=seed + 110_000 + update,
+                        operation="cinc",
+                        target_slot=2,
+                        condition_slot=3,
+                        slot_values=slot_values,
+                        randomize_domains=randomize_domains,
+                        batches=4,
+                    ),
+                    "cdec_target_m2": evaluate_arithmetic_target(
+                        model,
+                        seed=seed + 120_000 + update,
+                        operation="cdec",
+                        target_slot=0,
+                        condition_slot=1,
+                        slot_values=slot_values,
+                        randomize_domains=randomize_domains,
+                        batches=4,
+                    ),
+                    "cdec_target_m8": evaluate_arithmetic_target(
+                        model,
+                        seed=seed + 130_000 + update,
+                        operation="cdec",
+                        target_slot=2,
+                        condition_slot=3,
+                        slot_values=slot_values,
+                        randomize_domains=randomize_domains,
+                        batches=4,
+                    ),
                 }
             )
     def stable_update(key: str, threshold: float = 0.9) -> int | None:
@@ -530,6 +635,12 @@ def train_arm(
                 "parallel_target",
                 "modulus_target_m2",
                 "modulus_target_m8",
+                "dec_target_m2",
+                "dec_target_m8",
+                "cinc_target_m2",
+                "cinc_target_m8",
+                "cdec_target_m2",
+                "cdec_target_m8",
             )
         },
         "accounting": {

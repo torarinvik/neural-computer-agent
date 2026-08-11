@@ -1,0 +1,73 @@
+{
+  "schema": "neural-computer.recipe-expressibility-audit.v3-arithmetic-summary",
+  "source": "in_repository_run",
+  "seeds": [70421, 70422],
+  "updates": 1500,
+  "batch_size": 64,
+  "randomized_slot_domains": true,
+  "slot_domain_multiset": [2, 2, 8, 8, 8, 8],
+  "stable_updates_at_0_9": {
+    "seed70421_atomic": {
+      "inc_m2": 300,
+      "inc_m8": 300,
+      "dec_m2": 300,
+      "dec_m8": 300,
+      "cinc_m2": 300,
+      "cinc_m8": 1200,
+      "cdec_m2": 1500,
+      "cdec_m8": 1200
+    },
+    "seed70421_parallel": {
+      "inc_m2": 300,
+      "inc_m8": 300,
+      "dec_m2": 300,
+      "dec_m8": 300,
+      "cinc_m2": 300,
+      "cinc_m8": 600,
+      "cdec_m2": 600,
+      "cdec_m8": 600
+    },
+    "seed70422_atomic": {
+      "inc_m2": 300,
+      "inc_m8": 300,
+      "dec_m2": 300,
+      "dec_m8": 300,
+      "cinc_m2": 600,
+      "cinc_m8": 1500,
+      "cdec_m2": 600,
+      "cdec_m8": 300
+    },
+    "seed70422_parallel": {
+      "inc_m2": 300,
+      "inc_m8": 300,
+      "dec_m2": 300,
+      "dec_m8": 300,
+      "cinc_m2": 600,
+      "cinc_m8": 600,
+      "cdec_m2": 300,
+      "cdec_m8": 600
+    }
+  },
+  "final_wrong_m8_on_m2_scores": {
+    "seed70421_atomic": 0.4765625,
+    "seed70421_parallel": 0.4765625,
+    "seed70422_atomic": 0.5107421875,
+    "seed70422_parallel": 0.51171875
+  },
+  "final_correct_probe_minimum": 0.943359375,
+  "accounting": {
+    "unique_program_steps_per_arm": 192000,
+    "replayed_examples_per_arm": 0,
+    "wall_time_seconds": {
+      "seed70421_atomic": 49.984770499984734,
+      "seed70421_parallel": 44.61158504197374,
+      "seed70422_atomic": 38.57486550009344,
+      "seed70422_parallel": 41.75945783290081
+    }
+  },
+  "parallel_target": {
+    "promoted_as_causal_composition": false,
+    "stable_parallel_arm_thresholds": {"seed70421": 900, "seed70422": 900}
+  },
+  "claim_boundary": "Promoted explicit modulus use across INC/DEC/CINC/CDEC; not general continual learning, arbitrary computation, unrestricted memory growth, or causal parallel-composition promotion."
+}

@@ -7,6 +7,7 @@ from experiments.recipe_expressibility.audit import (
     SLOT_VALUES,
     LearnedRecipeInterpreter,
     _sample_slot_values,
+    evaluate_arithmetic_target,
     evaluate_single_modulus_target,
     instruction_features,
     modulus_boundary,
@@ -111,3 +112,22 @@ def test_single_modulus_probe_uses_the_opaque_instruction_path() -> None:
     assert 0.0 <= score_m2 <= 1.0
     assert 0.0 <= score_m8 <= 1.0
     assert 0.0 <= wrong_score <= 1.0
+
+
+def test_arithmetic_generalization_probes_preserve_runtime_contract() -> None:
+    model = LearnedRecipeInterpreter(hidden=32)
+
+    scores = tuple(
+        evaluate_arithmetic_target(
+            model,
+            seed=20 + index,
+            operation=operation,
+            target_slot=0,
+            condition_slot=1 if operation.startswith("c") else None,
+            batches=1,
+            batch_size=4,
+        )
+        for index, operation in enumerate(("dec", "cinc", "cdec"))
+    )
+
+    assert all(0.0 <= score <= 1.0 for score in scores)

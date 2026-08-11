@@ -87,6 +87,23 @@ def test_arithmetic_rejects_a_hidden_global_modulus() -> None:
         )
 
 
+def test_all_arithmetic_variants_honor_the_explicit_modulus() -> None:
+    values = (2, 2, 8, 8, 8, 8)
+
+    assert RecipeInstruction("dec", 0, modulus=2).apply(
+        (0, 1, 3, 4, 5, 6), values=values
+    )[0] == 1
+    assert RecipeInstruction("cinc", 0, 1, modulus=2).apply(
+        (0, 1, 3, 4, 5, 6), values=values
+    )[0] == 1
+    assert RecipeInstruction("cinc", 0, 1, modulus=2).apply(
+        (0, 0, 3, 4, 5, 6), values=values
+    )[0] == 0
+    assert RecipeInstruction("cdec", 0, 1, modulus=2).apply(
+        (0, 1, 3, 4, 5, 6), values=values
+    )[0] == 1
+
+
 def test_modulus_is_observable_in_basis_candidates() -> None:
     basis = RecipeBasis(slot_values=(2, 2, 8, 8, 8, 8))
     candidates = basis.atomic_candidates()

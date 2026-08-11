@@ -124,3 +124,14 @@ learning. Evidence is archived in
 The earlier fixed-slot modulus record remains a valid execution result but is
 superseded as causal evidence by this randomized-domain control:
 `session_records/recipe_modulus_learned_narrow_promotion_2026-08-11/`.
+
+## Arithmetic-family promotion
+
+The follow-up two-seed, 1,500-update audit extends the randomized-domain
+control to all arithmetic forms: `INC`, `DEC`, `CINC`, and `CDEC`, each at
+`m=2` and `m=8`. All eight correct probes reach stable `>=0.9` execution in
+all four arms by the end of the rung. The wrong-`m=8` two-valued control still
+finishes near `0.5` in every arm. This promotes explicit modulus use across
+the arithmetic family, not merely one increment template. Evidence is
+archived in
+`session_records/recipe_arithmetic_family_causal_promotion_2026-08-11/`.
