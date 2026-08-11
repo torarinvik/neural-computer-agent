@@ -44,11 +44,38 @@ rung promotes, rejects, or qualifies. Ordered by severity.
        against 0.9781 for plain ones, so the hole it would fill is not
        there (F170).
 
-   Next: a third of families still cost MORE under enumeration than
-   under sampling, all of them ones whose recipe is longer than depth
-   2. Depth 3 is 27,000 candidates and cannot be enumerated flat, so
-   the open question is whether the enumeration can be ORDERED — which
-   cannot cut a solution, unlike the cap that was just refuted.
+   **SUPERSEDED — search is no longer the bottleneck (F176-F180).**
+   The "third of families that cost more" was not a search problem at
+   all. Measuring the per-action cost DISTRIBUTION rather than its mean
+   showed 91% of all search cost sitting in 15% of actions, at 54x the
+   cost of a succeeding one, while the median successful enumeration
+   terminated at its SIXTH candidate (F176). Those expensive actions
+   were not slow; they were failing, because the basis could not
+   express them — every one needed a CLIPPED increment, which wraps in
+   our arithmetic. Two saturating operations closed it:
+
+   | measure | before | after |
+   | --- | ---: | ---: |
+   | enumeration success rate | 84.5% | **100.0%** |
+   | mean candidates per action | 528 | **22.9** |
+   | enum cost, diverse / related | 0.425 / 0.406 | **0.031 / 0.016** |
+
+   End to end, quality and cost finally on the SAME algorithm (F180):
+   cost per family 17,300 proposals to 1,159, a factor of 15, with mean
+   held-out rising 0.9790 to 0.9817 and `toggle` — unsolvable inside
+   24,000 candidates in F157 — reaching **1.0000 on every seed**.
+
+   Everything from F157 to F175 tried to make the search cleverer and
+   reached 0.848. Two operations did 13x that. The lesson is not
+   "extend the basis instead": it is that **a search failing
+   expensively looks identical to a search that is merely slow**, and
+   only a per-family cost distribution tells them apart.
+
+   Next, and it is a different problem: `walled` is the residue. It is
+   the one family whose recipe the basis genuinely cannot express, it
+   costs 8,030 proposals against a median of 233, and it sits at 0.9131
+   where everything else is near 0.98. It is now cleanly isolated on
+   both axes at once, which is the position from which to attack it.
 
 0. **THE READER'S TRAINING SIGNAL — the last piece, and it is now the
    only one.** Everything else in the composition mechanism is
