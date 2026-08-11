@@ -164,7 +164,13 @@ class Plant(torch.nn.Module):
                     + self.arg_i(torch.tensor(i))
                     + self.arg_j(torch.tensor(j)))
             code = code.unsqueeze(0).expand(latent.shape[0], -1)
-            latent = self.norm(self.step(
+            # RESIDUAL. Without this the stack is program_len x 3 = 18
+            # effective layers with no skip path, and it cannot fit even
+            # ONE fixed program: loss pinned at ln(8) = 2.079, i.e.
+            # uniform output, flat from update 0 across 40k updates.
+            # With the residual the same model fits one program to
+            # 1.0000 in 1500 steps.
+            latent = self.norm(latent + self.step(
                 torch.cat([latent, code], dim=-1)))
         return self.head(latent).view(-1, SLOTS, VALUES)
 
