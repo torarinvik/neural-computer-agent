@@ -8205,3 +8205,56 @@ because it cannot be explained away.
 
 Probe 262 is `isa_compose.py --infer-moduli`, 4 seeds against two
 controls.
+
+## F167 — the modulus result, split into its two hypotheses, with one
+## confirmed, one unsettled, and one refuted
+
+F166 was reported as a single win. It is not one claim, it is three,
+and separating them changes what survives.
+
+**Hypothesis 1a — inferring the modulus keeps the narrow-range gain.
+CONFIRMED.** On cleanly paired seeds, families with values < VALUES
+gain +0.0607 from the observed modulus against +0.0422 from the
+searched one. Observing beats searching where the expressibility is
+actually used.
+
+**Hypothesis 1b — inferring removes the full-range search penalty.
+NOT ESTABLISHED, and F166 said it was.** Over all four seeds the
+full-range families read +0.0044, i.e. penalty gone. Over only the
+seeds whose arms are genuinely paired they read **-0.0088 against
+-0.0041 searched** — the penalty is not removed and may be slightly
+worse. n=6 is too few to call either way. Three fresh seeds running.
+
+**Hypothesis 2 — inferring repairs long-horizon extrapolation.
+REFUTED, and it was right to keep it separate.**
+
+| arm | unseen programs | DOUBLE length | drop |
+| --- | ---: | ---: | ---: |
+| no modulus | 0.9954 | 0.9854 | +0.0101 |
+| modulus searched | 0.9909 | 0.9368 | +0.0541 |
+| modulus observed | 0.9887 | 0.9373 | +0.0513 |
+
+Removing the search dilution left extrapolation exactly where the
+searched arm had it, 0.9373 against 0.9368. On exact-match the loss is
+starker still: 0.93 without the modulus against 0.71 with it either
+way. So the extrapolation cost is a property of an interpreter trained
+on a seven-times wider instruction set at the same budget, and it has
+nothing to do with how the search proposes. Same-length execution is
+barely touched; it is compounding over twelve steps that exposes it.
+The obvious test is whether more training budget recovers it, which is
+the same shape as F164 and is not yet run.
+
+**The confound that broke the pairing, and it is a plain engineering
+fault.** I wrote that training is identical between the searched and
+observed arms at a given seed, so the plants are the same object.
+Checked: identical for the two seeds launched together, DIFFERENT for
+the two launched in separate batches. The batches used
+OMP_NUM_THREADS=2 and 1, and floating-point reduction is not
+associative, so the same seed trains to a different plant. The thread
+count is now pinned inside the script and recorded in every report, so
+pairing is a property of the code rather than of how it was invoked.
+
+Worth noting which way this cut: at the contaminated seeds the observed
+arm had the WORSE plant and still scored better on search fit, so the
+1a result was measured against a headwind. It is 1b that the confound
+was carrying.

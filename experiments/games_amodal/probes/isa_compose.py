@@ -211,6 +211,14 @@ parser.add_argument("--curve-every", type=int, default=0)
 parser.add_argument("--json", default="")
 args = parser.parse_args()
 
+# PIN THE THREAD COUNT IN-SCRIPT. Two arms launched with different
+# OMP_NUM_THREADS diverge during training at the same seed, because the
+# reduction order changes and the arithmetic is not associative. That
+# broke a comparison I had described as exactly paired: seeds launched
+# with OMP=2 and OMP=1 produced different plants, while the two seeds
+# launched together produced identical ones. Pinning here makes the
+# pairing a property of the script rather than of how it was invoked.
+torch.set_num_threads(1)
 torch.manual_seed(args.seed)
 SLOTS, VALUES = args.slots, args.values
 
@@ -398,6 +406,7 @@ for program in held:
     copy_rows += 256
 report = {
     "seed": args.seed, "slots": SLOTS, "values": VALUES,
+    "threads": torch.get_num_threads(),
     "program_len": args.program_len, "instructions": list(OPS),
     "no_conditionals": args.no_conditionals,
     "chance_slots": round(1 / VALUES, 4),
