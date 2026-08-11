@@ -199,6 +199,17 @@ def bits_of(values: torch.Tensor) -> torch.Tensor:
 
 
 def make_worlds() -> list[dict]:
+    # The draw loop below rejects duplicates, so asking for more worlds
+    # than the family CONTAINS spins forever rather than failing. At
+    # width 4 there are only 15 masks x 3 shifts = 45 worlds, and the
+    # default request is 64 — one such run held a core at 100% for 17
+    # hours without reaching training. Fail loudly instead.
+    available = ((1 << W) - 1) * (W - 1)
+    if args.worlds > available:
+        raise SystemExit(
+            f"--worlds {args.worlds} exceeds the {available} distinct "
+            f"(mask, shift) worlds available at --width {W}; "
+            f"use --worlds <= {available} or a larger width")
     generator = torch.Generator().manual_seed(args.seed * 7919)
     seen, out = set(), []
     while len(out) < args.worlds:

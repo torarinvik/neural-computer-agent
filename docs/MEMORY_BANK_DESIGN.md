@@ -6531,3 +6531,35 @@ Exact-match at 0.3158 would be the number that matters if it survives:
 all eight bits correct requires the entry to SPECIFY the world, and
 0.3158 against joint training's 0.0096 is a 33x change on the strict
 measure rather than the lenient one.
+
+**Process bug (2026-08-11). A width-4 boolean arm spun for 17 hours at
+100% CPU without ever starting training, and nothing in the harness
+noticed.** `make_worlds()` draws UNIQUE (mask, shift) pairs until it
+has `--worlds` of them. At width 4 the family contains only
+(2^4 - 1) x (4 - 1) = 45 distinct worlds, and the default request is
+64, so the rejection loop could never terminate. The arm was launched
+in the F120 batch and sat "pending" through roughly twenty subsequent
+findings, holding a core the whole time.
+
+Two things went wrong and only one of them is the code:
+
+  * the loop failed silently instead of loudly — fixed, it now raises
+    with the count available and the fix to apply;
+  * **a run that never produces output is indistinguishable from a
+    slow run in my monitoring.** Every monitor in this session watched
+    for JSONs appearing and for processes disappearing; a process that
+    is alive and producing nothing satisfies neither alarm. The
+    27-hour-old entry was visible in the task list the entire time and
+    I read past it repeatedly because "still running" was a plausible
+    state.
+
+Rule added: when a run's elapsed time exceeds roughly twice the
+longest comparable arm, check it rather than assuming it is slow. The
+comparable boolean arms finished in about 25 minutes; this one passed
+that mark 40 times over.
+
+Cost: one core for 17 hours, and the width-4 measurement — whether the
+composition failure depended on output width — was never taken. It is
+cheap to redo (`--width 4 --worlds 40`) but has been overtaken:
+F135/F143 have since located the defect in the interface rather than
+in anything width could have shown.
