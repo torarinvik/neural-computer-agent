@@ -9250,3 +9250,55 @@ consumed it. It now governs when enumeration stops, so 0.99 and 1.0
 should recover `line`, `grid` and `gate0` at a cost that is affordable
 for the first time — 1159 proposals leaves ample headroom under a 4000
 budget.
+
+## F181 — the fit-target sweep, now that something consumes it
+
+F179's sweep was byte-identical because `synthesise` had no early stop.
+Enumeration does, so the same sweep is now meaningful. Four seeds.
+
+| family | t=0.95 | t=0.99 | t=1.0 | cost 0.95 | cost 0.99 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| line | 0.9834 | **1.0000** | 1.0000 | 60 | 67 |
+| grid | 0.9658 | **0.9892** | 0.9892 | 66 | 112 |
+| gate0 | 0.9933 | 0.9948 | 0.9948 | 405 | 403 |
+| walled | 0.9131 | 0.9219 | 0.9219 | 8030 | 13020 |
+| gate1 | 0.9828 | **0.9749** | 0.9749 | 2110 | 4053 |
+| MEAN | 0.9817 | **0.9860** | 0.9860 | 1159 | 1857 |
+
+**P1 confirmed on all three named families.** `line` returns to exactly
+1.0000 for 7 extra proposals, `grid` recovers 0.9658 to 0.9892, `gate0`
+improves at no cost at all. F180's settling-at-threshold reading is
+therefore right, and the remedy is one flag.
+
+Mean held-out rises 0.9817 to 0.9860 for 1.6x the proposals — which at
+1,857 proposals per family is still an order of magnitude under the
+17,300 that random sampling spent for 0.9790.
+
+**Two checks I ran before writing this up, and both came back against
+me.**
+
+*The 0.99 and 1.0 arms are identical to the digit.* My explanation was
+that no candidate ever scores in [0.99, 1.0), so the two thresholds
+cannot separate. **Refuted: a score of 0.992 is present in the data.**
+A candidate at 0.992 should stop a 0.99 search and not a 1.0 search,
+and yet both arms agree on every family AND on cost. I do not know why,
+and it is recorded as an open discrepancy rather than smoothed over —
+the most likely explanation is that the 0.992 arrived on the last
+enumerated candidate, where stopping and continuing coincide, but that
+is a guess and the way to settle it is to log the stopping index.
+
+*`gate1` regresses at the stricter target* — 0.9828 to 0.9749 — which
+looked like overfitting the 64-observation search sample. **Refuted at
+the aggregate**: the search-to-held-out gap SHRINKS with a stricter
+target, 0.0099 to 0.0081, which is the opposite of overfitting. And
+`gate1`'s own SEARCH fit also fell, 0.9887 to 0.9874, which should be
+impossible: a longer search keeping the best of everything it sees
+cannot end with a worse best. That points at the harness rather than
+the method — continuing past the early stop changes the generator
+position, so the fallback sampling sees a different candidate stream —
+and it is flagged as an anomaly to chase rather than explained away.
+
+**Default not changed pending the anomaly.** 0.99 is better on nine of
+ten families and on the mean, but a family whose search fit moved in an
+impossible direction is a reason to find out why before promoting the
+setting.
