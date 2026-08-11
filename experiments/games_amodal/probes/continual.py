@@ -69,6 +69,11 @@ parser.add_argument("--interpreter-updates", type=int, default=40000,
                     help="budget for the frozen interpreter, trained "
                          "ONLY on random programs over random states — "
                          "no family ever touches its weights")
+parser.add_argument("--bank-path", default="",
+                    help="write the bank out and read it back, then "
+                         "re-score every family from the RESTORED "
+                         "copy. A skill that is data must survive a "
+                         "round trip exactly.")
 parser.add_argument("--json", default="")
 args = parser.parse_args()
 
@@ -391,6 +396,37 @@ report["bank_forgetting"] = {n: round(bank_first[n] - bank_final[n], 4)
                              for n in bank_first}
 report["bank_mean_forgetting"] = round(
     sum(report["bank_forgetting"].values()) / len(bank_first), 4)
+
+# ------------------------------------------------------- persistence
+# A bank that exists only inside one process is not a bank. The whole
+# claim of this architecture is that a skill is DATA — integers a
+# frozen interpreter reads — so it must survive being written out and
+# read back, and the round trip must be exact rather than approximate.
+#
+# This also makes the size claim concrete and checkable rather than
+# asserted: a recipe is `actions x program_len` instructions of four
+# small integers each, against the thousands of floats an entry-vector
+# bank would need for the same world.
+if args.bank_path:
+    serialised = {name: {str(act): [list(step) for step in program]
+                         for act, program in recipe.items()
+                         if program is not None}
+                  for name, recipe in bank.items()}
+    with open(args.bank_path, "w") as handle:
+        json.dump(serialised, handle)
+    with open(args.bank_path) as handle:
+        loaded = json.load(handle)
+    restored = {name: {int(act): [tuple(step) for step in program]
+                       for act, program in recipe.items()}
+                for name, recipe in loaded.items()}
+    after = {n: bank_score(dict(sequence)[n], restored[n], args.seed + 991)
+             for n in restored}
+    report["bank_after_reload"] = after
+    report["reload_exact"] = all(
+        after[n] == bank_final[n] for n in after)
+    report["bank_bytes"] = len(json.dumps(serialised))
+    report["bank_instructions"] = sum(
+        len(p) for r in serialised.values() for p in r.values())
 
 print(json.dumps(report, indent=2))
 if args.json:
