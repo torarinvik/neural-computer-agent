@@ -8636,3 +8636,30 @@ identical output has now caught four things. A result that had merely
 been *disappointing* rather than *impossible* would have been written
 up as "capping does not help", which is true and useless, instead of
 "the cap was set above the quantity it was meant to bound".
+
+**Pre-registered prediction for the 0.1 cap, written before reading the
+run.** F174's lesson was that the arithmetic was available in advance
+and I did not do it, so it is done here first.
+
+The cap binds only where the enumeration FAILS and burns its full pool.
+At 400 instead of 930 per action, three diverse families should recover
+roughly 530 calls per action and nothing else should move:
+
+1. `line`, `grid` and `proc0` — the three that cost more than the
+   frozen control at 1.17, 1.11 and 1.33 — should all fall BELOW 1.0,
+   to approximately 0.88, 0.75 and 0.38.
+2. Every winning family should be UNCHANGED to within noise, because
+   the most expensive successful enumeration on record terminated at
+   328 calls and the cap is 400. `dial` at 0.008, `toggle` at 0.015 and
+   `perm` at 0.039 must not move.
+3. The aggregate must improve.
+
+If (2) fails — if the winners degrade — the cap is again cutting the
+wrong thing and 400 is still above nothing useful. If (1) fails, the
+losing families are not spending what the pool-size arithmetic says
+they are, and the model of where the cost goes is wrong.
+
+Note on statistics: these per-family figures are ratio-of-means, while
+the headline 0.425 is a mean of per-seed ratios. They are different
+estimators and are not comparable to each other; the predictions above
+are stated in the ratio-of-means the table uses.
