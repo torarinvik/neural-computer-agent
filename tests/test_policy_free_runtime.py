@@ -8,6 +8,7 @@ from neural_computer import (
     AmodalControllerRuntime,
     AmodalEvent,
     ControllerFeedback,
+    ExternalBoundTransitionModel,
     ExternalControllerEventWindowStateAdapter,
     ExternalControllerStateAdapter,
     ExternalControllerTrajectoryQueryAdapter,
@@ -19,6 +20,8 @@ from neural_computer import (
     ExternalOutcomeIntentionMemory,
     ExternalOutcomeIntentionRouter,
     ExternalSignedEntryValueModel,
+    ExternalTransitionMemory,
+    ExternalTransitionObservation,
     PolicyFreeAmodalRuntime,
 )
 
@@ -90,6 +93,58 @@ def test_policy_free_runtime_decodes_planner_intention_not_controller_preference
     assert torch.allclose(output.decoded["echo"], output.intention.payload)
     assert policy_free.configuration()["behavior"] == (
         "factual_model_search_no_stored_policy_v1"
+    )
+
+
+def test_policy_free_runtime_can_fail_closed_on_bound_memory_reads() -> None:
+    controller = AmodalCognitiveController(
+        width=4,
+        workspace_slots=2,
+        intention_width=2,
+        feedback_width=3,
+        event_window_capacity=4,
+    )
+    controller.eval()
+    runtime = AmodalControllerRuntime(controller)
+    state = runtime.initial_state(1, device="cpu")
+    feedback = _feedback()
+    event = [AmodalEvent(torch.randn(1, 4))]
+    adapter = ExternalControllerStateAdapter(12, 4)
+
+    preview, _ = runtime.step_events(event, state, feedback)
+    model_state = adapter(preview.controller).detach()
+    goal = model_state + 1.0
+    memory = ExternalTransitionMemory(4, 2, context_width=1)
+    memory.write(
+        ExternalTransitionObservation(
+            state=model_state,
+            intention=torch.tensor([[1.0, 0.0]]),
+            next_state=goal,
+        ),
+        context=torch.ones(1, 1),
+    )
+    bound = ExternalBoundTransitionModel(memory, torch.ones(1))
+    policy_free = PolicyFreeAmodalRuntime(
+        runtime,
+        ExternalModelBasedPlanner(bound, beam_width=2),
+        state_adapter=adapter,
+    )
+
+    output, _ = policy_free.step_events(
+        event,
+        state,
+        feedback,
+        goal,
+        torch.tensor([[1.0, 0.0], [0.0, 1.0]]),
+        horizon=1,
+        require_known=True,
+    )
+
+    assert torch.equal(output.planning.candidate_indices, torch.zeros(1, 1, dtype=torch.long))
+    assert torch.equal(output.intention.payload, torch.tensor([[1.0, 0.0]]))
+    assert torch.allclose(output.planning.predicted_states[:, -1], goal)
+    assert policy_free.configuration()["unknown_handling"] == (
+        "caller_opt_in_fail_closed_transition_reads_v1"
     )
 
 

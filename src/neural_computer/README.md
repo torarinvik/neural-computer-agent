@@ -226,6 +226,17 @@ claiming general continual learning. `learn_transition_once()` enforces the
 replay-free affine/random-feature bank path and refuses a replay-dependent
 neural slot.
 
+`ExternalBoundTransitionModel` is the bind-once execution view for a
+contextual factual model. It captures one opaque external context before a
+multi-step rollout, keeps that binding stable while the planner iterates, and
+preserves exact content-addressed hit evidence. Passing `require_known=True`
+to `ExternalModelBasedPlanner` or `PolicyFreeAmodalRuntime.step_events()`
+then rejects missing transition rows before they can win beam search. A
+continuous learned model can still use the compatibility path, but it cannot
+claim exact read coverage without a `predict_with_hit` implementation. This
+is an unknown-rejection and execution-integrity boundary, not evidence that
+the model has learned arbitrary dynamics.
+
 The same audit also supports a two-family nonstationary rung: n-back-2 source
 experience and n-back-3 target experience occupy separate opaque external
 contexts. The source model remains byte-stable while the target model beats a

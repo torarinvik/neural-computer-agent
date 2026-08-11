@@ -10039,3 +10039,21 @@ outcome-only route discovery over bounded external rule growth. It does not
 establish arbitrary new computation, unrestricted memory growth, compression,
 or general continual learning. The reports and accounting ledger are in
 `session_records/brainworkshop_cross_family_rule_growth_2026-08-11/`.
+
+## Bind-once factual execution and unknown rejection (2026-08-11)
+
+The policy-free intention path now exposes `ExternalBoundTransitionModel`, a
+memory-side view that binds one opaque contextual address before iterative
+model-based execution. It preserves the factual memory's `predict_with_hit`
+evidence. `ExternalModelBasedPlanner` and `PolicyFreeAmodalRuntime` accept
+`require_known=True` to drop missing transition rows before beam ranking and
+fail closed when no verified prefix survives. This prevents an unobserved
+transition from being silently interpreted as a default state, while keeping
+continuous learned models available through an explicitly unverified
+compatibility path.
+
+This is an execution-integrity and experimental-control improvement, not a
+learned capability promotion. The next capability claim still requires
+fresh-versus-inherited held-out curves over genuinely different transition
+families, wrong/corrupted/missing-memory controls, exact retention, and equal
+compute accounting.

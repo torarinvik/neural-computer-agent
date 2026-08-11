@@ -58,6 +58,9 @@ EXTERNAL_TRANSITION_ROLLOUT_SCHEMA = (
 )
 EXTERNAL_TRANSITION_MODEL_SCHEMA = "neural-computer.external-transition-model.v1"
 EXTERNAL_TRANSITION_MEMORY_SCHEMA = "neural-computer.external-transition-memory.v1"
+EXTERNAL_BOUND_TRANSITION_MODEL_SCHEMA = (
+    "neural-computer.external-bound-transition-model.v1"
+)
 EXTERNAL_CONTEXT_ADDRESS_RESOLVER_SCHEMA = (
     "neural-computer.external-context-address-resolver.v1"
 )
@@ -1657,6 +1660,20 @@ class ExternalTransitionModelBank(nn.Module):
         context: torch.Tensor,
     ) -> torch.Tensor:
         return self(state, intention, context)
+
+    @torch.no_grad()
+    def predict_with_hit(
+        self,
+        state: torch.Tensor,
+        intention: torch.Tensor,
+        context: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        """Return a routed slot prediction plus address-resolution evidence."""
+
+        prediction = self(state, intention, context)
+        return prediction, torch.ones(
+            state.shape[0], device=state.device, dtype=torch.bool
+        )
 
     @torch.no_grad()
     def predictive_leverage(
@@ -11515,6 +11532,27 @@ class ExternalTransitionMemory(nn.Module):
     ) -> torch.Tensor:
         return self.forward(state, intention, context)
 
+    def bind_context(
+        self,
+        context: torch.Tensor,
+        *,
+        require_verified: bool = True,
+    ) -> ExternalBoundTransitionModel:
+        """Return a fixed-context view for repeated model-based execution.
+
+        Binding is a memory-side operation.  The returned view owns no new
+        transition facts and never mutates this store; it simply keeps the
+        opaque context stable while a caller performs a multi-step rollout.
+        Exact content-addressed memories can therefore opt into fail-closed
+        prediction checks without re-solving context identity at every step.
+        """
+
+        return ExternalBoundTransitionModel(
+            self,
+            context,
+            require_verified=require_verified,
+        )
+
     @torch.no_grad()
     def clear(self) -> None:
         self.store.clear()
@@ -11528,6 +11566,135 @@ class ExternalTransitionMemory(nn.Module):
             digest.update(str(detached.dtype).encode("utf-8"))
             digest.update(repr(tuple(detached.shape)).encode("utf-8"))
             digest.update(detached.numpy().tobytes())
+        return digest.hexdigest()
+
+
+class ExternalBoundTransitionModel(nn.Module):
+    """A one-time opaque context binding over an external transition model.
+
+    The wrapper is deliberately small: it does not add a controller branch,
+    a task label, or a protocol action.  It turns a contextual model into a
+    stable ``state, intention -> next_state`` interface for repeated thinking
+    and planning.  If the wrapped model exposes ``predict_with_hit``, the hit
+    is preserved so callers can reject unknown memory reads.  A model without
+    that evidence API remains usable in compatibility mode, but cannot claim
+    verified prediction coverage.
+    """
+
+    schema = EXTERNAL_BOUND_TRANSITION_MODEL_SCHEMA
+
+    def __init__(
+        self,
+        model: nn.Module,
+        context: torch.Tensor,
+        *,
+        require_verified: bool = True,
+    ) -> None:
+        super().__init__()
+        if not isinstance(model, nn.Module):
+            raise TypeError("bound transition model requires a torch module")
+        state_width = getattr(model, "state_width", None)
+        intention_width = getattr(model, "intention_width", None)
+        context_width = getattr(model, "context_width", None)
+        if not all(
+            isinstance(value, int) and not isinstance(value, bool) and value > 0
+            for value in (state_width, intention_width, context_width)
+        ):
+            raise TypeError(
+                "bound transition model requires positive state, intention, "
+                "and context widths"
+            )
+        _validate_tensor(
+            context,
+            name="bound transition context",
+            ndim=1 if context.ndim == 1 else 2,
+            width=context_width,
+        )
+        if context.ndim == 2:
+            if context.shape[0] != 1:
+                raise ValueError("bound transition context must contain one row")
+            context = context[0]
+        self.model = model
+        self.state_width = int(state_width)
+        self.intention_width = int(intention_width)
+        self.context_width = int(context_width)
+        self.require_verified = bool(require_verified)
+        self.register_buffer("bound_context", context.detach().clone())
+
+    def configuration(self) -> dict[str, int | bool | str]:
+        return {
+            "schema": self.schema,
+            "state_width": self.state_width,
+            "intention_width": self.intention_width,
+            "context_width": self.context_width,
+            "binding": "single_opaque_context_for_iterative_execution_v1",
+            "require_verified": self.require_verified,
+            "unknown_policy": (
+                "fail_closed_on_missing_transition_v1"
+                if self.require_verified
+                else "compatibility_unverified_prediction_v1"
+            ),
+            "base_schema": str(getattr(self.model, "schema", "unversioned")),
+        }
+
+    def _context_batch(self, state: torch.Tensor) -> torch.Tensor:
+        return self.bound_context.to(device=state.device, dtype=state.dtype).expand(
+            state.shape[0], -1
+        )
+
+    def predict_with_hit(
+        self,
+        state: torch.Tensor,
+        intention: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        _validate_tensor(state, name="bound transition state", ndim=2, width=self.state_width)
+        _validate_tensor(
+            intention,
+            name="bound transition intention",
+            ndim=2,
+            width=self.intention_width,
+        )
+        if state.shape[0] != intention.shape[0]:
+            raise ValueError("bound transition state and intention batches differ")
+        context = self._context_batch(state)
+        predictor = getattr(self.model, "predict_with_hit", None)
+        if callable(predictor):
+            prediction, hit = predictor(state, intention, context=context)
+        else:
+            if self.require_verified:
+                raise TypeError(
+                    "bound transition model cannot provide verified prediction hits"
+                )
+            contextual_predictor = getattr(self.model, "predict_with_context", None)
+            if callable(contextual_predictor):
+                prediction = contextual_predictor(state, intention, context)
+            else:
+                prediction = self.model(state, intention, context)
+            hit = torch.ones(state.shape[0], device=state.device, dtype=torch.bool)
+        _validate_tensor(
+            prediction,
+            name="bound transition prediction",
+            ndim=2,
+            width=self.state_width,
+        )
+        if hit.shape != (state.shape[0],) or hit.dtype is not torch.bool:
+            raise TypeError("bound transition prediction hits must be a bool vector")
+        return prediction, hit
+
+    def forward(self, state: torch.Tensor, intention: torch.Tensor) -> torch.Tensor:
+        return self.predict_with_hit(state, intention)[0]
+
+    def digest(self) -> str:
+        digest = hashlib.sha256()
+        digest.update(self.schema.encode("utf-8"))
+        digest.update(self.bound_context.detach().cpu().contiguous().numpy().tobytes())
+        base_digest = getattr(self.model, "digest", None)
+        if callable(base_digest):
+            digest.update(str(base_digest()).encode("utf-8"))
+        else:
+            for name, value in sorted(self.model.state_dict().items()):
+                digest.update(name.encode("utf-8"))
+                digest.update(value.detach().cpu().contiguous().numpy().tobytes())
         return digest.hexdigest()
 
 
@@ -12585,6 +12752,7 @@ class ExternalModelBasedPlanner:
             "state_space_id": self.state_space_id,
             "intention_space_id": self.intention_space_id,
             "entry_space_id": self.entry_space_id,
+            "unknown_handling": "optional_fail_closed_verified_predictions_v1",
         }
 
     def _predict(
@@ -12599,6 +12767,45 @@ class ExternalModelBasedPlanner:
         if not callable(predictor):
             raise TypeError("transition model does not expose contextual prediction")
         return predictor(state, intention, context)
+
+    def _predict_with_known(
+        self,
+        state: torch.Tensor,
+        intention: torch.Tensor,
+        context: torch.Tensor | None,
+        *,
+        require_known: bool,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        """Predict and retain exact-memory hit information when available.
+
+        A normal learned model has a prediction for every valid tensor input,
+        so compatibility mode treats all rows as model-supported.  An exact
+        external memory can expose ``predict_with_hit``; fail-closed planning
+        then drops missing rows before they can influence beam ranking.
+        """
+
+        predictor = getattr(self.model, "predict_with_hit", None)
+        if callable(predictor):
+            if context is None:
+                prediction, known = predictor(state, intention)
+            else:
+                prediction, known = predictor(
+                    state,
+                    intention,
+                    context=context,
+                )
+            if known.shape != (state.shape[0],) or known.dtype is not torch.bool:
+                raise TypeError("transition prediction hits must be a bool vector")
+            return prediction, known
+        if require_known:
+            raise TypeError(
+                "fail-closed planning requires a transition model with "
+                "predict_with_hit"
+            )
+        prediction = self._predict(state, intention, context)
+        return prediction, torch.ones(
+            state.shape[0], device=state.device, dtype=torch.bool
+        )
 
     def _entry_value(
         self,
@@ -12622,6 +12829,7 @@ class ExternalModelBasedPlanner:
         rollout: ExternalTransitionRollout,
         *,
         transition_context: torch.Tensor | None = None,
+        require_known: bool = False,
     ) -> float:
         """Measure recursive held-out trajectory error for this model.
 
@@ -12659,11 +12867,16 @@ class ExternalModelBasedPlanner:
         )
         predictions: list[torch.Tensor] = []
         for step in range(rollout.horizon):
-            prediction = self._predict(
+            prediction, known = self._predict_with_known(
                 state,
                 intentions[step : step + 1],
                 transition_context,
+                require_known=require_known,
             )
+            if require_known and not bool(known.all()):
+                raise LookupError(
+                    "transition rollout contains an unknown external-memory row"
+                )
             predictions.append(prediction.squeeze(0))
             state = prediction
         errors = (torch.stack(predictions) - expected).square().mean(dim=-1)
@@ -12688,6 +12901,7 @@ class ExternalModelBasedPlanner:
         step_cost_weight: float = 0.0,
         goal_progress_weight: float = 0.0,
         goal_fragments: ExternalGoalFragmentSet | None = None,
+        require_known: bool = False,
     ) -> ModelBasedPlanningResult:
         """Return the lowest-scoring candidate sequence.
 
@@ -12710,6 +12924,11 @@ class ExternalModelBasedPlanner:
         predicted terminal state.  The value is subtracted from the search
         score, so an opaque signed delta can reverse a factual preference
         without changing the transition model or controller.
+        When ``require_known`` is true, the model must expose exact
+        ``predict_with_hit`` evidence and missing transition rows are rejected
+        before beam ranking.  This is the fail-closed path for content-
+        addressed external memory; compatibility mode remains available for
+        continuous learned models whose predictions are defined everywhere.
         """
 
         if not math.isfinite(float(entry_value_weight)) or entry_value_weight < 0.0:
@@ -12884,7 +13103,7 @@ class ExternalModelBasedPlanner:
                     parent_count = parent_states.shape[0]
                     candidate_count = row_candidates.shape[0]
                     expanded_nodes += parent_count * candidate_count
-                    next_states = self._predict(
+                    next_states_flat, known_flat = self._predict_with_known(
                         parent_states.repeat_interleave(candidate_count, dim=0),
                         row_candidates.repeat(parent_count, 1),
                         None
@@ -12892,7 +13111,12 @@ class ExternalModelBasedPlanner:
                         else transition_context[row]
                         .unsqueeze(0)
                         .expand(parent_count * candidate_count, -1),
-                    ).reshape(parent_count, candidate_count, -1)
+                        require_known=require_known,
+                    )
+                    known = known_flat.reshape(parent_count, candidate_count)
+                    next_states = next_states_flat.reshape(
+                        parent_count, candidate_count, -1
+                    )
                     if goal_fragments is not None:
                         row_values = goal_fragments.values[row]
                         row_masks = goal_fragments.masks[row].to(
@@ -12964,6 +13188,10 @@ class ExternalModelBasedPlanner:
                     ] = []
                     for parent_index, parent in enumerate(beams):
                         for candidate_index in range(candidate_count):
+                            if require_known and not bool(
+                                known[parent_index, candidate_index]
+                            ):
+                                continue
                             score = parent[0]
                             if row_costs is not None:
                                 score = score + step_cost_weight * row_costs[
@@ -12989,6 +13217,11 @@ class ExternalModelBasedPlanner:
                                     [*parent[4], candidate_index],
                                 )
                             )
+                    if not expanded:
+                        raise LookupError(
+                            "planner has no verified transition for a surviving "
+                            f"prefix at horizon step {_step + 1}"
+                        )
                     expanded.sort(key=lambda item: float(item[0]))
                     beams = expanded[:width]
                 best = beams[0]
@@ -13315,6 +13548,7 @@ class ExternalModelBasedPlanner:
         entry_value_weight: float = 0.0,
         step_cost_weight: float = 0.0,
         goal_fragments: ExternalGoalFragmentSet | None = None,
+        require_known: bool = False,
     ) -> GoalConditionedModelSelection:
         """Select the model whose factual rollout best reaches the goal.
 
@@ -13370,6 +13604,7 @@ class ExternalModelBasedPlanner:
                     entry_value_weight=entry_value_weight,
                     step_cost_weight=step_cost_weight,
                     goal_fragments=goal_fragments,
+                    require_known=require_known,
                 )
             )
         scores = torch.stack([result.scores[0] for result in results])
@@ -13388,6 +13623,7 @@ class ExternalModelBasedPlanner:
 __all__ = [
     "DEFAULT_INTENTION_SPACE_ID",
     "DEFAULT_STATE_SPACE_ID",
+    "EXTERNAL_BOUND_TRANSITION_MODEL_SCHEMA",
     "EXTERNAL_CONTEXTUAL_EVIDENCE_CALIBRATOR_SCHEMA",
     "EXTERNAL_CONTEXTUAL_TRANSITION_EVIDENCE_STATISTICS_SCHEMA",
     "EXTERNAL_CONTEXT_ADDRESS_RESOLVER_SCHEMA",
@@ -13424,6 +13660,7 @@ __all__ = [
     "EXTERNAL_TRANSITION_PROBE_UTILITY_MEMORY_SCHEMA",
     "EXTERNAL_TRANSITION_RANDOM_FEATURE_MODEL_FAMILY",
     "EXTERNAL_TRANSITION_ROLLOUT_SCHEMA",
+    "ExternalBoundTransitionModel",
     "ExternalContextAddressResolver",
     "ExternalContextResolution",
     "ExternalContextualEvidenceCalibrator",

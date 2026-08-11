@@ -187,3 +187,10 @@ not fixed by a simple aggregation change. Cumulative evidence increases
 recursive factual-model error until the safe read-only router refuses. The
 next target is a horizon-aware verifier or bound-once transition model, with
 contradiction refusal intact.
+
+That bound-once execution seam is now implemented as
+`ExternalBoundTransitionModel`. Exact transition memory can expose hit
+evidence to the planner, and `require_known=True` makes missing rows fail
+closed during recursive search instead of allowing a default zero prediction
+to affect beam ranking. This is an integrity improvement and a stronger
+experimental control; it is not itself a learned capability gain.

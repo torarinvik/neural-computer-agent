@@ -2922,6 +2922,7 @@ class PolicyFreeAmodalRuntime:
             "schema": self.schema,
             "behavior": "factual_model_search_no_stored_policy_v1",
             "controller_intention": "diagnostic_only_not_decoded_v1",
+            "unknown_handling": "caller_opt_in_fail_closed_transition_reads_v1",
             "goal_input": "opaque_external_destination_state_or_goal_set_v1",
             "candidate_intentions": (
                 "external_verified_repertoire_plus_learned_intention_router_v1"
@@ -3526,6 +3527,7 @@ class PolicyFreeAmodalRuntime:
         entry_value_weight: float = 0.0,
         step_cost_weight: float = 0.0,
         goal_progress_weight: float = 0.0,
+        require_known: bool = False,
         elapsed: torch.Tensor | float = 1.0,
         disable_workspace: bool = False,
         memory_scope: torch.Tensor | None = None,
@@ -3775,6 +3777,7 @@ class PolicyFreeAmodalRuntime:
                     candidate_entries=candidate_entries,
                     entry_value_weight=entry_value_weight,
                     step_cost_weight=step_cost_weight,
+                    require_known=require_known,
                     goal_fragments=goal_fragments,
                 )
                 planning = selection.planning
@@ -3796,6 +3799,7 @@ class PolicyFreeAmodalRuntime:
                     entry_value_weight=entry_value_weight,
                     step_cost_weight=step_cost_weight,
                     goal_progress_weight=goal_progress_weight,
+                    require_known=require_known,
                     goal_fragments=goal_fragments,
                 )
                 selected_slot_id = None
@@ -3812,6 +3816,7 @@ class PolicyFreeAmodalRuntime:
                 entry_value_weight=entry_value_weight,
                 step_cost_weight=step_cost_weight,
                 goal_progress_weight=goal_progress_weight,
+                require_known=require_known,
                 goal_fragments=goal_fragments,
             )
             selected_slot_id = None

@@ -9,6 +9,7 @@ from neural_computer import (
     EXTERNAL_FACTORED_TRANSITION_LEARNED_RESIDUAL_MODE,
     EXTERNAL_TRANSITION_RANDOM_FEATURE_MODEL_FAMILY,
     ExternalAffineTransitionStatistics,
+    ExternalBoundTransitionModel,
     ExternalContextAddressResolver,
     ExternalContextualEvidenceCalibrator,
     ExternalContextualTransitionEvidenceStatistics,
@@ -4067,6 +4068,87 @@ def test_planner_accepts_contextual_append_only_transition_memory() -> None:
 
     assert torch.equal(result.intentions[0, 0], torch.ones(1))
     assert torch.equal(result.predicted_states[0, 0], torch.ones(1))
+
+
+def test_bound_transition_memory_keeps_context_stable_for_iterative_planning() -> None:
+    memory = ExternalTransitionMemory(1, 1, context_width=1)
+    memory.write(
+        ExternalTransitionObservation(
+            state=torch.tensor([[0.0]]),
+            intention=torch.tensor([[1.0]]),
+            next_state=torch.tensor([[1.0]]),
+        ),
+        context=torch.ones(1, 1),
+    )
+    original_context = torch.ones(1)
+    bound = memory.bind_context(original_context)
+    original_context.fill_(-1.0)
+
+    assert isinstance(bound, ExternalBoundTransitionModel)
+    assert bound.configuration()["binding"] == (
+        "single_opaque_context_for_iterative_execution_v1"
+    )
+    prediction, hit = bound.predict_with_hit(
+        torch.zeros(1, 1),
+        torch.ones(1, 1),
+    )
+    assert torch.equal(prediction, torch.ones(1, 1))
+    assert torch.equal(hit, torch.ones(1, dtype=torch.bool))
+
+    result = ExternalModelBasedPlanner(bound).plan(
+        torch.zeros(1, 1),
+        torch.ones(1, 1),
+        torch.tensor([[1.0]]),
+        horizon=1,
+        require_known=True,
+    )
+    assert torch.equal(result.predicted_states[0, 0], torch.ones(1))
+
+
+def test_fail_closed_planning_rejects_unknown_transition_in_later_prefix() -> None:
+    memory = ExternalTransitionMemory(1, 1, context_width=1)
+    memory.write(
+        ExternalTransitionObservation(
+            state=torch.tensor([[0.0]]),
+            intention=torch.tensor([[1.0]]),
+            next_state=torch.tensor([[1.0]]),
+        ),
+        context=torch.ones(1, 1),
+    )
+    planner = ExternalModelBasedPlanner(memory)
+
+    with pytest.raises(LookupError, match="unknown|verified transition"):
+        planner.plan(
+            torch.zeros(1, 1),
+            torch.tensor([[2.0]]),
+            torch.tensor([[1.0]]),
+            horizon=2,
+            transition_context=torch.ones(1, 1),
+            require_known=True,
+        )
+
+
+def test_fail_closed_rollout_exposes_corrupted_factual_memory() -> None:
+    memory = ExternalTransitionMemory(1, 1, context_width=1)
+    memory.write(
+        ExternalTransitionObservation(
+            state=torch.tensor([[0.0]]),
+            intention=torch.tensor([[1.0]]),
+            next_state=torch.tensor([[9.0]]),
+        ),
+        context=torch.ones(1, 1),
+    )
+    planner = ExternalModelBasedPlanner(memory)
+    error = planner.rollout_error(
+        ExternalTransitionRollout(
+            initial_state=torch.tensor([0.0]),
+            intentions=torch.tensor([[1.0]]),
+            expected_states=torch.tensor([[1.0]]),
+        ),
+        transition_context=torch.ones(1, 1),
+        require_known=True,
+    )
+    assert error == pytest.approx(64.0)
 
 
 def test_planner_accepts_runtime_sized_opaque_goal_sets() -> None:

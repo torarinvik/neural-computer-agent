@@ -402,6 +402,30 @@ promotion must measure model-free controller behavior against this path on a
 nontrivial held-out stream, with zero-shot capability, search expansions,
 latency, target updates, lifetime cost, and retention reported separately.
 
+## Bind-once and fail-closed factual execution (2026-08-11)
+
+The planner now has an explicit `ExternalBoundTransitionModel` view. A
+contextual factual memory can bind one opaque address before iterative search,
+so the execution loop does not repeatedly perform context identity resolution.
+Exact content-addressed memories expose `predict_with_hit`; when
+`require_known=True`, the planner drops missing rows before scoring a beam and
+raises a bounded lookup failure if no verified prefix survives. The same flag
+is available through `PolicyFreeAmodalRuntime.step_events()`, keeping the
+controller-to-intention-bus path on the same safety boundary.
+
+The promotion tests cover three distinct cases: a stable bound context selects
+the correct factual row, a later recursive prefix with no stored fact is
+rejected rather than interpreted as a zero state, and a corrupted factual row
+produces measurable held-out rollout error. Continuous models retain an
+explicit compatibility mode because they define a prediction everywhere;
+that mode is not equivalent to verified external-memory coverage.
+
+This closes an integrity gap, not the general continual-learning problem.
+The next empirical requirement remains a fresh-versus-inherited held-out
+learning curve over genuinely different transition families, with exact
+retention, wrong/corrupted/missing-memory controls, and equal-compute
+accounting.
+
 ## External opaque intention repertoire (2026-08-10)
 
 Candidate formation is now an independent memory boundary rather than a
