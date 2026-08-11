@@ -2792,6 +2792,36 @@ A short composition-aware blueprint probe was also rejected: retention was
 `0.7813` and inherited composition was `0.7344` versus fresh `0.9844`, so the
 curriculum was not scaled.
 
+## Bind-once external operator execution (2026-08-11)
+
+The exported working-memory architecture exposed a general implementation
+rule: do context-dependent lookup once, then iterate fixed computation over the
+bound result. `ExternalSequenceOperatorMemory.bind(query)` now makes that rule
+an explicit versioned ABI. It returns an ephemeral
+`BoundExternalSequenceOperatorMemory` containing only the learned route
+distribution for the current rollout. The controller and interpreter do not
+own the binding, and the external bank remains independently replaceable and
+growing.
+
+The shared interpreter accepts the bound handle without a route query or slot
+ID. This removes repeated route encoding from multi-step execution while
+preserving the raw route-query and fixed-slot forms for diagnostics. A bank
+growth event invalidates the active binding and requires rebinding; silently
+addressing a changed bank is not permitted. The binding retains gradients to
+the route query, so the seam does not turn routing into a detached lookup.
+
+The seed-914 infrastructure audit reduced route calls from 8 to 1 across an
+8-step chain, produced exactly equal outputs, preserved route gradients, and
+rejected post-growth use until rebinding. It used no verifier bits, optimizer
+updates, or replay and therefore makes no learning-capability claim. The
+record is
+`session_records/external_sequence_operator_bind_once_infrastructure_2026-08-11/`.
+
+This is a reusable execution boundary, not evidence of arbitrary new
+computation or general continual learning. The next capability test must use
+fresh rendered events and ask whether a bound external file improves depth or
+retention under no-replay controls.
+
 ## Unseen external computation and multi-parent retention (2026-08-06)
 
 The frozen-core transfer harness tested `prefix_parity`, a temporal procedure

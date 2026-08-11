@@ -1,6 +1,7 @@
 import torch
 
 from neural_computer import (
+    BoundExternalSequenceOperatorMemory,
     CanonicalRegisterReadout,
     ExternalCapabilityRegisterMachine,
     ExternalExecutionSnapshot,
@@ -64,12 +65,12 @@ def _machine(**kwargs: object) -> ExternalCapabilityRegisterMachine:
     )
 
 
-def test_external_register_machine_has_one_shared_interpreter_and_variable_program_data() -> None:
+def test_external_register_machine_has_one_shared_interpreter_and_variable_program_data() -> (
+    None
+):
     machine = _machine()
 
-    assert machine.configuration()["schema"] == (
-        "neural-computer.external-register.v4"
-    )
+    assert machine.configuration()["schema"] == ("neural-computer.external-register.v4")
     assert machine.configuration()["instruction_count"] == 2
     assert machine.configuration()["execution"] == (
         "shared_interpreter_serial_instruction_chain_v1"
@@ -98,9 +99,7 @@ def test_external_compute_basis_is_append_only_and_memory_addressable() -> None:
     )
     register = torch.randn(2, 8)
     default = machine.execute(register, machine.instructions[0])
-    extended = machine.execute(
-        register, machine.instructions[0], basis_slot=index
-    )
+    extended = machine.execute(register, machine.instructions[0], basis_slot=index)
     assert default.shape == extended.shape == register.shape
     assert torch.isfinite(extended).all()
     assert not torch.equal(default, extended)
@@ -130,7 +129,9 @@ def test_external_compute_basis_artifact_round_trips_exactly() -> None:
     assert torch.allclose(basis(register, code), rehydrated(register, code))
 
 
-def test_external_compute_basis_artifact_load_isolated_from_frozen_interpreter() -> None:
+def test_external_compute_basis_artifact_load_isolated_from_frozen_interpreter() -> (
+    None
+):
     torch.manual_seed(919)
     source = _machine()
     source_slot = source.add_basis_slot()
@@ -199,7 +200,9 @@ def test_external_compute_basis_artifact_rejects_corruption_and_wrong_abi() -> N
         raise AssertionError("expected a wrong-ABI compute artifact to be rejected")
 
 
-def test_shared_interpreter_mode_uses_one_instruction_family_for_addressed_slots() -> None:
+def test_shared_interpreter_mode_uses_one_instruction_family_for_addressed_slots() -> (
+    None
+):
     machine = ExternalCapabilityRegisterMachine(
         event_width=4,
         action_width=2,
@@ -215,9 +218,7 @@ def test_shared_interpreter_mode_uses_one_instruction_family_for_addressed_slots
     shared = machine.execute(register, machine.instructions[0])
     addressed = machine.execute(register, machine.instructions[0], basis_slot=0)
 
-    assert machine.configuration()["operator_mode"] == (
-        "factorized_shared_interpreter"
-    )
+    assert machine.configuration()["operator_mode"] == ("factorized_shared_interpreter")
     assert machine.configuration()["basis_binding"] == (
         "instruction_vector_selects_shared_interpreter_v1"
     )
@@ -310,9 +311,7 @@ def test_shared_relational_mode_integrates_role_relations_into_transition() -> N
     loss = result.square().mean()
     loss.backward()
 
-    assert machine.configuration()["operator_mode"] == (
-        "factorized_shared_relational"
-    )
+    assert machine.configuration()["operator_mode"] == ("factorized_shared_relational")
     assert machine.relational_transition.configuration()["schema"] == (
         "neural-computer.external-register-relational-transition.v1"
     )
@@ -335,9 +334,10 @@ def test_stable_relational_mode_keeps_role_binding_instruction_independent() -> 
     assert machine.configuration()["operator_mode"] == (
         "factorized_shared_stable_relational"
     )
-    assert machine.relational_transition.configuration()[
-        "instruction_conditioned_binding"
-    ] is False
+    assert (
+        machine.relational_transition.configuration()["instruction_conditioned_binding"]
+        is False
+    )
 
     register = torch.randn(2, 8)
     code_a = torch.randn(2, 5)
@@ -388,9 +388,7 @@ def test_shared_canonical_mode_applies_one_internal_state_contract_per_step() ->
     register = torch.randn(2, 8)
     final, trace = machine.execute_chain_trace(register, machine.instructions)
 
-    assert machine.configuration()["operator_mode"] == (
-        "factorized_shared_canonical"
-    )
+    assert machine.configuration()["operator_mode"] == ("factorized_shared_canonical")
     assert len(trace) == 2
     assert torch.isfinite(final).all()
     assert torch.allclose(trace[0].mean(dim=-1), torch.zeros(2), atol=1e-5)
@@ -429,16 +427,16 @@ def test_shared_role_bound_mode_returns_learned_role_trace() -> None:
     register = torch.randn(3, 8)
     final, roles = machine.execute_chain_role_trace(register, machine.instructions)
 
-    assert machine.configuration()["operator_mode"] == (
-        "factorized_shared_role_bound"
-    )
+    assert machine.configuration()["operator_mode"] == ("factorized_shared_role_bound")
     assert machine.configuration()["role_count"] == 2
     assert len(roles) == 2
     assert all(role.shape == (3, 2, 4) for role in roles)
     assert torch.isfinite(final).all()
 
 
-def test_new_basis_slot_does_not_resize_controller_or_existing_instruction_data() -> None:
+def test_new_basis_slot_does_not_resize_controller_or_existing_instruction_data() -> (
+    None
+):
     machine = _machine()
     old_instruction = machine.instructions[0].code.detach().clone()
     old_parameter_count = sum(parameter.numel() for parameter in machine.parameters())
@@ -446,7 +444,10 @@ def test_new_basis_slot_does_not_resize_controller_or_existing_instruction_data(
 
     assert machine.instructions[0].code.shape == old_instruction.shape
     assert torch.equal(machine.instructions[0].code, old_instruction)
-    assert sum(parameter.numel() for parameter in machine.parameters()) > old_parameter_count
+    assert (
+        sum(parameter.numel() for parameter in machine.parameters())
+        > old_parameter_count
+    )
 
 
 def test_basis_selection_reuses_only_fresh_verified_slots_or_requests_growth() -> None:
@@ -462,7 +463,9 @@ def test_basis_selection_reuses_only_fresh_verified_slots_or_requests_growth() -
     assert grow.compute_slot_index is None
 
 
-def test_basis_efficiency_selection_rejects_asymmetric_cross_operator_transfer() -> None:
+def test_basis_efficiency_selection_rejects_asymmetric_cross_operator_transfer() -> (
+    None
+):
     machine = _machine()
     machine.add_basis_slot()
     decision = machine.select_basis_slot_by_efficiency(
@@ -496,9 +499,7 @@ def test_opaque_basis_compatibility_prior_only_orders_and_never_admits() -> None
     loss, pair_count = prior.outcome_ranking_loss(query, keys, outcomes)
     assert torch.isfinite(loss)
     assert pair_count == 2
-    assert prior.configuration()["role"] == (
-        "screening_only_fresh_admission_required"
-    )
+    assert prior.configuration()["role"] == ("screening_only_fresh_admission_required")
 
 
 def test_basis_slots_can_be_frozen_and_unpromoted_growth_can_be_rolled_back() -> None:
@@ -508,7 +509,8 @@ def test_basis_slots_can_be_frozen_and_unpromoted_growth_can_be_rolled_back() ->
 
     machine.freeze_basis_slot(first)
     assert all(
-        not parameter.requires_grad for parameter in machine.basis_slots[first].parameters()
+        not parameter.requires_grad
+        for parameter in machine.basis_slots[first].parameters()
     )
     machine.remove_basis_slot(second)
     assert len(machine.basis_slots) == 1
@@ -571,9 +573,7 @@ def test_bounded_residual_operator_is_finite_and_configuration_is_explicit() -> 
     register = torch.randn(3, 8)
     result = machine.execute(register, machine.instructions[0])
 
-    assert machine.configuration()["operator_mode"] == (
-        "factorized_bounded_residual"
-    )
+    assert machine.configuration()["operator_mode"] == ("factorized_bounded_residual")
     assert result.shape == register.shape
     assert torch.isfinite(result).all()
 
@@ -594,13 +594,9 @@ def test_protected_meta_operator_starts_with_an_inert_residual_family() -> None:
     register = torch.randn(3, 8)
     result = machine.execute(register, machine.instructions[0])
     machine.add_basis_slot()
-    addressed_result = machine.execute(
-        register, machine.instructions[0], basis_slot=0
-    )
+    addressed_result = machine.execute(register, machine.instructions[0], basis_slot=0)
 
-    assert machine.configuration()["operator_mode"] == (
-        "factorized_protected_meta"
-    )
+    assert machine.configuration()["operator_mode"] == ("factorized_protected_meta")
     assert result.shape == register.shape
     assert torch.isfinite(result).all()
     assert torch.equal(result, addressed_result)
@@ -667,13 +663,72 @@ def test_external_sequence_operator_memory_grows_and_executes_opaque_slots() -> 
     assert torch.isfinite(result).all()
 
 
+def test_external_sequence_operator_binding_routes_once_per_rollout(
+    monkeypatch,
+) -> None:
+    torch.manual_seed(914)
+    machine = _machine(operator_mode="factorized_protected_bounded_meta")
+    memory = ExternalSequenceOperatorMemory(8, 5, operator_rank=2)
+    memory.add_slot()
+    memory.add_slot()
+    query = torch.randn(3, 5)
+    calls = 0
+    original_route_weights = memory.route_weights
+
+    def counted_route_weights(route_query: torch.Tensor) -> torch.Tensor:
+        nonlocal calls
+        calls += 1
+        return original_route_weights(route_query)
+
+    monkeypatch.setattr(memory, "route_weights", counted_route_weights)
+    bound = memory.bind(query)
+
+    assert isinstance(bound, BoundExternalSequenceOperatorMemory)
+    assert calls == 1
+    assert bound.configuration()["schema"] == (
+        "neural-computer.external-sequence-operator-binding.v1"
+    )
+    assert bound.configuration()["routing"] == "materialized_once_per_rollout_v1"
+
+    register = torch.randn(3, 8)
+    instruction = machine.instructions[0]
+    states = []
+    for _ in range(4):
+        register = machine.execute(
+            register,
+            instruction,
+            sequence_operator_memory=bound,
+        )
+        states.append(register)
+
+    assert calls == 1
+    assert len(states) == 4
+    assert torch.isfinite(states[-1]).all()
+
+
+def test_external_sequence_operator_binding_requires_rebinding_after_growth() -> None:
+    memory = ExternalSequenceOperatorMemory(8, 5, operator_rank=2)
+    memory.add_slot()
+    bound = memory.bind(torch.randn(2, 5))
+    memory.add_slot()
+
+    try:
+        bound.residual(torch.randn(2, 8), torch.randn(2, 5))
+    except RuntimeError as error:
+        assert "rebind" in str(error)
+    else:
+        raise AssertionError("expected a grown memory to invalidate its binding")
+
+
 def test_external_sequence_program_memory_stores_ordered_shared_program_data() -> None:
     torch.manual_seed(906)
     memory = ExternalSequenceProgramMemory(5, router_temperature=0.25)
     first = memory.add_program(torch.randn(3, 5))
     second = memory.add_program(torch.randn(2, 5))
     query = memory.encode_program(
-        memory.program_codes(first, batch_size=1, device=torch.device("cpu"), dtype=torch.float32)
+        memory.program_codes(
+            first, batch_size=1, device=torch.device("cpu"), dtype=torch.float32
+        )
     )
     weights = memory.route_weights(query)
 
@@ -700,7 +755,9 @@ def test_external_sequence_program_memory_hard_route_is_discrete_forward() -> No
     assert query.grad is not None
 
 
-def test_external_sequence_program_memory_content_addressing_selects_matching_program() -> None:
+def test_external_sequence_program_memory_content_addressing_selects_matching_program() -> (
+    None
+):
     torch.manual_seed(907)
     memory = ExternalSequenceProgramMemory(4, content_addressing=True)
     first_codes = torch.randn(2, 4)
@@ -742,9 +799,11 @@ def test_shared_machine_executes_external_program_codes_without_new_operator() -
     machine = _machine(operator_mode="factorized_protected_bounded_meta")
     register = torch.randn(2, 8)
     instructions = (machine.instructions[0], machine.instructions[1])
-    codes = torch.stack(
-        tuple(instruction.code.squeeze(0) for instruction in instructions)
-    ).unsqueeze(0).expand(2, -1, -1)
+    codes = (
+        torch.stack(tuple(instruction.code.squeeze(0) for instruction in instructions))
+        .unsqueeze(0)
+        .expand(2, -1, -1)
+    )
 
     expected = machine.execute_chain(register, instructions)
     actual = machine.execute_code_chain(register, codes)
@@ -835,7 +894,9 @@ def test_downstream_instruction_executes_on_register_only() -> None:
     )
 
 
-def test_read_execute_uses_a_transient_snapshot_without_mutating_observed_state() -> None:
+def test_read_execute_uses_a_transient_snapshot_without_mutating_observed_state() -> (
+    None
+):
     torch.manual_seed(906)
     machine = _machine()
     state = machine.initial_state(2, device="cpu")
@@ -946,12 +1007,17 @@ def test_external_decoder_can_consume_a_memory_selected_register_chain() -> None
     assert final_state.initialized.equal(torch.ones(2, dtype=torch.bool))
 
 
-def test_register_executes_rehydrated_program_artifact_without_unpacking_protocol_data() -> None:
+def test_register_executes_rehydrated_program_artifact_without_unpacking_protocol_data() -> (
+    None
+):
     torch.manual_seed(920)
     machine = _machine()
     artifact = ExternalProgramArtifact(
         codes=torch.stack(
-            tuple(instruction.code.detach().squeeze(0) for instruction in machine.instructions)
+            tuple(
+                instruction.code.detach().squeeze(0)
+                for instruction in machine.instructions
+            )
         ),
         interpreter_schema="neural-computer.external-register.v4",
         execution_schema="neural-computer.external-register-read-execute.v1",

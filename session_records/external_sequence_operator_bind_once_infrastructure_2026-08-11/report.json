@@ -1,0 +1,20 @@
+{
+  "batch_size": 16,
+  "bound_route_calls_after_bind": 1,
+  "capability_promotion": false,
+  "expected_bound_route_calls_after_bind": 1,
+  "expected_raw_route_calls": 8,
+  "growth_requires_rebind": true,
+  "logical_lifetimes": 0,
+  "max_output_delta": 0.0,
+  "optimizer_updates": 0,
+  "raw_and_bound_outputs_equal": true,
+  "raw_route_calls": 8,
+  "replayed_examples": 0,
+  "route_call_reduction": 8.0,
+  "route_gradient_live": true,
+  "schema": "neural-computer.external-sequence-operator-bind-once-audit.v1",
+  "seed": 914,
+  "steps": 8,
+  "unique_verifier_bits": 0
+}

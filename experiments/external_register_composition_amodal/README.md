@@ -264,6 +264,24 @@ candidate probes may select an opaque existing slot, while a failed probe
 requests growth. Mastered slots can be frozen, and an unpromoted newest slot
 can be rolled back without touching earlier slots.
 
+## Bind-once route contract
+
+The exported working-memory session's strongest transferable implementation
+lesson is now explicit in the register API: contextual routing should happen
+once per rollout, followed by fixed recurrent execution. The
+`ExternalSequenceOperatorMemory.bind()` method returns an ephemeral
+`BoundExternalSequenceOperatorMemory`; the shared interpreter consumes that
+handle without a route query or slot ID. External-bank growth invalidates the
+binding and requires rebinding.
+
+The infrastructure audit in
+`session_records/external_sequence_operator_bind_once_infrastructure_2026-08-11/`
+observed 8 raw route calls versus 1 bound call over an 8-step chain, identical
+outputs, live route gradients, and explicit growth invalidation. This is a
+latency/contract result only: it uses no verifier experience and does not
+promote a learned capability. A future rendered-event audit must establish
+whether the same boundary improves new-depth learning or retention.
+
 ## Promoted basis reuse (2026-08-08)
 
 The two-seed reuse probe promoted the next boundary. A first `rotate`
