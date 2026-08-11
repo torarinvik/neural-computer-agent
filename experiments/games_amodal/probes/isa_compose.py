@@ -237,6 +237,7 @@ OPS = ("NOOP", "INC", "DEC", "CINC", "CDEC", "COPY", "SWAP")
 if args.no_conditionals:
     OPS = tuple(o for o in OPS if o not in ("CINC", "CDEC"))
 NOPS = len(OPS)
+NOOP_OP = OPS.index("NOOP")
 
 
 # Legal moduli an instruction may carry. F160: the instructions did
@@ -497,6 +498,48 @@ if args.synthesize:
             out.append(min(k for k, m in enumerate(MODULI) if m >= wanted))
         return out
 
+    def enumerate_programs(needs: set, moduli, depth: int):
+        """Programs of length `depth`, over instructions that WRITE a
+        slot the action changed, padded with NOOP to program_len.
+
+        This is the piece the search has never had. Everything measured
+        so far SAMPLES: F155 drew random length-6 programs, and every
+        improvement since — reuse, the coverage filter, the modulus —
+        changes which samples get drawn or which get discarded, so each
+        shaves a constant factor off an exponential. Enumeration in
+        order of increasing length changes what is being counted: a
+        family whose recipe is one instruction costs the size of the
+        instruction set, not a fraction of 210^6.
+
+        Restricting to instructions that write a changed slot is the
+        same sound condition as the coverage filter — a slot nothing
+        writes cannot change — so nothing expressible at this depth is
+        skipped. NOOP is excluded from the enumeration itself and used
+        only as padding, since a NOOP inside a length-k program makes it
+        a length-(k-1) program already enumerated.
+
+        The modulus comes from the slot rather than the enumeration,
+        which is F167's result carried across: it is the difference
+        between 210 candidates per depth and 1470."""
+        pad = [(NOOP_OP, 0, 1, 0)] * args.program_len
+        pool = []
+        for op in range(NOPS):
+            if op == NOOP_OP:
+                continue
+            targets = needs if needs else range(SLOTS)
+            for i in targets:
+                for j in range(SLOTS):
+                    if i == j:
+                        continue
+                    pool.append((op, i, j, moduli[i] if moduli else 0))
+        if depth == 1:
+            for one in pool:
+                yield [one] + pad[:args.program_len - 1]
+            return
+        for first in pool:
+            for second in pool:
+                yield [first, second] + pad[:args.program_len - 2]
+
     def attainable(candidate, unavoidable, rows: int, slots: int,
                    used_slots) -> float:
         """The BEST fit this candidate could possibly reach.
@@ -630,7 +673,8 @@ if args.synthesize:
 
     def search_with_library(family, library, weights, observer, generator,
                             budget, effect_index=False, cover=False,
-                            bound=False):
+                            bound=False, enumerate_first=False,
+                            moduli=None):
         """Propose programs by concatenating LIBRARY FRAGMENTS. Returns
         the recipe and the number of candidates tried — cost is the
         measurement here, not accuracy.
@@ -685,7 +729,30 @@ if args.synthesize:
                            for k in live}
             rows = int(src.shape[0])
             best, best_score, tried, proposed = None, -1.0, 0, 0
-            while tried < budget:
+            if enumerate_first:
+                # depth-ordered enumeration BEFORE any sampling. Costs
+                # at most the enumerated set and stops the moment a
+                # candidate clears the target, so a family with a short
+                # recipe pays the size of the instruction set instead of
+                # a fraction of an exponential.
+                stop = False
+                for depth in (1, 2):
+                    if stop:
+                        break
+                    for cand in enumerate_programs(
+                            writes_needed(src, dst), moduli, depth):
+                        proposed += 1
+                        tried += 1
+                        with torch.no_grad():
+                            got = plant(cand, src).argmax(-1)
+                        sc = float((got[:, used] == dst[:, used])
+                                   .float().mean())
+                        if sc > best_score:
+                            best, best_score = cand, sc
+                        if best_score >= args.fit_target or tried >= budget:
+                            stop = True
+                            break
+            while tried < budget and best_score < args.fit_target:
                 # build a candidate by concatenating fragments until it
                 # is long enough; a fragment may be a whole past recipe
                 candidate: list = []
@@ -979,7 +1046,12 @@ if args.synthesize:
                     family, library, weights, observer, generator, budget,
                     effect_index=(kind == "effect"),
                     cover=kind.startswith("cover"),
-                    bound=kind.startswith("bound"))
+                    bound=kind.startswith("bound"),
+                    enumerate_first=kind.startswith("enum"),
+                    moduli=(infer_moduli(*observe(
+                        family, args.observations,
+                        torch.Generator().manual_seed(seed + 7919 * index))[
+                            0::2]) if args.infer_moduli else None))
             proposed_seq.append(proposals)
             actions = max(1, sum(1 for v in recipe.values()
                                  if v is not None))
@@ -1000,11 +1072,12 @@ if args.synthesize:
                 "winners": len(winners), "recalled": recalled,
                 "saturated": tried >= budget * actions})
             stored.update(winners)
-            if kind in ("frozen", "effect", "cover", "bound") \
+            if kind in ("frozen", "effect", "cover", "bound", "enum") \
                     or not winners:
                 continue
             solved.extend(winners)
-            if kind in ("uniform", "cover+store", "bound+store"):
+            if kind in ("uniform", "cover+store", "bound+store",
+                        "enum+store"):
                 for program in winners:
                     library.append(program)
                 continue
@@ -1126,12 +1199,14 @@ if args.synthesize:
                 ("shuffled", 0.0, 0.0), ("effect", 0.0, 0.0),
                 ("cover", 0.0, 0.0), ("cover+store", 0.0, 0.0),
                 ("bound", 0.0, 0.0), ("bound+store", 0.0, 0.0),
+                ("enum", 0.0, 0.0), ("enum+store", 0.0, 0.0),
                 ("marginal", 1.0, 0.0), ("sketch", 1.0, 0.0)]
         arms += [("sketch", 1.0, float(w))
                  for w in args.exact_weight.split(",") if float(w) > 0]
         labels = [kind if kind in ("frozen", "uniform", "shuffled",
                                    "effect", "cover", "cover+store",
-                                   "bound", "bound+store")
+                                   "bound", "bound+store",
+                                   "enum", "enum+store")
                   else f"{kind}-e{exact:g}"
                   for kind, _, exact in arms]
         if args.arms:
