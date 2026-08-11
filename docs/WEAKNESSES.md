@@ -29,8 +29,10 @@ rung promotes, rejects, or qualifies. Ordered by severity.
    result measured — 56.6% of the way from joint training to the
    privileged ceiling, exact match 26x joint. The reader's objective
    obeys F78's diversity law: harder discrimination, finer code.
-   Next: the remaining 0.7795 -> 0.9723; and re-check F108's ignorance
-   weight curve, which still has single-seed provenance.
+   Next: the remaining 0.7795 -> 0.9723. (F108's curve was re-checked
+   2026-08-11 and my single-seed suspicion was WRONG — two seeds at
+   every weight, optimum at 0.5 confirmed and the only weight where
+   seeds agree.)
 
 0-carry. **DONE, and it worked (F143).** Binding the games' value
    pathway — entry reduced to one vector added to the state token

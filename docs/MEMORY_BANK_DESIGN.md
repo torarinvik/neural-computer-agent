@@ -6605,3 +6605,32 @@ claim one day earlier off a single seed and did not survive. The only
 difference in procedure was replicating the best point before writing
 it down, which cost two runs. The rule earned there — a sweep is not a
 replication — is now the reason this result can be trusted.
+
+**F108 re-check (2026-08-11): my own flag was WRONG, and the curve
+stands.** After F142's single-seed failure I flagged F108's ignorance
+weight curve as having "identical single-seed provenance" and queued
+it for re-checking. It does not: the archive holds two seeds at every
+one of the five weights. Recomputed per seed:
+
+| ignorance weight | held-out (2 seeds) | mean | entry effect |
+| ---: | --- | ---: | ---: |
+| 0.1 | -0.0483 / -0.0461 | -0.0472 | -0.0015 |
+| 0.25 | -0.0158 / -0.0491 | -0.0324 | +0.0250 |
+| **0.5** | **-0.0201 / -0.0233** | **-0.0217** | **+0.0499** |
+| 1.0 | -0.0223 / -0.0347 | -0.0285 | +0.0417 |
+| 2.0 | -0.0483 / -0.0242 | -0.0362 | +0.0229 |
+
+The optimum at 0.5 survives the scrutiny that killed F142's, and for a
+reason visible in the numbers: it is the ONLY weight where the two
+seeds agree closely (-0.0201 vs -0.0233), while every other weight has
+a spread of 0.02-0.03 between seeds. It also wins on both metrics at
+once. w=0.25 holds the best single value anywhere (-0.0158) and its
+partner seed is nearly the worst (-0.0491) — precisely the pattern
+that would have made a single-seed sweep report 0.25 as the optimum.
+
+Recorded because the correction runs against my own interest: having
+just been burned by a single-seed curve, the cheap move was to leave
+the suspicion in the ledger. Checking cost one command and removed a
+false claim about the project's own record. **Suspicion is not
+evidence either — a flag raised on a hunch has to be tested with the
+same discipline as a finding.**
