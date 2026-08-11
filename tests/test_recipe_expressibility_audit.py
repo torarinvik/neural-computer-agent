@@ -5,6 +5,7 @@ import torch
 from experiments.recipe_expressibility.audit import (
     INSTRUCTION_FEATURE_WIDTH,
     LearnedRecipeInterpreter,
+    evaluate_single_modulus_target,
     instruction_features,
     modulus_boundary,
     sample_batch,
@@ -65,3 +66,25 @@ def test_interpreter_preserves_runtime_shapes() -> None:
 
     assert len(outputs) == 2
     assert all(output.shape == (4, 6, 8) for output in outputs)
+
+
+def test_single_modulus_probe_uses_the_opaque_instruction_path() -> None:
+    model = LearnedRecipeInterpreter(hidden=32)
+
+    score_m2 = evaluate_single_modulus_target(
+        model,
+        seed=8,
+        target_slot=0,
+        batches=1,
+        batch_size=4,
+    )
+    score_m8 = evaluate_single_modulus_target(
+        model,
+        seed=9,
+        target_slot=2,
+        batches=1,
+        batch_size=4,
+    )
+
+    assert 0.0 <= score_m2 <= 1.0
+    assert 0.0 <= score_m8 <= 1.0

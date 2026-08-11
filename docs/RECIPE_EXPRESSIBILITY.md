@@ -80,6 +80,17 @@ on expressibility without a material loss on unseen baseline execution. The
 next learned audit must first compare explicit per-slot modulus against a
 diagnostic legacy-global-modulus arm on mixed-domain random programs.
 
+## Narrow learned modulus result
+
+The corrected two-seed, 1,500-update mixed-domain audit now includes dedicated
+single-increment probes. Across both seeds and both atomic-only/parallel
+training arms, `m=2` and `m=8` reach stable exact execution by at most `1,500`
+updates, with zero replay and `192,000` unique random-program steps per arm.
+This promotes the explicit modulus contract as a narrow learned arithmetic
+capability. The simultaneous parallel target remains unstable and is not
+promoted. Evidence is archived in
+`session_records/recipe_modulus_learned_narrow_promotion_2026-08-11/`.
+
 The first paired two-seed calibration at 500 updates was correctly rejected as
 undertrained: the parallel target reached `0.8506`/`0.9805`, but old-basis
 length-two accuracy was only `0.5830`/`0.5264` in the extension arms and the

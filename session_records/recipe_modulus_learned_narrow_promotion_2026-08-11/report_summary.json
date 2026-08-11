@@ -1,0 +1,44 @@
+{
+  "schema": "neural-computer.recipe-expressibility-audit.v2-summary",
+  "source": "in_repository_run",
+  "seeds": [70421, 70422],
+  "updates": 1500,
+  "batch_size": 64,
+  "slot_values": [2, 2, 8, 8, 8, 8],
+  "modulus_boundary": {
+    "legacy_global_modulus": 8,
+    "legacy_match_rates": [0.5, 0.5, 1.0, 1.0, 1.0, 1.0],
+    "explicit_match_rates": [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+  },
+  "stable_updates_at_0_9": {
+    "seed70421_atomic_m2": 300,
+    "seed70421_atomic_m8": 300,
+    "seed70421_parallel_m2": 300,
+    "seed70421_parallel_m8": 300,
+    "seed70422_atomic_m2": 300,
+    "seed70422_atomic_m8": 1500,
+    "seed70422_parallel_m2": 600,
+    "seed70422_parallel_m8": 300
+  },
+  "final_single_increment_scores": {
+    "seed70421_atomic": {"m2": 1.0, "m8": 1.0},
+    "seed70421_parallel": {"m2": 1.0, "m8": 1.0},
+    "seed70422_atomic": {"m2": 1.0, "m8": 1.0},
+    "seed70422_parallel": {"m2": 0.9990234375, "m8": 1.0}
+  },
+  "accounting": {
+    "unique_program_steps_per_arm": 192000,
+    "replayed_examples_per_arm": 0,
+    "wall_time_seconds": {
+      "seed70421_atomic": 45.38396087498404,
+      "seed70421_parallel": 47.525184000027366,
+      "seed70422_atomic": 44.450041292002425,
+      "seed70422_parallel": 43.32192995795049
+    }
+  },
+  "parallel_target": {
+    "promoted": false,
+    "final_scores": {"seed70421": 0.373046875, "seed70422": 0.39453125}
+  },
+  "claim_boundary": "Promoted explicit per-slot modulus as a narrow learned arithmetic capability; not a promotion of parallel composition, general continual learning, arbitrary computation, or unrestricted memory growth."
+}

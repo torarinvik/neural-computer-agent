@@ -332,6 +332,47 @@ def evaluate_parallel_target(
     return sum(scores) / len(scores)
 
 
+@torch.no_grad()
+def evaluate_single_modulus_target(
+    model: LearnedRecipeInterpreter,
+    *,
+    seed: int,
+    target_slot: int,
+    slot_values: tuple[int, ...] = SLOT_VALUES,
+    batch_size: int = 128,
+    batches: int = 8,
+) -> float:
+    """Evaluate one opaque increment target without parallel composition."""
+
+    generator = torch.Generator().manual_seed(seed)
+    modulus = slot_values[target_slot]
+    instruction = RecipeInstruction(
+        "inc",
+        target_slot,
+        modulus=modulus,
+    )
+    features = instruction_features(instruction).view(1, 1, -1)
+    scores: list[float] = []
+    for _ in range(batches):
+        initial = torch.stack(
+            tuple(
+                torch.randint(
+                    value,
+                    (batch_size,),
+                    generator=generator,
+                    dtype=torch.long,
+                )
+                for value in slot_values
+            ),
+            dim=1,
+        )
+        targets = initial.clone()
+        targets[:, target_slot] = (targets[:, target_slot] + 1) % modulus
+        output = model(initial, features.expand(batch_size, -1, -1))[-1]
+        scores.append(float(output.argmax(-1).eq(targets).all(-1).float().mean()))
+    return sum(scores) / len(scores)
+
+
 def train_arm(
     *,
     seed: int,
@@ -385,6 +426,18 @@ def train_arm(
                         seed=seed + 40_000 + update,
                         slot_values=slot_values,
                     ),
+                    "modulus_target_m2": evaluate_single_modulus_target(
+                        model,
+                        seed=seed + 50_000 + update,
+                        target_slot=0,
+                        slot_values=slot_values,
+                    ),
+                    "modulus_target_m8": evaluate_single_modulus_target(
+                        model,
+                        seed=seed + 60_000 + update,
+                        target_slot=2,
+                        slot_values=slot_values,
+                    ),
                 }
             )
     def stable_update(key: str, threshold: float = 0.9) -> int | None:
@@ -408,6 +461,8 @@ def train_arm(
                 "base_unseen_length_2",
                 "base_unseen_double_length_4",
                 "parallel_target",
+                "modulus_target_m2",
+                "modulus_target_m8",
             )
         },
         "accounting": {
@@ -438,7 +493,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         )
     )
     return {
-        "schema": "neural-computer.recipe-expressibility-audit.v1",
+        "schema": "neural-computer.recipe-expressibility-audit.v2",
         "source": "in_repository_run",
         "configuration": {
             "slots": SLOTS,
