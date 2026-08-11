@@ -386,3 +386,6 @@ a wiring/control mode until held-out multi-family acquisition shows a gain.
 The current seed-91–93 smoke passed `1/3`; the two rejected runs failed before
 ledger observation, so target discovery/promotion stability remains the active
 bottleneck.
+The optional `--adaptive-address` flag exercises copy-on-write key adaptation;
+its candidate key is resolved from the post-holdout bank before retention
+verification, preserving historical addresses without changing the controller.

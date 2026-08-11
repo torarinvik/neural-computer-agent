@@ -310,6 +310,16 @@ def test_online_transition_discovery_can_learn_external_selection_cost() -> None
     assert rejected.prior_selection_cost_ledger_used
     assert not rejected.prior_selection_cost_observed
 
+    adaptive = run_online_transition_discovery_audit(
+        seed=91,
+        window_statistics="recency_weighted_and_latest_v1",
+        window_gain=0.05,
+        goal_conditioned=True,
+        adaptive_address=True,
+    )
+    assert adaptive.adaptive_address
+    assert adaptive.status == "online_replay_free_transition_discovery_boundary"
+
 
 def test_transition_discovery_firewall_skips_committed_slot_updates() -> None:
     class RouterProbe:

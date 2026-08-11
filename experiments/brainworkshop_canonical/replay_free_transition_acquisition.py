@@ -31,6 +31,7 @@ from neural_computer import (
     ExternalOnlineTransitionContextResult,
     ExternalOnlineTransitionContextRouter,
     ExternalRoutedIntentionCostLedger,
+    ExternalTransitionContextAddressAdapter,
     ExternalTransitionContextEncoder,
     ExternalTransitionModelBank,
     ExternalTransitionObservation,
@@ -135,6 +136,7 @@ class OnlineTransitionDiscoveryReport:
     window_gain: float
     recency_decay: float
     context_aggregation: str
+    adaptive_address: bool = False
     goal_conditioned: bool = False
     target_goal_fragment_admitted: bool = False
     target_goal_fragment_used: bool = False
@@ -653,6 +655,7 @@ def run_online_transition_discovery_audit(
     prior_selection_cost_learning_rate: float = 0.35,
     prior_selection_cost_initial: float = 0.25,
     prior_selection_cost_decision_weight: float = 1.0,
+    adaptive_address: bool = False,
 ) -> OnlineTransitionDiscoveryReport:
     """Discover and learn a novel rendered family without replay or a task label.
 
@@ -691,6 +694,8 @@ def run_online_transition_discovery_audit(
         raise TypeError("online goal-conditioned flag must be boolean")
     if not isinstance(learned_prior_selection_cost, bool):
         raise TypeError("learned prior-selection cost flag must be boolean")
+    if not isinstance(adaptive_address, bool):
+        raise TypeError("adaptive address flag must be boolean")
     if goal_horizon < 1 or goal_horizon > steps - 1:
         raise ValueError("online goal horizon must fit held-out transitions")
     if goal_verifier_threshold <= 0.0 or not math.isfinite(
@@ -824,6 +829,16 @@ def run_online_transition_discovery_audit(
         if learned_prior_selection_cost
         else None
     )
+    address_adapter = (
+        ExternalTransitionContextAddressAdapter(
+            context_encoder,
+            learning_rate=1e-3,
+            adaptation_steps=8,
+            anchor_cosine_ceiling=0.75,
+        )
+        if adaptive_address
+        else None
+    )
     router = ExternalOnlineTransitionContextRouter(
         bank,
         context_encoder,
@@ -851,6 +866,7 @@ def run_online_transition_discovery_audit(
         prior_selection_fresh_cost=prior_selection_fresh_cost,
         prior_selection_cost_weight=prior_selection_cost_weight,
         prior_selection_cost_ledger=prior_cost_ledger,
+        address_adapter=address_adapter,
     )
 
     # Acquire the target while still behaving through the known source slot.
@@ -949,6 +965,7 @@ def run_online_transition_discovery_audit(
             window_gain=window_gain,
             recency_decay=recency_decay,
             context_aggregation=context_aggregation,
+            adaptive_address=adaptive_address,
             goal_conditioned=goal_conditioned,
             target_goal_horizon=goal_horizon if goal_conditioned else 0,
             prior_selection_cost_aware=prior_selection_cost_aware,
@@ -998,6 +1015,13 @@ def run_online_transition_discovery_audit(
         if candidate_bank.models[source_index].digest() != source_digest:
             return False
         candidate_planner = ExternalModelBasedPlanner(candidate_bank, beam_width=4)
+        # A copy-on-write address adapter may refine the staged key while the
+        # promotion holdout is routed. Resolve the candidate's final opaque
+        # key from the candidate bank rather than querying a stale pre-holdout
+        # snapshot.
+        candidate_route_context = candidate_bank.context_at(
+            candidate_bank.context_count - 1
+        )
         fresh_probe_bank = ExternalTransitionModelBank(
             state_width=bank.state_width,
             intention_width=bank.intention_width,
@@ -1006,18 +1030,18 @@ def run_online_transition_discovery_audit(
             affine_ridge=affine_ridge,
         )
         fresh_probe_bank.ensure_context(
-            candidate_context,
+            candidate_route_context,
             model_family=EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY,
         )
         fresh_planner = ExternalModelBasedPlanner(fresh_probe_bank, beam_width=4)
         for heldout in promotion_holdouts:
             candidate_error = candidate_planner.rollout_error(
                 heldout,
-                transition_context=candidate_context.unsqueeze(0),
+                transition_context=candidate_route_context.unsqueeze(0),
             )
             fresh_error = fresh_planner.rollout_error(
                 heldout,
-                transition_context=candidate_context.unsqueeze(0),
+                transition_context=candidate_route_context.unsqueeze(0),
             )
             if candidate_error > 0.2 or candidate_error >= fresh_error:
                 return False
@@ -1092,6 +1116,7 @@ def run_online_transition_discovery_audit(
             window_gain=window_gain,
             recency_decay=recency_decay,
             context_aggregation=context_aggregation,
+            adaptive_address=adaptive_address,
             goal_conditioned=goal_conditioned,
             target_goal_horizon=goal_horizon if goal_conditioned else 0,
             prior_selection_cost_aware=prior_selection_cost_aware,
@@ -1319,6 +1344,7 @@ def run_online_transition_discovery_audit(
         window_gain=window_gain,
         recency_decay=recency_decay,
         context_aggregation=context_aggregation,
+        adaptive_address=adaptive_address,
         goal_conditioned=goal_conditioned,
         target_goal_fragment_admitted=goal_fragment_admitted,
         target_goal_fragment_used=goal_fragment_used,
@@ -1367,6 +1393,7 @@ def main() -> None:
     parser.add_argument(
         "--prior-selection-cost-decision-weight", type=float, default=1.0
     )
+    parser.add_argument("--adaptive-address", action="store_true")
     parser.add_argument("--steps", type=int, default=6)
     args = parser.parse_args()
     if args.audit == "nonstationary":
@@ -1396,6 +1423,7 @@ def main() -> None:
             prior_selection_cost_learning_rate=args.prior_selection_cost_learning_rate,
             prior_selection_cost_initial=args.prior_selection_cost_initial,
             prior_selection_cost_decision_weight=args.prior_selection_cost_decision_weight,
+            adaptive_address=args.adaptive_address,
         )
     else:
         report = run_replay_free_transition_acquisition_audit(
