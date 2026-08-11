@@ -6,6 +6,29 @@ rung promotes, rejects, or qualifies. Ordered by severity.
 
 ## Open
 
+0. **The recipe architecture is the live direction, and its next
+   bottleneck is SEARCH, not execution (F155).** An interpreter
+   trained only on random programs executes unseen programs at 0.9978
+   and double-length ones at 0.9774; recipes SEARCHED for seven unseen
+   families reach 0.9247 held-out against a 0.5229 identity floor,
+   14/14 above their own floor, with no gradient touching any family.
+   That refutes the select-vs-invent boundary for a basis-primitive
+   plant. Evidence: `recipe_synthesis_v1_2026-08-11`.
+   What does not scale: proposal is uniform random over 252^6 programs
+   at length 6. Three things follow, in order —
+   (a) **library reuse** (running): compose candidates from fragments
+       of solved recipes, with a frozen-library control, measuring
+       search COST per family rather than accuracy. If cost falls only
+       when the library grows, the bank is buying compounding;
+   (b) **compression, not accumulation.** The current library appends
+       whole recipes and samples uniformly, so it dilutes as it grows.
+       DreamCoder keeps a fragment only when it shortens the total
+       description length. Expect (a) to need this before it works;
+   (c) **learned proposal.** Nothing yet learns which fragment to try;
+       that is the reader's job in this architecture and it is
+       untouched.
+
+
 0. **THE READER'S TRAINING SIGNAL — the last piece, and it is now the
    only one.** Everything else in the composition mechanism is
    measured working: a shared per-element step composes and extends to
