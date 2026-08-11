@@ -43,6 +43,9 @@ EXTERNAL_SKILL_FRAGMENT_RICH_TRACE_SCHEMA = (
 EXTERNAL_SKILL_FRAGMENT_GROWTH_SCHEMA = (
     "neural-computer.skill-fragment-growth-combiner.v2"
 )
+EXTERNAL_SKILL_FRAGMENT_SERIAL_SCHEMA = (
+    "neural-computer.skill-fragment-serial-combiner.v1"
+)
 EXTERNAL_SKILL_FRAGMENT_OPERATOR_SCHEMA = (
     "neural-computer.skill-fragment-operator-combiner.v1"
 )
@@ -51,6 +54,9 @@ PERSISTENT_EXTERNAL_SKILL_FRAGMENT_BANK_SCHEMA = (
 )
 PERSISTENT_EXTERNAL_SKILL_FRAGMENT_GROWTH_SCHEMA = (
     "neural-computer.persistent-skill-fragment-growth.v2"
+)
+PERSISTENT_EXTERNAL_SKILL_FRAGMENT_SERIAL_SCHEMA = (
+    "neural-computer.persistent-skill-fragment-serial.v1"
 )
 PERSISTENT_EXTERNAL_SKILL_FRAGMENT_OPERATOR_SCHEMA = (
     "neural-computer.persistent-skill-fragment-operator.v1"
@@ -1060,6 +1066,367 @@ class ExternalSkillFragmentOperatorCombiner(nn.Module):
         return cls.from_payload(operator_payload)
 
 
+class _ExternalSkillFragmentSerialStep(nn.Module):
+    """One external state transition for one opaque fragment position."""
+
+    def __init__(self, state_width: int, summary_width: int, hidden: int) -> None:
+        super().__init__()
+        self.state_width = int(state_width)
+        self.summary_width = int(summary_width)
+        self.hidden = int(hidden)
+        self.input = nn.Sequential(
+            nn.Linear(state_width + summary_width, hidden),
+            nn.GELU(),
+            nn.LayerNorm(hidden),
+        )
+        self.proposal = nn.Linear(hidden, state_width)
+        self.gate = nn.Linear(hidden, state_width)
+        nn.init.constant_(self.gate.bias, -2.0)
+
+    def zero_impact(self) -> None:
+        """Make this transition an identity until a growth transaction trains it."""
+
+        nn.init.zeros_(self.proposal.weight)
+        nn.init.zeros_(self.proposal.bias)
+        nn.init.zeros_(self.gate.weight)
+        nn.init.constant_(self.gate.bias, -2.0)
+
+    def forward(self, state: torch.Tensor, summary: torch.Tensor) -> torch.Tensor:
+        hidden = self.input(torch.cat((state, summary), dim=-1))
+        proposal = torch.tanh(self.proposal(hidden))
+        gate = torch.sigmoid(self.gate(hidden))
+        return state + gate * proposal
+
+
+class ExternalSkillFragmentSerialCombiner(nn.Module):
+    """Execute opaque fragment evidence through a protected serial state.
+
+    The learner receives only the rich external execution trace. Each
+    fragment boundary is summarized once, then one external step slot updates
+    a persistent composition state. Slots are append-only and can be frozen as
+    a prefix before later depths learn. This differs from the growth combiner:
+    later slots consume the state produced by earlier slots instead of adding
+    independent residuals only at the final readout.
+    """
+
+    schema = EXTERNAL_SKILL_FRAGMENT_SERIAL_SCHEMA
+    requires_instruction_codes = True
+
+    def __init__(
+        self,
+        register_width: int,
+        instruction_width: int,
+        output_width: int,
+        *,
+        hidden: int = 64,
+        step_sharing: str = "position",
+    ) -> None:
+        super().__init__()
+        if min(register_width, instruction_width, output_width, hidden) < 1:
+            raise ValueError("serial combiner dimensions must be positive")
+        if step_sharing not in ("position", "shared"):
+            raise ValueError("unsupported serial combiner step sharing")
+        self.register_width = int(register_width)
+        self.instruction_width = int(instruction_width)
+        self.output_width = int(output_width)
+        self.hidden = int(hidden)
+        self.step_sharing = step_sharing
+        self.step_input = nn.Sequential(
+            nn.Linear(register_width * 2 + instruction_width, hidden),
+            nn.GELU(),
+            nn.LayerNorm(hidden),
+        )
+        self.step_cell = nn.GRUCell(hidden, hidden)
+        self.segment_input = nn.Sequential(
+            nn.Linear(register_width + hidden, hidden),
+            nn.GELU(),
+            nn.LayerNorm(hidden),
+        )
+        self.step_slots = nn.ModuleList()
+        self._protected_step_count = 0
+        self._base_protected = False
+
+    @property
+    def step_count(self) -> int:
+        return len(self.step_slots)
+
+    def append_step_slot(self) -> int:
+        """Append one state transition, zero-impact after the first slot."""
+
+        slot = _ExternalSkillFragmentSerialStep(
+            self.output_width,
+            self.hidden,
+            self.hidden,
+        )
+        if self.step_count:
+            slot.zero_impact()
+        self.step_slots.append(slot)
+        return self.step_count - 1
+
+    def step_slot_parameters(self, index: int) -> tuple[nn.Parameter, ...]:
+        if not 0 <= index < self.step_count:
+            raise IndexError("serial combiner step slot is out of range")
+        return tuple(self.step_slots[index].parameters())
+
+    def protect_step_prefix(self, count: int | None = None) -> None:
+        """Freeze an admitted prefix while leaving later slots trainable."""
+
+        resolved = self.step_count if count is None else int(count)
+        if not 0 <= resolved <= self.step_count:
+            raise ValueError("serial combiner protection prefix is out of range")
+        self._protected_step_count = resolved
+        for slot in self.step_slots[:resolved]:
+            for parameter in slot.parameters():
+                parameter.requires_grad_(False)
+
+    def protect_base(self) -> None:
+        """Freeze the shared trace encoder for append-only growth."""
+
+        self._base_protected = True
+        for parameter in (
+            *self.step_input.parameters(),
+            *self.step_cell.parameters(),
+            *self.segment_input.parameters(),
+        ):
+            parameter.requires_grad_(False)
+
+    def configuration(self) -> dict[str, int | str | bool]:
+        return {
+            "schema": self.schema,
+            "register_width": self.register_width,
+            "instruction_width": self.instruction_width,
+            "output_width": self.output_width,
+            "hidden": self.hidden,
+            "execution": "serial_segment_state_transition_v1",
+            "growth": "append_only_protected_step_prefix_v1",
+            "step_sharing": self.step_sharing,
+            "step_slots": self.step_count,
+            "protected_step_prefix": self._protected_step_count,
+            "base_protected": self._base_protected,
+            "uses_fragment_indices": False,
+            "uses_verifier_metadata": False,
+            "state_input": "previous_external_state_plus_segment_summary_v1",
+        }
+
+    def _segment_summaries(
+        self, trace: ExternalSkillFragmentLearnerTrace
+    ) -> tuple[torch.Tensor, ...]:
+        batch_size, max_steps, _ = trace.states.shape
+        segment_count = trace.fragment_step_counts.shape[1]
+        row_ids = torch.arange(batch_size, device=trace.states.device)
+        summaries: list[torch.Tensor] = []
+        for segment in range(segment_count):
+            starts = trace.fragment_step_counts[:, :segment].sum(dim=1)
+            lengths = trace.fragment_step_counts[:, segment]
+            active_segment = lengths > 0
+            inner_hidden = torch.zeros(
+                batch_size,
+                self.hidden,
+                device=trace.states.device,
+                dtype=trace.states.dtype,
+            )
+            for position in range(max_steps):
+                active_step = (
+                    active_segment
+                    & (position >= starts)
+                    & (position < starts + lengths)
+                    & trace.mask[:, position]
+                )
+                token = self.step_input(
+                    torch.cat(
+                        (
+                            trace.states[:, position],
+                            trace.transition_deltas[:, position],
+                            trace.instruction_codes[:, position],
+                        ),
+                        dim=-1,
+                    )
+                )
+                proposal = self.step_cell(token, inner_hidden)
+                inner_hidden = torch.where(
+                    active_step.unsqueeze(-1), proposal, inner_hidden
+                )
+            final_positions = (starts + lengths - 1).clamp(0, max_steps - 1)
+            final_states = trace.states[row_ids, final_positions]
+            summary = self.segment_input(
+                torch.cat((final_states, inner_hidden), dim=-1)
+            )
+            summaries.append(torch.where(
+                active_segment.unsqueeze(-1),
+                summary,
+                torch.zeros_like(summary),
+            ))
+        return tuple(summaries)
+
+    def forward(
+        self,
+        trace: ExternalSkillFragmentExecutionTrace | ExternalSkillFragmentLearnerTrace,
+    ) -> torch.Tensor:
+        if isinstance(trace, ExternalSkillFragmentExecutionTrace):
+            trace = trace.learner_view()
+        trace.validate(
+            batch_size=trace.states.shape[0],
+            register_width=self.register_width,
+        )
+        if (
+            trace.instruction_codes is None
+            or trace.transition_deltas is None
+            or trace.fragment_step_counts is None
+        ):
+            raise ValueError("serial combiner requires a rich fragment trace")
+        if trace.instruction_codes.shape[2] != self.instruction_width:
+            raise ValueError("serial combiner instruction width does not match trace")
+        summaries = self._segment_summaries(trace)
+        required_slots = 1 if self.step_sharing == "shared" else len(summaries)
+        if self.step_count < required_slots:
+            raise ValueError("serial combiner has no slot for the requested depth")
+        state = torch.zeros(
+            trace.states.shape[0],
+            self.output_width,
+            device=trace.states.device,
+            dtype=trace.states.dtype,
+        )
+        if self.step_sharing == "shared":
+            slot = self.step_slots[0]
+            for summary in summaries:
+                state = slot(state, summary)
+        else:
+            for index, summary in enumerate(summaries):
+                state = self.step_slots[index](state, summary)
+        return state
+
+    def payload(self) -> dict[str, Any]:
+        """Return a checksummed, controller-independent serial memory snapshot."""
+
+        state = {
+            "weights": {
+                name: value.detach().cpu().clone()
+                for name, value in self.state_dict().items()
+            },
+            "protected_step_prefix": self._protected_step_count,
+            "base_protected": self._base_protected,
+        }
+        return {
+            "schema": self.schema,
+            "configuration": self.configuration(),
+            "state": state,
+            "sha256": self._snapshot_digest(state),
+        }
+
+    def _snapshot_digest(self, state: Mapping[str, Any]) -> str:
+        digest = hashlib.sha256()
+        digest.update(
+            json.dumps(
+                self.configuration(), sort_keys=True, separators=(",", ":")
+            ).encode("utf-8")
+        )
+        weights = state.get("weights")
+        if not isinstance(weights, Mapping):
+            raise TypeError("serial combiner snapshot weights are malformed")
+        for name, value in sorted(weights.items()):
+            if not isinstance(value, torch.Tensor):
+                raise TypeError("serial combiner snapshot weight is malformed")
+            digest.update(name.encode("utf-8"))
+            _digest_tensor(digest, value)
+        for name in ("protected_step_prefix", "base_protected"):
+            digest.update(name.encode("utf-8"))
+            digest.update(
+                json.dumps(
+                    state.get(name), sort_keys=True, separators=(",", ":")
+                ).encode("utf-8")
+            )
+        return digest.hexdigest()
+
+    @classmethod
+    def from_payload(
+        cls, payload: Mapping[str, Any]
+    ) -> ExternalSkillFragmentSerialCombiner:
+        if not isinstance(payload, Mapping) or payload.get("schema") != cls.schema:
+            raise ValueError("unsupported serial combiner payload")
+        configuration = payload.get("configuration")
+        state = payload.get("state")
+        if not isinstance(configuration, Mapping) or not isinstance(state, Mapping):
+            raise TypeError("serial combiner payload is incomplete")
+        step_slots = int(configuration.get("step_slots", -1))
+        combiner = cls(
+            int(configuration.get("register_width", -1)),
+            int(configuration.get("instruction_width", -1)),
+            int(configuration.get("output_width", -1)),
+            hidden=int(configuration.get("hidden", -1)),
+            step_sharing=str(configuration.get("step_sharing", "position")),
+        )
+        for _ in range(step_slots):
+            combiner.append_step_slot()
+        weights = state.get("weights")
+        if not isinstance(weights, Mapping):
+            raise TypeError("serial combiner state weights are malformed")
+        if set(weights) != set(combiner.state_dict()):
+            raise ValueError("serial combiner state keys do not match configuration")
+        combiner.load_state_dict(
+            {name: value.to(device="cpu") for name, value in weights.items()},
+            strict=True,
+        )
+        protected = int(state.get("protected_step_prefix", -1))
+        if not 0 <= protected <= combiner.step_count:
+            raise ValueError("serial combiner protection prefix is invalid")
+        combiner._protected_step_count = protected
+        combiner._base_protected = bool(state.get("base_protected", False))
+        combiner.protect_step_prefix(protected)
+        if combiner._base_protected:
+            combiner.protect_base()
+        if dict(configuration) != combiner.configuration():
+            raise ValueError("serial combiner configuration mismatch")
+        expected = payload.get("sha256")
+        if not isinstance(expected, str) or expected != combiner._snapshot_digest(state):
+            raise ValueError("serial combiner checksum mismatch")
+        return combiner
+
+    def save(self, path: Path) -> str:
+        """Atomically persist the external serial execution state."""
+
+        destination = Path(path)
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "format": PERSISTENT_EXTERNAL_SKILL_FRAGMENT_SERIAL_SCHEMA,
+            "serial": self.payload(),
+        }
+        descriptor, temporary_name = tempfile.mkstemp(
+            dir=destination.parent,
+            prefix=f".{destination.name}.",
+            suffix=".tmp",
+        )
+        os.close(descriptor)
+        temporary = Path(temporary_name)
+        try:
+            torch.save(payload, temporary)
+            with temporary.open("rb") as stream:
+                os.fsync(stream.fileno())
+            temporary.replace(destination)
+        finally:
+            temporary.unlink(missing_ok=True)
+        return str(payload["serial"]["sha256"])
+
+    @classmethod
+    def load(
+        cls,
+        path: Path,
+        *,
+        map_location: torch.device | str = "cpu",
+    ) -> ExternalSkillFragmentSerialCombiner:
+        """Reload serial execution memory only after schema validation."""
+
+        payload = torch.load(Path(path), map_location=map_location, weights_only=False)
+        if (
+            not isinstance(payload, Mapping)
+            or payload.get("format") != PERSISTENT_EXTERNAL_SKILL_FRAGMENT_SERIAL_SCHEMA
+        ):
+            raise ValueError("unsupported persistent serial combiner format")
+        serial_payload = payload.get("serial")
+        if not isinstance(serial_payload, Mapping):
+            raise TypeError("persistent serial combiner is missing its payload")
+        return cls.from_payload(serial_payload)
+
+
 class ExternalSkillFragmentGrowthCombiner(nn.Module):
     """Append-only learner for continual composition-depth growth.
 
@@ -1882,9 +2249,11 @@ __all__ = [
     "EXTERNAL_SKILL_FRAGMENT_RICH_TRACE_SCHEMA",
     "EXTERNAL_SKILL_FRAGMENT_ROUTE_SCHEMA",
     "EXTERNAL_SKILL_FRAGMENT_SCHEMA",
+    "EXTERNAL_SKILL_FRAGMENT_SERIAL_SCHEMA",
     "PERSISTENT_EXTERNAL_SKILL_FRAGMENT_BANK_SCHEMA",
     "PERSISTENT_EXTERNAL_SKILL_FRAGMENT_GROWTH_SCHEMA",
     "PERSISTENT_EXTERNAL_SKILL_FRAGMENT_OPERATOR_SCHEMA",
+    "PERSISTENT_EXTERNAL_SKILL_FRAGMENT_SERIAL_SCHEMA",
     "ExternalSkillFragmentArtifact",
     "ExternalSkillFragmentBank",
     "ExternalSkillFragmentCombiner",
@@ -1895,4 +2264,5 @@ __all__ = [
     "ExternalSkillFragmentProgramCombiner",
     "ExternalSkillFragmentRoute",
     "ExternalSkillFragmentSegmentCombiner",
+    "ExternalSkillFragmentSerialCombiner",
 ]

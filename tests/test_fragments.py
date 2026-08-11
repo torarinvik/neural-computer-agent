@@ -12,6 +12,7 @@ from neural_computer import (
     ExternalSkillFragmentOperatorCombiner,
     ExternalSkillFragmentProgramCombiner,
     ExternalSkillFragmentSegmentCombiner,
+    ExternalSkillFragmentSerialCombiner,
 )
 
 
@@ -470,6 +471,77 @@ def test_growth_combiner_persists_independent_memory_and_rejects_corruption(
     first_weight.view(-1)[0] += 1.0
     with pytest.raises(ValueError, match="checksum mismatch"):
         ExternalSkillFragmentGrowthCombiner.from_payload(payload)
+
+
+def test_serial_combiner_updates_external_state_at_each_fragment_boundary() -> None:
+    bank = _bank()
+    machine = ExternalCapabilityRegisterMachine(
+        event_width=1,
+        action_width=1,
+        intention_width=2,
+        register_width=6,
+        instruction_width=6,
+        interpreter_hidden=8,
+    )
+    pair_trace = machine.execute_fragment_composition_trace(
+        torch.zeros(2, 6),
+        bank.compose_indices(torch.tensor([[0, 1], [1, 2]])),
+        include_codes=True,
+    ).learner_view()
+    single_trace = machine.execute_fragment_composition_trace(
+        torch.zeros(2, 6),
+        bank.compose_indices(torch.tensor([[0], [1]])),
+        include_codes=True,
+    ).learner_view()
+    combiner = ExternalSkillFragmentSerialCombiner(6, 6, 4, hidden=8)
+    combiner.append_step_slot()
+    combiner.append_step_slot()
+    with torch.no_grad():
+        single_before = combiner(single_trace)
+        pair_before = combiner(pair_trace)
+        combiner.step_slots[1].proposal.bias.fill_(0.2)
+        single_after = combiner(single_trace)
+        pair_after = combiner(pair_trace)
+
+    assert torch.allclose(single_before, single_after)
+    assert not torch.allclose(pair_before, pair_after)
+    assert combiner.configuration()["execution"] == (
+        "serial_segment_state_transition_v1"
+    )
+
+
+def test_serial_combiner_persists_and_protects_step_prefix(tmp_path) -> None:
+    combiner = ExternalSkillFragmentSerialCombiner(6, 6, 4, hidden=8)
+    combiner.append_step_slot()
+    combiner.append_step_slot()
+    combiner.protect_step_prefix(1)
+    combiner.protect_base()
+    path = tmp_path / "serial-memory" / "combiner.pt"
+
+    digest = combiner.save(path)
+    restored = ExternalSkillFragmentSerialCombiner.load(path)
+
+    assert path.is_file()
+    assert digest == restored.payload()["sha256"]
+    assert restored.configuration() == combiner.configuration()
+    assert all(
+        not parameter.requires_grad
+        for parameter in restored.step_slot_parameters(0)
+    )
+    assert all(
+        parameter.requires_grad for parameter in restored.step_slot_parameters(1)
+    )
+    assert all(
+        not parameter.requires_grad
+        for module in (restored.step_input, restored.step_cell, restored.segment_input)
+        for parameter in module.parameters()
+    )
+
+    payload = combiner.payload()
+    first_weight = next(iter(payload["state"]["weights"].values()))
+    first_weight.view(-1)[0] += 1.0
+    with pytest.raises(ValueError, match="checksum mismatch"):
+        ExternalSkillFragmentSerialCombiner.from_payload(payload)
 
 
 def test_shared_register_interpreter_rejects_forged_out_of_bank_fragment() -> None:

@@ -9770,6 +9770,32 @@ explicit no-replay catastrophic-forgetting failure and confirms that future
 foundation expansion must be isolated behind protected external capacity or a
 verified copy-on-write transaction.
 
+## Protected serial external state diagnostic (2026-08-11)
+
+The composition boundary now includes `ExternalSkillFragmentSerialCombiner`,
+which maintains an opaque external state and applies one learned transition at
+each fragment boundary. Its position-indexed and shared-transition variants
+grow by zero-impact append-only slots, support protected prefixes, and persist
+through a versioned checksum-verified payload. This makes the CPU-plus-files
+idea an executable state-transition ABI rather than a final-readout residual.
+
+The source-mastered seed-69316 rendered audit used the shared-transition
+variant after mastering all four source primitives. Source retention remained
+`0.9974` or better, but no target stable prefix was reached. Train accuracy was
+`0.5286/0.8776/0.8932`; held-out accuracy was `0.6068/0.4453/0.5260`; and
+wrong-order accuracy was `0.5859/0.8568/0.6953`. Missing-evidence,
+reward-shuffled, frozen-parent, persistence, and zero-replay controls passed,
+with `449,280` unique verifier bits, `1,472` optimizer updates, and no replay.
+
+This is a decisive negative capability result. External serial state is now a
+clean replaceable memory primitive, but final scalar outcomes still do not
+assign enough credit to learn the ordered execution law. More slots, larger
+state, or more decoder capacity are not justified next; the next pressure test
+must expose causal prefix execution or an equivalent verifier-gated credit
+path while preserving the frozen controller and no-replay accounting. The
+rejected report and ledger are in
+`session_records/external_skill_fragment_serial_state_rejected_2026-08-11/`.
+
 ## Per-file fast plasticity at the executable boundary (2026-08-11)
 
 The CPU-plus-files runtime now has an explicit path for external state that can

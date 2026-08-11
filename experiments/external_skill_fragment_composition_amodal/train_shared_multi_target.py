@@ -52,6 +52,7 @@ from neural_computer import (
     ExternalSkillFragmentBank,
     ExternalSkillFragmentOperatorCombiner,
     ExternalSkillFragmentSegmentCombiner,
+    ExternalSkillFragmentSerialCombiner,
     OpaqueProtocolDecoder,
 )
 
@@ -172,6 +173,23 @@ def _make_combiner(mode: str) -> nn.Module:
         return ExternalSkillFragmentSegmentCombiner(
             REGISTER_WIDTH, 16, REGISTER_WIDTH, hidden=64
         )
+    if mode == "serial":
+        combiner = ExternalSkillFragmentSerialCombiner(
+            REGISTER_WIDTH, 16, REGISTER_WIDTH, hidden=64
+        )
+        for _ in PRIMITIVES:
+            combiner.append_step_slot()
+        return combiner
+    if mode == "serial_shared":
+        combiner = ExternalSkillFragmentSerialCombiner(
+            REGISTER_WIDTH,
+            16,
+            REGISTER_WIDTH,
+            hidden=64,
+            step_sharing="shared",
+        )
+        combiner.append_step_slot()
+        return combiner
     if mode == "operator":
         return ExternalSkillFragmentOperatorCombiner(
             REGISTER_WIDTH, 16, REGISTER_WIDTH, hidden=64, operator_rank=8
@@ -786,7 +804,7 @@ def main() -> None:
     parser.add_argument("--composition-updates", type=int, default=128)
     parser.add_argument(
         "--combiner-mode",
-        choices=("segment", "operator"),
+        choices=("segment", "serial", "serial_shared", "operator"),
         default="segment",
         help="external composition codec to pressure-test",
     )

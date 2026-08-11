@@ -156,6 +156,17 @@ coefficient/basis products cannot collapse the external instruction signal.
 This is the structural foundation for compounding reuse; positive transfer and
 arbitrary program induction still require fresh verifier-gated experiments.
 
+`ExternalSkillFragmentSerialCombiner` is the stricter execution-state variant.
+It keeps a replaceable opaque state vector and applies one learned state
+transition at each fragment boundary. `step_sharing="position"` gives each
+position its own protected external slot; `step_sharing="shared"` reuses one
+transition across arbitrary lengths. Slots append with zero impact, mastered
+prefixes can be frozen, and the whole state persists through a versioned,
+checksummed payload. This is the intended CPU-plus-files execution seam, but
+the source-mastered ordered-composition audit still failed to learn the
+execution law from final outcomes alone; the class is therefore infrastructure,
+not a promoted general-learning result.
+
 The multi-fragment closure pressure test in
 `experiments/external_skill_fragment_composition_amodal/train_multi.py` adds a
 crucial lifecycle rule: acquire and stably master one primitive, protect it,

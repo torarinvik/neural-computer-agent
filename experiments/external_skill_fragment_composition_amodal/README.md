@@ -169,6 +169,29 @@ prefix, so it is retained only as an optional diagnostic hook. The corrected
 reports and ledger are in
 `session_records/external_skill_fragment_order_contrast_rejected_2026-08-11/`.
 
+## Protected serial external state diagnostic
+
+`--combiner-mode serial_shared` uses one shared learned state transition at
+each fragment boundary. The state is external to the controller, grows through
+an append-only protected-slot ABI, and can be persisted independently. The
+per-position `serial` mode is also available for separating transition
+parameters by execution position. Both modes consume only the rich learned
+trace; they receive no fragment identity, operation name, verifier metadata, or
+correct output.
+
+The source-mastered seed-69316 audit was rejected. After the four source
+primitives were mastered, source retention remained `0.9974` or better, but
+the shared serial learner reached no stable target prefix: train accuracy was
+`0.5286/0.8776/0.8932`, held-out accuracy was `0.6068/0.4453/0.5260`, and
+wrong-order accuracy was `0.5859/0.8568/0.6953`. Missing-evidence and
+reward-shuffled controls were rejected, with `449,280` unique verifier bits,
+`1,472` optimizer updates, and zero replayed examples. This isolates the next
+bottleneck: the state representation exists, but final scalar outcomes do not
+provide enough credit assignment to discover the ordered execution law.
+
+The full report, ledger, and checksums are archived in
+`session_records/external_skill_fragment_serial_state_rejected_2026-08-11/`.
+
 ```bash
 PYTHONPATH=src:. .venv/bin/python -m \
   experiments.external_skill_fragment_composition_amodal.train_shared_multi_target \
