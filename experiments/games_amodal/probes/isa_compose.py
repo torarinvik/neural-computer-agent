@@ -228,6 +228,16 @@ parser.add_argument(
          "wasted — it raises the best score the sampling then starts "
          "from — so cutting it saves calls in one place and spends them "
          "in another. Default 1.0, uncapped.")
+parser.add_argument(
+    "--saturating", action="store_true",
+    help="add SINC/SDEC, saturating increment and decrement at the "
+         "slot's own range. F177: every instruction in the basis wraps, "
+         "while half the task families are built from min(v-1,x+1) and "
+         "max(0,x-1). Families with no saturating op NEVER failed to be "
+         "enumerated (0.0%, n=15); families half made of them failed "
+         "44.5% (n=18). This is the failure signature F170 requires "
+         "before extending a basis, and the equality guard did not have "
+         "one.")
 parser.add_argument("--curve-every", type=int, default=0)
 parser.add_argument("--json", default="")
 args = parser.parse_args()
@@ -246,6 +256,14 @@ SLOTS, VALUES = args.slots, args.values
 # The basis. Domain-general by construction: these are operations on
 # ABSTRACT slots, identical for a rule family and a grid world.
 OPS = ("NOOP", "INC", "DEC", "CINC", "CDEC", "COPY", "SWAP")
+if args.saturating:
+    # F177: `schema_families` builds half its families from SATURATING
+    # arithmetic — min(values-1, x+1) and max(0, x-1) — while every
+    # instruction here wraps. Not one family without a saturating op
+    # ever failed to be enumerated; families half made of them failed
+    # 44.5% of the time. The ISA took the schema's NAMES and not its
+    # semantics: `cinc` there means clipped, CINC here means gated.
+    OPS = OPS + ("SINC", "SDEC")
 if args.no_conditionals:
     OPS = tuple(o for o in OPS if o not in ("CINC", "CDEC"))
 NOPS = len(OPS)
@@ -286,6 +304,10 @@ def run_instruction(state: torch.Tensor, op: int, i: int,
         gate = state[:, j] != 0
         out[:, i] = torch.where(gate, (state[:, i] - 1) % modulus,
                                 state[:, i])
+    elif name == "SINC":
+        out[:, i] = torch.clamp(state[:, i] + 1, max=modulus - 1)
+    elif name == "SDEC":
+        out[:, i] = torch.clamp(state[:, i] - 1, min=0)
     elif name == "COPY":
         out[:, i] = state[:, j]
     elif name == "SWAP":

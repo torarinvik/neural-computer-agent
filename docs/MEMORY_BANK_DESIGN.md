@@ -8765,3 +8765,93 @@ essentially free. Making the common case faster cannot buy more than
 can be ENUMERATED and inspected rather than reasoned about — which is
 the next thing to do, and the instrument for it already exists, since
 an action that produces no `enum_hits` entry is exactly a member.
+
+## F177 — the expensive tail is SATURATING arithmetic, and the ISA has
+## none. The names collided; the semantics did not.
+
+F176 located 91% of search cost in 15% of actions and said to inspect
+those cases rather than theorise. Inspected.
+
+**The two worst families give it away.** `line_step` is
+`min(7, max(0, state[0] + delta))` — it CLIPS at the boundary.
+`grid_step` refuses a move that would leave the grid — also clipping.
+`dial_step` is `(out[which] + delta) % 8` — it WRAPS. Failure rates:
+line 75%, grid 44%, dial 0%.
+
+**The correlation, per seed, each seed matched to its OWN procedural
+specs** (the first version of this analysis matched one seed's specs
+against four-seed pooled rates, which is the same mismatch that has
+burned this session twice):
+
+| population | n | mean enumeration failure rate |
+| --- | ---: | ---: |
+| families with NO clipped op | 15 | **0.0%** |
+| families with half or more clipped ops | 18 | **44.5%** |
+
+r = 0.729 over 44 family-seeds, and the separation at the extremes is
+total: **not one family without a clipped operation ever failed.**
+
+**The cause, and it is embarrassing in an instructive way.** The ISA
+was built by promoting `schema_families`' procedural vocabulary to
+executable instructions. But it took the NAMES and not the SEMANTICS:
+
+| name | in `schema_families` | in our ISA |
+| --- | --- | --- |
+| `inc` / INC | `(x + 1) % values` | `(x + 1) % m` — agrees |
+| `cinc` / CINC | `min(values - 1, x + 1)` — SATURATING | `(x+1) % m` gated on slot j — CONDITIONAL |
+| `cdec` / CDEC | `max(0, x - 1)` — SATURATING | `(x-1) % m` gated on slot j — CONDITIONAL |
+
+The `c` was read as "conditional" and it meant "clipped". So the ISA
+acquired a gating mechanism nothing in the task distribution needs —
+which is exactly why F170 found no gated hole, gated families fitting
+at 0.9607 — and never acquired the saturating arithmetic that half the
+task distribution is built from.
+
+**This is the same class of error as F160** and it is now the second
+time: the ISA's arithmetic did not match the families' arithmetic, the
+mismatch was invisible in aggregate accuracy, and it surfaced only when
+a cost distribution was broken out by family. F160 was the modulus,
+this is saturation. Both were mis-taken from the same source file.
+
+**The fix is small, domain-general, and has the signature F170
+requires**: add `SINC i` = `min(m-1, x+1)` and `SDEC i` = `max(0, x-1)`,
+with m the slot's own inferred range. Two operations, NOPS 7 -> 9, and
+they are slot operations exactly like the ones already there. Building
+it now — unlike the equality guard, this one has 44.5% against 0.0% to
+justify it.
+
+**Expressibility settled first, by arithmetic, before any run.** With
+SINC/SDEC every action of the two worst families becomes a SINGLE
+instruction, exact on every state:
+
+| family | previous failure rate | with saturating ops |
+| --- | ---: | --- |
+| line | 75% | `SDEC 0` and `SINC 0`, both exact |
+| grid | 44% | `SDEC 0`, `SINC 1`, `SINC 0`, `SDEC 1`, all exact |
+| walled | — | same four, 0.945-0.953 — the wall is the residue |
+
+`walled` is the interesting one: a single saturating instruction gets
+it to 0.945-0.953 against a `--fit-target` of 0.95, so it lands exactly
+on the threshold. That is the wall itself showing up as the 5% the
+basis cannot express, which is a much more precise statement of F92's
+old complaint than "walled is hard".
+
+**Pre-registered predictions for the saturating run.**
+
+1. `line` and `grid` failure rates go to approximately 0, and both
+   become depth-1 hits. Together they hold 42,006 of the ~164,000
+   fallback calls, so the tail should lose about a quarter on those two
+   families alone.
+2. Families with NO clipped op — dial, toggle, perm — must be
+   UNCHANGED. They already fail 0% of the time and cannot improve; if
+   they get worse, the cost below has swamped the benefit.
+3. The cost is real and one-sided: NOPS goes 7 -> 9, so the
+   enumeration pool grows by a third at depth 1 and by 78% at depth 2.
+   Every action that still fails pays that with nothing in return.
+4. Net: the aggregate should improve, but by less than the tail
+   arithmetic suggests, because (3) is charged against every one of the
+   53 failing actions while (1) removes only some of them.
+
+If (2) fails the extension is not free and the trade needs stating. If
+(1) fails the expressibility arithmetic above is wrong, which would be
+surprising since it is exact and needs no network.
