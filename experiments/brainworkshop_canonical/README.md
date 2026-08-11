@@ -845,3 +845,39 @@ PYTHONPATH=src:. ./.venv/bin/python -m experiments.brainworkshop_canonical.exter
   --credit-mode attempted_bce --entropy-weight 0.01 \
   --report-out /tmp/brainworkshop-external-compute-nback2-credit.json
 ```
+
+## Deeper n-back growth with a parameterized event window (2026-08-12)
+
+The private verifier now generates `nbackN` families generically, and the
+external compute basis accepts a versioned event-window size. The four-event
+window acquired n-back-3 at `1.0000` on every fresh lifetime. A direct
+n-back-4 probe remained below mastery because current plus the previous three
+events cannot expose a lag-four comparison reliably. Widening the same generic
+window to five events acquired n-back-4 at `1.0000` on every fresh lifetime on
+both seeds.
+
+The full five-event open-growth promotion admitted and routed eight files on
+seeds `17` and `18`, including n-back-2, n-back-3, and n-back-4. Same-context
+reversal, old-file retention, route reload, shuffled-feedback rejection,
+frozen controller/frontend, unchanged admitted files, and zero replay all
+passed. The route schedule uses distinct rendered cue symbols so each file has
+an unambiguous context key.
+
+This promotes a replicated deeper working-memory capability and a
+domain-general representation extension. It remains bounded by the event
+window and external file bank; it does not establish unrestricted history,
+learned compression, arbitrary program induction, or general continual
+learning. Evidence and accounting are archived in
+`session_records/brainworkshop_external_compute_deeper_nback_promoted_2026-08-12/`.
+
+Run the five-event promotion with:
+
+```bash
+PYTHONPATH=src:. ./.venv/bin/python -m experiments.brainworkshop_canonical.external_compute_open_growth \
+  --target-file-count 8 --candidate-budget 8 --event-window-size 5 \
+  --file-updates 192 --route-updates 256 \
+  --route-calibration-lifetimes 8 --transition-batches 12 \
+  --batch-size 32 --retention-lifetimes 4 --seed 17 \
+  --credit-mode attempted_bce --entropy-weight 0.01 \
+  --report-out /tmp/brainworkshop-external-compute-deeper-nback.json
+```

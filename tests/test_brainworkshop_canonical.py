@@ -103,6 +103,37 @@ def test_nback_targets_are_balanced_and_time_shuffle_preserves_balance() -> None
         assert torch.equal(observed, torch.full((3,), 2.0))
 
 
+def test_cross_family_verifier_generates_generic_deeper_nback_targets() -> None:
+    for family, depth in (("nback2", 2), ("nback3", 3), ("nback4", 4)):
+        verifier = CrossFamilyVerifier(
+            family=family,
+            batch_size=5,
+            steps=depth + 4,
+            cue_symbol=4,
+            seed=17,
+        )
+        verifier.reset()
+        observations = [verifier.observation()]
+        scores = []
+        while not verifier.done:
+            action = torch.zeros(5, dtype=torch.long)
+            scores.append(verifier.score(action))
+            if not verifier.done:
+                observations.append(verifier.observation())
+
+        symbols = torch.stack(observations[1:], dim=1)
+        eligible = torch.stack([step.eligible for step in scores], dim=1)
+        rewards = torch.stack([step.reward for step in scores], dim=1)
+        expected = symbols[:, depth:] == symbols[:, :-depth]
+        assert torch.equal(
+            eligible[:, depth + 1 :],
+            torch.ones_like(eligible[:, depth + 1 :], dtype=torch.bool),
+        )
+        # Action zero is the negative answer, so its reward is the inverse
+        # of the private equality target.
+        assert torch.equal(rewards[:, depth + 1 :] > 0.5, ~expected)
+
+
 def test_heldout_rule_growth_smoke_preserves_external_boundary(tmp_path) -> None:
     from experiments.brainworkshop_canonical.heldout_rule_growth import run
 

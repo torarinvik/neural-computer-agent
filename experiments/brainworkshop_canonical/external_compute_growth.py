@@ -50,6 +50,7 @@ INTENTION_WIDTH = 8
 REGISTER_WIDTH = 16
 INSTRUCTION_WIDTH = 8
 EVENT_WINDOW_SIZE = 4
+ENCODER_SYMBOL_COUNT = 13
 MASTERY_THRESHOLD = 0.80
 
 
@@ -76,13 +77,17 @@ def _digest(*modules: nn.Module) -> str:
     return digest.hexdigest()
 
 
-def _basis(*, hidden: int = 32) -> ExternalRegisterComputeBasis:
+def _basis(
+    *, hidden: int = 32, event_window_size: int = EVENT_WINDOW_SIZE
+) -> ExternalRegisterComputeBasis:
+    if event_window_size < 1:
+        raise ValueError("event window size must be positive")
     return ExternalRegisterComputeBasis(
         REGISTER_WIDTH,
         INSTRUCTION_WIDTH,
         hidden=hidden,
         event_width=EVENT_WIDTH,
-        event_window_size=EVENT_WINDOW_SIZE,
+        event_window_size=event_window_size,
         microsteps=2,
         event_read_mode="flattened_window",
         register_input_mode="event_window_only",
@@ -94,6 +99,7 @@ def _build(
     *,
     slot_count: int = 2,
     basis_hidden: int = 32,
+    event_window_size: int = EVENT_WINDOW_SIZE,
 ) -> ComputeGrowthSystem:
     """Build an append-only bank of opaque files over one fixed interpreter."""
 
@@ -101,10 +107,12 @@ def _build(
         raise ValueError("external compute slot count must be positive")
     if basis_hidden < 1:
         raise ValueError("external compute basis hidden width must be positive")
+    if event_window_size < 1:
+        raise ValueError("external compute event window size must be positive")
 
     torch.manual_seed(seed)
     agent = CanonicalBrainWorkshopAgent(
-        symbol_count=12,
+        symbol_count=ENCODER_SYMBOL_COUNT,
         n_back=2,
         event_width=EVENT_WIDTH,
         intention_width=INTENTION_WIDTH,
@@ -124,13 +132,17 @@ def _build(
         operator_mode="factorized_low_rank",
         operator_rank=4,
         basis_slots=tuple(
-            _basis(hidden=basis_hidden) for _ in range(slot_count)
+            _basis(
+                hidden=basis_hidden,
+                event_window_size=event_window_size,
+            )
+            for _ in range(slot_count)
         ),
         basis_hidden=basis_hidden,
         basis_microsteps=2,
         basis_event_read_mode="flattened_window",
         basis_register_input_mode="event_window_only",
-        event_window_size=EVENT_WINDOW_SIZE,
+        event_window_size=event_window_size,
     )
     instructions = nn.ModuleList(
         ExternalRegisterInstruction(INSTRUCTION_WIDTH) for _ in range(slot_count)

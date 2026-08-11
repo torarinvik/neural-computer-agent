@@ -10185,3 +10185,34 @@ working-memory capability. It does not establish arbitrary program induction,
 unrestricted growth, consolidation, or general continual learning. Evidence
 and separate control accounting are in
 `session_records/brainworkshop_external_compute_nback2_credit_promoted_2026-08-12/`.
+
+## Deeper n-back growth and event-window capacity (2026-08-12)
+
+The next pressure test kept the controller, learned event frontend, opaque
+external-file interface, attempted-outcome credit, route reversal, and
+shuffled-feedback control fixed while adding only a generic event-window
+parameter. The private verifier now constructs `nbackN` targets from the
+requested depth; no n-back-specific reasoning branch is exposed to the
+learner.
+
+With four event tokens, n-back-3 reached stable `1.0000` direct accuracy on
+both tested seeds. A matched n-back-4 capacity probe remained below the `0.80`
+mastery threshold on every fresh lifetime (`0.7781/0.7531/0.7594/0.7250` and
+`0.7531/0.7594/0.7250/0.7906`). With the same basis and a five-event window,
+n-back-4 reached `1.0000` on every fresh lifetime on seeds `17` and `18`.
+
+The full five-event open-growth runs admitted and routed eight files, including
+n-back-2, n-back-3, and n-back-4. Direct stable mastery, route selection,
+same-context replacement, old-file retention, exact route reload,
+shuffled-feedback rejection, frozen controller/frontend, unchanged admitted
+files, and zero replay all passed. This is evidence for an information-window
+boundary and a domain-general representation extension, not a claim that
+memory is already unbounded.
+
+The new boundary remains explicit: the external history is still a bounded
+window, and route identity still requires distinct learned context keys. The
+next architecture task is a scalable external history/memory contract that
+can compress or retrieve beyond the window while preserving causal credit,
+binding, and no-replay retention under capacity pressure. Full reports and
+separate accounting are archived in
+`session_records/brainworkshop_external_compute_deeper_nback_promoted_2026-08-12/`.

@@ -53,6 +53,8 @@ class RuleSpec:
 
 RULES = {
     "nback2": RuleSpec("nback2", 2),
+    "nback3": RuleSpec("nback3", 3),
+    "nback4": RuleSpec("nback4", 4),
     "parity2": RuleSpec("parity2", 2),
     "switch": RuleSpec("switch", 1),
     "symbol_parity": RuleSpec("symbol_parity", 0),
@@ -123,8 +125,9 @@ class CrossFamilyVerifier:
         targets: list[torch.Tensor] = []
         for position in range(warmup, self.symbol_steps):
             current = self._symbols[:, position]
-            if self.family == "nback2":
-                target = current == self._symbols[:, position - 2]
+            if self.family.startswith("nback"):
+                depth = int(self.family.removeprefix("nback"))
+                target = current == self._symbols[:, position - depth]
             elif self.family == "parity2":
                 target = (
                     current.remainder(2) + self._symbols[:, position - 1].remainder(2)

@@ -31,7 +31,9 @@ from neural_computer import (
 
 from .cross_family_rule_growth import RULES
 from .external_compute_growth import (
+    ENCODER_SYMBOL_COUNT,
     EVENT_WIDTH,
+    EVENT_WINDOW_SIZE,
     INSTRUCTION_WIDTH,
     INTENTION_WIDTH,
     ComputeGrowthSystem,
@@ -63,6 +65,8 @@ OPEN_SCHEDULE = (
     ("switch_binary", 11),
     ("nback2", 9),
     ("symbol_parity_odd", 5),
+    ("nback3", 4),
+    ("nback4", 12),
 )
 SOURCE_CUE = OPEN_SCHEDULE[0][1]
 UNKNOWN_CUE = 6
@@ -224,6 +228,9 @@ def _status(
 def run(args: argparse.Namespace) -> dict[str, object]:
     entropy_weight = float(getattr(args, "entropy_weight", 0.01))
     credit_mode = str(getattr(args, "credit_mode", "attempted_bce"))
+    event_window_size = int(
+        getattr(args, "event_window_size", EVENT_WINDOW_SIZE)
+    )
     if not 1 <= args.target_file_count <= len(OPEN_SCHEDULE):
         raise ValueError("target file count exceeds the calibrated schedule")
     if not args.target_file_count <= args.candidate_budget <= len(OPEN_SCHEDULE):
@@ -242,6 +249,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         raise ValueError("the calibrated open-growth harness requires batch size 32")
     if args.learning_rate <= 0.0:
         raise ValueError("learning rate must be positive")
+    if event_window_size < 1:
+        raise ValueError("event window size must be positive")
     if entropy_weight < 0.0:
         raise ValueError("entropy weight cannot be negative")
     if credit_mode not in {"reinforce", "attempted_bce"}:
@@ -253,7 +262,11 @@ def run(args: argparse.Namespace) -> dict[str, object]:
 
     started = perf_counter()
     schedule = OPEN_SCHEDULE[: args.candidate_budget]
-    system = _build(args.seed, slot_count=1)
+    system = _build(
+        args.seed,
+        slot_count=1,
+        event_window_size=event_window_size,
+    )
     controller_before = _digest(system.agent.controller)
     encoder_before = _digest(system.agent.runtime.encoders["stimulus"])
     allocation: list[dict[str, object]] = []
@@ -367,7 +380,11 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     if accepted_count < 1:
         raise RuntimeError("source compute file was not admitted")
 
-    shuffled_control_system = _build(args.seed + 800_000, slot_count=1)
+    shuffled_control_system = _build(
+        args.seed + 800_000,
+        slot_count=1,
+        event_window_size=event_window_size,
+    )
     shuffled_control_history, shuffled_control = _train_and_evaluate_candidate(
         shuffled_control_system,
         slot=0,
@@ -546,6 +563,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             ),
             "entropy_weight": entropy_weight,
             "credit_mode": credit_mode,
+            "event_window_size": event_window_size,
+            "encoder_symbol_count": ENCODER_SYMBOL_COUNT,
             "target_file_count": args.target_file_count,
             "candidate_budget": args.candidate_budget,
             "accepted_file_count": accepted_count,
@@ -646,6 +665,7 @@ def main() -> None:
     parser.add_argument("--batch-size", type=int, default=32)
     parser.add_argument("--retention-lifetimes", type=int, default=4)
     parser.add_argument("--learning-rate", type=float, default=3e-3)
+    parser.add_argument("--event-window-size", type=int, default=EVENT_WINDOW_SIZE)
     parser.add_argument("--entropy-weight", type=float, default=0.01)
     parser.add_argument(
         "--credit-mode",
