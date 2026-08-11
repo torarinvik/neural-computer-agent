@@ -1,0 +1,52 @@
+{
+  "schema": "neural-computer.recipe-expressibility-audit.v3-summary",
+  "source": "in_repository_run",
+  "seeds": [70421, 70422],
+  "updates": 1500,
+  "batch_size": 64,
+  "slot_domain_multiset": [2, 2, 8, 8, 8, 8],
+  "randomized_slot_domains": true,
+  "stable_updates_at_0_9": {
+    "seed70421_atomic_m2": 300,
+    "seed70421_atomic_m8": 300,
+    "seed70421_parallel_m2": 300,
+    "seed70421_parallel_m8": 300,
+    "seed70422_atomic_m2": 300,
+    "seed70422_atomic_m8": 300,
+    "seed70422_parallel_m2": 300,
+    "seed70422_parallel_m8": 300
+  },
+  "final_correct_probe_scores": {
+    "seed70421_atomic": {"m2": 1.0, "m8": 1.0},
+    "seed70421_parallel": {"m2": 1.0, "m8": 1.0},
+    "seed70422_atomic": {"m2": 1.0, "m8": 0.96484375},
+    "seed70422_parallel": {"m2": 1.0, "m8": 1.0}
+  },
+  "final_wrong_m8_on_m2_scores": {
+    "seed70421_atomic": 0.4765625,
+    "seed70421_parallel": 0.4765625,
+    "seed70422_atomic": 0.5107421875,
+    "seed70422_parallel": 0.51171875
+  },
+  "accounting": {
+    "unique_program_steps_per_arm": 192000,
+    "replayed_examples_per_arm": 0,
+    "wall_time_seconds": {
+      "seed70421_atomic": 43.000618917052634,
+      "seed70421_parallel": 48.21530112507753,
+      "seed70422_atomic": 67.94761845795438,
+      "seed70422_parallel": 70.35336824995466
+    }
+  },
+  "legacy_modulus_boundary": {
+    "legacy_global_modulus": 8,
+    "legacy_match_rates": [0.5, 0.5, 1.0, 1.0, 1.0, 1.0],
+    "explicit_match_rates": [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+  },
+  "parallel_target": {
+    "stable_updates_seed70421_parallel": 900,
+    "stable_updates_seed70422_parallel": 900,
+    "promoted_as_causal_composition": false
+  },
+  "claim_boundary": "Promoted explicit modulus use under randomized domain assignments as a narrow causal learned capability; not general continual learning or a causal promotion of parallel composition."
+}

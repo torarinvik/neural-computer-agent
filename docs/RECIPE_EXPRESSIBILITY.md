@@ -77,8 +77,9 @@ search or proposal-distribution failure and must be recorded separately.
 No promotion should occur until the richer basis's interpreter cost is
 measured against the baseline at matched verifier bits and the extension wins
 on expressibility without a material loss on unseen baseline execution. The
-next learned audit must first compare explicit per-slot modulus against a
-diagnostic legacy-global-modulus arm on mixed-domain random programs.
+first fixed-slot modulus result was insufficient because a wrong-modulus
+control could still succeed by memorizing slot identity; domain assignments
+must be randomized.
 
 ## Narrow learned modulus result
 
@@ -107,3 +108,19 @@ composition diagnostic, but it is not evidence about the corrected
 mixed-domain modulus problem.
 Evidence is archived in
 `session_records/recipe_parallel_composition_promoted_2026-08-11/`.
+
+## Causal modulus promotion
+
+The corrected 1,500-update, two-seed audit randomizes the `(2, 2, 8, 8, 8,
+8)` domain assignment for every random program. Across both atomic-only and
+parallel-training arms, the correct `m=2` and `m=8` probes reach stable exact
+execution by update `300`. The byte-identical wrong-`m=8` probe for a
+two-valued target finishes near `0.5` on every arm, as expected when the
+modulus operand is used rather than ignored. This is the strongest current
+learned result: a narrow causal modulus capability, not general continual
+learning. Evidence is archived in
+`session_records/recipe_modulus_randomized_causal_promotion_2026-08-11/`.
+
+The earlier fixed-slot modulus record remains a valid execution result but is
+superseded as causal evidence by this randomized-domain control:
+`session_records/recipe_modulus_learned_narrow_promotion_2026-08-11/`.

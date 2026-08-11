@@ -1,0 +1,24 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment_id": "recipe-modulus-randomized-causal-promotion-2026-08-11",
+  "status": "promoted_narrow_causal_modulus",
+  "source": "in_repository_run",
+  "seeds": [70421, 70422],
+  "unique_verifier_bits_per_arm": 192000,
+  "optimizer_updates_per_arm": 1500,
+  "replayed_examples_per_arm": 0,
+  "stable_bits_to_threshold_0_9": {
+    "correct_m2_all_arms": 38400,
+    "correct_m8_all_arms": 38400,
+    "wrong_m8_on_m2": null
+  },
+  "controls": {
+    "two_seeds": true,
+    "random_programs_only": true,
+    "randomized_slot_domains": true,
+    "wrong_modulus_negative": true,
+    "zero_replay": true,
+    "legacy_modulus_signature": [0.5, 0.5, 1.0, 1.0, 1.0, 1.0]
+  },
+  "claim_boundary": "Promoted narrow causal use of explicit modulus; parallel composition remains training-distribution confounded and general continual learning remains untested."
+}

@@ -4,7 +4,9 @@ import torch
 
 from experiments.recipe_expressibility.audit import (
     INSTRUCTION_FEATURE_WIDTH,
+    SLOT_VALUES,
     LearnedRecipeInterpreter,
+    _sample_slot_values,
     evaluate_single_modulus_target,
     instruction_features,
     modulus_boundary,
@@ -37,12 +39,23 @@ def test_modulus_boundary_exposes_the_legacy_global_mismatch() -> None:
     assert result["explicit_match_rates"] == [1.0] * 6
 
 
+def test_randomized_domains_preserve_the_profile_without_fixed_positions() -> None:
+    generator = torch.Generator().manual_seed(12)
+    samples = tuple(
+        _sample_slot_values(generator, SLOT_VALUES) for _ in range(8)
+    )
+
+    assert all(sorted(sample) == sorted(SLOT_VALUES) for sample in samples)
+    assert any(sample != SLOT_VALUES for sample in samples)
+
+
 def test_random_batch_targets_match_the_opaque_instruction_execution() -> None:
     batch = sample_batch(
         generator=torch.Generator().manual_seed(4),
         batch_size=8,
         length=3,
         allow_parallel=True,
+        randomize_domains=False,
     )
     assert batch.initial.shape == (8, 6)
     assert batch.instructions.shape == (8, 3, INSTRUCTION_FEATURE_WIDTH)
@@ -58,6 +71,7 @@ def test_interpreter_preserves_runtime_shapes() -> None:
         batch_size=4,
         length=2,
         allow_parallel=True,
+        randomize_domains=False,
     )
     outputs = LearnedRecipeInterpreter(hidden=32)(
         batch.initial,
@@ -85,6 +99,15 @@ def test_single_modulus_probe_uses_the_opaque_instruction_path() -> None:
         batches=1,
         batch_size=4,
     )
+    wrong_score = evaluate_single_modulus_target(
+        model,
+        seed=10,
+        target_slot=0,
+        instruction_modulus=8,
+        batches=1,
+        batch_size=4,
+    )
 
     assert 0.0 <= score_m2 <= 1.0
     assert 0.0 <= score_m8 <= 1.0
+    assert 0.0 <= wrong_score <= 1.0

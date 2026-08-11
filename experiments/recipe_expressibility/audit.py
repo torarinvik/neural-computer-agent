@@ -42,6 +42,49 @@ def _randint(generator: torch.Generator, high: int) -> int:
     return int(torch.randint(high, (), generator=generator).item())
 
 
+def _sample_slot_values(
+    generator: torch.Generator,
+    slot_values: tuple[int, ...],
+    *,
+    targets: dict[int, int] | None = None,
+) -> tuple[int, ...]:
+    """Permute domains, optionally pinning domains for probe target slots."""
+
+    targets = {} if targets is None else dict(targets)
+    if any(slot < 0 or slot >= len(slot_values) for slot in targets):
+        raise ValueError("domain target slot is outside the register")
+    remaining = list(slot_values)
+    for modulus in targets.values():
+        try:
+            remaining.remove(modulus)
+        except ValueError as error:
+            raise ValueError("target domain is absent from the domain profile") from error
+    order = torch.randperm(len(remaining), generator=generator).tolist()
+    shuffled = [remaining[index] for index in order]
+    result: list[int | None] = [None] * len(slot_values)
+    for slot, modulus in targets.items():
+        result[slot] = modulus
+    for slot, modulus in enumerate(result):
+        if modulus is None:
+            result[slot] = shuffled.pop()
+    return tuple(int(modulus) for modulus in result)
+
+
+def _sample_initial(
+    generator: torch.Generator,
+    *,
+    batch_size: int,
+    slot_values: tuple[int, ...],
+) -> torch.Tensor:
+    return torch.tensor(
+        [
+            [_randint(generator, modulus) for modulus in slot_values]
+            for _ in range(batch_size)
+        ],
+        dtype=torch.long,
+    )
+
+
 def modulus_boundary(
     *,
     slot_values: tuple[int, ...] = SLOT_VALUES,
@@ -174,22 +217,26 @@ def sample_batch(
     length: int,
     allow_parallel: bool,
     slot_values: tuple[int, ...] = SLOT_VALUES,
+    randomize_domains: bool = True,
 ) -> Batch:
-    initial = torch.stack(
-        tuple(
-            torch.randint(
-                value,
-                (batch_size,),
-                generator=generator,
-                dtype=torch.long,
-            )
-            for value in slot_values
-        ),
-        dim=1,
+    domain_rows = tuple(
+        _sample_slot_values(generator, slot_values)
+        if randomize_domains
+        else slot_values
+        for _ in range(batch_size)
     )
+    initial_rows = tuple(
+        _sample_initial(
+            generator,
+            batch_size=1,
+            slot_values=row_values,
+        )[0]
+        for row_values in domain_rows
+    )
+    initial = torch.stack(initial_rows, dim=0)
     feature_rows: list[list[torch.Tensor]] = []
     target_rows: list[list[tuple[int, ...]]] = []
-    for row in initial.tolist():
+    for row, row_slot_values in zip(initial.tolist(), domain_rows, strict=True):
         state = tuple(int(value) for value in row)
         row_features: list[torch.Tensor] = []
         row_targets: list[tuple[int, ...]] = []
@@ -197,10 +244,10 @@ def sample_batch(
             instruction = _instruction(
                 generator,
                 allow_parallel=allow_parallel,
-                slot_values=slot_values,
+                slot_values=row_slot_values,
             )
             row_features.append(instruction_features(instruction))
-            state = instruction.apply(state, values=slot_values)
+            state = instruction.apply(state, values=row_slot_values)
             row_targets.append(state)
         feature_rows.append(row_features)
         target_rows.append(row_targets)
@@ -275,6 +322,7 @@ def evaluate(
     allow_parallel: bool,
     length: int,
     slot_values: tuple[int, ...] = SLOT_VALUES,
+    randomize_domains: bool = True,
     batches: int = 8,
     batch_size: int = 128,
 ) -> float:
@@ -287,6 +335,7 @@ def evaluate(
             length=length,
             allow_parallel=allow_parallel,
             slot_values=slot_values,
+            randomize_domains=randomize_domains,
         )
         scores.append(_loss_and_accuracy(model, batch)[1])
     return float(sum(scores) / len(scores))
@@ -298,6 +347,7 @@ def evaluate_parallel_target(
     *,
     seed: int,
     slot_values: tuple[int, ...] = SLOT_VALUES,
+    randomize_domains: bool = True,
     batch_size: int = 128,
     batches: int = 8,
 ) -> float:
@@ -312,21 +362,21 @@ def evaluate_parallel_target(
     features = instruction_features(instruction).view(1, 1, -1)
     scores: list[float] = []
     for _ in range(batches):
-        initial = torch.stack(
-            tuple(
-                torch.randint(
-                    value,
-                    (batch_size,),
-                    generator=generator,
-                    dtype=torch.long,
-                )
-                for value in slot_values
-            ),
-            dim=1,
+        row_slot_values = _sample_slot_values(
+            generator,
+            slot_values,
+            targets={0: slot_values[0], 1: slot_values[1]}
+            if randomize_domains
+            else None,
+        )
+        initial = _sample_initial(
+            generator,
+            batch_size=batch_size,
+            slot_values=row_slot_values,
         )
         targets = initial.clone()
-        targets[:, 0] = (targets[:, 0] + 1) % slot_values[0]
-        targets[:, 1] = (targets[:, 1] + 1) % slot_values[1]
+        targets[:, 0] = (targets[:, 0] + 1) % row_slot_values[0]
+        targets[:, 1] = (targets[:, 1] + 1) % row_slot_values[1]
         output = model(initial, features.expand(batch_size, -1, -1))[-1]
         scores.append(float(output.argmax(-1).eq(targets).all(-1).float().mean()))
     return sum(scores) / len(scores)
@@ -338,7 +388,9 @@ def evaluate_single_modulus_target(
     *,
     seed: int,
     target_slot: int,
+    instruction_modulus: int | None = None,
     slot_values: tuple[int, ...] = SLOT_VALUES,
+    randomize_domains: bool = True,
     batch_size: int = 128,
     batches: int = 8,
 ) -> float:
@@ -349,25 +401,25 @@ def evaluate_single_modulus_target(
     instruction = RecipeInstruction(
         "inc",
         target_slot,
-        modulus=modulus,
+        modulus=modulus if instruction_modulus is None else instruction_modulus,
     )
     features = instruction_features(instruction).view(1, 1, -1)
     scores: list[float] = []
     for _ in range(batches):
-        initial = torch.stack(
-            tuple(
-                torch.randint(
-                    value,
-                    (batch_size,),
-                    generator=generator,
-                    dtype=torch.long,
-                )
-                for value in slot_values
-            ),
-            dim=1,
+        row_slot_values = _sample_slot_values(
+            generator,
+            slot_values,
+            targets={target_slot: modulus} if randomize_domains else None,
+        )
+        initial = _sample_initial(
+            generator,
+            batch_size=batch_size,
+            slot_values=row_slot_values,
         )
         targets = initial.clone()
-        targets[:, target_slot] = (targets[:, target_slot] + 1) % modulus
+        targets[:, target_slot] = (
+            targets[:, target_slot] + 1
+        ) % row_slot_values[target_slot]
         output = model(initial, features.expand(batch_size, -1, -1))[-1]
         scores.append(float(output.argmax(-1).eq(targets).all(-1).float().mean()))
     return sum(scores) / len(scores)
@@ -378,6 +430,7 @@ def train_arm(
     seed: int,
     allow_parallel: bool,
     slot_values: tuple[int, ...] = SLOT_VALUES,
+    randomize_domains: bool = True,
     updates: int,
     batch_size: int,
     hidden: int,
@@ -397,6 +450,7 @@ def train_arm(
             length=2,
             allow_parallel=allow_parallel,
             slot_values=slot_values,
+            randomize_domains=randomize_domains,
         )
         loss, _ = _loss_and_accuracy(model, batch)
         optimizer.zero_grad(set_to_none=True)
@@ -413,6 +467,7 @@ def train_arm(
                         allow_parallel=False,
                         length=2,
                         slot_values=slot_values,
+                        randomize_domains=randomize_domains,
                     ),
                     "base_unseen_double_length_4": evaluate(
                         model,
@@ -420,23 +475,35 @@ def train_arm(
                         allow_parallel=False,
                         length=4,
                         slot_values=slot_values,
+                        randomize_domains=randomize_domains,
                     ),
                     "parallel_target": evaluate_parallel_target(
                         model,
                         seed=seed + 40_000 + update,
                         slot_values=slot_values,
+                        randomize_domains=randomize_domains,
                     ),
                     "modulus_target_m2": evaluate_single_modulus_target(
                         model,
                         seed=seed + 50_000 + update,
                         target_slot=0,
                         slot_values=slot_values,
+                        randomize_domains=randomize_domains,
                     ),
                     "modulus_target_m8": evaluate_single_modulus_target(
                         model,
                         seed=seed + 60_000 + update,
                         target_slot=2,
                         slot_values=slot_values,
+                        randomize_domains=randomize_domains,
+                    ),
+                    "modulus_target_m2_wrong_m8": evaluate_single_modulus_target(
+                        model,
+                        seed=seed + 70_000 + update,
+                        target_slot=0,
+                        instruction_modulus=VALUES,
+                        slot_values=slot_values,
+                        randomize_domains=randomize_domains,
                     ),
                 }
             )
@@ -484,6 +551,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                 seed=seed,
                 allow_parallel=allow_parallel,
                 slot_values=SLOT_VALUES,
+                randomize_domains=True,
                 updates=args.updates,
                 batch_size=args.batch_size,
                 hidden=args.hidden,
@@ -493,12 +561,13 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         )
     )
     return {
-        "schema": "neural-computer.recipe-expressibility-audit.v2",
+        "schema": "neural-computer.recipe-expressibility-audit.v3",
         "source": "in_repository_run",
         "configuration": {
             "slots": SLOTS,
             "values": VALUES,
             "slot_values": SLOT_VALUES,
+            "randomized_slot_domains": True,
             "training_program_length": 2,
             "double_length": 4,
             "random_programs_only": True,
