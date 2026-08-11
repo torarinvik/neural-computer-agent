@@ -9152,3 +9152,40 @@ targets, against the random-sampling numbers already in hand.
 If (1) fails, the corrected F179 reading is also wrong and toggle's
 regression is neither early stopping nor dilution, which would leave no
 candidate explanation standing and make it the thing to chase.
+
+## Pre-registered: the continual-learning measurement (probe 268)
+
+`continual.py` puts both architectures on ONE family sequence with one
+evaluation. Nine families, four seeds, and a replay control.
+
+  WEIGHTS  a slot model trained by gradient descent on each family as
+           it arrives, carrying only its own weights forward.
+  BANK     a frozen instruction interpreter trained ONLY on random
+           programs, plus one searched recipe per family held outside
+           the weights.
+
+**Predictions, in the order they matter.**
+
+1. **Bank forgetting is EXACTLY 0.0000 on every seed.** Not "low", not
+   "better" — bit-identical, because re-scoring family 1 after family 9
+   runs the same frozen weights over the same stored integers. This is
+   a control, not a result: a claim that cannot degrade gracefully
+   fails loudly if the harness is wrong, and the smoke run already
+   returned 0.0 against the weights arm's 0.4226.
+2. **Weights forgetting is large without replay.** The smoke run put it
+   at 0.4226, with `dial` falling to 0.4616 against an identity floor
+   of 0.6667 — forgetting past the point of copying the input.
+3. **Replay substantially closes it.** This is the control that keeps
+   the comparison honest. Replay is how the field actually prevents
+   forgetting, and a bank that only beats a no-replay baseline has
+   beaten a straw man. If replay closes the gap entirely, the bank's
+   advantage is "needs no buffer of old data", which is a real but much
+   narrower claim than "does not forget".
+4. **The bank is WORSE at learning time.** Gradient descent fits each
+   family to 1.0000 as it arrives; the bank is capped by interpreter
+   quality near 0.99 and by whether the family is expressible at all.
+   Zero forgetting of a slightly worse model is the actual trade, and
+   stating it in advance stops the headline from hiding it.
+
+The interesting quantity is the size of (2) minus (3), because that is
+what the bank is worth over the standard remedy.
