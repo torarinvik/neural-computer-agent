@@ -7844,3 +7844,64 @@ observable in the data. Next probe.
 Found by taking a suggestion seriously enough to check whether our
 basis really lacked the thing it proposed adding. It did not — and
 looking properly turned up the real hole somewhere else.
+
+## F161 — reuse is REAL, isolated against its own confound, observed
+## directly, and small
+
+Five seeds, four arms, two family sequences, one shared plant per seed.
+Ratios are arm cost over the frozen control, so below 1.0 is cheaper.
+
+| arm | diverse | related |
+| --- | ---: | ---: |
+| `uniform` — stores solved programs | **0.959** | **0.929** |
+| `shuffled` — same count, same lengths, RANDOM contents | 1.055 | 1.022 |
+| `sketch-e4` | 1.056 | 0.927 |
+
+**The control is the finding.** A stored winner is a FULL-LENGTH
+element, so drawing one fills the program in a single pick — that
+changes the proposal distribution whatever the element contains, and
+without separating it, "storing programs helps" is unfalsifiable.
+`shuffled` holds element count and element length fixed and randomises
+only the CONTENTS. It lands ABOVE 1.0 on both sequences. So the length
+artefact does not help; it slightly HURTS, which is dilution showing up
+exactly where F157 predicted it. The real programs land below 1.0. The
+two controls sit on opposite sides of the frozen baseline.
+
+Paired per family across seeds, `uniform` is cheaper than `shuffled` in
+**34/55 diverse and 32/45 related family-seeds — 66 of 100** — with
+median ratios 0.979 and 0.954.
+
+**The mechanism was observed, not inferred.** Cost falling cannot tell
+reuse from a lucky draw, so each family records how many of its winning
+programs were LITERALLY produced by an earlier family:
+
+* `frozen` recalls 0 of 44, 0 of 48, 0 of 44, 0 of 43 ... **zero in
+  all ten cells.** Coincidental rediscovery of an earlier winner never
+  happens, so the instrument has no false-positive rate and any nonzero
+  recall elsewhere is genuine.
+* `shuffled` also recalls zero — re-finding an earlier winner by search
+  is effectively impossible unless it is IN the library. Recall
+  requires storage.
+* `uniform` recalls 7-23% of its winners; `sketch-e4` up to 44%.
+
+**Dose-response.** Across the 20 arm-cells that can recall at all,
+r(recall rate, cost ratio) = **-0.471**: more verbatim recall goes with
+lower cost. That is the relationship the mechanism predicts, and it is
+measured rather than assumed.
+
+**Recall is necessary but not sufficient.** `sketch-e4` recalls MORE
+than `uniform` and costs MORE on the diverse sequence (1.056 vs 0.959).
+Recalling a program on a family that was cheap anyway saves nothing, so
+the amount of reuse and the amount of saving are not proportional.
+
+**Magnitude, stated plainly: about 7-10% against the frozen control and
+9-11% against the correct one.** That is a real effect with a real
+mechanism, and it does not solve the search bottleneck — F155's search
+still spends thousands of candidates per action, and shaving a tenth
+off that leaves the same problem. Reuse as currently built is an edge,
+not a lever. The lever has to come from CONSTRAINING the search rather
+than from improving the guesses fed into it, which is what makes effect
+indexing and the F160 modulus fix the live directions.
+
+Probe 258 is `isa_compose.py --library-arms --arms
+frozen,uniform,shuffled,sketch-e4`, 5 seeds.
