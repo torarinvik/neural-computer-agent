@@ -8855,3 +8855,61 @@ old complaint than "walled is hard".
 If (2) fails the extension is not free and the trade needs stating. If
 (1) fails the expressibility arithmetic above is wrong, which would be
 surprising since it is exact and needs no network.
+
+## F178 — saturating arithmetic closes the tail completely: search cost
+## falls 13x, and the search stops failing
+
+Four seeds, control `cover` reproducing at 0.842/0.727, regime valid.
+
+| measure | before | after |
+| --- | ---: | ---: |
+| enumeration success rate | 288/341 = 84.5% | **341/341 = 100.0%** |
+| mean candidates per action | 528 | **22.9** |
+| enum cost, diverse | 0.425 | **0.031** |
+| enum cost, related | 0.406 | **0.016** |
+| mean search fit, diverse | 0.9877 | 0.9973 |
+| worst search fit, diverse | 0.9239 | 0.9816 |
+| interpreter, unseen programs | 0.9887 | 0.9887 |
+| interpreter, double length | 0.9373 | 0.9444 |
+
+**Every action in the benchmark is now solved by enumeration.** The
+53-action tail that held 91% of all search cost (F176) is gone — not
+reduced, eliminated. Per-family failure rates went 75%, 44%, 35%, 21%,
+19%, 19%, 14%, 7% to zero across the board.
+
+**And it is cheaper AND better.** Mean search fit rose 0.9877 to
+0.9973 and the worst family rose 0.9239 to 0.9816, so this is not a
+search that got faster by settling for less. The interpreter is
+unchanged on unseen programs at 0.9887 despite carrying nine
+instructions instead of seven, and double-length extrapolation is
+slightly BETTER, 0.9373 to 0.9444.
+
+**Prediction audit, since all four were on the record.**
+
+1. `line` and `grid` go to ~0% — CONFIRMED, both exactly 0%.
+2. Families with no clipped op unchanged — CONFIRMED, dial, toggle and
+   perm all 0% before and after.
+3. The wider pool is charged to every action that still fails —
+   VACUOUS, because no action still fails. The cost was real and had
+   nothing to be charged against.
+4. "The aggregate improves, but by LESS than the tail arithmetic
+   suggests" — **REFUTED, and in the optimistic direction.** It
+   improved by far more. I sized the prediction from `line` and `grid`
+   holding 42,006 of ~164,000 fallback calls and forgot that the
+   procedural families' failures were ALSO clipped-op failures — the
+   diagnosis applied to eight families, not two, and I counted two.
+
+**What the whole arc actually was.** F155 built the recipe
+architecture and called search its bottleneck. Everything from F157 to
+F175 tried to make the search cleverer: reuse, compression, learned
+proposal distributions, sketches, filters, bounds, caps. The best of
+those got to 0.848. None of it was the problem. The problem was that
+the instruction set could not express half the task distribution, and
+the search was spending thousands of candidates hunting for programs
+that did not exist. Two operations — twelve lines — did 13x what all
+of that did.
+
+The lesson is not "extend the basis instead of improving search". It is
+that **a search failing expensively looks identical to a search that is
+too slow**, and only a per-family cost distribution distinguishes them.
+F176 was the finding; F177 and F178 are its consequences.
