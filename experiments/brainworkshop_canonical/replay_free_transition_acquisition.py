@@ -130,6 +130,10 @@ class OnlineTransitionDiscoveryReport:
     promotion_heldout_lifetimes: int
     state_adapter_schema: str
     state_width: int
+    window_statistics: str
+    window_gain: float
+    recency_decay: float
+    context_aggregation: str
 
     def payload(self) -> dict[str, object]:
         return asdict(self)
@@ -608,6 +612,8 @@ def run_online_transition_discovery_audit(
     target_training_lifetimes: int = 2,
     affine_ridge: float = 1e-5,
     window_gain: float = 0.15,
+    window_statistics: str = "masked_mean_and_max_v1",
+    recency_decay: float = 0.75,
     promotion_heldout_lifetimes: int = 3,
     context_aggregation: str = "last_token",
 ) -> OnlineTransitionDiscoveryReport:
@@ -616,7 +622,7 @@ def run_online_transition_discovery_audit(
     The target lifetime initially plans through the already-known source slot.
     Only its opaque transition observations reach the online router.  The
     router stages a new external slot, consumes each training bundle once
-    through replay-free affine statistics, and commits the discovered context
+    through replay-free sufficient statistics, and commits the discovered context
     only after multiple independent held-out lifetimes, recursive prediction,
     and source-retention probes. Cue symbols and n-back values remain
     verifier-private diagnostics and never enter the router.
@@ -630,6 +636,13 @@ def run_online_transition_discovery_audit(
         raise ValueError("online transition promotion needs multiple held-out lifetimes")
     if context_aggregation not in {"last_token", "mean_pool"}:
         raise ValueError("online transition context aggregation is unsupported")
+    if window_statistics not in {
+        "masked_mean_and_max_v1",
+        "recency_weighted_and_latest_v1",
+    }:
+        raise ValueError("online transition window statistics are unsupported")
+    if recency_decay <= 0.0 or not math.isfinite(float(recency_decay)):
+        raise ValueError("online transition recency decay must be finite and positive")
     if affine_ridge <= 0.0 or not math.isfinite(float(affine_ridge)):
         raise ValueError("online transition affine ridge must be finite and positive")
     agent = CanonicalBrainWorkshopAgent(
@@ -648,6 +661,8 @@ def run_online_transition_discovery_audit(
         agent.controller.width,
         state_width=agent.controller.width * 3,
         window_gain=window_gain,
+        window_statistics=window_statistics,
+        recency_decay=recency_decay,
     )
     bank = ExternalTransitionModelBank(
         state_width=state_adapter.state_width,
@@ -789,7 +804,7 @@ def run_online_transition_discovery_audit(
         source_stable = source_digest == bank.models[source_index].digest()
         return OnlineTransitionDiscoveryReport(
             schema=(
-                "neural-computer.brainworkshop-online-transition-discovery-audit.v5"
+                "neural-computer.brainworkshop-online-transition-discovery-audit.v6"
             ),
             status="online_replay_free_transition_discovery_boundary_failed",
             controller_unchanged=unchanged,
@@ -823,6 +838,10 @@ def run_online_transition_discovery_audit(
             promotion_heldout_lifetimes=0,
             state_adapter_schema=state_adapter.schema,
             state_width=state_adapter.state_width,
+            window_statistics=window_statistics,
+            window_gain=window_gain,
+            recency_decay=recency_decay,
+            context_aggregation=context_aggregation,
         )
 
     candidate_context = router.provisional_context_at(0)
@@ -911,7 +930,7 @@ def run_online_transition_discovery_audit(
         source_stable = source_digest == bank.models[source_index].digest()
         return OnlineTransitionDiscoveryReport(
             schema=(
-                "neural-computer.brainworkshop-online-transition-discovery-audit.v5"
+                "neural-computer.brainworkshop-online-transition-discovery-audit.v6"
             ),
             status="online_replay_free_transition_discovery_boundary_failed",
             controller_unchanged=unchanged,
@@ -949,6 +968,10 @@ def run_online_transition_discovery_audit(
             promotion_heldout_lifetimes=promotion_heldout_lifetimes,
             state_adapter_schema=state_adapter.schema,
             state_width=state_adapter.state_width,
+            window_statistics=window_statistics,
+            window_gain=window_gain,
+            recency_decay=recency_decay,
+            context_aggregation=context_aggregation,
         )
 
     target_context = bank.context_at(promotion.slot_index)
@@ -1007,7 +1030,7 @@ def run_online_transition_discovery_audit(
     )
     return OnlineTransitionDiscoveryReport(
         schema=(
-            "neural-computer.brainworkshop-online-transition-discovery-audit.v5"
+            "neural-computer.brainworkshop-online-transition-discovery-audit.v6"
         ),
         status=(
             "online_replay_free_transition_discovery_boundary"
@@ -1048,6 +1071,10 @@ def run_online_transition_discovery_audit(
         promotion_heldout_lifetimes=promotion_heldout_lifetimes,
         state_adapter_schema=state_adapter.schema,
         state_width=state_adapter.state_width,
+        window_statistics=window_statistics,
+        window_gain=window_gain,
+        recency_decay=recency_decay,
+        context_aggregation=context_aggregation,
     )
 
 
@@ -1064,6 +1091,13 @@ def main() -> None:
     parser.add_argument("--source-training-lifetimes", type=int, default=2)
     parser.add_argument("--target-training-lifetimes", type=int, default=2)
     parser.add_argument("--promotion-heldout-lifetimes", type=int, default=3)
+    parser.add_argument(
+        "--window-statistics",
+        choices=("masked_mean_and_max_v1", "recency_weighted_and_latest_v1"),
+        default="masked_mean_and_max_v1",
+    )
+    parser.add_argument("--window-gain", type=float, default=0.15)
+    parser.add_argument("--recency-decay", type=float, default=0.75)
     parser.add_argument("--steps", type=int, default=6)
     args = parser.parse_args()
     if args.audit == "nonstationary":
@@ -1080,6 +1114,9 @@ def main() -> None:
             target_training_lifetimes=args.target_training_lifetimes,
             steps=args.steps,
             promotion_heldout_lifetimes=args.promotion_heldout_lifetimes,
+            window_statistics=args.window_statistics,
+            window_gain=args.window_gain,
+            recency_decay=args.recency_decay,
         )
     else:
         report = run_replay_free_transition_acquisition_audit(

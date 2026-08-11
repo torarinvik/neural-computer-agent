@@ -1,0 +1,70 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "rendered_online_transition_recency_window_v6",
+  "date": "2026-08-11",
+  "claim_boundary": "replay-free external transition acquisition with recency-aware frozen-core state; not general continual learning",
+  "configuration": {
+    "audit": "online-discovery",
+    "seeds": [90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101],
+    "steps": 6,
+    "source_training_lifetimes": 2,
+    "target_training_lifetimes": 2,
+    "promotion_heldout_lifetimes": 3,
+    "state_adapter": "neural-computer.external-controller-event-window-state-adapter.v1",
+    "window_statistics": "recency_weighted_and_latest_v1",
+    "window_gain": 0.05,
+    "recency_decay": 0.75,
+    "context_aggregation": "last_token",
+    "committed_source_family": "affine_sufficient_statistics_v1",
+    "candidate_families": [
+      "affine_sufficient_statistics_v1",
+      "random_feature_sufficient_statistics_v1"
+    ],
+    "provisional_context_similarity_threshold": 0.98,
+    "provisional_context_similarity_margin": 0.005,
+    "provisional_context_error_tolerance": 0.15,
+    "promotion_prediction_tolerance": 0.05,
+    "promotion_recursive_rollout_tolerance": 0.2,
+    "replayed_examples": 0,
+    "optimizer_updates": 0,
+    "controller_frozen": true
+  },
+  "comparison": {
+    "compatibility_statistics": "masked_mean_and_max_v1",
+    "compatibility_window_gain": 0.15,
+    "compatibility_seeds": [90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101],
+    "compatibility_complete_passes": 3,
+    "recency_complete_passes": 5,
+    "recency_route_recovery_passes": 5,
+    "recency_fresh_challenger_improvement_passes": 5
+  },
+  "runs": [
+    {"seed": 90, "status": "rejected_at_promotion", "source_slot_byte_stable": true, "target_promotion_accepted": false, "target_promotion_reason": "candidate retention probe failed", "target_route_recovered": false, "target_model_improved_on_heldout": false, "target_heldout_status": "staged", "trained_target_error": null, "fresh_target_error": null, "unique_verifier_bits": 27, "logical_lifetimes": 8, "transition_rows_consumed_once": 24, "target_sample_count": 0},
+    {"seed": 91, "status": "passed", "source_slot_byte_stable": true, "target_promotion_accepted": true, "target_promotion_reason": "held-out, recursive-rollout, and retention-verified candidate promotion committed", "target_route_recovered": true, "target_model_improved_on_heldout": true, "target_heldout_status": "matched", "trained_target_error": 0.027183616533875465, "fresh_target_error": 0.0825982391834259, "unique_verifier_bits": 30, "logical_lifetimes": 9, "transition_rows_consumed_once": 24, "target_sample_count": 12},
+    {"seed": 92, "status": "rejected_before_candidate_staging", "source_slot_byte_stable": false, "target_promotion_accepted": false, "target_promotion_reason": "no provisional target candidate was staged", "target_route_recovered": false, "target_model_improved_on_heldout": false, "target_heldout_status": "not_run", "trained_target_error": null, "fresh_target_error": null, "unique_verifier_bits": 18, "logical_lifetimes": 5, "transition_rows_consumed_once": 12, "target_sample_count": 0},
+    {"seed": 93, "status": "rejected_at_promotion", "source_slot_byte_stable": true, "target_promotion_accepted": false, "target_promotion_reason": "no provisional model family passed held-out verification", "target_route_recovered": false, "target_model_improved_on_heldout": false, "target_heldout_status": "staged", "trained_target_error": null, "fresh_target_error": null, "unique_verifier_bits": 27, "logical_lifetimes": 8, "transition_rows_consumed_once": 24, "target_sample_count": 0},
+    {"seed": 94, "status": "rejected_at_promotion", "source_slot_byte_stable": true, "target_promotion_accepted": false, "target_promotion_reason": "held-out recursive candidate rollout failed", "target_route_recovered": false, "target_model_improved_on_heldout": false, "target_heldout_status": "staged", "trained_target_error": null, "fresh_target_error": null, "unique_verifier_bits": 27, "logical_lifetimes": 8, "transition_rows_consumed_once": 24, "target_sample_count": 0},
+    {"seed": 95, "status": "passed", "source_slot_byte_stable": true, "target_promotion_accepted": true, "target_promotion_reason": "held-out, recursive-rollout, and retention-verified candidate promotion committed", "target_route_recovered": true, "target_model_improved_on_heldout": true, "target_heldout_status": "matched", "trained_target_error": 0.020889610052108765, "fresh_target_error": 0.07753287255764008, "unique_verifier_bits": 30, "logical_lifetimes": 9, "transition_rows_consumed_once": 24, "target_sample_count": 6},
+    {"seed": 96, "status": "rejected_before_candidate_staging", "source_slot_byte_stable": false, "target_promotion_accepted": false, "target_promotion_reason": "no provisional target candidate was staged", "target_route_recovered": false, "target_model_improved_on_heldout": false, "target_heldout_status": "not_run", "trained_target_error": null, "fresh_target_error": null, "unique_verifier_bits": 18, "logical_lifetimes": 5, "transition_rows_consumed_once": 12, "target_sample_count": 0},
+    {"seed": 97, "status": "rejected_before_candidate_staging", "source_slot_byte_stable": false, "target_promotion_accepted": false, "target_promotion_reason": "no provisional target candidate was staged", "target_route_recovered": false, "target_model_improved_on_heldout": false, "target_heldout_status": "not_run", "trained_target_error": null, "fresh_target_error": null, "unique_verifier_bits": 18, "logical_lifetimes": 5, "transition_rows_consumed_once": 12, "target_sample_count": 0},
+    {"seed": 98, "status": "rejected_before_candidate_staging", "source_slot_byte_stable": false, "target_promotion_accepted": false, "target_promotion_reason": "no provisional target candidate was staged", "target_route_recovered": false, "target_model_improved_on_heldout": false, "target_heldout_status": "not_run", "trained_target_error": null, "fresh_target_error": null, "unique_verifier_bits": 18, "logical_lifetimes": 5, "transition_rows_consumed_once": 12, "target_sample_count": 0},
+    {"seed": 99, "status": "passed", "source_slot_byte_stable": true, "target_promotion_accepted": true, "target_promotion_reason": "held-out, recursive-rollout, and retention-verified candidate promotion committed", "target_route_recovered": true, "target_model_improved_on_heldout": true, "target_heldout_status": "matched", "trained_target_error": 0.062073275446891785, "fresh_target_error": 0.1106814369559288, "unique_verifier_bits": 30, "logical_lifetimes": 9, "transition_rows_consumed_once": 24, "target_sample_count": 24},
+    {"seed": 100, "status": "passed", "source_slot_byte_stable": true, "target_promotion_accepted": true, "target_promotion_reason": "held-out, recursive-rollout, and retention-verified candidate promotion committed", "target_route_recovered": true, "target_model_improved_on_heldout": true, "target_heldout_status": "matched", "trained_target_error": 0.06688236445188522, "fresh_target_error": 0.07342962175607681, "unique_verifier_bits": 30, "logical_lifetimes": 9, "transition_rows_consumed_once": 24, "target_sample_count": 12},
+    {"seed": 101, "status": "passed", "source_slot_byte_stable": true, "target_promotion_accepted": true, "target_promotion_reason": "held-out, recursive-rollout, and retention-verified candidate promotion committed", "target_route_recovered": true, "target_model_improved_on_heldout": true, "target_heldout_status": "matched", "trained_target_error": 0.04845630005002022, "fresh_target_error": 0.212293341755867, "unique_verifier_bits": 30, "logical_lifetimes": 9, "transition_rows_consumed_once": 24, "target_sample_count": 12}
+  ],
+  "aggregate": {
+    "complete_passes": 5,
+    "total_runs": 12,
+    "promotion_acceptances": 5,
+    "route_recovery_passes": 5,
+    "fresh_challenger_improvement_passes": 5,
+    "unique_verifier_bits_total": 303,
+    "logical_lifetimes_total": 89,
+    "transition_rows_consumed_once_total": 240,
+    "optimizer_updates_total": 0,
+    "replayed_examples_total": 0,
+    "controller_unchanged_all_runs": true,
+    "source_retention_all_promoted_runs": true
+  },
+  "interpretation": "Recency-aware external state improves unseen-lifetime transfer relative to the compatibility mean/max state boundary, but five of twelve runs still reject and no general continual-learning capability is promoted."
+}

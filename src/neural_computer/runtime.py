@@ -1293,10 +1293,12 @@ class ExternalControllerEventWindowStateAdapter(nn.Module):
 
     The controller's ordinary state representation is intentionally compact,
     but it is a bound/reduction of the event window.  This adapter preserves
-    that representation and appends masked mean/max statistics of the
-    controller's retained learned tokens before the factual model sees the
-    state.  It is still entirely opaque: no modality, task, action, or
-    protocol field is introduced.
+    that representation and appends replaceable statistics of the controller's
+    retained learned tokens before the factual model sees the state.  The
+    compatibility mode uses masked mean/max statistics; the recency mode uses
+    a causal recency-weighted summary plus the latest token.  It is still
+    entirely opaque: no modality, task, action, or protocol field is
+    introduced.
 
     The adapter is external and replaceable.  Its default identity path makes
     the state contract deterministic and auditable; a caller may provide a
@@ -1316,10 +1318,19 @@ class ExternalControllerEventWindowStateAdapter(nn.Module):
         *,
         hidden_width: int = 0,
         window_gain: float = 0.15,
+        window_statistics: str = "masked_mean_and_max_v1",
+        recency_decay: float = 0.75,
     ) -> None:
         super().__init__()
         if controller_width < 1 or hidden_width < 0 or not math.isfinite(window_gain):
             raise ValueError("event-window state-adapter dimensions are invalid")
+        if window_statistics not in {
+            "masked_mean_and_max_v1",
+            "recency_weighted_and_latest_v1",
+        }:
+            raise ValueError("event-window state-adapter statistics are unsupported")
+        if recency_decay <= 0.0 or not math.isfinite(recency_decay):
+            raise ValueError("event-window state-adapter recency decay is invalid")
         self.controller_width = int(controller_width)
         self.controller_feature_width = self.controller_width * 3
         self.window_feature_width = self.controller_width * 2
@@ -1329,6 +1340,8 @@ class ExternalControllerEventWindowStateAdapter(nn.Module):
             raise ValueError("event-window state-adapter state width must be positive")
         self.hidden_width = int(hidden_width)
         self.window_gain = float(window_gain)
+        self.window_statistics = str(window_statistics)
+        self.recency_decay = float(recency_decay)
         if hidden_width:
             self.network = nn.Sequential(
                 nn.Linear(self.input_width, hidden_width),
@@ -1355,8 +1368,10 @@ class ExternalControllerEventWindowStateAdapter(nn.Module):
             "state_width": self.state_width,
             "hidden_width": self.hidden_width,
             "window_gain": self.window_gain,
+            "window_statistics": self.window_statistics,
+            "recency_decay": self.recency_decay,
             "input": "opaque_controller_state_plus_bounded_event_window_v1",
-            "statistics": "masked_mean_and_max_v1",
+            "statistics": self.window_statistics,
             "behavior": "replaceable_markov_state_projection_not_policy_v1",
         }
 
@@ -1368,6 +1383,8 @@ class ExternalControllerEventWindowStateAdapter(nn.Module):
         width: int,
         device: torch.device,
         dtype: torch.dtype,
+        statistics: str,
+        recency_decay: float,
     ) -> tuple[torch.Tensor, torch.Tensor]:
         payload = state.event_window.payload.to(device=device, dtype=dtype)
         present = state.event_window.present
@@ -1380,15 +1397,36 @@ class ExternalControllerEventWindowStateAdapter(nn.Module):
         if present.shape != payload.shape[:2] or present.dtype != torch.bool:
             raise ValueError("controller event window presence has the wrong shape")
         present_float = present.to(dtype=dtype)
-        denominator = present_float.sum(dim=1, keepdim=True).clamp_min(1.0)
-        mean = (payload * present_float.unsqueeze(-1)).sum(dim=1) / denominator
-        maximum = payload.masked_fill(~present.unsqueeze(-1), -torch.inf).amax(dim=1)
-        maximum = torch.where(
-            present.any(dim=1, keepdim=True),
-            maximum,
-            torch.zeros_like(maximum),
-        )
-        return mean, maximum
+        if statistics == "masked_mean_and_max_v1":
+            denominator = present_float.sum(dim=1, keepdim=True).clamp_min(1.0)
+            mean = (payload * present_float.unsqueeze(-1)).sum(dim=1) / denominator
+            maximum = payload.masked_fill(~present.unsqueeze(-1), -torch.inf).amax(
+                dim=1
+            )
+            maximum = torch.where(
+                present.any(dim=1, keepdim=True),
+                maximum,
+                torch.zeros_like(maximum),
+            )
+            return mean, maximum
+        if statistics != "recency_weighted_and_latest_v1":
+            raise ValueError("event window statistics mode is unsupported")
+        latest_index = present.to(torch.long).sum(dim=1).clamp_min(1) - 1
+        positions = torch.arange(
+            payload.shape[1],
+            device=device,
+            dtype=dtype,
+        ).view(1, -1)
+        distance = (latest_index.to(dtype).unsqueeze(1) - positions).clamp_min(0.0)
+        weights = torch.exp(-recency_decay * distance) * present_float
+        denominator = weights.sum(dim=1, keepdim=True).clamp_min(1e-6)
+        recency = (payload * weights.unsqueeze(-1)).sum(dim=1) / denominator
+        latest = payload.gather(
+            1,
+            latest_index.view(batch_size, 1, 1).expand(-1, 1, width),
+        ).squeeze(1)
+        latest = latest * present.any(dim=1, keepdim=True).to(dtype=dtype)
+        return recency, latest
 
     def forward(
         self,
@@ -1426,6 +1464,8 @@ class ExternalControllerEventWindowStateAdapter(nn.Module):
                 width=self.controller_width,
                 device=representation.device,
                 dtype=representation.dtype,
+                statistics=self.window_statistics,
+                recency_decay=self.recency_decay,
             )
         features = torch.cat((representation, mean, maximum), dim=-1)
         if not bool(torch.isfinite(features).all()):

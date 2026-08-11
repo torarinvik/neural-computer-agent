@@ -207,6 +207,23 @@ def test_online_transition_discovery_grows_target_slot_without_replay() -> None:
     assert report.target_heldout_status == "matched"
 
 
+def test_recency_window_transition_discovery_is_an_explicit_transfer_mode() -> None:
+    report = run_online_transition_discovery_audit(
+        seed=91,
+        window_statistics="recency_weighted_and_latest_v1",
+        window_gain=0.05,
+        recency_decay=0.75,
+    )
+
+    assert report.status == "online_replay_free_transition_discovery_boundary"
+    assert report.window_statistics == "recency_weighted_and_latest_v1"
+    assert report.window_gain == 0.05
+    assert report.recency_decay == 0.75
+    assert report.target_route_recovered
+    assert report.target_model_improved_on_heldout
+    assert report.replayed_examples == 0
+
+
 def test_relation_reader_can_replace_gru_context_in_canonical_runner() -> None:
     agent = CanonicalBrainWorkshopAgent(
         n_back=2,

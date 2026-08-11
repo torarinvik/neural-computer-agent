@@ -1442,3 +1442,21 @@ still loses on the later recovery lifetime. This is retained as an
 implementation and safety gain, not a learned capability promotion. The
 decision ledger is in
 `session_records/context_continuity_mixed_transition_2026-08-11/sample_efficiency_ledger.json`.
+
+## Recency-aware frozen-core state (2026-08-11)
+
+The event-window state adapter now offers a causal
+`recency_weighted_and_latest_v1` mode. It replaces the order-blind mean/max
+summary with a recency-weighted learned-token summary and the latest retained
+token, while keeping the same opaque planner width and frozen controller. The
+original `masked_mean_and_max_v1` mode remains available for compatibility.
+
+On an expanded twelve-seed online-discovery comparison, explicitly selecting
+recency/latest completed `5/12` runs versus `3/12` for the compatibility state
+boundary. All five passing runs recovered the promoted route and beat the
+matched fresh challenger, with zero optimizer updates and zero replayed
+examples. The compatibility mode remains the smoke-test default so existing
+checkpoint and audit behavior stays stable. This is a real transfer
+improvement at the external state seam, but seven recency runs still reject; it
+does not qualify general continual learning. Evidence is in
+`session_records/recency_window_transition_2026-08-11/sample_efficiency_ledger.json`.

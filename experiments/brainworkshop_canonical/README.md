@@ -307,3 +307,14 @@ random-feature replay-free model families. This reduces provisional capacity
 loss but has not improved the six-seed promotion rate beyond `2/6`; it remains
 an engineering boundary rather than a capability claim. Its accounting is in
 `session_records/context_continuity_mixed_transition_2026-08-11/sample_efficiency_ledger.json`.
+
+The v6 harness supports the causal
+`recency_weighted_and_latest_v1` event-window state contract with gain `0.05`
+and decay `0.75`. Explicitly selecting that mode completes `5/12` runs on
+seeds 90–101, compared with `3/12` for the compatibility mean/max contract;
+every passing run recovers the post-promotion route and beats its fresh
+challenger. The compatibility mean/max mode remains the smoke-test default so
+existing checkpoint and audit behavior stays stable. Seven recency runs still
+reject, so this remains a bounded transfer result rather than general
+continual learning. The full ledger is in
+`session_records/recency_window_transition_2026-08-11/sample_efficiency_ledger.json`.

@@ -1562,6 +1562,13 @@ random-feature sufficient-statistics candidates; its accounting reports a
 mixed bank as replay-free only when all committed slots are actually
 replay-free.
 
+The frozen-core event-window adapter has two external statistics contracts:
+the compatibility `masked_mean_and_max_v1` summary and the causal
+`recency_weighted_and_latest_v1` summary. The latter preserves more ordering
+information without resizing the controller or planner state. It is selected
+by `window_statistics`, `window_gain`, and `recency_decay`; these are memory
+boundary configuration, not modality- or task-specific reasoning branches.
+
 ## Opaque goal-fragment memory
 
 `ExternalGoalFragmentMemory` stores destinations outside the fixed controller.

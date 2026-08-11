@@ -384,6 +384,38 @@ def test_event_window_state_adapter_preserves_opaque_state_width_and_history() -
     )
 
 
+def test_event_window_state_adapter_supports_recency_latest_statistics() -> None:
+    torch.manual_seed(19)
+    controller = AmodalCognitiveController(
+        width=4,
+        workspace_slots=2,
+        intention_width=2,
+        feedback_width=3,
+        event_window_capacity=4,
+    )
+    runtime = AmodalControllerRuntime(controller)
+    state = runtime.initial_state(1, device="cpu")
+    output, next_state = runtime.step_events(
+        [AmodalEvent(torch.randn(1, 4))],
+        state,
+        _feedback(),
+    )
+    adapter = ExternalControllerEventWindowStateAdapter(
+        controller.width,
+        state_width=controller.width * 3,
+        window_gain=0.05,
+        window_statistics="recency_weighted_and_latest_v1",
+        recency_decay=0.75,
+    )
+    adapted = adapter(output.controller, next_state)
+    assert adapted.shape == output.controller.state_representation.shape
+    assert torch.isfinite(adapted).all()
+    assert adapter.configuration()["statistics"] == (
+        "recency_weighted_and_latest_v1"
+    )
+    assert adapter.configuration()["recency_decay"] == 0.75
+
+
 def test_policy_free_runtime_injects_external_generated_candidate_and_feedback() -> None:
     torch.manual_seed(16)
     controller = AmodalCognitiveController(
