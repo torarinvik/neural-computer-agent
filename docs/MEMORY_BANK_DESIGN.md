@@ -8166,12 +8166,42 @@ like: the range was inferred from one action's rows, and if a slot's
 top value never appears in that subsample, the inferred modulus is
 below the true value count and INC wraps early and is simply wrong.
 
-The asymmetry matters and it is why this is a real bug rather than
-noise. Over-estimating a range is harmless — a modulus above the true
-count is never reached. Under-estimating is unsound. So the fix is to
-infer from every observation rather than from one action's slice, which
-strictly enlarges the sample and can only move the estimate up. Rerun
-launched.
+The asymmetry matters: over-estimating a range is harmless, since a
+modulus above the true count is never reached, while under-estimating
+is unsound. So I inferred from every observation instead of one
+action's slice, which strictly enlarges the sample and can only move
+the estimate up, and reran all four seeds.
+
+**CORRECTION — the diagnosis was wrong, and the rerun proved it.** The
+enlarged sample returned results IDENTICAL to the per-action version,
+family by family and seed by seed, aggregates included (+0.0631 and
++0.0044 both times). Byte-identical output means the change did
+nothing, so under-estimation was never happening.
+
+Checked directly: `line` is inferred as modulus 8 on all six slots, and
+per-action inference agrees with all-observation inference exactly. The
+same holds for toggle (2), grid (8) and perm ([4,4,4,4,8,8] — the two
+slots perm does not use correctly defaulting to 8). With 64
+observations drawn over families of at most 512 states, slot coverage
+is simply complete.
+
+So the `line` swing is **plant-to-plant variation**, not inference
+error: the no-modulus interpreter has no modulus embedding and one
+legal modulus, the modulus interpreter has seven and is trained on all
+of them, and on a family where the modulus is irrelevant the two
+plants just differ. That is seed noise in a column where I read a
+mechanism into it.
+
+The enlarged sample is kept because it is sound and free, not because
+it fixed anything. The general caution it answers — that the maximum of
+a finite sample need not be the true cardinality — is correct in
+principle and empty at this scale.
+
+**Methodological note.** Byte-identical output across arms that should
+differ has now caught three things: the collapsed codebook (F146), the
+attainable-fit bound being the coverage filter in disguise (F163), and
+this. It is the most reliable instrument in the kit, and it works
+because it cannot be explained away.
 
 Probe 262 is `isa_compose.py --infer-moduli`, 4 seeds against two
 controls.
