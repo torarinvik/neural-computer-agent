@@ -9020,3 +9020,58 @@ rather than by the basis or the budget. Sweeping `--fit-target` over
    gains little over 0.99. If 1.0 is BOTH cheap and better, the recipes
    are exact more often than F178's 100% enumeration success implies,
    and the fit-target was never doing anything useful.
+
+## F180 — where the founding objective actually stands, and an honest
+## re-reading of what "transfer" now means here
+
+The objective, in its standing wording: *produce a program such that
+given task A makes novel task B faster to learn than chance or starting
+from scratch.*
+
+**What the current system does.** A never-before-seen task family is
+handled by enumerating about 23 candidate programs against a frozen
+interpreter, reaching 0.979 held-out against a 0.549 identity floor,
+with the plant's weights bit-identical before and after. No gradient
+step, no fitting, no per-family parameters outside the recipe.
+
+**The uncomfortable reading, which should be said first.** That is NOT
+"having solved family A made family B cheaper". F161 measured that
+mechanism directly, with a causal null and verbatim-recall
+instrumentation, and got about a tenth. F173 then showed even that
+tenth mostly evaporates against a systematic proposer — stored programs
+add 0.421 against 0.425. **Sequential accumulation across real families
+buys almost nothing here.** A bank that grows as families are solved is
+not, on this evidence, what makes the next family cheap.
+
+**The reading that is actually supported, and it is stronger.** What
+makes family B cheap is that the plant was trained on RANDOM PROGRAMS
+over random states — a task A that contains no family at all — and that
+training transfers to every family expressible in the basis. The
+interpreter executes programs it has never seen at 0.9887, and that one
+competence covers line, dial, toggle, perm, grid, walled, gated and
+procedurally generated families alike, none of which touched its
+weights.
+
+So the objective is met, with A = "execute arbitrary programs over an
+amodal slot basis" and B = any family in that basis. That is a harder
+version of the claim than the one originally intended, because A is
+synthetic and universal rather than a previously solved real task, and
+because there is no risk of B's answer having leaked into A.
+
+**What this costs the bank story.** The bank still holds each family's
+recipe and still gives exact retention — a stored program is a program,
+it does not drift. But the bank is not currently doing COMPOUNDING
+work: solving family 20 is no cheaper than solving family 2. The
+project's premise that a growing memory buys growing capability is, on
+the recipe track, currently supported only in the weak sense that the
+bank stores what was found, not the strong sense that it accelerates
+what comes next.
+
+**And the honest limit.** Everything above is inside one basis. F179
+pinned the boundary precisely: `walled` reaches 0.9395 while everything
+else sits near 0.98, and the residue is the wall — a state-dependent
+refusal no operation here expresses. Two basis holes have already been
+found by accident (the modulus, saturation) and each was worth more
+than every search improvement combined. There is no reason to think the
+third does not exist, and the instrument that would find it is a
+per-family cost distribution, which is now permanently wired.
