@@ -9235,6 +9235,34 @@ that the frozen decoder has learned n-back.
 
 The failure is useful: disagreement selection can still be miscalibrated when
 the selected probe's actual successor lies outside the learned model's useful
-support. The next pressure is multi-step probe evidence and calibrated
-uncertainty, not weakening the ambiguity refusal. Accounting is in
+support. A fixed opaque probe-sequence contract and a receding-horizon
+reselection arm were then tested for two fresh steps; the active arm resolved
+`0/3` targets versus `1/3` for the passive control. The extra step accumulated
+model mismatch rather than producing reliable identity evidence, so the
+sequence arm is explicitly rejected. Accounting is in
 `session_records/factored_active_disambiguation_pressure_2026-08-11/sample_efficiency_ledger.json`.
+The rejected sequence ledger is
+`session_records/factored_active_probe_sequence_pressure_2026-08-11/sample_efficiency_ledger.json`.
+
+## External opaque intention memory in the canonical agent (2026-08-11)
+
+The canonical Brain Workshop agent now exposes `ExternalIntentionRepertoire`
+as an independent memory object rather than hiding candidate vectors in the
+controller or decoder. `observe_intention()` records only opaque output
+vectors, exact logging propensities, timestamps, and scalar verifier outcomes;
+`intention_state_payload()` / `load_intention_state_payload()` persist and
+restore that memory without touching the neural `state_dict`. Batched delayed
+or absent outcomes use an explicit mask, so missing evidence is not silently
+converted into a negative label. The rollout path can opt into these writes
+with `record_intention_memory=True` while the controller remains frozen.
+
+This closes an important CPU-plus-files boundary, but it does not invent new
+computation. A fresh one-step active-probe arm sourced its candidates from the
+verified repertoire and recovered `2/3` targets versus `1/3` for the passive
+low-disagreement control—the same result as the earlier observed-intention
+pool. The two-step arm remained `0/3` versus `1/3`. The memory boundary is
+therefore retained for isolation, persistence, and correct missing-evidence
+accounting, but is not promoted as an active capability gain. The next
+bottleneck remains calibrated supported intention coverage and factual model
+uncertainty. The complete accounting is in
+`session_records/factored_active_intention_repertoire_pressure_2026-08-11/sample_efficiency_ledger.json`.

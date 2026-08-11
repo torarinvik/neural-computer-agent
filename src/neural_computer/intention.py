@@ -1476,6 +1476,7 @@ class ExternalIntentionRepertoire:
                 "verified_retrieval_default_plus_explicit_ephemeral_controller_seed_v1"
             ),
             "learning": "outcome_sufficient_statistics_without_replay_v1",
+            "outcome_presence": "explicit_masked_scalar_verifier_presence_v1",
             "logical_addresses": "stable_ids_with_persisted_aliases_v1",
             "maintenance": "retention_gated_copy_on_write_consolidation_v1",
         }
@@ -1486,7 +1487,14 @@ class ExternalIntentionRepertoire:
         utility: torch.Tensor | float | None,
         propensity: torch.Tensor | float | None,
         timestamp: torch.Tensor | int | None,
-    ) -> tuple[torch.Tensor, torch.Tensor | None, torch.Tensor, torch.Tensor]:
+        outcome_mask: torch.Tensor | bool | None,
+    ) -> tuple[
+        torch.Tensor,
+        torch.Tensor | None,
+        torch.Tensor,
+        torch.Tensor,
+        torch.Tensor,
+    ]:
         if intentions.ndim == 1:
             intentions = intentions.unsqueeze(0)
         _validate_tensor(
@@ -1524,6 +1532,24 @@ class ExternalIntentionRepertoire:
         utility_values = None if utility is None else scalar_batch(
             utility, name="intention utility", default=0.0
         )
+        if outcome_mask is None:
+            outcome_values = torch.full((batch,), utility_values is not None, dtype=torch.bool)
+        elif isinstance(outcome_mask, torch.Tensor):
+            if outcome_mask.ndim == 0:
+                outcome_values = outcome_mask.reshape(1).expand(batch)
+            elif outcome_mask.shape == (batch,) or outcome_mask.shape == (batch, 1):
+                outcome_values = outcome_mask.reshape(batch)
+            else:
+                raise ValueError("intention outcome mask must contain one value per intention")
+            if outcome_values.dtype != torch.bool:
+                raise TypeError("intention outcome mask must be boolean")
+            outcome_values = outcome_values.detach().to(device="cpu")
+        elif isinstance(outcome_mask, bool):
+            outcome_values = torch.full((batch,), bool(outcome_mask), dtype=torch.bool)
+        else:
+            raise TypeError("intention outcome mask must be boolean")
+        if utility_values is None and bool(outcome_values.any()):
+            raise ValueError("an intention outcome mask requires utility values")
         propensity_values = scalar_batch(
             propensity, name="intention logging propensity", default=1.0
         )
@@ -1561,6 +1587,7 @@ class ExternalIntentionRepertoire:
             utility_values,
             propensity_values,
             timestamp_values,
+            outcome_values,
         )
 
     def _entry_similarity(self, left: torch.Tensor, right: torch.Tensor) -> float:
@@ -1612,8 +1639,9 @@ class ExternalIntentionRepertoire:
             raise TypeError("intention admission verifier must be callable")
         if not isinstance(reason, str) or not reason:
             raise ValueError("intention admission reason is missing")
-        normalized, _utility, _propensity, _timestamp = self._validate_batch(
+        normalized, _utility, _propensity, _timestamp, _outcome_mask = self._validate_batch(
             intention,
+            None,
             None,
             None,
             None,
@@ -1702,15 +1730,29 @@ class ExternalIntentionRepertoire:
         utility: torch.Tensor | float | None = None,
         propensity: torch.Tensor | float | None = None,
         timestamp: torch.Tensor | int | None = None,
+        outcome_mask: torch.Tensor | bool | None = None,
     ) -> ExternalIntentionObservationReceipt:
-        """Record opaque output experience without touching controller weights."""
+        """Record opaque output experience without touching controller weights.
+
+        ``outcome_mask`` keeps delayed or missing verifier evidence explicit in
+        a batch.  An intention can therefore be attempted and retained before
+        its scalar utility is available, without turning absence into a false
+        negative.
+        """
 
         (
             normalized_intentions,
             utility_values,
             propensity_values,
             timestamp_values,
-        ) = self._validate_batch(intentions, utility, propensity, timestamp)
+            outcome_values,
+        ) = self._validate_batch(
+            intentions,
+            utility,
+            propensity,
+            timestamp,
+            outcome_mask,
+        )
         located: list[int] = []
         added: list[bool] = []
         for row in normalized_intentions:
@@ -1742,7 +1784,7 @@ class ExternalIntentionRepertoire:
             self._propensity_sums[entry_index] += propensity_value
             self._last_propensities[entry_index] = propensity_value
             self._last_seen[entry_index] = int(timestamp_values[row_index])
-            if utility_values is not None:
+            if utility_values is not None and bool(outcome_values[row_index]):
                 utility_value = float(utility_values[row_index])
                 self._outcome_counts[entry_index] += 1
                 self._utility_sums[entry_index] += utility_value
@@ -1754,7 +1796,7 @@ class ExternalIntentionRepertoire:
         return ExternalIntentionObservationReceipt(
             entry_indices=tuple(located),
             added=tuple(added),
-            outcome_observed=utility_values is not None,
+            outcome_observed=bool(outcome_values.any()),
             version=self._version,
             record_count=self.record_count,
             content_digest=self.content_digest(),
@@ -1778,8 +1820,9 @@ class ExternalIntentionRepertoire:
             raise ValueError("intention consolidation ID is invalid")
         if any(logical_id not in self._logical_ids for logical_id in retired_ids):
             raise ValueError("intention consolidation can retire live IDs only")
-        normalized, _utility, _propensity, _timestamp = self._validate_batch(
+        normalized, _utility, _propensity, _timestamp, _outcome_mask = self._validate_batch(
             replacement_intention,
+            None,
             None,
             None,
             None,

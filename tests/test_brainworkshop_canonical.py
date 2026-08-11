@@ -660,3 +660,65 @@ def test_route_state_round_trips_without_loading_controller_weights() -> None:
     )
     for name, value in restored.controller.state_dict().items():
         assert torch.equal(value, controller_before[name])
+
+
+def test_canonical_intention_memory_is_external_and_reloadable() -> None:
+    agent = CanonicalBrainWorkshopAgent(
+        n_back=2,
+        event_width=8,
+        intention_width=4,
+        feedback_width=4,
+        seed=17,
+    )
+    before = {
+        name: value.detach().clone()
+        for name, value in agent.controller.state_dict().items()
+    }
+    agent.observe_intention(
+        torch.tensor([[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0]]),
+        utility=torch.tensor([1.0, 0.0]),
+        propensity=torch.ones(2),
+        outcome_mask=torch.tensor([True, False]),
+    )
+    payload = agent.intention_state_payload()
+
+    restored = CanonicalBrainWorkshopAgent(
+        n_back=2,
+        event_width=8,
+        intention_width=4,
+        feedback_width=4,
+        seed=17,
+    )
+    restored.load_intention_state_payload(payload)
+
+    assert (
+        restored.intention_state_payload()["repertoire"]["sha256"]
+        == payload["repertoire"]["sha256"]
+    )
+    assert restored.intention_repertoire.record_count == 2
+    assert restored.propose_intentions(include_seed=False).source_indices == (0, 1)
+    assert "intention_repertoire" not in dict(agent.named_parameters())
+    for name, value in agent.controller.state_dict().items():
+        assert torch.equal(value, before[name])
+
+
+def test_rollout_can_record_only_present_verifier_outcomes_externally() -> None:
+    agent = CanonicalBrainWorkshopAgent(
+        n_back=2,
+        event_width=8,
+        intention_width=4,
+        feedback_width=4,
+        seed=17,
+    )
+    rollout = agent.rollout(
+        NBackVerifier(batch_size=2, n_back=2, steps=4, seed=29),
+        sample=False,
+        record_intention_memory=True,
+    )
+
+    statistics = agent.intention_repertoire.statistics()
+    assert int(statistics["attempts"].sum()) == rollout.actions.numel()
+    assert int(statistics["outcome_counts"].sum()) == int(rollout.eligible.sum())
+    assert int(statistics["outcome_counts"].sum()) < int(
+        statistics["attempts"].sum()
+    )

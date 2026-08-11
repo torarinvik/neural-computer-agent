@@ -34,6 +34,7 @@ from neural_computer import (
     ExternalControllerEventWindowStateAdapter,
     ExternalFactoredTransitionModel,
     ExternalFactoredTransitionRouter,
+    ExternalIntentionRepertoire,
     ExternalModelBasedPlanner,
     ExternalTransitionContextEncoder,
     ExternalTransitionObservation,
@@ -69,6 +70,10 @@ class ActiveDisambiguationTrial:
     strict_route_slot_id: int | None
     router_read_only: bool
     decoder_state_free: bool
+    probe_horizon: int = 1
+    selected_intention_indices: tuple[int, ...] = ()
+    probe_model_errors_by_step: tuple[tuple[float, ...], ...] = ()
+    selected_probe_leverage: tuple[float, ...] = ()
 
     def payload(self) -> dict[str, object]:
         return asdict(self)
@@ -95,6 +100,8 @@ class ActiveDisambiguationPressureResult:
     replayed_examples: int
     wall_time_seconds: float
     schema: str = ACTIVE_DISAMBIGUATION_PRESSURE_SCHEMA
+    probe_horizon: int = 1
+    candidate_intention_source: str = "seed_pool"
 
     def payload(self) -> dict[str, object]:
         return asdict(self)
@@ -139,8 +146,12 @@ def _execute_probe_trial(
     ambiguity_tolerance: float,
     probe_match_tolerance: float,
     probe_contradiction_tolerance: float,
+    probe_horizon: int = 1,
 ) -> tuple[ActiveDisambiguationTrial, bool, int, int]:
     """Run one fresh verifier until an opaque active/passive probe executes."""
+
+    if not isinstance(probe_horizon, int) or isinstance(probe_horizon, bool) or probe_horizon < 1:
+        raise ValueError("active probe horizon must be positive")
 
     verifier = NBackVerifier(
         batch_size=1,
@@ -188,81 +199,164 @@ def _execute_probe_trial(
                     )
                 before_router = router.digest()
                 before_controller = _controller_digest(agent)
-                probe = router.request_disambiguation_probe(
-                    transition,
-                    candidate_intentions,
-                    candidate_slot_ids=(0, target_slot_id),
-                    probe_state=output.state,
-                )
-                disagreement = probe.disagreement_scores
-                if active:
-                    selected_index = probe.selected_intention_index
-                else:
-                    selected_index = int(disagreement.argmin())
-                selected_intention = candidate_intentions[selected_index]
-                decoded = policy.decode_intention(selected_intention)
-                decision = agent.keypress_decoder.decide_from_logits(
-                    decoded["keypress"],
-                    sample=False,
-                )
-                decoder_state_free = _controller_digest(agent) == before_controller
-                scored = verifier.score(decision.key_index)
-                unique_verifier_bits += int(scored.eligible.sum())
-                feedback = _feedback(agent, scored, decision)
-                state = next_state
+                current_output = output
+                current_controller_state = next_state
+                current_observation = transition
+                probe_observations: list[ExternalTransitionObservation] = []
+                selected_indices: list[int] = []
+                selection_disagreements: list[float] = []
+                selected_probe_leverage: list[float] = []
+                decoder_state_free = True
+                scored = None
+                for probe_index in range(probe_horizon):
+                    probe = router.request_disambiguation_probe(
+                        current_observation,
+                        candidate_intentions,
+                        candidate_slot_ids=(0, target_slot_id),
+                        probe_state=current_output.state,
+                    )
+                    disagreement = probe.disagreement_scores
+                    selected_index = (
+                        probe.selected_intention_index
+                        if active
+                        else int(disagreement.argmin())
+                    )
+                    disagreement_value = float(disagreement[selected_index])
+                    selected_intention = candidate_intentions[selected_index]
+                    if router.model.residual_bank is None:
+                        selected_probe_leverage.append(0.0)
+                    else:
+                        candidate_contexts = torch.stack(
+                            [
+                                router._contexts[router._slot_ids.index(slot_id)]
+                                for slot_id in (0, target_slot_id)
+                            ]
+                        ).to(current_output.state)
+                        leverage = router.model.residual_bank.predictive_leverage(
+                            current_output.state,
+                            candidate_intentions,
+                            candidate_contexts=candidate_contexts,
+                        ).mean(dim=1)
+                        selected_probe_leverage.append(float(leverage[selected_index]))
+                    selected_indices.append(selected_index)
+                    selection_disagreements.append(disagreement_value)
+                    decoded = policy.decode_intention(selected_intention)
+                    decision = agent.keypress_decoder.decide_from_logits(
+                        decoded["keypress"],
+                        sample=False,
+                    )
+                    decoder_state_free = (
+                        decoder_state_free
+                        and _controller_digest(agent) == before_controller
+                    )
+                    scored = verifier.score(decision.key_index)
+                    unique_verifier_bits += int(scored.eligible.sum())
+                    feedback = _feedback(agent, scored, decision)
+                    next_events = agent.runtime.encode_streams(
+                        {"stimulus": verifier.observation()}
+                    )
+                    successor, successor_controller_state = policy.step_events(
+                        next_events,
+                        current_controller_state,
+                        feedback,
+                        goal_state,
+                        candidate_intentions,
+                        horizon=1,
+                        beam_width=4,
+                        transition_context=source_context.unsqueeze(0),
+                    )
+                    probe_observation = ExternalTransitionObservation(
+                        state=current_output.state.detach().clone(),
+                        intention=selected_intention.unsqueeze(0).detach().clone(),
+                        next_state=successor.state.detach().clone(),
+                    ).validate(
+                        state_width=router.model.state_width,
+                        intention_width=router.model.intention_width,
+                    )
+                    probe_observations.append(probe_observation)
+                    current_observation = probe_observation
+                    current_output = successor
+                    current_controller_state = successor_controller_state
 
-                next_events = agent.runtime.encode_streams(
-                    {"stimulus": verifier.observation()}
-                )
-                successor, _ = policy.step_events(
-                    next_events,
-                    state,
-                    feedback,
-                    goal_state,
-                    candidate_intentions,
-                    horizon=1,
-                    beam_width=4,
-                    transition_context=source_context.unsqueeze(0),
-                )
-                probe_observation = ExternalTransitionObservation(
-                    state=output.state.detach().clone(),
-                    intention=selected_intention.unsqueeze(0).detach().clone(),
-                    next_state=successor.state.detach().clone(),
-                ).validate(
-                    state_width=router.model.state_width,
-                    intention_width=router.model.intention_width,
-                )
-                strict_route = router.route_partial_bundle(
-                    (probe_observation,),
-                    match_tolerance=probe_match_tolerance,
-                    contradiction_tolerance=probe_contradiction_tolerance,
-                    match_margin=0.01,
-                )
+                if scored is None:
+                    raise RuntimeError("active probe produced no verifier outcome")
+                if probe_horizon == 1:
+                    strict_route = router.route_partial_bundle(
+                        (probe_observations[0],),
+                        match_tolerance=probe_match_tolerance,
+                        contradiction_tolerance=probe_contradiction_tolerance,
+                        match_margin=0.01,
+                    )
+                else:
+                    sequence_match_tolerance = probe_match_tolerance * probe_horizon + (
+                        0.05 * (probe_horizon - 1)
+                    )
+                    sequence_contradiction_tolerance = (
+                        probe_contradiction_tolerance * probe_horizon
+                    )
+                    strict_route = router.route_partial_sequence(
+                        tuple((item,) for item in probe_observations),
+                        match_tolerance=sequence_match_tolerance,
+                        contradiction_tolerance=sequence_contradiction_tolerance,
+                        match_margin=0.01,
+                        confirmation_bundles=probe_horizon,
+                    )
                 router_read_only = before_router == router.digest()
+                final_observation = probe_observations[-1]
+                evidence_state = torch.cat(
+                    [item.state for item in probe_observations], dim=0
+                )
+                evidence_intention = torch.cat(
+                    [item.intention for item in probe_observations], dim=0
+                )
+                evidence_next_state = torch.cat(
+                    [item.next_state for item in probe_observations], dim=0
+                )
                 probe_model_errors = tuple(
                     float(
                         (
                             router.model.predict_with_context(
-                                probe_observation.state,
-                                probe_observation.intention,
-                                context.to(probe_observation.state)
+                                evidence_state,
+                                evidence_intention,
+                                context.to(final_observation.state)
                                 .unsqueeze(0)
-                                .expand(1, -1),
+                                .expand(probe_horizon, -1),
                             )
-                            - probe_observation.next_state
+                            - evidence_next_state
                         )
                         .square()
                         .mean()
                     )
                     for context in router._contexts[:2]
                 )
+                probe_model_errors_by_step = tuple(
+                    tuple(
+                        float(
+                            (
+                                router.model.predict_with_context(
+                                    item.state,
+                                    item.intention,
+                                    context.to(item.state)
+                                    .unsqueeze(0)
+                                    .expand(1, -1),
+                                )
+                                - item.next_state
+                            )
+                            .square()
+                            .mean()
+                        )
+                        for context in router._contexts[:2]
+                    )
+                    for item in probe_observations
+                )
                 trial = ActiveDisambiguationTrial(
                     kind="active" if active else "passive_low_disagreement",
                     verifier_seed=verifier_seed,
-                    selected_intention_index=selected_index,
-                    maximum_disagreement=float(disagreement.max()),
-                    selected_disagreement=float(disagreement[selected_index]),
-                    minimum_disagreement=float(disagreement.min()),
+                    selected_intention_index=selected_indices[0],
+                    maximum_disagreement=max(selection_disagreements),
+                    selected_disagreement=sum(selection_disagreements)
+                    / len(selection_disagreements),
+                    minimum_disagreement=min(selection_disagreements),
                     verifier_reward=float(scored.reward.item()),
                     verifier_outcome_eligible=bool(scored.eligible.item()),
                     probe_model_errors=probe_model_errors,
@@ -270,6 +364,10 @@ def _execute_probe_trial(
                     strict_route_slot_id=strict_route.slot_id,
                     router_read_only=router_read_only,
                     decoder_state_free=decoder_state_free,
+                    probe_horizon=probe_horizon,
+                    selected_intention_indices=tuple(selected_indices),
+                    probe_model_errors_by_step=probe_model_errors_by_step,
+                    selected_probe_leverage=tuple(selected_probe_leverage),
                 )
                 target_recovered = (
                     strict_route.status == "matched"
@@ -296,10 +394,11 @@ def run_active_disambiguation_pressure(
     training_lifetimes: int = 6,
     steps: int = 9,
     random_feature_width: int = 128,
+    probe_horizon: int = 1,
 ) -> ActiveDisambiguationPressureResult:
     """Audit active disambiguation on fresh rendered verifier evidence."""
 
-    if min(training_lifetimes, steps, random_feature_width) < 1:
+    if min(training_lifetimes, steps, random_feature_width, probe_horizon) < 1:
         raise ValueError("active disambiguation pressure budgets must be positive")
     started = time.perf_counter()
     torch.manual_seed(seed)
@@ -340,10 +439,14 @@ def run_active_disambiguation_pressure(
     if model.residual_bank is None:
         raise RuntimeError("active pressure requires learned residual memory")
     model.residual_bank.ensure_context(source_context)
-    candidate_intentions = torch.randn(
+    seed_candidate_intentions = torch.randn(
         6,
         agent.controller.intention_width,
         generator=torch.Generator().manual_seed(seed + 7000),
+    )
+    candidate_intentions = seed_candidate_intentions
+    intention_repertoire = ExternalIntentionRepertoire(
+        agent.controller.intention_width
     )
 
     unique_verifier_bits = 0
@@ -362,12 +465,21 @@ def run_active_disambiguation_pressure(
                 candidate_intentions=candidate_intentions,
                 learn=False,
                 time_shuffle=time_shuffle,
+                intention_repertoire=intention_repertoire,
             )
             for observation in _rollout_observations(rollout):
                 base.observe(observation)
             unique_verifier_bits += bits
             transition_rows += rollout.horizon
     model.freeze_base()
+    verified_proposal = intention_repertoire.propose(
+        include_seed=False,
+        max_candidates=32,
+    )
+    if verified_proposal.intentions.shape[1] >= 2:
+        candidate_intentions = verified_proposal.intentions[0].detach().clone()
+    else:
+        candidate_intentions = seed_candidate_intentions
 
     encoder = ExternalTransitionContextEncoder(
         model.state_width,
@@ -449,6 +561,7 @@ def run_active_disambiguation_pressure(
             ambiguity_tolerance=0.70,
             probe_match_tolerance=0.30,
             probe_contradiction_tolerance=0.40,
+            probe_horizon=probe_horizon,
         )
     )
     passive_trial, passive_recovered, passive_bits, passive_lifetimes = (
@@ -465,6 +578,7 @@ def run_active_disambiguation_pressure(
             ambiguity_tolerance=0.70,
             probe_match_tolerance=0.30,
             probe_contradiction_tolerance=0.40,
+            probe_horizon=probe_horizon,
         )
     )
     return ActiveDisambiguationPressureResult(
@@ -490,6 +604,12 @@ def run_active_disambiguation_pressure(
         optimizer_updates=0,
         replayed_examples=0,
         wall_time_seconds=time.perf_counter() - started,
+        probe_horizon=probe_horizon,
+        candidate_intention_source=(
+            "verified_opaque_repertoire_intentions_first_32"
+            if verified_proposal.intentions.shape[1] >= 2
+            else "seed_pool"
+        ),
     )
 
 
@@ -499,6 +619,7 @@ def main() -> None:
     parser.add_argument("--training-lifetimes", type=int, default=6)
     parser.add_argument("--steps", type=int, default=9)
     parser.add_argument("--random-feature-width", type=int, default=128)
+    parser.add_argument("--probe-horizon", type=int, default=1)
     parser.add_argument("--output", type=Path, default=None)
     args = parser.parse_args()
     result = run_active_disambiguation_pressure(
@@ -506,6 +627,7 @@ def main() -> None:
         training_lifetimes=args.training_lifetimes,
         steps=args.steps,
         random_feature_width=args.random_feature_width,
+        probe_horizon=args.probe_horizon,
     )
     payload = result.payload()
     print(json.dumps(payload, indent=2, sort_keys=True))

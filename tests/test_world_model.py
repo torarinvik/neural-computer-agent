@@ -3139,6 +3139,20 @@ def test_factored_disambiguation_probe_resolves_an_opaque_factual_tie() -> None:
     assert probe.selected_intention_index == 1
     assert probe.disagreement_scores[1] > probe.disagreement_scores[0]
 
+    before_probe_sequence = router.digest()
+    probe_sequence = router.request_disambiguation_probe_sequence(
+        tie,
+        torch.tensor([[0.0], [1.0]]),
+        candidate_slot_ids=(0, 1),
+        probe_state=torch.tensor([[0.0]]),
+        horizon=2,
+        beam_width=4,
+    )
+    assert probe_sequence.selected_intentions.shape == (2, 1)
+    assert probe_sequence.candidate_slot_ids == (0, 1)
+    assert probe_sequence.predicted_next_states.shape == (2, 2, 1)
+    assert router.digest() == before_probe_sequence
+
     observed_probe = ExternalTransitionObservation(
         state=torch.tensor([[0.0]]),
         intention=probe.selected_intention.unsqueeze(0),
@@ -3878,6 +3892,46 @@ def test_planner_selects_active_intention_that_disambiguates_model_slots() -> No
     assert result.predicted_next_states.shape == (2, 2, 1)
 
 
+def test_planner_selects_a_fixed_opaque_probe_sequence() -> None:
+    bank = ExternalTransitionModelBank(
+        1,
+        1,
+        2,
+        model_family="affine_sufficient_statistics_v1",
+        affine_ridge=1e-7,
+    )
+    for index, context in enumerate(
+        (torch.tensor([1.0, 0.0]), torch.tensor([0.0, 1.0]))
+    ):
+        slot = bank.ensure_context(context)
+        state = torch.tensor([[0.0], [0.0]])
+        intention = torch.tensor([[0.0], [1.0]])
+        next_state = (
+            torch.zeros_like(intention) if index == 0 else intention.clone()
+        )
+        bank.adaptation_step(
+            ExternalTransitionObservation(state, intention, next_state),
+            bank.context_at(slot).unsqueeze(0).expand(2, -1),
+            None,
+        )
+
+    planner = ExternalModelBasedPlanner(bank)
+    before = bank.digest()
+    result = planner.select_disambiguating_intention_sequence(
+        bank,
+        torch.zeros(1, 1),
+        torch.tensor([[0.0], [1.0]]),
+        horizon=2,
+        beam_width=4,
+    )
+
+    assert result.selected_intentions.shape == (2, 1)
+    assert result.selected_intention_indices.shape == (2,)
+    assert result.predicted_next_states.shape == (2, 2, 1)
+    assert torch.isfinite(result.disagreement_scores).all()
+    assert bank.digest() == before
+
+
 def test_online_router_requests_read_only_probe_for_ambiguous_evidence() -> None:
     bank = ExternalTransitionModelBank(
         1,
@@ -3919,8 +3973,20 @@ def test_online_router_requests_read_only_probe_for_ambiguous_evidence() -> None
     assert probe.selected_intention.item() == 1.0
     assert probe.candidate_slot_ids == (0, 1)
     assert bank.digest() == before
+    sequence = router.request_disambiguation_probe_sequence(
+        ambiguous,
+        torch.tensor([[0.0], [1.0]]),
+        horizon=2,
+        beam_width=4,
+    )
+    assert sequence.selected_intentions.shape == (2, 1)
+    assert sequence.candidate_slot_ids == (0, 1)
+    assert bank.digest() == before
     assert router.configuration()["active_probe"] == (
         "read_only_uncertainty_weighted_model_disagreement_request_v1"
+    )
+    assert router.configuration()["active_probe_sequence"] == (
+        "read_only_beam_search_uncertainty_weighted_probe_sequence_v1"
     )
 
 

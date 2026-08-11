@@ -126,6 +126,27 @@ def test_verified_intention_admission_is_copy_on_write_and_retention_safe() -> N
     assert repertoire.content_digest() == rejected_digest
 
 
+def test_partial_outcome_mask_preserves_missing_evidence_as_missing() -> None:
+    repertoire = ExternalIntentionRepertoire(2)
+    receipt = repertoire.observe(
+        torch.tensor([[1.0, 0.0], [0.0, 1.0]]),
+        utility=torch.tensor([1.0, 0.0]),
+        propensity=torch.ones(2),
+        outcome_mask=torch.tensor([True, False]),
+    )
+
+    statistics = repertoire.statistics()
+    assert receipt.outcome_observed
+    assert statistics["attempts"].tolist() == [1, 1]
+    assert statistics["outcome_counts"].tolist() == [1, 0]
+    assert statistics["utility_sums"].tolist() == [1.0, 0.0]
+
+    with pytest.raises(ValueError, match="requires utility"):
+        repertoire.observe(
+            torch.tensor([0.25, 0.75]),
+            outcome_mask=True,
+        )
+
 def test_composition_explorer_proposes_ephemeral_candidates_from_retained_vectors() -> None:
     repertoire = ExternalIntentionRepertoire(2)
     repertoire.observe(torch.tensor([[1.0, 0.0], [0.0, 1.0]]))

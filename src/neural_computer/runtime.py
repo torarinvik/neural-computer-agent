@@ -3007,6 +3007,7 @@ class PolicyFreeAmodalRuntime:
         utility: torch.Tensor | float | None = None,
         propensity: torch.Tensor | float | None = None,
         timestamp: torch.Tensor | int | None = None,
+        outcome_mask: torch.Tensor | bool | None = None,
     ) -> ExternalIntentionObservationReceipt:
         """Commit post-execution opaque experience to external memory."""
 
@@ -3018,6 +3019,7 @@ class PolicyFreeAmodalRuntime:
             utility=utility,
             propensity=propensity,
             timestamp=timestamp,
+            outcome_mask=outcome_mask,
         )
 
     def consolidate_intention_verified(

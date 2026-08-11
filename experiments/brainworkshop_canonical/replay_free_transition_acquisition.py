@@ -27,6 +27,7 @@ from neural_computer import (
     ContentAddressedMemory,
     ControllerFeedback,
     ExternalControllerEventWindowStateAdapter,
+    ExternalIntentionRepertoire,
     ExternalModelBasedPlanner,
     ExternalOnlineTransitionContextResult,
     ExternalOnlineTransitionContextRouter,
@@ -194,6 +195,7 @@ def _run_lifetime(
     candidate_intentions: torch.Tensor,
     learn: bool,
     time_shuffle: bool = False,
+    intention_repertoire: ExternalIntentionRepertoire | None = None,
 ) -> tuple[ExternalTransitionRollout, int]:
     """Run one fresh rendered lifetime and optionally consume its rows once."""
 
@@ -241,6 +243,14 @@ def _run_lifetime(
         )
         scored = verifier.score(decision.key_index)
         unique_verifier_bits += int(scored.eligible.sum())
+        if intention_repertoire is not None:
+            intention_repertoire.observe(
+                output.intention.payload.detach(),
+                utility=scored.reward.detach(),
+                propensity=decision.propensity.detach(),
+                timestamp=verifier.position,
+                outcome_mask=scored.eligible.detach(),
+            )
         feedback = ControllerFeedback(
             action=agent.keypress_encoder(decision.key_index),
             reward=scored.reward,

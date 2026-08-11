@@ -145,6 +145,9 @@ EXTERNAL_TRANSITION_MODEL_FAMILY_SELECTION_SCHEMA = (
 )
 EXTERNAL_MODEL_PLANNER_SCHEMA = "neural-computer.external-model-planner.v1"
 EXTERNAL_TRANSITION_PROBE_SCHEMA = "neural-computer.external-transition-probe.v1"
+EXTERNAL_TRANSITION_PROBE_SEQUENCE_SCHEMA = (
+    "neural-computer.external-transition-probe-sequence.v1"
+)
 EXTERNAL_GOAL_CONDITIONED_MODEL_SELECTION_SCHEMA = (
     "neural-computer.external-goal-conditioned-model-selection.v1"
 )
@@ -6752,6 +6755,9 @@ class ExternalOnlineTransitionContextRouter:
             "active_probe": (
                 "read_only_uncertainty_weighted_model_disagreement_request_v1"
             ),
+            "active_probe_sequence": (
+                "read_only_beam_search_uncertainty_weighted_probe_sequence_v1"
+            ),
         }
 
     @torch.no_grad()
@@ -6813,6 +6819,65 @@ class ExternalOnlineTransitionContextRouter:
             current_state,
             candidate_intentions,
             candidate_slot_ids=slot_ids,
+        )
+
+    @torch.no_grad()
+    def request_disambiguation_probe_sequence(
+        self,
+        observation: ExternalTransitionObservation,
+        candidate_intentions: torch.Tensor,
+        *,
+        candidate_slot_ids: Sequence[int] | None = None,
+        probe_state: torch.Tensor | None = None,
+        horizon: int = 2,
+        beam_width: int = 8,
+    ) -> ExternalTransitionProbeSequenceResult:
+        """Request a fixed short opaque probe sequence without mutation."""
+
+        observation.validate(
+            state_width=self.bank.state_width,
+            intention_width=self.bank.intention_width,
+        )
+        if observation.state.shape[0] < 1:
+            raise ValueError("disambiguation probing needs one evidence row")
+        if probe_state is None:
+            current_state = observation.state[:1]
+        else:
+            if (
+                probe_state.ndim != 2
+                or probe_state.shape != (1, self.bank.state_width)
+                or not bool(torch.isfinite(probe_state).all())
+            ):
+                raise ValueError(
+                    "disambiguation probe state must have shape [1, state_width]"
+                )
+            current_state = probe_state
+        if candidate_slot_ids is None:
+            errors = [
+                self._slot_error(index, observation)
+                for index in range(self.bank.context_count)
+            ]
+            best_error = min(errors)
+            candidate_indices = [
+                index
+                for index, error in enumerate(errors)
+                if error <= best_error + self.match_margin
+            ]
+            slot_ids = tuple(
+                self.bank.slot_id_at(index) for index in candidate_indices
+            )
+        else:
+            slot_ids = tuple(int(slot_id) for slot_id in candidate_slot_ids)
+        if len(slot_ids) < 2:
+            raise ValueError("disambiguation probe needs at least two plausible slots")
+        planner = ExternalModelBasedPlanner(self.bank, beam_width=1)
+        return planner.select_disambiguating_intention_sequence(
+            self.bank,
+            current_state,
+            candidate_intentions,
+            candidate_slot_ids=slot_ids,
+            horizon=horizon,
+            beam_width=beam_width,
         )
 
     def grow_verified(
@@ -10987,6 +11052,64 @@ class ExternalTransitionProbeResult:
 
 
 @dataclass(frozen=True)
+class ExternalTransitionProbeSequenceResult:
+    """A fixed sequence of opaque intentions for caller-owned probing."""
+
+    selected_intentions: torch.Tensor
+    selected_intention_indices: torch.Tensor
+    disagreement_scores: torch.Tensor
+    predicted_next_states: torch.Tensor
+    candidate_slot_ids: tuple[int, ...]
+    schema: str = EXTERNAL_TRANSITION_PROBE_SEQUENCE_SCHEMA
+
+    def validate(
+        self,
+        *,
+        state_width: int,
+        intention_width: int,
+    ) -> ExternalTransitionProbeSequenceResult:
+        if self.schema != EXTERNAL_TRANSITION_PROBE_SEQUENCE_SCHEMA:
+            raise ValueError("unsupported transition-probe sequence schema")
+        if (
+            self.selected_intentions.ndim != 2
+            or self.selected_intentions.shape[1] != intention_width
+            or self.selected_intentions.shape[0] < 1
+        ):
+            raise ValueError("transition-probe sequence intentions have the wrong shape")
+        horizon = self.selected_intentions.shape[0]
+        if self.selected_intention_indices.shape != (horizon,):
+            raise ValueError("transition-probe sequence indices are misaligned")
+        if self.selected_intention_indices.dtype not in (torch.int32, torch.int64):
+            raise TypeError("transition-probe sequence indices must be integer")
+        if bool((self.selected_intention_indices < 0).any()):
+            raise ValueError("transition-probe sequence indices cannot be negative")
+        if self.disagreement_scores.shape != (horizon,):
+            raise ValueError("transition-probe sequence scores are misaligned")
+        if self.predicted_next_states.ndim != 3 or self.predicted_next_states.shape[0] != (
+            horizon
+        ):
+            raise ValueError("transition-probe sequence predictions have the wrong shape")
+        if self.predicted_next_states.shape[1] != len(self.candidate_slot_ids):
+            raise ValueError("transition-probe sequence slots are misaligned")
+        if self.predicted_next_states.shape[2] != state_width:
+            raise ValueError("transition-probe sequence state width is incorrect")
+        if len(self.candidate_slot_ids) < 1:
+            raise ValueError("transition-probe sequence needs candidate slots")
+        if len(set(self.candidate_slot_ids)) != len(self.candidate_slot_ids):
+            raise ValueError("transition-probe sequence slots are duplicated")
+        if any(slot_id < 0 for slot_id in self.candidate_slot_ids):
+            raise ValueError("transition-probe sequence slot ID is invalid")
+        for name, value in (
+            ("selected_intentions", self.selected_intentions),
+            ("disagreement_scores", self.disagreement_scores),
+            ("predicted_next_states", self.predicted_next_states),
+        ):
+            if not bool(torch.isfinite(value).all()):
+                raise ValueError(f"transition-probe sequence {name} must be finite")
+        return self
+
+
+@dataclass(frozen=True)
 class GoalConditionedModelSelection:
     """Goal-reachability ranking over stable external model addresses."""
 
@@ -11647,6 +11770,139 @@ class ExternalModelBasedPlanner:
         )
 
     @torch.no_grad()
+    def select_disambiguating_intention_sequence(
+        self,
+        bank: ExternalTransitionModelBank,
+        state: torch.Tensor,
+        candidate_intentions: torch.Tensor,
+        *,
+        candidate_slot_ids: Sequence[int] | None = None,
+        horizon: int = 2,
+        beam_width: int = 8,
+    ) -> ExternalTransitionProbeSequenceResult:
+        """Plan a short fixed opaque probe sequence without choosing protocol actions.
+
+        Each beam carries one predicted state per plausible factual slot. The
+        caller executes the selected opaque intentions one at a time and
+        submits each fresh consequence through the ordinary read-only route.
+        No slot, controller, or decoder state is changed by this method.
+        """
+
+        if not isinstance(bank, ExternalTransitionModelBank):
+            raise TypeError("transition probing requires an external model bank")
+        if bank.state_width != self.model.state_width or bank.intention_width != (
+            self.model.intention_width
+        ):
+            raise ValueError("transition-probe bank dimensions do not match planner")
+        if not isinstance(horizon, int) or isinstance(horizon, bool) or horizon < 1:
+            raise ValueError("transition-probe sequence horizon must be positive")
+        if not isinstance(beam_width, int) or isinstance(beam_width, bool) or beam_width < 1:
+            raise ValueError("transition-probe sequence beam width must be positive")
+        _validate_tensor(
+            state,
+            name="transition-probe sequence state",
+            ndim=2,
+            width=self.model.state_width,
+        )
+        if state.shape[0] != 1:
+            raise ValueError("transition-probe sequence accepts one current state")
+        _validate_tensor(
+            candidate_intentions,
+            name="transition-probe sequence intentions",
+            ndim=2,
+            width=self.model.intention_width,
+        )
+        if candidate_intentions.shape[0] < 1:
+            raise ValueError("transition-probe sequence needs candidate intentions")
+        if candidate_slot_ids is None:
+            slot_ids = bank.slot_ids
+        else:
+            slot_ids = tuple(int(slot_id) for slot_id in candidate_slot_ids)
+        if not slot_ids:
+            raise ValueError("transition-probe sequence needs candidate slots")
+        if len(set(slot_ids)) != len(slot_ids):
+            raise ValueError("transition-probe sequence slots are duplicated")
+        indices = tuple(
+            bank.physical_index_for_slot_id(slot_id) for slot_id in slot_ids
+        )
+        initial_leverage = bank.predictive_leverage(
+            state,
+            candidate_intentions,
+            candidate_slot_ids=slot_ids,
+        ).mean(dim=1)
+        initial_reliability = torch.where(
+            torch.isfinite(initial_leverage),
+            torch.reciprocal(1.0 + initial_leverage.clamp_min(0.0)),
+            torch.ones_like(initial_leverage),
+        )
+        beams: list[
+            tuple[float, tuple[int, ...], torch.Tensor, list[torch.Tensor], list[float]]
+        ] = [
+            (
+                0.0,
+                (),
+                state.expand(len(indices), -1),
+                [],
+                [],
+            )
+        ]
+        for step in range(horizon):
+            expanded = []
+            for score, chosen, branch_states, predictions, disagreements in beams:
+                for candidate_index, intention in enumerate(candidate_intentions):
+                    intention_batch = intention.unsqueeze(0).expand(len(indices), -1)
+                    next_states = torch.stack(
+                        [
+                            bank.models[index](
+                                branch_states[row : row + 1],
+                                intention_batch[row : row + 1],
+                            ).squeeze(0)
+                            for row, index in enumerate(indices)
+                        ]
+                    )
+                    mean_prediction = next_states.mean(dim=0, keepdim=True)
+                    disagreement = float(
+                        (next_states - mean_prediction).square().mean()
+                    )
+                    weighted = disagreement * (
+                        float(initial_reliability[candidate_index])
+                        if step == 0
+                        else 1.0
+                    )
+                    expanded.append(
+                        (
+                            score + weighted,
+                            (*chosen, candidate_index),
+                            next_states,
+                            [*predictions, next_states.detach().clone()],
+                            [*disagreements, disagreement],
+                        )
+                    )
+            expanded.sort(key=lambda item: (-item[0], item[1]))
+            beams = expanded[:beam_width]
+        best_score, chosen, _branch, predictions, disagreements = beams[0]
+        del best_score, _branch
+        chosen_indices = torch.tensor(
+            chosen,
+            device=candidate_intentions.device,
+            dtype=torch.long,
+        )
+        return ExternalTransitionProbeSequenceResult(
+            selected_intentions=candidate_intentions[chosen_indices].detach().clone(),
+            selected_intention_indices=chosen_indices,
+            disagreement_scores=torch.tensor(
+                disagreements,
+                device=candidate_intentions.device,
+                dtype=candidate_intentions.dtype,
+            ),
+            predicted_next_states=torch.stack(predictions),
+            candidate_slot_ids=slot_ids,
+        ).validate(
+            state_width=self.model.state_width,
+            intention_width=self.model.intention_width,
+        )
+
+    @torch.no_grad()
     def select_bank_model(
         self,
         bank: ExternalTransitionModelBank,
@@ -11765,6 +12021,7 @@ __all__ = [
     "EXTERNAL_TRANSITION_NONLINEAR_MODEL_FAMILY",
     "EXTERNAL_TRANSITION_OBSERVATION_SCHEMA",
     "EXTERNAL_TRANSITION_PROBE_SCHEMA",
+    "EXTERNAL_TRANSITION_PROBE_SEQUENCE_SCHEMA",
     "EXTERNAL_TRANSITION_RANDOM_FEATURE_MODEL_FAMILY",
     "EXTERNAL_TRANSITION_ROLLOUT_SCHEMA",
     "ExternalContextAddressResolver",
@@ -11795,6 +12052,7 @@ __all__ = [
     "ExternalTransitionModelPriorSelectionReceipt",
     "ExternalTransitionObservation",
     "ExternalTransitionProbeResult",
+    "ExternalTransitionProbeSequenceResult",
     "ExternalTransitionRollout",
     "GoalConditionedModelSelection",
     "ModelBasedPlanningResult",

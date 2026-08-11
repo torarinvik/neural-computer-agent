@@ -18,6 +18,9 @@ from neural_computer import (
     EpisodicContextEncoder,
     EpisodicContextOutput,
     EpisodicIntentAdapter,
+    ExternalIntentionObservationReceipt,
+    ExternalIntentionProposal,
+    ExternalIntentionRepertoire,
     KeypressDecoder,
     KeypressEncoder,
     OnlineEpisodicRelationReader,
@@ -30,6 +33,7 @@ from neural_computer import (
 from .environment import BrainWorkshopEventEncoder, NBackVerifier
 
 ROUTE_STATE_SCHEMA = "neural-computer.brainworkshop-route-state.v1"
+INTENTION_STATE_SCHEMA = "neural-computer.brainworkshop-intention-state.v1"
 
 
 @dataclass(frozen=True)
@@ -127,6 +131,7 @@ class CanonicalBrainWorkshopAgent(nn.Module):
         retention_config: RetentionPolicyConfig | None = None,
         reader_kind: str = "context",
         seed: int = 0,
+        intention_repertoire: ExternalIntentionRepertoire | None = None,
     ) -> None:
         super().__init__()
         if n_back < 1:
@@ -181,6 +186,18 @@ class CanonicalBrainWorkshopAgent(nn.Module):
         )
         self.n_back = int(n_back)
         self.reader_kind = reader_kind
+        if intention_repertoire is not None and (
+            intention_repertoire.width != intention_width
+        ):
+            raise ValueError("intention repertoire width does not match the agent")
+        # This object is deliberately not an nn.Module child.  It is external,
+        # caller-owned state that can grow, persist, and be replaced without
+        # changing the controller checkpoint or its gradients.
+        self.intention_repertoire = (
+            intention_repertoire
+            if intention_repertoire is not None
+            else ExternalIntentionRepertoire(intention_width)
+        )
         self.relation_reader = OnlineEpisodicRelationReader(
             event_width,
             NBackVerifier.action_count,
@@ -451,6 +468,61 @@ class CanonicalBrainWorkshopAgent(nn.Module):
         self.route_evidence = route_evidence
         self.context_route_evidence = context_route_evidence
 
+    def intention_state_payload(self) -> dict[str, object]:
+        """Return independently reloadable opaque intention-memory state."""
+
+        return {
+            "schema": INTENTION_STATE_SCHEMA,
+            "repertoire": self.intention_repertoire.payload(),
+        }
+
+    def load_intention_state_payload(self, payload: dict[str, object]) -> None:
+        """Restore intention memory without touching neural weights."""
+
+        if payload.get("schema") != INTENTION_STATE_SCHEMA:
+            raise ValueError("intention-state schema is incompatible")
+        repertoire_payload = payload.get("repertoire")
+        if not isinstance(repertoire_payload, dict):
+            raise TypeError("intention-state repertoire must be a dictionary")
+        repertoire = ExternalIntentionRepertoire.from_payload(repertoire_payload)
+        if repertoire.width != self.controller.intention_width:
+            raise ValueError("intention-state width does not match the agent")
+        self.intention_repertoire = repertoire
+
+    def observe_intention(
+        self,
+        intention: torch.Tensor,
+        *,
+        utility: torch.Tensor | float | None = None,
+        propensity: torch.Tensor | float | None = None,
+        timestamp: torch.Tensor | int | None = None,
+        outcome_mask: torch.Tensor | bool | None = None,
+    ) -> ExternalIntentionObservationReceipt:
+        """Write opaque output experience to external memory only."""
+
+        return self.intention_repertoire.observe(
+            intention,
+            utility=utility,
+            propensity=propensity,
+            timestamp=timestamp,
+            outcome_mask=outcome_mask,
+        )
+
+    def propose_intentions(
+        self,
+        seed_intention: torch.Tensor | None = None,
+        *,
+        include_seed: bool = False,
+        max_candidates: int | None = None,
+    ) -> ExternalIntentionProposal:
+        """Retrieve runtime-sized opaque candidates from external memory."""
+
+        return self.intention_repertoire.propose(
+            seed_intention,
+            include_seed=include_seed,
+            max_candidates=max_candidates,
+        )
+
     def initial_state(self, batch_size: int, *, device: torch.device | str) -> object:
         return self.controller.initial_state(batch_size, device=device)
 
@@ -481,6 +553,7 @@ class CanonicalBrainWorkshopAgent(nn.Module):
         persistent_route: bool = False,
         context_route: bool = False,
         record_context_route: bool = False,
+        record_intention_memory: bool = False,
     ) -> CanonicalRollout:
         """Run one online episode without replay or optimizer updates.
 
@@ -497,6 +570,8 @@ class CanonicalBrainWorkshopAgent(nn.Module):
             raise ValueError("slot exploration probability must lie in [0, 1)")
         if learned_route and len(self.extensions) == 0:
             raise ValueError("learned routing needs at least one appended slot")
+        if not isinstance(record_intention_memory, bool):
+            raise TypeError("intention-memory recording flag must be boolean")
         if sum((learned_route, persistent_route, context_route)) > 1:
             raise ValueError("route policies are mutually exclusive")
 
@@ -769,6 +844,14 @@ class CanonicalBrainWorkshopAgent(nn.Module):
                 ),
             ).squeeze(1)
             scored = verifier.score(decision.key_index)
+            if record_intention_memory:
+                self.observe_intention(
+                    output.intention.payload.detach(),
+                    utility=scored.reward.detach(),
+                    propensity=propensity.detach(),
+                    timestamp=verifier.position,
+                    outcome_mask=scored.eligible.detach(),
+                )
             event_trace.append(collection.payload[:, 0])
             action_trace.append(decision.key_index)
             reward_trace.append(scored.reward)
