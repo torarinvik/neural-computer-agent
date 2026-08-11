@@ -1411,13 +1411,19 @@ class ExternalControllerEventWindowStateAdapter(nn.Module):
             return mean, maximum
         if statistics != "recency_weighted_and_latest_v1":
             raise ValueError("event window statistics mode is unsupported")
-        latest_index = present.to(torch.long).sum(dim=1).clamp_min(1) - 1
         positions = torch.arange(
             payload.shape[1],
             device=device,
-            dtype=dtype,
+            dtype=torch.long,
         ).view(1, -1)
-        distance = (latest_index.to(dtype).unsqueeze(1) - positions).clamp_min(0.0)
+        latest_index = torch.where(
+            present,
+            positions,
+            torch.full_like(positions, -1),
+        ).amax(dim=1).clamp_min(0)
+        distance = (
+            latest_index.to(dtype).unsqueeze(1) - positions.to(dtype)
+        ).clamp_min(0.0)
         weights = torch.exp(-recency_decay * distance) * present_float
         denominator = weights.sum(dim=1, keepdim=True).clamp_min(1e-6)
         recency = (payload * weights.unsqueeze(-1)).sum(dim=1) / denominator

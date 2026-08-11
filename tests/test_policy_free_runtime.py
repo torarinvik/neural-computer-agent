@@ -204,6 +204,22 @@ def test_trajectory_query_adapter_can_preserve_causal_order_at_memory_boundary()
     )
     assert causal.configuration()["recency_decay"] == 0.75
 
+    gapped_payload = torch.zeros_like(payload)
+    gapped_payload[:, 0, 0] = 1.0
+    gapped_payload[:, 2, 0] = 3.0
+    gapped_present = torch.zeros_like(present)
+    gapped_present[:, (0, 2)] = True
+    gapped_state = replace(
+        next_state,
+        event_window=replace(
+            next_state.event_window,
+            payload=gapped_payload,
+            present=gapped_present,
+        ),
+    )
+    gapped_query = causal(output.controller, gapped_state)
+    assert torch.allclose(gapped_query[:, -4:], gapped_payload[:, 2])
+
 
 def test_policy_free_runtime_passes_external_entries_into_factual_search() -> None:
     torch.manual_seed(13)

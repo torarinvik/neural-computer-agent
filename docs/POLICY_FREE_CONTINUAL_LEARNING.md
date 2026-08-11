@@ -706,7 +706,8 @@ The adapter also has an opt-in
 replacing order-blind mean/max statistics with a causal recency-weighted
 summary and the latest retained learned token. Swapping two tokens with equal
 mean/max statistics therefore remains distinguishable at the memory boundary;
-the default compatibility summary is unchanged.
+the summary locates the actual latest retained position even when the window
+contains gaps, and the default compatibility summary is unchanged.
 
 New external cells also receive an unqualified-cell exploration floor. This
 prevents a new file from becoming permanently unreachable before it has
