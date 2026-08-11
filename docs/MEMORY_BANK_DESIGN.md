@@ -7294,3 +7294,39 @@ against a 0.125 uniform chance would have read as an ordinary null and
 the instruction-set route would have been wrongly abandoned.
 
 Probe 251 is `isa_compose.py`, 3 arms, retracted and re-running.
+
+**F154 (probe 252, interim — one arm of four). Weight decay 0.1 HURTS
+badly, and the first learning curve this project has ever produced
+shows a SMOOTH climb with no phase transition.**
+
+    wd = 0.1, 40k updates, seed 69316:  0.5868 own,  0.0372 exact
+    wd = 0.0, 40k updates, same seed:   0.7993 own,  0.3158 exact
+    wd = 0.0, 100k updates, same seed:  0.8520 own,  0.3612 exact
+
+Exact match collapses by a factor of eight. So the grokking
+literature's "steps-to-generalisation scale inversely with weight
+decay" does not hold at 0.1 here — at that strength it is not
+accelerating a transition, it is damaging the model. The 0.01 arms
+will say whether a gentler setting behaves differently; on this
+evidence the mechanism is not free.
+
+**The curve matters more than the number.** Sixteen points from update
+0 to 37,500: 0.489, 0.537, 0.567, 0.548, 0.577, 0.610, 0.605, 0.631,
+0.632, 0.630, 0.634, 0.632, 0.637, 0.647, 0.629, 0.645. That is a
+smooth, decelerating, monotone-in-trend climb — **no plateau, no
+transition, no bump.** It is what slow logarithmic convergence looks
+like and it is not what grokking looks like.
+
+That is one arm at a damaged setting, so it does not settle the shape
+question; the clean wd=0 curves now running do. But it is the first
+time in this project that ANY curve has been available to look at,
+and the immediate lesson is that the answer was cheap all along: this
+question was open for hours of speculation about amortization gaps,
+semi-amortization and phase transitions, and sixteen numbers from one
+run address it more directly than any of it.
+
+If the clean curves agree, the consequence is deflationary and should
+be stated plainly: the reader's "gap" is slow convergence, the
+literature addenda 2 and 4 were answering a question that dissolves,
+and F148's mechanism nulls were nulls because there was no mechanism
+to fix.
