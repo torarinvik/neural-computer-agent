@@ -16,8 +16,12 @@ may grow by appending fragment rows.
 from __future__ import annotations
 
 import hashlib
+import json
+import os
+import tempfile
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 import torch
@@ -30,7 +34,10 @@ EXTERNAL_SKILL_FRAGMENT_SCHEMA = "neural-computer.skill-fragment.v1"
 EXTERNAL_SKILL_FRAGMENT_BANK_SCHEMA = "neural-computer.skill-fragment-bank.v1"
 EXTERNAL_SKILL_FRAGMENT_ROUTE_SCHEMA = "neural-computer.skill-fragment-route.v1"
 EXTERNAL_SKILL_FRAGMENT_COMPOSITION_SCHEMA = (
-    "neural-computer.skill-fragment-composition.v1"
+    "neural-computer.skill-fragment-composition.v2"
+)
+PERSISTENT_EXTERNAL_SKILL_FRAGMENT_BANK_SCHEMA = (
+    "neural-computer.persistent-skill-fragment-bank.v1"
 )
 
 
@@ -198,6 +205,7 @@ class ExternalSkillFragmentComposition:
     codes: torch.Tensor
     mask: torch.Tensor
     schema: str = EXTERNAL_SKILL_FRAGMENT_COMPOSITION_SCHEMA
+    bank_fragment_count: int = 0
 
     def validate(
         self,
@@ -208,6 +216,10 @@ class ExternalSkillFragmentComposition:
     ) -> ExternalSkillFragmentComposition:
         if self.schema != EXTERNAL_SKILL_FRAGMENT_COMPOSITION_SCHEMA:
             raise ValueError("unsupported fragment composition schema")
+        if self.bank_fragment_count < 1:
+            raise ValueError("fragment composition must declare a nonempty bank")
+        if fragment_count != self.bank_fragment_count:
+            raise ValueError("fragment composition bank cardinality mismatch")
         if self.fragment_indices.ndim != 2 or self.route_scores.shape != self.fragment_indices.shape:
             raise ValueError("fragment composition route tensors must be [batch, steps]")
         if self.fragment_indices.shape[0] != batch_size or self.fragment_indices.dtype != torch.int64:
@@ -266,6 +278,8 @@ class ExternalSkillFragmentBank(nn.Module):
         self._protected: list[bool] = []
         self._logical_ids: list[int] = []
         self._next_logical_id = 0
+        self._frozen_basis_rows = 0
+        self._basis_freeze_hook: Any | None = None
         self.register_buffer("learned_routing_enabled", torch.tensor(False, dtype=torch.bool))
 
     def configuration(self) -> dict[str, Any]:
@@ -278,9 +292,10 @@ class ExternalSkillFragmentBank(nn.Module):
             "max_fragment_steps": self.max_fragment_steps,
             "fragment_count": len(self.coefficients),
             "unit": "opaque_reusable_shared_basis_fragment_v1",
-            "basis": "one_shared_operator_basis_v1",
+            "basis": "append_expandable_shared_operator_basis_v1",
             "composition": "opaque_route_then_serial_fragment_chain_v1",
             "routing": "cosine_address_plus_outcome_trained_equivariant_residual_v1",
+            "basis_growth": "append_only_protected_shared_basis_v1",
             "storage": "append_only_external_state_v1",
         }
 
@@ -351,6 +366,66 @@ class ExternalSkillFragmentBank(nn.Module):
         if not self.fragment_count:
             raise ValueError("fragment bank has no fragments")
         return torch.stack(tuple(key.to(device=device, dtype=dtype) for key in self.keys))
+
+    def _install_basis_freeze_hook(self) -> None:
+        if self._basis_freeze_hook is not None:
+            self._basis_freeze_hook.remove()
+            self._basis_freeze_hook = None
+        if self._frozen_basis_rows and self.shared_basis.requires_grad:
+            frozen = self._frozen_basis_rows
+
+            def mask_gradient(gradient: torch.Tensor) -> torch.Tensor:
+                masked = gradient.clone()
+                masked[:frozen] = 0.0
+                return masked
+
+            self._basis_freeze_hook = self.shared_basis.register_hook(mask_gradient)
+
+    def grow_basis(self, additional_count: int = 1) -> tuple[int, ...]:
+        """Append shared computation directions without resizing the controller.
+
+        Existing coefficient rows receive zero padding, so every old fragment
+        materializes the same code immediately after growth.  New basis rows
+        can be trained by a later candidate while :meth:`freeze_basis_prefix`
+        protects the directions already used by mastered fragments.
+        """
+
+        if additional_count < 1:
+            raise ValueError("basis growth must append at least one direction")
+        start = self.basis_count
+        proposal = torch.randn(
+            additional_count,
+            self.instruction_width,
+            device=self.shared_basis.device,
+            dtype=self.shared_basis.dtype,
+        ) * 0.02
+        old_requires_grad = self.shared_basis.requires_grad
+        if self._basis_freeze_hook is not None:
+            self._basis_freeze_hook.remove()
+            self._basis_freeze_hook = None
+        self.shared_basis = nn.Parameter(
+            torch.cat((self.shared_basis.detach(), proposal), dim=0),
+            requires_grad=old_requires_grad,
+        )
+        for index, coefficient in enumerate(tuple(self.coefficients)):
+            padded = torch.nn.functional.pad(
+                coefficient.detach(), (0, additional_count)
+            )
+            self.coefficients[index] = nn.Parameter(
+                padded,
+                requires_grad=coefficient.requires_grad,
+            )
+        self.basis_count += additional_count
+        self._install_basis_freeze_hook()
+        return tuple(range(start, self.basis_count))
+
+    def freeze_basis_prefix(self, row_count: int) -> None:
+        """Protect an acquired basis prefix from later external updates."""
+
+        if not 0 <= row_count <= self.basis_count:
+            raise ValueError("frozen basis prefix is outside the bank")
+        self._frozen_basis_rows = int(row_count)
+        self._install_basis_freeze_hook()
 
     def route_scores(self, query: torch.Tensor) -> torch.Tensor:
         """Return one opaque score per fragment row."""
@@ -448,6 +523,7 @@ class ExternalSkillFragmentBank(nn.Module):
             route_scores=route_scores,
             codes=codes,
             mask=mask,
+            bank_fragment_count=self.fragment_count,
         ).validate(
             batch_size=fragment_indices.shape[0],
             instruction_width=self.instruction_width,
@@ -472,6 +548,7 @@ class ExternalSkillFragmentBank(nn.Module):
             route_scores=torch.stack(route_scores, dim=1),
             codes=composition.codes,
             mask=composition.mask,
+            bank_fragment_count=self.fragment_count,
         ).validate(
             batch_size=queries.shape[0],
             instruction_width=self.instruction_width,
@@ -499,6 +576,7 @@ class ExternalSkillFragmentBank(nn.Module):
             "protected": list(self._protected),
             "logical_ids": list(self._logical_ids),
             "next_logical_id": self._next_logical_id,
+            "frozen_basis_rows": self._frozen_basis_rows,
             "learned_routing_enabled": bool(self.learned_routing_enabled.item()),
         }
         return {
@@ -510,7 +588,11 @@ class ExternalSkillFragmentBank(nn.Module):
 
     def _snapshot_digest(self, state: Mapping[str, Any]) -> str:
         digest = hashlib.sha256()
-        digest.update(repr(self.configuration()).encode("utf-8"))
+        digest.update(
+            json.dumps(self.configuration(), sort_keys=True, separators=(",", ":")).encode(
+                "utf-8"
+            )
+        )
         shared_basis = state.get("shared_basis")
         router_state = state.get("router")
         fragments = state.get("fragments")
@@ -524,6 +606,19 @@ class ExternalSkillFragmentBank(nn.Module):
             _digest_tensor(digest, value)
         for fragment in fragments:
             digest.update(str(fragment["sha256"]).encode("ascii"))
+        for name in (
+            "protected",
+            "logical_ids",
+            "next_logical_id",
+            "frozen_basis_rows",
+            "learned_routing_enabled",
+        ):
+            digest.update(name.encode("utf-8"))
+            digest.update(
+                json.dumps(state.get(name), sort_keys=True, separators=(",", ":")).encode(
+                    "utf-8"
+                )
+            )
         return digest.hexdigest()
 
     @classmethod
@@ -562,11 +657,59 @@ class ExternalSkillFragmentBank(nn.Module):
         bank._protected = [bool(value) for value in protected]
         bank._logical_ids = [int(value) for value in logical_ids]
         bank._next_logical_id = int(state.get("next_logical_id", bank.fragment_count))
+        bank._frozen_basis_rows = int(state.get("frozen_basis_rows", 0))
+        if not 0 <= bank._frozen_basis_rows <= bank.basis_count:
+            raise ValueError("fragment bank frozen basis prefix is invalid")
+        bank._install_basis_freeze_hook()
         bank.learned_routing_enabled.fill_(bool(state.get("learned_routing_enabled", False)))
         expected = payload.get("sha256")
         if not isinstance(expected, str) or expected != bank._snapshot_digest(state):
             raise ValueError("fragment bank checksum mismatch")
         return bank
+
+    def save(self, path: Path) -> str:
+        """Atomically persist the complete external bank and return its digest."""
+
+        destination = Path(path)
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "format": PERSISTENT_EXTERNAL_SKILL_FRAGMENT_BANK_SCHEMA,
+            "bank": self.payload(),
+        }
+        descriptor, temporary_name = tempfile.mkstemp(
+            dir=destination.parent,
+            prefix=f".{destination.name}.",
+            suffix=".tmp",
+        )
+        os.close(descriptor)
+        temporary = Path(temporary_name)
+        try:
+            torch.save(payload, temporary)
+            with temporary.open("rb") as stream:
+                os.fsync(stream.fileno())
+            temporary.replace(destination)
+        finally:
+            temporary.unlink(missing_ok=True)
+        return str(payload["bank"]["sha256"])
+
+    @classmethod
+    def load(
+        cls,
+        path: Path,
+        *,
+        map_location: torch.device | str = "cpu",
+    ) -> ExternalSkillFragmentBank:
+        """Reload a bank only after validating its schema and full digest."""
+
+        payload = torch.load(Path(path), map_location=map_location, weights_only=False)
+        if not isinstance(payload, Mapping) or payload.get(
+            "format"
+        ) != PERSISTENT_EXTERNAL_SKILL_FRAGMENT_BANK_SCHEMA:
+            raise ValueError("unsupported persistent fragment bank format")
+        bank_payload = payload.get("bank")
+        if not isinstance(bank_payload, Mapping):
+            raise TypeError("persistent fragment bank is missing its bank payload")
+        return cls.from_payload(bank_payload)
 
 
 __all__ = [
@@ -574,6 +717,7 @@ __all__ = [
     "EXTERNAL_SKILL_FRAGMENT_COMPOSITION_SCHEMA",
     "EXTERNAL_SKILL_FRAGMENT_ROUTE_SCHEMA",
     "EXTERNAL_SKILL_FRAGMENT_SCHEMA",
+    "PERSISTENT_EXTERNAL_SKILL_FRAGMENT_BANK_SCHEMA",
     "ExternalSkillFragmentArtifact",
     "ExternalSkillFragmentBank",
     "ExternalSkillFragmentComposition",

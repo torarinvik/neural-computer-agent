@@ -482,6 +482,14 @@ not a task-sized program. This distinction is normative:
 - fragment rows may grow, persist, be protected, or be replaced outside the
   controller.
 
+The shared basis is itself append-expandable external state. When a new basis
+prefix is appended, every existing coefficient row receives zero padding, so
+old fragment codes are unchanged at the growth boundary. A mastered basis
+prefix can be gradient-protected while a candidate trains only new directions
+and its own coefficients. This is the escape hatch from a saturated fixed
+basis; it does not resize the controller or claim that new directions already
+implement useful computation.
+
 There must be no architectural concept called `snake_program`,
 `pong_program`, or an equivalent task-indexed skill branch. A game, task, or
 modality may be the verifier's source of experience, but it is not a storage
@@ -504,7 +512,8 @@ This design combines the strongest lessons from the architecture review:
 1. **Shared basis before task artifacts.** Independent full-task modules tend
    to coexist without discovering common factors. A common basis gives later
    fragments a place to reuse operators while retaining independently
-   addressable external coefficients.
+   addressable external coefficients. If the basis is saturated, append
+   protected directions rather than widening the controller.
 2. **Trained routing before arithmetic.** Raw summation of opaque vectors is
    compact but interference-prone. The safe default is content-addressed
    selection and serial execution; learned residual routing may be enabled only

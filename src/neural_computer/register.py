@@ -3296,7 +3296,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         composition.validate(
             batch_size=register.shape[0],
             instruction_width=self.instruction_width,
-            fragment_count=int(composition.fragment_indices.max().item()) + 1,
+            fragment_count=composition.bank_fragment_count,
         )
         if register.ndim != 2 or register.shape[1] != self.register_width:
             raise ValueError("register has the wrong shape for fragment composition")

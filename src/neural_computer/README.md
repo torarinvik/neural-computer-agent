@@ -143,8 +143,11 @@ task-sized policy modules. A learned event/intention query routes to fragment
 rows, and `ExternalCapabilityRegisterMachine.execute_fragment_composition()`
 executes the resulting variable-length chain after removing transport padding.
 Appending a fragment grows only external state; it does not resize the
-controller, interpreter, or decoder. The bank supports outcome-only route
-refinement, row permutation audits, protected rows, persistence, and checksum
+controller, interpreter, or decoder. If the current shared basis is saturated,
+`grow_basis()` appends new instruction directions and zero-pads old
+coefficients, while `freeze_basis_prefix()` protects mastered directions from
+later candidate updates. The bank supports outcome-only route refinement, row
+permutation audits, protected rows, atomic disk persistence, and checksum
 recovery. This is the structural foundation for compounding reuse; positive
 transfer and arbitrary program induction still require fresh verifier-gated
 experiments.
