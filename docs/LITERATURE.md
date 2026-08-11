@@ -281,3 +281,151 @@ Sources:
 4. **Free bits / hard information floor** (§1) — targets exactly
    F120's finding that our soft ignorance term is toothless when the
    model is bad.
+
+---
+
+# Addendum, 2026-08-11: the CURRENT bottleneck, named precisely
+
+The first map treated "the reader's training signal" as one problem.
+F138 split it, and the split has a name in the literature that matches
+our measurements exactly.
+
+## 7. Our gap is the AMORTIZATION GAP, not the approximation gap
+
+**What we measured.** The reader's architecture CAN produce the entry
+the bound plant needs — distilled onto a consistent target it reaches
+0.9723 per-bit on held-out worlds (F138). Trained by any
+non-privileged objective it reaches at most 0.7795 (F144). Same
+network, same inputs, same frozen plant.
+
+**What it is called.** Cremer, Li and Duvenaud (ICML 2018) decompose
+the inference gap into two parts:
+
+- the **approximation gap** — the variational family cannot express
+  the right posterior at all;
+- the **amortization gap** — the family can, but the amortised
+  recognition network fails to produce the right parameters for each
+  datapoint, because one network must serve every input in one pass.
+
+Their headline finding is that divergence from the true posterior is
+usually caused by imperfect recognition networks rather than by the
+limited complexity of the approximating family — and that the
+amortization gap is large on complex datasets even with a powerful
+inference network.
+
+**This is our situation stated exactly.** F138 IS an approximation-gap
+measurement: it shows the family suffices. Everything since is
+amortization. That reframes the whole reader effort — every scheme we
+have tried (task loss, two-phase, contrastive phase, contrastive
+auxiliary, batch size) has attacked the amortization gap by improving
+the OBJECTIVE, and the literature's most effective answer is not a
+better objective at all.
+
+## 8. The literature's answer: SEMI-AMORTIZATION
+
+**The method.** Kim et al. (ICML 2018): use the amortised encoder to
+produce an INITIALISATION, then run a small number of gradient steps
+on the variational parameters for that specific datapoint. Reported
+result: 10 refinement steps from a learned initialisation beat 80
+steps of pure per-instance inference — the initialisation is doing
+most of the work, and the refinement closes the residual.
+
+**Why this fits us unusually well, and the objection to answer first.**
+Our standing claim is "zero gradient steps at acquisition", which
+semi-amortization appears to violate. It does not, and the distinction
+matters: **the gradient steps refine the ENTRY, not the plant.** The
+entry is data in an external store; the plant's weights never move. A
+bank whose entries are polished on arrival is still a bank, and this
+is much closer to the architecture's spirit than it first sounds —
+F44 already established that world identity is only knowable from
+consequences, and refining an entry against observed consequences is
+that principle applied at acquisition rather than abandoned.
+
+It also makes a sharp prediction we can falsify: if the gap is
+amortization, a handful of refinement steps from the reader's own
+output should recover most of the 0.7795 -> 0.9723 distance. If it
+does not, the gap is something neither term covers and both F138 and
+this analysis are wrong.
+
+**Cost note, given the F144 confound.** Refinement is per-world and
+cheap; unlike the contrastive batch, its cost does not scale with the
+number of worlds per update. Any comparison must still be run at
+matched compute.
+
+## 9. Why contrastive stalls: ALIGNMENT vs UNIFORMITY
+
+**What we measured.** Contrastive objectives beat task loss but
+plateau well below what distillation shows possible, and F140 showed
+the shortfall is not decoder expressiveness.
+
+**What it is called.** Wang and Isola (ICML 2020) decompose contrastive
+learning into two asymptotic properties: **alignment** (positive pairs
+close together) and **uniformity** (features spread over the
+hypersphere). Both are optimised by InfoNCE, and the balance between
+them predicts downstream performance — with the specific observation
+that linear downstream decoders benefit from TIGHT CLUSTERS, i.e. from
+alignment, while pushing uniformity harder can cost within-class
+alignment.
+
+**Why that is our exact trade.** Our two requirements have been
+"discriminative" and "bindable", and they map onto uniformity and
+alignment respectively: our binder is LINEAR by necessity (F140), so
+it wants tight clusters, while more negatives buy separation. F144's
+batch-128 collapse is what over-weighted uniformity looks like, and
+F142's weight-3.0 collapse is the same thing from the weight axis.
+Both were read as "over-shoot" without a mechanism; this supplies one.
+
+**What it suggests.** Wang and Isola report that optimising alignment
+and uniformity as SEPARATE terms performs comparably or better than
+InfoNCE itself. That gives an explicit knob for the balance our probes
+keep rediscovering as an interior optimum, instead of controlling it
+indirectly through batch size and loss weight — and it predicts that
+at fixed compute, raising alignment should help more than raising
+uniformity, because the binder is linear.
+
+## 10. For the games' new bottleneck: TASK-SUFFICIENT state
+
+F145 relocated the games residual from the search to the state
+abstraction. The relevant literature is bisimulation-based
+representation learning (Zhang et al., *Learning Invariant
+Representations for RL without Reconstruction*): learn an encoder
+whose latent distances equal behavioural distances, keeping exactly
+what affects outcomes and discarding the rest, without reconstructing
+observations.
+
+Our `--objects N` widening is the crude version of this — more of the
+state kept, chosen by hand. The bisimulation framing suggests the
+principled version: keep what changes VALUE. Worth noting the caveat
+in the recent literature that bisimulation methods have known pitfalls
+and failure modes, so this is a direction rather than a recipe.
+
+Sources:
+[Inference Suboptimality in VAEs (ICML 2018)](https://arxiv.org/abs/1801.03558),
+[Semi-Amortized VAEs (ICML 2018)](https://arxiv.org/pdf/1802.02550),
+[Reducing the Amortization Gap: Bayesian Random Function](https://arxiv.org/abs/2102.03151),
+[Amortized Inference Regularization](https://arxiv.org/pdf/1805.08913),
+[Alignment and Uniformity on the Hypersphere (ICML 2020)](https://arxiv.org/abs/2005.10242),
+[Learning Invariant Representations for RL without Reconstruction](https://openreview.net/forum?id=-2FCwDKRREu),
+[Pitfalls of Bisimulation-based representations (NeurIPS 2023)](https://proceedings.neurips.cc/paper_files/paper/2023/file/5a1667459d0cdeb2fe6b2f0dffc5cb9d-Paper-Conference.pdf)
+
+---
+
+## Revised ranking after the addendum
+
+1. **Entry refinement at acquisition** (§8) — semi-amortization.
+   Directly targets the gap we have actually measured, makes a
+   falsifiable prediction, and refines DATA rather than weights so the
+   architecture survives intact. Displaces the codebook from first
+   place because it attacks the measured quantity rather than a
+   plausible cause.
+2. **Explicit alignment/uniformity terms** (§9) — replaces two
+   indirect knobs (batch size, loss weight) with the axis they were
+   both proxying, and predicts which direction helps given a linear
+   binder.
+3. **Discrete codebook** (§5) — still strong, still running, and
+   §9 gives it a second rationale: a codebook is maximal alignment
+   (every world in a cluster of radius zero).
+4. **Reader step-ratio** (§2) — cheap, unresolved.
+5. **Dynamics ensemble** (§6) — DEPRIORITISED by F145: search budget
+   buys nothing, so uncertainty-weighted search has little to act on.
+   The state abstraction (§10) replaces it.
