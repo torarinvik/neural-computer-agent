@@ -11,6 +11,10 @@ from experiments.brainworkshop_canonical import (
     NBackVerifier,
     train_reward_only,
 )
+from experiments.brainworkshop_canonical.cross_family_rule_growth import (
+    run as run_cross_family_rule_growth,
+)
+from experiments.brainworkshop_canonical.environment import NBackVerifierStep
 from experiments.brainworkshop_canonical.goal_conditioned_planning import (
     run_goal_conditioned_planning_audit,
 )
@@ -706,6 +710,72 @@ def test_context_route_uses_a_learned_event_cue_and_keeps_core_opaque() -> None:
         assert torch.equal(value, controller_before[name])
 
 
+def test_context_route_failure_patience_prevents_single_noise_demotion() -> None:
+    class FixedOutcomeVerifier:
+        action_count = 2
+        batch_size = 1
+        device = torch.device("cpu")
+        steps = 4
+
+        def __init__(self) -> None:
+            self._position = 0
+
+        @property
+        def position(self) -> int:
+            return self._position
+
+        @property
+        def done(self) -> bool:
+            return self._position >= self.steps
+
+        def reset(self) -> None:
+            self._position = 0
+
+        def observation(self) -> torch.Tensor:
+            return torch.tensor([4 if self._position == 0 else 0])
+
+        def score(self, action: torch.Tensor) -> NBackVerifierStep:
+            del action
+            eligible = torch.tensor([self._position > 0])
+            reward = torch.tensor(
+                [0.0 if self._position in (1, 2) else 1.0]
+            )
+            self._position += 1
+            return NBackVerifierStep(reward=reward, eligible=eligible)
+
+    agent = CanonicalBrainWorkshopAgent(
+        symbol_count=7,
+        n_back=2,
+        event_width=8,
+        intention_width=4,
+        feedback_width=4,
+        reader_kind="relation",
+        seed=17,
+    )
+    slot = agent.add_relation_capability(n_back=3, seed=23)
+    cue_event = agent.runtime.encoders["stimulus"](torch.tensor([4]))[0]
+    for _ in range(agent.context_route_evidence.min_mastery_observations):
+        agent.context_route_evidence.observe(cue_event, slot, 1.0)
+
+    impatient = agent.rollout(
+        FixedOutcomeVerifier(),
+        sample=False,
+        record_retention=False,
+        context_route=True,
+        context_route_failure_patience=1,
+    )
+    patient = agent.rollout(
+        FixedOutcomeVerifier(),
+        sample=False,
+        record_retention=False,
+        context_route=True,
+        context_route_failure_patience=2,
+    )
+
+    assert impatient.selected_slots[0].tolist() == [slot, slot, 0, 0]
+    assert patient.selected_slots[0].tolist() == [slot, slot, slot, 0]
+
+
 def test_route_state_round_trips_without_loading_controller_weights() -> None:
     agent = CanonicalBrainWorkshopAgent(
         symbol_count=7,
@@ -851,3 +921,30 @@ def test_rollout_can_record_only_present_verifier_outcomes_externally() -> None:
     assert int(statistics["outcome_counts"].sum()) < int(
         statistics["attempts"].sum()
     )
+
+
+def test_cross_family_growth_smoke_keeps_route_and_core_boundaries(tmp_path) -> None:
+    report = run_cross_family_rule_growth(
+        argparse.Namespace(
+            report_out=tmp_path / "cross-family-smoke.json",
+            seed=17,
+            source_updates=1,
+            target_updates=1,
+            batch_size=2,
+            steps=6,
+            calibration_lifetimes=1,
+            discovery_lifetimes=1,
+            retention_lifetimes=1,
+            learning_rate=1e-2,
+        )
+    )
+
+    assert report["schema"] == (
+        "neural-computer.brainworkshop-cross-family-rule-growth.v1"
+    )
+    assert report["gates"]["controller_unchanged"] is True
+    assert report["gates"]["encoder_unchanged"] is True
+    assert report["gates"]["route_reload_exact"] is True
+    assert report["gates"]["incompatible_route_representation_rejected"] is True
+    assert report["gates"]["zero_replayed_examples"] is True
+    assert report["accounting"]["optimizer_updates"] == 4

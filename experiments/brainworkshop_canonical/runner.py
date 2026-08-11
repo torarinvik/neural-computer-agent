@@ -653,6 +653,7 @@ class CanonicalBrainWorkshopAgent(nn.Module):
         persistent_route: bool = False,
         context_route: bool = False,
         record_context_route: bool = False,
+        context_route_failure_patience: int = 1,
         record_intention_memory: bool = False,
     ) -> CanonicalRollout:
         """Run one online episode without replay or optimizer updates.
@@ -664,10 +665,16 @@ class CanonicalBrainWorkshopAgent(nn.Module):
         ``forced_slot`` is reserved for an external candidate-specific
         retention audit. The deployed learner leaves it unset and uses only
         outcome-driven routing.
+
+        ``context_route_failure_patience`` is an external route-policy knob:
+        fallback requires that many consecutive eligible failures for the
+        current context candidate. It does not change controller computation.
         """
 
         if not 0.0 <= exploration_probability < 1.0:
             raise ValueError("slot exploration probability must lie in [0, 1)")
+        if context_route_failure_patience < 1:
+            raise ValueError("context-route failure patience must be positive")
         if learned_route and len(self.extensions) == 0:
             raise ValueError("learned routing needs at least one appended slot")
         if not isinstance(record_intention_memory, bool):
@@ -708,6 +715,7 @@ class CanonicalBrainWorkshopAgent(nn.Module):
         context_route_order: torch.Tensor | None = None
         route_context: torch.Tensor | None = None
         route_cursor = torch.zeros_like(selected_slot)
+        context_failure_streak = torch.zeros_like(selected_slot)
         if persistent_route:
             route_order = torch.tensor(
                 self.route_evidence.preferred_order(slot_count=len(readers)),
@@ -747,6 +755,7 @@ class CanonicalBrainWorkshopAgent(nn.Module):
                     0 if forced_slot is None else forced_slot,
                 )
                 route_cursor.zero_()
+                context_failure_streak.zero_()
                 if persistent_route and route_order is not None:
                     selected_slot.fill_(int(route_order[0]))
             route_exploration = torch.zeros(
@@ -972,10 +981,23 @@ class CanonicalBrainWorkshopAgent(nn.Module):
                 failed = scored.eligible & (scored.reward < 0.5)
                 if context_route and context_route_order is not None:
                     can_advance = route_cursor < len(readers) - 1
+                    context_failure_streak = torch.where(
+                        failed,
+                        context_failure_streak + 1,
+                        torch.zeros_like(context_failure_streak),
+                    )
+                    advance = can_advance & (
+                        context_failure_streak >= context_route_failure_patience
+                    )
                     route_cursor = torch.where(
-                        failed & can_advance,
+                        advance,
                         route_cursor + 1,
                         route_cursor,
+                    )
+                    context_failure_streak = torch.where(
+                        advance,
+                        torch.zeros_like(context_failure_streak),
+                        context_failure_streak,
                     )
                     selected_slot = context_route_order.gather(
                         1, route_cursor[:, None]

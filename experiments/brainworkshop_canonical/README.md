@@ -531,3 +531,42 @@ PYTHONPATH=src:. ./.venv/bin/python -m experiments.brainworkshop_canonical.heldo
 
 The authoritative reports and sample-efficiency ledger are archived in
 `session_records/brainworkshop_heldout_rule_growth_2026-08-11/`.
+
+## Cross-family rule growth and route hysteresis (2026-08-11)
+
+`cross_family_rule_growth.py` varies the private verifier family while keeping
+the learner-facing protocol fixed. It grows isolated external files for
+n-back-2, pair parity, adjacent switching, and single-symbol parity. The final
+family is trained under cue `7`, then cue `8` is introduced only after
+training; the controller receives rendered events, opaque actions, and scalar
+outcomes, never the private family or target labels.
+
+Seeds `17` and `18` both pass complete-prefix retention, new-family mastery,
+frozen controller and event encoder digests, held-out outcome-only route
+discovery, shuffled-cue controls, exact route reload, incompatible event
+representation rejection, and zero replay. Held-out recovery reached
+`0.9978/0.9598` accuracy with `1.0000/1.0000` target-slot selection. The
+lowest retained primitive was `0.8594` on seed `18`; all other retained
+families reached `1.0000`.
+
+The audit exposed and fixes an important memory-side bottleneck: immediate
+fallback on one noisy outcome can demote an otherwise competent route. Route
+discovery uses failure patience `1` to gather evidence; exploitation uses
+patience `4` before falling back. This changes only external route policy, not
+the frozen controller, event encoder, or capability files.
+
+Each seed used `832` optimizer updates, `344,064` training verifier bits,
+`59,648` audit bits, and zero replayed examples. This promotes cross-family
+outcome-only route discovery over bounded external rule growth. It still does
+not establish arbitrary new computation, unrestricted memory growth,
+compression, or general continual learning. Evidence is archived in
+`session_records/brainworkshop_cross_family_rule_growth_2026-08-11/`.
+
+Reproduce the promoted gate with:
+
+```bash
+PYTHONPATH=src:. ./.venv/bin/python -m experiments.brainworkshop_canonical.cross_family_rule_growth \
+  --source-updates 64 --target-updates 256 --batch-size 32 --steps 14 \
+  --calibration-lifetimes 32 --discovery-lifetimes 32 --retention-lifetimes 4 \
+  --seed 17 --report-out /tmp/brainworkshop-cross-family-17.json
+```

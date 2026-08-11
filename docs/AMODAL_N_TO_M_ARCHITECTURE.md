@@ -9797,3 +9797,36 @@ growth. It does not establish arbitrary new computation, unrestricted memory
 growth, compression, or general continual learning. Evidence and the
 sample-efficiency ledger are archived in
 `session_records/brainworkshop_heldout_rule_growth_2026-08-11/`.
+
+## Cross-family rule growth and route hysteresis (2026-08-11)
+
+The next pressure test varies the private verifier family rather than only
+increasing n-back depth. `cross_family_rule_growth.py` acquires isolated
+external files for n-back-2, pair parity, adjacent switching, and
+single-symbol parity through one fixed event/intention path. The final family
+is trained under cue `7`; cue `8` is withheld from the route ledger until
+after training. The learner sees only rendered symbols, opaque actions, and
+deterministic scalar verifier outcomes.
+
+Seeds `17` and `18` passed complete-prefix retention, new-family mastery,
+unchanged controller and event-encoder digests, held-out outcome-only route
+discovery, shuffled-cue controls, exact route reload, incompatible learned
+event-representation rejection, and zero replay. Held-out recovery was
+`0.9978` and `0.9598` accuracy with `1.0000` target-slot selection in both
+seeds. The weakest retained primitive was `0.8594`; all other retained
+families reached `1.0000`.
+
+This audit also exposed a reusable route-memory failure mode. A preferred file
+was being abandoned after one stochastic scalar failure, so a competent
+capability could not remain selected. The runtime now exposes external
+context-route failure patience. Discovery uses patience `1` to explore the
+fallback bank; exploitation uses patience `4` to require sustained evidence
+before demotion. No controller, frontend, or capability weights change during
+this policy update.
+
+Each seed used `832` optimizer updates, `344,064` training verifier bits,
+`59,648` audit bits, and zero replayed examples. This promotes cross-family
+outcome-only route discovery over bounded external rule growth. It does not
+establish arbitrary new computation, unrestricted memory growth, compression,
+or general continual learning. The reports and accounting ledger are in
+`session_records/brainworkshop_cross_family_rule_growth_2026-08-11/`.
