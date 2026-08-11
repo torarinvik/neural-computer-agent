@@ -683,6 +683,36 @@ def score_world(world: dict) -> dict:
             "bits_stranger": stranger[1]}
 
 
+def context_fit(world: dict) -> dict:
+    """Can the plant predict the rows the reader CONDITIONED ON?
+
+    LITERATURE.md addendum 2 §11: Neural Processes are known to
+    underfit their own context set, and the diagnosed cause is
+    mean-aggregation in the encoder — which our `bind()` does. If the
+    plant is much worse on the reader's own example rows than an
+    oracle entry would be, underfitting is confirmed without any new
+    mechanism. Costs one evaluation, no training.
+    """
+    generator = torch.Generator().manual_seed(
+        args.seed * 31 + hash(world["name"]) % 100000)
+    pieces, xs_all, ys_all = reader_examples(world, generator)
+    entry = entry_of(world)
+    oracle_entry = oracle(oracle_raw(world))
+    out = {}
+    with torch.no_grad():
+        for label, use in (("read", entry), ("oracle", oracle_entry)):
+            correct, total = 0, 0
+            for token in (F, G):
+                keep = (pieces == token)
+                if not bool(keep.any()):
+                    continue
+                xs, ys = xs_all[keep], ys_all[keep]
+                got = ((plant((token,), xs, use) > 0).float() == bits_of(ys)).sum()
+                correct += int(got)
+                total += int(keep.sum()) * W
+            out[label] = round(correct / max(total, 1), 4)
+    return out
+
 report = {
     "seed": args.seed, "width": W, "worlds": args.worlds,
     "held_worlds": args.held_worlds,
@@ -690,6 +720,7 @@ report = {
     "held_programs": len(held_programs),
     "chance_exact": round(2.0 ** -W, 6), "chance_bit": 0.5,
     "held_out_worlds": {w["name"]: score_world(w) for w in held_worlds},
+    "context_fit": {w["name"]: context_fit(w) for w in held_worlds[:8]},
     "trained_worlds": {w["name"]: score_world(w)
                        for w in train_worlds[:args.held_worlds]},
 }
