@@ -389,6 +389,29 @@ class Codebook(torch.nn.Module):
         self.tokens, self.dim = tokens, dim
         self.last_loss = torch.zeros(())
         self.last_index = -1
+        # F146: without this the codebook collapses to ONE code — at
+        # initialisation every reader output is similar, one code wins
+        # every assignment, and the losers never receive gradient. Dead
+        # codes are periodically re-seeded onto recent reader outputs,
+        # the standard remedy.
+        self.register_buffer("usage", torch.zeros(count))
+        self.recent: list = []
+
+    def restart_dead(self, generator) -> int:
+        dead = (self.usage == 0).nonzero().flatten()
+        if len(dead) == 0 or len(self.recent) < 2:
+            self.usage.zero_()
+            return 0
+        pool = torch.stack(self.recent)
+        with torch.no_grad():
+            for slot in dead.tolist():
+                pick = int(torch.randint(0, pool.shape[0], (1,),
+                                         generator=generator))
+                jitter = torch.randn(
+                    pool.shape[1], generator=generator) * 0.01
+                self.codes[slot] = pool[pick] + jitter
+        self.usage.zero_()
+        return len(dead)
 
     def forward(self, entry: torch.Tensor) -> torch.Tensor:
         flat = entry.flatten()
@@ -396,6 +419,10 @@ class Codebook(torch.nn.Module):
         index = int(distance.argmin())
         chosen = self.codes[index]
         self.last_index = index
+        self.usage[index] += 1
+        self.recent.append(flat.detach().clone())
+        if len(self.recent) > 256:
+            self.recent.pop(0)
         self.last_loss = (((chosen - flat.detach()) ** 2).mean()
                           + args.commit
                           * ((flat - chosen.detach()) ** 2).mean())
@@ -524,6 +551,8 @@ for update in range(args.train_updates):
         loss = loss + args.ignorance * (uniform - entropy)
     if codebook is not None and not use_oracle:
         loss = loss + codebook.last_loss
+        if update > 0 and update % 500 == 0:
+            codebook.restart_dead(data_gen)
     if args.contrastive_aux > 0:
         picks = torch.randperm(
             len(train_worlds),

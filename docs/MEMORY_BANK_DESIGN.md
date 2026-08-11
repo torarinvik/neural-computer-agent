@@ -6715,3 +6715,45 @@ comparable arms took twenty-five minutes, which is 8x — matching the
 table exactly. The run times were the evidence, not the outputs, which
 is a reminder that cost is a measurement too and this project has been
 reading only accuracy.
+
+**F146 (probe 246). The codebook arms are a null caused by CODEBOOK
+COLLAPSE — my implementation, not the idea. All four arms sit at
+chance with stranger identical to own, and K=64 and K=256 produced
+BYTE-IDENTICAL results, which is what gave it away.**
+
+| arm | held-out own | stranger | exact |
+| --- | ---: | ---: | ---: |
+| codebook K=256, seed 69316 | 0.5414 | 0.5414 | 0.0123 |
+| codebook K=256, seed 69317 | 0.5033 | 0.5033 | 0.0038 |
+| codebook K=64, seed 69316 | 0.5414 | 0.5414 | 0.0123 |
+| continuous entry (F144) | 0.7795 | ~0.55 | 0.2498 |
+
+Two different codebook sizes cannot give identical results unless K is
+irrelevant, and K is irrelevant only if the same code is always
+chosen. Instrumented directly: **1 of 64 codes used, claiming 40 of 40
+worlds.** The entry was constant, so the plant had nothing to read,
+which is exactly the stranger==own signature.
+
+**The mechanism is documented and I should have anticipated it.** At
+initialisation every reader output is similar, so one code wins every
+assignment; the losers never appear in a forward pass, never receive
+gradient, and stay dead forever. This is the standard VQ-VAE failure
+mode. Fix applied: periodic dead-code restart — every 500 updates,
+codes with zero usage are re-seeded onto recent reader outputs with
+small jitter. Verified: **24 distinct codes across 40 worlds, largest
+claiming 4** where it was 1 claiming 40.
+
+**What this does and does not say.** It says nothing about whether a
+discrete bottleneck helps — that hypothesis is untested, because the
+bottleneck was never discrete in practice, it was constant. The
+LITERATURE.md ranking is unaffected on the merits.
+
+The diagnostic worth keeping is the byte-identical comparison. Two
+arms differing only in a hyper-parameter should never agree exactly;
+when they do, that parameter is not reaching the computation. That is
+a cheap, general check and it caught this in one command where the
+accuracy numbers alone read as an ordinary null — I would have
+recorded "discrete entries do not help" and moved on.
+
+Probe 246 is `--codebook 64/256`, 2 seeds each, superseded by the
+restart fix.
