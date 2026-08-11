@@ -9565,3 +9565,45 @@ problem: transferring scalar utility is insufficient when the underlying
 factual probe model does not make the consequence informative enough to identify
 a better intention. Evidence is in
 `session_records/factored_active_probe_context_shift_pressure_2026-08-11/sample_efficiency_ledger.json`.
+
+## Append-only trace-conditioned composition growth (2026-08-11)
+
+The external-memory boundary now has an explicit append-only growth seam for
+composition depth. `ExternalSkillFragmentGrowthCombiner` owns one stable
+trace encoder and canonical readout plus zero-initialized external residual
+slots. A new slot is appended for a new structural depth, trained from fresh
+outcomes, and then protected. Earlier slots, the register interpreter, the
+fragment bank, and the parent controller remain frozen. The slot receives the
+standardized rich learner trace—learned instruction codes, transition deltas,
+and opaque segment lengths—not fragment indices, operation names, verifier
+metadata, or raw modality data.
+
+This is a more faithful implementation of the CPU-plus-files idea than
+allocating a separate decoder for every target: the frozen controller and
+interpreter provide reusable computation, while the independently growing
+external memory supplies depth-conditioned capacity. Zero initialization makes
+the transaction behavior-preserving at append time, and the prefix-protection
+API makes accidental updates to mastered capacity testable.
+
+The first decisive diagnostic exposed an important acquisition constraint. A
+single shared decoder trained sequentially against independently acquired
+fragment representations lost the earlier atomic mappings (`rotate` 0.7474,
+`complement` 0.3828, and `prefix_parity` 0.5807 after the fourth acquisition).
+Jointly aligning the four atomic fragments to one shared output foundation
+instead reached `[0.9219, 0.9583, 0.9922, 0.9401]` at 128 foundation updates.
+That foundation is now frozen before growth. A summary-only residual slot was
+also rejected; replacing it with a full trace-conditioned segment combiner
+raised the 12-target depth-2 minimum from roughly `0.61` to `0.75` at 128
+updates and to `0.9167` at 256 updates in the seed-69316 diagnostic. The
+longer run reached perfect or near-perfect accuracy on most ordered pairs,
+while retaining one shared growth combiner and one shared opaque decoder.
+
+This is a strong bounded-growth signal, not general continual learning. The
+remaining promotion pressure is deeper growth (depth 3 and 4), repeated
+cross-depth retention, held-out program transfer, storage/latency scaling,
+and independent-seed replication. The executable pressure test is
+`experiments/external_skill_fragment_composition_amodal/train_depth_growth.py`;
+its report separates training verifier bits from audit exposure and records
+the frozen-parent, frozen-bank, persistence, missing-evidence, and no-replay
+gates. Evidence and rejected acquisition controls belong under
+`session_records/external_skill_fragment_depth_growth_2026-08-11/`.

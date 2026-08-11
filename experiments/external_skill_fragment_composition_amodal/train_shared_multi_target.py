@@ -60,6 +60,46 @@ TRAIN_ORDERS = (
     (2, 3, 1, 0),
 )
 HELDOUT_ORDERS = ((0, 1, 3, 2), (0, 3, 2, 1), (1, 2, 3, 0))
+CURRICULUM_TRAIN_ORDERS = (
+    ((0,), (1,), (2,), (3,))
+    + (
+        (0, 1),
+        (1, 0),
+        (0, 2),
+        (2, 0),
+        (0, 3),
+        (3, 0),
+        (1, 2),
+        (2, 1),
+        (1, 3),
+        (3, 1),
+        (2, 3),
+        (3, 2),
+    )
+    + (
+        (3, 2, 0),
+        (1, 0, 3),
+        (2, 3, 1),
+        (0, 1, 2),
+        (0, 2, 3),
+        (1, 3, 0),
+    )
+    + TRAIN_ORDERS
+)
+CURRICULUM_HELDOUT_ORDERS = (
+    (0, 1, 3),
+    (0, 3, 1),
+    (1, 2, 0),
+    *HELDOUT_ORDERS,
+)
+
+
+def _order_sets(
+    curriculum: bool,
+) -> tuple[tuple[tuple[int, ...], ...], tuple[tuple[int, ...], ...]]:
+    if curriculum:
+        return CURRICULUM_TRAIN_ORDERS, CURRICULUM_HELDOUT_ORDERS
+    return TRAIN_ORDERS, HELDOUT_ORDERS
 
 
 def _program(order: tuple[int, ...]) -> tuple[str, ...]:
@@ -284,8 +324,9 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     )
     source_before = retention_by_stage[-1]
     bank_digest_before = bank.payload()["sha256"]
-    train_specs = _specs(TRAIN_ORDERS)
-    heldout_specs = _specs(HELDOUT_ORDERS)
+    train_orders, heldout_orders = _order_sets(args.curriculum)
+    train_specs = _specs(train_orders)
+    heldout_specs = _specs(heldout_orders)
     bits_per_update = args.batch_size * args.span * 2
 
     torch.manual_seed(args.seed + 100_000)
@@ -540,15 +581,16 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "schema": "neural-computer.external-skill-fragment-shared-multi-target-report.v1",
         "claim_boundary": (
             "One shared external trace combiner and decoder reuse four acquired "
-            "opaque fragments across three training orders and three held-out "
-            "orders while the acquired bank and parent remain frozen. This does "
+            f"opaque fragments across {len(train_specs)} training orders and "
+            f"{len(heldout_specs)} held-out orders while the acquired bank and "
+            "parent remain frozen. This does "
             "not establish arbitrary program induction, unrestricted growth, "
             "compression, or general continual learning."
         ),
         "seed": args.seed,
         "primitives": list(PRIMITIVES),
-        "training_orders": [list(order) for order in TRAIN_ORDERS],
-        "heldout_orders": [list(order) for order in HELDOUT_ORDERS],
+        "training_orders": [list(order) for order in train_orders],
+        "heldout_orders": [list(order) for order in heldout_orders],
         "parent_progress": parent_progress,
         "retention_by_stage": retention_by_stage,
         "primitive_histories": primitive_histories,
@@ -617,6 +659,11 @@ def main() -> None:
     parser.add_argument("--parent-updates", type=int, default=64)
     parser.add_argument("--primitive-updates", type=int, default=256)
     parser.add_argument("--composition-updates", type=int, default=128)
+    parser.add_argument(
+        "--curriculum",
+        action="store_true",
+        help="train on shorter programs before the held-out depth rung",
+    )
     parser.add_argument("--batch-size", type=int, default=32)
     parser.add_argument("--span", type=int, default=3)
     parser.add_argument("--audit-count", type=int, default=128)

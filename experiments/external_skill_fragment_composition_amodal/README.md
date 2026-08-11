@@ -150,3 +150,35 @@ PYTHONPATH=src:. .venv/bin/python -m \
   --composition-updates 128 --batch-size 32 --span 3 --audit-count 128 \
   --eval-every 32 --report-out /tmp/fragment-shared-multi-target.json
 ```
+
+## Append-only depth-growth pressure test
+
+`train_depth_growth.py` tests the CPU-plus-files boundary directly. One
+jointly trained atomic foundation is frozen; a single shared
+`ExternalSkillFragmentGrowthCombiner` appends one zero-impact,
+trace-conditioned slot per composition depth; and only the new slot learns
+from fresh verifier outcomes at each rung. The parent controller, register
+interpreter, and acquired fragment bank are frozen on the inherited path.
+Earlier slots are protected after each rung, so this is a real no-replay
+growth transaction rather than a fresh target-specific adapter.
+
+The initial seed-69316 depth-2 diagnostic reached a minimum accuracy of
+`0.9167` across all 12 ordered pairs after 256 slot updates. It is not yet a
+promotion: deeper depths, held-out program transfer, repeated retention, and
+replication remain required. The report also distinguishes training exposure
+from audit exposure.
+
+```bash
+PYTHONPATH=src:. .venv/bin/python -m \
+  experiments.external_skill_fragment_composition_amodal.train_depth_growth \
+  --joint-foundation --seed 69316 --parent-updates 64 \
+  --foundation-updates 128 --stage-updates 256 --batch-size 32 --span 3 \
+  --audit-count 128 --eval-every 32 \
+  --report-out /tmp/fragment-depth-growth.json
+```
+
+The sequential shared-decoder acquisition control remains rejected because
+separately learned atomic representations were not aligned for a common
+readout. The correct next architectural pressure is therefore deeper
+append-only growth after a shared foundation, not more target-specific
+decoders.

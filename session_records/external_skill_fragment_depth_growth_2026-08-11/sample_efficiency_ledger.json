@@ -1,0 +1,51 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "external_skill_fragment_depth_growth",
+  "date": "2026-08-11",
+  "status": "diagnostic_positive_not_promoted",
+  "records": [
+    {
+      "name": "joint_foundation_depth2_trace_slot_seed69316",
+      "seed": 69316,
+      "parent_updates": 64,
+      "foundation_updates": 128,
+      "depth2_slot_updates": 256,
+      "batch_size": 32,
+      "span": 3,
+      "training_unique_verifier_bits": 688128,
+      "audit_unique_verifier_bits": null,
+      "unique_logical_lifetimes": 114688,
+      "optimizer_updates": 448,
+      "replayed_examples": 0,
+      "wall_seconds": null,
+      "latency": "not captured in the direct diagnostic",
+      "atomic_foundation_accuracy": [
+        0.921875,
+        0.9583333135,
+        0.9921875,
+        0.9401041865
+      ],
+      "depth2_accuracy": [
+        0.9557291865,
+        0.9166666865,
+        0.9166666865,
+        1.0,
+        1.0,
+        0.9947916865,
+        1.0,
+        0.9166666865,
+        1.0,
+        1.0,
+        0.9791666865,
+        0.9375
+      ],
+      "depth2_min_accuracy": 0.9166666865,
+      "final_training_accuracy": 0.8324652910,
+      "final_heldout_min_accuracy": 0.9140625,
+      "stable_bits_to_threshold": null,
+      "controls": "not run in the direct diagnostic",
+      "promoted": false,
+      "decision": "Positive architectural signal; run full depth-growth audit and independent-seed replication before promotion."
+    }
+  ]
+}

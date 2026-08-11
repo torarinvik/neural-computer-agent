@@ -40,8 +40,14 @@ EXTERNAL_SKILL_FRAGMENT_TRACE_SCHEMA = "neural-computer.skill-fragment-trace.v1"
 EXTERNAL_SKILL_FRAGMENT_RICH_TRACE_SCHEMA = (
     "neural-computer.skill-fragment-rich-trace.v2"
 )
+EXTERNAL_SKILL_FRAGMENT_GROWTH_SCHEMA = (
+    "neural-computer.skill-fragment-growth-combiner.v1"
+)
 PERSISTENT_EXTERNAL_SKILL_FRAGMENT_BANK_SCHEMA = (
     "neural-computer.persistent-skill-fragment-bank.v1"
+)
+PERSISTENT_EXTERNAL_SKILL_FRAGMENT_GROWTH_SCHEMA = (
+    "neural-computer.persistent-skill-fragment-growth.v1"
 )
 
 
@@ -773,6 +779,270 @@ class ExternalSkillFragmentSegmentCombiner(nn.Module):
         return self.output(outer_hidden)
 
 
+class ExternalSkillFragmentGrowthCombiner(nn.Module):
+    """Append-only learner for continual composition-depth growth.
+
+    The shared segment encoder and canonical output projection form a stable
+    base.  Each newly mastered fragment depth receives one zero-initialized,
+    trace-conditioned external residual slot.  A trainer can freeze the base
+    and all earlier slots, then train only the newly appended slot on fresh
+    outcomes.  This gives the frozen-memory protocol a real no-replay growth
+    seam without creating a target- or modality-specific reasoning branch.
+    """
+
+    schema = EXTERNAL_SKILL_FRAGMENT_GROWTH_SCHEMA
+    requires_instruction_codes = True
+
+    def __init__(
+        self,
+        register_width: int,
+        instruction_width: int,
+        output_width: int,
+        *,
+        hidden: int = 64,
+    ) -> None:
+        super().__init__()
+        if min(register_width, instruction_width, output_width, hidden) < 1:
+            raise ValueError("growth combiner dimensions must be positive")
+        self.register_width = int(register_width)
+        self.instruction_width = int(instruction_width)
+        self.output_width = int(output_width)
+        self.hidden = int(hidden)
+        self.base = ExternalSkillFragmentSegmentCombiner(
+            register_width,
+            instruction_width,
+            hidden,
+            hidden=hidden,
+        )
+        self.base_output = nn.Linear(hidden, output_width)
+        self.depth_slots = nn.ModuleList()
+        self._protected_depth_count = 0
+        self._base_protected = False
+
+    @property
+    def depth_count(self) -> int:
+        return len(self.depth_slots)
+
+    def append_depth_slot(self) -> int:
+        """Append a zero-impact residual slot for the next fragment depth."""
+
+        slot = ExternalSkillFragmentSegmentCombiner(
+            self.register_width,
+            self.instruction_width,
+            self.output_width,
+            hidden=self.hidden,
+        )
+        nn.init.zeros_(slot.output.weight)
+        nn.init.zeros_(slot.output.bias)
+        self.depth_slots.append(slot)
+        return self.depth_count - 1
+
+    def depth_slot_parameters(self, index: int) -> tuple[nn.Parameter, ...]:
+        if not 0 <= index < self.depth_count:
+            raise IndexError("growth combiner depth slot is out of range")
+        return tuple(self.depth_slots[index].parameters())
+
+    def protect_depth_prefix(self, count: int | None = None) -> None:
+        """Freeze an admitted prefix of external depth slots."""
+
+        resolved = self.depth_count if count is None else int(count)
+        if not 0 <= resolved <= self.depth_count:
+            raise ValueError("growth combiner protection prefix is out of range")
+        self._protected_depth_count = resolved
+        for slot in self.depth_slots[:resolved]:
+            for parameter in slot.parameters():
+                parameter.requires_grad_(False)
+
+    def protect_base(self) -> None:
+        """Freeze the shared representation while leaving future slots open."""
+
+        self._base_protected = True
+        for parameter in (*self.base.parameters(), *self.base_output.parameters()):
+            parameter.requires_grad_(False)
+
+    def configuration(self) -> dict[str, int | str | bool]:
+        return {
+            "schema": self.schema,
+            "register_width": self.register_width,
+            "instruction_width": self.instruction_width,
+            "output_width": self.output_width,
+            "hidden": self.hidden,
+            "base": "shared_segment_encoder_plus_canonical_readout_v1",
+            "growth": "append_only_trace_conditioned_depth_slots_v2",
+            "depth_slots": self.depth_count,
+            "protected_depth_prefix": self._protected_depth_count,
+            "base_protected": self._base_protected,
+            "uses_fragment_indices": False,
+            "uses_verifier_metadata": False,
+            "depth_signal": "opaque_segment_count_only_v1",
+        }
+
+    def forward(
+        self,
+        trace: ExternalSkillFragmentExecutionTrace | ExternalSkillFragmentLearnerTrace,
+    ) -> torch.Tensor:
+        if isinstance(trace, ExternalSkillFragmentExecutionTrace):
+            trace = trace.learner_view()
+        trace.validate(
+            batch_size=trace.states.shape[0],
+            register_width=self.register_width,
+        )
+        if (
+            trace.instruction_codes is None
+            or trace.transition_deltas is None
+            or trace.fragment_step_counts is None
+        ):
+            raise ValueError("growth combiner requires a rich fragment trace")
+        if trace.instruction_codes.shape[2] != self.instruction_width:
+            raise ValueError("growth combiner instruction width does not match trace")
+        depths = (trace.fragment_step_counts > 0).sum(dim=1)
+        if self.depth_count < int(depths.max().item()):
+            raise ValueError("growth combiner has no slot for the requested depth")
+        base_hidden = self.base(trace)
+        output = self.base_output(base_hidden)
+        for index, slot in enumerate(self.depth_slots):
+            active = depths == index + 1
+            if bool(active.any()):
+                residual = slot(trace)
+                output = output + torch.where(
+                    active.unsqueeze(-1), residual, torch.zeros_like(residual)
+                )
+        return output
+
+    def payload(self) -> dict[str, Any]:
+        """Return a checksummed, controller-independent memory snapshot."""
+
+        state = {
+            "weights": {
+                name: value.detach().cpu().clone()
+                for name, value in self.state_dict().items()
+            },
+            "protected_depth_prefix": self._protected_depth_count,
+            "base_protected": self._base_protected,
+        }
+        return {
+            "schema": self.schema,
+            "configuration": self.configuration(),
+            "state": state,
+            "sha256": self._snapshot_digest(state),
+        }
+
+    def _snapshot_digest(self, state: Mapping[str, Any]) -> str:
+        digest = hashlib.sha256()
+        digest.update(
+            json.dumps(
+                self.configuration(), sort_keys=True, separators=(",", ":")
+            ).encode("utf-8")
+        )
+        weights = state.get("weights")
+        if not isinstance(weights, Mapping):
+            raise TypeError("growth combiner snapshot weights are malformed")
+        for name, value in sorted(weights.items()):
+            if not isinstance(value, torch.Tensor):
+                raise TypeError("growth combiner snapshot weight is malformed")
+            digest.update(name.encode("utf-8"))
+            _digest_tensor(digest, value)
+        for name in ("protected_depth_prefix", "base_protected"):
+            digest.update(name.encode("utf-8"))
+            digest.update(
+                json.dumps(
+                    state.get(name), sort_keys=True, separators=(",", ":")
+                ).encode("utf-8")
+            )
+        return digest.hexdigest()
+
+    @classmethod
+    def from_payload(
+        cls, payload: Mapping[str, Any]
+    ) -> ExternalSkillFragmentGrowthCombiner:
+        if not isinstance(payload, Mapping) or payload.get("schema") != cls.schema:
+            raise ValueError("unsupported fragment growth payload")
+        configuration = payload.get("configuration")
+        state = payload.get("state")
+        if not isinstance(configuration, Mapping) or not isinstance(state, Mapping):
+            raise TypeError("fragment growth payload is incomplete")
+        depth_slots = int(configuration.get("depth_slots", -1))
+        combiner = cls(
+            int(configuration.get("register_width", -1)),
+            int(configuration.get("instruction_width", -1)),
+            int(configuration.get("output_width", -1)),
+            hidden=int(configuration.get("hidden", -1)),
+        )
+        for _ in range(depth_slots):
+            combiner.append_depth_slot()
+        weights = state.get("weights")
+        if not isinstance(weights, Mapping):
+            raise TypeError("fragment growth state weights are malformed")
+        expected_names = set(combiner.state_dict())
+        if set(weights) != expected_names:
+            raise ValueError("fragment growth state keys do not match configuration")
+        combiner.load_state_dict(
+            {name: value.to(device="cpu") for name, value in weights.items()},
+            strict=True,
+        )
+        protected = int(state.get("protected_depth_prefix", -1))
+        if not 0 <= protected <= combiner.depth_count:
+            raise ValueError("fragment growth protection prefix is invalid")
+        combiner._protected_depth_count = protected
+        combiner._base_protected = bool(state.get("base_protected", False))
+        combiner.protect_depth_prefix(protected)
+        if combiner._base_protected:
+            combiner.protect_base()
+        if dict(configuration) != combiner.configuration():
+            raise ValueError("fragment growth configuration mismatch")
+        expected = payload.get("sha256")
+        if not isinstance(expected, str) or expected != combiner._snapshot_digest(
+            state
+        ):
+            raise ValueError("fragment growth checksum mismatch")
+        return combiner
+
+    def save(self, path: Path) -> str:
+        """Atomically persist the external growth memory."""
+
+        destination = Path(path)
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "format": PERSISTENT_EXTERNAL_SKILL_FRAGMENT_GROWTH_SCHEMA,
+            "growth": self.payload(),
+        }
+        descriptor, temporary_name = tempfile.mkstemp(
+            dir=destination.parent,
+            prefix=f".{destination.name}.",
+            suffix=".tmp",
+        )
+        os.close(descriptor)
+        temporary = Path(temporary_name)
+        try:
+            torch.save(payload, temporary)
+            with temporary.open("rb") as stream:
+                os.fsync(stream.fileno())
+            temporary.replace(destination)
+        finally:
+            temporary.unlink(missing_ok=True)
+        return str(payload["growth"]["sha256"])
+
+    @classmethod
+    def load(
+        cls,
+        path: Path,
+        *,
+        map_location: torch.device | str = "cpu",
+    ) -> ExternalSkillFragmentGrowthCombiner:
+        """Reload growth memory only after schema and checksum validation."""
+
+        payload = torch.load(Path(path), map_location=map_location, weights_only=False)
+        if (
+            not isinstance(payload, Mapping)
+            or payload.get("format") != PERSISTENT_EXTERNAL_SKILL_FRAGMENT_GROWTH_SCHEMA
+        ):
+            raise ValueError("unsupported persistent fragment growth format")
+        growth_payload = payload.get("growth")
+        if not isinstance(growth_payload, Mapping):
+            raise TypeError("persistent fragment growth is missing its payload")
+        return cls.from_payload(growth_payload)
+
+
 class ExternalSkillFragmentBank(nn.Module):
     """Growing bank of reusable fragments over one shared operator basis.
 
@@ -1311,15 +1581,18 @@ class ExternalSkillFragmentBank(nn.Module):
 __all__ = [
     "EXTERNAL_SKILL_FRAGMENT_BANK_SCHEMA",
     "EXTERNAL_SKILL_FRAGMENT_COMPOSITION_SCHEMA",
+    "EXTERNAL_SKILL_FRAGMENT_GROWTH_SCHEMA",
     "EXTERNAL_SKILL_FRAGMENT_RICH_TRACE_SCHEMA",
     "EXTERNAL_SKILL_FRAGMENT_ROUTE_SCHEMA",
     "EXTERNAL_SKILL_FRAGMENT_SCHEMA",
     "PERSISTENT_EXTERNAL_SKILL_FRAGMENT_BANK_SCHEMA",
+    "PERSISTENT_EXTERNAL_SKILL_FRAGMENT_GROWTH_SCHEMA",
     "ExternalSkillFragmentArtifact",
     "ExternalSkillFragmentBank",
     "ExternalSkillFragmentCombiner",
     "ExternalSkillFragmentComposition",
     "ExternalSkillFragmentExecutionTrace",
+    "ExternalSkillFragmentGrowthCombiner",
     "ExternalSkillFragmentLearnerTrace",
     "ExternalSkillFragmentProgramCombiner",
     "ExternalSkillFragmentRoute",

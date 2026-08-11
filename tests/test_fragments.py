@@ -8,6 +8,7 @@ from neural_computer import (
     ExternalSkillFragmentArtifact,
     ExternalSkillFragmentBank,
     ExternalSkillFragmentCombiner,
+    ExternalSkillFragmentGrowthCombiner,
     ExternalSkillFragmentProgramCombiner,
     ExternalSkillFragmentSegmentCombiner,
 )
@@ -348,6 +349,70 @@ def test_rich_fragment_trace_preserves_opaque_codes_and_transition_deltas() -> N
     assert segmented.shape == (2, 4)
     assert torch.isfinite(combined).all()
     assert torch.isfinite(segmented).all()
+
+
+def test_growth_combiner_appends_zero_impact_depth_slots_and_protects_prefix() -> None:
+    bank = _bank()
+    composition = bank.compose_indices(torch.tensor([[0, 1], [1, 2]]))
+    machine = ExternalCapabilityRegisterMachine(
+        event_width=1,
+        action_width=1,
+        intention_width=2,
+        register_width=6,
+        instruction_width=6,
+        interpreter_hidden=8,
+    )
+    trace = machine.execute_fragment_composition_trace(
+        torch.zeros(2, 6), composition, include_codes=True
+    ).learner_view()
+    single_trace = machine.execute_fragment_composition_trace(
+        torch.zeros(2, 6),
+        bank.compose_indices(torch.tensor([[0], [1]])),
+        include_codes=True,
+    ).learner_view()
+    combiner = ExternalSkillFragmentGrowthCombiner(6, 6, 4, hidden=8)
+    first = combiner.append_depth_slot()
+    with torch.no_grad():
+        baseline = combiner(single_trace)
+    second = combiner.append_depth_slot()
+    assert (first, second) == (0, 1)
+    assert torch.allclose(baseline, combiner(single_trace))
+    assert combiner(trace).shape == (2, 4)
+    combiner.protect_depth_prefix(1)
+    trainable = tuple(combiner.depth_slot_parameters(1))
+    assert all(parameter.requires_grad for parameter in trainable)
+    assert all(
+        not parameter.requires_grad for parameter in combiner.depth_slot_parameters(0)
+    )
+
+
+def test_growth_combiner_persists_independent_memory_and_rejects_corruption(
+    tmp_path,
+) -> None:
+    combiner = ExternalSkillFragmentGrowthCombiner(6, 6, 4, hidden=8)
+    combiner.append_depth_slot()
+    combiner.append_depth_slot()
+    combiner.protect_depth_prefix(1)
+    combiner.protect_base()
+    path = tmp_path / "growth-memory.pt"
+
+    digest = combiner.save(path)
+    restored = ExternalSkillFragmentGrowthCombiner.load(path)
+    assert digest == restored.payload()["sha256"]
+    assert restored.configuration() == combiner.configuration()
+    assert all(
+        not parameter.requires_grad for parameter in restored.depth_slot_parameters(0)
+    )
+    assert all(
+        parameter.requires_grad for parameter in restored.depth_slot_parameters(1)
+    )
+    assert all(not parameter.requires_grad for parameter in restored.base.parameters())
+
+    payload = combiner.payload()
+    first_weight = next(iter(payload["state"]["weights"].values()))
+    first_weight.view(-1)[0] += 1.0
+    with pytest.raises(ValueError, match="checksum mismatch"):
+        ExternalSkillFragmentGrowthCombiner.from_payload(payload)
 
 
 def test_shared_register_interpreter_rejects_forged_out_of_bank_fragment() -> None:
