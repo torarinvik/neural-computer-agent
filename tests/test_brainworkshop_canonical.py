@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import argparse
+
 import pytest
 import torch
 
@@ -77,6 +79,39 @@ def test_nback_targets_are_balanced_and_time_shuffle_preserves_balance() -> None
             rewards.append(verifier.score(torch.zeros(3, dtype=torch.long)).reward)
         observed = torch.stack(rewards, dim=1)[:, 2:].sum(dim=1)
         assert torch.equal(observed, torch.full((3,), 2.0))
+
+
+def test_heldout_rule_growth_smoke_preserves_external_boundary(tmp_path) -> None:
+    from experiments.brainworkshop_canonical.heldout_rule_growth import run
+
+    report = run(
+        argparse.Namespace(
+            report_out=tmp_path / "heldout-rule-growth.json",
+            seed=17,
+            source_updates=1,
+            target_updates=1,
+            batch_size=2,
+            steps=6,
+            calibration_lifetimes=1,
+            discovery_lifetimes=1,
+            retention_lifetimes=1,
+            learning_rate=1e-2,
+        )
+    )
+
+    assert report["schema"] == (
+        "neural-computer.brainworkshop-heldout-rule-growth.v1"
+    )
+    assert report["claim_boundary"].endswith(
+        "bounded rule growth, not general continual learning."
+    )
+    gates = report["gates"]
+    assert gates["controller_unchanged"]
+    assert gates["encoder_unchanged"]
+    assert gates["route_reload_exact"]
+    assert gates["incompatible_route_representation_rejected"]
+    assert report["accounting"]["replayed_examples"] == 0
+    assert report["accounting"]["optimizer_updates"] == 4
 
 
 def test_event_encoder_is_a_learned_frontend() -> None:

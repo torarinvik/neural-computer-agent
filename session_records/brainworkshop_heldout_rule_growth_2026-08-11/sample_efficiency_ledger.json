@@ -1,0 +1,29 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "brainworkshop_heldout_rule_growth_2026-08-11",
+  "status": "promoted_bounded_outcome_only_route_discovery",
+  "population_seeds": [17, 18],
+  "unique_verifier_bits_total": 590400,
+  "unique_verifier_bits_training_by_seed": [270336, 270336],
+  "unique_verifier_bits_audit_by_seed": [24864, 24864],
+  "heldout_route_discovery_bits_by_seed": [2304, 2304],
+  "unique_logical_lifetimes_total": 57920,
+  "unique_logical_lifetimes_training_by_seed": [26624, 26624],
+  "unique_logical_lifetimes_audit_by_seed": [2336, 2336],
+  "optimizer_updates_total": 1664,
+  "replayed_examples_total": 0,
+  "wall_time_seconds_total": 440.4203932500095,
+  "stable_bits_to_threshold_by_seed": [2304, 2304],
+  "retention_on_mastered_primitives_by_seed": [1.0, 1.0],
+  "transfer_ratio_against_fresh_learner": null,
+  "verification": {
+    "controller_frozen": [true, true],
+    "encoder_frozen": [true, true],
+    "heldout_context_learned_from_outcomes": [true, true],
+    "heldout_route_recovered": [true, true],
+    "route_reload_exact": [true, true],
+    "incompatible_route_representation_rejected": [true, true],
+    "zero_replayed_examples": [true, true],
+    "claim_boundary": "Held-out outcome-only route discovery over bounded external rule growth; not arbitrary new computation, unrestricted memory growth, compression, or general continual learning."
+  }
+}

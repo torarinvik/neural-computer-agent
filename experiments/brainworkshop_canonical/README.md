@@ -507,3 +507,27 @@ This promotes repeated bounded rule growth, not general continual learning.
 The next pressure test must vary the rule family and cue representation on
 held-out lifetimes; fixed n-back depth plus a fixed rendered cue family is not
 yet arbitrary rule acquisition.
+
+## Held-out external rule growth (2026-08-11)
+
+`heldout_rule_growth.py` extends the same boundary one step further. It trains
+an n-back-5 external file under rendered cue `7`, withholds cue `8` from the
+route ledger, and then discovers the correct opaque file from scalar outcomes.
+Seeds `17` and `18` both retain the n-back-2/3/4 prefix and the new n-back-5
+file at `1.0000`, recover the held-out route at `1.0000`, preserve the
+controller and frontend digests, reload the route state exactly, reject an
+incompatible learned-event representation, and use zero replayed examples.
+This is bounded outcome-only route discovery, not arbitrary new computation,
+unrestricted memory growth, or general continual learning.
+
+Run it with:
+
+```bash
+PYTHONPATH=src:. ./.venv/bin/python -m experiments.brainworkshop_canonical.heldout_rule_growth \
+  --source-updates 64 --target-updates 256 --batch-size 32 --steps 14 \
+  --calibration-lifetimes 8 --discovery-lifetimes 8 --retention-lifetimes 8 \
+  --seed 17 --report-out /tmp/brainworkshop-heldout-rule-growth.json
+```
+
+The authoritative reports and sample-efficiency ledger are archived in
+`session_records/brainworkshop_heldout_rule_growth_2026-08-11/`.

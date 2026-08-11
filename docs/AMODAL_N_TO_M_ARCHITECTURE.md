@@ -9773,3 +9773,27 @@ encoder configuration and a digest of its learned state. Loading a route table
 with a mismatched representation fails explicitly instead of silently falling
 back to append order. This preserves the useful independence of external route
 memory while making representation migration a deliberate, testable operation.
+
+## Held-out external rule growth and outcome-only route discovery (2026-08-11)
+
+The next causal audit trains n-back-2, n-back-3, and n-back-4 external files,
+then appends an n-back-5 file under rendered cue `7`. Cue `8` is withheld from
+the route ledger and introduced only after the new file is trained. The route
+ledger must discover the correct opaque slot from scalar verifier outcomes;
+neither the controller nor the learned event encoder may update during growth
+or discovery.
+
+Seeds `17` and `18` both passed the complete boundary. All prefix and target
+retention probes reached `1.0000`; the held-out cue was absent before
+discovery, became routable from outcomes, and recovered `1.0000` accuracy with
+`1.0000` target-slot selection after discovery. The shared controller and
+stimulus-encoder digests were unchanged, route state reloaded exactly with the
+compatible encoder, incompatible encoder state was rejected, and replayed
+examples remained `0`. Each run used `832` optimizer updates and recorded
+`270,336` training verifier bits plus `24,864` audit bits.
+
+This promotes held-out outcome-only route discovery over bounded external rule
+growth. It does not establish arbitrary new computation, unrestricted memory
+growth, compression, or general continual learning. Evidence and the
+sample-efficiency ledger are archived in
+`session_records/brainworkshop_heldout_rule_growth_2026-08-11/`.
