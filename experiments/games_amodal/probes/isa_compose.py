@@ -496,6 +496,17 @@ if args.synthesize:
                              torch.zeros_like(states))
         nexts = torch.where(nexts < VALUES, nexts,
                             torch.zeros_like(nexts))
+        # Infer the modulus ONCE from every observation, not per action.
+        # Inferring from one action's rows is a smaller sample, and
+        # UNDER-estimating a slot's range is unsound in a way
+        # over-estimating is not: a modulus below the true value count
+        # makes INC wrap early and be wrong, while a modulus above it
+        # simply never reaches the wrap. `line` is the tell — it holds
+        # eight values and swung +0.1061, -0.0286, -0.0735, 0.0000
+        # across four seeds, which is what a modulus that is sometimes
+        # too small looks like.
+        family_moduli = (infer_moduli(states, nexts)
+                         if args.infer_moduli else None)
         recipe, fits = {}, []
         proposed_total = 0
         for action in range(family.actions):
@@ -504,7 +515,7 @@ if args.synthesize:
                 continue
             src, dst = states[keep], nexts[keep]
             needs = writes_needed(src, dst)
-            fixed = infer_moduli(src, dst) if args.infer_moduli else None
+            fixed = family_moduli
             best, best_score, evaluated = None, -1.0, 0
             while evaluated < args.synthesize:
                 candidate = random_program(generator, args.program_len,

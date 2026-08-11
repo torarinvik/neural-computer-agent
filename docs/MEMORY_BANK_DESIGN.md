@@ -8093,3 +8093,54 @@ than capacity or representation. That is consistent with F164's smooth
 non-grokking curve and with the late decline past 100k, and it makes
 seed-to-seed variance the phenomenon to study rather than the noise to
 average away.
+
+## F166 — observing the modulus beats searching it, on BOTH halves of
+## the prediction
+
+F162 measured the modulus argument buying +0.0431 on families whose
+value range is narrower than VALUES and costing -0.0074 on families at
+full range. The stated next move was that the modulus never had to be
+searched at all: each slot's range is visible in the transitions, so
+fixing m per slot from the data should keep the gain and remove the
+cost, because the instruction space returns to its original 210 once m
+is determined by i.
+
+Four seeds, seven families each, 40k updates. Training is IDENTICAL
+between the searched and inferred arms at a given seed — both draw m
+uniformly during training — so the plants are the same object and only
+the search differs. Change in search fit against the no-modulus
+control:
+
+| population | n | modulus SEARCHED | modulus OBSERVED |
+| --- | ---: | ---: | ---: |
+| families with values < 8 | 16 | +0.0431 | **+0.0631** |
+| families with values = 8 | 12 | -0.0074 | **+0.0044** |
+
+**Both halves confirmed, and the gain is larger than predicted.** The
+cost on full-range families is gone — it turns very slightly positive —
+and the benefit on short-ranged families grows by half again, because
+the search no longer wastes proposals on six wrong moduli per
+instruction.
+
+`toggle`, the family that started this and that F157 could not solve
+inside a 24,000-candidate budget, now fits at 0.9944, 0.9838, 0.9719,
+0.9701 across the four seeds — gains of +0.093 to +0.123 over the
+control, against +0.021 to +0.036 when the modulus was searched.
+
+**One column says the method has a flaw, and it is worth more than the
+headline.** `line` holds eight values, so inferring its modulus should
+change nothing. It swung +0.1061, -0.0286, -0.0735, 0.0000 across the
+four seeds. That is what a modulus that is SOMETIMES TOO SMALL looks
+like: the range was inferred from one action's rows, and if a slot's
+top value never appears in that subsample, the inferred modulus is
+below the true value count and INC wraps early and is simply wrong.
+
+The asymmetry matters and it is why this is a real bug rather than
+noise. Over-estimating a range is harmless — a modulus above the true
+count is never reached. Under-estimating is unsound. So the fix is to
+infer from every observation rather than from one action's slice, which
+strictly enlarges the sample and can only move the estimate up. Rerun
+launched.
+
+Probe 262 is `isa_compose.py --infer-moduli`, 4 seeds against two
+controls.
