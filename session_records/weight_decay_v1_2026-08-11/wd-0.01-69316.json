@@ -1,0 +1,466 @@
+{
+  "seed": 69316,
+  "width": 8,
+  "worlds": 256,
+  "held_worlds": 16,
+  "train_programs": 18,
+  "held_programs": 12,
+  "curve": [
+    [
+      0,
+      0.4893
+    ],
+    [
+      2500,
+      0.5413
+    ],
+    [
+      5000,
+      0.5638
+    ],
+    [
+      7500,
+      0.6654
+    ],
+    [
+      10000,
+      0.6624
+    ],
+    [
+      12500,
+      0.682
+    ],
+    [
+      15000,
+      0.7581
+    ],
+    [
+      17500,
+      0.7646
+    ],
+    [
+      20000,
+      0.7874
+    ],
+    [
+      22500,
+      0.8311
+    ],
+    [
+      25000,
+      0.8493
+    ],
+    [
+      27500,
+      0.8405
+    ],
+    [
+      30000,
+      0.8298
+    ],
+    [
+      32500,
+      0.8115
+    ],
+    [
+      35000,
+      0.859
+    ],
+    [
+      37500,
+      0.8529
+    ]
+  ],
+  "chance_exact": 0.003906,
+  "chance_bit": 0.5,
+  "held_out_worlds": {
+    "b161k4": {
+      "trained_programs": 0.4062,
+      "held_programs": 0.3294,
+      "withheld": 0.0039,
+      "stranger": 0.0052,
+      "swap_truth_with_own_entry": 0.2318,
+      "bits_trained_programs": 0.8538,
+      "bits_held_programs": 0.8335,
+      "bits_withheld": 0.52,
+      "bits_stranger": 0.5041
+    },
+    "b19k5": {
+      "trained_programs": 0.4253,
+      "held_programs": 0.3646,
+      "withheld": 0.0,
+      "stranger": 0.0026,
+      "swap_truth_with_own_entry": 0.1641,
+      "bits_trained_programs": 0.8447,
+      "bits_held_programs": 0.8247,
+      "bits_withheld": 0.4894,
+      "bits_stranger": 0.4924
+    },
+    "b28k4": {
+      "trained_programs": 0.4957,
+      "held_programs": 0.4518,
+      "withheld": 0.0026,
+      "stranger": 0.0143,
+      "swap_truth_with_own_entry": 0.2513,
+      "bits_trained_programs": 0.9017,
+      "bits_held_programs": 0.8875,
+      "bits_withheld": 0.521,
+      "bits_stranger": 0.5257
+    },
+    "b110k2": {
+      "trained_programs": 0.4297,
+      "held_programs": 0.3503,
+      "withheld": 0.0039,
+      "stranger": 0.0039,
+      "swap_truth_with_own_entry": 0.1758,
+      "bits_trained_programs": 0.8619,
+      "bits_held_programs": 0.8524,
+      "bits_withheld": 0.5005,
+      "bits_stranger": 0.5153
+    },
+    "b74k1": {
+      "trained_programs": 0.3967,
+      "held_programs": 0.2708,
+      "withheld": 0.0026,
+      "stranger": 0.2487,
+      "swap_truth_with_own_entry": 0.1237,
+      "bits_trained_programs": 0.8278,
+      "bits_held_programs": 0.8245,
+      "bits_withheld": 0.4976,
+      "bits_stranger": 0.616
+    },
+    "b43k1": {
+      "trained_programs": 0.395,
+      "held_programs": 0.3516,
+      "withheld": 0.0026,
+      "stranger": 0.0039,
+      "swap_truth_with_own_entry": 0.1667,
+      "bits_trained_programs": 0.8275,
+      "bits_held_programs": 0.8299,
+      "bits_withheld": 0.4875,
+      "bits_stranger": 0.4941
+    },
+    "b131k2": {
+      "trained_programs": 0.4071,
+      "held_programs": 0.3685,
+      "withheld": 0.0039,
+      "stranger": 0.0026,
+      "swap_truth_with_own_entry": 0.1654,
+      "bits_trained_programs": 0.8454,
+      "bits_held_programs": 0.8516,
+      "bits_withheld": 0.4969,
+      "bits_stranger": 0.4751
+    },
+    "b212k2": {
+      "trained_programs": 0.441,
+      "held_programs": 0.3815,
+      "withheld": 0.0052,
+      "stranger": 0.0039,
+      "swap_truth_with_own_entry": 0.1523,
+      "bits_trained_programs": 0.8774,
+      "bits_held_programs": 0.8745,
+      "bits_withheld": 0.5005,
+      "bits_stranger": 0.5116
+    },
+    "b122k2": {
+      "trained_programs": 0.4167,
+      "held_programs": 0.2917,
+      "withheld": 0.0052,
+      "stranger": 0.306,
+      "swap_truth_with_own_entry": 0.1458,
+      "bits_trained_programs": 0.8585,
+      "bits_held_programs": 0.8447,
+      "bits_withheld": 0.5011,
+      "bits_stranger": 0.6873
+    },
+    "b40k6": {
+      "trained_programs": 0.48,
+      "held_programs": 0.4049,
+      "withheld": 0.0039,
+      "stranger": 0.0052,
+      "swap_truth_with_own_entry": 0.1719,
+      "bits_trained_programs": 0.8931,
+      "bits_held_programs": 0.8774,
+      "bits_withheld": 0.4927,
+      "bits_stranger": 0.5091
+    },
+    "b150k2": {
+      "trained_programs": 0.4314,
+      "held_programs": 0.3685,
+      "withheld": 0.0039,
+      "stranger": 0.2292,
+      "swap_truth_with_own_entry": 0.1797,
+      "bits_trained_programs": 0.8601,
+      "bits_held_programs": 0.8569,
+      "bits_withheld": 0.5015,
+      "bits_stranger": 0.6279
+    },
+    "b211k7": {
+      "trained_programs": 0.4019,
+      "held_programs": 0.3138,
+      "withheld": 0.0052,
+      "stranger": 0.0026,
+      "swap_truth_with_own_entry": 0.1536,
+      "bits_trained_programs": 0.7998,
+      "bits_held_programs": 0.8049,
+      "bits_withheld": 0.4897,
+      "bits_stranger": 0.4906
+    },
+    "b103k4": {
+      "trained_programs": 0.4722,
+      "held_programs": 0.3646,
+      "withheld": 0.0078,
+      "stranger": 0.0039,
+      "swap_truth_with_own_entry": 0.2109,
+      "bits_trained_programs": 0.9049,
+      "bits_held_programs": 0.8898,
+      "bits_withheld": 0.5412,
+      "bits_stranger": 0.4878
+    },
+    "b117k4": {
+      "trained_programs": 0.5226,
+      "held_programs": 0.3958,
+      "withheld": 0.0052,
+      "stranger": 0.0026,
+      "swap_truth_with_own_entry": 0.3398,
+      "bits_trained_programs": 0.9196,
+      "bits_held_programs": 0.8883,
+      "bits_withheld": 0.5422,
+      "bits_stranger": 0.5106
+    },
+    "b250k7": {
+      "trained_programs": 0.4193,
+      "held_programs": 0.3477,
+      "withheld": 0.0078,
+      "stranger": 0.0143,
+      "swap_truth_with_own_entry": 0.1615,
+      "bits_trained_programs": 0.8453,
+      "bits_held_programs": 0.8423,
+      "bits_withheld": 0.4937,
+      "bits_stranger": 0.5005
+    },
+    "b108k4": {
+      "trained_programs": 0.4679,
+      "held_programs": 0.4115,
+      "withheld": 0.0039,
+      "stranger": 0.1745,
+      "swap_truth_with_own_entry": 0.2383,
+      "bits_trained_programs": 0.8883,
+      "bits_held_programs": 0.8779,
+      "bits_withheld": 0.5181,
+      "bits_stranger": 0.6387
+    }
+  },
+  "context_fit": {
+    "b161k4": {
+      "read": 0.9479,
+      "oracle": 0.5104
+    },
+    "b19k5": {
+      "read": 0.8646,
+      "oracle": 0.5
+    },
+    "b28k4": {
+      "read": 0.8958,
+      "oracle": 0.4583
+    },
+    "b110k2": {
+      "read": 0.875,
+      "oracle": 0.5104
+    },
+    "b74k1": {
+      "read": 0.8646,
+      "oracle": 0.4896
+    },
+    "b43k1": {
+      "read": 0.9167,
+      "oracle": 0.5729
+    },
+    "b131k2": {
+      "read": 0.875,
+      "oracle": 0.4583
+    },
+    "b212k2": {
+      "read": 0.9583,
+      "oracle": 0.4792
+    }
+  },
+  "trained_worlds": {
+    "b9k1": {
+      "trained_programs": 0.3741,
+      "held_programs": 0.2604,
+      "withheld": 0.0039,
+      "stranger": 0.0039,
+      "swap_truth_with_own_entry": 0.1016,
+      "bits_trained_programs": 0.8402,
+      "bits_held_programs": 0.8089,
+      "bits_withheld": 0.4816,
+      "bits_stranger": 0.4945
+    },
+    "b125k1": {
+      "trained_programs": 0.4028,
+      "held_programs": 0.263,
+      "withheld": 0.0026,
+      "stranger": 0.0052,
+      "swap_truth_with_own_entry": 0.1198,
+      "bits_trained_programs": 0.8601,
+      "bits_held_programs": 0.8245,
+      "bits_withheld": 0.4924,
+      "bits_stranger": 0.4919
+    },
+    "b134k2": {
+      "trained_programs": 0.4349,
+      "held_programs": 0.3568,
+      "withheld": 0.0065,
+      "stranger": 0.013,
+      "swap_truth_with_own_entry": 0.1641,
+      "bits_trained_programs": 0.8633,
+      "bits_held_programs": 0.8558,
+      "bits_withheld": 0.5037,
+      "bits_stranger": 0.5156
+    },
+    "b21k4": {
+      "trained_programs": 0.5616,
+      "held_programs": 0.4635,
+      "withheld": 0.0078,
+      "stranger": 0.0039,
+      "swap_truth_with_own_entry": 0.224,
+      "bits_trained_programs": 0.9262,
+      "bits_held_programs": 0.9033,
+      "bits_withheld": 0.5457,
+      "bits_stranger": 0.4876
+    },
+    "b75k2": {
+      "trained_programs": 0.4358,
+      "held_programs": 0.3555,
+      "withheld": 0.0039,
+      "stranger": 0.0156,
+      "swap_truth_with_own_entry": 0.1732,
+      "bits_trained_programs": 0.8588,
+      "bits_held_programs": 0.8545,
+      "bits_withheld": 0.492,
+      "bits_stranger": 0.5047
+    },
+    "b80k4": {
+      "trained_programs": 0.5938,
+      "held_programs": 0.4961,
+      "withheld": 0.0052,
+      "stranger": 0.0039,
+      "swap_truth_with_own_entry": 0.2396,
+      "bits_trained_programs": 0.9306,
+      "bits_held_programs": 0.908,
+      "bits_withheld": 0.5454,
+      "bits_stranger": 0.5078
+    },
+    "b176k5": {
+      "trained_programs": 0.4809,
+      "held_programs": 0.4284,
+      "withheld": 0.0026,
+      "stranger": 0.0013,
+      "swap_truth_with_own_entry": 0.1641,
+      "bits_trained_programs": 0.8818,
+      "bits_held_programs": 0.8735,
+      "bits_withheld": 0.4819,
+      "bits_stranger": 0.4818
+    },
+    "b180k3": {
+      "trained_programs": 0.4332,
+      "held_programs": 0.2956,
+      "withheld": 0.0091,
+      "stranger": 0.2435,
+      "swap_truth_with_own_entry": 0.1185,
+      "bits_trained_programs": 0.873,
+      "bits_held_programs": 0.8446,
+      "bits_withheld": 0.4982,
+      "bits_stranger": 0.6413
+    },
+    "b200k4": {
+      "trained_programs": 0.4375,
+      "held_programs": 0.3516,
+      "withheld": 0.0039,
+      "stranger": 0.0156,
+      "swap_truth_with_own_entry": 0.2122,
+      "bits_trained_programs": 0.8767,
+      "bits_held_programs": 0.8527,
+      "bits_withheld": 0.508,
+      "bits_stranger": 0.4928
+    },
+    "b164k6": {
+      "trained_programs": 0.428,
+      "held_programs": 0.3099,
+      "withheld": 0.0013,
+      "stranger": 0.0443,
+      "swap_truth_with_own_entry": 0.1419,
+      "bits_trained_programs": 0.8665,
+      "bits_held_programs": 0.8542,
+      "bits_withheld": 0.4976,
+      "bits_stranger": 0.576
+    },
+    "b232k4": {
+      "trained_programs": 0.4523,
+      "held_programs": 0.349,
+      "withheld": 0.0065,
+      "stranger": 0.0039,
+      "swap_truth_with_own_entry": 0.2305,
+      "bits_trained_programs": 0.8759,
+      "bits_held_programs": 0.8516,
+      "bits_withheld": 0.5018,
+      "bits_stranger": 0.5062
+    },
+    "b169k7": {
+      "trained_programs": 0.5269,
+      "held_programs": 0.4049,
+      "withheld": 0.0078,
+      "stranger": 0.2878,
+      "swap_truth_with_own_entry": 0.1497,
+      "bits_trained_programs": 0.8998,
+      "bits_held_programs": 0.8714,
+      "bits_withheld": 0.494,
+      "bits_stranger": 0.7354
+    },
+    "b220k3": {
+      "trained_programs": 0.4653,
+      "held_programs": 0.3607,
+      "withheld": 0.0065,
+      "stranger": 0.0182,
+      "swap_truth_with_own_entry": 0.1432,
+      "bits_trained_programs": 0.8854,
+      "bits_held_programs": 0.8631,
+      "bits_withheld": 0.4976,
+      "bits_stranger": 0.5024
+    },
+    "b172k6": {
+      "trained_programs": 0.4748,
+      "held_programs": 0.3685,
+      "withheld": 0.0078,
+      "stranger": 0.0013,
+      "swap_truth_with_own_entry": 0.1589,
+      "bits_trained_programs": 0.8798,
+      "bits_held_programs": 0.869,
+      "bits_withheld": 0.5057,
+      "bits_stranger": 0.4974
+    },
+    "b120k3": {
+      "trained_programs": 0.474,
+      "held_programs": 0.3477,
+      "withheld": 0.0104,
+      "stranger": 0.2747,
+      "swap_truth_with_own_entry": 0.1458,
+      "bits_trained_programs": 0.8888,
+      "bits_held_programs": 0.8454,
+      "bits_withheld": 0.5041,
+      "bits_stranger": 0.6359
+    },
+    "b146k7": {
+      "trained_programs": 0.4019,
+      "held_programs": 0.3633,
+      "withheld": 0.0052,
+      "stranger": 0.276,
+      "swap_truth_with_own_entry": 0.1667,
+      "bits_trained_programs": 0.835,
+      "bits_held_programs": 0.8442,
+      "bits_withheld": 0.492,
+      "bits_stranger": 0.5903
+    }
+  }
+}

@@ -7330,3 +7330,51 @@ be stated plainly: the reader's "gap" is slow convergence, the
 literature addenda 2 and 4 were answering a question that dissolves,
 and F148's mechanism nulls were nulls because there was no mechanism
 to fix.
+
+**F154 CONFIRMED (probe 252). Weight decay 0.01 buys most of what 2.5x
+more training buys, at 40% of the cost — two seeds, and it is the
+FIRST literature-derived mechanism in this sequence that works.**
+
+| arm | own (per-bit) | exact |
+| --- | ---: | ---: |
+| wd=0.00, 40k (F144, 3 seeds) | 0.7795 | 0.2498 |
+| **wd=0.01, 40k (2 seeds)** | **0.8569** | **0.3509** |
+| wd=0.00, 100k (F147, 2 seeds) | 0.8704 | 0.4228 |
+| wd=0.10, 40k (2 seeds) | 0.6725 | 0.0903 |
+| privileged ceiling (F138) | 0.9723 | 0.8894 |
+
+Per-seed at 0.01: 0.8538 / 0.8599 — tight. Per-seed at 0.1:
+0.5868 / 0.7583 — both bad, and the spread itself is a symptom.
+
+So there is a clear interior optimum. At 0.01 weight decay recovers
+about 85% of the gain that 2.5x more updates delivers while spending
+40% of the compute; at 0.1 it is destructive, with exact-match down
+almost fourfold against no decay at all. The grokking literature's
+claim that steps-to-generalisation scale inversely with weight decay
+holds at the right magnitude and inverts at the wrong one — which is
+more useful than a uniform win, because it says the knob is real and
+must be TUNED rather than switched on.
+
+**Scoreboard for the literature programme, stated plainly.** Five
+mechanisms were derived from published work and measured here:
+semi-amortization (null, F148), discrete codebook (null, F148),
+length curriculum (null, F127), two-phase frozen plant (null, F136),
+weight decay (WORKS, here). One in five — and the one that worked is
+by far the cheapest, a single optimiser argument that no probe in this
+project had ever set across 22 probe files.
+
+**But the curves say the mechanism is not the one the literature
+proposed.** wd=0.01 climbs 0.489 -> 0.541 -> 0.564 -> 0.665 -> 0.682
+-> 0.758 -> 0.787 -> 0.831 -> 0.849 -> ... -> 0.853. Steeper than
+wd=0, and still SMOOTH — no plateau, no transition. Weight decay is
+changing the RATE, not producing an earlier phase change. So the
+intervention is vindicated while the grokking framing that suggested
+it is not, and those are separate claims that happened to arrive
+together.
+
+Practical consequence, applied from here: 0.01 becomes the default for
+this probe family. Every result measured at wd=0 was measured with an
+optimiser setting we now know to be leaving roughly 0.08 on the table
+at fixed budget — including F148's nulls, which were run at 40k and
+may deserve one re-test at the corrected setting before they are
+final.
