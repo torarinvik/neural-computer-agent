@@ -32,6 +32,7 @@ from neural_computer import (
     AmodalEventBridge,
     BoundExternalSequenceOperatorMemory,
     CanonicalRegisterReadout,
+    EpisodicIntentAdapter,
     ExternalCapabilityRegisterMachine,
     ExternalRegisterInstruction,
     OpaqueProtocolDecoder,
@@ -211,6 +212,8 @@ def _rollout(
     q_head: OpaqueVerifierQ | None = None,
     event_bridge: AmodalEventBridge | None = None,
     register_readout: CanonicalRegisterReadout | None = None,
+    operator_read_adapter: EpisodicIntentAdapter | None = None,
+    operator_read_mode: str = "normal",
     preserve_execution_trace: bool = False,
     bind_operator_route: bool = False,
     route_probe: bool = False,
@@ -231,6 +234,10 @@ def _rollout(
         raise ValueError(f"unknown bridge event mode: {bridge_event_mode!r}")
     if bridge_state_mode not in ("normal", "zero"):
         raise ValueError(f"unknown bridge state mode: {bridge_state_mode!r}")
+    if operator_read_mode not in ("normal", "zero"):
+        raise ValueError(f"unknown operator read mode: {operator_read_mode!r}")
+    if operator_read_adapter is not None and sequence_operator_memory is None:
+        raise ValueError("operator read adapter requires external operator memory")
     if (
         bridge_event_mode != "normal" or bridge_state_mode != "normal"
     ) and event_bridge is None:
@@ -340,6 +347,21 @@ def _rollout(
                 parent_state,
                 feedback,
             )
+        effective_intention = output.intention
+        if operator_read_adapter is not None and not route_probe:
+            if not isinstance(
+                sequence_operator_memory, BoundExternalSequenceOperatorMemory
+            ):
+                raise ValueError(
+                    "operator read adapter requires a bound operator memory"
+                )
+            read_token = sequence_operator_memory.read_token()
+            if operator_read_mode == "zero":
+                read_token = torch.zeros_like(read_token)
+            effective_intention = operator_read_adapter(
+                effective_intention,
+                read_token,
+            )
         # Keep the frozen parent detached while allowing an external learned
         # event bridge to receive gradients.  Previously this entire boundary
         # lived inside the no-grad block, so bridge parameters could be listed
@@ -400,7 +422,7 @@ def _rollout(
                     event=event,
                     action=previous_action,
                     outcome=previous_reward,
-                    intention=output.intention,
+                    intention=effective_intention,
                     state=register_state,
                     present=present,
                 )
@@ -435,7 +457,7 @@ def _rollout(
                 event=event,
                 action=previous_action,
                 outcome=previous_reward,
-                intention=output.intention,
+                intention=effective_intention,
                 state=register_state,
                 present=present,
             )
@@ -455,11 +477,29 @@ def _rollout(
             next_state = None
             slot_logits = []
             for slot in range(len(sequence_operator_memory.slots)):
+                slot_intention = effective_intention
+                if operator_read_adapter is not None:
+                    slot_weights = F.one_hot(
+                        torch.full(
+                            (batch_size,),
+                            slot,
+                            dtype=torch.long,
+                            device=event.device,
+                        ),
+                        num_classes=len(sequence_operator_memory.slots),
+                    ).to(dtype=event.dtype)
+                    slot_token = sequence_operator_memory.read_token(slot_weights)
+                    if operator_read_mode == "zero":
+                        slot_token = torch.zeros_like(slot_token)
+                    slot_intention = operator_read_adapter(
+                        output.intention,
+                        slot_token,
+                    )
                 slot_register, candidate_state = machine.read_execute_register(
                     event=event,
                     action=previous_action,
                     outcome=previous_reward,
-                    intention=output.intention,
+                    intention=slot_intention,
                     state=register_state,
                     present=present,
                     instructions=instructions,
@@ -490,7 +530,7 @@ def _rollout(
                 event=event,
                 action=previous_action,
                 outcome=previous_reward,
-                intention=output.intention,
+                intention=effective_intention,
                 state=register_state,
                 present=present,
                 instructions=instructions,
@@ -510,7 +550,7 @@ def _rollout(
                 event=event,
                 action=previous_action,
                 outcome=previous_reward,
-                intention=output.intention,
+                intention=effective_intention,
                 state=register_state,
                 present=present,
                 instructions=instructions,
@@ -527,7 +567,7 @@ def _rollout(
                     event=event,
                     action=previous_action,
                     outcome=previous_reward,
-                    intention=output.intention,
+                    intention=effective_intention,
                     state=register_state,
                     present=present,
                     instructions=instructions,
@@ -542,7 +582,7 @@ def _rollout(
                     event=event,
                     action=previous_action,
                     outcome=previous_reward,
-                    intention=output.intention,
+                    intention=effective_intention,
                     state=register_state,
                     present=present,
                     instructions=instructions,
@@ -950,6 +990,8 @@ def _accuracy(
     q_head: OpaqueVerifierQ | None = None,
     event_bridge: AmodalEventBridge | None = None,
     register_readout: CanonicalRegisterReadout | None = None,
+    operator_read_adapter: EpisodicIntentAdapter | None = None,
+    operator_read_mode: str = "normal",
     preserve_execution_trace: bool = False,
     bind_operator_route: bool = False,
     reverse_operations: bool = False,
@@ -994,6 +1036,8 @@ def _accuracy(
             q_head=q_head,
             event_bridge=event_bridge,
             register_readout=register_readout,
+            operator_read_adapter=operator_read_adapter,
+            operator_read_mode=operator_read_mode,
             preserve_execution_trace=preserve_execution_trace,
             bind_operator_route=bind_operator_route,
             bridge_event_mode=bridge_event_mode,

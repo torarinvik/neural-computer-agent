@@ -299,8 +299,20 @@ therefore evidence for durable storage and correct execution wiring, not
 learned target dependence or positive continual-learning transfer. The report,
 accounting ledger, and reproduction command are archived in
 `session_records/external_operator_memory_target_bind_rejected_2026-08-11/`.
-The next bottleneck is an independently measurable learned file-read/trace
-path, with read-ablated controls, before scaling external operator capacity.
+
+The next rung separates route keys from file content. Each operator slot now
+stores independent learned `slot_values`; `read_token()` returns a
+route-weighted file token without rerunning the router. A replaceable
+`EpisodicIntentAdapter` receives that token and is frozen before target
+acquisition. The v2 payload is checksummed and loads legacy v1 payloads through
+an explicit compatibility path.
+
+The v2 rendered-event rung passed calibration and exact reload, but both
+generated-composition targets had a `0.00` percentage-point drop under the
+paired zero-read control. The adapter is wired and trainable, but the target
+learner still bypasses it. This is a rejected learned-capability result. The
+next experiment must make the file-read path computationally necessary before
+we increase external capacity.
 
 ## Promoted basis reuse (2026-08-08)
 

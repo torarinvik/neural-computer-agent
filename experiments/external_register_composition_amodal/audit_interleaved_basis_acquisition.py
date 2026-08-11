@@ -26,6 +26,7 @@ from neural_computer import (
     CanonicalRegisterReadout,
     CapabilityConditionedEventBridge,
     ConditionedOpaqueProtocolDecoder,
+    EpisodicIntentAdapter,
     ExternalRegisterInstruction,
     ExternalSequenceMemory,
     ExternalSequenceOperatorMemory,
@@ -42,6 +43,7 @@ from .train import (
     ACTION_WIDTH,
     EVENT_WIDTH,
     INSTRUCTION_WIDTH,
+    INTENTION_WIDTH,
     REGISTER_WIDTH,
     _accuracy,
     _batch,
@@ -163,6 +165,7 @@ def _score(
     seed: int,
     shuffle_outcomes: bool = False,
     evidence_present: bool = True,
+    operator_read_mode: str = "normal",
 ) -> float:
     sequence_program_codes = _candidate_program_codes(
         machine,
@@ -200,6 +203,8 @@ def _score(
         sequence_operator_memory=sequence_operator_memory,
         sequence_operator_route_query=sequence_operator_route_query,
         bind_operator_route=candidate.get("bind_operator_route", False),
+        operator_read_adapter=candidate.get("operator_read_adapter"),
+        operator_read_mode=operator_read_mode,
         sequence_program_codes=sequence_program_codes,
     )
 
@@ -254,6 +259,23 @@ def _zero_operator_memory(memory):
         for parameter in corrupted.parameters():
             parameter.zero_()
     return corrupted
+
+
+def _new_operator_read_adapter(
+    state: dict[str, torch.Tensor] | None,
+) -> EpisodicIntentAdapter:
+    """Create one replaceable file-read adapter from a protected prior."""
+
+    adapter = EpisodicIntentAdapter(
+        INSTRUCTION_WIDTH,
+        INTENTION_WIDTH,
+        hidden=32,
+    )
+    if state is not None:
+        adapter.load_state_dict(state, strict=True)
+        for parameter in adapter.parameters():
+            parameter.requires_grad_(False)
+    return adapter
 
 
 def _train_interleaved_phase(
@@ -353,6 +375,7 @@ def _train_interleaved_phase(
             sequence_operator_memory=candidate.get("sequence_operator_memory"),
             sequence_operator_route_query=sequence_operator_route_query,
             bind_operator_route=candidate.get("bind_operator_route", False),
+            operator_read_adapter=candidate.get("operator_read_adapter"),
             sequence_program_codes=_candidate_program_codes(
                 machine,
                 candidate,
@@ -411,6 +434,7 @@ def _prepare_candidates(
     preserve_composition_trace: bool = False,
     sequence_operator_memory=None,
     bind_operator_route: bool = False,
+    operator_read_adapter_state: dict[str, torch.Tensor] | None = None,
     sequence_program_memory=None,
     program_slot_by_program: dict[tuple[str, ...], int] | None = None,
 ) -> list[dict[str, object]]:
@@ -509,6 +533,11 @@ def _prepare_candidates(
                     "preserve_execution_trace": preserve_composition_trace,
                     "sequence_operator_memory": sequence_operator_memory,
                     "bind_operator_route": bind_operator_route,
+                    "operator_read_adapter": (
+                        _new_operator_read_adapter(operator_read_adapter_state)
+                        if operator_read_adapter_state is not None
+                        else None
+                    ),
                 }
             )
     return candidates
@@ -757,6 +786,7 @@ def _train_sequence_calibration(
     sequence_memory: ExternalSequenceMemory | None = None,
     sequence_operator_memory: ExternalSequenceOperatorMemory | None = None,
     sequence_readout: CanonicalRegisterReadout | None = None,
+    operator_read_adapter: EpisodicIntentAdapter | None = None,
     sequence_program_memory: ExternalSequenceProgramMemory | None = None,
 ) -> list[dict[str, object]]:
     """Calibrate the shared operator on opaque multi-instruction chains.
@@ -866,6 +896,8 @@ def _train_sequence_calibration(
         trainable = list(machine.parameters())
     if sequence_readout is not None:
         trainable.extend(sequence_readout.parameters())
+    if operator_read_adapter is not None:
+        trainable.extend(operator_read_adapter.parameters())
     seen_decoder_parameters: set[int] = set()
     for decoder in decoders:
         for parameter in decoder.parameters():
@@ -876,8 +908,11 @@ def _train_sequence_calibration(
         trainable.extend(sequence_memory.parameters())
     optimizer = torch.optim.AdamW(trainable, lr=args.learning_rate, weight_decay=1e-5)
     best_state = None
+    best_memory_state = None
+    best_operator_memory_state = None
     best_decoder_states = None
     best_readout_state = None
+    best_operator_read_adapter_state = None
     best_floor = float("-inf")
     progress: list[dict[str, object]] = []
     for update in range(1, args.sequence_calibration_updates + 1):
@@ -921,6 +956,7 @@ def _train_sequence_calibration(
             ),
             route_probe=(args.use_route_outcome_credit and use_operator_router),
             register_readout=sequence_readout,
+            operator_read_adapter=operator_read_adapter,
             decoder_context=(route_query(program) if args.conditioned_sequence_decoder else None),
             sequence_program_codes=(
                 sequence_program_memory.program_codes(
@@ -1010,6 +1046,7 @@ def _train_sequence_calibration(
                         args.bind_operator_route and use_operator_router
                     ),
                     register_readout=sequence_readout,
+                    operator_read_adapter=operator_read_adapter,
                     decoder_context=(
                         route_query(program_value)
                         if args.conditioned_sequence_decoder
@@ -1100,6 +1137,11 @@ def _train_sequence_calibration(
                         name: value.detach().clone()
                         for name, value in sequence_readout.state_dict().items()
                     }
+                if operator_read_adapter is not None:
+                    best_operator_read_adapter_state = {
+                        name: value.detach().clone()
+                        for name, value in operator_read_adapter.state_dict().items()
+                    }
     if best_state is None:
         raise RuntimeError("sequence calibration did not produce a checkpoint")
     machine.load_state_dict(best_state, strict=True)
@@ -1117,6 +1159,14 @@ def _train_sequence_calibration(
             decoder.load_state_dict(state, strict=True)
     if sequence_readout is not None and best_readout_state is not None:
         sequence_readout.load_state_dict(best_readout_state, strict=True)
+    if (
+        operator_read_adapter is not None
+        and best_operator_read_adapter_state is not None
+    ):
+        operator_read_adapter.load_state_dict(
+            best_operator_read_adapter_state,
+            strict=True,
+        )
     return progress
 
 def _train_shared_bridge_prior(
@@ -1657,6 +1707,21 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         )
         for _ in composition_programs:
             sequence_operator_memory.add_slot()
+    if args.use_operator_read_adapter and not (
+        args.use_operator_sequence_memory
+        and args.use_operator_sequence_router
+        and args.sequence_calibration_updates
+    ):
+        raise ValueError(
+            "operator read adapters require routed external operator calibration"
+        )
+    operator_read_adapter = None
+    if args.use_operator_read_adapter and args.sequence_calibration_updates:
+        operator_read_adapter = EpisodicIntentAdapter(
+            INSTRUCTION_WIDTH,
+            INTENTION_WIDTH,
+            hidden=32,
+        )
     if args.use_sequence_program_memory and args.sequence_calibration_updates:
         sequence_program_memory = ExternalSequenceProgramMemory(
             INSTRUCTION_WIDTH,
@@ -1688,6 +1753,14 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         if sequence_operator_memory is not None
         else None
     )
+    operator_read_adapter_before = (
+        {
+            name: value.detach().clone()
+            for name, value in operator_read_adapter.state_dict().items()
+        }
+        if operator_read_adapter is not None
+        else None
+    )
     if args.sequence_calibration_updates:
         machine_before_sequence_calibration = copy.deepcopy(machine)
         sequence_calibration_progress = _train_sequence_calibration(
@@ -1700,6 +1773,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             sequence_memory=sequence_memory,
             sequence_operator_memory=sequence_operator_memory,
             sequence_readout=sequence_readout,
+            operator_read_adapter=operator_read_adapter,
             sequence_program_memory=sequence_program_memory,
         )
         sequence_calibration_source_after = [
@@ -1719,10 +1793,26 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                 sequence_operator_memory.load_state_dict(
                     sequence_operator_memory_before, strict=True
                 )
+            if (
+                operator_read_adapter is not None
+                and operator_read_adapter_before is not None
+            ):
+                operator_read_adapter.load_state_dict(
+                    operator_read_adapter_before,
+                    strict=True,
+                )
             sequence_calibration_source_after = list(source_before)
     if sequence_operator_memory is not None:
         for parameter in sequence_operator_memory.parameters():
             parameter.requires_grad_(False)
+    operator_read_adapter_state = None
+    if operator_read_adapter is not None and sequence_calibration_accepted:
+        for parameter in operator_read_adapter.parameters():
+            parameter.requires_grad_(False)
+        operator_read_adapter_state = {
+            name: value.detach().clone()
+            for name, value in operator_read_adapter.state_dict().items()
+        }
     if args.grow_sequence_program_memory:
         for program in target_composition_programs:
             if program in sequence_program_slot_by_program:
@@ -1800,6 +1890,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         bind_operator_route=(
             args.bind_operator_route and args.use_operator_sequence_router
         ),
+        operator_read_adapter_state=operator_read_adapter_state,
         readout_prior_state=readout_prior_state,
         sequence_program_memory=(
             sequence_program_memory if args.grow_sequence_program_memory else None
@@ -1965,6 +2056,16 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             )
             for _ in composition_programs:
                 fresh_sequence_operator_memory.add_slot()
+        fresh_operator_read_adapter = None
+        if (
+            args.use_operator_read_adapter
+            and fresh_sequence_operator_memory is not None
+        ):
+            fresh_operator_read_adapter = EpisodicIntentAdapter(
+                INSTRUCTION_WIDTH,
+                INTENTION_WIDTH,
+                hidden=32,
+            )
         fresh_sequence_calibration_progress = (
             []
             if args.reuse_interpreter_prior
@@ -1975,10 +2076,14 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                 composition_programs=composition_programs,
                 seed_base=args.seed + 2_400_000 + index * 20_003,
                 sequence_operator_memory=fresh_sequence_operator_memory,
+                operator_read_adapter=fresh_operator_read_adapter,
             )
         )
         if fresh_sequence_operator_memory is not None:
             for parameter in fresh_sequence_operator_memory.parameters():
+                parameter.requires_grad_(False)
+        if fresh_operator_read_adapter is not None:
+            for parameter in fresh_operator_read_adapter.parameters():
                 parameter.requires_grad_(False)
         source_indices = tuple(
             args.source_operations.index(primitive) for primitive in program
@@ -2073,6 +2178,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "bind_operator_route": (
                 args.bind_operator_route and args.use_operator_sequence_router
             ),
+            "operator_read_adapter": fresh_operator_read_adapter,
         }
         _train_candidate_schedule(
             parent,
@@ -2161,6 +2267,19 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             span=args.span,
             seed=args.seed + 730_000 + index * 1_009,
         )
+        operator_read_ablation_accuracy = None
+        operator_read_causal = True
+        if candidate.get("operator_read_adapter") is not None:
+            operator_read_ablation_accuracy = _score(
+                parent,
+                machine,
+                candidate,
+                count=args.audit_count,
+                span=args.span,
+                seed=args.seed + 700_000 + index * 1_009,
+                operator_read_mode="zero",
+            )
+            operator_read_causal = operator_read_ablation_accuracy < score - 0.05
         memory_reference_accuracy = None
         memory_corruption = None
         if candidate.get("sequence_operator_memory") is not None:
@@ -2219,6 +2338,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                 "consolidation_probe_accuracy": probe,
                 "shuffled_training_accuracy": shuffled,
                 "missing_evidence_accuracy": missing,
+                "operator_read_ablation_accuracy": operator_read_ablation_accuracy,
+                "operator_read_causal": operator_read_causal,
                 "memory_reference_accuracy": memory_reference_accuracy,
                 "memory_corruption_accuracy": memory_corruption,
                 "memory_causal": memory_causal,
@@ -2234,6 +2355,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                     and min(deltas, default=0.0) >= -args.retention_regression_tolerance
                     and shuffled < MASTERY_THRESHOLD
                     and missing < MASTERY_THRESHOLD
+                    and operator_read_causal
                     and memory_causal
                     and memory_reload_exact
                 ),
@@ -2294,6 +2416,10 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         candidate.get("sequence_operator_memory") is not None
         for candidate in candidates
     )
+    operator_read_control_count = sum(
+        candidate.get("operator_read_adapter") is not None
+        for candidate in candidates
+    )
     sequence_calibration_lifetimes = (
         args.sequence_calibration_updates * args.batch_size
         if sequence_calibration_progress
@@ -2307,6 +2433,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         candidate_count * args.audit_count * 3
         + candidate_count * args.consolidation_audit_count
         + operator_memory_control_count * args.consolidation_audit_count * 2
+        + operator_read_control_count * args.audit_count
         + len(source_specs) * args.source_selection_audit_count * 3
         + source_selection_evaluations * source_attempt_count * args.source_selection_audit_count
         + phase_audit_lifetimes * 2
@@ -2400,6 +2527,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         * 2
         * 2
         + len(source_specs) * args.source_selection_audit_count * 3 * args.span * 2
+        + operator_read_control_count * args.audit_count * args.span * 2
     )
     unique_verifier_bits = (
         parent_training_bits
@@ -2432,7 +2560,9 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         )
     elif args.use_operator_sequence_memory:
         if args.use_operator_sequence_router:
-            if args.conditioned_sequence_decoder:
+            if args.use_operator_read_adapter:
+                sequence_surface = "sequence_operator_memory_slots_plus_bound_router_plus_external_read_adapter"
+            elif args.conditioned_sequence_decoder:
                 sequence_surface = "sequence_operator_memory_slots_plus_learned_router_plus_conditioned_shared_decoder"
             elif args.shared_sequence_decoder:
                 sequence_surface = "sequence_operator_memory_slots_plus_learned_router_plus_shared_decoder"
@@ -2456,6 +2586,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "joint_source_updates": args.joint_source_updates,
         "sequence_calibration_updates": args.sequence_calibration_updates,
         "bind_operator_route": args.bind_operator_route,
+        "use_operator_read_adapter": args.use_operator_read_adapter,
         "sequence_calibration_trainable_surface": sequence_surface,
         "sequence_calibration_accepted": sequence_calibration_accepted,
         "sequence_calibration_source_before": source_before,
@@ -2478,6 +2609,11 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         ),
         "sequence_readout": (
             sequence_readout.configuration() if sequence_readout is not None else None
+        ),
+        "operator_read_adapter": (
+            operator_read_adapter.configuration()
+            if operator_read_adapter is not None
+            else None
         ),
         "route_credit": (
             "counterfactual_scalar_outcome_per_operator_slot"
@@ -2596,6 +2732,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "progress_audit_verifier_bits": progress_audit_bits,
             "suite_and_control_verifier_bits": suite_and_control_bits,
             "operator_memory_control_count": operator_memory_control_count,
+            "operator_read_control_count": operator_read_control_count,
             "unique_verifier_bits": unique_verifier_bits,
             "optimizer_updates": (
                 args.parent_updates
@@ -2725,6 +2862,15 @@ def main() -> None:
         action=argparse.BooleanOptionalAction,
         default=False,
         help="materialize each operator route once per rollout before recurrent execution",
+    )
+    parser.add_argument(
+        "--use-operator-read-adapter",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help=(
+            "train a replaceable external-file read adapter that conditions "
+            "the opaque intention from the bound route token"
+        ),
     )
     parser.add_argument(
         "--operator-router-temperature",

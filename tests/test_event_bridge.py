@@ -12,6 +12,7 @@ from experiments.working_memory_continuous.canonical_growth_pressure_test import
 from neural_computer import (
     AmodalEventBridge,
     CapabilityConditionedEventBridge,
+    EpisodicIntentAdapter,
     ExternalSequenceOperatorMemory,
     OpaqueProtocolDecoder,
 )
@@ -150,6 +151,47 @@ def test_external_rollout_keeps_route_probe_unbound_when_requested() -> None:
 
     assert torch.isfinite(loss)
     assert rewards.shape == (2, 1)
+
+
+def test_external_rollout_uses_bound_file_read_adapter_without_parent_gradients() -> None:
+    parent = _runtime(seed=61, growth=False)
+    machine = _new_machine(
+        2,
+        operator_mode="factorized_protected_bounded_meta",
+        operator_rank=2,
+    )
+    decoder = OpaqueProtocolDecoder(32, 2, hidden=8)
+    memory = ExternalSequenceOperatorMemory(32, 16, operator_rank=2)
+    memory.add_slot()
+    memory.add_slot()
+    adapter = EpisodicIntentAdapter(16, 16, hidden=8)
+    batch = _batch(
+        "generated_composition",
+        count=4,
+        span=2,
+        seed=67,
+        generated_composition_ids=(0,),
+        generated_compositions=(("reverse", "complement"),),
+    )
+
+    loss, _ = _rollout(
+        parent,
+        machine,
+        decoder,
+        batch,
+        tuple(machine.instructions),
+        train_decoder=True,
+        credit_mode="attempted_bce",
+        sequence_operator_memory=memory,
+        sequence_operator_route_query=torch.randn(16),
+        bind_operator_route=True,
+        operator_read_adapter=adapter,
+    )
+    loss.backward()
+
+    assert torch.isfinite(loss)
+    assert any(parameter.grad is not None for parameter in adapter.parameters())
+    assert all(parameter.grad is None for parameter in parent.parameters())
 
 
 def test_bridge_corruption_control_keeps_scalar_credit_on_external_path() -> None:

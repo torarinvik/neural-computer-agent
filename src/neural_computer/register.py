@@ -82,8 +82,11 @@ EXTERNAL_SEQUENCE_PROGRAM_MEMORY_COMPRESSED_SCHEMA = (
 EXTERNAL_SEQUENCE_OPERATOR_BINDING_SCHEMA = (
     "neural-computer.external-sequence-operator-binding.v1"
 )
-EXTERNAL_SEQUENCE_OPERATOR_MEMORY_SCHEMA = (
+LEGACY_EXTERNAL_SEQUENCE_OPERATOR_MEMORY_SCHEMA = (
     "neural-computer.external-sequence-operator-memory.v1"
+)
+EXTERNAL_SEQUENCE_OPERATOR_MEMORY_SCHEMA = (
+    "neural-computer.external-sequence-operator-memory.v2"
 )
 
 
@@ -1756,6 +1759,7 @@ class ExternalSequenceOperatorMemory(nn.Module):
         self.router_temperature = float(router_temperature)
         self.slots = nn.ModuleList()
         self.slot_keys = nn.ParameterList()
+        self.slot_values = nn.ParameterList()
         self.query_encoder = nn.Sequential(
             nn.Linear(self.instruction_width, self.router_hidden),
             nn.GELU(),
@@ -1784,6 +1788,7 @@ class ExternalSequenceOperatorMemory(nn.Module):
             "route_encoder": "gru_order_sensitive_v1",
             "slot_count": len(self.slots),
             "growth": "append_only_external_operator_state_v1",
+            "file_token": "learned_slot_values_v1",
         }
 
     def digest(self) -> str:
@@ -1821,7 +1826,11 @@ class ExternalSequenceOperatorMemory(nn.Module):
 
         if not isinstance(payload, Mapping):
             raise TypeError("sequence operator memory payload must be a mapping")
-        if payload.get("schema") != EXTERNAL_SEQUENCE_OPERATOR_MEMORY_SCHEMA:
+        payload_schema = payload.get("schema")
+        if payload_schema not in (
+            EXTERNAL_SEQUENCE_OPERATOR_MEMORY_SCHEMA,
+            LEGACY_EXTERNAL_SEQUENCE_OPERATOR_MEMORY_SCHEMA,
+        ):
             raise ValueError("unsupported sequence operator memory schema")
         configuration = payload.get("configuration")
         state = payload.get("state")
@@ -1844,12 +1853,36 @@ class ExternalSequenceOperatorMemory(nn.Module):
         )
         for _ in range(slot_count):
             memory.add_slot()
-        memory.load_state_dict(state, strict=True)
-        if memory.configuration() != dict(configuration):
+        memory.load_state_dict(
+            state,
+            strict=payload_schema == EXTERNAL_SEQUENCE_OPERATOR_MEMORY_SCHEMA,
+        )
+        if payload_schema == EXTERNAL_SEQUENCE_OPERATOR_MEMORY_SCHEMA and (
+            memory.configuration() != dict(configuration)
+        ):
             raise ValueError("sequence operator memory configuration mismatch")
+        if payload_schema == LEGACY_EXTERNAL_SEQUENCE_OPERATOR_MEMORY_SCHEMA:
+            current_configuration = memory.configuration()
+            if any(
+                current_configuration.get(name) != value
+                for name, value in configuration.items()
+                if name != "schema"
+            ):
+                raise ValueError("legacy sequence operator memory configuration mismatch")
         if verify_checksum:
             expected = payload.get("sha256")
-            if not isinstance(expected, str) or expected != memory.digest():
+            current_digest = (
+                memory.digest()
+                if payload_schema == EXTERNAL_SEQUENCE_OPERATOR_MEMORY_SCHEMA
+                else _digest_mapping(
+                    {
+                        "schema": LEGACY_EXTERNAL_SEQUENCE_OPERATOR_MEMORY_SCHEMA,
+                        "configuration": configuration,
+                        "state": state,
+                    }
+                )
+            )
+            if not isinstance(expected, str) or expected != current_digest:
                 raise ValueError("sequence operator memory checksum mismatch")
         return memory
 
@@ -1864,6 +1897,7 @@ class ExternalSequenceOperatorMemory(nn.Module):
         key = nn.Parameter(torch.empty(self.instruction_width))
         nn.init.normal_(key, mean=0.0, std=0.02)
         self.slot_keys.append(key)
+        self.slot_values.append(nn.Parameter(torch.zeros(self.instruction_width)))
         return len(self.slots) - 1
 
     def bind(self, query: torch.Tensor) -> BoundExternalSequenceOperatorMemory:
@@ -1906,6 +1940,26 @@ class ExternalSequenceOperatorMemory(nn.Module):
         return torch.softmax(
             logits / (self.router_temperature * (self.router_hidden**0.5)), dim=-1
         )
+
+    def read_token(self, route_weights: torch.Tensor) -> torch.Tensor:
+        """Read one opaque file token from an already materialized route.
+
+        The token is a learned, route-weighted view of external file values.  It
+        is deliberately separate from :meth:`residual`: a caller can expose
+        the file read to a replaceable memory-side adapter while the shared
+        interpreter continues to execute the same bound route.  No route
+        encoder is run here, so repeated recurrent steps cannot silently turn
+        a file read into repeated contextual lookup.
+        """
+
+        if route_weights.ndim != 2 or route_weights.shape[1] != len(self.slots):
+            raise ValueError("sequence operator route weights have the wrong shape")
+        if not len(self.slots):
+            raise ValueError("cannot read an empty sequence operator memory")
+        if not bool(torch.isfinite(route_weights).all()):
+            raise ValueError("sequence operator route weights must be finite")
+        values = torch.stack(tuple(self.slot_values), dim=0)
+        return torch.einsum("bs,sw->bw", route_weights, values)
 
     def residual(
         self,
@@ -2025,6 +2079,12 @@ class BoundExternalSequenceOperatorMemory:
             register,
             code,
         )
+
+    def read_token(self) -> torch.Tensor:
+        """Read the bound external file once without rerunning its router."""
+
+        self._validate_memory_snapshot()
+        return self.memory.read_token(self._route_weights)
 
     def routed_residual(
         self,

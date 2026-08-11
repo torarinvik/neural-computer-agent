@@ -2835,6 +2835,26 @@ route binding—as the current bottleneck; the result is archived as a rejected
 diagnostic in
 `session_records/external_operator_memory_target_bind_rejected_2026-08-11/`.
 
+The follow-up adds a real file-value read path. Each slot now owns independent
+`slot_values`, separate from its routing key, and a replaceable
+`EpisodicIntentAdapter` conditions the opaque intention on the one-time bound
+file token. The adapter is trained during routed external calibration, frozen
+before target acquisition, and evaluated with a paired zero-read control. The
+v2 file schema remains independently checksummed and accepts legacy v1 files
+through an explicit migration path.
+
+The deeper v2 rung passed calibration and exact reload, but the two generated
+composition targets still showed `0.00` pp read-ablation drops. The target can
+therefore solve the pressure test without using the file token. This rejects
+the current read adapter as a learned capability gain while retaining the
+useful file ABI and negative diagnostic. The next bottleneck is a target whose
+computation is genuinely unavailable except through the external file-read
+path; adding more bank width or more slots before that test would only hide the
+same bypass.
+
+The v2 report, accounting ledger, and reproduction command are archived in
+`session_records/external_operator_memory_read_adapter_rejected_2026-08-11/`.
+
 ## Unseen external computation and multi-parent retention (2026-08-06)
 
 The frozen-core transfer harness tested `prefix_parity`, a temporal procedure

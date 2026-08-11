@@ -16,6 +16,10 @@ from neural_computer import (
     IntentEvent,
     LearnedRegisterRoleBinding,
 )
+from neural_computer.register import (
+    LEGACY_EXTERNAL_SEQUENCE_OPERATOR_MEMORY_SCHEMA,
+    _digest_mapping,
+)
 
 
 def test_canonical_register_readout_is_identity_initialized_and_versioned() -> None:
@@ -752,6 +756,69 @@ def test_external_sequence_operator_memory_persists_with_checksum() -> None:
         assert "checksum mismatch" in str(error)
     else:
         raise AssertionError("expected corrupted operator memory to be rejected")
+
+
+def test_external_sequence_operator_memory_migrates_legacy_v1_payload() -> None:
+    memory = ExternalSequenceOperatorMemory(8, 5, operator_rank=2)
+    memory.add_slot()
+    configuration = dict(memory.configuration())
+    configuration["schema"] = LEGACY_EXTERNAL_SEQUENCE_OPERATOR_MEMORY_SCHEMA
+    configuration.pop("file_token")
+    state = {
+        name: value.detach().clone()
+        for name, value in memory.state_dict().items()
+        if not name.startswith("slot_values.")
+    }
+    payload = {
+        "schema": LEGACY_EXTERNAL_SEQUENCE_OPERATOR_MEMORY_SCHEMA,
+        "configuration": configuration,
+        "state": state,
+        "sha256": _digest_mapping(
+            {
+                "schema": LEGACY_EXTERNAL_SEQUENCE_OPERATOR_MEMORY_SCHEMA,
+                "configuration": configuration,
+                "state": state,
+            }
+        ),
+    }
+
+    restored = ExternalSequenceOperatorMemory.from_payload(payload)
+
+    assert restored.configuration()["schema"].endswith(".v2")
+    assert torch.equal(restored.slot_values[0], torch.zeros(5))
+
+
+def test_bound_external_operator_memory_reads_one_route_token_with_gradients() -> None:
+    torch.manual_seed(916)
+    memory = ExternalSequenceOperatorMemory(8, 5, operator_rank=2)
+    memory.add_slot()
+    memory.add_slot()
+    query = torch.randn(1, 5, requires_grad=True)
+    bound = memory.bind(query)
+
+    token = bound.read_token()
+    assert token.shape == (1, 5)
+    token.square().sum().backward()
+
+    assert query.grad is not None
+    assert any(parameter.grad is not None for parameter in memory.parameters())
+
+
+def test_external_operator_file_token_is_separate_from_route_keys() -> None:
+    memory = ExternalSequenceOperatorMemory(8, 5, operator_rank=2)
+    memory.add_slot()
+    memory.add_slot()
+    with torch.no_grad():
+        memory.slot_keys[0].fill_(1.0)
+        memory.slot_keys[1].fill_(3.0)
+        memory.slot_values[0].fill_(2.0)
+        memory.slot_values[1].fill_(5.0)
+
+    route = torch.tensor([[1.0, 0.0]])
+    token = memory.read_token(route)
+
+    assert torch.equal(token, torch.full((1, 5), 2.0))
+    assert not torch.equal(token, memory.slot_keys[0].unsqueeze(0))
 
 
 def test_external_sequence_program_memory_stores_ordered_shared_program_data() -> None:
