@@ -1,0 +1,37 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment_id": "recipe-parallel-composition-promoted-2026-08-11",
+  "status": "promoted_narrow_mechanism",
+  "source": "in_repository_run",
+  "seeds": [70421, 70422],
+  "unique_verifier_bits_per_arm": 320000,
+  "optimizer_updates_per_arm": 2500,
+  "replayed_examples_per_arm": 0,
+  "wall_time_seconds": {
+    "atomic": [67.38121649995446, 81.86660912493244],
+    "parallel": [81.41604779101908, 81.18409183400217]
+  },
+  "stable_bits_to_threshold_0_9": {
+    "atomic_seed70421": {"base_length_2": null, "base_length_4": null, "paired_target": null},
+    "parallel_seed70421": {"base_length_2": 192000, "base_length_4": 192000, "paired_target": 128000},
+    "atomic_seed70422": {"base_length_2": 256000, "base_length_4": 256000, "paired_target": null},
+    "parallel_seed70422": {"base_length_2": 192000, "base_length_4": 192000, "paired_target": 64000}
+  },
+  "search_cost": {
+    "atomic_candidates": 118,
+    "parallel_candidates": 5518,
+    "candidate_space_ratio": 46.7627118644,
+    "parallel_wall_time_over_atomic_mean_ratio": 1.089
+  },
+  "controls": {
+    "two_seeds": true,
+    "random_programs_only": true,
+    "task_labels": false,
+    "old_basis_unseen_programs": true,
+    "old_basis_double_length": true,
+    "symbolic_old_basis_inexpressibility": true,
+    "exact_atomicity_contract": true,
+    "zero_replay": true
+  },
+  "claim_boundary": "Promoted generic parallel composition and bounded random-program interpreter execution; not general continual learning, arbitrary new computation, unrestricted memory growth, or intrinsic extension cost isolated from training-distribution effects."
+}

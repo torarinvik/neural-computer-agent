@@ -65,3 +65,15 @@ length-two accuracy was only `0.5830`/`0.5264` in the extension arms and the
 length-four curve was lower. The durable result is the harness diagnosis, not
 the score. Evidence is archived in
 `session_records/recipe_interpreter_undertrained_calibration_rejected_2026-08-11/`.
+
+## Narrow promoted result
+
+At the registered 2,500-update rung, the generic parallel arm reached stable
+`>=0.9` old-basis length-two and double-length execution by `1,500` updates on
+both seeds. The atomic baseline reached the same old-basis threshold at `2,000`
+updates on seed `70422` and did not reach it on seed `70421`. The paired target
+was stably learned by both extended arms. This promotes the bounded generic
+composition mechanism under random-program pretraining, with the explicit
+confound that the richer arm also practices a richer program distribution.
+Evidence is archived in
+`session_records/recipe_parallel_composition_promoted_2026-08-11/`.

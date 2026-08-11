@@ -1,0 +1,28 @@
+{
+  "schema": "neural-computer.recipe-expressibility-audit.v1",
+  "source": "in_repository_run",
+  "seed": 70421,
+  "updates": 2500,
+  "batch_size": 64,
+  "threshold": 0.9,
+  "arms": {
+    "atomic": {
+      "base_unseen_length_2": [0.49609375, 0.763671875, 0.7744140625, 0.78515625, 0.7783203125],
+      "base_unseen_double_length_4": [0.25, 0.6220703125, 0.568359375, 0.5859375, 0.630859375],
+      "parallel_target": [0.0, 0.0, 0.0, 0.0, 0.0],
+      "stable_updates": {"base_unseen_length_2": null, "base_unseen_double_length_4": null, "parallel_target": null},
+      "wall_time_seconds": 67.38121649995446,
+      "unique_program_steps": 320000,
+      "replayed_examples": 0
+    },
+    "parallel": {
+      "base_unseen_length_2": [0.5830078125, 0.8583984375, 0.9677734375, 0.974609375, 0.982421875],
+      "base_unseen_double_length_4": [0.349609375, 0.759765625, 0.9443359375, 0.9287109375, 0.9677734375],
+      "parallel_target": [0.8505859375, 1.0, 1.0, 1.0, 1.0],
+      "stable_updates": {"base_unseen_length_2": 1500, "base_unseen_double_length_4": 1500, "parallel_target": 1000},
+      "wall_time_seconds": 81.41604779101908,
+      "unique_program_steps": 320000,
+      "replayed_examples": 0
+    }
+  }
+}

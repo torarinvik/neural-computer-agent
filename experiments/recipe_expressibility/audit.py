@@ -20,6 +20,7 @@ import argparse
 import json
 from dataclasses import dataclass
 from pathlib import Path
+from time import perf_counter
 
 import torch
 from torch import nn
@@ -248,6 +249,7 @@ def train_arm(
     hidden: int,
     eval_every: int,
 ) -> dict[str, object]:
+    started = perf_counter()
     torch.manual_seed(seed)
     torch.set_num_threads(1)
     model = LearnedRecipeInterpreter(hidden=hidden)
@@ -288,6 +290,14 @@ def train_arm(
                     ),
                 }
             )
+    def stable_update(key: str, threshold: float = 0.9) -> int | None:
+        for index, row in enumerate(curve):
+            if all(
+                float(later[key]) >= threshold for later in curve[index:]
+            ):
+                return int(row["update"])
+        return None
+
     return {
         "seed": seed,
         "allow_parallel": allow_parallel,
@@ -295,6 +305,20 @@ def train_arm(
         "batch_size": batch_size,
         "hidden": hidden,
         "curve": curve,
+        "stable_updates_at_0_9": {
+            key: stable_update(key)
+            for key in (
+                "base_unseen_length_2",
+                "base_unseen_double_length_4",
+                "parallel_target",
+            )
+        },
+        "accounting": {
+            "unique_program_steps": updates * batch_size * 2,
+            "optimizer_updates": updates,
+            "replayed_examples": 0,
+            "wall_time_seconds": perf_counter() - started,
+        },
         "final": curve[-1],
     }
 
