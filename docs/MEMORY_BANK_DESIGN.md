@@ -8476,3 +8476,48 @@ the filter costing no interpreter calls at all and the modulus already
 paid for. That is real and it is still not the order of magnitude the
 search needs: thousands of candidates per action becomes hundreds of
 candidates fewer, not hundreds of candidates total.
+
+## F172 — a positive control for search-cost measurements, and a
+## retro-audit of every result that needed one
+
+F168 established that a search-cost measurement taken where searches
+SATURATE their budget measures the budget, not the search. That was
+stated as a check to run. It is now an instrument, and the past results
+have been audited against it.
+
+**The instrument: `cover` as a positive control.** The coverage filter
+is established at 0.879 and 0.812 over five seeds with low spread
+(F171). So it is a mechanism of known size. Run it alongside anything
+new, and if it does not reproduce, the regime cannot detect anything
+and no other arm's number should be read.
+
+This is not hypothetical. A 4000-update smoke of the enumeration arm
+read every arm at ~1.000 — including `cover` at 0.994 and 1.000, with
+4 of 7 and 2 of 4 families saturating. A mechanism known to be worth
+12% reads as nothing there. Without the control I would have had four
+arms all at 1.000 and no way to tell "the new mechanism does nothing"
+from "this measurement can see nothing".
+
+**The retro-audit.** Every search-cost result in the ledger, by
+fraction of families whose search ran to the full budget:
+
+| result | saturated |
+| --- | ---: |
+| F159, library arms at 3 seeds | 4/60 = 6.7% |
+| F161, reuse with the causal null at 5 seeds | 9/100 = 9.0% |
+| F168, the filter at 2 seeds | 1/40 = 2.5% |
+| F171, filter and reuse composed at 5 seeds | 3/100 = 3.0% |
+
+All four are in a regime that can detect an effect, against the 36%
+and 50% that voided the smoke tests. **No past cost claim needs
+withdrawing on these grounds.** Worth having checked rather than
+assumed — F157 explicitly noted `toggle` saturating three of four runs,
+which is what made the whole question live.
+
+**The general form, since this is the third instrument of its kind.**
+Byte-identical output catches a parameter that is not reaching the
+code, or two things that are secretly one thing. A positive control of
+known size catches a regime that cannot measure. Both work because they
+fail loudly and cannot be argued with. An experiment needs at least one
+quantity whose expected value is known in advance, or a null result
+from it is uninterpretable.
