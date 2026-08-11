@@ -5,6 +5,7 @@ import pytest
 import torch
 
 from neural_computer import (
+    EXTERNAL_FACTORED_TRANSITION_EXACT_RESIDUAL_MODE,
     EXTERNAL_FACTORED_TRANSITION_LEARNED_RESIDUAL_MODE,
     EXTERNAL_TRANSITION_RANDOM_FEATURE_MODEL_FAMILY,
     ExternalAffineTransitionStatistics,
@@ -3079,6 +3080,73 @@ def test_factored_router_prefix_address_update_isolated_from_factual_memory() ->
         candidate.state_payload()
     )
     assert restored.digest() == candidate.digest()
+    torch.random.set_rng_state(rng_state)
+
+
+def test_factored_disambiguation_probe_resolves_an_opaque_factual_tie() -> None:
+    rng_state = torch.random.get_rng_state()
+    torch.manual_seed(2001)
+    model = ExternalFactoredTransitionModel(
+        1,
+        1,
+        2,
+        residual_mode=EXTERNAL_FACTORED_TRANSITION_EXACT_RESIDUAL_MODE,
+    )
+    for parameter in model.base.parameters():
+        parameter.data.zero_()
+    model.freeze_base()
+    router = ExternalFactoredTransitionRouter(
+        model,
+        ExternalTransitionContextEncoder(1, 1, hidden_width=8, context_width=2),
+        max_contexts=2,
+        match_tolerance=0.01,
+        match_margin=0.01,
+    )
+    source = ExternalTransitionObservation(
+        state=torch.tensor([[0.0], [0.0]]),
+        intention=torch.tensor([[0.0], [1.0]]),
+        next_state=torch.tensor([[0.0], [0.0]]),
+    )
+    target = ExternalTransitionObservation(
+        state=torch.tensor([[1.0], [0.0]]),
+        intention=torch.tensor([[0.0], [1.0]]),
+        next_state=torch.tensor([[1.0], [10.0]]),
+    )
+    assert router.route_bundle((source,)).status == "staged"
+    assert router.promote_staged_candidate(source, lambda _candidate: True).accepted
+    assert router.route_bundle((target,)).status == "staged"
+    assert router.promote_staged_candidate(
+        ExternalTransitionObservation(
+            state=target.state[:1],
+            intention=target.intention[:1],
+            next_state=target.next_state[:1],
+        ),
+        lambda _candidate: True,
+        prediction_tolerance=0.01,
+    ).accepted
+
+    tie = ExternalTransitionObservation(
+        state=torch.tensor([[0.0]]),
+        intention=torch.tensor([[0.0]]),
+        next_state=torch.tensor([[0.0]]),
+    )
+    assert router.route_partial_bundle((tie,)).status == "ambiguous"
+    probe = router.request_disambiguation_probe(
+        tie,
+        torch.tensor([[0.0], [1.0]]),
+        candidate_slot_ids=(0, 1),
+    )
+    assert probe.selected_intention_index == 1
+    assert probe.disagreement_scores[1] > probe.disagreement_scores[0]
+
+    observed_probe = ExternalTransitionObservation(
+        state=torch.tensor([[0.0]]),
+        intention=probe.selected_intention.unsqueeze(0),
+        next_state=torch.tensor([[10.0]]),
+    )
+    resolved = router.route_partial_bundle((observed_probe,))
+    assert resolved.status == "matched"
+    assert resolved.slot_id == 1
     torch.random.set_rng_state(rng_state)
 
 

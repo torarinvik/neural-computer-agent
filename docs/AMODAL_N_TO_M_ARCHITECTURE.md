@@ -9194,6 +9194,9 @@ device protocol. This adds an active-evidence path without turning the
 controller into a hand-written solver. The corresponding runtime boundary is
 AmodalControllerRuntime.decode_intention() and its policy-free wrapper: it
 decodes a caller-owned opaque intention without running the controller again.
+The causal unit pressure test demonstrates the intended loop: a synthetic
+factual tie is refused, the probe selects the intention whose predictions
+disagree, and the fresh opaque consequence resolves the correct slot.
 
 The corresponding pressure arm uses fresh post-promotion evidence and counts
 the address optimizer update and additional lifetimes separately. Seeds 91, 92,

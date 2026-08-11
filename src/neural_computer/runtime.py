@@ -1099,6 +1099,7 @@ class AmodalControllerRuntime(nn.Module):
             "event_space_id": self.event_space_id,
             "state_space_id": self.state_space_id,
             "intention_space_id": self.intention_space_id,
+            "caller_owned_decode": "opaque_intention_without_controller_tick_v1",
             "controller": self.controller.configuration(),
             "input_bus": self.input_bus.configuration(),
             "encoder_names": tuple(self.encoders.keys()),

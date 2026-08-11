@@ -91,5 +91,8 @@ def test_runtime_decodes_caller_owned_opaque_intention_without_controller_tick()
     assert decoded["keypress"].shape == (1, 2)
     assert torch.equal(decoded["keypress"], decoded_event["keypress"])
     assert all(torch.equal(value, controller.state_dict()[name]) for name, value in before.items())
+    assert runtime.configuration()["caller_owned_decode"] == (
+        "opaque_intention_without_controller_tick_v1"
+    )
     with pytest.raises(ValueError, match="shape"):
         runtime.decode_intention(torch.randn(2, 2, 4))
