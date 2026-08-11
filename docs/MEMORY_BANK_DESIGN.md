@@ -7171,3 +7171,42 @@ cannot re-read its input (verified in code), and the code scale is
 sound (measured). Neither confound applies. Cost: one code inspection
 and one 3000-update run — against a composition result that took
 several arms to establish.
+
+**F152 (probe 250). The scoring fix is a NULL: pooled +0.1264 against
++0.1229, three seeds paired. F151's arithmetic defect is real and cost
+essentially nothing.**
+
+| seed | summed (F143) | terminal (F151 fix) | delta |
+| ---: | ---: | ---: | ---: |
+| 69316 | +0.0980 | +0.1175 | +0.0195 |
+| 69317 | +0.1334 | +0.1247 | -0.0087 |
+| 69318 | +0.1373 | +0.1371 | -0.0002 |
+| pooled | **+0.1229** | **+0.1264** | **+0.0035** |
+
+**Why a 4x over-counting can cost nothing, which is the transferable
+part.** Beam search consumes only the ARGMAX; any distortion that
+preserves the ORDERING of candidate plans is invisible to it. The
+over-counting inflated later rewards uniformly across plans, so plans
+that reach food still outscored plans that do not. The objective was
+arithmetically wrong and ordinally right. **An incorrect objective is
+only as harmful as the re-ranking it causes** — which is worth
+remembering before treating the next discovered defect as an
+explanation.
+
+I did present F151 as a candidate explanation for the games residual.
+It is not one. That is now five eliminated: value model (F143), search
+budget (F145), state abstraction (F149), density/double-counting
+(F150), and scoring arithmetic (here).
+
+**Caveat kept honest.** `--score terminal` fixes the over-counting but
+introduces its own distortion — it ignores rewards collected at steps
+0 to depth-1 entirely. So this is not a clean isolation of
+over-counting; it swaps one biased objective for another. The
+informative fact is that two quite differently-biased objectives give
+the SAME result to within noise, which says the search is insensitive
+to its scoring rule in this range — and that is a stronger statement
+than either arm alone. The properly correct version (immediate-reward
+head plus terminal bootstrap) remains unbuilt, and on this evidence
+its expected value is low.
+
+Probe 250 is `game_slots.py --score terminal`, 3 seeds.
