@@ -683,6 +683,32 @@ does not consistently distinguish a valid sequence from a cyclically shifted
 one. The next experiment should use a smaller curriculum with explicit paired
 order contrasts before increasing depth or memory capacity.
 
+### Ordered credit-assignment contrast diagnostic (2026-08-11)
+
+The follow-up diagnostic corrected two transport defects before measuring a
+new mechanism: mixed-depth programs are grouped by executable length, and
+composition IDs are contiguous per target so per-target audits are valid. It
+then added an optional trainer-only counterfactual loss that reruns each
+multi-step example with a cyclically shifted opaque route and inverted action
+utilities. The contrast was applied equally to the shared, reward-shuffled,
+and fresh arms.
+
+At the matched seed-69316 16/64/64 audit, the baseline reached held-out order
+accuracy `0.5313/0.6250/0.6354` (mean `0.5972`); the contrast reached
+`0.5104/0.5729/0.4792` (mean `0.5208`). It improved wrong-order rejection
+(`0.3542/0.5521/0.3125`) but consumed 576 paired counterfactual rollouts,
+reached no stable prefix, and did not improve held-out transfer. Frozen-parent,
+frozen-bank, no-bypass, missing-evidence, reward-shuffled, persistence, and
+zero-replay controls passed. The decision record is
+`session_records/external_skill_fragment_order_contrast_rejected_2026-08-11/`.
+
+The contrast is therefore not promoted as a learned composition law. The
+useful architectural result is narrower: route-level negative supervision can
+teach rejection without teaching a reusable ordered execution law. The next
+high-ROI rung should reuse frozen trace computation and expose operator-level
+intermediate verifier signals or a protected step-indexed external execution
+state, with stable-prefix and fresh-order controls unchanged.
+
 The first variable-deliberation outcome-only rung is recorded under
 `session_records/deliberation_amodal_2026-08-03/`. It validates the bounded
 runtime path but is rejected as a learned capability promotion: the controller

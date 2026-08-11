@@ -158,6 +158,17 @@ infrastructure, not as a promoted learned composition law. The next experiment
 should isolate ordered credit assignment with a smaller contrastive curriculum
 before scaling depth or adding more memory capacity.
 
+The follow-up order-contrast diagnostic is also rejected. It first corrected
+the variable-depth transport by grouping programs with equal executable
+lengths and making target rows contiguous, then reused each example with a
+cyclically shifted route and a trainer-only inverted counterfactual loss. At a
+matched seed-69316 16/64/64 audit, the baseline reached mean held-out accuracy
+`0.5972`; the contrast arm reached `0.5208` while consuming 576 additional
+paired rollouts. It improved wrong-order rejection but reached no stable
+prefix, so it is retained only as an optional diagnostic hook. The corrected
+reports and ledger are in
+`session_records/external_skill_fragment_order_contrast_rejected_2026-08-11/`.
+
 ```bash
 PYTHONPATH=src:. .venv/bin/python -m \
   experiments.external_skill_fragment_composition_amodal.train_shared_multi_target \

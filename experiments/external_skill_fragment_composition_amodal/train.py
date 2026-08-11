@@ -151,6 +151,7 @@ def _rollout(
     combiner: ExternalSkillFragmentCombiner | None = None,
     route_programs: tuple[tuple[int, ...], ...] | None = None,
     include_instruction_codes: bool = False,
+    invert_targets: bool = False,
 ) -> tuple[torch.Tensor, torch.Tensor]:
     device = batch.input_frames.device
     batch_size = batch.batch_size
@@ -246,6 +247,8 @@ def _rollout(
             batch_size, -1
         )
         utilities = (attempted == correct.unsqueeze(1)).to(logits.dtype)
+        if invert_targets:
+            utilities = 1.0 - utilities
         if shuffle_outcomes:
             utilities = utilities.roll(1, dims=0)
         loss, _ = paired_counterfactual_ranking_loss(logits, attempted, utilities)

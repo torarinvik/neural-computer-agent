@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import shutil
 from pathlib import Path
 from time import perf_counter
@@ -106,10 +107,64 @@ def _program(order: tuple[int, ...]) -> tuple[str, ...]:
     return tuple(PRIMITIVES[index] for index in order)
 
 
+def _rotate_orders(
+    orders: tuple[tuple[int, ...], ...],
+) -> tuple[tuple[int, ...], ...]:
+    """Return the same routes with their first operator moved to the end."""
+
+    return tuple(order if len(order) < 2 else order[1:] + order[:1] for order in orders)
+
+
+def _group_composition_ids(target_count: int, examples_per_target: int) -> torch.Tensor:
+    """Assign contiguous rows to each target for reliable per-target audits."""
+
+    if target_count < 1 or examples_per_target < 1:
+        raise ValueError("composition target and example counts must be positive")
+    return torch.arange(target_count, dtype=torch.long).repeat_interleave(
+        examples_per_target
+    )
+
+
 def _specs(
     orders: tuple[tuple[int, ...], ...],
 ) -> tuple[tuple[tuple[int, ...], tuple[str, ...]], ...]:
     return tuple((order, _program(order)) for order in orders)
+
+
+def _spec_groups_by_length(
+    specs: tuple[tuple[tuple[int, ...], tuple[str, ...]], ...],
+    *,
+    max_group_size: int = 2,
+) -> tuple[tuple[tuple[tuple[int, ...], tuple[str, ...]], ...], ...]:
+    """Batch only programs with equal executable lengths.
+
+    The rendered composition transport can carry one or two opaque programs
+    per batch, but the register machine requires their executable traces to
+    have equal lengths.  A curriculum intentionally mixes depths, so grouping
+    by length is part of the transport ABI rather than an experiment-specific
+    assumption.
+    """
+
+    if max_group_size < 1:
+        raise ValueError("composition spec group size must be positive")
+    groups_by_length: dict[int, list[tuple[tuple[int, ...], tuple[str, ...]]]] = {}
+    length_order: list[int] = []
+    for spec in specs:
+        length = len(spec[0])
+        if length < 1:
+            raise ValueError("composition programs cannot be empty")
+        if length not in groups_by_length:
+            groups_by_length[length] = []
+            length_order.append(length)
+        groups_by_length[length].append(spec)
+    groups: list[tuple[tuple[tuple[int, ...], tuple[str, ...]], ...]] = []
+    for length in length_order:
+        entries = groups_by_length[length]
+        groups.extend(
+            tuple(entries[start : start + max_group_size])
+            for start in range(0, len(entries), max_group_size)
+        )
+    return tuple(groups)
 
 
 def _make_combiner(mode: str) -> nn.Module:
@@ -141,19 +196,21 @@ def _shared_train_stage(
     audit_count: int,
     audit_seed: int,
     shuffle_outcomes: bool = False,
+    order_contrast_weight: float = 0.0,
 ) -> list[dict[str, object]]:
     """Train one combiner/decoder on fresh samples from every target order."""
 
     parameters = [parameter for parameter in trainable if parameter.requires_grad]
     if not parameters:
         raise ValueError("shared composition stage has no trainable parameters")
+    if not math.isfinite(order_contrast_weight) or order_contrast_weight < 0.0:
+        raise ValueError("order contrast weight must be finite and non-negative")
     optimizer = torch.optim.AdamW(parameters, lr=3e-3, weight_decay=1e-5)
     history: list[dict[str, object]] = []
     for update in range(1, updates + 1):
         losses: list[torch.Tensor] = []
         rewards: list[torch.Tensor] = []
-        for target_index in range(0, len(specs), 2):
-            group = specs[target_index : target_index + 2]
+        for group_index, group in enumerate(_spec_groups_by_length(specs)):
             orders = tuple(order for order, _ in group)
             programs = tuple(program for _, program in group)
             count = batch_size * len(group)
@@ -161,11 +218,11 @@ def _shared_train_stage(
                 operation="generated_composition",
                 count=count,
                 span=span,
-                seed=seed + update * 10_007 + target_index * 1_000_003,
+                seed=seed + update * 10_007 + group_index * 1_000_003,
                 generated_compositions=programs,
-                generated_composition_ids_override=torch.arange(
-                    count, dtype=torch.long
-                ).remainder(len(group)),
+                generated_composition_ids_override=_group_composition_ids(
+                    len(group), batch_size
+                ),
             )
             loss, target_rewards = _rollout(
                 parent,
@@ -182,6 +239,22 @@ def _shared_train_stage(
             )
             losses.append(loss)
             rewards.append(target_rewards)
+            if order_contrast_weight and any(len(order) > 1 for order in orders):
+                contrast_loss, _ = _rollout(
+                    parent,
+                    machine,
+                    bank,
+                    decoder,
+                    batch,
+                    selected=None,
+                    train_decoder=True,
+                    shuffle_outcomes=shuffle_outcomes,
+                    combiner=combiner,
+                    route_programs=_rotate_orders(orders),
+                    include_instruction_codes=True,
+                    invert_targets=True,
+                )
+                losses.append(order_contrast_weight * contrast_loss)
         loss = torch.stack(losses).mean()
         optimizer.zero_grad(set_to_none=True)
         loss.backward()
@@ -193,6 +266,15 @@ def _shared_train_stage(
             "loss": float(loss.detach()),
         }
         row["unique_verifier_bits"] = update * batch_size * span * 2 * len(specs)
+        row["counterfactual_rollouts"] = (
+            update
+            * batch_size
+            * span
+            * 2
+            * sum(1 for order, _ in specs if len(order) > 1)
+            if order_contrast_weight
+            else 0
+        )
         if eval_every and (update % eval_every == 0 or update == updates):
             heldout = _evaluate_specs(
                 parent,
@@ -231,8 +313,7 @@ def _evaluate_specs(
 
     values: list[float] = []
     with torch.no_grad():
-        for group_index in range(0, len(specs), 2):
-            group = specs[group_index : group_index + 2]
+        for group_index, group in enumerate(_spec_groups_by_length(specs)):
             orders = tuple(order for order, _ in group)
             programs = tuple(program for _, program in group)
             group_count = count * len(group)
@@ -243,9 +324,9 @@ def _evaluate_specs(
                 seed=seed + group_index * 10_007,
                 generated_compositions=programs,
                 blank_sequence=blank_sequence,
-                generated_composition_ids_override=torch.arange(
-                    group_count, dtype=torch.long
-                ).remainder(len(group)),
+                generated_composition_ids_override=_group_composition_ids(
+                    len(group), count
+                ),
             )
             rewards = _rollout(
                 parent,
@@ -333,6 +414,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         raise ValueError("all update and audit counts must be positive")
     if args.batch_size % 2 or args.audit_count % 2:
         raise ValueError("batch size and audit count must be even")
+    if not math.isfinite(args.order_contrast_weight) or args.order_contrast_weight < 0.0:
+        raise ValueError("order contrast weight must be finite and non-negative")
 
     parent = _runtime(seed=args.seed, growth=False)
     _, parent_progress = _train_with_progress(
@@ -356,6 +439,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     train_orders, heldout_orders = _order_sets(args.curriculum)
     train_specs = _specs(train_orders)
     heldout_specs = _specs(heldout_orders)
+    target_count = len(train_specs)
+    contrast_spec_count = sum(1 for order, _ in train_specs if len(order) > 1)
     bits_per_update = args.batch_size * args.span * 2
 
     torch.manual_seed(args.seed + 100_000)
@@ -376,6 +461,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         eval_every=args.eval_every,
         audit_count=args.audit_count,
         audit_seed=args.seed + 101_000,
+        order_contrast_weight=args.order_contrast_weight,
     )
     shared_train_accuracy = _evaluate_specs(
         parent,
@@ -458,6 +544,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         audit_count=args.audit_count,
         audit_seed=args.seed + 111_000,
         shuffle_outcomes=True,
+        order_contrast_weight=args.order_contrast_weight,
     )
     shuffled_accuracy = _evaluate_specs(
         parent,
@@ -498,6 +585,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         eval_every=args.eval_every,
         audit_count=args.audit_count,
         audit_seed=args.seed + 121_000,
+        order_contrast_weight=args.order_contrast_weight,
     )
     fresh_train_accuracy = _evaluate_specs(
         parent,
@@ -558,7 +646,6 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     )
     composition_eval_points = _eval_points(args.composition_updates, args.eval_every)
     parent_eval_points = _eval_points(args.parent_updates, args.eval_every)
-    target_count = len(train_specs)
     training_batches = (
         args.parent_updates
         + len(PRIMITIVES) * args.primitive_updates
@@ -635,6 +722,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             ),
             "combiner_count": 1,
             "decoder_count": 1,
+            "order_contrast_weight": args.order_contrast_weight,
+            "order_contrast_training_specs": contrast_spec_count,
         },
         "reward_shuffled": {"accuracy": shuffled_accuracy},
         "fresh": {
@@ -644,6 +733,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "combiner_mode": args.combiner_mode,
             "combiner_count": 1,
             "decoder_count": 1,
+            "order_contrast_weight": args.order_contrast_weight,
         },
         "acquired_bank": {
             "sha256_before_targets": bank_digest_before,
@@ -669,7 +759,12 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "optimizer_updates": (
                 args.parent_updates
                 + len(PRIMITIVES) * args.primitive_updates
-                + 3 * target_count * args.composition_updates
+                + 3 * args.composition_updates
+            ),
+            "counterfactual_rollouts": (
+                3 * contrast_spec_count * args.composition_updates
+                if args.order_contrast_weight
+                else 0
             ),
             "replayed_examples": 0,
             "wall_seconds": perf_counter() - started,
@@ -705,6 +800,12 @@ def main() -> None:
     parser.add_argument("--audit-count", type=int, default=128)
     parser.add_argument("--eval-every", type=int, default=32)
     parser.add_argument("--mastery-threshold", type=float, default=0.80)
+    parser.add_argument(
+        "--order-contrast-weight",
+        type=float,
+        default=0.0,
+        help="weight a trainer-only wrong-order counterfactual loss",
+    )
     args = parser.parse_args()
     print(json.dumps(run(args), indent=2))
 
