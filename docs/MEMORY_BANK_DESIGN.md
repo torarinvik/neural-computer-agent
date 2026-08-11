@@ -7065,3 +7065,80 @@ reflective:
   * **An honest negative on their side**: their self-addressing result
     cleared the complete gate on only 5 of 16 seeds, with acquisition
     rather than the bank mechanism the dominant failure.
+
+**Codex log, full review (2026-08-11). Provenance confirmed and
+worsened, plus four genuine challenges to our findings.**
+
+**Provenance.** The suspicion recorded earlier is confirmed and is
+stronger than I put it: one of the three imported exports contains
+`7d2d988c-c6fa-4641-b361-ceacd938889d.jsonl` — THIS session's ID. The
+log did not merely read a related project, it read us. Every matching
+number in its summary is ours quoted back, including the
+policy-vs-model table. Nothing in that block is corroboration.
+
+**Four challenges to OUR findings, in descending seriousness.**
+
+1. **A confound that could invalidate our composition result, and it
+   is cheap to check.** They measured a composition scoring 0.883 that
+   fell to 0.520 when later steps were prevented from RE-READING the
+   raw observation — i.e. the apparent composition was partly the
+   later steps looking the answer up again rather than operating on
+   the carried state. **Checked our code directly: our
+   `step_bound(token, hidden, params)` receives only the latent and
+   the bound parameter, and `bits_of(x)` is consumed once before the
+   loop. Our step function CANNOT re-read the input.** The confound
+   does not apply, and it is now verified rather than assumed.
+
+2. **Their shared step function BROKE on unseen ORDERS, where ours
+   held.** After calibrating on two orderings they reached 0.672-0.703
+   on unseen orderings while fresh controls reached 0.734-0.813 —
+   inherited was WORSE than fresh, i.e. negative transfer. They also
+   failed held-out triples (0.573/0.573/0.323) and, decisively, a
+   BALANCED JOINT calibration on all sources at once still failed
+   composition (0.6719), which rules out acquisition order, rank,
+   forgetting and decoder normalisation as causes. Our F121/F125 pass
+   held-out orders and unseen depths at 1.0000 — so either our task is
+   easier (two pieces, mod-16/8-bit, versus their register machine) or
+   their interpreter had a defect. **This is the sharpest live
+   disagreement between the two projects and it should not be
+   smoothed over.** The honest reading is that our result is real for
+   our setting and their negative bounds how far it generalises.
+
+3. **"Train longer" is rejected three separate times in their log**,
+   against our F147 where it was the ONLY thing that helped
+   (0.7795 -> 0.8704). Different systems, so not a contradiction of
+   fact — but it does mean the F147 effect should not be assumed
+   general, and the saturation pair now running is the right test.
+
+4. **Their most robust boundary, reproduced from three directions:
+   external context can SELECT existing computation but cannot INVENT
+   new computation.** A genuinely new primitive against their frozen
+   interpreter got zero transfer (tied fresh on one seed, 6x worse on
+   the other). We have never tested this: every composition result we
+   have reuses pieces the plant already knows. If it holds for us too,
+   it bounds the thesis — a bank grows what you can DO with known
+   operations, not the operations themselves.
+
+**Their independent mechanisms worth trying** (not derived from us):
+
+  * **frozen base + zero-initialised, value-only external residual**,
+    with the context channel structurally zeroed in the hidden path —
+    their single best mechanism, cutting acquisition roughly in half
+    repeatedly;
+  * **decouple the novelty threshold from the commit threshold**
+    ("is this evidence new enough to stage?" vs "is the staged model
+    accurate enough to commit?"): 10/24 -> 14/24 seeds, the single
+    largest online gain in their file, and pure protocol;
+  * **recursive rollout verification inside promotion** —
+    one-step-good/recursively-bad was a whole failure class;
+  * **recency-weighted + latest-token pooling** instead of order-blind
+    mean/max (2/6 -> 3/6, 3/12 -> 5/12), which converges with
+    LITERATURE.md §11's indictment of mean-pooling from the neural
+    process literature.
+
+**A silent-killer check they paid for and we should not.** Their
+composition mechanism was inert for a long stretch because two
+near-0.02 initialisations multiplied to instruction vectors at ~1e-4,
+far below the interpreter's intended scale; fixing it moved
+composition 0.742 -> 0.924. Our equivalent quantity is the bound
+parameter's norm against the hidden state's. Measuring it now.
