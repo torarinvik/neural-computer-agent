@@ -6876,3 +6876,46 @@ worth doing before the mechanism is retired, and it is queued, not
 assumed.
 
 Probe 248 is `--refine 10` and `--codebook 256`, 2 seeds each.
+
+**F149 (probe 249). The state abstraction is a null too: carrying TWO
+nearest objects per plane instead of one is worth +0.0012, paired.**
+
+| arm | seed 69316 | seed 69317 | mean |
+| --- | ---: | ---: | ---: |
+| 1 object per plane (F143) | +0.0980 | +0.1334 | +0.1157 |
+| **2 objects per plane** | +0.1108 | +0.1230 | **+0.1169** |
+
+One seed up, one seed down, mean flat. Entry effects and inverted-world
+seeking are unchanged (0.292 / 0.312 against F143's 0.333 / 0.188).
+
+So F109's original verdict — that the nearest-object abstraction is
+not the limit — holds even now that the value model is finished, which
+is the condition under which I argued it deserved re-testing. It did
+deserve re-testing; the answer simply did not change. That is a
+perfectly good outcome for a re-test and it removes the last
+suspicion I had against F109.
+
+**Where this leaves the games, with three candidates eliminated.**
+The remaining gap is +0.1229 against +0.1954, and it is NOT:
+  * the value model — closed, +0.1229 against a +0.1234 oracle-value
+    target (F143);
+  * the search budget — depth +0.0015, beam -0.0003 (F145);
+  * the state abstraction — +0.0012 (here).
+
+What is left is the STRUCTURE of the search rather than its size. One
+concrete candidate the probe itself suggests: `--freeze-objects` holds
+the observed object layout fixed through the rollout, which F109
+measured as worth 3.4 points because rolling objects forward
+compounded error. But items are CONSUMED and RESPAWN, so a frozen
+layout tells the search that an object it just ate is still there. A
+depth-4 plan can therefore count the same food twice. The oracle has
+no such illusion.
+
+That predicts a specific, checkable signature: the gap should be
+largest in worlds where the avatar can reach several objects within
+the horizon, and near zero in sparse worlds where it can reach at most
+one. The per-world data to test this is already in every archived run
+— no new training required — which makes it the next thing to do
+rather than another 40k-update arm.
+
+Probe 249 is `game_slots.py --objects 2`, 2 seeds.
