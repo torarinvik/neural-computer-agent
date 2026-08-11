@@ -8428,3 +8428,51 @@ The rule generalises and is worth stating plainly: **an extension needs
 a failure signature, not an argument.** The modulus had one — toggle at
 exactly 50% on the slots it touched, arithmetic, no network. The guard
 has an argument and no signature.
+
+## F171 — the filter replicates at five seeds, and it COMPOSES with
+## program reuse
+
+Five seeds, inferred modulus, searches terminating early throughout
+(0 or 1 of 11 families saturate, so this is a measurement of the search
+and not of the budget — the check F168 made standing). Ratios are
+interpreter calls against the frozen control.
+
+| arm | diverse | sd | related | sd |
+| --- | ---: | ---: | ---: | ---: |
+| frozen | 1.000 | — | 1.000 | — |
+| coverage filter | 0.879 | 0.046 | 0.812 | 0.074 |
+| stores solved programs | 0.929 | 0.124 | 0.772 | 0.044 |
+| **both** | **0.848** | **0.033** | **0.711** | **0.062** |
+
+**The filter replicates.** 0.879 and 0.812, below 1.0 in all ten
+sequence-seed cells, at a quarter the spread of the reuse arm. F168's
+two-seed reading of 0.887/0.867 holds up.
+
+**They compose, and neither is redundant.** Together they reach 0.848
+and 0.711, better than either alone on both sequences. The gain is
+SUB-multiplicative — 0.879 x 0.929 would predict 0.817 and 0.812 x
+0.772 would predict 0.627 — so the two mechanisms overlap partially,
+which is what one would expect of a filter that removes hopeless
+candidates and a store that supplies good ones. They are not the same
+saving twice, and they are not independent either.
+
+The combination is also the most RELIABLE arm, sd 0.033 against 0.124
+for reuse alone on the diverse sequence. Adding a sound filter to an
+unreliable mechanism steadies it.
+
+**F168's flag resolves as noise, in the direction I guessed but for a
+reason I should record.** F168 read reuse on the diverse sequence at
+1.075 against F161's 0.959 and I flagged it as possibly an interaction
+with the inferred modulus. At five seeds it reads 0.929, consistent
+with F161. The per-seed values are 1.089, 1.061, 0.814, 0.889, 0.790 —
+F168's two seeds were the only two above 1.0 in the set. A two-seed
+sample of a mechanism whose sd is 0.124 was never going to settle
+anything, and the flag was right to be a flag.
+
+**What this adds up to for the search bottleneck.** F161 measured reuse
+honestly at about a tenth. Two cheap, sound additions now take the
+combination to 15% on unrelated families and 29% on related ones, with
+the filter costing no interpreter calls at all and the modulus already
+paid for. That is real and it is still not the order of magnitude the
+search needs: thousands of candidates per action becomes hundreds of
+candidates fewer, not hundreds of candidates total.
