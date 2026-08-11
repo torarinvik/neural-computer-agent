@@ -130,6 +130,51 @@ Consequence for the build: check expressibility in the interface —
 one single-world, reading-off fit run — BEFORE spending arms on
 diversity, capacity, or budget.
 
+**The bank should hold RECIPES, and the plant should EXECUTE them
+(design decision, 2026-08-11).** The boundary the Codex log reports —
+external context can SELECT existing computation but cannot INVENT it —
+is not a fact about external memory. It follows from training the
+plant on the task's own operations, which makes each one an opaque
+skill and leaves an entry nothing to do but choose between them.
+
+The response, and the constraint that keeps it honest:
+
+- the plant is an INTERPRETER over a small domain-general basis
+  (NOOP / INC / DEC / CINC / CDEC / COPY / SWAP on SLOTS x VALUES —
+  the operations `schema_families.py` already uses, over the interface
+  the rule families and the grid games already share). Conditionals
+  are what make it a basis rather than a permutation table;
+- the bank holds a PROGRAM per action. An action IS a recipe;
+- **the plant is trained ONLY on random programs over random states.**
+  No family, no world, no task ever appears in its training
+  distribution, so no domain content can enter the weights — not as a
+  matter of hope but because there is no domain present to enter;
+- **a new world is handled by SEARCH, not by fitting.** Candidate
+  programs are proposed and scored with the FROZEN interpreter against
+  observed transitions; the best is stored. Nothing trains. The
+  plant's weights are bit-identical before and after meeting a new
+  family.
+
+Two failure modes this design exists to prevent, both of which were
+committed and caught during its construction:
+
+- **a domain-specific basis.** The first version used bitwise
+  operations over 8-bit words, which would have produced a
+  bit-manipulation specialist that could never touch the games.
+  Generalising an architecture is not the same as picking a new
+  specialisation;
+- **burning the task into the weights.** If the plant were trained to
+  map a world's observations to its next states directly, the recipe
+  indirection would be decorative and the domain knowledge would sit
+  in the controller. Training on random programs makes that
+  impossible rather than unlikely.
+
+What this buys, if it measures: invention becomes composition one
+level down. A world whose rule the plant has never executed is a new
+ARRANGEMENT of instructions it already runs, so the bank grows
+capability rather than merely indexing it. What it does not buy:
+anything outside the basis. The boundary moves, it does not vanish.
+
 ### 2.2 Bank (growing, external, per-task)
 
 A set of **fragments**. A fragment names a goal — under the current
