@@ -1387,7 +1387,7 @@ class ExternalControllerEventWindowStateAdapter(nn.Module):
         recency_decay: float,
     ) -> tuple[torch.Tensor, torch.Tensor]:
         payload = state.event_window.payload.to(device=device, dtype=dtype)
-        present = state.event_window.present
+        present = state.event_window.present.to(device=device)
         if payload.ndim != 3 or payload.shape != (
             batch_size,
             state.event_window.payload.shape[1],
@@ -1493,7 +1493,10 @@ class ExternalControllerTrajectoryQueryAdapter(nn.Module):
     replaceable memory-side adapter is only for addressing a growing external
     bank. It uses the final learned state plus masked mean/max statistics of
     the learned event-token window, preserving more regime identity than a
-    single final-state projection without exposing raw modality formats.
+    single final-state projection without exposing raw modality formats.  The
+    default summary is retained for checkpoint compatibility; an opt-in
+    recency/latest summary preserves causal order at this external addressing
+    seam without changing the controller or planner width.
     """
 
     schema = "neural-computer.external-controller-trajectory-query-adapter.v1"
@@ -1504,10 +1507,19 @@ class ExternalControllerTrajectoryQueryAdapter(nn.Module):
         query_width: int | None = None,
         *,
         hidden_width: int = 0,
+        trajectory_statistics: str = "masked_mean_and_max_v1",
+        recency_decay: float = 0.75,
     ) -> None:
         super().__init__()
         if controller_width < 1 or hidden_width < 0:
             raise ValueError("trajectory-query adapter dimensions are invalid")
+        if trajectory_statistics not in {
+            "masked_mean_and_max_v1",
+            "recency_weighted_and_latest_v1",
+        }:
+            raise ValueError("trajectory-query adapter statistics are unsupported")
+        if recency_decay <= 0.0 or not math.isfinite(recency_decay):
+            raise ValueError("trajectory-query adapter recency decay is invalid")
         self.controller_width = int(controller_width)
         self.controller_feature_width = self.controller_width * 3
         self.event_feature_width = self.controller_width
@@ -1516,6 +1528,8 @@ class ExternalControllerTrajectoryQueryAdapter(nn.Module):
         if self.query_width < 1:
             raise ValueError("trajectory-query adapter query width must be positive")
         self.hidden_width = int(hidden_width)
+        self.trajectory_statistics = str(trajectory_statistics)
+        self.recency_decay = float(recency_decay)
         if hidden_width:
             self.network = nn.Sequential(
                 nn.Linear(self.input_width, hidden_width),
@@ -1527,7 +1541,7 @@ class ExternalControllerTrajectoryQueryAdapter(nn.Module):
         else:
             self.network = nn.Linear(self.input_width, self.query_width)
 
-    def configuration(self) -> dict[str, int | str]:
+    def configuration(self) -> dict[str, int | float | str]:
         return {
             "schema": self.schema,
             "controller_width": self.controller_width,
@@ -1537,7 +1551,8 @@ class ExternalControllerTrajectoryQueryAdapter(nn.Module):
             "query_width": self.query_width,
             "hidden_width": self.hidden_width,
             "input": "opaque_controller_state_plus_event_token_trajectory_v1",
-            "statistics": "masked_mean_and_max_v1",
+            "statistics": self.trajectory_statistics,
+            "recency_decay": self.recency_decay,
             "behavior": "replaceable_memory_address_query_not_reasoning_branch_v1",
         }
 
@@ -1554,18 +1569,22 @@ class ExternalControllerTrajectoryQueryAdapter(nn.Module):
             raise ValueError(
                 "trajectory-query controller representation has the wrong shape"
             )
+        if not isinstance(state, ControllerState):
+            raise TypeError("trajectory-query adapter state has the wrong type")
+        if state.hidden.ndim != 2 or state.hidden.shape[0] != representation.shape[0]:
+            raise ValueError("trajectory-query adapter batch does not match")
         payload = state.event_window.payload
-        present = state.event_window.present
         if payload.ndim != 3 or payload.shape[2] != self.event_feature_width:
             raise ValueError("trajectory-query event tokens have the wrong shape")
-        if present.shape != payload.shape[:2] or present.dtype != torch.bool:
-            raise ValueError("trajectory-query event presence has the wrong shape")
-        present_float = present.to(dtype=payload.dtype)
-        denominator = present_float.sum(dim=1, keepdim=True).clamp_min(1.0)
-        mean = (payload * present_float.unsqueeze(-1)).sum(dim=1) / denominator
-        max_values = payload.masked_fill(~present.unsqueeze(-1), -torch.inf).amax(dim=1)
-        has_event = present.any(dim=1, keepdim=True)
-        max_values = torch.where(has_event, max_values, torch.zeros_like(max_values))
+        mean, max_values = ExternalControllerEventWindowStateAdapter._window_statistics(
+            state,
+            batch_size=representation.shape[0],
+            width=self.event_feature_width,
+            device=representation.device,
+            dtype=representation.dtype,
+            statistics=self.trajectory_statistics,
+            recency_decay=self.recency_decay,
+        )
         features = torch.cat((representation, mean, max_values), dim=-1)
         if not bool(torch.isfinite(features).all()):
             raise ValueError("trajectory-query features must be finite")

@@ -701,6 +701,13 @@ mean/max learned event-token statistics. The planner still sees the normal
 state representation; only the replaceable external address resolver sees the
 richer query.
 
+The adapter also has an opt-in
+`recency_weighted_and_latest_v1` contract. It keeps the same query width while
+replacing order-blind mean/max statistics with a causal recency-weighted
+summary and the latest retained learned token. Swapping two tokens with equal
+mean/max statistics therefore remains distinguishable at the memory boundary;
+the default compatibility summary is unchanged.
+
 New external cells also receive an unqualified-cell exploration floor. This
 prevents a new file from becoming permanently unreachable before it has
 received enough verifier evidence to qualify or be rejected. The floor is not

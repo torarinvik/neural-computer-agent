@@ -1,3 +1,5 @@
+from dataclasses import replace
+
 import torch
 from torch import nn
 
@@ -141,6 +143,66 @@ def test_policy_free_router_can_use_trajectory_statistics_without_changing_plann
     assert policy_free.configuration()["route_query_adapter"]["statistics"] == (
         "masked_mean_and_max_v1"
     )
+
+
+def test_trajectory_query_adapter_can_preserve_causal_order_at_memory_boundary() -> None:
+    torch.manual_seed(122)
+    controller = AmodalCognitiveController(
+        width=4,
+        workspace_slots=2,
+        intention_width=2,
+        feedback_width=3,
+        event_window_capacity=4,
+    )
+    runtime = AmodalControllerRuntime(controller)
+    state = runtime.initial_state(1, device="cpu")
+    output, next_state = runtime.step_events(
+        [AmodalEvent(torch.randn(1, 4))],
+        state,
+        _feedback(),
+    )
+    payload = torch.zeros_like(next_state.event_window.payload)
+    payload[:, 0, 0] = 1.0
+    payload[:, 1, 0] = 3.0
+    present = torch.zeros_like(next_state.event_window.present)
+    present[:, :2] = True
+    ordered_state = replace(
+        next_state,
+        event_window=replace(
+            next_state.event_window,
+            payload=payload,
+            present=present,
+        ),
+    )
+    reversed_payload = payload.clone()
+    reversed_payload[:, 0] = payload[:, 1]
+    reversed_payload[:, 1] = payload[:, 0]
+    reversed_state = replace(
+        next_state,
+        event_window=replace(
+            next_state.event_window,
+            payload=reversed_payload,
+            present=present,
+        ),
+    )
+
+    compatibility = ExternalControllerTrajectoryQueryAdapter(4)
+    causal = ExternalControllerTrajectoryQueryAdapter(
+        4,
+        trajectory_statistics="recency_weighted_and_latest_v1",
+        recency_decay=0.75,
+    )
+    compatibility_first = compatibility(output.controller, ordered_state)
+    compatibility_second = compatibility(output.controller, reversed_state)
+    causal_first = causal(output.controller, ordered_state)
+    causal_second = causal(output.controller, reversed_state)
+
+    assert torch.allclose(compatibility_first, compatibility_second)
+    assert not torch.allclose(causal_first, causal_second)
+    assert causal.configuration()["statistics"] == (
+        "recency_weighted_and_latest_v1"
+    )
+    assert causal.configuration()["recency_decay"] == 0.75
 
 
 def test_policy_free_runtime_passes_external_entries_into_factual_search() -> None:

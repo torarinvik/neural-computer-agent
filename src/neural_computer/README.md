@@ -242,10 +242,13 @@ contract, not a claim of arbitrary procedure induction or general continual
 learning.
 
 `ExternalControllerTrajectoryQueryAdapter` is an optional memory-side address
-adapter. It augments the final opaque controller state with masked mean/max
-statistics over the learned event-token window, allowing a growing router to
-retain more trajectory identity without changing the planner state or adding a
-modality branch. `ExternalOutcomeIntentionRouter` also supplies a bounded
+adapter. Its compatibility mode augments the final opaque controller state
+with masked mean/max statistics over the learned event-token window. Its
+opt-in `recency_weighted_and_latest_v1` mode instead preserves causal order
+through a recency-weighted summary and the latest retained token. Both allow a
+growing router to retain more trajectory identity without changing the planner
+state or adding a modality branch. `ExternalOutcomeIntentionRouter` also
+supplies a bounded
 exploration floor for unqualified cells so appended memory receives evidence
 before route logits can suppress it.
 
