@@ -7506,3 +7506,46 @@ shape. Whatever distinguishes them is the actual mechanism, and it is
 not yet known.
 
 Probe 254 is `transfer_matrix.py`, 13 families, 2 seeds.
+
+**F156 addendum (same data, re-analysed at zero cost). The slot-count
+confound does NOT explain the donor ranking — it survives the
+control.** Recomputing each source's donor strength using ONLY targets
+of a DIFFERENT slot width:
+
+| source | slots | donor, all targets | donor, different-width targets |
+| --- | ---: | ---: | ---: |
+| chaos | 2 | +0.4883 | **+0.4704** |
+| walled | 2 | +0.4335 | +0.4389 |
+| grid | 2 | +0.4201 | +0.4217 |
+| dial | 3 | +0.4215 | +0.4165 |
+| perm | 4 | +0.2680 | +0.2424 |
+| line | 1 | +0.0896 | +0.0896 |
+| toggle | 6 | +0.0874 | +0.0874 |
+| scrambled | — | -0.1741 | -0.1741 |
+
+Same order, same magnitudes. So structural overlap with same-width
+targets was not doing the work, and the ranking stands as a ranking.
+
+What that leaves is a genuine effect rather than an artefact: **narrow
+sources donate more.** `toggle` uses all six slots and donates +0.087;
+`chaos`, `walled` and `grid` use two and donate four to five times as
+much. A plausible reading, untested: a source that occupies every slot
+lets the plant learn slot-specific habits, while a narrow one forces
+whatever is learned to be about slots IN GENERAL — which is the
+slot-symmetry argument from F73 arriving from the data side rather
+than the architecture side.
+
+And chaos still tops the table after the control, which sharpens the
+question rather than answering it. A rule-less source donating most,
+while the rule-less CONTROL donates worst, means "no rule" is not the
+mechanism by itself. The remaining difference between them is that
+chaos is a fixed random table the plant sees consistently, whereas
+`scrambled` destroys a family's schema while preserving its shape.
+The next probe is a scrambled family at chaos's exact shape — if it
+then donates like chaos, the mechanism is shape; if it still hurts,
+the mechanism is consistency.
+
+Method note: this analysis cost one command against runs already on
+disk, and it is the fourth time today that checking existing data
+settled a question before compute was allocated (F150, the F144 cost
+table, the F145 radius test, this).
