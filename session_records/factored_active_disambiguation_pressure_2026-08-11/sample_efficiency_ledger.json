@@ -1,0 +1,69 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "brainworkshop_factored_active_disambiguation_pressure_v1",
+  "date": "2026-08-11",
+  "status": "mechanistic_active_evidence_signal_not_general_continual_learning",
+  "claim_boundary": "fresh rendered Brain Workshop verifier evidence tests an opaque active probe against a low-disagreement passive control; no frozen-controller learning or n-back mastery claim",
+  "configuration": {
+    "seeds": [41, 42, 43],
+    "training_lifetimes_per_regime": 6,
+    "regimes": ["time_shuffle_false", "time_shuffle_true"],
+    "steps": 9,
+    "probe_transition_index": 3,
+    "base_model": "external-transition-affine-statistics.v1",
+    "residual_model": "external-transition-random-feature-statistics.v1",
+    "residual_random_feature_width": 128,
+    "active_selection": "uncertainty_weighted_model_disagreement_v1",
+    "ambiguity_match_tolerance": 0.7,
+    "probe_match_tolerance": 0.3,
+    "probe_contradiction_tolerance": 0.4,
+    "controller_frozen": true,
+    "optimizer_updates": 0,
+    "replayed_examples": 0
+  },
+  "aggregate": {
+    "active_probe_target_recoveries": "2/3",
+    "passive_control_target_recoveries": "1/3",
+    "ambiguous_transitions_observed": "3/3",
+    "read_only_probe_requests": "6/6",
+    "decoder_state_free_requests": "6/6",
+    "controller_unchanged_all_runs": true,
+    "unique_verifier_bits_total": 558,
+    "logical_lifetimes_total": 84,
+    "transition_rows_consumed_once_total": 654,
+    "optimizer_updates_total": 0,
+    "replayed_examples_total": 0,
+    "wall_time_seconds_total": 1.516
+  },
+  "per_seed": {
+    "41": {
+      "active_probe_recovered_target": true,
+      "passive_control_recovered_target": false,
+      "unique_verifier_bits": 186,
+      "logical_lifetimes": 28,
+      "transition_rows_consumed_once": 218
+    },
+    "42": {
+      "active_probe_recovered_target": true,
+      "passive_control_recovered_target": false,
+      "unique_verifier_bits": 186,
+      "logical_lifetimes": 28,
+      "transition_rows_consumed_once": 218
+    },
+    "43": {
+      "active_probe_recovered_target": false,
+      "passive_control_recovered_target": true,
+      "unique_verifier_bits": 186,
+      "logical_lifetimes": 28,
+      "transition_rows_consumed_once": 218
+    }
+  },
+  "controls": {
+    "active_probe": "caller executes a router-selected opaque intention through the ordinary keypress decoder",
+    "passive_control": "caller executes the lowest-disagreement candidate from the same opaque repertoire",
+    "router_write_firewall": "probe request, caller-owned decode, and partial route leave the router digest unchanged",
+    "controller_write_firewall": "controller parameter digest remains unchanged",
+    "failure_interpretation": "seed 43 shows that one-step disagreement remains miscalibrated outside learned support; ambiguity refusal is retained"
+  },
+  "interpretation": "Active disambiguation produces a causal mechanistic signal on fresh verifier evidence but remains seed-sensitive. The architecture now has the right opaque execution seam and a support-aware selector, yet general continual learning still requires multi-step diagnostic evidence, calibrated uncertainty, and retention-safe acquisition on harder regimes."
+}

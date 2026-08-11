@@ -1646,6 +1646,89 @@ class ExternalTransitionModelBank(nn.Module):
     ) -> torch.Tensor:
         return self(state, intention, context)
 
+    @torch.no_grad()
+    def predictive_leverage(
+        self,
+        state: torch.Tensor,
+        intentions: torch.Tensor,
+        *,
+        candidate_slot_ids: Sequence[int] | None = None,
+        candidate_contexts: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        """Estimate how far probe features are from retained evidence.
+
+        Affine and frozen-random-feature slots retain normal-equation
+        sufficient statistics, so ``phi.T @ A^-1 @ phi`` is an opaque
+        support/leverage signal that does not expose observations.  Active
+        probing uses it to discount unsupported extrapolations.  Families
+        without sufficient statistics are conservatively marked unknown.
+        """
+
+        _validate_tensor(
+            state,
+            name="transition leverage state",
+            ndim=2,
+            width=self.state_width,
+        )
+        if state.shape[0] != 1:
+            raise ValueError("transition leverage accepts one current state")
+        _validate_tensor(
+            intentions,
+            name="transition leverage intentions",
+            ndim=2,
+            width=self.intention_width,
+        )
+        if candidate_slot_ids is not None and candidate_contexts is not None:
+            raise ValueError(
+                "transition leverage accepts slot IDs or contexts, not both"
+            )
+        if candidate_contexts is not None:
+            _validate_tensor(
+                candidate_contexts,
+                name="transition leverage contexts",
+                ndim=2,
+                width=self.context_width,
+            )
+            if candidate_contexts.shape[0] < 1:
+                raise ValueError("transition leverage needs candidate contexts")
+            indices = self._context_indices(candidate_contexts)
+        elif candidate_slot_ids is None:
+            indices = list(range(self.context_count))
+        else:
+            slot_ids = tuple(int(slot_id) for slot_id in candidate_slot_ids)
+            if not slot_ids:
+                raise ValueError("transition leverage needs candidate slots")
+            indices = [self.physical_index_for_slot_id(slot_id) for slot_id in slot_ids]
+        if not indices:
+            raise ValueError("transition leverage needs retained slots")
+
+        prepared: list[tuple[Callable[..., torch.Tensor] | None, torch.Tensor | None]] = []
+        for index in indices:
+            model = self.models[index]
+            features_fn = getattr(model, "_features", None)
+            normal_matrix = getattr(model, "normal_matrix", None)
+            if not callable(features_fn) or not isinstance(
+                normal_matrix, torch.Tensor
+            ):
+                prepared.append((None, None))
+                continue
+            prepared.append((features_fn, torch.linalg.pinv(normal_matrix)))
+
+        values: list[torch.Tensor] = []
+        for intention in intentions:
+            row: list[torch.Tensor] = []
+            state_row = state
+            intention_row = intention.unsqueeze(0)
+            for features_fn, inverse in prepared:
+                if features_fn is None or inverse is None:
+                    row.append(torch.full((), float("inf"), device=state.device))
+                    continue
+                features = features_fn(state_row, intention_row).to(inverse)
+                leverage = (features @ inverse * features).sum(dim=-1).squeeze(0)
+                row.append(leverage.to(state.device))
+            values.append(torch.stack(row))
+        return torch.stack(values)
+
     def loss(
         self,
         observation: ExternalTransitionObservation,
@@ -6666,7 +6749,9 @@ class ExternalOnlineTransitionContextRouter:
                 else self.evidence_evaluator.configuration()
             ),
             "provisional_candidates": "isolated_indexed_copy_on_write_v1",
-            "active_probe": "read_only_model_disagreement_request_v1",
+            "active_probe": (
+                "read_only_uncertainty_weighted_model_disagreement_request_v1"
+            ),
         }
 
     @torch.no_grad()
@@ -6676,6 +6761,7 @@ class ExternalOnlineTransitionContextRouter:
         candidate_intentions: torch.Tensor,
         *,
         candidate_slot_ids: Sequence[int] | None = None,
+        probe_state: torch.Tensor | None = None,
     ) -> ExternalTransitionProbeResult:
         """Request an active probe for an ambiguously routed evidence window.
 
@@ -6691,6 +6777,18 @@ class ExternalOnlineTransitionContextRouter:
         )
         if observation.state.shape[0] < 1:
             raise ValueError("disambiguation probing needs one evidence row")
+        if probe_state is None:
+            current_state = observation.state[:1]
+        else:
+            if (
+                probe_state.ndim != 2
+                or probe_state.shape != (1, self.bank.state_width)
+                or not bool(torch.isfinite(probe_state).all())
+            ):
+                raise ValueError(
+                    "disambiguation probe state must have shape [1, state_width]"
+                )
+            current_state = probe_state
         if candidate_slot_ids is None:
             errors = [
                 self._slot_error(index, observation)
@@ -6712,7 +6810,7 @@ class ExternalOnlineTransitionContextRouter:
         planner = ExternalModelBasedPlanner(self.bank, beam_width=1)
         return planner.select_disambiguating_intention(
             self.bank,
-            observation.state[:1],
+            current_state,
             candidate_intentions,
             candidate_slot_ids=slot_ids,
         )
@@ -11460,14 +11558,14 @@ class ExternalModelBasedPlanner:
         *,
         candidate_slot_ids: Sequence[int] | None = None,
     ) -> ExternalTransitionProbeResult:
-        """Choose an opaque intention with maximal model disagreement.
+        """Choose an opaque intention with reliable model disagreement.
 
         This is an active evidence primitive, not a policy. It evaluates the
         same current state and each candidate intention under independently
         stored factual models, then selects the intention whose predicted
-        next states have the largest variance. The caller executes that
-        opaque intention and feeds the observed consequence back through the
-        ordinary factual router.
+        next states have the largest support-weighted variance. The caller
+        executes that opaque intention and feeds the observed consequence
+        back through the ordinary factual router.
         """
 
         if not isinstance(bank, ExternalTransitionModelBank):
@@ -11524,7 +11622,19 @@ class ExternalModelBasedPlanner:
         disagreement_scores = (
             predicted_next_states - mean_prediction
         ).square().mean(dim=(1, 2))
-        selected_index = int(disagreement_scores.argmax())
+        leverage = bank.predictive_leverage(
+            state,
+            candidate_intentions,
+            candidate_slot_ids=slot_ids,
+        )
+        mean_leverage = leverage.mean(dim=1)
+        reliability = torch.where(
+            torch.isfinite(mean_leverage),
+            torch.reciprocal(1.0 + mean_leverage.clamp_min(0.0)),
+            torch.ones_like(mean_leverage),
+        )
+        selection_scores = disagreement_scores * reliability
+        selected_index = int(selection_scores.argmax())
         return ExternalTransitionProbeResult(
             selected_intention=candidate_intentions[selected_index].detach().clone(),
             selected_intention_index=selected_index,

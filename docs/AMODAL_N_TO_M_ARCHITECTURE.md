@@ -9207,3 +9207,34 @@ The result narrows the bottleneck: the system needs an evidence-efficient
 identity mechanism that can recognize when a partial observation is
 insufficient before a factual model becomes confidently wrong. The ledger is
 `session_records/factored_residual_prefix_address_pressure_2026-08-11/sample_efficiency_ledger.json`.
+
+## Active opaque disambiguation on fresh verifier evidence (2026-08-11)
+
+The active-probe boundary now discounts raw model disagreement by predictive
+leverage. Affine and frozen-random-feature external slots already retain
+normal-equation sufficient statistics, so
+`phi.T @ A^-1 @ phi` provides a support signal without retaining observations.
+Unsupported extrapolations are therefore less likely to become diagnostic
+intentions merely because their predictions are far apart. This remains a
+memory-side selection heuristic: it does not inspect the decoder protocol,
+choose a key, or mutate the controller.
+
+The canonical fresh-evidence audit is
+`experiments/brainworkshop_canonical/factored_active_disambiguation_pressure.py`.
+It trains two frozen-controller residual regimes using rendered Brain
+Workshop verifier streams, creates a factual near-tie immediately before an
+eligible outcome, requests an opaque intention, executes it through
+`AmodalControllerRuntime.decode_intention()` and the ordinary keypress decoder,
+and routes the resulting successor read-only. On seeds `41`, `42`, and `43`,
+the active probe recovered the target slot on `2/3` fresh lifetimes while the
+low-disagreement passive control recovered `1/3`; all six probe requests and
+decodes were router/controller-write-free, with zero replay and zero
+optimizer updates. Seed `43` remains an explicit failure, so this is a
+mechanistic active-evidence signal, not general continual learning or a claim
+that the frozen decoder has learned n-back.
+
+The failure is useful: disagreement selection can still be miscalibrated when
+the selected probe's actual successor lies outside the learned model's useful
+support. The next pressure is multi-step probe evidence and calibrated
+uncertainty, not weakening the ambiguity refusal. Accounting is in
+`session_records/factored_active_disambiguation_pressure_2026-08-11/sample_efficiency_ledger.json`.

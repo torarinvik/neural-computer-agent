@@ -3920,7 +3920,7 @@ def test_online_router_requests_read_only_probe_for_ambiguous_evidence() -> None
     assert probe.candidate_slot_ids == (0, 1)
     assert bank.digest() == before
     assert router.configuration()["active_probe"] == (
-        "read_only_model_disagreement_request_v1"
+        "read_only_uncertainty_weighted_model_disagreement_request_v1"
     )
 
 

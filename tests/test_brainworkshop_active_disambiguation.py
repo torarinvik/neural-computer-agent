@@ -1,0 +1,26 @@
+from __future__ import annotations
+
+from experiments.brainworkshop_canonical.factored_active_disambiguation_pressure import (
+    run_active_disambiguation_pressure,
+)
+
+
+def test_fresh_brainworkshop_active_probe_resolves_target_without_writes() -> None:
+    result = run_active_disambiguation_pressure(
+        seed=41,
+        training_lifetimes=6,
+        steps=9,
+        random_feature_width=128,
+    )
+
+    assert result.status == "active_probe_resolved_fresh_target"
+    assert result.active_probe_recovered_target
+    assert not result.passive_control_recovered_target
+    assert result.active_probe_read_only
+    assert result.active_decoder_state_free
+    assert result.controller_unchanged
+    assert result.active_trial is not None
+    assert result.active_trial.verifier_outcome_eligible
+    assert result.active_trial.strict_route_slot_id == result.target_slot_id
+    assert result.optimizer_updates == 0
+    assert result.replayed_examples == 0

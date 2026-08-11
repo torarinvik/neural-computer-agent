@@ -1499,8 +1499,9 @@ class ExternalFactoredTransitionRouter:
         candidate_intentions: torch.Tensor,
         *,
         candidate_slot_ids: Sequence[int] | None = None,
+        probe_state: torch.Tensor | None = None,
     ) -> ExternalTransitionProbeResult:
-        """Select an opaque intention that maximizes slot disagreement.
+        """Select an opaque intention with reliable slot disagreement.
 
         This is a read-only active-evidence primitive. It does not choose a
         device action or mutate memory. The caller executes the selected
@@ -1516,6 +1517,18 @@ class ExternalFactoredTransitionRouter:
         )
         if observation.state.shape[0] < 1:
             raise ValueError("disambiguation probing needs one evidence row")
+        if probe_state is None:
+            current_state = observation.state[:1]
+        else:
+            if (
+                probe_state.ndim != 2
+                or probe_state.shape != (1, self.model.state_width)
+                or not bool(torch.isfinite(probe_state).all())
+            ):
+                raise ValueError(
+                    "disambiguation probe state must have shape [1, state_width]"
+                )
+            current_state = probe_state
         if candidate_intentions.ndim != 2 or candidate_intentions.shape[1] != (
             self.model.intention_width
         ):
@@ -1555,7 +1568,6 @@ class ExternalFactoredTransitionRouter:
             raise ValueError("disambiguation probe slot IDs are invalid")
 
         predictions: list[torch.Tensor] = []
-        state = observation.state[:1]
         for intention in candidate_intentions:
             intention_batch = intention.unsqueeze(0)
             slot_predictions = []
@@ -1563,9 +1575,9 @@ class ExternalFactoredTransitionRouter:
                 context = self._contexts[self._slot_ids.index(slot_id)]
                 slot_predictions.append(
                     self.model.predict_with_context(
-                        state,
+                        current_state,
                         intention_batch,
-                        context.to(state).unsqueeze(0),
+                        context.to(current_state).unsqueeze(0),
                     ).squeeze(0)
                 )
             predictions.append(torch.stack(slot_predictions))
@@ -1574,7 +1586,27 @@ class ExternalFactoredTransitionRouter:
         disagreement_scores = (
             predicted_next_states - mean_prediction
         ).square().mean(dim=(1, 2))
-        selected_index = int(disagreement_scores.argmax())
+        if self.model.residual_bank is None:
+            leverage = torch.zeros_like(disagreement_scores)
+        else:
+            candidate_contexts = torch.stack(
+                [
+                    self._contexts[self._slot_ids.index(slot_id)]
+                    for slot_id in slot_ids
+                ]
+            ).to(current_state)
+            leverage = self.model.residual_bank.predictive_leverage(
+                current_state,
+                candidate_intentions,
+                candidate_contexts=candidate_contexts,
+            ).mean(dim=1)
+        reliability = torch.where(
+            torch.isfinite(leverage),
+            torch.reciprocal(1.0 + leverage.clamp_min(0.0)),
+            torch.ones_like(leverage),
+        )
+        selection_scores = disagreement_scores * reliability
+        selected_index = int(selection_scores.argmax())
         return ExternalTransitionProbeResult(
             selected_intention=candidate_intentions[selected_index].detach().clone(),
             selected_intention_index=selected_index,
@@ -2028,6 +2060,9 @@ class ExternalFactoredTransitionRouter:
             ),
             "route_query_role": "proposal_only_close_factual_tie_break_v1",
             "partial_route": "read_only_cumulative_evidence_with_confirmation_v1",
+            "active_probe": (
+                "read_only_uncertainty_weighted_model_disagreement_request_v1"
+            ),
             "quarantined_observations": self.quarantined_observations,
             "slot_ids": list(self._slot_ids),
             "behavior": "copy_on_write_residual_admission_v1",

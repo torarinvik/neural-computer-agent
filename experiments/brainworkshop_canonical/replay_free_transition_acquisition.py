@@ -193,6 +193,7 @@ def _run_lifetime(
     cue_symbol: int,
     candidate_intentions: torch.Tensor,
     learn: bool,
+    time_shuffle: bool = False,
 ) -> tuple[ExternalTransitionRollout, int]:
     """Run one fresh rendered lifetime and optionally consume its rows once."""
 
@@ -203,6 +204,7 @@ def _run_lifetime(
         symbol_count=4,
         cue_symbol=cue_symbol,
         seed=seed,
+        time_shuffle=time_shuffle,
     )
     verifier.reset()
     if isinstance(agent.runtime.memory, ContentAddressedMemory):
