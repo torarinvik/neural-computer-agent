@@ -1757,3 +1757,21 @@ the largest failure class (`7` active and `9` passive rejections), so the next
 high-ROI change is a better pre-admission evidence/credit boundary rather than
 more model capacity. The ledger is in
 `session_records/active_discovery_masked_transfer_2026-08-11/`.
+
+## Tight route matching across three target regimes (2026-08-11)
+
+The dominant pre-admission failure was false continuation through the mastered
+source slot. Tightening the opaque route-match tolerance from `0.02` to `0.01`
+was tested with the masked context summary and matched active/passive exposure
+on three target regimes: n-back-3, n-back-4, and n-back-5. Active discovery
+passed `48/72` complete gates versus `44/72` for passive. Source retention was
+`72/72` for both arms, every controller remained unchanged, replay and
+optimizer updates were zero, and both arms consumed `2,160` transition rows
+once. The n-back-3 split was neutral (`16/24` each); n-back-4 was `15/24`
+versus `14/24`; n-back-5 was `17/24` versus `14/24`.
+
+The default online-discovery tolerance is now `0.01`. This promotes a
+cross-regime route-boundary improvement, not Brain Workshop mastery or general
+continual learning. The remaining dominant failures are held-out model-family
+verification and candidate staging on the hardest regime. The full ledger is
+in `session_records/active_discovery_tight_routing_2026-08-11/`.

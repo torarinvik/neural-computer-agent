@@ -138,7 +138,7 @@ class OnlineTransitionDiscoveryReport:
     window_gain: float
     recency_decay: float
     context_aggregation: str
-    routing_match_tolerance: float = 0.02
+    routing_match_tolerance: float = 0.01
     adaptive_address: bool = False
     random_feature_width: int = 128
     pretrain_context_encoder: bool = False
@@ -795,7 +795,7 @@ def run_online_transition_discovery_audit(
     prior_selection_cost_learning_rate: float = 0.35,
     prior_selection_cost_initial: float = 0.25,
     prior_selection_cost_decision_weight: float = 1.0,
-    routing_match_tolerance: float = 0.02,
+    routing_match_tolerance: float = 0.01,
     adaptive_address: bool = False,
     random_feature_width: int = 128,
     pretrain_context_encoder: bool = False,
@@ -1768,7 +1768,7 @@ def main() -> None:
         "--prior-selection-cost-decision-weight", type=float, default=1.0
     )
     parser.add_argument("--adaptive-address", action="store_true")
-    parser.add_argument("--routing-match-tolerance", type=float, default=0.02)
+    parser.add_argument("--routing-match-tolerance", type=float, default=0.01)
     parser.add_argument("--random-feature-width", type=int, default=128)
     parser.add_argument("--pretrain-context-encoder", action="store_true")
     parser.add_argument(

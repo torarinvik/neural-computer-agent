@@ -373,6 +373,7 @@ def test_active_discovery_reports_a_changed_target_regime() -> None:
     assert report.target_n_back == 4
     assert report.target_cue_symbol == 5
     assert report.discovery_probe_mode == "active"
+    assert report.routing_match_tolerance == 0.01
     assert report.source_slot_byte_stable
     assert report.controller_unchanged
     assert report.replayed_examples == 0
@@ -387,6 +388,7 @@ def test_active_discovery_handles_a_disappearing_provisional_candidate() -> None
         prior_selection_fresh_cost=1.0,
         prior_selection_cost_weight=0.2,
         discovery_probe_mode="active",
+        routing_match_tolerance=0.02,
         target_n_back=5,
         target_cue_symbol=6,
     )
