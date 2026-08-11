@@ -71,6 +71,17 @@ parser.add_argument(
          "A curriculum gets reading established on the readable task "
          "first, then extends it — the bootstrapping F120 identified.")
 parser.add_argument(
+    "--curve-every", type=int, default=0,
+    help="evaluate held-out performance every N updates and record the "
+         "trajectory. Ranked first in LITERATURE.md addendum 3 for a "
+         "reason that is embarrassing rather than technical: this "
+         "project has run hundreds of arms and never once plotted "
+         "performance against training step. That is why F147's 'it "
+         "just needed more training' was invisible until a run "
+         "happened to be longer, and why we cannot currently tell "
+         "slow convergence from grokking — a plateau then a "
+         "transition — which imply opposite next actions.")
+parser.add_argument(
     "--refine", type=int, default=0,
     help="SEMI-AMORTIZATION (Kim et al. 2018), ranked first in the "
          "LITERATURE.md addendum. Take the reader's entry as an "
@@ -496,6 +507,7 @@ def reader_examples(world: dict, generator: torch.Generator):
     return pieces, x, y
 
 
+curve: list = []
 data_gen = torch.Generator().manual_seed(args.seed * 6700417)
 uniform = math.log(M)
 phase_one = int(args.train_updates * args.two_phase)
@@ -576,6 +588,20 @@ for update in range(args.train_updates):
             generator=data_gen)[:args.contrastive_batch].tolist()
         loss = loss + args.contrastive_aux * contrastive_loss(
             [train_worlds[i] for i in picks])
+    if args.curve_every and update % args.curve_every == 0:
+        with torch.no_grad():
+            probe_world = held_worlds[0]
+            g = torch.Generator().manual_seed(args.seed * 31)
+            pe = reader(*reader_examples(probe_world, g))
+            if codebook is not None:
+                pe = codebook(pe)
+            hit = tot = 0
+            for prog in held_programs[:6]:
+                qx = torch.randint(0, M, (64,), generator=g)
+                qy = apply_program(probe_world, prog, qx)
+                hit += int((plant(prog, qx, pe).argmax(-1) == qy).sum())
+                tot += 64
+            curve.append((update, round(hit / max(tot, 1), 4)))
     optimizer.zero_grad()
     loss.backward()
     optimizer.step()
@@ -696,6 +722,7 @@ report = {
     "held_worlds": args.held_worlds,
     "train_programs": len(train_programs),
     "held_programs": len(held_programs),
+    "curve": curve,
     "chance": round(1 / M, 4),
     "held_out_worlds": {w["name"]: score_world(w) for w in held_worlds},
     "context_fit": {w["name"]: context_fit(w) for w in held_worlds[:8]},
