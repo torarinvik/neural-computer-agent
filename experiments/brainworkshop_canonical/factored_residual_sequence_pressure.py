@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 import copy
 import json
+import math
 import time
 from collections.abc import Sequence
 from dataclasses import asdict, dataclass
@@ -28,8 +29,11 @@ from neural_computer import (
     ExternalFactoredTransitionModel,
     ExternalFactoredTransitionRouter,
     ExternalModelBasedPlanner,
+    ExternalTransitionContextAddressAdapter,
     ExternalTransitionContextEncoder,
+    ExternalTransitionObservation,
     ExternalTransitionRollout,
+    ExternalTransitionRouteQuery,
     PolicyFreeAmodalRuntime,
 )
 
@@ -72,6 +76,8 @@ class SequencePressureResult:
     regimes: tuple[RegimePressureResult, ...]
     source_retained: bool
     reversal_passed: bool
+    address_update_passed: bool
+    address_update_loss: float | None
     missing_evidence_passed: bool
     memory_corruption_rejected: bool
     controller_unchanged: bool
@@ -132,6 +138,9 @@ def run_factored_residual_sequence_pressure(
     target_training_lifetimes: int = 2,
     promotion_holdout_lifetimes: int = 2,
     regime_count: int = 3,
+    context_aggregation: str = "last_token",
+    adaptive_address: bool = False,
+    adaptive_address_learning_rate: float = 0.003,
     residual_model_family: str = EXTERNAL_TRANSITION_RANDOM_FEATURE_MODEL_FAMILY,
     residual_random_feature_width: int = 128,
     residual_ridge_candidates: Sequence[float] | None = None,
@@ -151,6 +160,15 @@ def run_factored_residual_sequence_pressure(
         raise ValueError("factored sequence pressure budgets must be positive")
     if target_training_lifetimes < 2 or promotion_holdout_lifetimes < 2:
         raise ValueError("factored sequence pressure needs repeated evidence")
+    if context_aggregation not in {"last_token", "mean_pool"}:
+        raise ValueError("factored sequence context aggregation is unsupported")
+    if not isinstance(adaptive_address, bool):
+        raise TypeError("factored sequence adaptive address flag must be boolean")
+    if (
+        adaptive_address_learning_rate <= 0.0
+        or not math.isfinite(adaptive_address_learning_rate)
+    ):
+        raise ValueError("factored sequence adaptive address rate must be positive")
     if residual_random_feature_width < 1:
         raise ValueError("factored sequence residual width must be positive")
     if residual_model_family not in {
@@ -254,6 +272,16 @@ def run_factored_residual_sequence_pressure(
         model.intention_width,
         hidden_width=max(16, model.state_width),
         context_width=model.context_width,
+        aggregation=context_aggregation,
+    )
+    address_adapter = (
+        ExternalTransitionContextAddressAdapter(
+            context_encoder,
+            learning_rate=adaptive_address_learning_rate,
+            adaptation_steps=1,
+        )
+        if adaptive_address
+        else None
     )
     router = ExternalFactoredTransitionRouter(
         model,
@@ -262,6 +290,12 @@ def run_factored_residual_sequence_pressure(
         admission_observations=steps,
         max_contexts=regime_count,
         residual_adaptation_updates=1,
+        address_adapter=address_adapter,
+        route_query=(
+            None
+            if address_adapter is None
+            else ExternalTransitionRouteQuery(model.context_width)
+        ),
     )
 
     prior_probes: list[tuple[ExternalTransitionRollout, torch.Tensor]] = [
@@ -539,9 +573,86 @@ def run_factored_residual_sequence_pressure(
             unique_verifier_bits += bits
             error = _recursive_error(router.model, rollout, context)
             reversal_errors.append(error)
-        reversal_passed = bool(reversal_errors) and all(
-            error <= recursive_error_bound for error in reversal_errors
+    reversal_passed = bool(reversal_errors) and all(
+        error <= recursive_error_bound for error in reversal_errors
+    )
+
+    address_update_passed = not adaptive_address
+    address_update_loss: float | None = None
+    address_lifetimes = 0
+    if adaptive_address and reversal_passed:
+        # Use fresh post-promotion views. The address learner may not reuse
+        # the promotion holdouts while claiming a replay-free update.
+        address_rollouts: list[tuple[int, int, torch.Tensor, ExternalTransitionRollout]] = []
+        address_sources = [
+            (slot_id, n_back, cue_symbol, context)
+            for slot_id, (n_back, cue_symbol, context, _holdout) in zip(
+                router.slot_ids,
+                regime_holdouts,
+                strict=True,
+            )
+        ]
+        for address_index, (slot_id, n_back, cue_symbol, context) in enumerate(
+            address_sources
+        ):
+            address_policy = _policy(agent, router.model, state_adapter)
+            address_rollout, bits = _run_lifetime(
+                agent,
+                address_policy,
+                router.model,
+                context,
+                n_back=n_back,
+                steps=steps,
+                seed=seed + 40000 + address_index,
+                cue_symbol=cue_symbol,
+                candidate_intentions=candidate_intentions,
+                learn=False,
+            )
+            address_rollouts.append((slot_id, n_back, context, address_rollout))
+            unique_verifier_bits += bits
+            transition_rows += steps
+        address_lifetimes = len(address_rollouts)
+
+        def merge_rows(rows: Sequence[ExternalTransitionObservation]) -> ExternalTransitionObservation:
+            if not rows:
+                raise RuntimeError("address prefix needs at least one row")
+            return ExternalTransitionObservation(
+                state=torch.cat([row.state for row in rows]),
+                intention=torch.cat([row.intention for row in rows]),
+                next_state=torch.cat([row.next_state for row in rows]),
+            )
+
+        prefixes_by_slot: dict[int, tuple[ExternalTransitionObservation, ...]] = {}
+        full_by_slot: dict[int, ExternalTransitionObservation] = {}
+        for slot_id, _n_back, _context, rollout in address_rollouts:
+            rows = _rollout_observations(rollout)
+            split = max(1, len(rows) // 2)
+            prefixes_by_slot[slot_id] = (
+                merge_rows(rows[:split]),
+                merge_rows(rows[split:]),
+            )
+            full_by_slot[slot_id] = _rollout_bundle(rollout)
+
+        candidate_router, address_update_loss = router.copy_on_write_prefix_address_update(
+            prefixes_by_slot,
+            full_by_slot,
         )
+        address_update_passed = True
+        for slot_id, _n_back, _context, rollout in address_rollouts:
+            rows = _rollout_observations(rollout)
+            split = max(1, len(rows) // 2)
+            partial = candidate_router.route_partial_bundle(
+                (merge_rows(rows[:split]),),
+                match_tolerance=recursive_error_bound,
+            )
+            address_update_passed = address_update_passed and (
+                partial.status == "matched" and partial.slot_id == slot_id
+            )
+        address_update_passed = address_update_passed and (
+            candidate_router.model.digest() == router.model.digest()
+        )
+        if address_update_passed:
+            router = candidate_router
 
     missing_evidence_passed = False
     if reversal_passed and regime_holdouts:
@@ -586,6 +697,7 @@ def run_factored_residual_sequence_pressure(
         )
         and source_retained
         and reversal_passed
+        and address_update_passed
         and missing_evidence_passed
         and memory_corruption_rejected
         and controller_unchanged
@@ -600,6 +712,8 @@ def run_factored_residual_sequence_pressure(
         regimes=tuple(regime_results),
         source_retained=source_retained,
         reversal_passed=reversal_passed,
+        address_update_passed=address_update_passed,
+        address_update_loss=address_update_loss,
         missing_evidence_passed=missing_evidence_passed,
         memory_corruption_rejected=memory_corruption_rejected,
         controller_unchanged=controller_unchanged,
@@ -612,9 +726,10 @@ def run_factored_residual_sequence_pressure(
             + target_training_lifetimes * regime_count
             + promotion_holdout_lifetimes * regime_count
             + (regime_count if reversal_passed else 0)
+            + address_lifetimes
         ),
         transition_rows_consumed_once=transition_rows,
-        optimizer_updates=0,
+        optimizer_updates=(1 if address_lifetimes else 0),
         replayed_examples=0,
         reversal_errors=tuple(reversal_errors),
     )
@@ -629,10 +744,20 @@ def main() -> None:
         default=[91, 92, 93],
     )
     parser.add_argument("--report-out", type=str)
+    parser.add_argument("--adaptive-address", action="store_true")
+    parser.add_argument(
+        "--adaptive-address-learning-rate",
+        type=float,
+        default=0.003,
+    )
     args = parser.parse_args()
     started = time.monotonic()
     results = [
-        run_factored_residual_sequence_pressure(seed=seed)
+        run_factored_residual_sequence_pressure(
+            seed=seed,
+            adaptive_address=args.adaptive_address,
+            adaptive_address_learning_rate=args.adaptive_address_learning_rate,
+        )
         for seed in args.seeds
     ]
     report = {
@@ -656,6 +781,9 @@ def main() -> None:
                 result.source_retained for result in results
             ),
             "reversal_passes": sum(result.reversal_passed for result in results),
+            "address_update_passes": sum(
+                result.address_update_passed for result in results
+            ),
             "missing_evidence_passes": sum(
                 result.missing_evidence_passed for result in results
             ),

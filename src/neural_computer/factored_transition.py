@@ -6,6 +6,7 @@ import hashlib
 import math
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
+from itertools import pairwise
 from typing import Any
 
 import torch
@@ -17,6 +18,7 @@ from .world_model import (
     EXTERNAL_TRANSITION_RANDOM_FEATURE_MODEL_FAMILY,
     ExternalModelBasedPlanner,
     ExternalSparseTransitionEvidenceIndex,
+    ExternalTransitionContextAddressAdapter,
     ExternalTransitionContextEncoder,
     ExternalTransitionMemory,
     ExternalTransitionModel,
@@ -26,6 +28,7 @@ from .world_model import (
     ExternalTransitionModelGrowthReceipt,
     ExternalTransitionObservation,
     ExternalTransitionRollout,
+    ExternalTransitionRouteQuery,
 )
 
 EXTERNAL_FACTORED_TRANSITION_MODEL_SCHEMA = (
@@ -698,6 +701,8 @@ class ExternalFactoredTransitionRouter:
         evidence_gate_min_evidence: int = 0,
         committed_evidence_gate: bool = False,
         sparse_evidence: ExternalSparseTransitionEvidenceIndex | None = None,
+        address_adapter: ExternalTransitionContextAddressAdapter | None = None,
+        route_query: ExternalTransitionRouteQuery | None = None,
     ) -> None:
         if not isinstance(model, ExternalFactoredTransitionModel):
             raise TypeError("factored router requires a factored transition model")
@@ -754,6 +759,17 @@ class ExternalFactoredTransitionRouter:
             or sparse_evidence.intention_width != model.intention_width
         ):
             raise ValueError("factored sparse evidence and model widths differ")
+        if address_adapter is not None and (
+            address_adapter.state_width != model.state_width
+            or address_adapter.intention_width != model.intention_width
+            or address_adapter.context_width != model.context_width
+        ):
+            raise ValueError("factored address adapter and model widths differ")
+        if route_query is not None:
+            if route_query.context_width != model.context_width:
+                raise ValueError("factored route query and model widths differ")
+            if address_adapter is None:
+                raise ValueError("factored route query requires an address adapter")
         self.model = model
         self.context_encoder = context_encoder
         self.match_tolerance = float(match_tolerance)
@@ -768,6 +784,8 @@ class ExternalFactoredTransitionRouter:
         self.evidence_gate_min_evidence = int(evidence_gate_min_evidence)
         self.committed_evidence_gate = committed_evidence_gate
         self.sparse_evidence = sparse_evidence
+        self.address_adapter = address_adapter
+        self.route_query = route_query
         self._contexts: list[torch.Tensor] = []
         self._slot_ids: list[int] = []
         self._next_slot_id = 0
@@ -857,6 +875,8 @@ class ExternalFactoredTransitionRouter:
             del self._contexts[index]
             if self.sparse_evidence is not None:
                 self.sparse_evidence.unregister_slot(slot_id)
+            if self.route_query is not None:
+                self.route_query.unregister_slot(slot_id)
             evict_context = getattr(self.evidence_evaluator, "evict_context", None)
             if callable(evict_context):
                 evict_context(context)
@@ -954,8 +974,29 @@ class ExternalFactoredTransitionRouter:
         margin_floor = self.match_margin if match_margin is None else match_margin
         if tolerance < 0.0 or margin_floor < 0.0:
             raise ValueError("factored route tolerances cannot be negative")
-        if errors[best] > tolerance or margin < margin_floor:
+        if errors[best] > tolerance:
             return None
+        if margin < margin_floor:
+            # Factual prediction remains authoritative. An independently
+            # learned address may break only a close factual tie; it may not
+            # override a decisive factual winner or force a low-quality match.
+            if self.route_query is None or self.address_adapter is None:
+                return None
+            with torch.no_grad():
+                address_query = self.address_adapter.encode_observation(observation)
+                proposal = self.route_query.propose_observation(
+                    observation,
+                    self.contexts,
+                    self.slot_ids,
+                    fallback_query=address_query,
+                )
+            address_margin = proposal.margin
+            if (
+                proposal.selected_slot_id != self._slot_ids[best]
+                or address_margin is None
+                or address_margin < margin_floor
+            ):
+                return None
         return self._slot_ids[best], errors[best], margin
 
     def _evidence_probability(
@@ -1390,21 +1431,30 @@ class ExternalFactoredTransitionRouter:
         match_tolerance: float = 0.05,
         contradiction_tolerance: float | None = None,
         match_margin: float | None = None,
+        confirmation_bundles: int = 2,
     ) -> FactoredTransitionRouteResult:
         """Resolve one stream by accumulating read-only partial evidence.
 
         Each bundle belongs to one caller-owned stream and remains separate at
-        the API boundary.  The router first tests the earliest evidence, then
-        cumulatively adds later bundles until one committed context is
-        decisive.  No candidate, route key, or model state is written.  If
-        evidence remains ambiguous, the final result is an explicit refusal
-        rather than a forced identity guess.
+        the API boundary.  The router tests each cumulative prefix and
+        requires the requested number of bundles before accepting a route. A
+        prior decisive slot that flips under later evidence is treated as
+        unstable and refused. No candidate, route key, or model state is
+        written. If evidence remains ambiguous, the final result is an
+        explicit refusal rather than a forced identity guess.
         """
 
         if not bundles:
             raise ValueError("factored partial sequence cannot be empty")
+        if (
+            not isinstance(confirmation_bundles, int)
+            or isinstance(confirmation_bundles, bool)
+            or confirmation_bundles < 1
+        ):
+            raise ValueError("factored partial confirmation count must be positive")
         cumulative: list[ExternalTransitionObservation] = []
         result: FactoredTransitionRouteResult | None = None
+        matched_slots: list[int] = []
         for bundle in bundles:
             if not bundle:
                 raise ValueError("factored partial sequence bundles cannot be empty")
@@ -1416,10 +1466,29 @@ class ExternalFactoredTransitionRouter:
                 contradiction_tolerance=contradiction_tolerance,
                 match_margin=match_margin,
             )
-            if result.status in {"matched", "reliability_veto"}:
+            if result.status == "reliability_veto":
                 return result
+            if result.status == "matched" and result.slot_id is not None:
+                matched_slots.append(result.slot_id)
         if result is None:
             raise RuntimeError("factored partial sequence produced no route result")
+        if len(bundles) < confirmation_bundles or result.status != "matched":
+            return FactoredTransitionRouteResult(
+                status="ambiguous",
+                slot_id=None,
+                context=None,
+                pending_observations=0,
+            ).validate(context_width=self.model.context_width)
+        if any(
+            left != right
+            for left, right in pairwise(matched_slots)
+        ):
+            return FactoredTransitionRouteResult(
+                status="ambiguous",
+                slot_id=None,
+                context=None,
+                pending_observations=0,
+            ).validate(context_width=self.model.context_width)
         return result
 
     def quarantine_partial_bundle(
@@ -1648,6 +1717,15 @@ class ExternalFactoredTransitionRouter:
             self._next_slot_id += 1
             self._contexts.append(self._candidate_context.detach().clone())
             self._slot_ids.append(slot_id)
+            if self.route_query is not None and self.address_adapter is not None:
+                self.route_query.register_slot(
+                    slot_id,
+                    self.address_adapter,
+                    route_key=self.route_query.route_feature(
+                        self.address_adapter,
+                        heldout,
+                    ),
+                )
             if self.sparse_evidence is not None:
                 self.sparse_evidence.register_slot(slot_id)
                 for evidence in self._candidate_evidence:
@@ -1687,6 +1765,67 @@ class ExternalFactoredTransitionRouter:
             ),
             heldout_rollout_error=heldout_rollout_error,
         ).validate()
+
+    def copy_on_write_prefix_address_update(
+        self,
+        prefix_observations_by_slot: Mapping[
+            int, Sequence[Sequence[ExternalTransitionObservation]]
+        ],
+        full_observations_by_slot: Mapping[int, ExternalTransitionObservation],
+        *,
+        temperature: float = 0.1,
+    ) -> tuple[ExternalFactoredTransitionRouter, float]:
+        """Return an address-only candidate trained from variable evidence.
+
+        The factual model, prediction contexts, and committed slot IDs are
+        copied unchanged.  Only the external address adapter and route-query
+        keys are updated, using fresh prefixes aligned to caller-owned full
+        bundles.  The live router remains byte-stable until the caller checks
+        route recovery and retention and explicitly adopts the returned
+        candidate.  No observations are retained in the candidate.
+        """
+
+        if self._candidate_model is not None or self._pending:
+            raise RuntimeError("cannot adapt addresses while factored evidence is staged")
+        if self.address_adapter is None or self.route_query is None:
+            raise RuntimeError(
+                "prefix address updates require an address adapter and route query"
+            )
+        if not isinstance(prefix_observations_by_slot, Mapping):
+            raise TypeError("prefix address slot views must be a mapping")
+        if not isinstance(full_observations_by_slot, Mapping):
+            raise TypeError("prefix address full views must be a mapping")
+        expected_slots = set(self._slot_ids)
+        if set(prefix_observations_by_slot) != expected_slots:
+            raise ValueError("prefix address slot prefixes do not cover committed slots")
+        if set(full_observations_by_slot) != expected_slots:
+            raise ValueError("prefix address full views do not cover committed slots")
+
+        prefixes = [prefix_observations_by_slot[slot_id] for slot_id in self._slot_ids]
+        full = [full_observations_by_slot[slot_id] for slot_id in self._slot_ids]
+        candidate_adapter, loss = self.address_adapter.copy_on_write_prefix_alignment(
+            prefixes,
+            full,
+            temperature=temperature,
+        )
+        candidate = ExternalFactoredTransitionRouter.from_payload(
+            self.state_payload(),
+            evidence_evaluator=self.evidence_evaluator,
+        )
+        if candidate.route_query is None:
+            raise RuntimeError("factored address candidate lost its route query")
+        candidate.address_adapter = candidate_adapter
+        for slot_id, observation in zip(self._slot_ids, full, strict=True):
+            candidate.route_query.unregister_slot(slot_id)
+            candidate.route_query.register_slot(
+                slot_id,
+                candidate_adapter,
+                route_key=candidate.route_query.route_feature(
+                    candidate_adapter,
+                    observation,
+                ),
+            )
+        return candidate, loss
 
     def update_bound_slot(
         self,
@@ -1784,7 +1923,16 @@ class ExternalFactoredTransitionRouter:
                 if self.sparse_evidence is None
                 else self.sparse_evidence.configuration()
             ),
-            "partial_route": "read_only_cumulative_evidence_v1",
+            "address_adapter": (
+                None
+                if self.address_adapter is None
+                else self.address_adapter.configuration()
+            ),
+            "route_query": (
+                None if self.route_query is None else self.route_query.configuration()
+            ),
+            "route_query_role": "proposal_only_close_factual_tie_break_v1",
+            "partial_route": "read_only_cumulative_evidence_with_confirmation_v1",
             "quarantined_observations": self.quarantined_observations,
             "slot_ids": list(self._slot_ids),
             "behavior": "copy_on_write_residual_admission_v1",
@@ -1795,6 +1943,10 @@ class ExternalFactoredTransitionRouter:
         digest.update(self.schema.encode("utf-8"))
         digest.update(self.model.digest().encode("utf-8"))
         digest.update(self.context_encoder.digest().encode("utf-8"))
+        if self.address_adapter is not None:
+            digest.update(self.address_adapter.digest().encode("utf-8"))
+        if self.route_query is not None:
+            digest.update(self.route_query.digest().encode("utf-8"))
         for context, slot_id in zip(self._contexts, self._slot_ids, strict=True):
             digest.update(context.detach().cpu().contiguous().numpy().tobytes())
             digest.update(str(slot_id).encode("utf-8"))
@@ -1823,6 +1975,14 @@ class ExternalFactoredTransitionRouter:
             "configuration": self.configuration(),
             "model": self.model.state_payload(),
             "context_encoder": self.context_encoder.state_payload(),
+            "address_adapter": (
+                None
+                if self.address_adapter is None
+                else self.address_adapter.state_payload()
+            ),
+            "route_query": (
+                None if self.route_query is None else self.route_query.state_payload()
+            ),
             "contexts": [context.tolist() for context in self._contexts],
             "slot_ids": list(self._slot_ids),
             "next_slot_id": self._next_slot_id,
@@ -1929,6 +2089,20 @@ class ExternalFactoredTransitionRouter:
                 if payload.get("sparse_evidence") is None
                 else ExternalSparseTransitionEvidenceIndex.from_payload(
                     payload["sparse_evidence"]
+                )
+            ),
+            address_adapter=(
+                None
+                if payload.get("address_adapter") is None
+                else ExternalTransitionContextAddressAdapter.from_payload(
+                    payload["address_adapter"]
+                )
+            ),
+            route_query=(
+                None
+                if payload.get("route_query") is None
+                else ExternalTransitionRouteQuery.from_payload(
+                    payload["route_query"]
                 )
             ),
         )

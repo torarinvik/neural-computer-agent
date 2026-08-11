@@ -931,6 +931,48 @@ def test_transition_context_encoder_copy_on_write_adaptation_is_one_pass() -> No
     assert restored.digest() == candidate.digest()
 
 
+def test_transition_context_encoder_prefix_alignment_is_copy_on_write() -> None:
+    rng_state = torch.random.get_rng_state()
+    torch.manual_seed(1206)
+    encoder = ExternalTransitionContextEncoder(
+        2,
+        1,
+        hidden_width=8,
+        context_width=5,
+    )
+
+    def observation(seed: int, length: int) -> ExternalTransitionObservation:
+        generator = torch.Generator().manual_seed(seed)
+        return ExternalTransitionObservation(
+            state=torch.randn(length, 2, generator=generator),
+            intention=torch.randn(length, 1, generator=generator),
+            next_state=torch.randn(length, 2, generator=generator),
+            confidence=torch.ones(length),
+        )
+
+    prefixes = (
+        (observation(1, 1), observation(2, 2)),
+        (observation(3, 1), observation(4, 2)),
+    )
+    full = (observation(5, 3), observation(6, 3))
+    before_digest = encoder.digest()
+
+    candidate, loss = encoder.copy_on_write_prefix_alignment_step(prefixes, full)
+
+    assert math.isfinite(loss)
+    assert encoder.digest() == before_digest
+    assert candidate.digest() != before_digest
+    assert (
+        candidate.configuration()["prefix_alignment_update"]
+        == "copy_on_write_one_pass_v1"
+    )
+    restored = ExternalTransitionContextEncoder.from_payload(
+        candidate.state_payload()
+    )
+    assert restored.digest() == candidate.digest()
+    torch.random.set_rng_state(rng_state)
+
+
 def test_transition_context_mean_pool_is_permutation_invariant_and_persistent() -> None:
     torch.manual_seed(1200)
     encoder = ExternalTransitionContextEncoder(
@@ -1004,6 +1046,51 @@ def test_context_address_adapter_is_copy_on_write_and_persistent() -> None:
     )
     assert restored.configuration() == candidate.configuration()
     assert restored.digest() == candidate.digest()
+
+
+def test_context_address_adapter_prefix_alignment_is_versioned_and_isolated() -> None:
+    rng_state = torch.random.get_rng_state()
+    torch.manual_seed(1207)
+    encoder = ExternalTransitionContextEncoder(
+        2,
+        1,
+        hidden_width=8,
+        context_width=5,
+    )
+    adapter = ExternalTransitionContextAddressAdapter(
+        encoder,
+        learning_rate=0.01,
+        adaptation_steps=2,
+    )
+
+    def observation(seed: int, length: int) -> ExternalTransitionObservation:
+        generator = torch.Generator().manual_seed(seed)
+        return ExternalTransitionObservation(
+            state=torch.randn(length, 2, generator=generator),
+            intention=torch.randn(length, 1, generator=generator),
+            next_state=torch.randn(length, 2, generator=generator),
+            confidence=torch.ones(length),
+        )
+
+    prefixes = (
+        (observation(11, 1), observation(12, 2)),
+        (observation(13, 1), observation(14, 2)),
+    )
+    full = (observation(15, 3), observation(16, 3))
+    before_digest = adapter.digest()
+
+    candidate, loss = adapter.copy_on_write_prefix_alignment(prefixes, full)
+
+    assert math.isfinite(loss)
+    assert adapter.digest() == before_digest
+    assert candidate.digest() != before_digest
+    assert candidate.version == adapter.version + 1
+    assert candidate.parent_digest == before_digest
+    restored = ExternalTransitionContextAddressAdapter.from_payload(
+        candidate.state_payload()
+    )
+    assert restored.digest() == candidate.digest()
+    torch.random.set_rng_state(rng_state)
 
 
 def test_online_router_keeps_address_adapter_copy_isolated_until_promotion() -> None:
@@ -2870,6 +2957,122 @@ def test_factored_router_owns_verified_growth_compression_and_stable_eviction() 
     assert contextual_statistics.context_count == 1
 
 
+def test_factored_router_persists_optional_verified_address_proposal() -> None:
+    rng_state = torch.random.get_rng_state()
+    torch.manual_seed(778)
+    model = ExternalFactoredTransitionModel(
+        1,
+        1,
+        2,
+        hidden_width=8,
+        residual_mode=EXTERNAL_FACTORED_TRANSITION_LEARNED_RESIDUAL_MODE,
+        residual_model_family=EXTERNAL_TRANSITION_RANDOM_FEATURE_MODEL_FAMILY,
+        residual_random_feature_width=16,
+        residual_capacity=1,
+    )
+    for parameter in model.base.parameters():
+        parameter.data.zero_()
+    model.freeze_base()
+    encoder = ExternalTransitionContextEncoder(1, 1, hidden_width=8, context_width=2)
+    adapter = ExternalTransitionContextAddressAdapter(
+        encoder,
+        learning_rate=0.01,
+        adaptation_steps=1,
+    )
+    router = ExternalFactoredTransitionRouter(
+        model,
+        encoder,
+        max_contexts=1,
+        match_tolerance=0.05,
+        match_margin=0.01,
+        address_adapter=adapter,
+        route_query=ExternalTransitionRouteQuery(2),
+    )
+    source = ExternalTransitionObservation(
+        state=torch.tensor([[-1.0], [1.0]]),
+        intention=torch.ones(2, 1),
+        next_state=torch.tensor([[-0.5], [0.5]]),
+    )
+
+    assert router.route_bundle((source,)).status == "staged"
+    assert router.promote_staged_candidate(source, lambda _candidate: True).accepted
+    assert router.route_query is not None
+    assert router.route_query._slot_route_keys.keys() == {0}
+
+    restored = ExternalFactoredTransitionRouter.from_payload(router.state_payload())
+    assert restored.digest() == router.digest()
+    assert restored.address_adapter is not None
+    assert restored.route_query is not None
+    assert restored.route_query._slot_route_keys.keys() == {0}
+    torch.random.set_rng_state(rng_state)
+
+
+def test_factored_router_prefix_address_update_isolated_from_factual_memory() -> None:
+    rng_state = torch.random.get_rng_state()
+    torch.manual_seed(779)
+    model = ExternalFactoredTransitionModel(
+        1,
+        1,
+        2,
+        hidden_width=8,
+        residual_mode=EXTERNAL_FACTORED_TRANSITION_LEARNED_RESIDUAL_MODE,
+        residual_model_family=EXTERNAL_TRANSITION_RANDOM_FEATURE_MODEL_FAMILY,
+        residual_random_feature_width=16,
+        residual_capacity=2,
+    )
+    for parameter in model.base.parameters():
+        parameter.data.zero_()
+    model.freeze_base()
+    encoder = ExternalTransitionContextEncoder(1, 1, hidden_width=8, context_width=2)
+    adapter = ExternalTransitionContextAddressAdapter(encoder, adaptation_steps=1)
+    router = ExternalFactoredTransitionRouter(
+        model,
+        encoder,
+        max_contexts=2,
+        match_tolerance=0.05,
+        match_margin=0.01,
+        address_adapter=adapter,
+        route_query=ExternalTransitionRouteQuery(2),
+    )
+    source = ExternalTransitionObservation(
+        state=torch.tensor([[-1.0], [1.0]]),
+        intention=torch.ones(2, 1),
+        next_state=torch.tensor([[-0.5], [0.5]]),
+    )
+    target = ExternalTransitionObservation(
+        state=torch.tensor([[-1.0], [1.0]]),
+        intention=torch.ones(2, 1),
+        next_state=torch.tensor([[0.5], [1.5]]),
+    )
+    assert router.route_bundle((source,)).status == "staged"
+    assert router.promote_staged_candidate(source, lambda _candidate: True).accepted
+    assert router.route_bundle((target,)).status == "staged"
+    assert router.promote_staged_candidate(target, lambda _candidate: True).accepted
+
+    before_digest = router.digest()
+    candidate, loss = router.copy_on_write_prefix_address_update(
+        {
+            0: (source,),
+            1: (target,),
+        },
+        {
+            0: source,
+            1: target,
+        },
+    )
+
+    assert math.isfinite(loss)
+    assert router.digest() == before_digest
+    assert candidate.digest() != before_digest
+    assert candidate.model.digest() == router.model.digest()
+    assert candidate.slot_ids == router.slot_ids == (0, 1)
+    restored = ExternalFactoredTransitionRouter.from_payload(
+        candidate.state_payload()
+    )
+    assert restored.digest() == candidate.digest()
+    torch.random.set_rng_state(rng_state)
+
+
 def test_factored_router_auto_grows_on_verified_novel_bundle() -> None:
     model = ExternalFactoredTransitionModel(1, 1, 2, hidden_width=8)
     for parameter in model.base.parameters():
@@ -3354,6 +3557,8 @@ def test_factored_router_accumulates_partial_evidence_without_forcing_identity()
     )
     assert resolved.status == "matched"
     assert resolved.slot_id == 1
+    single_bundle = router.route_partial_sequence((tuple(target),))
+    assert single_bundle.status == "ambiguous"
     assert router.digest() == digest_before
 
 

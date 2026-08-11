@@ -15,6 +15,7 @@
     "residual_model": "external-transition-random-feature-statistics.v1",
     "residual_random_feature_width": 128,
     "ridge_candidates": [0.001, 0.01, 0.1, 1.0, 10.0],
+    "partial_route_confirmation_bundles": 2,
     "routing_match_tolerance": 0.02,
     "recursive_error_bound": 1.0,
     "controller_frozen": true,
@@ -41,9 +42,9 @@
   "controls": {
     "analytic_ridge_selection": "copy-on-write ridge reparameterization selected different regularization values per regime without replaying rows",
     "reversal": "passed on every fully promoted run",
-    "missing_evidence": "the cumulative read-only route correctly refused at least one ambiguous near-tie rather than forcing an identity",
+    "missing_evidence": "the cumulative read-only route now requires two evidence bundles and refuses identity flips rather than trusting the first decisive prefix",
     "memory_corruption": "checksum rejection passed on every fully promoted run",
     "fresh_challenger": "every promoted prefix beat its matched fresh residual challenger"
   },
-  "interpretation": "The frozen base and residual learner survive several sequential additions on the successful prefixes, and analytic regularization selection removes a substantial source of long-horizon residual overfit. The complete gate remains rejected because one seed fails to stage the third regime and the partial-evidence identity control remains ambiguous. The next bottleneck is learned, evidence-efficient identity under close factual alternatives; do not weaken the ambiguity refusal to manufacture a pass."
+  "interpretation": "The frozen base and residual learner survive several sequential additions on the successful prefixes, and analytic regularization selection removes a substantial source of long-horizon residual overfit. Requiring confirmation across the available evidence window removes early-return identity flips, but it does not yet recover the missing-evidence gate. The complete gate remains rejected because one seed fails to stage the third regime and partial-evidence identity remains unresolved. The next bottleneck is learned, evidence-efficient identity under close factual alternatives; do not weaken the ambiguity refusal to manufacture a pass."
 }

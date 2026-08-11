@@ -9147,7 +9147,8 @@ shared transition basis. Evidence and accounting are in
 
 The factored router now exposes `route_partial_sequence()`. It preserves the
 boundaries of one caller-owned stream, accumulates later partial bundles in a
-read-only view, and resolves only when a committed factual slot is decisive.
+read-only view, and requires two cumulative evidence bundles by default before
+accepting a route. A slot identity that flips as evidence grows is refused.
 An unresolved near-tie remains `ambiguous`; the method never writes a route,
 stages a candidate, or changes model state. This closes a missing-evidence API
 gap without weakening ambiguity refusal. The sufficient-statistics residual
@@ -9172,3 +9173,24 @@ architecture target is learned opaque identity under close alternatives:
 prefix evidence should improve route confidence while retaining safe
 ambiguity refusal. Evidence is in
 `session_records/factored_residual_sequence_pressure_2026-08-11/sample_efficiency_ledger.json`.
+
+## Copy-on-write prefix address learning (2026-08-11)
+
+The external context boundary now supports a versioned one-pass
+prefix-to-full alignment update. It returns an isolated candidate encoder or
+address adapter, retains no observations or optimizer state, and leaves
+historical keys and the factual transition model unchanged until explicit
+caller-owned verification. The factored router can optionally persist these
+addresses through a proposal-only route query. A learned address may resolve
+only a close factual tie; it cannot override a decisive factual prediction or
+force an ambiguous route.
+
+The corresponding pressure arm uses fresh post-promotion evidence and counts
+the address optimizer update and additional lifetimes separately. Seeds 91, 92,
+and 93 remained 0/3 complete at both learning rates 0.003 and 0.03; the
+factual model stayed byte-identical, but partial identity recovery did not
+improve. This is a rejected identity control, not a learned capability claim.
+The result narrows the bottleneck: the system needs an evidence-efficient
+identity mechanism that can recognize when a partial observation is
+insufficient before a factual model becomes confidently wrong. The ledger is
+`session_records/factored_residual_prefix_address_pressure_2026-08-11/sample_efficiency_ledger.json`.

@@ -3285,6 +3285,7 @@ class ExternalTransitionContextEncoder(nn.Module):
             "aggregation": self.aggregation,
             "input": "opaque_state_intention_next_state_confidence_v1",
             "training": "paired_noisy_transition_view_contrastive_v1",
+            "prefix_alignment_update": "copy_on_write_one_pass_v1",
             "inference": "read_only_context_key_v1",
         }
 
@@ -3580,6 +3581,90 @@ class ExternalTransitionContextEncoder(nn.Module):
             temperature=temperature,
         )
         return candidate, loss
+
+    def copy_on_write_prefix_alignment_step(
+        self,
+        prefix_observations: Sequence[Sequence[ExternalTransitionObservation]],
+        full_observations: Sequence[ExternalTransitionObservation],
+        *,
+        learning_rate: float = 0.003,
+        temperature: float = 0.1,
+    ) -> tuple[ExternalTransitionContextEncoder, float]:
+        """Adapt addresses from one-pass prefixes without mutating this encoder.
+
+        Each regime supplies one or more caller-owned evidence prefixes and a
+        full opaque bundle.  Prefixes are trained to resolve to their own full
+        bundle key and away from other regimes.  The update is copy-on-write:
+        historical addresses and the live encoder remain byte-stable until a
+        caller explicitly verifies and promotes the returned candidate.
+
+        Prefixes are fresh views at this boundary.  The method retains neither
+        observations nor optimizer state, so callers can account for the
+        exact evidence and update budget instead of silently replaying memory.
+        """
+
+        if learning_rate <= 0.0 or not math.isfinite(learning_rate):
+            raise ValueError("context adaptation learning rate must be positive")
+        if not isinstance(prefix_observations, Sequence) or isinstance(
+            prefix_observations, (str, bytes)
+        ):
+            raise TypeError("prefix alignment regimes must be a sequence")
+        if not isinstance(full_observations, Sequence) or isinstance(
+            full_observations, (str, bytes)
+        ):
+            raise TypeError("prefix alignment full views must be a sequence")
+        if len(prefix_observations) != len(full_observations):
+            raise ValueError("prefix alignment regime counts differ")
+        if len(prefix_observations) < 2:
+            raise ValueError("prefix alignment needs at least two regimes")
+
+        prefix_count: int | None = None
+        for regime_prefixes in prefix_observations:
+            if not isinstance(regime_prefixes, Sequence) or isinstance(
+                regime_prefixes, (str, bytes)
+            ):
+                raise TypeError("prefix alignment regime views must be a sequence")
+            if not regime_prefixes:
+                raise ValueError("prefix alignment regimes cannot be empty")
+            if prefix_count is None:
+                prefix_count = len(regime_prefixes)
+            elif len(regime_prefixes) != prefix_count:
+                raise ValueError("prefix alignment prefix counts differ")
+            for observation in regime_prefixes:
+                if not isinstance(observation, ExternalTransitionObservation):
+                    raise TypeError("prefix alignment views must be observations")
+
+        for observation in full_observations:
+            if not isinstance(observation, ExternalTransitionObservation):
+                raise TypeError("prefix alignment full views must be observations")
+
+        candidate = ExternalTransitionContextEncoder.from_payload(
+            self.state_payload()
+        )
+        optimizer = torch.optim.Adam(candidate.parameters(), lr=learning_rate)
+        prefix_contexts = torch.stack(
+            [
+                torch.stack(
+                    [candidate.encode_observation(observation) for observation in regime]
+                )
+                for regime in prefix_observations
+            ]
+        )
+        full_contexts = torch.stack(
+            [
+                candidate.encode_observation(observation)
+                for observation in full_observations
+            ]
+        )
+        loss = candidate.prefix_alignment_loss(
+            prefix_contexts,
+            full_contexts,
+            temperature=temperature,
+        )
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        return candidate, float(loss.detach())
 
     def state_payload(self) -> dict[str, Any]:
         return {
@@ -5893,6 +5978,35 @@ class ExternalTransitionContextAddressAdapter(nn.Module):
             loss.backward()
             optimizer.step()
         return candidate
+
+    def copy_on_write_prefix_alignment(
+        self,
+        prefix_observations: Sequence[Sequence[ExternalTransitionObservation]],
+        full_observations: Sequence[ExternalTransitionObservation],
+        *,
+        temperature: float = 0.1,
+    ) -> tuple[ExternalTransitionContextAddressAdapter, float]:
+        """Adapt a versioned address index from variable-length evidence.
+
+        The encoder update is isolated from both the live adapter and its
+        historical keys.  A caller may promote the returned adapter only
+        after checking address stability and factual retention on independent
+        evidence.  The optimizer budget is exactly one update and the input
+        observations are not retained by the adapter.
+        """
+
+        candidate = ExternalTransitionContextAddressAdapter.from_payload(
+            self.state_payload()
+        )
+        candidate.version = self.version + 1
+        candidate.parent_digest = self.digest()
+        candidate.encoder, loss = self.encoder.copy_on_write_prefix_alignment_step(
+            prefix_observations,
+            full_observations,
+            learning_rate=self.learning_rate,
+            temperature=temperature,
+        )
+        return candidate, loss
 
     def state_payload(self) -> dict[str, Any]:
         payload: dict[str, Any] = {
