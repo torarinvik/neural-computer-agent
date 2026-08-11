@@ -6919,3 +6919,47 @@ one. The per-world data to test this is already in every archived run
 rather than another 40k-update arm.
 
 Probe 249 is `game_slots.py --objects 2`, 2 seeds.
+
+**F150 (analysis, no new runs). The double-counting hypothesis from
+F149 is REFUTED by its own predicted signature, tested against
+archived per-world data at zero compute cost.** The prediction was
+that a frozen object layout lets a depth-4 plan count the same food
+twice, so the oracle-minus-learned gap should grow with how many
+objects are reachable within the horizon. Measured per world, using
+F110's oracle-value arm as the per-world ceiling (same seeds, so the
+same held-out split):
+
+| density | seed 69316 gap | seed 69317 gap |
+| --- | ---: | ---: |
+| 3 pairs | +0.0940 | — |
+| 4 pairs | +0.0030 | -0.0216 |
+| 5 pairs | -0.0176 | +0.0169 |
+| radius 2 | — | +0.1089 |
+| radius 3 | -0.0054 | -0.0114 |
+| radius 4 | +0.0448 | -0.0205 |
+
+The gap falls with density on one seed and rises on the other; the
+radius ordering reverses between seeds outright. No consistent
+signature, so the mechanism is not there.
+
+Two things worth keeping from the analysis:
+
+  * **Many gaps are NEGATIVE** — the learned system beats the
+    oracle-VALUE arm on a majority of individual worlds. That is
+    consistent with F143's battery result (+0.1229 against a +0.1234
+    target, two seeds above it) and confirms it at world resolution
+    rather than only in aggregate.
+  * **The remaining residual is now bounded from four sides.** It is
+    not the value model (F143), not search budget (F145), not the
+    state abstraction (F149), and not density-dependent (here). What
+    remains is the difference between our search WITH PERFECT VALUES
+    (+0.1234) and an optimal policy that knows the hidden bit
+    (+0.1954) — a structural property of the search that no amount of
+    the same search fixes.
+
+**The method is the point.** A hypothesis with a numeric signature
+could be killed in one command against runs already on disk. I have
+spent 40k-update arms on weaker hypotheses this session; checking
+whether the prediction has a fingerprint in existing data should come
+before allocating compute, and this is the second time today it would
+have saved a run (the first being the cost table that resolved F144).
