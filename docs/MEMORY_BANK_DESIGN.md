@@ -9454,3 +9454,56 @@ result is only interesting if the thing retained is portable. A frozen
 interpreter plus 39 bytes per world is a claim that can be checked by
 reading the file; an activation vector that only means anything inside
 the network that produced it is not.
+
+## F185 — the founding thesis, measured directly: bank 0.9981, replay
+## 0.8886, weights 0.3952
+
+Nine families in sequence, four seeds, one evaluation, both
+architectures. **The gate passes**: interpreter faithfulness 0.9933,
+0.9891, 0.9880, 0.9918 against `isa_compose`'s published 0.9896, so the
+bank arm is readable for the first time (F182, F183).
+
+| | at learning | at end |
+| --- | ---: | ---: |
+| weights, no replay | 1.0000 | **0.3952** |
+| weights + replay | 1.0000 | 0.8886 |
+| **bank** | 0.9981 | **0.9981** |
+| identity floor | — | 0.5156 |
+
+**P1 confirmed as a control should behave.** Bank forgetting is exactly
+0.0000 on all four seeds. It cannot be otherwise and it was not.
+
+**P2 confirmed.** Weights forgetting without replay is 0.6048, and the
+end state of 0.3952 is BELOW the identity floor of 0.5156 — after nine
+families it does worse than copying its input unchanged.
+
+**P3 confirmed, and it is the number that matters.** Replay recovers
+**81.8%** of what is lost, ending at 0.8886. So the bank's advantage
+over the standard remedy is **+0.1095**, not the +0.60 a no-replay
+comparison would have claimed. That control existed to prevent exactly
+that overstatement.
+
+**And the replay arm here is STRONGER than real replay.** It
+regenerates rows from the live family rather than drawing from a finite
+stored buffer, so it has unlimited perfect access to every environment
+it has ever seen. It still loses by 0.11 to a bank of integers.
+
+**P4 was right in direction and wrong in size.** I predicted the bank
+would be meaningfully worse at learning time — "capped by interpreter
+quality near 0.99 and by whether the family is expressible at all" —
+and treated zero forgetting of a worse model as the real trade. The
+bank learns at **0.9981** against gradient descent's 1.0000. The gap is
+0.0019. There is essentially no trade to make.
+
+**What both approaches store, since that is the honest axis.** Neither
+is memory-free. The bank stores 39 bytes of program per world (F184),
+inspectable and exact. Replay stores experience — and in this arm, an
+idealised infinite supply of it — and buys 0.11 less retention for it.
+
+**What this does NOT show.** Nothing here demonstrates forward
+transfer: having solved families 1..k does not measurably help on k+1,
+because enumeration already solves every family in about 23 candidates
+(F178) and there is no headroom for transfer to appear in. That is a
+ceiling effect rather than evidence against, and testing it needs
+families whose recipes exceed depth 2. Retention and generalisation to
+unseen programs are measured; forward transfer is not.
