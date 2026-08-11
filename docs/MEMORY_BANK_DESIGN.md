@@ -6634,3 +6634,47 @@ the suspicion in the ledger. Checking cost one command and removed a
 false claim about the project's own record. **Suspicion is not
 evidence either — a flag raised on a hunch has to be tested with the
 same discipline as a finding.**
+
+**F145 (probe 245). SEARCH BUDGET IS NOT THE GAMES BOTTLENECK. 50%
+more depth is worth +0.0015 and double the beam width is worth
+-0.0003, both paired on the same two seeds.**
+
+| arm | seed 69316 | seed 69317 | mean | delta |
+| --- | ---: | ---: | ---: | ---: |
+| depth 4, beam 4 (F143) | +0.0980 | +0.1334 | +0.1157 | — |
+| depth 6, beam 4 | +0.1008 | +0.1337 | +0.1172 | **+0.0015** |
+| depth 4, beam 8 | +0.0959 | +0.1350 | +0.1154 | **-0.0003** |
+
+Both nulls, both paired, and the beam arm is negative. So F110's
+"search and dynamics residual" — 31.9% of floor-to-full-oracle, the
+last open quantity in the games — contains no search component worth
+buying. Whatever remains sits in the MODEL, not in how hard we look
+with it.
+
+**The literature predicted this, which is the first time a citation on
+this project has paid rent in advance.** Compounding model error means
+each extra rollout step multiplies the model's error, so lookahead
+buys less than the model loses; the standard practice is short
+rollouts, often a single step. We were already at depth 4 with
+`--freeze-objects` compensating for the least predictable slots, and
+docs/LITERATURE.md flagged before these results landed that the
+depth-6 arm was "running INTO this known headwind". It was.
+
+**Where that leaves the residual, and the candidate is now specific.**
+F109 measured the avatar slots predicted at 1.0000 and the object
+slots at 0.67-0.77, and freezing the objects (using the observed
+layout rather than a rollout) was worth 3.4 points. So the dynamics we
+actually use are near-exact. What is NOT exact is the STATE: the slot
+abstraction carries only the NEAREST object of each polarity, so a
+world with three item pairs is described by two of its six objects,
+and the oracle — which reads the true layout — sees all of them.
+
+F109 tested a version of this and refuted it backwards (3-pair worlds
+scored 33.6% against 19.8% for 1-pair worlds). That measurement stands
+but its context does not: it was taken when the whole system captured
+25% of headroom and the value model was the binding constraint. With
+the value model now finished (+0.1229 against a +0.1234 target), the
+abstraction is the obvious next suspect and deserves re-testing rather
+than inheriting a verdict from a much weaker system.
+
+Probe 245 is `game_slots.py --depth 6` and `--beam 8`, 2 seeds each.
