@@ -770,3 +770,99 @@ Sources:
    spread over training; reuses data we already collect.
 4. **Reward head + terminal bootstrap** (§15) — the games' correct
    planning objective.
+
+---
+
+# Addendum 5, 2026-08-11: after the scoring null
+
+F152 killed the scoring-arithmetic explanation and brought the games'
+eliminated-candidate count to five. Two more bodies of work bear on
+what is left, and one of them made a prediction I could test for free.
+
+## 20. Receding-horizon theory: horizon vs CONTROLLABILITY INDEX
+   — predicted signature, and it is ABSENT
+
+**The theory.** Receding-horizon (MPC) control replaces an intractable
+infinite-horizon problem with a sequence of finite-horizon ones, and
+the resulting performance loss is quantifiable. The result that bears
+on us: a finite prediction horizon **larger than the controllability
+index** suffices for near-optimal performance — horizon requirements
+are tied to how many steps the system needs to reach the relevant
+states.
+
+**Why it looked promising.** Our forage worlds have a respawn RADIUS
+of 2, 3 or 4, which is exactly a controllability index — the steps
+needed to reach an object. Our depth is 4. So radius-4 worlds should
+be horizon-starved and radius-2 worlds should not, and raw reward
+tracks radius steeply (+0.2306 at r2, +0.1384 at r3, +0.0689 at r4).
+
+**The prediction, and the test.** If horizon is the binding
+constraint, going from depth 4 to depth 6 should help MOST at large
+radius. Computed from the archived depth-6 runs, paired by seed and
+world:
+
+| respawn radius | depth-6 minus depth-4 |
+| ---: | ---: |
+| 2 | +0.0000 |
+| 3 | +0.0017 |
+| 4 | +0.0017 |
+
+Flat. **No horizon signature at any radius**, so the raw reward
+gradient across radius is task difficulty, not planning starvation.
+Sixth eliminated candidate, cost: one command against existing runs.
+
+This is the third time today the "does the hypothesis have a
+fingerprint in data we already have?" check has settled something
+before compute was spent (F150, the F144 cost table, and this).
+
+Sources:
+[Suboptimality analysis of receding horizon quadratic control](https://arxiv.org/abs/2301.07876),
+[On the Infinite Horizon Performance of Receding Horizon Controllers](https://d-nb.info/1234060140/34),
+[Suboptimality estimates for receding horizon controllers](https://epub.uni-bayreuth.de/5533/)
+
+## 21. Multiplicative interactions: why bind-once works, stated
+   generally
+
+**The result.** Jayakumar et al. (ICLR 2020) show that gating,
+attention, hypernetworks and dynamic convolutions are all instances of
+MULTIPLICATIVE INTERACTIONS, that such layers **strictly enrich the
+representable function class** over additive conditioning, and that
+they are the right inductive bias "when fusing multiple streams of
+information or when conditional computation is required" — which is
+precisely conditioning execution on a task entry. They also report
+hypernetworks being **exponentially more expressive than embedding
+methods when the primary network is small**, and our plant is small.
+
+**Where our evidence sits relative to theirs.** Their claim is about
+representable function classes — capacity. Ours (F135, F140) is about
+OPTIMISATION and placement: the multiplicative pathway must be applied
+ONCE and its decoder must stay SIMPLE, because a nonlinear binder
+dropped 0.9983 to 0.6196. So the two results are complementary rather
+than competing: multiplicative interaction is what makes conditioning
+expressible; doing it once with a linear map is what makes it
+learnable. Neither alone predicts our F140.
+
+It also sharpens why FiLM underperformed in our probes and in the
+Codex log: FiLM is the *diagonal* form of the same family, applied per
+step. Same interaction type, weaker parameterisation, applied at the
+worst frequency.
+
+Sources:
+[Multiplicative Interactions and Where to Find Them (ICLR 2020)](https://openreview.net/pdf?id=rylnK6VtDH),
+[On Infinite-Width Hypernetworks (NeurIPS 2020)](https://proceedings.neurips.cc/paper/2020/file/999df4ce78b966de17aee1dc87111044-Paper.pdf)
+
+---
+
+## Ranking after addendum 5
+
+1. **Weight decay sweep** (§17) — still first, still untried, still
+   one argument.
+2. **Learning curve + saturation** (§16, running) — the two arms that
+   decide whether the reader's gap is real.
+3. **Can context INVENT computation, or only select it?** — the Codex
+   log's most robust boundary, reproduced there from three
+   directions, and untested here. Every composition result we have
+   reuses pieces the plant already knows.
+4. Games: six candidates eliminated and no live hypothesis. Parking it
+   rather than running a seventh arm on a guess — the honest state is
+   "the residual is real, bounded, and unexplained".
