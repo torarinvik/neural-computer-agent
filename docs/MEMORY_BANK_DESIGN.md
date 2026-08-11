@@ -8023,10 +8023,25 @@ seed 69317   0.495  0.588  0.829  0.881  0.844  0.917  0.937  0.922  0.955  0.94
 Both rise steadily from bit-chance, both bend over by 25k, and neither
 shows the flat-then-jump shape that would have implicated a delayed
 generalisation mechanism. So the weight-decay clock and the grokking
-literature are the wrong frame for this, and the sixteen probes spent
+literature are the wrong frame for this.
+
+**CORRECTION, same day.** I first wrote that the sixteen probes spent
 on mechanism substitutes — semi-amortization, refinement, codebooks,
-contrastive variants — were all attacking a problem whose answer was
-"run it longer".
+contrastive variants — were "all attacking a problem whose answer was
+run it longer". That is an over-claim and it is unfair to those probes.
+What the data supports is narrower and more useful:
+
+> The amortization gap is not a representational impossibility.
+> Sufficient optimisation closes it ON A FAVOURABLE TRAJECTORY.
+> Training reliability and basin selection remain unresolved.
+
+One seed reaching 0.9372 refutes an architectural ceiling near 0.35.
+The other seed ending at 0.3776 after the SAME 200k updates means "run
+it longer" is not a dependable solution — budget revealed the
+attainable ceiling, it did not deliver access to it. The mechanism
+probes may well have been aimed at optimisation speed and reliability,
+which is exactly the problem still standing. They failed to improve it;
+that is not the same as having had no problem to solve.
 
 **The new question is the CEILING, not the gap.** The two seeds
 converge to visibly different asymptotes, 0.84 and 0.95 per-bit, and
