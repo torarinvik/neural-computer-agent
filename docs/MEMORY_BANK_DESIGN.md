@@ -6827,3 +6827,52 @@ time rather than in hindsight.
 
 Recorded now, before the result, so the prediction is on the record
 either way.
+
+**F148 (probe 248). BOTH literature-derived mechanisms are nulls.
+Semi-amortization does nothing, and the discrete codebook does
+nothing — while simply training longer (F147) moved the number more
+than either.** Two seeds each, everything else at F144's configuration
+and 40k updates so the comparison is matched.
+
+| arm | own (2 seeds) | stranger gap | exact |
+| --- | --- | ---: | ---: |
+| baseline, no mechanism (F144) | 0.7993 / 0.8447 | ~+0.25 | 0.3158 / 0.3543 |
+| **semi-amortization, 10 steps** | 0.7957 / 0.8364 | +0.2523 / +0.2372 | 0.2879 / 0.3147 |
+| **codebook K=256 (restart fixed)** | 0.7854 / 0.8212 | +0.2609 / +0.2136 | 0.2576 / 0.4076 |
+| longer training, 100k (F147) | **0.8520 / 0.8889** | | **0.3612 / 0.4845** |
+
+**Semi-amortization: no effect, on either seed or either metric.** The
+TTA hazard from LITERATURE.md §14 did not materialise either — the
+stranger gap is unchanged rather than inflated, so refinement is not
+finding a generically-agreeable entry; it is finding essentially the
+entry the reader already produced. Ranked first on this page an hour
+ago, on an argument that looked strong.
+
+**Codebook: no effect.** And a retraction — on the first seed I
+observed higher exact-match (0.4076 vs 0.3543) and read it as the
+signature a discrete bottleneck should produce, all-or-nothing rather
+than partially-right. The second seed reverses it (0.2576 vs 0.3158)
+and the two-seed means are indistinguishable (0.3326 vs 0.3351). The
+signature was noise. I flagged it as single-seed when I said it, which
+is the only reason it is a retraction and not a false finding.
+
+**What two nulls plus F147 point at.** Refinement attacks per-instance
+inference; the codebook attacks the entry's form. Neither moved
+anything, while more reader TRAINING moved 47% of the gap. That is
+three pieces of evidence pointing the same way: the constraint is the
+reader's optimisation, not the inference procedure and not the entry's
+representation. The 200k saturation pair now carries more weight than
+it did when launched — if it closes most of the remainder, the
+amortization framing was wrong and the honest account is that we
+under-trained and then went shopping for mechanisms.
+
+**A caveat I will not use as an escape hatch.** Refinement ran at 10
+steps and lr 0.05, unswept. It is possible more steps or a different
+rate would help. But the literature's own claim is that ten steps from
+a learned initialisation should be enough to matter, and the stranger
+gap did not move at all — not by a little — which is what a
+too-small-step-size result would look like. Sweeping is cheap and
+worth doing before the mechanism is retired, and it is queued, not
+assumed.
+
+Probe 248 is `--refine 10` and `--codebook 256`, 2 seeds each.
