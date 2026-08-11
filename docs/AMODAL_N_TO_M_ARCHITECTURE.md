@@ -9024,9 +9024,10 @@ slot admits an opaque two-step goal fragment and derives behavior through
 model-based search.
 
 With the causal recency/latest state contract and a committed-slot write
-firewall, `8/24` seeds completed every gate. All eight recovered the route,
-used the target goal file, beat their matched fresh goal planner, and retained
-the source slot; rejected seeds remained rejected. The runs consumed `504`
+firewall and a cost-aware transfer/fresh challenger, `9/24` seeds completed
+every gate. All nine recovered the route, used the target goal file, beat their
+matched fresh goal planner, and retained the source slot; rejected seeds
+remained rejected. The runs consumed `504`
 transition rows once, replayed no examples, and performed no optimizer updates.
 This is a bounded online-discovery result, not general continual learning or
 universal warm-over-fresh transfer. The complete ledger is

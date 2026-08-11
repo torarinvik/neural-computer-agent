@@ -642,6 +642,9 @@ def test_online_router_verified_prior_selection_is_isolated_and_persistent() -> 
         provisional_evidence_policy="streaming_gradient",
         prior_selection_probe=probe,
         prior_selection_probe_updates=1,
+        prior_selection_transfer_cost=0.0,
+        prior_selection_fresh_cost=1.0,
+        prior_selection_cost_weight=0.2,
     )
     result = router.observe(
         ExternalTransitionObservation(
@@ -655,6 +658,10 @@ def test_online_router_verified_prior_selection_is_isolated_and_persistent() -> 
     receipt = router._provisional_candidates[0].prior_selection
     assert receipt is not None
     assert receipt.selected_initialization == "transfer"
+    assert receipt.schema.endswith("prior-selection.v2")
+    assert receipt.transfer_cost == 0.0
+    assert receipt.fresh_cost == 1.0
+    assert receipt.cost_weight == 0.2
     assert bank.models[source_context].digest() == source_digest
     restored = ExternalOnlineTransitionContextRouter.from_payload(
         router.state_payload(),

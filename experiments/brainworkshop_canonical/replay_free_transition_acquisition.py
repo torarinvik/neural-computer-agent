@@ -142,6 +142,7 @@ class OnlineTransitionDiscoveryReport:
     fresh_target_goal_error: float = float("inf")
     target_goal_horizon: int = 0
     target_goal_missing_evidence_rejected: bool = False
+    prior_selection_cost_aware: bool = False
 
     def payload(self) -> dict[str, object]:
         return asdict(self)
@@ -642,6 +643,9 @@ def run_online_transition_discovery_audit(
     goal_conditioned: bool = False,
     goal_horizon: int = 2,
     goal_verifier_threshold: float = 0.05,
+    prior_selection_transfer_cost: float = 0.0,
+    prior_selection_fresh_cost: float = 0.0,
+    prior_selection_cost_weight: float = 0.0,
 ) -> OnlineTransitionDiscoveryReport:
     """Discover and learn a novel rendered family without replay or a task label.
 
@@ -684,6 +688,18 @@ def run_online_transition_discovery_audit(
         float(goal_verifier_threshold)
     ):
         raise ValueError("online goal verifier threshold must be finite and positive")
+    for name, value in (
+        ("prior_selection_transfer_cost", prior_selection_transfer_cost),
+        ("prior_selection_fresh_cost", prior_selection_fresh_cost),
+        ("prior_selection_cost_weight", prior_selection_cost_weight),
+    ):
+        if (
+            not isinstance(value, (float, int))
+            or isinstance(value, bool)
+            or not math.isfinite(float(value))
+            or float(value) < 0.0
+        ):
+            raise ValueError(f"{name} must be finite and non-negative")
     agent = CanonicalBrainWorkshopAgent(
         symbol_count=8,
         event_width=4,
@@ -795,6 +811,9 @@ def run_online_transition_discovery_audit(
                 float(fresh.loss(observation).detach()),
             )
         ),
+        prior_selection_transfer_cost=prior_selection_transfer_cost,
+        prior_selection_fresh_cost=prior_selection_fresh_cost,
+        prior_selection_cost_weight=prior_selection_cost_weight,
     )
 
     # Acquire the target while still behaving through the known source slot.
@@ -803,6 +822,7 @@ def run_online_transition_discovery_audit(
     discovery = None
     target_result = None
     target_candidate_staged = False
+    prior_selection_cost_aware = False
     for lifetime in range(target_training_lifetimes):
         target_rollout, bits = _run_lifetime(
             agent,
@@ -826,6 +846,12 @@ def run_online_transition_discovery_audit(
         if discovery is None:
             discovery = routed
         target_candidate_staged = target_candidate_staged or routed.status == "staged"
+        if router.provisional_candidate_count:
+            prior_receipt = router.provisional_prior_selection_at(0)
+            prior_selection_cost_aware = prior_selection_cost_aware or bool(
+                prior_receipt is not None
+                and prior_receipt.schema.endswith("prior-selection.v2")
+            )
         target_result = routed
     source_error_after = planner.rollout_error(
         source_heldout,
@@ -1176,6 +1202,17 @@ def run_online_transition_discovery_audit(
                 and goal_missing_rejected
             )
         )
+        and (
+            not any(
+                float(value) != 0.0
+                for value in (
+                    prior_selection_transfer_cost,
+                    prior_selection_fresh_cost,
+                    prior_selection_cost_weight,
+                )
+            )
+            or prior_selection_cost_aware
+        )
     )
     return OnlineTransitionDiscoveryReport(
         schema=(
@@ -1232,6 +1269,7 @@ def run_online_transition_discovery_audit(
         fresh_target_goal_error=fresh_goal_error,
         target_goal_horizon=goal_horizon if goal_conditioned else 0,
         target_goal_missing_evidence_rejected=goal_missing_rejected,
+        prior_selection_cost_aware=prior_selection_cost_aware,
     )
 
 
@@ -1258,6 +1296,9 @@ def main() -> None:
     parser.add_argument("--goal-conditioned", action="store_true")
     parser.add_argument("--goal-horizon", type=int, default=2)
     parser.add_argument("--goal-verifier-threshold", type=float, default=0.05)
+    parser.add_argument("--prior-selection-transfer-cost", type=float, default=0.0)
+    parser.add_argument("--prior-selection-fresh-cost", type=float, default=0.0)
+    parser.add_argument("--prior-selection-cost-weight", type=float, default=0.0)
     parser.add_argument("--steps", type=int, default=6)
     args = parser.parse_args()
     if args.audit == "nonstationary":
@@ -1280,6 +1321,9 @@ def main() -> None:
             goal_conditioned=args.goal_conditioned,
             goal_horizon=args.goal_horizon,
             goal_verifier_threshold=args.goal_verifier_threshold,
+            prior_selection_transfer_cost=args.prior_selection_transfer_cost,
+            prior_selection_fresh_cost=args.prior_selection_fresh_cost,
+            prior_selection_cost_weight=args.prior_selection_cost_weight,
         )
     else:
         report = run_replay_free_transition_acquisition_audit(

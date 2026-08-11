@@ -261,6 +261,9 @@ def test_recency_window_transition_discovery_is_an_explicit_transfer_mode() -> N
         window_gain=0.05,
         recency_decay=0.75,
         goal_conditioned=True,
+        prior_selection_transfer_cost=0.0,
+        prior_selection_fresh_cost=1.0,
+        prior_selection_cost_weight=0.2,
     )
 
     assert report.status == "online_replay_free_transition_discovery_boundary"
@@ -276,6 +279,7 @@ def test_recency_window_transition_discovery_is_an_explicit_transfer_mode() -> N
     assert report.target_goal_horizon == 2
     assert report.target_goal_missing_evidence_rejected
     assert report.trained_target_goal_error < report.fresh_target_goal_error
+    assert report.prior_selection_cost_aware
     assert report.replayed_examples == 0
 
 

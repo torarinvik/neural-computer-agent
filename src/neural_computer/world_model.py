@@ -6003,6 +6003,9 @@ class ExternalOnlineTransitionContextRouter:
         ]
         | None = None,
         prior_selection_probe_updates: int = 0,
+        prior_selection_transfer_cost: float = 0.0,
+        prior_selection_fresh_cost: float = 0.0,
+        prior_selection_cost_weight: float = 0.0,
     ) -> None:
         if (
             bank.state_width != context_encoder.state_width
@@ -6097,6 +6100,30 @@ class ExternalOnlineTransitionContextRouter:
             )
         if prior_selection_probe is not None and not callable(prior_selection_probe):
             raise TypeError("prior selection probe must be callable")
+        for name, value in (
+            ("prior_selection_transfer_cost", prior_selection_transfer_cost),
+            ("prior_selection_fresh_cost", prior_selection_fresh_cost),
+            ("prior_selection_cost_weight", prior_selection_cost_weight),
+        ):
+            if (
+                not isinstance(value, (float, int))
+                or isinstance(value, bool)
+                or not math.isfinite(float(value))
+                or float(value) < 0.0
+            ):
+                raise ValueError(f"{name} must be finite and non-negative")
+        if (
+            prior_selection_probe is None
+            and any(
+                float(value) != 0.0
+                for value in (
+                    prior_selection_transfer_cost,
+                    prior_selection_fresh_cost,
+                    prior_selection_cost_weight,
+                )
+            )
+        ):
+            raise ValueError("prior selection costs require a prior selection probe")
         if evidence_evaluator is not None and (
             not hasattr(evidence_evaluator, "state_width")
             or int(evidence_evaluator.state_width) != bank.state_width
@@ -6186,6 +6213,9 @@ class ExternalOnlineTransitionContextRouter:
         )
         self.prior_selection_probe = prior_selection_probe
         self.prior_selection_probe_updates = int(prior_selection_probe_updates)
+        self.prior_selection_transfer_cost = float(prior_selection_transfer_cost)
+        self.prior_selection_fresh_cost = float(prior_selection_fresh_cost)
+        self.prior_selection_cost_weight = float(prior_selection_cost_weight)
         self.candidate_model_families = families
         self._pending: list[ExternalTransitionObservation] = []
         self._active_slot: int | None = None
@@ -6272,6 +6302,16 @@ class ExternalOnlineTransitionContextRouter:
             raise IndexError("provisional candidate index is out of range")
         return self._provisional_candidates[candidate_index].evidence_count
 
+    def provisional_prior_selection_at(
+        self,
+        candidate_index: int,
+    ) -> ExternalTransitionModelPriorSelectionReceipt | None:
+        """Return the immutable transfer/fresh challenger receipt for a candidate."""
+
+        if not 0 <= candidate_index < len(self._provisional_candidates):
+            raise IndexError("provisional candidate index is out of range")
+        return self._provisional_candidates[candidate_index].prior_selection
+
     @property
     def _provisional_context(self) -> torch.Tensor | None:
         return (
@@ -6339,11 +6379,24 @@ class ExternalOnlineTransitionContextRouter:
                 self.sparse_evidence_requires_full_capacity
             ),
             "prior_selection": (
-                "verified_transfer_vs_fresh_v1"
+                "verified_transfer_vs_fresh_cost_aware_v2"
+                if self.prior_selection_probe is not None
+                and any(
+                    value != 0.0
+                    for value in (
+                        self.prior_selection_transfer_cost,
+                        self.prior_selection_fresh_cost,
+                        self.prior_selection_cost_weight,
+                    )
+                )
+                else "verified_transfer_vs_fresh_v1"
                 if self.prior_selection_probe is not None
                 else "automatic_same_family_transfer_v1"
             ),
             "prior_selection_probe_updates": self.prior_selection_probe_updates,
+            "prior_selection_transfer_cost": self.prior_selection_transfer_cost,
+            "prior_selection_fresh_cost": self.prior_selection_fresh_cost,
+            "prior_selection_cost_weight": self.prior_selection_cost_weight,
             "writes": "caller_owned_slot_only_v1",
             "provisional_evidence": (
                 "cumulative_verified_window_v1"
@@ -6869,6 +6922,9 @@ class ExternalOnlineTransitionContextRouter:
                         observation,
                         self.prior_selection_probe,
                         probe_updates=self.prior_selection_probe_updates,
+                        transfer_cost=self.prior_selection_transfer_cost,
+                        fresh_cost=self.prior_selection_fresh_cost,
+                        cost_weight=self.prior_selection_cost_weight,
                     )
                 )
                 models[primary_family].load_state_dict(selected_model.state_dict())
@@ -8200,6 +8256,15 @@ class ExternalOnlineTransitionContextRouter:
             prior_selection_probe=prior_selection_probe,
             prior_selection_probe_updates=int(
                 configuration.get("prior_selection_probe_updates", 0)
+            ),
+            prior_selection_transfer_cost=float(
+                configuration.get("prior_selection_transfer_cost", 0.0)
+            ),
+            prior_selection_fresh_cost=float(
+                configuration.get("prior_selection_fresh_cost", 0.0)
+            ),
+            prior_selection_cost_weight=float(
+                configuration.get("prior_selection_cost_weight", 0.0)
             ),
         )
         for row_payload in pending_payload:
