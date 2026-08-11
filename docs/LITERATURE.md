@@ -866,3 +866,136 @@ Sources:
 4. Games: six candidates eliminated and no live hypothesis. Parking it
    rather than running a seventh arm on a guess — the honest state is
    "the residual is real, bounded, and unexplained".
+
+---
+
+# Addendum 6, 2026-08-11: how a bank could supply NEW computation
+
+The boundary to attack: "a bank grows what you can DO with known
+operations, not the operations themselves." Three literatures answer
+it, and they are genuinely different answers rather than variants.
+
+**First, why our current design GUARANTEES the boundary.** The plant
+is trained on exactly the two operations the task uses (XOR-with-mask,
+rotate-left), so it learns each as a monolithic opaque function, and
+the entry's only job is to say WHICH one and with what parameter. An
+activation-space code can select among functions the weights already
+implement; it cannot add one. The boundary is not a discovery about
+external memory in general — **it is a consequence of choosing the
+task's operations as the plant's primitives.** That framing is the
+useful part, because each answer below breaks it in a different place.
+
+## 22. Answer A — make the entry a WEIGHT delta, not an activation code
+
+Task arithmetic treats fine-tuning deltas as vectors that can be added
+and subtracted to compose or remove capabilities, and LoRA adapters
+are exactly such deltas in low-rank form: "a task vector represents
+the transformation that moves a model from its pre-trained state to a
+state where it has acquired a new skill." Adapters can be merged,
+retrieved, and composed.
+
+**Applied here:** a bank entry becomes a low-rank weight delta rather
+than a vector read into activations. New computation is then storable
+by construction, because new weights ARE new computation. The reported
+catch is interference — naive linear combination causes contradictory
+updates, which is why TIES, DARE and SVD-based merging exist — and the
+reported reason composition works at all is that deltas concentrate in
+shared subspaces determined by the ACTIVATION distribution.
+
+**Cost to us:** entries stop being small. Our whole retention argument
+rests on entries being cheap and non-contradictory; weight deltas are
+neither. This answer buys invention and spends the property that made
+the architecture attractive.
+
+## 23. Answer B — make the plant a UNIVERSAL INTERPRETER over a small
+   complete instruction set
+
+Neural Programmer-Interpreters are "a recurrent and compositional
+neural network that learns to represent and execute programs", with
+three parts: **a task-agnostic recurrent core, a persistent key-value
+PROGRAM MEMORY, and domain-specific encoders.** Program memory "allows
+efficient learning of additional tasks by building on existing
+programs." Follow-up work on learned interpreters reports that
+conditioning on a program one position at a time through a SHARED
+execution network gives compositional generalisation to novel
+combinations and to programs longer than trained on — which is F121
+and F125 arrived at from the other direction. Work on neural
+instruction sets argues "high-level computational reasoning may only
+require a small set of building blocks."
+
+**Applied here, and this is the answer I find most compelling.** Our
+plant knows XOR and rotate as two opaque skills. Give it instead a
+small COMPLETE bitwise basis — AND, OR, XOR, NOT, shift — trained as
+an instruction set, and let the bank hold PROGRAMS over that basis
+rather than opaque operation codes. Then ADD-mod-2^W is not a new
+operation at all: it is a program (XOR for the sum bits, AND plus
+shift for carry propagation, iterated). **Invention becomes
+composition one level down.**
+
+This does not abolish the boundary, it RELOCATES it — you can invent
+anything expressible in the basis and nothing outside it. But a
+complete basis expresses everything computable on the word, which is a
+far weaker limit than "the two functions we happened to train on", and
+it is the reading that makes this project's name literal: a fixed
+computer, an external program store.
+
+**The measurable prediction**, and it is exactly our `--novel-ops`
+arm: under the current design held-out worlds with new operations
+should fail; under an instruction-set design they should succeed,
+because the new operation is a new arrangement of known instructions.
+Same test, two architectures, opposite predictions.
+
+## 24. Answer C — GROW the library offline, by compression
+   (DreamCoder's wake-sleep)
+
+DreamCoder "iteratively builds a library of more advanced functions
+from initial primitives, forming hierarchically organised layers where
+each learned function can call functions learned earlier." New
+primitives are not read from examples — they are **discovered by
+refactoring solved programs and kept when they shorten the total
+description length** of library plus programs (MDL compression),
+during a SLEEP phase separate from problem-solving.
+
+**Applied here:** this is a mechanism we do not have in any form. Our
+bank only ever accumulates entries read at acquisition; nothing ever
+looks back over accumulated entries to find shared structure and mint
+a new reusable piece from it. That is the actual meaning of "growing
+the operation set", and it is an offline consolidation loop rather
+than a better reader.
+
+**Why it composes with Answer B rather than competing:** the
+interpreter supplies the substrate in which a discovered abstraction
+can be *expressed*, and compression supplies the pressure that
+discovers *which* abstractions are worth keeping. Answer B without C
+gives a machine that can express anything but never invents; C without
+B has nothing to write the invention in.
+
+Sources:
+[DreamCoder (PLDI 2021)](https://dl.acm.org/doi/pdf/10.1145/3453483.3454080),
+[DreamCoder: growing generalizable, interpretable knowledge (Phil Trans R Soc A)](https://royalsocietypublishing.org/rsta/article/381/2251/20220050/112456/DreamCoder-growing-generalizable-interpretable),
+[Neural Programmer-Interpreters](https://arxiv.org/abs/1511.06279),
+[Learning to Execute Programs with Instruction Pointer Attention GNNs (NeurIPS 2020)](https://proceedings.neurips.cc/paper/2020/file/62326dc7c4f7b849d6f013ba46489d6c-Paper.pdf),
+[Task Arithmetic with LoRA for Continual Learning](https://arxiv.org/pdf/2311.02428),
+[Task arithmetic overview](https://www.emergentmind.com/topics/task-arithmetic-ta)
+
+---
+
+## Ranking after addendum 6
+
+1. **`--novel-ops` result** (running-ready) — establishes whether the
+   boundary is real HERE before any redesign. Do not build for a
+   limitation that has not been measured in our own setting.
+2. **Instruction-set plant** (§23) — if the boundary is real, this is
+   the response with the best ratio of payoff to architectural damage:
+   it keeps entries small, keeps the plant fixed, and turns invention
+   into composition. Concrete first step: retrain the plant on a
+   complete bitwise basis with the bank holding instruction sequences,
+   and re-run `--novel-ops`, where the prediction flips.
+3. **Weight decay sweep** (§17, running).
+4. **Offline compression / library growth** (§24) — the honest
+   long-term answer to "invent new operations", and the first thing in
+   this project that would require a consolidation phase rather than a
+   better read.
+5. **Weight-space entries** (§22) — kept last deliberately: it buys
+   invention at the cost of the small, non-contradictory entries the
+   retention argument depends on.
