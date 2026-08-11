@@ -347,7 +347,19 @@ slot from rendered lifetimes, admits a learned state as an opaque goal file,
 and compares two-step goal-conditioned search with a matched fresh factual
 slot. Seed `93` measured `0.00360` trained terminal error versus `0.04376`
 fresh, with zero replay and zero optimizer updates. This qualifies downstream
-use of a goal fragment, not end-task mastery or general continual learning; the next
-pressure test is a multi-step, structurally diverse acquisition curve. Seeds
+use of a goal fragment, not end-task mastery or general continual learning; the
+next pressure test is a multi-step, structurally diverse acquisition curve. Seeds
 `91`, `92`, and `93` all passed the bounded rung; the ledger is in
 `session_records/goal_conditioned_planning_2026-08-11/sample_efficiency_ledger.json`.
+
+The source-retention/target-acquisition rung can be run with:
+
+```bash
+PYTHONPATH=src uv run python -m experiments.brainworkshop_canonical.nonstationary_goal_conditioned_planning
+```
+
+It learns rendered n-back-2 family A, then n-back-3 family B in an isolated
+external factual slot, admits B's opaque goal file, and compares two-step
+search with a matched fresh target slot while checking A's byte stability.
+Seeds `91`, `92`, and `93` all pass this bounded rung; the ledger is in
+`session_records/nonstationary_goal_conditioned_planning_2026-08-11/sample_efficiency_ledger.json`.

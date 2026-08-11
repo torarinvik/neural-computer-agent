@@ -1517,9 +1517,8 @@ the ordinary model-based planner. A matched fresh transition bank receives the
 same goal file and candidate intentions.
 
 The canonical two-step seed measured trained terminal goal error `0.00360`
-versus `0.04376` for the fresh bank, with `18` transition rows consumed once,
-`16`
-unique rendered verifier bits, zero optimizer updates, zero replayed examples,
+versus `0.04376` for the fresh bank, with `18` transition rows consumed once
+and `16` unique rendered verifier bits, zero optimizer updates, zero replayed examples,
 an unchanged controller, and one durable goal fragment. Missing-evidence and
 corrupted-goal candidates were rejected. This promotes composition of learned
 external facts with an admitted destination, not Brain Workshop mastery:
@@ -1528,3 +1527,22 @@ positive transfer across structurally diverse families, and general continual
 learning remain open. The three-seed replication (`91`, `92`, `93`) passed all
 the same bounded gates; its complete accounting is in
 `session_records/goal_conditioned_planning_2026-08-11/sample_efficiency_ledger.json`.
+
+## Nonstationary goal-conditioned acquisition (2026-08-11)
+
+The next pressure test runs source family A before target family B. The source
+uses rendered n-back-2 lifetimes under one opaque cue; the target uses rendered
+n-back-3 lifetimes under a different opaque cue and an isolated factual slot.
+No source rows are replayed or rewritten. The target's held-out learned state
+is admitted as a goal file and two-step search is compared with a matched fresh
+target bank. The source held-out recursive error is measured before and after
+target learning.
+
+Seeds `91`, `92`, and `93` all passed: the source slot stayed byte-stable, the
+target goal fragment was admitted and used, and trained target terminal errors
+were `0.00065/0.00005/0.01571` versus fresh `0.07281/0.04815/0.10672`.
+Across the three runs, `108` transition rows were consumed once, `84` unique
+rendered verifier bits were counted, and replay and optimizer updates were
+zero. This is bounded nonstationary CPU/files composition, not universal
+positive transfer or general continual learning. The ledger is in
+`session_records/nonstationary_goal_conditioned_planning_2026-08-11/sample_efficiency_ledger.json`.

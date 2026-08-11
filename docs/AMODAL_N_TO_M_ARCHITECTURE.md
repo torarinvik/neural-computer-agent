@@ -8984,8 +8984,8 @@ then admitted copy-on-write and supplied to `ExternalModelBasedPlanner`.
 On seed `93`, the learned factual slot planned two steps to the admitted
 destination with terminal error `0.00360`, compared with `0.04376` for a matched
 fresh slot using the same destination file and candidate intention set. The run
-consumed `18`
-transition rows and `16` unique rendered verifier bits, replayed no examples,
+consumed `18` transition rows and `16` unique rendered verifier bits, replayed
+no examples,
 performed no optimizer updates, and left the controller byte-stable. Missing
 evidence and a corrupted candidate were rejected. The result qualifies only
 the downstream CPU/files composition: it does not establish multi-step goal
@@ -8993,3 +8993,22 @@ discovery, end-task Brain Workshop mastery, arbitrary new computation,
 unrestricted growth, or general continual learning. The three-seed replication
 (`91`, `92`, `93`) passed the same bounded gates; the ledger is
 `session_records/goal_conditioned_planning_2026-08-11/sample_efficiency_ledger.json`.
+
+## Nonstationary source-retaining goal acquisition (2026-08-11)
+
+The destination composition now has a first nonstationary pressure test. A
+source rendered family (n-back-2, opaque cue) is learned first, then a
+structurally different target family (n-back-3, different opaque cue) is
+learned in a separate replay-free factual slot. A held-out target state is
+admitted as an opaque goal fragment and used by two-step model-based search;
+the same goal file and candidate intention set are evaluated with a matched
+fresh target bank. Source recursive error is checked before and after target
+acquisition.
+
+Across seeds `91`, `92`, and `93`, the source slot was byte-stable in `3/3`
+runs and the trained target beat fresh in `3/3`; all goal files were admitted
+and used. The run consumed `108` transition rows once and replayed no examples
+or optimizer updates. This qualifies bounded source retention plus target
+goal-conditioned acquisition, not general continual learning, universal
+positive transfer, arbitrary computation, or unrestricted growth. Evidence is
+in `session_records/nonstationary_goal_conditioned_planning_2026-08-11/sample_efficiency_ledger.json`.

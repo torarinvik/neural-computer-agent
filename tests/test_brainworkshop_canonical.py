@@ -15,6 +15,9 @@ from experiments.brainworkshop_canonical.goal_conditioned_planning import (
 from experiments.brainworkshop_canonical.goal_fragment_staging import (
     run_goal_fragment_staging_audit,
 )
+from experiments.brainworkshop_canonical.nonstationary_goal_conditioned_planning import (
+    run_nonstationary_goal_conditioned_planning_audit,
+)
 from experiments.brainworkshop_canonical.replay_free_transition_acquisition import (
     _route_rollout,
     run_nonstationary_transition_retention_audit,
@@ -169,6 +172,26 @@ def test_admitted_goal_fragment_changes_frozen_core_downstream_planning() -> Non
     assert report.replayed_examples == 0
     assert report.missing_evidence_rejected
     assert report.corrupted_goal_rejected
+
+
+def test_nonstationary_goal_planning_retains_source_and_beats_fresh_target() -> None:
+    report = run_nonstationary_goal_conditioned_planning_audit(seed=93)
+
+    assert report.status == "nonstationary_goal_conditioned_external_planning_boundary"
+    assert report.controller_unchanged
+    assert report.replay_free_bank
+    assert report.source_slot_byte_stable
+    assert report.target_goal_fragment_admitted
+    assert report.target_goal_fragment_used
+    assert report.target_planner_improved_over_fresh
+    assert report.source_error_after_target == report.source_error_before_target
+    assert report.trained_target_terminal_error < report.fresh_target_terminal_error
+    assert report.goal_horizon == 2
+    assert report.transition_rows_consumed_once == 36
+    assert report.unique_verifier_bits == 28
+    assert report.optimizer_updates == 0
+    assert report.replayed_examples == 0
+    assert report.missing_evidence_rejected
 
 
 def test_rendered_transition_acquisition_improves_heldout_error_without_replay() -> None:
