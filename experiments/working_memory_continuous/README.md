@@ -335,3 +335,15 @@ curriculum variation—not event routing or frozen-core retention.
 
 The compact records and sample-efficiency ledger are in
 `session_records/sequence_working_memory_2026-08-02/dynamic_growth_span5_2026-08-11/`.
+
+An optimization-variance screen held the dynamic architecture and fresh
+verifier-bit budget constant. On seed `69312`, batch 32 improved span 5 to
+`73.75%`, while batch 64 fell to `64.06%` because it used too few optimizer
+updates. Learning-rate changes were seed-sensitive: `2e-3` reached `79.38%`
+on seed `69312` but only `61.88%` on seed `69311`. This rejects fixed-rate
+tuning as the general solution and makes fresh-batch credit variance the next
+trainer bottleneck.
+
+Replacing the selected-logit loss with a two-action outcome margin improved
+span-4 separation but reduced span-5 to `70.63%` and `69.06%` on seeds
+`69311` and `69312`; it is rejected rather than added to the default trainer.

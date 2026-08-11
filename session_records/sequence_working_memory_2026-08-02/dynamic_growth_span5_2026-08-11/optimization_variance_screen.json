@@ -1,0 +1,38 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment_id": "dynamic-growth-optimization-variance-screen-2026-08-11",
+  "status": "measured_not_promoted",
+  "controller_unchanged": true,
+  "replayed_examples": 0,
+  "target": "span5",
+  "fixed_seed": 69312,
+  "fixed_stages": [2, 3, 4, 5],
+  "fixed_growth": "dynamic_recurrent_intention_context_gated_width128",
+  "arms": {
+    "lr_5e-4_batch16_updates256": {
+      "unique_verifier_bits": 57344,
+      "optimizer_updates": 1024,
+      "selected_behavior": {"2": 0.875, "3": 0.9479167, "4": 0.84375, "5": 0.7},
+      "route_accuracy": 1.0
+    },
+    "lr_2e-3_batch16_updates256": {
+      "unique_verifier_bits": 57344,
+      "optimizer_updates": 1024,
+      "selected_behavior": {"2": 1.0, "3": 1.0, "4": 0.9296875, "5": 0.79375},
+      "route_accuracy": 1.0
+    },
+    "lr_1e-3_batch32_updates128": {
+      "unique_verifier_bits": 57344,
+      "optimizer_updates": 512,
+      "selected_behavior": {"2": 1.0, "3": 0.9583333, "4": 0.7929688, "5": 0.7375},
+      "route_accuracy": 1.0
+    },
+    "lr_1e-3_batch64_updates64": {
+      "unique_verifier_bits": 57344,
+      "optimizer_updates": 256,
+      "selected_behavior": {"2": 1.0, "3": 0.7864583, "4": 0.6132813, "5": 0.640625},
+      "route_accuracy": 1.0
+    }
+  },
+  "interpretation": "Fresh-batch variance is a real bottleneck: batch32 improves over the default on this seed, but fewer optimizer updates hurt at batch64 and no arm stably masters span5. Fixed learning-rate tuning is seed-sensitive."
+}
