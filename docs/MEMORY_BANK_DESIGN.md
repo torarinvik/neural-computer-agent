@@ -7142,3 +7142,32 @@ near-0.02 initialisations multiplied to instruction vectors at ~1e-4,
 far below the interpreter's intended scale; fixing it moved
 composition 0.742 -> 0.924. Our equivalent quantity is the bound
 parameter's norm against the hidden state's. Measuring it now.
+
+**Scale check (2026-08-11), prompted by the Codex log's silent
+killer. Ours is clean.** Their composition mechanism sat inert for a
+long stretch because two near-0.02 initialisations multiplied to
+instruction vectors around 1e-4, far below the scale the interpreter
+expected; fixing it moved composition 0.742 -> 0.924. The analogous
+quantity here is the bound parameter's magnitude against the latent it
+modulates:
+
+    entry norm            28.08   (spread 27.74 - 28.22)
+    bound parameters      21.97
+    hidden state           4.84
+    bound / hidden ratio    4.54   -> comparable, not inert
+
+So F135's binding is doing real work at a real scale, and the null
+results in F148 are not that failure mode wearing a disguise.
+
+One observation the check surfaced incidentally: entry norms are
+almost identical across worlds (27.74-28.22, a 1.7% spread), so worlds
+are distinguished by DIRECTION alone and carry no magnitude
+information. That is expected given the contrastive term normalises
+before comparing, and it is benign — but it is worth knowing, because
+a binder reading magnitude would have nothing to read.
+
+**Two checks the log prompted, both now answered:** the step function
+cannot re-read its input (verified in code), and the code scale is
+sound (measured). Neither confound applies. Cost: one code inspection
+and one 3000-update run — against a composition result that took
+several arms to establish.
