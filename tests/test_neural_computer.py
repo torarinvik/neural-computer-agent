@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import argparse
+
 import pytest
 import torch
 from torch import nn
@@ -20,6 +22,7 @@ from neural_computer import (
     EventWaitPolicy,
     EventWaitStatistics,
     ExecutableArtifactMemory,
+    ExternalTemporalHistoryMemory,
     MemoryBackend,
     MemoryQuery,
     OpaqueProtocolDecoder,
@@ -819,6 +822,81 @@ def test_append_only_memory_isolated_scopes_and_empty_reads() -> None:
     assert empty_read.hit.tolist() == [False, False]
     assert empty_read.value.shape == (2, 4)
     assert empty.candidates().keys.shape == (1, 0, 4)
+
+
+def test_external_temporal_history_grows_and_reads_scoped_relative_offsets() -> None:
+    memory = ExternalTemporalHistoryMemory(width=3, scope_capacity=2)
+    first = torch.tensor(
+        [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]], dtype=torch.float32
+    )
+    second = torch.tensor(
+        [[0.0, 0.0, 1.0], [1.0, 1.0, 0.0]], dtype=torch.float32
+    )
+    scope = torch.tensor([0, 1], dtype=torch.long)
+    assert memory.append(first, scope=scope).positions.tolist() == [0, 0]
+    assert memory.append(second, scope=scope).positions.tolist() == [1, 1]
+
+    read = memory.read_relative(
+        torch.tensor([[0, 1, 2], [0, 1, 2]], dtype=torch.long),
+        scope=scope,
+    )
+    assert read.present.tolist() == [[True, True, False], [True, True, False]]
+    assert read.positions.tolist() == [[1, 0, -1], [1, 0, -1]]
+    assert torch.equal(read.values[0, 0], second[0])
+    assert torch.equal(read.values[0, 1], first[0])
+    assert torch.equal(read.values[1, 0], second[1])
+    assert torch.equal(read.values[1, 1], first[1])
+    assert memory.record_count == 4
+
+
+def test_external_temporal_history_quiet_ticks_do_not_fabricate_or_advance() -> None:
+    memory = ExternalTemporalHistoryMemory(width=2)
+    memory.append(torch.tensor([[1.0, 0.0]]))
+    receipt = memory.append(
+        torch.tensor([[0.0, 1.0]]), present=torch.tensor([False])
+    )
+    assert receipt.committed.tolist() == [False]
+    assert receipt.positions.tolist() == [-1]
+    read = memory.read_relative(torch.tensor([[0, 1]], dtype=torch.long))
+    assert read.present.tolist() == [[True, False]]
+    assert read.positions.tolist() == [[0, -1]]
+    assert torch.equal(read.values[0, 0], torch.tensor([1.0, 0.0]))
+
+
+def test_external_temporal_history_payload_round_trip_and_scope_clear() -> None:
+    memory = ExternalTemporalHistoryMemory(width=2, scope_capacity=2)
+    scope = torch.tensor([0, 1], dtype=torch.long)
+    memory.append(torch.eye(2), scope=scope)
+    restored = ExternalTemporalHistoryMemory.from_payload(memory.payload())
+    assert restored.digest() == memory.digest()
+    assert restored.record_count == 2
+    restored.clear(torch.tensor([0], dtype=torch.long))
+    assert restored.record_count == 1
+    assert restored.read_relative(
+        torch.tensor([[0], [0]], dtype=torch.long),
+        scope=scope,
+    ).present.tolist() == [[False], [True]]
+    assert memory.record_count == 2
+
+
+def test_external_temporal_memory_contract_probe_passes(tmp_path) -> None:
+    from experiments.brainworkshop_canonical.external_temporal_memory_contract import (
+        run,
+    )
+
+    report = run(
+        argparse.Namespace(
+            report_out=tmp_path / "temporal-memory-contract.json",
+            seed=17,
+            width=8,
+            records=16,
+            query_count=4,
+        )
+    )
+
+    assert report["status"] == "promoted_memory_contract"
+    assert all(report["gates"].values())
+    assert report["accounting"]["optimizer_updates"] == 0
 
 
 def test_persistent_append_only_memory_reloads_growth_and_rejects_corruption(

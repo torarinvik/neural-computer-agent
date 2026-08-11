@@ -10216,3 +10216,25 @@ can compress or retrieve beyond the window while preserving causal credit,
 binding, and no-replay retention under capacity pressure. Full reports and
 separate accounting are archived in
 `session_records/brainworkshop_external_compute_deeper_nback_promoted_2026-08-12/`.
+
+## External temporal-history memory contract (2026-08-12)
+
+`ExternalTemporalHistoryMemory` is the first storage-side step beyond a
+rolling event window. It owns scoped append-only learned-event records,
+monotonic sequence positions, explicit missing-history masks, checksummed
+payloads, and isolated scope clearing. Its only retrieval primitive is an
+opaque relative-offset query; the controller never receives physical record
+IDs or task metadata.
+
+The ABI probe stored 128 records per scope, read offsets through 127 exactly,
+reloaded with zero value difference, preserved the other scope after a clear,
+and rejected a corrupted payload. Because the probe used no verifier bits,
+optimizer updates, or learned address selector, this qualifies storage and
+state isolation only. It does not qualify useful learned addressing or
+general continual learning.
+
+The next high-value experiment is an external offset/address selector trained
+from scalar outcomes. It must show that the selector discovers useful history
+addresses, survives wrong-offset and missing-history controls, and improves a
+held-out learning curve without replaying mastered sequences. Evidence is in
+`session_records/brainworkshop_external_temporal_memory_contract_2026-08-12/`.

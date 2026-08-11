@@ -881,3 +881,19 @@ PYTHONPATH=src:. ./.venv/bin/python -m experiments.brainworkshop_canonical.exter
   --credit-mode attempted_bce --entropy-weight 0.01 \
   --report-out /tmp/brainworkshop-external-compute-deeper-nback.json
 ```
+
+## External temporal-history memory contract (2026-08-12)
+
+The fixed event window is now backed by a separate memory-side temporal
+contract. `ExternalTemporalHistoryMemory` stores learned event tensors in
+scoped append-only records and supports opaque relative-offset reads. Storage
+can grow without resizing the controller, and missing history is returned as a
+mask rather than fabricated zero evidence.
+
+The ABI probe stored 128 records in each of two scopes, read distant offsets
+exactly, reloaded its checksummed payload exactly, isolated scope clearing, and
+rejected corruption. This is a storage qualification only: it uses no verifier
+bits or optimizer updates and does not claim learned addressing. The next
+capability experiment must train the offset selector from scalar outcomes.
+Evidence is archived in
+`session_records/brainworkshop_external_temporal_memory_contract_2026-08-12/`.

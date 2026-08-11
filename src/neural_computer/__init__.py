@@ -565,6 +565,14 @@ from .stream_binding import (
     ExternalStreamBindingResult,
     ExternalStreamBindingRetirementReceipt,
 )
+from .temporal_memory import (
+    EXTERNAL_TEMPORAL_HISTORY_APPEND_SCHEMA,
+    EXTERNAL_TEMPORAL_HISTORY_READ_SCHEMA,
+    EXTERNAL_TEMPORAL_HISTORY_SCHEMA,
+    ExternalTemporalHistoryAppendReceipt,
+    ExternalTemporalHistoryMemory,
+    ExternalTemporalHistoryRead,
+)
 from .world_model import (
     DEFAULT_INTENTION_SPACE_ID,
     DEFAULT_STATE_SPACE_ID,
@@ -839,6 +847,9 @@ __all__ = [
     "EXTERNAL_STREAM_BINDING_PROMOTION_SCHEMA",
     "EXTERNAL_STREAM_BINDING_REPLACEMENT_SCHEMA",
     "EXTERNAL_STREAM_BINDING_RETIREMENT_SCHEMA",
+    "EXTERNAL_TEMPORAL_HISTORY_APPEND_SCHEMA",
+    "EXTERNAL_TEMPORAL_HISTORY_READ_SCHEMA",
+    "EXTERNAL_TEMPORAL_HISTORY_SCHEMA",
     "EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY",
     "EXTERNAL_TRANSITION_AFFINE_STATISTICS_SCHEMA",
     "EXTERNAL_TRANSITION_CONTEXT_ADDRESS_ADAPTER_SCHEMA",
@@ -1112,6 +1123,9 @@ __all__ = [
     "ExternalStreamBindingReplacementReceipt",
     "ExternalStreamBindingResult",
     "ExternalStreamBindingRetirementReceipt",
+    "ExternalTemporalHistoryAppendReceipt",
+    "ExternalTemporalHistoryMemory",
+    "ExternalTemporalHistoryRead",
     "ExternalTransitionContextAddressAdapter",
     "ExternalTransitionContextEncoder",
     "ExternalTransitionEvidenceCalibrator",
