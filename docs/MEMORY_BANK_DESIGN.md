@@ -8047,3 +8047,49 @@ rather than about the architecture, which is a much better place to be
 than where this track has been since F117.
 
 Probes 260 and 261 are `sat-200k` and `cv-shape`, 2 seeds each.
+
+## F165 — the ceiling is READER FIDELITY, and which worlds fail is
+## idiosyncratic rather than structural
+
+F164 left two seeds converging to different asymptotes, 0.84 and 0.95
+per-bit, and asked what sets the ceiling. Answered from data already
+on disk, with no new run.
+
+`context_fit` asks a narrow question: can the plant predict the very
+rows the reader CONDITIONED ON — depth one, single piece, same entry.
+Correlating it per world against held-out-program accuracy:
+
+| run | n | r(reader fidelity, held-program bits) |
+| --- | ---: | ---: |
+| cv-shape 69316 | 8 | **+0.818** |
+| cv-shape 69317 | 8 | **+0.842** |
+| pooled | 16 | **+0.852** |
+
+The worlds a model reads best are the worlds it generalises best on,
+and the relation holds WITHIN each seed, so it is not an artefact of
+the between-seed gap. If the executor were the limit, depth-one context
+fit would be high everywhere and uncorrelated with deeper
+generalisation; it is neither.
+
+**Stated against itself:** the two metrics share the entry, so some
+correlation is expected by construction. What the number adds is that
+the variation is entry-side rather than execution-side, and F138's
+distillation result — 0.9723 from a privileged entry — is the causal
+version of the same claim.
+
+**Which worlds fail has no structure.** Across sixteen held-out worlds,
+reader fidelity is unrelated to the world's own parameters:
+r(rotation k) = +0.118, r(popcount of the mask) = -0.249, and the
+self-inverse rotation k=4 is not special (0.9271 against 0.9036). So
+there is no sub-population with a systematic blind spot to attack — the
+reader simply lands well or badly, and the dominant term is the seed:
+sorted by fidelity, the bottom five worlds all belong to the weak seed
+and the top three all to the strong one.
+
+**What this means for where to push.** The target is reader fidelity as
+a whole, not a repairable class of hard worlds, and the lever is the
+optimisation trajectory — which solution the run settles into — rather
+than capacity or representation. That is consistent with F164's smooth
+non-grokking curve and with the late decline past 100k, and it makes
+seed-to-seed variance the phenomenon to study rather than the noise to
+average away.
