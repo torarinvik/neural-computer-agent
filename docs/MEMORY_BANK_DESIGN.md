@@ -6768,7 +6768,7 @@ F144 gives 0.7993:
 | --- | ---: | ---: | ---: |
 | batch 32, 40k updates (F144) | 4x | 0.7993 | 0.8447 |
 | batch 64, 40k updates | **8x** | **0.5803** | 0.7846 |
-| batch 32, 100k updates | **10x** | **0.8520** | pending |
+| batch 32, 100k updates | **10x** | **0.8520** | **0.8889** |
 
 The logic that settles it: if the batch ladder were measuring
 optimisation budget, batch 64 at 8x would beat batch 32 at 4x. It does
@@ -6783,7 +6783,12 @@ not an artefact of budget. The caveat was worth raising — it was live
 until this measurement — and it is now closed by data rather than by
 argument.
 
-**0.8520 is also the best non-privileged number measured**, against
+**Both long-training seeds improved: 0.8520 / 0.8889, mean 0.8704
+against 0.7795 at 40k, with exact match rising 0.2498 -> 0.4228. That
+is 47% of the entire remaining gap to the privileged ceiling, closed
+by training longer and nothing else.**
+
+**0.8704 is the best non-privileged number measured**, against
 the 0.9723 privileged ceiling and 0.5283 for joint training. Simply
 training longer at the confirmed batch closed a further third of the
 remaining gap, which is worth stating plainly: before reaching for the
@@ -6798,3 +6803,27 @@ rather than 0.7795 to count.
 
 Probe 247 is `--contrastive-batch 64` (2 seeds) and
 `--contrastive-batch 32 --train-updates 100000`.
+
+**The question F147 forces, and the run that answers it.** Training
+2.5x longer closed 47% of the gap the amortization diagnosis was built
+to explain. That diagnosis rests on a comparison — distilled 0.9723
+versus non-privileged 0.7795 — whose right-hand side has now moved to
+0.8704 and may not have stopped.
+
+If the non-privileged scheme simply CONVERGES SLOWER and eventually
+reaches the same place, then there is no amortization gap here at all,
+LITERATURE.md's second addendum is answering a question that
+dissolves, and the honest finding is "we under-trained and then went
+looking for mechanisms". If it plateaus short of 0.9723, the gap is
+real and the mechanisms are the right target.
+
+A 200k-update pair is running to decide it. This is the shape of
+mistake the project has made before and caught late: F117 spent three
+arms on diversity when the substrate could not learn the function
+(F128), and the check that would have settled it was cheap and ran
+last. Running the cheap saturation check BEFORE investing further in
+refinement, codebooks or alignment terms is the same lesson applied on
+time rather than in hindsight.
+
+Recorded now, before the result, so the prediction is on the record
+either way.
