@@ -9556,3 +9556,56 @@ identified from the failure rather than guessed:**
 Recorded as a null on the instrument, not on transfer. Forward transfer
 remains unmeasured, and it is the one claim of the founding objective
 this architecture has not yet been shown to make.
+
+## F187 — the forward-transfer instrument, rebuilt; and the same regime
+## error found one level down
+
+F186 named two reasons the instrument could not discriminate. Both are
+now fixed, and testing the fix exposed a third.
+
+**Fix 1 — the bank could not compose.** Stored programs were NOOP-padded
+to length 6, so concatenating one with anything overran the program
+length. Winners are now trimmed before storage. A bank whose entries
+cannot compose can only be recalled whole, which is exactly F157's
+limitation wearing different clothes.
+
+**Fix 2 — candidates could not be short.** Building to `program_len` and
+truncating made every candidate exactly six instructions, so a
+three-instruction solution was unreachable WHATEVER the library held:
+the target needs NOOPs in its tail and concatenation never produces
+them. Candidates now draw a length, fill it, and pad.
+
+**Fix 3 — reuse stated as enumeration.** At depth 3 the search first
+tries every library fragment followed by one new instruction. If a
+two-instruction prefix is already known, the third instruction costs
+the size of the pool rather than its cube. Deep families share an
+identifiable prefix, so a bank that fails to exploit one it already
+holds has failed at something specific.
+
+**And the test of the fix failed for a third reason, which is the one
+worth recording.** With a 8,000-update interpreter:
+
+| arm | family 1 | families 2-6 | best fit |
+| --- | ---: | ---: | ---: |
+| frozen | 60000 (saturated) | 60000 each | 0.833 |
+| enum | **29840 (exhausted)** | 60000 each | 0.924 |
+
+Depth-3 enumeration now completes rather than saturating — the
+instrument works. But the best fit it can find is 0.924 against a
+target of 0.95, and it is not the search that caps it: **at 8,000
+updates the interpreter executes at roughly 0.83 per slot, so no
+program can score 0.95 no matter how correct it is.** The families are
+solvable by construction; the executor cannot demonstrate it.
+
+That is the F168 regime error again, one level down. F168 was "the
+search saturates so cost is the budget". F186 was "nothing is solved so
+nothing is stored". This is "the interpreter cannot reach the fit
+target so nothing counts as solved". The same shape three times: **a
+measurement is void when some component other than the one under test
+is the binding constraint**, and the way to notice is always to check
+whether the thing being varied can move the number at all.
+
+Prerequisite now running at a 40k interpreter: does depth-3 enumeration
+solve a depth-3 family when the executor is good enough to show it?
+Until that answers yes there is nothing for a bank to transfer, and
+forward transfer stays unmeasured.
