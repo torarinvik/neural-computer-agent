@@ -133,6 +133,26 @@ def test_external_compute_basis_artifact_round_trips_exactly() -> None:
     assert torch.allclose(basis(register, code), rehydrated(register, code))
 
 
+def test_external_compute_basis_can_isolate_a_new_file_from_shared_register_state() -> None:
+    torch.manual_seed(920)
+    basis = ExternalRegisterComputeBasis(
+        8,
+        5,
+        hidden=10,
+        event_width=4,
+        event_window_size=2,
+        register_input_mode="event_window_only",
+    )
+    code = torch.randn(3, 5)
+    window = torch.randn(3, 2, 4)
+    mask = torch.ones(3, 2, dtype=torch.bool)
+    first = basis(torch.randn(3, 8), code, window, mask)
+    second = basis(torch.randn(3, 8) * 100.0, code, window, mask)
+
+    assert torch.allclose(first, second)
+    assert basis.configuration()["register_input_mode"] == "event_window_only"
+
+
 def test_external_compute_basis_artifact_load_isolated_from_frozen_interpreter() -> (
     None
 ):

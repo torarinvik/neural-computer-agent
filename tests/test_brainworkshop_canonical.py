@@ -15,6 +15,9 @@ from experiments.brainworkshop_canonical.cross_family_rule_growth import (
     run as run_cross_family_rule_growth,
 )
 from experiments.brainworkshop_canonical.environment import NBackVerifierStep
+from experiments.brainworkshop_canonical.external_compute_growth import (
+    run as run_external_compute_growth,
+)
 from experiments.brainworkshop_canonical.goal_conditioned_planning import (
     run_goal_conditioned_planning_audit,
 )
@@ -125,6 +128,31 @@ def test_event_encoder_is_a_learned_frontend() -> None:
     assert encoder.configuration()["schema"] == (
         "neural-computer.brainworkshop-event-encoder.v1"
     )
+
+
+def test_external_compute_growth_smoke_keeps_the_frozen_core_boundary(tmp_path) -> None:
+    report = run_external_compute_growth(
+        argparse.Namespace(
+            report_out=tmp_path / "external-compute-growth.json",
+            seed=17,
+            source_updates=2,
+            target_updates=2,
+            fresh_updates=2,
+            batch_size=2,
+            steps=6,
+            retention_lifetimes=1,
+            learning_rate=1e-2,
+        )
+    )
+
+    assert report["schema"] == (
+        "neural-computer.brainworkshop-external-compute-growth.v1"
+    )
+    assert report["gates"]["source_file_unchanged"]
+    assert report["gates"]["frozen_controller"]
+    assert report["gates"]["frozen_event_encoder"]
+    assert report["accounting"]["replayed_examples"] == 0
+    assert report["accounting"]["optimizer_updates"] == 4
 
 
 def test_canonical_rollout_uses_keypress_and_retention_boundaries() -> None:

@@ -639,3 +639,41 @@ architecture task is a generic executable/compositional external capability
 that can acquire a new temporal rule from scalar outcomes, while retaining
 the protected family files. Evidence and accounting are in
 `session_records/brainworkshop_cross_family_triplet_frontier_2026-08-11/`.
+
+## External compute-file growth: triplet parity (2026-08-11)
+
+`external_compute_growth.py` closes the computation-acquisition gap with the
+generic external register substrate. The frozen controller and event encoder
+feed standardized learned events into an opaque instruction plus an
+append-only event-window compute basis. The source `symbol_parity` file is
+mastered first; its basis, instruction, adapter, and decoder are then frozen
+while a fresh `triplet_parity` file learns from scalar verifier outcomes only.
+
+The new `event_window_only` basis mode is important: a newly appended file can
+read its own persistent event window without depending on the previous file's
+hidden register distribution. That is an ABI-level isolation mechanism, not a
+triplet-specific branch. Across seeds `17` and `18`, source and target
+retention both passed the `0.80` stable-prefix gate (`1.0000` source; target
+`0.8736` and `1.0000`), the source file was byte-stable, the frozen controller
+and frontend digests were unchanged, and resetting the external history
+dropped target performance to chance. The matched fresh-file comparator was
+`0.8786` and `1.0000`, so inherited state is not being claimed as a universal
+sample-efficiency gain; the promoted result is the isolated, append-only
+blueprint and its retention boundary.
+
+Each seed consumed `176,128` unique training verifier bits, performed `448`
+optimizer updates, replayed zero examples, and used an explicit file slot so
+route discovery could not hide computation failure. This promotes one
+outcome-only new rendered computation with frozen core and no source replay;
+it does not establish arbitrary program induction, route discovery, unrestricted
+memory growth, or general continual learning. Reports are archived in
+`session_records/brainworkshop_external_compute_growth_promoted_2026-08-11/`.
+
+Run the promoted rung with:
+
+```bash
+PYTHONPATH=src:. ./.venv/bin/python -m experiments.brainworkshop_canonical.external_compute_growth \
+  --source-updates 192 --target-updates 256 --fresh-updates 256 \
+  --batch-size 32 --steps 14 --retention-lifetimes 4 --seed 17 \
+  --report-out /tmp/brainworkshop-external-compute-growth.json
+```

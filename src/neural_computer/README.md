@@ -1395,6 +1395,13 @@ shared interpreter. Instruction vectors and compute capacity are now both
 portable external files; retention and behavior verification still decide
 whether a loaded slot is deployable.
 
+Compute bases also support `register_input_mode="event_window_only"`. This
+mode makes a newly appended file read its own persistent standardized event
+window and opaque instruction without depending on a prior file's hidden
+register distribution. It is the generic isolation boundary used by the
+rendered triplet-parity growth audit; it does not assign semantic meaning to
+register coordinates or add a task-specific branch.
+
 The external intention learner also supports an opt-in `context_masking=True`
 mode. Callers pass `context_mask=` alongside an opaque context; the memory
 learner receives explicit observed-value and observation-mask channels, so

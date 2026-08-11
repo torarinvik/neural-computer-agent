@@ -1,0 +1,246 @@
+{
+  "schema": "neural-computer.brainworkshop-external-compute-growth.v1",
+  "claim_boundary": "Outcome-only acquisition of one new rendered temporal computation in an isolated external register file with frozen controller and frontend; this is not route discovery, unrestricted memory growth, or general continual learning.",
+  "architecture": {
+    "boundary": "rendered_event -> frozen_amodal_controller -> external_register_file -> keypress_decoder",
+    "external_file": "opaque_instruction_plus_append_only_event_window_compute_basis_v1",
+    "source_family": "symbol_parity",
+    "target_family": "triplet_parity",
+    "target_cue": 7,
+    "event_window_size": 4,
+    "basis_microsteps": 2,
+    "route": "explicit_external_slot_selection_for_computation_isolation",
+    "weight_policy": "source_file_frozen_target_file_initialized_fresh_shared_register_path_excluded"
+  },
+  "seed": 17,
+  "source_history_tail": [
+    {
+      "update": 188,
+      "loss": 8.847565879932517e-08,
+      "eligible_accuracy": 1.0,
+      "unique_verifier_bits": 448,
+      "replayed_examples": 0
+    },
+    {
+      "update": 189,
+      "loss": 9.193485794867229e-08,
+      "eligible_accuracy": 1.0,
+      "unique_verifier_bits": 448,
+      "replayed_examples": 0
+    },
+    {
+      "update": 190,
+      "loss": 8.860870792659625e-08,
+      "eligible_accuracy": 1.0,
+      "unique_verifier_bits": 448,
+      "replayed_examples": 0
+    },
+    {
+      "update": 191,
+      "loss": 1.0457423371690311e-07,
+      "eligible_accuracy": 1.0,
+      "unique_verifier_bits": 448,
+      "replayed_examples": 0
+    },
+    {
+      "update": 192,
+      "loss": 8.78104273738245e-08,
+      "eligible_accuracy": 1.0,
+      "unique_verifier_bits": 448,
+      "replayed_examples": 0
+    }
+  ],
+  "target_history_tail": [
+    {
+      "update": 252,
+      "loss": -0.009824194014072418,
+      "eligible_accuracy": 0.8579545617103577,
+      "unique_verifier_bits": 352,
+      "replayed_examples": 0
+    },
+    {
+      "update": 253,
+      "loss": 3.332576670800336e-05,
+      "eligible_accuracy": 0.90625,
+      "unique_verifier_bits": 352,
+      "replayed_examples": 0
+    },
+    {
+      "update": 254,
+      "loss": 1.7762616835170775e-06,
+      "eligible_accuracy": 0.8607954382896423,
+      "unique_verifier_bits": 352,
+      "replayed_examples": 0
+    },
+    {
+      "update": 255,
+      "loss": 1.3166086318960879e-05,
+      "eligible_accuracy": 0.8636363744735718,
+      "unique_verifier_bits": 352,
+      "replayed_examples": 0
+    },
+    {
+      "update": 256,
+      "loss": -0.010005965828895569,
+      "eligible_accuracy": 0.8721590638160706,
+      "unique_verifier_bits": 352,
+      "replayed_examples": 0
+    }
+  ],
+  "evaluation": {
+    "source_before_target": [
+      {
+        "lifetime": 1,
+        "accuracy": 1.0,
+        "unique_verifier_bits": 448,
+        "replayed_examples": 0
+      },
+      {
+        "lifetime": 2,
+        "accuracy": 1.0,
+        "unique_verifier_bits": 448,
+        "replayed_examples": 0
+      },
+      {
+        "lifetime": 3,
+        "accuracy": 1.0,
+        "unique_verifier_bits": 448,
+        "replayed_examples": 0
+      },
+      {
+        "lifetime": 4,
+        "accuracy": 1.0,
+        "unique_verifier_bits": 448,
+        "replayed_examples": 0
+      }
+    ],
+    "source_after_target": [
+      {
+        "lifetime": 1,
+        "accuracy": 1.0,
+        "unique_verifier_bits": 448,
+        "replayed_examples": 0
+      },
+      {
+        "lifetime": 2,
+        "accuracy": 1.0,
+        "unique_verifier_bits": 448,
+        "replayed_examples": 0
+      },
+      {
+        "lifetime": 3,
+        "accuracy": 1.0,
+        "unique_verifier_bits": 448,
+        "replayed_examples": 0
+      },
+      {
+        "lifetime": 4,
+        "accuracy": 1.0,
+        "unique_verifier_bits": 448,
+        "replayed_examples": 0
+      }
+    ],
+    "target_after_growth": [
+      {
+        "lifetime": 1,
+        "accuracy": 0.8778409361839294,
+        "unique_verifier_bits": 352,
+        "replayed_examples": 0
+      },
+      {
+        "lifetime": 2,
+        "accuracy": 0.8664772510528564,
+        "unique_verifier_bits": 352,
+        "replayed_examples": 0
+      },
+      {
+        "lifetime": 3,
+        "accuracy": 0.8721590638160706,
+        "unique_verifier_bits": 352,
+        "replayed_examples": 0
+      },
+      {
+        "lifetime": 4,
+        "accuracy": 0.8778409361839294,
+        "unique_verifier_bits": 352,
+        "replayed_examples": 0
+      }
+    ],
+    "target_without_external_history": [
+      {
+        "lifetime": 1,
+        "accuracy": 0.4886363744735718,
+        "unique_verifier_bits": 352,
+        "replayed_examples": 0
+      },
+      {
+        "lifetime": 2,
+        "accuracy": 0.46022728085517883,
+        "unique_verifier_bits": 352,
+        "replayed_examples": 0
+      },
+      {
+        "lifetime": 3,
+        "accuracy": 0.49715909361839294,
+        "unique_verifier_bits": 352,
+        "replayed_examples": 0
+      },
+      {
+        "lifetime": 4,
+        "accuracy": 0.46022728085517883,
+        "unique_verifier_bits": 352,
+        "replayed_examples": 0
+      }
+    ],
+    "fresh_target_comparator": [
+      {
+        "lifetime": 1,
+        "accuracy": 0.8948863744735718,
+        "unique_verifier_bits": 352,
+        "replayed_examples": 0
+      },
+      {
+        "lifetime": 2,
+        "accuracy": 0.8863636255264282,
+        "unique_verifier_bits": 352,
+        "replayed_examples": 0
+      },
+      {
+        "lifetime": 3,
+        "accuracy": 0.8579545617103577,
+        "unique_verifier_bits": 352,
+        "replayed_examples": 0
+      },
+      {
+        "lifetime": 4,
+        "accuracy": 0.875,
+        "unique_verifier_bits": 352,
+        "replayed_examples": 0
+      }
+    ],
+    "transferred_target_mean": 0.8735795468091965,
+    "fresh_target_mean": 0.8785511404275894,
+    "transfer_ratio": 0.9943411448809079
+  },
+  "gates": {
+    "source_mastered_before_growth": true,
+    "target_mastered_after_growth": true,
+    "source_retained_after_growth": true,
+    "source_outputs_unchanged_on_matched_lifetimes": true,
+    "source_file_unchanged": true,
+    "frozen_controller": true,
+    "frozen_event_encoder": true,
+    "history_is_required": true,
+    "zero_replayed_examples": true
+  },
+  "accounting": {
+    "unique_verifier_bits": 176128,
+    "unique_logical_lifetimes": 14336,
+    "optimizer_updates": 448,
+    "replayed_examples": 0,
+    "latency_seconds": 39.51927112496924,
+    "stable_bits_to_threshold": 176128,
+    "retention_threshold": 0.8
+  },
+  "status": "promoted_external_computation_growth"
+}

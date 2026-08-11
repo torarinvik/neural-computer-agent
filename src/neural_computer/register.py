@@ -2243,6 +2243,7 @@ class ExternalRegisterComputeBasis(nn.Module):
         event_window_size: int = 0,
         microsteps: int = 1,
         event_read_mode: str = "flattened_window",
+        register_input_mode: str = "full",
     ) -> None:
         super().__init__()
         if min(register_width, instruction_width, hidden) < 1:
@@ -2257,6 +2258,8 @@ class ExternalRegisterComputeBasis(nn.Module):
             raise ValueError("unsupported compute basis event read mode")
         if event_read_mode == "attention_pool" and not event_window_size:
             raise ValueError("attention event reading requires an event window")
+        if register_input_mode not in ("full", "event_window_only"):
+            raise ValueError("unsupported compute basis register input mode")
         self.register_width = int(register_width)
         self.instruction_width = int(instruction_width)
         self.hidden = int(hidden)
@@ -2264,15 +2267,22 @@ class ExternalRegisterComputeBasis(nn.Module):
         self.event_window_size = int(event_window_size)
         self.microsteps = int(microsteps)
         self.event_read_mode = event_read_mode
+        self.register_input_mode = register_input_mode
         self.event_window_width = self.event_width * self.event_window_size
         event_feature_width = (
             self.event_width
             if event_read_mode == "attention_pool"
             else self.event_window_width
         )
-        width = self.register_width + self.instruction_width + event_feature_width
+        width = (
+            (self.register_width if register_input_mode == "full" else 0)
+            + self.instruction_width
+            + event_feature_width
+        )
         if event_read_mode == "attention_pool":
-            query_width = self.register_width + self.instruction_width
+            query_width = (
+                self.register_width if register_input_mode == "full" else 0
+            ) + self.instruction_width
             self.event_query = nn.Linear(query_width, self.hidden)
             self.event_key = nn.Linear(self.event_width, self.hidden)
             self.event_value = nn.Linear(self.event_width, self.event_width)
@@ -2298,6 +2308,7 @@ class ExternalRegisterComputeBasis(nn.Module):
             "event_window_size": self.event_window_size,
             "microsteps": self.microsteps,
             "event_read_mode": self.event_read_mode,
+            "register_input_mode": self.register_input_mode,
             "storage": "append_only_external_compute_slot_v1",
             "signature": "one_opaque_learned_slot_key_v1",
         }
@@ -2330,11 +2341,15 @@ class ExternalRegisterComputeBasis(nn.Module):
 
         if not isinstance(artifact, ExternalRegisterComputeBasisArtifact):
             raise TypeError("compute basis restoration requires a basis artifact")
+        configuration = dict(artifact.configuration)
+        # v1 artifacts predate the explicit register-input isolation mode;
+        # their behavior is the original full-register path.
+        configuration.setdefault("register_input_mode", "full")
         if expected_configuration is not None:
             expected = dict(expected_configuration)
-            if dict(artifact.configuration) != expected:
+            expected.setdefault("register_input_mode", "full")
+            if configuration != expected:
                 raise ValueError("compute basis artifact configuration is incompatible")
-        configuration = dict(artifact.configuration)
         basis = cls(
             int(configuration["register_width"]),
             int(configuration["instruction_width"]),
@@ -2343,6 +2358,9 @@ class ExternalRegisterComputeBasis(nn.Module):
             event_window_size=int(configuration["event_window_size"]),
             microsteps=int(configuration["microsteps"]),
             event_read_mode=str(configuration["event_read_mode"]),
+            register_input_mode=str(
+                configuration.get("register_input_mode", "full")
+            ),
         )
         current = basis.state_dict()
         if set(current) != set(artifact.state):
@@ -2370,6 +2388,8 @@ class ExternalRegisterComputeBasis(nn.Module):
     ) -> torch.Tensor:
         if register.ndim != 2 or register.shape[1] != self.register_width:
             raise ValueError("register has the wrong shape for compute basis")
+        if self.register_input_mode == "event_window_only":
+            register = torch.zeros_like(register)
         if code.shape != (register.shape[0], self.instruction_width):
             raise ValueError("instruction code has the wrong shape for compute basis")
         if self.event_window_size:
@@ -2394,8 +2414,13 @@ class ExternalRegisterComputeBasis(nn.Module):
                 raise ValueError("event window is unsupported by this compute basis")
             window = None
         for _ in range(self.microsteps):
+            basis_register = (
+                register
+                if self.register_input_mode == "full"
+                else torch.zeros_like(register)
+            )
             if self.event_read_mode == "attention_pool":
-                query = self.event_query(torch.cat((register, code), dim=-1))
+                query = self.event_query(torch.cat((basis_register, code), dim=-1))
                 keys = self.event_key(window)
                 values = self.event_value(window)
                 scores = torch.einsum("bd,btd->bt", query, keys)
@@ -2419,9 +2444,13 @@ class ExternalRegisterComputeBasis(nn.Module):
                     else window.flatten(1)
                 )
             features = torch.cat(
-                (register, code, event_features)
+                (basis_register, code, event_features)
+                if self.event_window_size and self.register_input_mode == "full"
+                else (code, event_features)
                 if self.event_window_size
-                else (register, code),
+                else (basis_register, code)
+                if self.register_input_mode == "full"
+                else (code,),
                 dim=-1,
             )
             register = register + torch.sigmoid(self.gate(features)) * torch.tanh(
@@ -2549,6 +2578,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         basis_hidden: int = 64,
         basis_microsteps: int = 1,
         basis_event_read_mode: str = "flattened_window",
+        basis_register_input_mode: str = "full",
         event_input_mode: str = "frontend",
         event_window_size: int = 0,
         role_count: int = 4,
@@ -2574,6 +2604,8 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             raise ValueError("unsupported basis event read mode")
         if basis_event_read_mode == "attention_pool" and not event_window_size:
             raise ValueError("attention basis reading requires an event window")
+        if basis_register_input_mode not in ("full", "event_window_only"):
+            raise ValueError("unsupported basis register input mode")
         if event_input_mode not in (
             "frontend",
             "append_controller_state",
@@ -2634,6 +2666,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             or basis.event_window_size != event_window_size
             or basis.microsteps != basis_microsteps
             or basis.event_read_mode != basis_event_read_mode
+            or basis.register_input_mode != basis_register_input_mode
             or (event_window_size and basis.event_width != event_width)
             for basis in basis_members
         ):
@@ -2652,6 +2685,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         self.basis_hidden = int(basis_hidden)
         self.basis_microsteps = int(basis_microsteps)
         self.basis_event_read_mode = basis_event_read_mode
+        self.basis_register_input_mode = basis_register_input_mode
         self.event_input_mode = event_input_mode
         self.event_window_size = int(event_window_size)
         self.role_count = int(role_count)
@@ -2851,6 +2885,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             "basis_hidden": self.basis_hidden,
             "basis_microsteps": self.basis_microsteps,
             "basis_event_read_mode": self.basis_event_read_mode,
+            "basis_register_input_mode": self.basis_register_input_mode,
             "event_input_mode": self.event_input_mode,
             "event_window_size": self.event_window_size,
             "role_count": self.role_count,
@@ -2910,6 +2945,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
                 hidden=self.basis_hidden,
                 microsteps=self.basis_microsteps,
                 event_read_mode=self.basis_event_read_mode,
+                register_input_mode=self.basis_register_input_mode,
                 event_width=self.event_width if self.event_window_size else 0,
                 event_window_size=self.event_window_size,
             )
@@ -2919,6 +2955,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             or basis.event_window_size != self.event_window_size
             or basis.microsteps != self.basis_microsteps
             or basis.event_read_mode != self.basis_event_read_mode
+            or basis.register_input_mode != self.basis_register_input_mode
             or (self.event_window_size and basis.event_width != self.event_width)
         ):
             raise ValueError("basis slot dimensions do not match the machine")
@@ -2937,6 +2974,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             "event_window_size": self.event_window_size,
             "microsteps": self.basis_microsteps,
             "event_read_mode": self.basis_event_read_mode,
+            "register_input_mode": self.basis_register_input_mode,
             "storage": "append_only_external_compute_slot_v1",
             "signature": "one_opaque_learned_slot_key_v1",
         }
