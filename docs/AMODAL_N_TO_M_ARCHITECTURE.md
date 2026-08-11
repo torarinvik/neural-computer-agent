@@ -9075,3 +9075,27 @@ capability gain. Random-feature widths `128`, `256`, `512`, and `1024` also
 left the failing-seed outcomes unchanged; the active bottleneck is coherent
 staged evidence and held-out model fit, not external model width. The result
 remains bounded online acquisition, not general continual learning.
+
+## Separating novelty routing from promotion fit (2026-08-11)
+
+The online router now uses separate thresholds for two different decisions.
+Committed-slot matching uses a tighter `0.02` factual prediction tolerance so a
+novel stream is staged before a source slot can absorb its early evidence;
+promotion retains the original `0.05` held-out prediction threshold, recursive
+error bound, fresh challenger, and source-retention gates. This is a routing
+boundary change, not a verification relaxation.
+
+On the same cost-aware recency/latest 24-seed audit, complete discovery,
+promotion, route recovery, target-goal admission/use, and fresh-goal improvement
+rose from `10/24` to `14/24`. Source retention stayed `24/24`; the run consumed
+`690` unique verifier bits and `576` transition rows once, with zero replay,
+zero optimizer updates, and a byte-stable controller. A tolerance sweep from
+`0.02` to `0.005` remained at `14/24`, supporting a stable novelty-routing
+effect rather than a knife-edge threshold. The full ledger is
+`session_records/online_goal_conditioned_discovery_routing_threshold_2026-08-11/sample_efficiency_ledger.json`.
+
+This promotes a better evidence-acquisition boundary, not general continual
+learning. Ten runs still do not pass, and the remaining failures are held-out
+model-fit, recursive candidate-stability, or retention failures. The next
+pressure test must improve the staged candidate's factual fit without replaying
+rows or changing the promotion gates.

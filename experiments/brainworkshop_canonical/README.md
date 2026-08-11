@@ -409,3 +409,14 @@ the current discovery pass rate, so it remains a reusable memory-side seam and
 is not a promoted capability claim. Random-feature widths `128–1024` likewise
 did not change the failing seeds; staged evidence coherence, not model width,
 is the active bottleneck.
+
+The default online audit now separates novelty routing from promotion fit:
+committed-slot routing uses a tighter `0.02` match tolerance, while promotion
+keeps the original `0.05` held-out prediction threshold. This makes the router
+stage a candidate when evidence is novel without weakening the commit gate.
+On the same seeds `80–103`, the complete gate rose from `10/24` to `14/24`;
+source retention remained `24/24`, and all complete runs passed route recovery,
+goal admission/use, and the fresh-goal challenger. The tolerance sweep plateaued
+at `14/24` from `0.02` through `0.005`, so this is not a single knife-edge.
+The ledger is in
+`session_records/online_goal_conditioned_discovery_routing_threshold_2026-08-11/sample_efficiency_ledger.json`.

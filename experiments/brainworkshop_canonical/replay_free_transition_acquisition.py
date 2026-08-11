@@ -136,6 +136,7 @@ class OnlineTransitionDiscoveryReport:
     window_gain: float
     recency_decay: float
     context_aggregation: str
+    routing_match_tolerance: float = 0.02
     adaptive_address: bool = False
     random_feature_width: int = 128
     pretrain_context_encoder: bool = False
@@ -676,6 +677,7 @@ def run_online_transition_discovery_audit(
     prior_selection_cost_learning_rate: float = 0.35,
     prior_selection_cost_initial: float = 0.25,
     prior_selection_cost_decision_weight: float = 1.0,
+    routing_match_tolerance: float = 0.02,
     adaptive_address: bool = False,
     random_feature_width: int = 128,
     pretrain_context_encoder: bool = False,
@@ -713,6 +715,10 @@ def run_online_transition_discovery_audit(
         raise ValueError("online transition recency decay must be finite and positive")
     if affine_ridge <= 0.0 or not math.isfinite(float(affine_ridge)):
         raise ValueError("online transition affine ridge must be finite and positive")
+    if routing_match_tolerance <= 0.0 or not math.isfinite(
+        float(routing_match_tolerance)
+    ):
+        raise ValueError("online routing match tolerance must be finite and positive")
     if not isinstance(goal_conditioned, bool):
         raise TypeError("online goal-conditioned flag must be boolean")
     if not isinstance(learned_prior_selection_cost, bool):
@@ -916,9 +922,10 @@ def run_online_transition_discovery_audit(
         bank,
         context_encoder,
         admission_observations=steps,
-        match_tolerance=0.05,
+        match_tolerance=routing_match_tolerance,
         match_margin=0.0,
-        continuation_tolerance=0.05,
+        continuation_tolerance=routing_match_tolerance,
+        provisional_continuation_tolerance=0.05,
         defer_admission=True,
         max_contexts=2,
         candidate_model_families=(
@@ -1038,6 +1045,7 @@ def run_online_transition_discovery_audit(
             window_gain=window_gain,
             recency_decay=recency_decay,
             context_aggregation=context_aggregation,
+            routing_match_tolerance=routing_match_tolerance,
             adaptive_address=adaptive_address,
             random_feature_width=random_feature_width,
             pretrain_context_encoder=pretrain_context_encoder,
@@ -1146,7 +1154,7 @@ def run_online_transition_discovery_audit(
     promotion = router.promote_staged_candidate(
         promotion_observations[0],
         retention_probe,
-        prediction_tolerance=router.match_tolerance,
+        prediction_tolerance=0.05,
         heldout_rollout=promotion_holdout,
         rollout_error_tolerance=0.2,
         additional_heldout_observations=tuple(promotion_observations[1:]),
@@ -1212,6 +1220,7 @@ def run_online_transition_discovery_audit(
             window_gain=window_gain,
             recency_decay=recency_decay,
             context_aggregation=context_aggregation,
+            routing_match_tolerance=routing_match_tolerance,
             adaptive_address=adaptive_address,
             random_feature_width=random_feature_width,
             pretrain_context_encoder=pretrain_context_encoder,
@@ -1445,6 +1454,7 @@ def run_online_transition_discovery_audit(
         window_gain=window_gain,
         recency_decay=recency_decay,
         context_aggregation=context_aggregation,
+        routing_match_tolerance=routing_match_tolerance,
         adaptive_address=adaptive_address,
         random_feature_width=random_feature_width,
         pretrain_context_encoder=pretrain_context_encoder,
@@ -1499,6 +1509,7 @@ def main() -> None:
         "--prior-selection-cost-decision-weight", type=float, default=1.0
     )
     parser.add_argument("--adaptive-address", action="store_true")
+    parser.add_argument("--routing-match-tolerance", type=float, default=0.02)
     parser.add_argument("--random-feature-width", type=int, default=128)
     parser.add_argument("--pretrain-context-encoder", action="store_true")
     parser.add_argument("--steps", type=int, default=6)
@@ -1531,6 +1542,7 @@ def main() -> None:
             prior_selection_cost_initial=args.prior_selection_cost_initial,
             prior_selection_cost_decision_weight=args.prior_selection_cost_decision_weight,
             adaptive_address=args.adaptive_address,
+            routing_match_tolerance=args.routing_match_tolerance,
             random_feature_width=args.random_feature_width,
             pretrain_context_encoder=args.pretrain_context_encoder,
         )
