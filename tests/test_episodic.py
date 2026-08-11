@@ -20,6 +20,7 @@ from neural_computer import (
     ExternalCapabilitySharedResidualBank,
     ExternalComputeCandidateScreen,
     ExternalFastWeightCapabilityProgram,
+    ExternalProgramFastCell,
     IntentEvent,
     LearnedComputeCandidateScreen,
     LearnedOpaqueCandidateKeyMemory,
@@ -180,6 +181,57 @@ def test_fast_weight_capability_binds_external_state_to_intention_bus() -> None:
     assert torch.equal(missing.weights, written.weights)
     assert program.configuration()["schema"] == (
         "neural-computer.external-capability-fast-weight.v1"
+    )
+
+
+def test_external_program_fast_cell_isolated_outcome_only_and_persistent() -> None:
+    torch.manual_seed(915)
+    cell = ExternalProgramFastCell(
+        event_width=4,
+        action_width=3,
+        intention_width=6,
+        register_width=8,
+        key_width=5,
+        query_hidden=8,
+        adapter_hidden=7,
+        fast_weight_hidden=6,
+    )
+    event = torch.randn(2, 4)
+    action = torch.randn(2, 3)
+    intention = IntentEvent(torch.zeros(2, 6))
+    state = cell.initial_state(2, device="cpu")
+    initial_context = cell.read(state, event, intention)
+    context, written = cell.step(
+        event=event,
+        action=action,
+        outcome=torch.ones(2),
+        intention=intention,
+        state=state,
+    )
+    failed = cell.fast_weight.update(
+        written,
+        cell._query(event, intention),
+        cell.value_encoder(-action),
+        torch.zeros(2),
+    )
+    missing = cell.fast_weight.update(
+        written,
+        cell._query(event, intention),
+        cell.value_encoder(-action),
+        torch.ones(2),
+        present=torch.zeros(2, dtype=torch.bool),
+    )
+    restored = cell.state_from_payload(cell.state_payload(written))
+
+    assert torch.equal(initial_context, torch.zeros_like(initial_context))
+    assert torch.equal(context, initial_context)
+    assert bool(torch.any(written.weights != 0.0))
+    assert torch.equal(failed.weights, written.weights)
+    assert torch.equal(missing.weights, written.weights)
+    assert torch.equal(restored.weights, written.weights)
+    assert torch.equal(restored.updates, written.updates)
+    assert cell.configuration()["schema"] == (
+        "neural-computer.external-program-fast-cell.v1"
     )
 
 

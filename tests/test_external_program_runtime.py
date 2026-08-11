@@ -14,6 +14,7 @@ from neural_computer import (
     ExternalOutcomeProgramRouter,
     ExternalProgramAmodalRuntime,
     ExternalProgramArtifact,
+    ExternalProgramFastCell,
     ExternalProgramRuntimeState,
     ExternalSequenceProgramMemory,
 )
@@ -112,6 +113,8 @@ def _runtime(
     program_query_adapter=None,
     program_route_exploration: float = 0.0,
     program_router: ExternalOutcomeProgramRouter | None = None,
+    program_cell: ExternalProgramFastCell | None = None,
+    operator_mode: str = "factorized_low_rank",
 ):
     controller = AmodalCognitiveController(
         width=4,
@@ -128,6 +131,7 @@ def _runtime(
         intention_width=2,
         register_width=8,
         instruction_width=5,
+        operator_mode=operator_mode,
         instructions=(),
     )
     return runtime, machine, ExternalProgramAmodalRuntime(
@@ -138,6 +142,7 @@ def _runtime(
         program_query_adapter=program_query_adapter,
         program_route_exploration=program_route_exploration,
         program_router=program_router,
+        program_cell=program_cell,
     )
 
 
@@ -163,6 +168,112 @@ def test_external_program_runtime_routes_file_result_to_decoders_without_core_mu
     assert torch.equal(output.decoded["echo"], output.intention.payload)
     assert next_state.program.initialized.equal(torch.ones(2, dtype=torch.bool))
     assert all(torch.equal(value, runtime.controller.state_dict()[name]) for name, value in before.items())
+
+
+def test_external_program_fast_cell_learns_per_file_without_core_updates():
+    torch.manual_seed(9035)
+    cell = ExternalProgramFastCell(
+        event_width=12,
+        action_width=3,
+        intention_width=2,
+        register_width=8,
+        key_width=5,
+        query_hidden=8,
+        adapter_hidden=7,
+        fast_weight_hidden=6,
+    )
+    # The production cell is neutral at construction. Give this test a small
+    # already-trained external read adapter so the state-to-execution seam is
+    # observable without training the controller or the runtime here.
+    with torch.no_grad():
+        cell.context_adapter[0].bias.zero_()
+        cell.context_adapter[-1].weight.fill_(0.1)
+    runtime, _machine, agent = _runtime(
+        program_cell=cell,
+        operator_mode="factorized_protected_bounded_meta",
+    )
+    before = {
+        name: value.detach().clone()
+        for name, value in runtime.controller.state_dict().items()
+    }
+    state = agent.initial_state(1, device="cpu")
+    event = [AmodalEvent(torch.ones(1, 4))]
+    quiet = _feedback(1)
+    positive = ControllerFeedback(
+        action=torch.ones(1, 3),
+        reward=torch.ones(1),
+        propensity=torch.ones(1),
+        has_feedback=torch.ones(1, dtype=torch.bool),
+    )
+    first, state = agent.step_events(event, state, quiet)
+    assert first.program_cell_context is not None
+    assert torch.equal(
+        first.program_cell_context,
+        torch.zeros_like(first.program_cell_context),
+    )
+    second, state = agent.step_events(event, state, positive)
+    assert second.program_cell_context is not None
+    assert bool(torch.any(second.program_cell_context != 0.0))
+    third, state = agent.step_events(event, state, quiet)
+
+    assert third.program_cell_context is not None
+    assert bool(torch.any(third.program_cell_context != 0.0))
+    assert set(state.program_cells) == {-1}
+    assert bool(torch.any(state.program_cells[-1].weights != 0.0))
+    assert all(
+        torch.equal(value, runtime.controller.state_dict()[name])
+        for name, value in before.items()
+    )
+
+    checkpoint = state.payload(program_cell=cell)
+    restored = agent.state_from_payload(checkpoint)
+    assert torch.equal(
+        restored.program_cells[-1].weights,
+        state.program_cells[-1].weights,
+    )
+
+
+def test_external_program_fast_cells_bind_delayed_credit_by_logical_file():
+    torch.manual_seed(9036)
+    memory = _PartitionedProgramMemory()
+    memory.add_artifact(_artifact())
+    memory.add_artifact(_artifact())
+    cell = ExternalProgramFastCell(
+        event_width=12,
+        action_width=3,
+        intention_width=2,
+        register_width=8,
+        key_width=5,
+        query_hidden=8,
+        adapter_hidden=7,
+        fast_weight_hidden=6,
+    )
+    _runtime_module, _machine, agent = _runtime(
+        memory=memory,
+        program_cell=cell,
+        operator_mode="factorized_protected_bounded_meta",
+    )
+    state = agent.initial_state(2, device="cpu")
+    event = [AmodalEvent(torch.ones(2, 4))]
+    positive = ControllerFeedback(
+        action=torch.ones(2, 3),
+        reward=torch.ones(2),
+        propensity=torch.ones(2),
+        has_feedback=torch.ones(2, dtype=torch.bool),
+    )
+    _, state = agent.step_events(event, state, _feedback(2))
+    _, updated = agent.step_events(event, state, positive)
+
+    first = updated.program_cells[0].weights
+    second = updated.program_cells[1].weights
+    assert bool(torch.any(first[0] != 0.0))
+    assert bool(torch.any(second[1] != 0.0))
+    assert torch.equal(first[1], torch.zeros_like(first[1]))
+    assert torch.equal(second[0], torch.zeros_like(second[0]))
+
+    _, quiet = agent.step_events(event, updated, _feedback(2))
+    torch.testing.assert_close(quiet.program_cells[0].weights, first)
+    torch.testing.assert_close(quiet.program_cells[1].weights, second)
 
 
 def test_external_program_memory_selects_file_without_exposing_slot_to_controller():

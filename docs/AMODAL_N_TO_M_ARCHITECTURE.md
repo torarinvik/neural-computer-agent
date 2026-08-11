@@ -9633,3 +9633,32 @@ triple fits but reduced the atomic retention minimum to `0.5208`. This is an
 explicit no-replay catastrophic-forgetting failure and confirms that future
 foundation expansion must be isolated behind protected external capacity or a
 verified copy-on-write transaction.
+
+## Per-file fast plasticity at the executable boundary (2026-08-11)
+
+The CPU-plus-files runtime now has an explicit path for external state that can
+learn while the controller and shared interpreter are frozen. The versioned
+`ExternalProgramFastCell` uses the learned controller state and the opaque
+current intention as a query, reads an independently stored
+`ExternalFastWeightState`, and exposes its value as a temporary `meta_context`
+to the protected-meta register interpreter. The context adapter is
+zero-initialized, so adding a cell is behavior-preserving until its
+replaceable memory-side adapter is trained.
+
+Every logical executable file owns its own cell state. The runtime grows and
+prunes those states with the external program memory, and tensor-only runtime
+checkpoints include the cell state plus the prior opaque file/query binding.
+That prior binding is important: delayed scalar feedback updates the file that
+produced the previous output, not whichever file happens to be selected on the
+next tick. Missing evidence and failed outcomes leave the stored computation
+unchanged; a successful opaque action is the only write value.
+
+This closes the implementation seam between “memory is an isolated growing
+system” and “executable files are reusable computation.” It does not yet claim
+new learned computation or positive transfer: the adapter must first be
+trained on a reusable capability family, then a frozen-core rendered audit
+must compare a fresh cell against an inherited cell while checking complete
+prefix retention, shuffled outcomes, missing evidence, route switching,
+reload, and zero replay. The focused and full regression suites cover the ABI,
+delayed-credit binding, mixed-file isolation, persistence, and frozen
+controller contract (`721` tests passing at this checkpoint).

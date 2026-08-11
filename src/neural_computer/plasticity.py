@@ -19,11 +19,16 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
+from .interface import IntentEvent
+
 NamedParameters = Sequence[tuple[str, torch.nn.Parameter]]
 GradientMap = Mapping[str, torch.Tensor]
 
 EXTERNAL_FAST_WEIGHT_SCHEMA = (
     "neural-computer.external-fast-weight-plasticity.v1"
+)
+EXTERNAL_PROGRAM_FAST_CELL_SCHEMA = (
+    "neural-computer.external-program-fast-cell.v1"
 )
 EXTERNAL_OUTCOME_CREDIT_SCHEMA = (
     "neural-computer.external-outcome-credit-plasticity.v1"
@@ -275,6 +280,230 @@ class ExternalFastWeightPlasticity(nn.Module):
         state = ExternalFastWeightState(weights, updates)
         state.validate(key_width=self.key_width, value_width=self.value_width)
         return state
+
+
+class ExternalProgramFastCell(nn.Module):
+    """Attach isolated outcome-gated fast state to one executable file.
+
+    The cell is deliberately outside the controller and the shared register
+    interpreter.  It turns the current learned controller representation and
+    opaque intention into a query, reads a per-file fast-weight state as a
+    temporary register context, and writes only from the opaque action and its
+    scalar verifier outcome.  The output adapter is zero-initialized, so
+    adding a cell is behavior-preserving until its replaceable memory-side
+    adapter is trained.
+
+    This is the missing connection between "memory can learn while the core is
+    frozen" and the executable CPU/files boundary.  A cell is not a task
+    branch: every file uses the same cell ABI and owns only its external state.
+    """
+
+    schema = EXTERNAL_PROGRAM_FAST_CELL_SCHEMA
+
+    def __init__(
+        self,
+        event_width: int,
+        action_width: int,
+        intention_width: int,
+        register_width: int,
+        *,
+        key_width: int = 32,
+        query_hidden: int = 64,
+        adapter_hidden: int = 64,
+        fast_weight_hidden: int = 32,
+    ) -> None:
+        super().__init__()
+        if min(
+            event_width,
+            action_width,
+            intention_width,
+            register_width,
+            key_width,
+            query_hidden,
+            adapter_hidden,
+            fast_weight_hidden,
+        ) < 1:
+            raise ValueError("external program cell dimensions must be positive")
+        self.event_width = int(event_width)
+        self.action_width = int(action_width)
+        self.intention_width = int(intention_width)
+        self.register_width = int(register_width)
+        self.key_width = int(key_width)
+        self.query_hidden = int(query_hidden)
+        self.adapter_hidden = int(adapter_hidden)
+        self.fast_weight_hidden = int(fast_weight_hidden)
+        self.query_encoder = nn.Sequential(
+            nn.Linear(event_width + intention_width, query_hidden),
+            nn.GELU(),
+            nn.Linear(query_hidden, key_width),
+        )
+        self.value_encoder = nn.Sequential(
+            nn.Linear(action_width, adapter_hidden),
+            nn.GELU(),
+            nn.Linear(adapter_hidden, register_width),
+        )
+        self.context_adapter = nn.Sequential(
+            nn.Linear(register_width, adapter_hidden),
+            nn.GELU(),
+            nn.Linear(adapter_hidden, register_width),
+        )
+        # A newly appended cell must not perturb the established executable
+        # file.  Its state may learn immediately, but its effect is gated by
+        # this independently replaceable adapter.
+        nn.init.zeros_(self.context_adapter[-1].weight)
+        nn.init.zeros_(self.context_adapter[-1].bias)
+        self.fast_weight = ExternalFastWeightPlasticity(
+            key_width,
+            register_width,
+            hidden=fast_weight_hidden,
+        )
+
+    def configuration(self) -> dict[str, int | float | str]:
+        return {
+            "schema": self.schema,
+            "event_width": self.event_width,
+            "action_width": self.action_width,
+            "intention_width": self.intention_width,
+            "register_width": self.register_width,
+            "key_width": self.key_width,
+            "query_hidden": self.query_hidden,
+            "adapter_hidden": self.adapter_hidden,
+            "fast_weight_hidden": self.fast_weight_hidden,
+            "state": "external_per_logical_program_file_v1",
+            "query": "learned_controller_state_plus_opaque_intention_v1",
+            "write": "positive_outcome_gated_opaque_action_to_register_context_v1",
+            "effect": "zero_initialized_meta_context_v1",
+        }
+
+    def initial_state(
+        self,
+        batch_size: int,
+        *,
+        device: torch.device | str = "cpu",
+        dtype: torch.dtype = torch.float32,
+    ) -> ExternalFastWeightState:
+        return self.fast_weight.initial_state(
+            batch_size,
+            device=device,
+            dtype=dtype,
+        )
+
+    def _query(
+        self,
+        event: torch.Tensor,
+        intention: IntentEvent,
+    ) -> torch.Tensor:
+        intention.validate(width=self.intention_width)
+        if event.ndim != 2 or event.shape[1] != self.event_width:
+            raise ValueError("program cell event has the wrong shape")
+        if event.shape[0] != intention.payload.shape[0]:
+            raise ValueError("program cell event and intention batches differ")
+        if not bool(torch.isfinite(event).all()):
+            raise ValueError("program cell event must be finite")
+        return self.query_encoder(torch.cat((event, intention.payload), dim=-1))
+
+    def query(
+        self,
+        event: torch.Tensor,
+        intention: IntentEvent,
+    ) -> torch.Tensor:
+        """Return the opaque address used for the current file lifetime."""
+
+        return self._query(event, intention)
+
+    def read(
+        self,
+        state: ExternalFastWeightState,
+        event: torch.Tensor,
+        intention: IntentEvent,
+    ) -> torch.Tensor:
+        """Read a transient register context without changing the cell."""
+
+        query = self._query(event, intention)
+        value = self.fast_weight.read(state, query)
+        return self.context_adapter(value)
+
+    def step(
+        self,
+        *,
+        event: torch.Tensor,
+        action: torch.Tensor,
+        outcome: torch.Tensor,
+        intention: IntentEvent,
+        state: ExternalFastWeightState,
+        present: torch.Tensor | None = None,
+    ) -> tuple[torch.Tensor, ExternalFastWeightState]:
+        """Read old file state, then apply one outcome-only state update."""
+
+        if action.ndim != 2 or action.shape != (
+            event.shape[0],
+            self.action_width,
+        ):
+            raise ValueError("program cell action has the wrong shape")
+        if not bool(torch.isfinite(action).all()):
+            raise ValueError("program cell action must be finite")
+        if outcome.ndim != 1 or outcome.shape[0] != event.shape[0]:
+            raise ValueError("program cell outcome has the wrong shape")
+        query = self._query(event, intention)
+        context = self.context_adapter(self.fast_weight.read(state, query))
+        value = self.value_encoder(action)
+        next_state = self.fast_weight.update(
+            state,
+            query,
+            value,
+            outcome,
+            present=present,
+        )
+        return context, next_state
+
+    def update_from_query(
+        self,
+        state: ExternalFastWeightState,
+        query: torch.Tensor,
+        action: torch.Tensor,
+        outcome: torch.Tensor,
+        *,
+        present: torch.Tensor | None = None,
+    ) -> ExternalFastWeightState:
+        """Apply delayed feedback to a previously emitted file query.
+
+        Keeping this operation separate from :meth:`read` prevents the next
+        route choice from receiving credit for the previous route's outcome.
+        """
+
+        if action.ndim != 2 or action.shape[0] != query.shape[0]:
+            raise ValueError("program cell delayed action has the wrong shape")
+        if action.shape[1] != self.action_width:
+            raise ValueError("program cell delayed action has the wrong width")
+        value = self.value_encoder(action)
+        return self.fast_weight.update(
+            state,
+            query,
+            value,
+            outcome,
+            present=present,
+        )
+
+    def state_payload(self, state: ExternalFastWeightState) -> dict[str, object]:
+        """Serialize one file cell as an independently versioned state file."""
+
+        payload = self.fast_weight.state_payload(state)
+        payload["cell_schema"] = self.schema
+        payload["cell_configuration"] = self.configuration()
+        return payload
+
+    def state_from_payload(
+        self,
+        payload: Mapping[str, object],
+    ) -> ExternalFastWeightState:
+        if payload.get("cell_schema") != self.schema:
+            raise ValueError("unsupported external program cell state schema")
+        configuration = payload.get("cell_configuration")
+        if not isinstance(configuration, Mapping):
+            raise TypeError("external program cell configuration is invalid")
+        if configuration.get("schema") != self.schema:
+            raise ValueError("external program cell configuration schema mismatch")
+        return self.fast_weight.state_from_payload(payload)
 
 
 @dataclass(frozen=True)

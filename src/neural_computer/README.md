@@ -1580,6 +1580,17 @@ parameters remain separate resources; the checkpoint stores no raw modality,
 protocol, or verifier-private data, and its envelope checksum rejects silent
 tensor corruption.
 
+`ExternalProgramFastCell` is an optional memory-side extension for the same
+runtime. Each logical executable file can own an isolated outcome-gated
+fast-weight cell whose read is exposed as protected-meta execution context.
+The cell query uses only the learned controller representation and opaque
+intention; a positive opaque action/outcome record writes its external state.
+Failed or missing feedback is an exact no-op. The runtime persists the cell
+states and the previous logical-file/query binding, so delayed feedback cannot
+be credited to a newly selected file. The cell is zero-effect at construction
+and does not resize or update the controller. Use `state_payload()` and
+`state_from_payload()` on the runtime when this optional cell is configured.
+
 The policy-free factual seam also exposes
 `ExternalControllerEventWindowStateAdapter`. It preserves the compact opaque
 controller state while folding bounded event-window statistics into the same

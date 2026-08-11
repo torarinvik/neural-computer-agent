@@ -69,8 +69,10 @@ from .memory import MemoryBackend
 from .plasticity import (
     EXTERNAL_OUTCOME_CREDIT_SCHEMA,
     EXTERNAL_OUTCOME_PROGRAM_ROUTER_SCHEMA,
+    ExternalFastWeightState,
     ExternalOutcomeProgramRouter,
     ExternalOutcomeProgramRouterState,
+    ExternalProgramFastCell,
 )
 from .policies import EventWaitPolicy, EventWaitStatistics
 from .program import ExternalProgramArtifact
@@ -1667,9 +1669,41 @@ class ExternalProgramRuntimeState:
     program: ExternalRegisterState
     program_states: Mapping[int, ExternalRegisterState] = field(default_factory=dict)
     program_router: ExternalOutcomeProgramRouterState | None = None
+    program_cells: Mapping[int, ExternalFastWeightState] = field(default_factory=dict)
+    last_program_logical_ids: torch.Tensor | None = None
+    last_program_cell_queries: torch.Tensor | None = None
 
-    def payload(self) -> dict[str, object]:
+    def payload(
+        self,
+        *,
+        program_cell: ExternalProgramFastCell | None = None,
+    ) -> dict[str, object]:
         """Return a versioned tensor-only checkpoint for pause/resume."""
+
+        if self.program_cells and program_cell is None:
+            raise ValueError(
+                "serializing program cells requires their external cell ABI"
+            )
+        if (self.last_program_logical_ids is None) != (
+            self.last_program_cell_queries is None
+        ):
+            raise ValueError("last program binding state must be provided together")
+        if self.last_program_logical_ids is not None:
+            if program_cell is None:
+                raise ValueError(
+                    "serializing last program binding requires the external cell ABI"
+                )
+            if (
+                self.last_program_logical_ids.ndim != 1
+                or self.last_program_cell_queries.ndim != 2
+                or self.last_program_cell_queries.shape
+                != (
+                    self.last_program_logical_ids.shape[0],
+                    program_cell.key_width,
+                )
+                or not bool(torch.isfinite(self.last_program_cell_queries).all())
+            ):
+                raise ValueError("last program binding state has the wrong shape")
 
         payload: dict[str, object] = {
             "schema": EXTERNAL_PROGRAM_RUNTIME_STATE_SCHEMA,
@@ -1717,6 +1751,27 @@ class ExternalProgramRuntimeState:
                     },
                 }
             ),
+            "program_cells": (
+                None
+                if program_cell is None
+                else tuple(
+                    {
+                        "logical_id": int(logical_id),
+                        "state": program_cell.state_payload(cell_state),
+                    }
+                    for logical_id, cell_state in sorted(self.program_cells.items())
+                )
+            ),
+            "last_program_logical_ids": (
+                None
+                if self.last_program_logical_ids is None
+                else self.last_program_logical_ids.detach().cpu().clone()
+            ),
+            "last_program_cell_queries": (
+                None
+                if self.last_program_cell_queries is None
+                else self.last_program_cell_queries.detach().cpu().clone()
+            ),
         }
         payload["sha256"] = _digest_runtime_state_payload(payload)
         return payload
@@ -1727,6 +1782,7 @@ class ExternalProgramRuntimeState:
         payload: dict[str, object],
         *,
         program_router: ExternalOutcomeProgramRouter | None = None,
+        program_cell: ExternalProgramFastCell | None = None,
     ) -> ExternalProgramRuntimeState:
         """Restore external runtime state without loading executable files."""
 
@@ -1777,11 +1833,73 @@ class ExternalProgramRuntimeState:
             raise TypeError("external program runtime route state is malformed")
         else:
             restored_router = program_router.state_from_payload(router_payload)
+        cell_records = unsigned.get("program_cells")
+        if cell_records is None:
+            restored_cells: dict[int, ExternalFastWeightState] = {}
+        else:
+            if program_cell is None:
+                raise ValueError(
+                    "restoring executable cell state requires its external cell ABI"
+                )
+            if not isinstance(cell_records, (tuple, list)):
+                raise TypeError(
+                    "external program runtime program cells must be a sequence"
+                )
+            restored_cells = {}
+            for record in cell_records:
+                if not isinstance(record, dict):
+                    raise TypeError(
+                        "external program runtime program cell is malformed"
+                    )
+                logical_id = record.get("logical_id")
+                state_payload = record.get("state")
+                if not isinstance(logical_id, int) or logical_id < -1:
+                    raise ValueError("external program cell logical ID is invalid")
+                if logical_id in restored_cells:
+                    raise ValueError(
+                        "external program cell logical IDs must be unique"
+                    )
+                if not isinstance(state_payload, dict):
+                    raise TypeError(
+                        "external program runtime program cell state is missing"
+                    )
+                restored_cells[logical_id] = program_cell.state_from_payload(
+                    state_payload
+                )
+            if not restored_cells:
+                raise ValueError("external program runtime cell state cannot be empty")
+        last_logical_ids = unsigned.get("last_program_logical_ids")
+        last_queries = unsigned.get("last_program_cell_queries")
+        if last_logical_ids is None and last_queries is None:
+            restored_last_ids = None
+            restored_last_queries = None
+        else:
+            if program_cell is None:
+                raise ValueError(
+                    "restoring last program binding requires the external cell ABI"
+                )
+            if not isinstance(last_logical_ids, torch.Tensor) or not isinstance(
+                last_queries, torch.Tensor
+            ):
+                raise TypeError("last program binding state must contain tensors")
+            if (
+                last_logical_ids.ndim != 1
+                or last_queries.shape != (last_logical_ids.shape[0], program_cell.key_width)
+                or last_logical_ids.dtype not in (torch.int32, torch.int64)
+                or bool((last_logical_ids < -1).any())
+                or not bool(torch.isfinite(last_queries).all())
+            ):
+                raise ValueError("last program binding state has the wrong shape")
+            restored_last_ids = last_logical_ids
+            restored_last_queries = last_queries
         return cls(
             controller=ControllerState.from_payload(controller),
             program=ExternalRegisterState.from_payload(program),
             program_states=program_states,
             program_router=restored_router,
+            program_cells=restored_cells,
+            last_program_logical_ids=restored_last_ids,
+            last_program_cell_queries=restored_last_queries,
         )
 
 
@@ -1807,6 +1925,7 @@ class ExternalProgramRuntimeOutput:
     program_route_query: torch.Tensor | None = None
     program_route_probabilities: torch.Tensor | None = None
     program_route_propensities: torch.Tensor | None = None
+    program_cell_context: torch.Tensor | None = None
     execution_snapshots: tuple[ExternalExecutionSnapshot, ...] = ()
     schema: str = EXTERNAL_PROGRAM_RUNTIME_SCHEMA
 
@@ -1839,6 +1958,7 @@ class ExternalProgramAmodalRuntime(nn.Module):
         ) = None,
         program_route_exploration: float = 0.0,
         program_router: ExternalOutcomeProgramRouter | None = None,
+        program_cell: ExternalProgramFastCell | None = None,
     ) -> None:
         super().__init__()
         if not isinstance(runtime, AmodalControllerRuntime):
@@ -1884,6 +2004,23 @@ class ExternalProgramAmodalRuntime(nn.Module):
                 raise ValueError(
                     "program router initial programs must match program memory files"
                 )
+        if program_cell is not None:
+            if not isinstance(program_cell, ExternalProgramFastCell):
+                raise TypeError("external program cell has an incompatible type")
+            if (
+                program_cell.event_width != machine.event_width
+                or program_cell.action_width != machine.action_width
+                or program_cell.intention_width != machine.intention_width
+                or program_cell.register_width != machine.register_width
+            ):
+                raise ValueError("external program cell dimensions do not match machine")
+            if machine.operator_mode not in (
+                "factorized_protected_meta",
+                "factorized_protected_bounded_meta",
+            ):
+                raise ValueError(
+                    "external program cells require a protected-meta register mode"
+                )
         if program_query_adapter is not None and not isinstance(
             program_query_adapter,
             (ExternalControllerStateAdapter, ExternalControllerTrajectoryQueryAdapter),
@@ -1917,6 +2054,7 @@ class ExternalProgramAmodalRuntime(nn.Module):
         )
         self.program_route_exploration = float(program_route_exploration)
         self.program_router = program_router
+        self.program_cell = program_cell
 
     def configuration(self) -> dict[str, object]:
         return {
@@ -1952,6 +2090,9 @@ class ExternalProgramAmodalRuntime(nn.Module):
                 if self.program_router is None
                 else self.program_router.configuration()
             ),
+            "program_cell": (
+                None if self.program_cell is None else self.program_cell.configuration()
+            ),
             "controller_output": "diagnostic_only_v1",
             "decoder_input": "external_program_intention_v1",
         }
@@ -1975,6 +2116,22 @@ class ExternalProgramAmodalRuntime(nn.Module):
                 logical_id: program_state
                 for logical_id in self.program_memory.logical_slot_ids
             }
+        program_cells = (
+            {}
+            if self.program_cell is None
+            else {
+                logical_id: self.program_cell.initial_state(
+                    batch_size,
+                    device=device,
+                    dtype=dtype,
+                )
+                for logical_id in (
+                    (_STANDALONE_PROGRAM_STATE_KEY,)
+                    if self.program_memory is None
+                    else self.program_memory.logical_slot_ids
+                )
+            }
+        )
         program_router = (
             None
             if self.program_router is None
@@ -1993,6 +2150,26 @@ class ExternalProgramAmodalRuntime(nn.Module):
             program=program_state,
             program_states=program_states,
             program_router=program_router,
+            program_cells=program_cells,
+        )
+
+    def state_payload(self, state: ExternalProgramRuntimeState) -> dict[str, object]:
+        """Serialize runtime state with the configured external cell ABI."""
+
+        if not isinstance(state, ExternalProgramRuntimeState):
+            raise TypeError("external program runtime state has the wrong type")
+        return state.payload(program_cell=self.program_cell)
+
+    def state_from_payload(
+        self,
+        payload: dict[str, object],
+    ) -> ExternalProgramRuntimeState:
+        """Restore runtime state with its configured route and cell contracts."""
+
+        return ExternalProgramRuntimeState.from_payload(
+            payload,
+            program_router=self.program_router,
+            program_cell=self.program_cell,
         )
 
     def activate_program(
@@ -2015,11 +2192,24 @@ class ExternalProgramAmodalRuntime(nn.Module):
             state.program_router,
             initialization=initialization,
         )
+        program_cells = dict(state.program_cells)
+        if self.program_cell is not None:
+            new_logical_id = self.program_memory.logical_slot_id(
+                self.program_memory.file_count - 1
+            )
+            program_cells[new_logical_id] = self.program_cell.initial_state(
+                state.program.register.shape[0],
+                device=state.program.register.device,
+                dtype=state.program.register.dtype,
+            )
         return ExternalProgramRuntimeState(
             controller=state.controller,
             program=state.program,
             program_states=state.program_states,
             program_router=next_router,
+            program_cells=program_cells,
+            last_program_logical_ids=state.last_program_logical_ids,
+            last_program_cell_queries=state.last_program_cell_queries,
         )
 
     def _select_program(
@@ -2254,8 +2444,58 @@ class ExternalProgramAmodalRuntime(nn.Module):
         )
         present = collection.present.any(dim=1)
         program_states = dict(state.program_states)
+        program_cells = dict(state.program_cells)
+        feedback_present = feedback.has_feedback.reshape(-1).to(torch.bool)
+        feedback_reward = feedback.reward.reshape(-1)
+        if self.program_cell is not None and (
+            state.last_program_logical_ids is not None
+            or state.last_program_cell_queries is not None
+        ):
+            if (
+                state.last_program_logical_ids is None
+                or state.last_program_cell_queries is None
+            ):
+                raise ValueError("last program cell binding state is incomplete")
+            active_ids = (
+                {_STANDALONE_PROGRAM_STATE_KEY}
+                if self.program_memory is None
+                else set(self.program_memory.logical_slot_ids)
+            )
+            for previous_id in torch.unique(
+                state.last_program_logical_ids, sorted=True
+            ).tolist():
+                previous_id = int(previous_id)
+                if previous_id not in active_ids:
+                    continue
+                previous_mask = feedback_present & (
+                    state.last_program_logical_ids == previous_id
+                )
+                cell_state = program_cells.get(previous_id)
+                if cell_state is None:
+                    cell_state = self.program_cell.initial_state(
+                        present.shape[0],
+                        device=present.device,
+                        dtype=controller_output.state_representation.dtype,
+                    )
+                program_cells[previous_id] = self.program_cell.update_from_query(
+                    cell_state,
+                    state.last_program_cell_queries,
+                    feedback.action,
+                    feedback_reward,
+                    present=previous_mask,
+                )
         snapshots: list[ExternalExecutionSnapshot] = []
         masks: list[torch.Tensor] = []
+        cell_contexts: list[torch.Tensor] = []
+        cell_masks: list[torch.Tensor] = []
+        current_cell_query = (
+            None
+            if self.program_cell is None
+            else self.program_cell.query(
+                controller_output.state_representation,
+                controller_output.intention,
+            )
+        )
         for logical_id in torch.unique(selected_logical_ids, sorted=True).tolist():
             logical_id = int(logical_id)
             mask = present & (selected_logical_ids == logical_id)
@@ -2282,6 +2522,26 @@ class ExternalProgramAmodalRuntime(nn.Module):
                     device=present.device,
                     dtype=controller_output.state_representation.dtype,
                 )
+            meta_context = None
+            if self.program_cell is not None:
+                cell_state = program_cells.get(logical_id)
+                if cell_state is None:
+                    cell_state = self.program_cell.initial_state(
+                        present.shape[0],
+                        device=present.device,
+                        dtype=controller_output.state_representation.dtype,
+                    )
+                if current_cell_query is None:
+                    raise RuntimeError("program cell query was not constructed")
+                meta_context = self.program_cell.context_adapter(
+                    self.program_cell.fast_weight.read(
+                        cell_state,
+                        current_cell_query,
+                    )
+                )
+                program_cells[logical_id] = cell_state
+                cell_contexts.append(meta_context)
+                cell_masks.append(selected_logical_ids == logical_id)
             snapshot = self.machine.read_execute_artifact_snapshot(
                 event=controller_output.state_representation,
                 action=feedback.action,
@@ -2290,6 +2550,7 @@ class ExternalProgramAmodalRuntime(nn.Module):
                 state=program_state,
                 artifact=artifact,
                 present=mask,
+                meta_context=meta_context,
             )
             snapshots.append(snapshot)
             masks.append(selected_logical_ids == logical_id)
@@ -2337,6 +2598,13 @@ class ExternalProgramAmodalRuntime(nn.Module):
                 event_width=self.machine.event_width,
                 event_window_size=self.machine.event_window_size,
             )
+        program_cell_context = None
+        if cell_contexts:
+            program_cell_context = torch.zeros_like(cell_contexts[0])
+            for context, mask in zip(cell_contexts, cell_masks, strict=True):
+                program_cell_context = torch.where(
+                    mask.unsqueeze(-1), context, program_cell_context
+                )
         logical_id = int(selected_logical_ids[0])
         selected_slot = int(selected_slots[0])
         uniform_selection = bool(torch.all(selected_logical_ids == logical_id))
@@ -2374,6 +2642,11 @@ class ExternalProgramAmodalRuntime(nn.Module):
                 if program_route_propensities is None
                 else program_route_propensities.detach().clone()
             ),
+            program_cell_context=(
+                None
+                if program_cell_context is None
+                else program_cell_context.detach().clone()
+            ),
             execution_snapshots=execution_snapshots,
         )
         if self.program_memory is not None:
@@ -2381,11 +2654,27 @@ class ExternalProgramAmodalRuntime(nn.Module):
             program_states = {
                 key: value for key, value in program_states.items() if key in active_ids
             }
+            program_cells = {
+                key: value for key, value in program_cells.items() if key in active_ids
+            }
+        next_last_program_logical_ids = (
+            None
+            if self.program_cell is None
+            else selected_logical_ids.detach().clone()
+        )
+        next_last_program_cell_queries = (
+            None
+            if current_cell_query is None
+            else current_cell_query.detach().clone()
+        )
         return output, ExternalProgramRuntimeState(
             controller=next_controller,
             program=snapshot.observed,
             program_states=program_states,
             program_router=program_router_state,
+            program_cells=program_cells,
+            last_program_logical_ids=next_last_program_logical_ids,
+            last_program_cell_queries=next_last_program_cell_queries,
         )
 
 
