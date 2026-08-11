@@ -6498,8 +6498,11 @@ collection policies — were all quantities.
 
 Probe 243 is `game_slots.py --tied-salience --bind-value`, 3 seeds.
 
-**F144 (probe 244, SINGLE SEED — reported as provisional under the rule
-tightened after F142's correction). The contrastive batch ladder shows
+**F144 (probe 244) — CONFIRMED at three seeds, see the confirmation
+block below. Originally reported as provisional under the rule
+tightened after F142's correction.**
+
+**F144 (probe 244, as first written, SINGLE SEED). The contrastive batch ladder shows
 a second interior optimum: batch 32 gives 0.7993 held-out per-bit and
 0.3158 exact, the best non-privileged numbers measured.**
 
@@ -6563,3 +6566,42 @@ composition failure depended on output width — was never taken. It is
 cheap to redo (`--width 4 --worlds 40`) but has been overtaken:
 F135/F143 have since located the defect in the interface rather than
 in anything width could have shown.
+
+**F144 CONFIRMED (2026-08-11). The batch-32 optimum replicates: three
+seeds give 0.7993 / 0.8447 / 0.6945, mean 0.7795 — every seed above
+the batch-8 two-seed mean and far above joint training.** This is the
+best NON-PRIVILEGED reader result measured, and unlike F142 it was
+held back until its own best point was reproduced.
+
+| scheme | held-out per-bit | exact | privileged? |
+| --- | ---: | ---: | :---: |
+| task loss through frozen plant (F136) | 0.4973 | 0.0027 | no |
+| joint training (F135) | 0.5283 | 0.0096 | no |
+| contrastive phase (F139) | 0.5646-0.6287 | — | no |
+| contrastive aux, batch 8 (F142, 2 seeds) | 0.6237 | 0.0971 | no |
+| **contrastive aux, batch 32 (F144, 3 seeds)** | **0.7795** | **0.2498** | **no** |
+| distilled onto oracle entry (F138) | 0.9723 | 0.8894 | YES |
+| chance | 0.5000 | 0.0039 | |
+
+Closing 56.6% of the distance from joint training to the privileged
+ceiling with no privileged information. Exact match — the strict
+measure, requiring the entry to SPECIFY the world rather than
+correlate with it — rose 26x over joint training, from 0.0096 to
+0.2498.
+
+The mechanism reading now has evidence behind it rather than a story
+fitted to one curve: **the contrastive task's difficulty is the knob,
+and it is F78's diversity law applied to the READER's objective.** At
+batch 8 the reader separates one world from seven and a coarse code
+suffices; at 32 it must separate one from 31 and the code must be
+finer. The single-seed collapse at 128 is not confirmed and is not
+claimed.
+
+Seed spread remains wide (0.6945 to 0.8447), so the mean is the number
+to quote and the best seed is not.
+
+**Process note, worth as much as the finding.** F142 made this exact
+claim one day earlier off a single seed and did not survive. The only
+difference in procedure was replicating the best point before writing
+it down, which cost two runs. The rule earned there — a sweep is not a
+replication — is now the reason this result can be trusted.

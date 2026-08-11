@@ -24,9 +24,13 @@ rung promotes, rejects, or qualifies. Ordered by severity.
    NOT established: the auxiliary form's 0.7069 was single-seed and
    its replication gives 0.5405 (two-seed mean 0.6237, inside the
    phase form's range). See the F142 correction.
-   Next: replicate at the best point before any further sweeping, and
-   re-check F108's ignorance weight curve, which has the identical
-   single-seed provenance.
+   RESOLVED for the batch knob: F144 replicates at three seeds
+   (0.7993 / 0.8447 / 0.6945, mean 0.7795), the best non-privileged
+   result measured — 56.6% of the way from joint training to the
+   privileged ceiling, exact match 26x joint. The reader's objective
+   obeys F78's diversity law: harder discrimination, finer code.
+   Next: the remaining 0.7795 -> 0.9723; and re-check F108's ignorance
+   weight curve, which still has single-seed provenance.
 
 0-carry. **DONE, and it worked (F143).** Binding the games' value
    pathway — entry reduced to one vector added to the state token
