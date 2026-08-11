@@ -79,6 +79,7 @@ single domain-specific primitive.
 from __future__ import annotations
 
 import argparse
+import itertools
 import json
 
 import torch
@@ -181,6 +182,16 @@ parser.add_argument(
          "found the statistics arms null, so spending their compute on "
          "more SEEDS of the arms that moved is the better trade — a 7 "
          "percent effect needs seeds, not more variants.")
+parser.add_argument(
+    "--deep-families", type=int, default=0,
+    help="add a sequence of families whose every action needs a "
+         "MULTI-INSTRUCTION program. F185 could not measure forward "
+         "transfer because enumeration solves the standard benchmark in "
+         "~23 candidates and a ceiling is not evidence. These are "
+         "solvable by construction at exactly --deep-depth, so a "
+         "failure is a failure of SEARCH rather than of expressibility "
+         "— the confound that wrecked every earlier cost measurement.")
+parser.add_argument("--deep-depth", type=int, default=3)
 parser.add_argument("--related-seed", type=int, default=20260811,
                     help="draw for the related sequence, held FIXED "
                          "across run seeds so the task set is a "
@@ -1257,6 +1268,65 @@ if args.synthesize:
         report["synthesis"] = {name: synthesise(fam, gen)
                                for name, fam in targets}
 
+    class DeepFamily:
+        """A family whose every action is a K-INSTRUCTION composition
+        over the same basis the interpreter executes.
+
+        This exists because F185 could not measure forward transfer:
+        enumeration already solves every family in the benchmark in
+        about 23 candidates, so there is no headroom for "having solved
+        A helps on B" to appear in. A ceiling is not evidence.
+
+        Two properties make it the right instrument, and both are by
+        construction rather than by hope:
+          * it IS solvable, at exactly length K, so a failure is a
+            failure of search and not of expressibility — the thing
+            that confounded every earlier cost measurement (F176);
+          * it is NOT solvable at length < K generically, so depth-2
+            enumeration must fall back, which is precisely the regime
+            where a bank of earlier solutions could pay.
+
+        Nothing here is domain-specific: the actions are drawn from the
+        same instruction set, over the same slots, as everything else.
+        """
+
+        def __init__(self, generator, depth: int, slots: int,
+                     values: int, actions: int):
+            self.slots, self.actions = slots, actions
+            self.states = [tuple(t) for t in itertools.product(
+                range(values), repeat=slots)]
+            self.index = {t: i for i, t in enumerate(self.states)}
+            self.programs = []
+            board = torch.tensor(self.states)
+            columns = []
+            for _ in range(actions):
+                program = []
+                for _ in range(depth):
+                    op = int(torch.randint(1, NOPS, (1,),
+                                           generator=generator))
+                    i = int(torch.randint(0, slots, (1,),
+                                          generator=generator))
+                    j = int(torch.randint(0, slots, (1,),
+                                          generator=generator))
+                    if i == j:
+                        j = (j + 1) % slots
+                    program.append((op, i, j, MODULI.index(values)))
+                self.programs.append(program)
+                out = board.clone()
+                for op, i, j, m in program:
+                    out = run_instruction(out, op, i, j, m)
+                columns.append([self.index[tuple(int(v) for v in row)]
+                                for row in out])
+            self.table = [[columns[a][s] for a in range(actions)]
+                          for s in range(len(self.states))]
+
+        def slot_values(self, index: torch.Tensor) -> torch.Tensor:
+            board = torch.tensor(self.states)[index]
+            if self.slots == SLOTS:
+                return board
+            pad = torch.full((board.shape[0], SLOTS - self.slots), VALUES)
+            return torch.cat([board, pad], dim=-1)
+
     def related_specs(generator, count: int) -> list:
         """Families sharing the state GEOMETRY but not the action
         effects: same slot count, value count and space, independently
@@ -1297,6 +1367,16 @@ if args.synthesize:
             diverse.append((f"extra{index}",
                             RandomFamily(random_family_spec(gen))))
         sequences["diverse"] = diverse
+        if args.deep_families:
+            # A sequence with HEADROOM. Every action needs a
+            # `--deep-depth` instruction program, so depth-2
+            # enumeration must fall back and the cost of a family is no
+            # longer pinned near 23 candidates. This is the only regime
+            # in which "having solved A helps on B" can show up at all.
+            deep = torch.Generator().manual_seed(args.related_seed * 31)
+            sequences["deep"] = [
+                (f"deep{k}", DeepFamily(deep, args.deep_depth, 4, 4, 3))
+                for k in range(args.deep_families)]
         if args.related_families:
             # SAME task set in every seed. Drawing these from the run
             # seed made "related" mean a different geometry per seed,

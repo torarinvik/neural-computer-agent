@@ -9507,3 +9507,52 @@ because enumeration already solves every family in about 23 candidates
 ceiling effect rather than evidence against, and testing it needs
 families whose recipes exceed depth 2. Retention and generalisation to
 unseen programs are measured; forward transfer is not.
+
+## F186 — the forward-transfer instrument does not yet discriminate,
+## and the first version failed the same check it was built to satisfy
+
+F185 could not measure forward transfer because enumeration solves the
+standard benchmark in ~23 candidates, leaving no headroom. `DeepFamily`
+was built to supply headroom: every action is a K-instruction
+composition over the same basis the interpreter executes, so it is
+solvable by construction at exactly K and generically not at less. That
+makes a failure a failure of SEARCH rather than of expressibility,
+which is the confound that wrecked every cost measurement before F176.
+
+**At K=3 it does not discriminate. Every arm returns exactly 10,800 —
+six families times three actions times the 600 budget. 6/6 saturated.**
+Frozen, stored-programs, coverage filter and enumeration are
+byte-identical because none of them solves anything.
+
+That is the F168 regime failure again, in an instrument I wrote three
+findings after establishing the check for it. The measurement is void
+and reports nothing about transfer.
+
+**Why K=3 is out of reach, and it is arithmetic rather than bad luck.**
+Enumeration runs to depth 2 only. A depth-3 target must therefore come
+from the random fallback, which draws length-6 programs: the three
+required instructions must appear in the right order among six draws
+from a pool of roughly sixty. That is a probability around 10^-5 per
+candidate against a budget of 600.
+
+**And the mechanism the arm was meant to test cannot fire either.**
+Stored programs are NOOP-padded to length 6 before storage, so
+concatenating one with anything else immediately overruns the program
+length. A bank whose entries cannot be composed is a bank that can only
+be recalled whole — which is exactly the limitation F157 hit, reappearing
+in a different guise.
+
+**Two concrete things to fix before this can measure anything, both
+identified from the failure rather than guessed:**
+
+1. Calibrate K so that some arms succeed and others do not. K=2 is
+   solved outright by enumeration and K=3 by nothing; the discriminating
+   regime is between them, most likely K=3 with enumeration extended to
+   depth 3 on a restricted pool.
+2. Store fragments UNPADDED, so a stored two-instruction solution can
+   compose with one new instruction. Without that, the transfer
+   mechanism has no way to express itself.
+
+Recorded as a null on the instrument, not on transfer. Forward transfer
+remains unmeasured, and it is the one claim of the founding objective
+this architecture has not yet been shown to make.
