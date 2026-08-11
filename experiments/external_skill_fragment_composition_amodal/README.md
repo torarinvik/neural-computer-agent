@@ -92,3 +92,37 @@ for seed in 69316 69317; do
     --eval-every 32 --report-out "/tmp/fragment-multi-$seed.json"
 done
 ```
+
+## Multi-target frozen-bank closure audit
+
+The next rung reuses the same four acquired fragments across three independently
+held-out orders. Each order receives a fresh external trace combiner and output
+decoder, while the acquired register machine and fragment bank remain frozen.
+This tests whether the gain belongs to reusable external capability rather than
+one target-specific decoder or continued memory growth.
+
+The matched 128-update audit promoted on seeds 69316 and 69317. Every target
+reached stable mastery through the inherited frozen-bank path at 6,144 verifier
+bits; matched fresh learners required 12,288 bits for every target. The bank
+checksum was identical before and after target learning. Wrong-order,
+zero-fragment, missing-evidence, and reward-shuffled controls were all rejected,
+and no examples were replayed.
+
+The intermediate 64-update replication is retained as a rejected diagnostic:
+seed 69317's third fresh control ended at 0.75 and had no stable prefix. Doubling
+only the composition exposure resolved that variance without changing the
+architecture or relaxing any gate.
+
+```bash
+for seed in 69316 69317; do
+  PYTHONPATH=src:. .venv/bin/python -m \
+    experiments.external_skill_fragment_composition_amodal.train_multi \
+    --seed "$seed" --parent-updates 64 --primitive-updates 256 \
+    --composition-updates 128 --batch-size 32 --span 3 --audit-count 128 \
+    --eval-every 32 --report-out "/tmp/fragment-multi-target-$seed.json"
+done
+```
+
+This is still bounded continual-memory/composition transfer. It does not
+establish arbitrary program induction, unrestricted memory growth, compression,
+or general continual learning.

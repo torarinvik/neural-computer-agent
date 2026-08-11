@@ -599,9 +599,34 @@ and a composite program during the same credit-assignment window.
 
 The result promotes bounded four-fragment reusable composition, not arbitrary
 program induction, unrestricted memory growth, compression, or general
-continual learning. The next test should use multiple independently held-out
-programs and measure whether the same acquired fragments remain useful across
-them without retraining the fragment bank.
+continual learning.
+
+### Multi-target frozen-bank closure (2026-08-11)
+
+The next audit reused the same acquired four-fragment bank across three
+independently held-out orders. Each order received a new external trace
+combiner and output decoder; the acquired register interpreter and fragment
+bank were frozen and checksummed before and after target learning. On two
+matched seeds, all three inherited targets reached stable mastery at 6,144
+verifier bits, while matched fresh learners required 12,288 bits for every
+target. Final inherited target accuracy ranged from 0.917 to 1.000 across the
+two seeds. Reversed-order, zero-code, missing-evidence, and reward-shuffled
+controls were rejected for every target, with zero replayed examples.
+
+The first 64-update replication is retained as a useful rejected diagnostic:
+one matched fresh target ended at 0.75 and had no stable prefix. Doubling only
+composition exposure resolved the failure at 128 updates without changing the
+boundary or relaxing a causal gate. That result identifies fresh target
+optimization length/variance—not bank mutation—as the current bottleneck for
+scaling this mechanism.
+
+This promotes reusable bounded continual-memory composition across multiple
+programs. It still does not establish arbitrary program induction, unrestricted
+memory growth, compression, or general continual learning. The next pressure
+test should hold the acquired bank fixed while growing the number of target
+programs and varying composition depth, then test whether a shared external
+learner can amortize acquisition without turning target-specific combiners into
+an unbounded collection of adapters.
 
 The first variable-deliberation outcome-only rung is recorded under
 `session_records/deliberation_amodal_2026-08-03/`. It validates the bounded

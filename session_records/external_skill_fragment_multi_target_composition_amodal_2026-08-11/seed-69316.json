@@ -1,0 +1,21 @@
+{
+  "schema": "neural-computer.external-skill-fragment-multi-target-composition-summary.v1",
+  "seed": 69316,
+  "composition_updates": 128,
+  "target_orders": [[3, 2, 0, 1], [1, 0, 3, 2], [2, 3, 1, 0]],
+  "target_programs": [
+    ["prefix_parity", "complement", "reverse", "rotate"],
+    ["rotate", "reverse", "prefix_parity", "complement"],
+    ["complement", "prefix_parity", "rotate", "reverse"]
+  ],
+  "targets": [
+    {"inherited_accuracy": 0.9583333134651184, "fresh_accuracy": 0.9973958134651184, "inherited_stable_bits": 6144, "fresh_stable_bits": 12288, "wrong_order": 0.5364583134651184, "zero_codes": 0.5026041865348816, "missing_evidence": 0.484375, "reward_shuffled": 0.3776041567325592},
+    {"inherited_accuracy": 0.9166666865348816, "fresh_accuracy": 0.9739583134651184, "inherited_stable_bits": 6144, "fresh_stable_bits": 12288, "wrong_order": 0.6041666865348816, "zero_codes": 0.5729166865348816, "missing_evidence": 0.53125, "reward_shuffled": 0.5260416865348816},
+    {"inherited_accuracy": 0.9973958134651184, "fresh_accuracy": 0.9583333134651184, "inherited_stable_bits": 6144, "fresh_stable_bits": 12288, "wrong_order": 0.4921875, "zero_codes": 0.4557291567325592, "missing_evidence": 0.4973958432674408, "reward_shuffled": 0.4921875}
+  ],
+  "accounting": {"unique_verifier_bits": 448128, "unique_logical_lifetimes": 71680, "optimizer_updates": 2240, "replayed_examples": 0},
+  "bank_checksum_unchanged": true,
+  "parent_digest_unchanged": true,
+  "persistence_and_corruption_gate": true,
+  "promoted": true
+}

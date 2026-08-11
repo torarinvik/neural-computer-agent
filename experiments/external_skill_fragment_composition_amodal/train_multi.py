@@ -45,10 +45,6 @@ from neural_computer import (
 
 PRIMITIVES = ("reverse", "rotate", "complement", "prefix_parity")
 TARGET_ORDERS = ((3, 2, 0, 1), (1, 0, 3, 2), (2, 3, 1, 0))
-TARGET_ORDER = TARGET_ORDERS[0]
-TARGET_PROGRAM = tuple(PRIMITIVES[index] for index in TARGET_ORDER)
-WRONG_ORDER = tuple(reversed(TARGET_ORDER))
-WRONG_PROGRAM = tuple(PRIMITIVES[index] for index in WRONG_ORDER)
 
 
 def _append_fragment(bank: ExternalSkillFragmentBank, seed: int) -> int:
@@ -159,6 +155,217 @@ def _corruption_audit(bank: ExternalSkillFragmentBank, path: Path) -> bool:
     return rejected and digest == restored.payload()["sha256"]
 
 
+def _train_target(
+    parent,
+    machine,
+    bank: ExternalSkillFragmentBank,
+    args: argparse.Namespace,
+    *,
+    order: tuple[int, ...],
+    target_index: int,
+    bits_per_update: int,
+) -> dict[str, object]:
+    """Train and audit one target using only a frozen acquired bank.
+
+    Each target receives a new external trace combiner and decoder.  The
+    acquired machine and fragment bank are deliberately shared and frozen,
+    so transfer across rows measures reusable external capability rather than
+    accidental optimizer state or continued fragment growth.
+    """
+
+    target_program = tuple(PRIMITIVES[index] for index in order)
+    wrong_order = tuple(reversed(order))
+    wrong_program = tuple(PRIMITIVES[index] for index in wrong_order)
+    seed_base = args.seed + 100_000 + target_index * 30_001
+
+    composition_combiner = ExternalSkillFragmentCombiner(
+        REGISTER_WIDTH, REGISTER_WIDTH, hidden=64
+    )
+    composition_decoder = OpaqueProtocolDecoder(REGISTER_WIDTH, ACTION_WIDTH, hidden=16)
+    composition_history = _train_stage(
+        parent,
+        machine,
+        bank,
+        composition_decoder,
+        operation="generated_composition",
+        selected=None,
+        updates=args.composition_updates,
+        batch_size=args.batch_size,
+        span=args.span,
+        seed=seed_base,
+        trainable=[
+            *composition_combiner.parameters(),
+            *composition_decoder.parameters(),
+        ],
+        generated_compositions=(target_program,),
+        combiner=composition_combiner,
+        route_programs=(order,),
+        eval_every=args.eval_every,
+        audit_count=args.audit_count,
+        audit_seed=seed_base + 1_000,
+    )
+
+    def accuracy(**kwargs) -> float:
+        return _accuracy(
+            parent,
+            machine,
+            bank,
+            composition_decoder,
+            operation="generated_composition",
+            selected=None,
+            count=args.audit_count,
+            span=args.span,
+            generated_compositions=(target_program,),
+            combiner=composition_combiner,
+            route_programs=(order,),
+            **kwargs,
+        )
+
+    composition_accuracy = accuracy(seed=seed_base + 2_000)
+    wrong_order_accuracy = _accuracy(
+        parent,
+        machine,
+        bank,
+        composition_decoder,
+        operation="generated_composition",
+        selected=None,
+        count=args.audit_count,
+        span=args.span,
+        seed=seed_base + 3_000,
+        generated_compositions=(wrong_program,),
+        combiner=composition_combiner,
+        route_programs=(wrong_order,),
+    )
+    zero_fragment_accuracy = accuracy(seed=seed_base + 4_000, zero_codes=True)
+    missing_evidence_accuracy = accuracy(seed=seed_base + 5_000, blank_sequence=True)
+
+    shuffled_combiner = ExternalSkillFragmentCombiner(
+        REGISTER_WIDTH, REGISTER_WIDTH, hidden=64
+    )
+    shuffled_decoder = OpaqueProtocolDecoder(REGISTER_WIDTH, ACTION_WIDTH, hidden=16)
+    _train_stage(
+        parent,
+        machine,
+        bank,
+        shuffled_decoder,
+        operation="generated_composition",
+        selected=None,
+        updates=args.composition_updates,
+        batch_size=args.batch_size,
+        span=args.span,
+        seed=seed_base + 10_000,
+        trainable=[*shuffled_combiner.parameters(), *shuffled_decoder.parameters()],
+        shuffle_outcomes=True,
+        generated_compositions=(target_program,),
+        combiner=shuffled_combiner,
+        route_programs=(order,),
+    )
+    shuffled_accuracy = _accuracy(
+        parent,
+        machine,
+        bank,
+        shuffled_decoder,
+        operation="generated_composition",
+        selected=None,
+        count=args.audit_count,
+        span=args.span,
+        seed=seed_base + 11_000,
+        shuffle_outcomes=True,
+        generated_compositions=(target_program,),
+        combiner=shuffled_combiner,
+        route_programs=(order,),
+    )
+
+    fresh_machine = _machine()
+    fresh_bank = _bank_with_fragments(
+        args.seed + 2 + target_index * 30_001, len(PRIMITIVES)
+    )
+    fresh_combiner = ExternalSkillFragmentCombiner(
+        REGISTER_WIDTH, REGISTER_WIDTH, hidden=64
+    )
+    fresh_decoder = OpaqueProtocolDecoder(REGISTER_WIDTH, ACTION_WIDTH, hidden=16)
+    fresh_history = _train_stage(
+        parent,
+        fresh_machine,
+        fresh_bank,
+        fresh_decoder,
+        operation="generated_composition",
+        selected=None,
+        updates=args.composition_updates,
+        batch_size=args.batch_size,
+        span=args.span,
+        seed=seed_base + 20_000,
+        trainable=[
+            *fresh_machine.parameters(),
+            fresh_bank.shared_basis,
+            *fresh_bank.coefficients,
+            *fresh_combiner.parameters(),
+            *fresh_decoder.parameters(),
+        ],
+        generated_compositions=(target_program,),
+        combiner=fresh_combiner,
+        route_programs=(order,),
+        eval_every=args.eval_every,
+        audit_count=args.audit_count,
+        audit_seed=seed_base + 21_000,
+    )
+    fresh_accuracy = _accuracy(
+        parent,
+        fresh_machine,
+        fresh_bank,
+        fresh_decoder,
+        operation="generated_composition",
+        selected=None,
+        count=args.audit_count,
+        span=args.span,
+        seed=seed_base + 22_000,
+        generated_compositions=(target_program,),
+        combiner=fresh_combiner,
+        route_programs=(order,),
+    )
+
+    inherited_stable_bits = _stable_bits(
+        composition_history,
+        threshold=args.mastery_threshold,
+        bits_per_update=bits_per_update,
+    )
+    fresh_stable_bits = _stable_bits(
+        fresh_history,
+        threshold=args.mastery_threshold,
+        bits_per_update=bits_per_update,
+    )
+    route_queries = torch.stack(
+        tuple(bank.keys[index].detach() for index in order)
+    ).unsqueeze(0)
+    routed = bank.compose_queries(route_queries)
+    return {
+        "target_order": list(order),
+        "target_program": list(target_program),
+        "wrong_order": list(wrong_order),
+        "wrong_program": list(wrong_program),
+        "composition": {
+            "accuracy": composition_accuracy,
+            "wrong_order_accuracy": wrong_order_accuracy,
+            "zero_fragment_accuracy": zero_fragment_accuracy,
+            "missing_evidence_accuracy": missing_evidence_accuracy,
+            "history": composition_history,
+        },
+        "reward_shuffled": {"accuracy": shuffled_accuracy},
+        "fresh": {"accuracy": fresh_accuracy, "history": fresh_history},
+        "stable_bits_to_threshold": inherited_stable_bits,
+        "fresh_stable_bits_to_threshold": fresh_stable_bits,
+        "transfer_ratio_fresh_over_inherited": (
+            float(fresh_stable_bits) / float(inherited_stable_bits)
+            if inherited_stable_bits and fresh_stable_bits
+            else None
+        ),
+        "routing": {
+            "selected_indices": routed.fragment_indices.tolist(),
+            "route_scores": routed.route_scores.tolist(),
+        },
+    }
+
+
 def run(args: argparse.Namespace) -> dict[str, object]:
     started = perf_counter()
     torch.set_num_threads(1)
@@ -239,174 +446,20 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     for parameter in bank.parameters():
         parameter.requires_grad_(False)
     source_before = retention_by_stage[-1]
-
-    composition_combiner = ExternalSkillFragmentCombiner(
-        REGISTER_WIDTH, REGISTER_WIDTH, hidden=64
-    )
-    composition_decoder = OpaqueProtocolDecoder(REGISTER_WIDTH, ACTION_WIDTH, hidden=16)
-    composition_history = _train_stage(
-        parent,
-        machine,
-        bank,
-        composition_decoder,
-        operation="generated_composition",
-        selected=None,
-        updates=args.composition_updates,
-        batch_size=args.batch_size,
-        span=args.span,
-        seed=args.seed + 100_000,
-        trainable=[
-            *composition_combiner.parameters(),
-            *composition_decoder.parameters(),
-        ],
-        generated_compositions=(TARGET_PROGRAM,),
-        combiner=composition_combiner,
-        route_programs=(TARGET_ORDER,),
-        eval_every=args.eval_every,
-        audit_count=args.audit_count,
-        audit_seed=args.seed + 101_000,
-    )
-    composition_accuracy = _accuracy(
-        parent,
-        machine,
-        bank,
-        composition_decoder,
-        operation="generated_composition",
-        selected=None,
-        count=args.audit_count,
-        span=args.span,
-        seed=args.seed + 102_000,
-        generated_compositions=(TARGET_PROGRAM,),
-        combiner=composition_combiner,
-        route_programs=(TARGET_ORDER,),
-    )
-    wrong_order_accuracy = _accuracy(
-        parent,
-        machine,
-        bank,
-        composition_decoder,
-        operation="generated_composition",
-        selected=None,
-        count=args.audit_count,
-        span=args.span,
-        seed=args.seed + 103_000,
-        generated_compositions=(WRONG_PROGRAM,),
-        combiner=composition_combiner,
-        route_programs=(WRONG_ORDER,),
-    )
-    zero_fragment_accuracy = _accuracy(
-        parent,
-        machine,
-        bank,
-        composition_decoder,
-        operation="generated_composition",
-        selected=None,
-        count=args.audit_count,
-        span=args.span,
-        seed=args.seed + 104_000,
-        generated_compositions=(TARGET_PROGRAM,),
-        zero_codes=True,
-        combiner=composition_combiner,
-        route_programs=(TARGET_ORDER,),
-    )
-    missing_evidence_accuracy = _accuracy(
-        parent,
-        machine,
-        bank,
-        composition_decoder,
-        operation="generated_composition",
-        selected=None,
-        count=args.audit_count,
-        span=args.span,
-        seed=args.seed + 105_000,
-        generated_compositions=(TARGET_PROGRAM,),
-        combiner=composition_combiner,
-        route_programs=(TARGET_ORDER,),
-        blank_sequence=True,
-    )
-
-    shuffled_combiner = ExternalSkillFragmentCombiner(
-        REGISTER_WIDTH, REGISTER_WIDTH, hidden=64
-    )
-    shuffled_decoder = OpaqueProtocolDecoder(REGISTER_WIDTH, ACTION_WIDTH, hidden=16)
-    _train_stage(
-        parent,
-        machine,
-        bank,
-        shuffled_decoder,
-        operation="generated_composition",
-        selected=None,
-        updates=args.composition_updates,
-        batch_size=args.batch_size,
-        span=args.span,
-        seed=args.seed + 110_000,
-        trainable=[*shuffled_combiner.parameters(), *shuffled_decoder.parameters()],
-        shuffle_outcomes=True,
-        generated_compositions=(TARGET_PROGRAM,),
-        combiner=shuffled_combiner,
-        route_programs=(TARGET_ORDER,),
-    )
-    shuffled_accuracy = _accuracy(
-        parent,
-        machine,
-        bank,
-        shuffled_decoder,
-        operation="generated_composition",
-        selected=None,
-        count=args.audit_count,
-        span=args.span,
-        seed=args.seed + 111_000,
-        generated_compositions=(TARGET_PROGRAM,),
-        combiner=shuffled_combiner,
-        route_programs=(TARGET_ORDER,),
-        shuffle_outcomes=True,
-    )
-
-    fresh_machine = _machine()
-    fresh_bank = _bank_with_fragments(args.seed + 2, len(PRIMITIVES))
-    fresh_combiner = ExternalSkillFragmentCombiner(
-        REGISTER_WIDTH, REGISTER_WIDTH, hidden=64
-    )
-    fresh_decoder = OpaqueProtocolDecoder(REGISTER_WIDTH, ACTION_WIDTH, hidden=16)
-    fresh_history = _train_stage(
-        parent,
-        fresh_machine,
-        fresh_bank,
-        fresh_decoder,
-        operation="generated_composition",
-        selected=None,
-        updates=args.composition_updates,
-        batch_size=args.batch_size,
-        span=args.span,
-        seed=args.seed + 120_000,
-        trainable=[
-            *fresh_machine.parameters(),
-            fresh_bank.shared_basis,
-            *fresh_bank.coefficients,
-            *fresh_combiner.parameters(),
-            *fresh_decoder.parameters(),
-        ],
-        generated_compositions=(TARGET_PROGRAM,),
-        combiner=fresh_combiner,
-        route_programs=(TARGET_ORDER,),
-        eval_every=args.eval_every,
-        audit_count=args.audit_count,
-        audit_seed=args.seed + 121_000,
-    )
-    fresh_accuracy = _accuracy(
-        parent,
-        fresh_machine,
-        fresh_bank,
-        fresh_decoder,
-        operation="generated_composition",
-        selected=None,
-        count=args.audit_count,
-        span=args.span,
-        seed=args.seed + 122_000,
-        generated_compositions=(TARGET_PROGRAM,),
-        combiner=fresh_combiner,
-        route_programs=(TARGET_ORDER,),
-    )
+    bank_digest_before = bank.payload()["sha256"]
+    target_records = [
+        _train_target(
+            parent,
+            machine,
+            bank,
+            args,
+            order=order,
+            target_index=target_index,
+            bits_per_update=bits_per_update,
+        )
+        for target_index, order in enumerate(TARGET_ORDERS)
+    ]
+    bank_digest_after = bank.payload()["sha256"]
     source_after = _retention(
         parent,
         machine,
@@ -417,26 +470,12 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         seed=args.seed + 130_000,
     )
 
-    route_queries = torch.stack(
-        tuple(bank.keys[index].detach() for index in TARGET_ORDER)
-    ).unsqueeze(0)
-    routed = bank.compose_queries(route_queries)
     persistence_dir = args.report_out.parent / "persistence"
     if persistence_dir.exists():
         shutil.rmtree(persistence_dir)
     persistence_dir.mkdir(parents=True, exist_ok=True)
     persistence_exact = _corruption_audit(bank, persistence_dir / "fragment-bank.pt")
     parent_digest_after = _digest(parent.controller)
-    inherited_stable_bits = _stable_bits(
-        composition_history,
-        threshold=args.mastery_threshold,
-        bits_per_update=bits_per_update,
-    )
-    fresh_stable_bits = _stable_bits(
-        fresh_history,
-        threshold=args.mastery_threshold,
-        bits_per_update=bits_per_update,
-    )
     primitive_stable_bits = {
         PRIMITIVES[index]: _stable_bits(
             history,
@@ -445,83 +484,95 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         )
         for index, history in enumerate(primitive_histories)
     }
-    transfer_ratio = (
-        float(fresh_stable_bits) / float(inherited_stable_bits)
-        if inherited_stable_bits and fresh_stable_bits
-        else None
-    )
     composition_eval_points = _eval_points(args.composition_updates, args.eval_every)
     parent_eval_points = _eval_points(args.parent_updates, args.eval_every)
+    target_count = len(target_records)
     training_batches = (
         args.parent_updates
         + len(PRIMITIVES) * args.primitive_updates
-        + 3 * args.composition_updates
+        + target_count * 3 * args.composition_updates
     )
     audit_batches = (
         parent_eval_points
         + len(PRIMITIVES) * _eval_points(args.primitive_updates, args.eval_every)
-        + 2 * composition_eval_points
+        + target_count * 2 * composition_eval_points
         + sum(range(1, len(PRIMITIVES) + 1))
         + 2 * len(PRIMITIVES)
-        + 6
+        + target_count * 6
     )
+    target_compositions = [row["composition"] for row in target_records]
     gates = {
         "primitives_mastered": min(source_before.values()) >= args.mastery_threshold,
         "primitives_stable": all(
             value is not None for value in primitive_stable_bits.values()
         ),
         "primitives_retained": min(source_after.values()) >= args.mastery_threshold,
-        "composition_mastered": composition_accuracy >= args.mastery_threshold,
-        "composition_stable": inherited_stable_bits is not None,
-        "fresh_stable": fresh_stable_bits is not None,
-        "positive_stable_transfer": (
-            inherited_stable_bits is not None
-            and fresh_stable_bits is not None
-            and fresh_stable_bits > inherited_stable_bits
+        "all_compositions_mastered": all(
+            float(composition["accuracy"]) >= args.mastery_threshold
+            for composition in target_compositions
         ),
-        "wrong_order_rejected": wrong_order_accuracy < args.mastery_threshold,
-        "no_fragment_bypass": zero_fragment_accuracy < args.mastery_threshold,
-        "missing_evidence_rejected": missing_evidence_accuracy < args.mastery_threshold,
-        "reward_shuffled_rejected": shuffled_accuracy < args.mastery_threshold,
+        "all_compositions_stable": all(
+            row["stable_bits_to_threshold"] is not None for row in target_records
+        ),
+        "all_fresh_controls_stable": all(
+            row["fresh_stable_bits_to_threshold"] is not None for row in target_records
+        ),
+        "all_positive_stable_transfers": all(
+            row["transfer_ratio_fresh_over_inherited"] is not None
+            and row["fresh_stable_bits_to_threshold"] > row["stable_bits_to_threshold"]
+            for row in target_records
+        ),
+        "all_wrong_orders_rejected": all(
+            float(composition["wrong_order_accuracy"]) < args.mastery_threshold
+            for composition in target_compositions
+        ),
+        "all_fragment_bypasses_rejected": all(
+            float(composition["zero_fragment_accuracy"]) < args.mastery_threshold
+            for composition in target_compositions
+        ),
+        "all_missing_evidence_rejected": all(
+            float(composition["missing_evidence_accuracy"]) < args.mastery_threshold
+            for composition in target_compositions
+        ),
+        "all_reward_shuffles_rejected": all(
+            float(row["reward_shuffled"]["accuracy"]) < args.mastery_threshold
+            for row in target_records
+        ),
         "frozen_parent": parent_digest_before == parent_digest_after,
-        "routing_resolved": routed.fragment_indices.tolist() == [list(TARGET_ORDER)],
+        "frozen_acquired_bank": bank_digest_before == bank_digest_after,
+        "routing_resolved": all(
+            row["routing"]["selected_indices"] == [row["target_order"]]
+            for row in target_records
+        ),
         "persistence_exact_and_corruption_rejected": persistence_exact,
         "no_replayed_examples": True,
     }
     report = {
-        "schema": "neural-computer.external-skill-fragment-multi-composition-report.v1",
+        "schema": "neural-computer.external-skill-fragment-multi-target-composition-report.v1",
         "claim_boundary": (
-            "Four opaque fragments are acquired sequentially and reused in one "
-            "held-out four-fragment program through an external trace combiner. "
-            "This does not establish arbitrary program induction, unrestricted "
-            "growth, compression, or general continual learning."
+            "Four opaque fragments are acquired sequentially and reused across "
+            "three independently held-out four-fragment programs. Each target "
+            "has a separate external trace combiner and fresh learner control; "
+            "the acquired machine and bank remain frozen. This does not establish "
+            "arbitrary program induction, unrestricted growth, compression, or "
+            "general continual learning."
         ),
         "seed": args.seed,
         "primitives": list(PRIMITIVES),
-        "target_order": list(TARGET_ORDER),
-        "target_program": list(TARGET_PROGRAM),
-        "wrong_order": list(WRONG_ORDER),
+        "target_orders": [list(order) for order in TARGET_ORDERS],
+        "target_programs": [
+            [PRIMITIVES[index] for index in order] for order in TARGET_ORDERS
+        ],
         "parent_progress": parent_progress,
         "retention_by_stage": retention_by_stage,
         "primitive_histories": primitive_histories,
         "primitive_stable_bits": primitive_stable_bits,
         "source_before": source_before,
         "source_after": source_after,
-        "composition": {
-            "accuracy": composition_accuracy,
-            "wrong_order_accuracy": wrong_order_accuracy,
-            "zero_fragment_accuracy": zero_fragment_accuracy,
-            "missing_evidence_accuracy": missing_evidence_accuracy,
-            "history": composition_history,
-        },
-        "reward_shuffled": {"accuracy": shuffled_accuracy},
-        "fresh": {"accuracy": fresh_accuracy, "history": fresh_history},
-        "stable_bits_to_threshold": inherited_stable_bits,
-        "fresh_stable_bits_to_threshold": fresh_stable_bits,
-        "transfer_ratio_fresh_over_inherited": transfer_ratio,
-        "routing": {
-            "selected_indices": routed.fragment_indices.tolist(),
-            "route_scores": routed.route_scores.tolist(),
+        "targets": target_records,
+        "acquired_bank": {
+            "sha256_before_targets": bank_digest_before,
+            "sha256_after_targets": bank_digest_after,
         },
         "accounting": {
             "unique_verifier_bits": (
@@ -537,7 +588,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "optimizer_updates": (
                 args.parent_updates
                 + len(PRIMITIVES) * args.primitive_updates
-                + 3 * args.composition_updates
+                + target_count * 3 * args.composition_updates
             ),
             "replayed_examples": 0,
             "wall_seconds": perf_counter() - started,

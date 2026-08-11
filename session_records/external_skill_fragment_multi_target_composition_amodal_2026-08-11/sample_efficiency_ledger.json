@@ -1,0 +1,63 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "external_skill_fragment_multi_target_composition_amodal_2026-08-11",
+  "date": "2026-08-11",
+  "status": "promoted_bounded_multi_target_composition",
+  "claim_boundary": "Two-seed stable-prefix transfer across three independently held-out four-fragment programs using one frozen acquired bank; not arbitrary program induction, unrestricted growth, compression, or general continual learning.",
+  "configuration": {
+    "seeds": [69316, 69317],
+    "primitives": ["reverse", "rotate", "complement", "prefix_parity"],
+    "target_orders": [[3, 2, 0, 1], [1, 0, 3, 2], [2, 3, 1, 0]],
+    "parent_updates": 64,
+    "primitive_updates": 256,
+    "composition_updates": 128,
+    "batch_size": 32,
+    "span": 3,
+    "audit_count": 128,
+    "eval_every": 32,
+    "mastery_threshold": 0.8,
+    "primitive_acquisition": "isolated_atomic_objective_then_stable_protection_v1",
+    "composition_path": "frozen_bank_separate_trace_combiner_per_target_v1",
+    "code_materialization": "normalized_shared_basis_code_v1",
+    "controller_frozen_during_growth": true,
+    "acquired_bank_frozen_during_targets": true,
+    "replayed_examples": 0
+  },
+  "aggregate": {
+    "inherited_stable_bits_per_target": [
+      [6144, 6144, 6144],
+      [6144, 6144, 6144]
+    ],
+    "fresh_stable_bits_per_target": [
+      [12288, 12288, 12288],
+      [12288, 12288, 12288]
+    ],
+    "composition_accuracy_per_seed": [
+      [0.9583333134651184, 0.9166666865348816, 0.9973958134651184],
+      [1.0, 1.0, 0.9583333134651184]
+    ],
+    "fresh_accuracy_per_seed": [
+      [0.9973958134651184, 0.9739583134651184, 0.9583333134651184],
+      [0.9036458134651184, 1.0, 0.875]
+    ],
+    "unique_verifier_bits_per_seed": [448128, 448128],
+    "unique_logical_lifetimes_per_seed": [71680, 71680],
+    "optimizer_updates_per_seed": [2240, 2240],
+    "replayed_examples_per_seed": [0, 0],
+    "all_promotion_gates_passed": true
+  },
+  "controls": {
+    "fresh_pixel_rerender": true,
+    "wrong_order_per_target": true,
+    "zero_fragment_codes_per_target": true,
+    "missing_sequence_evidence_per_target": true,
+    "reward_shuffled_per_target": true,
+    "frozen_parent_digest": true,
+    "frozen_acquired_bank_digest": true,
+    "route_resolution_per_target": true,
+    "bank_persistence_and_corruption": true,
+    "replayed_examples": 0
+  },
+  "rejected_diagnostic": "At 64 composition updates, seed 69317's third matched fresh target ended at 0.75 with no stable prefix. Increasing only composition exposure to 128 updates made all fresh target prefixes stable without changing the architecture or relaxing gates.",
+  "interpretation": "One frozen acquired external bank can support three independently held-out ordered programs through separately trainable external combiners, with replicated positive stable-prefix transfer. This remains bounded continual-memory/composition capability."
+}
