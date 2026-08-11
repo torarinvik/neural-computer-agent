@@ -71,6 +71,33 @@ parser.add_argument(
          "A curriculum gets reading established on the readable task "
          "first, then extends it — the bootstrapping F120 identified.")
 parser.add_argument(
+    "--codebook", type=int, default=0,
+    help="quantise the entry to the nearest of K learned codes "
+         "(VQ-VAE style, straight-through gradient + commitment loss). "
+         "Ranked first in docs/LITERATURE.md: a hard discrete "
+         "assignment removes the plant's escape route, which has been "
+         "AVERAGING since F106 — with no relaxation available the "
+         "decoder cannot bypass the bottleneck. It also makes the bank "
+         "and the mechanism the same object (a codebook IS a finite "
+         "set of entries) and turns binding into a lookup, which F140 "
+         "says is the right direction since the binder must stay "
+         "simple. The risk to MEASURE not assume: K caps the number of "
+         "distinguishable worlds, which collides with the diversity "
+         "law (F78, F144) — sweep K against world count.")
+parser.add_argument(
+    "--commit", type=float, default=0.25,
+    help="weight of the VQ commitment term keeping the reader's "
+         "output near the code it selected.")
+parser.add_argument(
+    "--reader-steps", type=int, default=1,
+    help="reader updates per plant update, both still learning. "
+         "Ranked second in docs/LITERATURE.md: He et al. (ICLR 2019) "
+         "diagnose posterior collapse as the inference network failing "
+         "to keep up with a moving posterior, and fix it by training "
+         "the encoder aggressively. F136 took that to the extreme of "
+         "FREEZING the plant and lost to joint training; this is the "
+         "interleaved form the literature actually endorses.")
+parser.add_argument(
     "--contrastive-batch", type=int, default=8,
     help="number of worlds the contrastive term must tell apart at "
          "once. F142 reached 0.7069 with 8, where the reader need only "
@@ -351,8 +378,42 @@ class OracleEntry(torch.nn.Module):
         return self.project(raw).view(self.tokens, self.dim)
 
 
+class Codebook(torch.nn.Module):
+    """K learned entries; the reader selects one. Straight-through so
+    the reader still gets a gradient through a hard assignment."""
+
+    def __init__(self, count: int, tokens: int, dim: int):
+        super().__init__()
+        self.codes = torch.nn.Parameter(
+            torch.randn(count, tokens * dim) * 0.5)
+        self.tokens, self.dim = tokens, dim
+        self.last_loss = torch.zeros(())
+        self.last_index = -1
+
+    def forward(self, entry: torch.Tensor) -> torch.Tensor:
+        flat = entry.flatten()
+        distance = ((self.codes - flat.unsqueeze(0)) ** 2).sum(-1)
+        index = int(distance.argmin())
+        chosen = self.codes[index]
+        self.last_index = index
+        self.last_loss = (((chosen - flat.detach()) ** 2).mean()
+                          + args.commit
+                          * ((flat - chosen.detach()) ** 2).mean())
+        # straight-through: forward uses the code, backward reaches the
+        # reader as if the code were its own output
+        passed = flat + (chosen - flat).detach()
+        return passed.view(self.tokens, self.dim)
+
+
 reader = Reader(args.dim, args.bank_tokens)
 plant = Plant(args.dim, args.max_len)
+codebook = (Codebook(args.codebook, args.bank_tokens, args.dim)
+            if args.codebook else None)
+
+
+def task_loss(program, x, y, entry) -> torch.Tensor:
+    return torch.nn.functional.cross_entropy(
+        plant(program, x, entry), y)
 # One-hot, NOT scalars: a/M and b/M would place all worlds' entries on
 # a 2-dimensional manifold and force the plant to carve modular
 # arithmetic out of a continuous line — the oracle arm could then fail
@@ -362,7 +423,10 @@ ORACLE_WIDTH = 2 * M
 oracle = OracleEntry(args.dim, args.bank_tokens, ORACLE_WIDTH)
 optimizer = torch.optim.Adam(
     list(reader.parameters()) + list(plant.parameters())
-    + list(oracle.parameters()), lr=args.lr)
+    + list(oracle.parameters())
+    + (list(codebook.parameters()) if codebook is not None else []),
+    lr=args.lr)
+reader_opt = torch.optim.Adam(reader.parameters(), lr=args.lr)
 
 
 def oracle_raw(world: dict) -> torch.Tensor:
@@ -442,6 +506,8 @@ for update in range(args.train_updates):
         args.two_phase > 0 and update < phase_one)
     entry = (oracle(oracle_raw(world)) if use_oracle
              else reader(*reader_examples(world, data_gen)))
+    if codebook is not None and not use_oracle:
+        entry = codebook(entry)
     x = torch.randint(0, M, (args.batch_size,), generator=data_gen)
     y = apply_program(world, program, x)
     if args.distill and args.two_phase > 0 and update >= phase_one:
@@ -456,6 +522,8 @@ for update in range(args.train_updates):
                       torch.zeros_like(entry)).log_softmax(-1)
         entropy = -(blind.exp() * blind).sum(-1).mean()
         loss = loss + args.ignorance * (uniform - entropy)
+    if codebook is not None and not use_oracle:
+        loss = loss + codebook.last_loss
     if args.contrastive_aux > 0:
         picks = torch.randperm(
             len(train_worlds),
@@ -465,6 +533,16 @@ for update in range(args.train_updates):
     optimizer.zero_grad()
     loss.backward()
     optimizer.step()
+    for _ in range(args.reader_steps - 1):
+        extra = reader(*reader_examples(world, data_gen))
+        if codebook is not None:
+            extra = codebook(extra)
+        step_loss = task_loss(program, x, y, extra)
+        if codebook is not None:
+            step_loss = step_loss + codebook.last_loss
+        reader_opt.zero_grad()
+        step_loss.backward()
+        reader_opt.step()
 
 
 def entry_of(world: dict, offset: int = 0) -> torch.Tensor:
@@ -474,7 +552,8 @@ def entry_of(world: dict, offset: int = 0) -> torch.Tensor:
     generator = torch.Generator().manual_seed(
         args.seed * 31 + hash(world["name"]) % 100000 + offset)
     with torch.no_grad():
-        return reader(*reader_examples(world, generator))
+        read = reader(*reader_examples(world, generator))
+        return codebook(read) if codebook is not None else read
 
 
 stranger_gen = torch.Generator().manual_seed(args.seed * 32452843)
