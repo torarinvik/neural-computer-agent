@@ -8258,3 +8258,54 @@ Worth noting which way this cut: at the contaminated seeds the observed
 arm had the WORSE plant and still scored better on search fit, so the
 1a result was measured against a headwind. It is 1b that the confound
 was carrying.
+
+## F168 — the coverage filter works after all; F163 measured the
+## saturated regime
+
+F163 reported the sound coverage filter as a null, 1.029 and 1.020. The
+correction to that entry identified the fault: both arms had been
+smoke-tested against a 3000-update plant where every search runs to its
+full budget, so cost was the budget by definition and no proposal
+filter could move it. Rerun against a 40k plant with the inferred
+modulus, where **0 of 11 and 1 of 11 families saturate**:
+
+| arm | diverse | related | proposals rejected |
+| --- | ---: | ---: | ---: |
+| frozen | 1.000 | 1.000 | 0% |
+| coverage filter | **0.887** | **0.867** | 45% / 35% |
+| attainable-fit bound | 0.887 | 0.867 | 45% / 35% |
+| stores solved programs | 1.075 | 0.815 | 0% |
+
+Interpreter calls fall 11-13%, and every one of the four
+sequence-seed cells is below 1.0 (0.834, 0.939, 0.918, 0.817). The
+filter rejects a third to a half of proposals with no forward pass, and
+converts that into roughly a tenth fewer interpreter calls — the two
+numbers differ because a rejected candidate would mostly have scored
+badly anyway, so removing it enriches the pool by less than its share.
+
+**Two seeds. Directionally clear, not yet promoted.**
+
+The bound and the coverage filter are again identical to the digit,
+which is the third confirmation that on this family distribution they
+are the same predicate: every changed slot carries more mismatch mass
+than a 5% budget allows, so "unreachable mass exceeds the budget" and
+"a changed slot is unwritten" pick out the same candidates.
+
+**An interaction worth flagging rather than concluding.** Storing
+solved programs reads 1.075 on the diverse sequence here, against
+F161's 0.959 over five seeds. The difference between the runs is the
+inferred modulus. It is plausible that a better instruction set removes
+the headroom reuse was filling, and it is equally plausible this is two
+seeds of noise. F161 had five seeds and a causal null; this has two and
+neither. Not a retraction — a flag for the next run, which should carry
+`cover+store` so the combination is measured rather than assumed
+additive.
+
+**What this says about the method, and it is the more durable part.**
+The same filter has now been reported as a null and as a 12% win from
+the same code. Nothing about the mechanism changed; what changed is
+whether the measurement could observe it. The saturated regime made
+every arm cost exactly the budget. Before trusting any search-cost
+result, check what fraction of searches terminate early — a result
+gathered where nothing terminates is a measurement of the budget
+wearing the costume of a measurement of the search.
