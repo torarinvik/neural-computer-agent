@@ -7,6 +7,7 @@ import torch
 from neural_computer import (
     EXTERNAL_FACTORED_TRANSITION_LEARNED_RESIDUAL_MODE,
     EXTERNAL_TRANSITION_RANDOM_FEATURE_MODEL_FAMILY,
+    ExternalAffineTransitionStatistics,
     ExternalContextAddressResolver,
     ExternalContextualEvidenceCalibrator,
     ExternalContextualTransitionEvidenceStatistics,
@@ -2593,6 +2594,38 @@ def test_factored_transition_freezes_base_and_persists_context_residuals() -> No
         ),
         target.next_state,
     )
+
+
+def test_factored_transition_persists_a_replaceable_affine_base() -> None:
+    base = ExternalAffineTransitionStatistics(1, 1, ridge=0.01)
+    base.observe(
+        ExternalTransitionObservation(
+            state=torch.tensor([[0.0], [1.0]]),
+            intention=torch.ones(2, 1),
+            next_state=torch.tensor([[1.0], [2.0]]),
+        )
+    )
+    model = ExternalFactoredTransitionModel(
+        1,
+        1,
+        2,
+        residual_mode="exact_residual_memory_v1",
+        base_model=base,
+    )
+    model.freeze_base()
+    probe_state = torch.tensor([[0.25], [0.75]])
+    probe_intention = torch.ones(2, 1)
+    before = model(probe_state, probe_intention)
+
+    payload = model.state_payload()
+    assert payload["base_payload"]["schema"] == base.schema
+    restored = ExternalFactoredTransitionModel.from_payload(payload)
+
+    assert isinstance(restored.base, ExternalAffineTransitionStatistics)
+    assert restored.configuration()["base_model_schema"] == base.schema
+    assert restored.base.digest() == base.digest()
+    assert restored.digest() == model.digest()
+    assert torch.allclose(restored(probe_state, probe_intention), before)
 
 
 def test_learned_factored_residual_generalizes_while_base_stays_frozen() -> None:

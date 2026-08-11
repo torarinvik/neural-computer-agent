@@ -420,3 +420,19 @@ goal admission/use, and the fresh-goal challenger. The tolerance sweep plateaued
 at `14/24` from `0.02` through `0.005`, so this is not a single knife-edge.
 The ledger is in
 `session_records/online_goal_conditioned_discovery_routing_threshold_2026-08-11/sample_efficiency_ledger.json`.
+
+The factored frozen-base pressure audit can be run with:
+
+```bash
+PYTHONPATH=src:. uv run python -m experiments.brainworkshop_canonical.factored_residual_base_pressure
+```
+
+It trains a replay-free affine source base, freezes it with the controller,
+then learns a novel opaque target through a context-local random-feature
+residual. Across seeds `91`, `92`, `93`, `95`, `99`, `100`, `101`, `102`, and
+`103`, all `9/9` candidates staged, passed promotion, beat the frozen-base
+challenger, retained the source, and round-tripped the replaceable base. The
+audit used `189` unique verifier bits, `216` one-pass transition rows, zero
+replay, and zero optimizer updates. This is a bounded factored external-memory
+gain, not general continual learning; the ledger is in
+`session_records/factored_residual_base_pressure_2026-08-11/sample_efficiency_ledger.json`.

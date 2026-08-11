@@ -74,6 +74,7 @@ class ExternalFactoredTransitionModel(nn.Module):
         residual_random_feature_width: int = 128,
         residual_random_feature_seed: int = 0,
         residual_capacity: int | None = None,
+        base_model: nn.Module | None = None,
     ) -> None:
         super().__init__()
         if min(state_width, intention_width, context_width, hidden_width) < 1:
@@ -115,11 +116,16 @@ class ExternalFactoredTransitionModel(nn.Module):
         self.residual_capacity = (
             None if residual_capacity is None else int(residual_capacity)
         )
-        self.base = ExternalTransitionModel(
-            self.state_width,
-            self.intention_width,
-            hidden_width=self.hidden_width,
+        self.base = (
+            ExternalTransitionModel(
+                self.state_width,
+                self.intention_width,
+                hidden_width=self.hidden_width,
+            )
+            if base_model is None
+            else base_model
         )
+        self._validate_base_model(self.base)
         self.residual_memory = ExternalTransitionMemory(
             self.state_width,
             self.intention_width,
@@ -163,6 +169,10 @@ class ExternalFactoredTransitionModel(nn.Module):
             "representation": "frozen_shared_base_plus_opaque_context_residual_v2",
             "behavior": "derived_by_external_search_not_stored_policy_v1",
             "base": self.base.configuration(),
+            "base_model_schema": str(
+                getattr(self.base, "schema", type(self.base).__name__)
+            ),
+            "base_persistence": "versioned_external_base_payload_v1",
             "residual_memory": self.residual_memory.configuration(),
             "residual_bank": (
                 None
@@ -346,6 +356,50 @@ class ExternalFactoredTransitionModel(nn.Module):
             digest.update(self.residual_bank.digest().encode("utf-8"))
         return digest.hexdigest()
 
+    def _validate_base_model(self, base: nn.Module) -> None:
+        """Validate the narrow, versioned interface of a replaceable base."""
+
+        if not isinstance(base, nn.Module):
+            raise TypeError("factored transition base must be a torch module")
+        for attribute in ("configuration", "state_payload", "digest", "loss"):
+            if not callable(getattr(base, attribute, None)):
+                raise TypeError(
+                    f"factored transition base must provide {attribute}()"
+                )
+        schema = getattr(base, "schema", None)
+        if not isinstance(schema, str) or not schema:
+            raise ValueError("factored transition base must expose a schema")
+        state_width = getattr(base, "state_width", None)
+        intention_width = getattr(base, "intention_width", None)
+        if not isinstance(state_width, int) or isinstance(state_width, bool):
+            raise TypeError("factored transition base state width is invalid")
+        if not isinstance(intention_width, int) or isinstance(intention_width, bool):
+            raise TypeError("factored transition base intention width is invalid")
+        if state_width != self.state_width:
+            raise ValueError("factored transition base state width differs")
+        if intention_width != self.intention_width:
+            raise ValueError("factored transition base intention width differs")
+
+    @staticmethod
+    def _base_from_payload(payload: Mapping[str, Any]) -> nn.Module:
+        """Restore only explicitly supported, versioned external base models."""
+
+        if not isinstance(payload, Mapping):
+            raise TypeError("factored transition base payload must be a mapping")
+        schema = payload.get("schema")
+        if schema == ExternalTransitionModel.schema:
+            return ExternalTransitionModel.from_payload(payload)
+        from .online_transition import (
+            ExternalAffineTransitionStatistics,
+            ExternalRandomFeatureTransitionStatistics,
+        )
+
+        if schema == ExternalAffineTransitionStatistics.schema:
+            return ExternalAffineTransitionStatistics.from_payload(payload)
+        if schema == ExternalRandomFeatureTransitionStatistics.schema:
+            return ExternalRandomFeatureTransitionStatistics.from_payload(payload)
+        raise ValueError("unsupported factored transition base schema")
+
     @staticmethod
     def _state_payload(module: nn.Module) -> dict[str, torch.Tensor]:
         return {
@@ -374,6 +428,7 @@ class ExternalFactoredTransitionModel(nn.Module):
         payload: dict[str, object] = {
             "schema": self.schema,
             "configuration": self.configuration(),
+            "base_payload": self.base.state_payload(),
             "base_state": self._state_payload(self.base),
             "residual_state": self._state_payload(self.residual_memory),
             "residual_bank": (
@@ -392,6 +447,7 @@ class ExternalFactoredTransitionModel(nn.Module):
         if not isinstance(payload, Mapping) or payload.get("schema") != cls.schema:
             raise ValueError("unsupported factored transition payload")
         configuration = payload.get("configuration")
+        base_payload = payload.get("base_payload")
         base_state = payload.get("base_state")
         residual_state = payload.get("residual_state")
         if not isinstance(configuration, Mapping):
@@ -408,6 +464,11 @@ class ExternalFactoredTransitionModel(nn.Module):
                 "residual_mode",
                 EXTERNAL_FACTORED_TRANSITION_EXACT_RESIDUAL_MODE,
             )
+        )
+        restored_base = (
+            None
+            if base_payload is None
+            else cls._base_from_payload(base_payload)
         )
         model = cls(
             int(configuration["state_width"]),
@@ -448,6 +509,7 @@ class ExternalFactoredTransitionModel(nn.Module):
                 if configuration.get("residual_capacity") is None
                 else int(configuration["residual_capacity"])
             ),
+            base_model=restored_base,
         )
         cls._load_state(model.base, base_state)
         residual_store_state = {

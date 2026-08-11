@@ -9110,3 +9110,35 @@ source computation, learn only a compact context-local residual in external
 memory, and verify it under the unchanged held-out and retention gates. These
 negative controls are archived in
 `session_records/online_goal_conditioned_discovery_representation_pressure_2026-08-11/sample_efficiency_ledger.json`.
+
+## Replaceable factored base for replay-free residual acquisition (2026-08-11)
+
+The factored transition model now treats its shared source computation as an
+independently replaceable external model. `ExternalFactoredTransitionModel`
+accepts a versioned base implementing the opaque transition interface and
+persists its complete `state_payload` alongside the residual memory. The
+supported checkpoint registry includes the legacy nonlinear transition model,
+affine sufficient statistics, and frozen random-feature sufficient statistics;
+unknown base schemas are rejected rather than reconstructed implicitly. This
+removes the previous persistence seam where every factored checkpoint silently
+reconstructed the legacy MLP base.
+
+The canonical pressure audit is
+`experiments/brainworkshop_canonical/factored_residual_base_pressure.py`. It
+learns a rendered n-back-2 source regime into an affine external base, freezes
+that base and the controller, then stages and promotes an opaque n-back-3
+target residual through a random-feature sufficient-statistics backend. Across
+seeds `91`, `92`, `93`, `95`, `99`, `100`, `101`, `102`, `103`, all `9/9`
+runs staged and promoted the target, beat the matched frozen-base challenger,
+retained the source recursive behavior, round-tripped the versioned base, and
+left the controller unchanged. The run consumed `189` unique verifier bits
+and `216` transition rows once, with zero replay and zero optimizer updates.
+The prior nonlinear-base prototype passed `4/9` on the same representative
+seed set; the replaceable affine base passed `9/9`.
+
+This promotes a better factored external-memory foundation, not general
+continual learning. The remaining pressure is to repeat the result across
+multiple target regimes and longer horizons, then test whether an external
+residual can acquire genuinely new computation rather than only correcting a
+shared transition basis. Evidence and accounting are in
+`session_records/factored_residual_base_pressure_2026-08-11/sample_efficiency_ledger.json`.
