@@ -9000,3 +9000,23 @@ Fix is one line and one measurement: raise `--fit-target`, or spend the
 recovered budget continuing to improve after the threshold rather than
 stopping. Cheap search makes a stricter target affordable for the first
 time, which is the more interesting version.
+
+**Pre-registered for the fit-target sweep.** F179 showed the search now
+stops the moment it clears 0.95, so quality is bound by the threshold
+rather than by the basis or the budget. Sweeping `--fit-target` over
+0.95, 0.99 and 1.0 on the saturating basis, four seeds.
+
+1. `toggle` recovers. Its saturating search fits cluster at
+   0.9516-0.9572, so a target of 0.99 should push it back toward the
+   0.98 the old basis reached by accident, and its held-out should
+   recover most of the -0.0423.
+2. Families already at 1.0000 — `perm`, and `line` on the saturating
+   basis — must not move. There is nothing above 1.0 to find.
+3. Cost rises, but from 22.9 candidates per action. Even a large
+   multiple stays far under the old basis's 528, which is the whole
+   point: a stricter target is affordable now and was not before.
+4. At `--fit-target 1.0` some families will fail to reach it and burn
+   the full budget, so cost should jump sharply there while quality
+   gains little over 0.99. If 1.0 is BOTH cheap and better, the recipes
+   are exact more often than F178's 100% enumeration success implies,
+   and the fit-target was never doing anything useful.
