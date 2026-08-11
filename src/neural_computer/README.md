@@ -1591,6 +1591,15 @@ be credited to a newly selected file. The cell is zero-effect at construction
 and does not resize or update the controller. Use `state_payload()` and
 `state_from_payload()` on the runtime when this optional cell is configured.
 
+The bounded transfer audit for this seam passed on seeds `69316` and `69317`:
+the frozen source codec reached stable target behavior on the first newly
+allocated file, while matched fresh codecs required 130 and 116 stable target
+lifetimes. This validates reusable memory-side computation, not arbitrary new
+procedure acquisition or general continual learning. The next required gate
+is a rendered Brain Workshop transfer audit with complete-prefix retention and
+zero-replay controls. See
+`session_records/external_program_fast_cell_transfer_2026-08-11/`.
+
 The policy-free factual seam also exposes
 `ExternalControllerEventWindowStateAdapter`. It preserves the compact opaque
 controller state while folding bounded event-window statistics into the same

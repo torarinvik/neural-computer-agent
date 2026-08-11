@@ -9662,3 +9662,29 @@ prefix retention, shuffled outcomes, missing evidence, route switching,
 reload, and zero replay. The focused and full regression suites cover the ABI,
 delayed-credit binding, mixed-file isolation, persistence, and frozen
 controller contract (`721` tests passing at this checkpoint).
+
+## Promoted external file-cell transfer (2026-08-11)
+
+The first reusable memory-side codec audit now passes its promotion gates on
+two seeds. A source codec was trained once, then frozen. Fresh target logical
+files received only positive opaque action/outcome writes; the inherited codec
+reconstructed the stored action at the first target lifetime on both seeds.
+Matched fresh codecs required stable prefixes of 130 and 116 target lifetimes.
+Source retention minima were `0.9954` and `1.0000`, and the inherited target
+used zero target optimizer updates and zero primary replayed examples.
+
+This promotes a bounded architectural capability: an isolated external memory
+cell can carry reusable learned computation into newly allocated file state
+without updating the controller or shared interpreter. Failed outcomes and
+missing evidence are exact no-ops, delayed credit stays bound to the producing
+file/query, and tensor-only persistence remains exact. The action codebook is
+opaque and fixed across new logical lifetimes, so the control measures codec
+transfer rather than a semantic lookup.
+
+The boundary is intentionally not widened. This is not arbitrary procedure
+invention, unrestricted growth, or general continual learning. The next
+pressure test must use rendered Brain Workshop sequence lifetimes and require
+complete-prefix retention, shuffled outcomes, route switching, missing
+evidence, corruption, and zero-replay transfer across genuinely new rules.
+Evidence is archived under
+`session_records/external_program_fast_cell_transfer_2026-08-11/`.
