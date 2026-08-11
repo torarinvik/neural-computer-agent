@@ -9012,3 +9012,22 @@ or optimizer updates. This qualifies bounded source retention plus target
 goal-conditioned acquisition, not general continual learning, universal
 positive transfer, arbitrary computation, or unrestricted growth. Evidence is
 in `session_records/nonstationary_goal_conditioned_planning_2026-08-11/sample_efficiency_ledger.json`.
+
+## Online discovered goal-conditioned target (2026-08-11)
+
+The online transition-discovery path now optionally continues through the
+destination boundary. The router receives no target cue or task label: it
+discovers the target context from opaque transition rows, stages an external
+factual slot, and commits it only after multi-lifetime recursive, fresh-
+challenger, and source-retention gates. After promotion, the same discovered
+slot admits an opaque two-step goal fragment and derives behavior through
+model-based search.
+
+With the causal recency/latest state contract and a committed-slot write
+firewall, `8/24` seeds completed every gate. All eight recovered the route,
+used the target goal file, beat their matched fresh goal planner, and retained
+the source slot; rejected seeds remained rejected. The runs consumed `504`
+transition rows once, replayed no examples, and performed no optimizer updates.
+This is a bounded online-discovery result, not general continual learning or
+universal warm-over-fresh transfer. The complete ledger is
+`session_records/online_goal_conditioned_discovery_2026-08-11/sample_efficiency_ledger.json`.

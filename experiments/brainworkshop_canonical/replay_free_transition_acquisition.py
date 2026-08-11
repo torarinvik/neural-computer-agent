@@ -134,6 +134,14 @@ class OnlineTransitionDiscoveryReport:
     window_gain: float
     recency_decay: float
     context_aggregation: str
+    goal_conditioned: bool = False
+    target_goal_fragment_admitted: bool = False
+    target_goal_fragment_used: bool = False
+    target_goal_planner_improved_over_fresh: bool = False
+    trained_target_goal_error: float = float("inf")
+    fresh_target_goal_error: float = float("inf")
+    target_goal_horizon: int = 0
+    target_goal_missing_evidence_rejected: bool = False
 
     def payload(self) -> dict[str, object]:
         return asdict(self)
@@ -631,6 +639,9 @@ def run_online_transition_discovery_audit(
     recency_decay: float = 0.75,
     promotion_heldout_lifetimes: int = 3,
     context_aggregation: str = "last_token",
+    goal_conditioned: bool = False,
+    goal_horizon: int = 2,
+    goal_verifier_threshold: float = 0.05,
 ) -> OnlineTransitionDiscoveryReport:
     """Discover and learn a novel rendered family without replay or a task label.
 
@@ -641,6 +652,11 @@ def run_online_transition_discovery_audit(
     only after multiple independent held-out lifetimes, recursive prediction,
     and source-retention probes. Cue symbols and n-back values remain
     verifier-private diagnostics and never enter the router.
+
+    With ``goal_conditioned=True``, the promoted target slot must additionally
+    admit and use an opaque multi-step goal fragment against a matched fresh
+    planner. The goal gate is opt-in so the historical transition-only report
+    remains backward-compatible.
     """
 
     if min(steps, source_training_lifetimes, target_training_lifetimes) < 1:
@@ -660,6 +676,14 @@ def run_online_transition_discovery_audit(
         raise ValueError("online transition recency decay must be finite and positive")
     if affine_ridge <= 0.0 or not math.isfinite(float(affine_ridge)):
         raise ValueError("online transition affine ridge must be finite and positive")
+    if not isinstance(goal_conditioned, bool):
+        raise TypeError("online goal-conditioned flag must be boolean")
+    if goal_horizon < 1 or goal_horizon > steps - 1:
+        raise ValueError("online goal horizon must fit held-out transitions")
+    if goal_verifier_threshold <= 0.0 or not math.isfinite(
+        float(goal_verifier_threshold)
+    ):
+        raise ValueError("online goal verifier threshold must be finite and positive")
     agent = CanonicalBrainWorkshopAgent(
         symbol_count=8,
         event_width=4,
@@ -1033,10 +1057,11 @@ def run_online_transition_discovery_audit(
         target_context,
         model_family=EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY,
     )
-    fresh_target_error = ExternalModelBasedPlanner(
+    fresh_planner = ExternalModelBasedPlanner(
         fresh_bank,
         beam_width=4,
-    ).rollout_error(
+    )
+    fresh_target_error = fresh_planner.rollout_error(
         target_recovery,
         transition_context=target_context.unsqueeze(0),
     )
@@ -1047,12 +1072,110 @@ def run_online_transition_discovery_audit(
         target_recovery_result.stable_slot_id == promotion.slot_id
     )
     improved = trained_target_error < fresh_target_error
+    goal_fragment_admitted = False
+    goal_fragment_used = False
+    goal_improved = False
+    trained_goal_error = float("inf")
+    fresh_goal_error = float("inf")
+    goal_missing_rejected = False
+    if goal_conditioned:
+        # Import lazily: the standalone goal audit reuses this module's
+        # lifetime helper, so a top-level import would create a cycle.
+        from neural_computer import (
+            ExternalGoalFragmentCandidate,
+            ExternalGoalFragmentMemory,
+            ExternalGoalFragmentStager,
+        )
+
+        from .goal_conditioned_planning import (
+            _exact_goal_retention_probe,
+            _plan_error,
+        )
+
+        candidate = ExternalGoalFragmentCandidate.from_state(
+            target_recovery.expected_states[goal_horizon - 1].detach()
+        )
+        candidate_digest = candidate.digest(state_width=bank.state_width)
+        probe_memory = ExternalGoalFragmentMemory(bank.state_width)
+        values, masks = candidate.tensors(state_width=bank.state_width)
+        probe_memory.append(values, masks)
+        goal_probe_error, goal_used = _plan_error(
+            planner,
+            initial_state=target_recovery.initial_state,
+            goal_memory=probe_memory,
+            candidate_intentions=candidate_intentions,
+            context=target_context,
+            horizon=goal_horizon,
+            fragment_id=0,
+        )
+        stager = ExternalGoalFragmentStager(
+            bank.state_width,
+            threshold=1.0,
+            min_observations=1,
+            min_stable_observations=1,
+        )
+        stager.observe(
+            candidate,
+            float(goal_probe_error <= goal_verifier_threshold),
+        )
+        goal_memory = ExternalGoalFragmentMemory(bank.state_width)
+        admission = stager.admit_verified(
+            goal_memory,
+            candidate_digest,
+            _exact_goal_retention_probe(candidate, bank.state_width),
+        )
+        goal_fragment_admitted = admission.accepted
+        if admission.accepted and admission.fragment_id is not None:
+            trained_goal_error, trained_goal_used = _plan_error(
+                planner,
+                initial_state=target_recovery.initial_state,
+                goal_memory=goal_memory,
+                candidate_intentions=candidate_intentions,
+                context=target_context,
+                horizon=goal_horizon,
+                fragment_id=admission.fragment_id,
+            )
+            fresh_goal_error, fresh_goal_used = _plan_error(
+                fresh_planner,
+                initial_state=target_recovery.initial_state,
+                goal_memory=goal_memory,
+                candidate_intentions=candidate_intentions,
+                context=target_context,
+                horizon=goal_horizon,
+                fragment_id=admission.fragment_id,
+            )
+            goal_fragment_used = bool(
+                goal_used and trained_goal_used and fresh_goal_used
+            )
+            goal_improved = trained_goal_error < fresh_goal_error
+        missing_stager = ExternalGoalFragmentStager(
+            bank.state_width,
+            threshold=1.0,
+            min_observations=1,
+            min_stable_observations=1,
+        )
+        missing_stager.observe(candidate, 0.0, eligible=False)
+        missing_rejection = missing_stager.admit_verified(
+            ExternalGoalFragmentMemory(bank.state_width),
+            candidate_digest,
+            _exact_goal_retention_probe(candidate, bank.state_width),
+        )
+        goal_missing_rejected = not missing_rejection.accepted
     passed = (
         unchanged
         and source_stable
         and discovered
         and recovered
         and improved
+        and (
+            not goal_conditioned
+            or (
+                goal_fragment_admitted
+                and goal_fragment_used
+                and goal_improved
+                and goal_missing_rejected
+            )
+        )
     )
     return OnlineTransitionDiscoveryReport(
         schema=(
@@ -1101,6 +1224,14 @@ def run_online_transition_discovery_audit(
         window_gain=window_gain,
         recency_decay=recency_decay,
         context_aggregation=context_aggregation,
+        goal_conditioned=goal_conditioned,
+        target_goal_fragment_admitted=goal_fragment_admitted,
+        target_goal_fragment_used=goal_fragment_used,
+        target_goal_planner_improved_over_fresh=goal_improved,
+        trained_target_goal_error=trained_goal_error,
+        fresh_target_goal_error=fresh_goal_error,
+        target_goal_horizon=goal_horizon if goal_conditioned else 0,
+        target_goal_missing_evidence_rejected=goal_missing_rejected,
     )
 
 
@@ -1124,6 +1255,9 @@ def main() -> None:
     )
     parser.add_argument("--window-gain", type=float, default=0.15)
     parser.add_argument("--recency-decay", type=float, default=0.75)
+    parser.add_argument("--goal-conditioned", action="store_true")
+    parser.add_argument("--goal-horizon", type=int, default=2)
+    parser.add_argument("--goal-verifier-threshold", type=float, default=0.05)
     parser.add_argument("--steps", type=int, default=6)
     args = parser.parse_args()
     if args.audit == "nonstationary":
@@ -1143,6 +1277,9 @@ def main() -> None:
             window_statistics=args.window_statistics,
             window_gain=args.window_gain,
             recency_decay=args.recency_decay,
+            goal_conditioned=args.goal_conditioned,
+            goal_horizon=args.goal_horizon,
+            goal_verifier_threshold=args.goal_verifier_threshold,
         )
     else:
         report = run_replay_free_transition_acquisition_audit(

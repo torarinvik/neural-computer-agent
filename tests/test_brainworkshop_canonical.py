@@ -260,6 +260,7 @@ def test_recency_window_transition_discovery_is_an_explicit_transfer_mode() -> N
         window_statistics="recency_weighted_and_latest_v1",
         window_gain=0.05,
         recency_decay=0.75,
+        goal_conditioned=True,
     )
 
     assert report.status == "online_replay_free_transition_discovery_boundary"
@@ -268,6 +269,13 @@ def test_recency_window_transition_discovery_is_an_explicit_transfer_mode() -> N
     assert report.recency_decay == 0.75
     assert report.target_route_recovered
     assert report.target_model_improved_on_heldout
+    assert report.goal_conditioned
+    assert report.target_goal_fragment_admitted
+    assert report.target_goal_fragment_used
+    assert report.target_goal_planner_improved_over_fresh
+    assert report.target_goal_horizon == 2
+    assert report.target_goal_missing_evidence_rejected
+    assert report.trained_target_goal_error < report.fresh_target_goal_error
     assert report.replayed_examples == 0
 
 

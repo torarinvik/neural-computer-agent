@@ -1546,3 +1546,28 @@ rendered verifier bits were counted, and replay and optimizer updates were
 zero. This is bounded nonstationary CPU/files composition, not universal
 positive transfer or general continual learning. The ledger is in
 `session_records/nonstationary_goal_conditioned_planning_2026-08-11/sample_efficiency_ledger.json`.
+
+## Online discovered target goal use (2026-08-11)
+
+The online discovery harness now has an opt-in downstream gate:
+
+```bash
+PYTHONPATH=src uv run python -m experiments.brainworkshop_canonical.replay_free_transition_acquisition \
+  --audit online-discovery --seed 91 --window-statistics recency_weighted_and_latest_v1 \
+  --window-gain 0.05 --goal-conditioned
+```
+
+The target context remains undisclosed to the router; it is discovered from
+opaque transition rows, promoted only after held-out recursive and source
+retention gates, and then used to admit and search toward a two-step opaque
+goal fragment. Across seeds `80–103`, `8/24` complete runs passed. Every
+complete run recovered the target route, admitted and used the target goal,
+beat its matched fresh goal planner, and retained the source slot; all runs
+used zero replay and zero optimizer updates. Sixteen runs were correctly
+rejected before the complete gate. The ledger is in
+`session_records/online_goal_conditioned_discovery_2026-08-11/sample_efficiency_ledger.json`.
+
+This is the strongest current online CPU/files result, but it remains bounded:
+the complete-pass rate is `8/24`, the target family is still a controlled
+rendered pressure test, and arbitrary computation, unrestricted growth,
+universal positive transfer, and general continual learning remain open.

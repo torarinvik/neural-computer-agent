@@ -363,3 +363,16 @@ external factual slot, admits B's opaque goal file, and compares two-step
 search with a matched fresh target slot while checking A's byte stability.
 Seeds `91`, `92`, and `93` all pass this bounded rung; the ledger is in
 `session_records/nonstationary_goal_conditioned_planning_2026-08-11/sample_efficiency_ledger.json`.
+
+The online version adds the goal gate after opaque target-context discovery:
+
+```bash
+PYTHONPATH=src uv run python -m experiments.brainworkshop_canonical.replay_free_transition_acquisition \
+  --audit online-discovery --seed 91 --window-statistics recency_weighted_and_latest_v1 \
+  --window-gain 0.05 --goal-conditioned
+```
+
+Across seeds `80–103`, `8/24` runs completed route discovery, source
+retention, target goal admission/use, and the matched fresh-goal challenger;
+the other sixteen were rejected by the complete gate. The ledger is in
+`session_records/online_goal_conditioned_discovery_2026-08-11/sample_efficiency_ledger.json`.
