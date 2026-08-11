@@ -139,6 +139,7 @@ def run_factored_residual_sequence_pressure(
     promotion_holdout_lifetimes: int = 2,
     regime_count: int = 3,
     context_aggregation: str = "last_token",
+    recency_decay: float = 0.75,
     adaptive_address: bool = False,
     adaptive_address_learning_rate: float = 0.003,
     residual_model_family: str = EXTERNAL_TRANSITION_RANDOM_FEATURE_MODEL_FAMILY,
@@ -160,8 +161,14 @@ def run_factored_residual_sequence_pressure(
         raise ValueError("factored sequence pressure budgets must be positive")
     if target_training_lifetimes < 2 or promotion_holdout_lifetimes < 2:
         raise ValueError("factored sequence pressure needs repeated evidence")
-    if context_aggregation not in {"last_token", "mean_pool"}:
+    if context_aggregation not in {
+        "last_token",
+        "mean_pool",
+        "recency_weighted_and_latest",
+    }:
         raise ValueError("factored sequence context aggregation is unsupported")
+    if not math.isfinite(recency_decay) or not 0.0 < recency_decay <= 1.0:
+        raise ValueError("factored sequence recency decay must lie in (0, 1]")
     if not isinstance(adaptive_address, bool):
         raise TypeError("factored sequence adaptive address flag must be boolean")
     if (
@@ -273,6 +280,7 @@ def run_factored_residual_sequence_pressure(
         hidden_width=max(16, model.state_width),
         context_width=model.context_width,
         aggregation=context_aggregation,
+        recency_decay=recency_decay,
     )
     address_adapter = (
         ExternalTransitionContextAddressAdapter(
@@ -746,6 +754,12 @@ def main() -> None:
     parser.add_argument("--report-out", type=str)
     parser.add_argument("--adaptive-address", action="store_true")
     parser.add_argument(
+        "--context-aggregation",
+        choices=("last_token", "mean_pool", "recency_weighted_and_latest"),
+        default="last_token",
+    )
+    parser.add_argument("--recency-decay", type=float, default=0.75)
+    parser.add_argument(
         "--adaptive-address-learning-rate",
         type=float,
         default=0.003,
@@ -757,6 +771,8 @@ def main() -> None:
             seed=seed,
             adaptive_address=args.adaptive_address,
             adaptive_address_learning_rate=args.adaptive_address_learning_rate,
+            context_aggregation=args.context_aggregation,
+            recency_decay=args.recency_decay,
         )
         for seed in args.seeds
     ]

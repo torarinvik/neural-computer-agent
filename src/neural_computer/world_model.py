@@ -350,7 +350,7 @@ class ExternalTransitionModel(nn.Module):
             nn.Linear(self.hidden_width, self.state_width),
         )
 
-    def configuration(self) -> dict[str, int | str]:
+    def configuration(self) -> dict[str, int | float | str]:
         return {
             "schema": self.schema,
             "state_width": self.state_width,
@@ -3344,17 +3344,25 @@ class ExternalTransitionContextEncoder(nn.Module):
         hidden_width: int = 64,
         context_width: int = 32,
         aggregation: str = "last_token",
+        recency_decay: float = 0.75,
     ) -> None:
         super().__init__()
         if min(state_width, intention_width, hidden_width, context_width) < 1:
             raise ValueError("transition-context dimensions must be positive")
-        if aggregation not in {"last_token", "mean_pool"}:
+        if aggregation not in {
+            "last_token",
+            "mean_pool",
+            "recency_weighted_and_latest",
+        }:
             raise ValueError("unsupported transition-context aggregation")
+        if not math.isfinite(recency_decay) or not 0.0 < recency_decay <= 1.0:
+            raise ValueError("transition-context recency decay must lie in (0, 1]")
         self.state_width = int(state_width)
         self.intention_width = int(intention_width)
         self.hidden_width = int(hidden_width)
         self.context_width = int(context_width)
         self.aggregation = aggregation
+        self.recency_decay = float(recency_decay)
         token_width = self.state_width * 2 + self.intention_width + 1
         self.token_encoder = nn.Sequential(
             nn.Linear(token_width, self.hidden_width),
@@ -3378,6 +3386,7 @@ class ExternalTransitionContextEncoder(nn.Module):
             "hidden_width": self.hidden_width,
             "context_width": self.context_width,
             "aggregation": self.aggregation,
+            "recency_decay": self.recency_decay,
             "input": "opaque_state_intention_next_state_confidence_v1",
             "training": "paired_noisy_transition_view_contrastive_v1",
             "prefix_alignment_update": "copy_on_write_one_pass_v1",
@@ -3440,21 +3449,65 @@ class ExternalTransitionContextEncoder(nn.Module):
             dim=-1,
         )
         token_features = self.token_encoder(tokens)
-        if self.aggregation == "last_token":
-            sequence, _hidden = self.recurrent(token_features)
-            summary = sequence[:, -1]
-        else:
-            # Mean-pool independent token features so a bundle's address is
-            # invariant to transport arrival order. The recurrent path is
-            # retained as the compatibility default for existing checkpoints.
-            weights = confidence_values.unsqueeze(-1)
-            summary = (token_features * weights).sum(dim=1) / weights.sum(
-                dim=1
-            ).clamp_min(1e-12)
+        summary = self._aggregate(token_features, confidence_values)
         return torch.nn.functional.normalize(
             self.context_projection(summary),
             dim=-1,
         )
+
+    def _aggregate(
+        self,
+        token_features: torch.Tensor,
+        confidence_values: torch.Tensor,
+    ) -> torch.Tensor:
+        """Aggregate a causal bundle without discarding its actual latest row."""
+
+        if token_features.ndim != 3 or confidence_values.shape != token_features.shape[:2]:
+            raise ValueError("transition-context aggregation inputs have the wrong shape")
+        if self.aggregation == "last_token":
+            sequence, _hidden = self.recurrent(token_features)
+            return sequence[:, -1]
+        if self.aggregation == "mean_pool":
+            # Mean-pool independent token features so a bundle's address is
+            # invariant to transport arrival order. The recurrent path is
+            # retained as the compatibility default for existing checkpoints.
+            weights = confidence_values.unsqueeze(-1)
+            return (token_features * weights).sum(dim=1) / weights.sum(
+                dim=1
+            ).clamp_min(1e-12)
+
+        # Preserve two different facts that last-token and mean-pool each lose:
+        # the order-aware recent history and the actual latest reliable row.
+        # Confidence is generic verifier reliability; zero-confidence rows are
+        # absent from the latest-row selection but remain harmless in the
+        # recency summary. The projection remains the same width so this is a
+        # replaceable addressing policy, not a controller resize.
+        positions = torch.arange(
+            token_features.shape[1],
+            device=token_features.device,
+            dtype=token_features.dtype,
+        )
+        latest_position = torch.where(
+            confidence_values > 0,
+            positions.unsqueeze(0),
+            torch.full_like(positions.unsqueeze(0), -1.0),
+        ).amax(dim=1)
+        has_latest = latest_position >= 0
+        latest_indices = latest_position.clamp_min(0).to(dtype=torch.long)
+        latest = token_features.gather(
+            1,
+            latest_indices.view(-1, 1, 1).expand(-1, 1, token_features.shape[-1]),
+        ).squeeze(1)
+        latest = latest * has_latest.unsqueeze(-1).to(token_features.dtype)
+        distances = positions.unsqueeze(0) - latest_position.unsqueeze(1)
+        recency_weights = torch.where(
+            confidence_values > 0,
+            self.recency_decay ** distances.clamp_min(0),
+            torch.zeros_like(confidence_values),
+        )
+        recency = (token_features * recency_weights.unsqueeze(-1)).sum(dim=1)
+        recency = recency / recency_weights.sum(dim=1, keepdim=True).clamp_min(1e-12)
+        return 0.5 * (recency + latest)
 
     def encode_observation(
         self,
@@ -3505,13 +3558,15 @@ class ExternalTransitionContextEncoder(nn.Module):
         final = sequence[:, -1]
         mean = sequence.mean(dim=1)
         maximum = sequence.amax(dim=1)
-        if self.aggregation == "mean_pool":
+        if self.aggregation == "last_token":
+            summary = final
+        elif self.aggregation == "mean_pool":
             weights = confidence_values.unsqueeze(-1)
             summary = (token_features * weights).sum(dim=1) / weights.sum(
                 dim=1
             ).clamp_min(1e-12)
         else:
-            summary = final
+            summary = self._aggregate(token_features, confidence_values)
         context = self.context_projection(summary)
         return torch.nn.functional.normalize(
             torch.cat((context, final, mean, maximum), dim=-1),
@@ -3800,6 +3855,7 @@ class ExternalTransitionContextEncoder(nn.Module):
             hidden_width=int(configuration["hidden_width"]),
             context_width=int(configuration["context_width"]),
             aggregation=str(configuration.get("aggregation", "last_token")),
+            recency_decay=float(configuration.get("recency_decay", 0.75)),
         )
         current = encoder.state_dict()
         if tuple(state) != tuple(current):

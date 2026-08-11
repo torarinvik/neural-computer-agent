@@ -1010,6 +1010,48 @@ def test_transition_context_mean_pool_is_permutation_invariant_and_persistent() 
     assert restored.digest() == encoder.digest()
 
 
+def test_transition_context_recency_latest_preserves_actual_latest_evidence() -> None:
+    torch.manual_seed(1207)
+    encoder = ExternalTransitionContextEncoder(
+        2,
+        1,
+        hidden_width=8,
+        context_width=5,
+        aggregation="recency_weighted_and_latest",
+        recency_decay=0.75,
+    )
+    observation = ExternalTransitionObservation(
+        state=torch.randn(5, 2),
+        intention=torch.randn(5, 1),
+        next_state=torch.randn(5, 2),
+        confidence=torch.tensor([1.0, 1.0, 1.0, 0.0, 0.0]),
+    )
+    changed_absent_tail = ExternalTransitionObservation(
+        state=observation.state.clone(),
+        intention=observation.intention.clone(),
+        next_state=observation.next_state.clone(),
+        confidence=observation.confidence.clone(),
+    )
+    changed_absent_tail.next_state[4].add_(100.0)
+    changed_latest = ExternalTransitionObservation(
+        state=observation.state.clone(),
+        intention=observation.intention.clone(),
+        next_state=observation.next_state.clone(),
+        confidence=observation.confidence.clone(),
+    )
+    changed_latest.next_state[2].add_(0.5)
+
+    base = encoder.encode_observation(observation)
+    absent_tail = encoder.encode_observation(changed_absent_tail)
+    latest = encoder.encode_observation(changed_latest)
+    restored = ExternalTransitionContextEncoder.from_payload(encoder.state_payload())
+
+    assert torch.equal(base, absent_tail)
+    assert not torch.equal(base, latest)
+    assert restored.configuration() == encoder.configuration()
+    assert restored.digest() == encoder.digest()
+
+
 def test_context_address_adapter_is_copy_on_write_and_persistent() -> None:
     torch.manual_seed(1203)
     encoder = ExternalTransitionContextEncoder(

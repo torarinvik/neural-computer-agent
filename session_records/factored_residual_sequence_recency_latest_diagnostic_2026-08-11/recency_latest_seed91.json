@@ -1,0 +1,105 @@
+{
+  "schema": "neural-computer.brainworkshop-factored-residual-sequence-pressure.v1",
+  "status": "factored_residual_sequence_pressure_failed",
+  "results": [
+    {
+      "seed": 91,
+      "status": "factored_residual_sequence_pressure_rejected",
+      "regimes": [
+        {
+          "index": 0,
+          "n_back": 3,
+          "cue_symbol": 7,
+          "staged": true,
+          "promoted": true,
+          "candidate_errors": [
+            0.008118602447211742,
+            0.012113812379539013
+          ],
+          "fresh_errors": [
+            0.04616423323750496,
+            0.052182696759700775
+          ],
+          "fresh_improvement": true,
+          "prior_retention": true,
+          "selected_residual_ridge": 0.001,
+          "context_count_after": 1
+        },
+        {
+          "index": 1,
+          "n_back": 4,
+          "cue_symbol": 8,
+          "staged": true,
+          "promoted": true,
+          "candidate_errors": [
+            0.009032887406647205,
+            0.01569521799683571
+          ],
+          "fresh_errors": [
+            0.05255436897277832,
+            0.06903733313083649
+          ],
+          "fresh_improvement": true,
+          "prior_retention": true,
+          "selected_residual_ridge": 0.01,
+          "context_count_after": 2
+        },
+        {
+          "index": 2,
+          "n_back": 5,
+          "cue_symbol": 9,
+          "staged": true,
+          "promoted": true,
+          "candidate_errors": [
+            0.006509703584015369,
+            0.013097372837364674
+          ],
+          "fresh_errors": [
+            0.07670556008815765,
+            0.04491820186376572
+          ],
+          "fresh_improvement": true,
+          "prior_retention": true,
+          "selected_residual_ridge": 0.001,
+          "context_count_after": 3
+        }
+      ],
+      "source_retained": true,
+      "reversal_passed": true,
+      "address_update_passed": true,
+      "address_update_loss": null,
+      "missing_evidence_passed": false,
+      "memory_corruption_rejected": true,
+      "controller_unchanged": true,
+      "base_frozen": true,
+      "final_context_count": 3,
+      "unique_verifier_bits": 122,
+      "logical_lifetimes": 19,
+      "transition_rows_consumed_once": 90,
+      "optimizer_updates": 0,
+      "replayed_examples": 0,
+      "reversal_errors": [
+        0.010994215495884418,
+        0.004923281259834766,
+        0.011550020426511765
+      ]
+    }
+  ],
+  "aggregate": {
+    "complete_passes": 0,
+    "total_runs": 1,
+    "regime_promotions": 3,
+    "source_retention_passes": 1,
+    "reversal_passes": 1,
+    "address_update_passes": 1,
+    "missing_evidence_passes": 0,
+    "memory_corruption_rejection_passes": 1,
+    "controller_unchanged_all_runs": true,
+    "unique_verifier_bits_total": 122,
+    "logical_lifetimes_total": 19,
+    "transition_rows_consumed_once_total": 90,
+    "optimizer_updates_total": 0,
+    "replayed_examples_total": 0,
+    "wall_time_seconds": 1.563
+  }
+}
