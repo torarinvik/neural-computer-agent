@@ -121,6 +121,29 @@ parser.add_argument(
          "two orders of magnitude, so it had almost no power; reuse can "
          "only pay off on families that come LATER in the sequence.")
 parser.add_argument(
+    "--proposal-mass", default="1",
+    help="comma-separated sweep. How much weight ONE family's evidence "
+         "adds to the proposal distribution, against a prior of 1.0 per "
+         "element. 1 is one vote per family. Raw counts (roughly 24 per "
+         "family) collapse exploration after a single success — the "
+         "first three-seed run had the learned arms spending the whole "
+         "4000 budget on families the uniform control solved in 30 "
+         "candidates. This knob turns 'how much concentration helps' "
+         "into a measurement instead of a guess; 0 recovers uniform.")
+parser.add_argument(
+    "--exact-weight", default="1,4",
+    help="comma-separated sweep of the weight a STORED PROGRAM carries "
+         "in the proposal, separately from the marginal mass. The first "
+         "corrected seed put this question on the table: on families "
+         "sharing their geometry, the arm that reused whole programs "
+         "from a uniform pool cost 0.288 of the frozen control, while "
+         "the arms that learned instruction statistics cost 1.12-1.21 "
+         "— WORSE than frozen. If that replicates, what pays is "
+         "recalling a program rather than knowing which instructions "
+         "are good, and the sampling probability of stored programs is "
+         "the lever. 0 drops stored programs entirely, which isolates "
+         "the sketches.")
+parser.add_argument(
     "--related-families", type=int, default=0,
     help="also run the whole arm comparison on a sequence of families "
          "that SHARE their state geometry. The diverse sequence is the "
@@ -372,7 +395,8 @@ if args.synthesize:
                 "held_out": round(hits / max(total, 1), 4),
                 "identity": round(identity / max(total, 1), 4)}
 
-    def search_with_library(family, library, weights, generator, budget):
+    def search_with_library(family, library, weights, observer, generator,
+                            budget):
         """Propose programs by concatenating LIBRARY FRAGMENTS. Returns
         the recipe and the number of candidates tried — cost is the
         measurement here, not accuracy.
@@ -383,7 +407,7 @@ if args.synthesize:
         pool, so every added fragment made every other fragment RARER,
         and the library got bigger without getting better."""
         states, acts, nexts = observe(family, args.observations,
-                                      generator)
+                                      observer)
         used = (states < VALUES).all(dim=0)
         states = torch.where(states < VALUES, states,
                              torch.zeros_like(states))
@@ -483,8 +507,19 @@ if args.synthesize:
         The arms therefore start from the same proposal and differ only
         in what they learn from what worked."""
 
-        def __init__(self, use_sketches: bool):
+        def __init__(self, use_sketches: bool, mass: float,
+                     exact_mass: float):
             self.use_sketches = use_sketches
+            self.mass = mass
+            # weight given to a STORED PROGRAM, separate from the
+            # marginal mass. The first corrected run made this the
+            # question: the arm that reused whole programs from a
+            # uniform pool beat frozen 3.5x on related families, while
+            # the arms that learned statistics were WORSE than frozen.
+            # If that holds, what pays is recalling a program, not
+            # knowing which instructions are good — and then the
+            # sampling probability of stored programs is the lever.
+            self.exact_mass = exact_mass
             self.parts = [(op,) for op in range(NOPS)]   # length-1 = ops
             self.weight = [1.0] * NOPS
             self.exact: list = []          # whole past winning programs
@@ -530,23 +565,48 @@ if args.synthesize:
             return out[:args.program_len]
 
         def observe(self, winners: list, solved: list) -> None:
-            """Fit the statistics to programs that WORKED."""
+            """Fit the statistics to programs that WORKED.
+
+            ONE VOTE PER FAMILY. Each family's evidence is normalised to
+            total mass `args.proposal_mass` before it is added, against a
+            prior of 1.0 on every element. Raw counts were the first
+            version and they collapse: a single family contributes ~24
+            instructions, so after ONE family a used operation outweighs
+            an unused one five to ten times over, and the proposer stops
+            being able to find solutions that lie outside its own first
+            success. That is not a subtle risk — it is what the first
+            three-seed run showed, with families the uniform control
+            solved in 30 candidates costing the learned arms the entire
+            4000 budget."""
+            def blend(counts: list, histogram: dict) -> None:
+                total = sum(histogram.values())
+                if total <= 0:
+                    return
+                for key, value in histogram.items():
+                    counts[key] += self.mass * value / total
+
+            islot: dict = {}
+            jslot: dict = {}
             for program in winners:
                 for op, i, j in program:
                     if USES_I[op]:
-                        self.i_count[i] += 1.0
+                        islot[i] = islot.get(i, 0) + 1
                     if USES_J[op]:
-                        self.j_count[j] += 1.0
+                        jslot[j] = jslot.get(j, 0) + 1
+            blend(self.i_count, islot)
+            blend(self.j_count, jslot)
             shapes = [tuple(op for op, _, _ in p) for p in solved]
             fresh = [tuple(op for op, _, _ in p) for p in winners]
-            for slot, part in enumerate(self.parts):
-                self.weight[slot] += sum(occurrences(part, shape)
-                                         for shape in fresh)
+            element = {slot: sum(occurrences(part, shape)
+                                 for shape in fresh)
+                       for slot, part in enumerate(self.parts)}
+            blend(self.weight, {k: v for k, v in element.items() if v})
             if not self.use_sketches:
                 return
-            for program in winners:
+            for program in (winners if self.exact_mass > 0 else []):
                 self.exact.append(tuple(program))
-                self.exact_weight.append(1.0)
+                self.exact_weight.append(self.exact_mass
+                                         / max(len(winners), 1))
             for shape in fresh:
                 for part in sub_fragments(shape):
                     if part in self.known:
@@ -555,15 +615,17 @@ if args.synthesize:
                         continue
                     self.known.add(part)
                     self.parts.append(part)
-                    self.weight.append(float(sum(
-                        occurrences(part, s) for s in shapes)))
+                    # a new sketch enters at the prior, so it is drawn
+                    # about as often as one primitive rather than
+                    # dominating on the strength of one appearance
+                    self.weight.append(1.0)
 
-    def search_with_proposer(family, proposer, generator, budget):
+    def search_with_proposer(family, proposer, observer, generator, budget):
         """Identical to search_with_library except for where candidates
         come from. Cost is still counted in plant forward passes, which
         is what makes the arms comparable."""
         states, acts, nexts = observe(family, args.observations,
-                                      generator)
+                                      observer)
         used = (states < VALUES).all(dim=0)
         states = torch.where(states < VALUES, states,
                              torch.zeros_like(states))
@@ -609,34 +671,52 @@ if args.synthesize:
         the entire reason this arm exists."""
         atoms = [tuple([(op, i, j)]) for op in range(NOPS)
                  for i in range(SLOTS) for j in range(SLOTS) if i != j]
-        proposer = (Proposer(mode == "sketch")
-                    if mode in ("marginal", "sketch") else None)
+        kind, mass, exact_mass = mode
+        proposer = (Proposer(kind == "sketch", mass, exact_mass)
+                    if kind in ("marginal", "sketch") else None)
         library, weights, solved, sequence = atoms, None, [], []
+        stored: set = set()      # every program any earlier family won
         started = proposer.size() if proposer else len(atoms)
-        # per-arm generator seeded identically, so the arms see the SAME
-        # observations for the same family and the comparison is paired
+        # Two generators, and they must be SEPARATE. One generator for
+        # both roles looked paired and was not: the search consumes a
+        # different number of draws in every arm, so from the second
+        # family onward each arm was solving a DIFFERENT observation
+        # sample and the per-family costs were not comparable at all.
+        # Seeding the observer per family index makes every arm face the
+        # identical search problem, which is the only thing that makes a
+        # per-family cost ratio mean anything.
         generator = torch.Generator().manual_seed(seed)
-        for name, family in targets:
+        for index, (name, family) in enumerate(targets):
+            observer = torch.Generator().manual_seed(seed + 7919 * index)
             if proposer is not None:
                 recipe, tried, fit = search_with_proposer(
-                    family, proposer, generator, budget)
+                    family, proposer, observer, generator, budget)
             else:
                 recipe, tried, fit = search_with_library(
-                    family, library, weights, generator, budget)
+                    family, library, weights, observer, generator, budget)
             actions = max(1, sum(1 for v in recipe.values()
                                  if v is not None))
+            winners = [tuple(program) for program in recipe.values()
+                       if program]
+            # OBSERVE THE MECHANISM, do not infer it from cost. If reuse
+            # is what makes a late family cheap, the winning program
+            # should literally BE one an earlier family produced. Cost
+            # alone cannot distinguish that from a lucky draw, and this
+            # can: it is the difference between "reuse happened" and
+            # "the number went down".
+            recalled = sum(1 for program in winners if program in stored)
             sequence.append({
                 "family": name, "candidates_tried": tried,
                 "fit": round(fit, 4),
                 "library_size": (proposer.size() if proposer
                                  else len(library)),
+                "winners": len(winners), "recalled": recalled,
                 "saturated": tried >= budget * actions})
-            winners = [tuple(program) for program in recipe.values()
-                       if program]
-            if mode == "frozen" or not winners:
+            stored.update(winners)
+            if kind == "frozen" or not winners:
                 continue
             solved.extend(winners)
-            if mode == "uniform":
+            if kind == "uniform":
                 for program in winners:
                     library.append(program)
                 continue
@@ -645,6 +725,8 @@ if args.synthesize:
                 "ended": proposer.size() if proposer else len(library),
                 "total_candidates": sum(s["candidates_tried"]
                                         for s in sequence),
+                "recalled_total": sum(s["recalled"] for s in sequence),
+                "winners_total": sum(s["winners"] for s in sequence),
                 "sketches": (sorted(
                     ("+".join(OPS[o] for o in p), round(w, 1))
                     for p, w in zip(proposer.parts, proposer.weight)
@@ -705,10 +787,21 @@ if args.synthesize:
             sequences["related"] = [
                 (f"rel{index}", RandomFamily(spec)) for index, spec
                 in enumerate(related_specs(gen, args.related_families))]
+        # (kind, marginal mass, stored-program weight). Mass is fixed at
+        # one vote per family throughout; the SWEEP is on how much
+        # weight a stored program carries, because that is what the
+        # first corrected seed made the live question.
+        arms = [("frozen", 0.0, 0.0), ("uniform", 0.0, 0.0),
+                ("marginal", 1.0, 0.0), ("sketch", 1.0, 0.0)]
+        arms += [("sketch", 1.0, float(w))
+                 for w in args.exact_weight.split(",") if float(w) > 0]
+        labels = [f"{kind}" if kind in ("frozen", "uniform")
+                  else f"{kind}-e{exact:g}"
+                  for kind, _, exact in arms]
         report["library_arms"] = {
-            tag: {mode: library_run(mode, seq, args.synthesize,
-                                    args.seed * 7907)
-                  for mode in ("frozen", "uniform", "marginal", "sketch")}
+            tag: {label: library_run(arm, seq, args.synthesize,
+                                     args.seed * 7907)
+                  for label, arm in zip(labels, arms)}
             for tag, seq in sequences.items()}
         report["library_families"] = {
             tag: [n for n, _ in seq] for tag, seq in sequences.items()}
@@ -722,7 +815,7 @@ if args.synthesize:
         sequence = []
         for name, family in targets:
             recipe, tried, fit = search_with_library(
-                family, library, None, gen, budget=args.synthesize)
+                family, library, None, gen, gen, budget=args.synthesize)
             sequence.append({
                 "family": name, "candidates_tried": tried,
                 "fit": round(fit, 4), "library_size": len(library)})
