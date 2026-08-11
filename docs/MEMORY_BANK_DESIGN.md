@@ -8663,3 +8663,55 @@ Note on statistics: these per-family figures are ratio-of-means, while
 the headline 0.425 is a mean of per-seed ratios. They are different
 estimators and are not comparable to each other; the predictions above
 are stated in the ratio-of-means the table uses.
+
+## F175 — the enumeration cap is REFUTED, and a failed enumeration is
+## not wasted
+
+The prediction was pre-registered with what each failure would mean.
+Two of three failed. Regime valid throughout (2.5% saturated, control
+`cover` reproducing at 0.893/0.840).
+
+**Prediction 2 — winners unchanged — CONFIRMED exactly.** `dial`
+0.008 -> 0.008, `toggle` 0.015 -> 0.015, `perm` 0.039 -> 0.039, to the
+digit. The cap at 400 clears their termination at 328 and does not
+touch them, exactly as the arithmetic said.
+
+**Prediction 1 — the three losing families fall below 1.0 — FAILED,
+one of three.**
+
+| family | uncapped | capped | predicted |
+| --- | ---: | ---: | ---: |
+| line | 1.173 | 1.099 | 0.883 |
+| grid | 1.111 | **1.154** | 0.749 |
+| proc0 | 1.326 | 0.756 | 0.383 |
+
+`grid` got WORSE under a cap meant to help it.
+
+**Prediction 3 — the aggregate improves — SPLIT, and it is a net
+loss.** Diverse 0.425 -> 0.374, related 0.406 -> **0.503**. Averaged
+across both sequences the cap costs 0.4155 -> 0.4385.
+
+**Why, and it is the parenthesis I wrote and dismissed.** When I set
+the cap I noted that a smaller enumeration leaves a lower best score
+for the sampling to start from, and called it minor. It is the whole
+effect. **A failed enumeration is not wasted work** — it raises the
+best score, and the sampling that follows stops at `--fit-target`
+relative to that. Cutting the enumeration saves calls in one place and
+spends them in the other. On `grid` it spends more than it saves.
+
+On the related sequence the loss is larger still, which points at a
+second mechanism worth noting rather than guessing about: those
+families plausibly find their recipes by enumeration at a position
+BETWEEN 400 and 930, so the cap converts wins into fallbacks. That is a
+prediction, not a measurement, and the way to settle it is to record
+where a successful enumeration terminates rather than reason about it.
+
+**Default restored to uncapped.** F173's 0.425/0.406 stands as the
+best configuration measured.
+
+**Three obvious improvements have now failed in this session** — the
+coverage filter as first framed, the attainable-fit bound, and this
+cap. All three were sound arguments about where cost goes, and all
+three were wrong about a system whose parts interact. The pattern is
+specific enough to name: **each assumed a component's cost could be
+removed without changing what the rest of the system then does.**

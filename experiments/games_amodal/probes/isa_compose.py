@@ -217,13 +217,17 @@ parser.add_argument(
          "before extending the basis; that ordering is why the modulus "
          "was worth adding.")
 parser.add_argument(
-    "--enum-budget", type=float, default=0.1,
+    "--enum-budget", type=float, default=1.0,
     help="fraction of an action's budget the enumeration may spend "
          "before falling back to sampling. F173's entire loss was a "
          "failed enumeration paid for in full; every WIN it recorded "
-         "arrived within 328 calls, so capping keeps the wins and "
-         "bounds the loss at 1+f rather than the 2.2x measured. 1.0 "
-         "recovers F173's uncapped behaviour.")
+         "arrived within 328 calls, so capping should keep the wins and "
+         "bound the loss. MEASURED AND REFUTED (F175): capping helps the "
+         "diverse sequence 0.425 -> 0.374 and HURTS the related one "
+         "0.406 -> 0.503, a net loss. A failed enumeration is not "
+         "wasted — it raises the best score the sampling then starts "
+         "from — so cutting it saves calls in one place and spends them "
+         "in another. Default 1.0, uncapped.")
 parser.add_argument("--curve-every", type=int, default=0)
 parser.add_argument("--json", default="")
 args = parser.parse_args()
