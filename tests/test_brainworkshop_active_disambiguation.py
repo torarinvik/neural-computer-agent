@@ -22,5 +22,7 @@ def test_fresh_brainworkshop_active_probe_resolves_target_without_writes() -> No
     assert result.active_trial is not None
     assert result.active_trial.verifier_outcome_eligible
     assert result.active_trial.strict_route_slot_id == result.target_slot_id
+    assert result.support_calibration_rows > 0
+    assert result.active_trial.selected_probe_support
     assert result.optimizer_updates == 0
     assert result.replayed_examples == 0

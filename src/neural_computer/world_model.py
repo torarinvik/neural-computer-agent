@@ -74,6 +74,9 @@ EXTERNAL_TRANSITION_EVIDENCE_EVALUATOR_SCHEMA = (
 EXTERNAL_TRANSITION_EVIDENCE_STATISTICS_SCHEMA = (
     "neural-computer.external-transition-evidence-statistics.v1"
 )
+EXTERNAL_TRANSITION_SUPPORT_STATISTICS_SCHEMA = (
+    "neural-computer.external-transition-support-statistics.v1"
+)
 EXTERNAL_CONTEXTUAL_TRANSITION_EVIDENCE_STATISTICS_SCHEMA = (
     "neural-computer.contextual-transition-evidence-statistics.v1"
 )
@@ -6768,6 +6771,7 @@ class ExternalOnlineTransitionContextRouter:
         *,
         candidate_slot_ids: Sequence[int] | None = None,
         probe_state: torch.Tensor | None = None,
+        support_statistics: ExternalTransitionSupportStatistics | None = None,
     ) -> ExternalTransitionProbeResult:
         """Request an active probe for an ambiguously routed evidence window.
 
@@ -6819,6 +6823,7 @@ class ExternalOnlineTransitionContextRouter:
             current_state,
             candidate_intentions,
             candidate_slot_ids=slot_ids,
+            support_statistics=support_statistics,
         )
 
     @torch.no_grad()
@@ -9826,6 +9831,309 @@ class ExternalContextualTransitionEvidenceStatistics(nn.Module):
         return restored
 
 
+class ExternalTransitionSupportStatistics(nn.Module):
+    """Replay-free calibration of opaque model support by leverage.
+
+    The transition bank can estimate predictive leverage before an intention
+    is executed, but raw leverage is not a calibrated probability of a useful
+    prediction.  This external component stores only positive/negative
+    sufficient statistics over leverage bins.  A caller labels one fresh
+    consequence as supported when its prediction passes a caller-owned
+    factual tolerance, then consumes that scalar once through :meth:`observe`.
+    It retains no state, intention, prediction, or verifier row.
+    """
+
+    schema = EXTERNAL_TRANSITION_SUPPORT_STATISTICS_SCHEMA
+
+    def __init__(
+        self,
+        *,
+        bin_count: int = 16,
+        leverage_scale: float = 10.0,
+        prior_count: float = 1.0,
+        slot_capacity: int = 32,
+    ) -> None:
+        super().__init__()
+        if not isinstance(bin_count, int) or isinstance(bin_count, bool) or bin_count < 2:
+            raise ValueError("support-statistics bin count must be at least two")
+        if leverage_scale <= 0.0 or not math.isfinite(leverage_scale):
+            raise ValueError("support-statistics leverage scale is invalid")
+        if prior_count <= 0.0 or not math.isfinite(prior_count):
+            raise ValueError("support-statistics prior count is invalid")
+        if (
+            not isinstance(slot_capacity, int)
+            or isinstance(slot_capacity, bool)
+            or slot_capacity < 1
+        ):
+            raise ValueError("support-statistics slot capacity must be positive")
+        self.bin_count = int(bin_count)
+        self.leverage_scale = float(leverage_scale)
+        self.prior_count = float(prior_count)
+        self.slot_capacity = int(slot_capacity)
+        self.register_buffer(
+            "leverage_edges",
+            torch.logspace(
+                -6.0,
+                math.log10(self.leverage_scale),
+                self.bin_count - 1,
+                dtype=torch.float32,
+            ),
+        )
+        self.register_buffer(
+            "positive_counts",
+            torch.zeros(self.bin_count, dtype=torch.float32),
+        )
+        self.register_buffer(
+            "negative_counts",
+            torch.zeros(self.bin_count, dtype=torch.float32),
+        )
+        self.register_buffer("observation_count", torch.zeros((), dtype=torch.long))
+        self.register_buffer(
+            "slot_ids",
+            torch.full((self.slot_capacity,), -1, dtype=torch.long),
+        )
+        self.register_buffer(
+            "slot_positive_counts",
+            torch.zeros(self.slot_capacity, self.bin_count, dtype=torch.float32),
+        )
+        self.register_buffer(
+            "slot_negative_counts",
+            torch.zeros(self.slot_capacity, self.bin_count, dtype=torch.float32),
+        )
+        self.register_buffer(
+            "slot_observation_counts",
+            torch.zeros(self.slot_capacity, dtype=torch.long),
+        )
+
+    def configuration(self) -> dict[str, int | float | str]:
+        return {
+            "schema": self.schema,
+            "bin_count": self.bin_count,
+            "leverage_scale": self.leverage_scale,
+            "prior_count": self.prior_count,
+            "slot_capacity": self.slot_capacity,
+            "training": "one_pass_scalar_support_outcomes_v1",
+            "storage": "opaque_slot_and_leverage_bin_sufficient_statistics_v1",
+            "meaning": "opaque_transition_prediction_support_probability_v1",
+        }
+
+    def _validate_leverage(self, leverage: torch.Tensor) -> torch.Tensor:
+        if leverage.ndim == 2 and leverage.shape[1] == 1:
+            leverage = leverage[:, 0]
+        if leverage.ndim not in (1, 2) or (leverage.ndim == 2 and leverage.shape[1] < 1):
+            raise ValueError("support leverage must have shape [batch] or [batch, slots]")
+        if not bool(torch.isfinite(leverage).all()) or bool(torch.any(leverage < 0.0)):
+            raise ValueError("support leverage must be finite and non-negative")
+        return leverage
+
+    def _validate_outcome(
+        self,
+        outcome: torch.Tensor,
+        batch: int,
+    ) -> torch.Tensor:
+        if outcome.ndim == 2 and outcome.shape[1] == 1:
+            outcome = outcome[:, 0]
+        if outcome.ndim != 1 or outcome.shape[0] != batch:
+            raise ValueError("support outcomes must have shape [batch]")
+        if not bool(torch.isfinite(outcome).all()) or bool(
+            torch.any(outcome < 0.0) or torch.any(outcome > 1.0)
+        ):
+            raise ValueError("support outcomes must lie in [0, 1]")
+        return outcome
+
+    def _bin_indices(self, leverage: torch.Tensor) -> torch.Tensor:
+        values = self._validate_leverage(leverage)
+        return torch.bucketize(
+            values.detach().to(self.leverage_edges),
+            self.leverage_edges,
+        )
+
+    def _validate_slot_ids(
+        self,
+        slot_ids: Sequence[int],
+        expected: int,
+    ) -> tuple[int, ...]:
+        normalized = tuple(int(slot_id) for slot_id in slot_ids)
+        if len(normalized) != expected:
+            raise ValueError("support-statistics slot IDs are misaligned")
+        if any(slot_id < 0 for slot_id in normalized):
+            raise ValueError("support-statistics slot IDs must be non-negative")
+        if len(set(normalized)) != len(normalized):
+            raise ValueError("support-statistics slot IDs are duplicated")
+        return normalized
+
+    def _slot_indices(
+        self,
+        slot_ids: Sequence[int],
+        *,
+        create: bool,
+    ) -> torch.Tensor:
+        normalized = self._validate_slot_ids(slot_ids, len(slot_ids))
+        indices: list[int] = []
+        for slot_id in normalized:
+            matches = torch.nonzero(self.slot_ids == slot_id, as_tuple=False)
+            if matches.numel():
+                indices.append(int(matches[0, 0]))
+                continue
+            if not create:
+                indices.append(-1)
+                continue
+            free = torch.nonzero(self.slot_ids < 0, as_tuple=False)
+            if not free.numel():
+                raise RuntimeError("support-statistics opaque slot capacity exhausted")
+            index = int(free[0, 0])
+            self.slot_ids[index] = slot_id
+            indices.append(index)
+        return torch.tensor(indices, dtype=torch.long, device=self.slot_ids.device)
+
+    def forward(
+        self,
+        leverage: torch.Tensor,
+        *,
+        slot_ids: Sequence[int] | None = None,
+    ) -> torch.Tensor:
+        if leverage.ndim == 2:
+            if slot_ids is None:
+                raise ValueError("slot IDs are required for per-slot support")
+            values = self._validate_leverage(leverage)
+            normalized = self._validate_slot_ids(slot_ids, leverage.shape[1])
+            indices = self._slot_indices(normalized, create=False)
+            bins = self._bin_indices(values)
+            device = values.device
+            safe_indices = indices.to(device).clamp_min(0)
+            positive = self.slot_positive_counts.to(device)[safe_indices[:, None], bins]
+            negative = self.slot_negative_counts.to(device)[safe_indices[:, None], bins]
+            known = (indices >= 0).to(device=device).view(1, -1)
+            positive = torch.where(known, positive, torch.zeros_like(positive))
+            negative = torch.where(known, negative, torch.zeros_like(negative))
+            posterior = (positive + self.prior_count) / (
+                positive + negative + (2.0 * self.prior_count)
+            )
+            return posterior.mean(dim=1)
+        if leverage.ndim != 1:
+            raise ValueError("support leverage must have shape [batch] or [batch, slots]")
+        indices = self._bin_indices(leverage)
+        positive = self.positive_counts.to(indices.device)[indices] + self.prior_count
+        negative = self.negative_counts.to(indices.device)[indices] + self.prior_count
+        return positive / (positive + negative)
+
+    @torch.no_grad()
+    def observe(
+        self,
+        leverage: torch.Tensor,
+        supported: torch.Tensor,
+        *,
+        slot_ids: Sequence[int] | None = None,
+    ) -> None:
+        """Consume fresh support outcomes once without retaining examples."""
+
+        values = self._validate_leverage(leverage)
+        if values.ndim == 2:
+            if slot_ids is None:
+                raise ValueError("slot IDs are required for per-slot support")
+            normalized = self._validate_slot_ids(slot_ids, values.shape[1])
+            if supported.shape != values.shape:
+                raise ValueError("per-slot support outcomes are misaligned")
+            outcomes = supported
+            if not bool(torch.isfinite(outcomes).all()) or bool(
+                torch.any(outcomes < 0.0) or torch.any(outcomes > 1.0)
+            ):
+                raise ValueError("support outcomes must lie in [0, 1]")
+            indices = self._slot_indices(normalized, create=True)
+            bins = self._bin_indices(values)
+            device = self.slot_positive_counts.device
+            slot_index = indices.to(device).view(1, -1).expand(values.shape[0], -1)
+            flat_indices = (
+                slot_index * self.bin_count + bins.to(device)
+            ).reshape(-1)
+            targets = outcomes.to(device=device, dtype=self.slot_positive_counts.dtype)
+            self.slot_positive_counts.view(-1).index_add_(
+                0,
+                flat_indices,
+                targets.reshape(-1),
+            )
+            self.slot_negative_counts.view(-1).index_add_(
+                0,
+                flat_indices,
+                1.0 - targets.reshape(-1),
+            )
+            self.slot_observation_counts.index_add_(
+                0,
+                indices.to(device),
+                torch.full(
+                    (len(normalized),),
+                    values.shape[0],
+                    dtype=self.slot_observation_counts.dtype,
+                    device=device,
+                ),
+            )
+            self.observation_count.add_(values.shape[0])
+            return
+        outcomes = self._validate_outcome(supported, values.shape[0])
+        indices = self._bin_indices(values).to(self.positive_counts.device)
+        targets = outcomes.to(self.positive_counts)
+        self.positive_counts.index_add_(0, indices, targets)
+        self.negative_counts.index_add_(0, indices, 1.0 - targets)
+        self.observation_count.add_(values.shape[0])
+
+    def digest(self) -> str:
+        digest = hashlib.sha256()
+        digest.update(repr(self.configuration()).encode("utf-8"))
+        for name, value in sorted(self.state_dict().items()):
+            detached = value.detach().cpu().contiguous()
+            digest.update(name.encode("utf-8"))
+            digest.update(str(detached.dtype).encode("utf-8"))
+            digest.update(repr(tuple(detached.shape)).encode("utf-8"))
+            digest.update(detached.numpy().tobytes())
+        return digest.hexdigest()
+
+    def payload(self) -> dict[str, object]:
+        return {
+            "schema": self.schema,
+            "configuration": self.configuration(),
+            "state": {
+                name: value.detach().cpu().clone()
+                for name, value in self.state_dict().items()
+            },
+            "sha256": self.digest(),
+        }
+
+    @classmethod
+    def from_payload(
+        cls,
+        payload: Mapping[str, Any],
+    ) -> ExternalTransitionSupportStatistics:
+        if not isinstance(payload, Mapping) or payload.get("schema") != cls.schema:
+            raise ValueError("unsupported transition-support-statistics payload")
+        configuration = payload.get("configuration")
+        state = payload.get("state")
+        if not isinstance(configuration, Mapping) or not isinstance(state, Mapping):
+            raise TypeError("transition-support-statistics payload is incomplete")
+        restored = cls(
+            bin_count=int(configuration["bin_count"]),
+            leverage_scale=float(configuration["leverage_scale"]),
+            prior_count=float(configuration["prior_count"]),
+            slot_capacity=int(configuration["slot_capacity"]),
+        )
+        expected = restored.state_dict()
+        if tuple(state) != tuple(expected):
+            raise ValueError("transition-support-statistics state names differ")
+        normalized: dict[str, torch.Tensor] = {}
+        for name, expected_value in expected.items():
+            value = state[name]
+            if not isinstance(value, torch.Tensor):
+                raise TypeError("transition-support-statistics state is not a tensor")
+            if value.shape != expected_value.shape or value.dtype != expected_value.dtype:
+                raise ValueError("transition-support-statistics state is incompatible")
+            if not bool(torch.isfinite(value).all()):
+                raise ValueError("transition-support-statistics state is non-finite")
+            normalized[name] = value.detach().clone()
+        restored.load_state_dict(normalized, strict=True)
+        if payload.get("sha256") != restored.digest():
+            raise ValueError("transition-support-statistics checksum mismatch")
+        return restored
+
+
 class ExternalTransitionEvidenceCalibrator(nn.Module):
     """Trainable scalar calibration state around a frozen evidence evaluator."""
 
@@ -11011,6 +11319,7 @@ class ExternalTransitionProbeResult:
     disagreement_scores: torch.Tensor
     predicted_next_states: torch.Tensor
     candidate_slot_ids: tuple[int, ...]
+    support_scores: torch.Tensor | None = None
     schema: str = EXTERNAL_TRANSITION_PROBE_SCHEMA
 
     def validate(
@@ -11039,6 +11348,14 @@ class ExternalTransitionProbeResult:
             raise ValueError("transition-probe slot IDs are duplicated")
         if any(slot_id < 0 for slot_id in self.candidate_slot_ids):
             raise ValueError("transition-probe slot ID is invalid")
+        if self.support_scores is not None:
+            if self.support_scores.shape != self.disagreement_scores.shape:
+                raise ValueError("transition-probe support scores are misaligned")
+            if not bool(torch.isfinite(self.support_scores).all()) or bool(
+                torch.any(self.support_scores < 0.0)
+                or torch.any(self.support_scores > 1.0)
+            ):
+                raise ValueError("transition-probe support scores are invalid")
         if not 0 <= self.selected_intention_index < self.disagreement_scores.shape[0]:
             raise ValueError("transition-probe selected intention is invalid")
         for name, value in (
@@ -11680,6 +11997,7 @@ class ExternalModelBasedPlanner:
         candidate_intentions: torch.Tensor,
         *,
         candidate_slot_ids: Sequence[int] | None = None,
+        support_statistics: ExternalTransitionSupportStatistics | None = None,
     ) -> ExternalTransitionProbeResult:
         """Choose an opaque intention with reliable model disagreement.
 
@@ -11756,7 +12074,17 @@ class ExternalModelBasedPlanner:
             torch.reciprocal(1.0 + mean_leverage.clamp_min(0.0)),
             torch.ones_like(mean_leverage),
         )
-        selection_scores = disagreement_scores * reliability
+        if support_statistics is None:
+            support_scores = None
+            selection_scores = disagreement_scores * reliability
+        else:
+            if not isinstance(support_statistics, ExternalTransitionSupportStatistics):
+                raise TypeError("transition support statistics have an invalid type")
+            support_scores = support_statistics(leverage, slot_ids=slot_ids)
+            # Keep the established leverage prior in the loop.  Sparse support
+            # observations are useful calibration, but must not erase the
+            # conservative extrapolation penalty before they are well sampled.
+            selection_scores = disagreement_scores * reliability * support_scores
         selected_index = int(selection_scores.argmax())
         return ExternalTransitionProbeResult(
             selected_intention=candidate_intentions[selected_index].detach().clone(),
@@ -11764,6 +12092,9 @@ class ExternalModelBasedPlanner:
             disagreement_scores=disagreement_scores.detach().clone(),
             predicted_next_states=predicted_next_states.detach().clone(),
             candidate_slot_ids=slot_ids,
+            support_scores=(
+                None if support_scores is None else support_scores.detach().clone()
+            ),
         ).validate(
             state_width=self.model.state_width,
             intention_width=self.model.intention_width,
@@ -12054,6 +12385,7 @@ __all__ = [
     "ExternalTransitionProbeResult",
     "ExternalTransitionProbeSequenceResult",
     "ExternalTransitionRollout",
+    "ExternalTransitionSupportStatistics",
     "GoalConditionedModelSelection",
     "ModelBasedPlanningResult",
 ]

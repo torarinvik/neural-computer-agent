@@ -31,6 +31,7 @@ from .world_model import (
     ExternalTransitionProbeSequenceResult,
     ExternalTransitionRollout,
     ExternalTransitionRouteQuery,
+    ExternalTransitionSupportStatistics,
 )
 
 EXTERNAL_FACTORED_TRANSITION_MODEL_SCHEMA = (
@@ -1501,6 +1502,7 @@ class ExternalFactoredTransitionRouter:
         *,
         candidate_slot_ids: Sequence[int] | None = None,
         probe_state: torch.Tensor | None = None,
+        support_statistics: ExternalTransitionSupportStatistics | None = None,
     ) -> ExternalTransitionProbeResult:
         """Select an opaque intention with reliable slot disagreement.
 
@@ -1606,7 +1608,16 @@ class ExternalFactoredTransitionRouter:
             torch.reciprocal(1.0 + leverage.clamp_min(0.0)),
             torch.ones_like(leverage),
         )
-        selection_scores = disagreement_scores * reliability
+        if support_statistics is None:
+            support_scores = None
+            selection_scores = disagreement_scores * reliability
+        else:
+            if not isinstance(support_statistics, ExternalTransitionSupportStatistics):
+                raise TypeError("transition support statistics have an invalid type")
+            support_scores = support_statistics(leverage, slot_ids=slot_ids)
+            # Treat online support as a calibration factor on the established
+            # leverage prior; sparse observations must not erase that prior.
+            selection_scores = disagreement_scores * reliability * support_scores
         selected_index = int(selection_scores.argmax())
         return ExternalTransitionProbeResult(
             selected_intention=candidate_intentions[selected_index].detach().clone(),
@@ -1614,6 +1625,9 @@ class ExternalFactoredTransitionRouter:
             disagreement_scores=disagreement_scores.detach().clone(),
             predicted_next_states=predicted_next_states.detach().clone(),
             candidate_slot_ids=slot_ids,
+            support_scores=(
+                None if support_scores is None else support_scores.detach().clone()
+            ),
         ).validate(
             state_width=self.model.state_width,
             intention_width=self.model.intention_width,

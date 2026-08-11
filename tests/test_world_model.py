@@ -34,6 +34,7 @@ from neural_computer import (
     ExternalTransitionRollout,
     ExternalTransitionRouteMemory,
     ExternalTransitionRouteQuery,
+    ExternalTransitionSupportStatistics,
     OpaqueCandidateGrowthRouter,
     OpaqueCapacityPlanner,
 )
@@ -3890,6 +3891,41 @@ def test_planner_selects_active_intention_that_disambiguates_model_slots() -> No
     assert result.selected_intention.item() == 1.0
     assert result.disagreement_scores[1] > result.disagreement_scores[0]
     assert result.predicted_next_states.shape == (2, 2, 1)
+
+
+def test_transition_support_statistics_calibrate_opaque_leverage_without_replay() -> None:
+    support = ExternalTransitionSupportStatistics(
+        bin_count=8,
+        leverage_scale=10.0,
+    )
+    support.observe(torch.ones(8), torch.ones(8))
+    support.observe(torch.full((8,), 100.0), torch.zeros(8))
+
+    scores = support(torch.tensor([1.0, 100.0]))
+    assert scores[0] > scores[1]
+    assert support.observation_count.item() == 16
+
+    restored = ExternalTransitionSupportStatistics.from_payload(support.payload())
+    assert restored.digest() == support.digest()
+    assert torch.allclose(restored(torch.tensor([1.0, 100.0])), scores)
+
+    keyed = ExternalTransitionSupportStatistics(
+        bin_count=8,
+        leverage_scale=10.0,
+        slot_capacity=4,
+    )
+    keyed.observe(
+        torch.tensor([[1.0, 1.0], [1.0, 1.0]]),
+        torch.tensor([[1.0, 0.0], [1.0, 0.0]]),
+        slot_ids=(10, 20),
+    )
+    assert keyed.slot_ids.tolist()[:2] == [10, 20]
+    assert keyed.slot_observation_counts.tolist()[:2] == [2, 2]
+    keyed_restored = ExternalTransitionSupportStatistics.from_payload(keyed.payload())
+    assert keyed_restored.digest() == keyed.digest()
+
+    planner = ExternalModelBasedPlanner(_AdditiveTransitionModel())
+    assert planner.configuration()["policy"] == "none_behavior_derived_at_inference_v1"
 
 
 def test_planner_selects_a_fixed_opaque_probe_sequence() -> None:

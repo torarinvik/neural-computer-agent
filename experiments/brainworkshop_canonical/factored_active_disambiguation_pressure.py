@@ -38,6 +38,8 @@ from neural_computer import (
     ExternalModelBasedPlanner,
     ExternalTransitionContextEncoder,
     ExternalTransitionObservation,
+    ExternalTransitionRollout,
+    ExternalTransitionSupportStatistics,
     PolicyFreeAmodalRuntime,
 )
 
@@ -74,6 +76,7 @@ class ActiveDisambiguationTrial:
     selected_intention_indices: tuple[int, ...] = ()
     probe_model_errors_by_step: tuple[tuple[float, ...], ...] = ()
     selected_probe_leverage: tuple[float, ...] = ()
+    selected_probe_support: tuple[float, ...] = ()
 
     def payload(self) -> dict[str, object]:
         return asdict(self)
@@ -102,6 +105,7 @@ class ActiveDisambiguationPressureResult:
     schema: str = ACTIVE_DISAMBIGUATION_PRESSURE_SCHEMA
     probe_horizon: int = 1
     candidate_intention_source: str = "seed_pool"
+    support_calibration_rows: int = 0
 
     def payload(self) -> dict[str, object]:
         return asdict(self)
@@ -132,6 +136,56 @@ def _feedback(
     )
 
 
+@torch.no_grad()
+def _observe_probe_support(
+    router: ExternalFactoredTransitionRouter,
+    rollout: ExternalTransitionRollout,
+    support_statistics: ExternalTransitionSupportStatistics,
+    *,
+    candidate_slot_ids: tuple[int, ...],
+    support_tolerance: float,
+) -> int:
+    """Calibrate leverage from one fresh rollout without retaining its rows."""
+
+    if support_tolerance < 0.0:
+        raise ValueError("probe support tolerance cannot be negative")
+    if router.model.residual_bank is None:
+        raise RuntimeError("probe support calibration requires residual statistics")
+    contexts = torch.stack(
+        [
+            router._contexts[router._slot_ids.index(slot_id)]
+            for slot_id in candidate_slot_ids
+        ]
+    )
+    rows = 0
+    for observation in _rollout_observations(rollout):
+        leverage = router.model.residual_bank.predictive_leverage(
+            observation.state,
+            observation.intention,
+            candidate_contexts=contexts,
+        )
+        errors = []
+        for context in contexts:
+            prediction = router.model.predict_with_context(
+                observation.state,
+                observation.intention,
+                context.to(observation.state)
+                .unsqueeze(0)
+                .expand(observation.state.shape[0], -1),
+            )
+            errors.append((prediction - observation.next_state).square().mean(dim=-1))
+        supported = (torch.stack(errors, dim=1) <= support_tolerance).to(
+            leverage.dtype
+        )
+        support_statistics.observe(
+            leverage,
+            supported,
+            slot_ids=candidate_slot_ids,
+        )
+        rows += observation.state.shape[0]
+    return rows
+
+
 def _execute_probe_trial(
     *,
     agent: CanonicalBrainWorkshopAgent,
@@ -147,6 +201,7 @@ def _execute_probe_trial(
     probe_match_tolerance: float,
     probe_contradiction_tolerance: float,
     probe_horizon: int = 1,
+    support_statistics: ExternalTransitionSupportStatistics | None = None,
 ) -> tuple[ActiveDisambiguationTrial, bool, int, int]:
     """Run one fresh verifier until an opaque active/passive probe executes."""
 
@@ -206,6 +261,7 @@ def _execute_probe_trial(
                 selected_indices: list[int] = []
                 selection_disagreements: list[float] = []
                 selected_probe_leverage: list[float] = []
+                selected_probe_support: list[float] = []
                 decoder_state_free = True
                 scored = None
                 for probe_index in range(probe_horizon):
@@ -214,6 +270,7 @@ def _execute_probe_trial(
                         candidate_intentions,
                         candidate_slot_ids=(0, target_slot_id),
                         probe_state=current_output.state,
+                        support_statistics=support_statistics,
                     )
                     disagreement = probe.disagreement_scores
                     selected_index = (
@@ -237,7 +294,12 @@ def _execute_probe_trial(
                             candidate_intentions,
                             candidate_contexts=candidate_contexts,
                         ).mean(dim=1)
-                        selected_probe_leverage.append(float(leverage[selected_index]))
+                    selected_probe_leverage.append(float(leverage[selected_index]))
+                    selected_probe_support.append(
+                        0.0
+                        if probe.support_scores is None
+                        else float(probe.support_scores[selected_index])
+                    )
                     selected_indices.append(selected_index)
                     selection_disagreements.append(disagreement_value)
                     decoded = policy.decode_intention(selected_intention)
@@ -368,6 +430,7 @@ def _execute_probe_trial(
                     selected_intention_indices=tuple(selected_indices),
                     probe_model_errors_by_step=probe_model_errors_by_step,
                     selected_probe_leverage=tuple(selected_probe_leverage),
+                    selected_probe_support=tuple(selected_probe_support),
                 )
                 target_recovered = (
                     strict_route.status == "matched"
@@ -547,6 +610,37 @@ def run_active_disambiguation_pressure(
         promoted_slots.append(promotion.slot_id)
 
     source_slot_id, target_slot_id = promoted_slots
+    support_statistics = ExternalTransitionSupportStatistics(
+        bin_count=8,
+        leverage_scale=10.0,
+    )
+    support_calibration_rows = 0
+    support_calibration_lifetimes = 0
+    for calibration_index, time_shuffle in enumerate((False, True)):
+        calibration_rollout, calibration_bits = _run_lifetime(
+            agent,
+            _policy(agent, router.model, state_adapter),
+            router.model,
+            source_context,
+            n_back=2,
+            steps=steps,
+            seed=seed + 25000 + calibration_index,
+            cue_symbol=6,
+            candidate_intentions=candidate_intentions,
+            learn=False,
+            time_shuffle=time_shuffle,
+        )
+        unique_verifier_bits += calibration_bits
+        transition_rows += calibration_rollout.horizon
+        support_calibration_rows += _observe_probe_support(
+            router,
+            calibration_rollout,
+            support_statistics,
+            candidate_slot_ids=(source_slot_id, target_slot_id),
+            support_tolerance=0.30,
+        )
+        support_calibration_lifetimes += 1
+
     active_trial, active_recovered, active_bits, active_lifetimes = (
         _execute_probe_trial(
             agent=agent,
@@ -562,6 +656,7 @@ def run_active_disambiguation_pressure(
             probe_match_tolerance=0.30,
             probe_contradiction_tolerance=0.40,
             probe_horizon=probe_horizon,
+            support_statistics=support_statistics,
         )
     )
     passive_trial, passive_recovered, passive_bits, passive_lifetimes = (
@@ -579,6 +674,7 @@ def run_active_disambiguation_pressure(
             probe_match_tolerance=0.30,
             probe_contradiction_tolerance=0.40,
             probe_horizon=probe_horizon,
+            support_statistics=support_statistics,
         )
     )
     return ActiveDisambiguationPressureResult(
@@ -599,7 +695,13 @@ def run_active_disambiguation_pressure(
         active_trial=active_trial,
         passive_trial=passive_trial,
         unique_verifier_bits=unique_verifier_bits + active_bits + passive_bits,
-        logical_lifetimes=(training_lifetimes * 2 * 2) + 2 + active_lifetimes + passive_lifetimes,
+        logical_lifetimes=(
+            (training_lifetimes * 2 * 2)
+            + 2
+            + support_calibration_lifetimes
+            + active_lifetimes
+            + passive_lifetimes
+        ),
         transition_rows_consumed_once=transition_rows + active_lifetimes + passive_lifetimes,
         optimizer_updates=0,
         replayed_examples=0,
@@ -610,6 +712,7 @@ def run_active_disambiguation_pressure(
             if verified_proposal.intentions.shape[1] >= 2
             else "seed_pool"
         ),
+        support_calibration_rows=support_calibration_rows,
     )
 
 

@@ -9266,3 +9266,27 @@ accounting, but is not promoted as an active capability gain. The next
 bottleneck remains calibrated supported intention coverage and factual model
 uncertainty. The complete accounting is in
 `session_records/factored_active_intention_repertoire_pressure_2026-08-11/sample_efficiency_ledger.json`.
+
+## Slot-conditioned support calibration (2026-08-11)
+
+The external probe boundary now has a versioned
+`ExternalTransitionSupportStatistics` memory. It stores only replay-free
+Beta-style sufficient statistics over opaque transition-model slot IDs and
+predictive-leverage bins. It can be serialized with a checksum, grows until
+its caller-owned opaque-slot capacity is reached, and remains read-only during
+probe selection. The selector conservatively multiplies the established
+leverage prior by the support posterior; sparse calibration cannot erase the
+existing extrapolation penalty. No controller, decoder, raw modality, or
+device protocol crosses this boundary.
+
+The fresh Brain Workshop audit calibrated the two candidate slots from two
+additional rendered lifetimes per seed. Active recovery remained `2/3` versus
+`1/3` for the passive control, exactly matching the prior active-evidence
+signal, but cost 600 verifier bits and 90 logical lifetimes versus 558 and 84
+before calibration. This is therefore a rejected selector promotion: the
+memory contract is retained as a clean architectural seam, while the current
+leverage-conditioned support rule is not considered a learned capability
+gain. The next useful experiment must learn outcome-conditioned diagnostic
+utility or coverage that discriminates candidate intentions; adding more
+support bins or probe horizon alone is not justified. Evidence is in
+`session_records/factored_active_support_calibration_pressure_2026-08-11/sample_efficiency_ledger.json`.
