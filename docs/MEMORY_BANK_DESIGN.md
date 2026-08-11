@@ -8976,12 +8976,37 @@ data says why:
 | toggle search fit, saturating | 0.9546 | 0.9572 | 0.9564 | 0.9516 |
 
 Every saturating value sits in 0.9516-0.9572, just above the
-`--fit-target` of 0.95. That is not degradation, it is **the search
-stopping the moment it clears its threshold**. On the old basis toggle
-had to search thousands of candidates, and a long search keeps
-improving on its best, so it OVERSHOT the target and landed at 0.98.
-Now enumeration clears 0.95 in a couple of dozen candidates and stops
-there.
+`--fit-target` of 0.95, which looks exactly like the search stopping
+the moment it clears its threshold.
+
+**CORRECTION — that diagnosis is wrong, and the check that caught it
+was a sweep that came back byte-identical.** Sweeping `--fit-target`
+over 0.95, 0.99 and 1.0 produced IDENTICAL numbers on every family and
+every seed. The reason: `synthesise` has no early stop at all. It runs
+the full `--synthesize` budget per action unconditionally, and
+`--fit-target` enters that path only through the optional
+`--fit-bound` filter, which is off. There is no threshold for the
+search to settle at, so it cannot have settled at one. The clustering
+near 0.95 is a coincidence I read a mechanism into.
+
+**My ORIGINAL pre-registered reading was right and the correction was
+wrong.** P2's stated failure meaning was "the wider instruction set has
+swamped the benefit", and that is what happened: `synthesise` proposes
+RANDOM programs, so going from 7 operations to 9 dilutes every draw by
+29%, and toggle's recipe needs two specific instructions. Families that
+gained expressibility (line, grid) more than paid for the dilution;
+toggle, which was already expressible, paid it for nothing.
+
+**And this exposes a real inconsistency in the ledger.** The COST
+results (F173, F178) come from `search_with_library`, which enumerates.
+The QUALITY results (F169, F179) come from `synthesise`, which samples
+at random and always spends its whole budget. Those are two different
+search algorithms, and I have been reporting them as one system. The
+end-to-end quality figure does not describe the configuration the cost
+figure describes. Fixing that — wiring enumeration into `synthesise` —
+is the next change, and until it lands the honest statement is that
+0.9790 is the quality of RANDOM search on the saturating basis, not of
+the system F178 measured.
 
 **So the fit-target is now the binding constraint on quality, and it
 was not before.** That is a consequence of success and it is invisible
