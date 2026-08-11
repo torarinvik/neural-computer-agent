@@ -161,6 +161,7 @@ def test_admitted_goal_fragment_changes_frozen_core_downstream_planning() -> Non
     assert report.goal_fragment_admitted
     assert report.goal_fragment_used
     assert report.trained_planner_improved_over_fresh
+    assert report.goal_horizon == 2
     assert report.trained_terminal_error < report.fresh_terminal_error
     assert report.transition_rows_consumed_once == 18
     assert report.unique_verifier_bits == 16

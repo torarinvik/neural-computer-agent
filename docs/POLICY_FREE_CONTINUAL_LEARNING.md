@@ -1516,8 +1516,9 @@ probe, admitted copy-on-write into `ExternalGoalFragmentMemory`, and passed to
 the ordinary model-based planner. A matched fresh transition bank receives the
 same goal file and candidate intentions.
 
-The canonical seed measured trained terminal goal error `0.01062` versus
-`0.07726` for the fresh bank, with `18` transition rows consumed once, `16`
+The canonical two-step seed measured trained terminal goal error `0.00360`
+versus `0.04376` for the fresh bank, with `18` transition rows consumed once,
+`16`
 unique rendered verifier bits, zero optimizer updates, zero replayed examples,
 an unchanged controller, and one durable goal fragment. Missing-evidence and
 corrupted-goal candidates were rejected. This promotes composition of learned

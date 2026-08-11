@@ -5,7 +5,8 @@ The controller, renderer, and decoder are frozen.  Fresh rendered lifetimes
 teach an external replay-free factual transition bank; a held-out learned
 state is then admitted as an opaque goal fragment through scalar goal
 verification.  Model-based search must use that file to choose a next
-intention, and a matched fresh factual bank provides the acquisition control.
+intention sequence, and a matched fresh factual bank provides the acquisition
+control.
 
 The result is deliberately narrower than Brain Workshop mastery or general
 continual learning: it measures whether learned external facts plus an
@@ -54,6 +55,7 @@ class GoalConditionedPlanningReport:
     trained_planner_improved_over_fresh: bool
     trained_terminal_error: float
     fresh_terminal_error: float
+    goal_horizon: int
     goal_verifier_threshold: float
     training_lifetimes: int
     total_logical_lifetimes: int
@@ -152,12 +154,15 @@ def run_goal_conditioned_planning_audit(
     seed: int = 93,
     steps: int = 6,
     training_lifetimes: int = 3,
+    goal_horizon: int = 2,
     goal_verifier_threshold: float = 0.05,
 ) -> GoalConditionedPlanningReport:
     """Verify frozen-core factual learning composes with goal-file search."""
 
-    if min(steps, training_lifetimes) < 1:
+    if min(steps, training_lifetimes, goal_horizon) < 1:
         raise ValueError("goal-conditioned audit budgets must be positive")
+    if goal_horizon > steps - 1:
+        raise ValueError("goal-conditioned horizon exceeds held-out transitions")
     if goal_verifier_threshold <= 0.0:
         raise ValueError("goal verifier threshold must be positive")
 
@@ -221,7 +226,7 @@ def run_goal_conditioned_planning_audit(
         learn=False,
     )
     unique_verifier_bits += heldout_bits
-    candidate = _goal_candidate(heldout.expected_states[0])
+    candidate = _goal_candidate(heldout.expected_states[goal_horizon - 1])
     candidate_digest = candidate.digest(state_width=bank.state_width)
 
     stager = ExternalGoalFragmentStager(
@@ -239,7 +244,7 @@ def run_goal_conditioned_planning_audit(
         goal_memory=probe_memory,
         candidate_intentions=candidate_intentions,
         context=context,
-        horizon=1,
+        horizon=goal_horizon,
         fragment_id=0,
     )
     # Stage only the opaque scalar result of the factual goal probe.  The
@@ -264,7 +269,7 @@ def run_goal_conditioned_planning_audit(
         goal_memory=memory,
         candidate_intentions=candidate_intentions,
         context=context,
-        horizon=1,
+        horizon=goal_horizon,
         fragment_id=admission.fragment_id if admission.fragment_id is not None else 0,
     )
     fresh_bank = ExternalTransitionModelBank(
@@ -280,7 +285,7 @@ def run_goal_conditioned_planning_audit(
         goal_memory=memory,
         candidate_intentions=candidate_intentions,
         context=context,
-        horizon=1,
+        horizon=goal_horizon,
         fragment_id=admission.fragment_id if admission.fragment_id is not None else 0,
     )
 
@@ -340,6 +345,7 @@ def run_goal_conditioned_planning_audit(
         trained_planner_improved_over_fresh=improved,
         trained_terminal_error=trained_error,
         fresh_terminal_error=fresh_error,
+        goal_horizon=goal_horizon,
         goal_verifier_threshold=goal_verifier_threshold,
         training_lifetimes=training_lifetimes,
         total_logical_lifetimes=training_lifetimes + 1,

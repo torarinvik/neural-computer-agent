@@ -8981,9 +8981,10 @@ through sufficient statistics. A state from a held-out learned trajectory is
 staged as an opaque goal fragment using a deterministic goal-distance probe,
 then admitted copy-on-write and supplied to `ExternalModelBasedPlanner`.
 
-On seed `93`, the learned factual slot planned to the admitted destination with
-terminal error `0.01062`, compared with `0.07726` for a matched fresh slot using
-the same destination file and candidate intention set. The run consumed `18`
+On seed `93`, the learned factual slot planned two steps to the admitted
+destination with terminal error `0.00360`, compared with `0.04376` for a matched
+fresh slot using the same destination file and candidate intention set. The run
+consumed `18`
 transition rows and `16` unique rendered verifier bits, replayed no examples,
 performed no optimizer updates, and left the controller byte-stable. Missing
 evidence and a corrupted candidate were rejected. The result qualifies only
