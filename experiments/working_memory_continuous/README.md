@@ -347,3 +347,26 @@ trainer bottleneck.
 Replacing the selected-logit loss with a two-action outcome margin improved
 span-4 separation but reduced span-5 to `70.63%` and `69.06%` on seeds
 `69311` and `69312`; it is rejected rather than added to the default trainer.
+
+## Promoted two-seed dynamic external growth rung (2026-08-11)
+
+The fresh-batch schedule was then promoted at `batch_size=32`,
+`updates_per_stage=320`, dynamic recurrent/intention/context-gated growth, and
+external width `128`. Seed `69311` reached `88.13%` on span 5, with spans 2--4
+at `100.0%`, `97.4%`, and `95.7%`. Seed `69312` reached `90.31%` on span 5,
+with spans 2--4 at `100.0%`, `100.0%`, and `98.4%`.
+
+Both runs passed every gate: routing was `100%` for every span; the selected
+artifact beat the wrong artifact; blank-sequence controls stayed at chance;
+workspace ablations were informative; the frozen parent core was bit-identical;
+and `replayed_examples=0`. Stable span-5 acquisition required `40,960` and
+`35,840` verifier bits. Each run consumed `143,360` unique verifier bits and
+`1,280` optimizer updates across the four-stage curriculum.
+
+This promotes bounded, two-seed replay-free growth of a recurrent external
+capability file. It does not establish unrestricted memory growth, learned
+eviction/consolidation, arbitrary new computation, or general continual
+learning. The next pressure test is to repeat the same promotion protocol on
+new task families and under online bank expansion without a fixed span router.
+The archived summaries and ledger are in
+`session_records/sequence_working_memory_2026-08-02/dynamic_growth_span5_2026-08-11/`.

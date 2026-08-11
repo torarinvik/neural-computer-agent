@@ -1,10 +1,41 @@
 {
   "schema": "neural-computer.sample-efficiency-ledger.v1",
   "experiment_id": "dynamic-external-growth-span5-2026-08-11",
-  "status": "measured_near_threshold_not_promoted",
+  "status": "promoted_matched_two_seed_bounded_rung",
   "source": "in_repository_run",
   "controller_frozen_during_growth": true,
   "replayed_examples": 0,
+  "promoted_arm": {
+    "configuration": {
+      "stages": [2, 3, 4, 5],
+      "dynamic_growth": true,
+      "growth_width": 128,
+      "updates_per_stage": 320,
+      "batch_size": 32,
+      "learning_rate": 0.001,
+      "controller_frozen_during_growth": true
+    },
+    "seed69311": {
+      "selected_behavior": {"2": 1.0, "3": 0.9739583, "4": 0.9570313, "5": 0.88125},
+      "stable_bits_to_threshold": {"2": 4096, "3": 3072, "4": 24576, "5": 40960},
+      "route_accuracy": 1.0,
+      "accepted": true
+    },
+    "seed69312": {
+      "selected_behavior": {"2": 1.0, "3": 1.0, "4": 0.984375, "5": 0.903125},
+      "stable_bits_to_threshold": {"2": 2048, "3": 6144, "4": 20480, "5": 35840},
+      "route_accuracy": 1.0,
+      "accepted": true
+    },
+    "accounting_per_seed": {
+      "unique_logical_lifetimes": 40960,
+      "unique_verifier_bits": 143360,
+      "optimizer_updates": 1280,
+      "replayed_examples": 0,
+      "route_calibration_lifetimes": 256,
+      "diagnostic_lifetimes_charged_to_budget": 256
+    }
+  },
   "arms": {
     "feed_forward_width64_128_updates_seed69311": {
       "selected_behavior": {"2": 0.875, "3": 0.7916667, "4": 0.6914063, "5": 0.653125},

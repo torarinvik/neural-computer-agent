@@ -9,6 +9,12 @@
   "fixed_stages": [2, 3, 4, 5],
   "fixed_growth": "dynamic_recurrent_intention_context_gated_width128",
   "arms": {
+    "seed69311_lr_1e-3_batch32_updates256": {
+      "unique_verifier_bits": 114688,
+      "optimizer_updates": 1024,
+      "selected_behavior": {"2": 1.0, "3": 0.9583333, "4": 0.8945313, "5": 0.7875},
+      "route_accuracy": 1.0
+    },
     "lr_5e-4_batch16_updates256": {
       "unique_verifier_bits": 57344,
       "optimizer_updates": 1024,
@@ -31,6 +37,12 @@
       "unique_verifier_bits": 57344,
       "optimizer_updates": 256,
       "selected_behavior": {"2": 1.0, "3": 0.7864583, "4": 0.6132813, "5": 0.640625},
+      "route_accuracy": 1.0
+    },
+    "seed69311_width192_batch32_updates256": {
+      "unique_verifier_bits": 114688,
+      "optimizer_updates": 1024,
+      "selected_behavior": {"2": 1.0, "3": 1.0, "4": 0.890625, "5": 0.784375},
       "route_accuracy": 1.0
     }
   },
