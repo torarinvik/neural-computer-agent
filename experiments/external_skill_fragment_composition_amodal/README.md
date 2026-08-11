@@ -64,3 +64,31 @@ for seed in 69316 69317; do
     --eval-every 16 --report-out "/tmp/fragment-composition-$seed.json"
 done
 ```
+
+## Four-fragment closure audit
+
+`train_multi.py` extends the same boundary to four sequentially acquired
+fragments: `reverse`, `rotate`, `complement`, and `prefix_parity`. Primitive
+acquisition is deliberately isolated from composition acquisition. A fragment
+must first earn stable held-out mastery on its own fresh verifier outcomes;
+only then is it protected and used by the held-out composition stage. This
+separation is important: sharing one decoder objective between a primitive and
+its longer composition entangled the stored primitive and caused a replicated
+seed failure.
+
+The exact 256-update acquisition audit passed on seeds 69316 and 69317. Each
+seed retained all four primitives, mastered the held-out order
+`prefix_parity -> complement -> reverse -> rotate`, rejected reversed order,
+zero codes, missing sequence evidence, and shuffled outcomes, and preserved the
+frozen parent. Inherited composition reached stable mastery in 6,144 bits on
+both seeds; matched fresh learners required 12,288 bits on both seeds.
+
+```bash
+for seed in 69316 69317; do
+  PYTHONPATH=src:. .venv/bin/python -m \
+    experiments.external_skill_fragment_composition_amodal.train_multi \
+    --seed "$seed" --parent-updates 64 --primitive-updates 256 \
+    --composition-updates 64 --batch-size 32 --span 3 --audit-count 128 \
+    --eval-every 32 --report-out "/tmp/fragment-multi-$seed.json"
+done
+```

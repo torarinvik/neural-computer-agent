@@ -44,6 +44,7 @@ REGISTER_WIDTH = 32
 INSTRUCTION_WIDTH = 16
 BASIS_COUNT = 4
 COMPOSITION_GRAMMAR = (("reverse", "rotate"), ("rotate", "reverse"))
+COMPOSITION_ROUTE_PROGRAMS = ((0, 1), (1, 0))
 
 
 def _machine() -> ExternalCapabilityRegisterMachine:
@@ -66,6 +67,7 @@ def _batch(
     span: int,
     seed: int,
     generated_compositions=None,
+    blank_sequence: bool = False,
 ):
     batch = generate_sequence_memory_batch(
         count,
@@ -74,6 +76,7 @@ def _batch(
         seed=seed,
         operation=operation,
         generated_compositions=generated_compositions,
+        blank_sequence=blank_sequence,
     )
     # Remove only generic operation-cue pixels from the rendered query. Keep
     # the ordinal marker at x=28:31 and all sequence evidence. This is a valid
@@ -139,6 +142,7 @@ def _rollout(
     shuffle_outcomes: bool = False,
     zero_codes: bool = False,
     combiner: ExternalSkillFragmentCombiner | None = None,
+    route_programs: tuple[tuple[int, ...], ...] | None = None,
 ) -> tuple[torch.Tensor, torch.Tensor]:
     device = batch.input_frames.device
     batch_size = batch.batch_size
@@ -150,29 +154,27 @@ def _rollout(
     previous_has_feedback = torch.zeros(batch_size, device=device)
     present = torch.ones(batch_size, dtype=torch.bool, device=device)
     if selected is None:
+        if route_programs is None or not route_programs:
+            raise ValueError("dynamic composition requires opaque route programs")
+        if len(route_programs) > 2:
+            raise ValueError(
+                "the binary rendered composition cue supports at most two programs"
+            )
+        if len({len(program) for program in route_programs}) != 1:
+            raise ValueError("dynamic route programs must have equal lengths")
         keys = torch.stack(tuple(key.detach() for key in bank.keys))
         order_ids = batch.operation_bits.to(device=device, dtype=torch.int64)
-        route_queries = torch.stack(
-            (keys[0].expand(batch_size, -1), keys[1].expand(batch_size, -1)),
-            dim=1,
-        )
-        route_queries = route_queries.gather(
-            1,
-            order_ids[:, None, None].expand(batch_size, 1, bank.key_width),
-        )
-        # Each order has two opaque route queries; the verifier-private order
-        # is used only to choose which external query pair is presented.
-        route_queries = torch.cat(
-            (
-                route_queries,
-                torch.where(
-                    order_ids[:, None, None] == 0,
-                    keys[1].expand(batch_size, 1, -1),
-                    keys[0].expand(batch_size, 1, -1),
-                ),
-            ),
-            dim=1,
-        )
+        if bool((order_ids >= len(route_programs)).any()):
+            raise ValueError("rendered composition ID has no route program")
+        route_indices = torch.tensor(route_programs, dtype=torch.int64, device=device)
+        if bool((route_indices < 0).any()) or bool(
+            (route_indices >= bank.fragment_count).any()
+        ):
+            raise ValueError("route program addresses a missing fragment")
+        route_indices = route_indices[order_ids]
+        route_queries = keys[route_indices]
+        # The trainer chooses which opaque key sequence to present; the
+        # controller and decoder receive only the resulting learned execution.
         composition = _composition(bank, route_queries, batch_size=batch_size)
     else:
         composition = _composition(bank, selected, batch_size=batch_size)
@@ -275,6 +277,7 @@ def _train_stage(
     auxiliary_generated_compositions=None,
     auxiliary_weight: float = 1.0,
     combiner: ExternalSkillFragmentCombiner | None = None,
+    route_programs: tuple[tuple[int, ...], ...] | None = None,
     eval_every: int = 0,
     audit_count: int = 0,
     audit_seed: int = 0,
@@ -310,6 +313,7 @@ def _train_stage(
             train_decoder=True,
             shuffle_outcomes=shuffle_outcomes,
             combiner=combiner,
+            route_programs=route_programs,
         )
         if auxiliary_operation is not None:
             auxiliary_batch = _batch(
@@ -329,6 +333,7 @@ def _train_stage(
                 train_decoder=True,
                 shuffle_outcomes=shuffle_outcomes,
                 combiner=combiner,
+                route_programs=route_programs,
             )
             loss = loss + auxiliary_weight * auxiliary_loss
         optimizer.zero_grad(set_to_none=True)
@@ -360,6 +365,7 @@ def _train_stage(
                 seed=audit_seed + update,
                 generated_compositions=generated_compositions,
                 combiner=combiner,
+                route_programs=route_programs,
             )
     return history
 
@@ -395,6 +401,8 @@ def _accuracy(
     generated_compositions=None,
     zero_codes: bool = False,
     combiner: ExternalSkillFragmentCombiner | None = None,
+    route_programs: tuple[tuple[int, ...], ...] | None = None,
+    blank_sequence: bool = False,
 ) -> float:
     batch = _batch(
         operation=operation,
@@ -402,6 +410,7 @@ def _accuracy(
         span=span,
         seed=seed,
         generated_compositions=generated_compositions,
+        blank_sequence=blank_sequence,
     )
     return float(
         _rollout(
@@ -415,6 +424,7 @@ def _accuracy(
             shuffle_outcomes=shuffle_outcomes,
             zero_codes=zero_codes,
             combiner=combiner,
+            route_programs=route_programs,
         )[1].mean()
     )
 
@@ -500,6 +510,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         auxiliary_operation="generated_composition",
         auxiliary_selected=None,
         auxiliary_generated_compositions=COMPOSITION_GRAMMAR,
+        route_programs=COMPOSITION_ROUTE_PROGRAMS,
     )
     reverse_after = _accuracy(
         parent,
@@ -549,6 +560,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         ],
         generated_compositions=COMPOSITION_GRAMMAR,
         combiner=composition_combiner,
+        route_programs=COMPOSITION_ROUTE_PROGRAMS,
         eval_every=args.eval_every,
         audit_count=args.audit_count,
         audit_seed=args.seed + 40_500,
@@ -565,6 +577,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         seed=args.seed + 41_000,
         generated_compositions=COMPOSITION_GRAMMAR,
         combiner=composition_combiner,
+        route_programs=COMPOSITION_ROUTE_PROGRAMS,
     )
     wrong_order_accuracy = _accuracy(
         parent,
@@ -578,6 +591,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         seed=args.seed + 42_000,
         generated_compositions=COMPOSITION_GRAMMAR,
         combiner=composition_combiner,
+        route_programs=COMPOSITION_ROUTE_PROGRAMS,
     )
     zero_fragment_accuracy = _accuracy(
         parent,
@@ -592,6 +606,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         generated_compositions=COMPOSITION_GRAMMAR,
         zero_codes=True,
         combiner=composition_combiner,
+        route_programs=COMPOSITION_ROUTE_PROGRAMS,
     )
     shuffled_combiner = ExternalSkillFragmentCombiner(
         REGISTER_WIDTH,
@@ -617,6 +632,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         shuffle_outcomes=True,
         generated_compositions=COMPOSITION_GRAMMAR,
         combiner=shuffled_combiner,
+        route_programs=COMPOSITION_ROUTE_PROGRAMS,
     )
     shuffled_accuracy = _accuracy(
         parent,
@@ -630,6 +646,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         seed=args.seed + 44_000,
         generated_compositions=COMPOSITION_GRAMMAR,
         combiner=shuffled_combiner,
+        route_programs=COMPOSITION_ROUTE_PROGRAMS,
     )
 
     fresh_machine = _machine()
@@ -665,6 +682,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         ],
         generated_compositions=COMPOSITION_GRAMMAR,
         combiner=fresh_combiner,
+        route_programs=COMPOSITION_ROUTE_PROGRAMS,
         eval_every=args.eval_every,
         audit_count=args.audit_count,
         audit_seed=args.seed + 45_500,
@@ -681,6 +699,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         seed=args.seed + 46_000,
         generated_compositions=COMPOSITION_GRAMMAR,
         combiner=fresh_combiner,
+        route_programs=COMPOSITION_ROUTE_PROGRAMS,
     )
 
     route_queries = torch.stack((bank.keys[0].detach(), bank.keys[1].detach()))
@@ -765,9 +784,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "audit_unique_verifier_bits": (
                 audit_batches * args.audit_count * args.span * 2
             ),
-            "unique_logical_lifetimes": (
-                training_batches * args.batch_size
-            ),
+            "unique_logical_lifetimes": (training_batches * args.batch_size),
             "optimizer_updates": (
                 args.parent_updates
                 + 2 * args.primitive_updates

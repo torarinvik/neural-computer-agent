@@ -571,9 +571,37 @@ passed old-fragment retention, reversed-order rejection, zero-code ablation,
 reward-shuffled rejection, frozen-parent digest, no-replay, and route-resolution
 gates. This promotes bounded reusable compositional transfer only. It does not
 promote arbitrary new computation, unrestricted memory growth, compression, or
-general continual learning. The remaining high-ROI test is expansion beyond a
-two-fragment grammar with independently held-out programs and an external
-combiner that must retain all earlier primitives.
+general continual learning. The next four-fragment closure audit is recorded
+under `session_records/external_skill_fragment_multi_composition_amodal_2026-08-11/`.
+
+### Four-fragment closure and acquisition isolation (2026-08-11)
+
+The next pressure test passed that expansion on two matched seeds. Four
+fragments—`reverse`, `rotate`, `complement`, and `prefix_parity`—were acquired
+sequentially with fresh outcomes, then protected. A new external trace combiner
+learned the held-out order
+`prefix_parity -> complement -> reverse -> rotate` while the parent controller,
+interpreter, and acquired bank were frozen. Stable inherited composition cost
+6,144 verifier bits on both seeds; matched fresh learners cost 12,288 bits on
+both seeds. All four primitive stable-mastery and post-composition retention
+gates passed, as did reversed-order, zero-code, missing-evidence,
+reward-shuffled, frozen-parent, persistence-corruption, route-resolution, and
+zero-replay controls.
+
+This audit also resolved a training-design error. A preliminary rung used the
+same decoder loss to acquire a primitive and a longer composition involving
+that primitive; one seed then failed primitive retention despite passing the
+composition score. The canonical acquisition rule is now: primitive objective
+alone -> stable-prefix gate -> protect fragment -> composition objective with a
+new external combiner. This is a general continual-learning principle for the
+architecture: do not ask one external memory cell to be both an atomic skill
+and a composite program during the same credit-assignment window.
+
+The result promotes bounded four-fragment reusable composition, not arbitrary
+program induction, unrestricted memory growth, compression, or general
+continual learning. The next test should use multiple independently held-out
+programs and measure whether the same acquired fragments remain useful across
+them without retraining the fragment bank.
 
 The first variable-deliberation outcome-only rung is recorded under
 `session_records/deliberation_amodal_2026-08-03/`. It validates the bounded

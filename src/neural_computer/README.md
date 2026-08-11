@@ -156,6 +156,16 @@ coefficient/basis products cannot collapse the external instruction signal.
 This is the structural foundation for compounding reuse; positive transfer and
 arbitrary program induction still require fresh verifier-gated experiments.
 
+The multi-fragment closure pressure test in
+`experiments/external_skill_fragment_composition_amodal/train_multi.py` adds a
+crucial lifecycle rule: acquire and stably master one primitive, protect it,
+then acquire the next. Primitive acquisition and composition acquisition use
+separate objectives and separate output adapters. This prevents a longer
+program from corrupting the reusable primitive it is supposed to compose. The
+four-fragment audit promotes bounded sequential acquisition and held-out
+composition transfer; arbitrary program induction and open-ended growth remain
+unqualified.
+
 `ExternalGoalFragmentStager` is the corresponding acquisition boundary for
 factual destinations. It stages an opaque learned-state target and updates
 only scalar sufficient statistics from fresh eligible verifier outcomes. A

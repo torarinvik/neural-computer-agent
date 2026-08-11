@@ -1,0 +1,60 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "external_skill_fragment_multi_composition_amodal_2026-08-11",
+  "date": "2026-08-11",
+  "status": "promoted_bounded_four_fragment_composition",
+  "claim_boundary": "Two-seed stable-prefix transfer for four sequentially acquired opaque fragments and one held-out four-fragment program; not arbitrary program induction, unrestricted growth, compression, or general continual learning.",
+  "configuration": {
+    "seeds": [69316, 69317],
+    "primitives": ["reverse", "rotate", "complement", "prefix_parity"],
+    "target_order": [3, 2, 0, 1],
+    "target_program": ["prefix_parity", "complement", "reverse", "rotate"],
+    "parent_updates": 64,
+    "primitive_updates": 256,
+    "composition_updates": 64,
+    "batch_size": 32,
+    "span": 3,
+    "audit_count": 128,
+    "eval_every": 32,
+    "mastery_threshold": 0.8,
+    "primitive_acquisition": "isolated_atomic_objective_then_stable_protection_v1",
+    "composition_path": "frozen_bank_trace_combiner_decoder_v1",
+    "code_materialization": "normalized_shared_basis_code_v1",
+    "controller_frozen_during_growth": true,
+    "replayed_examples": 0
+  },
+  "aggregate": {
+    "primitive_stable_bits_per_seed": [
+      {"reverse": 12288, "rotate": 12288, "complement": 6144, "prefix_parity": 12288},
+      {"reverse": 12288, "rotate": 12288, "complement": 24576, "prefix_parity": 6144}
+    ],
+    "inherited_stable_bits": [6144, 6144],
+    "fresh_stable_bits": [12288, 12288],
+    "transfer_ratio_fresh_over_inherited": [2.0, 2.0],
+    "composition_accuracy": [0.953125, 0.9583333134651184],
+    "wrong_order_accuracy": [0.5677083134651184, 0.484375],
+    "zero_fragment_accuracy": [0.625, 0.6536458134651184],
+    "missing_evidence_accuracy": [0.4713541567325592, 0.5],
+    "reward_shuffled_accuracy": [0.3776041567325592, 0.4166666567325592],
+    "source_retention_minimum": [1.0, 0.9166666865348816],
+    "unique_verifier_bits_per_seed": [257664, 257664],
+    "unique_logical_lifetimes_per_seed": [40960, 40960],
+    "optimizer_updates_per_seed": [1280, 1280],
+    "replayed_examples_per_seed": [0, 0],
+    "all_promotion_gates_passed": true
+  },
+  "controls": {
+    "fresh_pixel_rerender": true,
+    "operation_cue_ablated": true,
+    "wrong_order_is_non_commutative": true,
+    "reward_shuffled": true,
+    "zero_fragment_codes": true,
+    "missing_sequence_evidence": true,
+    "frozen_parent_digest": true,
+    "route_resolution": true,
+    "bank_persistence_and_corruption": true,
+    "replayed_examples": 0
+  },
+  "rejected_diagnostic": "A same-decoder atomic-plus-composition acquisition rung failed primitive retention on one seed; separating atomic acquisition from composition acquisition and increasing primitive exposure passed replication.",
+  "interpretation": "The external boundary now supports replicated sequential acquisition and reuse of four independently mastered fragments in a held-out ordered program. This is a bounded continual-memory/composition gain, not general continual learning or arbitrary new computation."
+}
