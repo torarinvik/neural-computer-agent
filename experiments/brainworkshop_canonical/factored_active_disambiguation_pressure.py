@@ -79,6 +79,8 @@ class ActiveDisambiguationTrial:
     selected_probe_leverage: tuple[float, ...] = ()
     selected_probe_support: tuple[float, ...] = ()
     selected_probe_utility: tuple[float, ...] = ()
+    selected_probe_utility_confidence: tuple[float, ...] = ()
+    selected_probe_profile: tuple[tuple[float, ...], ...] = ()
 
     def payload(self) -> dict[str, object]:
         return asdict(self)
@@ -280,6 +282,8 @@ def _execute_probe_trial(
                 selected_probe_leverage: list[float] = []
                 selected_probe_support: list[float] = []
                 selected_probe_utility: list[float] = []
+                selected_probe_utility_confidence: list[float] = []
+                selected_probe_profile: list[tuple[float, ...]] = []
                 decoder_state_free = True
                 scored = None
                 for probe_index in range(probe_horizon):
@@ -328,6 +332,16 @@ def _execute_probe_trial(
                         0.5
                         if probe.utility_scores is None
                         else float(probe.utility_scores[selected_index])
+                    )
+                    selected_probe_utility_confidence.append(
+                        0.0
+                        if probe.utility_confidence_scores is None
+                        else float(probe.utility_confidence_scores[selected_index])
+                    )
+                    if probe.utility_profiles is None:
+                        raise RuntimeError("probe did not expose its opaque utility profile")
+                    selected_probe_profile.append(
+                        tuple(float(value) for value in probe.utility_profiles[selected_index])
                     )
                     selected_indices.append(selected_index)
                     selection_disagreements.append(disagreement_value)
@@ -461,6 +475,10 @@ def _execute_probe_trial(
                     selected_probe_leverage=tuple(selected_probe_leverage),
                     selected_probe_support=tuple(selected_probe_support),
                     selected_probe_utility=tuple(selected_probe_utility),
+                    selected_probe_utility_confidence=tuple(
+                        selected_probe_utility_confidence
+                    ),
+                    selected_probe_profile=tuple(selected_probe_profile),
                 )
                 target_recovered = (
                     strict_route.status == "matched"
@@ -672,8 +690,8 @@ def run_active_disambiguation_pressure(
         support_calibration_lifetimes += 1
 
     utility_memory = ExternalTransitionProbeUtilityMemory(
-        agent.controller.intention_width,
-        merge_cosine=0.999,
+        key_width=agent.controller.intention_width + 3,
+        merge_cosine=0.95,
         prior_strength=1.0,
     )
     utility_calibration_observations = 0
@@ -706,7 +724,10 @@ def run_active_disambiguation_pressure(
                 )
             )
             utility_memory.observe(
-                candidate_intentions[candidate_index].unsqueeze(0),
+                torch.tensor(
+                    calibration_trial.selected_probe_profile[0],
+                    dtype=torch.float32,
+                ).unsqueeze(0),
                 utility=_diagnostic_probe_utility(calibration_trial),
             )
             unique_verifier_bits += calibration_bits
@@ -753,7 +774,9 @@ def run_active_disambiguation_pressure(
     )
     for trial in (active_trial, passive_trial):
         utility_memory.observe(
-            candidate_intentions[trial.selected_intention_index].unsqueeze(0),
+            torch.tensor(trial.selected_probe_profile[0], dtype=torch.float32).unsqueeze(
+                0
+            ),
             utility=_diagnostic_probe_utility(trial),
         )
     return ActiveDisambiguationPressureResult(

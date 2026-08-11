@@ -10141,31 +10141,36 @@ class ExternalTransitionSupportStatistics(nn.Module):
 
 
 class ExternalTransitionProbeUtilityMemory:
-    """External scalar utility memory for opaque diagnostic intentions.
+    """External scalar utility memory for opaque diagnostic probe keys.
 
     This memory is deliberately distinct from verifier reward memory.  A
     caller records only whether a fresh factual probe resolved its current
     ambiguity; no target slot, task label, protocol action, or trajectory is
-    retained.  Candidate vectors are opaque addresses, and unknown addresses
-    receive a neutral prior so this memory cannot turn into a hidden policy.
+    retained.  Keys may include an opaque intention and model-derived probe
+    profile, and unknown keys receive a neutral prior so this memory cannot
+    turn into a hidden policy.
     """
 
     schema = EXTERNAL_TRANSITION_PROBE_UTILITY_MEMORY_SCHEMA
 
     def __init__(
         self,
-        intention_width: int,
+        intention_width: int | None = None,
         *,
+        key_width: int | None = None,
         merge_cosine: float = 0.999,
         prior_strength: float = 1.0,
         max_entries: int | None = None,
     ) -> None:
+        if intention_width is not None and key_width is not None:
+            raise ValueError("probe utility accepts intention_width or key_width, not both")
+        resolved_width = key_width if key_width is not None else intention_width
         if (
-            not isinstance(intention_width, int)
-            or isinstance(intention_width, bool)
-            or intention_width < 1
+            not isinstance(resolved_width, int)
+            or isinstance(resolved_width, bool)
+            or resolved_width < 1
         ):
-            raise ValueError("probe utility intention width must be positive")
+            raise ValueError("probe utility key width must be positive")
         if not 0.0 <= merge_cosine <= 1.0 or not math.isfinite(merge_cosine):
             raise ValueError("probe utility merge cosine is invalid")
         if prior_strength <= 0.0 or not math.isfinite(prior_strength):
@@ -10176,7 +10181,10 @@ class ExternalTransitionProbeUtilityMemory:
             or max_entries < 1
         ):
             raise ValueError("probe utility maximum entries must be positive")
-        self.intention_width = int(intention_width)
+        self.key_width = int(resolved_width)
+        # Retain the old attribute name as a read-only compatibility alias for
+        # v1 callers; the stored vector is now a generic opaque probe key.
+        self.intention_width = self.key_width
         self.merge_cosine = float(merge_cosine)
         self.prior_strength = float(prior_strength)
         self.max_entries = max_entries
@@ -10190,10 +10198,12 @@ class ExternalTransitionProbeUtilityMemory:
         return {
             "schema": self.schema,
             "intention_width": self.intention_width,
+            "key_width": self.key_width,
             "merge_cosine": self.merge_cosine,
             "prior_strength": self.prior_strength,
             "max_entries": self.max_entries,
-            "storage": "opaque_intention_scalar_resolution_sufficient_statistics_v1",
+            "storage": "opaque_probe_key_scalar_resolution_sufficient_statistics_v1",
+            "key_kind": "opaque_intention_and_model_probe_profile_v1",
             "unknown_prior": "neutral_half_v1",
             "learning": "one_pass_fresh_route_outcomes_without_replay_v1",
         }
@@ -10352,23 +10362,45 @@ class ExternalTransitionProbeUtilityMemory:
     def scores(self, candidate_intentions: torch.Tensor) -> torch.Tensor:
         """Return neutral-prior or empirical diagnostic utility per candidate."""
 
+        scores, _confidence = self.scores_and_confidence(candidate_intentions)
+        return scores
+
+    def scores_and_confidence(
+        self,
+        candidate_intentions: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        """Return posterior utility and evidence confidence per opaque key."""
+
         normalized = self._validate_intentions(candidate_intentions)
-        values = []
+        values: list[float] = []
+        confidences: list[float] = []
         for intention in normalized:
             index = self._find_entry(intention)
             if index is None:
                 values.append(0.5)
+                confidences.append(0.0)
                 continue
+            outcome_count = self._outcome_counts[index]
             values.append(
                 (
                     self.prior_strength + self._utility_sums[index]
                 )
                 / (
                     (2.0 * self.prior_strength)
-                    + self._outcome_counts[index]
+                    + outcome_count
                 )
             )
-        return torch.tensor(values, dtype=torch.float32, device=candidate_intentions.device)
+            confidences.append(
+                outcome_count / ((2.0 * self.prior_strength) + outcome_count)
+            )
+        return (
+            torch.tensor(values, dtype=torch.float32, device=candidate_intentions.device),
+            torch.tensor(
+                confidences,
+                dtype=torch.float32,
+                device=candidate_intentions.device,
+            ),
+        )
 
     def statistics(self) -> dict[str, torch.Tensor]:
         self.validate_state()
@@ -10437,7 +10469,7 @@ class ExternalTransitionProbeUtilityMemory:
         if not required.issubset(payload):
             raise ValueError("probe utility memory payload is incomplete")
         memory = cls(
-            int(payload["intention_width"]),
+            key_width=int(payload.get("key_width", payload["intention_width"])),
             merge_cosine=float(payload["merge_cosine"]),
             prior_strength=float(payload["prior_strength"]),
             max_entries=(
@@ -11666,6 +11698,8 @@ class ExternalTransitionProbeResult:
     candidate_slot_ids: tuple[int, ...]
     support_scores: torch.Tensor | None = None
     utility_scores: torch.Tensor | None = None
+    utility_confidence_scores: torch.Tensor | None = None
+    utility_profiles: torch.Tensor | None = None
     schema: str = EXTERNAL_TRANSITION_PROBE_SCHEMA
 
     def validate(
@@ -11710,6 +11744,23 @@ class ExternalTransitionProbeResult:
                 or torch.any(self.utility_scores > 1.0)
             ):
                 raise ValueError("transition-probe utility scores are invalid")
+        if self.utility_confidence_scores is not None:
+            if self.utility_confidence_scores.shape != self.disagreement_scores.shape:
+                raise ValueError("transition-probe utility confidence is misaligned")
+            if not bool(torch.isfinite(self.utility_confidence_scores).all()) or bool(
+                torch.any(self.utility_confidence_scores < 0.0)
+                or torch.any(self.utility_confidence_scores > 1.0)
+            ):
+                raise ValueError("transition-probe utility confidence is invalid")
+        if self.utility_profiles is not None:
+            if (
+                self.utility_profiles.ndim != 2
+                or self.utility_profiles.shape[0]
+                != self.disagreement_scores.shape[0]
+            ):
+                raise ValueError("transition-probe utility profiles are misaligned")
+            if not bool(torch.isfinite(self.utility_profiles).all()):
+                raise ValueError("transition-probe utility profiles are invalid")
         if not 0 <= self.selected_intention_index < self.disagreement_scores.shape[0]:
             raise ValueError("transition-probe selected intention is invalid")
         for name, value in (
@@ -11778,6 +11829,43 @@ class ExternalTransitionProbeSequenceResult:
             if not bool(torch.isfinite(value).all()):
                 raise ValueError(f"transition-probe sequence {name} must be finite")
         return self
+
+
+def _probe_utility_profiles(
+    candidate_intentions: torch.Tensor,
+    disagreement_scores: torch.Tensor,
+    leverage: torch.Tensor,
+    support_scores: torch.Tensor | None,
+) -> torch.Tensor:
+    """Build opaque model-derived keys for contextual utility memory."""
+
+    if candidate_intentions.ndim != 2 or disagreement_scores.ndim != 1:
+        raise ValueError("probe utility profile inputs have incompatible ranks")
+    if candidate_intentions.shape[0] != disagreement_scores.shape[0]:
+        raise ValueError("probe utility profile candidate counts differ")
+    if leverage.shape != disagreement_scores.shape:
+        raise ValueError("probe utility profile leverage is misaligned")
+    finite_leverage = torch.where(
+        torch.isfinite(leverage),
+        leverage.clamp_min(0.0),
+        torch.full_like(leverage, 1e6),
+    )
+    profile_support = (
+        torch.full_like(disagreement_scores, 0.5)
+        if support_scores is None
+        else support_scores.to(disagreement_scores)
+    )
+    if profile_support.shape != disagreement_scores.shape:
+        raise ValueError("probe utility profile support is misaligned")
+    return torch.cat(
+        (
+            candidate_intentions,
+            torch.log1p(finite_leverage).clamp_max(20.0).unsqueeze(1),
+            torch.log1p(disagreement_scores.clamp_min(0.0)).unsqueeze(1),
+            profile_support.unsqueeze(1),
+        ),
+        dim=1,
+    )
 
 
 @dataclass(frozen=True)
@@ -12441,15 +12529,30 @@ class ExternalModelBasedPlanner:
             # observations are useful calibration, but must not erase the
             # conservative extrapolation penalty before they are well sampled.
             selection_scores = disagreement_scores * reliability * support_scores
+        utility_profiles = _probe_utility_profiles(
+            candidate_intentions,
+            disagreement_scores,
+            mean_leverage,
+            support_scores,
+        )
         if utility_memory is None:
             utility_scores = None
+            utility_confidence_scores = None
         else:
             if not isinstance(utility_memory, ExternalTransitionProbeUtilityMemory):
                 raise TypeError("transition utility memory has an invalid type")
-            utility_scores = utility_memory.scores(candidate_intentions)
-            # The neutral 0.5 prior multiplies by one.  Learned utility can
-            # modulate evidence-seeking disagreement, but cannot create it.
-            selection_scores = selection_scores * (0.5 + utility_scores)
+            utility_scores, utility_confidence_scores = (
+                utility_memory.scores_and_confidence(utility_profiles)
+            )
+            base_max = selection_scores.detach().max().clamp_min(1e-12)
+            normalized_base = selection_scores / base_max
+            # Confidence gradually allows learned diagnostic utility to
+            # override a misleading disagreement prior.  With no evidence,
+            # confidence is zero and the established selector is unchanged.
+            selection_scores = (
+                (1.0 - utility_confidence_scores) * normalized_base
+                + utility_confidence_scores * utility_scores
+            )
         selected_index = int(selection_scores.argmax())
         return ExternalTransitionProbeResult(
             selected_intention=candidate_intentions[selected_index].detach().clone(),
@@ -12463,6 +12566,12 @@ class ExternalModelBasedPlanner:
             utility_scores=(
                 None if utility_scores is None else utility_scores.detach().clone()
             ),
+            utility_confidence_scores=(
+                None
+                if utility_confidence_scores is None
+                else utility_confidence_scores.detach().clone()
+            ),
+            utility_profiles=utility_profiles.detach().clone(),
         ).validate(
             state_width=self.model.state_width,
             intention_width=self.model.intention_width,

@@ -33,6 +33,7 @@ from .world_model import (
     ExternalTransitionRollout,
     ExternalTransitionRouteQuery,
     ExternalTransitionSupportStatistics,
+    _probe_utility_profiles,
 )
 
 EXTERNAL_FACTORED_TRANSITION_MODEL_SCHEMA = (
@@ -1622,11 +1623,32 @@ class ExternalFactoredTransitionRouter:
             selection_scores = disagreement_scores * reliability * support_scores
         if utility_memory is None:
             utility_scores = None
+            utility_confidence_scores = None
         else:
             if not isinstance(utility_memory, ExternalTransitionProbeUtilityMemory):
                 raise TypeError("transition utility memory has an invalid type")
-            utility_scores = utility_memory.scores(candidate_intentions)
-            selection_scores = selection_scores * (0.5 + utility_scores)
+            utility_profiles = _probe_utility_profiles(
+                candidate_intentions,
+                disagreement_scores,
+                leverage,
+                support_scores,
+            )
+            utility_scores, utility_confidence_scores = (
+                utility_memory.scores_and_confidence(utility_profiles)
+            )
+            base_max = selection_scores.detach().max().clamp_min(1e-12)
+            normalized_base = selection_scores / base_max
+            selection_scores = (
+                (1.0 - utility_confidence_scores) * normalized_base
+                + utility_confidence_scores * utility_scores
+            )
+        if utility_memory is None:
+            utility_profiles = _probe_utility_profiles(
+                candidate_intentions,
+                disagreement_scores,
+                leverage,
+                support_scores,
+            )
         selected_index = int(selection_scores.argmax())
         return ExternalTransitionProbeResult(
             selected_intention=candidate_intentions[selected_index].detach().clone(),
@@ -1640,6 +1662,12 @@ class ExternalFactoredTransitionRouter:
             utility_scores=(
                 None if utility_scores is None else utility_scores.detach().clone()
             ),
+            utility_confidence_scores=(
+                None
+                if utility_confidence_scores is None
+                else utility_confidence_scores.detach().clone()
+            ),
+            utility_profiles=utility_profiles.detach().clone(),
         ).validate(
             state_width=self.model.state_width,
             intention_width=self.model.intention_width,

@@ -3893,8 +3893,8 @@ def test_planner_selects_active_intention_that_disambiguates_model_slots() -> No
     assert result.disagreement_scores[1] > result.disagreement_scores[0]
     assert result.predicted_next_states.shape == (2, 2, 1)
 
-    utility_memory = ExternalTransitionProbeUtilityMemory(1)
-    utility_memory.observe(torch.tensor([[1.0]]), utility=1.0)
+    utility_memory = ExternalTransitionProbeUtilityMemory(key_width=4)
+    utility_memory.observe(result.utility_profiles[1].unsqueeze(0), utility=1.0)
     utility_result = planner.select_disambiguating_intention(
         bank,
         torch.zeros(1, 1),
@@ -3904,6 +3904,21 @@ def test_planner_selects_active_intention_that_disambiguates_model_slots() -> No
     assert utility_result.selected_intention_index == 1
     assert utility_result.utility_scores is not None
     assert utility_result.utility_scores[1] > utility_result.utility_scores[0]
+
+    confident_utility = ExternalTransitionProbeUtilityMemory(key_width=4)
+    assert result.utility_profiles is not None
+    for _ in range(20):
+        confident_utility.observe(result.utility_profiles[0].unsqueeze(0), utility=1.0)
+        confident_utility.observe(result.utility_profiles[1].unsqueeze(0), utility=0.0)
+    overridden = planner.select_disambiguating_intention(
+        bank,
+        torch.zeros(1, 1),
+        torch.tensor([[0.0], [1.0]]),
+        utility_memory=confident_utility,
+    )
+    assert overridden.selected_intention_index == 0
+    assert overridden.utility_confidence_scores is not None
+    assert overridden.utility_confidence_scores[0] > 0.9
 
 
 def test_transition_support_statistics_calibrate_opaque_leverage_without_replay() -> None:

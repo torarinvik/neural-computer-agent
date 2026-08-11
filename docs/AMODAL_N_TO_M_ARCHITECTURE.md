@@ -9310,3 +9310,25 @@ diagnostic utility depends on the current factual ambiguity and model
 coverage, so the memory key must become context- or probe-profile-conditioned.
 Evidence is in
 `session_records/factored_active_probe_utility_pressure_2026-08-11/sample_efficiency_ledger.json`.
+
+## Profile-conditioned diagnostic utility (2026-08-11)
+
+The diagnostic utility boundary now accepts an opaque probe profile rather than
+keying utility by intention alone. The profile concatenates the candidate
+intention with model-derived predictive leverage, disagreement, and support
+posterior. It remains an external scalar memory: no target slot, modality,
+protocol, controller state, or raw verifier stream is stored. Utility evidence
+is confidence-gated, so unknown or sparsely observed profiles preserve the
+proven baseline selector instead of allowing a noisy estimate to override it.
+
+The fresh rendered Brain Workshop pressure test kept the controller frozen and
+used one verifier outcome per candidate calibration. Active recovery remained
+`2/3` versus `1/3` for the passive control, exactly matching the established
+support-only and global-utility results, while consuming 630 verifier bits,
+105 logical lifetimes, and 723 transition rows. The profile-conditioned
+boundary is retained because it is the correct isolation and information
+contract, but it is not promoted as a capability gain. The next bottleneck is
+not another selector feature: it is repeated, transferable evidence across
+uncertainty contexts so that utility can be estimated reliably without replay.
+Evidence is in
+`session_records/factored_active_probe_profile_utility_pressure_2026-08-11/sample_efficiency_ledger.json`.
