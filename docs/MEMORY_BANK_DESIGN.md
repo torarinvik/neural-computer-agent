@@ -7010,3 +7010,58 @@ sum gamma^d r(s_d,a_d) + gamma^D V(s_D,a_D) — which is the standard
 form and the next implementation step.
 
 3 seeds of `--score terminal` running against F143's +0.1229.
+
+**Codex log review, 2026-08-11 — and an epistemic trap I nearly walked
+into.** The parallel session's log now ends with a summary whose
+headline findings match ours to the DIGIT: composition going
+"chance-to-perfect" in the single-world math test (our F121/F125),
+"about 27 exceptions" restoring the walled environment (our F97's
+exactly 27), the ignorance objective worth "about 22% of available
+headroom" (our F107's 22.0%), diversity pushing novel-family reading
+to "0.91-0.97 without gradient updates" (our F78 range), and capacity
+not being the lever (our F77/F79/F89/F140).
+
+My first reading was independent convergence, which would have been
+powerful evidence. **It is not.** The log states plainly that it
+begins by reading an EXPORT of our own session — "I read the full
+export at [session transcript]... It is a game-focused research
+clone" — and two export IDs appear 24 times between them. Those
+numbers are our numbers, reflected back. Treating them as replication
+would have put fabricated corroboration into this ledger.
+
+**Rule this earns, and it is new:** before crediting an outside source
+as independent confirmation, check whether it had access to the work
+it appears to confirm. Matching to three significant figures across
+five separate findings is not convergence, it is a citation loop, and
+the tell was the precision itself — genuinely independent
+replications of noisy quantities do not agree to the digit.
+
+**What IS genuinely theirs and worth having.** Their earlier material
+covers ground we never touched, so it is additive rather than
+reflective:
+
+  * **Retrieval cost, quantified.** Linear scanning 64 entries costs
+    64 model evaluations — already MORE than minting a new entry. Our
+    F85-F87 built retrieval and measured its accuracy but never
+    compared its cost against the cost of just re-reading. If reading
+    is cheaper than searching, a bank that must be searched is the
+    wrong data structure, and that is a design-level objection to the
+    architecture we have not answered.
+  * **Failure modes we never hit**: per-task encoders and per-game
+    adapters producing excellent metrics while failing causal audits
+    because the skill migrated into the "shared" component; curricula
+    that failed because they changed the required policy rather than
+    making the same policy easier ("a valid easing axis must preserve
+    and exercise the target behaviour's full output range");
+    staged probe/addressing/execution failing where co-training
+    worked.
+  * **A methodological rule we derived independently today.** Their
+    list includes "check whether a hypothesis has a predicted data
+    signature before launching expensive runs" — which is exactly
+    F150's lesson, reached here by killing the double-counting
+    hypothesis from archived data. Independent derivation of a RULE is
+    meaningful in a way that matching numbers is not, because the rule
+    was not in the material they read.
+  * **An honest negative on their side**: their self-addressing result
+    cleared the complete gate on only 5 of 16 seeds, with acquisition
+    rather than the bank mechanism the dominant failure.
