@@ -8926,3 +8926,39 @@ reload independently of controller parameters. This makes the “replace only
 the differing puzzle piece” idea a real interface rather than a metaphor, but
 it does not yet claim learned goal discovery, open-ended fragment induction,
 or general continual learning.
+
+## Causal trajectory routing and the transfer objective (2026-08-11)
+
+The exported games work identified a concrete information boundary: a final
+state can be identical for two regimes whose histories imply different
+continuations. The canonical route-query seam therefore supports two explicit
+external statistics contracts. The compatibility contract is
+`masked_mean_and_max_v1`; the causal contract is
+`recency_weighted_and_latest_v1`, which adds a recency-weighted learned-token
+summary and the actual latest retained token without resizing the controller,
+planner, or intention bus.
+
+“Latest” is defined by the retained-position mask, not by the count of present
+tokens. This matters when evidence is sparse or a window contains a gap: route
+identity must follow the event that is actually latest, not an assumed packed
+layout. Both contracts remain replaceable memory-side addressing mechanisms;
+they do not add modality branches or expose memory identity to the controller.
+
+The export also makes the long-term capability objective operational rather
+than rhetorical:
+
+```text
+after learning A, acquire novel B with lower verified lifetime cost than a
+matched fresh learner, while retaining A and surviving reversal controls
+```
+
+That objective requires retrieval before adaptation, factual model-plus-search
+behavior rather than copied action policy, structural diversity that forces
+shared abstractions to be identifiable, and targets difficult enough that a
+fresh learner has measurable acquisition cost. A cheap target can hide both
+positive and negative transfer. The canonical ledger must therefore keep
+unique verifier bits, logical lifetimes, optimizer updates, replay, latency,
+and stable-prefix retention separate, and must retain the fresh, shuffled,
+missing-evidence, corruption, and reversal controls. The new causal route
+contract improves information preservation, but it is not itself evidence of
+general continual learning or universal positive transfer.
