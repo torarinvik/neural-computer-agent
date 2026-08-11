@@ -6963,3 +6963,50 @@ spent 40k-update arms on weaker hypotheses this session; checking
 whether the prediction has a fingerprint in existing data should come
 before allocating compute, and this is the second time today it would
 have saved a run (the first being the cost table that resolved F144).
+
+**F151 (analysis). A measured arithmetic defect in the beam's scoring
+rule: it counts future rewards up to FOUR TIMES OVER, and this has
+been true of every games result since F111.** The value head is
+trained on the discounted H-step RETURN of a state-action, so
+value(s_t, a_t) already contains r_t ... r_{t+H-1}. The beam then adds
+that prediction at every depth with its own discount. Expanding the
+implied weight on each future reward, for H=4 and depth=4:
+
+| reward | weight the beam applies | correct weight | over-counted |
+| --- | ---: | ---: | ---: |
+| r_0 | 1.000 | 1.000 | 1.0x |
+| r_1 | 1.800 | 0.900 | **2.0x** |
+| r_2 | 2.430 | 0.810 | **3.0x** |
+| r_3 | 2.916 | 0.729 | **4.0x** |
+
+A correct planning objective weights each reward by gamma^t exactly
+once. This one weights the near future progressively more the further
+ahead it is, which is close to the opposite of discounting.
+
+**This explains F145 rather than merely coexisting with it.** Deeper
+search makes the over-counting WORSE — depth 6 adds two more summands,
+each re-counting the same rewards — so the extra lookahead and the
+extra distortion cancel. "More depth buys nothing" is what a correct
+search hitting a model limit looks like, and it is also what an
+incorrect search buying accuracy and losing arithmetic looks like. I
+read it as the first and it may be the second.
+
+**Found by inspecting the scoring line while looking for something
+else** — the density analysis in F150. Worth noting how it survived:
+every number since F111 is internally consistent, replicates across
+seeds, and responds sensibly to interventions, because the defect is
+in the OBJECTIVE the search optimises rather than in any measurement.
+A wrong objective optimised well produces clean, reproducible,
+confidently wrong results, and no amount of seed discipline detects
+it.
+
+**What is running is a test, not the fix.** `--score terminal` scores
+a plan by its final step's value alone, which counts the horizon once
+(verified: no reward appears in two summands) but ignores rewards
+collected at steps 0-2. It is therefore a clean test of whether
+over-counting is hurting, not a correct planner. The correct version
+needs an immediate-reward head plus a terminal bootstrap —
+sum gamma^d r(s_d,a_d) + gamma^D V(s_D,a_D) — which is the standard
+form and the next implementation step.
+
+3 seeds of `--score terminal` running against F143's +0.1229.

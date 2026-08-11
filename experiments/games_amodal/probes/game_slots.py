@@ -150,6 +150,20 @@ parser.add_argument(
          "scalar head trained on the observed return, used raw by the "
          "search.")
 parser.add_argument(
+    "--score", choices=("sum", "terminal"), default="sum",
+    help="how the beam turns per-step value predictions into a plan "
+         "score. 'sum' (the behaviour since F111) adds the value head's "
+         "output at every depth with a discount — but that head is "
+         "trained on the H-STEP RETURN, so each future reward is "
+         "already inside every earlier step's prediction and the sum "
+         "counts it repeatedly. Measured for H=4, depth=4: r_1 gets "
+         "weight 1.800 where 0.900 is correct, r_2 gets 2.430 where "
+         "0.810 is correct, r_3 gets 2.916 where 0.729 is correct — "
+         "four times over. 'terminal' scores a plan by the value at "
+         "its FINAL step only, which counts the horizon once. This is "
+         "a structural error that more depth makes WORSE, which is "
+         "consistent with F145 finding depth 6 no better than depth 4.")
+parser.add_argument(
     "--objects", type=int, default=1,
     help="how many nearest objects per plane the slot state carries. "
          "F145 measured that search budget buys nothing (depth +0.0015, "
@@ -628,7 +642,12 @@ def act(states: torch.Tensor, entry, truth=None) -> torch.Tensor:
                     successor = torch.cat(
                         [successor[:, :, :2], held_slots], dim=-1)
                 expanded.append(successor)
-                scores.append(beam_score + gain * (0.9 ** depth))
+                if args.score == "terminal":
+                    # the H-step return at the final step already
+                    # covers the horizon; do not add earlier steps
+                    scores.append(gain * (0.9 ** depth))
+                else:
+                    scores.append(beam_score + gain * (0.9 ** depth))
                 first = torch.where(
                     beam_first < 0,
                     torch.full_like(beam_first, action), beam_first)
