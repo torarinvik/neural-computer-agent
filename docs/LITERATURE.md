@@ -660,3 +660,113 @@ Sources:
 4. Retired for now: semi-amortization, codebook, widened state — all
    measured null (F148, F149). Alignment/uniformity terms (§9) remain
    untested but drop below the two items above.
+
+---
+
+# Addendum 4, 2026-08-11: if it is a training-dynamics problem
+
+Three mechanism nulls and one large effect from training longer point
+at dynamics rather than architecture. Three bodies of work bear on
+that, and one of them names a knob we have never once set.
+
+## 17. Weight decay is the grokking CLOCK — and every probe here runs
+   at zero
+
+**The finding.** The grokking literature reports that
+steps-to-generalisation scale INVERSELY with weight decay: the
+phenomenon appears sooner, and becomes faster, as weight decay grows.
+Initialisation scale matters in the same way — large init with no
+regularisation can fail to generalise at all, large init with strong
+regularisation generalises fast.
+
+**Our situation.** Checked directly: **22 probe files in this project,
+not one sets weight_decay.** Every result we have is plain Adam at
+zero. If F147's "more training helps" is a grokking timescale, then
+this is the parameter that sets it, and the intervention is one
+argument rather than another mechanism.
+
+**Why this is worth more than its size suggests.** It costs nothing to
+try, and if it works it changes the budget of every future run in the
+project — including retroactively reframing the three nulls (F148,
+F149), which were all measured at 40k updates in a regime that may
+simply have been pre-transition.
+
+Implemented as `--weight-decay` (AdamW), default 0.0 so every existing
+result stays reproducible. Untested.
+
+Sources:
+[Omnigrok: Grokking Beyond Algorithmic Data](https://arxiv.org/pdf/2210.01117),
+[Grokking on the Weight-Decay Clock](https://arxiv.org/pdf/2607.23967),
+[The Weight Norm Sets the Grokking Timescale: A Causal Delay Law](https://arxiv.org/pdf/2606.13753),
+[Grokfast: Accelerated Grokking by Amplifying Slow Gradients](https://arxiv.org/html/2405.20233v1)
+
+## 18. A phase transition is PREDICTED for our architecture
+   specifically
+
+The induction-heads work found that in-context learning appears in a
+sharp phase change, with the circuit forming at precisely the moment
+the ability appears, and follow-up work states the condition for that
+sharpness: **the hallmark abrupt transition emerges when two or more
+subcircuits must CO-ADAPTIVELY ALIGN, creating a race whose outcome is
+discrete.**
+
+That is a description of our system. F106 recorded the same structure
+from the inside without naming it: the reader gives the plant nothing
+to read, the plant gives the reader no gradient, and *neither half can
+move alone*. Two subcircuits that must align. So the literature
+predicts our curve should show a transition rather than a smooth
+climb — which is exactly what the runs now in flight will show or
+refute, and it is a prediction made before the data rather than fitted
+to it.
+
+If the transition is real, the practical consequence is sharp: results
+measured before it are not weak versions of the post-transition
+result, they are a different regime, and comparing mechanisms at 40k
+updates was comparing them on the wrong side of a cliff.
+
+Sources:
+[In-context Learning and Induction Heads](https://transformer-circuits.pub/2022/in-context-learning-and-induction-heads/index.html),
+[Beyond Induction Heads: In-Context Meta Learning Induces Multi-Phase Circuit Emergence](https://arxiv.org/pdf/2505.16694),
+[How Transformers Implement Induction Heads](https://arxiv.org/html/2410.11474v1)
+
+## 19. NEURAL COLLAPSE explains why our binder wants what it wants
+
+**The phenomenon.** In the terminal phase of training — after training
+error hits zero — within-class variability of last-layer features
+collapses toward the class means, the means arrange as a simplex, and
+the classifier reduces to a nearest-class-centre rule.
+
+**Why it matters here.** F140 measured that our binder must stay
+LINEAR (a nonlinear one dropped 0.9983 to 0.6196), and §9's
+alignment/uniformity reading says a linear decoder wants tight
+clusters. Neural collapse is the name for a network producing exactly
+that geometry, and crucially it is a LATE-TRAINING phenomenon. That
+composes with §17 and §18 into one coherent story for everything we
+have seen: the clustering the binder needs emerges late, mechanisms
+applied early cannot substitute for it, and weight decay is known to
+control when it arrives.
+
+**Falsifiable consequence.** If this is right, entry geometry should
+tighten over training — within-world spread shrinking relative to
+between-world spread — and it should tighten faster with weight decay.
+We already read entries per world for the twin controls, so measuring
+that ratio is a diagnostic rather than a new experiment.
+
+Sources:
+[Prevalence of Neural Collapse during the terminal phase of training (PNAS)](https://arxiv.org/abs/2008.08186),
+[Neural Collapse: A Review on Modelling Principles and Generalization](https://arxiv.org/abs/2206.04041),
+[Neural collapse in supervised contrastive learning via information bottleneck](https://arxiv.org/pdf/2305.11957)
+
+---
+
+## Ranking after addendum 4
+
+1. **Weight decay sweep** (§17) — one argument, never tried in this
+   project, and the literature says it sets the timescale that F147
+   showed to be the only thing that matters so far.
+2. **Learning curve** (§16, running) — decides smooth vs transition,
+   which §18 predicts should be a transition.
+3. **Entry-geometry diagnostic** (§19) — within-world vs between-world
+   spread over training; reuses data we already collect.
+4. **Reward head + terminal bootstrap** (§15) — the games' correct
+   planning objective.

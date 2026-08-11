@@ -71,6 +71,17 @@ parser.add_argument(
          "A curriculum gets reading established on the readable task "
          "first, then extends it — the bootstrapping F120 identified.")
 parser.add_argument(
+    "--weight-decay", type=float, default=0.0,
+    help="AdamW weight decay. Zero in every probe this project has "
+         "ever run — 22 probe files, not one sets it. The grokking "
+         "literature reports that steps-to-generalisation scale "
+         "INVERSELY with weight decay, so if F147's 'more training "
+         "helps' is a grokking timescale then this is the knob that "
+         "sets it, and the fix is one argument rather than another "
+         "mechanism. Untested, and the reason it is worth testing is "
+         "that it costs nothing to try and would change every future "
+         "run's budget if it works.")
+parser.add_argument(
     "--curve-every", type=int, default=0,
     help="evaluate held-out performance every N updates and record the "
          "trajectory. Ranked first in LITERATURE.md addendum 3 for a "
@@ -476,11 +487,11 @@ def task_loss(program, x, y, entry) -> torch.Tensor:
 # quantity it is meant to isolate.
 ORACLE_WIDTH = 2 * M
 oracle = OracleEntry(args.dim, args.bank_tokens, ORACLE_WIDTH)
-optimizer = torch.optim.Adam(
+optimizer = torch.optim.AdamW(
     list(reader.parameters()) + list(plant.parameters())
     + list(oracle.parameters())
     + (list(codebook.parameters()) if codebook is not None else []),
-    lr=args.lr)
+    lr=args.lr, weight_decay=args.weight_decay)
 reader_opt = torch.optim.Adam(reader.parameters(), lr=args.lr)
 
 
