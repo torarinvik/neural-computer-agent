@@ -9189,3 +9189,64 @@ evaluation. Nine families, four seeds, and a replay control.
 
 The interesting quantity is the size of (2) minus (3), because that is
 what the bank is worth over the standard remedy.
+
+## F180 — the unified end-to-end: 15x cheaper, `toggle` exact, and the
+## mechanism I invented and retracted is now genuinely present
+
+Four seeds, saturating basis, inferred modulus, quality and cost
+finally measured on the SAME algorithm.
+
+| family | random search | enumeration | delta | cost rnd | cost enum |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| toggle | 0.9128 | **1.0000** | +0.0872 | 24000 | 431 |
+| proc1 | 0.9834 | 1.0000 | +0.0166 | 21000 | 233 |
+| dial | 0.9925 | 0.9974 | +0.0049 | 23000 | 21 |
+| perm | 1.0000 | 1.0000 | 0.0000 | 12000 | 156 |
+| gate1 | 0.9839 | 0.9828 | -0.0011 | 17000 | 2110 |
+| proc0 | 0.9853 | 0.9814 | -0.0039 | 17000 | 74 |
+| gate0 | 1.0000 | 0.9933 | -0.0067 | 19000 | 405 |
+| line | 1.0000 | 0.9834 | -0.0166 | 8000 | 60 |
+| grid | 0.9922 | 0.9658 | -0.0264 | 16000 | 66 |
+| walled | 0.9395 | 0.9131 | -0.0264 | 16000 | 8030 |
+| **MEAN** | 0.9790 | **0.9817** | +0.0028 | 17300 | **1159** |
+
+**P1 confirmed, and beyond its own terms.** `toggle` was predicted to
+recover to at least the 0.9551 the old basis reached. It reaches
+**1.0000 on every seed** — 0.918, 0.9388, 0.9121, 0.8822 under random
+proposal, 1.0000, 1.0000, 1.0000, 1.0000 under enumeration. The
+corrected F179 reading is confirmed: the regression was dilution of
+random proposal by two extra operations, and enumeration does not
+dilute because it does not sample.
+
+**P4 confirmed dramatically.** Cost per family falls 17,300 proposals
+to 1,159, a factor of **15**, while mean quality rises.
+
+**P2 FAILS on `line` and `gate0`**, both 1.0000 under random search and
+0.9834 / 0.9933 under enumeration. And the cause is the mechanism I
+proposed in F179, retracted as impossible, and have now made real by
+wiring it in: **`--fit-target` is live on this path for the first
+time**, so enumeration stops the moment it clears 0.95 while random
+search always spent its whole budget and kept improving. `line`,
+`grid` and `gate0` all used to overshoot; now they settle.
+
+That is worth stating plainly rather than as a curiosity. In F179 I
+diagnosed early stopping, the sweep proved it impossible because
+nothing on that path stopped early, and I retracted it in favour of the
+dilution reading. Both are now correct, of different runs: dilution
+explained the old measurement, early stopping explains this one, and
+the difference is a change I made in between. A mechanism being absent
+from one configuration says nothing about the next.
+
+**`walled` remains the residue and is now the most expensive family by
+an order of magnitude** — 8030 proposals against a median of 233,
+because enumeration exhausts depth 2 without finding a program that
+does not exist. It is the one family whose recipe the basis genuinely
+cannot express, and it is now clearly separated from everything else on
+both axes.
+
+**The sweep that was vacuous is now meaningful.** Sweeping
+`--fit-target` returned byte-identical results in F179 because nothing
+consumed it. It now governs when enumeration stops, so 0.99 and 1.0
+should recover `line`, `grid` and `gate0` at a cost that is affordable
+for the first time — 1159 proposals leaves ample headroom under a 4000
+budget.
