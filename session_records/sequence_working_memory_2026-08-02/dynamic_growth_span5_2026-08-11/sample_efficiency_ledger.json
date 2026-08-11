@@ -1,0 +1,44 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment_id": "dynamic-external-growth-span5-2026-08-11",
+  "status": "measured_near_threshold_not_promoted",
+  "source": "in_repository_run",
+  "controller_frozen_during_growth": true,
+  "replayed_examples": 0,
+  "arms": {
+    "feed_forward_width64_128_updates_seed69311": {
+      "selected_behavior": {"2": 0.875, "3": 0.7916667, "4": 0.6914063, "5": 0.653125},
+      "stable_span5_bits": null,
+      "accepted": false
+    },
+    "dynamic_width64_128_updates_seed69311": {
+      "selected_behavior": {"2": 0.875, "3": 0.90625, "4": 0.734375, "5": 0.69375},
+      "stable_span5_bits": null,
+      "accepted": false
+    },
+    "dynamic_width128_256_updates_seed69311": {
+      "selected_behavior": {"2": 1.0, "3": 0.9583333, "4": 0.875, "5": 0.796875},
+      "stable_span5_bits": null,
+      "accepted": false
+    },
+    "dynamic_width128_512_updates_seed69311": {
+      "selected_behavior": {"2": 1.0, "3": 1.0, "4": 0.96875, "5": 0.6625},
+      "stable_span5_bits": null,
+      "accepted": false
+    },
+    "dynamic_width128_256_updates_seed69312": {
+      "selected_behavior": {"2": 1.0, "3": 0.9583333, "4": 0.796875, "5": 0.653125},
+      "stable_span5_bits": null,
+      "accepted": false
+    }
+  },
+  "accounting_seed69311_dynamic_width128_256": {
+    "unique_logical_lifetimes": 16384,
+    "unique_verifier_bits": 57344,
+    "optimizer_updates": 1024,
+    "replayed_examples": 0,
+    "route_calibration_lifetimes": 256,
+    "diagnostic_lifetimes_charged_to_budget": 256
+  },
+  "claim_boundary": "Recurrent intention-conditioned external growth improves the single-seed learning curve but does not stably master span 5 across seeds; routing and source retention are not the current bottlenecks."
+}

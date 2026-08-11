@@ -310,3 +310,28 @@ open. Reports and ledgers are in
 `session_records/sequence_working_memory_2026-08-02/canonical_counterfactual_route_credit_logistic_2048_2026-08-04/`
 and its replication directory; the 512- and 1,024-update rejected rungs are
 retained alongside them.
+
+## Generalized span growth and recurrent artifact state (2026-08-11)
+
+The canonical artifact-bank harness now accepts any strictly increasing span
+curriculum. It also exposes an opt-in dynamic-growth configuration in which
+the external growth slot has temporal recurrence, intention conditioning, and
+context gating. These are properties of the learned external capability, not
+new controller branches; the parent controller remains frozen and old
+examples are never replayed.
+
+On seed `69311`, feed-forward width-64 growth reached `65.3%` on span 5 after
+128 updates per stage. Dynamic recurrent/context-gated width-128 growth
+reached `79.7%` on span 5 after 256 updates, with spans 2--4 at
+`100.0%`, `95.8%`, and `87.5%`. Extending the same run to 512 updates
+regressed span 5 to `66.3%`, so more optimization alone is not the solution.
+
+The independent seed `69312` is a required negative replication: the same
+256-update dynamic configuration retained perfect routing but reached only
+`65.3%` on span 5 and `79.7%` on span 4. The result therefore does not promote
+dynamic growth to stable span-5 mastery. The next bottleneck is stable,
+outcome-trained external computation and credit assignment under seed and
+curriculum variation—not event routing or frozen-core retention.
+
+The compact records and sample-efficiency ledger are in
+`session_records/sequence_working_memory_2026-08-02/dynamic_growth_span5_2026-08-11/`.

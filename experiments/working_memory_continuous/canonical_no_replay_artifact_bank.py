@@ -49,7 +49,17 @@ from .canonical_growth_pressure_test import (
 )
 
 
-def _growth_runtime(*, seed: int, width: int = 64) -> AmodalControllerRuntime:
+def _growth_runtime(
+    *,
+    seed: int,
+    width: int = 64,
+    growth_recurrent_from: int = 1,
+    dynamic_growth: bool = False,
+) -> AmodalControllerRuntime:
+    if growth_recurrent_from not in {0, 1}:
+        raise ValueError("growth_recurrent_from must be 0 or 1")
+    if dynamic_growth:
+        growth_recurrent_from = 0
     torch.manual_seed(seed)
     controller = AmodalCognitiveController(
         width=32,
@@ -60,7 +70,10 @@ def _growth_runtime(*, seed: int, width: int = 64) -> AmodalControllerRuntime:
         reliability_hidden=16,
         growth_register_widths=(width, width),
         growth_prior_only_from=1,
-        growth_recurrent_from=1,
+        growth_recurrent_from=growth_recurrent_from,
+        growth_gated=dynamic_growth,
+        growth_from_intention=dynamic_growth,
+        growth_gate_from_context=dynamic_growth,
     )
     return AmodalControllerRuntime(
         controller,
@@ -81,7 +94,10 @@ def _train_current_span(
     learning_rate: float,
     audit_count: int,
     eval_every: int,
+    snapshot_policy: str = "final",
 ) -> tuple[list[dict[str, float | int]], list[dict[str, float | int]]]:
+    if snapshot_policy not in {"final", "best_heldout"}:
+        raise ValueError("snapshot_policy must be final or best_heldout")
     parameters = [
         parameter
         for name, parameter in runtime.named_parameters()
@@ -92,6 +108,8 @@ def _train_current_span(
     optimizer = torch.optim.AdamW(parameters, lr=learning_rate, weight_decay=1e-5)
     history: list[dict[str, float | int]] = []
     progress: list[dict[str, float | int]] = []
+    best_growth_state: dict[str, torch.Tensor] | None = None
+    best_heldout_accuracy = float("-inf")
     runtime.train()
     for update in range(1, updates + 1):
         batch = generate_sequence_memory_batch(
@@ -115,19 +133,31 @@ def _train_current_span(
         )
         if update == updates or (eval_every > 0 and update % eval_every == 0):
             runtime.eval()
+            heldout_accuracy = _accuracy(
+                runtime,
+                operation="forward",
+                count=audit_count,
+                span=span,
+                seed=seed + 1_000_000 + update,
+            )
             progress.append(
                 {
                     "update": update,
-                    "heldout_accuracy": _accuracy(
-                        runtime,
-                        operation="forward",
-                        count=audit_count,
-                        span=span,
-                        seed=seed + 1_000_000 + update,
-                    ),
+                    "heldout_accuracy": heldout_accuracy,
                 }
             )
+            if snapshot_policy == "best_heldout" and heldout_accuracy > best_heldout_accuracy:
+                best_heldout_accuracy = heldout_accuracy
+                best_growth_state = {
+                    name: value.detach().clone()
+                    for name, value in runtime.controller.state_dict().items()
+                    if name.startswith("growth_slots.0.")
+                }
             runtime.train()
+    if best_growth_state is not None:
+        state = runtime.controller.state_dict()
+        for name, value in best_growth_state.items():
+            state[name].copy_(value)
     runtime.eval()
     return history, progress
 
@@ -213,8 +243,15 @@ def _load_selected(
     *,
     seed: int,
     growth_width: int,
+    growth_recurrent_from: int,
+    dynamic_growth: bool,
 ) -> AmodalControllerRuntime:
-    runtime = _growth_runtime(seed=seed, width=growth_width)
+    runtime = _growth_runtime(
+        seed=seed,
+        width=growth_width,
+        growth_recurrent_from=growth_recurrent_from,
+        dynamic_growth=dynamic_growth,
+    )
     _copy_parent_weights(parent, runtime)
     _, artifact = bank.promote_index(row)
     load_growth_artifact(
@@ -229,10 +266,12 @@ def _load_selected(
 def run(args: argparse.Namespace) -> dict[str, object]:
     started = perf_counter()
     stages = tuple(args.stages)
-    if stages != (2, 3, 4):
-        raise ValueError("the artifact-bank audit currently requires stages 2 3 4")
+    if stages != tuple(sorted(set(stages))) or len(stages) < 2:
+        raise ValueError("stages must contain at least two strictly increasing spans")
     if min(args.updates_per_stage, args.batch_size, args.audit_count, args.growth_width) < 1:
         raise ValueError("updates, batch size, and audit count must be positive")
+    if args.growth_recurrent_from not in {0, 1}:
+        raise ValueError("growth-recurrent-from must be 0 or 1")
     if args.batch_size % 2 or args.audit_count % 2:
         raise ValueError("batch-size and audit-count must be even")
 
@@ -291,7 +330,12 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         width=32 + 16,
         capacity=len(stages),
     )
-    zero_runtime = _growth_runtime(seed=args.seed, width=args.growth_width)
+    zero_runtime = _growth_runtime(
+        seed=args.seed,
+        width=args.growth_width,
+        growth_recurrent_from=args.growth_recurrent_from,
+        dynamic_growth=args.dynamic_growth,
+    )
     _copy_parent_weights(parent, zero_runtime)
     zero_artifact = _artifact(zero_runtime, "growth_slots.0.")
     route_keys: dict[str, torch.Tensor] = {}
@@ -312,7 +356,12 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         }
     }
     for index, span in enumerate(stages[1:], start=1):
-        acquired = _growth_runtime(seed=args.seed + index, width=args.growth_width)
+        acquired = _growth_runtime(
+            seed=args.seed + index,
+            width=args.growth_width,
+            growth_recurrent_from=args.growth_recurrent_from,
+            dynamic_growth=args.dynamic_growth,
+        )
         _copy_parent_weights(parent, acquired)
         _freeze_except(acquired, ("growth_slots.0.",))
         history, progress = _train_current_span(
@@ -324,6 +373,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             learning_rate=args.learning_rate,
             audit_count=args.audit_count,
             eval_every=args.eval_every,
+            snapshot_policy=args.snapshot_policy,
         )
         artifact = _artifact(acquired, "growth_slots.0.")
         artifacts[str(span)] = artifact
@@ -369,6 +419,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             row,
             seed=args.seed + 70_000 + index,
             growth_width=args.growth_width,
+            growth_recurrent_from=args.growth_recurrent_from,
+            dynamic_growth=args.dynamic_growth,
         )
         selected_behavior[str(span)] = _accuracy(
             selected_runtime,
@@ -383,6 +435,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             (row + 1) % len(stages),
             seed=args.seed + 90_000 + index,
             growth_width=args.growth_width,
+            growth_recurrent_from=args.growth_recurrent_from,
+            dynamic_growth=args.dynamic_growth,
         )
         wrong_behavior[str(span)] = _accuracy(
             wrong_runtime,
@@ -398,6 +452,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         selected_rows[str(stages[-1])],
         seed=args.seed + 100_000,
         growth_width=args.growth_width,
+        growth_recurrent_from=args.growth_recurrent_from,
+        dynamic_growth=args.dynamic_growth,
     )
     controls = {
         "blank_sequence": _accuracy(
@@ -443,9 +499,9 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "schema": "canonical-no-replay-artifact-bank-v1",
         "claim_boundary": (
             "A frozen parent and independently acquired generic growth artifacts "
-            "retain a span-2 -> span-3 -> span-4 curriculum without replaying "
-            "old controller examples. A memory-side opaque context router selects "
-            "one file; artifacts are never summed."
+            "retain an arbitrary strictly increasing span curriculum without "
+            "replaying old controller examples. A memory-side opaque context "
+            "router selects one file; artifacts are never summed."
         ),
         "seed": args.seed,
         "stages": list(stages),
@@ -455,6 +511,9 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "address_count": args.address_count,
         "occupancy_scale": args.occupancy_scale,
         "growth_width": args.growth_width,
+        "growth_recurrent_from": 0 if args.dynamic_growth else args.growth_recurrent_from,
+        "dynamic_growth": args.dynamic_growth,
+        "snapshot_policy": args.snapshot_policy,
         "artifact_memory": str(bank_path),
         "route_keys": {key: value.tolist() for key, value in route_keys.items()},
         "route_accuracy": route_accuracy,
@@ -515,6 +574,13 @@ def main() -> None:
     parser.add_argument("--address-count", type=int, default=64)
     parser.add_argument("--occupancy-scale", type=float, default=8.0)
     parser.add_argument("--growth-width", type=int, default=64)
+    parser.add_argument("--growth-recurrent-from", type=int, choices=(0, 1), default=1)
+    parser.add_argument("--dynamic-growth", action="store_true")
+    parser.add_argument(
+        "--snapshot-policy",
+        choices=("final", "best_heldout"),
+        default="final",
+    )
     parser.add_argument("--mastery-threshold", type=float, default=0.80)
     parser.add_argument("--learning-rate", type=float, default=1e-3)
     args = parser.parse_args()

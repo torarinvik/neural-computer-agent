@@ -10,6 +10,9 @@ from experiments.working_memory_continuous.acquire_frozen_growth import (
 from experiments.working_memory_continuous.audit_canonical_artifact_memory import (
     _load_canonical_bank,
 )
+from experiments.working_memory_continuous.canonical_no_replay_artifact_bank import (
+    _growth_runtime,
+)
 from neural_computer import freeze_core
 
 
@@ -49,3 +52,13 @@ def test_successor_builder_accepts_a_slot_free_frozen_parent() -> None:
         parameter.requires_grad == name.startswith(prefixes)
         for name, parameter in successor.named_parameters()
     )
+
+
+def test_dynamic_growth_runtime_has_temporal_context_and_gating() -> None:
+    runtime = _growth_runtime(seed=91001, width=16, dynamic_growth=True)
+    slot = runtime.controller.growth_slots[0]
+
+    assert "recurrent" in slot
+    assert "gate" in slot
+    assert runtime.controller.growth_from_intention
+    assert runtime.controller.growth_gate_from_context

@@ -1,0 +1,31 @@
+{
+  "schema": "neural-computer.dynamic-growth-replication-summary.v1",
+  "experiment_id": "dynamic-external-growth-span5-2026-08-11",
+  "status": "negative_replication_not_promoted",
+  "seed": 69312,
+  "stages": [2, 3, 4, 5],
+  "controller_frozen_during_growth": true,
+  "dynamic_growth": true,
+  "growth_width": 128,
+  "updates_per_stage": 256,
+  "batch_size": 16,
+  "replayed_examples": 0,
+  "route_accuracy": {"2": 1.0, "3": 1.0, "4": 1.0, "5": 1.0},
+  "selected_behavior": {
+    "2": 1.0,
+    "3": 0.9583333134651184,
+    "4": 0.796875,
+    "5": 0.653124988079071
+  },
+  "wrong_behavior": {
+    "2": 0.875,
+    "3": 0.8072916865348816,
+    "4": 0.7109375,
+    "5": 0.5625
+  },
+  "controls": {
+    "blank_sequence": 0.5,
+    "workspace_disabled": 0.574999988079071
+  },
+  "interpretation": "Routing and frozen-core retention pass; stable span-5 execution does not replicate."
+}
