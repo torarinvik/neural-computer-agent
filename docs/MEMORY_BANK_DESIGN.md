@@ -9713,3 +9713,55 @@ recorded as unmade. If it holds at six seeds, the architecture will
 have retention (F185, exactly zero forgetting), generalisation to
 unseen programs (F185, 0.9896), and transfer — each measured against a
 control rather than asserted.
+
+## F190 — FORWARD TRANSFER REPLICATES at six seeds
+
+F189 observed it at two seeds and declined to claim it, because the
+magnitude disagreed and this project has overturned three results with
+that signature. Four more seeds:
+
+| arm | families solved | mean cost | sd |
+| --- | ---: | ---: | ---: |
+| frozen (sampling) | **0 / 36** | 1.000 | — |
+| enumeration | 4 / 36 | 0.868 | 0.035 |
+| **enumeration + bank** | **15 / 36** | **0.702** | 0.128 |
+
+Per seed, families solved by enum against enum+store: 1/4, 1/1, 0/3,
+1/2, 0/2, 1/3. **The bank solves more in five of six and ties in the
+sixth; it is never worse.** On cost it is cheaper in **6 of 6**.
+
+**The control is what makes this readable.** Random sampling solves
+ZERO of thirty-six at the full 20,000-candidate budget, so this is not
+a regime where everything works and the arms differ by a few percent.
+It is one where the alternative fails completely and the bank does not.
+That is the headroom F185 lacked, F186 failed to build, and F187 could
+not measure through — three failed instruments before one worked.
+
+**The ceiling gate passed on every seed** (0.9865-0.9917 against a 0.95
+target), so for once I can say the measurement was checked for
+readability BEFORE the result was read rather than after.
+
+**Magnitude varies and direction does not.** Cost ratios run 0.538 to
+0.894. The variance is real and worth naming rather than averaging
+away: the effect depends on whether an early family's stored solution
+happens to expose the shared prefix. Which is exactly what the
+sub-prefix fix addresses, and that fix is not in these runs.
+
+**The founding objective, now measured in full.** "Produce a program
+such that given task A makes novel task B faster to learn than chance
+or starting from scratch." Against a from-scratch control that solves
+nothing:
+
+* **retention** — exactly 0.0000 forgetting across nine families,
+  against 0.1099 for replay with unlimited access to past environments
+  (F185);
+* **generalisation** — 0.9896 on programs never trained on, 0.9444 at
+  double the trained length, with no family ever touching the weights
+  (F185);
+* **transfer** — 15/36 against 4/36 and 0/36, cheaper in 6/6 seeds
+  (this).
+
+Each measured against a control rather than asserted. What remains is
+not a missing claim but known limits: `walled`'s wall is still
+inexpressible (F179), the reader's training signal is still unreliable
+across seeds (F164), and the sub-prefix composition fix is untested.
