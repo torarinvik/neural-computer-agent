@@ -7905,3 +7905,83 @@ indexing and the F160 modulus fix the live directions.
 
 Probe 258 is `isa_compose.py --library-arms --arms
 frozen,uniform,shuffled,sketch-e4`, 5 seeds.
+
+## F162 — the modulus fix works, and the effect splits EXACTLY along
+## the line the diagnosis predicted
+
+F160 diagnosed the expressibility hole as a global modulus: instructions
+did arithmetic mod VALUES=8 while every family carries its own value
+count. F161's probe made the modulus an instruction ARGUMENT,
+`(op, i, j, m)`. Two seeds, 40k updates, everything else held.
+
+**Expressibility, settled without a network.** With the modulus
+argument, `toggle` is EXACTLY reproduced — all six actions, all 64
+states, at most two instructions each. That is a property of the basis,
+so it needs no training run to establish.
+
+**The prediction had a sharp form and it held.** The argument can only
+buy something where a family's value range is NARROWER than the global
+VALUES; everywhere else it just widens the search from 210 instructions
+to 1470. Split by value count, over 14 family-seeds:
+
+| population | n | mean change in search fit |
+| --- | ---: | ---: |
+| families with values < 8 | 8 | **+0.0439** |
+| families with values = 8 | 6 | **-0.0108** |
+
+**Not one family in either group crosses.** Every short-ranged family
+improved or stayed at ceiling (+0.021, +0.022, +0.024, +0.044, +0.087,
++0.153, and `perm` twice at 0.0000 because it was already 1.0000 and
+uses only swaps, so the modulus never enters its solution). Every
+full-range family stayed flat or got slightly worse (0.000, 0.000,
+0.000, -0.017, -0.019, -0.029). Zero crossovers in 14.
+
+The two biggest gains are the two procedurally generated families with
+the narrowest ranges — `proc1` at values=4 goes 0.8471 -> 1.0000 and
+`proc0` at values=5 goes 0.9134 -> 1.0000. `toggle`, the family that
+prompted all of this, gains +0.021 and +0.022 on fit and +0.025 and
++0.027 on held-out.
+
+**The cost is real and it is stated.** Executing unseen programs is
+preserved: 0.9948 / 0.9818 slots against 0.9940 / 0.9879 without. But
+DOUBLE-LENGTH extrapolation degrades, 0.9358 / 0.9071 against 0.9950 /
+0.9473. A seven-times wider instruction set is harder to extrapolate
+from, and full-range families pay about one point of fit for an
+expressibility they cannot use.
+
+**The obvious next move, and it should remove the cost entirely.** The
+modulus does not need to be SEARCHED. Each slot's value range is
+directly observable in the transitions, so the search can fix m per
+slot from the data rather than exploring seven of them. That is not
+domain knowledge — reading a value range off observations names no
+domain — and it predicts the +0.044 on short-ranged families with none
+of the -0.011 on the others. This is the arm to run next.
+
+Probe 259 is `isa_compose.py --moduli`, 2 seeds against 2 controls.
+
+## F163 — the coverage filter is a NULL, for a reason worth keeping
+
+The sound version of effect indexing: reject a candidate before running
+the interpreter unless every slot the action CHANGED is written by some
+instruction in it. A slot no instruction writes cannot change, so this
+cannot exclude a program that would have fitted — unlike the per
+instruction filter tried first, which is unsound (a correct program may
+write a scratch slot and restore it) and was measured excluding its own
+solution, fit 0.887 -> 0.682.
+
+It prunes hard and costs nothing: 33-58% of candidates rejected with no
+forward pass. And it buys **nothing** — 1.029 and 1.020 against the
+frozen control on evaluations-to-target.
+
+**Why, precisely.** The filter is sound with respect to EXACT fitting,
+but the search does not require exact fitting — it stops at
+`--fit-target 0.95`. A slot counts as changed if it changes in ANY row,
+so a slot that changes in 2 of 64 rows leaves a program that never
+writes it scoring 62/64 on that slot. Such candidates are rejected by
+the filter and were perfectly acceptable to the objective. The filter
+removes candidates the search was happy to take.
+
+So the filter is not wrong; it answers a question the stopping rule is
+not asking. It should pay at `--fit-target 1.0`, which is a separate
+measurement and cheap to make. Caught in a smoke test before spending
+real compute, by asking why the predicted 1.5-2.4x did not appear.

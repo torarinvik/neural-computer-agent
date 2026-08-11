@@ -175,6 +175,18 @@ parser.add_argument(
          "per-instruction space from NOPS*SLOTS*(SLOTS-1) to that times "
          "VALUES-1, so the honest accounting is expressibility gained "
          "against search made harder.")
+parser.add_argument(
+    "--cover-filter", action="store_true",
+    help="reject a candidate before running the interpreter unless every "
+         "slot the action CHANGED is written by some instruction in it. "
+         "A slot no instruction writes cannot change, so this can never "
+         "exclude a program that would have fitted — unlike filtering "
+         "per instruction, which is unsound because a correct program "
+         "may write a scratch slot and restore it, and which was "
+         "measured excluding its own solution (fit 0.887 -> 0.682). The "
+         "check costs no forward pass, so it converts search cost from "
+         "candidates PROPOSED into candidates EVALUATED, and the report "
+         "carries both.")
 parser.add_argument("--curve-every", type=int, default=0)
 parser.add_argument("--json", default="")
 args = parser.parse_args()
@@ -374,6 +386,54 @@ if args.synthesize:
                             for s, a in zip(idx, act)])
         return family.slot_values(idx), act, family.slot_values(nxt)
 
+    # Which slots can an instruction possibly change? A static property
+    # of the INSTRUCTION SET, not of any task, so consulting it is free
+    # and carries no knowledge of any domain.
+    def written_slots(instruction) -> set:
+        op, i, j, _ = instruction
+        name = OPS[op]
+        if name == "NOOP":
+            return set()
+        if name == "SWAP":
+            return {i, j}
+        return {i}
+
+    def writes_needed(src: torch.Tensor, dst: torch.Tensor) -> set:
+        """Slots this action actually changed in the observations."""
+        return set((src != dst).any(dim=0).nonzero().flatten().tolist())
+
+    def covers(candidate, needs: set) -> bool:   # noqa: C901
+        """A SOUND necessary condition: every slot that changed must be
+        written by SOME instruction in the program.
+
+        This is the honest form of effect indexing here. The first
+        version filtered per instruction — only propose instructions
+        that write a changed slot — and that is UNSOUND, because a
+        correct program may write a scratch slot and restore it. It
+        showed up immediately as a family whose fit fell from 0.887 to
+        0.682 when the arm excluded its own solution.
+
+        Requiring COVERAGE cannot exclude anything: a slot that no
+        instruction writes cannot change, so a candidate failing this
+        test provably cannot fit. It is a rejection rather than a
+        preference, and it is checked WITHOUT running the interpreter,
+        which is where the cost of search actually lives."""
+        if not args.cover_filter or not needs:
+            return True
+        seen: set = set()
+        for instruction in candidate:
+            seen |= written_slots(instruction)
+        return needs <= seen
+
+    def covers_set(candidate, needs: set) -> bool:
+        """`covers` without the global flag, so an ARM can turn the
+        filter on while the other arms keep the old behaviour and stay
+        comparable to everything already measured."""
+        seen: set = set()
+        for instruction in candidate:
+            seen |= written_slots(instruction)
+        return needs <= seen
+
     def synthesise(family, generator) -> dict:
         """Search for a program per action. The frozen interpreter is
         the only predictor used, so this measures the interpreter's
@@ -392,14 +452,20 @@ if args.synthesize:
         nexts = torch.where(nexts < VALUES, nexts,
                             torch.zeros_like(nexts))
         recipe, fits = {}, []
+        proposed_total = 0
         for action in range(family.actions):
             keep = acts == action
             if int(keep.sum()) < 4:
                 continue
             src, dst = states[keep], nexts[keep]
-            best, best_score = None, -1.0
-            for _ in range(args.synthesize):
+            needs = writes_needed(src, dst)
+            best, best_score, evaluated = None, -1.0, 0
+            while evaluated < args.synthesize:
                 candidate = random_program(generator, args.program_len)
+                proposed_total += 1
+                if not covers(candidate, needs):
+                    continue
+                evaluated += 1
                 with torch.no_grad():
                     got = plant(candidate, src).argmax(-1)
                 score = float((got[:, used] == dst[:, used])
@@ -431,10 +497,14 @@ if args.synthesize:
                                  == hn[keep][:, used]).sum())
         return {"search_fit": round(sum(fits) / max(len(fits), 1), 4),
                 "held_out": round(hits / max(total, 1), 4),
-                "identity": round(identity / max(total, 1), 4)}
+                "identity": round(identity / max(total, 1), 4),
+                "proposed": proposed_total,
+                "evaluated": args.synthesize * len(fits),
+                "kept_fraction": round(
+                    args.synthesize * len(fits) / max(proposed_total, 1), 4)}
 
     def search_with_library(family, library, weights, observer, generator,
-                            budget, effect_index=False):
+                            budget, effect_index=False, cover=False):
         """Propose programs by concatenating LIBRARY FRAGMENTS. Returns
         the recipe and the number of candidates tried — cost is the
         measurement here, not accuracy.
@@ -456,6 +526,7 @@ if args.synthesize:
         table = (torch.tensor(weights, dtype=torch.float)
                  if weights is not None else None)
         recipe, tried_total, fits = {}, 0, []
+        proposed_total_lib: list = []
         for action in range(family.actions):
             keep = acts == action
             if int(keep.sum()) < 4:
@@ -482,7 +553,8 @@ if args.synthesize:
                 pool = [f for f in library
                         if all(i in writes
                                for _, i, _, _ in f)] or library
-            best, best_score, tried = None, -1.0, 0
+            needs = writes_needed(src, dst) if cover else set()
+            best, best_score, tried, proposed = None, -1.0, 0, 0
             while tried < budget:
                 # build a candidate by concatenating fragments until it
                 # is long enough; a fragment may be a whole past recipe
@@ -496,6 +568,14 @@ if args.synthesize:
                             table, 1, generator=generator))
                     candidate = candidate + list(pool[slot])
                 candidate = candidate[:args.program_len]
+                proposed += 1
+                # SOUND rejection, no forward pass. Cost is counted in
+                # interpreter evaluations because that is what actually
+                # costs; proposals are arithmetic.
+                if needs and not covers_set(candidate, needs):
+                    if proposed > budget * 50:
+                        break          # pathological filter, do not spin
+                    continue
                 tried += 1
                 with torch.no_grad():
                     got = plant(candidate, src).argmax(-1)
@@ -508,6 +588,7 @@ if args.synthesize:
             recipe[action] = best
             fits.append(best_score)
             tried_total += tried
+            proposed_total_lib.append(proposed)
         return recipe, tried_total, sum(fits) / max(len(fits), 1)
 
     def occurrences(fragment: tuple, program: tuple) -> int:
@@ -758,7 +839,8 @@ if args.synthesize:
             else:
                 recipe, tried, fit = search_with_library(
                     family, library, weights, observer, generator, budget,
-                    effect_index=(kind == "effect"))
+                    effect_index=(kind == "effect"),
+                    cover=kind.startswith("cover"))
             actions = max(1, sum(1 for v in recipe.values()
                                  if v is not None))
             winners = [tuple(program) for program in recipe.values()
@@ -778,10 +860,10 @@ if args.synthesize:
                 "winners": len(winners), "recalled": recalled,
                 "saturated": tried >= budget * actions})
             stored.update(winners)
-            if kind in ("frozen", "effect") or not winners:
+            if kind in ("frozen", "effect", "cover") or not winners:
                 continue
             solved.extend(winners)
-            if kind == "uniform":
+            if kind in ("uniform", "cover+store"):
                 for program in winners:
                     library.append(program)
                 continue
@@ -881,11 +963,12 @@ if args.synthesize:
         # first corrected seed made the live question.
         arms = [("frozen", 0.0, 0.0), ("uniform", 0.0, 0.0),
                 ("shuffled", 0.0, 0.0), ("effect", 0.0, 0.0),
+                ("cover", 0.0, 0.0), ("cover+store", 0.0, 0.0),
                 ("marginal", 1.0, 0.0), ("sketch", 1.0, 0.0)]
         arms += [("sketch", 1.0, float(w))
                  for w in args.exact_weight.split(",") if float(w) > 0]
         labels = [kind if kind in ("frozen", "uniform", "shuffled",
-                                   "effect")
+                                   "effect", "cover", "cover+store")
                   else f"{kind}-e{exact:g}"
                   for kind, _, exact in arms]
         if args.arms:
