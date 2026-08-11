@@ -6757,3 +6757,44 @@ recorded "discrete entries do not help" and moved on.
 
 Probe 246 is `--codebook 64/256`, 2 seeds each, superseded by the
 restart fix.
+
+**F147 (probe 247). The F144 compute confound is RESOLVED, and against
+my own suspicion: extra compute spent on more UPDATES helps, extra
+compute spent on more NEGATIVES hurts. So the batch effect is about
+negatives, not budget.** Two arms, both compared on seed 69316 where
+F144 gives 0.7993:
+
+| arm | reader compute | seed 69316 | seed 69317 |
+| --- | ---: | ---: | ---: |
+| batch 32, 40k updates (F144) | 4x | 0.7993 | 0.8447 |
+| batch 64, 40k updates | **8x** | **0.5803** | 0.7846 |
+| batch 32, 100k updates | **10x** | **0.8520** | pending |
+
+The logic that settles it: if the batch ladder were measuring
+optimisation budget, batch 64 at 8x would beat batch 32 at 4x. It does
+not — it is much worse on the seed where both are measured. And when
+the SAME extra compute is delivered as more updates at fixed batch,
+performance improves (0.7993 -> 0.8520). Compute helps; negatives past
+32 hurt. Those cannot both be the same variable.
+
+So F144's mechanism reading survives its own caveat: the number of
+negatives has a genuine interior optimum, and the collapse past it is
+not an artefact of budget. The caveat was worth raising — it was live
+until this measurement — and it is now closed by data rather than by
+argument.
+
+**0.8520 is also the best non-privileged number measured**, against
+the 0.9723 privileged ceiling and 0.5283 for joint training. Simply
+training longer at the confirmed batch closed a further third of the
+remaining gap, which is worth stating plainly: before reaching for the
+literature's mechanisms, part of what looked like a mechanism problem
+was undertraining.
+
+That does not dissolve the amortization diagnosis — 0.8520 is still
+short of 0.9723 with the same reader on the same inputs — but it does
+mean the gap to explain is smaller than the one that motivated
+LITERATURE.md's addendum, and any refinement result must beat 0.8520
+rather than 0.7795 to count.
+
+Probe 247 is `--contrastive-batch 64` (2 seeds) and
+`--contrastive-batch 32 --train-updates 100000`.

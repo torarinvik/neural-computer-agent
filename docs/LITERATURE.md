@@ -550,6 +550,14 @@ Sources:
 
 ---
 
+**Baseline correction (F147).** The gap these mechanisms must beat is
+now 0.8520, not 0.7795: training longer at the confirmed batch closed
+a third of the remaining distance to 0.9723 on its own. Part of what
+this map treated as a mechanism problem was undertraining. The
+amortization diagnosis survives — same reader, same inputs, still
+short of the distilled ceiling — but every entry below should be read
+against the corrected baseline.
+
 ## Ranking after addendum 2
 
 1. **Context-reconstruction check** (§11) — can the reader predict the
