@@ -23,14 +23,14 @@ from experiments.working_memory_continuous.canonical_growth_pressure_test import
 )
 from neural_computer import (
     AmodalEventBridge,
-    CapabilityConditionedEventBridge,
     CanonicalRegisterReadout,
+    CapabilityConditionedEventBridge,
     ConditionedOpaqueProtocolDecoder,
     ExternalRegisterInstruction,
-    OpaqueProtocolDecoder,
     ExternalSequenceMemory,
-    ExternalSequenceProgramMemory,
     ExternalSequenceOperatorMemory,
+    ExternalSequenceProgramMemory,
+    OpaqueProtocolDecoder,
 )
 
 from .audit_real_basis_acquisition import (
@@ -171,6 +171,14 @@ def _score(
         device=torch.device("cpu"),
         dtype=torch.float32,
     )
+    sequence_operator_memory = candidate.get("sequence_operator_memory")
+    sequence_operator_route_query = _candidate_operator_route_query(
+        machine,
+        candidate,
+        batch_size=count,
+        device=torch.device("cpu"),
+        dtype=torch.float32,
+    )
     return _accuracy(
         parent,
         machine,
@@ -189,6 +197,9 @@ def _score(
         generated_compositions=candidate.get("generated_compositions"),
         register_readout=candidate.get("readout"),
         preserve_execution_trace=candidate.get("preserve_execution_trace", False),
+        sequence_operator_memory=sequence_operator_memory,
+        sequence_operator_route_query=sequence_operator_route_query,
+        bind_operator_route=candidate.get("bind_operator_route", False),
         sequence_program_codes=sequence_program_codes,
     )
 
@@ -212,6 +223,37 @@ def _candidate_program_codes(
     return codes.to(device=device, dtype=dtype).unsqueeze(0).expand(
         batch_size, -1, -1
     )
+
+
+def _candidate_operator_route_query(
+    machine,
+    candidate: dict[str, object],
+    *,
+    batch_size: int,
+    device: torch.device,
+    dtype: torch.dtype,
+) -> torch.Tensor | None:
+    memory = candidate.get("sequence_operator_memory")
+    if memory is None:
+        return None
+    query_codes = torch.stack(
+        tuple(
+            instruction.code.squeeze(0)
+            for instruction in candidate["instructions"]
+        )
+    ).unsqueeze(0)
+    query = memory.encode_program(query_codes)
+    return query.to(device=device, dtype=dtype).expand(batch_size, -1)
+
+
+def _zero_operator_memory(memory):
+    """Return an isolated zero-content memory corruption control."""
+
+    corrupted = copy.deepcopy(memory)
+    with torch.no_grad():
+        for parameter in corrupted.parameters():
+            parameter.zero_()
+    return corrupted
 
 
 def _train_interleaved_phase(
@@ -288,6 +330,13 @@ def _train_interleaved_phase(
             generated_composition_ids=candidate.get("generated_composition_ids"),
             generated_compositions=candidate.get("generated_compositions"),
         )
+        sequence_operator_route_query = _candidate_operator_route_query(
+            machine,
+            candidate,
+            batch_size=batch_size,
+            device=batch.input_frames.device,
+            dtype=batch.input_frames.dtype,
+        )
         loss, _ = _rollout(
             parent,
             machine,
@@ -301,6 +350,9 @@ def _train_interleaved_phase(
             event_bridge=candidate["bridge"],
             register_readout=candidate.get("readout"),
             preserve_execution_trace=candidate.get("preserve_execution_trace", False),
+            sequence_operator_memory=candidate.get("sequence_operator_memory"),
+            sequence_operator_route_query=sequence_operator_route_query,
+            bind_operator_route=candidate.get("bind_operator_route", False),
             sequence_program_codes=_candidate_program_codes(
                 machine,
                 candidate,
@@ -357,6 +409,8 @@ def _prepare_candidates(
     conditioned_bridge_prior: bool = False,
     readout_prior_state: dict[str, torch.Tensor] | None = None,
     preserve_composition_trace: bool = False,
+    sequence_operator_memory=None,
+    bind_operator_route: bool = False,
     sequence_program_memory=None,
     program_slot_by_program: dict[tuple[str, ...], int] | None = None,
 ) -> list[dict[str, object]]:
@@ -453,6 +507,8 @@ def _prepare_candidates(
                     "bridge_frozen": bridge_prior_state is not None,
                     "readout": readout,
                     "preserve_execution_trace": preserve_composition_trace,
+                    "sequence_operator_memory": sequence_operator_memory,
+                    "bind_operator_route": bind_operator_route,
                 }
             )
     return candidates
@@ -626,8 +682,6 @@ def _train_joint_source_bank(parent, machine, *, args, seed_base: int):
     )
     optimizer = torch.optim.AdamW(trainable, lr=args.learning_rate, weight_decay=1e-5)
     best_state = None
-    best_memory_state = None
-    best_operator_memory_state = None
     best_decoders = None
     best_floor = float("-inf")
     for update in range(1, args.joint_source_updates + 1):
@@ -721,9 +775,10 @@ def _train_sequence_calibration(
     decoder_input_width = REGISTER_WIDTH * (
         len(programs[0]) if args.preserve_composition_trace else 1
     )
-    if args.shared_sequence_decoder and args.preserve_composition_trace:
-        if any(len(program) != len(programs[0]) for program in programs):
-            raise ValueError("shared sequence decoder requires equal trace widths")
+    if args.shared_sequence_decoder and args.preserve_composition_trace and any(
+        len(program) != len(programs[0]) for program in programs
+    ):
+        raise ValueError("shared sequence decoder requires equal trace widths")
     shared_decoder = (
         ConditionedOpaqueProtocolDecoder(
             decoder_input_width,
@@ -861,6 +916,9 @@ def _train_sequence_calibration(
             sequence_operator_route_query=(
                 route_query(program) if use_operator_router else None
             ),
+            bind_operator_route=(
+                args.bind_operator_route and use_operator_router
+            ),
             route_probe=(args.use_route_outcome_credit and use_operator_router),
             register_readout=sequence_readout,
             decoder_context=(route_query(program) if args.conditioned_sequence_decoder else None),
@@ -947,6 +1005,9 @@ def _train_sequence_calibration(
                     ),
                     sequence_operator_route_query=(
                         route_query(program_value) if use_operator_router else None
+                    ),
+                    bind_operator_route=(
+                        args.bind_operator_route and use_operator_router
                     ),
                     register_readout=sequence_readout,
                     decoder_context=(
@@ -1619,6 +1680,14 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         )
     sequence_calibration_source_after = list(source_before)
     sequence_calibration_accepted = False
+    sequence_operator_memory_before = (
+        {
+            name: value.detach().clone()
+            for name, value in sequence_operator_memory.state_dict().items()
+        }
+        if sequence_operator_memory is not None
+        else None
+    )
     if args.sequence_calibration_updates:
         machine_before_sequence_calibration = copy.deepcopy(machine)
         sequence_calibration_progress = _train_sequence_calibration(
@@ -1643,7 +1712,17 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             machine.load_state_dict(
                 machine_before_sequence_calibration.state_dict(), strict=True
             )
+            if (
+                sequence_operator_memory is not None
+                and sequence_operator_memory_before is not None
+            ):
+                sequence_operator_memory.load_state_dict(
+                    sequence_operator_memory_before, strict=True
+                )
             sequence_calibration_source_after = list(source_before)
+    if sequence_operator_memory is not None:
+        for parameter in sequence_operator_memory.parameters():
+            parameter.requires_grad_(False)
     if args.grow_sequence_program_memory:
         for program in target_composition_programs:
             if program in sequence_program_slot_by_program:
@@ -1713,6 +1792,14 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         bridge_prior_state=bridge_prior_state,
         conditioned_bridge_prior=args.reuse_conditioned_bridge_prior,
         preserve_composition_trace=args.preserve_composition_trace,
+        sequence_operator_memory=(
+            sequence_operator_memory
+            if args.use_operator_sequence_router
+            else None
+        ),
+        bind_operator_route=(
+            args.bind_operator_route and args.use_operator_sequence_router
+        ),
         readout_prior_state=readout_prior_state,
         sequence_program_memory=(
             sequence_program_memory if args.grow_sequence_program_memory else None
@@ -1794,6 +1881,14 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         conditioned_bridge_prior=args.reuse_conditioned_bridge_prior,
         source_operations=args.source_operations,
         preserve_composition_trace=args.preserve_composition_trace,
+        sequence_operator_memory=(
+            sequence_operator_memory
+            if args.use_operator_sequence_router
+            else None
+        ),
+        bind_operator_route=(
+            args.bind_operator_route and args.use_operator_sequence_router
+        ),
         sequence_program_memory=shuffled_program_memory,
         program_slot_by_program=(
             sequence_program_slot_by_program if args.grow_sequence_program_memory else None
@@ -1856,6 +1951,20 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                 source_interpreter_prior_state,
                 strict=True,
             )
+        fresh_sequence_operator_memory = None
+        if (
+            args.use_operator_sequence_memory
+            and args.sequence_calibration_updates
+            and not args.reuse_interpreter_prior
+        ):
+            fresh_sequence_operator_memory = ExternalSequenceOperatorMemory(
+                REGISTER_WIDTH,
+                INSTRUCTION_WIDTH,
+                operator_rank=args.operator_rank,
+                router_temperature=args.operator_router_temperature,
+            )
+            for _ in composition_programs:
+                fresh_sequence_operator_memory.add_slot()
         fresh_sequence_calibration_progress = (
             []
             if args.reuse_interpreter_prior
@@ -1865,8 +1974,12 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                 args=args,
                 composition_programs=composition_programs,
                 seed_base=args.seed + 2_400_000 + index * 20_003,
+                sequence_operator_memory=fresh_sequence_operator_memory,
             )
         )
+        if fresh_sequence_operator_memory is not None:
+            for parameter in fresh_sequence_operator_memory.parameters():
+                parameter.requires_grad_(False)
         source_indices = tuple(
             args.source_operations.index(primitive) for primitive in program
         )
@@ -1956,6 +2069,10 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "sequence_program_memory": fresh_program_memory,
             "sequence_program_slot": fresh_program_slot,
             "preserve_execution_trace": args.preserve_composition_trace,
+            "sequence_operator_memory": fresh_sequence_operator_memory,
+            "bind_operator_route": (
+                args.bind_operator_route and args.use_operator_sequence_router
+            ),
         }
         _train_candidate_schedule(
             parent,
@@ -2044,6 +2161,54 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             span=args.span,
             seed=args.seed + 730_000 + index * 1_009,
         )
+        memory_reference_accuracy = None
+        memory_corruption = None
+        if candidate.get("sequence_operator_memory") is not None:
+            memory_reference_accuracy = _score(
+                parent,
+                machine,
+                candidate,
+                count=args.consolidation_audit_count,
+                span=args.span,
+                seed=args.seed + 700_000 + index * 1_009,
+            )
+            corrupted_candidate = dict(candidate)
+            corrupted_candidate["sequence_operator_memory"] = _zero_operator_memory(
+                candidate["sequence_operator_memory"]
+            )
+            memory_corruption = _score(
+                parent,
+                machine,
+                corrupted_candidate,
+                count=args.consolidation_audit_count,
+                span=args.span,
+                seed=args.seed + 700_000 + index * 1_009,
+            )
+        memory_causal = (
+            memory_corruption is None
+            or memory_corruption < memory_reference_accuracy - 0.05
+        )
+        memory_reload_accuracy = None
+        memory_reload_exact = True
+        if candidate.get("sequence_operator_memory") is not None:
+            reloaded_candidate = dict(candidate)
+            reloaded_memory = ExternalSequenceOperatorMemory.from_payload(
+                candidate["sequence_operator_memory"].payload()
+            )
+            reloaded_candidate["sequence_operator_memory"] = reloaded_memory
+            memory_reload_accuracy = _score(
+                parent,
+                machine,
+                reloaded_candidate,
+                count=args.consolidation_audit_count,
+                span=args.span,
+                seed=args.seed + 700_000 + index * 1_009,
+            )
+            memory_reload_exact = (
+                reloaded_memory.digest()
+                == candidate["sequence_operator_memory"].digest()
+                and memory_reload_accuracy == memory_reference_accuracy
+            )
         records.append(
             {
                 "operation": candidate["operation"],
@@ -2054,6 +2219,11 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                 "consolidation_probe_accuracy": probe,
                 "shuffled_training_accuracy": shuffled,
                 "missing_evidence_accuracy": missing,
+                "memory_reference_accuracy": memory_reference_accuracy,
+                "memory_corruption_accuracy": memory_corruption,
+                "memory_causal": memory_causal,
+                "memory_reload_accuracy": memory_reload_accuracy,
+                "memory_reload_exact": memory_reload_exact,
                 "retained_before": retained_before,
                 "retained_after": retained_after,
                 "retention_deltas": deltas,
@@ -2064,6 +2234,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                     and min(deltas, default=0.0) >= -args.retention_regression_tolerance
                     and shuffled < MASTERY_THRESHOLD
                     and missing < MASTERY_THRESHOLD
+                    and memory_causal
+                    and memory_reload_exact
                 ),
             }
         )
@@ -2118,6 +2290,10 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         int(row["fresh_source_training_verifier_bits"]) // (args.span * 2)
         for row in transfer_records
     )
+    operator_memory_control_count = sum(
+        candidate.get("sequence_operator_memory") is not None
+        for candidate in candidates
+    )
     sequence_calibration_lifetimes = (
         args.sequence_calibration_updates * args.batch_size
         if sequence_calibration_progress
@@ -2130,6 +2306,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     audit_lifetimes = (
         candidate_count * args.audit_count * 3
         + candidate_count * args.consolidation_audit_count
+        + operator_memory_control_count * args.consolidation_audit_count * 2
         + len(source_specs) * args.source_selection_audit_count * 3
         + source_selection_evaluations * source_attempt_count * args.source_selection_audit_count
         + phase_audit_lifetimes * 2
@@ -2217,6 +2394,11 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     suite_and_control_bits = (
         candidate_count * args.audit_count * 3 * args.span * 2
         + candidate_count * args.consolidation_audit_count * args.span * 2
+        + operator_memory_control_count
+        * args.consolidation_audit_count
+        * args.span
+        * 2
+        * 2
         + len(source_specs) * args.source_selection_audit_count * 3 * args.span * 2
     )
     unique_verifier_bits = (
@@ -2273,6 +2455,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         ),
         "joint_source_updates": args.joint_source_updates,
         "sequence_calibration_updates": args.sequence_calibration_updates,
+        "bind_operator_route": args.bind_operator_route,
         "sequence_calibration_trainable_surface": sequence_surface,
         "sequence_calibration_accepted": sequence_calibration_accepted,
         "sequence_calibration_source_before": source_before,
@@ -2412,6 +2595,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "fresh_sequence_calibration_verifier_bits": fresh_sequence_calibration_bits,
             "progress_audit_verifier_bits": progress_audit_bits,
             "suite_and_control_verifier_bits": suite_and_control_bits,
+            "operator_memory_control_count": operator_memory_control_count,
             "unique_verifier_bits": unique_verifier_bits,
             "optimizer_updates": (
                 args.parent_updates
@@ -2535,6 +2719,12 @@ def main() -> None:
         action=argparse.BooleanOptionalAction,
         default=False,
         help="learn opaque soft addressing over external operator slots",
+    )
+    parser.add_argument(
+        "--bind-operator-route",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="materialize each operator route once per rollout before recurrent execution",
     )
     parser.add_argument(
         "--operator-router-temperature",

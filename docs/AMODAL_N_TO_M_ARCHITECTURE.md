@@ -2822,6 +2822,19 @@ computation or general continual learning. The next capability test must use
 fresh rendered events and ask whether a bound external file improves depth or
 retention under no-replay controls.
 
+The operator bank also has an independent versioned persistence contract:
+`payload()` serializes configuration and tensor state with a checksum, while
+`from_payload()` validates the schema, dimensions, slot count, state, and
+integrity digest before the file can be used. The rendered-event target
+harness now consumes this frozen bank rather than merely calibrating it, and
+uses paired zero-content corruption plus same-batch reload controls. The first
+corrected rung passed exact reload but failed the causal-use gate: bank
+corruption changed the two composition targets by only `1.56` and `0.52`
+percentage points. This identifies target-side file dependence—not storage or
+route binding—as the current bottleneck; the result is archived as a rejected
+diagnostic in
+`session_records/external_operator_memory_target_bind_rejected_2026-08-11/`.
+
 ## Unseen external computation and multi-parent retention (2026-08-06)
 
 The frozen-core transfer harness tested `prefix_parity`, a temporal procedure

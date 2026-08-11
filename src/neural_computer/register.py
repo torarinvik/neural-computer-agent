@@ -82,6 +82,9 @@ EXTERNAL_SEQUENCE_PROGRAM_MEMORY_COMPRESSED_SCHEMA = (
 EXTERNAL_SEQUENCE_OPERATOR_BINDING_SCHEMA = (
     "neural-computer.external-sequence-operator-binding.v1"
 )
+EXTERNAL_SEQUENCE_OPERATOR_MEMORY_SCHEMA = (
+    "neural-computer.external-sequence-operator-memory.v1"
+)
 
 
 def _digest_mapping(value: object) -> str:
@@ -1772,7 +1775,7 @@ class ExternalSequenceOperatorMemory(nn.Module):
 
     def configuration(self) -> dict[str, int | str]:
         return {
-            "schema": "neural-computer.external-sequence-operator-memory.v1",
+            "schema": EXTERNAL_SEQUENCE_OPERATOR_MEMORY_SCHEMA,
             "register_width": self.register_width,
             "instruction_width": self.instruction_width,
             "operator_rank": self.operator_rank,
@@ -1782,6 +1785,73 @@ class ExternalSequenceOperatorMemory(nn.Module):
             "slot_count": len(self.slots),
             "growth": "append_only_external_operator_state_v1",
         }
+
+    def digest(self) -> str:
+        """Return an integrity digest over the complete external operator bank."""
+
+        return _digest_mapping(
+            {
+                "schema": EXTERNAL_SEQUENCE_OPERATOR_MEMORY_SCHEMA,
+                "configuration": self.configuration(),
+                "state": self.state_dict(),
+            }
+        )
+
+    def payload(self) -> dict[str, object]:
+        """Serialize the operator bank independently of the controller."""
+
+        return {
+            "schema": EXTERNAL_SEQUENCE_OPERATOR_MEMORY_SCHEMA,
+            "configuration": self.configuration(),
+            "state": {
+                name: value.detach().cpu().clone()
+                for name, value in self.state_dict().items()
+            },
+            "sha256": self.digest(),
+        }
+
+    @classmethod
+    def from_payload(
+        cls,
+        payload: Mapping[str, object],
+        *,
+        verify_checksum: bool = True,
+    ) -> ExternalSequenceOperatorMemory:
+        """Restore one independently versioned operator-memory file."""
+
+        if not isinstance(payload, Mapping):
+            raise TypeError("sequence operator memory payload must be a mapping")
+        if payload.get("schema") != EXTERNAL_SEQUENCE_OPERATOR_MEMORY_SCHEMA:
+            raise ValueError("unsupported sequence operator memory schema")
+        configuration = payload.get("configuration")
+        state = payload.get("state")
+        if not isinstance(configuration, Mapping):
+            raise TypeError("sequence operator memory configuration is invalid")
+        if not isinstance(state, Mapping) or not all(
+            isinstance(name, str) and isinstance(value, torch.Tensor)
+            for name, value in state.items()
+        ):
+            raise TypeError("sequence operator memory state must be a tensor mapping")
+        slot_count = configuration.get("slot_count")
+        if not isinstance(slot_count, int) or slot_count < 0:
+            raise ValueError("sequence operator memory slot count is invalid")
+        memory = cls(
+            int(configuration.get("register_width", -1)),
+            int(configuration.get("instruction_width", -1)),
+            operator_rank=int(configuration.get("operator_rank", -1)),
+            router_hidden=int(configuration.get("router_hidden", -1)),
+            router_temperature=float(configuration.get("router_temperature", -1.0)),
+        )
+        for _ in range(slot_count):
+            memory.add_slot()
+        memory.load_state_dict(state, strict=True)
+        if memory.configuration() != dict(configuration):
+            raise ValueError("sequence operator memory configuration mismatch")
+        if verify_checksum:
+            expected = payload.get("sha256")
+            if not isinstance(expected, str) or expected != memory.digest():
+                raise ValueError("sequence operator memory checksum mismatch")
+        return memory
 
     def add_slot(self) -> int:
         self.slots.append(

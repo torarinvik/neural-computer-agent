@@ -1,0 +1,21 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "external_operator_memory_target_bind_rejected_2026-08-11",
+  "status": "rejected_memory_causal_gate",
+  "population_seeds": [69316],
+  "unique_verifier_bits_per_seed": [239488],
+  "control_outcome_bits_per_seed": [8832],
+  "optimizer_updates_per_seed": [2144],
+  "controller_optimizer_updates_per_seed": [0],
+  "replayed_examples_per_seed": [0],
+  "heldout_verifier_bits_per_seed": [49152],
+  "successor_updates_per_seed": [96],
+  "fresh_successor_updates_per_seed": [256],
+  "transfer_ratio_against_matched_fresh": [null],
+  "retention_on_mastered_primitives": [0.875],
+  "controller_frozen": [true],
+  "state_adapter_frozen": [true],
+  "explicit_mask_features": [false],
+  "protected_retention_verifier": [true],
+  "claim_boundary": "Rejected the one-seed external-operator target-use rung: paired zero-content bank corruption dropped the two composition targets by only 1.56 pp and 0.52 pp, below the 5 pp causal gate. Exact independent memory reload passed, but learned target dependence on the external file was not established. Bind-once execution and persistence remain infrastructure results; arbitrary new computation, unrestricted memory growth, and general continual learning remain unqualified."
+}

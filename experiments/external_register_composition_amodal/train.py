@@ -28,13 +28,13 @@ from experiments.working_memory_continuous.canonical_growth_pressure_test import
     _runtime,
 )
 from neural_computer import (
-    ExternalCapabilityRegisterMachine,
-    AmodalEventBridge,
-    ExternalRegisterInstruction,
-    ExternalSequenceProgramMemory,
     EXTERNAL_REGISTER_SHARED_ROLE_BOUND_MODE,
-    OpaqueProtocolDecoder,
+    AmodalEventBridge,
+    BoundExternalSequenceOperatorMemory,
     CanonicalRegisterReadout,
+    ExternalCapabilityRegisterMachine,
+    ExternalRegisterInstruction,
+    OpaqueProtocolDecoder,
     PersistentOpaqueStateStore,
     paired_counterfactual_ranking_loss,
 )
@@ -212,6 +212,7 @@ def _rollout(
     event_bridge: AmodalEventBridge | None = None,
     register_readout: CanonicalRegisterReadout | None = None,
     preserve_execution_trace: bool = False,
+    bind_operator_route: bool = False,
     route_probe: bool = False,
     program_route_probe: bool = False,
     bridge_event_mode: str = "normal",
@@ -230,9 +231,10 @@ def _rollout(
         raise ValueError(f"unknown bridge event mode: {bridge_event_mode!r}")
     if bridge_state_mode not in ("normal", "zero"):
         raise ValueError(f"unknown bridge state mode: {bridge_state_mode!r}")
-    if bridge_event_mode != "normal" or bridge_state_mode != "normal":
-        if event_bridge is None:
-            raise ValueError("bridge input overrides require an event bridge")
+    if (
+        bridge_event_mode != "normal" or bridge_state_mode != "normal"
+    ) and event_bridge is None:
+        raise ValueError("bridge input overrides require an event bridge")
     if preserve_execution_trace and execution_mode != "read_execute":
         raise ValueError("execution traces require read_execute mode")
     if route_probe:
@@ -261,6 +263,22 @@ def _rollout(
             raise ValueError(
                 "sequence operator route query batch size does not match rollout"
             )
+    if bind_operator_route and not route_probe:
+        if sequence_operator_memory is None or sequence_operator_route_query is None:
+            raise ValueError(
+                "bind-once operator routing requires operator memory and a route query"
+            )
+        if sequence_operator_slot is not None:
+            raise ValueError(
+                "bind-once operator routing cannot combine a fixed slot and route query"
+            )
+        if not isinstance(
+            sequence_operator_memory, BoundExternalSequenceOperatorMemory
+        ):
+            sequence_operator_memory = sequence_operator_memory.bind(
+                sequence_operator_route_query
+            )
+        sequence_operator_route_query = None
     if sequence_program_route_query is not None:
         if sequence_program_route_query.ndim == 1:
             sequence_program_route_query = sequence_program_route_query.unsqueeze(0).expand(
@@ -933,6 +951,7 @@ def _accuracy(
     event_bridge: AmodalEventBridge | None = None,
     register_readout: CanonicalRegisterReadout | None = None,
     preserve_execution_trace: bool = False,
+    bind_operator_route: bool = False,
     reverse_operations: bool = False,
     reverse_sequence: bool = False,
     bridge_event_mode: str = "normal",
@@ -976,6 +995,7 @@ def _accuracy(
             event_bridge=event_bridge,
             register_readout=register_readout,
             preserve_execution_trace=preserve_execution_trace,
+            bind_operator_route=bind_operator_route,
             bridge_event_mode=bridge_event_mode,
             bridge_state_mode=bridge_state_mode,
             bridge_transform_seed=bridge_transform_seed,

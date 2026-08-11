@@ -12,6 +12,7 @@ from experiments.working_memory_continuous.canonical_growth_pressure_test import
 from neural_computer import (
     AmodalEventBridge,
     CapabilityConditionedEventBridge,
+    ExternalSequenceOperatorMemory,
     OpaqueProtocolDecoder,
 )
 
@@ -69,6 +70,86 @@ def test_external_rollout_trains_bridge_while_parent_stays_frozen() -> None:
 
     assert any(parameter.grad is not None for parameter in bridge.parameters())
     assert all(parameter.grad is None for parameter in parent.parameters())
+
+
+def test_external_rollout_binds_operator_route_once_and_keeps_credit_live() -> None:
+    parent = _runtime(seed=43, growth=False)
+    machine = _new_machine(
+        2,
+        operator_mode="factorized_protected_bounded_meta",
+        operator_rank=2,
+    )
+    decoder = OpaqueProtocolDecoder(32, 2, hidden=8)
+    memory = ExternalSequenceOperatorMemory(32, 16, operator_rank=2)
+    memory.add_slot()
+    memory.add_slot()
+    query = memory.encode_program(torch.randn(1, 2, 16)).squeeze(0)
+    calls = 0
+    original_route_weights = memory.route_weights
+
+    def counted_route_weights(route_query: torch.Tensor) -> torch.Tensor:
+        nonlocal calls
+        calls += 1
+        return original_route_weights(route_query)
+
+    memory.route_weights = counted_route_weights  # type: ignore[method-assign]
+    batch = _batch(
+        "generated_composition",
+        count=4,
+        span=2,
+        seed=47,
+        generated_composition_ids=(0,),
+        generated_compositions=(("reverse", "complement"),),
+    )
+
+    loss, rewards = _rollout(
+        parent,
+        machine,
+        decoder,
+        batch,
+        tuple(machine.instructions),
+        train_decoder=True,
+        credit_mode="attempted_bce",
+        sequence_operator_memory=memory,
+        sequence_operator_route_query=query,
+        bind_operator_route=True,
+    )
+    loss.backward()
+
+    assert calls == 1
+    assert rewards.shape == (4, 2)
+    assert torch.isfinite(loss)
+    assert any(parameter.grad is not None for parameter in memory.parameters())
+    assert all(parameter.grad is None for parameter in parent.parameters())
+
+
+def test_external_rollout_keeps_route_probe_unbound_when_requested() -> None:
+    parent = _runtime(seed=53, growth=False)
+    machine = _new_machine(
+        2,
+        operator_mode="factorized_protected_bounded_meta",
+        operator_rank=2,
+    )
+    decoder = OpaqueProtocolDecoder(32, 2, hidden=8)
+    memory = ExternalSequenceOperatorMemory(32, 16, operator_rank=2)
+    memory.add_slot()
+    batch = _batch("generated_composition", count=2, span=1, seed=59)
+
+    loss, rewards = _rollout(
+        parent,
+        machine,
+        decoder,
+        batch,
+        tuple(machine.instructions),
+        train_decoder=False,
+        sequence_operator_memory=memory,
+        sequence_operator_route_query=torch.randn(16),
+        bind_operator_route=True,
+        route_probe=True,
+    )
+
+    assert torch.isfinite(loss)
+    assert rewards.shape == (2, 1)
 
 
 def test_bridge_corruption_control_keeps_scalar_credit_on_external_path() -> None:

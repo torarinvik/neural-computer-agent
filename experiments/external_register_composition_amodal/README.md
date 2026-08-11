@@ -282,6 +282,26 @@ latency/contract result only: it uses no verifier experience and does not
 promote a learned capability. A future rendered-event audit must establish
 whether the same boundary improves new-depth learning or retention.
 
+## Durable operator files and target-use gate (2026-08-11)
+
+The operator bank now has its own versioned `payload()` /
+`from_payload()` contract, configuration digest, and checksum. The target
+harness passes the frozen bank into generated-composition candidates, binds
+the route once per rollout, and tests both zero-content corruption and
+independent reload on the same evaluation batch. This closes the earlier
+plumbing gap where the bank could be calibrated yet bypassed by target
+acquisition.
+
+The first corrected paired rung was rejected. Reload was exact for both
+operator-backed targets, but zeroing the bank reduced accuracy by only `1.56`
+and `0.52` percentage points, below the `5`-point causal gate. The result is
+therefore evidence for durable storage and correct execution wiring, not
+learned target dependence or positive continual-learning transfer. The report,
+accounting ledger, and reproduction command are archived in
+`session_records/external_operator_memory_target_bind_rejected_2026-08-11/`.
+The next bottleneck is an independently measurable learned file-read/trace
+path, with read-ablated controls, before scaling external operator capacity.
+
 ## Promoted basis reuse (2026-08-08)
 
 The two-seed reuse probe promoted the next boundary. A first `rotate`

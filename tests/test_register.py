@@ -720,6 +720,40 @@ def test_external_sequence_operator_binding_requires_rebinding_after_growth() ->
         raise AssertionError("expected a grown memory to invalidate its binding")
 
 
+def test_external_sequence_operator_memory_persists_with_checksum() -> None:
+    torch.manual_seed(915)
+    memory = ExternalSequenceOperatorMemory(
+        8,
+        5,
+        operator_rank=2,
+        router_hidden=12,
+        router_temperature=0.5,
+    )
+    memory.add_slot()
+    memory.add_slot()
+    payload = memory.payload()
+    restored = ExternalSequenceOperatorMemory.from_payload(payload)
+
+    assert restored.configuration() == memory.configuration()
+    assert restored.digest() == memory.digest()
+    for name, value in memory.state_dict().items():
+        assert torch.equal(value, restored.state_dict()[name])
+
+    corrupted = dict(payload)
+    corrupted_state = dict(payload["state"])
+    first_name = next(iter(corrupted_state))
+    corrupted_value = corrupted_state[first_name].clone()
+    corrupted_value.reshape(-1)[0] += 1.0
+    corrupted_state[first_name] = corrupted_value
+    corrupted["state"] = corrupted_state
+    try:
+        ExternalSequenceOperatorMemory.from_payload(corrupted)
+    except ValueError as error:
+        assert "checksum mismatch" in str(error)
+    else:
+        raise AssertionError("expected corrupted operator memory to be rejected")
+
+
 def test_external_sequence_program_memory_stores_ordered_shared_program_data() -> None:
     torch.manual_seed(906)
     memory = ExternalSequenceProgramMemory(5, router_temperature=0.25)
