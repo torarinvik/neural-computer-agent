@@ -6,28 +6,49 @@ rung promotes, rejects, or qualifies. Ordered by severity.
 
 ## Open
 
-0. **The recipe architecture is the live direction, and its next
-   bottleneck is SEARCH, not execution (F155).** An interpreter
-   trained only on random programs executes unseen programs at 0.9978
-   and double-length ones at 0.9774; recipes SEARCHED for seven unseen
-   families reach 0.9247 held-out against a 0.5229 identity floor,
-   14/14 above their own floor, with no gradient touching any family.
-   That refutes the select-vs-invent boundary for a basis-primitive
-   plant. Evidence: `recipe_synthesis_v1_2026-08-11`.
-   What does not scale: proposal is uniform random over 252^6 programs
-   at length 6. Three things follow, in order —
-   (a) **library reuse** (running): compose candidates from fragments
-       of solved recipes, with a frozen-library control, measuring
-       search COST per family rather than accuracy. If cost falls only
-       when the library grows, the bank is buying compounding;
-   (b) **compression, not accumulation.** The current library appends
-       whole recipes and samples uniformly, so it dilutes as it grows.
-       DreamCoder keeps a fragment only when it shortens the total
-       description length. Expect (a) to need this before it works;
-   (c) **learned proposal.** Nothing yet learns which fragment to try;
-       that is the reader's job in this architecture and it is
-       untouched.
+0. **The recipe architecture is the live direction. SEARCH is still
+   its bottleneck, but the bottleneck moved and is now better
+   characterised (F155, F160-F175).**
+   End to end: mean held-out 0.9742 against a 0.5623 identity floor,
+   above floor in 21/21 family-seeds, interpreter executing unseen
+   programs at 0.9916, no gradient touching any family (F169). Against
+   F155's 0.9247/0.5229 the distance to a perfect recipe has roughly
+   halved. Evidence: `recipe_search_v1_2026-08-11`.
 
+   Search cost, each against the same frozen control, five seeds where
+   noted, `cover` carried as a positive control of known size:
+
+   | mechanism | diverse | related |
+   | --- | ---: | ---: |
+   | stored programs, with causal null (F161) | 0.929 | 0.772 |
+   | coverage filter (F171) | 0.879 | 0.812 |
+   | both (F171) | 0.848 | 0.711 |
+   | **depth-ordered enumeration (F173)** | **0.425** | **0.406** |
+
+   Only enumeration changes what is COUNTED; the rest shave constant
+   factors. `toggle` went from 22,151 candidate evaluations to 328 —
+   but that needed three findings composed: the hole was the MODULUS
+   and not a missing pair operation (F160), the modulus should be
+   OBSERVED rather than searched (F166/F167), and enumeration finds
+   the two-instruction recipe immediately once it is (F173).
+
+   What is now known NOT to help, each measured rather than argued:
+   (a) storing solved programs adds nearly nothing on top of
+       enumeration, 0.421 against 0.425 — reuse was worth a tenth
+       against random sampling and about nothing against a systematic
+       proposer (F173);
+   (b) capping the enumeration is a net loss, because a failed
+       enumeration is not wasted work: it raises the best score the
+       fallback sampling starts from (F175);
+   (c) the equality guard was NOT built — gated families reach 0.9607
+       against 0.9781 for plain ones, so the hole it would fill is not
+       there (F170).
+
+   Next: a third of families still cost MORE under enumeration than
+   under sampling, all of them ones whose recipe is longer than depth
+   2. Depth 3 is 27,000 candidates and cannot be enumerated flat, so
+   the open question is whether the enumeration can be ORDERED — which
+   cannot cut a solution, unlike the cap that was just refuted.
 
 0. **THE READER'S TRAINING SIGNAL — the last piece, and it is now the
    only one.** Everything else in the composition mechanism is
