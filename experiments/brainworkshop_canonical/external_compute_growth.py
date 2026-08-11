@@ -35,7 +35,7 @@ from neural_computer import (
     KeypressDecoder,
 )
 
-from .cross_family_rule_growth import CrossFamilyVerifier
+from .cross_family_rule_growth import RULES, CrossFamilyVerifier
 from .runner import CanonicalBrainWorkshopAgent
 
 EXTERNAL_COMPUTE_GROWTH_SCHEMA = (
@@ -76,11 +76,11 @@ def _digest(*modules: nn.Module) -> str:
     return digest.hexdigest()
 
 
-def _basis() -> ExternalRegisterComputeBasis:
+def _basis(*, hidden: int = 32) -> ExternalRegisterComputeBasis:
     return ExternalRegisterComputeBasis(
         REGISTER_WIDTH,
         INSTRUCTION_WIDTH,
-        hidden=32,
+        hidden=hidden,
         event_width=EVENT_WIDTH,
         event_window_size=EVENT_WINDOW_SIZE,
         microsteps=2,
@@ -89,8 +89,18 @@ def _basis() -> ExternalRegisterComputeBasis:
     )
 
 
-def _build(seed: int) -> ComputeGrowthSystem:
-    """Build two opaque files over one fixed generic interpreter."""
+def _build(
+    seed: int,
+    *,
+    slot_count: int = 2,
+    basis_hidden: int = 32,
+) -> ComputeGrowthSystem:
+    """Build an append-only bank of opaque files over one fixed interpreter."""
+
+    if slot_count < 1:
+        raise ValueError("external compute slot count must be positive")
+    if basis_hidden < 1:
+        raise ValueError("external compute basis hidden width must be positive")
 
     torch.manual_seed(seed)
     agent = CanonicalBrainWorkshopAgent(
@@ -113,14 +123,17 @@ def _build(seed: int) -> ComputeGrowthSystem:
         interpreter_hidden=32,
         operator_mode="factorized_low_rank",
         operator_rank=4,
-        basis_slots=(_basis(), _basis()),
+        basis_slots=tuple(
+            _basis(hidden=basis_hidden) for _ in range(slot_count)
+        ),
+        basis_hidden=basis_hidden,
         basis_microsteps=2,
         basis_event_read_mode="flattened_window",
         basis_register_input_mode="event_window_only",
         event_window_size=EVENT_WINDOW_SIZE,
     )
     instructions = nn.ModuleList(
-        ExternalRegisterInstruction(INSTRUCTION_WIDTH) for _ in range(2)
+        ExternalRegisterInstruction(INSTRUCTION_WIDTH) for _ in range(slot_count)
     )
     readouts = nn.ModuleList(
         nn.Sequential(
@@ -128,11 +141,11 @@ def _build(seed: int) -> ComputeGrowthSystem:
             nn.GELU(),
             nn.Linear(16, INTENTION_WIDTH),
         )
-        for _ in range(2)
+        for _ in range(slot_count)
     )
     decoders = nn.ModuleList(
         KeypressDecoder(INTENTION_WIDTH, ACTION_COUNT, hidden=16)
-        for _ in range(2)
+        for _ in range(slot_count)
     )
     return ComputeGrowthSystem(agent, machine, instructions, readouts, decoders)
 
@@ -148,8 +161,8 @@ def _common_modules(system: ComputeGrowthSystem) -> tuple[nn.Module, ...]:
 
 
 def _slot_modules(system: ComputeGrowthSystem, slot: int) -> tuple[nn.Module, ...]:
-    if slot not in (0, 1):
-        raise ValueError("external compute slot must be 0 or 1")
+    if not 0 <= slot < len(system.instructions):
+        raise ValueError("external compute slot is outside the bank")
     return (
         system.machine.basis_slots[slot],
         system.instructions[slot],
@@ -191,7 +204,7 @@ def _episode(
 ) -> tuple[torch.Tensor, torch.Tensor, int]:
     """Run one fresh verifier lifetime through INPUT -> PROCESS -> OUTPUT."""
 
-    if family not in (SOURCE_FAMILY, TARGET_FAMILY):
+    if family not in RULES:
         raise ValueError("unsupported external compute audit family")
     verifier = CrossFamilyVerifier(
         family=family,

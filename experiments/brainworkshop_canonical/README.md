@@ -710,3 +710,42 @@ PYTHONPATH=src:. ./.venv/bin/python -m experiments.brainworkshop_canonical.exter
   --route-calibration-lifetimes 8 --batch-size 32 --retention-lifetimes 4 \
   --seed 17 --report-out /tmp/brainworkshop-external-compute-route.json
 ```
+
+## Four-file content-addressed route bank (2026-08-11)
+
+`external_compute_route_bank.py` generalizes the route ledger and executable
+file builder from two slots to an append-only four-file bank. The files cover
+`symbol_parity`, `triplet_parity`, `parity2`, and a balanced binary-symbol
+`switch_binary` family. Each file is acquired in isolation from scalar
+outcomes, then frozen before the next file is added. The controller, event
+frontend, and generic register interpreter remain frozen while the route table
+learns each opaque file address from the learned event key.
+
+Seeds `17` and `18` both pass stable direct and routed mastery for all four
+files, exact correct-file selection (`1.0000` for every known context),
+unseen-context append-order fallback, no-file chance control, exact route
+reload, byte-identical prior files, frozen controller/frontend, and zero
+replay. The unseen-context accuracy is `0.5096` and `0.5072`; no-file accuracy
+is `0.4952` and `0.4790`.
+
+The first four-symbol `switch` diagnostic was rejected as an invalid chance
+control because `current != previous` is true 75% of the time over four
+symbols. `switch_binary` fixes only that measurement confound by using a
+balanced two-symbol rendered alphabet; it does not expose a target or rule ID
+to the learner.
+
+Each seed used `605,696` unique verifier bits, `49,152` unique logical
+lifetimes, `768` optimizer updates, `776` route-memory updates, and zero
+replay. This promotes bounded append-only external-file routing, not
+unrestricted memory expansion, arbitrary program induction, or general
+continual learning. Evidence is archived in
+`session_records/brainworkshop_external_compute_route_bank_promoted_2026-08-11/`.
+
+Run it with:
+
+```bash
+PYTHONPATH=src:. ./.venv/bin/python -m experiments.brainworkshop_canonical.external_compute_route_bank \
+  --slot-count 4 --file-updates 192 --route-updates 256 \
+  --route-calibration-lifetimes 8 --batch-size 32 --retention-lifetimes 4 \
+  --seed 17 --report-out /tmp/brainworkshop-external-compute-route-bank.json
+```

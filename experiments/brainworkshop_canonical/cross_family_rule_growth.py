@@ -48,6 +48,7 @@ DEFAULT_SHUFFLED_CUE = 9
 class RuleSpec:
     name: str
     warmup: int
+    symbol_count: int = SYMBOL_COUNT
 
 
 RULES = {
@@ -56,6 +57,7 @@ RULES = {
     "switch": RuleSpec("switch", 1),
     "symbol_parity": RuleSpec("symbol_parity", 0),
     "triplet_parity": RuleSpec("triplet_parity", 3),
+    "switch_binary": RuleSpec("switch_binary", 1, symbol_count=2),
 }
 
 
@@ -108,9 +110,10 @@ class CrossFamilyVerifier:
         return self.symbol_steps - RULES[self.family].warmup
 
     def reset(self) -> None:
+        spec = RULES[self.family]
         self._symbols = torch.randint(
             0,
-            SYMBOL_COUNT,
+            spec.symbol_count,
             (self.batch_size, self.symbol_steps),
             generator=self._generator,
             device=self.device,
@@ -125,7 +128,7 @@ class CrossFamilyVerifier:
                 target = (
                     current.remainder(2) + self._symbols[:, position - 1].remainder(2)
                 ).remainder(2) == 0
-            elif self.family == "switch":
+            elif self.family in {"switch", "switch_binary"}:
                 target = current != self._symbols[:, position - 1]
             elif self.family == "symbol_parity":
                 target = current.remainder(2) == 0

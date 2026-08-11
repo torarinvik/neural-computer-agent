@@ -12,6 +12,9 @@ from experiments.brainworkshop_canonical import (
     train_reward_only,
 )
 from experiments.brainworkshop_canonical.cross_family_rule_growth import (
+    CrossFamilyVerifier,
+)
+from experiments.brainworkshop_canonical.cross_family_rule_growth import (
     run as run_cross_family_rule_growth,
 )
 from experiments.brainworkshop_canonical.environment import NBackVerifierStep
@@ -20,6 +23,9 @@ from experiments.brainworkshop_canonical.external_compute_growth import (
 )
 from experiments.brainworkshop_canonical.external_compute_route import (
     run as run_external_compute_route,
+)
+from experiments.brainworkshop_canonical.external_compute_route_bank import (
+    run as run_external_compute_route_bank,
 )
 from experiments.brainworkshop_canonical.goal_conditioned_planning import (
     run_goal_conditioned_planning_audit,
@@ -183,6 +189,49 @@ def test_external_compute_route_smoke_uses_content_addressed_outcome_evidence(
     assert report["gates"]["frozen_controller"]
     assert report["gates"]["frozen_event_encoder"]
     assert report["accounting"]["replayed_examples"] == 0
+
+
+def test_external_compute_route_bank_smoke_preserves_append_only_file_boundaries(
+    tmp_path,
+) -> None:
+    report = run_external_compute_route_bank(
+        argparse.Namespace(
+            report_out=tmp_path / "external-compute-route-bank.json",
+            seed=17,
+            slot_count=4,
+            file_updates=1,
+            route_updates=1,
+            route_calibration_lifetimes=8,
+            batch_size=32,
+            retention_lifetimes=1,
+            learning_rate=1e-2,
+            basis_hidden=32,
+            final_family="switch_binary",
+        )
+    )
+
+    assert report["schema"] == (
+        "neural-computer.brainworkshop-external-compute-route-bank.v1"
+    )
+    assert report["gates"]["prior_files_unchanged_after_growth"]
+    assert report["gates"]["frozen_controller"]
+    assert report["gates"]["frozen_event_encoder"]
+    assert report["accounting"]["replayed_examples"] == 0
+
+
+def test_binary_switch_family_has_a_valid_chance_baseline() -> None:
+    verifier = CrossFamilyVerifier(
+        family="switch_binary",
+        batch_size=2048,
+        steps=14,
+        cue_symbol=11,
+        seed=17,
+    )
+    verifier.reset()
+    while not verifier.done:
+        verifier.score(torch.zeros(2048, dtype=torch.long))
+
+    assert abs(float(verifier._targets.float().mean()) - 0.5) < 0.04
 
 
 def test_canonical_rollout_uses_keypress_and_retention_boundaries() -> None:
