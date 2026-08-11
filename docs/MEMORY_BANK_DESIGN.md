@@ -8913,3 +8913,25 @@ The lesson is not "extend the basis instead of improving search". It is
 that **a search failing expensively looks identical to a search that is
 too slow**, and only a per-family cost distribution distinguishes them.
 F176 was the finding; F177 and F178 are its consequences.
+
+**Pre-registered for the end-to-end re-derivation.** F169's headline —
+mean held-out 0.9742 against a 0.5623 identity floor, 21/21 above
+floor — was measured on the seven-instruction basis and is stale.
+Re-running it paired against the old basis at four seeds, with `walled`
+and the gated families included.
+
+1. `line` (0.9518) and `grid` (0.9538) should rise most, since both are
+   now exactly expressible as single instructions.
+2. `dial`, `toggle`, `perm` should be unchanged — all three were
+   already at or near ceiling and use no saturating arithmetic.
+3. `walled` should rise but STOP SHORT of the others, because a single
+   saturating instruction reaches only 0.945-0.953 on it and the
+   remainder is the wall, which no operation in this basis expresses.
+   If walled reaches the others, the wall is expressible after all and
+   the F92 complaint has a different cause than I have assumed twice.
+4. The mean should rise; the identity floor must NOT move, since it
+   depends only on the families.
+
+(4) is the control that matters: the identity floor is computed from
+the task and not from the basis, so if it shifts, something is wrong
+with the comparison rather than with the basis.
