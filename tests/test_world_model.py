@@ -3049,6 +3049,15 @@ def test_factored_router_prefix_address_update_isolated_from_factual_memory() ->
     assert router.route_bundle((target,)).status == "staged"
     assert router.promote_staged_candidate(target, lambda _candidate: True).accepted
 
+    probe = router.request_disambiguation_probe(
+        source,
+        torch.tensor([[0.0], [1.0]]),
+        candidate_slot_ids=(0, 1),
+    )
+    assert probe.candidate_slot_ids == (0, 1)
+    assert probe.predicted_next_states.shape == (2, 2, 1)
+    assert probe.selected_intention_index in {0, 1}
+
     before_digest = router.digest()
     candidate, loss = router.copy_on_write_prefix_address_update(
         {

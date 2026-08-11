@@ -27,6 +27,7 @@ from .world_model import (
     ExternalTransitionModelEvictionReceipt,
     ExternalTransitionModelGrowthReceipt,
     ExternalTransitionObservation,
+    ExternalTransitionProbeResult,
     ExternalTransitionRollout,
     ExternalTransitionRouteQuery,
 )
@@ -1490,6 +1491,100 @@ class ExternalFactoredTransitionRouter:
                 pending_observations=0,
             ).validate(context_width=self.model.context_width)
         return result
+
+    @torch.no_grad()
+    def request_disambiguation_probe(
+        self,
+        observation: ExternalTransitionObservation,
+        candidate_intentions: torch.Tensor,
+        *,
+        candidate_slot_ids: Sequence[int] | None = None,
+    ) -> ExternalTransitionProbeResult:
+        """Select an opaque intention that maximizes slot disagreement.
+
+        This is a read-only active-evidence primitive. It does not choose a
+        device action or mutate memory. The caller executes the selected
+        opaque intention, packages the observed consequence, and submits that
+        fresh evidence through the ordinary factual route and promotion
+        gates. It is the factored equivalent of a CPU issuing a diagnostic
+        instruction when a file address is uncertain.
+        """
+
+        observation.validate(
+            state_width=self.model.state_width,
+            intention_width=self.model.intention_width,
+        )
+        if observation.state.shape[0] < 1:
+            raise ValueError("disambiguation probing needs one evidence row")
+        if candidate_intentions.ndim != 2 or candidate_intentions.shape[1] != (
+            self.model.intention_width
+        ):
+            raise ValueError("disambiguation intentions have the wrong shape")
+        if candidate_intentions.shape[0] < 1 or not bool(
+            torch.isfinite(candidate_intentions).all()
+        ):
+            raise ValueError("disambiguation intentions must be finite and non-empty")
+        if candidate_slot_ids is None:
+            errors: list[float] = []
+            for context in self._contexts:
+                prediction = self.model.predict_with_context(
+                    observation.state,
+                    observation.intention,
+                    context.to(observation.state)
+                    .unsqueeze(0)
+                    .expand(observation.state.shape[0], -1),
+                )
+                errors.append(
+                    float((prediction - observation.next_state).square().mean())
+                )
+            if not errors:
+                raise ValueError("disambiguation probing requires committed slots")
+            best_error = min(errors)
+            slot_ids = tuple(
+                self._slot_ids[index]
+                for index, error in enumerate(errors)
+                if error <= best_error + self.match_margin
+            )
+        else:
+            slot_ids = tuple(int(slot_id) for slot_id in candidate_slot_ids)
+        if len(slot_ids) < 2:
+            raise ValueError("disambiguation probing needs at least two plausible slots")
+        if len(set(slot_ids)) != len(slot_ids) or any(
+            slot_id not in self._slot_ids for slot_id in slot_ids
+        ):
+            raise ValueError("disambiguation probe slot IDs are invalid")
+
+        predictions: list[torch.Tensor] = []
+        state = observation.state[:1]
+        for intention in candidate_intentions:
+            intention_batch = intention.unsqueeze(0)
+            slot_predictions = []
+            for slot_id in slot_ids:
+                context = self._contexts[self._slot_ids.index(slot_id)]
+                slot_predictions.append(
+                    self.model.predict_with_context(
+                        state,
+                        intention_batch,
+                        context.to(state).unsqueeze(0),
+                    ).squeeze(0)
+                )
+            predictions.append(torch.stack(slot_predictions))
+        predicted_next_states = torch.stack(predictions)
+        mean_prediction = predicted_next_states.mean(dim=1, keepdim=True)
+        disagreement_scores = (
+            predicted_next_states - mean_prediction
+        ).square().mean(dim=(1, 2))
+        selected_index = int(disagreement_scores.argmax())
+        return ExternalTransitionProbeResult(
+            selected_intention=candidate_intentions[selected_index].detach().clone(),
+            selected_intention_index=selected_index,
+            disagreement_scores=disagreement_scores.detach().clone(),
+            predicted_next_states=predicted_next_states.detach().clone(),
+            candidate_slot_ids=slot_ids,
+        ).validate(
+            state_width=self.model.state_width,
+            intention_width=self.model.intention_width,
+        )
 
     def quarantine_partial_bundle(
         self,
