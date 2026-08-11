@@ -9660,3 +9660,56 @@ The common principle, worth stating once: **an experiment needs at
 least one quantity whose expected value is known in advance.** Every
 null retracted this session failed that test, and every instrument
 above is a different way of supplying one.
+
+## F189 — FORWARD TRANSFER, first evidence: the bank makes families
+## solvable that were not solvable without it
+
+Two seeds, depth-3 families sharing an identifiable prefix, 20,000
+candidates per action. **The ceiling gate passes** — interpreter at
+0.9896 and 0.9865 against a 0.95 target — so for the first time this
+measurement is readable rather than void.
+
+| arm | seed 69316 | seed 69317 |
+| --- | --- | --- |
+| frozen (sampling) | **0/6 solved**, 360,000 | **0/6 solved**, 360,000 |
+| enum | 1/6 solved, 306,418 | 1/6 solved, 306,385 |
+| **enum + stored programs** | **4/6 solved**, 193,808 | 1/6 solved, 278,877 |
+
+**Random sampling solves NOTHING at depth 3.** Zero of six on both
+seeds, at the full budget. That is the headroom F185 lacked and F186
+failed to build: a regime where the arms can actually separate.
+
+**Enumeration alone solves exactly one** — the first family, whose
+depth-3 enumeration happens to complete inside the budget at 29,632.
+The rest saturate.
+
+**Adding the bank solved three more on seed 69316**, and the per-family
+numbers show the mechanism rather than implying it:
+
+| family | enum | enum+store |
+| --- | ---: | ---: |
+| deep3 | 60,000 @ 0.905 | **11,329 @ 0.988** |
+| deep4 | 48,397 @ 0.880 | **14,471 @ 1.000** |
+| deep5 | 48,389 @ 0.878 | **18,376 @ 0.987** |
+
+Cost falls three to five fold AND fit rises to essentially exact. That
+is the shared prefix being recalled and extended by one instruction,
+which is what the instrument was built to make identifiable.
+
+**It does not replicate at the second seed.** 1/6 solved, 278,877
+against enum's 306,385. The DIRECTION is consistent on both seeds —
+enum+store <= enum <= frozen — but the magnitude is not, and this
+project's own history says a two-seed effect that disagrees in size is
+not yet a result (F157, F159, F168 were all overturned on that
+pattern).
+
+**Stated at the strength the evidence supports:** forward transfer has
+been OBSERVED, in a regime where the alternative solves nothing, with a
+mechanism visible in the per-family costs. It has not been replicated.
+Four more seeds running.
+
+This is the third claim of the founding objective and the one F185
+recorded as unmade. If it holds at six seeds, the architecture will
+have retention (F185, exactly zero forgetting), generalisation to
+unseen programs (F185, 0.9896), and transfer — each measured against a
+control rather than asserted.
