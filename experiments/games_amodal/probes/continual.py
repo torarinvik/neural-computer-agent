@@ -75,6 +75,13 @@ args = parser.parse_args()
 torch.set_num_threads(1)
 torch.manual_seed(args.seed)
 
+# Named here so the report can record it. A report that cannot explain
+# its own number is a report that cannot be audited: `interpreter_check`
+# came back at 0.45 against a published 0.99 and the run had not
+# recorded the budget or the instruction count that would locate it.
+OPS_NAMES = ("NOOP", "INC", "DEC", "CINC", "CDEC", "COPY", "SWAP",
+             "SINC", "SDEC")
+
 
 def build_sequence() -> list:
     """Deliberately unlike each other: the hand-made families plus
@@ -158,6 +165,8 @@ report = {
     "seed": args.seed,
     "families": [n for n, _ in sequence],
     "per_family_updates": args.per_family_updates,
+    "interpreter_updates": args.interpreter_updates,
+    "interpreter_ops": len(OPS_NAMES),
     "replay": args.replay,
     "identity_floor": {n: identity_floor(f, args.seed + 991)
                        for n, f in sequence},
@@ -180,8 +189,7 @@ report["weights_mean_forgetting"] = round(
 # rather than imported because that module runs on import; the
 # duplication is made safe by checking this copy reproduces its headline
 # unseen-program accuracy, which is reported as `interpreter_check`.
-OPS = ("NOOP", "INC", "DEC", "CINC", "CDEC", "COPY", "SWAP",
-       "SINC", "SDEC")            # saturating pair, F177
+OPS = OPS_NAMES                  # saturating pair from F177 included
 MODULI = tuple(range(2, VALUES + 1))
 
 
