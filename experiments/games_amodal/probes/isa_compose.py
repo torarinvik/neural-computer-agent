@@ -31,13 +31,38 @@ as its procedural basis, promoted from "how we generate rule families"
 to "what the plant executes":
 
     NOOP                      leave the state alone
-    INC  i / DEC  i           advance or retreat one slot, mod VALUES
-    CINC i,j / CDEC i,j       the same, CONDITIONAL on slot j
+    INC  i,m / DEC  i,m       advance or retreat one slot, mod m
+    SINC i,m / SDEC i,m       the same, SATURATING at 0 and m-1
+    CINC i,j,m / CDEC i,j,m   wrapping, CONDITIONAL on slot j
     COPY i,j / SWAP i,j       move content between slots
 
 Conditionals are what make this a basis rather than a lookup table:
 without them every program is a fixed permutation of the state, and
 with them a program can branch on its own content.
+
+**Two of these were added after the fact and both corrected the same
+kind of mistake, which is worth keeping in front of anyone reading
+this file.** The basis was originally taken from `schema_families`'
+procedural vocabulary — but by NAME rather than by semantics, and
+twice that was wrong.
+
+  * The modulus (F160). Every instruction wrapped at a global VALUES
+    while each family carries its own value count, so INC on a slot
+    holding 1 in a two-valued family gave 2 instead of 0 — right half
+    the time, silently. `m` is now an argument, inferred from the
+    observed range rather than searched (F166).
+  * Saturation (F177). `cinc` in `schema_families` is
+    `min(values-1, x+1)`: CLIPPED. It was read as "conditional" and
+    implemented as a gated wrapping increment. So the basis gained a
+    gating mechanism nothing in the task distribution needs, and
+    lacked the saturating arithmetic half the families are built from.
+    Families with no clipped operation never failed to be enumerated;
+    families half made of them failed 44.5% of the time.
+
+Both were invisible in aggregate accuracy and both surfaced only from a
+per-family cost distribution. Adding SINC/SDEC took the enumeration
+success rate from 84.5% to 100% and mean candidates per action from 528
+to 22.9 (F178).
 
 What this probe asks, and only this: **can one shared step function
 execute arbitrary programs over that basis, including programs it has

@@ -140,10 +140,13 @@ skill and leaves an entry nothing to do but choose between them.
 The response, and the constraint that keeps it honest:
 
 - the plant is an INTERPRETER over a small domain-general basis
-  (NOOP / INC / DEC / CINC / CDEC / COPY / SWAP on SLOTS x VALUES —
-  the operations `schema_families.py` already uses, over the interface
-  the rule families and the grid games already share). Conditionals
-  are what make it a basis rather than a permutation table;
+  (NOOP / INC / DEC / SINC / SDEC / CINC / CDEC / COPY / SWAP on
+  SLOTS x VALUES — the operations `schema_families.py` already uses,
+  over the interface the rule families and the grid games already
+  share). Conditionals are what make it a basis rather than a
+  permutation table; arithmetic comes in BOTH wrapping (INC/DEC) and
+  SATURATING (SINC/SDEC) forms, and each instruction carries the
+  modulus of the slot it touches;
 - the bank holds a PROGRAM per action. An action IS a recipe;
 - **the plant is trained ONLY on random programs over random states.**
   No family, no world, no task ever appears in its training
@@ -174,6 +177,33 @@ level down. A world whose rule the plant has never executed is a new
 ARRANGEMENT of instructions it already runs, so the bank grows
 capability rather than merely indexing it. What it does not buy:
 anything outside the basis. The boundary moves, it does not vanish.
+
+**And "outside the basis" has been the binding constraint twice, both
+times invisibly.** The basis was taken from `schema_families`' own
+vocabulary by NAME rather than by semantics, and each time the mismatch
+cost far more than any amount of search cleverness recovered:
+
+- *the modulus* (F160). Instructions wrapped at a global VALUES while
+  every family carries its own value count. Silent: correct whenever
+  the slot was below its top value.
+- *saturation* (F177). `cinc` in `schema_families` means
+  `min(values-1, x+1)` — clipped. It was read as "conditional". So the
+  basis carried a gating mechanism nothing needed and lacked the
+  saturating arithmetic half the families are built from.
+
+Neither appeared in aggregate accuracy. Both appeared immediately in a
+per-family distribution of SEARCH COST, because a search hunting for a
+program that does not exist spends its whole budget and then reports a
+near-miss. Adding two saturating operations took enumeration success
+from 84.5% to 100% and mean candidates per action from 528 to 22.9,
+after eighteen findings of trying to make the search itself cleverer
+had reached a sixth of that (F178).
+
+The transferable form: **a search failing because its target is
+inexpressible looks exactly like a search that is merely slow.** Only a
+cost distribution broken out by task tells them apart, and an
+architecture with a fixed basis should have that instrument permanently
+wired.
 
 ### 2.2 Bank (growing, external, per-task)
 
