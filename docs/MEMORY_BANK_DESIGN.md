@@ -8337,3 +8337,47 @@ every arm cost exactly the budget. Before trusting any search-cost
 result, check what fraction of searches terminate early — a result
 gathered where nothing terminates is a measurement of the budget
 wearing the costume of a measurement of the search.
+
+## F169 — where the recipe architecture stands, with the modulus in
+
+The end-to-end claim, restated so it can be checked: the plant is
+trained ONLY on random programs over random states, so no task ever
+touches its weights, and every family is handled by SEARCHING for a
+program that explains it against those frozen weights. Three cleanly
+paired seeds, inferred modulus.
+
+| family | held-out fit | identity floor | margin |
+| --- | ---: | ---: | ---: |
+| line | 0.9518 | 0.1315 | +0.8203 |
+| dial | 0.9900 | 0.6667 | +0.3233 |
+| toggle | 0.9434 | 0.6958 | +0.2476 |
+| perm | 1.0000 | 0.5000 | +0.5000 |
+| grid | 0.9538 | 0.5710 | +0.3828 |
+| proc0 | 1.0000 | 0.6960 | +0.3040 |
+| proc1 | 0.9802 | 0.6749 | +0.3053 |
+
+Mean held-out **0.9742** against a mean identity floor of **0.5623**,
+above the floor in **21 of 21** family-seeds. The interpreter executes
+programs it has never seen at 0.9916 per slot and 0.9512 exact.
+
+Against F155, which established the architecture: recipes reached
+0.9247 against a 0.5229 floor, above floor in 14 of 14. The distance
+to a perfect recipe has roughly halved, 0.0753 to 0.0258, and the
+family that could not be solved at all inside a 24,000-candidate
+budget now sits at 0.9434.
+
+**The floor is the part worth keeping honest.** Identity — copy the
+input unchanged — scores 0.5623 on average and 0.6960 on one family.
+Chance is 0.125. Any report of these numbers against chance would be
+inflating them by roughly four times, which is why the floor is in the
+table rather than in a footnote.
+
+**What this does not show.** These are recipes found by SEARCH against
+a frozen interpreter, not recipes inferred by a reader. The reader
+remains the open half of the architecture, and F164's correction
+stands: sufficient optimisation closes the amortization gap on a
+favourable trajectory, while reliability and basin selection are
+unresolved. A system that must search thousands of candidates per
+action is also not yet a system that has LEARNED anything from having
+solved a family before — F161 measured that transfer honestly at about
+a tenth of the search cost.
