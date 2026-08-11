@@ -207,6 +207,15 @@ parser.add_argument(
          "EXACT fitting and measured a null (1.029, 1.020) because the "
          "search stops at 0.95 and was happy with candidates it "
          "rejected.")
+parser.add_argument(
+    "--gated-targets", action="store_true",
+    help="add `walled` and two procedurally gated families to the "
+         "synthesis targets. These are the families an equality guard "
+         "would be built for — our CINC/CDEC gate only on 'slot j is "
+         "non-zero', so an effect conditional on a slot holding a "
+         "PARTICULAR value cannot be written. Measure the failure "
+         "before extending the basis; that ordering is why the modulus "
+         "was worth adding.")
 parser.add_argument("--curve-every", type=int, default=0)
 parser.add_argument("--json", default="")
 args = parser.parse_args()
@@ -1032,6 +1041,25 @@ if args.synthesize:
     for index in range(2):
         targets.append((f"proc{index}",
                         RandomFamily(random_family_spec(gen))))
+    if args.gated_targets:
+        # The families an EQUALITY GUARD would exist for, added BEFORE
+        # any guard is built, because the rule that has served this
+        # project is to establish the failure signature first. Our
+        # conditionals gate on "slot j is non-zero" and nothing else,
+        # so an effect that fires only when a slot holds a PARTICULAR
+        # value has no expression. `walled` is the hand-made case and
+        # F92 already flagged it as the reacher's one decisive failure;
+        # `gate*` are procedural families drawn with the wall and cond
+        # primitives enabled.
+        #
+        # If these fit as well as the rest, there is no hole and the
+        # guard should not be built. That is the point of measuring
+        # before extending: the modulus was worth adding because
+        # `toggle` failed loudly first.
+        targets.append(("walled", Family("walled")))
+        for index in range(2):
+            targets.append((f"gate{index}", RandomFamily(
+                random_family_spec(gen, gated=True))))
     if not args.library_arms:
         report["synthesis"] = {name: synthesise(fam, gen)
                                for name, fam in targets}
