@@ -429,3 +429,136 @@ Sources:
 5. **Dynamics ensemble** (§6) — DEPRIORITISED by F145: search budget
    buys nothing, so uncertainty-weighted search has little to act on.
    The state abstraction (§10) replaces it.
+
+---
+
+# Addendum 2, 2026-08-11: deeper on the amortization gap
+
+Four more bodies of work bear directly on it. The first is the closest
+match to our architecture found so far.
+
+## 11. Our reader IS a Neural Process, and NP UNDERFITTING is our
+   symptom exactly
+
+**The correspondence.** A Neural Process maps a context set of
+input-output pairs to a latent, then predicts at new inputs. Our
+reader maps a set of (piece, x, piece(x)) rows to an entry, and the
+plant predicts at new queries. Same object, same permutation-invariant
+context set, same amortised single-pass inference.
+
+**The known failure.** NPs UNDERFIT the context set — they give
+inaccurate predictions even at the inputs they conditioned on. The
+diagnosed cause is mean-aggregation in the encoder: averaging over
+context points weights them equally and prevents the decoder from
+identifying which ones matter.
+
+**This is a specific, checkable prediction about our reader.** Our
+`bind()` takes `entry.mean(dim=0)` over the bank tokens, and the games
+signed pathway takes `entry.mean(dim=0)` as well. Mean-pooling is
+exactly the operation the NP literature indicts — and F98 already
+measured, independently and in a different part of this project, that
+**mean-pooled keys are net-harmful while concatenated keys match an
+exact dictionary.** We found the same defect once and did not
+generalise it.
+
+**Immediate cheap probe, sharper than anything else on this page:**
+measure whether the reader can predict the rows it CONDITIONED ON. If
+it underfits its own context, the diagnosis is confirmed without any
+new mechanism, and the fix is attention over context rows (ANP) or
+dropping the mean-pool for concatenation, both of which we have the
+parts for.
+
+Sources:
+[Attentive Neural Processes (ICLR 2019)](https://arxiv.org/abs/1901.05761),
+[OpenReview version](https://openreview.net/pdf?id=SkE6PjC9KX)
+
+## 12. Task vectors: the field independently found our two-way split
+
+In-context learning research extracts a **task vector** — a single
+activation-space vector distilled from a few demonstrations, which can
+be injected elsewhere to induce the same function, even in zero-shot
+contexts with no task information present. That is our bank entry
+described in someone else's vocabulary, including the injection
+property (our stranger-entry control is the same manipulation used
+adversarially).
+
+The convergence worth noting: sparse-autoencoder work on in-context
+learning reports **two classes of feature — one that RECOGNISES the
+task from the examples, and another that ENCODES it for later
+EXECUTION.** We arrived at the same split empirically and called it
+"discriminative" versus "bindable" (F139-F142). Two independent routes
+to the same decomposition is mild evidence the distinction is real
+rather than an artefact of our probes.
+
+Sources:
+[Task vectors overview](https://www.emergentmind.com/topics/task-vectors-tvs),
+[Task Vector Geometry Underlies Dual Modes of Task Inference](https://arxiv.org/pdf/2605.03780),
+[Extracting SAE task features for in-context learning](https://www.alignmentforum.org/posts/5FGXmJ3wqgGRcbyH7/extracting-sae-task-features-for-in-context-learning),
+[Distributional Alignment as a Criterion for Designing Task Vectors](https://arxiv.org/pdf/2605.20730)
+
+## 13. If refinement works, TRAIN FOR IT (LEO / learned initialisations)
+
+Our `--refine` bolts refinement onto a reader trained without it, so
+the reader has no incentive to produce a good STARTING POINT — only a
+good final answer in one pass. The meta-learning literature closes
+that loop:
+
+- **LEO** (Meta-Learning with Latent Embedding Optimization) performs
+  the MAML inner loop in a LATENT space produced by an encoder rather
+  than in weight space — structurally identical to refining our entry,
+  but with the encoder trained through the refinement.
+- **Learned initialisations for coordinate networks** (Tancik et al.,
+  CVPR 2021) report the practical shape: meta-learn the starting
+  point, and at test time optimise for many more steps than the inner
+  loop used, with benefits continuing past the training horizon.
+
+**The staged plan this implies**, and the order matters: first measure
+whether refinement helps at all with the reader as-is (running now).
+Only if it does is it worth paying for backpropagation through the
+refinement loop, which is expensive and easy to get subtly wrong.
+
+Sources:
+[Meta-Learning with Latent Embedding Optimization](https://meta-learn.github.io/2018/papers/metalearn2018_paper34.pdf),
+[Learned Initializations for Coordinate-Based Representations (CVPR 2021)](https://arxiv.org/pdf/2012.02189),
+[MAML](https://proceedings.mlr.press/v70/finn17a/finn17a.pdf)
+
+## 14. Test-time training: the same idea, and its known hazard
+
+Refining at acquisition is test-time training under another name —
+adapting using self-supervised signal available at inference, with no
+labels. The literature is active and reports robust gains across
+vision, speech and time-series.
+
+**The hazard is the part we should take seriously**: TTA methods are
+known to COLLAPSE when the adaptation signal is degenerate, which is
+why recent work is explicitly concerned with collapse-free entropy
+optimisation. Our refinement objective is the plant's own likelihood
+on the reader's rows, so a degenerate entry that makes the plant
+confidently wrong on everything is a reachable optimum.
+
+**Guard to add before trusting any refinement result:** check that the
+refined entry still beats a STRANGER's refined entry. If refinement
+merely finds a generically-agreeable entry, both will improve
+together, and the gap — not the level — is the evidence. Our probes
+already compute the stranger arm, so this costs nothing.
+
+Sources:
+[Test-Time Adaptation survey topic](https://www.emergentmind.com/topics/test-time-adaptation-tta),
+[Test-Time Training: Adaptive Inference](https://www.emergentmind.com/topics/test-time-training),
+[ZeroSiam: entropy optimisation without collapse](https://arxiv.org/pdf/2509.23183),
+[Open-World Test-Time Training](https://arxiv.org/pdf/2409.09591)
+
+---
+
+## Ranking after addendum 2
+
+1. **Context-reconstruction check** (§11) — can the reader predict the
+   rows it conditioned on? One evaluation, no training, and it either
+   confirms NP underfitting as the mechanism or eliminates it.
+2. **Entry refinement** (§8, running) — with the stranger-refined
+   control from §14 as the acceptance test, not the raw level.
+3. **Drop the mean-pool** (§11) — F98 already measured mean-pooling
+   harmful elsewhere in this project; `bind()` and the games signed
+   pathway both still use it.
+4. **Explicit alignment/uniformity terms** (§9).
+5. **Discrete codebook** (§5, re-running after the F146 collapse fix).
