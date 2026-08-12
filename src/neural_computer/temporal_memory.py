@@ -23,6 +23,9 @@ from .interface import AmodalEventCollection
 EXTERNAL_TEMPORAL_HISTORY_SCHEMA = (
     "neural-computer.external-temporal-history.v1"
 )
+EXTERNAL_TEMPORAL_HISTORY_METADATA_SCHEMA = (
+    "neural-computer.external-temporal-history.v2"
+)
 EXTERNAL_TEMPORAL_HISTORY_READ_SCHEMA = (
     "neural-computer.external-temporal-history-read.v1"
 )
@@ -92,6 +95,12 @@ class ExternalTemporalHistoryRead:
     values: torch.Tensor
     present: torch.Tensor
     positions: torch.Tensor
+    confidence: torch.Tensor | None = None
+    source_key: torch.Tensor | None = None
+    timestamp: torch.Tensor | None = None
+    timestamp_present: torch.Tensor | None = None
+    duration: torch.Tensor | None = None
+    duration_present: torch.Tensor | None = None
     schema: str = EXTERNAL_TEMPORAL_HISTORY_READ_SCHEMA
 
     def validate(
@@ -118,6 +127,36 @@ class ExternalTemporalHistoryRead:
             raise ValueError("temporal history values must be finite")
         if bool(torch.any(self.positions < -1)):
             raise ValueError("temporal history positions cannot be below -1")
+        metadata = (
+            ("confidence", self.confidence, False),
+            ("timestamp", self.timestamp, False),
+            ("duration", self.duration, False),
+        )
+        for name, value, _ in metadata:
+            if value is not None:
+                if value.shape != expected:
+                    raise ValueError(f"temporal history {name} has the wrong shape")
+                if not bool(torch.isfinite(value).all()):
+                    raise ValueError(f"temporal history {name} must be finite")
+        for name, value, field in (
+            ("timestamp_present", self.timestamp_present, self.timestamp),
+            ("duration_present", self.duration_present, self.duration),
+        ):
+            if value is not None:
+                if field is None or value.shape != expected or value.dtype is not torch.bool:
+                    raise ValueError(f"temporal history {name} has the wrong shape or dtype")
+            elif field is not None:
+                raise ValueError(f"temporal history {name} is required with its metadata")
+        if self.confidence is not None and bool(torch.any(self.confidence < 0)):
+            raise ValueError("temporal history confidence cannot be negative")
+        if self.duration is not None and bool(torch.any(self.duration < 0)):
+            raise ValueError("temporal history duration cannot be negative")
+        if self.source_key is not None and (
+            self.source_key.ndim != 3
+            or self.source_key.shape[:2] != expected
+            or not bool(torch.isfinite(self.source_key).all())
+        ):
+            raise ValueError("temporal history source_key has the wrong shape")
         return self
 
 
@@ -193,12 +232,28 @@ class ExternalTemporalHistoryMemory(nn.Module):
 
     schema = EXTERNAL_TEMPORAL_HISTORY_SCHEMA
 
-    def __init__(self, width: int, *, scope_capacity: int = 1) -> None:
+    def __init__(
+        self,
+        width: int,
+        *,
+        scope_capacity: int = 1,
+        metadata: bool = False,
+        source_key_width: int = 0,
+    ) -> None:
         super().__init__()
-        if width < 1 or scope_capacity < 1:
+        if width < 1 or scope_capacity < 1 or source_key_width < 0:
             raise ValueError("temporal history dimensions must be positive")
+        if source_key_width and not metadata:
+            raise ValueError("source_key_width requires metadata history")
         self.width = int(width)
         self.scope_capacity = int(scope_capacity)
+        self.metadata = bool(metadata)
+        self.source_key_width = int(source_key_width)
+        self.schema = (
+            EXTERNAL_TEMPORAL_HISTORY_METADATA_SCHEMA
+            if self.metadata
+            else EXTERNAL_TEMPORAL_HISTORY_SCHEMA
+        )
         self.register_buffer("values", torch.empty(0, self.width))
         self.register_buffer("scopes", torch.empty(0, dtype=torch.long))
         self.register_buffer("positions", torch.empty(0, dtype=torch.long))
@@ -208,19 +263,40 @@ class ExternalTemporalHistoryMemory(nn.Module):
             torch.zeros(self.scope_capacity, dtype=torch.long),
         )
         self.register_buffer("store_version", torch.zeros((), dtype=torch.long))
+        if self.metadata:
+            self.register_buffer("confidences", torch.empty(0))
+            self.register_buffer(
+                "source_keys", torch.empty(0, self.source_key_width)
+            )
+            self.register_buffer(
+                "timestamps", torch.empty(0)
+            )
+            self.register_buffer(
+                "timestamp_present", torch.empty(0, dtype=torch.bool)
+            )
+            self.register_buffer("durations", torch.empty(0))
+            self.register_buffer(
+                "duration_present", torch.empty(0, dtype=torch.bool)
+            )
 
     @property
     def record_count(self) -> int:
         return int(self.values.shape[0])
 
-    def configuration(self) -> dict[str, int | str]:
+    def configuration(self) -> dict[str, int | str | bool]:
         return {
             "schema": self.schema,
             "width": self.width,
             "scope_capacity": self.scope_capacity,
+            "metadata": self.metadata,
+            "source_key_width": self.source_key_width,
             "record_count": self.record_count,
             "store_version": int(self.store_version.item()),
-            "storage": "append_only_scoped_temporal_records_v1",
+            "storage": (
+                "append_only_scoped_temporal_records_with_event_metadata_v2"
+                if self.metadata
+                else "append_only_scoped_temporal_records_v1"
+            ),
             "addressing": "opaque_relative_offset_v1",
             "missing_history": "explicit_present_mask_v1",
         }
@@ -251,6 +327,17 @@ class ExternalTemporalHistoryMemory(nn.Module):
             "next_positions",
             "store_version",
         }
+        if self.metadata:
+            expected.update(
+                {
+                    "confidences",
+                    "source_keys",
+                    "timestamps",
+                    "timestamp_present",
+                    "durations",
+                    "duration_present",
+                }
+            )
         if set(values) != expected:
             raise ValueError("temporal history state has an incompatible field set")
         record_count = values["values"].shape[0]
@@ -273,6 +360,35 @@ class ExternalTemporalHistoryMemory(nn.Module):
             raise ValueError("temporal history version must be scalar")
         if values["store_version"].dtype is not torch.long:
             raise ValueError("temporal history version must be int64")
+        if self.metadata:
+            for name in (
+                "confidences",
+                "timestamps",
+                "durations",
+            ):
+                if values[name].shape != (record_count,):
+                    raise ValueError(f"temporal history {name} has the wrong shape")
+                if not bool(torch.isfinite(values[name]).all()):
+                    raise ValueError(f"temporal history {name} must be finite")
+            if values["source_keys"].shape != (
+                record_count,
+                self.source_key_width,
+            ):
+                raise ValueError("temporal history source keys have the wrong shape")
+            if not bool(torch.isfinite(values["source_keys"]).all()):
+                raise ValueError("temporal history source keys must be finite")
+            for name in ("timestamp_present", "duration_present"):
+                if (
+                    values[name].shape != (record_count,)
+                    or values[name].dtype is not torch.bool
+                ):
+                    raise ValueError(
+                        f"temporal history {name} must be boolean [records]"
+                    )
+            if bool(torch.any(values["confidences"] < 0)):
+                raise ValueError("temporal history confidences cannot be negative")
+            if bool(torch.any(values["durations"] < 0)):
+                raise ValueError("temporal history durations cannot be negative")
         for name in ("values",):
             if not bool(torch.isfinite(values[name]).all()):
                 raise ValueError(f"temporal history {name} must be finite")
@@ -318,9 +434,20 @@ class ExternalTemporalHistoryMemory(nn.Module):
             "next_positions",
             "store_version",
         }
+        if self.metadata:
+            expected.update(
+                {
+                    "confidences",
+                    "source_keys",
+                    "timestamps",
+                    "timestamp_present",
+                    "durations",
+                    "duration_present",
+                }
+            )
         if expected.issubset(state_dict):
             self._validate_state({name: state_dict[name] for name in expected})
-            for name in ("values", "scopes", "positions", "occupied"):
+            for name in expected - {"next_positions", "store_version"}:
                 current = self._buffers[name]
                 self._buffers[name] = torch.empty_like(
                     state_dict[name], device=current.device
@@ -334,6 +461,12 @@ class ExternalTemporalHistoryMemory(nn.Module):
         *,
         present: torch.Tensor | None = None,
         scope: torch.Tensor | None = None,
+        confidence: torch.Tensor | None = None,
+        source_key: torch.Tensor | None = None,
+        timestamp: torch.Tensor | None = None,
+        timestamp_present: torch.Tensor | None = None,
+        duration: torch.Tensor | None = None,
+        duration_present: torch.Tensor | None = None,
     ) -> ExternalTemporalHistoryAppendReceipt:
         """Append learned event tensors and return their opaque positions."""
 
@@ -346,14 +479,103 @@ class ExternalTemporalHistoryMemory(nn.Module):
             present = torch.ones(batch, dtype=torch.bool, device=values.device)
         if present.shape != (batch,) or present.dtype is not torch.bool:
             raise ValueError("temporal history present must be boolean [batch]")
+        if not self.metadata and any(
+            value is not None
+            for value in (
+                confidence,
+                source_key,
+                timestamp,
+                timestamp_present,
+                duration,
+                duration_present,
+            )
+        ):
+            raise ValueError("event metadata requires the v2 temporal history ABI")
+        if self.metadata:
+            if confidence is None:
+                confidence = torch.ones(batch, device=values.device, dtype=values.dtype)
+            if confidence.shape != (batch,) or not bool(torch.isfinite(confidence).all()):
+                raise ValueError("temporal history confidence must be finite [batch]")
+            if bool(torch.any(confidence < 0)):
+                raise ValueError("temporal history confidence cannot be negative")
+            if source_key is None:
+                source_key = torch.zeros(
+                    batch,
+                    self.source_key_width,
+                    device=values.device,
+                    dtype=values.dtype,
+                )
+            if source_key.shape != (batch, self.source_key_width):
+                raise ValueError("temporal history source_key has the wrong shape")
+            if not bool(torch.isfinite(source_key).all()):
+                raise ValueError("temporal history source_key must be finite")
+            if timestamp_present is None:
+                timestamp_present = torch.full(
+                    (batch,),
+                    timestamp is not None,
+                    dtype=torch.bool,
+                    device=values.device,
+                )
+            elif timestamp is None:
+                raise ValueError(
+                    "timestamp_present requires timestamp values in temporal history"
+                )
+            if (
+                timestamp_present.shape != (batch,)
+                or timestamp_present.dtype is not torch.bool
+            ):
+                raise ValueError(
+                    "temporal history timestamp_present must be boolean [batch]"
+                )
+            if timestamp is None:
+                timestamp = torch.zeros(batch, device=values.device, dtype=values.dtype)
+            if timestamp.shape != (batch,) or not bool(torch.isfinite(timestamp).all()):
+                raise ValueError("temporal history timestamp must be finite [batch]")
+            if duration_present is None:
+                duration_present = torch.full(
+                    (batch,),
+                    duration is not None,
+                    dtype=torch.bool,
+                    device=values.device,
+                )
+            elif duration is None:
+                raise ValueError(
+                    "duration_present requires duration values in temporal history"
+                )
+            if (
+                duration_present.shape != (batch,)
+                or duration_present.dtype is not torch.bool
+            ):
+                raise ValueError(
+                    "temporal history duration_present must be boolean [batch]"
+                )
+            if duration is None:
+                duration = torch.zeros(batch, device=values.device, dtype=values.dtype)
+            if duration.shape != (batch,) or not bool(torch.isfinite(duration).all()):
+                raise ValueError("temporal history duration must be finite [batch]")
+            if bool(torch.any(duration < 0)):
+                raise ValueError("temporal history duration cannot be negative")
         scope_ids = self._scope_ids(scope, batch, device=self.values.device)
         values = values.to(device=self.values.device, dtype=self.values.dtype)
         present = present.to(device=self.values.device)
+        if self.metadata:
+            confidence = confidence.to(device=self.values.device, dtype=self.values.dtype)
+            source_key = source_key.to(device=self.values.device, dtype=self.values.dtype)
+            timestamp = timestamp.to(device=self.values.device, dtype=self.values.dtype)
+            timestamp_present = timestamp_present.to(device=self.values.device)
+            duration = duration.to(device=self.values.device, dtype=self.values.dtype)
+            duration_present = duration_present.to(device=self.values.device)
         positions = torch.full((batch,), -1, dtype=torch.long, device=self.values.device)
         next_positions = self.next_positions.clone()
         new_values: list[torch.Tensor] = []
         new_scopes: list[int] = []
         new_positions: list[int] = []
+        new_confidences: list[torch.Tensor] = []
+        new_source_keys: list[torch.Tensor] = []
+        new_timestamps: list[torch.Tensor] = []
+        new_timestamp_present: list[bool] = []
+        new_durations: list[torch.Tensor] = []
+        new_duration_present: list[bool] = []
         for row, scope_id in enumerate(scope_ids.tolist()):
             if not bool(present[row]):
                 continue
@@ -363,6 +585,13 @@ class ExternalTemporalHistoryMemory(nn.Module):
             new_values.append(values[row])
             new_scopes.append(scope_id)
             new_positions.append(position)
+            if self.metadata:
+                new_confidences.append(confidence[row])
+                new_source_keys.append(source_key[row])
+                new_timestamps.append(timestamp[row])
+                new_timestamp_present.append(bool(timestamp_present[row]))
+                new_durations.append(duration[row])
+                new_duration_present.append(bool(duration_present[row]))
         if new_values:
             self._buffers["values"] = torch.cat(
                 (self.values, torch.stack(new_values, dim=0)), dim=0
@@ -392,6 +621,41 @@ class ExternalTemporalHistoryMemory(nn.Module):
                 ),
                 dim=0,
             )
+            if self.metadata:
+                self._buffers["confidences"] = torch.cat(
+                    (self.confidences, torch.stack(new_confidences)), dim=0
+                )
+                self._buffers["source_keys"] = torch.cat(
+                    (self.source_keys, torch.stack(new_source_keys)), dim=0
+                )
+                self._buffers["timestamps"] = torch.cat(
+                    (self.timestamps, torch.stack(new_timestamps)), dim=0
+                )
+                self._buffers["timestamp_present"] = torch.cat(
+                    (
+                        self.timestamp_present,
+                        torch.tensor(
+                            new_timestamp_present,
+                            dtype=torch.bool,
+                            device=self.timestamp_present.device,
+                        ),
+                    ),
+                    dim=0,
+                )
+                self._buffers["durations"] = torch.cat(
+                    (self.durations, torch.stack(new_durations)), dim=0
+                )
+                self._buffers["duration_present"] = torch.cat(
+                    (
+                        self.duration_present,
+                        torch.tensor(
+                            new_duration_present,
+                            dtype=torch.bool,
+                            device=self.duration_present.device,
+                        ),
+                    ),
+                    dim=0,
+                )
             self.store_version.add_(1)
         self._buffers["next_positions"] = next_positions
         self.validate_state()
@@ -430,6 +694,28 @@ class ExternalTemporalHistoryMemory(nn.Module):
         positions = torch.full(
             (batch, query_count), -1, dtype=torch.long, device=self.values.device
         )
+        if self.metadata:
+            confidences = torch.zeros(
+                batch,
+                query_count,
+                device=self.values.device,
+                dtype=self.values.dtype,
+            )
+            source_keys = torch.zeros(
+                batch,
+                query_count,
+                self.source_key_width,
+                device=self.values.device,
+                dtype=self.values.dtype,
+            )
+            timestamps = torch.zeros_like(confidences)
+            timestamp_present = torch.zeros(
+                batch, query_count, dtype=torch.bool, device=self.values.device
+            )
+            durations = torch.zeros_like(confidences)
+            duration_present = torch.zeros(
+                batch, query_count, dtype=torch.bool, device=self.values.device
+            )
         for row, scope_id in enumerate(scope_ids.tolist()):
             newest = int(self.next_positions[scope_id].item()) - 1
             if newest < 0:
@@ -449,10 +735,27 @@ class ExternalTemporalHistoryMemory(nn.Module):
                 values[row, query_index] = self.values[record_index]
                 present[row, query_index] = True
                 positions[row, query_index] = target
+                if self.metadata:
+                    confidences[row, query_index] = self.confidences[record_index]
+                    source_keys[row, query_index] = self.source_keys[record_index]
+                    timestamps[row, query_index] = self.timestamps[record_index]
+                    timestamp_present[row, query_index] = self.timestamp_present[
+                        record_index
+                    ]
+                    durations[row, query_index] = self.durations[record_index]
+                    duration_present[row, query_index] = self.duration_present[
+                        record_index
+                    ]
         return ExternalTemporalHistoryRead(
             values=values,
             present=present,
             positions=positions,
+            confidence=confidences if self.metadata else None,
+            source_key=source_keys if self.metadata else None,
+            timestamp=timestamps if self.metadata else None,
+            timestamp_present=timestamp_present if self.metadata else None,
+            duration=durations if self.metadata else None,
+            duration_present=duration_present if self.metadata else None,
         ).validate(
             width=self.width,
             batch=batch,
@@ -483,6 +786,13 @@ class ExternalTemporalHistoryMemory(nn.Module):
         self._buffers["scopes"] = self.scopes[keep]
         self._buffers["positions"] = self.positions[keep]
         self._buffers["occupied"] = self.occupied[keep]
+        if self.metadata:
+            self._buffers["confidences"] = self.confidences[keep]
+            self._buffers["source_keys"] = self.source_keys[keep]
+            self._buffers["timestamps"] = self.timestamps[keep]
+            self._buffers["timestamp_present"] = self.timestamp_present[keep]
+            self._buffers["durations"] = self.durations[keep]
+            self._buffers["duration_present"] = self.duration_present[keep]
         next_positions = self.next_positions.clone()
         next_positions[selected] = 0
         self._buffers["next_positions"] = next_positions
@@ -526,7 +836,11 @@ class ExternalTemporalHistoryMemory(nn.Module):
     ) -> ExternalTemporalHistoryMemory:
         if not isinstance(payload, Mapping):
             raise TypeError("temporal history payload must be a mapping")
-        if payload.get("schema") != EXTERNAL_TEMPORAL_HISTORY_SCHEMA:
+        schema = payload.get("schema")
+        if schema not in (
+            EXTERNAL_TEMPORAL_HISTORY_SCHEMA,
+            EXTERNAL_TEMPORAL_HISTORY_METADATA_SCHEMA,
+        ):
             raise ValueError("unsupported temporal history payload schema")
         configuration = payload.get("configuration")
         state = payload.get("state")
@@ -535,6 +849,8 @@ class ExternalTemporalHistoryMemory(nn.Module):
         memory = cls(
             int(configuration["width"]),
             scope_capacity=int(configuration["scope_capacity"]),
+            metadata=schema == EXTERNAL_TEMPORAL_HISTORY_METADATA_SCHEMA,
+            source_key_width=int(configuration.get("source_key_width", 0)),
         )
         tensor_state = {
             name: value for name, value in state.items() if isinstance(value, torch.Tensor)
@@ -561,8 +877,9 @@ class ExternalTemporalHistoryEventBridge(nn.Module):
 
     The v1 history store contains learned payload tensors only.  To avoid
     silently discarding transport structure, collections carrying source
-    keys, timestamps, or durations are rejected until a history ABI that
-    persists those fields is selected explicitly.
+    keys, timestamps, or durations are rejected by v1.  The explicit v2
+    metadata history ABI persists those fields and their per-token presence
+    masks alongside the learned payload.
     """
 
     schema = EXTERNAL_TEMPORAL_HISTORY_EVENT_BRIDGE_SCHEMA
@@ -580,7 +897,7 @@ class ExternalTemporalHistoryEventBridge(nn.Module):
             "ordering": "prior_relative_tokens_then_current_tokens_v2",
             "causality": "read_before_append_v1",
             "missing_history": "explicit_present_mask_v1",
-            "metadata": "payload_only_with_derived_presence_confidence_v1",
+            "metadata": "v1_payload_only_or_v2_event_metadata_preserving",
             "controller_persistence": "current_tokens_only_v1",
         }
 
@@ -606,13 +923,26 @@ class ExternalTemporalHistoryEventBridge(nn.Module):
         batch = collection.payload.shape[0]
         if offsets.shape[0] != batch:
             raise ValueError("temporal history bridge offsets batch does not match")
-        if collection.source_key is not None:
+        if not history.metadata:
+            if collection.source_key is not None:
+                raise ValueError(
+                    "temporal history bridge v1 cannot preserve event source keys"
+                )
+            if collection.timestamp is not None or collection.duration is not None:
+                raise ValueError(
+                    "temporal history bridge v1 cannot preserve event timing metadata"
+                )
+        elif history.source_key_width:
+            if (
+                collection.source_key is None
+                or collection.source_key.shape[-1] != history.source_key_width
+            ):
+                raise ValueError(
+                    "metadata history source_key width does not match current events"
+                )
+        elif collection.source_key is not None:
             raise ValueError(
-                "temporal history bridge v1 cannot preserve event source keys"
-            )
-        if collection.timestamp is not None or collection.duration is not None:
-            raise ValueError(
-                "temporal history bridge v1 cannot preserve event timing metadata"
+                "metadata history was created without a source_key width"
             )
 
         # This read intentionally precedes every append below.  A query for
@@ -624,11 +954,123 @@ class ExternalTemporalHistoryEventBridge(nn.Module):
             dtype=collection.payload.dtype,
         )
         read_present = read.present.to(device=collection.payload.device)
-        read_confidence = read_present.to(dtype=collection.confidence.dtype)
+        read_confidence = (
+            read.confidence.to(
+                device=collection.payload.device,
+                dtype=collection.confidence.dtype,
+            )
+            if history.metadata and read.confidence is not None
+            else read_present.to(dtype=collection.confidence.dtype)
+        )
+        source_key = None
+        if history.metadata and history.source_key_width:
+            source_key = torch.cat(
+                (
+                    read.source_key.to(
+                        device=collection.payload.device,
+                        dtype=collection.payload.dtype,
+                    ),
+                    collection.source_key,
+                ),
+                dim=1,
+            )
+        timestamp = None
+        timestamp_present = None
+        if history.metadata or collection.timestamp is not None:
+            current_timestamp = (
+                collection.timestamp
+                if collection.timestamp is not None
+                else torch.zeros_like(collection.confidence)
+            )
+            current_timestamp_present = (
+                collection.timestamp_present
+                if collection.timestamp_present is not None
+                else torch.zeros_like(collection.present)
+            )
+            timestamp = torch.cat(
+                (
+                    read.timestamp.to(
+                        device=collection.payload.device,
+                        dtype=collection.payload.dtype,
+                    )
+                    if read.timestamp is not None
+                    else torch.zeros(
+                        batch,
+                        offsets.shape[1],
+                        device=collection.payload.device,
+                        dtype=collection.payload.dtype,
+                    ),
+                    current_timestamp,
+                ),
+                dim=1,
+            )
+            timestamp_present = torch.cat(
+                (
+                    read.timestamp_present.to(device=collection.payload.device)
+                    if read.timestamp_present is not None
+                    else torch.zeros(
+                        batch,
+                        offsets.shape[1],
+                        dtype=torch.bool,
+                        device=collection.payload.device,
+                    ),
+                    current_timestamp_present,
+                ),
+                dim=1,
+            )
+        duration = None
+        duration_present = None
+        if history.metadata or collection.duration is not None:
+            current_duration = (
+                collection.duration
+                if collection.duration is not None
+                else torch.zeros_like(collection.confidence)
+            )
+            current_duration_present = (
+                collection.duration_present
+                if collection.duration_present is not None
+                else torch.zeros_like(collection.present)
+            )
+            duration = torch.cat(
+                (
+                    read.duration.to(
+                        device=collection.payload.device,
+                        dtype=collection.payload.dtype,
+                    )
+                    if read.duration is not None
+                    else torch.zeros(
+                        batch,
+                        offsets.shape[1],
+                        device=collection.payload.device,
+                        dtype=collection.payload.dtype,
+                    ),
+                    current_duration,
+                ),
+                dim=1,
+            )
+            duration_present = torch.cat(
+                (
+                    read.duration_present.to(device=collection.payload.device)
+                    if read.duration_present is not None
+                    else torch.zeros(
+                        batch,
+                        offsets.shape[1],
+                        dtype=torch.bool,
+                        device=collection.payload.device,
+                    ),
+                    current_duration_present,
+                ),
+                dim=1,
+            )
         events = AmodalEventCollection(
             payload=torch.cat((read_values, collection.payload), dim=1),
             present=torch.cat((read_present, collection.present), dim=1),
             confidence=torch.cat((read_confidence, collection.confidence), dim=1),
+            source_key=source_key,
+            timestamp=timestamp,
+            timestamp_present=timestamp_present,
+            duration=duration,
+            duration_present=duration_present,
         ).validate(width=self.event_width)
 
         appends: list[ExternalTemporalHistoryAppendReceipt] = []
@@ -639,6 +1081,44 @@ class ExternalTemporalHistoryEventBridge(nn.Module):
                         collection.payload[:, index],
                         present=collection.present[:, index],
                         scope=scope,
+                        confidence=(
+                            collection.confidence[:, index]
+                            if history.metadata
+                            else None
+                        ),
+                        source_key=(
+                            collection.source_key[:, index]
+                            if history.metadata and history.source_key_width
+                            else None
+                        ),
+                        timestamp=(
+                            collection.timestamp[:, index]
+                            if history.metadata and collection.timestamp is not None
+                            else None
+                        ),
+                        timestamp_present=(
+                            collection.timestamp_present[:, index]
+                            if (
+                                history.metadata
+                                and collection.timestamp is not None
+                                and collection.timestamp_present is not None
+                            )
+                            else None
+                        ),
+                        duration=(
+                            collection.duration[:, index]
+                            if history.metadata and collection.duration is not None
+                            else None
+                        ),
+                        duration_present=(
+                            collection.duration_present[:, index]
+                            if (
+                                history.metadata
+                                and collection.duration is not None
+                                and collection.duration_present is not None
+                            )
+                            else None
+                        ),
                     )
                 )
         return ExternalTemporalHistoryEventBridgeResult(

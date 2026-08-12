@@ -11088,15 +11088,17 @@ appending the current tick. It places requested prior payloads before the
 current payload on the event axis, preserves separate presence masks, and lets
 the runtime process the prior prefix transiently while persisting only current
 tokens in the controller event window. It fails closed when the v1
-payload-only history ABI would discard source/timing metadata.
+payload-only history ABI would discard source/timing metadata; the explicit v2
+history ABI preserves source keys, timestamps, durations, and their per-token
+presence masks.
 `AmodalControllerRuntime.step_streams_with_external_history()` also rejects
 queries larger than the controller's processing-window capacity before any
 append, so external storage can grow without silently changing the controller
 contract.
 
 This is a causal transport integration, not evidence of general continual
-learning. The history ABI currently stores learned payloads only, derives
-historical confidence from presence, and leaves offset selection to external
-caller/trainer state. Learned query-conditioned addressing, compression,
-metadata-preserving history versions, and unrestricted memory growth remain
-open promotion targets.
+learning. The v1 history ABI stores learned payloads only and derives
+historical confidence from presence; v2 preserves event metadata explicitly.
+Offset selection remains external caller/trainer state. Learned
+query-conditioned addressing, compression, and unrestricted memory growth
+remain open promotion targets.

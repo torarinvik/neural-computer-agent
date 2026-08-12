@@ -1896,8 +1896,10 @@ external memory.
 
 This is an integration and causality contract, not a general continual-
 learning result. The v1 store persists learned payloads and derives historical
-confidence from presence; it does not yet persist source keys, timestamps, or
-durations, so the bridge fails closed when those fields are present. Offset
-selection is still caller/trainer state, and the controller remains bounded by
-its event window. Learned query-conditioned addressing, history compression,
-and unrestricted continual learning require separate promotion experiments.
+confidence from presence; it fails closed when source keys, timestamps, or
+durations are present. The explicit v2 store preserves those fields and their
+per-token presence masks, with a fixed source-key width selected at construction
+time. Offset selection is still caller/trainer state, and the controller remains
+bounded by its event window. Learned query-conditioned addressing, history
+compression, and unrestricted continual learning require separate promotion
+experiments.

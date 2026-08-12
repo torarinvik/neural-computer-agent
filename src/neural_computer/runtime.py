@@ -496,7 +496,9 @@ class AmodalEventWindowBuffer:
         present: list[bool] = []
         confidences: list[torch.Tensor] = []
         timestamps: list[torch.Tensor] = []
+        timestamp_present: list[bool] = []
         durations: list[torch.Tensor] = []
+        duration_present_values: list[bool] = []
         source_keys: list[torch.Tensor] = []
         source_event = next(
             (event for event in bucket.values() if event.source_key is not None), None
@@ -527,6 +529,7 @@ class AmodalEventWindowBuffer:
                         dtype=template.payload.dtype,
                     )
                 )
+                timestamp_present.append(False)
                 durations.append(
                     torch.zeros(
                         batch,
@@ -540,9 +543,10 @@ class AmodalEventWindowBuffer:
                             batch,
                             source_width,
                             device=template.payload.device,
-                            dtype=template.payload.dtype,
-                        )
+                        dtype=template.payload.dtype,
                     )
+                )
+                duration_present_values.append(False)
                 continue
             event.validate(width=width)
             payloads.append(event.payload)
@@ -564,6 +568,7 @@ class AmodalEventWindowBuffer:
                     dtype=event.payload.dtype,
                 )
             )
+            timestamp_present.append(True)
             durations.append(
                 event.duration.reshape(batch)
                 if event.duration is not None
@@ -571,6 +576,7 @@ class AmodalEventWindowBuffer:
                     batch, device=event.payload.device, dtype=event.payload.dtype
                 )
             )
+            duration_present_values.append(event.duration is not None)
             if has_source_keys:
                 if (
                     event.source_key is None
@@ -589,7 +595,21 @@ class AmodalEventWindowBuffer:
             confidence=torch.stack(confidences, dim=1),
             source_key=torch.stack(source_keys, dim=1) if has_source_keys else None,
             timestamp=torch.stack(timestamps, dim=1),
+            timestamp_present=torch.tensor(
+                timestamp_present,
+                dtype=torch.bool,
+                device=template.payload.device,
+            ).expand(batch, -1),
             duration=torch.stack(durations, dim=1) if has_durations else None,
+            duration_present=(
+                torch.tensor(
+                    duration_present_values,
+                    dtype=torch.bool,
+                    device=template.payload.device,
+                ).expand(batch, -1)
+                if has_durations
+                else None
+            ),
         ).validate(width=width)
         return AmodalEventWindow(timestamp, collection, complete=complete)
 

@@ -1065,6 +1065,101 @@ def test_runtime_history_bridge_rejects_unpreserved_metadata_and_overflow() -> N
     assert memory.record_count == 0
 
 
+def test_metadata_temporal_history_round_trip_preserves_masks_and_identity() -> None:
+    memory = ExternalTemporalHistoryMemory(
+        width=4,
+        metadata=True,
+        source_key_width=2,
+    )
+    current = AmodalEventCollection.from_events(
+        [
+            AmodalEvent(
+                torch.tensor([[1.0, 0.0, 0.0, 0.0]]),
+                source_key=torch.tensor([[0.1, 0.2]]),
+                timestamp=torch.tensor([12.0]),
+                duration=torch.tensor([0.5]),
+                confidence=torch.tensor([0.7]),
+            )
+        ]
+    )
+    first = ExternalTemporalHistoryEventBridge(4).augment(
+        current,
+        memory,
+        torch.zeros(1, 1, dtype=torch.long),
+    )
+    assert first.events.source_key is not None
+    assert first.events.timestamp is not None
+    assert first.events.timestamp_present is not None
+    assert first.events.duration_present is not None
+    assert first.events.timestamp_present.tolist() == [[False, True]]
+    assert first.events.duration_present.tolist() == [[False, True]]
+    assert torch.equal(first.events.source_key[0, 0], torch.zeros(2))
+    assert torch.equal(first.events.source_key[0, 1], current.source_key[0, 0])
+    assert torch.allclose(first.events.confidence, torch.tensor([[0.0, 0.7]]))
+
+    second = ExternalTemporalHistoryEventBridge(4).augment(
+        current,
+        memory,
+        torch.zeros(1, 1, dtype=torch.long),
+        append_current=False,
+    )
+    assert second.read.confidence is not None
+    assert second.read.timestamp_present is not None
+    assert second.read.duration_present is not None
+    assert second.read.timestamp_present.tolist() == [[True]]
+    assert second.read.duration_present.tolist() == [[True]]
+    assert torch.allclose(second.read.confidence, torch.tensor([[0.7]]))
+    restored = ExternalTemporalHistoryMemory.from_payload(memory.payload())
+    assert restored.digest() == memory.digest()
+
+
+def test_metadata_temporal_history_preserves_per_row_absence_masks() -> None:
+    memory = ExternalTemporalHistoryMemory(
+        width=4,
+        scope_capacity=2,
+        metadata=True,
+        source_key_width=1,
+    )
+    collection = AmodalEventCollection(
+        payload=torch.tensor(
+            [
+                [[1.0, 0.0, 0.0, 0.0]],
+                [[0.0, 1.0, 0.0, 0.0]],
+            ]
+        ),
+        present=torch.ones(2, 1, dtype=torch.bool),
+        confidence=torch.tensor([[0.4], [0.6]]),
+        source_key=torch.tensor([[[0.1]], [[0.2]]]),
+        timestamp=torch.tensor([[9.0], [0.0]]),
+        timestamp_present=torch.tensor([[True], [False]]),
+        duration=torch.tensor([[0.25], [0.0]]),
+        duration_present=torch.tensor([[True], [False]]),
+    ).validate(width=4)
+    bridge = ExternalTemporalHistoryEventBridge(4)
+    first = bridge.augment(
+        collection,
+        memory,
+        torch.zeros(2, 1, dtype=torch.long),
+        scope=torch.tensor([0, 1], dtype=torch.long),
+    )
+    assert first.events.timestamp_present is not None
+    assert first.events.duration_present is not None
+    assert first.events.timestamp_present[:, -1].tolist() == [True, False]
+    assert first.events.duration_present[:, -1].tolist() == [True, False]
+
+    second = bridge.augment(
+        collection,
+        memory,
+        torch.zeros(2, 1, dtype=torch.long),
+        scope=torch.tensor([0, 1], dtype=torch.long),
+        append_current=False,
+    )
+    assert second.read.timestamp_present is not None
+    assert second.read.duration_present is not None
+    assert second.read.timestamp_present[:, 0].tolist() == [True, False]
+    assert second.read.duration_present[:, 0].tolist() == [True, False]
+
+
 def test_external_temporal_memory_contract_probe_passes(tmp_path) -> None:
     from experiments.brainworkshop_canonical.external_temporal_memory_contract import (
         run,

@@ -601,7 +601,14 @@ class AmodalCognitiveController(nn.Module):
                 new_timestamp_present = torch.zeros_like(new_indices, dtype=torch.bool)
             else:
                 new_timestamp = collection.timestamp[row, new_indices]
-                new_timestamp_present = torch.ones_like(new_indices, dtype=torch.bool)
+                if collection.timestamp_present is None:
+                    new_timestamp_present = torch.ones_like(
+                        new_indices, dtype=torch.bool
+                    )
+                else:
+                    new_timestamp_present = collection.timestamp_present[
+                        row, new_indices
+                    ]
             timestamp = torch.cat(
                 [previous.timestamp[row, old_indices], new_timestamp]
             )[-self.event_window_capacity :]
