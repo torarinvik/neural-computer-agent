@@ -320,6 +320,24 @@ explicit `opaque-route-query-v1` default; new query representations must bump
 the ID and intentionally migrate or reset their external evidence. This is a
 durability/ABI safeguard, not a capability claim.
 
+### Outcome-only acquisition reaches the canonical runtime
+
+The control-flow frontier now has a promoted end-to-end rung: scalar
+verifier-only structural acquisition produces a generic external file, the
+file is admitted beside protected source and decoys, and a frozen amodal
+controller routes opaque intentions through `ControlFlowProgramAmodalRuntime`.
+The runtime executes the selected external file and sends only the resulting
+opaque intention to the decoder bus.
+
+Across three seeds and both physical-file orders, acquisition, route
+selection, execution, and source retention were `1.0000` in every verifier
+arm. Fresh acquired-file and reward-shuffled controls were `0.0000`; the
+controller/files stayed unchanged and replay/controller updates were zero.
+This is bounded outcome-only structural acquisition plus canonical execution,
+not arbitrary program induction or general continual learning. Evidence is
+archived under
+`session_records/control_flow_runtime_acquired_program_promoted_2026-08-12/`.
+
 The delayed score-function route credit path is batch-safe: each trajectory's
 feature gradient is expanded across the action axis before updating its
 independent eligibility tensor. This keeps batched route learning equivalent

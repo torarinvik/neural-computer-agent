@@ -374,6 +374,31 @@ requires an explicit version bump and a fresh or migrated evidence table.
 
 This is an interface-integrity safeguard, not a learning-capability claim.
 
+## Outcome-only structural acquisition through the canonical runtime
+
+The structural control-flow frontier is now exercised end to end through the
+production amodal boundary. It first acquires a generic external
+counter-machine file from scalar verifier outcomes, then admits that file
+beside protected source/decoy files. A frozen `AmodalCognitiveController`
+emits opaque intentions; `ControlFlowProgramAmodalRuntime` routes and executes
+the selected file through checksummed `PersistentOpaqueContextRouteEvidence`,
+and returns only an opaque intention to the output bus.
+
+Across three seeds and both physical-file orders, acquired-file held-out
+mastery, canonical route selection, canonical execution, and source retention
+were all `1.0000`; a matched fresh acquired-file control was `0.0000`, and
+reward-shuffled route mastery was `0.0000`. The controller and files remained
+byte-stable, with zero replay and zero controller optimizer updates. The
+opaque counter codec derives its bounded input from the complete opaque
+intention, preventing a single-coordinate zero from making source and target
+files observationally identical.
+
+This promotes bounded outcome-only structural acquisition followed by
+canonical frozen-controller execution and route learning. It does not
+establish arbitrary program induction, unrestricted memory growth, or general
+continual learning. Evidence is archived in
+`session_records/control_flow_runtime_acquired_program_promoted_2026-08-12/`.
+
 ## Outcome-only external recipe files and scope isolation
 
 The recipe basis now has a versioned external-file bridge:

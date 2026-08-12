@@ -11492,3 +11492,28 @@ this field are readable under the explicit default `opaque-route-query-v1`;
 changing the query ABI requires a deliberate version bump and evidence
 migration or reset. This is an ABI-integrity boundary, not evidence of
 learning or semantic transfer.
+
+### Outcome-only structural acquisition through the canonical runtime
+
+The generic control-flow frontier is now connected end to end to the canonical
+amodal runtime. A structural search first acquires an external counter-machine
+file using scalar verifier outcomes only. The acquired file is admitted beside
+protected source and decoy files; a frozen amodal controller emits opaque
+intentions, the route evidence selects a file outside the controller, and the
+runtime returns only an opaque intention through the output bus.
+
+Across three seeds and forward/reversed physical-file orders, held-out
+acquisition, canonical route selection, canonical execution, and source
+retention reached `1.0000` in every verifier arm. The matched fresh acquired
+control reached `0.0000`, as did every reward-shuffled route arm. The
+controller and external files stayed byte-identical; evidence reload and
+checksum rejection passed; replay and controller optimizer updates were zero.
+The bounded codec uses the complete opaque intention to generate its external
+counter input, avoiding a degenerate all-zero challenge without exposing a
+target amount or program identity.
+
+This promotes a narrow composition of outcome-only structural acquisition,
+external file admission, and canonical frozen-controller execution. It does
+not establish arbitrary program induction, unrestricted memory growth, or
+general continual learning. Evidence is archived at
+`session_records/control_flow_runtime_acquired_program_promoted_2026-08-12/`.
