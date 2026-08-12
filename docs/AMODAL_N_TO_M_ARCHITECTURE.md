@@ -11284,3 +11284,29 @@ memory expansion and consolidation. It does not qualify unrestricted memory
 growth, arbitrary new computation, semantic ontology formation, or general
 continual learning. Evidence and accounting are archived in
 `session_records/brainworkshop_external_temporal_online_compositional_growth_promoted_2026-08-12/`.
+
+### Compositional temporal reversal
+
+The next pressure test adds a nonstationary boundary to that repeated stream.
+After the three composed rows are present, one row receives a new opaque value
+regime under the same route keys. A separately trained
+`OpaqueRegimeChangePolicy` sees only the current and incoming learned value
+banks. Stable evidence must produce an exact no-op; shifted evidence must
+propose a verifier-gated copy-on-write replacement. The controller, event
+encoder, and acquired temporal capability remain frozen.
+
+Across seeds `17`, `18`, and `19`, both forward and reversed insertion orders
+pass. The detector scores `1.0000` for stable-keep and shift-replace in every
+seed and dominates the fresh control without regressing on either class. The
+stable path leaves memory version and digest unchanged; the shifted path
+replaces one composed row, retains all three route behaviors, reloads exactly,
+and rejects corruption. Replay is zero and the controller and event encoder
+remain byte-identical.
+
+This promotes a narrow learned external-memory no-op/replace boundary over
+repeated compositional growth. The changed artifact is a memory-regime
+replacement, not a new controller skill. It therefore does not qualify
+unrestricted memory growth, arbitrary new computation, universal regime
+discovery, or general continual learning. Evidence and accounting are
+archived in
+`session_records/brainworkshop_external_temporal_compositional_reversal_promoted_2026-08-12/`.

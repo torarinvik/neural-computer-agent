@@ -1,0 +1,2230 @@
+{
+  "schema": "neural-computer.brainworkshop-external-temporal-compositional-reversal.v1",
+  "claim_boundary": "Learned stable-noop and shift-replace timing for one composed external temporal artifact while retaining two other composed routes; not unrestricted memory growth, arbitrary new computation, or general continual learning.",
+  "seed": 17,
+  "architecture": {
+    "growth_boundary": "repeated_online_compositional_growth_v1",
+    "regime_detector": "opaque_regime_change_policy_v1",
+    "replacement": "copy_on_write_single_composed_row_v1",
+    "route_count": 6,
+    "composed_rows": 3,
+    "forbidden_features": "regime_names_route_ids_query_depths_task_ids_replayed_streams"
+  },
+  "detector_scores": {
+    "stable_keep": 1.0,
+    "shift_replace": 1.0
+  },
+  "fresh_detector_scores": {
+    "stable_keep": 0.0,
+    "shift_replace": 1.0
+  },
+  "forward": {
+    "stage_order": [
+      0,
+      1,
+      2
+    ],
+    "stages": [
+      {
+        "stage": 0,
+        "pair": [
+          0,
+          1
+        ],
+        "insertion_order": [
+          0,
+          1
+        ],
+        "selected_pair": [
+          0,
+          1
+        ],
+        "selected_correctly": true,
+        "policy": {
+          "permutations": 2,
+          "learned_hits": 2,
+          "shuffled_hits": 2,
+          "untrained_hits": 2,
+          "learned_rate": 1.0,
+          "shuffled_rate": 1.0,
+          "untrained_rate": 1.0,
+          "records": [
+            {
+              "permutation": [
+                0,
+                1
+              ],
+              "learned_pair": [
+                0,
+                1
+              ],
+              "learned_hit": true,
+              "shuffled_hit": true,
+              "untrained_hit": true
+            },
+            {
+              "permutation": [
+                1,
+                0
+              ],
+              "learned_pair": [
+                0,
+                1
+              ],
+              "learned_hit": true,
+              "shuffled_hit": true,
+              "untrained_hit": true
+            }
+          ]
+        },
+        "rows_before": 2,
+        "rows_after": 1,
+        "bytes_before": 6338,
+        "bytes_after": 3169,
+        "accepted": true,
+        "receipt": {
+          "accepted": true,
+          "source_indices": [
+            0,
+            1
+          ],
+          "rows_before": 2,
+          "rows_after": 1,
+          "rows_saved": 1,
+          "reason": "behavior verifier passed"
+        },
+        "rejected_transaction_non_mutating": true,
+        "reload_exact": true,
+        "prefix": [
+          {
+            "accuracy": 1.0,
+            "lifetimes": [
+              {
+                "lifetime": 1,
+                "accuracy": 1.0,
+                "selected_offset": 4,
+                "unique_verifier_bits": 160,
+                "replayed_examples": 0
+              },
+              {
+                "lifetime": 2,
+                "accuracy": 1.0,
+                "selected_offset": 4,
+                "unique_verifier_bits": 160,
+                "replayed_examples": 0
+              },
+              {
+                "lifetime": 3,
+                "accuracy": 1.0,
+                "selected_offset": 4,
+                "unique_verifier_bits": 160,
+                "replayed_examples": 0
+              },
+              {
+                "lifetime": 4,
+                "accuracy": 1.0,
+                "selected_offset": 4,
+                "unique_verifier_bits": 160,
+                "replayed_examples": 0
+              }
+            ],
+            "resolved": true,
+            "position": 3,
+            "route_id": 0
+          },
+          {
+            "accuracy": 1.0,
+            "lifetimes": [
+              {
+                "lifetime": 1,
+                "accuracy": 1.0,
+                "selected_offset": 5,
+                "unique_verifier_bits": 144,
+                "replayed_examples": 0
+              },
+              {
+                "lifetime": 2,
+                "accuracy": 1.0,
+                "selected_offset": 5,
+                "unique_verifier_bits": 144,
+                "replayed_examples": 0
+              },
+              {
+                "lifetime": 3,
+                "accuracy": 1.0,
+                "selected_offset": 5,
+                "unique_verifier_bits": 144,
+                "replayed_examples": 0
+              },
+              {
+                "lifetime": 4,
+                "accuracy": 1.0,
+                "selected_offset": 5,
+                "unique_verifier_bits": 144,
+                "replayed_examples": 0
+              }
+            ],
+            "resolved": true,
+            "position": 4,
+            "route_id": 1
+          }
+        ]
+      },
+      {
+        "stage": 1,
+        "pair": [
+          2,
+          3
+        ],
+        "insertion_order": [
+          2,
+          3
+        ],
+        "selected_pair": [
+          1,
+          2
+        ],
+        "selected_correctly": true,
+        "policy": {
+          "permutations": 6,
+          "learned_hits": 6,
+          "shuffled_hits": 5,
+          "untrained_hits": 2,
+          "learned_rate": 1.0,
+          "shuffled_rate": 0.8333333333333334,
+          "untrained_rate": 0.3333333333333333,
+          "records": [
+            {
+              "permutation": [
+                0,
+                1,
+                2
+              ],
+              "learned_pair": [
+                1,
+                2
+              ],
+              "learned_hit": true,
+              "shuffled_hit": true,
+              "untrained_hit": false
+            },
+            {
+              "permutation": [
+                0,
+                2,
+                1
+              ],
+              "learned_pair": [
+                1,
+                2
+              ],
+              "learned_hit": true,
+              "shuffled_hit": true,
+              "untrained_hit": false
+            },
+            {
+              "permutation": [
+                1,
+                0,
+                2
+              ],
+              "learned_pair": [
+                0,
+                2
+              ],
+              "learned_hit": true,
+              "shuffled_hit": true,
+              "untrained_hit": false
+            },
+            {
+              "permutation": [
+                1,
+                2,
+                0
+              ],
+              "learned_pair": [
+                0,
+                1
+              ],
+              "learned_hit": true,
+              "shuffled_hit": false,
+              "untrained_hit": true
+            },
+            {
+              "permutation": [
+                2,
+                0,
+                1
+              ],
+              "learned_pair": [
+                0,
+                2
+              ],
+              "learned_hit": true,
+              "shuffled_hit": true,
+              "untrained_hit": false
+            },
+            {
+              "permutation": [
+                2,
+                1,
+                0
+              ],
+              "learned_pair": [
+                0,
+                1
+              ],
+              "learned_hit": true,
+              "shuffled_hit": true,
+              "untrained_hit": true
+            }
+          ]
+        },
+        "rows_before": 3,
+        "rows_after": 2,
+        "bytes_before": 9507,
+        "bytes_after": 6338,
+        "accepted": true,
+        "receipt": {
+          "accepted": true,
+          "source_indices": [
+            1,
+            2
+          ],
+          "rows_before": 3,
+          "rows_after": 2,
+          "rows_saved": 1,
+          "reason": "behavior verifier passed"
+        },
+        "rejected_transaction_non_mutating": true,
+        "reload_exact": true,
+        "prefix": [
+          {
+            "accuracy": 1.0,
+            "lifetimes": [
+              {
+                "lifetime": 1,
+                "accuracy": 1.0,
+                "selected_offset": 4,
+                "unique_verifier_bits": 160,
+                "replayed_examples": 0
+              },
+              {
+                "lifetime": 2,
+                "accuracy": 1.0,
+                "selected_offset": 4,
+                "unique_verifier_bits": 160,
+                "replayed_examples": 0
+              },
+              {
+                "lifetime": 3,
+                "accuracy": 1.0,
+                "selected_offset": 4,
+                "unique_verifier_bits": 160,
+                "replayed_examples": 0
+              },
+              {
+                "lifetime": 4,
+                "accuracy": 1.0,
+                "selected_offset": 4,
+                "unique_verifier_bits": 160,
+                "replayed_examples": 0
+              }
+            ],
+            "resolved": true,
+            "position": 3,
+            "route_id": 0
+          },
+          {
+            "accuracy": 1.0,
+            "lifetimes": [
+              {
+                "lifetime": 1,
+                "accuracy": 1.0,
+                "selected_offset": 5,
+                "unique_verifier_bits": 144,
+                "replayed_examples": 0
+              },
+              {
+                "lifetime": 2,
+                "accuracy": 1.0,
+                "selected_offset": 5,
+                "unique_verifier_bits": 144,
+                "replayed_examples": 0
+              },
+              {
+                "lifetime": 3,
+                "accuracy": 1.0,
+                "selected_offset": 5,
+                "unique_verifier_bits": 144,
+                "replayed_examples": 0
+              },
+              {
+                "lifetime": 4,
+                "accuracy": 1.0,
+                "selected_offset": 5,
+                "unique_verifier_bits": 144,
+                "replayed_examples": 0
+              }
+            ],
+            "resolved": true,
+            "position": 4,
+            "route_id": 1
+          },
+          {
+            "accuracy": 1.0,
+            "lifetimes": [
+              {
+                "lifetime": 1,
+                "accuracy": 1.0,
+                "selected_offset": 6,
+                "unique_verifier_bits": 128,
+                "replayed_examples": 0
+              },
+              {
+                "lifetime": 2,
+                "accuracy": 1.0,
+                "selected_offset": 6,
+                "unique_verifier_bits": 128,
+                "replayed_examples": 0
+              },
+              {
+                "lifetime": 3,
+                "accuracy": 1.0,
+                "selected_offset": 6,
+                "unique_verifier_bits": 128,
+                "replayed_examples": 0
+              },
+              {
+                "lifetime": 4,
+                "accuracy": 1.0,
+                "selected_offset": 6,
+                "unique_verifier_bits": 128,
+                "replayed_examples": 0
+              }
+            ],
+            "resolved": true,
+            "position": 5,
+            "route_id": 2
+          },
+          {
+            "accuracy": 1.0,
+            "lifetimes": [
+              {
+                "lifetime": 1,
+                "accuracy": 1.0,
+                "selected_offset": 7,
+                "unique_verifier_bits": 112,
+                "replayed_examples": 0
+              },
+              {
+                "lifetime": 2,
+                "accuracy": 1.0,
+                "selected_offset": 7,
+                "unique_verifier_bits": 112,
+                "replayed_examples": 0
+              },
+              {
+                "lifetime": 3,
+                "accuracy": 1.0,
+                "selected_offset": 7,
+                "unique_verifier_bits": 112,
+                "replayed_examples": 0
+              },
+              {
+                "lifetime": 4,
+                "accuracy": 1.0,
+                "selected_offset": 7,
+                "unique_verifier_bits": 112,
+                "replayed_examples": 0
+              }
+            ],
+            "resolved": true,
+            "position": 6,
+            "route_id": 3
+          }
+        ]
+      },
+      {
+        "stage": 2,
+        "pair": [
+          4,
+          5
+        ],
+        "insertion_order": [
+          4,
+          5
+        ],
+        "selected_pair": [
+          2,
+          3
+        ],
+        "selected_correctly": true,
+        "policy": {
+          "permutations": 24,
+          "learned_hits": 24,
+          "shuffled_hits": 0,
+          "untrained_hits": 4,
+          "learned_rate": 1.0,
+          "shuffled_rate": 0.0,
+          "untrained_rate": 0.16666666666666666,
+          "records": [
+            {
+              "permutation": [
+                0,
+                1,
+                2,
+                3
+              ],
+              "learned_pair": [
+                2,
+                3
+              ],
+              "learned_hit": true,
+              "shuffled_hit": false,
+              "untrained_hit": false
+            },
+            {
+              "permutation": [
+                0,
+                1,
+                3,
+                2
+              ],
+              "learned_pair": [
+                2,
+                3
+              ],
+              "learned_hit": true,
+              "shuffled_hit": false,
+              "untrained_hit": false
+            },
+            {
+              "permutation": [
+                0,
+                2,
+                1,
+                3
+              ],
+              "learned_pair": [
+                1,
+                3
+              ],
+              "learned_hit": true,
+              "shuffled_hit": false,
+              "untrained_hit": false
+            },
+            {
+              "permutation": [
+                0,
+                2,
+                3,
+                1
+              ],
+              "learned_pair": [
+                1,
+                2
+              ],
+              "learned_hit": true,
+              "shuffled_hit": false,
+              "untrained_hit": false
+            },
+            {
+              "permutation": [
+                0,
+                3,
+                1,
+                2
+              ],
+              "learned_pair": [
+                1,
+                3
+              ],
+              "learned_hit": true,
+              "shuffled_hit": false,
+              "untrained_hit": false
+            },
+            {
+              "permutation": [
+                0,
+                3,
+                2,
+                1
+              ],
+              "learned_pair": [
+                1,
+                2
+              ],
+              "learned_hit": true,
+              "shuffled_hit": false,
+              "untrained_hit": false
+            },
+            {
+              "permutation": [
+                1,
+                0,
+                2,
+                3
+              ],
+              "learned_pair": [
+                2,
+                3
+              ],
+              "learned_hit": true,
+              "shuffled_hit": false,
+              "untrained_hit": false
+            },
+            {
+              "permutation": [
+                1,
+                0,
+                3,
+                2
+              ],
+              "learned_pair": [
+                2,
+                3
+              ],
+              "learned_hit": true,
+              "shuffled_hit": false,
+              "untrained_hit": false
+            },
+            {
+              "permutation": [
+                1,
+                2,
+                0,
+                3
+              ],
+              "learned_pair": [
+                1,
+                3
+              ],
+              "learned_hit": true,
+              "shuffled_hit": false,
+              "untrained_hit": false
+            },
+            {
+              "permutation": [
+                1,
+                2,
+                3,
+                0
+              ],
+              "learned_pair": [
+                1,
+                2
+              ],
+              "learned_hit": true,
+              "shuffled_hit": false,
+              "untrained_hit": false
+            },
+            {
+              "permutation": [
+                1,
+                3,
+                0,
+                2
+              ],
+              "learned_pair": [
+                1,
+                3
+              ],
+              "learned_hit": true,
+              "shuffled_hit": false,
+              "untrained_hit": false
+            },
+            {
+              "permutation": [
+                1,
+                3,
+                2,
+                0
+              ],
+              "learned_pair": [
+                1,
+                2
+              ],
+              "learned_hit": true,
+              "shuffled_hit": false,
+              "untrained_hit": false
+            },
+            {
+              "permutation": [
+                2,
+                0,
+                1,
+                3
+              ],
+              "learned_pair": [
+                0,
+                3
+              ],
+              "learned_hit": true,
+              "shuffled_hit": false,
+              "untrained_hit": false
+            },
+            {
+              "permutation": [
+                2,
+                0,
+                3,
+                1
+              ],
+              "learned_pair": [
+                0,
+                2
+              ],
+              "learned_hit": true,
+              "shuffled_hit": false,
+              "untrained_hit": false
+            },
+            {
+              "permutation": [
+                2,
+                1,
+                0,
+                3
+              ],
+              "learned_pair": [
+                0,
+                3
+              ],
+              "learned_hit": true,
+              "shuffled_hit": false,
+              "untrained_hit": false
+            },
+            {
+              "permutation": [
+                2,
+                1,
+                3,
+                0
+              ],
+              "learned_pair": [
+                0,
+                2
+              ],
+              "learned_hit": true,
+              "shuffled_hit": false,
+              "untrained_hit": false
+            },
+            {
+              "permutation": [
+                2,
+                3,
+                0,
+                1
+              ],
+              "learned_pair": [
+                0,
+                1
+              ],
+              "learned_hit": true,
+              "shuffled_hit": false,
+              "untrained_hit": true
+            },
+            {
+              "permutation": [
+                2,
+                3,
+                1,
+                0
+              ],
+              "learned_pair": [
+                0,
+                1
+              ],
+              "learned_hit": true,
+              "shuffled_hit": false,
+              "untrained_hit": true
+            },
+            {
+              "permutation": [
+                3,
+                0,
+                1,
+                2
+              ],
+              "learned_pair": [
+                0,
+                3
+              ],
+              "learned_hit": true,
+              "shuffled_hit": false,
+              "untrained_hit": false
+            },
+            {
+              "permutation": [
+                3,
+                0,
+                2,
+                1
+              ],
+              "learned_pair": [
+                0,
+                2
+              ],
+              "learned_hit": true,
+              "shuffled_hit": false,
+              "untrained_hit": false
+            },
+            {
+              "permutation": [
+                3,
+                1,
+                0,
+                2
+              ],
+              "learned_pair": [
+                0,
+                3
+              ],
+              "learned_hit": true,
+              "shuffled_hit": false,
+              "untrained_hit": false
+            },
+            {
+              "permutation": [
+                3,
+                1,
+                2,
+                0
+              ],
+              "learned_pair": [
+                0,
+                2
+              ],
+              "learned_hit": true,
+              "shuffled_hit": false,
+              "untrained_hit": false
+            },
+            {
+              "permutation": [
+                3,
+                2,
+                0,
+                1
+              ],
+              "learned_pair": [
+                0,
+                1
+              ],
+              "learned_hit": true,
+              "shuffled_hit": false,
+              "untrained_hit": true
+            },
+            {
+              "permutation": [
+                3,
+                2,
+                1,
+                0
+              ],
+              "learned_pair": [
+                0,
+                1
+              ],
+              "learned_hit": true,
+              "shuffled_hit": false,
+              "untrained_hit": true
+            }
+          ]
+        },
+        "rows_before": 4,
+        "rows_after": 3,
+        "bytes_before": 12676,
+        "bytes_after": 9507,
+        "accepted": true,
+        "receipt": {
+          "accepted": true,
+          "source_indices": [
+            2,
+            3
+          ],
+          "rows_before": 4,
+          "rows_after": 3,
+          "rows_saved": 1,
+          "reason": "behavior verifier passed"
+        },
+        "rejected_transaction_non_mutating": true,
+        "reload_exact": true,
+        "prefix": [
+          {
+            "accuracy": 1.0,
+            "lifetimes": [
+              {
+                "lifetime": 1,
+                "accuracy": 1.0,
+                "selected_offset": 4,
+                "unique_verifier_bits": 160,
+                "replayed_examples": 0
+              },
+              {
+                "lifetime": 2,
+                "accuracy": 1.0,
+                "selected_offset": 4,
+                "unique_verifier_bits": 160,
+                "replayed_examples": 0
+              },
+              {
+                "lifetime": 3,
+                "accuracy": 1.0,
+                "selected_offset": 4,
+                "unique_verifier_bits": 160,
+                "replayed_examples": 0
+              },
+              {
+                "lifetime": 4,
+                "accuracy": 1.0,
+                "selected_offset": 4,
+                "unique_verifier_bits": 160,
+                "replayed_examples": 0
+              }
+            ],
+            "resolved": true,
+            "position": 3,
+            "route_id": 0
+          },
+          {
+            "accuracy": 1.0,
+            "lifetimes": [
+              {
+                "lifetime": 1,
+                "accuracy": 1.0,
+                "selected_offset": 5,
+                "unique_verifier_bits": 144,
+                "replayed_examples": 0
+              },
+              {
+                "lifetime": 2,
+                "accuracy": 1.0,
+                "selected_offset": 5,
+                "unique_verifier_bits": 144,
+                "replayed_examples": 0
+              },
+              {
+                "lifetime": 3,
+                "accuracy": 1.0,
+                "selected_offset": 5,
+                "unique_verifier_bits": 144,
+                "replayed_examples": 0
+              },
+              {
+                "lifetime": 4,
+                "accuracy": 1.0,
+                "selected_offset": 5,
+                "unique_verifier_bits": 144,
+                "replayed_examples": 0
+              }
+            ],
+            "resolved": true,
+            "position": 4,
+            "route_id": 1
+          },
+          {
+            "accuracy": 1.0,
+            "lifetimes": [
+              {
+                "lifetime": 1,
+                "accuracy": 1.0,
+                "selected_offset": 6,
+                "unique_verifier_bits": 128,
+                "replayed_examples": 0
+              },
+              {
+                "lifetime": 2,
+                "accuracy": 1.0,
+                "selected_offset": 6,
+                "unique_verifier_bits": 128,
+                "replayed_examples": 0
+              },
+              {
+                "lifetime": 3,
+                "accuracy": 1.0,
+                "selected_offset": 6,
+                "unique_verifier_bits": 128,
+                "replayed_examples": 0
+              },
+              {
+                "lifetime": 4,
+                "accuracy": 1.0,
+                "selected_offset": 6,
+                "unique_verifier_bits": 128,
+                "replayed_examples": 0
+              }
+            ],
+            "resolved": true,
+            "position": 5,
+            "route_id": 2
+          },
+          {
+            "accuracy": 1.0,
+            "lifetimes": [
+              {
+                "lifetime": 1,
+                "accuracy": 1.0,
+                "selected_offset": 7,
+                "unique_verifier_bits": 112,
+                "replayed_examples": 0
+              },
+              {
+                "lifetime": 2,
+                "accuracy": 1.0,
+                "selected_offset": 7,
+                "unique_verifier_bits": 112,
+                "replayed_examples": 0
+              },
+              {
+                "lifetime": 3,
+                "accuracy": 1.0,
+                "selected_offset": 7,
+                "unique_verifier_bits": 112,
+                "replayed_examples": 0
+              },
+              {
+                "lifetime": 4,
+                "accuracy": 1.0,
+                "selected_offset": 7,
+                "unique_verifier_bits": 112,
+                "replayed_examples": 0
+              }
+            ],
+            "resolved": true,
+            "position": 6,
+            "route_id": 3
+          },
+          {
+            "accuracy": 1.0,
+            "lifetimes": [
+              {
+                "lifetime": 1,
+                "accuracy": 1.0,
+                "selected_offset": 8,
+                "unique_verifier_bits": 96,
+                "replayed_examples": 0
+              },
+              {
+                "lifetime": 2,
+                "accuracy": 1.0,
+                "selected_offset": 8,
+                "unique_verifier_bits": 96,
+                "replayed_examples": 0
+              },
+              {
+                "lifetime": 3,
+                "accuracy": 1.0,
+                "selected_offset": 8,
+                "unique_verifier_bits": 96,
+                "replayed_examples": 0
+              },
+              {
+                "lifetime": 4,
+                "accuracy": 1.0,
+                "selected_offset": 8,
+                "unique_verifier_bits": 96,
+                "replayed_examples": 0
+              }
+            ],
+            "resolved": true,
+            "position": 7,
+            "route_id": 4
+          },
+          {
+            "accuracy": 1.0,
+            "lifetimes": [
+              {
+                "lifetime": 1,
+                "accuracy": 1.0,
+                "selected_offset": 7,
+                "unique_verifier_bits": 112,
+                "replayed_examples": 0
+              },
+              {
+                "lifetime": 2,
+                "accuracy": 1.0,
+                "selected_offset": 7,
+                "unique_verifier_bits": 112,
+                "replayed_examples": 0
+              },
+              {
+                "lifetime": 3,
+                "accuracy": 1.0,
+                "selected_offset": 7,
+                "unique_verifier_bits": 112,
+                "replayed_examples": 0
+              },
+              {
+                "lifetime": 4,
+                "accuracy": 1.0,
+                "selected_offset": 7,
+                "unique_verifier_bits": 112,
+                "replayed_examples": 0
+              }
+            ],
+            "resolved": true,
+            "position": 6,
+            "route_id": 5
+          }
+        ]
+      }
+    ],
+    "post_growth": {
+      "stable_plan_replace": false,
+      "stable_noop": true,
+      "shifted_plan_replace": true,
+      "replacement_accepted": true,
+      "route_retention": true,
+      "reload_exact": true,
+      "memory_changed": true,
+      "receipt": {
+        "accepted": true,
+        "source_indices": [
+          2
+        ],
+        "rows_before": 3,
+        "rows_after": 3,
+        "rows_saved": 0,
+        "reason": "behavior verifier passed"
+      }
+    },
+    "final_rows": 3,
+    "final_bytes": 9507,
+    "prefixes_retained": true,
+    "policy_controls_pass": true,
+    "rejected_transactions_non_mutating": true,
+    "reloads_exact": true,
+    "bytes_reduced_each_stage": true,
+    "corruption_rejected": true,
+    "controller_frozen": true,
+    "event_encoder_frozen": true,
+    "promoted_file_frozen": true,
+    "zero_replayed_examples": true
+  },
+  "reversed": {
+    "stage_order": [
+      0,
+      1,
+      2
+    ],
+    "stages": [
+      {
+        "stage": 0,
+        "pair": [
+          0,
+          1
+        ],
+        "insertion_order": [
+          1,
+          0
+        ],
+        "selected_pair": [
+          0,
+          1
+        ],
+        "selected_correctly": true,
+        "policy": {
+          "permutations": 2,
+          "learned_hits": 2,
+          "shuffled_hits": 2,
+          "untrained_hits": 2,
+          "learned_rate": 1.0,
+          "shuffled_rate": 1.0,
+          "untrained_rate": 1.0,
+          "records": [
+            {
+              "permutation": [
+                0,
+                1
+              ],
+              "learned_pair": [
+                0,
+                1
+              ],
+              "learned_hit": true,
+              "shuffled_hit": true,
+              "untrained_hit": true
+            },
+            {
+              "permutation": [
+                1,
+                0
+              ],
+              "learned_pair": [
+                0,
+                1
+              ],
+              "learned_hit": true,
+              "shuffled_hit": true,
+              "untrained_hit": true
+            }
+          ]
+        },
+        "rows_before": 2,
+        "rows_after": 1,
+        "bytes_before": 6338,
+        "bytes_after": 3169,
+        "accepted": true,
+        "receipt": {
+          "accepted": true,
+          "source_indices": [
+            0,
+            1
+          ],
+          "rows_before": 2,
+          "rows_after": 1,
+          "rows_saved": 1,
+          "reason": "behavior verifier passed"
+        },
+        "rejected_transaction_non_mutating": true,
+        "reload_exact": true,
+        "prefix": [
+          {
+            "accuracy": 1.0,
+            "lifetimes": [
+              {
+                "lifetime": 1,
+                "accuracy": 1.0,
+                "selected_offset": 4,
+                "unique_verifier_bits": 160,
+                "replayed_examples": 0
+              },
+              {
+                "lifetime": 2,
+                "accuracy": 1.0,
+                "selected_offset": 4,
+                "unique_verifier_bits": 160,
+                "replayed_examples": 0
+              },
+              {
+                "lifetime": 3,
+                "accuracy": 1.0,
+                "selected_offset": 4,
+                "unique_verifier_bits": 160,
+                "replayed_examples": 0
+              },
+              {
+                "lifetime": 4,
+                "accuracy": 1.0,
+                "selected_offset": 4,
+                "unique_verifier_bits": 160,
+                "replayed_examples": 0
+              }
+            ],
+            "resolved": true,
+            "position": 3,
+            "route_id": 0
+          },
+          {
+            "accuracy": 1.0,
+            "lifetimes": [
+              {
+                "lifetime": 1,
+                "accuracy": 1.0,
+                "selected_offset": 5,
+                "unique_verifier_bits": 144,
+                "replayed_examples": 0
+              },
+              {
+                "lifetime": 2,
+                "accuracy": 1.0,
+                "selected_offset": 5,
+                "unique_verifier_bits": 144,
+                "replayed_examples": 0
+              },
+              {
+                "lifetime": 3,
+                "accuracy": 1.0,
+                "selected_offset": 5,
+                "unique_verifier_bits": 144,
+                "replayed_examples": 0
+              },
+              {
+                "lifetime": 4,
+                "accuracy": 1.0,
+                "selected_offset": 5,
+                "unique_verifier_bits": 144,
+                "replayed_examples": 0
+              }
+            ],
+            "resolved": true,
+            "position": 4,
+            "route_id": 1
+          }
+        ]
+      },
+      {
+        "stage": 1,
+        "pair": [
+          2,
+          3
+        ],
+        "insertion_order": [
+          3,
+          2
+        ],
+        "selected_pair": [
+          1,
+          2
+        ],
+        "selected_correctly": true,
+        "policy": {
+          "permutations": 6,
+          "learned_hits": 6,
+          "shuffled_hits": 5,
+          "untrained_hits": 2,
+          "learned_rate": 1.0,
+          "shuffled_rate": 0.8333333333333334,
+          "untrained_rate": 0.3333333333333333,
+          "records": [
+            {
+              "permutation": [
+                0,
+                1,
+                2
+              ],
+              "learned_pair": [
+                1,
+                2
+              ],
+              "learned_hit": true,
+              "shuffled_hit": true,
+              "untrained_hit": false
+            },
+            {
+              "permutation": [
+                0,
+                2,
+                1
+              ],
+              "learned_pair": [
+                1,
+                2
+              ],
+              "learned_hit": true,
+              "shuffled_hit": true,
+              "untrained_hit": false
+            },
+            {
+              "permutation": [
+                1,
+                0,
+                2
+              ],
+              "learned_pair": [
+                0,
+                2
+              ],
+              "learned_hit": true,
+              "shuffled_hit": true,
+              "untrained_hit": false
+            },
+            {
+              "permutation": [
+                1,
+                2,
+                0
+              ],
+              "learned_pair": [
+                0,
+                1
+              ],
+              "learned_hit": true,
+              "shuffled_hit": false,
+              "untrained_hit": true
+            },
+            {
+              "permutation": [
+                2,
+                0,
+                1
+              ],
+              "learned_pair": [
+                0,
+                2
+              ],
+              "learned_hit": true,
+              "shuffled_hit": true,
+              "untrained_hit": false
+            },
+            {
+              "permutation": [
+                2,
+                1,
+                0
+              ],
+              "learned_pair": [
+                0,
+                1
+              ],
+              "learned_hit": true,
+              "shuffled_hit": true,
+              "untrained_hit": true
+            }
+          ]
+        },
+        "rows_before": 3,
+        "rows_after": 2,
+        "bytes_before": 9507,
+        "bytes_after": 6338,
+        "accepted": true,
+        "receipt": {
+          "accepted": true,
+          "source_indices": [
+            1,
+            2
+          ],
+          "rows_before": 3,
+          "rows_after": 2,
+          "rows_saved": 1,
+          "reason": "behavior verifier passed"
+        },
+        "rejected_transaction_non_mutating": true,
+        "reload_exact": true,
+        "prefix": [
+          {
+            "accuracy": 1.0,
+            "lifetimes": [
+              {
+                "lifetime": 1,
+                "accuracy": 1.0,
+                "selected_offset": 4,
+                "unique_verifier_bits": 160,
+                "replayed_examples": 0
+              },
+              {
+                "lifetime": 2,
+                "accuracy": 1.0,
+                "selected_offset": 4,
+                "unique_verifier_bits": 160,
+                "replayed_examples": 0
+              },
+              {
+                "lifetime": 3,
+                "accuracy": 1.0,
+                "selected_offset": 4,
+                "unique_verifier_bits": 160,
+                "replayed_examples": 0
+              },
+              {
+                "lifetime": 4,
+                "accuracy": 1.0,
+                "selected_offset": 4,
+                "unique_verifier_bits": 160,
+                "replayed_examples": 0
+              }
+            ],
+            "resolved": true,
+            "position": 3,
+            "route_id": 0
+          },
+          {
+            "accuracy": 1.0,
+            "lifetimes": [
+              {
+                "lifetime": 1,
+                "accuracy": 1.0,
+                "selected_offset": 5,
+                "unique_verifier_bits": 144,
+                "replayed_examples": 0
+              },
+              {
+                "lifetime": 2,
+                "accuracy": 1.0,
+                "selected_offset": 5,
+                "unique_verifier_bits": 144,
+                "replayed_examples": 0
+              },
+              {
+                "lifetime": 3,
+                "accuracy": 1.0,
+                "selected_offset": 5,
+                "unique_verifier_bits": 144,
+                "replayed_examples": 0
+              },
+              {
+                "lifetime": 4,
+                "accuracy": 1.0,
+                "selected_offset": 5,
+                "unique_verifier_bits": 144,
+                "replayed_examples": 0
+              }
+            ],
+            "resolved": true,
+            "position": 4,
+            "route_id": 1
+          },
+          {
+            "accuracy": 1.0,
+            "lifetimes": [
+              {
+                "lifetime": 1,
+                "accuracy": 1.0,
+                "selected_offset": 6,
+                "unique_verifier_bits": 128,
+                "replayed_examples": 0
+              },
+              {
+                "lifetime": 2,
+                "accuracy": 1.0,
+                "selected_offset": 6,
+                "unique_verifier_bits": 128,
+                "replayed_examples": 0
+              },
+              {
+                "lifetime": 3,
+                "accuracy": 1.0,
+                "selected_offset": 6,
+                "unique_verifier_bits": 128,
+                "replayed_examples": 0
+              },
+              {
+                "lifetime": 4,
+                "accuracy": 1.0,
+                "selected_offset": 6,
+                "unique_verifier_bits": 128,
+                "replayed_examples": 0
+              }
+            ],
+            "resolved": true,
+            "position": 5,
+            "route_id": 2
+          },
+          {
+            "accuracy": 1.0,
+            "lifetimes": [
+              {
+                "lifetime": 1,
+                "accuracy": 1.0,
+                "selected_offset": 7,
+                "unique_verifier_bits": 112,
+                "replayed_examples": 0
+              },
+              {
+                "lifetime": 2,
+                "accuracy": 1.0,
+                "selected_offset": 7,
+                "unique_verifier_bits": 112,
+                "replayed_examples": 0
+              },
+              {
+                "lifetime": 3,
+                "accuracy": 1.0,
+                "selected_offset": 7,
+                "unique_verifier_bits": 112,
+                "replayed_examples": 0
+              },
+              {
+                "lifetime": 4,
+                "accuracy": 1.0,
+                "selected_offset": 7,
+                "unique_verifier_bits": 112,
+                "replayed_examples": 0
+              }
+            ],
+            "resolved": true,
+            "position": 6,
+            "route_id": 3
+          }
+        ]
+      },
+      {
+        "stage": 2,
+        "pair": [
+          4,
+          5
+        ],
+        "insertion_order": [
+          5,
+          4
+        ],
+        "selected_pair": [
+          2,
+          3
+        ],
+        "selected_correctly": true,
+        "policy": {
+          "permutations": 24,
+          "learned_hits": 24,
+          "shuffled_hits": 0,
+          "untrained_hits": 4,
+          "learned_rate": 1.0,
+          "shuffled_rate": 0.0,
+          "untrained_rate": 0.16666666666666666,
+          "records": [
+            {
+              "permutation": [
+                0,
+                1,
+                2,
+                3
+              ],
+              "learned_pair": [
+                2,
+                3
+              ],
+              "learned_hit": true,
+              "shuffled_hit": false,
+              "untrained_hit": false
+            },
+            {
+              "permutation": [
+                0,
+                1,
+                3,
+                2
+              ],
+              "learned_pair": [
+                2,
+                3
+              ],
+              "learned_hit": true,
+              "shuffled_hit": false,
+              "untrained_hit": false
+            },
+            {
+              "permutation": [
+                0,
+                2,
+                1,
+                3
+              ],
+              "learned_pair": [
+                1,
+                3
+              ],
+              "learned_hit": true,
+              "shuffled_hit": false,
+              "untrained_hit": false
+            },
+            {
+              "permutation": [
+                0,
+                2,
+                3,
+                1
+              ],
+              "learned_pair": [
+                1,
+                2
+              ],
+              "learned_hit": true,
+              "shuffled_hit": false,
+              "untrained_hit": false
+            },
+            {
+              "permutation": [
+                0,
+                3,
+                1,
+                2
+              ],
+              "learned_pair": [
+                1,
+                3
+              ],
+              "learned_hit": true,
+              "shuffled_hit": false,
+              "untrained_hit": false
+            },
+            {
+              "permutation": [
+                0,
+                3,
+                2,
+                1
+              ],
+              "learned_pair": [
+                1,
+                2
+              ],
+              "learned_hit": true,
+              "shuffled_hit": false,
+              "untrained_hit": false
+            },
+            {
+              "permutation": [
+                1,
+                0,
+                2,
+                3
+              ],
+              "learned_pair": [
+                2,
+                3
+              ],
+              "learned_hit": true,
+              "shuffled_hit": false,
+              "untrained_hit": false
+            },
+            {
+              "permutation": [
+                1,
+                0,
+                3,
+                2
+              ],
+              "learned_pair": [
+                2,
+                3
+              ],
+              "learned_hit": true,
+              "shuffled_hit": false,
+              "untrained_hit": false
+            },
+            {
+              "permutation": [
+                1,
+                2,
+                0,
+                3
+              ],
+              "learned_pair": [
+                1,
+                3
+              ],
+              "learned_hit": true,
+              "shuffled_hit": false,
+              "untrained_hit": false
+            },
+            {
+              "permutation": [
+                1,
+                2,
+                3,
+                0
+              ],
+              "learned_pair": [
+                1,
+                2
+              ],
+              "learned_hit": true,
+              "shuffled_hit": false,
+              "untrained_hit": false
+            },
+            {
+              "permutation": [
+                1,
+                3,
+                0,
+                2
+              ],
+              "learned_pair": [
+                1,
+                3
+              ],
+              "learned_hit": true,
+              "shuffled_hit": false,
+              "untrained_hit": false
+            },
+            {
+              "permutation": [
+                1,
+                3,
+                2,
+                0
+              ],
+              "learned_pair": [
+                1,
+                2
+              ],
+              "learned_hit": true,
+              "shuffled_hit": false,
+              "untrained_hit": false
+            },
+            {
+              "permutation": [
+                2,
+                0,
+                1,
+                3
+              ],
+              "learned_pair": [
+                0,
+                3
+              ],
+              "learned_hit": true,
+              "shuffled_hit": false,
+              "untrained_hit": false
+            },
+            {
+              "permutation": [
+                2,
+                0,
+                3,
+                1
+              ],
+              "learned_pair": [
+                0,
+                2
+              ],
+              "learned_hit": true,
+              "shuffled_hit": false,
+              "untrained_hit": false
+            },
+            {
+              "permutation": [
+                2,
+                1,
+                0,
+                3
+              ],
+              "learned_pair": [
+                0,
+                3
+              ],
+              "learned_hit": true,
+              "shuffled_hit": false,
+              "untrained_hit": false
+            },
+            {
+              "permutation": [
+                2,
+                1,
+                3,
+                0
+              ],
+              "learned_pair": [
+                0,
+                2
+              ],
+              "learned_hit": true,
+              "shuffled_hit": false,
+              "untrained_hit": false
+            },
+            {
+              "permutation": [
+                2,
+                3,
+                0,
+                1
+              ],
+              "learned_pair": [
+                0,
+                1
+              ],
+              "learned_hit": true,
+              "shuffled_hit": false,
+              "untrained_hit": true
+            },
+            {
+              "permutation": [
+                2,
+                3,
+                1,
+                0
+              ],
+              "learned_pair": [
+                0,
+                1
+              ],
+              "learned_hit": true,
+              "shuffled_hit": false,
+              "untrained_hit": true
+            },
+            {
+              "permutation": [
+                3,
+                0,
+                1,
+                2
+              ],
+              "learned_pair": [
+                0,
+                3
+              ],
+              "learned_hit": true,
+              "shuffled_hit": false,
+              "untrained_hit": false
+            },
+            {
+              "permutation": [
+                3,
+                0,
+                2,
+                1
+              ],
+              "learned_pair": [
+                0,
+                2
+              ],
+              "learned_hit": true,
+              "shuffled_hit": false,
+              "untrained_hit": false
+            },
+            {
+              "permutation": [
+                3,
+                1,
+                0,
+                2
+              ],
+              "learned_pair": [
+                0,
+                3
+              ],
+              "learned_hit": true,
+              "shuffled_hit": false,
+              "untrained_hit": false
+            },
+            {
+              "permutation": [
+                3,
+                1,
+                2,
+                0
+              ],
+              "learned_pair": [
+                0,
+                2
+              ],
+              "learned_hit": true,
+              "shuffled_hit": false,
+              "untrained_hit": false
+            },
+            {
+              "permutation": [
+                3,
+                2,
+                0,
+                1
+              ],
+              "learned_pair": [
+                0,
+                1
+              ],
+              "learned_hit": true,
+              "shuffled_hit": false,
+              "untrained_hit": true
+            },
+            {
+              "permutation": [
+                3,
+                2,
+                1,
+                0
+              ],
+              "learned_pair": [
+                0,
+                1
+              ],
+              "learned_hit": true,
+              "shuffled_hit": false,
+              "untrained_hit": true
+            }
+          ]
+        },
+        "rows_before": 4,
+        "rows_after": 3,
+        "bytes_before": 12676,
+        "bytes_after": 9507,
+        "accepted": true,
+        "receipt": {
+          "accepted": true,
+          "source_indices": [
+            2,
+            3
+          ],
+          "rows_before": 4,
+          "rows_after": 3,
+          "rows_saved": 1,
+          "reason": "behavior verifier passed"
+        },
+        "rejected_transaction_non_mutating": true,
+        "reload_exact": true,
+        "prefix": [
+          {
+            "accuracy": 1.0,
+            "lifetimes": [
+              {
+                "lifetime": 1,
+                "accuracy": 1.0,
+                "selected_offset": 4,
+                "unique_verifier_bits": 160,
+                "replayed_examples": 0
+              },
+              {
+                "lifetime": 2,
+                "accuracy": 1.0,
+                "selected_offset": 4,
+                "unique_verifier_bits": 160,
+                "replayed_examples": 0
+              },
+              {
+                "lifetime": 3,
+                "accuracy": 1.0,
+                "selected_offset": 4,
+                "unique_verifier_bits": 160,
+                "replayed_examples": 0
+              },
+              {
+                "lifetime": 4,
+                "accuracy": 1.0,
+                "selected_offset": 4,
+                "unique_verifier_bits": 160,
+                "replayed_examples": 0
+              }
+            ],
+            "resolved": true,
+            "position": 3,
+            "route_id": 0
+          },
+          {
+            "accuracy": 1.0,
+            "lifetimes": [
+              {
+                "lifetime": 1,
+                "accuracy": 1.0,
+                "selected_offset": 5,
+                "unique_verifier_bits": 144,
+                "replayed_examples": 0
+              },
+              {
+                "lifetime": 2,
+                "accuracy": 1.0,
+                "selected_offset": 5,
+                "unique_verifier_bits": 144,
+                "replayed_examples": 0
+              },
+              {
+                "lifetime": 3,
+                "accuracy": 1.0,
+                "selected_offset": 5,
+                "unique_verifier_bits": 144,
+                "replayed_examples": 0
+              },
+              {
+                "lifetime": 4,
+                "accuracy": 1.0,
+                "selected_offset": 5,
+                "unique_verifier_bits": 144,
+                "replayed_examples": 0
+              }
+            ],
+            "resolved": true,
+            "position": 4,
+            "route_id": 1
+          },
+          {
+            "accuracy": 1.0,
+            "lifetimes": [
+              {
+                "lifetime": 1,
+                "accuracy": 1.0,
+                "selected_offset": 6,
+                "unique_verifier_bits": 128,
+                "replayed_examples": 0
+              },
+              {
+                "lifetime": 2,
+                "accuracy": 1.0,
+                "selected_offset": 6,
+                "unique_verifier_bits": 128,
+                "replayed_examples": 0
+              },
+              {
+                "lifetime": 3,
+                "accuracy": 1.0,
+                "selected_offset": 6,
+                "unique_verifier_bits": 128,
+                "replayed_examples": 0
+              },
+              {
+                "lifetime": 4,
+                "accuracy": 1.0,
+                "selected_offset": 6,
+                "unique_verifier_bits": 128,
+                "replayed_examples": 0
+              }
+            ],
+            "resolved": true,
+            "position": 5,
+            "route_id": 2
+          },
+          {
+            "accuracy": 1.0,
+            "lifetimes": [
+              {
+                "lifetime": 1,
+                "accuracy": 1.0,
+                "selected_offset": 7,
+                "unique_verifier_bits": 112,
+                "replayed_examples": 0
+              },
+              {
+                "lifetime": 2,
+                "accuracy": 1.0,
+                "selected_offset": 7,
+                "unique_verifier_bits": 112,
+                "replayed_examples": 0
+              },
+              {
+                "lifetime": 3,
+                "accuracy": 1.0,
+                "selected_offset": 7,
+                "unique_verifier_bits": 112,
+                "replayed_examples": 0
+              },
+              {
+                "lifetime": 4,
+                "accuracy": 1.0,
+                "selected_offset": 7,
+                "unique_verifier_bits": 112,
+                "replayed_examples": 0
+              }
+            ],
+            "resolved": true,
+            "position": 6,
+            "route_id": 3
+          },
+          {
+            "accuracy": 1.0,
+            "lifetimes": [
+              {
+                "lifetime": 1,
+                "accuracy": 1.0,
+                "selected_offset": 8,
+                "unique_verifier_bits": 96,
+                "replayed_examples": 0
+              },
+              {
+                "lifetime": 2,
+                "accuracy": 1.0,
+                "selected_offset": 8,
+                "unique_verifier_bits": 96,
+                "replayed_examples": 0
+              },
+              {
+                "lifetime": 3,
+                "accuracy": 1.0,
+                "selected_offset": 8,
+                "unique_verifier_bits": 96,
+                "replayed_examples": 0
+              },
+              {
+                "lifetime": 4,
+                "accuracy": 1.0,
+                "selected_offset": 8,
+                "unique_verifier_bits": 96,
+                "replayed_examples": 0
+              }
+            ],
+            "resolved": true,
+            "position": 7,
+            "route_id": 4
+          },
+          {
+            "accuracy": 1.0,
+            "lifetimes": [
+              {
+                "lifetime": 1,
+                "accuracy": 1.0,
+                "selected_offset": 7,
+                "unique_verifier_bits": 112,
+                "replayed_examples": 0
+              },
+              {
+                "lifetime": 2,
+                "accuracy": 1.0,
+                "selected_offset": 7,
+                "unique_verifier_bits": 112,
+                "replayed_examples": 0
+              },
+              {
+                "lifetime": 3,
+                "accuracy": 1.0,
+                "selected_offset": 7,
+                "unique_verifier_bits": 112,
+                "replayed_examples": 0
+              },
+              {
+                "lifetime": 4,
+                "accuracy": 1.0,
+                "selected_offset": 7,
+                "unique_verifier_bits": 112,
+                "replayed_examples": 0
+              }
+            ],
+            "resolved": true,
+            "position": 6,
+            "route_id": 5
+          }
+        ]
+      }
+    ],
+    "post_growth": {
+      "stable_plan_replace": false,
+      "stable_noop": true,
+      "shifted_plan_replace": true,
+      "replacement_accepted": true,
+      "route_retention": true,
+      "reload_exact": true,
+      "memory_changed": true,
+      "receipt": {
+        "accepted": true,
+        "source_indices": [
+          2
+        ],
+        "rows_before": 3,
+        "rows_after": 3,
+        "rows_saved": 0,
+        "reason": "behavior verifier passed"
+      }
+    },
+    "final_rows": 3,
+    "final_bytes": 9507,
+    "prefixes_retained": true,
+    "policy_controls_pass": true,
+    "rejected_transactions_non_mutating": true,
+    "reloads_exact": true,
+    "bytes_reduced_each_stage": true,
+    "corruption_rejected": true,
+    "controller_frozen": true,
+    "event_encoder_frozen": true,
+    "promoted_file_frozen": true,
+    "zero_replayed_examples": true
+  },
+  "gates": {
+    "detector_stable_keep_transfer": true,
+    "detector_shift_replace_transfer": true,
+    "detector_dominates_fresh_control": true,
+    "forward_compositional_growth_retained": true,
+    "reversed_compositional_growth_retained": true,
+    "forward_stable_noop": true,
+    "reversed_stable_noop": true,
+    "forward_shift_detected": true,
+    "reversed_shift_detected": true,
+    "forward_replacement_accepted": true,
+    "reversed_replacement_accepted": true,
+    "forward_routes_retained_after_reversal": true,
+    "reversed_routes_retained_after_reversal": true,
+    "forward_reversal_reload_exact": true,
+    "reversed_reversal_reload_exact": true,
+    "forward_reversal_changed_memory": true,
+    "reversed_reversal_changed_memory": true,
+    "forward_corruption_rejected": true,
+    "reversed_corruption_rejected": true,
+    "controller_frozen": true,
+    "event_encoder_frozen": true,
+    "promoted_file_frozen": true,
+    "zero_replayed_examples": true
+  },
+  "accounting": {
+    "unique_temporal_verifier_bits": 6016,
+    "counterfactual_temporal_verifier_bits": 37888,
+    "unique_verifier_bits": 43904,
+    "regime_detector_verifier_bits": 1000,
+    "policy_verifier_bits": 1344000,
+    "shuffled_policy_verifier_bits": 1344000,
+    "temporal_logical_lifetimes": 48,
+    "policy_logical_lifetimes": 48000,
+    "policy_audit_logical_lifetimes": 64,
+    "regime_detector_logical_lifetimes": 1000,
+    "unique_logical_lifetimes": 49112,
+    "replayed_examples": 0,
+    "optimizer_updates": 4000,
+    "latency_seconds": 139.96948195795994,
+    "stable_bits_to_threshold": 44904
+  },
+  "status": "promoted_compositional_reversal"
+}

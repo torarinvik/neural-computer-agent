@@ -25,6 +25,7 @@ import itertools
 import json
 import shutil
 import tempfile
+from collections.abc import Callable
 from pathlib import Path
 from time import perf_counter
 
@@ -475,6 +476,10 @@ def _stream(
     args: argparse.Namespace,
     winner_digest_before: str,
     reverse_insertion: bool,
+    post_growth: Callable[
+        [ExecutableArtifactMemory], tuple[ExecutableArtifactMemory, dict[str, object]]
+    ]
+    | None = None,
 ) -> dict[str, object]:
     controller_before = _digest(system.agent.controller)
     encoder_before = _digest(system.agent.runtime.encoders["stimulus"])
@@ -637,6 +642,9 @@ def _stream(
                 "prefix": prefix_results,
             }
         )
+    post_growth_report: dict[str, object] = {}
+    if post_growth is not None:
+        memory, post_growth_report = post_growth(memory)
     corruption_rejected = False
     if memory.occupied:
         corruption_dir = root / "corrupted"
@@ -655,6 +663,7 @@ def _stream(
     return {
         "stage_order": stage_order,
         "stages": stage_reports,
+        "post_growth": post_growth_report,
         "final_rows": len(memory.occupied),
         "final_bytes": _occupied_bytes(memory) if memory.occupied else 0,
         "prefixes_retained": all_prefixes_retained,
