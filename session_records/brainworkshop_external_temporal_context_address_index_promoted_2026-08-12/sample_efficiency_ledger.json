@@ -1,0 +1,14 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "status": "promoted",
+  "experiment": "brainworkshop_external_temporal_context_address_index",
+  "seed": 17,
+  "unique_verifier_bits": 461312,
+  "control_verifier_bits": 147456,
+  "unique_logical_lifetimes": 49408,
+  "optimizer_updates": 1024,
+  "replayed_examples": 0,
+  "stable_bits_to_threshold": 461312,
+  "transfer_ratio_against_fresh_learner": null,
+  "notes": "Index writes are verifier-gated materialization after route mastery; no learned index discovery claim."
+}

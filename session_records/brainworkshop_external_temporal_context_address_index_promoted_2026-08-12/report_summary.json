@@ -1,0 +1,45 @@
+{
+  "schema": "neural-computer.brainworkshop-external-temporal-context-route-growth.v1",
+  "status": "promoted_temporal_context_route_growth",
+  "seed": 17,
+  "budget": {
+    "file_updates": 512,
+    "route_updates": 512,
+    "batch_size": 32,
+    "steps": 14,
+    "retention_lifetimes": 4
+  },
+  "architecture": {
+    "controller": "frozen_canonical_amodal_controller",
+    "event_key": "learned_rendered_event_tensor",
+    "route_memory": "persistent_opaque_context_route_evidence_v1",
+    "opaque_address_index": "external_temporal_address_index_v2",
+    "opaque_address_location": "stable_target_scope_plus_position",
+    "temporal_memory": "external_temporal_history_memory_v1",
+    "route_feedback": "terminal_scalar_episode_accuracy_only"
+  },
+  "gate_summary": {
+    "total": 27,
+    "passed": 27,
+    "opaque_index_exact_and_noisy_hits": true,
+    "opaque_index_unknown_miss": true,
+    "opaque_index_reload_exact": true,
+    "opaque_index_corruption_rejected": true,
+    "opaque_index_clear_removes_hits": true,
+    "frozen_controller": true,
+    "frozen_event_encoder": true,
+    "zero_replayed_examples": true
+  },
+  "accounting": {
+    "unique_verifier_bits": 461312,
+    "control_verifier_bits": 147456,
+    "audit_verifier_bits": 10624,
+    "unique_logical_lifetimes": 49408,
+    "optimizer_updates": 1024,
+    "route_memory_updates": 520,
+    "control_route_memory_updates": 512,
+    "opaque_address_index_writes": 2,
+    "replayed_examples": 0,
+    "stable_bits_to_threshold": 461312
+  }
+}

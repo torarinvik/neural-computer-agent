@@ -362,6 +362,15 @@ def test_external_temporal_offset_growth_smoke_keeps_addressing_external(
     assert report["schema"] == (
         "neural-computer.brainworkshop-external-temporal-offset-growth.v1"
     )
+    assert report["architecture"]["history_transport"] == (
+        "canonical_runtime_external_history_event_bridge_v2"
+    )
+    assert report["architecture"]["history_causality"] == (
+        "read_before_current_append"
+    )
+    assert report["architecture"]["address_policy"] == (
+        "external_temporal_offset_selector_v1"
+    )
     assert report["gates"]["old_file_unchanged"]
     assert report["gates"]["frozen_controller"]
     assert report["gates"]["frozen_event_encoder"]
@@ -394,6 +403,13 @@ def test_external_temporal_context_route_growth_smoke_composes_external_addresse
         "neural-computer.brainworkshop-external-temporal-context-route-growth.v1"
     )
     assert report["gates"]["route_reload_exact"]
+    assert report["gates"]["opaque_index_routes_written"]
+    assert report["gates"]["opaque_index_exact_source_hit"]
+    assert report["gates"]["opaque_index_exact_target_hit"]
+    assert report["gates"]["opaque_index_unknown_miss"]
+    assert report["gates"]["opaque_index_reload_exact"]
+    assert report["gates"]["opaque_index_corruption_rejected"]
+    assert report["gates"]["opaque_index_clear_removes_hits"]
     assert report["gates"]["frozen_controller"]
     assert report["gates"]["frozen_event_encoder"]
     assert report["accounting"]["replayed_examples"] == 0
@@ -462,13 +478,19 @@ def test_external_temporal_content_retrieval_growth_smoke_preserves_memory_contr
     )
 
     assert report["schema"] == (
-        "neural-computer.brainworkshop-external-temporal-content-retrieval-growth.v1"
+        "neural-computer.brainworkshop-external-temporal-content-retrieval-growth.v2"
     )
     assert report["architecture"]["history_transport"] == (
         "canonical_runtime_external_history_event_bridge_v2"
     )
     assert report["architecture"]["history_causality"] == (
         "read_before_current_append"
+    )
+    assert report["architecture"]["address_memory"] == (
+        "external_temporal_address_index_v2"
+    )
+    assert report["architecture"]["address_location"] == (
+        "opaque_scope_plus_stable_absolute_position"
     )
     assert report["gates"]["two_routes_written"]
     assert report["gates"]["clear_memory_removes_hits"]

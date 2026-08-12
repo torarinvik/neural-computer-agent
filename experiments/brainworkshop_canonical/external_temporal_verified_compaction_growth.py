@@ -32,13 +32,12 @@ from neural_computer import (
 )
 
 from .external_temporal_content_retrieval_growth import (
-    _address_basis,
     _digest,
     _event_key,
     _noisy_key,
-    _probe,
 )
 from .external_temporal_offset_growth import ExternalTemporalCapabilityFile
+from .external_temporal_legacy_support import address_basis, legacy_probe
 from .external_temporal_query_address_growth import (
     EVENT_WIDTH,
     MAX_OFFSET,
@@ -225,7 +224,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     target_key = _event_key(system, TARGET_QUERY)
     source_alias = _noisy_key(source_key, seed=args.seed + 1)
     target_alias = _noisy_key(target_key, seed=args.seed + 2)
-    basis = _address_basis(args.seed)
+    basis = address_basis(args.seed)
     source_offset = int(evidence.preferred_order(source_key)[0]) + 1
     target_offset = int(evidence.preferred_order(target_key)[0]) + 1
     memory_keys = torch.stack((source_key, source_alias, target_key))
@@ -282,7 +281,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             good_candidate,
             expected_version=source_version,
         )
-        post_source = _probe(
+        post_source = legacy_probe(
             system,
             file,
             evidence,
@@ -297,7 +296,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             seed=args.seed + 50_000,
             lifetimes=args.retention_lifetimes,
         )
-        post_source_alias = _probe(
+        post_source_alias = legacy_probe(
             system,
             file,
             evidence,
@@ -312,7 +311,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             seed=args.seed + 60_000,
             lifetimes=args.retention_lifetimes,
         )
-        post_target = _probe(
+        post_target = legacy_probe(
             system,
             file,
             evidence,
@@ -327,7 +326,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             seed=args.seed + 70_000,
             lifetimes=args.retention_lifetimes,
         )
-        post_target_alias = _probe(
+        post_target_alias = legacy_probe(
             system,
             file,
             evidence,

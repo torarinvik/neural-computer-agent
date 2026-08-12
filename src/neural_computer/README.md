@@ -1907,10 +1907,11 @@ experiments.
 `ExternalTemporalAddressIndex` is now the canonical content-addressed extension
 for this boundary. It stores only a learned opaque key, an index namespace, and
 an opaque `(target_scope, target_position)` location; event payloads remain in
-`ExternalTemporalHistoryMemory`. Target positions are absolute within a scope,
-so later appends do not silently retarget an older record. A lookup miss returns
-`hit=False`, `-1` location fields, and an absent history token. The runtime path
+the target store. For `ExternalTemporalHistoryMemory`, target positions are
+absolute within a scope, so later appends do not silently retarget an older
+record. A lookup miss returns `hit=False`, `-1` location fields, and an absent
+history token. The runtime path
 `AmodalControllerRuntime.step_streams_with_external_address()` passes the
 already-resolved read directly to the bridge, preserving the stable address
-without converting it into a shifting relative offset. This remains an external
-storage contract, not a learned capability claim.
+without converting it into a shifting relative offset. This remains an
+external storage contract, not a learned capability claim.

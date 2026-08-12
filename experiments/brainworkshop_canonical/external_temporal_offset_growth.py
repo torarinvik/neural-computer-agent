@@ -180,24 +180,43 @@ def _episode(
     selected_offsets: list[torch.Tensor] = []
 
     while not verifier.done:
-        with torch.no_grad():
-            collection = agent.runtime.encode_streams(
-                {"stimulus": verifier.observation()}
+        if forced_offset is None:
+            offsets, offset_log_probability, entropy = file.offset_selector(
+                batch_size,
+                sample=train,
             )
-            _controller_output, controller_state = agent.runtime.step_events(
-                collection, controller_state, feedback
+        else:
+            if not 1 <= forced_offset <= file.max_offset:
+                raise ValueError("forced temporal offset is outside the file domain")
+            offsets = torch.full(
+                (batch_size,),
+                forced_offset,
+                dtype=torch.long,
             )
+            offset_log_probability = torch.zeros(batch_size)
+            entropy = torch.zeros(())
         if reset_memory_each_step:
             history.clear()
-        event = collection.payload[:, 0].detach()
-        history.append(event, scope=scope)
-        logits, offsets, offset_log_probability, entropy = file(
-            event,
-            history,
-            scope,
-            train=train,
-            forced_offset=forced_offset,
-        )
+        # The capability file exposes logical lags starting at one.  The
+        # canonical bridge reads before appending the current event, so the
+        # external history query is one smaller and the current event remains
+        # the persistent suffix of the controller input.
+        bridge_offsets = offsets - 1
+        with torch.no_grad():
+            _controller_output, controller_state, bridge = (
+                agent.runtime.step_streams_with_external_history(
+                    {"stimulus": verifier.observation()},
+                    controller_state,
+                    feedback,
+                    history,
+                    bridge_offsets[:, None],
+                    history_scope=scope,
+                )
+            )
+        event = bridge.events.payload[:, -1].detach()
+        retrieved = bridge.events.payload[:, 0]
+        present = bridge.events.present[:, 0].to(event.dtype).unsqueeze(-1)
+        logits = file.readout(torch.cat((event, retrieved, present), dim=-1))
         probabilities = logits.softmax(dim=-1)
         if train:
             action = torch.multinomial(probabilities, 1).squeeze(-1)
@@ -231,6 +250,9 @@ def _episode(
     denominator = eligible_tensor.sum().clamp_min(1.0)
     accuracy = (reward_tensor * eligible_tensor).sum() / denominator
     if train:
+        # Train only on the attempted action and its scalar verifier result.
+        # The exact sampled propensity is still logged through feedback for
+        # causal controls; no unattempted-action target enters this objective.
         action_loss = F.binary_cross_entropy_with_logits(
             selected_tensor[eligible_tensor], delivered_tensor[eligible_tensor]
         )
@@ -513,6 +535,10 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "controller": "frozen_canonical_amodal_controller",
             "memory": "external_temporal_history_memory_v1",
             "file": "external_temporal_capability_file_v1",
+            "history_transport": "canonical_runtime_external_history_event_bridge_v2",
+            "history_causality": "read_before_current_append",
+            "history_persistence": "current_tokens_only_transient_prior_context",
+            "bridge_offset_semantics": "logical_lag_minus_one_for_pre_append_relative_read",
             "address_policy": "external_temporal_offset_selector_v1",
             "credit": "attempted_bce_output_plus_scalar_offset_policy_credit",
             "max_offset": MAX_OFFSET,

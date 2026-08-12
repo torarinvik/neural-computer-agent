@@ -1,10 +1,11 @@
-"""Content-addressed locations for the external temporal-memory boundary.
+"""Content-addressed locations for the external memory boundary.
 
-The history store owns learned event records and relative or absolute reads.
-This module owns the replaceable index that maps a learned opaque query key to
-a stable history scope and absolute position.  Keeping the two stores separate
-prevents physical locations, index rows, or address representations from
-entering the controller's neural interface.
+The target store owns the payloads and this module owns the replaceable index
+that maps a learned opaque query key to a stable target namespace and position.
+Keeping the two stores separate prevents physical locations, index rows, or
+address representations from entering the controller's neural interface. The
+temporal-history adapter interprets a target position as an absolute history
+position; other external stores may give the position their own opaque meaning.
 """
 
 from __future__ import annotations
@@ -124,14 +125,15 @@ class ExternalTemporalAddressedRead:
 
 
 class ExternalTemporalAddressIndex(nn.Module):
-    """Variable-capacity content-addressed index into external history.
+    """Variable-capacity content-addressed index into an external target store.
 
     The index stores no event payloads.  Each record contains a learned query
     key and an opaque `(target_scope, target_position)` location owned by a
-    separate :class:`ExternalTemporalHistoryMemory`.  A miss returns explicit
-    ``hit=False`` and ``-1`` locations; it never fabricates an address.  The
-    target position is absolute within its scope, so appending newer history
-    cannot silently retarget an older learned record.
+    separate target store. A miss returns explicit ``hit=False`` and ``-1``
+    locations; it never fabricates an address. When the target is
+    :class:`ExternalTemporalHistoryMemory`, the position is absolute within
+    that scope, so appending newer history cannot silently retarget an older
+    learned record.
     """
 
     schema = EXTERNAL_TEMPORAL_ADDRESS_INDEX_SCHEMA

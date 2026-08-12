@@ -36,12 +36,12 @@ from neural_computer import (
 )
 
 from .external_temporal_content_retrieval_growth import (
-    _address_basis,
     _digest,
     _event_key,
     _noisy_key,
 )
 from .external_temporal_query_address_growth import _build
+from .external_temporal_legacy_support import address_basis
 
 CAPACITY_SCHEDULE_SCHEMA = (
     "neural-computer.brainworkshop-external-temporal-capacity-schedule-growth.v1"
@@ -308,7 +308,7 @@ def _run_live_stream(
     seed: int,
     reversed_order: bool,
 ) -> dict[str, object]:
-    basis = _address_basis(seed)
+    basis = address_basis(seed)
     source_key = _event_key(system, 0)
     source_alias = _noisy_key(source_key, seed=seed + 1, scale=ALIAS_NOISE)
     target_key = _event_key(system, 1)

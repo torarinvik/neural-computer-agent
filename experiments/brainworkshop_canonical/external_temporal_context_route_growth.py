@@ -24,7 +24,10 @@ from time import perf_counter
 
 import torch
 
-from neural_computer import PersistentOpaqueContextRouteEvidence
+from neural_computer import (
+    ExternalTemporalAddressIndex,
+    PersistentOpaqueContextRouteEvidence,
+)
 
 from .cross_family_rule_growth import RULES
 from .external_temporal_offset_growth import (
@@ -68,6 +71,64 @@ def _context_key(system: TemporalOffsetGrowthSystem, cue_symbol: int) -> torch.T
 
 def _stable(rows: list[dict[str, object]]) -> bool:
     return bool(rows) and min(float(row["accuracy"]) for row in rows) >= MASTERY_THRESHOLD
+
+
+def _noisy_context_key(
+    system: TemporalOffsetGrowthSystem,
+    cue_symbol: int,
+    *,
+    seed: int,
+    scale: float = 0.20,
+) -> torch.Tensor:
+    generator = torch.Generator().manual_seed(seed + 74_221)
+    key = _context_key(system, cue_symbol)
+    return torch.nn.functional.normalize(
+        key + scale * torch.randn(key.shape, generator=generator), dim=0
+    )
+
+
+def _index_route_probe(
+    system: TemporalOffsetGrowthSystem,
+    files: tuple[ExternalTemporalCapabilityFile, ...],
+    index: ExternalTemporalAddressIndex,
+    *,
+    key: torch.Tensor,
+    family: str,
+    cue_symbol: int,
+    batch_size: int,
+    steps: int,
+    seed: int,
+    lifetimes: int,
+) -> dict[str, object]:
+    read = index.read(key.unsqueeze(0), top_k=1)
+    if not bool(read.hit[0]):
+        return {
+            "hit": False,
+            "score": float(read.scores[0, 0]),
+            "selected_slot": None,
+            "accuracy": 0.5,
+            "lifetimes": [],
+        }
+    selected_slot = int(read.target_positions[0, 0])
+    if not 0 <= selected_slot < len(files):
+        raise ValueError("opaque route index resolved outside the file bank")
+    rows = _evaluate(
+        system,
+        files[selected_slot],
+        family=family,
+        batch_size=batch_size,
+        steps=steps,
+        seed=seed,
+        lifetimes=lifetimes,
+        cue_symbol=cue_symbol,
+    )
+    return {
+        "hit": True,
+        "score": float(read.scores[0, 0]),
+        "selected_slot": selected_slot,
+        "accuracy": sum(float(row["accuracy"]) for row in rows) / len(rows),
+        "lifetimes": rows,
+    }
 
 
 def _route_episode_once(
@@ -438,6 +499,124 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         seed=args.seed + 80_000,
         lifetimes=args.retention_lifetimes,
     )
+
+    # Materialize the verifier-gated route decisions in the canonical opaque
+    # address index.  The index stores only learned event keys and opaque file
+    # positions; it never decodes a random value basis or exposes task labels.
+    source_slot = int(evidence.preferred_order(source_context)[0])
+    target_context = _context_key(system, NEW_CUE)
+    target_slot = int(evidence.preferred_order(target_context)[0])
+    address_index = ExternalTemporalAddressIndex(
+        EVENT_WIDTH,
+        write_match_threshold=0.999,
+        read_match_threshold=0.75,
+    )
+    address_receipt = address_index.write(
+        torch.stack((source_context, target_context)),
+        target_scopes=torch.zeros(2, dtype=torch.long),
+        target_positions=torch.tensor([source_slot, target_slot], dtype=torch.long),
+        strength=torch.ones(2),
+    )
+    exact_index_source = _index_route_probe(
+        system,
+        files,
+        address_index,
+        key=source_context,
+        family=OLD_FAMILY,
+        cue_symbol=OLD_CUE,
+        batch_size=args.batch_size,
+        steps=args.steps,
+        seed=args.seed + 140_000,
+        lifetimes=args.retention_lifetimes,
+    )
+    exact_index_target = _index_route_probe(
+        system,
+        files,
+        address_index,
+        key=target_context,
+        family=NEW_FAMILY,
+        cue_symbol=NEW_CUE,
+        batch_size=args.batch_size,
+        steps=args.steps,
+        seed=args.seed + 150_000,
+        lifetimes=args.retention_lifetimes,
+    )
+    noisy_index_source = _index_route_probe(
+        system,
+        files,
+        address_index,
+        key=_noisy_context_key(system, OLD_CUE, seed=args.seed + 1),
+        family=OLD_FAMILY,
+        cue_symbol=OLD_CUE,
+        batch_size=args.batch_size,
+        steps=args.steps,
+        seed=args.seed + 160_000,
+        lifetimes=args.retention_lifetimes,
+    )
+    noisy_index_target = _index_route_probe(
+        system,
+        files,
+        address_index,
+        key=_noisy_context_key(system, NEW_CUE, seed=args.seed + 2),
+        family=NEW_FAMILY,
+        cue_symbol=NEW_CUE,
+        batch_size=args.batch_size,
+        steps=args.steps,
+        seed=args.seed + 170_000,
+        lifetimes=args.retention_lifetimes,
+    )
+    unknown_index = _index_route_probe(
+        system,
+        files,
+        address_index,
+        key=_context_key(system, UNKNOWN_CUE),
+        family=NEW_FAMILY,
+        cue_symbol=UNKNOWN_CUE,
+        batch_size=args.batch_size,
+        steps=args.steps,
+        seed=args.seed + 180_000,
+        lifetimes=args.retention_lifetimes,
+    )
+    restored_index = ExternalTemporalAddressIndex.from_payload(
+        address_index.payload()
+    )
+    restored_index_target = _index_route_probe(
+        system,
+        files,
+        restored_index,
+        key=target_context,
+        family=NEW_FAMILY,
+        cue_symbol=NEW_CUE,
+        batch_size=args.batch_size,
+        steps=args.steps,
+        seed=args.seed + 150_000,
+        lifetimes=args.retention_lifetimes,
+    )
+    corrupted_index_payload = address_index.payload()
+    corrupted_index_state = corrupted_index_payload["state"]
+    if not isinstance(corrupted_index_state, dict):
+        raise TypeError("opaque route index payload state is not a mapping")
+    corrupted_index_state["keys"] = corrupted_index_state["keys"].clone()
+    corrupted_index_state["keys"][0, 0] += 0.25
+    index_corruption_rejected = False
+    try:
+        ExternalTemporalAddressIndex.from_payload(corrupted_index_payload)
+    except ValueError as error:
+        index_corruption_rejected = "checksum" in str(error).lower()
+    address_record_count = address_index.record_count
+    address_index.clear()
+    cleared_index = _index_route_probe(
+        system,
+        files,
+        address_index,
+        key=target_context,
+        family=NEW_FAMILY,
+        cue_symbol=NEW_CUE,
+        batch_size=args.batch_size,
+        steps=args.steps,
+        seed=args.seed + 190_000,
+        lifetimes=args.retention_lifetimes,
+    )
     controller_after = _digest(system.agent.controller)
     encoder_after = _digest(system.agent.runtime.encoders["stimulus"])
     gates = {
@@ -468,6 +647,32 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "frozen_controller": controller_before == controller_after,
         "frozen_event_encoder": encoder_before == encoder_after,
         "zero_replayed_examples": True,
+        "opaque_index_routes_written": bool(address_receipt.committed.all())
+        and address_record_count == 2,
+        "opaque_index_exact_source_hit": exact_index_source["hit"]
+        and exact_index_source["selected_slot"] == source_slot,
+        "opaque_index_exact_target_hit": exact_index_target["hit"]
+        and exact_index_target["selected_slot"] == target_slot,
+        "opaque_index_exact_source_route": exact_index_source["hit"]
+        and exact_index_source["selected_slot"] == source_slot
+        and float(exact_index_source["accuracy"]) >= MASTERY_THRESHOLD,
+        "opaque_index_exact_target_route": exact_index_target["hit"]
+        and exact_index_target["selected_slot"] == target_slot
+        and float(exact_index_target["accuracy"]) >= MASTERY_THRESHOLD,
+        "opaque_index_noisy_source_route": noisy_index_source["hit"]
+        and noisy_index_source["selected_slot"] == source_slot
+        and float(noisy_index_source["accuracy"]) >= MASTERY_THRESHOLD,
+        "opaque_index_noisy_target_route": noisy_index_target["hit"]
+        and noisy_index_target["selected_slot"] == target_slot
+        and float(noisy_index_target["accuracy"]) >= MASTERY_THRESHOLD,
+        "opaque_index_noisy_source_hit": noisy_index_source["hit"]
+        and noisy_index_source["selected_slot"] == source_slot,
+        "opaque_index_noisy_target_hit": noisy_index_target["hit"]
+        and noisy_index_target["selected_slot"] == target_slot,
+        "opaque_index_unknown_miss": not unknown_index["hit"],
+        "opaque_index_reload_exact": restored_index_target == exact_index_target,
+        "opaque_index_corruption_rejected": index_corruption_rejected,
+        "opaque_index_clear_removes_hits": not cleared_index["hit"],
     }
     primary_bits = args.batch_size * args.file_updates * (
         (args.steps - RULES[OLD_FAMILY].warmup)
@@ -492,6 +697,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "controller": "frozen_canonical_amodal_controller",
             "event_key": "learned_rendered_event_tensor",
             "route_memory": "persistent_opaque_context_route_evidence_v1",
+            "opaque_address_index": "external_temporal_address_index_v2",
+            "opaque_address_location": "stable_target_scope_plus_position",
             "temporal_memory": "external_temporal_history_memory_v1",
             "capability_file": "external_temporal_capability_file_v1",
             "source_family": OLD_FAMILY,
@@ -518,6 +725,14 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "missing_history": missing_history,
             "shuffled_route_feedback": shuffled,
             "route_payload": evidence.payload(),
+            "opaque_index_exact_source": exact_index_source,
+            "opaque_index_exact_target": exact_index_target,
+            "opaque_index_noisy_source": noisy_index_source,
+            "opaque_index_noisy_target": noisy_index_target,
+            "opaque_index_unknown": unknown_index,
+            "opaque_index_reloaded_target": restored_index_target,
+            "opaque_index_cleared_target": cleared_index,
+            "opaque_index_record_count": address_record_count,
         },
         "gates": gates,
         "accounting": {
@@ -549,6 +764,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "route_memory_updates": args.route_calibration_lifetimes
             + args.route_updates,
             "control_route_memory_updates": args.route_updates,
+            "opaque_address_index_writes": 2,
             "replayed_examples": 0,
             "latency_seconds": perf_counter() - started,
             "stable_bits_to_threshold": primary_bits + route_bits

@@ -948,6 +948,8 @@ search. The selector is currently a single global offset distribution per
 external file; query-conditioned content addressing and multiple useful
 offsets remain open. Evidence and separate accounting are archived in
 `session_records/brainworkshop_external_temporal_offset_growth_promoted_2026-08-12/`.
+The seed-17 canonical read-before-append revalidation is archived separately
+in `session_records/brainworkshop_external_temporal_offset_canonical_bridge_revalidated_2026-08-12/`.
 
 ## Context-conditioned temporal route growth (2026-08-12)
 
@@ -971,7 +973,30 @@ context, content search, learned compression, unrestricted memory growth, or
 general continual learning. Evidence and accounting are archived in
 `session_records/brainworkshop_external_temporal_context_route_growth_promoted_2026-08-12/`.
 
-## Same-cue query-conditioned temporal address growth (2026-08-12)
+## Opaque external address-index materialization (2026-08-12)
+
+The context-route experiment now materializes the learned route decisions in
+`ExternalTemporalAddressIndex`. The index stores only the learned event key and
+an opaque `(target_scope, target_position)` location; it does not decode a
+random basis vector and it does not enter the controller. Exact and nearby-key
+lookups, explicit unknown misses, reload, checksum rejection, and clear are
+checked independently from route mastery.
+
+This is the canonical storage-side completion of the external address seam. It
+does not promote address discovery by itself: the index writes are made only
+after the outcome-only route learner has selected mastered files. Learned
+same-context content search, compression, unrestricted growth, and general
+continual learning remain open.
+
+Evidence and accounting are archived in
+`session_records/brainworkshop_external_temporal_context_address_index_promoted_2026-08-12/`.
+
+## Same-cue query-conditioned temporal address growth (historical v1)
+
+The historical promotion below is retained for provenance. The current
+canonical outcome-only rerun does not reproduce its learned mastery at the
+present training boundary, although the storage controls remain valid; it is
+not current evidence for general continual learning.
 
 `external_temporal_query_address_growth.py` removes the cue-to-file shortcut.
 Every episode has the same rendered cue; the first learned query event is the
@@ -992,7 +1017,11 @@ query keys, followed by learned compression and capacity pressure. Evidence
 and accounting are archived in
 `session_records/brainworkshop_external_temporal_query_address_growth_promoted_2026-08-12/`.
 
-## Canonical-bridge query addressing replication (2026-08-12)
+## Canonical-bridge query addressing replication (historical v2)
+
+This historical report is also superseded by the current canonical rerun. It
+remains useful as transport provenance, but its learned query-address
+promotion is not treated as reproducible current evidence.
 
 The same query-conditioned experiment now runs through
 `AmodalControllerRuntime.step_streams_with_external_history()` rather than a
@@ -1017,7 +1046,7 @@ compression, arbitrary new computation, or general continual learning. Evidence
 is archived in
 `session_records/brainworkshop_external_temporal_query_address_bridge_v2_promoted_2026-08-12/`.
 
-## Related-key temporal content retrieval (2026-08-12)
+## Related-key temporal content retrieval (historical v1; current v2 rejected)
 
 `external_temporal_content_retrieval_growth.py` composes that address
 capability with the canonical persistent append-only content-addressed memory.
@@ -1028,14 +1057,20 @@ and preserve the source capability. Unknown-key no-hit, clear, reload,
 checksum-corruption, frozen-core, frozen-file, and zero-replay controls are
 part of the promotion gate.
 
-Seeds 17 and 18 each reached `1.0000` on both exact and related-key routes;
-the related-key cosine scores were `0.9712`/`0.9870` and `0.9841`/`0.9869`.
-This qualifies one bounded content-addressed retrieval composition, not learned
-compression, capacity management, arbitrary new computation, or general
-continual learning. Evidence and accounting are archived in
-`session_records/brainworkshop_external_temporal_content_retrieval_growth_promoted_2026-08-12/`.
+The historical v1 report used an older random value-basis decoder and is not
+the canonical implementation. The current v2 rerun replaces that decoder with
+`ExternalTemporalAddressIndex`; storage and integrity gates pass, but the
+outcome-only query-conditioned source/target readout remains below mastery.
+It therefore does not qualify learned content retrieval, compression,
+capacity management, arbitrary new computation, or general continual
+learning. The rejection and accounting are archived in
+`session_records/brainworkshop_external_temporal_content_retrieval_canonical_rejected_2026-08-12/`.
 
-## Canonical-bridge related-key retrieval replication (2026-08-12)
+## Canonical-bridge related-key retrieval replication (historical v2)
+
+This historical bridge report is superseded by the current v2 rejection above;
+the transport contract remains canonical, but the learned retrieval result is
+not promoted until it reproduces under the current address-index boundary.
 
 The related-key retrieval composition now consumes temporal events produced by
 the canonical pre-append history bridge. The persistent content-addressed

@@ -1,0 +1,43 @@
+{
+  "schema": "neural-computer.brainworkshop-external-temporal-offset-growth.v1",
+  "status": "promoted_temporal_offset_growth",
+  "seed": 17,
+  "budget": {
+    "updates": 512,
+    "batch_size": 32,
+    "steps": 14,
+    "retention_lifetimes": 4
+  },
+  "architecture": {
+    "controller": "frozen_canonical_amodal_controller",
+    "history_transport": "canonical_runtime_external_history_event_bridge_v2",
+    "history_causality": "read_before_current_append",
+    "history_persistence": "current_tokens_only_transient_prior_context",
+    "bridge_offset_semantics": "logical_lag_minus_one_for_pre_append_relative_read",
+    "address_policy": "external_temporal_offset_selector_v1",
+    "credit": "attempted_bce_output_plus_scalar_offset_policy_credit"
+  },
+  "gate_summary": {
+    "total": 10,
+    "passed": 10,
+    "old_file_retained": true,
+    "old_file_unchanged": true,
+    "wrong_offset_rejects_mastery": true,
+    "missing_history_rejects_mastery": true,
+    "shuffled_outcome_rejects_mastery": true,
+    "frozen_controller": true,
+    "frozen_event_encoder": true,
+    "zero_replayed_examples": true
+  },
+  "accounting": {
+    "unique_verifier_bits": 311296,
+    "control_verifier_bits": 147456,
+    "audit_verifier_bits": 7168,
+    "unique_logical_lifetimes": 32768,
+    "control_logical_lifetimes": 16384,
+    "optimizer_updates": 1024,
+    "control_optimizer_updates": 512,
+    "replayed_examples": 0,
+    "stable_bits_to_threshold": 311296
+  }
+}

@@ -16,7 +16,6 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import tempfile
 from pathlib import Path
 from time import perf_counter
 
@@ -24,9 +23,7 @@ import torch
 from torch.nn import functional as F
 
 from neural_computer import (
-    AppendOnlyContentAddressedMemory,
-    MemoryQuery,
-    PersistentAppendOnlyContentAddressedMemory,
+    ExternalTemporalAddressIndex,
     PersistentOpaqueContextRouteEvidence,
 )
 
@@ -47,7 +44,7 @@ from .external_temporal_query_address_growth import (
 )
 
 CONTENT_RETRIEVAL_SCHEMA = (
-    "neural-computer.brainworkshop-external-temporal-content-retrieval-growth.v1"
+    "neural-computer.brainworkshop-external-temporal-content-retrieval-growth.v2"
 )
 MASTERY_THRESHOLD = 0.80
 READ_MATCH_THRESHOLD = 0.75
@@ -70,13 +67,6 @@ def _event_key(system, symbol: int) -> torch.Tensor:
     return encoder(torch.tensor([symbol], dtype=torch.long))[0].detach()
 
 
-def _address_basis(seed: int) -> torch.Tensor:
-    generator = torch.Generator().manual_seed(seed + 8_101)
-    return F.normalize(
-        torch.randn(MAX_OFFSET, EVENT_WIDTH, generator=generator), dim=-1
-    )
-
-
 def _noisy_key(key: torch.Tensor, *, seed: int, scale: float = NOISE_SCALE) -> torch.Tensor:
     generator = torch.Generator().manual_seed(seed + 8_307)
     noise = torch.randn(key.shape, generator=generator) * scale
@@ -84,26 +74,21 @@ def _noisy_key(key: torch.Tensor, *, seed: int, scale: float = NOISE_SCALE) -> t
 
 
 def _read_address(
-    memory: AppendOnlyContentAddressedMemory,
+    memory: ExternalTemporalAddressIndex,
     key: torch.Tensor,
-    basis: torch.Tensor,
 ) -> dict[str, object]:
-    read = memory.read(MemoryQuery(key.unsqueeze(0), top_k=1))
+    read = memory.read(key.unsqueeze(0), top_k=1)
     hit = bool(read.hit[0])
     if not hit:
         return {
             "hit": False,
-            "score": float(read.scores[0, 0])
-            if read.scores.shape[1]
-            else float("-inf"),
-            "resolved_offset": None,
+            "score": float(read.scores[0, 0]),
+            "resolved_position": None,
         }
-    value = F.normalize(read.value[0], dim=0)
-    scores = basis @ value
     return {
         "hit": True,
         "score": float(read.scores[0, 0]),
-        "resolved_offset": int(scores.argmax()) + 1,
+        "resolved_position": int(read.target_positions[0, 0]),
     }
 
 
@@ -111,8 +96,7 @@ def _probe(
     system,
     file: ExternalTemporalCapabilityFile,
     evidence: PersistentOpaqueContextRouteEvidence,
-    memory: AppendOnlyContentAddressedMemory,
-    basis: torch.Tensor,
+    memory: ExternalTemporalAddressIndex,
     *,
     label: str,
     key: torch.Tensor,
@@ -123,9 +107,9 @@ def _probe(
     seed: int,
     lifetimes: int,
 ) -> dict[str, object]:
-    route = _read_address(memory, key, basis)
-    offset = route["resolved_offset"]
-    if offset is None:
+    route = _read_address(memory, key)
+    position = route["resolved_position"]
+    if position is None:
         return {
             "label": label,
             "route": route,
@@ -142,7 +126,7 @@ def _probe(
         data_steps=data_steps,
         seed=seed,
         lifetimes=lifetimes,
-        forced_offset=int(offset),
+        forced_offset=int(position) + 1,
     )
     return {
         "label": label,
@@ -246,112 +230,100 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     key_source = _event_key(system, SOURCE_QUERY)
     key_target = _event_key(system, TARGET_QUERY)
     key_unknown = _event_key(system, UNKNOWN_QUERY)
-    basis = _address_basis(args.seed)
-    source_offset = int(evidence.preferred_order(key_source)[0]) + 1
-    target_offset = int(evidence.preferred_order(key_target)[0]) + 1
+    source_position = int(evidence.preferred_order(key_source)[0])
+    target_position = int(evidence.preferred_order(key_target)[0])
+    source_offset = source_position + 1
+    target_offset = target_position + 1
     keys = torch.stack((key_source, key_target))
-    values = torch.stack((basis[source_offset - 1], basis[target_offset - 1]))
-    strength = torch.ones(2)
     noisy_source = _noisy_key(key_source, seed=args.seed + 1)
     noisy_target = _noisy_key(key_target, seed=args.seed + 2)
-    with tempfile.TemporaryDirectory(prefix="neural-computer-content-memory-") as directory:
-        path = Path(directory) / "content-memory.pt"
-        memory = PersistentAppendOnlyContentAddressedMemory(
-            EVENT_WIDTH,
-            path=path,
-            write_threshold=0.0,
-            write_match_threshold=0.999,
-            read_match_threshold=READ_MATCH_THRESHOLD,
-        )
-        receipt = memory.write(keys, values, strength)
-        exact_source = _probe(
-            system,
-            file,
-            evidence,
-            memory,
-            basis,
-            label="exact_source",
-            key=key_source,
-            query_symbol=SOURCE_QUERY,
-            depth=SOURCE_DEPTH,
-            batch_size=args.batch_size,
-            data_steps=args.data_steps,
-            seed=args.seed + 50_000,
-            lifetimes=args.retention_lifetimes,
-        )
-        exact_target = _probe(
-            system,
-            file,
-            evidence,
-            memory,
-            basis,
-            label="exact_target",
-            key=key_target,
-            query_symbol=TARGET_QUERY,
-            depth=TARGET_DEPTH,
-            batch_size=args.batch_size,
-            data_steps=args.data_steps,
-            seed=args.seed + 60_000,
-            lifetimes=args.retention_lifetimes,
-        )
-        noisy_source_result = _probe(
-            system,
-            file,
-            evidence,
-            memory,
-            basis,
-            label="noisy_source",
-            key=noisy_source,
-            query_symbol=SOURCE_QUERY,
-            depth=SOURCE_DEPTH,
-            batch_size=args.batch_size,
-            data_steps=args.data_steps,
-            seed=args.seed + 70_000,
-            lifetimes=args.retention_lifetimes,
-        )
-        noisy_target_result = _probe(
-            system,
-            file,
-            evidence,
-            memory,
-            basis,
-            label="noisy_target",
-            key=noisy_target,
-            query_symbol=TARGET_QUERY,
-            depth=TARGET_DEPTH,
-            batch_size=args.batch_size,
-            data_steps=args.data_steps,
-            seed=args.seed + 80_000,
-            lifetimes=args.retention_lifetimes,
-        )
-        unknown_route = _read_address(memory, key_unknown, basis)
-        restored = PersistentAppendOnlyContentAddressedMemory(
-            EVENT_WIDTH,
-            path=path,
-            write_threshold=0.0,
-            write_match_threshold=0.999,
-            read_match_threshold=READ_MATCH_THRESHOLD,
-        )
-        restored_noisy_source = _read_address(restored, noisy_source, basis)
-        restored_noisy_target = _read_address(restored, noisy_target, basis)
-        memory_record_count_before_clear = memory.record_count
-        corrupted = False
-        corrupt_path = Path(directory) / "corrupt-content-memory.pt"
-        payload = torch.load(path, weights_only=False)
-        payload["state_dict"]["values"][0, 0] += 0.25
-        torch.save(payload, corrupt_path)
-        try:
-            PersistentAppendOnlyContentAddressedMemory(
-                EVENT_WIDTH,
-                path=corrupt_path,
-                write_threshold=0.0,
-                write_match_threshold=0.999,
-                read_match_threshold=READ_MATCH_THRESHOLD,
-            )
-        except ValueError as error:
-            corrupted = "checksum" in str(error).lower()
-        memory.clear()
-        cleared = _read_address(memory, key_source, basis)
+    memory = ExternalTemporalAddressIndex(
+        EVENT_WIDTH,
+        write_match_threshold=0.999,
+        read_match_threshold=READ_MATCH_THRESHOLD,
+    )
+    receipt = memory.write(
+        keys,
+        target_scopes=torch.zeros(2, dtype=torch.long),
+        target_positions=torch.tensor(
+            [source_position, target_position], dtype=torch.long
+        ),
+        strength=torch.ones(2),
+    )
+    exact_source = _probe(
+        system,
+        file,
+        evidence,
+        memory,
+        label="exact_source",
+        key=key_source,
+        query_symbol=SOURCE_QUERY,
+        depth=SOURCE_DEPTH,
+        batch_size=args.batch_size,
+        data_steps=args.data_steps,
+        seed=args.seed + 50_000,
+        lifetimes=args.retention_lifetimes,
+    )
+    exact_target = _probe(
+        system,
+        file,
+        evidence,
+        memory,
+        label="exact_target",
+        key=key_target,
+        query_symbol=TARGET_QUERY,
+        depth=TARGET_DEPTH,
+        batch_size=args.batch_size,
+        data_steps=args.data_steps,
+        seed=args.seed + 60_000,
+        lifetimes=args.retention_lifetimes,
+    )
+    noisy_source_result = _probe(
+        system,
+        file,
+        evidence,
+        memory,
+        label="noisy_source",
+        key=noisy_source,
+        query_symbol=SOURCE_QUERY,
+        depth=SOURCE_DEPTH,
+        batch_size=args.batch_size,
+        data_steps=args.data_steps,
+        seed=args.seed + 70_000,
+        lifetimes=args.retention_lifetimes,
+    )
+    noisy_target_result = _probe(
+        system,
+        file,
+        evidence,
+        memory,
+        label="noisy_target",
+        key=noisy_target,
+        query_symbol=TARGET_QUERY,
+        depth=TARGET_DEPTH,
+        batch_size=args.batch_size,
+        data_steps=args.data_steps,
+        seed=args.seed + 80_000,
+        lifetimes=args.retention_lifetimes,
+    )
+    unknown_route = _read_address(memory, key_unknown)
+    restored = ExternalTemporalAddressIndex.from_payload(memory.payload())
+    restored_noisy_source = _read_address(restored, noisy_source)
+    restored_noisy_target = _read_address(restored, noisy_target)
+    memory_record_count_before_clear = memory.record_count
+    corrupted = False
+    corrupted_payload = memory.payload()
+    corrupted_state = corrupted_payload["state"]
+    if not isinstance(corrupted_state, dict):
+        raise TypeError("address-index payload state is not a mapping")
+    corrupted_state["keys"] = corrupted_state["keys"].clone()
+    corrupted_state["keys"][0, 0] += 0.25
+    try:
+        ExternalTemporalAddressIndex.from_payload(corrupted_payload)
+    except ValueError as error:
+        corrupted = "checksum" in str(error).lower()
+    memory.clear()
+    cleared = _read_address(memory, key_source)
     controller_after = _digest(system.agent.controller)
     encoder_after = _digest(system.agent.runtime.encoders["stimulus"])
     source_file_digest = file.digest()
@@ -370,21 +342,23 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         >= MASTERY_THRESHOLD,
         "two_routes_written": bool(receipt.committed.all())
         and memory_record_count_before_clear == 2,
-        "exact_source_retrieves_correct_route": exact_source["route"]["resolved_offset"]
-        == source_offset
+        "exact_source_retrieves_correct_route": exact_source["route"][
+            "resolved_position"
+        ]
+        == source_position
         and float(exact_source["accuracy"]) >= MASTERY_THRESHOLD,
-        "exact_target_retrieves_correct_route": exact_target["route"]["resolved_offset"]
-        == target_offset
+        "exact_target_retrieves_correct_route": exact_target["route"][
+            "resolved_position"
+        ]
+        == target_position
         and float(exact_target["accuracy"]) >= MASTERY_THRESHOLD,
         "noisy_source_retrieves_correct_route": noisy_source_result["route"][
-            "resolved_offset"
-        ]
-        == source_offset
+            "resolved_position"
+        ] == source_position
         and float(noisy_source_result["accuracy"]) >= MASTERY_THRESHOLD,
         "noisy_target_retrieves_correct_route": noisy_target_result["route"][
-            "resolved_offset"
-        ]
-        == target_offset
+            "resolved_position"
+        ] == target_position
         and float(noisy_target_result["accuracy"]) >= MASTERY_THRESHOLD,
         "unknown_key_is_not_claimed": not bool(unknown_route["hit"]),
         "clear_memory_removes_hits": not bool(cleared["hit"]),
@@ -426,10 +400,13 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "bridge_offset_semantics": (
                 "logical_lag_minus_one_for_pre_append_relative_read"
             ),
-            "address_memory": "persistent_append_only_content_addressed_memory_v1",
+            "address_memory": "external_temporal_address_index_v2",
+            "address_location": "opaque_scope_plus_stable_absolute_position",
             "query": "learned_event_tensor_plus_related_noise",
             "read_match_threshold": READ_MATCH_THRESHOLD,
             "noise_scale": NOISE_SCALE,
+            "source_position": source_position,
+            "target_position": target_position,
             "source_offset": source_offset,
             "target_offset": target_offset,
         },

@@ -29,11 +29,11 @@ from neural_computer import (
 )
 
 from .external_temporal_content_retrieval_growth import (
-    _address_basis,
     _digest,
     _event_key,
     _noisy_key,
 )
+from .external_temporal_legacy_support import address_basis
 from .external_temporal_query_address_growth import _build
 from .external_temporal_verified_compaction_growth import _candidate_verifier
 
@@ -68,7 +68,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     source_key = _event_key(system, 0)
     source_alias = _noisy_key(source_key, seed=args.seed + 1)
     target_key = _event_key(system, 1)
-    basis = _address_basis(args.seed)
+    basis = address_basis(args.seed)
     live_keys = torch.stack((source_key, source_alias, target_key))
     live_values = torch.stack(
         (basis[SOURCE_OFFSET - 1], basis[SOURCE_OFFSET - 1], basis[TARGET_OFFSET - 1])

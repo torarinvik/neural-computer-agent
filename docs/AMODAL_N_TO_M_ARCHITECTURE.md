@@ -10261,6 +10261,8 @@ content keys while protecting earlier files.
 
 Evidence and accounting are archived in
 `session_records/brainworkshop_external_temporal_offset_growth_promoted_2026-08-12/`.
+The seed-17 canonical read-before-append revalidation is archived separately
+in `session_records/brainworkshop_external_temporal_offset_canonical_bridge_revalidated_2026-08-12/`.
 
 ## Context-conditioned temporal route growth
 
@@ -10286,7 +10288,28 @@ useful addresses (or content keys), followed by learned compression and
 capacity pressure. Evidence and accounting are archived in
 `session_records/brainworkshop_external_temporal_context_route_growth_promoted_2026-08-12/`.
 
-## Same-cue query-conditioned temporal address growth
+### Canonical opaque address-index materialization (2026-08-12)
+
+The context-conditioned route rung now materializes its verifier-gated route
+decisions in `ExternalTemporalAddressIndex`. Exact and nearby learned event
+keys resolve to stable opaque target positions; unknown keys miss, reload is
+exact, checksum corruption is rejected, and clear removes the rows. The seed
+17 `512 + 512` canonical rung passed all `27/27` gates with a frozen controller
+and event encoder, `461,312` unique verifier bits, `49,408` logical lifetimes,
+`1,024` optimizer updates, and zero replay.
+
+This is a storage/interface promotion after learned route mastery, not learned
+address discovery. Same-context content search, compression, unrestricted
+growth, and general continual learning remain unpromoted. Evidence and the
+separate ledger are in
+`session_records/brainworkshop_external_temporal_context_address_index_promoted_2026-08-12/`.
+
+## Same-cue query-conditioned temporal address growth (historical v1)
+
+The earlier promotion below is retained for provenance. The current canonical
+outcome-only rerun does not reproduce its learned mastery at the present
+training boundary, although the storage controls remain valid; it is not
+current evidence for general continual learning.
 
 The stronger address test holds the rendered cue constant and varies only a
 learned query event. A source external capability file first acquires a
@@ -10305,7 +10328,7 @@ unseen-but-related keys, learned compression, unrestricted memory growth, or
 general continual learning. Evidence and accounting are archived in
 `session_records/brainworkshop_external_temporal_query_address_growth_promoted_2026-08-12/`.
 
-## Related-key temporal content retrieval (2026-08-12)
+## Related-key temporal content retrieval (historical v1; current v2 rejected)
 
 The next composition uses the canonical persistent
 `AppendOnlyContentAddressedMemory` rather than a route table alone. Two
@@ -10315,17 +10338,14 @@ the controller and event encoder remain frozen throughout retrieval. Exact
 queries and nearby learned-event queries, produced by a fixed 20% normalized
 perturbation, must recover offsets 4 and 5 through cosine content addressing.
 
-Across seeds `17` and `18`, source and target reached `1.0000` for both exact
-and related-key reads. The memory returned an explicit no-hit for an unknown
-key, preserved related-key routes across an exact reload, removed hits after
-clear, and rejected a checksum-corrupted snapshot. The controller, event
-encoder, and capability file digests were unchanged and replay was zero. This
-is a useful ABI and retrieval result, but it remains bounded content-addressed
-composition:
-it does not qualify learned compression, capacity management, arbitrary new
-computation, or general continual learning. Evidence and accounting are
-archived in
-`session_records/brainworkshop_external_temporal_content_retrieval_growth_promoted_2026-08-12/`.
+The historical v1 report used an older random value-basis decoder and is not
+the canonical implementation. The current v2 rerun replaces that decoder with
+`ExternalTemporalAddressIndex`; storage and integrity gates pass, but the
+outcome-only query-conditioned source/target readout remains below mastery.
+It therefore does not qualify learned content retrieval, compression,
+capacity management, arbitrary new computation, or general continual
+learning. The rejection and accounting are archived in
+`session_records/brainworkshop_external_temporal_content_retrieval_canonical_rejected_2026-08-12/`.
 
 ## Verified external temporal-memory compaction (2026-08-12)
 
