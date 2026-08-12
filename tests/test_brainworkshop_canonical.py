@@ -424,6 +424,15 @@ def test_external_temporal_query_address_growth_smoke_freezes_readout_on_growth(
     assert report["schema"] == (
         "neural-computer.brainworkshop-external-temporal-query-address-growth.v1"
     )
+    assert report["architecture"]["history_transport"] == (
+        "canonical_runtime_external_history_event_bridge_v1"
+    )
+    assert report["architecture"]["history_causality"] == (
+        "read_before_current_append"
+    )
+    assert report["architecture"]["address_selection"] == (
+        "one_opaque_logical_lag_per_query"
+    )
     assert report["gates"]["readout_frozen_during_growth"]
     assert report["gates"]["route_reload_exact"]
     assert report["gates"]["controller_frozen"]

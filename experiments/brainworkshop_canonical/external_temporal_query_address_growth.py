@@ -220,16 +220,31 @@ def _episode(
     rewards: list[torch.Tensor] = []
     eligible: list[torch.Tensor] = []
     while not verifier.done:
+        if reset_memory_each_step:
+            history.clear()
+        if selected_offset is None:
+            bridge_offset = 0
+        else:
+            # The public route stores the logical lag (1 = immediately prior
+            # event).  The canonical bridge reads before appending the current
+            # event, so its relative offset is one smaller.
+            bridge_offset = selected_offset - 1
+        offsets = torch.full(
+            (batch_size, 1), bridge_offset, dtype=torch.long
+        )
         with torch.no_grad():
-            collection = agent.runtime.encode_streams(
-                {"stimulus": verifier.observation()}
-            )
-            controller_output, controller_state = agent.runtime.step_events(
-                collection, controller_state, feedback
+            controller_output, controller_state, bridge = (
+                agent.runtime.step_streams_with_external_history(
+                    {"stimulus": verifier.observation()},
+                    controller_state,
+                    feedback,
+                    history,
+                    offsets,
+                    history_scope=scope,
+                )
             )
         del controller_output
-        event = collection.payload[:, 0].detach()
-        history.append(event, scope=scope)
+        event = bridge.events.payload[:, 0].detach()
         if verifier.position == 1:
             context = event[0].clone()
             if forced_offset is None:
@@ -243,18 +258,8 @@ def _episode(
                 if not 1 <= forced_offset <= MAX_OFFSET:
                     raise ValueError("forced temporal offset is outside the domain")
                 selected_offset = forced_offset
-        if selected_offset is None:
-            read_offset = 1
-        else:
-            read_offset = selected_offset
-        if reset_memory_each_step:
-            history.clear()
-        offsets = torch.full(
-            (batch_size, 1), read_offset, dtype=torch.long
-        )
-        read = history.read_relative(offsets, scope=scope)
-        retrieved = read.values[:, 0]
-        present = read.present[:, 0].to(event.dtype).unsqueeze(-1)
+        retrieved = bridge.events.payload[:, 1]
+        present = bridge.events.present[:, 1].to(event.dtype).unsqueeze(-1)
         logits = file.readout(torch.cat((event, retrieved, present), dim=-1))
         probabilities = logits.softmax(dim=-1)
         if train:
@@ -325,6 +330,8 @@ def _global_source_episode(
     scope = torch.arange(batch_size, dtype=torch.long)
     history = ExternalTemporalHistoryMemory(EVENT_WIDTH, scope_capacity=batch_size)
     selected_offsets: torch.Tensor | None = None
+    selected_log_probability: torch.Tensor | None = None
+    selected_entropy: torch.Tensor | None = None
     log_probabilities: list[torch.Tensor] = []
     entropies: list[torch.Tensor] = []
     context: torch.Tensor | None = None
@@ -332,33 +339,54 @@ def _global_source_episode(
     rewards: list[torch.Tensor] = []
     eligible: list[torch.Tensor] = []
     while not verifier.done:
+        if selected_offsets is None:
+            bridge_offsets = torch.zeros(batch_size, dtype=torch.long)
+        else:
+            # ``ExternalTemporalOffsetSelector`` exposes logical lags starting
+            # at one; the pre-append bridge receives the corresponding
+            # previous-record offset starting at zero.
+            bridge_offsets = selected_offsets - 1
+        offsets = bridge_offsets[:, None]
         with torch.no_grad():
-            collection = agent.runtime.encode_streams(
-                {"stimulus": verifier.observation()}
-            )
-            controller_output, controller_state = agent.runtime.step_events(
-                collection, controller_state, feedback
+            controller_output, controller_state, bridge = (
+                agent.runtime.step_streams_with_external_history(
+                    {"stimulus": verifier.observation()},
+                    controller_state,
+                    feedback,
+                    history,
+                    offsets,
+                    history_scope=scope,
+                )
             )
         del controller_output
-        event = collection.payload[:, 0].detach()
-        history.append(event, scope=scope)
+        event = bridge.events.payload[:, 0].detach()
         if verifier.position == 1:
             context = event[0].clone()
-        if verifier.position >= 1:
-            selected_offsets, log_probability, entropy = file.offset_selector(
+        if verifier.position == 1:
+            (
+                selected_offsets,
+                selected_log_probability,
+                selected_entropy,
+            ) = file.offset_selector(
                 batch_size,
                 sample=train,
             )
-        else:
+        elif selected_offsets is None:
             selected_offsets = torch.ones(batch_size, dtype=torch.long)
-            log_probability = torch.zeros(batch_size)
-            entropy = torch.zeros(())
+            selected_log_probability = torch.zeros(batch_size)
+            selected_entropy = torch.zeros(())
+        if selected_log_probability is None or selected_entropy is None:
+            raise RuntimeError("temporal offset policy was not initialized")
+        # A capability address is selected once for this opaque query and then
+        # reused for the whole episode.  Re-sampling on every tick turns one
+        # temporal relation into unrelated per-step bandits and needlessly
+        # destroys the scalar credit signal.
+        log_probability = selected_log_probability
+        entropy = selected_entropy
         log_probabilities.append(log_probability)
         entropies.append(entropy)
-        offsets = selected_offsets
-        read = history.read_relative(offsets[:, None], scope=scope)
-        retrieved = read.values[:, 0]
-        present = read.present[:, 0].to(event.dtype).unsqueeze(-1)
+        retrieved = bridge.events.payload[:, 1]
+        present = bridge.events.present[:, 1].to(event.dtype).unsqueeze(-1)
         logits = file.readout(torch.cat((event, retrieved, present), dim=-1))
         probabilities = logits.softmax(dim=-1)
         if train:
@@ -802,7 +830,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "schema": QUERY_ADDRESS_SCHEMA,
         "claim_boundary": (
             "Outcome-only acquisition of multiple query-conditioned temporal "
-            "offsets under one rendered cue with a frozen readout; not "
+            "offsets through the canonical pre-append history bridge under one "
+            "rendered cue with a frozen readout; not "
             "content search, learned compression, unrestricted memory growth, "
             "arbitrary new computation, or general continual learning."
         ),
@@ -810,6 +839,14 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "controller": "frozen_canonical_amodal_controller",
             "event_encoder": "frozen_learned_event_encoder",
             "readout": "external_temporal_capability_file_frozen_before_target",
+            "history_transport": (
+                "canonical_runtime_external_history_event_bridge_v1"
+            ),
+            "history_causality": "read_before_current_append",
+            "bridge_offset_semantics": (
+                "logical_lag_minus_one_for_pre_append_relative_read"
+            ),
+            "address_selection": "one_opaque_logical_lag_per_query",
             "address_memory": "persistent_opaque_context_route_evidence_v1",
             "address_key": "learned_query_event_tensor",
             "route_feedback": "terminal_scalar_episode_accuracy_only",

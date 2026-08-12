@@ -975,6 +975,31 @@ query keys, followed by learned compression and capacity pressure. Evidence
 and accounting are archived in
 `session_records/brainworkshop_external_temporal_query_address_growth_promoted_2026-08-12/`.
 
+## Canonical-bridge query addressing replication (2026-08-12)
+
+The same query-conditioned experiment now runs through
+`AmodalControllerRuntime.step_streams_with_external_history()` rather than a
+parallel manual append/read path. Logical lags remain the public opaque
+addresses (`4` and `5`); the bridge receives `3` and `4` because it reads the
+prior history before appending the current event. The address is selected once
+per query and reused for the episode, which gives scalar terminal credit a
+consistent temporal target.
+
+With `256` source and `256` target updates, seeds `17` and `18` both passed all
+`14/14` gates: source retention, target acquisition, lags `4`/`5`, unknown and
+wrong-address rejection, missing-history rejection, shuffled-outcome rejection,
+exact route reload, frozen readout/controller/frontend, and zero replay. Seed
+`17` reached `1.0000` on every retained source and target lifetime; seed `18`
+reached minimum retained accuracies `0.921875` and `0.90625`. Each seed consumed
+`158,208` unique verifier bits, `16,640` logical lifetimes, `256` optimizer
+updates, and `264` external route-memory updates.
+
+This promotes canonical transport integration plus bounded query-conditioned
+external addressing. It still does not establish learned unrestricted search,
+compression, arbitrary new computation, or general continual learning. Evidence
+is archived in
+`session_records/brainworkshop_external_temporal_query_address_bridge_promoted_2026-08-12/`.
+
 ## Related-key temporal content retrieval (2026-08-12)
 
 `external_temporal_content_retrieval_growth.py` composes that address

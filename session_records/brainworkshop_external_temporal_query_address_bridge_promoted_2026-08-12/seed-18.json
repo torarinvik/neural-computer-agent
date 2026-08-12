@@ -1,0 +1,621 @@
+{
+  "schema": "neural-computer.brainworkshop-external-temporal-query-address-growth.v1",
+  "claim_boundary": "Outcome-only acquisition of multiple query-conditioned temporal offsets through the canonical pre-append history bridge under one rendered cue with a frozen readout; not content search, learned compression, unrestricted memory growth, arbitrary new computation, or general continual learning.",
+  "architecture": {
+    "controller": "frozen_canonical_amodal_controller",
+    "event_encoder": "frozen_learned_event_encoder",
+    "readout": "external_temporal_capability_file_frozen_before_target",
+    "history_transport": "canonical_runtime_external_history_event_bridge_v1",
+    "history_causality": "read_before_current_append",
+    "bridge_offset_semantics": "logical_lag_minus_one_for_pre_append_relative_read",
+    "address_selection": "one_opaque_logical_lag_per_query",
+    "address_memory": "persistent_opaque_context_route_evidence_v1",
+    "address_key": "learned_query_event_tensor",
+    "route_feedback": "terminal_scalar_episode_accuracy_only",
+    "cue_symbol": 12,
+    "source_query": 0,
+    "target_query": 1,
+    "source_offset": 4,
+    "target_offset": 5,
+    "max_offset": 8
+  },
+  "seed": 18,
+  "source_history_tail": [
+    {
+      "update": 252,
+      "accuracy": 0.746874988079071,
+      "selected_offset": 4,
+      "unique_verifier_bits": 320,
+      "replayed_examples": 0
+    },
+    {
+      "update": 253,
+      "accuracy": 0.7468750476837158,
+      "selected_offset": 4,
+      "unique_verifier_bits": 320,
+      "replayed_examples": 0
+    },
+    {
+      "update": 254,
+      "accuracy": 0.7593749761581421,
+      "selected_offset": 4,
+      "unique_verifier_bits": 320,
+      "replayed_examples": 0
+    },
+    {
+      "update": 255,
+      "accuracy": 0.721875011920929,
+      "selected_offset": 4,
+      "unique_verifier_bits": 320,
+      "replayed_examples": 0
+    },
+    {
+      "update": 256,
+      "accuracy": 0.715624988079071,
+      "selected_offset": 4,
+      "unique_verifier_bits": 320,
+      "replayed_examples": 0
+    }
+  ],
+  "source_route_history_tail": [
+    {
+      "lifetime": 4,
+      "accuracy": 0.9218749403953552,
+      "selected_offset": 4,
+      "unique_verifier_bits": 320,
+      "replayed_examples": 0
+    },
+    {
+      "lifetime": 5,
+      "accuracy": 0.925000011920929,
+      "selected_offset": 4,
+      "unique_verifier_bits": 320,
+      "replayed_examples": 0
+    },
+    {
+      "lifetime": 6,
+      "accuracy": 0.9312500357627869,
+      "selected_offset": 4,
+      "unique_verifier_bits": 320,
+      "replayed_examples": 0
+    },
+    {
+      "lifetime": 7,
+      "accuracy": 0.925000011920929,
+      "selected_offset": 4,
+      "unique_verifier_bits": 320,
+      "replayed_examples": 0
+    },
+    {
+      "lifetime": 8,
+      "accuracy": 0.9093749523162842,
+      "selected_offset": 4,
+      "unique_verifier_bits": 320,
+      "replayed_examples": 0
+    }
+  ],
+  "target_history_tail": [
+    {
+      "update": 252,
+      "accuracy": 0.6666666865348816,
+      "selected_offset": 2,
+      "observed_outcome": 0.6666666865348816,
+      "unique_verifier_bits": 288,
+      "replayed_examples": 0
+    },
+    {
+      "update": 253,
+      "accuracy": 0.9270833134651184,
+      "selected_offset": 5,
+      "observed_outcome": 0.9270833134651184,
+      "unique_verifier_bits": 288,
+      "replayed_examples": 0
+    },
+    {
+      "update": 254,
+      "accuracy": 0.6805555820465088,
+      "selected_offset": 1,
+      "observed_outcome": 0.6805555820465088,
+      "unique_verifier_bits": 288,
+      "replayed_examples": 0
+    },
+    {
+      "update": 255,
+      "accuracy": 0.6319444179534912,
+      "selected_offset": 8,
+      "observed_outcome": 0.6319444179534912,
+      "unique_verifier_bits": 288,
+      "replayed_examples": 0
+    },
+    {
+      "update": 256,
+      "accuracy": 0.9548611044883728,
+      "selected_offset": 5,
+      "observed_outcome": 0.9548611044883728,
+      "unique_verifier_bits": 288,
+      "replayed_examples": 0
+    }
+  ],
+  "shuffled_history_tail": [
+    {
+      "update": 252,
+      "accuracy": 0.65625,
+      "selected_offset": 1,
+      "observed_outcome": 0.6111111044883728,
+      "unique_verifier_bits": 288,
+      "replayed_examples": 0
+    },
+    {
+      "update": 253,
+      "accuracy": 0.6458333134651184,
+      "selected_offset": 1,
+      "observed_outcome": 0.65625,
+      "unique_verifier_bits": 288,
+      "replayed_examples": 0
+    },
+    {
+      "update": 254,
+      "accuracy": 0.6770833134651184,
+      "selected_offset": 8,
+      "observed_outcome": 0.6458333134651184,
+      "unique_verifier_bits": 288,
+      "replayed_examples": 0
+    },
+    {
+      "update": 255,
+      "accuracy": 0.6423611044883728,
+      "selected_offset": 4,
+      "observed_outcome": 0.6770833134651184,
+      "unique_verifier_bits": 288,
+      "replayed_examples": 0
+    },
+    {
+      "update": 256,
+      "accuracy": 0.7013888955116272,
+      "selected_offset": 6,
+      "observed_outcome": 0.6423611044883728,
+      "unique_verifier_bits": 288,
+      "replayed_examples": 0
+    }
+  ],
+  "evaluation": {
+    "source_before": [
+      {
+        "lifetime": 1,
+        "accuracy": 0.9281250238418579,
+        "selected_offset": 4,
+        "unique_verifier_bits": 320,
+        "replayed_examples": 0
+      },
+      {
+        "lifetime": 2,
+        "accuracy": 0.940625011920929,
+        "selected_offset": 4,
+        "unique_verifier_bits": 320,
+        "replayed_examples": 0
+      },
+      {
+        "lifetime": 3,
+        "accuracy": 0.921875,
+        "selected_offset": 4,
+        "unique_verifier_bits": 320,
+        "replayed_examples": 0
+      },
+      {
+        "lifetime": 4,
+        "accuracy": 0.925000011920929,
+        "selected_offset": 4,
+        "unique_verifier_bits": 320,
+        "replayed_examples": 0
+      }
+    ],
+    "source_after": [
+      {
+        "lifetime": 1,
+        "accuracy": 0.9281250238418579,
+        "selected_offset": 4,
+        "unique_verifier_bits": 320,
+        "replayed_examples": 0
+      },
+      {
+        "lifetime": 2,
+        "accuracy": 0.940625011920929,
+        "selected_offset": 4,
+        "unique_verifier_bits": 320,
+        "replayed_examples": 0
+      },
+      {
+        "lifetime": 3,
+        "accuracy": 0.921875,
+        "selected_offset": 4,
+        "unique_verifier_bits": 320,
+        "replayed_examples": 0
+      },
+      {
+        "lifetime": 4,
+        "accuracy": 0.925000011920929,
+        "selected_offset": 4,
+        "unique_verifier_bits": 320,
+        "replayed_examples": 0
+      }
+    ],
+    "target_after": [
+      {
+        "lifetime": 1,
+        "accuracy": 0.9513888955116272,
+        "selected_offset": 5,
+        "unique_verifier_bits": 288,
+        "replayed_examples": 0
+      },
+      {
+        "lifetime": 2,
+        "accuracy": 0.9583333134651184,
+        "selected_offset": 5,
+        "unique_verifier_bits": 288,
+        "replayed_examples": 0
+      },
+      {
+        "lifetime": 3,
+        "accuracy": 0.90625,
+        "selected_offset": 5,
+        "unique_verifier_bits": 288,
+        "replayed_examples": 0
+      },
+      {
+        "lifetime": 4,
+        "accuracy": 0.9513888955116272,
+        "selected_offset": 5,
+        "unique_verifier_bits": 288,
+        "replayed_examples": 0
+      }
+    ],
+    "unknown_query": [
+      {
+        "lifetime": 1,
+        "accuracy": 0.6354166865348816,
+        "selected_offset": 1,
+        "unique_verifier_bits": 288,
+        "replayed_examples": 0
+      },
+      {
+        "lifetime": 2,
+        "accuracy": 0.6493055820465088,
+        "selected_offset": 1,
+        "unique_verifier_bits": 288,
+        "replayed_examples": 0
+      },
+      {
+        "lifetime": 3,
+        "accuracy": 0.6631944179534912,
+        "selected_offset": 1,
+        "unique_verifier_bits": 288,
+        "replayed_examples": 0
+      },
+      {
+        "lifetime": 4,
+        "accuracy": 0.65625,
+        "selected_offset": 1,
+        "unique_verifier_bits": 288,
+        "replayed_examples": 0
+      }
+    ],
+    "wrong_offset": [
+      {
+        "lifetime": 1,
+        "accuracy": 0.6493055820465088,
+        "selected_offset": 1,
+        "unique_verifier_bits": 288,
+        "replayed_examples": 0
+      },
+      {
+        "lifetime": 2,
+        "accuracy": 0.6944444179534912,
+        "selected_offset": 1,
+        "unique_verifier_bits": 288,
+        "replayed_examples": 0
+      },
+      {
+        "lifetime": 3,
+        "accuracy": 0.6979166865348816,
+        "selected_offset": 1,
+        "unique_verifier_bits": 288,
+        "replayed_examples": 0
+      },
+      {
+        "lifetime": 4,
+        "accuracy": 0.6458333134651184,
+        "selected_offset": 1,
+        "unique_verifier_bits": 288,
+        "replayed_examples": 0
+      }
+    ],
+    "missing_history": [
+      {
+        "lifetime": 1,
+        "accuracy": 0.7569444179534912,
+        "selected_offset": 5,
+        "unique_verifier_bits": 288,
+        "replayed_examples": 0
+      },
+      {
+        "lifetime": 2,
+        "accuracy": 0.7673611044883728,
+        "selected_offset": 5,
+        "unique_verifier_bits": 288,
+        "replayed_examples": 0
+      },
+      {
+        "lifetime": 3,
+        "accuracy": 0.75,
+        "selected_offset": 5,
+        "unique_verifier_bits": 288,
+        "replayed_examples": 0
+      },
+      {
+        "lifetime": 4,
+        "accuracy": 0.7465277910232544,
+        "selected_offset": 5,
+        "unique_verifier_bits": 288,
+        "replayed_examples": 0
+      }
+    ],
+    "shuffled_outcome": [
+      {
+        "lifetime": 1,
+        "accuracy": 0.6701388955116272,
+        "selected_offset": 1,
+        "unique_verifier_bits": 288,
+        "replayed_examples": 0
+      },
+      {
+        "lifetime": 2,
+        "accuracy": 0.65625,
+        "selected_offset": 1,
+        "unique_verifier_bits": 288,
+        "replayed_examples": 0
+      },
+      {
+        "lifetime": 3,
+        "accuracy": 0.6423611044883728,
+        "selected_offset": 1,
+        "unique_verifier_bits": 288,
+        "replayed_examples": 0
+      },
+      {
+        "lifetime": 4,
+        "accuracy": 0.6388888955116272,
+        "selected_offset": 1,
+        "unique_verifier_bits": 288,
+        "replayed_examples": 0
+      }
+    ],
+    "source_file_digest": "1cead6b76135030893d83693e93604e590c0caaaf5a1aec571b1ed5e8f4ee071",
+    "route_payload": {
+      "schema": "neural-computer.persistent-opaque-context-route-evidence.v1",
+      "width": 16,
+      "matching_tolerance": 1e-05,
+      "prior_strength": 1.0,
+      "mastery_threshold": 0.8,
+      "min_mastery_observations": 8,
+      "reversal_threshold": 0.5,
+      "reversal_patience": 4,
+      "slot_count": 8,
+      "version": 274,
+      "contexts": [
+        {
+          "key": [
+            0.14384429156780243,
+            -0.18826673924922943,
+            0.18476155400276184,
+            0.0017282202607020736,
+            0.017947865650057793,
+            -0.14145560562610626,
+            -0.09910857677459717,
+            -0.07069270312786102,
+            0.0854264497756958,
+            0.16606345772743225,
+            -0.3526540696620941,
+            0.3861238956451416,
+            0.6048004627227783,
+            0.0884433463215828,
+            -0.17833004891872406,
+            -0.4010413587093353
+          ],
+          "evidence": {
+            "schema": "neural-computer.persistent-opaque-route-evidence.v1",
+            "prior_strength": 1.0,
+            "mastery_threshold": 0.8,
+            "min_mastery_observations": 8,
+            "reversal_threshold": 0.5,
+            "reversal_patience": 4,
+            "attempts": [
+              0,
+              0,
+              0,
+              8,
+              0,
+              0,
+              0,
+              0
+            ],
+            "successes": [
+              0.0,
+              0.0,
+              0.0,
+              7.44062495790422,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "stable_prefix_minimum": [
+              1.0,
+              1.0,
+              1.0,
+              0.9300781197380275,
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "protected": [
+              false,
+              false,
+              false,
+              true,
+              false,
+              false,
+              false,
+              false
+            ],
+            "reversal_streak": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "reversal_count": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "preferred_slot": 3,
+            "last_slot": 3,
+            "last_outcome": 0.9093749988824129,
+            "version": 16
+          }
+        },
+        {
+          "key": [
+            -0.06734082847833633,
+            -0.4155266284942627,
+            0.19548864662647247,
+            0.02552700601518154,
+            0.034514378756284714,
+            -0.18841420114040375,
+            -0.2387053370475769,
+            -0.5141152143478394,
+            0.0070062302984297276,
+            0.2583613693714142,
+            -0.40228593349456787,
+            0.35256296396255493,
+            -0.057348206639289856,
+            -0.23117290437221527,
+            -0.10965551435947418,
+            0.06527836620807648
+          ],
+          "evidence": {
+            "schema": "neural-computer.persistent-opaque-route-evidence.v1",
+            "prior_strength": 1.0,
+            "mastery_threshold": 0.8,
+            "min_mastery_observations": 8,
+            "reversal_threshold": 0.5,
+            "reversal_patience": 4,
+            "attempts": [
+              93,
+              14,
+              20,
+              16,
+              59,
+              10,
+              26,
+              18
+            ],
+            "successes": [
+              61.26736134290695,
+              9.211805582046509,
+              12.996527791023254,
+              10.413194358348846,
+              55.26388877630234,
+              6.496527791023254,
+              17.343750178813934,
+              11.989583373069763
+            ],
+            "stable_prefix_minimum": [
+              0.6507523184021314,
+              0.6501736119389534,
+              0.6473524309694767,
+              0.6462191277080112,
+              0.9361979067325592,
+              0.6496527791023254,
+              0.6603535359556024,
+              0.6660879651705424
+            ],
+            "protected": [
+              false,
+              false,
+              false,
+              false,
+              true,
+              false,
+              false,
+              false
+            ],
+            "reversal_streak": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "reversal_count": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "preferred_slot": 4,
+            "last_slot": 4,
+            "last_outcome": 0.9548611044883728,
+            "version": 264
+          }
+        }
+      ]
+    }
+  },
+  "gates": {
+    "source_mastered_before_growth": true,
+    "target_mastered_after_growth": true,
+    "source_retained_after_growth": true,
+    "source_offset_is_four": true,
+    "target_offset_is_five": true,
+    "unknown_query_does_not_claim_mastery": true,
+    "wrong_offset_rejects_mastery": true,
+    "missing_history_rejects_mastery": true,
+    "shuffled_outcome_rejects_target_offset": true,
+    "route_reload_exact": true,
+    "readout_frozen_during_growth": true,
+    "controller_frozen": true,
+    "event_encoder_frozen": true,
+    "zero_replayed_examples": true
+  },
+  "accounting": {
+    "unique_verifier_bits": 158208,
+    "control_verifier_bits": 73728,
+    "audit_verifier_bits": 8320,
+    "unique_logical_lifetimes": 16640,
+    "optimizer_updates": 256,
+    "route_memory_updates": 264,
+    "control_route_memory_updates": 256,
+    "replayed_examples": 0,
+    "latency_seconds": 49.531007625046186,
+    "stable_bits_to_threshold": 158208
+  },
+  "status": "promoted_temporal_query_address_growth"
+}
