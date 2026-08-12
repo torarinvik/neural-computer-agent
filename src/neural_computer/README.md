@@ -1745,3 +1745,13 @@ candidate index is advisory; `SharedBasisContentAddressedMemory` still owns
 route/value verification, expected-version checks, and atomic persistence.
 The canonical policy-growth audit is archived at
 `session_records/brainworkshop_external_temporal_shared_basis_policy_growth_promoted_2026-08-12/`.
+
+`OpaqueSharedBasisStructurePolicy` is the stricter raw-value variant. It reads
+opaque value rows and occupancy, computes a fixed-width
+row-permutation-invariant singular-spectrum summary, and learns rank choice
+from scalar verifier utility without receiving precomputed candidate
+reconstruction error. It remains external to the controller and emits only a
+candidate index; `SharedBasisContentAddressedMemory` still owns independent
+route/value verification, versioned copy-on-write, and persistence. The
+canonical two-seed transfer audit is archived at
+`session_records/brainworkshop_external_temporal_shared_basis_structure_growth_promoted_2026-08-12/`.

@@ -5,7 +5,9 @@ import torch
 
 from neural_computer import (
     OpaqueSharedBasisCompressionPolicy,
+    OpaqueSharedBasisStructurePolicy,
     SharedBasisCompressionPlan,
+    SharedBasisStructurePlan,
 )
 
 
@@ -67,3 +69,55 @@ def test_shared_basis_policy_rejects_invalid_feature_contracts() -> None:
             SharedBasisCompressionPlan(candidate_index=0, score=torch.tensor(0.0)),
             1.1,
         )
+
+
+def test_shared_basis_structure_policy_is_row_permutation_invariant() -> None:
+    policy = OpaqueSharedBasisStructurePolicy(
+        value_width=8,
+        hidden=16,
+        max_spectral_bins=4,
+    ).eval()
+    generator = torch.Generator().manual_seed(9)
+    values = torch.randn(1, 5, 8, generator=generator)
+    occupied = torch.ones(1, 5, dtype=torch.bool)
+    ranks = torch.tensor([1, 2, 4], dtype=torch.long)
+    permutation = torch.tensor([3, 0, 4, 1, 2])
+
+    original = policy(values, occupied, ranks)
+    permuted = policy(values[:, permutation], occupied[:, permutation], ranks)
+
+    assert torch.allclose(original.logits, permuted.logits)
+    assert policy.configuration()["forbidden_features"] == (
+        "precomputed_candidate_reconstruction_error_v1"
+    )
+
+
+def test_shared_basis_structure_policy_proposes_and_adapts_from_scalar_utility() -> None:
+    policy = OpaqueSharedBasisStructurePolicy(
+        value_width=8,
+        hidden=16,
+        max_spectral_bins=4,
+    )
+    values = torch.randn(1, 5, 8, generator=torch.Generator().manual_seed(10))
+    occupied = torch.ones(1, 5, dtype=torch.bool)
+    ranks = torch.tensor([1, 2, 4], dtype=torch.long)
+    plan = policy.propose(
+        values,
+        occupied,
+        ranks,
+        explore=True,
+        generator=torch.Generator().manual_seed(11),
+    )
+    optimizer = torch.optim.Adam(policy.parameters(), lr=0.01)
+
+    loss = policy.adaptation_step(
+        values,
+        occupied,
+        ranks,
+        plan,
+        1.0,
+        optimizer=optimizer,
+    )
+
+    assert isinstance(plan, SharedBasisStructurePlan)
+    assert torch.isfinite(torch.tensor(loss))

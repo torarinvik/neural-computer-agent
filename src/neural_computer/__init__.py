@@ -551,9 +551,12 @@ from .runtime import (
 )
 from .shared_basis_policy import (
     SHARED_BASIS_COMPRESSION_POLICY_SCHEMA,
+    SHARED_BASIS_STRUCTURE_POLICY_SCHEMA,
     OpaqueSharedBasisCompressionPolicy,
+    OpaqueSharedBasisStructurePolicy,
     SharedBasisCompressionPlan,
     SharedBasisCompressionPolicyOutput,
+    SharedBasisStructurePlan,
 )
 from .state_store import OPAQUE_STATE_STORE_SCHEMA, PersistentOpaqueStateStore
 from .stream_binding import (
@@ -942,6 +945,7 @@ __all__ = [
     "SHARED_BASIS_MEMORY_BACKEND_FORMAT",
     "SHARED_BASIS_MEMORY_SCHEMA",
     "SHARED_BASIS_MEMORY_SNAPSHOT_FORMAT",
+    "SHARED_BASIS_STRUCTURE_POLICY_SCHEMA",
     "AdaptiveOnlineEpisodicRelationReader",
     "AmodalCognitiveController",
     "AmodalControllerRuntime",
@@ -1229,6 +1233,7 @@ __all__ = [
     "OpaqueConsolidationPolicy",
     "OpaqueProtocolDecoder",
     "OpaqueSharedBasisCompressionPolicy",
+    "OpaqueSharedBasisStructurePolicy",
     "OpaqueViewRouteExtension",
     "PageLocalLearnedComputeCandidateScreen",
     "PersistentAppendOnlyContentAddressedMemory",
@@ -1254,6 +1259,7 @@ __all__ = [
     "SharedBasisCompressionPolicyOutput",
     "SharedBasisCompressionReceipt",
     "SharedBasisContentAddressedMemory",
+    "SharedBasisStructurePlan",
     "StagedCapabilityReceipt",
     "accumulate_current_gradients",
     "apply_consolidation_proposal",

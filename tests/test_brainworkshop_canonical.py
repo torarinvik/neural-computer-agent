@@ -604,6 +604,36 @@ def test_external_temporal_shared_basis_policy_smoke_transfers_growth(
     assert report["gates"]["zero_replayed_examples"]
 
 
+def test_external_temporal_shared_basis_structure_smoke_reads_opaque_values(
+    tmp_path,
+) -> None:
+    from experiments.brainworkshop_canonical.external_temporal_shared_basis_structure_growth import (
+        run,
+    )
+
+    report = run(
+        argparse.Namespace(
+            report_out=tmp_path / "temporal-shared-basis-structure-growth.json",
+            seed=17,
+            policy_updates=3_000,
+        )
+    )
+
+    assert report["schema"] == (
+        "neural-computer.brainworkshop-external-temporal-shared-basis-structure-growth.v1"
+    )
+    assert report["architecture"]["forbidden_features"] == (
+        "precomputed_candidate_reconstruction_error_v1"
+    )
+    assert report["forward"]["successor_selection"]["selected_rank"] == 4
+    assert report["forward"]["old_after_growth"]
+    assert report["forward"]["new_after_growth"]
+    assert report["reversed"]["all_after_growth"]
+    assert report["gates"]["corruption_rejected"]
+    assert report["gates"]["controller_frozen"]
+    assert report["gates"]["zero_replayed_examples"]
+
+
 def test_binary_switch_family_has_a_valid_chance_baseline() -> None:
     verifier = CrossFamilyVerifier(
         family="switch_binary",

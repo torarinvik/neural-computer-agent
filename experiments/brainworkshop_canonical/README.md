@@ -1082,3 +1082,23 @@ discovery, unrestricted memory growth, arbitrary computation, or general
 continual learning: reconstruction error is still supplied as a candidate
 feature, and only one successor transition is tested. Evidence is archived in
 `session_records/brainworkshop_external_temporal_shared_basis_policy_growth_promoted_2026-08-12/`.
+
+## Raw-value shared-structure policy growth (2026-08-12)
+
+`external_temporal_shared_basis_structure_growth.py` trains the external
+`OpaqueSharedBasisStructurePolicy` from scalar verifier utility while exposing
+only opaque value rows and occupancy. The policy computes a
+row-permutation-invariant singular-spectrum summary internally and never
+receives a precomputed candidate reconstruction-error feature. Candidate
+proposals remain advisory; the persistent shared-basis memory verifies route
+retention and commits atomically.
+
+Seeds 17 and 18 reached held-out rank-1/2/4 scores of
+`0.9375/1.0000/1.0000` and `0.9219/1.0000/1.0000`. Both live streams selected
+rank `2 → 4`, retained six old routes after successor growth, admitted six new
+routes, passed forward/reversed-order, reload, stale-version, corruption,
+frozen-core, and zero-replay controls. Promotion required 50,000 scalar
+updates per seed; the rejected 10k/20k calibration is archived alongside the
+promoted reports. This remains bounded structure selection, not general
+continual learning. Evidence is in
+`session_records/brainworkshop_external_temporal_shared_basis_structure_growth_promoted_2026-08-12/`.

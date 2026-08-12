@@ -10465,3 +10465,31 @@ is repeated online structure discovery and reversal without that precomputed
 candidate-quality shortcut.
 Evidence and accounting are archived in
 `session_records/brainworkshop_external_temporal_shared_basis_policy_growth_promoted_2026-08-12/`.
+
+## Raw-value shared-structure policy growth (2026-08-12)
+
+`OpaqueSharedBasisStructurePolicy` removes the previous selector's
+precomputed candidate-reconstruction-error feature. It receives only opaque
+value rows, an occupancy mask, and runtime candidate ranks. Its fixed-width
+singular-spectrum summary is permutation-invariant over physical rows; the
+policy learns a candidate preference from one scalar verifier utility at a
+time and emits only a candidate index. The memory-side verifier still owns
+route/value retention, expected-version checks, and persistent copy-on-write
+commit.
+
+Across seeds `17` and `18`, held-out rank-selection accuracy was
+`0.9375/1.0000/1.0000` and `0.9219/1.0000/1.0000` for ranks `1/2/4`. Fresh
+controls were weaker, especially on rank 1. In the frozen canonical stream,
+the policy selected rank `2` for six old values, then rank `4` after six
+rank-four successor values arrived. Old and new routes survived in forward and
+reversed physical order; reload, stale-version, checksum-corruption,
+frozen-core, and zero-replay gates passed.
+
+The promotion required `50,000` unique scalar-utility updates per seed. A
+10,000/20,000-update calibration was retained as rejected evidence because
+seed 17 did not clear the rank-one `0.80` floor. This makes scalar-feedback
+sample efficiency the next bottleneck. The result is a narrow external
+structure-selection transfer, not semantic structure discovery, arbitrary new
+computation, unrestricted memory growth, repeated growth/reversal, or general
+continual learning. Evidence and accounting are archived in
+`session_records/brainworkshop_external_temporal_shared_basis_structure_growth_promoted_2026-08-12/`.

@@ -1,0 +1,35 @@
+{
+  "experiment_id": "brainworkshop-external-temporal-shared-basis-structure-growth-calibration-2026-08-12",
+  "status": "rejected_before_promotion",
+  "reason": "The raw-value structure policy transferred the live growth safely, but rank-1 held-out accuracy was below the 0.80 promotion floor at 10000 and 20000 updates on seed 17.",
+  "controls_preserved": [
+    "all live route, retention, reload, stale-version, corruption, frozen-core, frozen-encoder, and zero-replay gates passed"
+  ],
+  "trials": [
+    {
+      "seed": 17,
+      "updates": 10000,
+      "trained_scores": {"1": 0.71875, "2": 0.984375, "4": 1.0},
+      "status": "rejected"
+    },
+    {
+      "seed": 18,
+      "updates": 10000,
+      "trained_scores": {"1": 0.78125, "2": 0.984375, "4": 1.0},
+      "status": "rejected"
+    },
+    {
+      "seed": 17,
+      "updates": 20000,
+      "trained_scores": {"1": 0.78125, "2": 0.984375, "4": 1.0},
+      "status": "rejected"
+    },
+    {
+      "seed": 18,
+      "updates": 20000,
+      "trained_scores": {"1": 0.921875, "2": 1.0, "4": 1.0},
+      "status": "promoted_only_after_longer_budget"
+    }
+  ],
+  "next_bottleneck": "Reduce the 50000-scalar-feedback requirement and test repeated growth/reversal before treating this as a general learning mechanism."
+}
