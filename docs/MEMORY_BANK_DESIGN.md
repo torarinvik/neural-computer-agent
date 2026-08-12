@@ -11144,3 +11144,87 @@ some of the accuracy gain may be capacity rather than structure; the
 equivariance itself is structural and cannot be. It has not yet been put
 through F207's control loop or F208's repair, both of which assume the
 indexed reader's interface.
+
+## F213 — A DOMAIN-GENERAL CRITERION FOR PERCEPTION, AND THE SEARCH THAT
+## BROKE IT
+
+`slot_state` is the last place a human put the domain in. The plant is
+trained on random programs over random states, the search is
+permutation-equivariant, and F212 made the reader exactly equivariant —
+but perception is still "find the avatar by argmax on plane 0, then the
+nearest object per plane by Manhattan distance."
+
+Replacing it needs a criterion, and the criterion cannot mention grids.
+The one the architecture already implies is **programmability**: a good
+encoder is one whose transitions are expressible as a short program.
+Fit a per-slot parallel program to an encoder's transitions, score it on
+transitions nothing was fit on, and prefer the encoder that makes the
+world most predictable.
+
+**Ranking the hand-written encoders. Five predictions registered before
+the run; three held, two did not.**
+
+| encoder | MARGIN | fit | floor | distinct states |
+| --- | ---: | ---: | ---: | ---: |
+| centroid (domain-general) | **0.4194** | 0.9349 | 0.5155 | 121 |
+| absolute | 0.3939 | 0.9714 | 0.5775 | 127 |
+| channel_shuffle | **0.3939** | **0.9714** | 0.5775 | 127 |
+| handwritten | 0.3704 | 0.9344 | 0.5640 | 127 |
+| downsample | 0.0000 | 0.9259 | 0.9259 | 6 |
+| random_linear | -0.0164 | 0.2563 | 0.2726 | 125 |
+| constant | n/a, no moving slots | | | 1.0 |
+
+Confirmed: the noise encoders score zero or negative; `constant` is
+excluded by having no moving slot at all; and **`channel_shuffle` equals
+`absolute` to four decimals**, an independent confirmation of F212's
+equivariance from a probe written for another purpose. Refuted: I
+predicted the two hand-written encoders would lead, and a domain-general
+one beat them.
+
+**Then a greedy search over a domain-general vocabulary broke the
+criterion, which is the finding.** The vocabulary is ten reductions over
+a (channel, height, width) tensor — peak row/col, centre row/col, first
+and last occupied row/col, count, extent — crossed with three channels.
+An encoder is six of those; greedy forward selection evaluates 165
+candidates against a space of C(30,6) = 593,775.
+
+It returned **six views of channel 0**, scoring 0.7642 train and 0.6744
+held-out against the hand-written encoder's 0.3704 and 0.3456 — nearly
+double. Inspected:
+
+    slots identical to slot 0 : [0, 2, 3, 4]
+    constant slots            : [5]
+    distinct slot vectors     : 64      (hand-written: 221)
+    object position           : DISCARDED — 61 of 64 codes map to
+                                more than one object position
+
+**It won by encoding only the part of the world that is easy to predict
+and throwing the rest away.** The avatar moves by one cell per action,
+which a single instruction predicts exactly; object positions do not.
+This is the `constant` degeneracy in a disguise the moving-slot guard
+cannot see, because the avatar moves.
+
+**The fix has no free parameter.** COVERAGE is the fraction of
+distinguishable world states the encoder keeps — distinct slot vectors
+over distinct raw observations. A constant encoder scores 1/N, the
+avatar-only encoder about 0.25, the hand-written one about 0.86. The
+criterion becomes margin x coverage: a perception must make the world
+predictable AND keep it.
+
+Re-run, the search spans all three channels and the ranking inverts back:
+
+| encoder | train | HELD-OUT worlds |
+| --- | ---: | ---: |
+| **discovered** | **0.5160** | **0.4451** |
+| absolute | 0.3908 | 0.4423 |
+| handwritten | 0.3683 | 0.3453 |
+| centroid | 0.4056 | 0.2506 |
+| random_linear | -0.0163 | -0.0266 |
+
+    discovered = [(0,peak_row), (0,peak_col), (2,peak_col),
+                  (1,last_row), (0,centre_row), (0,centre_col)]
+
+**A residual degeneracy remains and should not be glossed.** Slots 4 and
+5 duplicate 0 and 1 — for a one-pixel avatar `centre` equals `peak` — so
+the greedy step still buys margin by repeating a predictable slot.
+Coverage does not punish duplication, only collapse.
