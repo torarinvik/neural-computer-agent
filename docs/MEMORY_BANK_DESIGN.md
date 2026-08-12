@@ -9765,3 +9765,54 @@ Each measured against a control rather than asserted. What remains is
 not a missing claim but known limits: `walled`'s wall is still
 inexpressible (F179), the reader's training signal is still unreliable
 across seeds (F164), and the sub-prefix composition fix is untested.
+
+## F191 — sub-prefix composition: mechanism confirmed, aggregate
+## refuted, and F157's dilution returns in a new costume
+
+F190 named the variance as the thing to fix: transfer ranged 0.538 to
+0.894 across seeds because it depended on whether a stored solution
+happened to expose the shared prefix. Composing over sub-prefixes was
+predicted to compress that, and specifically that **the seeds that
+transferred least would gain most.**
+
+Six seeds, paired against F190's runs, gate passing on all.
+
+| seed | whole-fragment | sub-prefix | delta | solved before | after |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 69319 | 0.894 | 0.862 | **-0.031** | 2 | 1 |
+| 69320 | 0.794 | 0.728 | **-0.066** | 2 | 1 |
+| 69317 | 0.775 | 0.629 | **-0.146** | 1 | 2 |
+| 69321 | 0.642 | 0.644 | +0.001 | 3 | 2 |
+| 69318 | 0.569 | 0.779 | **+0.209** | 3 | 0 |
+| 69316 | 0.538 | 0.698 | **+0.160** | 4 | 1 |
+
+**The prediction is confirmed exactly, and it does not save the
+result.** r(how badly a seed transferred, how much the fix helped it) =
+**-0.800**. The three worst transferrers all improved; the two best
+both degraded. The mechanism is real and it is the one I named.
+
+**But the aggregate is worse.** Families solved fall **15/36 to 7/36**,
+and mean cost drifts 0.702 to 0.723. Cheaper in only 3 of 6 seeds. On
+the measure that matters — how many families get solved at all — this
+is a substantial net loss.
+
+**The cause is F157, returning at a different level.** Adding every
+sub-prefix of every stored program multiplies the library, so the
+enumeration reaches a genuinely useful whole fragment later, or not at
+all inside the budget. F157 was "fragments appended to a uniformly
+sampled pool make each one rarer". This is the same sentence with
+"uniformly sampled pool" replaced by "enumeration order". I fixed
+dilution once by weighting a distribution and did not notice it could
+return in a search that has no distribution at all.
+
+**The fix this implies is ORDERING, not selection.** Whole fragments
+first, sub-prefixes after — then a seed whose stored solution exposes
+the prefix keeps its win, and a seed whose does not gets the fallback
+instead of paying for it up front. That is a strictly better ordering
+under both conditions, which is a stronger claim than "try both and see"
+and is worth stating before it is run.
+
+**F190 stands unchanged.** This tested a proposed improvement to
+transfer, not transfer itself; the whole-fragment configuration it was
+measured in is still the best one, and reverting to it is the honest
+default until an ordering arm beats it.
