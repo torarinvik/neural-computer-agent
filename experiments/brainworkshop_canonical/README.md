@@ -1166,6 +1166,45 @@ PYTHONPATH=src uv run python -m experiments.brainworkshop_canonical.external_tem
   --report-out /tmp/brainworkshop-open-query-growth.json
 ```
 
+## Replay-free temporal capacity pressure (promoted bounded rung)
+
+`external_temporal_open_query_capacity.py` pressure-tests the five-route
+external bank with a two-slot active cache. A memory-side policy selects an
+opaque victim using learned signatures plus generic reliability/age telemetry;
+archived routes are reactivated through copy-on-write retention probes. The
+source route is protected only after a stable scalar prefix, and the controller,
+event encoder, and acquired capability file remain frozen throughout.
+
+Across seeds `17`, `18`, and `19`, the five-route archive remains addressable
+while the two-slot cache performs `11` replacements and `3` active no-op
+probes. Every reactivation is accepted, the protected source is never evicted,
+all final active routes remain at `1.0000`, and the generic victim policy
+reaches held-out accuracy `0.9414`, `0.9590`, and `0.9727`. Reward-shuffled
+controls remain below the `0.70` mastery boundary (`0.5723`, `0.5723`,
+`0.4980`). Related-key lookup, unknown-key miss, exact reload, checksum
+corruption rejection, frozen-core/file, and zero-replay gates all pass (`17/17`
+per seed).
+
+Each seed accounts for `169,600` unique verifier bits, `12,224` capacity
+retention verifier bits, `3,000` policy verifier bits, `3,080` logical
+lifetimes, `4,024` optimizer updates, five archive records, two active slots,
+and zero replay. This promotes bounded replay-free capacity pressure and
+verifier-gated reactivation; it does not establish unrestricted memory growth,
+learned compression, arbitrary new computation, or general continual learning.
+Evidence and complete raw reports are archived in
+`session_records/brainworkshop_external_temporal_open_query_capacity_promoted_2026-08-12/`.
+
+Run it with:
+
+```bash
+PYTHONPATH=src uv run python -m experiments.brainworkshop_canonical.external_temporal_open_query_capacity \
+  --source-updates 128 --source-evaluation-lifetimes 4 \
+  --source-route-lifetimes 8 --target-route-updates 8 \
+  --policy-updates 3000 --policy-eval-episodes 512 --batch-size 16 \
+  --data-steps 14 --retention-lifetimes 4 --seed 17 \
+  --report-out /tmp/brainworkshop-open-query-capacity.json
+```
+
 ## Related-key temporal content retrieval (historical v1; current v2 rejected)
 
 `external_temporal_content_retrieval_growth.py` composes that address

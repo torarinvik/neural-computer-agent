@@ -11145,3 +11145,28 @@ qualification; learned query discovery, compression, and general continual
 learning still require causal outcome-only promotion experiments.
 The storage/runtime qualification is archived in
 `session_records/brainworkshop_external_temporal_address_index_contract_2026-08-12/`.
+
+### Replay-free temporal capacity pressure
+
+The canonical temporal boundary now has a bounded capacity-pressure rung in
+`external_temporal_open_query_capacity.py`. Five opaque temporal routes are
+kept in a growable episodic archive while only two may be resident in the hot
+cache. A replaceable memory-side policy selects victims from learned signatures
+and generic reliability/age telemetry; copy-on-write retention verification
+must pass before an archived route is reactivated. A stable scalar prefix
+protects the mastered source route. The controller, event encoder, and
+acquired capability file remain frozen, and no old stream is replayed.
+
+Across seeds `17`, `18`, and `19`, all `17/17` gates pass: 11 replacements,
+three active no-op probes, five archive records, zero reactivation failures,
+protected-source retention, `1.0000` final active-route accuracy, unknown-key
+miss, checksum rejection, reload preservation, frozen core/file, and zero
+replay. The held-out generic victim policy reaches `0.9414`, `0.9590`, and
+`0.9727`; reward-shuffled controls remain below mastery. Each run uses
+`169,600` unique verifier bits and `12,224` capacity-retention verifier bits.
+
+This promotes bounded replay-free capacity pressure and verifier-gated
+reactivation. It does not qualify unrestricted memory growth, learned
+compression, arbitrary new computation, or general continual learning.
+Evidence and accounting are archived in
+`session_records/brainworkshop_external_temporal_open_query_capacity_promoted_2026-08-12/`.
