@@ -11335,3 +11335,26 @@ or general continual learning. The next pressure is structural synthesis
 beyond one-edit scaffold adaptation and integration with the amodal intention
 boundary. Evidence and accounting are archived in
 `session_records/recipe_control_flow_growth_promoted_2026-08-12/`.
+
+### Stochastic multi-edit control-flow frontier
+
+`ControlFlowProgramFrontier` now extends the external CPU/files seam beyond a
+single typed edit. Its generic replace/insert/delete/swap operators retain a
+protected executable root and a bounded beam of partial programs. The
+frontier receives only scalar verifier outcomes; no target program, task name,
+or verifier row enters the controller or persistent search state. A failed
+parent neighborhood causes parent reselection, and frontier exhaustion is
+reported separately from an unproven inexpressibility claim.
+
+The four-seed audit acquired a two-edit transfer file from a useful partial
+loop across forward and reversed outcome order, reaching `1.0000` held-out
+mastery and retaining the protected source at `1.0000`. A same-ABI fresh root
+exhausted its qualified frontier without reaching the target, so a common
+warm/fresh transfer ratio is intentionally not reported. Frontier and file
+reload, missing/shuffled/corrupted evidence, zero replay, and zero optimizer
+updates passed. This is a bounded structural-acquisition result; the
+control-flow file is still external CPU machinery whose result must cross the
+existing opaque intention bus through a replaceable adapter.
+
+Evidence is archived in
+`session_records/recipe_control_flow_frontier_growth_promoted_2026-08-12/`.

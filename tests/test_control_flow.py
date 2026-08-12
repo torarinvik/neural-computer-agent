@@ -4,9 +4,11 @@ import pytest
 import torch
 
 from neural_computer import (
+    ControlFlowFrontierState,
     ControlFlowInstruction,
     ControlFlowOutcomeSearch,
     ControlFlowProgram,
+    ControlFlowProgramFrontier,
     ControlFlowProgramMemory,
     iter_control_flow_programs,
 )
@@ -153,6 +155,65 @@ def test_control_flow_program_enumerator_has_a_certifiable_finite_bound() -> Non
     assert programs[0].instructions[-1].op == "halt"
 
 
+def test_control_flow_frontier_acquires_a_two_edit_program_and_reloads() -> None:
+    source = ControlFlowProgram(
+        2,
+        (
+            ControlFlowInstruction("jump_if_zero", counter=0, target=3),
+            ControlFlowInstruction("dec", counter=0),
+            ControlFlowInstruction("jump", target=0),
+            ControlFlowInstruction("halt"),
+        ),
+    )
+    target = ControlFlowProgram(
+        2,
+        (
+            ControlFlowInstruction("jump_if_zero", counter=0, target=4),
+            ControlFlowInstruction("dec", counter=0),
+            ControlFlowInstruction("inc", counter=1),
+            ControlFlowInstruction("jump", target=0),
+            ControlFlowInstruction("halt"),
+        ),
+    )
+    frontier = ControlFlowProgramFrontier(
+        2,
+        beam_width=32,
+        max_depth=8,
+        max_program_length=8,
+        minimum_quality=0.25,
+    )
+    state = frontier.initial_state(source)
+    generator = torch.Generator().manual_seed(10_017)
+    accepted = None
+    for _ in range(500):
+        proposal = frontier.propose(state, generator=generator)
+        outcomes = []
+        for amount in range(8):
+            actual = proposal.program.execute((amount, 0), max_steps=128)
+            expected = target.execute((amount, 0), max_steps=128)
+            outcomes.append(
+                float(actual.status == "halted" and actual.counters == expected.counters)
+            )
+        feedback = frontier.record_outcomes(
+            state,
+            proposal,
+            outcomes,
+            min_observations=8,
+            min_stable_observations=8,
+        )
+        state = feedback.state
+        if feedback.accepted:
+            accepted = feedback
+            break
+
+    assert accepted is not None
+    assert accepted.proposal.program.digest() != source.digest()
+    assert accepted.quality == 1.0
+    restored = ControlFlowFrontierState.from_payload(state.payload())
+    assert restored.digest() == state.digest()
+    assert "outcomes" not in state.payload()
+
+
 def test_control_flow_induction_promotes_from_scratch_loop_search() -> None:
     from experiments.recipe_expressibility.control_flow_program_induction import run
 
@@ -162,5 +223,19 @@ def test_control_flow_induction_promotes_from_scratch_loop_search() -> None:
     assert all(
         item["search"]["status"] == "expressible"
         and item["gates"]["budget_exhaustion_is_not_inexpressible"]
+        for item in report["reports"]
+    )
+
+
+def test_control_flow_frontier_growth_keeps_fresh_exhaustion_distinct() -> None:
+    from experiments.recipe_expressibility.control_flow_frontier_growth import run
+
+    report = run((17,))
+
+    assert report["promoted"]
+    assert not report["sample_efficiency_transfer_promoted"]
+    assert all(
+        item["fresh_search"]["status"] == "frontier_exhausted"
+        and item["gates"]["termination_is_not_inexpressible"]
         for item in report["reports"]
     )

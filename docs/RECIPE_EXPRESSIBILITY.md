@@ -207,6 +207,31 @@ efficient arbitrary program synthesis, unrestricted execution, or general
 continual learning. Evidence is archived in
 `session_records/recipe_control_flow_induction_promoted_2026-08-12/`.
 
+## Stochastic multi-edit control-flow frontier
+
+The typed external CPU boundary now has a persistent stochastic frontier with
+generic replace, insert, delete, and swap edits. It retains a protected root
+plus scalar-quality-qualified provisional files, retries other parents when a
+local neighborhood is exhausted, and stores only aggregate outcome credit and
+content-addressed program files. A fresh frontier termination is reported as
+`frontier_exhausted` or `budget_exhausted`; neither is silently promoted to
+`inexpressible`.
+
+Across four seeds and forward/reversed verifier order, a useful clear-loop
+root acquired a two-edit transfer program with `1.0000` held-out accuracy and
+`1.0000` source retention. The same-ABI fresh root exhausted its qualified
+frontier after `50` evaluations without reaching the target. Missing evidence,
+shuffled feedback, corruption, frontier reload, memory reload, zero replay,
+and zero optimizer updates all passed. The fresh arm did not reach a common
+threshold, so no warm/fresh transfer ratio is claimed; this is a structural
+acquisition promotion, not a sample-efficiency promotion.
+
+This moves beyond one-edit scaffold adaptation, but remains a bounded
+stochastic frontier over a small counter-machine file. It does not establish
+efficient arbitrary program synthesis, unbounded execution, unrestricted
+memory growth, or general continual learning. Evidence is archived in
+`session_records/recipe_control_flow_frontier_growth_promoted_2026-08-12/`.
+
 ## Outcome-only external recipe files and scope isolation
 
 The recipe basis now has a versioned external-file bridge:

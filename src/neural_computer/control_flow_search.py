@@ -17,6 +17,37 @@ CONTROL_FLOW_PROPOSAL_SCHEMA = "neural-computer.external-control-flow-proposal.v
 CONTROL_FLOW_MUTATION_OPERATORS = ("replace_instruction", "swap_instructions")
 
 
+def control_flow_instruction_bank(
+    *, counter_count: int, program_length: int
+) -> tuple[ControlFlowInstruction, ...]:
+    """Return the generic target-agnostic instruction basis for one length."""
+
+    if counter_count < 2 or program_length < 1:
+        raise ValueError("control-flow instruction-bank bounds are invalid")
+    instructions: list[ControlFlowInstruction] = []
+    for counter in range(counter_count):
+        instructions.extend(
+            (
+                ControlFlowInstruction("inc", counter=counter),
+                ControlFlowInstruction("dec", counter=counter),
+            )
+        )
+    for target in range(program_length):
+        instructions.append(ControlFlowInstruction("jump", target=target))
+        for counter in range(counter_count):
+            instructions.extend(
+                (
+                    ControlFlowInstruction(
+                        "jump_if_zero", counter=counter, target=target
+                    ),
+                    ControlFlowInstruction(
+                        "jump_if_nonzero", counter=counter, target=target
+                    ),
+                )
+            )
+    return tuple(instructions)
+
+
 def iter_control_flow_programs(
     *,
     counter_count: int,
@@ -34,7 +65,7 @@ def iter_control_flow_programs(
     if counter_count < 2 or min_length < 1 or max_length < min_length:
         raise ValueError("control-flow enumeration bounds are invalid")
     for length in range(min_length, max_length + 1):
-        atoms = ControlFlowOutcomeSearch._generic_instructions(
+        atoms = control_flow_instruction_bank(
             counter_count=counter_count,
             program_length=length,
         )
@@ -215,28 +246,10 @@ class ControlFlowOutcomeSearch:
     def _generic_instructions(
         *, counter_count: int, program_length: int
     ) -> tuple[ControlFlowInstruction, ...]:
-        instructions: list[ControlFlowInstruction] = []
-        for counter in range(counter_count):
-            instructions.extend(
-                (
-                    ControlFlowInstruction("inc", counter=counter),
-                    ControlFlowInstruction("dec", counter=counter),
-                )
-            )
-        for target in range(program_length):
-            instructions.append(ControlFlowInstruction("jump", target=target))
-            for counter in range(counter_count):
-                instructions.extend(
-                    (
-                        ControlFlowInstruction(
-                            "jump_if_zero", counter=counter, target=target
-                        ),
-                        ControlFlowInstruction(
-                            "jump_if_nonzero", counter=counter, target=target
-                        ),
-                    )
-                )
-        return tuple(instructions)
+        return control_flow_instruction_bank(
+            counter_count=counter_count,
+            program_length=program_length,
+        )
 
     def neighbors(self, parent: ControlFlowProgram) -> tuple[tuple[str, ControlFlowProgram], ...]:
         parent.validate()
@@ -387,5 +400,6 @@ __all__ = [
     "ControlFlowOutcomeSearch",
     "ControlFlowProposal",
     "ControlFlowSearchState",
+    "control_flow_instruction_bank",
     "iter_control_flow_programs",
 ]
