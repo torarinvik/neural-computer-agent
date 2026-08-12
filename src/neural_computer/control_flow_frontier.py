@@ -15,7 +15,11 @@ from dataclasses import dataclass
 
 import torch
 
-from .control_flow import ControlFlowProgram
+from .control_flow import (
+    ControlFlowProgram,
+    delete_control_flow_instruction,
+    insert_control_flow_instruction,
+)
 from .control_flow_search import control_flow_instruction_bank
 
 CONTROL_FLOW_FRONTIER_SCHEMA = "neural-computer.external-control-flow-frontier.v1"
@@ -450,10 +454,10 @@ class ControlFlowProgramFrontier:
                 program_length=len(instructions) + 1,
             )
             insertion = atoms[self._random_index(len(atoms), generator)]
-            candidate = (*instructions[:position], insertion, *instructions[position:])
+            return insert_control_flow_instruction(parent, position, insertion)
         elif operator_index == 2:
             position = self._random_index(non_halt, generator)
-            candidate = (*instructions[:position], *instructions[position + 1 :])
+            return delete_control_flow_instruction(parent, position)
         elif operator_index == 3:
             first = self._random_index(non_halt, generator)
             second = self._random_index(non_halt - 1, generator)

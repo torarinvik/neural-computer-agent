@@ -251,6 +251,84 @@ class ControlFlowProgram:
         ).validate(counter_count=self.counter_count)
 
 
+def insert_control_flow_instruction(
+    program: ControlFlowProgram,
+    position: int,
+    instruction: ControlFlowInstruction,
+) -> ControlFlowProgram:
+    """Insert one non-terminal instruction while relocating jump targets.
+
+    Instruction pointers are part of the external program ABI.  A structural
+    insertion therefore shifts every existing target at or after the edit;
+    silently leaving targets attached to their old numeric positions would
+    corrupt loop control flow while still producing a syntactically valid file.
+    """
+
+    program.validate()
+    if not 0 <= position < len(program.instructions):
+        raise ValueError("control-flow insertion position is invalid")
+    if instruction.op == "halt":
+        raise ValueError("control-flow insertion cannot add a terminal halt")
+    new_length = len(program.instructions) + 1
+    instruction.validate(
+        counter_count=program.counter_count,
+        program_length=new_length,
+    )
+
+    def relocate(existing: ControlFlowInstruction) -> ControlFlowInstruction:
+        if existing.op not in {"jump", "jump_if_zero", "jump_if_nonzero"}:
+            return existing
+        assert existing.target is not None
+        target = existing.target + int(existing.target >= position)
+        return ControlFlowInstruction(
+            existing.op,
+            counter=existing.counter,
+            target=target,
+        )
+
+    instructions = tuple(relocate(existing) for existing in program.instructions)
+    return ControlFlowProgram(
+        program.counter_count,
+        (*instructions[:position], instruction, *instructions[position:]),
+    ).validate()
+
+
+def delete_control_flow_instruction(
+    program: ControlFlowProgram,
+    position: int,
+) -> ControlFlowProgram:
+    """Delete one non-terminal instruction and relocate surviving targets.
+
+    Deletion fails closed when another instruction targets the removed position;
+    inventing a successor for that edge would be a semantic edit rather than a
+    structural deletion and could silently change a learned program.
+    """
+
+    program.validate()
+    if not 0 <= position < len(program.instructions) - 1:
+        raise ValueError("control-flow deletion position is invalid")
+
+    def relocate(existing: ControlFlowInstruction) -> ControlFlowInstruction:
+        if existing.op not in {"jump", "jump_if_zero", "jump_if_nonzero"}:
+            return existing
+        assert existing.target is not None
+        if existing.target == position:
+            raise ValueError("control-flow deletion would remove a jump target")
+        target = existing.target - int(existing.target > position)
+        return ControlFlowInstruction(
+            existing.op,
+            counter=existing.counter,
+            target=target,
+        )
+
+    instructions = tuple(
+        relocate(existing)
+        for index, existing in enumerate(program.instructions)
+        if index != position
+    )
+    return ControlFlowProgram(program.counter_count, instructions).validate()
+
+
 def compose_control_flow_programs(
     programs: Sequence[ControlFlowProgram],
 ) -> ControlFlowProgram:
@@ -515,5 +593,7 @@ __all__ = [
     "ControlFlowProgram",
     "ControlFlowProgramMemory",
     "compose_control_flow_programs",
+    "delete_control_flow_instruction",
     "evaluate_control_flow_admission",
+    "insert_control_flow_instruction",
 ]

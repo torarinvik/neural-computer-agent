@@ -97,7 +97,9 @@ from .control_flow import (
     ControlFlowProgram,
     ControlFlowProgramMemory,
     compose_control_flow_programs,
+    delete_control_flow_instruction,
     evaluate_control_flow_admission,
+    insert_control_flow_instruction,
 )
 from .control_flow_composition import (
     CONTROL_FLOW_COMPOSITION_PROPOSAL_SCHEMA,
@@ -1538,6 +1540,7 @@ __all__ = [
     "control_flow_instruction_bank",
     "credit_weights_from_logits",
     "decompress_growth_artifact",
+    "delete_control_flow_instruction",
     "episodic_context_contrastive_loss",
     "evaluate_control_flow_admission",
     "evaluate_external_program_admission",
@@ -1548,6 +1551,7 @@ __all__ = [
     "failure_gated_candidate_scores",
     "failure_gated_view_scores",
     "freeze_core",
+    "insert_control_flow_instruction",
     "iter_control_flow_programs",
     "load_growth_artifact",
     "load_runtime_components",

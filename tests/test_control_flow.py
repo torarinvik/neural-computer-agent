@@ -13,6 +13,8 @@ from neural_computer import (
     ControlFlowProgramFrontierGrowth,
     ControlFlowProgramMemory,
     compose_control_flow_programs,
+    delete_control_flow_instruction,
+    insert_control_flow_instruction,
     iter_control_flow_programs,
 )
 
@@ -52,6 +54,41 @@ def test_control_flow_fails_closed_on_resource_bounds() -> None:
             2,
             (ControlFlowInstruction("jump", target=0),),
         ).validate()
+
+
+def test_structural_control_flow_insertion_relocates_jump_targets() -> None:
+    source = ControlFlowProgram(
+        2,
+        (
+            ControlFlowInstruction("jump_if_zero", counter=0, target=3),
+            ControlFlowInstruction("dec", counter=0),
+            ControlFlowInstruction("jump", target=0),
+            ControlFlowInstruction("halt"),
+        ),
+    )
+    expanded = insert_control_flow_instruction(
+        source,
+        2,
+        ControlFlowInstruction("inc", counter=1),
+    )
+
+    assert expanded.instructions[0].target == 4
+    assert expanded.execute((3, 0), max_steps=100).counters == (0, 3)
+    assert delete_control_flow_instruction(expanded, 2).digest() == source.digest()
+
+
+def test_structural_control_flow_deletion_rejects_dangling_jump_targets() -> None:
+    source = ControlFlowProgram(
+        2,
+        (
+            ControlFlowInstruction("jump", target=1),
+            ControlFlowInstruction("inc", counter=0),
+            ControlFlowInstruction("halt"),
+        ),
+    )
+
+    with pytest.raises(ValueError, match="jump target"):
+        delete_control_flow_instruction(source, 1)
 
 
 def test_control_flow_memory_admission_is_scalar_gated_and_persistent() -> None:
@@ -502,3 +539,21 @@ def test_adaptive_control_flow_growth_promotes_curriculum_and_retention() -> Non
         for item in report["positive_reports"]
     )
     assert report["fresh_reports"][0]["stage_reports"][-1]["found"] is False
+
+
+def test_adaptive_loop_growth_promotes_noncommuting_programs() -> None:
+    from experiments.recipe_expressibility.control_flow_adaptive_loop_growth import run
+
+    report = run((17,))
+
+    assert report["status"] == "promoted_replay_free_adaptive_loop_growth"
+    assert report["gates"] == {
+        "positive_arms_promoted": True,
+        "fresh_final_rung_not_found": True,
+        "shuffled_feedback_not_promoted": True,
+    }
+    assert all(
+        [item["horizon"] for item in arm["stage_reports"]] == [5, 6, 7]
+        and all(item["retention_accuracy"] == 1.0 for item in arm["stage_reports"])
+        for arm in report["positive_reports"]
+    )

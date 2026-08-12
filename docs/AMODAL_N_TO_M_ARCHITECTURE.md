@@ -11638,3 +11638,21 @@ This promotes bounded replay-free adaptive external structural growth; it is
 not arbitrary program induction, unrestricted execution, or general
 continual learning. Evidence is archived at
 `session_records/recipe_control_flow_adaptive_growth_promoted_2026-08-12/`.
+
+### Jump-safe adaptive growth of non-commuting external programs
+
+The external control-flow edit boundary now treats instruction pointers as
+part of the program ABI. Insertion relocates all existing jump targets at or
+after the edit, while deletion rejects any edit that would leave a surviving
+edge dangling. The adaptive frontier therefore grows control-flow programs
+without silently corrupting their loop graph, and its horizon/rung proposal
+tokens still invalidate stale search work.
+
+Across four seeds and forward/reversed verifier-state orders, a clear-loop
+root grew through three transfer-loop rungs at lengths five, six, and seven.
+Held-out execution and retention were `1.0000`; fresh final-length controls
+exhausted their search budget and shuffled feedback qualified no rung. This
+promotes bounded replay-free non-commuting external loop growth, not arbitrary
+program induction, unrestricted execution, or general continual learning.
+Evidence is archived at
+`session_records/recipe_control_flow_adaptive_loop_growth_promoted_2026-08-12/`.

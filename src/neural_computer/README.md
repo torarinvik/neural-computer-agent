@@ -2043,3 +2043,9 @@ horizon and rung; `expand_horizon_verified()` and
 aggregate operator credit and opaque candidate digests survive a rung change,
 so old verifier rows are not replayed and stale proposals cannot cross the
 search ABI. The controller remains outside this memory-side learner.
+
+`insert_control_flow_instruction()` and
+`delete_control_flow_instruction()` are the canonical jump-safe structural
+edits. Insertions relocate existing jump targets; deletions reject dangling
+edges. This keeps external loop growth semantically well-formed while leaving
+the controller and intention ABI unchanged.

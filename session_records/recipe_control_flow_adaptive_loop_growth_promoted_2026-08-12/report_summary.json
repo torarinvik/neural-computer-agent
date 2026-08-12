@@ -1,0 +1,72 @@
+{
+  "schema": "neural-computer.recipe-control-flow-adaptive-loop-growth-audit.v1",
+  "status": "promoted_replay_free_adaptive_loop_growth",
+  "seeds": [17, 18, 19, 20],
+  "positive_orders": ["forward", "reversed"],
+  "curriculum": {
+    "root_length": 4,
+    "horizons": [5, 6, 7],
+    "rungs": 3,
+    "counter_count": 2,
+    "max_candidates_per_rung": 1200,
+    "verifier_inputs_per_candidate": 5,
+    "target_family": "non_commuting_counter_transfer_loop"
+  },
+  "positive_candidate_evaluations_by_seed": {
+    "17": [386, 386],
+    "18": [440, 440],
+    "19": [575, 575],
+    "20": [626, 626]
+  },
+  "positive_final_rung_evaluations_by_seed": {
+    "17": [92, 92],
+    "18": [66, 66],
+    "19": [197, 197],
+    "20": [317, 317]
+  },
+  "fresh_candidate_evaluations_by_seed": {
+    "17": [65, 232, 1200],
+    "18": [128, 1200, 1200],
+    "19": [202, 1200, 1200],
+    "20": [112, 1200, 1200]
+  },
+  "fresh_targets_found_by_seed": {
+    "17": [true, true, false],
+    "18": [true, false, false],
+    "19": [true, false, false],
+    "20": [true, false, false]
+  },
+  "shuffled_accepted_rungs_by_seed": {
+    "17": 0,
+    "18": 0,
+    "19": 0,
+    "20": 0
+  },
+  "gates": {
+    "positive_arms_promoted": true,
+    "fresh_final_rung_not_found": true,
+    "shuffled_feedback_not_promoted": true,
+    "all_heldout_mastered": true,
+    "all_prior_loops_retained": true,
+    "horizon_grew_one_step_at_a_time": true,
+    "state_reload_exact": true,
+    "memory_reload_exact": true,
+    "memory_corruption_rejected": true,
+    "missing_evidence_no_write": true,
+    "zero_replayed_examples": true,
+    "zero_optimizer_updates": true
+  },
+  "accounting": {
+    "positive_verifier_bits": 20270,
+    "positive_logical_lifetimes": 4054,
+    "fresh_verifier_bits": 45695,
+    "fresh_logical_lifetimes": 9139,
+    "shuffled_verifier_bits": 9600,
+    "shuffled_logical_lifetimes": 1920,
+    "total_verifier_bits": 75565,
+    "total_logical_lifetimes": 15113,
+    "optimizer_updates": 0,
+    "replayed_examples": 0
+  },
+  "claim_boundary": "Promoted bounded replay-free adaptive growth through three non-commuting control-flow loop rungs with held-out retention; not efficient arbitrary program synthesis, unrestricted execution, unrestricted memory growth, or general continual learning."
+}

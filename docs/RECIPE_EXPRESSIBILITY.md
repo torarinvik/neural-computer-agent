@@ -812,3 +812,32 @@ This promotes bounded replay-free adaptive-horizon structural growth with
 retention. It does not establish efficient arbitrary program synthesis,
 unrestricted execution, unrestricted memory growth, or general continual
 learning.
+
+## Replay-free adaptive growth through non-commuting loops (2026-08-12)
+
+The structural edit ABI now relocates existing jump targets when inserting an
+instruction and fails closed when deletion would leave a dangling target.
+These operations are reusable external-program transformations rather than
+controller branches. The adaptive frontier uses them while carrying only
+aggregate operator credit and opaque candidate digests across curriculum
+rungs.
+
+The four-seed audit grew an opaque counter-clearing loop from length four
+through transfer-loop lengths five, six, and seven. Both forward and reversed
+verifier-state orders reached every rung; each new loop scored `1.0000` on
+held-out states and every earlier loop remained at `1.0000`. State/memory
+reload, missing-evidence, corruption, stale-proposal, and shuffled-feedback
+controls passed. A fresh source-to-loop search reached the first rung in all
+seeds but failed the final length-seven target within `1,200` candidates in
+all seeds.
+
+The positive arms charged `20,270` verifier bits, fresh controls `45,695`, and
+shuffled controls `9,600`; the complete audit charged `75,565` bits across
+`15,113` logical lifetimes with zero replay and zero optimizer/controller
+updates. Evidence is archived at
+`session_records/recipe_control_flow_adaptive_loop_growth_promoted_2026-08-12/`.
+
+This promotes bounded replay-free adaptive growth of non-commuting external
+loop programs with retention. It does not establish efficient arbitrary
+program synthesis, unrestricted execution, unrestricted memory growth, or
+general continual learning.
