@@ -1,0 +1,65 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment_id": "candidate-overlap-retention-multiregime-2026-08-12",
+  "status": "promoted_bounded_overlap_safe_candidate_retention",
+  "source": "in_repository_run",
+  "seeds": [80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103],
+  "configuration": {
+    "target_cue_symbol": 6,
+    "routing_match_tolerance": 0.01,
+    "window_statistics": "masked_mean_and_max_v1",
+    "window_gain": 0.05,
+    "discovery_probe_mode": "active",
+    "controller_frozen": true,
+    "external_memory_update_mode": "sufficient_statistics",
+    "candidate_lifecycle": "retain_across_committed_overlap_until_explicit_lifecycle_event_v1"
+  },
+  "active_exact_control": {
+    "nback_3": {
+      "baseline_complete_gates": 15,
+      "retained_complete_gates": 16,
+      "retained_promotions": 16,
+      "unique_verifier_bits": 768,
+      "transition_rows_consumed_once": 720
+    },
+    "nback_4": {
+      "baseline_complete_gates": 14,
+      "retained_complete_gates": 15,
+      "retained_promotions": 18,
+      "unique_verifier_bits": 604,
+      "transition_rows_consumed_once": 714
+    },
+    "nback_5": {
+      "baseline_complete_gates": 12,
+      "retained_complete_gates": 14,
+      "retained_promotions": 15,
+      "unique_verifier_bits": 443,
+      "transition_rows_consumed_once": 714
+    },
+    "aggregate": {
+      "baseline_complete_gates": 41,
+      "retained_complete_gates": 45,
+      "retained_improvement": 4,
+      "controller_unchanged_runs": 72,
+      "source_slot_byte_stable_runs": 72,
+      "replay_free_runs": 72,
+      "replayed_examples": 0,
+      "transition_rows_consumed_once": 2148
+    }
+  },
+  "matched_passive_retention": {
+    "nback_3_complete_gates": 12,
+    "nback_4_complete_gates": 13,
+    "nback_5_complete_gates": 13,
+    "nback_5_unique_verifier_bits": 443,
+    "nback_5_transition_rows_consumed_once": 714,
+    "nback_5_controller_unchanged_runs": 24,
+    "nback_5_source_slot_byte_stable_runs": 24,
+    "nback_5_replayed_examples": 0
+  },
+  "different_cue_nback_5_retention": {
+    "active_complete_gates": 13,
+    "passive_complete_gates": 11
+  },
+  "claim_boundary": "Promotes overlap-safe retention of isolated candidates as a bounded replay-free lifecycle improvement. It does not establish general continual learning, unrestricted memory growth, or universal route acquisition."
+}

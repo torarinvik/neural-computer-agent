@@ -11720,3 +11720,20 @@ continual-learning gain. It makes the staged/executing interface coherent and
 keeps model-family selection outside the frozen controller. The evidence and
 negative cumulative-selector control are archived in
 `session_records/provisional_portfolio_execution_screen_2026-08-12/`.
+
+## Overlap-safe provisional candidate lifecycle
+
+An external candidate is now durable across a factual match to a committed
+slot. The match can be a shared prefix of two regimes; it cannot by itself
+invalidate the candidate's isolated state or its one-pass evidence. Candidate
+removal therefore occurs only through explicit promotion, eviction, or the
+configured capacity boundary. This preserves the frozen controller and keeps
+the lifecycle in replaceable external memory.
+
+The exact same-seed active screen improved complete gates from `41/72` to
+`45/72` across n-back-3/4/5, with source retention and controller immutability
+passing in all `72` runs and zero replay. This is a promoted bounded retention
+boundary, not general continual learning; unresolved-candidate capacity and
+held-out model-family verification remain the next constraints. Evidence is
+archived in
+`session_records/candidate_overlap_retention_2026-08-12/`.

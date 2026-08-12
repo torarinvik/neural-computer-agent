@@ -1812,3 +1812,27 @@ This is not promoted as a continual-learning or sample-efficiency gain. The
 remaining bottleneck is still reliable pre-admission evidence and held-out
 model-family verification. Evidence is archived in
 `session_records/provisional_portfolio_execution_screen_2026-08-12/`.
+
+## Overlap-safe provisional candidate retention (2026-08-12)
+
+The router no longer deletes an isolated candidate merely because a committed
+slot matches a later transition bundle. This was a concrete replay-free
+continual-learning failure: distinct regimes can share a prefix, so a factual
+match is not evidence that the candidate's accumulated evidence is obsolete.
+Candidates now remain isolated until explicit promotion, eviction, or a
+capacity decision, while committed slots remain read-only.
+
+On exact same-seed active-discovery controls (`80–103`) with the masked state
+and tight route matching, complete gates improved from `15/24` to `16/24` on
+n-back-3, `14/24` to `15/24` on n-back-4, and `12/24` to `14/24` on n-back-5:
+`41/72` to `45/72` overall. The matched passive retention arm completed
+`12/24`, `13/24`, and `13/24`; a different-cue n-back-5 active arm completed
+`13/24` versus `11/24` passive. Across the active three-regime screen, all
+`72` controllers stayed unchanged, source slots remained byte-stable, replay
+was zero, and `2,148` transition rows were consumed once.
+
+This promotes a bounded candidate-lifecycle improvement, not general
+continual learning or unrestricted memory growth. Capacity under unresolved
+candidates and held-out model-family verification remain open bottlenecks.
+Evidence is archived in
+`session_records/candidate_overlap_retention_2026-08-12/`.

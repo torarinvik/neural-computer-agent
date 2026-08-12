@@ -1597,7 +1597,7 @@ def test_active_discovery_reports_a_changed_target_regime() -> None:
     assert report.replayed_examples == 0
 
 
-def test_active_discovery_handles_a_disappearing_provisional_candidate() -> None:
+def test_active_discovery_retains_an_overlapping_provisional_candidate() -> None:
     report = run_online_transition_discovery_audit(
         seed=84,
         window_statistics="masked_mean_and_max_v1",
@@ -1611,8 +1611,9 @@ def test_active_discovery_handles_a_disappearing_provisional_candidate() -> None
         target_cue_symbol=6,
     )
 
-    assert report.target_promotion_accepted is False
-    assert report.target_promotion_reason == "no provisional target candidate was staged"
+    assert report.status == "online_replay_free_transition_discovery_boundary"
+    assert report.target_promotion_accepted
+    assert report.target_model_improved_on_heldout
     assert report.controller_unchanged
     assert report.replayed_examples == 0
 

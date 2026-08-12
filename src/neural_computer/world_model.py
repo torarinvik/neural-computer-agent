@@ -7852,12 +7852,13 @@ class ExternalOnlineTransitionContextRouter:
         if match is not None:
             index, error, _margin, context = match
             self._pending.clear()
-            self._provisional_candidates = [
-                candidate
-                for candidate in self._provisional_candidates
-                if self._candidate_error(candidate, bundle)
-                > self.provisional_continuation_tolerance
-            ]
+            # A provisional regime may legitimately overlap a committed regime
+            # on one or more transitions.  A committed match is therefore not
+            # evidence that the uncommitted candidate is obsolete; discarding
+            # it here loses its accumulated replay-free evidence and forces
+            # rediscovery on the next divergent row.  Candidates remain
+            # isolated until explicit promotion, eviction, or capacity policy
+            # decides otherwise.
             self._set_active_slot(index)
             self._conflict_windows = 0
             return ExternalOnlineTransitionContextResult(

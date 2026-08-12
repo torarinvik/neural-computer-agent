@@ -2296,6 +2296,52 @@ def test_online_transition_context_router_capacity_guard_does_not_grow_or_write(
     assert router.bank.context_count == 1
 
 
+def test_online_router_retains_candidate_across_committed_overlap() -> None:
+    bank = ExternalTransitionModelBank(
+        1,
+        1,
+        2,
+        model_family=EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY,
+        capacity=3,
+        affine_ridge=1e-7,
+    )
+    source_context = torch.tensor([1.0, 0.0])
+    source_index = bank.ensure_context(source_context)
+    source = ExternalTransitionObservation(
+        state=torch.tensor([[0.0]]),
+        intention=torch.tensor([[0.0]]),
+        next_state=torch.tensor([[0.0]]),
+    )
+    bank.models[source_index].observe(source)
+    router = ExternalOnlineTransitionContextRouter(
+        bank,
+        ExternalTransitionContextEncoder(1, 1, hidden_width=8, context_width=2),
+        match_tolerance=1e-8,
+        continuation_tolerance=1e-8,
+        admission_observations=1,
+        max_contexts=3,
+        defer_admission=True,
+    )
+    target = ExternalTransitionObservation(
+        state=torch.tensor([[0.0]]),
+        intention=torch.tensor([[0.0]]),
+        next_state=torch.tensor([[2.0]]),
+    )
+
+    staged = router.observe(target)
+    assert staged.status == "staged"
+    assert router.provisional_candidate_count == 1
+
+    matched = router.observe(source)
+
+    assert matched.status == "matched"
+    assert router.provisional_candidate_count == 1
+    restored = ExternalOnlineTransitionContextRouter.from_payload(
+        router.state_payload()
+    )
+    assert restored.provisional_candidate_count == 1
+
+
 def test_online_router_stages_candidate_before_heldout_verified_promotion() -> None:
     torch.manual_seed(1212)
     bank = ExternalTransitionModelBank(2, 1, 4, hidden_width=8, capacity=2)
