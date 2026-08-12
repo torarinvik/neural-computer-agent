@@ -11772,3 +11772,21 @@ is a negative result for one threshold policy, not evidence that learned
 surprise or context stability cannot improve admission. The six-row default
 therefore remains canonical. Evidence is archived in
 `session_records/adaptive_surprise_admission_screen_2026-08-12/`.
+
+## Interleaved active-discovery scheduling
+
+Active external evidence can now be scheduled immediately after the first
+isolated candidate is staged, rather than always after all ordinary target
+training lifetimes. `active_interleaved` spends the same one probe lifetime as
+the existing active mode and falls back to the post-training position when no
+candidate is available earlier. This changes evidence timing, not the frozen
+controller, decoder ABI, or external memory contract.
+
+The exact active screen improved changed-cue n-back-5 complete gates from
+`13/24` to `17/24` and total active complete gates from `58/96` to `61/96`,
+while same-cue gates moved `45/72 -> 44/72`. It is therefore retained as an
+opt-in transfer schedule, not a universal default or a claim of general
+continual learning. All runs retained source bytes, left the controller
+unchanged, consumed zero replay, and used the same transition-row budget.
+Evidence is archived in
+`session_records/interleaved_active_discovery_screen_2026-08-12/`.

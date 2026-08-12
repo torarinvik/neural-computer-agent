@@ -1879,3 +1879,23 @@ adaptive admission in general. The next design must calibrate surprise against
 opaque context stability and held-out promotion risk before it can replace a
 fixed evidence budget. Evidence is archived in
 `session_records/adaptive_surprise_admission_screen_2026-08-12/`.
+
+## Interleaved active-discovery scheduling (2026-08-12)
+
+The active evidence mechanism now also has an opt-in `active_interleaved`
+schedule. It spends the same single active probe lifetime as the existing
+`active` mode, but inserts that probe immediately after the first isolated
+candidate becomes available when a later target-training lifetime remains.
+When the candidate appears later, it falls back to the existing post-training
+probe. No verifier rows are replayed and the frozen controller is unchanged.
+
+On exact seeds `80–103`, masked state, tight routing, and the full held-out,
+recursive, retention, and fresh-challenger gate, interleaving improved the
+changed-cue n-back-5 active arm from `13/24` to `17/24`. Across the four active
+arms (n-back 3/4/5 at cue 6 and n-back-5 at cue 7), complete gates rose from
+`58/96` to `61/96`. The same-cue aggregate slipped from `45/72` to `44/72`,
+so this remains an opt-in transfer strategy rather than a global scheduling
+default. The control preserved `2,868` transition rows once, zero replay,
+controller immutability, and source-slot byte stability in all 96 runs per
+arm. Evidence is archived in
+`session_records/interleaved_active_discovery_screen_2026-08-12/`.

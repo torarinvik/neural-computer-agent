@@ -1575,6 +1575,22 @@ def test_active_discovery_probe_improves_the_external_evidence_boundary() -> Non
     assert report.external_memory_optimizer_updates == 0
 
 
+def test_interleaved_active_discovery_preserves_the_external_boundary() -> None:
+    report = run_online_transition_discovery_audit(
+        seed=91,
+        window_statistics="recency_weighted_and_latest_v1",
+        window_gain=0.05,
+        discovery_probe_mode="active_interleaved",
+    )
+
+    assert report.status == "online_replay_free_transition_discovery_boundary"
+    assert report.discovery_probe_mode == "active_interleaved"
+    assert report.discovery_probe_rows == 6
+    assert report.controller_unchanged
+    assert report.source_slot_byte_stable
+    assert report.replayed_examples == 0
+
+
 def test_active_discovery_reports_a_changed_target_regime() -> None:
     report = run_online_transition_discovery_audit(
         seed=91,

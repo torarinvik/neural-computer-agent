@@ -866,7 +866,12 @@ def run_online_transition_discovery_audit(
         raise ValueError("random feature width must be a positive integer")
     if not isinstance(pretrain_context_encoder, bool):
         raise TypeError("context encoder pretraining flag must be boolean")
-    if discovery_probe_mode not in {"none", "active", "passive"}:
+    if discovery_probe_mode not in {
+        "none",
+        "active",
+        "passive",
+        "active_interleaved",
+    }:
         raise ValueError("unsupported discovery probe mode")
     if (
         not isinstance(target_n_back, int)
@@ -1165,6 +1170,49 @@ def run_online_transition_discovery_audit(
     prior_selection_cost_aware = False
     external_memory_optimizer_updates = [0]
     active_probe_rows = 0
+    active_probe_consumed = False
+
+    def run_discovery_probe(
+        probe_seed: int,
+    ) -> tuple[ExternalTransitionRollout, int]:
+        if router.provisional_candidate_count < 1:
+            raise RuntimeError("discovery probing needs a staged candidate")
+        candidate_context = router.provisional_context_at(0)
+        active_probe_bank = ExternalTransitionModelBank.from_payload(bank.payload())
+        active_probe_index = active_probe_bank.ensure_context(
+            candidate_context,
+            model_family=router.provisional_model_family_at(0),
+        )
+        active_probe_bank.models[active_probe_index].load_state_dict(
+            router.provisional_model_at(0).state_dict()
+        )
+        if discovery_probe_mode in {"active", "active_interleaved"}:
+            return _run_active_discovery_lifetime(
+                agent,
+                policy_free,
+                active_probe_bank,
+                source_context,
+                source_slot_id=active_probe_bank.slot_id_at(source_index),
+                target_slot_id=active_probe_bank.slot_id_at(active_probe_index),
+                n_back=target_n_back,
+                steps=steps,
+                seed=probe_seed,
+                cue_symbol=target_cue_symbol,
+                candidate_intentions=candidate_intentions,
+            )
+        return _run_lifetime(
+            agent,
+            policy_free,
+            bank,
+            source_context,
+            n_back=target_n_back,
+            steps=steps,
+            seed=probe_seed,
+            cue_symbol=target_cue_symbol,
+            candidate_intentions=candidate_intentions,
+            learn=False,
+        )
+
     for lifetime in range(target_training_lifetimes):
         target_rollout, bits = _run_lifetime(
             agent,
@@ -1196,49 +1244,33 @@ def run_online_transition_discovery_audit(
                 and prior_receipt.schema.endswith("prior-selection.v2")
             )
         target_result = routed
+        if (
+            discovery_probe_mode == "active_interleaved"
+            and not active_probe_consumed
+            and lifetime + 1 < target_training_lifetimes
+            and target_candidate_staged
+            and router.provisional_candidate_count
+        ):
+            interleaved_probe, interleaved_bits = run_discovery_probe(
+                seed + 22000
+            )
+            unique_bits += interleaved_bits
+            active_probe_rows = interleaved_probe.horizon
+            target_result = _route_rollout(
+                router,
+                interleaved_probe,
+                adapt=True,
+                adapt_committed=False,
+                optimizer_update_counter=external_memory_optimizer_updates,
+            )
+            active_probe_consumed = True
     if (
         discovery_probe_mode != "none"
         and target_candidate_staged
         and router.provisional_candidate_count
+        and not active_probe_consumed
     ):
-        candidate_context = router.provisional_context_at(0)
-        active_probe_bank = ExternalTransitionModelBank.from_payload(bank.payload())
-        active_probe_index = active_probe_bank.ensure_context(
-            candidate_context,
-            model_family=router.provisional_model_family_at(0),
-        )
-        active_probe_bank.models[active_probe_index].load_state_dict(
-            router.provisional_model_at(0).state_dict()
-        )
-        if discovery_probe_mode == "active":
-            active_probe_rollout, active_probe_bits = (
-                _run_active_discovery_lifetime(
-                    agent,
-                    policy_free,
-                    active_probe_bank,
-                    source_context,
-                    source_slot_id=active_probe_bank.slot_id_at(source_index),
-                    target_slot_id=active_probe_bank.slot_id_at(active_probe_index),
-                    n_back=target_n_back,
-                    steps=steps,
-                    seed=seed + 22000,
-                    cue_symbol=target_cue_symbol,
-                    candidate_intentions=candidate_intentions,
-                )
-            )
-        else:
-            active_probe_rollout, active_probe_bits = _run_lifetime(
-                agent,
-                policy_free,
-                bank,
-                source_context,
-                n_back=target_n_back,
-                steps=steps,
-                seed=seed + 22000,
-                cue_symbol=target_cue_symbol,
-                candidate_intentions=candidate_intentions,
-                learn=False,
-            )
+        active_probe_rollout, active_probe_bits = run_discovery_probe(seed + 22000)
         unique_bits += active_probe_bits
         active_probe_rows = active_probe_rollout.horizon
         target_result = _route_rollout(
@@ -1831,7 +1863,7 @@ def main() -> None:
     parser.add_argument("--early-admission-surprise-fraction", type=float, default=1.0)
     parser.add_argument(
         "--discovery-probe-mode",
-        choices=("none", "active", "passive"),
+        choices=("none", "active", "passive", "active_interleaved"),
         default="none",
     )
     parser.add_argument("--target-n-back", type=int, default=3)
