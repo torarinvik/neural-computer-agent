@@ -1,0 +1,167 @@
+{
+  "seed": 69316,
+  "train_source": "mixed",
+  "interpreter_check": 0.9973,
+  "steps": 12,
+  "mode_program": [
+    [
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0
+    ]
+  ],
+  "results": {
+    "collect1+navigate1": {
+      "random": 0.2656,
+      "mode": 0.1094,
+      "read_wrong_world": 1.4531,
+      "searched": 1.4531,
+      "read": 1.1719,
+      "oracle": 1.5625,
+      "wrong_world_source": "collect2+navigate1",
+      "searched_candidates": 4420,
+      "read_forward_passes": 4,
+      "slot_agreement": 0.9583
+    },
+    "collect2+navigate1": {
+      "random": 0.2188,
+      "mode": 0.1562,
+      "read_wrong_world": 2.2031,
+      "searched": 2.1094,
+      "read": 2.1094,
+      "oracle": 2.1406,
+      "wrong_world_source": "intercept1+avoid1",
+      "searched_candidates": 4216,
+      "read_forward_passes": 4,
+      "slot_agreement": 1.0
+    },
+    "intercept1+avoid1": {
+      "random": -0.8906,
+      "mode": -0.8906,
+      "read_wrong_world": -0.2031,
+      "searched": -0.2344,
+      "read": -0.2188,
+      "oracle": -0.5781,
+      "wrong_world_source": "intercept1+avoid2",
+      "searched_candidates": 4226,
+      "read_forward_passes": 4,
+      "slot_agreement": 0.625
+    },
+    "intercept1+avoid2": {
+      "random": -0.8594,
+      "mode": -0.9688,
+      "read_wrong_world": -0.625,
+      "searched": -0.5781,
+      "read": -0.4531,
+      "oracle": -0.6094,
+      "wrong_world_source": "intercept2+avoid1",
+      "searched_candidates": 5482,
+      "read_forward_passes": 4,
+      "slot_agreement": 0.5417
+    },
+    "intercept2+avoid1": {
+      "random": -1.3438,
+      "mode": -1.6094,
+      "read_wrong_world": -0.8281,
+      "searched": -0.625,
+      "read": -0.7969,
+      "oracle": -1.4219,
+      "wrong_world_source": "intercept2+avoid2",
+      "searched_candidates": 3184,
+      "read_forward_passes": 4,
+      "slot_agreement": 0.5417
+    },
+    "intercept2+avoid2": {
+      "random": -1.2969,
+      "mode": -1.5625,
+      "read_wrong_world": -0.6562,
+      "searched": -0.4531,
+      "read": -0.5,
+      "oracle": -1.5156,
+      "wrong_world_source": "intercept1+navigate1",
+      "searched_candidates": 4896,
+      "read_forward_passes": 4,
+      "slot_agreement": 0.625
+    },
+    "intercept1+navigate1": {
+      "random": -0.7969,
+      "mode": -0.9219,
+      "read_wrong_world": -0.0781,
+      "searched": 0.1406,
+      "read": -0.1562,
+      "oracle": 0.125,
+      "wrong_world_source": "intercept2+navigate1",
+      "searched_candidates": 4343,
+      "read_forward_passes": 4,
+      "slot_agreement": 0.75
+    },
+    "intercept2+navigate1": {
+      "random": -1.4844,
+      "mode": -1.8594,
+      "read_wrong_world": -0.6094,
+      "searched": -0.6094,
+      "read": -0.9219,
+      "oracle": -1.1719,
+      "wrong_world_source": "avoid1+navigate1",
+      "searched_candidates": 4420,
+      "read_forward_passes": 4,
+      "slot_agreement": 0.7083
+    },
+    "avoid1+navigate1": {
+      "random": -0.0938,
+      "mode": -0.1094,
+      "read_wrong_world": 0.7188,
+      "searched": 0.9531,
+      "read": 0.7031,
+      "oracle": 1.1562,
+      "wrong_world_source": "avoid2+navigate1",
+      "searched_candidates": 3715,
+      "read_forward_passes": 4,
+      "slot_agreement": 0.7917
+    },
+    "avoid2+navigate1": {
+      "random": -0.2188,
+      "mode": -0.25,
+      "read_wrong_world": 0.2188,
+      "searched": 0.3438,
+      "read": 0.3594,
+      "oracle": 0.7344,
+      "wrong_world_source": "collect1+navigate1",
+      "searched_candidates": 4343,
+      "read_forward_passes": 4,
+      "slot_agreement": 0.8333
+    }
+  },
+  "mean_random": -0.65,
+  "mean_mode": -0.7906,
+  "mean_read_wrong_world": 0.1594,
+  "mean_searched": 0.25,
+  "mean_read": 0.1297,
+  "mean_oracle": 0.0422,
+  "mean_slot_agreement": 0.7375
+}

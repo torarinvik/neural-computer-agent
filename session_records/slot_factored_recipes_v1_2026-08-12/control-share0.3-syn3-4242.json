@@ -1,0 +1,167 @@
+{
+  "seed": 4242,
+  "train_source": "mixed",
+  "interpreter_check": 1.0,
+  "steps": 12,
+  "mode_program": [
+    [
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0
+    ]
+  ],
+  "results": {
+    "collect1+navigate1": {
+      "random": 0.3125,
+      "mode": 0.0781,
+      "read_wrong_world": 1.6406,
+      "searched": 1.5781,
+      "read": 1.5781,
+      "oracle": 1.75,
+      "wrong_world_source": "collect2+navigate1",
+      "searched_candidates": 3715,
+      "read_forward_passes": 4,
+      "slot_agreement": 1.0
+    },
+    "collect2+navigate1": {
+      "random": 0.3125,
+      "mode": 0.1406,
+      "read_wrong_world": 1.8281,
+      "searched": 1.9688,
+      "read": 1.9062,
+      "oracle": 2.0938,
+      "wrong_world_source": "intercept1+avoid1",
+      "searched_candidates": 4293,
+      "read_forward_passes": 4,
+      "slot_agreement": 0.9583
+    },
+    "intercept1+avoid1": {
+      "random": -0.9219,
+      "mode": -0.9688,
+      "read_wrong_world": -0.7188,
+      "searched": -0.9062,
+      "read": -0.7031,
+      "oracle": -0.7188,
+      "wrong_world_source": "intercept1+avoid2",
+      "searched_candidates": 3326,
+      "read_forward_passes": 4,
+      "slot_agreement": 0.625
+    },
+    "intercept1+avoid2": {
+      "random": -0.8906,
+      "mode": -0.9688,
+      "read_wrong_world": -0.6719,
+      "searched": -0.8125,
+      "read": -0.6719,
+      "oracle": -0.5781,
+      "wrong_world_source": "intercept2+avoid1",
+      "searched_candidates": 5754,
+      "read_forward_passes": 4,
+      "slot_agreement": 0.6667
+    },
+    "intercept2+avoid1": {
+      "random": -1.5938,
+      "mode": -1.625,
+      "read_wrong_world": -1.1562,
+      "searched": -1.3438,
+      "read": -1.2188,
+      "oracle": -1.625,
+      "wrong_world_source": "intercept2+avoid2",
+      "searched_candidates": 4812,
+      "read_forward_passes": 4,
+      "slot_agreement": 0.7083
+    },
+    "intercept2+avoid2": {
+      "random": -1.5156,
+      "mode": -1.7031,
+      "read_wrong_world": -1.4844,
+      "searched": -1.4062,
+      "read": -1.0156,
+      "oracle": -1.8125,
+      "wrong_world_source": "intercept1+navigate1",
+      "searched_candidates": 5629,
+      "read_forward_passes": 4,
+      "slot_agreement": 0.625
+    },
+    "intercept1+navigate1": {
+      "random": -0.7656,
+      "mode": -0.8125,
+      "read_wrong_world": -0.125,
+      "searched": 0.0625,
+      "read": -0.4062,
+      "oracle": 0.0469,
+      "wrong_world_source": "intercept2+navigate1",
+      "searched_candidates": 4293,
+      "read_forward_passes": 4,
+      "slot_agreement": 0.7083
+    },
+    "intercept2+navigate1": {
+      "random": -1.5781,
+      "mode": -1.8281,
+      "read_wrong_world": -0.9062,
+      "searched": -1.0469,
+      "read": -1.0781,
+      "oracle": -1.0938,
+      "wrong_world_source": "avoid1+navigate1",
+      "searched_candidates": 4379,
+      "read_forward_passes": 4,
+      "slot_agreement": 0.75
+    },
+    "avoid1+navigate1": {
+      "random": -0.0938,
+      "mode": -0.125,
+      "read_wrong_world": 0.5625,
+      "searched": 0.7656,
+      "read": 0.7812,
+      "oracle": 0.9219,
+      "wrong_world_source": "avoid2+navigate1",
+      "searched_candidates": 5048,
+      "read_forward_passes": 4,
+      "slot_agreement": 0.9167
+    },
+    "avoid2+navigate1": {
+      "random": -0.0469,
+      "mode": -0.1562,
+      "read_wrong_world": 0.6875,
+      "searched": 0.6875,
+      "read": 0.5312,
+      "oracle": 0.7969,
+      "wrong_world_source": "collect1+navigate1",
+      "searched_candidates": 3588,
+      "read_forward_passes": 4,
+      "slot_agreement": 0.8333
+    }
+  },
+  "mean_random": -0.6781,
+  "mean_mode": -0.7969,
+  "mean_read_wrong_world": -0.0344,
+  "mean_searched": -0.0453,
+  "mean_read": -0.0297,
+  "mean_oracle": -0.0219,
+  "mean_slot_agreement": 0.7792
+}

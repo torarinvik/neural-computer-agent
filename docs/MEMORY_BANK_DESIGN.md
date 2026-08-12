@@ -10472,3 +10472,235 @@ What is demonstrated is narrower than "an agent that plays games" and
 larger than anything the project had: **a frozen amodal interpreter,
 plus a bank of integer recipes found by search, plans and acts in real
 grid worlds as well as a perfect simulator does.**
+
+## F204 — THE WALL WAS NOT ARITY, IT WAS SEQUENTIAL SEMANTICS
+
+F202 and F203 both stopped at the same place and I named it as arity:
+the reader emits ONE instruction, grid actions change two or three
+slots, so search remains the mechanism above arity 1. That diagnosis
+was wrong in an instructive way. The problem is that a recipe is a
+LIST.
+
+A sequential recipe has unbounded length, a search space exponential in
+depth, and no fixed output shape for a reader to emit. A PARALLEL
+recipe assigns each slot one instruction `(op, j, m)`, every one reading
+the PRE-state. Three things follow at once. The search factorises —
+slot `s` is fit against column `s` alone, so six independent searches of
+280 candidates replace one search of 26,398, and **arity stops costing
+anything**. The output shape is fixed at `SLOTS x (op, j, m)`. And
+SWAP becomes a derived form (SWAP i,j is COPY i<-j at slot i together
+with COPY j<-i at slot j), so the per-slot vocabulary is SMALLER than
+the sequential one while expressing more.
+
+Both languages fit on the same 32 transitions and scored on a different
+128-row draw, ground-truth execution on both sides so this compares
+languages and not plants:
+
+| domain | changed slots | parallel | seq depth-1 | seq depth-2 |
+| --- | ---: | --- | --- | --- |
+| held-out games | 4.125 | **0.8982** @ 1,119 | 0.7821 @ 158 | 0.8687 @ 26,398 |
+| seen games | 3.167 | **0.9014** @ 910 | 0.8260 @ 125 | 0.8975 @ 16,933 |
+| rule families | 0.917 | 1.0000 @ 160 | 1.0000 @ 21 | 1.0000 @ 21 |
+
+**Parallel beats sequential depth-2 on held-out grid actions at a
+twenty-fourth of the cost.** The cost column is the real claim:
+parallel is FLAT in arity, sequential is EXPONENTIAL in it. On
+arity-1 rule families sequential is eight times CHEAPER (21 vs 160),
+because the per-slot search always runs six columns while depth-1 stops
+at the first hit. That is the honest shape of the trade.
+
+**The capacity objection, measured rather than argued.** Parallel picks
+six instructions where depth-2 picks two, so of course it fits better;
+the question is whether the freedom is bought by overfitting. In-sample
+minus held-out: parallel +0.0114, depth-1 -0.0037, depth-2 -0.0005 on
+held-out games. The extra freedom costs about one point of
+generalisation and buys three points of held-out fit at 1/24 the
+search.
+
+**What parallel CANNOT express.** `INC 0; INC 0` — add two to a slot —
+has no parallel form in this vocabulary. The loss is real; it does not
+bind on these distributions.
+
+**The plant had to be rebuilt, and how mattered more than how much.**
+Sweep at 12,000 updates:
+
+    program code SUMMED, 1 refinement step      0.3747
+    program code SUMMED, 3 refinement steps     0.3809
+    program code SUMMED, 6 refinement steps     0.4055
+    one residual step per SLOT                  1.0000
+
+Summing six per-slot codes into one vector asks the network to unbind
+six superposed instructions and it does not; six times the depth moves
+it 0.03. Folding one slot code per residual step lands exactly. At
+40,000 updates the plant checks 0.9973-1.0000 on random states, against
+the sequential plant's 0.9896 — **the parallel plant is the more
+faithful one as well as the cheaper one to search.**
+
+**A correction I nearly recorded as a finding.** I re-supplied the
+pre-state at every residual step and explained the exactness by it:
+parallel semantics means every write reads the state before any of them
+ran, so handing it over saves the network from carrying it. The
+ablation says otherwise — replacing the pre-state with the running
+latent also scores 1.0000. Per-slot decomposition is the whole effect.
+
+**A second plant gate, on the states that matter.** The gate above uses
+the training distribution. On the structured states real worlds
+produce, the same plants check 0.9605-0.9919. That drift is invisible
+to the random-state gate and would have been read as reader error.
+
+## F205 — THE READER EMITS WHOLE MULTI-SLOT PROGRAMS, AND ON WORLD
+## SHAPES IT HAS SEEN IT EQUALS THE SEARCH
+
+Same reader architecture as F202 — a set encoder over (state, next
+state) pairs — with `SLOTS x 3` heads instead of four. It emits an
+entire parallel program in one forward pass. Trained on the search's
+own labels (wake), evaluated on worlds it never saw, scored on
+transitions nothing was fit on. Three seeds, paired per world-action.
+
+Scores are restricted to slots the action actually MOVES; the used-slot
+block is padded with slots nothing touches and every arm including the
+identity gets those for free.
+
+| section | n | floor | READER | search |
+| --- | ---: | ---: | ---: | ---: |
+| held-out games (arity 4.125) | 120 | 0.4820 | 0.7226 | 0.8370 |
+| seen game shapes (arity 3.167) | 180 | 0.4437 | **0.8382** | 0.8359 |
+| held-out rule families | 299 | 0.1698 | 0.8847 | 0.9411 |
+
+**On world shapes it has seen, the reader equals the search:
+-0.0023 +- 0.0030, t = -0.77, one forward pass against 910 candidate
+evaluations.** That is the amortisation the architecture was for.
+
+**Four controls, and the fourth is the one that mattered.**
+
+  * *identity floor* — copying the input.
+  * *mode program* — the pool's most common program applied everywhere.
+  * *shuffled labels* — the reader scores EXACTLY the mode program in
+    all three sections, to four decimals. A clean null.
+  * *wrong world* — the trained reader fed ANOTHER world's transitions
+    and scored here. This is the one that caught something.
+
+Every grid world here shares its avatar dynamics: action 2 moves the
+avatar identically in `collect1` and in `avoid2`, and only the object
+behaviour differs. So the control comes in two forms, and they say
+different things:
+
+| paired comparison | held-out games | seen shapes | rule families |
+| --- | --- | --- | --- |
+| reader - wrong world, SAME action | +0.0221 +- 0.0143, t=1.55 | +0.0962, t=9.28 | +0.6496, t=36.1 |
+| reader - wrong world AND action | +0.2124, t=15.28 | +0.3682, t=28.5 | +0.6510, t=36.0 |
+| search - reader | +0.1144, t=9.18 | **-0.0023, t=-0.77** | +0.0564, t=5.26 |
+
+**On genuinely new worlds the reader reads the ACTION and not yet the
+WORLD.** +0.21 over a program read from a different world and a
+different action; +0.022 over the same action in a different world, and
+that is NOT significant. On rule families, which share no action
+semantics, reading is unambiguous at +0.65.
+
+Without the two-variant control this would have read as "the reader
+generalises to new worlds", and the number supporting it would have
+been almost entirely shared avatar dynamics.
+
+## F206 — THE WAKE MIXTURE HAS AN INTERIOR OPTIMUM, AND IT IS WHAT
+## MAKES THE READER READ A NEW WORLD
+
+F205's failure had a counting explanation before it had a measurement.
+Fifteen grid worlds times four actions is SIXTY distinct grid labels in
+the wake pool. Sixty is memorisable, and memorisation predicts exactly
+the observed shape: equal to the search on world shapes it has seen,
+action-level only on new ones.
+
+The fix has to add worlds without adding domain knowledge. Random
+parallel programs over random states are unlimited, carry arity up to
+six, and are already the plant's training distribution — and they are
+labelled by the SAME per-slot search as everything else, not by the
+program that generated them, because two programs can agree on a batch
+and the search's answer is what the reader is being taught to predict.
+
+F201 measured that random STATES cost 0.41 of functional accuracy on
+real families, so this had to be a mixture rather than a replacement.
+Three seeds per setting, paired per world-action:
+
+| synthetic share | held-out worlds | reader - wrong world | search - reader | rule families |
+| ---: | ---: | --- | ---: | ---: |
+| 0.00 | 0.7226 | +0.0221 +- 0.0143, t=1.55 | +0.1144 | 0.8847 |
+| 0.15 | 0.7388 | +0.0322 +- 0.0125, t=2.57 | +0.0982 | 0.8907 |
+| **0.30** | **0.7803** | **+0.0440 +- 0.0106, t=4.15** | **+0.0567** | 0.8818 |
+| 0.45 | 0.7779 | +0.0511 +- 0.0140, t=3.65 | +0.0591 | 0.8501 |
+| 0.60 | 0.7334 | +0.0500 +- 0.0162, t=3.08 | +0.1035 | 0.8052 |
+
+**At 0.30 the reader reads the specific world significantly for the
+first time** (t=4.15 against t=1.55 with no synthetic worlds), recovers
+**84% of the search's margin over the floor on worlds it has never
+seen** (up from 68%), and halves the search's remaining edge. Seen
+shapes are untouched — the reader stays level with the search at every
+setting (t between -1.57 and +0.13) — so the mixture buys
+generalisation without spending the amortisation.
+
+Past 0.30, F201's penalty arrives on schedule: rule families fall
+0.8818, 0.8501, 0.8052 as the share rises, and by 0.60 held-out worlds
+are worse too. An interior optimum, the same shape as F154's weight
+decay, and for a related reason — the synthetic distribution is a
+regulariser, and enough of it stops being one.
+
+## F207 — PLANNING WITH A BANK THE READER WROTE
+
+F203's bank was searched: every new world cost an enumeration. This
+replaces that one component and changes nothing else — same objective,
+same greedy depth-one planner, same games machinery. Twelve seeds, ten
+HELD-OUT compound worlds each (the reader's wake phase saw fifteen
+other grid worlds and none of these), six arms:
+
+Run at F206's optimum (synthetic share 0.30), with the no-synthetic
+arm alongside because the difference between them settles a question
+the first run could not:
+
+| arm | share 0.00 | share 0.30 |
+| --- | ---: | ---: |
+| mode-program bank | -0.7897 | -0.7897 |
+| random | -0.6652 | -0.6652 |
+| read from the WRONG world | 0.0186 | -0.0288 |
+| **READ (one forward pass)** | **0.0566** | **0.0310** |
+| oracle (true simulator) | 0.0466 | 0.0466 |
+| searched (1,119 candidates/action) | 0.1197 | 0.1197 |
+
+| paired, per seed | share 0.00 | share 0.30 |
+| --- | --- | --- |
+| read - random | +0.7219 +- 0.0353, t=20.5, 12/12 | +0.6962 +- 0.0398, t=17.5, 12/12 |
+| read - mode | +0.8464 +- 0.0366, t=23.1, 12/12 | +0.8207 +- 0.0420, t=19.5, 12/12 |
+| read - WRONG world | +0.0380 +- 0.0270, t=1.41, 8/12 | **+0.0598 +- 0.0166, t=3.59, 11/12** |
+| read - oracle | +0.0101 +- 0.0378, t=0.27 | -0.0156 +- 0.0417, t=-0.37 |
+| searched - read | +0.0630 +- 0.0443, t=1.42 | +0.0887 +- 0.0414, t=2.14 |
+
+**A bank written by one forward pass per action plans as well as the
+true simulator**, on worlds the reader had never seen: read minus
+oracle is t=0.27 and t=-0.37 at the two settings. Both are about +0.70
+above random and +0.82 above the mode-program bank, at 12/12 seeds.
+
+**The mode-program bank is WORSE than random**, which is what makes the
+rest readable: a fixed program is actively harmful, so the model arms
+are not winning by accident of the planner.
+
+**A correction to what I wrote from the first run alone.** With no
+synthetic worlds, a bank read from the WRONG world scored 0.0186 —
+nearly all of READ's advantage — and the world-specific increment was
+t=1.41, not significant. I concluded that reward is simply the wrong
+instrument for world-specificity, since this objective is slot-distance
+to an object and the avatar dynamics are shared across every one of
+these worlds. **At F206's mixture that conclusion is refuted by its own
+arm: the same comparison reaches +0.0598 +- 0.0166, t=3.59, 11/12
+seeds.** Reward is a BLUNTER instrument than fit, not a blind one — the
+effect was too small to resolve at share 0.00 and is resolvable once
+the reader actually reads the world. Two independent instruments now
+agree, which neither did before.
+
+**The search keeps a small edge here.** Searched minus read is +0.0887
++- 0.0414, t=2.14 — marginal, and in the same direction as the fit
+measurement's +0.0567. Amortisation is not yet free on genuinely novel
+worlds; it is 84% of the way.
+
+**Unchanged limitations from F203.** The goal is supplied, not learned.
+The planner is greedy at depth one. Six of the ten test worlds are net
+negative for every arm including the oracle, because the objective does
+not describe intercept or avoid. Perception is still the hand-written
+`slot_state`.

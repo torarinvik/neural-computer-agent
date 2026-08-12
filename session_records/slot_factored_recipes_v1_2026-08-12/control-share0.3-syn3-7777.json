@@ -1,0 +1,167 @@
+{
+  "seed": 7777,
+  "train_source": "mixed",
+  "interpreter_check": 1.0,
+  "steps": 12,
+  "mode_program": [
+    [
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0
+    ]
+  ],
+  "results": {
+    "collect1+navigate1": {
+      "random": 0.2344,
+      "mode": 0.1406,
+      "read_wrong_world": 1.5,
+      "searched": 1.5312,
+      "read": 1.5,
+      "oracle": 1.7656,
+      "wrong_world_source": "collect2+navigate1",
+      "searched_candidates": 4343,
+      "read_forward_passes": 4,
+      "slot_agreement": 0.875
+    },
+    "collect2+navigate1": {
+      "random": 0.4688,
+      "mode": 0.1719,
+      "read_wrong_world": 1.9531,
+      "searched": 2.2812,
+      "read": 2.2031,
+      "oracle": 2.3906,
+      "wrong_world_source": "intercept1+avoid1",
+      "searched_candidates": 4379,
+      "read_forward_passes": 4,
+      "slot_agreement": 0.875
+    },
+    "intercept1+avoid1": {
+      "random": -0.9219,
+      "mode": -0.9844,
+      "read_wrong_world": -0.3906,
+      "searched": -0.5156,
+      "read": -0.4375,
+      "oracle": -0.5781,
+      "wrong_world_source": "intercept1+avoid2",
+      "searched_candidates": 2468,
+      "read_forward_passes": 4,
+      "slot_agreement": 0.5
+    },
+    "intercept1+avoid2": {
+      "random": -0.7812,
+      "mode": -0.9375,
+      "read_wrong_world": -0.4688,
+      "searched": -0.4688,
+      "read": -0.5469,
+      "oracle": -0.6094,
+      "wrong_world_source": "intercept2+avoid1",
+      "searched_candidates": 3996,
+      "read_forward_passes": 4,
+      "slot_agreement": 0.5417
+    },
+    "intercept2+avoid1": {
+      "random": -1.5156,
+      "mode": -1.6094,
+      "read_wrong_world": -0.9219,
+      "searched": -0.7656,
+      "read": -0.7656,
+      "oracle": -1.4375,
+      "wrong_world_source": "intercept2+avoid2",
+      "searched_candidates": 4540,
+      "read_forward_passes": 4,
+      "slot_agreement": 0.625
+    },
+    "intercept2+avoid2": {
+      "random": -1.5781,
+      "mode": -1.7188,
+      "read_wrong_world": -1.625,
+      "searched": -0.8125,
+      "read": -0.7812,
+      "oracle": -1.6562,
+      "wrong_world_source": "intercept1+navigate1",
+      "searched_candidates": 5524,
+      "read_forward_passes": 4,
+      "slot_agreement": 0.5
+    },
+    "intercept1+navigate1": {
+      "random": -0.6719,
+      "mode": -0.8906,
+      "read_wrong_world": 0.2969,
+      "searched": 0.2188,
+      "read": -0.625,
+      "oracle": 0.1562,
+      "wrong_world_source": "intercept2+navigate1",
+      "searched_candidates": 4420,
+      "read_forward_passes": 4,
+      "slot_agreement": 0.7917
+    },
+    "intercept2+navigate1": {
+      "random": -1.5,
+      "mode": -1.7344,
+      "read_wrong_world": -0.4375,
+      "searched": -0.4375,
+      "read": -0.4688,
+      "oracle": -0.9219,
+      "wrong_world_source": "avoid1+navigate1",
+      "searched_candidates": 4343,
+      "read_forward_passes": 4,
+      "slot_agreement": 0.75
+    },
+    "avoid1+navigate1": {
+      "random": -0.0781,
+      "mode": -0.0312,
+      "read_wrong_world": 1.0312,
+      "searched": 1.0312,
+      "read": 1.0312,
+      "oracle": 1.1719,
+      "wrong_world_source": "avoid2+navigate1",
+      "searched_candidates": 5244,
+      "read_forward_passes": 4,
+      "slot_agreement": 1.0
+    },
+    "avoid2+navigate1": {
+      "random": -0.0312,
+      "mode": -0.1406,
+      "read_wrong_world": 0.7344,
+      "searched": 0.7656,
+      "read": 0.7656,
+      "oracle": 1.0312,
+      "wrong_world_source": "collect1+navigate1",
+      "searched_candidates": 4302,
+      "read_forward_passes": 4,
+      "slot_agreement": 0.9583
+    }
+  },
+  "mean_random": -0.6375,
+  "mean_mode": -0.7734,
+  "mean_read_wrong_world": 0.1672,
+  "mean_searched": 0.2828,
+  "mean_read": 0.1875,
+  "mean_oracle": 0.1312,
+  "mean_slot_agreement": 0.7417
+}

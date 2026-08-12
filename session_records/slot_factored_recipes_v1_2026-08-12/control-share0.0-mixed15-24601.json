@@ -1,0 +1,167 @@
+{
+  "seed": 24601,
+  "train_source": "mixed",
+  "interpreter_check": 1.0,
+  "steps": 12,
+  "mode_program": [
+    [
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0
+    ]
+  ],
+  "results": {
+    "collect1+navigate1": {
+      "random": 0.25,
+      "mode": 0.1406,
+      "read_wrong_world": 1.7344,
+      "searched": 1.7344,
+      "read": 1.7344,
+      "oracle": 1.9219,
+      "wrong_world_source": "collect2+navigate1",
+      "searched_candidates": 3401,
+      "read_forward_passes": 4,
+      "slot_agreement": 1.0
+    },
+    "collect2+navigate1": {
+      "random": 0.4531,
+      "mode": 0.2656,
+      "read_wrong_world": 2.3438,
+      "searched": 2.3281,
+      "read": 2.3281,
+      "oracle": 2.4531,
+      "wrong_world_source": "intercept1+avoid1",
+      "searched_candidates": 4420,
+      "read_forward_passes": 4,
+      "slot_agreement": 0.9583
+    },
+    "intercept1+avoid1": {
+      "random": -0.9062,
+      "mode": -0.9688,
+      "read_wrong_world": -0.7344,
+      "searched": -0.7344,
+      "read": -0.7344,
+      "oracle": -0.5781,
+      "wrong_world_source": "intercept1+avoid2",
+      "searched_candidates": 2468,
+      "read_forward_passes": 4,
+      "slot_agreement": 0.6667
+    },
+    "intercept1+avoid2": {
+      "random": -0.9062,
+      "mode": -0.9219,
+      "read_wrong_world": -0.6406,
+      "searched": -0.6406,
+      "read": -0.6406,
+      "oracle": -0.5938,
+      "wrong_world_source": "intercept2+avoid1",
+      "searched_candidates": 3724,
+      "read_forward_passes": 4,
+      "slot_agreement": 0.6667
+    },
+    "intercept2+avoid1": {
+      "random": -1.5312,
+      "mode": -1.5312,
+      "read_wrong_world": -0.875,
+      "searched": -0.875,
+      "read": -0.875,
+      "oracle": -1.4531,
+      "wrong_world_source": "intercept2+avoid2",
+      "searched_candidates": 3368,
+      "read_forward_passes": 4,
+      "slot_agreement": 0.6667
+    },
+    "intercept2+avoid2": {
+      "random": -1.4062,
+      "mode": -1.5781,
+      "read_wrong_world": -1.0312,
+      "searched": -1.0312,
+      "read": -1.0312,
+      "oracle": -1.5938,
+      "wrong_world_source": "intercept1+navigate1",
+      "searched_candidates": 4764,
+      "read_forward_passes": 4,
+      "slot_agreement": 0.6667
+    },
+    "intercept1+navigate1": {
+      "random": -0.75,
+      "mode": -0.8281,
+      "read_wrong_world": -0.1094,
+      "searched": 0.0156,
+      "read": 0.0156,
+      "oracle": 0.125,
+      "wrong_world_source": "intercept2+navigate1",
+      "searched_candidates": 4379,
+      "read_forward_passes": 4,
+      "slot_agreement": 0.8333
+    },
+    "intercept2+navigate1": {
+      "random": -1.3125,
+      "mode": -1.5625,
+      "read_wrong_world": -0.5312,
+      "searched": -0.5625,
+      "read": -0.5156,
+      "oracle": -1.0,
+      "wrong_world_source": "avoid1+navigate1",
+      "searched_candidates": 4302,
+      "read_forward_passes": 4,
+      "slot_agreement": 0.7917
+    },
+    "avoid1+navigate1": {
+      "random": -0.0156,
+      "mode": -0.1562,
+      "read_wrong_world": 0.7812,
+      "searched": 0.7812,
+      "read": 0.7812,
+      "oracle": 1.1719,
+      "wrong_world_source": "avoid2+navigate1",
+      "searched_candidates": 4065,
+      "read_forward_passes": 4,
+      "slot_agreement": 0.875
+    },
+    "avoid2+navigate1": {
+      "random": -0.1406,
+      "mode": -0.2344,
+      "read_wrong_world": 0.625,
+      "searched": 0.5938,
+      "read": 0.625,
+      "oracle": 0.9844,
+      "wrong_world_source": "collect1+navigate1",
+      "searched_candidates": 3715,
+      "read_forward_passes": 4,
+      "slot_agreement": 0.875
+    }
+  },
+  "mean_random": -0.6265,
+  "mean_mode": -0.7375,
+  "mean_read_wrong_world": 0.1563,
+  "mean_searched": 0.1609,
+  "mean_read": 0.1688,
+  "mean_oracle": 0.1437,
+  "mean_slot_agreement": 0.8
+}

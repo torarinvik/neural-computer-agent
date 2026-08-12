@@ -1,0 +1,167 @@
+{
+  "seed": 1234,
+  "train_source": "mixed",
+  "interpreter_check": 0.9999,
+  "steps": 12,
+  "mode_program": [
+    [
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0
+    ]
+  ],
+  "results": {
+    "collect1+navigate1": {
+      "random": 0.2344,
+      "mode": 0.0469,
+      "read_wrong_world": 1.0156,
+      "searched": 1.0156,
+      "read": 1.0156,
+      "oracle": 1.8906,
+      "wrong_world_source": "collect2+navigate1",
+      "searched_candidates": 4302,
+      "read_forward_passes": 4,
+      "slot_agreement": 0.9583
+    },
+    "collect2+navigate1": {
+      "random": 0.25,
+      "mode": 0.2188,
+      "read_wrong_world": 1.6094,
+      "searched": 1.5,
+      "read": 1.5,
+      "oracle": 2.0938,
+      "wrong_world_source": "intercept1+avoid1",
+      "searched_candidates": 3792,
+      "read_forward_passes": 4,
+      "slot_agreement": 0.9167
+    },
+    "intercept1+avoid1": {
+      "random": -0.875,
+      "mode": -0.8906,
+      "read_wrong_world": -0.7031,
+      "searched": -0.6406,
+      "read": -0.6406,
+      "oracle": -0.4219,
+      "wrong_world_source": "intercept1+avoid2",
+      "searched_candidates": 4226,
+      "read_forward_passes": 4,
+      "slot_agreement": 0.7917
+    },
+    "intercept1+avoid2": {
+      "random": -0.875,
+      "mode": -0.9062,
+      "read_wrong_world": -0.5781,
+      "searched": -0.6562,
+      "read": -0.5781,
+      "oracle": -0.4375,
+      "wrong_world_source": "intercept2+avoid1",
+      "searched_candidates": 4310,
+      "read_forward_passes": 4,
+      "slot_agreement": 0.7083
+    },
+    "intercept2+avoid1": {
+      "random": -1.6562,
+      "mode": -1.8594,
+      "read_wrong_world": -1.4844,
+      "searched": -1.5,
+      "read": -1.4844,
+      "oracle": -1.7344,
+      "wrong_world_source": "intercept2+avoid2",
+      "searched_candidates": 3640,
+      "read_forward_passes": 4,
+      "slot_agreement": 0.7917
+    },
+    "intercept2+avoid2": {
+      "random": -1.4375,
+      "mode": -1.7031,
+      "read_wrong_world": -1.3594,
+      "searched": -1.2656,
+      "read": -1.1562,
+      "oracle": -1.7188,
+      "wrong_world_source": "intercept1+navigate1",
+      "searched_candidates": 4666,
+      "read_forward_passes": 4,
+      "slot_agreement": 0.75
+    },
+    "intercept1+navigate1": {
+      "random": -0.8281,
+      "mode": -0.9375,
+      "read_wrong_world": -0.2344,
+      "searched": -0.1875,
+      "read": -0.1562,
+      "oracle": 0.2188,
+      "wrong_world_source": "intercept2+navigate1",
+      "searched_candidates": 4302,
+      "read_forward_passes": 4,
+      "slot_agreement": 0.8333
+    },
+    "intercept2+navigate1": {
+      "random": -1.625,
+      "mode": -1.7031,
+      "read_wrong_world": -0.9688,
+      "searched": -0.8438,
+      "read": -0.9844,
+      "oracle": -1.0469,
+      "wrong_world_source": "avoid1+navigate1",
+      "searched_candidates": 4293,
+      "read_forward_passes": 4,
+      "slot_agreement": 0.7083
+    },
+    "avoid1+navigate1": {
+      "random": 0.0625,
+      "mode": -0.125,
+      "read_wrong_world": 0.4531,
+      "searched": 0.4375,
+      "read": 0.4375,
+      "oracle": 1.0625,
+      "wrong_world_source": "avoid2+navigate1",
+      "searched_candidates": 5007,
+      "read_forward_passes": 4,
+      "slot_agreement": 1.0
+    },
+    "avoid2+navigate1": {
+      "random": -0.1562,
+      "mode": -0.2344,
+      "read_wrong_world": 0.3594,
+      "searched": 0.2969,
+      "read": 0.2812,
+      "oracle": 0.9531,
+      "wrong_world_source": "collect1+navigate1",
+      "searched_candidates": 4894,
+      "read_forward_passes": 4,
+      "slot_agreement": 0.75
+    }
+  },
+  "mean_random": -0.6906,
+  "mean_mode": -0.8094,
+  "mean_read_wrong_world": -0.1891,
+  "mean_searched": -0.1844,
+  "mean_read": -0.1766,
+  "mean_oracle": 0.0859,
+  "mean_slot_agreement": 0.8208
+}

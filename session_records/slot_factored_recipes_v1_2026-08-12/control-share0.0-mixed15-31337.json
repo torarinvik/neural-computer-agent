@@ -1,0 +1,167 @@
+{
+  "seed": 31337,
+  "train_source": "mixed",
+  "interpreter_check": 1.0,
+  "steps": 12,
+  "mode_program": [
+    [
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0
+    ]
+  ],
+  "results": {
+    "collect1+navigate1": {
+      "random": 0.2031,
+      "mode": 0.0781,
+      "read_wrong_world": 1.4219,
+      "searched": 1.5938,
+      "read": 0.9844,
+      "oracle": 1.6719,
+      "wrong_world_source": "collect2+navigate1",
+      "searched_candidates": 4302,
+      "read_forward_passes": 4,
+      "slot_agreement": 0.875
+    },
+    "collect2+navigate1": {
+      "random": 0.2188,
+      "mode": 0.2656,
+      "read_wrong_world": 0.5938,
+      "searched": 1.9844,
+      "read": 1.9688,
+      "oracle": 2.3125,
+      "wrong_world_source": "intercept1+avoid1",
+      "searched_candidates": 4302,
+      "read_forward_passes": 4,
+      "slot_agreement": 0.9167
+    },
+    "intercept1+avoid1": {
+      "random": -0.8438,
+      "mode": -0.9375,
+      "read_wrong_world": -0.1562,
+      "searched": -0.5156,
+      "read": -0.1719,
+      "oracle": -0.5312,
+      "wrong_world_source": "intercept1+avoid2",
+      "searched_candidates": 2740,
+      "read_forward_passes": 4,
+      "slot_agreement": 0.5
+    },
+    "intercept1+avoid2": {
+      "random": -0.9844,
+      "mode": -0.9688,
+      "read_wrong_world": -0.5156,
+      "searched": -0.6406,
+      "read": -0.2656,
+      "oracle": -0.4844,
+      "wrong_world_source": "intercept2+avoid1",
+      "searched_candidates": 3724,
+      "read_forward_passes": 4,
+      "slot_agreement": 0.5417
+    },
+    "intercept2+avoid1": {
+      "random": -1.5312,
+      "mode": -1.7344,
+      "read_wrong_world": -1.0,
+      "searched": -0.9062,
+      "read": -1.0,
+      "oracle": -1.6406,
+      "wrong_world_source": "intercept2+avoid2",
+      "searched_candidates": 3640,
+      "read_forward_passes": 4,
+      "slot_agreement": 0.5
+    },
+    "intercept2+avoid2": {
+      "random": -1.5312,
+      "mode": -1.7188,
+      "read_wrong_world": -1.2812,
+      "searched": -1.3125,
+      "read": -0.7812,
+      "oracle": -1.8438,
+      "wrong_world_source": "intercept1+navigate1",
+      "searched_candidates": 4310,
+      "read_forward_passes": 4,
+      "slot_agreement": 0.5
+    },
+    "intercept1+navigate1": {
+      "random": -0.6875,
+      "mode": -0.8594,
+      "read_wrong_world": 0.0938,
+      "searched": 0.1562,
+      "read": 0.1094,
+      "oracle": 0.0625,
+      "wrong_world_source": "intercept2+navigate1",
+      "searched_candidates": 3947,
+      "read_forward_passes": 4,
+      "slot_agreement": 0.7917
+    },
+    "intercept2+navigate1": {
+      "random": -1.6406,
+      "mode": -1.75,
+      "read_wrong_world": -1.5781,
+      "searched": -1.0781,
+      "read": -1.0781,
+      "oracle": -1.4062,
+      "wrong_world_source": "avoid1+navigate1",
+      "searched_candidates": 4302,
+      "read_forward_passes": 4,
+      "slot_agreement": 0.875
+    },
+    "avoid1+navigate1": {
+      "random": -0.0312,
+      "mode": -0.125,
+      "read_wrong_world": 0.8594,
+      "searched": 0.8594,
+      "read": 0.2344,
+      "oracle": 1.0938,
+      "wrong_world_source": "avoid2+navigate1",
+      "searched_candidates": 5244,
+      "read_forward_passes": 4,
+      "slot_agreement": 0.7917
+    },
+    "avoid2+navigate1": {
+      "random": -0.2188,
+      "mode": -0.3438,
+      "read_wrong_world": 0.1875,
+      "searched": 0.6406,
+      "read": 0.6094,
+      "oracle": 1.0781,
+      "wrong_world_source": "collect1+navigate1",
+      "searched_candidates": 4971,
+      "read_forward_passes": 4,
+      "slot_agreement": 0.6667
+    }
+  },
+  "mean_random": -0.7047,
+  "mean_mode": -0.8094,
+  "mean_read_wrong_world": -0.1375,
+  "mean_searched": 0.0781,
+  "mean_read": 0.061,
+  "mean_oracle": 0.0313,
+  "mean_slot_agreement": 0.6958
+}
