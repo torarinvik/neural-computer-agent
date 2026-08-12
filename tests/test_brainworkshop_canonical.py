@@ -517,6 +517,34 @@ def test_external_temporal_learned_compaction_growth_smoke_transfers_selector(
     assert report["gates"]["zero_replayed_examples"]
 
 
+def test_external_temporal_capacity_schedule_smoke_preserves_distinct_routes(
+    tmp_path,
+) -> None:
+    from experiments.brainworkshop_canonical.external_temporal_capacity_schedule_growth import (
+        run,
+    )
+
+    report = run(
+        argparse.Namespace(
+            report_out=tmp_path / "temporal-capacity-schedule-growth.json",
+            seed=17,
+            policy_updates=64,
+        )
+    )
+
+    assert report["schema"] == (
+        "neural-computer.brainworkshop-external-temporal-capacity-schedule-growth.v1"
+    )
+    assert report["gates"]["forward_retains_all_distinct_routes"]
+    assert report["gates"]["reversed_retains_all_distinct_routes"]
+    assert report["gates"]["forward_reload_exact"]
+    assert report["gates"]["reversed_reload_exact"]
+    assert report["gates"]["fixed_external_budget"]
+    assert report["gates"]["controller_frozen"]
+    assert report["gates"]["event_encoder_frozen"]
+    assert report["gates"]["zero_replayed_examples"]
+
+
 def test_binary_switch_family_has_a_valid_chance_baseline() -> None:
     verifier = CrossFamilyVerifier(
         family="switch_binary",

@@ -802,6 +802,28 @@ def test_append_only_memory_grows_without_replacing_prior_records() -> None:
     assert memory.candidates().occupied.sum().item() == 9
 
 
+def test_memory_candidates_can_expose_a_zero_filled_bounded_policy_view() -> None:
+    memory = AppendOnlyContentAddressedMemory(
+        width=4, write_threshold=0.0, write_match_threshold=0.999
+    )
+    keys = torch.eye(4)[:2]
+    values = torch.roll(keys, shifts=1, dims=1)
+    memory.write(keys, values, torch.ones(2))
+
+    source = memory.candidates()
+    bounded = source.pad_to_capacity(4)
+
+    assert bounded.keys.shape == (1, 4, 4)
+    assert bounded.occupied.tolist() == [[True, True, False, False]]
+    assert torch.equal(bounded.keys[:, :2], source.keys)
+    assert torch.equal(bounded.values[:, :2], source.values)
+    assert torch.count_nonzero(bounded.keys[:, 2:]) == 0
+    assert torch.count_nonzero(bounded.values[:, 2:]) == 0
+    assert torch.equal(source.occupied, torch.ones(1, 2, dtype=torch.bool))
+    with pytest.raises(ValueError, match="cannot shrink"):
+        source.pad_to_capacity(1)
+
+
 def test_append_only_memory_commits_verified_compaction_without_cross_scope_loss(
     tmp_path,
 ) -> None:

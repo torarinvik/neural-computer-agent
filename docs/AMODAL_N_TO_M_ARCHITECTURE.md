@@ -10372,3 +10372,37 @@ still require distinct representational capacity, and learned multi-row
 compression, capacity scheduling, and general continual learning remain open.
 Evidence and accounting are archived in
 `session_records/brainworkshop_external_temporal_learned_compaction_growth_promoted_2026-08-12/`.
+
+## Learned temporal capacity scheduling (2026-08-12)
+
+The canonical persistent temporal-memory path now composes with the generic
+`OpaqueCapacityPlanner`. `MemoryCandidates.pad_to_capacity()` provides a
+typed fixed-budget policy view for variable-capacity stores: padding is
+unoccupied and zero-filled, while the append-only backend and controller
+remain unchanged. Planner proposals remain advisory; only the independent
+route verifier can authorize `replace_from_candidates`, followed by a
+version-checked atomic persistence transaction.
+
+The two-seed pressure test trains the planner from scalar utility on generic
+candidate banks, then transfers it to a live four-row memory. Two distinct
+learned event-key addresses each arrive with a redundant alias. Two new
+addresses must therefore be admitted only after a learned consolidation
+selection. The same stream is run after a physical row-order reversal.
+
+Across seeds `17` and `18`, held-out utility for admit, evict, consolidate,
+and grow was `1.0`; fresh consolidation controls reached only `0.15625` and
+`0.25`. Both forward and reversed streams completed two verifier-approved
+compactions and two admissions, retained four distinct routes after every
+stage, reloaded exactly, rejected checksum corruption, kept the controller
+and event encoder byte-stable, and used zero replay. The full reports and
+ledger are archived in
+`session_records/brainworkshop_external_temporal_capacity_schedule_promoted_2026-08-12/`.
+
+This promotes bounded replay-free capacity scheduling and sequential
+verifier-gated multi-row compaction in the canonical temporal-memory path. It
+does not establish arbitrary shared-structure compression, semantic
+equivalence discovery, unbounded memory, autonomous verifier design, or
+general continual learning. The next pressure test is a learned
+multi-row/shared-structure representation that reduces physical storage for
+genuinely distinct but compositional capabilities, followed by longer
+nonstationary streams and retention-adjusted transaction regret.

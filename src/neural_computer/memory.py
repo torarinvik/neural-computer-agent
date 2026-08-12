@@ -166,6 +166,72 @@ class MemoryCandidates:
             raise ValueError("memory candidate strengths must lie in [0, 1]")
         return self
 
+    def pad_to_capacity(self, capacity: int) -> MemoryCandidates:
+        """Return a fixed-capacity view without changing the source snapshot.
+
+        Variable-capacity stores can expose their current rows to a bounded
+        memory-side policy without leaking storage-specific resizing into the
+        policy ABI.  Padding is always unoccupied and zero-filled; callers
+        must still verify and commit any resulting rewrite through the owning
+        memory backend.
+        """
+
+        current_capacity = self.keys.shape[1]
+        if (
+            not isinstance(capacity, int)
+            or isinstance(capacity, bool)
+            or capacity < current_capacity
+        ):
+            raise ValueError("candidate view capacity cannot shrink")
+        self.validate(
+            width=self.keys.shape[-1],
+            capacity=current_capacity,
+            batch=self.keys.shape[0],
+        )
+        if capacity == current_capacity:
+            return self
+        padding = capacity - current_capacity
+        keys = torch.cat(
+            [self.keys, self.keys.new_zeros((self.keys.shape[0], padding, self.keys.shape[2]))],
+            dim=1,
+        )
+        values = torch.cat(
+            [self.values, self.values.new_zeros((self.values.shape[0], padding, self.values.shape[2]))],
+            dim=1,
+        )
+        strengths = torch.cat(
+            [self.strengths, self.strengths.new_zeros((self.strengths.shape[0], padding))],
+            dim=1,
+        )
+        timestamps = torch.cat(
+            [self.timestamps, self.timestamps.new_zeros((self.timestamps.shape[0], padding))],
+            dim=1,
+        )
+        occupied = torch.cat(
+            [
+                self.occupied,
+                torch.zeros(
+                    self.occupied.shape[0],
+                    padding,
+                    dtype=torch.bool,
+                    device=self.occupied.device,
+                ),
+            ],
+            dim=1,
+        )
+        return MemoryCandidates(
+            keys=keys,
+            values=values,
+            strengths=strengths,
+            timestamps=timestamps,
+            occupied=occupied,
+            schema=self.schema,
+        ).validate(
+            width=self.keys.shape[-1],
+            capacity=capacity,
+            batch=self.keys.shape[0],
+        )
+
 
 @dataclass(frozen=True)
 class MemoryMigrationExample:

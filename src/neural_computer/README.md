@@ -671,6 +671,12 @@ opaque records across two seeds with permuted exact recall, zero clear-memory
 hits, and persistent recovery. This qualifies logical storage growth, not
 learned compression or general continual learning.
 
+For a bounded external policy, `MemoryCandidates.pad_to_capacity(n)` exposes
+the current append-only rows in a fixed-width candidate view. Added rows are
+zero-filled and explicitly unoccupied; the view does not resize the backend or
+the controller, and any rewrite still requires the backend's verifier-gated
+transaction boundary.
+
 The original v74 three-slot/two-row rung is retained as a superseded harness
 record because its duplicated counterfactual arms did not preserve balanced
 target positions. The corrected v76 rung now qualifies bounded learned

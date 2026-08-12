@@ -1008,3 +1008,32 @@ proposal selection in live external memory, not end-to-end capability
 acquisition, arbitrary compression, unrestricted memory growth, or general
 continual learning. Evidence and accounting are archived in
 `session_records/brainworkshop_external_temporal_learned_compaction_growth_promoted_2026-08-12/`.
+
+## Learned temporal capacity scheduling (2026-08-12)
+
+`external_temporal_capacity_schedule_growth.py` composes the learned opaque
+capacity planner with the canonical persistent append-only content memory.
+`MemoryCandidates.pad_to_capacity()` exposes a fixed external policy budget
+with zero-filled, unoccupied rows while leaving the storage backend variable-
+capacity and the controller fixed-size.
+
+The planner is trained only from scalar utility on generic candidate banks.
+In the live transfer, two distinct learned event-key addresses each have a
+redundant alias. Under a four-row budget, two new addresses can be admitted
+only after the planner selects and verifies a redundant pair. The stream is
+run in forward and reversed physical row order; route retention is checked
+after every transaction and after exact reload.
+
+Seeds 17 and 18 reached `1.0` held-out utility for admit, evict,
+consolidate, and grow. The trained planner reached `1.0` consolidation
+transfer versus `0.15625` and `0.25` for fresh policies. Both seeds completed
+two compactions and two admissions in both row orders, retained four distinct
+routes at every stage, rejected checksum corruption, kept the controller and
+event encoder frozen, and used zero replay.
+
+This promotes bounded replay-free capacity scheduling and sequential
+verifier-gated multi-row compaction in the canonical temporal-memory path. It
+does not establish arbitrary shared-structure compression, semantic
+equivalence discovery, unbounded memory, autonomous verifier design, or
+general continual learning. Evidence and accounting are archived in
+`session_records/brainworkshop_external_temporal_capacity_schedule_promoted_2026-08-12/`.
