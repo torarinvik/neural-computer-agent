@@ -1841,3 +1841,29 @@ multi-file n-back-4 retention, unrestricted learned query depth, learned
 compression, arbitrary program induction, or general continual learning.
 Evidence and accounting are archived at
 `session_records/brainworkshop_external_history_nback4_depth_probe_promoted_2026-08-12/`.
+
+## Mixed-depth external-history retention and routing (2026-08-12)
+
+The append-only history boundary now supports a per-file active query profile
+without resizing the shared controller or interpreter. The promoted profile is
+`(4, 4, 4, 4, 5)`: each query count includes the current event, so the first
+four opaque files read three preceding records plus the current event and the
+fifth `nback4` file reads four preceding records plus the current event. The
+full lifetime remains in external storage and inactive fixed-window positions
+are explicitly masked.
+
+Across seeds `17` and `18`, five sequentially acquired files reached `1.0000`
+on all four fresh lifetimes. The learned route selected all five files at
+`1.0000`; same-context replacement reached `1.0000`; the protected first file
+remained at `1.0000`; unknown-context controls were near chance (`0.4875` and
+`0.5117`); and every file digest stayed unchanged during route learning.
+Direct acquisition used 960 optimizer updates per seed and route/replacement
+learning used 1,280 memory-side updates per seed; replayed examples were zero.
+
+This promotes replay-free multi-file retention and routing across mixed
+bounded temporal depths. The profile is currently configured by the external
+memory policy rather than learned, so this does not establish learned depth
+selection, learned compression, unrestricted memory growth, arbitrary program
+induction, or general continual learning. Evidence and accounting are
+archived at
+`session_records/brainworkshop_external_history_multiscale_route_promoted_2026-08-12/`.

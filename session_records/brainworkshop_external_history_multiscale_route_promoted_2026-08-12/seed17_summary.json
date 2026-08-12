@@ -1,0 +1,23 @@
+{
+  "seed": 17,
+  "direct_fresh_accuracy_by_file": {
+    "symbol_parity": [1.0, 1.0, 1.0, 1.0],
+    "triplet_parity": [1.0, 1.0, 1.0, 1.0],
+    "parity2": [1.0, 1.0, 1.0, 1.0],
+    "switch_binary": [1.0, 1.0, 1.0, 1.0],
+    "nback4": [1.0, 1.0, 1.0, 1.0]
+  },
+  "routed_accuracy_by_file": [1.0, 1.0, 1.0, 1.0, 1.0],
+  "routed_slot_fraction_by_file": [1.0, 1.0, 1.0, 1.0, 1.0],
+  "replacement_accuracy": 1.0,
+  "replacement_slot_fraction": 1.0,
+  "old_source_accuracy": [1.0, 1.0, 1.0, 1.0],
+  "unknown_accuracy": 0.4875,
+  "gates": {
+    "all_routes_mastered": true,
+    "replacement_mastered": true,
+    "old_source_retained": true,
+    "unknown_near_chance": true,
+    "files_unchanged": true
+  }
+}

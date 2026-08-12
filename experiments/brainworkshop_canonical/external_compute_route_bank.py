@@ -35,6 +35,7 @@ from .external_compute_growth import (
     EVENT_WIDTH,
     ComputeGrowthSystem,
     _build,
+    _bounded_history_window,
     _common_modules,
     _digest,
     _evaluate,
@@ -95,7 +96,10 @@ def _routed_episode(
         system.machine.initial_state(batch_size, device="cpu")
         for _ in range(slot_count)
     ]
-    external_history_mode = system.external_history_query_count is not None
+    external_history_mode = (
+        system.external_history_query_count is not None
+        or system.external_history_query_counts is not None
+    )
     history_mode = (
         system.machine.basis_event_read_mode == "history_attention"
         or external_history_mode
@@ -154,11 +158,12 @@ def _routed_episode(
                     present=present,
                 )
             else:
-                query_count = (
-                    system.external_history_query_count
-                    if external_history_mode
-                    else max(1, history_lengths[slot])
-                )
+                if system.external_history_query_counts is not None:
+                    query_count = system.external_history_query_counts[slot]
+                elif external_history_mode:
+                    query_count = system.external_history_query_count
+                else:
+                    query_count = max(1, history_lengths[slot])
                 history_query_count_for_read = (
                     query_count
                     if system.machine.basis_event_read_mode == "history_attention"
@@ -182,8 +187,8 @@ def _routed_episode(
                     state=register_states[slot],
                     present=present,
                 )
-                execute_kwargs = (
-                    {
+                if system.machine.basis_event_read_mode == "history_attention":
+                    execute_kwargs = {
                         "event_history": history_read.values,
                         "event_history_mask": history_read.present,
                         "event_history_age": offsets.to(
@@ -191,28 +196,17 @@ def _routed_episode(
                         ),
                         "current_event": collection.payload[:, 0],
                     }
-                    if system.machine.basis_event_read_mode == "history_attention"
-                    else {
-                        "event_window": torch.cat(
-                            (
-                                history_read.values,
-                                collection.payload[:, 0].unsqueeze(1),
-                            ),
-                            dim=1,
-                        ),
-                        "event_window_mask": torch.cat(
-                            (
-                                history_read.present,
-                                torch.ones(
-                                    batch_size,
-                                    1,
-                                    dtype=torch.bool,
-                                ),
-                            ),
-                            dim=1,
-                        ),
+                else:
+                    event_window, event_window_mask = _bounded_history_window(
+                        history_read.values,
+                        history_read.present,
+                        collection.payload[:, 0],
+                        event_window_size=system.machine.event_window_size,
+                    )
+                    execute_kwargs = {
+                        "event_window": event_window,
+                        "event_window_mask": event_window_mask,
                     }
-                )
                 executed = system.machine.execute_chain(
                     register,
                     (system.instructions[slot],),

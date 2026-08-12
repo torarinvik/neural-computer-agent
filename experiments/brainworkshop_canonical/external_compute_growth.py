@@ -65,6 +65,7 @@ class ComputeGrowthSystem:
     readouts: nn.ModuleList
     decoders: nn.ModuleList
     external_history_query_count: int | None = None
+    external_history_query_counts: tuple[int, ...] | None = None
 
 
 def _digest(*modules: nn.Module) -> str:
@@ -118,6 +119,7 @@ def _build(
     basis_event_read_mode: str = "flattened_window",
     basis_history_query_mode: str = "instruction_only",
     external_history_query_count: int | None = None,
+    external_history_query_counts: tuple[int, ...] | None = None,
 ) -> ComputeGrowthSystem:
     """Build an append-only bank of opaque files over one fixed interpreter."""
 
@@ -130,6 +132,21 @@ def _build(
             raise ValueError("history attention cannot use a fixed event window")
     elif event_window_size < 1:
         raise ValueError("external compute event window size must be positive")
+    if external_history_query_count is not None:
+        if external_history_query_count < 0:
+            raise ValueError("external history query count must be non-negative")
+        if (
+            external_history_query_count == 0
+            and basis_event_read_mode != "history_attention"
+        ):
+            raise ValueError(
+                "zero external history query count is only valid for history attention"
+            )
+    if external_history_query_counts is not None:
+        if len(external_history_query_counts) != slot_count:
+            raise ValueError("external history query profile must match slot count")
+        if any(query_count < 1 for query_count in external_history_query_counts):
+            raise ValueError("external history query profile must be positive")
 
     torch.manual_seed(seed)
     agent = CanonicalBrainWorkshopAgent(
@@ -192,7 +209,62 @@ def _build(
         readouts,
         decoders,
         external_history_query_count=external_history_query_count,
+        external_history_query_counts=external_history_query_counts,
     )
+
+
+def _bounded_history_window(
+    history_values: torch.Tensor,
+    history_present: torch.Tensor,
+    current_event: torch.Tensor,
+    *,
+    event_window_size: int,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """Pad a file's active history to the shared machine window."""
+
+    window = torch.cat((history_values, current_event.unsqueeze(1)), dim=1)
+    mask = torch.cat(
+        (
+            history_present,
+            torch.ones(
+                current_event.shape[0],
+                1,
+                dtype=torch.bool,
+                device=current_event.device,
+            ),
+        ),
+        dim=1,
+    )
+    if window.shape[1] > event_window_size:
+        raise ValueError("active history query exceeds the shared event window")
+    padding = event_window_size - window.shape[1]
+    if padding:
+        window = torch.cat(
+            (
+                torch.zeros(
+                    window.shape[0],
+                    padding,
+                    window.shape[2],
+                    dtype=window.dtype,
+                    device=window.device,
+                ),
+                window,
+            ),
+            dim=1,
+        )
+        mask = torch.cat(
+            (
+                torch.zeros(
+                    mask.shape[0],
+                    padding,
+                    dtype=torch.bool,
+                    device=mask.device,
+                ),
+                mask,
+            ),
+            dim=1,
+        )
+    return window, mask
 
 
 def _common_modules(system: ComputeGrowthSystem) -> tuple[nn.Module, ...]:
@@ -343,8 +415,8 @@ def _episode(
                 intention=controller_output.intention,
                 state=register_state,
             )
-            execute_kwargs = (
-                {
+            if machine.basis_event_read_mode == "history_attention":
+                execute_kwargs = {
                     "event_history": history_read.values,
                     "event_history_mask": history_read.present,
                     "event_history_age": offsets.to(
@@ -352,28 +424,17 @@ def _episode(
                     ),
                     "current_event": collection.payload[:, 0],
                 }
-                if machine.basis_event_read_mode == "history_attention"
-                else {
-                    "event_window": torch.cat(
-                        (
-                            history_read.values,
-                            collection.payload[:, 0].unsqueeze(1),
-                        ),
-                        dim=1,
-                    ),
-                    "event_window_mask": torch.cat(
-                        (
-                            history_read.present,
-                            torch.ones(
-                                batch_size,
-                                1,
-                                dtype=torch.bool,
-                            ),
-                        ),
-                        dim=1,
-                    ),
+            else:
+                event_window, event_window_mask = _bounded_history_window(
+                    history_read.values,
+                    history_read.present,
+                    collection.payload[:, 0],
+                    event_window_size=machine.event_window_size,
+                )
+                execute_kwargs = {
+                    "event_window": event_window,
+                    "event_window_mask": event_window_mask,
                 }
-            )
             executed = machine.execute_chain(
                 register,
                 (system.instructions[slot],),

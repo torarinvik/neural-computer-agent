@@ -249,6 +249,43 @@ def test_bounded_external_history_reads_previous_records_plus_current_event() ->
     assert bits == 4
 
 
+def test_bounded_external_history_supports_per_file_query_depths() -> None:
+    system = build_external_compute(
+        17,
+        slot_count=2,
+        event_window_size=5,
+        basis_event_read_mode="flattened_window",
+        external_history_query_counts=(4, 5),
+    )
+
+    shallow = episode_external_compute(
+        system,
+        family="symbol_parity",
+        slot=0,
+        cue_symbol=7,
+        batch_size=2,
+        steps=6,
+        seed=29,
+        train=False,
+        history_query_count=4,
+    )
+    deep = episode_external_compute(
+        system,
+        family="nback4",
+        slot=1,
+        cue_symbol=12,
+        batch_size=2,
+        steps=8,
+        seed=31,
+        train=False,
+        history_query_count=5,
+    )
+
+    assert system.external_history_query_counts == (4, 5)
+    assert system.machine.event_window_size == 5
+    assert all(torch.isfinite(value) for value in (shallow[0], shallow[1], deep[0], deep[1]))
+
+
 def test_external_compute_route_smoke_uses_content_addressed_outcome_evidence(
     tmp_path,
 ) -> None:

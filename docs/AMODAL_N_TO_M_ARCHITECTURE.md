@@ -11868,3 +11868,26 @@ when the active request was widened to four preceding records plus the
 current event. Every fresh probe was `1.0000`. This validates deeper bounded
 temporal dependence through the external interface, but not multi-file
 n-back-4 retention or unrestricted learned query depth.
+
+## Mixed-depth external-history retention and routing (2026-08-12)
+
+The external history ABI now supports a per-file active query profile while
+keeping one fixed event window and one fixed controller/interpreter. In the
+promoted profile `(4, 4, 4, 4, 5)`, a query count means
+`q - 1` preceding records plus the current event. The complete lifetime is
+still append-only external state; the shared fixed window is padded with
+explicit absence masks when a file requests less than the maximum depth.
+
+Five sequential files (`symbol_parity`, `triplet_parity`, `parity2`,
+`switch_binary`, and `nback4`) were acquired from attempted scalar outcomes
+with the controller and frontend frozen after the first file. Across seeds
+`17` and `18`, every fresh direct lifetime and every routed lifetime reached
+`1.0000`. A same-context replacement also reached `1.0000`, the original
+source remained at `1.0000`, unknown contexts stayed near chance, and all
+file digests were unchanged during route learning. No examples were replayed.
+
+This is a promotion of replay-free multi-file retention and routing across
+mixed bounded temporal depths. It is not yet a learned query-depth policy,
+learned compression mechanism, unrestricted memory growth, arbitrary program
+induction, or general continual learning. Evidence is archived at
+`session_records/brainworkshop_external_history_multiscale_route_promoted_2026-08-12/`.
