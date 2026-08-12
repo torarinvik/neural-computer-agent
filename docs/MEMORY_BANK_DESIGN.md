@@ -10139,3 +10139,58 @@ both were stated with a predicted signature, and both died on the
 signature. Recorded because the arity FACT survives all of it — grid 2
 to 3, rules 1 — and it is the fact, not either story, that explains
 F195.
+
+## F197 — CORRECTION to F195: cross-domain transfer is not null. It
+## happens exactly where the arity matches, and nowhere else
+
+F195 read the transfer result as a flat null from a mean of totals:
+primed 1.002, stranger 1.003. That was the wrong statistic, for the
+reason F176 already established and I did not apply — per-game-per-seed
+cost spans orders of magnitude, so a mean of totals is a measurement of
+whichever cell is largest. `collect1`'s cold cost across three seeds is
+**166, 29182, 234**. The mean of 9861 describes none of them.
+
+Re-read as paired ratios over all 18 game-seeds:
+
+| | median | cheaper than cold |
+| --- | ---: | ---: |
+| primed | 1.002 | **3/18** |
+| stranger | 1.003 | **0/18** |
+
+**The stranger control never helps once. Priming helps three times, and
+all three are the same game.**
+
+| seed | game | cold | primed | ratio |
+| ---: | --- | ---: | ---: | ---: |
+| 69316 | collect1 | 166 | 89 | **0.536** |
+| 69318 | collect1 | 234 | 148 | **0.632** |
+
+**And `collect1` is the only game that CAN receive it.** From F195's
+own arity table:
+
+| game | slots changed per action |
+| --- | --- |
+| **collect1** | 3, 2, **1**, **1** |
+| collect2 | 3, 3, 3, 3 |
+| intercept1 | 3, 3, 2, 2 |
+| avoid1 | 2, 2, 2, 2 |
+
+`collect1` is the ONLY game with arity-1 actions, and rule families
+produce arity-1 programs. Transfer appears on exactly the one game
+whose action arity matches the source domain's, at two of its three
+seeds, saving 40-47% — and appears nowhere else, on any game, on any
+seed.
+
+**So the arity account of F195/F196 is not just an explanation for a
+null. It is a prediction that was already sitting in the data**: it
+says transfer should occur where arities match and not otherwise, and
+that is precisely the pattern. The wide-rule arm now running tests the
+same claim from the other side.
+
+**What I actually got wrong.** Not the mechanism — the statistic. I
+had established in F176 that a mean over a heavy-tailed cost
+distribution measures the tail, wrote it into the ledger as a standing
+lesson, and then read exactly such a mean and reported a null. The
+paired view took one command. **A lesson recorded is not a lesson
+applied**, and the gap between those two is where this session has lost
+the most time.
