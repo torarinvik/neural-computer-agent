@@ -1,0 +1,42 @@
+{
+  "experiment_id": "brainworkshop-external-temporal-shared-basis-learned-regime-trigger-promoted-2026-08-12",
+  "status": "promoted_learned_regime_trigger",
+  "seeds": [17, 18],
+  "rung": "canonical two-seed outcome-trained stable-no-op and shifted-replacement trigger",
+  "architecture": "opaque_regime_change_policy_v1_plus_opaque_shared_basis_structure_policy_v2_plus_shared_basis_rewrite_v1",
+  "claim_boundary": "Outcome-trained raw-value regime detector keeps stable incoming evidence as an exact no-op and triggers a verifier-gated external scope replacement after a structural shift; not autonomous semantic change-point discovery, arbitrary new computation, unrestricted memory growth, or general continual learning.",
+  "accounting": {
+    "unique_verifier_bits_per_seed": 2060,
+    "unique_logical_lifetimes_per_seed": 2030,
+    "detector_optimizer_updates_per_seed": 1000,
+    "structure_optimizer_updates_per_seed": 1000,
+    "total_optimizer_updates_per_seed": 2000,
+    "replayed_examples_per_seed": 0,
+    "controller_updates_per_seed": 0,
+    "live_compression_transactions_per_seed": 4,
+    "live_logical_rewrite_transactions_per_seed": 2,
+    "stable_bits_to_threshold": "1000 detector and 1000 structure-policy scalar updates; both stable/no-op and shifted/replacement gates passed on both seeds",
+    "retention_on_mastered_primitives": "6 protected routes retained; 12 old working routes removed; 12 new working routes admitted",
+    "transfer_ratio_against_fresh_detector": "trained mean stable/shift accuracy was 1.0 on both seeds; fresh means were 0.5, with each fresh seed missing a different class",
+    "wall_time_seconds": {
+      "seed_17": 1.606464833021164,
+      "seed_18": 1.6064115830231458
+    }
+  },
+  "controls": [
+    "held-out stable keep and shifted replace detector transfer",
+    "fresh detector comparison",
+    "stable exact no-op version control",
+    "stable exact no-op byte digest",
+    "automatic shifted-regime trigger",
+    "protected scope retention",
+    "old working scope removal",
+    "new working scope admission",
+    "exact persistent reload",
+    "checksum corruption rejected",
+    "frozen controller",
+    "frozen event encoder",
+    "zero replay"
+  ],
+  "next_bottleneck": "Repeat alternating unknown-boundary regimes with multiple protected scopes and explicit capacity pressure without replay."
+}

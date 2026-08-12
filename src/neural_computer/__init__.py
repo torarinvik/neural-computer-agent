@@ -462,6 +462,12 @@ from .recipe_basis import (
     apply_sequence,
     paired_increment_target,
 )
+from .regime_policy import (
+    REGIME_CHANGE_POLICY_SCHEMA,
+    OpaqueRegimeChangePolicy,
+    RegimeChangePlan,
+    RegimeChangePolicyOutput,
+)
 from .register import (
     EXTERNAL_REGISTER_BASIS_ARTIFACT_SCHEMA,
     EXTERNAL_REGISTER_BASIS_SCHEMA,
@@ -940,6 +946,7 @@ __all__ = [
     "PROGRAM_MUTATION_OPERATORS",
     "PROMOTION_SCHEMA",
     "RECIPE_BASIS_SCHEMA",
+    "REGIME_CHANGE_POLICY_SCHEMA",
     "REPRESENTATION_SPACE_SCHEMA",
     "RETENTION_LEDGER_SCHEMA",
     "SHARED_BASIS_COMPRESSION_POLICY_SCHEMA",
@@ -1235,6 +1242,7 @@ __all__ = [
     "OpaqueCapacityPlannerAdapter",
     "OpaqueConsolidationPolicy",
     "OpaqueProtocolDecoder",
+    "OpaqueRegimeChangePolicy",
     "OpaqueSharedBasisCompressionPolicy",
     "OpaqueSharedBasisStructurePolicy",
     "OpaqueViewRouteExtension",
@@ -1254,6 +1262,8 @@ __all__ = [
     "PromotionRejected",
     "RecipeBasis",
     "RecipeInstruction",
+    "RegimeChangePlan",
+    "RegimeChangePolicyOutput",
     "RetentionGateDecision",
     "RetentionPolicyConfig",
     "RuntimeMigrationExample",

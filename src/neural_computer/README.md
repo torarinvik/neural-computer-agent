@@ -1776,3 +1776,13 @@ inside one scope. Other scopes remain isolated and unchanged; the controller
 still sees only ordinary materialized memory reads. The protected-scope regime
 replacement audit is archived at
 `session_records/brainworkshop_external_temporal_shared_basis_regime_replacement_promoted_2026-08-12/`.
+
+`OpaqueRegimeChangePolicy` is the external learned trigger for that rewrite
+boundary. It compares opaque current and incoming value banks using
+permutation-invariant spectral and cross-bank features, adapts from scalar
+verifier utility, and emits only a keep/replace plan. The stable path is an
+exact byte/version no-op; the shifted path remains subject to the memory
+verifier, expected-version check, and protected-scope isolation. It does not
+add a modality-specific reasoning branch or enter the frozen controller. The
+canonical two-seed audit is archived at
+`session_records/brainworkshop_external_temporal_shared_basis_learned_regime_trigger_promoted_2026-08-12/`.

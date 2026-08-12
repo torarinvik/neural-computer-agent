@@ -10570,3 +10570,26 @@ does not establish learned change-point detection, semantic regime discovery,
 arbitrary new computation, unrestricted memory growth, or general continual
 learning. Evidence and accounting are archived in
 `session_records/brainworkshop_external_temporal_shared_basis_regime_replacement_promoted_2026-08-12/`.
+
+## Learned external regime trigger (2026-08-12)
+
+`OpaqueRegimeChangePolicy` is a separate external state policy for deciding
+whether an opaque current working bank should be kept or replaced by an
+incoming bank. It computes permutation-invariant spectral and cross-bank
+structure features, learns from one scalar verifier utility per pair, and
+emits only `keep` or `replace`. Regime IDs, task labels, semantic metadata,
+and candidate reconstruction error are outside its interface.
+
+The two-seed canonical audit first presents stable evidence and requires an
+exact no-op: neither memory bytes nor the persistent store version may change.
+A structurally shifted bank then triggers a verifier-gated scope rewrite while
+protected routes remain intact. Both seeds reached `1.0000` held-out stable
+keep and shifted replace accuracy after 1,000 detector updates; fresh controls
+averaged `0.5000` because each missed a different class. Reload, stale-version,
+checksum-corruption, frozen-core, and zero-replay controls passed.
+
+This promotes a narrow learned trigger and safe replacement boundary, not
+autonomous semantic change-point discovery, unrestricted memory growth,
+arbitrary new computation, or general continual learning. Evidence and
+accounting are archived in
+`session_records/brainworkshop_external_temporal_shared_basis_learned_regime_trigger_promoted_2026-08-12/`.

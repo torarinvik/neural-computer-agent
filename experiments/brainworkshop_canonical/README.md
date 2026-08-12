@@ -1146,3 +1146,19 @@ working keys, admitted the new working keys, and passed persistence,
 stale-version, corruption, frozen-core, and zero-replay controls. This is
 bounded regime replacement, not general continual learning. Evidence is in
 `session_records/brainworkshop_external_temporal_shared_basis_regime_replacement_promoted_2026-08-12/`.
+
+## Learned external regime trigger (2026-08-12)
+
+`external_temporal_shared_basis_learned_regime_trigger.py` trains
+`OpaqueRegimeChangePolicy` from scalar verifier utility over opaque current
+and incoming banks. It must keep stable evidence as an exact no-op and trigger
+replacement only after a structural shift. The independent shared-basis
+verifier then performs a protected-scope rewrite, retaining protected routes,
+removing stale working routes, and admitting the new regime.
+
+Seeds 17 and 18 both reached `1.0000/1.0000` stable-keep/shift-replace
+transfer after 1,000 detector updates, while complementary fresh controls
+averaged `0.5000`. Persistence, corruption, frozen-core, and zero-replay
+gates passed. This is a narrow learned regime-trigger boundary, not general
+change-point discovery or general continual learning. Evidence is archived at
+`session_records/brainworkshop_external_temporal_shared_basis_learned_regime_trigger_promoted_2026-08-12/`.
