@@ -1722,3 +1722,18 @@ derived by model-based search rather than retrieved as a task policy. The
 policy-free runtime can read fragments by external indices; addresses and
 composition metadata never enter the controller. Admission is copy-on-write,
 checksum-protected, and independently reloadable.
+
+## Shared-basis content-addressed memory
+
+`SharedBasisContentAddressedMemory` and its persistent subclass factorize only
+stored value payloads. Independent opaque keys and logical records remain
+stable while coefficients reference an appendable external orthonormal basis.
+The ordinary `MemoryRead` and `MemoryCandidates` interfaces materialize values,
+so the controller remains storage-agnostic. `compression_candidate()` creates
+a copy-on-write representation, and `replace_from_candidate()` requires an
+optional retention verifier plus an expected store version before committing.
+
+The canonical two-seed pressure test is archived at
+`session_records/brainworkshop_external_temporal_shared_basis_compression_promoted_2026-08-12/`.
+It qualifies verifier-gated shared storage compression only; rank selection is
+deterministic in this first boundary audit.

@@ -1,0 +1,62 @@
+{
+  "experiment_id": "brainworkshop-external-temporal-shared-basis-compression-promoted-2026-08-12",
+  "status": "promoted_shared_basis_memory_compression",
+  "seeds": [17, 18],
+  "rung": "canonical two-seed storage-contract pressure test",
+  "architecture": "persistent_shared_basis_content_addressed_memory_v1",
+  "claim_boundary": "Verifier-gated copy-on-write shared-basis compression of distinct opaque external-memory values under a frozen canonical event boundary; not learned rank selection, semantic equivalence discovery, arbitrary new computation, unbounded memory growth, or general continual learning.",
+  "accounting": {
+    "unique_verifier_bits_per_seed": 24,
+    "unique_logical_lifetimes_per_seed": 24,
+    "optimizer_updates_per_seed": 0,
+    "replayed_examples_per_seed": 0,
+    "controller_updates_per_seed": 0,
+    "compression_transactions_per_seed": 4,
+    "stable_bits_to_threshold": "not_applicable_storage_contract",
+    "retention_on_mastered_primitives": "12_of_12_routes_retained_after_rank_two",
+    "transfer_ratio_against_fresh_learner": "not_applicable_no_learner",
+    "wall_time_seconds": {
+      "seed_17": 0.06327249994501472,
+      "seed_18": 0.0627834580373019
+    }
+  },
+  "per_seed": {
+    "17": {
+      "status": "promoted_shared_basis_memory_compression",
+      "records": 12,
+      "basis_rows_before": 12,
+      "basis_rows_after": 2,
+      "physical_value_scalars_before": 336,
+      "physical_value_scalars_after": 56,
+      "dense_value_scalars": 192,
+      "rank_one_error": 0.8346003293991089,
+      "rank_two_error": 0.004718512296676636,
+      "all_gates_passed": true
+    },
+    "18": {
+      "status": "promoted_shared_basis_memory_compression",
+      "records": 12,
+      "basis_rows_before": 12,
+      "basis_rows_after": 2,
+      "physical_value_scalars_before": 336,
+      "physical_value_scalars_after": 56,
+      "dense_value_scalars": 192,
+      "rank_one_error": 0.6811394691467285,
+      "rank_two_error": 0.005542918108403683,
+      "all_gates_passed": true
+    }
+  },
+  "controls": [
+    "rank-one lossy candidate rejected",
+    "rejected candidate did not mutate memory",
+    "forward and reversed physical row order",
+    "all independent key routes retained",
+    "stale expected version rejected",
+    "exact persistent reload",
+    "checksum corruption rejected",
+    "frozen controller",
+    "frozen event encoder",
+    "zero replay"
+  ],
+  "next_bottleneck": "learn an external structure/rank proposal from scalar outcomes and test it on evolving residuals without allowing shared-basis updates to overwrite distinct retained capabilities"
+}

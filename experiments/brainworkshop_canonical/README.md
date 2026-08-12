@@ -1037,3 +1037,26 @@ does not establish arbitrary shared-structure compression, semantic
 equivalence discovery, unbounded memory, autonomous verifier design, or
 general continual learning. Evidence and accounting are archived in
 `session_records/brainworkshop_external_temporal_capacity_schedule_promoted_2026-08-12/`.
+
+## Shared-basis external value compression (2026-08-12)
+
+`external_temporal_shared_basis_compression_growth.py` pressure-tests a
+factorized value store for distinct opaque learned event-key records. The
+controller and event encoder remain frozen. Logical keys stay independent;
+only value payloads share an external orthonormal basis, and ordinary reads
+still return materialized learned values.
+
+The verifier rejects a lossy rank-one candidate and accepts a rank-two
+copy-on-write candidate only when all twelve routes remain distinct and within
+tolerance. Across seeds `17` and `18`, forward and reversed physical row
+orders reduced basis/coefficient storage from `336` to `56` scalars, with exact
+reload, checksum-corruption, stale-version, frozen-core, and zero-replay gates
+passing.
+
+This is promoted as safe shared-structure memory compression. The rank choice
+is deterministic SVD, so it is not yet learned compression, semantic
+equivalence discovery, arbitrary computation, unrestricted growth, or general
+continual learning. The next experiment must learn the structure/rank proposal
+from scalar outcomes and challenge it with evolving residuals and long
+nonstationary retention streams. Evidence is archived in
+`session_records/brainworkshop_external_temporal_shared_basis_compression_promoted_2026-08-12/`.

@@ -152,6 +152,15 @@ from .factored_transition import (
     FactoredTransitionQuarantineReceipt,
     FactoredTransitionRouteResult,
 )
+from .factorized_memory import (
+    SHARED_BASIS_COMPRESSION_SCHEMA,
+    SHARED_BASIS_MEMORY_BACKEND_FORMAT,
+    SHARED_BASIS_MEMORY_SCHEMA,
+    SHARED_BASIS_MEMORY_SNAPSHOT_FORMAT,
+    PersistentSharedBasisContentAddressedMemory,
+    SharedBasisCompressionReceipt,
+    SharedBasisContentAddressedMemory,
+)
 from .fragments import (
     EXTERNAL_SKILL_FRAGMENT_BANK_SCHEMA,
     EXTERNAL_SKILL_FRAGMENT_COMPOSITION_SCHEMA,
@@ -922,6 +931,10 @@ __all__ = [
     "RECIPE_BASIS_SCHEMA",
     "REPRESENTATION_SPACE_SCHEMA",
     "RETENTION_LEDGER_SCHEMA",
+    "SHARED_BASIS_COMPRESSION_SCHEMA",
+    "SHARED_BASIS_MEMORY_BACKEND_FORMAT",
+    "SHARED_BASIS_MEMORY_SCHEMA",
+    "SHARED_BASIS_MEMORY_SNAPSHOT_FORMAT",
     "AdaptiveOnlineEpisodicRelationReader",
     "AmodalCognitiveController",
     "AmodalControllerRuntime",
@@ -1216,6 +1229,7 @@ __all__ = [
     "PersistentOpaqueRouteEvidence",
     "PersistentOpaqueStateStore",
     "PersistentRouteEvidenceStatus",
+    "PersistentSharedBasisContentAddressedMemory",
     "PolicyFreeAmodalRuntime",
     "PolicyFreeRuntimeOutput",
     "PromotionDecision",
@@ -1228,6 +1242,8 @@ __all__ = [
     "RetentionPolicyConfig",
     "RuntimeMigrationExample",
     "RuntimeMigrationReceipt",
+    "SharedBasisCompressionReceipt",
+    "SharedBasisContentAddressedMemory",
     "StagedCapabilityReceipt",
     "accumulate_current_gradients",
     "apply_consolidation_proposal",

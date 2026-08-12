@@ -10406,3 +10406,33 @@ general continual learning. The next pressure test is a learned
 multi-row/shared-structure representation that reduces physical storage for
 genuinely distinct but compositional capabilities, followed by longer
 nonstationary streams and retention-adjusted transaction regret.
+
+## Shared-basis external value compression (2026-08-12)
+
+`SharedBasisContentAddressedMemory` adds a replaceable factorized-value
+backend to the canonical memory boundary. Keys, logical rows, strengths,
+timestamps, and occupancy remain independent; only the value payload is
+represented as per-row coefficients over an external orthonormal basis. Reads
+materialize the ordinary `MemoryRead` contract, so the controller does not
+depend on the storage representation.
+
+Compression is copy-on-write and verifier-gated. A candidate rank reduction
+must preserve every protected route and value, and an expected store version
+prevents a stale verifier from overwriting newer state. Persistent accepted
+replacements are checksummed and atomically reloadable. The backend grows its
+basis online, but never silently reduces it during writes.
+
+The two-seed canonical pressure test stores twelve distinct opaque learned
+values with a shared two-dimensional structure and small residuals. A rank-one
+candidate is rejected; a rank-two candidate is accepted in both forward and
+reversed physical row order. Physical basis/coefficient storage falls from
+`336` to `56` scalars while logical record count remains `12`; all routes,
+reload, corruption, stale-version, frozen-core, and zero-replay gates pass.
+
+This promotes safe shared-structure storage compression, not learned rank
+selection, semantic equivalence discovery, arbitrary new computation,
+unrestricted memory growth, or general continual learning. The rank choice is
+deterministic SVD in this audit. The next pressure is an outcome-trained
+structure/rank proposal on evolving residuals and long nonstationary streams.
+Evidence and accounting are archived in
+`session_records/brainworkshop_external_temporal_shared_basis_compression_promoted_2026-08-12/`.
