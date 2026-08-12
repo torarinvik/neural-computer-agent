@@ -10322,3 +10322,45 @@ both domains (F192, F194), exactly zero forgetting across nine families
 that emits functionally correct programs 70% of the time without search
 (F199, synthetic) — the remaining gap to a working agent is the control
 loop itself, not any of its parts.
+
+## F201 — the reader reads REAL families at 0.2929 against a floor of
+## 0.1693, and the shortfall is a shortcut I took
+
+F199's 0.7012 was on synthetic transitions. The number that decides
+whether a reader can replace the search is held-out REAL families.
+
+| | synthetic | REAL families | real floor |
+| --- | ---: | ---: | ---: |
+| trained | 0.7012 | **0.2929** | 0.1693 |
+| shuffled control | 0.0358 | 0.0573 | 0.1693 |
+
+**It is reading, and it is not enough.** 0.2929 clears its own identity
+floor by +0.1236 and beats the shuffled control fivefold, so the reader
+genuinely extracts the program from real transitions. But it loses more
+than half of its synthetic accuracy doing so, and 29% is not a
+replacement for a search that succeeds 100% of the time.
+
+Per seed: 0.2734, 0.4062, 0.1992 — a spread of 0.21, far looser than
+the synthetic arm's 0.02. Reading real families is not just harder, it
+is less reliable.
+
+**The cause is a shortcut I took and documented while taking it.**
+`make_batch` samples a random instruction and applies it to RANDOM
+states, and the docstring justified this as "the search's answer for
+such a family IS the instruction, so sampling the instruction directly
+gives identical pairs". That is true of the LABEL and false of the
+STATES. A three-valued family only ever shows values 0-2; random states
+are uniform over 0-7. The reader trained on a state distribution the
+real task never produces.
+
+Which is the more embarrassing version of the error, because the probe
+was designed around "search MANUFACTURES ground-truth labels" and then
+did not use the search. The shortcut saved enumerating 1890
+instructions per example — cheap — and cost 0.41 functional accuracy.
+
+**Fix implemented and running:** `--real-training` draws real families
+and finds the explaining instruction by enumeration, which IS the
+search, feeding the reader as the design intended. If that closes the
+gap, the sleep phase works and search becomes verification. If it does
+not, the reader's limit is something other than the input distribution
+and this session will have located it.

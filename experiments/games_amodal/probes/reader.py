@@ -64,6 +64,13 @@ parser.add_argument("--examples", type=int, default=32,
                     help="transitions the reader sees per action")
 parser.add_argument("--batch-size", type=int, default=64)
 parser.add_argument("--lr", type=float, default=1e-3)
+parser.add_argument(
+    "--real-training", action="store_true",
+    help="train on transitions from REAL families with labels found by "
+         "enumeration — the search feeding the reader, as the design "
+         "intended. Without it training uses random instructions over "
+         "RANDOM states, which cost 0.41 functional accuracy on real "
+         "families.")
 parser.add_argument("--shuffle-labels", action="store_true",
                     help="control: train on labels paired with the WRONG "
                          "transitions. A reader that has only learned "
@@ -164,13 +171,76 @@ def make_batch(count: int, generator: torch.Generator):
     return before, after, ops, ii, jj, mm
 
 
+def real_batch(count: int, generator: torch.Generator):
+    """Labels the way the search ACTUALLY produces them: draw a real
+    family, take one action's transitions, and find the instruction that
+    reproduces them exactly.
+
+    This is what `make_batch` shortcut. I reasoned that "the search's
+    answer for a single-instruction family IS the instruction, so
+    sampling the instruction directly gives identical pairs" — true of
+    the LABEL and false of the STATES. A three-valued family only ever
+    shows 0-2; random states are uniform over 0-7. The shortcut cost
+    0.41 of functional accuracy on real families (0.7012 synthetic
+    against 0.2929 real), which is the whole difference between a reader
+    that could replace the search and one that cannot.
+
+    Enumerating 9 x 6 x 5 x 7 = 1890 instructions per family is cheap
+    and is exactly the search — so this is the sleep phase fed by the
+    wake phase, as intended rather than as approximated."""
+    rows: list = []
+    guard = 0
+    while len(rows) < count:
+        guard += 1
+        if guard > count * 200:
+            raise SystemExit("could not draw enough single-instruction "
+                             "families; widen the draw or lower --count")
+        family = RandomFamily(random_family_spec(generator))
+        size = len(family.states)
+        idx = torch.randint(0, size, (args.examples,),
+                            generator=generator)
+        act = int(torch.randint(0, family.actions, (1,),
+                                generator=generator))
+        nxt = torch.tensor([family.table[int(x)][act] for x in idx])
+        before, after = family.slot_values(idx), family.slot_values(nxt)
+        if bool((before >= VALUES).any()) or bool((after >= VALUES).any()):
+            continue
+        found = None
+        for op in range(len(OPS)):
+            for i in range(SLOTS):
+                for j in range(SLOTS):
+                    if i == j:
+                        continue
+                    for m in range(len(MODULI)):
+                        if bool((run_instruction(before, op, i, j, m)
+                                 == after).all()):
+                            found = (op, i, j, m)
+                            break
+                    if found:
+                        break
+                if found:
+                    break
+            if found:
+                break
+        if found is None:
+            continue                # needs more than one instruction
+        rows.append((before, after) + found)
+    return (torch.stack([r[0] for r in rows]),
+            torch.stack([r[1] for r in rows]),
+            torch.tensor([r[2] for r in rows]),
+            torch.tensor([r[3] for r in rows]),
+            torch.tensor([r[4] for r in rows]),
+            torch.tensor([r[5] for r in rows]))
+
+
 reader = Reader(args.dim)
 optimizer = torch.optim.AdamW(reader.parameters(), lr=args.lr,
                               weight_decay=0.01)
 gen = torch.Generator().manual_seed(args.seed * 104729)
 curve = []
 for update in range(args.reader_updates):
-    before, after, ops, ii, jj, mm = make_batch(args.batch_size, gen)
+    draw = real_batch if args.real_training else make_batch
+    before, after, ops, ii, jj, mm = draw(args.batch_size, gen)
     if args.shuffle_labels:
         perm = torch.randperm(args.batch_size, generator=gen)
         ops, ii, jj, mm = ops[perm], ii[perm], jj[perm], mm[perm]
@@ -194,6 +264,7 @@ got = (po.argmax(-1), pi.argmax(-1), pj.argmax(-1), pm.argmax(-1))
 
 report = {
     "seed": args.seed, "shuffle_labels": args.shuffle_labels,
+    "real_training": args.real_training,
     "reader_updates": args.reader_updates, "curve": curve,
     "field_accuracy": {
         "op": round(float((got[0] == ops).float().mean()), 4),
