@@ -223,6 +223,53 @@ for row in range(512):
     works[row] = bool((guess == want).all())
 report["functionally_correct"] = round(float(works.float().mean()), 4)
 
+# ------------------------------------------- the evaluation that counts
+# The training distribution is "a random instruction applied to RANDOM
+# states". Real families are not that: a family with three values only
+# ever shows 0-2, and its states are a structured subset. So the
+# synthetic score above measures whether the architecture can read AT
+# ALL, and this measures whether it can read the thing the system
+# actually needs read.
+#
+# Held-out families, none seen in training, and only those whose true
+# dynamics ARE one instruction — because a reader emitting one
+# instruction cannot be scored against a family that needs two, and
+# scoring it there would measure the family's depth rather than the
+# reader.
+def family_examples(count: int, seed: int):
+    generator = torch.Generator().manual_seed(seed)
+    rows = []
+    while len(rows) < count:
+        family = RandomFamily(random_family_spec(generator))
+        size = len(family.states)
+        idx = torch.randint(0, size, (args.examples,),
+                            generator=generator)
+        act = int(torch.randint(0, family.actions, (1,),
+                                generator=generator))
+        nxt = torch.tensor([family.table[int(x)][act] for x in idx])
+        before = family.slot_values(idx)
+        after = family.slot_values(nxt)
+        if bool((before >= VALUES).any()) or bool((after >= VALUES).any()):
+            continue          # family uses fewer slots; skip rather
+        rows.append((before, after))   # than pad and measure the padding
+    return (torch.stack([r[0] for r in rows]),
+            torch.stack([r[1] for r in rows]))
+
+
+fb, fa = family_examples(256, args.seed + 31337)
+with torch.no_grad():
+    fo, fi, fj, fm = reader(fb, fa)
+hits = 0
+for row in range(fb.shape[0]):
+    guess = run_instruction(fb[row], int(fo[row].argmax()),
+                            int(fi[row].argmax()), int(fj[row].argmax()),
+                            int(fm[row].argmax()))
+    hits += int(bool((guess == fa[row]).all()))
+report["real_family_functionally_correct"] = round(hits / fb.shape[0], 4)
+identity = sum(int(bool((fb[r] == fa[r]).all()))
+               for r in range(fb.shape[0])) / fb.shape[0]
+report["real_family_identity_floor"] = round(identity, 4)
+
 print(json.dumps(report, indent=2))
 if args.json:
     with open(args.json, "w") as handle:
