@@ -9816,3 +9816,52 @@ and is worth stating before it is run.
 transfer, not transfer itself; the whole-fragment configuration it was
 measured in is still the best one, and reverting to it is the honest
 default until an ordering arm beats it.
+
+## Pre-registered: the cross-domain test (probe 275)
+
+Every finding in the recipe architecture, F155 through F191, was
+measured on ONE domain: procedurally generated rule families over
+SLOTS x VALUES. The architecture's central claim is larger. It says the
+plant is AMODAL — structure in frozen weights, content in an external
+bank, one controller for any domain an encoder maps into slots.
+
+**That claim has been argued from construction and never tested.** The
+argument has been "the instructions are operations on abstract slots,
+therefore they are domain-general". That is an argument about the
+definition, not a measurement, and F170 is exactly why it is not
+enough: an extension needs a failure signature, not an argument. An
+instruction set can be abstract by definition and still have been
+tuned, across a hundred measurements, to the rule-family distribution
+it was measured on. **Nothing in F155-F191 would have detected that.**
+
+`cross_domain.py` trains one interpreter on random programs only — no
+domain ever touches its weights — then searches recipes for both:
+
+* **rule families**, the procedural families every prior finding used;
+* **grid games**, real composigrid worlds from `game_family`, an avatar
+  moving on an 8x8 board among positive and negative objects, read into
+  slots by the SAME shallow perception `game_slots.py` uses. Unchanged
+  deliberately: a probe that improved the encoder to make the
+  interpreter look good would be measuring the encoder.
+
+**Predictions.**
+
+1. Rule families reproduce their established margin over the identity
+   floor. If they do not, the probe is broken and nothing else in it
+   can be read — this is the positive control, in the role F172
+   established for `cover`.
+2. Grid games clear their identity floor by a clear margin. The floor
+   is the number to watch and it will be HIGH: a grid state barely
+   changes per step, the avatar moves one cell of eight, so copying the
+   input forward already scores well. Uniform is not the baseline and
+   quoting accuracy against it would be dishonest.
+3. The grid margin is SMALLER than the rule-family margin. Grid
+   dynamics involve objects that move independently of the action,
+   which no single instruction expresses, and the nearest-object
+   encoding collapses several objects into one.
+
+If (2) fails while (1) holds, the honest conclusion is that the
+instruction set was fitted to rule families and its generality was an
+artefact of never having looked. That result would be worth more than
+the confirmation, and recording the prediction now is what makes it
+readable either way.
