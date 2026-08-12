@@ -1780,3 +1780,24 @@ This promotes a bounded replay-free reactivation contract for external
 capability files. It does not establish unrestricted memory growth, automatic
 new computation, or general continual learning. Evidence is archived at
 `session_records/brainworkshop_episodic_artifact_reactivation_promoted_2026-08-12/`.
+
+## Variable external-history computation growth (2026-08-12)
+
+`external_compute_open_growth.py --event-window-size 0 --history-query-count 0`
+now exercises the external compute ABI with an append-only, variable-length
+history of learned event tensors. Relative ages are explicit opaque addressing
+features, while the reducer consumes records causally from oldest to newest and
+then the current event. The controller and event encoder remain frozen; history
+is read before append; missing records use an explicit mask; and no replay is
+used.
+
+Across seeds `17` and `18`, a fresh `symbol_parity` file and a held-out
+`triplet_parity` file both reached `1.0000` on every direct and protected-prefix
+probe. Same-cue reversal demoted the old route and preferred the replacement;
+exact reload, unknown-context near-chance, reward-shuffled rejection,
+controller/frontend immutability, and zero replay all passed. This is the first
+replicated promotion of compositional external computation with variable
+history, but it remains bounded two-file growth—not arbitrary program
+induction, unrestricted memory growth, or general continual learning.
+Evidence is archived at
+`session_records/brainworkshop_external_history_open_growth_promoted_2026-08-12/`.

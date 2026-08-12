@@ -31,6 +31,7 @@ from neural_computer import (
     ExternalCapabilityRegisterMachine,
     ExternalRegisterComputeBasis,
     ExternalRegisterInstruction,
+    ExternalTemporalHistoryMemory,
     IntentEvent,
     KeypressDecoder,
 )
@@ -78,19 +79,30 @@ def _digest(*modules: nn.Module) -> str:
 
 
 def _basis(
-    *, hidden: int = 32, event_window_size: int = EVENT_WINDOW_SIZE
+    *,
+    hidden: int = 32,
+    event_window_size: int = EVENT_WINDOW_SIZE,
+    event_read_mode: str = "flattened_window",
 ) -> ExternalRegisterComputeBasis:
-    if event_window_size < 1:
-        raise ValueError("event window size must be positive")
+    if event_read_mode == "history_attention":
+        if event_window_size:
+            raise ValueError("history attention cannot use a fixed event window")
+        event_width = EVENT_WIDTH
+    else:
+        if event_window_size < 1:
+            raise ValueError("event window size must be positive")
+        event_width = EVENT_WIDTH
     return ExternalRegisterComputeBasis(
         REGISTER_WIDTH,
         INSTRUCTION_WIDTH,
         hidden=hidden,
-        event_width=EVENT_WIDTH,
+        event_width=event_width,
         event_window_size=event_window_size,
         microsteps=2,
-        event_read_mode="flattened_window",
-        register_input_mode="event_window_only",
+        event_read_mode=event_read_mode,
+        register_input_mode=(
+            "event_window_only"
+        ),
     )
 
 
@@ -100,6 +112,7 @@ def _build(
     slot_count: int = 2,
     basis_hidden: int = 32,
     event_window_size: int = EVENT_WINDOW_SIZE,
+    basis_event_read_mode: str = "flattened_window",
 ) -> ComputeGrowthSystem:
     """Build an append-only bank of opaque files over one fixed interpreter."""
 
@@ -107,7 +120,10 @@ def _build(
         raise ValueError("external compute slot count must be positive")
     if basis_hidden < 1:
         raise ValueError("external compute basis hidden width must be positive")
-    if event_window_size < 1:
+    if basis_event_read_mode == "history_attention":
+        if event_window_size:
+            raise ValueError("history attention cannot use a fixed event window")
+    elif event_window_size < 1:
         raise ValueError("external compute event window size must be positive")
 
     torch.manual_seed(seed)
@@ -135,13 +151,16 @@ def _build(
             _basis(
                 hidden=basis_hidden,
                 event_window_size=event_window_size,
+                event_read_mode=basis_event_read_mode,
             )
             for _ in range(slot_count)
         ),
         basis_hidden=basis_hidden,
         basis_microsteps=2,
-        basis_event_read_mode="flattened_window",
-        basis_register_input_mode="event_window_only",
+        basis_event_read_mode=basis_event_read_mode,
+        basis_register_input_mode=(
+            "event_window_only"
+        ),
         event_window_size=event_window_size,
     )
     instructions = nn.ModuleList(
@@ -216,6 +235,7 @@ def _episode(
     entropy_weight: float = 0.0,
     credit_mode: str = "reinforce",
     shuffle_outcomes: bool = False,
+    history_query_count: int | None = None,
 ) -> tuple[torch.Tensor, torch.Tensor, int]:
     """Run one fresh verifier lifetime through INPUT -> PROCESS -> OUTPUT."""
 
@@ -237,6 +257,15 @@ def _episode(
     machine = system.machine
     controller_state = agent.initial_state(batch_size, device="cpu")
     register_state = machine.initial_state(batch_size, device="cpu")
+    history_memory = (
+        ExternalTemporalHistoryMemory(EVENT_WIDTH, scope_capacity=batch_size)
+        if machine.basis_event_read_mode == "history_attention"
+        else None
+    )
+    history_scope = torch.arange(batch_size, dtype=torch.long)
+    if history_query_count is not None and history_query_count < 0:
+        raise ValueError("history query count cannot be negative")
+    history_length = 0
     feedback = agent.initial_feedback(batch_size, device="cpu")
     previous_action = torch.zeros(batch_size, ACTION_COUNT)
     log_probabilities: list[torch.Tensor] = []
@@ -249,6 +278,12 @@ def _episode(
     while not verifier.done:
         if reset_external_each_step:
             register_state = machine.initial_state(batch_size, device="cpu")
+            if history_memory is not None:
+                history_memory = ExternalTemporalHistoryMemory(
+                    EVENT_WIDTH,
+                    scope_capacity=batch_size,
+                )
+                history_length = 0
         with torch.no_grad():
             collection = agent.runtime.encode_streams(
                 {"stimulus": verifier.observation()}
@@ -256,15 +291,56 @@ def _episode(
             controller_output, controller_state = agent.runtime.step_events(
                 collection, controller_state, feedback
             )
-        executed, register_state = machine.read_execute_register(
-            event=collection.payload[:, 0],
-            action=previous_action,
-            outcome=feedback.reward,
-            intention=controller_output.intention,
-            state=register_state,
-            instructions=(system.instructions[slot],),
-            basis_slots=(slot,),
-        )
+        if history_memory is None:
+            executed, register_state = machine.read_execute_register(
+                event=collection.payload[:, 0],
+                action=previous_action,
+                outcome=feedback.reward,
+                intention=controller_output.intention,
+                state=register_state,
+                instructions=(system.instructions[slot],),
+                basis_slots=(slot,),
+            )
+        else:
+            query_count = (
+                history_query_count
+                if history_query_count
+                else max(1, history_length)
+            )
+            offsets = (
+                torch.arange(
+                    query_count - 1,
+                    -1,
+                    -1,
+                    dtype=torch.long,
+                )
+                .expand(batch_size, -1)
+            )
+            history_read = history_memory.read_relative(
+                offsets,
+                scope=history_scope,
+            )
+            register, register_state = machine.observe_register(
+                event=collection.payload[:, 0],
+                action=previous_action,
+                outcome=feedback.reward,
+                intention=controller_output.intention,
+                state=register_state,
+            )
+            executed = machine.execute_chain(
+                register,
+                (system.instructions[slot],),
+                basis_slots=(slot,),
+                event_history=history_read.values,
+                event_history_mask=history_read.present,
+                event_history_age=offsets.to(dtype=collection.payload.dtype),
+                current_event=collection.payload[:, 0],
+            )
+            history_memory.append(
+                collection.payload[:, 0],
+                scope=history_scope,
+            )
+            history_length += 1
         intention = IntentEvent(system.readouts[slot](executed))
         logits = system.decoders[slot](intention)
         probabilities = logits.softmax(dim=-1)
@@ -340,6 +416,7 @@ def _train_stage(
     entropy_weight: float = 0.0,
     credit_mode: str = "reinforce",
     shuffle_outcomes: bool = False,
+    history_query_count: int | None = None,
 ) -> list[dict[str, float | int]]:
     modules = _common_modules(system) + _slot_modules(system, slot)
     optimizer = torch.optim.Adam(_parameters(modules), lr=learning_rate)
@@ -358,6 +435,7 @@ def _train_stage(
             entropy_weight=entropy_weight,
             credit_mode=credit_mode,
             shuffle_outcomes=shuffle_outcomes,
+            history_query_count=history_query_count,
         )
         optimizer.zero_grad(set_to_none=True)
         loss.backward()
@@ -387,6 +465,7 @@ def _evaluate(
     steps: int,
     seed: int,
     reset_external_each_step: bool = False,
+    history_query_count: int | None = None,
 ) -> list[dict[str, float | int]]:
     rows: list[dict[str, float | int]] = []
     for lifetime in range(lifetimes):
@@ -400,6 +479,7 @@ def _evaluate(
             seed=seed + lifetime,
             train=False,
             reset_external_each_step=reset_external_each_step,
+            history_query_count=history_query_count,
         )
         rows.append(
             {

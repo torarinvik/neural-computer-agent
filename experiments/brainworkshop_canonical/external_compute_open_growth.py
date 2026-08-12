@@ -118,6 +118,7 @@ def _train_and_evaluate_candidate(
     entropy_weight: float,
     credit_mode: str,
     shuffle_outcomes: bool = False,
+    history_query_count: int | None = None,
 ) -> tuple[list[dict[str, float | int]], list[dict[str, float | int]]]:
     """Train one isolated candidate and return its history and fresh probes."""
 
@@ -141,6 +142,7 @@ def _train_and_evaluate_candidate(
         entropy_weight=entropy_weight,
         credit_mode=credit_mode,
         shuffle_outcomes=shuffle_outcomes,
+        history_query_count=history_query_count,
     )
     _set_requires_grad(all_modules, False)
     fresh = _evaluate(
@@ -152,6 +154,7 @@ def _train_and_evaluate_candidate(
         batch_size=batch_size,
         steps=14,
         seed=seed + 50_000,
+        history_query_count=history_query_count,
     )
     return history, fresh
 
@@ -169,6 +172,7 @@ def _evaluate_protected_prefix(
     lifetimes: int,
     batch_size: int,
     seed: int,
+    history_query_count: int | None = None,
 ) -> list[dict[str, object]]:
     """Re-test every admitted file after a later append transaction.
 
@@ -188,6 +192,7 @@ def _evaluate_protected_prefix(
             batch_size=batch_size,
             steps=14,
             seed=seed + slot * 1_000,
+            history_query_count=history_query_count,
         )
         rows.append(
             {
@@ -276,6 +281,13 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     event_window_size = int(
         getattr(args, "event_window_size", EVENT_WINDOW_SIZE)
     )
+    history_query_arg = getattr(args, "history_query_count", None)
+    history_query_count = (
+        None if history_query_arg is None else int(history_query_arg)
+    )
+    basis_event_read_mode = (
+        "history_attention" if history_query_count is not None else "flattened_window"
+    )
     if not 1 <= args.target_file_count <= len(OPEN_SCHEDULE):
         raise ValueError("target file count exceeds the calibrated schedule")
     if not args.target_file_count <= args.candidate_budget <= len(OPEN_SCHEDULE):
@@ -296,7 +308,12 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     if args.learning_rate <= 0.0:
         raise ValueError("learning rate must be positive")
     if event_window_size < 1:
-        raise ValueError("event window size must be positive")
+        if basis_event_read_mode != "history_attention":
+            raise ValueError("event window size must be positive")
+    if history_query_count is not None and history_query_count < 0:
+        raise ValueError("history query count cannot be negative")
+    if basis_event_read_mode == "history_attention" and event_window_size:
+        raise ValueError("history attention requires event_window_size=0")
     if entropy_weight < 0.0:
         raise ValueError("entropy weight cannot be negative")
     if credit_mode not in {"reinforce", "attempted_bce"}:
@@ -312,6 +329,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         args.seed,
         slot_count=1,
         event_window_size=event_window_size,
+        basis_event_read_mode=basis_event_read_mode,
     )
     controller_before = _digest(system.agent.controller)
     encoder_before = _digest(system.agent.runtime.encoders["stimulus"])
@@ -347,6 +365,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             learning_rate=args.learning_rate,
             entropy_weight=entropy_weight,
             credit_mode=credit_mode,
+            history_query_count=history_query_count,
         )
         attempted_training_bits += args.batch_size * args.file_updates * (
             14 - RULES[family].warmup
@@ -359,6 +378,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             lifetimes=prefix_retention_lifetimes,
             batch_size=args.batch_size,
             seed=args.seed + 50_000 + attempt_index * 10_000,
+            history_query_count=history_query_count,
         )
         prefix_mastery = all(
             bool(row["stable"]) for row in protected_prefix
@@ -452,6 +472,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         args.seed + 800_000,
         slot_count=1,
         event_window_size=event_window_size,
+        basis_event_read_mode=basis_event_read_mode,
     )
     shuffled_control_history, shuffled_control = _train_and_evaluate_candidate(
         shuffled_control_system,
@@ -466,6 +487,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         entropy_weight=entropy_weight,
         credit_mode=credit_mode,
         shuffle_outcomes=True,
+        history_query_count=history_query_count,
     )
 
     evidence = PersistentOpaqueContextRouteEvidence(
@@ -635,6 +657,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "entropy_weight": entropy_weight,
             "credit_mode": credit_mode,
             "event_window_size": event_window_size,
+            "basis_event_read_mode": basis_event_read_mode,
+            "history_query_count": history_query_count,
             "encoder_symbol_count": ENCODER_SYMBOL_COUNT,
             "target_file_count": args.target_file_count,
             "candidate_budget": args.candidate_budget,
@@ -751,6 +775,12 @@ def main() -> None:
     parser.add_argument("--prefix-retention-lifetimes", type=int, default=None)
     parser.add_argument("--learning-rate", type=float, default=3e-3)
     parser.add_argument("--event-window-size", type=int, default=EVENT_WINDOW_SIZE)
+    parser.add_argument(
+        "--history-query-count",
+        type=int,
+        default=None,
+        help="Use variable external history; 0 reads the full available prefix.",
+    )
     parser.add_argument("--entropy-weight", type=float, default=0.01)
     parser.add_argument(
         "--credit-mode",

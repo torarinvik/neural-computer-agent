@@ -2233,6 +2233,8 @@ class ExternalRegisterComputeBasis(nn.Module):
     or parameters of previously mastered slots.
     """
 
+    HISTORY_HEAD_COUNT = 4
+
     def __init__(
         self,
         register_width: int,
@@ -2254,10 +2256,20 @@ class ExternalRegisterComputeBasis(nn.Module):
             raise ValueError("event width must be positive for an event window")
         if microsteps < 1:
             raise ValueError("compute basis microsteps must be positive")
-        if event_read_mode not in ("flattened_window", "attention_pool"):
+        if event_read_mode not in (
+            "flattened_window",
+            "attention_pool",
+            "history_attention",
+        ):
             raise ValueError("unsupported compute basis event read mode")
         if event_read_mode == "attention_pool" and not event_window_size:
             raise ValueError("attention event reading requires an event window")
+        if event_read_mode == "history_attention" and event_window_size:
+            raise ValueError(
+                "history attention uses variable external history, not an event window"
+            )
+        if event_read_mode == "history_attention" and event_width < 1:
+            raise ValueError("history attention requires a positive event width")
         if register_input_mode not in ("full", "event_window_only"):
             raise ValueError("unsupported compute basis register input mode")
         self.register_width = int(register_width)
@@ -2269,23 +2281,68 @@ class ExternalRegisterComputeBasis(nn.Module):
         self.event_read_mode = event_read_mode
         self.register_input_mode = register_input_mode
         self.event_window_width = self.event_width * self.event_window_size
+        self.history_head_count = (
+            self.HISTORY_HEAD_COUNT if event_read_mode == "history_attention" else 1
+        )
         event_feature_width = (
-            self.event_width
+            self.event_width * self.history_head_count
+            if event_read_mode == "history_attention"
+            else self.event_width
             if event_read_mode == "attention_pool"
             else self.event_window_width
         )
+        current_event_width = self.event_width if event_read_mode == "history_attention" else 0
         width = (
             (self.register_width if register_input_mode == "full" else 0)
             + self.instruction_width
             + event_feature_width
+            + current_event_width
         )
-        if event_read_mode == "attention_pool":
+        if event_read_mode in ("attention_pool", "history_attention"):
             query_width = (
                 self.register_width if register_input_mode == "full" else 0
             ) + self.instruction_width
-            self.event_query = nn.Linear(query_width, self.hidden)
-            self.event_key = nn.Linear(self.event_width, self.hidden)
-            self.event_value = nn.Linear(self.event_width, self.event_width)
+            self.event_query = nn.Linear(
+                query_width,
+                self.hidden * self.history_head_count,
+            )
+            if event_read_mode == "history_attention":
+                self.history_recurrent = nn.GRU(
+                    self.event_width,
+                    self.hidden,
+                    batch_first=True,
+                )
+                self.history_key = nn.Linear(self.hidden, self.hidden)
+                self.history_value = nn.Linear(self.hidden, self.event_width)
+                # Relative age is memory addressing information, not a task
+                # or modality feature.  Fourier features keep the ABI
+                # unbounded while making nearby offsets distinguishable to a
+                # fresh external file.
+                self.history_age_frequency_count = 8
+                self.history_age_key = nn.Sequential(
+                    nn.Linear(17, self.hidden),
+                    nn.GELU(),
+                    nn.Linear(self.hidden, self.hidden),
+                )
+                self.history_age_value = nn.Sequential(
+                    nn.Linear(17, self.hidden),
+                    nn.GELU(),
+                    nn.Linear(self.hidden, self.event_width),
+                )
+                self.history_summary = nn.Linear(self.hidden, self.event_width)
+                self.history_token_encoder = nn.Sequential(
+                    nn.Linear(self.event_width + 17, self.hidden),
+                    nn.GELU(),
+                    nn.Linear(self.hidden, self.hidden),
+                )
+                self.history_set_summary = nn.Sequential(
+                    nn.Linear(self.hidden, self.hidden),
+                    nn.GELU(),
+                    nn.Linear(self.hidden, self.event_width),
+                )
+            else:
+                self.event_key = nn.Linear(self.event_width, self.hidden)
+                self.event_value = nn.Linear(self.event_width, self.event_width)
         self.network = nn.Sequential(
             nn.Linear(width, self.hidden),
             nn.GELU(),
@@ -2299,7 +2356,7 @@ class ExternalRegisterComputeBasis(nn.Module):
         self.signature = nn.Parameter(torch.randn(self.instruction_width) * 0.02)
 
     def configuration(self) -> dict[str, int | str]:
-        return {
+        configuration: dict[str, int | str] = {
             "schema": EXTERNAL_REGISTER_BASIS_SCHEMA,
             "register_width": self.register_width,
             "instruction_width": self.instruction_width,
@@ -2312,6 +2369,12 @@ class ExternalRegisterComputeBasis(nn.Module):
             "storage": "append_only_external_compute_slot_v1",
             "signature": "one_opaque_learned_slot_key_v1",
         }
+        if self.event_read_mode == "history_attention":
+            configuration["history_contract"] = (
+                "variable_external_history_attention_v2"
+            )
+            configuration["history_head_count"] = self.history_head_count
+        return configuration
 
     def artifact(self) -> ExternalRegisterComputeBasisArtifact:
         """Snapshot this learned slot as an independently portable artifact.
@@ -2385,6 +2448,10 @@ class ExternalRegisterComputeBasis(nn.Module):
         code: torch.Tensor,
         event_window: torch.Tensor | None = None,
         event_window_mask: torch.Tensor | None = None,
+        event_history: torch.Tensor | None = None,
+        event_history_mask: torch.Tensor | None = None,
+        event_history_age: torch.Tensor | None = None,
+        current_event: torch.Tensor | None = None,
     ) -> torch.Tensor:
         if register.ndim != 2 or register.shape[1] != self.register_width:
             raise ValueError("register has the wrong shape for compute basis")
@@ -2392,7 +2459,54 @@ class ExternalRegisterComputeBasis(nn.Module):
             register = torch.zeros_like(register)
         if code.shape != (register.shape[0], self.instruction_width):
             raise ValueError("instruction code has the wrong shape for compute basis")
-        if self.event_window_size:
+        if self.event_read_mode == "history_attention":
+            if event_window is not None or event_window_mask is not None:
+                raise ValueError("history attention does not accept a fixed event window")
+            if (
+                event_history is None
+                or event_history_mask is None
+                or event_history_age is None
+                or current_event is None
+            ):
+                raise ValueError(
+                    "history attention requires values, mask, relative age, and current event"
+                )
+            if current_event.shape != (register.shape[0], self.event_width):
+                raise ValueError("current event has the wrong shape")
+            if not bool(torch.isfinite(current_event).all()):
+                raise ValueError("current event must contain finite values")
+            if event_history.ndim != 3 or event_history.shape[0] != register.shape[0]:
+                raise ValueError("external event history has the wrong shape")
+            if event_history.shape[2] != self.event_width:
+                raise ValueError("external event history has the wrong width")
+            if (
+                event_history_mask.shape != event_history.shape[:2]
+                or event_history_mask.dtype is not torch.bool
+            ):
+                raise ValueError("external event history mask has the wrong shape")
+            if (
+                event_history_age.shape != event_history.shape[:2]
+                or not torch.is_floating_point(event_history_age)
+            ):
+                raise ValueError("external event history age has the wrong shape or dtype")
+            if not bool(torch.isfinite(event_history_age).all()):
+                raise ValueError("external event history age must be finite")
+            if bool(torch.any(event_history_age < 0)):
+                raise ValueError("external event history age cannot be negative")
+            if not bool(torch.isfinite(event_history).all()):
+                raise ValueError("external event history must contain finite values")
+            window = event_history * event_history_mask.unsqueeze(-1).to(
+                event_history.dtype
+            )
+            read_mask = event_history_mask
+        elif self.event_window_size:
+            if (
+                event_history is not None
+                or event_history_mask is not None
+                or event_history_age is not None
+                or current_event is not None
+            ):
+                raise ValueError("fixed event-window basis does not accept external history")
             if event_window is None or event_window_mask is None:
                 raise ValueError("event window is required for this compute basis")
             if event_window.shape != (
@@ -2409,29 +2523,135 @@ class ExternalRegisterComputeBasis(nn.Module):
             window = event_window * event_window_mask.unsqueeze(-1).to(
                 event_window.dtype
             )
+            read_mask = event_window_mask
         else:
-            if event_window is not None or event_window_mask is not None:
-                raise ValueError("event window is unsupported by this compute basis")
+            if any(
+                value is not None
+                for value in (
+                    event_window,
+                    event_window_mask,
+                    event_history,
+                    event_history_mask,
+                    event_history_age,
+                    current_event,
+                )
+            ):
+                raise ValueError("event history is unsupported by this compute basis")
             window = None
+            read_mask = None
         for _ in range(self.microsteps):
             basis_register = (
                 register
                 if self.register_input_mode == "full"
                 else torch.zeros_like(register)
             )
-            if self.event_read_mode == "attention_pool":
-                query = self.event_query(torch.cat((basis_register, code), dim=-1))
-                keys = self.event_key(window)
-                values = self.event_value(window)
-                scores = torch.einsum("bd,btd->bt", query, keys)
-                scores = scores / (self.hidden**0.5)
-                valid = event_window_mask
-                scores = scores.masked_fill(~valid, -1e9)
-                weights = torch.softmax(scores, dim=-1)
-                event_features = (weights * valid.to(weights.dtype)).unsqueeze(
-                    -1
-                ) * values
-                event_features = event_features.sum(dim=1)
+            if self.event_read_mode in ("attention_pool", "history_attention"):
+                query_inputs = (
+                    (basis_register, code)
+                    if self.register_input_mode == "full"
+                    else (code,)
+                )
+                query = self.event_query(
+                    torch.cat(query_inputs, dim=-1)
+                )
+                if self.event_read_mode == "history_attention":
+                    # The memory read is addressed by relative age, but the
+                    # sequence reducer consumes valid records oldest to
+                    # newest, followed by the current event.  Keeping these
+                    # concerns separate preserves opaque addressing while
+                    # making the causal order explicit to the reducer.
+                    sequence = torch.cat((window, current_event.unsqueeze(1)), dim=1)
+                    sequence_mask = torch.cat(
+                        (
+                            read_mask,
+                            torch.ones(
+                                register.shape[0],
+                                1,
+                                dtype=torch.bool,
+                                device=register.device,
+                            ),
+                        ),
+                        dim=1,
+                    )
+                    sequence_states, _ = self.history_recurrent(sequence)
+                    history_states = sequence_states[:, :-1]
+                    keys = self.history_key(history_states)
+                    values = self.history_value(history_states)
+                    last_index = sequence_mask.sum(dim=1).clamp_min(1) - 1
+                    summary = sequence_states.gather(
+                        1,
+                        last_index[:, None, None].expand(
+                            -1, -1, sequence_states.shape[-1]
+                        ),
+                    ).squeeze(1)
+                    summary = self.history_summary(summary)
+                    summary = summary * read_mask.any(dim=1, keepdim=True).to(
+                        summary.dtype
+                    )
+                    age = event_history_age.to(
+                        device=window.device,
+                        dtype=window.dtype,
+                    )
+                    frequencies = torch.arange(
+                        self.history_age_frequency_count,
+                        device=window.device,
+                        dtype=window.dtype,
+                    )
+                    periods = torch.pow(
+                        torch.tensor(2.0, device=window.device, dtype=window.dtype),
+                        frequencies,
+                    )
+                    phase = age.unsqueeze(-1) * math.pi / periods
+                    age_features = torch.cat(
+                        (
+                            torch.log1p(age).unsqueeze(-1),
+                            phase.sin(),
+                            phase.cos(),
+                        ),
+                        dim=-1,
+                    )
+                    token_features = self.history_token_encoder(
+                        torch.cat((window, age_features), dim=-1)
+                    )
+                    set_summary = self.history_set_summary(
+                        (
+                            token_features
+                            * read_mask.unsqueeze(-1).to(token_features.dtype)
+                        ).sum(dim=1)
+                    )
+                    set_summary = set_summary * read_mask.any(
+                        dim=1, keepdim=True
+                    ).to(set_summary.dtype)
+                    summary = summary + set_summary
+                    keys = keys + self.history_age_key(age_features)
+                    values = values + self.history_age_value(age_features)
+                else:
+                    keys = self.event_key(window)
+                    values = self.event_value(window)
+                if self.event_read_mode == "history_attention":
+                    query = query.reshape(
+                        register.shape[0], self.history_head_count, self.hidden
+                    )
+                    scores = torch.einsum("bhd,btd->bht", query, keys)
+                    scores = scores / (self.hidden**0.5)
+                    valid = read_mask.unsqueeze(1)
+                    scores = scores.masked_fill(~valid, -1e9)
+                    weights = torch.softmax(scores, dim=-1)
+                    event_features = torch.einsum(
+                        "bht,bte->bhe", weights * valid.to(weights.dtype), values
+                    )
+                    event_features = event_features + summary.unsqueeze(1)
+                    event_features = event_features.flatten(1)
+                else:
+                    scores = torch.einsum("bd,btd->bt", query, keys)
+                    scores = scores / (self.hidden**0.5)
+                    valid = read_mask
+                    scores = scores.masked_fill(~valid, -1e9)
+                    weights = torch.softmax(scores, dim=-1)
+                    event_features = (weights * valid.to(weights.dtype)).unsqueeze(
+                        -1
+                    ) * values
+                    event_features = event_features.sum(dim=1)
             else:
                 event_features = (
                     torch.zeros(
@@ -2444,7 +2664,12 @@ class ExternalRegisterComputeBasis(nn.Module):
                     else window.flatten(1)
                 )
             features = torch.cat(
-                (basis_register, code, event_features)
+                (basis_register, code, current_event, event_features)
+                if self.event_read_mode == "history_attention"
+                and self.register_input_mode == "full"
+                else (code, current_event, event_features)
+                if self.event_read_mode == "history_attention"
+                else (basis_register, code, event_features)
                 if self.event_window_size and self.register_input_mode == "full"
                 else (code, event_features)
                 if self.event_window_size
@@ -2600,10 +2825,18 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             < 1
         ):
             raise ValueError("external register dimensions must be positive")
-        if basis_event_read_mode not in ("flattened_window", "attention_pool"):
+        if basis_event_read_mode not in (
+            "flattened_window",
+            "attention_pool",
+            "history_attention",
+        ):
             raise ValueError("unsupported basis event read mode")
         if basis_event_read_mode == "attention_pool" and not event_window_size:
             raise ValueError("attention basis reading requires an event window")
+        if basis_event_read_mode == "history_attention" and event_window_size:
+            raise ValueError(
+                "history attention uses variable external history, not an event window"
+            )
         if basis_register_input_mode not in ("full", "event_window_only"):
             raise ValueError("unsupported basis register input mode")
         if event_input_mode not in (
@@ -2667,7 +2900,10 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             or basis.microsteps != basis_microsteps
             or basis.event_read_mode != basis_event_read_mode
             or basis.register_input_mode != basis_register_input_mode
-            or (event_window_size and basis.event_width != event_width)
+            or (
+                (event_window_size or basis_event_read_mode == "history_attention")
+                and basis.event_width != event_width
+            )
             for basis in basis_members
         ):
             raise ValueError("basis slots must share machine register and code widths")
@@ -2924,7 +3160,11 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             ),
             "read_execute": EXTERNAL_REGISTER_READ_EXECUTE_SCHEMA,
             "execution_trace": EXTERNAL_REGISTER_EXECUTION_TRACE_SCHEMA,
-            "downstream_input": "preceding_register_plus_bounded_event_window_v1",
+            "downstream_input": (
+                "preceding_register_plus_variable_external_history_v1"
+                if self.basis_event_read_mode == "history_attention"
+                else "preceding_register_plus_bounded_event_window_v1"
+            ),
         }
 
     def add_instruction(self, instruction: ExternalRegisterInstruction) -> int:
@@ -2946,7 +3186,12 @@ class ExternalCapabilityRegisterMachine(nn.Module):
                 microsteps=self.basis_microsteps,
                 event_read_mode=self.basis_event_read_mode,
                 register_input_mode=self.basis_register_input_mode,
-                event_width=self.event_width if self.event_window_size else 0,
+                event_width=(
+                    self.event_width
+                    if self.event_window_size
+                    or self.basis_event_read_mode == "history_attention"
+                    else 0
+                ),
                 event_window_size=self.event_window_size,
             )
         if (
@@ -2956,7 +3201,13 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             or basis.microsteps != self.basis_microsteps
             or basis.event_read_mode != self.basis_event_read_mode
             or basis.register_input_mode != self.basis_register_input_mode
-            or (self.event_window_size and basis.event_width != self.event_width)
+            or (
+                (
+                    self.event_window_size
+                    or self.basis_event_read_mode == "history_attention"
+                )
+                and basis.event_width != self.event_width
+            )
         ):
             raise ValueError("basis slot dimensions do not match the machine")
         self.basis_slots.append(basis)
@@ -2965,12 +3216,17 @@ class ExternalCapabilityRegisterMachine(nn.Module):
     def _basis_artifact_configuration(self) -> dict[str, int | str]:
         """Return the ABI expected by every slot in this interpreter."""
 
-        return {
+        configuration: dict[str, int | str] = {
             "schema": EXTERNAL_REGISTER_BASIS_SCHEMA,
             "register_width": self.register_width,
             "instruction_width": self.instruction_width,
             "hidden": self.basis_hidden,
-            "event_width": self.event_width if self.event_window_size else 0,
+            "event_width": (
+                self.event_width
+                if self.event_window_size
+                or self.basis_event_read_mode == "history_attention"
+                else 0
+            ),
             "event_window_size": self.event_window_size,
             "microsteps": self.basis_microsteps,
             "event_read_mode": self.basis_event_read_mode,
@@ -2978,6 +3234,16 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             "storage": "append_only_external_compute_slot_v1",
             "signature": "one_opaque_learned_slot_key_v1",
         }
+        if self.basis_event_read_mode == "history_attention":
+            configuration["history_contract"] = (
+                "variable_external_history_attention_v2"
+            )
+            configuration["history_head_count"] = (
+                self.basis_slots[0].history_head_count
+                if self.basis_slots
+                else ExternalRegisterComputeBasis.HISTORY_HEAD_COUNT
+            )
+        return configuration
 
     def basis_artifact(self, basis_slot: int) -> ExternalRegisterComputeBasisArtifact:
         """Export one slot without exposing or copying shared interpreter state."""
@@ -3286,6 +3552,10 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         basis_slot: int | None = None,
         event_window: torch.Tensor | None = None,
         event_window_mask: torch.Tensor | None = None,
+        event_history: torch.Tensor | None = None,
+        event_history_mask: torch.Tensor | None = None,
+        event_history_age: torch.Tensor | None = None,
+        current_event: torch.Tensor | None = None,
         state_bank: torch.Tensor | None = None,
         meta_context: torch.Tensor | None = None,
         sequence_operator_memory: ExternalSequenceOperatorMemory
@@ -3397,11 +3667,16 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         ):
             if not 0 <= basis_slot < len(self.basis_slots):
                 raise ValueError("basis slot index is out of range")
-            if self.event_window_size:
-                return self.basis_slots[basis_slot](
-                    register, code, event_window, event_window_mask
-                )
-            return self.basis_slots[basis_slot](register, code)
+            return self.basis_slots[basis_slot](
+                register,
+                code,
+                event_window=event_window,
+                event_window_mask=event_window_mask,
+                event_history=event_history,
+                event_history_mask=event_history_mask,
+                event_history_age=event_history_age,
+                current_event=current_event,
+            )
         if self.operator_mode in (
             "factorized_low_rank",
             "factorized_hybrid",
@@ -3569,6 +3844,10 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         *,
         event_window: torch.Tensor | None = None,
         event_window_mask: torch.Tensor | None = None,
+        event_history: torch.Tensor | None = None,
+        event_history_mask: torch.Tensor | None = None,
+        event_history_age: torch.Tensor | None = None,
+        current_event: torch.Tensor | None = None,
         meta_context: torch.Tensor | None = None,
         sequence_operator_memory: ExternalSequenceOperatorMemory
         | BoundExternalSequenceOperatorMemory
@@ -3583,6 +3862,10 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             program_codes,
             event_window=event_window,
             event_window_mask=event_window_mask,
+            event_history=event_history,
+            event_history_mask=event_history_mask,
+            event_history_age=event_history_age,
+            current_event=current_event,
             meta_context=meta_context,
             sequence_operator_memory=sequence_operator_memory,
             sequence_operator_slot=sequence_operator_slot,
@@ -3597,6 +3880,10 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         *,
         event_window: torch.Tensor | None = None,
         event_window_mask: torch.Tensor | None = None,
+        event_history: torch.Tensor | None = None,
+        event_history_mask: torch.Tensor | None = None,
+        event_history_age: torch.Tensor | None = None,
+        current_event: torch.Tensor | None = None,
         meta_context: torch.Tensor | None = None,
         sequence_operator_memory: ExternalSequenceOperatorMemory
         | BoundExternalSequenceOperatorMemory
@@ -3618,6 +3905,10 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             composition,
             event_window=event_window,
             event_window_mask=event_window_mask,
+            event_history=event_history,
+            event_history_mask=event_history_mask,
+            event_history_age=event_history_age,
+            current_event=current_event,
             meta_context=meta_context,
             sequence_operator_memory=sequence_operator_memory,
             sequence_operator_slot=sequence_operator_slot,
@@ -3632,6 +3923,10 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         include_codes: bool = False,
         event_window: torch.Tensor | None = None,
         event_window_mask: torch.Tensor | None = None,
+        event_history: torch.Tensor | None = None,
+        event_history_mask: torch.Tensor | None = None,
+        event_history_age: torch.Tensor | None = None,
+        current_event: torch.Tensor | None = None,
         meta_context: torch.Tensor | None = None,
         sequence_operator_memory: ExternalSequenceOperatorMemory
         | BoundExternalSequenceOperatorMemory
@@ -3693,6 +3988,26 @@ class ExternalCapabilityRegisterMachine(nn.Module):
                 event_window_mask=(
                     event_window_mask.index_select(0, row_ids)
                     if event_window_mask is not None
+                    else None
+                ),
+                event_history=(
+                    event_history.index_select(0, row_ids)
+                    if event_history is not None
+                    else None
+                ),
+                event_history_mask=(
+                    event_history_mask.index_select(0, row_ids)
+                    if event_history_mask is not None
+                    else None
+                ),
+                event_history_age=(
+                    event_history_age.index_select(0, row_ids)
+                    if event_history_age is not None
+                    else None
+                ),
+                current_event=(
+                    current_event.index_select(0, row_ids)
+                    if current_event is not None
                     else None
                 ),
                 meta_context=(
@@ -3782,6 +4097,10 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         *,
         event_window: torch.Tensor | None = None,
         event_window_mask: torch.Tensor | None = None,
+        event_history: torch.Tensor | None = None,
+        event_history_mask: torch.Tensor | None = None,
+        event_history_age: torch.Tensor | None = None,
+        current_event: torch.Tensor | None = None,
         meta_context: torch.Tensor | None = None,
         sequence_operator_memory: ExternalSequenceOperatorMemory
         | BoundExternalSequenceOperatorMemory
@@ -3810,6 +4129,10 @@ class ExternalCapabilityRegisterMachine(nn.Module):
                 instruction_code=code,
                 event_window=event_window,
                 event_window_mask=event_window_mask,
+                event_history=event_history,
+                event_history_mask=event_history_mask,
+                event_history_age=event_history_age,
+                current_event=current_event,
                 meta_context=meta_context,
                 sequence_operator_memory=sequence_operator_memory,
                 sequence_operator_slot=sequence_operator_slot,
@@ -3956,6 +4279,10 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         basis_slots: Iterable[int | None] | None = None,
         event_window: torch.Tensor | None = None,
         event_window_mask: torch.Tensor | None = None,
+        event_history: torch.Tensor | None = None,
+        event_history_mask: torch.Tensor | None = None,
+        event_history_age: torch.Tensor | None = None,
+        current_event: torch.Tensor | None = None,
         meta_context: torch.Tensor | None = None,
         sequence_operator_memory: ExternalSequenceOperatorMemory
         | BoundExternalSequenceOperatorMemory
@@ -3970,6 +4297,10 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             basis_slots=basis_slots,
             event_window=event_window,
             event_window_mask=event_window_mask,
+            event_history=event_history,
+            event_history_mask=event_history_mask,
+            event_history_age=event_history_age,
+            current_event=current_event,
             meta_context=meta_context,
             sequence_operator_memory=sequence_operator_memory,
             sequence_operator_slot=sequence_operator_slot,
@@ -3985,6 +4316,10 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         basis_slots: Iterable[int | None] | None = None,
         event_window: torch.Tensor | None = None,
         event_window_mask: torch.Tensor | None = None,
+        event_history: torch.Tensor | None = None,
+        event_history_mask: torch.Tensor | None = None,
+        event_history_age: torch.Tensor | None = None,
+        current_event: torch.Tensor | None = None,
         meta_context: torch.Tensor | None = None,
         sequence_operator_memory: ExternalSequenceOperatorMemory
         | BoundExternalSequenceOperatorMemory
@@ -4012,6 +4347,10 @@ class ExternalCapabilityRegisterMachine(nn.Module):
                 basis_slot=basis_slot,
                 event_window=event_window,
                 event_window_mask=event_window_mask,
+                event_history=event_history,
+                event_history_mask=event_history_mask,
+                event_history_age=event_history_age,
+                current_event=current_event,
                 meta_context=meta_context,
                 sequence_operator_memory=sequence_operator_memory,
                 sequence_operator_slot=sequence_operator_slot,

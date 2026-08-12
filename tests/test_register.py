@@ -153,6 +153,57 @@ def test_external_compute_basis_can_isolate_a_new_file_from_shared_register_stat
     assert basis.configuration()["register_input_mode"] == "event_window_only"
 
 
+def test_external_compute_basis_reads_variable_history_with_explicit_missing_mask() -> None:
+    torch.manual_seed(921)
+    basis = ExternalRegisterComputeBasis(
+        8,
+        5,
+        hidden=10,
+        event_width=4,
+        event_window_size=0,
+        event_read_mode="history_attention",
+        register_input_mode="full",
+    )
+    register = torch.randn(3, 8)
+    code = torch.randn(3, 5)
+    current_event = torch.randn(3, 4)
+    history = torch.randn(3, 7, 4)
+    mask = torch.tensor(
+        [
+            [True, True, True, True, True, True, True],
+            [True, True, True, False, False, False, False],
+            [False, False, False, False, False, False, False],
+        ]
+    )
+    age = torch.arange(7, dtype=torch.float32).expand(3, -1)
+
+    output = basis(
+        register,
+        code,
+        event_history=history,
+        event_history_mask=mask,
+        event_history_age=age,
+        current_event=current_event,
+    )
+    masked_history = history.clone()
+    masked_history[~mask] = 1000.0
+    masked_output = basis(
+        register,
+        code,
+        event_history=masked_history,
+        event_history_mask=mask,
+        event_history_age=age,
+        current_event=current_event,
+    )
+
+    assert output.shape == (3, 8)
+    assert torch.isfinite(output).all()
+    assert torch.allclose(output, masked_output)
+    assert basis.configuration()["history_contract"] == (
+        "variable_external_history_attention_v2"
+    )
+
+
 def test_external_compute_basis_artifact_load_isolated_from_frozen_interpreter() -> (
     None
 ):
@@ -189,6 +240,37 @@ def test_external_compute_basis_artifact_load_isolated_from_frozen_interpreter()
     assert not torch.equal(
         source.basis_slots[source_slot].network[0].bias,
         target.basis_slots[target_slot].network[0].bias,
+    )
+
+
+def test_history_compute_basis_artifact_round_trips_the_versioned_history_abi() -> None:
+    kwargs = {
+        "event_window_size": 0,
+        "basis_event_read_mode": "history_attention",
+        "basis_register_input_mode": "event_window_only",
+    }
+    source = _machine(
+        basis_slots=(
+            ExternalRegisterComputeBasis(
+                8,
+                5,
+                hidden=64,
+                event_width=4,
+                event_read_mode="history_attention",
+                register_input_mode="event_window_only",
+            ),
+        ),
+        **kwargs,
+    )
+    target = _machine(**kwargs)
+
+    slot = target.add_basis_artifact(source.basis_artifact(0))
+
+    assert slot == 0
+    assert target.configuration()["basis_event_read_mode"] == "history_attention"
+    assert target._basis_artifact_configuration()["history_head_count"] == 4
+    assert target.basis_slots[slot].configuration() == (
+        source.basis_slots[0].configuration()
     )
 
 

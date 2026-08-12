@@ -24,6 +24,7 @@ from torch.nn import functional as F
 
 from neural_computer import (
     ControllerFeedback,
+    ExternalTemporalHistoryMemory,
     IntentEvent,
     PersistentOpaqueContextRouteEvidence,
 )
@@ -94,6 +95,20 @@ def _routed_episode(
         system.machine.initial_state(batch_size, device="cpu")
         for _ in range(slot_count)
     ]
+    history_mode = system.machine.basis_event_read_mode == "history_attention"
+    history_scopes = torch.arange(batch_size, dtype=torch.long)
+    history_memories = (
+        [
+            ExternalTemporalHistoryMemory(
+                EVENT_WIDTH,
+                scope_capacity=batch_size,
+            )
+            for _ in range(slot_count)
+        ]
+        if history_mode
+        else []
+    )
+    history_lengths = [0 for _ in range(slot_count)]
     route_key: torch.Tensor | None = None
     selected_slot: torch.Tensor | None = None
     rewards: list[torch.Tensor] = []
@@ -123,16 +138,55 @@ def _routed_episode(
         slot_logits: list[torch.Tensor] = []
         for slot in range(slot_count):
             present = selected_slot == slot
-            executed, register_states[slot] = system.machine.read_execute_register(
-                event=collection.payload[:, 0],
-                action=previous_action,
-                outcome=feedback.reward,
-                intention=controller_output.intention,
-                state=register_states[slot],
-                instructions=(system.instructions[slot],),
-                basis_slots=(slot,),
-                present=present,
-            )
+            if not history_mode:
+                executed, register_states[slot] = system.machine.read_execute_register(
+                    event=collection.payload[:, 0],
+                    action=previous_action,
+                    outcome=feedback.reward,
+                    intention=controller_output.intention,
+                    state=register_states[slot],
+                    instructions=(system.instructions[slot],),
+                    basis_slots=(slot,),
+                    present=present,
+                )
+            else:
+                query_count = max(1, history_lengths[slot])
+                offsets = (
+                    torch.arange(
+                        query_count - 1,
+                        -1,
+                        -1,
+                        dtype=torch.long,
+                    )
+                    .expand(batch_size, -1)
+                )
+                history_read = history_memories[slot].read_relative(
+                    offsets,
+                    scope=history_scopes,
+                )
+                register, register_states[slot] = system.machine.observe_register(
+                    event=collection.payload[:, 0],
+                    action=previous_action,
+                    outcome=feedback.reward,
+                    intention=controller_output.intention,
+                    state=register_states[slot],
+                    present=present,
+                )
+                executed = system.machine.execute_chain(
+                    register,
+                    (system.instructions[slot],),
+                    basis_slots=(slot,),
+                    event_history=history_read.values,
+                    event_history_mask=history_read.present,
+                    event_history_age=offsets.to(dtype=collection.payload.dtype),
+                    current_event=collection.payload[:, 0],
+                )
+                history_memories[slot].append(
+                    collection.payload[:, 0],
+                    present=present,
+                    scope=history_scopes,
+                )
+                history_lengths[slot] += 1
             slot_logits.append(
                 system.decoders[slot](IntentEvent(system.readouts[slot](executed)))
             )

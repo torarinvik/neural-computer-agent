@@ -1,0 +1,46 @@
+{
+  "schema": "neural-computer.brainworkshop-external-compute-open-growth.v1",
+  "seed": 18,
+  "status": "promoted_external_compute_open_growth",
+  "architecture": {
+    "event_window_size": 0,
+    "basis_event_read_mode": "history_attention",
+    "history_query_count": 0,
+    "history_contract": "variable_external_history_attention_v2",
+    "credit_mode": "attempted_bce",
+    "file_updates": 192,
+    "route_updates": 64,
+    "route_calibration_lifetimes": 8,
+    "transition_batches": 12,
+    "retention_lifetimes": 3
+  },
+  "direct_accuracy": {
+    "symbol_parity": [1.0, 1.0, 1.0],
+    "triplet_parity": [1.0, 1.0, 1.0]
+  },
+  "gates": {
+    "target_file_count_admitted": true,
+    "every_admitted_file_mastered": true,
+    "protected_prefix_retained_after_each_append": true,
+    "every_route_mastered": true,
+    "every_route_selects_correct_file": true,
+    "same_context_stale_route_demoted": true,
+    "same_context_replacement_preferred": true,
+    "same_context_replacement_mastered": true,
+    "old_file_retained_after_reversal": true,
+    "unknown_context_near_chance": true,
+    "reward_shuffled_nback2_control_rejects_mastery": true,
+    "route_reload_exact": true,
+    "all_admitted_files_unchanged_during_routing": true,
+    "frozen_controller": true,
+    "frozen_event_encoder": true,
+    "zero_replayed_examples": true
+  },
+  "accounting": {
+    "unique_verifier_bits": 179712,
+    "unique_logical_lifetimes": 15072,
+    "optimizer_updates": 384,
+    "replayed_examples": 0,
+    "stable_bits_to_threshold": 179712
+  }
+}

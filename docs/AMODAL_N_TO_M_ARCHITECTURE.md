@@ -11811,3 +11811,31 @@ of forgetting. This promotes a stronger retention contract, not unrestricted
 history, arbitrary program induction, or general continual learning. Evidence
 is archived in
 `session_records/brainworkshop_open_growth_prefix_retention_screen_2026-08-12/`.
+
+## Causal variable external history for external computation (2026-08-12)
+
+The external register ABI now has a versioned `history_attention` mode. It
+accepts a variable-length tensor history, an explicit boolean presence mask,
+opaque relative ages, and the current learned event. The memory side reads
+relative offsets; the external slot receives only standardized learned event
+tensors and consumes valid records in causal order. A four-head attention path
+preserves separate token binding, while recurrent and masked-set summaries
+provide a generic sequence-computation path. The history path is external-file
+state and does not resize or modify the controller.
+
+The first implementation exposed a useful causal bug: feeding newest-first
+relative reads into the sequence reducer prevented a held-out triplet-parity
+file from learning, even though the events were present. Reordering the valid
+history oldest-to-newest before the current event raised the direct held-out
+probe to `0.8523–0.8892` on four fresh lifetimes, then the full append-and-route
+promotion reached `1.0000` on every direct and protected-prefix lifetime across
+seeds `17` and `18`. Both seeds passed route reversal, exact reload,
+reward-shuffled, unknown-context, frozen-controller/frontend, file-immutability,
+and zero-replay gates.
+
+This promotes a causal variable-history external-computation contract and
+identifies sequence ordering as a first-class memory ABI invariant. It remains
+bounded two-file growth; it does not establish unrestricted memory growth,
+arbitrary program induction, or general continual learning. Evidence is
+archived at
+`session_records/brainworkshop_external_history_open_growth_promoted_2026-08-12/`.

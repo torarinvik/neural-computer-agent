@@ -1,0 +1,27 @@
+{
+  "experiment_id": "brainworkshop-external-history-open-growth-2026-08-12",
+  "claim_boundary": "Replicated bounded two-file outcome-only external computation growth with causal variable history; not general continual learning.",
+  "seeds": [17, 18],
+  "runs": {
+    "seed17": {
+      "unique_verifier_bits": 179712,
+      "unique_logical_lifetimes": 15072,
+      "optimizer_updates": 384,
+      "replayed_examples": 0,
+      "stable_bits_to_threshold": 179712,
+      "retention_minimum": 1.0,
+      "direct_minimum": 1.0,
+      "status": "promoted"
+    },
+    "seed18": {
+      "unique_verifier_bits": 179712,
+      "unique_logical_lifetimes": 15072,
+      "optimizer_updates": 384,
+      "replayed_examples": 0,
+      "stable_bits_to_threshold": 179712,
+      "retention_minimum": 1.0,
+      "direct_minimum": 1.0,
+      "status": "promoted"
+    }
+  }
+}
