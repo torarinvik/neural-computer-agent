@@ -10912,3 +10912,30 @@ This promotes only bounded replay-free contextual candidate reuse. It does not
 yet provide factorized instruction/position credit, related-context transfer,
 automatic program synthesis beyond the bounded neighborhood, unrestricted
 memory growth, or general continual learning.
+
+## Factorized instruction/position proposal credit (2026-08-12)
+
+The recipe ABI now exposes an opaque `RecipeProgramProposalFactors` descriptor
+for each one-step edit: generic operator identity, position(s), and
+content-addressed instruction digest(s). The replaceable
+`FactorizedOpaqueContextRecipeProposalMemory` records only aggregate scalar
+quality for these factors. Shared factor evidence can transfer across parent
+programs; once a context has evidence, its local factor table takes over so a
+reversal does not overwrite the earlier context. A nonzero exploration floor
+keeps unseen candidates reachable.
+
+The four-seed audit used the corrected per-family moduli `(2, 8)`. It learned
+`INC(0,m=2); CINC(1|0,m=8)` in one context and transferred the matching opaque
+instruction/position factors to a different parent,
+`DEC(0,m=2)`, whose target therefore had a different whole-program digest.
+Warm transfer took one proposal on every seed versus `10--23` for fresh
+controls and beat the prior whole-candidate policy on all seeds. Held-out
+accuracy remained `1.0000`; a contradictory context learned `CDEC` locally,
+the original context retained `CINC`, persistence and protected-file
+retention passed, shuffled feedback was rejected, and replay/controller
+updates were zero. Evidence and the ledger are archived in
+`session_records/recipe_factorized_context_proposal_credit_promoted_2026-08-12/`.
+
+This promotes bounded factorized proposal transfer and local reversal
+routing. It is not yet reusable multi-step sub-sequence composition,
+unrestricted memory growth, or general continual learning.

@@ -1,0 +1,49 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment_id": "recipe-factorized-context-proposal-credit-promoted-2026-08-12",
+  "status": "promoted_bounded_factorized_instruction_position_transfer",
+  "source": "in_repository_run",
+  "seeds": [17, 18, 19, 20],
+  "unique_verifier_bits_per_seed": [1072, 920, 864, 720],
+  "unique_logical_lifetimes_per_seed": [128, 109, 102, 84],
+  "optimizer_updates": 0,
+  "replayed_examples": 0,
+  "stable_bits_to_threshold": {
+    "warm_factorized_target_b": [8, 8, 8, 8],
+    "reversal_target_c": [8, 8, 8, 8],
+    "shuffled_feedback_control": null
+  },
+  "retention_on_mastered_primitives": [1.0, 1.0, 1.0, 1.0],
+  "transfer_ratio_against_fresh_factor_learner": [
+    0.047619047619047616,
+    0.043478260869565216,
+    0.047619047619047616,
+    0.1
+  ],
+  "transfer_ratio_against_whole_candidate_prior": [
+    0.07692307692307693,
+    0.0625,
+    0.08333333333333333,
+    0.1
+  ],
+  "latency_seconds": [
+    0.09844691806938499,
+    0.08709941594861448,
+    0.0799519590800628,
+    0.06251824996434152
+  ],
+  "controls": {
+    "four_seeds": true,
+    "corrected_mixed_modulus_domains": true,
+    "different_parent_program": true,
+    "factor_descriptor_match": true,
+    "local_reversal": true,
+    "exploration_floor": true,
+    "shuffled_feedback": true,
+    "protected_file_retention": true,
+    "reload_and_checksum": true,
+    "zero_replay": true,
+    "controller_path_untouched": true
+  },
+  "claim_boundary": "Promoted narrow factorized proposal transfer; no claim of unrestricted memory growth, arbitrary program induction, or general continual learning."
+}

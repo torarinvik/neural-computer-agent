@@ -217,3 +217,30 @@ currently credits an exact whole candidate digest; it does not yet factorize
 instruction identity, insertion position, or reusable sub-sequences across
 related contexts, and it does not establish general continual learning or
 unrestricted memory growth.
+
+## Factorized instruction/position proposal credit
+
+`RecipeProgramProposalFactors` makes the generic edit ABI explicit: an
+operator, one or two opaque positions, and content-addressed instruction
+digests. `FactorizedOpaqueContextRecipeProposalMemory` stores aggregate scalar
+quality over those factors in external shared and context-local tables. It
+does not retain whole candidate rows; a shared factor prior transfers useful
+edits to a different parent program, while local evidence disables that prior
+for a known context and can learn a reversal. The exploration floor remains
+active for every candidate.
+
+The four-seed audit used mixed domains `(2, 8)`, acquired `INC(0,m=2)` plus
+`CINC(1|0,m=8)` in one context, then transferred the same opaque insertion
+instruction/position factors to a different parent containing `DEC(0,m=2)`.
+The target digest changed, but the factors matched. Warm transfer took `1`
+proposal on all seeds versus `10--23` fresh proposals, and beat the prior
+whole-candidate policy on every seed. Held-out accuracy was `1.0000` for all
+targets; a reversal context learned `CDEC`, the original context retained
+`CINC`, protected files and policy payloads reloaded exactly, shuffled feedback
+was rejected, and replay/controller updates were zero. Evidence is archived
+under
+`session_records/recipe_factorized_context_proposal_credit_promoted_2026-08-12/`.
+
+This promotes bounded factorized transfer and local reversal routing. It does
+not yet establish reusable multi-step sub-sequence composition, unrestricted
+memory growth, or general continual learning.

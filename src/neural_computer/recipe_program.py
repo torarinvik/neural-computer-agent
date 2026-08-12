@@ -26,6 +26,10 @@ RECIPE_PROGRAM_PROPOSAL_SCHEMA = "neural-computer.external-recipe-program-propos
 RECIPE_CONTEXT_PROPOSAL_MEMORY_SCHEMA = (
     "neural-computer.external-context-conditioned-recipe-proposal-memory.v1"
 )
+RECIPE_PROPOSAL_FACTORS_SCHEMA = "neural-computer.recipe-proposal-factors.v1"
+RECIPE_FACTORIZED_CONTEXT_PROPOSAL_MEMORY_SCHEMA = (
+    "neural-computer.external-factorized-context-proposal-memory.v1"
+)
 RECIPE_PROGRAM_ADMISSION_SCHEMA = "neural-computer.external-recipe-program-admission.v1"
 RECIPE_PROGRAM_MUTATION_OPERATORS = ("replace", "insert", "delete", "swap")
 
@@ -511,6 +515,91 @@ class RecipeProgramSearchState:
         ).validate()
 
 
+def _instruction_digest(instruction: RecipeInstruction) -> str:
+    return _canonical_digest(_instruction_payload(instruction))
+
+
+@dataclass(frozen=True)
+class RecipeProgramProposalFactors:
+    """Opaque, generic factors for one sequence edit.
+
+    The factors describe *how* a candidate changes its parent, not what the
+    candidate means.  This lets external memory reuse instruction and
+    position credit across different parent programs while keeping the
+    controller unaware of the recipe ABI.
+    """
+
+    operator_index: int
+    primary_position: int
+    secondary_position: int | None = None
+    instruction_digests: tuple[str, ...] = ()
+    schema: str = RECIPE_PROPOSAL_FACTORS_SCHEMA
+
+    def validate(self) -> RecipeProgramProposalFactors:
+        if self.schema != RECIPE_PROPOSAL_FACTORS_SCHEMA:
+            raise ValueError("unsupported recipe proposal factors schema")
+        if not 0 <= self.operator_index < len(RECIPE_PROGRAM_MUTATION_OPERATORS):
+            raise ValueError("recipe proposal factors operator is invalid")
+        if self.primary_position < 0:
+            raise ValueError("recipe proposal factors primary position is invalid")
+        if self.secondary_position is not None and (
+            self.secondary_position < 0
+            or self.secondary_position == self.primary_position
+        ):
+            raise ValueError("recipe proposal factors secondary position is invalid")
+        if self.operator_index == 3:
+            if self.secondary_position is None or not (
+                self.primary_position < self.secondary_position
+            ):
+                raise ValueError("swap factors need ordered positions")
+            expected_instructions = 2
+        else:
+            if self.secondary_position is not None:
+                raise ValueError("non-swap factors cannot have a second position")
+            expected_instructions = 1
+        if len(self.instruction_digests) != expected_instructions:
+            raise ValueError("recipe proposal factors instruction count is invalid")
+        for digest in self.instruction_digests:
+            if not isinstance(digest, str) or len(digest) != 64:
+                raise ValueError("recipe proposal factors instruction digest is invalid")
+            try:
+                int(digest, 16)
+            except ValueError as error:
+                raise ValueError(
+                    "recipe proposal factors instruction digest is invalid"
+                ) from error
+        return self
+
+    def payload(self) -> dict[str, object]:
+        self.validate()
+        return {
+            "schema": self.schema,
+            "operator_index": self.operator_index,
+            "primary_position": self.primary_position,
+            "secondary_position": self.secondary_position,
+            "instruction_digests": list(self.instruction_digests),
+        }
+
+    @classmethod
+    def from_payload(
+        cls,
+        payload: Mapping[str, object],
+    ) -> RecipeProgramProposalFactors:
+        if not isinstance(payload, Mapping):
+            raise TypeError("recipe proposal factors payload must be a mapping")
+        instructions = payload.get("instruction_digests", ())
+        if not isinstance(instructions, Sequence) or isinstance(instructions, (str, bytes)):
+            raise TypeError("recipe proposal factors instructions are malformed")
+        secondary = payload.get("secondary_position")
+        return cls(
+            operator_index=int(payload.get("operator_index", -1)),
+            primary_position=int(payload.get("primary_position", -1)),
+            secondary_position=None if secondary is None else int(secondary),
+            instruction_digests=tuple(str(value) for value in instructions),
+            schema=str(payload.get("schema", "")),
+        ).validate()
+
+
 class OpaqueContextRecipeProposalMemory:
     """External scalar credit for content-addressed proposals.
 
@@ -601,9 +690,17 @@ class OpaqueContextRecipeProposalMemory:
             raise ValueError("recipe proposal aggregate is outside [0, 1]")
         return total, count
 
-    def record(self, context: str, candidate_digest: str, quality: float) -> None:
+    def record(
+        self,
+        context: str,
+        candidate_digest: str,
+        quality: float,
+        *,
+        factors: RecipeProgramProposalFactors | None = None,
+    ) -> None:
         """Record one scalar result without retaining the underlying outcomes."""
 
+        del factors
         self._validate_context(context)
         self._validate_candidate_digest(candidate_digest)
         if not math.isfinite(quality) or not 0.0 <= quality <= 1.0:
@@ -659,8 +756,10 @@ class OpaqueContextRecipeProposalMemory:
         context: str,
         candidate_digests: Sequence[str],
         *,
+        factors: Sequence[RecipeProgramProposalFactors] | None = None,
         generator: torch.Generator,
     ) -> tuple[int, float]:
+        del factors
         probabilities = self.proposal_probabilities(context, candidate_digests)
         index = int(torch.multinomial(probabilities, 1, generator=generator))
         return index, float(probabilities[index].item())
@@ -742,6 +841,333 @@ class OpaqueContextRecipeProposalMemory:
         return memory
 
 
+class FactorizedOpaqueContextRecipeProposalMemory:
+    """External scalar credit over reusable recipe-edit factors.
+
+    Unlike :class:`OpaqueContextRecipeProposalMemory`, this memory does not
+    retain or score whole candidate digests.  It aggregates quality over
+    opaque instruction digests, operator/position factors, and operator
+    identity.  A shared factor prior supports related-context transfer, while
+    context-local factors can override it after evidence arrives.
+    """
+
+    schema = RECIPE_FACTORIZED_CONTEXT_PROPOSAL_MEMORY_SCHEMA
+    _FACTOR_TYPES = ("instruction", "position", "operator")
+
+    def __init__(
+        self,
+        *,
+        exploration_floor: float = 0.2,
+        shared_prior_weight: float = 0.1,
+        exploration_bonus: float = 0.25,
+        instruction_weight: float = 1.0,
+        position_weight: float = 0.75,
+        operator_weight: float = 0.25,
+        temperature: float = 0.5,
+    ) -> None:
+        for name, value in (
+            ("exploration_floor", exploration_floor),
+            ("shared_prior_weight", shared_prior_weight),
+            ("exploration_bonus", exploration_bonus),
+            ("instruction_weight", instruction_weight),
+            ("position_weight", position_weight),
+            ("operator_weight", operator_weight),
+            ("temperature", temperature),
+        ):
+            if not math.isfinite(value) or value < 0.0:
+                raise ValueError(f"factorized recipe proposal {name} is invalid")
+        if exploration_floor >= 1.0:
+            raise ValueError("factorized recipe exploration floor must be < 1")
+        if instruction_weight + position_weight + operator_weight <= 0.0:
+            raise ValueError("factorized recipe proposal weights cannot all be zero")
+        if temperature <= 0.0:
+            raise ValueError("factorized recipe proposal temperature must be positive")
+        self.exploration_floor = float(exploration_floor)
+        self.shared_prior_weight = float(shared_prior_weight)
+        self.exploration_bonus = float(exploration_bonus)
+        self.instruction_weight = float(instruction_weight)
+        self.position_weight = float(position_weight)
+        self.operator_weight = float(operator_weight)
+        self.temperature = float(temperature)
+        self._context_stats: dict[str, dict[str, dict[str, list[float]]]] = {}
+        self._shared_stats = self._empty_stats()
+
+    @classmethod
+    def _empty_stats(cls) -> dict[str, dict[str, list[float]]]:
+        return {factor_type: {} for factor_type in cls._FACTOR_TYPES}
+
+    @staticmethod
+    def _validate_context(context: str) -> None:
+        if not isinstance(context, str) or not context or "\0" in context:
+            raise ValueError("factorized recipe context must be a non-empty opaque key")
+
+    @staticmethod
+    def _validate_digest(digest: str, *, label: str) -> None:
+        if not isinstance(digest, str) or len(digest) != 64:
+            raise ValueError(f"{label} digest is malformed")
+        try:
+            int(digest, 16)
+        except ValueError as error:
+            raise ValueError(f"{label} digest is malformed") from error
+
+    @classmethod
+    def _factor_entries(
+        cls,
+        factors: RecipeProgramProposalFactors,
+    ) -> tuple[tuple[str, str], ...]:
+        factors.validate()
+        positions = [factors.primary_position]
+        if factors.secondary_position is not None:
+            positions.append(factors.secondary_position)
+        entries: list[tuple[str, str]] = [
+            ("operator", str(factors.operator_index)),
+            *[("position", f"{factors.operator_index}:{position}") for position in positions],
+            *[("instruction", digest) for digest in factors.instruction_digests],
+        ]
+        return tuple(entries)
+
+    @staticmethod
+    def _aggregate(entry: Sequence[float] | None) -> tuple[float, float]:
+        if entry is None:
+            return 0.0, 0.0
+        if len(entry) != 2:
+            raise ValueError("factorized recipe aggregate is malformed")
+        total, count = float(entry[0]), float(entry[1])
+        if not math.isfinite(total) or not math.isfinite(count):
+            raise ValueError("factorized recipe aggregate is non-finite")
+        if total < 0.0 or count < 0.0 or total > count:
+            raise ValueError("factorized recipe aggregate is outside [0, 1]")
+        return total, count
+
+    def configuration(self) -> dict[str, object]:
+        return {
+            "schema": self.schema,
+            "exploration_floor": self.exploration_floor,
+            "shared_prior_weight": self.shared_prior_weight,
+            "exploration_bonus": self.exploration_bonus,
+            "instruction_weight": self.instruction_weight,
+            "position_weight": self.position_weight,
+            "operator_weight": self.operator_weight,
+            "temperature": self.temperature,
+            "credit": "scalar_factor_aggregate_without_candidate_rows_v1",
+            "context": "opaque_external_key_v1",
+            "instruction": "content_addressed_generic_instruction_digest_v1",
+            "position": "operator_relative_integer_position_v1",
+        }
+
+    def record(
+        self,
+        context: str,
+        candidate_digest: str,
+        quality: float,
+        *,
+        factors: RecipeProgramProposalFactors,
+    ) -> None:
+        """Record scalar quality against factors, discarding candidate identity."""
+
+        self._validate_context(context)
+        self._validate_digest(candidate_digest, label="recipe candidate")
+        if not math.isfinite(quality) or not 0.0 <= quality <= 1.0:
+            raise ValueError("factorized recipe quality must lie in [0, 1]")
+        context_stats = self._context_stats.setdefault(context, self._empty_stats())
+        for factor_type, key in self._factor_entries(factors):
+            local = context_stats[factor_type].setdefault(key, [0.0, 0.0])
+            local[0] += float(quality)
+            local[1] += 1.0
+            shared = self._shared_stats[factor_type].setdefault(key, [0.0, 0.0])
+            shared[0] += float(quality)
+            shared[1] += 1.0
+
+    def _factor_score(
+        self,
+        context_stats: Mapping[str, Mapping[str, Sequence[float]]],
+        factor_type: str,
+        key: str,
+        *,
+        shared_weight: float,
+    ) -> float:
+        local_total, local_count = self._aggregate(
+            context_stats.get(factor_type, {}).get(key)
+        )
+        shared_total, shared_count = self._aggregate(
+            self._shared_stats[factor_type].get(key)
+        )
+        effective_count = local_count + shared_weight * shared_count
+        effective_total = local_total + shared_weight * shared_total
+        mean = effective_total / effective_count if effective_count else 0.0
+        bonus = self.exploration_bonus * math.sqrt(
+            math.log1p(local_count + shared_weight * shared_count + 1.0)
+            / (effective_count + 1.0)
+        )
+        return mean + bonus
+
+    def proposal_probabilities(
+        self,
+        context: str,
+        factors: Sequence[RecipeProgramProposalFactors],
+    ) -> torch.Tensor:
+        self._validate_context(context)
+        factor_list = tuple(factors)
+        if not factor_list:
+            raise ValueError("factorized recipe candidate set cannot be empty")
+        for item in factor_list:
+            item.validate()
+        context_stats = self._context_stats.get(context, self._empty_stats())
+        scores: list[float] = []
+        for item in factor_list:
+            entries = self._factor_entries(item)
+            instruction_scores = [
+                self._factor_score(
+                    context_stats,
+                    factor_type,
+                    key,
+                    shared_weight=(
+                        0.0
+                        if any(context_stats[factor_type].values())
+                        else self.shared_prior_weight
+                    ),
+                )
+                for factor_type, key in entries
+                if factor_type == "instruction"
+            ]
+            position_scores = [
+                self._factor_score(
+                    context_stats,
+                    factor_type,
+                    key,
+                    shared_weight=(
+                        0.0
+                        if any(context_stats[factor_type].values())
+                        else self.shared_prior_weight
+                    ),
+                )
+                for factor_type, key in entries
+                if factor_type == "position"
+            ]
+            operator_score = self._factor_score(
+                context_stats,
+                "operator",
+                str(item.operator_index),
+                shared_weight=(
+                    0.0
+                    if any(context_stats["operator"].values())
+                    else self.shared_prior_weight
+                ),
+            )
+            instruction = sum(instruction_scores) / max(1, len(instruction_scores))
+            position = sum(position_scores) / max(1, len(position_scores))
+            scores.append(
+                self.instruction_weight * instruction
+                + self.position_weight * position
+                + self.operator_weight * operator_score
+            )
+        logits = torch.tensor(scores, dtype=torch.float64) / self.temperature
+        probabilities = torch.softmax(logits, dim=0)
+        return (1.0 - self.exploration_floor) * probabilities + (
+            self.exploration_floor / len(factor_list)
+        )
+
+    def select(
+        self,
+        context: str,
+        candidate_digests: Sequence[str],
+        *,
+        factors: Sequence[RecipeProgramProposalFactors],
+        generator: torch.Generator,
+    ) -> tuple[int, float]:
+        digests = tuple(candidate_digests)
+        if len(digests) != len(tuple(factors)):
+            raise ValueError("factorized recipe candidates and factors disagree")
+        for digest in digests:
+            self._validate_digest(digest, label="recipe candidate")
+        probabilities = self.proposal_probabilities(context, factors)
+        index = int(torch.multinomial(probabilities, 1, generator=generator))
+        return index, float(probabilities[index].item())
+
+    @classmethod
+    def _serialize_stats(
+        cls,
+        stats: Mapping[str, Mapping[str, Sequence[float]]],
+    ) -> dict[str, dict[str, list[float]]]:
+        serialized: dict[str, dict[str, list[float]]] = {}
+        for factor_type in cls._FACTOR_TYPES:
+            values = stats.get(factor_type)
+            if not isinstance(values, Mapping):
+                raise TypeError("factorized recipe factor table is malformed")
+            serialized[factor_type] = {}
+            for key, entry in sorted(values.items()):
+                total, count = cls._aggregate(entry)
+                serialized[factor_type][str(key)] = [total, count]
+        return serialized
+
+    def _content_payload(self) -> dict[str, object]:
+        return {
+            "schema": self.schema,
+            "configuration": self.configuration(),
+            "shared_stats": self._serialize_stats(self._shared_stats),
+            "context_stats": {
+                context: self._serialize_stats(stats)
+                for context, stats in sorted(self._context_stats.items())
+            },
+        }
+
+    def digest(self) -> str:
+        return _canonical_digest(self._content_payload())
+
+    def payload(self) -> dict[str, object]:
+        return {**self._content_payload(), "sha256": self.digest()}
+
+    @classmethod
+    def from_payload(
+        cls,
+        payload: Mapping[str, object],
+    ) -> FactorizedOpaqueContextRecipeProposalMemory:
+        if not isinstance(payload, Mapping) or payload.get("schema") != cls.schema:
+            raise ValueError("unsupported factorized recipe proposal memory payload")
+        configuration = payload.get("configuration")
+        shared_stats = payload.get("shared_stats")
+        context_stats = payload.get("context_stats")
+        if (
+            not isinstance(configuration, Mapping)
+            or not isinstance(shared_stats, Mapping)
+            or not isinstance(context_stats, Mapping)
+        ):
+            raise TypeError("factorized recipe proposal memory payload is malformed")
+        memory = cls(
+            exploration_floor=float(configuration.get("exploration_floor", -1.0)),
+            shared_prior_weight=float(configuration.get("shared_prior_weight", -1.0)),
+            exploration_bonus=float(configuration.get("exploration_bonus", -1.0)),
+            instruction_weight=float(configuration.get("instruction_weight", -1.0)),
+            position_weight=float(configuration.get("position_weight", -1.0)),
+            operator_weight=float(configuration.get("operator_weight", -1.0)),
+            temperature=float(configuration.get("temperature", -1.0)),
+        )
+
+        def load_stats(raw: Mapping[str, object]) -> dict[str, dict[str, list[float]]]:
+            loaded = memory._empty_stats()
+            for factor_type in memory._FACTOR_TYPES:
+                values = raw.get(factor_type)
+                if not isinstance(values, Mapping):
+                    raise TypeError("factorized recipe factor table is malformed")
+                for key, entry in values.items():
+                    if not isinstance(entry, Sequence) or isinstance(entry, (str, bytes)):
+                        raise TypeError("factorized recipe aggregate is malformed")
+                    total, count = memory._aggregate(entry)
+                    loaded[factor_type][str(key)] = [total, count]
+            return loaded
+
+        memory._shared_stats = load_stats(shared_stats)
+        for context, stats in context_stats.items():
+            cls._validate_context(str(context))
+            if not isinstance(stats, Mapping):
+                raise TypeError("factorized recipe context table is malformed")
+            memory._context_stats[str(context)] = load_stats(stats)
+        expected = payload.get("sha256")
+        if not isinstance(expected, str) or expected != memory.digest():
+            raise ValueError("factorized recipe proposal memory checksum mismatch")
+        return memory
+
+
 @dataclass(frozen=True)
 class RecipeProgramCandidateProposal:
     program: RecipeProgram
@@ -752,6 +1178,7 @@ class RecipeProgramCandidateProposal:
     selection_probability: float
     scope: str = "default"
     context: str = "default"
+    factors: RecipeProgramProposalFactors | None = None
     schema: str = RECIPE_PROGRAM_PROPOSAL_SCHEMA
 
     def validate(self) -> RecipeProgramCandidateProposal:
@@ -761,6 +1188,10 @@ class RecipeProgramCandidateProposal:
             raise ValueError("recipe proposal scope must be a non-empty opaque key")
         if not isinstance(self.context, str) or not self.context or "\0" in self.context:
             raise ValueError("recipe proposal context must be a non-empty opaque key")
+        if self.factors is not None:
+            self.factors.validate()
+            if self.factors.operator_index != self.operator_index:
+                raise ValueError("recipe proposal factors/operator disagree")
         if len(self.parent_digest) != 64:
             raise ValueError("recipe proposal parent digest is malformed")
         try:
@@ -795,6 +1226,7 @@ class RecipeProgramCandidateProposal:
             "selection_probability": self.selection_probability,
             "scope": self.scope,
             "context": self.context,
+            "factors": None if self.factors is None else self.factors.payload(),
         }
 
 
@@ -819,7 +1251,11 @@ class OutcomeOnlyRecipeSequenceSearch:
         max_program_length: int = 8,
         exploration: float = 0.5,
         temperature: float = 0.5,
-        proposal_policy: OpaqueContextRecipeProposalMemory | None = None,
+        proposal_policy: (
+            OpaqueContextRecipeProposalMemory
+            | FactorizedOpaqueContextRecipeProposalMemory
+            | None
+        ) = None,
     ) -> None:
         if not isinstance(basis, RecipeBasis):
             raise TypeError("recipe search requires a RecipeBasis")
@@ -835,7 +1271,11 @@ class OutcomeOnlyRecipeSequenceSearch:
         self.exploration = float(exploration)
         self.temperature = float(temperature)
         if proposal_policy is not None and not isinstance(
-            proposal_policy, OpaqueContextRecipeProposalMemory
+            proposal_policy,
+            (
+                OpaqueContextRecipeProposalMemory,
+                FactorizedOpaqueContextRecipeProposalMemory,
+            ),
         ):
             raise TypeError("recipe proposal policy has the wrong type")
         self.proposal_policy = proposal_policy
@@ -929,6 +1369,86 @@ class OutcomeOnlyRecipeSequenceSearch:
             allow_parallel=parent.allow_parallel,
         )
 
+    @staticmethod
+    def _proposal_factors(
+        parent: RecipeProgram,
+        operator_index: int,
+        program: RecipeProgram,
+    ) -> RecipeProgramProposalFactors:
+        """Infer the generic edit factors for a valid one-step neighbor."""
+
+        if operator_index == 0:
+            differences = [
+                index
+                for index, (before, after) in enumerate(
+                    zip(parent.instructions, program.instructions)
+                )
+                if before != after
+            ]
+            if len(parent.instructions) != len(program.instructions) or len(differences) != 1:
+                raise ValueError("replacement candidate is not a one-position edit")
+            position = differences[0]
+            instructions = (program.instructions[position],)
+            return RecipeProgramProposalFactors(
+                operator_index,
+                position,
+                instruction_digests=tuple(_instruction_digest(value) for value in instructions),
+            ).validate()
+        if operator_index == 1:
+            if len(program.instructions) != len(parent.instructions) + 1:
+                raise ValueError("insertion candidate has the wrong length")
+            for position in range(len(program.instructions)):
+                reduced = program.instructions[:position] + program.instructions[position + 1 :]
+                if reduced == parent.instructions:
+                    return RecipeProgramProposalFactors(
+                        operator_index,
+                        position,
+                        instruction_digests=(_instruction_digest(program.instructions[position]),),
+                    ).validate()
+            raise ValueError("insertion candidate does not contain its parent")
+        if operator_index == 2:
+            if len(program.instructions) != len(parent.instructions) - 1:
+                raise ValueError("deletion candidate has the wrong length")
+            for position in range(len(parent.instructions)):
+                reduced = parent.instructions[:position] + parent.instructions[position + 1 :]
+                if reduced == program.instructions:
+                    return RecipeProgramProposalFactors(
+                        operator_index,
+                        position,
+                        instruction_digests=(_instruction_digest(parent.instructions[position]),),
+                    ).validate()
+            raise ValueError("deletion candidate is not a one-position edit")
+        if operator_index == 3:
+            if len(parent.instructions) != len(program.instructions):
+                raise ValueError("swap candidate has the wrong length")
+            for first in range(len(parent.instructions)):
+                for second in range(first + 1, len(parent.instructions)):
+                    swapped = list(parent.instructions)
+                    swapped[first], swapped[second] = swapped[second], swapped[first]
+                    if tuple(swapped) == program.instructions:
+                        return RecipeProgramProposalFactors(
+                            operator_index,
+                            first,
+                            second,
+                            (
+                                _instruction_digest(parent.instructions[first]),
+                                _instruction_digest(parent.instructions[second]),
+                            ),
+                        ).validate()
+            raise ValueError("swap candidate is not a two-position edit")
+        raise ValueError("recipe proposal operator is invalid")
+
+    @classmethod
+    def proposal_factors(
+        cls,
+        parent: RecipeProgram,
+        operator_index: int,
+        program: RecipeProgram,
+    ) -> RecipeProgramProposalFactors:
+        """Return the public generic descriptor for a one-step candidate."""
+
+        return cls._proposal_factors(parent, operator_index, program)
+
     def exhaustive_candidates(
         self,
         parent: RecipeProgram,
@@ -998,6 +1518,7 @@ class OutcomeOnlyRecipeSequenceSearch:
                 probability,
                 scope,
                 context,
+                self._proposal_factors(parent, operator_index, program),
             ).validate()
         raise RuntimeError("recipe search parent neighborhood is exhausted")
 
@@ -1018,7 +1539,7 @@ class OutcomeOnlyRecipeSequenceSearch:
             raise ValueError("recipe proposal context must be a non-empty opaque key")
         if self.proposal_policy is not None:
             available = tuple(
-                (operator_index, program)
+                (operator_index, program, self._proposal_factors(parent, operator_index, program))
                 for operator_index, program in self.exhaustive_candidates(parent)
                 if _scoped_candidate_key(scope, program.digest())
                 not in state.seen_candidate_digests
@@ -1027,10 +1548,11 @@ class OutcomeOnlyRecipeSequenceSearch:
                 raise RuntimeError("recipe search parent neighborhood is exhausted")
             selected, probability = self.proposal_policy.select(
                 context,
-                tuple(program.digest() for _, program in available),
+                tuple(program.digest() for _, program, _ in available),
+                factors=tuple(factors for _, _, factors in available),
                 generator=generator,
             )
-            operator_index, program = available[selected]
+            operator_index, program, factors = available[selected]
             return RecipeProgramCandidateProposal(
                 program,
                 parent.digest(),
@@ -1040,6 +1562,7 @@ class OutcomeOnlyRecipeSequenceSearch:
                 probability,
                 scope,
                 context,
+                factors,
             ).validate()
         excluded = torch.zeros(len(RECIPE_PROGRAM_MUTATION_OPERATORS), dtype=torch.bool)
         for _ in range(64):
@@ -1082,6 +1605,7 @@ class OutcomeOnlyRecipeSequenceSearch:
                 continue
             if _scoped_candidate_key(scope, program.digest()) in state.seen_candidate_digests:
                 continue
+            factors = self._proposal_factors(parent, operator_index, program)
             return RecipeProgramCandidateProposal(
                 program,
                 parent.digest(),
@@ -1091,6 +1615,7 @@ class OutcomeOnlyRecipeSequenceSearch:
                 float(probabilities[operator_index]),
                 scope,
                 context,
+                factors,
             ).validate()
         # Learned proposal priors are allowed to miss a useful edit, but a
         # finite generic neighborhood must not be confused with an
@@ -1134,7 +1659,14 @@ class OutcomeOnlyRecipeSequenceSearch:
         )
         quality = float(values.mean().item()) if values.numel() else 0.0
         if self.proposal_policy is not None:
-            self.proposal_policy.record(proposal.context, digest, quality)
+            if proposal.factors is None:
+                raise ValueError("recipe proposal policy requires proposal factors")
+            self.proposal_policy.record(
+                proposal.context,
+                digest,
+                quality,
+                factors=proposal.factors,
+            )
         totals = state.reward_totals.clone()
         counts = state.reward_counts.clone()
         accepted_counts = state.accepted_counts.clone()
@@ -1163,19 +1695,23 @@ class OutcomeOnlyRecipeSequenceSearch:
 
 __all__ = [
     "RECIPE_CONTEXT_PROPOSAL_MEMORY_SCHEMA",
+    "RECIPE_FACTORIZED_CONTEXT_PROPOSAL_MEMORY_SCHEMA",
     "RECIPE_PROGRAM_ADMISSION_SCHEMA",
     "RECIPE_PROGRAM_MEMORY_SCHEMA",
     "RECIPE_PROGRAM_MUTATION_OPERATORS",
     "RECIPE_PROGRAM_PROPOSAL_SCHEMA",
     "RECIPE_PROGRAM_SCHEMA",
     "RECIPE_PROGRAM_SEARCH_SCHEMA",
+    "RECIPE_PROPOSAL_FACTORS_SCHEMA",
     "ExternalRecipeProgramMemory",
+    "FactorizedOpaqueContextRecipeProposalMemory",
     "OpaqueContextRecipeProposalMemory",
     "OutcomeOnlyRecipeSequenceSearch",
     "RecipeProgram",
     "RecipeProgramAdmissionReceipt",
     "RecipeProgramCandidateFeedback",
     "RecipeProgramCandidateProposal",
+    "RecipeProgramProposalFactors",
     "RecipeProgramSearchState",
     "evaluate_recipe_program_admission",
 ]

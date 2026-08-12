@@ -6,11 +6,13 @@ import torch
 
 from neural_computer import (
     ExternalRecipeProgramMemory,
+    FactorizedOpaqueContextRecipeProposalMemory,
     OpaqueContextRecipeProposalMemory,
     OutcomeOnlyRecipeSequenceSearch,
     RecipeBasis,
     RecipeInstruction,
     RecipeProgram,
+    RecipeProgramProposalFactors,
     RecipeProgramSearchState,
 )
 
@@ -179,3 +181,44 @@ def test_context_proposal_credit_is_opaque_persistent_and_has_an_exploration_flo
         context_a,
     )
     assert "outcomes" not in memory.payload()
+
+
+def test_factorized_proposal_credit_transfers_instruction_and_position_without_candidate_rows() -> None:
+    instruction_a = "2" * 64
+    instruction_b = "3" * 64
+    candidate_a = "4" * 64
+    candidate_b = "5" * 64
+    factors_a = RecipeProgramProposalFactors(
+        operator_index=1,
+        primary_position=1,
+        instruction_digests=(instruction_a,),
+    )
+    factors_b = RecipeProgramProposalFactors(
+        operator_index=1,
+        primary_position=1,
+        instruction_digests=(instruction_b,),
+    )
+    memory = FactorizedOpaqueContextRecipeProposalMemory(
+        exploration_floor=0.2,
+        shared_prior_weight=0.25,
+    )
+    memory.record("context-a", candidate_a, 1.0, factors=factors_a)
+    memory.record("context-a", candidate_b, 0.0, factors=factors_b)
+    memory.record("context-b", candidate_b, 1.0, factors=factors_b)
+
+    related = memory.proposal_probabilities("context-new", (factors_a, factors_b))
+    local_b = memory.proposal_probabilities("context-b", (factors_a, factors_b))
+
+    assert float(related[0]) > float(related[1])
+    assert float(local_b[1]) > float(local_b[0])
+    assert bool(torch.all(related >= 0.1))
+
+    restored = FactorizedOpaqueContextRecipeProposalMemory.from_payload(memory.payload())
+    assert restored.digest() == memory.digest()
+    assert torch.equal(
+        restored.proposal_probabilities("context-new", (factors_a, factors_b)),
+        related,
+    )
+    payload_text = str(memory.payload())
+    assert candidate_a not in payload_text
+    assert candidate_b not in payload_text
