@@ -1092,6 +1092,43 @@ PYTHONPATH=src uv run python -m experiments.brainworkshop_canonical.external_tem
   --report-out /tmp/brainworkshop-query-counterfactual-growth.json
 ```
 
+## Outcome-only related-key content retrieval (promoted bounded rung)
+
+`external_temporal_content_counterfactual_growth.py` composes the promoted
+counterfactual capability acquisition with the canonical
+`ExternalTemporalAddressIndex`. The memory write is materialized from the
+learned opaque route ledger: it stores only learned context keys and opaque
+absolute positions. It does not receive the private query depth or a semantic
+task identifier.
+
+Across seeds `17`, `18`, and `19`, exactly one of eight source candidates is
+admitted at offset `4`; the frozen capability acquires target offset `5` from
+fresh paired scalar probes. Exact and 20%-perturbed source and target keys
+retrieve the correct routes at `1.0000` on every retained lifetime. Unknown
+keys miss, reload preserves related-key retrieval, checksum corruption is
+rejected, clear removes hits, and controller, event encoder, and promoted
+file digests remain unchanged. All `23/23` gates pass with zero replay.
+
+Each seed accounts for `166,912` unique verifier bits, `336,896`
+counterfactual-arm bits, `16,704` unique logical lifetimes, `33,792`
+counterfactual logical lifetimes, `1,024` optimizer updates, `72` route-memory
+updates, two content-memory writes, and zero replay. This promotes bounded
+related-key retrieval composed with replay-free external capability growth; it
+does not establish unrestricted memory growth, arbitrary new computation,
+program induction, or general continual learning. Evidence and complete raw
+reports are archived in
+`session_records/brainworkshop_external_temporal_content_counterfactual_growth_promoted_2026-08-12/`.
+
+Run it with:
+
+```bash
+PYTHONPATH=src uv run python -m experiments.brainworkshop_canonical.external_temporal_content_counterfactual_growth \
+  --source-updates 128 --source-evaluation-lifetimes 4 \
+  --source-route-lifetimes 8 --target-route-updates 8 --batch-size 16 \
+  --data-steps 14 --retention-lifetimes 4 --seed 17 \
+  --report-out /tmp/brainworkshop-content-counterfactual-growth.json
+```
+
 ## Related-key temporal content retrieval (historical v1; current v2 rejected)
 
 `external_temporal_content_retrieval_growth.py` composes that address
