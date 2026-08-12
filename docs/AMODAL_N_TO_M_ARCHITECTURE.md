@@ -10868,3 +10868,22 @@ to compare bounded sequence compilation with stochastic outcome-only proposal
 search at matched verifier cost, then store a discovered sequence as an
 external file and test frozen-core retention, held-out transfer, persistence,
 and no-replay acquisition.
+
+## Outcome-only external recipe-file bridge (2026-08-12)
+
+The generic recipe basis now has a replaceable file boundary. An external
+sequence search proposes opaque edits and receives only scalar verifier
+outcomes; a separate memory bank admits stable candidates transactionally,
+protects earlier files, and reloads them through a checksummed payload. Search
+statistics are aggregate-only. Candidate history is scoped by an opaque
+external binding key, preventing a rejected candidate in one context from
+poisoning a later context while allowing generic edit priors to transfer.
+
+The two-seed audit retained a source plus two acquired files, learned an
+order-sensitive target, rejected reversed execution and shuffled feedback, and
+passed persistence and zero-replay controls. It did not promote a learning
+curve gain from the shared scalar edit prior: the warm target search was slower
+than the fresh control on both seeds. This is a useful boundary result, not a
+general continual-learning claim. The next mechanism must learn
+context-conditioned instruction/position proposal credit with an exploration
+floor before larger program frontiers are justified.

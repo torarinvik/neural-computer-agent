@@ -164,3 +164,30 @@ instruction sequences efficiently from Brain Workshop outcomes, or grow an
 unbounded program library. The next audit must compare this compiler against
 stochastic proposal search under matched verifier bits, then test retention and
 held-out transfer when a discovered sequence is stored as an external file.
+
+## Outcome-only external recipe files and scope isolation
+
+The recipe basis now has a versioned external-file bridge:
+`OutcomeOnlyRecipeSequenceSearch` proposes generic sequence edits and updates
+only aggregate scalar-credit statistics, while `ExternalRecipeProgramMemory`
+admits candidates through a stable verifier prefix and persists protected files
+with checksums. Candidate-evaluation history is scoped by an opaque external
+binding key, so rejecting a candidate in one context cannot prevent a later
+context from evaluating the same program. The global edit prior may transfer;
+raw verifier rows and task labels do not.
+
+The two-seed order-sensitive growth audit passed source and two auxiliary-file
+retention, target held-out mastery, wrong-order rejection, shuffled-feedback
+rejection, reload, checksum, and zero-replay gates. It did **not** promote
+scalar search-prior transfer: after two auxiliary acquisitions, target search
+used `74` versus `28` proposals on seed `17` and `34` versus `23` on seed `18`
+for the warm versus fresh controls. The negative result is important: a shared
+operator prior can be transferred safely, but it is not yet a reusable
+sample-efficiency gain. Evidence is archived under
+`session_records/recipe_outcome_only_sequence_growth_rejected_2026-08-12/`.
+
+The next pressure is context-conditioned proposal credit over instruction
+content and position, with an explicit exploration floor. More external slots
+or longer programs are not justified until that proposal policy improves a
+held-out learning curve without sacrificing the scope-isolation and retention
+gates.
