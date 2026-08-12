@@ -1,0 +1,140 @@
+{
+  "schema": "neural-computer.learned-recipe-eviction.v3",
+  "claim_boundary": "bounded context-conditioned learned victim choice over 3 recursive recipe files from permutation-safe structural telemetry and scalar compaction utility; not universal eviction economics or general continual learning",
+  "seed": 73007,
+  "configuration": {
+    "train_episodes": 512,
+    "eval_episodes": 256,
+    "train_candidate_depths": [
+      2,
+      3,
+      4
+    ],
+    "transfer_candidate_depths": [
+      3,
+      4,
+      5
+    ],
+    "capacity_pressure_regimes": 3,
+    "active_root_rule": "pressure_regime_selects_required_depth_rank",
+    "credit_mode": "counterfactual",
+    "stable_accuracy_threshold": 0.9,
+    "causal_margin": 0.2,
+    "probe_interval": 64,
+    "probe_episodes": 32,
+    "learner_inputs": [
+      "recipe_candidate_telemetry",
+      "generic_capacity_context",
+      "deterministic_scalar_compaction_utility"
+    ],
+    "candidate_width": 8,
+    "context_width": 4
+  },
+  "training": {
+    "optimizer_updates": 512,
+    "unique_verifier_bits": 851968,
+    "first_window_utility": 0.7134440429508686,
+    "last_window_utility": 0.9998702816665173,
+    "mean_utility": 0.9581468427786604,
+    "probe_history": [
+      {
+        "update": 64,
+        "accuracy": 1.0,
+        "verifier_bits": 106496
+      },
+      {
+        "update": 128,
+        "accuracy": 1.0,
+        "verifier_bits": 212992
+      },
+      {
+        "update": 192,
+        "accuracy": 1.0,
+        "verifier_bits": 319488
+      },
+      {
+        "update": 256,
+        "accuracy": 1.0,
+        "verifier_bits": 425984
+      },
+      {
+        "update": 320,
+        "accuracy": 1.0,
+        "verifier_bits": 532480
+      },
+      {
+        "update": 384,
+        "accuracy": 1.0,
+        "verifier_bits": 638976
+      },
+      {
+        "update": 448,
+        "accuracy": 1.0,
+        "verifier_bits": 745472
+      },
+      {
+        "update": 512,
+        "accuracy": 1.0,
+        "verifier_bits": 851968
+      }
+    ],
+    "stable_accuracy_threshold": 0.9,
+    "stable_update": 64,
+    "stable_verifier_bits": 106496
+  },
+  "shuffled_training": {
+    "optimizer_updates": 512,
+    "unique_verifier_bits": 589824,
+    "first_window_utility": 0.48967700416687876,
+    "last_window_utility": 0.529771369881928,
+    "mean_utility": 0.49825534581032116,
+    "probe_history": [],
+    "stable_accuracy_threshold": 0.9,
+    "stable_update": null,
+    "stable_verifier_bits": null
+  },
+  "trained_eval": {
+    "accuracy": 1.0,
+    "accepted": 256,
+    "episodes": 256,
+    "unique_verifier_bits": 360448
+  },
+  "fresh_eval": {
+    "accuracy": 0.69140625,
+    "accepted": 177,
+    "episodes": 256,
+    "unique_verifier_bits": 360448
+  },
+  "shuffled_eval": {
+    "accuracy": 0.6640625,
+    "accepted": 170,
+    "episodes": 256,
+    "unique_verifier_bits": 360448
+  },
+  "corrupted_feature_eval": {
+    "accuracy": 0.68359375,
+    "accepted": 175,
+    "episodes": 256,
+    "unique_verifier_bits": 360448
+  },
+  "gates": {
+    "trained_beats_fresh": true,
+    "trained_beats_shuffled": true,
+    "feature_causal": true,
+    "order_permutation": true,
+    "policy_persistence_exact": true,
+    "stable_transfer_threshold": true,
+    "zero_replayed_examples": true,
+    "zero_controller_optimizer_updates": true
+  },
+  "promoted": true,
+  "accounting": {
+    "unique_verifier_bits": 2883584,
+    "unique_logical_lifetimes": 2048,
+    "optimizer_updates": 1024,
+    "primary_policy_optimizer_updates": 512,
+    "replayed_examples": 0,
+    "controller_optimizer_updates": 0,
+    "latency_seconds": 32.72105950000696
+  }
+}

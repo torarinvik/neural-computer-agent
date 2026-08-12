@@ -355,3 +355,51 @@ support a clean per-seed causal claim. The candidate-role distribution and null
 control must be strengthened before learned eviction is promoted. Evidence is
 archived at
 `session_records/recipe_learned_eviction_rejected_2026-08-12/`.
+
+## Context-conditioned learned recipe maintenance (2026-08-12)
+
+The maintenance pressure test was strengthened rather than promoted on the
+degenerate three-candidate result. The new rung uses two independent
+recursive roots and two capacity-pressure regimes; the verifier-required root
+changes between the two depth ranks. The replaceable external policy receives
+only generic pressure context and permutation-safe structural telemetry, and
+learns from one scalar compaction utility while the recipe memory, verifier,
+interpreter, and controller remain frozen.
+
+Training on depths 2–3 and transfer on unseen depths 3–4 reached `1.0000`
+transfer accuracy on all four seeds. Fresh accuracy averaged `0.4922`, the
+reward-shuffled null was exactly `0.5000` on every seed, corrupted features
+were near chance, policy reload was exact, and the stable `0.90` threshold was
+reached at update `64` (`55,296` verifier bits) on every seed. Replay and
+controller optimizer updates were zero.
+
+This promotes bounded context-conditioned learned external maintenance only.
+It does not establish universal eviction economics, semantic compression,
+unrestricted memory growth, or general continual learning. Evidence is
+archived at
+`session_records/recipe_learned_eviction_promoted_2026-08-12/`.
+
+## Counterfactual learned recipe maintenance through four candidates (2026-08-12)
+
+The sampled three-candidate rung exposed a credit-assignment bottleneck: final
+accuracy was unstable across seeds even though the memory and telemetry seam
+were correct. The maintenance learner now has an explicit counterfactual mode:
+for each fresh lifetime it evaluates every candidate eviction through the
+authoritative verifier and trains on the resulting scalar utility vector. This
+does not expose verifier rows or controller state; it only spends additional
+fresh verifier outcomes to reduce action-credit variance.
+
+Across four seeds and four independent candidates, transfer accuracy was
+`1.0000` on every seed and the stable `0.90` threshold was reached at update
+`64` (`165,888` verifier bits). The reward-shuffled null was exactly the
+four-way floor (`0.7500`), corrupted-feature accuracy averaged `0.7324`,
+candidate order was permuted, reload was exact, and replay/controller updates
+were zero. A scale-aware `0.20` causal margin is used because the chance floor
+changes with candidate count.
+
+This promotes bounded counterfactual utility learning for four-candidate
+external maintenance. It does not establish universal eviction economics,
+semantic compression, unrestricted memory growth, or general continual
+learning. The verifier cost grows linearly with candidate count. Evidence is
+archived at
+`session_records/recipe_learned_eviction_four_counterfactual_promoted_2026-08-12/`.

@@ -1,0 +1,27 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment_id": "recipe-learned-eviction-four-counterfactual-promoted-2026-08-12",
+  "status": "promoted_bounded_counterfactual_four_candidate_maintenance",
+  "source": "in_repository_run",
+  "unique_verifier_bits_per_seed": [4407296, 4407296, 4407296, 4407296],
+  "unique_logical_lifetimes_per_seed": [2048, 2048, 2048, 2048],
+  "optimizer_updates_per_seed": [1024, 1024, 1024, 1024],
+  "replayed_examples": 0,
+  "controller_optimizer_updates": 0,
+  "stable_bits_to_threshold": [165888, 165888, 165888, 165888],
+  "retention_on_mastered_primitives": [1.0, 1.0, 1.0, 1.0],
+  "transfer_ratio_against_fresh": [1.361702, 1.286432, 1.292929, 1.368984],
+  "latency_seconds": [96.91378954099491, 66.93048420909327, 66.17586312501226, 65.61200583400205],
+  "controls": {
+    "counterfactual_credit": true,
+    "candidate_order_permutation": true,
+    "reward_shuffled_null": true,
+    "feature_corruption": true,
+    "policy_reload_exact": true,
+    "stable_threshold": true,
+    "scale_aware_causal_margin": 0.2,
+    "zero_replay": true,
+    "zero_controller_updates": true
+  },
+  "claim_boundary": "Promoted narrow external maintenance state with exact finite candidate credit; universal eviction, semantic compression, unrestricted archive growth, and general continual learning remain unproven."
+}

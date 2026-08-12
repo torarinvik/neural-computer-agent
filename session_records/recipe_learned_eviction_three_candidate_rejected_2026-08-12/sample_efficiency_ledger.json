@@ -1,0 +1,25 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment_id": "recipe-learned-eviction-three-candidate-rejected-2026-08-12",
+  "status": "rejected_three_candidate_scaling_instability",
+  "source": "in_repository_run",
+  "seeds": [73001, 73003, 73007, 73009],
+  "unique_verifier_bits_per_seed": [2752512, 2752512, 2752512, 2752512],
+  "unique_logical_lifetimes_per_seed": [2048, 2048, 2048, 2048],
+  "optimizer_updates_per_seed": [512, 512, 512, 512],
+  "replayed_examples": 0,
+  "controller_optimizer_updates": 0,
+  "stable_bits_to_threshold": [196608, 294912, null, 98304],
+  "retention_on_mastered_primitives": [1.0, 1.0, 1.0, 1.0],
+  "latency_seconds": [43.78167670790572, 43.634270083974116, 44.186156957993835, 43.64878825005144],
+  "controls": {
+    "candidate_order_permutation": true,
+    "reward_shuffled_null": true,
+    "feature_corruption": true,
+    "policy_reload_exact": true,
+    "stable_threshold": false,
+    "zero_replay": true,
+    "zero_controller_updates": true
+  },
+  "claim_boundary": "Diagnostic three-candidate scaling only; learned multi-candidate maintenance, universal eviction, semantic compression, unrestricted growth, and general continual learning remain unproven."
+}

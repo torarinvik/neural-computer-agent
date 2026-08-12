@@ -11035,3 +11035,22 @@ and no replay, but its reward-shuffled null was unstable on one seed. The
 result is archived as rejected diagnostic evidence in
 `session_records/recipe_learned_eviction_rejected_2026-08-12/`; learned victim
 choice is not yet a promoted architectural capability.
+
+The repaired maintenance rung now varies the verifier-required root across
+two generic capacity-pressure regimes and two independent recursive candidates.
+Across four seeds it reaches `1.0000` transfer accuracy at a stable threshold
+by update `64`; the reward-shuffled null remains at chance, and the controller
+and interpreter stay frozen with zero replay. This promotes only bounded
+context-conditioned external maintenance. Evidence is archived in
+`session_records/recipe_learned_eviction_promoted_2026-08-12/`; scaling to
+larger candidate sets and unrestricted continual memory remains open.
+
+The next pressure test used counterfactual utility: every available external
+maintenance action was independently sent through the verifier, and the
+resulting scalar utility vector trained the replaceable maintenance policy.
+This removed the sampled-action variance. Four independent candidates reached
+`1.0000` stable transfer across four seeds at update `64`, while the
+reward-shuffled null stayed at the four-way chance floor. The gain is bounded
+external maintenance with an explicit linear verifier-cost tradeoff, not
+general continual learning. Evidence is archived in
+`session_records/recipe_learned_eviction_four_counterfactual_promoted_2026-08-12/`.

@@ -1,0 +1,26 @@
+{
+  "schema": "neural-computer.learned-recipe-eviction-audit.v2",
+  "status": "rejected_three_candidate_scaling_instability",
+  "seeds": [73001, 73003, 73007, 73009],
+  "trained_transfer_accuracy": [1.0, 0.6640625, 0.66796875, 1.0],
+  "fresh_accuracy": [0.6484375, 0.67578125, 0.69140625, 0.6796875],
+  "shuffled_utility_accuracy": [0.6640625, 0.6640625, 0.6640625, 0.6640625],
+  "corrupted_feature_accuracy": [0.70703125, 0.66015625, 0.63671875, 0.671875],
+  "stable_update": [128, 192, null, 64],
+  "means": {
+    "trained_transfer": 0.8330078125,
+    "fresh": 0.673828125,
+    "shuffled_utility": 0.6640625,
+    "corrupted_feature": 0.6689453125
+  },
+  "per_seed_promoted": [true, false, false, true],
+  "promotion_count": 2,
+  "accounting": {
+    "unique_verifier_bits_per_seed": [2752512, 2752512, 2752512, 2752512],
+    "total_unique_verifier_bits": 11010048,
+    "total_optimizer_updates": 2048,
+    "replayed_examples": 0,
+    "controller_optimizer_updates": 0
+  },
+  "conclusion": "Three-candidate scaling is not promoted: only two of four seeds reached transfer, while the other two stayed at the static-policy floor. The next bottleneck is multi-candidate credit assignment and variance reduction."
+}
