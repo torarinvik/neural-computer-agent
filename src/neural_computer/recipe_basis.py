@@ -192,6 +192,25 @@ class ExpressibilityResult:
     reason: str
 
 
+@dataclass(frozen=True)
+class SequenceExpressibilityResult:
+    """Fail-closed result for a bounded instruction-sequence probe.
+
+    ``inexpressible`` means that every effect reachable up to ``max_length``
+    was exhaustively checked.  ``budget_exhausted`` is deliberately separate:
+    the search stopped before that bounded space was certified.  This keeps a
+    difficult-to-find reusable program distinct from a program outside the
+    current instruction basis.
+    """
+
+    status: Literal["expressible", "inexpressible", "budget_exhausted", "invalid"]
+    instructions: tuple[RecipeInstruction, ...] | None
+    checked_candidates: int
+    visited_effects: int
+    max_length: int
+    reason: str
+
+
 class RecipeBasis:
     """Versioned abstract instruction basis with optional parallel composition."""
 
@@ -350,6 +369,129 @@ class RecipeBasis:
             "target is outside the atomic instruction basis",
         )
 
+    def sequence_probe(
+        self,
+        target: Callable[[tuple[int, ...]], tuple[int, ...]],
+        *,
+        max_length: int,
+        states: Iterable[tuple[int, ...]] | None = None,
+        max_expansions: int | None = None,
+    ) -> SequenceExpressibilityResult:
+        """Search for a bounded reusable instruction sequence exactly.
+
+        The search is breadth-first over *observable register effects*, not
+        over task names or hand-written semantic programs.  Equivalent
+        prefixes are merged, so the returned sequence is shortest within the
+        supplied finite probe state set.  If ``max_expansions`` interrupts an
+        otherwise complete search, the result is ``budget_exhausted`` rather
+        than the stronger ``inexpressible`` claim.
+        """
+
+        if (
+            not isinstance(max_length, int)
+            or isinstance(max_length, bool)
+            or max_length < 0
+        ):
+            return SequenceExpressibilityResult(
+                "invalid", None, 0, 0,
+                max_length if isinstance(max_length, int) else -1,
+                "sequence probe max_length must be a non-negative integer",
+            )
+        if max_expansions is not None and (
+            not isinstance(max_expansions, int)
+            or isinstance(max_expansions, bool)
+            or max_expansions < 1
+        ):
+            return SequenceExpressibilityResult(
+                "invalid", None, 0, 0, max_length,
+                "sequence probe max_expansions must be a positive integer",
+            )
+        probe_states = tuple(
+            product(*(range(value) for value in self.slot_values))
+            if states is None
+            else tuple(tuple(state) for state in states)
+        )
+        if not probe_states:
+            return SequenceExpressibilityResult(
+                "invalid", None, 0, 0, max_length,
+                "sequence probe needs at least one state",
+            )
+        expected: list[tuple[int, ...]] = []
+        for state in probe_states:
+            if len(state) != self.slot_count or any(
+                value < 0 or value >= self.slot_values[index]
+                for index, value in enumerate(state)
+            ):
+                return SequenceExpressibilityResult(
+                    "invalid", None, 0, 0, max_length,
+                    "probe state is outside the configured register domain",
+                )
+            try:
+                result = tuple(target(state))
+            except (AssertionError, IndexError, KeyError, TypeError, ValueError) as error:
+                return SequenceExpressibilityResult(
+                    "invalid", None, 0, 0, max_length,
+                    f"target transition raised {error!r}",
+                )
+            if len(result) != self.slot_count or any(
+                value < 0 or value >= self.slot_values[index]
+                for index, value in enumerate(result)
+            ):
+                return SequenceExpressibilityResult(
+                    "invalid", None, 0, 0, max_length,
+                    "target returns an invalid register state",
+                )
+            expected.append(result)
+
+        target_effect = tuple(expected)
+        identity_effect = tuple(probe_states)
+        if target_effect == identity_effect:
+            return SequenceExpressibilityResult(
+                "expressible", (), 0, 1, max_length,
+                "target is the empty instruction sequence",
+            )
+
+        candidates = self.atomic_candidates()
+        frontier: list[tuple[tuple[tuple[int, ...], ...], tuple[RecipeInstruction, ...]]] = [
+            (identity_effect, ())
+        ]
+        visited = {identity_effect}
+        checked = 0
+        for _depth in range(1, max_length + 1):
+            next_frontier: list[
+                tuple[tuple[tuple[int, ...], ...], tuple[RecipeInstruction, ...]]
+            ] = []
+            for effect, prefix in frontier:
+                for candidate in candidates:
+                    if max_expansions is not None and checked >= max_expansions:
+                        return SequenceExpressibilityResult(
+                            "budget_exhausted", None, checked, len(visited),
+                            max_length,
+                            "search budget ended before the bounded space was certified",
+                        )
+                    next_effect = tuple(
+                        candidate.apply(state, values=self.slot_values)
+                        for state in effect
+                    )
+                    checked += 1
+                    sequence = (*prefix, candidate)
+                    if next_effect == target_effect:
+                        return SequenceExpressibilityResult(
+                            "expressible", sequence, checked, len(visited),
+                            max_length,
+                            "target has an exact bounded sequence representation",
+                        )
+                    if next_effect not in visited:
+                        visited.add(next_effect)
+                        next_frontier.append((next_effect, sequence))
+            if not next_frontier:
+                break
+            frontier = next_frontier
+        return SequenceExpressibilityResult(
+            "inexpressible", None, checked, len(visited), max_length,
+            "target is not reachable within the certified sequence bound",
+        )
+
 
 def paired_increment_target(
     first: int,
@@ -397,6 +539,7 @@ __all__ = [
     "ExpressibilityResult",
     "RecipeBasis",
     "RecipeInstruction",
+    "SequenceExpressibilityResult",
     "apply_sequence",
     "paired_increment_target",
 ]

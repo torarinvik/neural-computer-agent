@@ -471,6 +471,7 @@ from .recipe_basis import (
     ExpressibilityResult,
     RecipeBasis,
     RecipeInstruction,
+    SequenceExpressibilityResult,
     apply_sequence,
     paired_increment_target,
 )
@@ -1300,6 +1301,7 @@ __all__ = [
     "RetentionPolicyConfig",
     "RuntimeMigrationExample",
     "RuntimeMigrationReceipt",
+    "SequenceExpressibilityResult",
     "SharedBasisCompressionPlan",
     "SharedBasisCompressionPolicyOutput",
     "SharedBasisCompressionReceipt",

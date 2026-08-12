@@ -79,6 +79,52 @@ def test_two_valued_toggle_is_an_existing_increment_sequence() -> None:
     assert result == (0, 1, 3, 4, 5, 6)
 
 
+def test_sequence_probe_finds_two_increment_toggle_without_pair_primitive() -> None:
+    values = (2, 2, 8, 8, 8, 8)
+    states = tuple(
+        (first, second, 0, 1, 0, 1)
+        for first, second in product(range(2), repeat=2)
+    )
+    result = RecipeBasis(slot_values=values).sequence_probe(
+        lambda state: (
+            (state[0] + 1) % 2,
+            (state[1] + 1) % 2,
+            *state[2:],
+        ),
+        max_length=2,
+        states=states,
+    )
+
+    assert result.status == "expressible"
+    assert result.instructions is not None
+    assert tuple(instruction.op for instruction in result.instructions) == (
+        "inc",
+        "inc",
+    )
+    assert tuple(instruction.first for instruction in result.instructions) == (0, 1)
+
+
+def test_sequence_probe_distinguishes_bounded_failure_from_search_budget() -> None:
+    values = (2, 2, 8, 8, 8, 8)
+    states = ((0, 0, 0, 0, 0, 0), (1, 1, 0, 0, 0, 0))
+    target = lambda state: (
+        (state[0] + 1) % 2,
+        (state[1] + 1) % 2,
+        *state[2:],
+    )
+
+    bounded = RecipeBasis(slot_values=values).sequence_probe(
+        target, max_length=1, states=states
+    )
+    limited = RecipeBasis(slot_values=values).sequence_probe(
+        target, max_length=2, states=states, max_expansions=1
+    )
+
+    assert bounded.status == "inexpressible"
+    assert limited.status == "budget_exhausted"
+    assert limited.checked_candidates == 1
+
+
 def test_arithmetic_rejects_a_hidden_global_modulus() -> None:
     with pytest.raises(ValueError, match="must match"):
         RecipeInstruction("inc", 0, modulus=8).apply(

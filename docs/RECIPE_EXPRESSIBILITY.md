@@ -146,3 +146,21 @@ zero. This promotes narrow held-out parallel composition, not a claim that
 the richer arm learns the old basis faster: its old-basis curves remain a
 separate training-distribution comparison. Evidence is archived in
 `session_records/recipe_parallel_heldout_causal_promotion_2026-08-11/`.
+
+## Bounded sequence compiler boundary
+
+The recipe ABI now distinguishes atomic expressibility from finite sequence
+expressibility. `RecipeBasis.sequence_probe()` performs a breadth-first search
+over opaque register effects, merging equivalent prefixes and returning the
+shortest sequence found within a configured bound. It therefore finds the
+two-valued toggle as `INC(0, m=2); INC(1, m=2)` without adding a toggle or pair
+primitive.
+
+The result is fail-closed: `inexpressible` means the complete finite bound was
+checked, while `budget_exhausted` means that search stopped before the bound
+was certified. This is an execution/compiler foundation only. It does not yet
+show that the frozen controller can learn arbitrary recipes, discover useful
+instruction sequences efficiently from Brain Workshop outcomes, or grow an
+unbounded program library. The next audit must compare this compiler against
+stochastic proposal search under matched verifier bits, then test retention and
+held-out transfer when a discovered sequence is stored as an external file.

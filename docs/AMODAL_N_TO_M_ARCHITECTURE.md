@@ -10849,3 +10849,22 @@ This promotes bounded replay-free reactivation of external capability files,
 not unrestricted memory growth, automatic synthesis of new computation, or
 general continual learning. Evidence and accounting are archived at
 `session_records/brainworkshop_episodic_artifact_reactivation_promoted_2026-08-12/`.
+
+## Bounded external recipe sequence compilation (2026-08-12)
+
+The corrected recipe boundary now distinguishes a missing atomic primitive from
+a sequence-search problem. `RecipeBasis.sequence_probe()` searches bounded
+opaque instruction sequences by their finite register effects and merges
+equivalent prefixes. With per-slot arithmetic domains, it finds the
+two-valued toggle as two ordinary increments, `INC(0, m=2); INC(1, m=2)`; the
+old global-modulus implementation remains a structural mismatch and is
+rejected by the domain contract.
+
+The compiler is fail-closed: a complete search through the configured bound
+returns `inexpressible`, while an interrupted search returns
+`budget_exhausted`. This is a reusable external-execution foundation, not a
+promotion of arbitrary learned program induction. The next decisive audit is
+to compare bounded sequence compilation with stochastic outcome-only proposal
+search at matched verifier cost, then store a discovered sequence as an
+external file and test frozen-core retention, held-out transfer, persistence,
+and no-replay acquisition.
