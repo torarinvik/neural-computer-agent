@@ -122,6 +122,8 @@ from .entry import (
 from .episodic import (
     EXTERNAL_WORKING_MEMORY_CELL_SCHEMA,
     AdaptiveOnlineEpisodicRelationReader,
+    EpisodicBindingRoute,
+    EpisodicBindingRouter,
     EpisodicContextEncoder,
     EpisodicContextOutput,
     EpisodicCreditHead,
@@ -1007,6 +1009,8 @@ __all__ = [
     "ControllerOutput",
     "ControllerState",
     "EfficientComputeReuseDecision",
+    "EpisodicBindingRoute",
+    "EpisodicBindingRouter",
     "EpisodicContextEncoder",
     "EpisodicContextOutput",
     "EpisodicCreditHead",

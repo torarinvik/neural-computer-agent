@@ -9,6 +9,7 @@ from experiments.compute_candidate_screen_amodal.train import (
 from neural_computer import (
     AdaptiveOnlineEpisodicRelationReader,
     AppendOnlyLearnedComputeCandidateScreen,
+    EpisodicBindingRouter,
     EpisodicContextEncoder,
     EpisodicCreditHead,
     EpisodicIntentAdapter,
@@ -53,6 +54,58 @@ def test_episodic_context_encoder_masks_padding_and_normalizes_context() -> None
         (output.credit_weights * present).sum(dim=-1),
         torch.ones(2),
     )
+
+
+def test_episodic_binding_router_keeps_opaque_slots_permutation_equivariant() -> None:
+    router = EpisodicBindingRouter(
+        event_width=4,
+        action_width=2,
+        hidden=8,
+        context_width=6,
+        max_slots=2,
+    )
+    first = torch.nn.functional.normalize(torch.tensor([1.0, 0, 0, 0, 0, 0]), dim=0)
+    second = torch.nn.functional.normalize(torch.tensor([0.0, 1.0, 0, 0, 0, 0]), dim=0)
+    assert router.add_slot(first) == 0
+    assert router.add_slot(second) == 1
+
+    context = torch.stack((first, second))
+    route = router.route(context)
+    permuted = router.route(context, slot_order=torch.tensor([1, 0]))
+
+    assert torch.equal(route.selected_slot, torch.tensor([0, 1]))
+    assert torch.equal(permuted.selected_slot, torch.tensor([1, 0]))
+    assert router.configuration()["schema"] == (
+        "neural-computer.episodic-binding-router.v1"
+    )
+
+
+def test_episodic_binding_router_adapts_from_attempted_scalar_utility() -> None:
+    router = EpisodicBindingRouter(
+        event_width=3,
+        action_width=2,
+        hidden=8,
+        context_width=5,
+    )
+    events = torch.randn(1, 2, 3)
+    actions = torch.zeros(1, 2, 2)
+    outcomes = torch.zeros(1, 2)
+    with torch.no_grad():
+        first = router.encode(events, actions, outcomes)[0]
+        second = torch.roll(first, shifts=1, dims=0)
+    router.add_slot(first)
+    router.add_slot(second)
+    optimizer = torch.optim.SGD(router.trainable_parameters(), lr=0.01)
+    context = router.encode(events, actions, outcomes)
+    loss = router.adaptation_step(
+        context,
+        selected_slot=0,
+        verifier_utility=1.0,
+        optimizer=optimizer,
+    )
+
+    assert torch.isfinite(torch.tensor(loss))
+    assert any(parameter.grad is not None for parameter in router.encoder.parameters())
 
 
 def test_episodic_context_contrastive_loss_has_gradient() -> None:

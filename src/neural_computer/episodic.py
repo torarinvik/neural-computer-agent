@@ -32,6 +32,15 @@ class EpisodicContextOutput:
 
 
 @dataclass(frozen=True)
+class EpisodicBindingRoute:
+    """Opaque slot scores produced by an external episodic binding router."""
+
+    context: torch.Tensor
+    scores: torch.Tensor
+    selected_slot: torch.Tensor
+
+
+@dataclass(frozen=True)
 class OnlineEpisodicRelationState:
     """External fixed-window state for online relation retrieval."""
 
@@ -305,6 +314,213 @@ class EpisodicContextEncoder(nn.Module):
         )
         weights = credit_weights_from_logits(credit_logits, present)
         return EpisodicContextOutput(context, credit_logits, weights, sequence)
+
+
+class EpisodicBindingRouter(nn.Module):
+    """Discover and route opaque memory bindings from scalar utility.
+
+    This component owns only external, replaceable state.  It converts a
+    learned event trajectory into a normalized context, stores opaque context
+    snapshots as provisioned slot keys, and adapts the encoder with the
+    utility of the slot that was actually attempted.  No task identifier,
+    semantic key, correct unattempted slot, or controller parameter enters the
+    boundary.
+
+    Slot keys are intentionally fixed after provisioning.  The trainable
+    state is the episodic encoder, so a learned route must generalize from
+    fresh trajectories to the original opaque keys.  Callers can freeze that
+    encoder after independent promotion while retaining the keys as growing
+    external memory.
+    """
+
+    schema = "neural-computer.episodic-binding-router.v1"
+
+    def __init__(
+        self,
+        event_width: int,
+        action_width: int,
+        *,
+        hidden: int = 64,
+        context_width: int = 32,
+        max_slots: int | None = None,
+        temperature: float = 0.2,
+    ) -> None:
+        super().__init__()
+        if max_slots is not None and (
+            not isinstance(max_slots, int)
+            or isinstance(max_slots, bool)
+            or max_slots < 1
+        ):
+            raise ValueError("episodic binding router max slots is invalid")
+        if not torch.isfinite(torch.tensor(temperature)) or temperature <= 0.0:
+            raise ValueError("episodic binding router temperature is invalid")
+        self.encoder = EpisodicContextEncoder(
+            event_width,
+            action_width,
+            hidden=hidden,
+            context_width=context_width,
+        )
+        self.event_width = int(event_width)
+        self.action_width = int(action_width)
+        self.hidden = int(hidden)
+        self.context_width = int(context_width)
+        self.max_slots = max_slots
+        self.temperature = float(temperature)
+        self.slot_keys = nn.ParameterList()
+
+    @property
+    def slot_count(self) -> int:
+        return len(self.slot_keys)
+
+    def configuration(self) -> dict[str, int | float | str]:
+        return {
+            "schema": self.schema,
+            "event_width": self.event_width,
+            "action_width": self.action_width,
+            "hidden": self.hidden,
+            "context_width": self.context_width,
+            "slot_count": self.slot_count,
+            "max_slots": self.max_slots if self.max_slots is not None else 0,
+            "temperature": self.temperature,
+            "state": "external_encoder_plus_opaque_fixed_slot_keys_v1",
+            "updates": "attempted_slot_scalar_utility_without_replay_v1",
+        }
+
+    def encode(
+        self,
+        events: torch.Tensor,
+        actions: torch.Tensor,
+        outcomes: torch.Tensor,
+        present: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        """Encode a trajectory into the context consumed by slot routing."""
+
+        return self.encoder(events, actions, outcomes, present).context
+
+    @torch.no_grad()
+    def add_slot(self, context_key: torch.Tensor) -> int:
+        """Provision one opaque slot from an observed context snapshot."""
+
+        if self.max_slots is not None and self.slot_count >= self.max_slots:
+            raise RuntimeError(
+                "episodic binding router slot capacity is exhausted"
+            )
+        if context_key.ndim != 1 or context_key.shape[0] != self.context_width:
+            raise ValueError("episodic binding router slot key has the wrong shape")
+        if not bool(torch.isfinite(context_key).all()):
+            raise ValueError("episodic binding router slot key must be finite")
+        if not bool(context_key.square().sum().gt(1e-12)):
+            raise ValueError("episodic binding router slot key cannot be zero")
+        reference = next(self.encoder.parameters())
+        key = F.normalize(context_key.detach(), dim=0).to(reference)
+        self.slot_keys.append(nn.Parameter(key, requires_grad=False))
+        return self.slot_count - 1
+
+    def route_scores(
+        self,
+        context: torch.Tensor,
+        *,
+        slot_order: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        """Return cosine scores, optionally under a physical slot permutation."""
+
+        if context.ndim != 2 or context.shape[1] != self.context_width:
+            raise ValueError("episodic binding router context has the wrong shape")
+        if not bool(torch.isfinite(context).all()):
+            raise ValueError("episodic binding router context must be finite")
+        if self.slot_count < 1:
+            raise RuntimeError("episodic binding router has no slots")
+        keys = torch.stack(tuple(self.slot_keys), dim=0).to(context)
+        if slot_order is not None:
+            if (
+                slot_order.ndim != 1
+                or slot_order.shape[0] != self.slot_count
+                or slot_order.dtype not in (torch.int8, torch.int16, torch.int32, torch.int64)
+            ):
+                raise ValueError("episodic binding router slot order is invalid")
+            if sorted(slot_order.detach().cpu().tolist()) != list(
+                range(self.slot_count)
+            ):
+                raise ValueError(
+                    "episodic binding router slot order is not a permutation"
+                )
+            keys = keys[slot_order.to(device=keys.device)]
+        return F.normalize(context, dim=-1) @ keys.transpose(0, 1)
+
+    def route(
+        self,
+        context: torch.Tensor,
+        *,
+        slot_order: torch.Tensor | None = None,
+    ) -> EpisodicBindingRoute:
+        scores = self.route_scores(context, slot_order=slot_order)
+        return EpisodicBindingRoute(
+            context=context,
+            scores=scores,
+            selected_slot=scores.argmax(dim=-1),
+        )
+
+    def trainable_parameters(self):
+        """Return only mutable context-encoder parameters."""
+
+        return (
+            parameter
+            for parameter in self.encoder.parameters()
+            if parameter.requires_grad
+        )
+
+    @torch.no_grad()
+    def freeze_encoder(self) -> None:
+        """Freeze learned routing while retaining external slot keys."""
+
+        for parameter in self.encoder.parameters():
+            parameter.requires_grad_(False)
+
+    def adaptation_step(
+        self,
+        context: torch.Tensor,
+        selected_slot: int,
+        verifier_utility: float,
+        *,
+        optimizer: torch.optim.Optimizer | None = None,
+        baseline: float = 0.5,
+        temperature: float | None = None,
+    ) -> float:
+        """Apply one REINFORCE-style update from an attempted slot outcome."""
+
+        if context.ndim != 2 or context.shape[0] != 1:
+            raise ValueError("episodic binding adaptation needs one context")
+        if not 0 <= selected_slot < self.slot_count:
+            raise IndexError("episodic binding router slot is out of range")
+        if not torch.isfinite(torch.tensor(verifier_utility)) or not (
+            0.0 <= verifier_utility <= 1.0
+        ):
+            raise ValueError("episodic binding utility must lie in [0, 1]")
+        if not torch.isfinite(torch.tensor(baseline)) or not (
+            0.0 <= baseline <= 1.0
+        ):
+            raise ValueError("episodic binding baseline must lie in [0, 1]")
+        selected_temperature = (
+            self.temperature if temperature is None else float(temperature)
+        )
+        if not torch.isfinite(torch.tensor(selected_temperature)) or (
+            selected_temperature <= 0.0
+        ):
+            raise ValueError("episodic binding adaptation temperature is invalid")
+        parameters = tuple(self.trainable_parameters())
+        if not parameters:
+            raise RuntimeError("episodic binding router encoder is frozen")
+        scores = self.route_scores(context)
+        loss = -(verifier_utility - baseline) * torch.log_softmax(
+            scores / selected_temperature, dim=-1
+        )[0, selected_slot]
+        selected_optimizer = optimizer
+        if selected_optimizer is None:
+            selected_optimizer = torch.optim.Adam(parameters, lr=0.01)
+        selected_optimizer.zero_grad(set_to_none=True)
+        loss.backward()
+        selected_optimizer.step()
+        return float(loss.detach())
 
 
 class OnlineEpisodicRelationReader(nn.Module):

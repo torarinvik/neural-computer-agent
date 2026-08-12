@@ -1831,3 +1831,13 @@ contexts, while independently activated/frozen residual scorers learn distinct
 candidate rankings from fresh scalar utilities behind opaque binding keys.
 Evidence is archived at
 `session_records/brainworkshop_external_temporal_regime_policy_nonstationary_maintenance_promoted_2026-08-12/`.
+
+`EpisodicBindingRouter` removes the remaining requirement that an experiment
+hand in a context key. It encodes learned event/action/outcome trajectories,
+provisions opaque keys from observed contexts, and updates only its external
+encoder from the utility of the slot that was actually attempted. After
+promotion, the encoder can be frozen while the opaque key bank remains
+replaceable external state. The two-seed learned-binding audit reached perfect
+forward and candidate-order-permuted routing, retained behavior after exact
+reload, and stayed at chance under reward shuffling. Evidence is archived at
+`session_records/brainworkshop_external_temporal_learned_binding_routing_promoted_2026-08-12/`.

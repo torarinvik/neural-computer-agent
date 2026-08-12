@@ -10714,3 +10714,26 @@ This promotes bounded nonstationary maintenance adaptation, not autonomous
 context-key discovery, universal maintenance economics, unrestricted growth,
 or general continual learning. Evidence and accounting are archived in
 `session_records/brainworkshop_external_temporal_regime_policy_nonstationary_maintenance_promoted_2026-08-12/`.
+
+## Learned episodic binding discovery (2026-08-12)
+
+The next bottleneck was that residual maintenance slots still received their
+opaque context keys from outside. `EpisodicBindingRouter` now provides the
+missing external boundary: it encodes learned event/action/outcome episodes,
+provisions opaque slot keys from observed contexts, and adapts the context
+encoder from only the scalar utility of the slot that was actually attempted.
+No task label, correct unattempted slot, protocol field, or controller update
+enters this path.
+
+The two-seed promoted audit used 1,000 fresh route utilities per seed with zero
+replay and zero controller updates. Forward route accuracy was `1.0000` on
+both seeds; independent candidate-order permutation was also `1.0000` on both.
+Freezing the router and exact state reload preserved the result, while
+reward-shuffled controls stayed at balanced `0.5000`. This promotes a bounded
+learned binding-discovery primitive, not autonomous ontology formation,
+unrestricted external growth, or general continual learning. The next test is
+online multi-slot discovery plus verifier-gated replacement under capacity
+pressure.
+
+Evidence is archived at
+`session_records/brainworkshop_external_temporal_learned_binding_routing_promoted_2026-08-12/`.

@@ -1246,3 +1246,20 @@ The promoted run also freezes each slot after its retention probe and rejects
 updates to frozen slots plus a third allocation beyond the configured bank
 capacity. This makes slot stopping an explicit verifier-gated operation rather
 than an optimizer convention.
+
+## Learned episodic binding discovery (2026-08-12)
+
+`external_temporal_learned_binding_routing.py` closes the next boundary after
+externally supplied context keys. An external `EpisodicBindingRouter` encodes
+fresh learned event/action/outcome trajectories, provisions two opaque slots
+from first observations, and learns routing from only the scalar utility of the
+slot actually attempted. The canonical controller and learned event encoder
+remain frozen and no examples are replayed.
+
+Seeds 17 and 18 both reached `1.0000` forward route accuracy and `1.0000`
+candidate-order permutation accuracy. Freezing and exact reload preserved the
+route exactly; reward-shuffled controls stayed at `0.5000` balanced accuracy.
+This promotes bounded learned binding discovery, not autonomous ontology
+formation, unrestricted slot growth, or general continual learning. Evidence
+is archived at
+`session_records/brainworkshop_external_temporal_learned_binding_routing_promoted_2026-08-12/`.
