@@ -11914,3 +11914,23 @@ It is not yet learned neural depth inference, learned compression,
 unrestricted memory growth, arbitrary program induction, or general
 continual learning. Evidence is archived at
 `session_records/brainworkshop_external_history_depth_selection_promoted_2026-08-12/`.
+
+## Replay-free external-history depth maintenance (2026-08-12)
+
+The outcome-only depth policy now has a reversal path. Patient failures of a
+protected query depth demote it, mark it as stale for immediate probing, and
+allow a fresh candidate to earn preference through the same stable-prefix
+gate. This prevents an obsolete depth from causing an unbounded retry loop.
+
+Across seeds `17` and `18`, the selected profile `[1, 3, 2, 2, 5]` was
+subjected to four scalar failures at depth `1` for the first file. Depth `1`
+was demoted, depth `2` was promoted from eight fresh outcome lifetimes at
+`1.0000`, and all file/controller/frontend digests remained unchanged. Policy
+reload, shuffled-outcome fail-closed, and zero-replay gates passed.
+
+This promotes replay-free stale-depth maintenance as a memory-side contract.
+The reversal failures are an explicit scalar-outcome control; this is not yet
+unconstrained nonstationary learning, learned compression, unrestricted
+memory growth, arbitrary program induction, or general continual learning.
+Evidence is archived at
+`session_records/brainworkshop_external_history_depth_maintenance_promoted_2026-08-12/`.

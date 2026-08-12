@@ -1,0 +1,10 @@
+{
+  "seed": 18,
+  "initial_selected_profile": [1, 3, 2, 2, 5],
+  "stale_query_count": 1,
+  "replacement_query_count": 2,
+  "stale_depth_demoted": true,
+  "replacement_mastered": true,
+  "replacement_accuracy": [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+  "all_gates_passed": true
+}

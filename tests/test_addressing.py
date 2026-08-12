@@ -278,6 +278,29 @@ def test_persistent_depth_evidence_fails_closed_after_unmastered_candidates() ->
     assert evidence.next_probe_query_count(0) is None
 
 
+def test_persistent_depth_evidence_replaces_a_reversed_depth_without_replay() -> None:
+    evidence = PersistentOpaqueDepthEvidence(
+        (1, 2, 3),
+        min_mastery_observations=2,
+        reversal_threshold=0.65,
+        reversal_patience=2,
+    )
+    evidence.append_file()
+    evidence.observe(0, 1, 1.0)
+    evidence.observe(0, 1, 1.0)
+    assert evidence.preferred_query_count(0) == 1
+
+    evidence.observe(0, 1, 0.0)
+    evidence.observe(0, 1, 0.0)
+    assert evidence.preferred_query_count(0) is None
+    assert evidence.next_probe_query_count(0) == 2
+
+    evidence.observe(0, 2, 1.0)
+    evidence.observe(0, 2, 1.0)
+    assert evidence.preferred_query_count(0) == 2
+    assert evidence.statuses()[0].reversal_count[0] == 1
+
+
 def test_persistent_depth_evidence_requires_sorted_unique_positive_candidates() -> None:
     with pytest.raises(ValueError, match="sorted and unique"):
         PersistentOpaqueDepthEvidence((2, 1, 2))

@@ -1889,3 +1889,23 @@ memory policy. It is not neural depth learning, learned compression,
 unrestricted memory growth, arbitrary program induction, or general
 continual learning. Evidence and accounting are archived at
 `session_records/brainworkshop_external_history_depth_selection_promoted_2026-08-12/`.
+
+## Replay-free external-history depth maintenance (2026-08-12)
+
+The depth policy also handles stale evidence. After protecting the selected
+profile, four patient scalar failures demote the stale depth. A reversed
+candidate is skipped during immediate re-probing so it cannot trap the policy
+in a retry loop; the next candidate is evaluated from fresh outcomes and is
+promoted only after its stable-prefix gate passes.
+
+Across seeds `17` and `18`, depth `1` for the first file was demoted and depth
+`2` was promoted as the replacement. The replacement reached `1.0000` on all
+eight probe lifetimes, while the initially selected profile retained `1.0000`
+on four fresh lifetimes. The controller, event frontend, and file parameters
+remained unchanged; policy reload, shuffled-outcome fail-closed, and zero
+replay also passed.
+
+This promotes replay-free stale-depth maintenance, not unrestricted
+nonstationary learning. The reversal failures are an explicit scalar-outcome
+control rather than a learned environmental change. Evidence is archived at
+`session_records/brainworkshop_external_history_depth_maintenance_promoted_2026-08-12/`.

@@ -487,7 +487,13 @@ class PersistentOpaqueDepthEvidence:
         return tuple(self.query_counts[index] for index in order)
 
     def next_probe_query_count(self, file_slot: int) -> int | None:
-        """Return the next untried depth, or fail closed after exhaustion."""
+        """Return the next untried depth, skipping reversed candidates.
+
+        A candidate that has been demoted by patient failures is not retried
+        immediately.  This prevents a stale preferred depth from trapping the
+        policy in a reversal loop; the policy instead probes a fresh candidate
+        and fails closed if no non-reversed candidate remains.
+        """
 
         ledger = self._ledger(file_slot)
         status = ledger.status()
@@ -495,7 +501,7 @@ class PersistentOpaqueDepthEvidence:
             return self.query_counts[status.preferred_slot]
         order = ledger.preferred_order()
         for index in order:
-            if status.attempts[index] == 0:
+            if status.reversal_count[index] == 0 and status.attempts[index] == 0:
                 return self.query_counts[index]
         return None
 
