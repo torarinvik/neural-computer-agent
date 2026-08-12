@@ -890,6 +890,38 @@ def test_external_temporal_regime_policy_learns_full_bank_maintenance(
     assert report["gates"]["zero_replayed_examples"]
 
 
+def test_external_temporal_regime_policy_routes_nonstationary_maintenance(
+    tmp_path,
+) -> None:
+    from experiments.brainworkshop_canonical.external_temporal_regime_policy_nonstationary_maintenance import (
+        run,
+    )
+
+    report = run(
+        argparse.Namespace(
+            report_out=tmp_path / "temporal-regime-nonstationary-maintenance.json",
+            seed=17,
+            base_updates=3_000,
+            slot_updates=512,
+        )
+    )
+
+    assert report["schema"] == (
+        "neural-computer.brainworkshop-external-temporal-regime-policy-"
+        "nonstationary-maintenance.v1"
+    )
+    assert report["gates"]["base_reliability_transfer"]
+    assert report["gates"]["reliability_forward_learns"]
+    assert report["gates"]["age_forward_learns"]
+    assert report["gates"]["age_reverse_learns"]
+    assert report["gates"]["reliability_slot_retained_after_age_growth"]
+    assert report["gates"]["unknown_context_falls_back_to_base"]
+    assert report["gates"]["slot_a_unchanged_during_slot_b_learning"]
+    assert report["gates"]["both_slots_active_and_frozen"]
+    assert report["gates"]["controller_frozen"]
+    assert report["gates"]["zero_replayed_examples"]
+
+
 def test_binary_switch_family_has_a_valid_chance_baseline() -> None:
     verifier = CrossFamilyVerifier(
         family="switch_binary",

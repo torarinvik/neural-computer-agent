@@ -365,6 +365,7 @@ from .online_transition import (
     select_verified_transition_model_family,
 )
 from .plasticity import (
+    EXTERNAL_CAPABILITY_EVICTION_RESIDUAL_BANK_SCHEMA,
     EXTERNAL_FAST_WEIGHT_SCHEMA,
     EXTERNAL_OUTCOME_CREDIT_SCHEMA,
     EXTERNAL_OUTCOME_PROGRAM_CAPACITY_GROWTH_SCHEMA,
@@ -390,6 +391,7 @@ from .plasticity import (
     ExternalOutcomeValueBaseline,
     ExternalOutcomeValueState,
     ExternalProgramFastCell,
+    GatedResidualCapabilityEvictionPolicyBank,
     MemoryEvictionObservation,
     MemoryWriteObservation,
     accumulate_current_gradients,
@@ -737,6 +739,7 @@ __all__ = [
     "EXTERNAL_CAPABILITY_COMPOSITION_SCHEMA",
     "EXTERNAL_CAPABILITY_COMPUTE_ADMISSION_SCHEMA",
     "EXTERNAL_CAPABILITY_COMPUTE_SCREEN_SCHEMA",
+    "EXTERNAL_CAPABILITY_EVICTION_RESIDUAL_BANK_SCHEMA",
     "EXTERNAL_CAPABILITY_FAST_WEIGHT_SCHEMA",
     "EXTERNAL_CAPABILITY_LEARNED_CANDIDATE_KEY_MEMORY_SCHEMA",
     "EXTERNAL_CAPABILITY_LEARNED_COMPUTE_SCREEN_SCHEMA",
@@ -1212,6 +1215,7 @@ __all__ = [
     "FactoredTransitionQuarantineReceipt",
     "FactoredTransitionRouteResult",
     "FactorizedOpaqueAddressRouter",
+    "GatedResidualCapabilityEvictionPolicyBank",
     "GatedResidualRegimeChangePolicy",
     "GatedResidualRegimePolicyBank",
     "GoalConditionedMemoryProposal",

@@ -1224,6 +1224,18 @@ new-binding acquisition, frozen-core, and zero-replay gates. Evidence is
 archived at
 `session_records/brainworkshop_external_temporal_regime_policy_learned_maintenance_promoted_2026-08-12/`.
 
+## Routed nonstationary maintenance residuals (2026-08-12)
+
+`external_temporal_regime_policy_nonstationary_maintenance.py` keeps the
+reliability-trained maintenance base frozen and routes two isolated residuals
+behind opaque context keys. One learns reliability victim selection and one
+learns age victim selection from fresh scalar utilities. Unknown contexts must
+fall back to the base, and candidate order is reversed as a control.
+
+Seeds 17 and 18 passed both objective transfers, order reversal, fallback,
+slot-isolation, frozen-core, and zero-replay gates. Evidence is archived at
+`session_records/brainworkshop_external_temporal_regime_policy_nonstationary_maintenance_promoted_2026-08-12/`.
+
 The promoted lifecycle run also builds copy-on-write replacement candidates.
 An unsafe candidate is rejected without mutation; a verified candidate reuses
 slot B for a new opaque binding while binding A remains retained. Eviction,

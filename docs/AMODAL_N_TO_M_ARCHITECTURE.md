@@ -10693,3 +10693,24 @@ This promotes bounded learned maintenance choice, not autonomous redundancy
 discovery, universal eviction economics, unrestricted memory growth, or
 general continual learning. Evidence and accounting are archived in
 `session_records/brainworkshop_external_temporal_regime_policy_learned_maintenance_promoted_2026-08-12/`.
+
+## Routed nonstationary maintenance residuals (2026-08-12)
+
+The stationary learned maintenance selector is insufficient when the verifier
+changes what “disposable” means: reliability-trained selection reached only
+chance-level accuracy on an age-dominated objective. The external boundary now
+supports `GatedResidualCapabilityEvictionPolicyBank`, which freezes the base
+scorer and routes independently trained residual scorers by opaque context
+keys. Unknown contexts fall back to the base; promoted residuals can be
+activated and frozen independently.
+
+Across seeds `17` and `18`, reliability and age residuals both transferred at
+least `0.8438` in forward and reversed candidate order. Unknown contexts
+retained base reliability selection at `0.9570/0.9844`, and the first residual
+remained unchanged while the second learned. Controller/encoder and replay
+gates passed.
+
+This promotes bounded nonstationary maintenance adaptation, not autonomous
+context-key discovery, universal maintenance economics, unrestricted growth,
+or general continual learning. Evidence and accounting are archived in
+`session_records/brainworkshop_external_temporal_regime_policy_nonstationary_maintenance_promoted_2026-08-12/`.

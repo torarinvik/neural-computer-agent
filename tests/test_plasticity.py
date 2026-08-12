@@ -18,6 +18,7 @@ from neural_computer import (
     ExternalOutcomeProgramRouterState,
     ExternalOutcomeValueBaseline,
     ExternalOutcomeValueState,
+    GatedResidualCapabilityEvictionPolicyBank,
     MemoryEvictionObservation,
     MemoryWriteObservation,
 )
@@ -690,3 +691,50 @@ def test_external_capability_eviction_policy_learns_from_scalar_pairwise_signal(
         optimizer.step()
     scores = policy.score_candidates(context[:1], candidates[:1])
     assert float(scores[0, 1].detach()) > float(scores[0, 0].detach())
+
+
+def test_gated_residual_eviction_bank_isolates_and_activates_maintenance_slots() -> None:
+    base = ExternalCapabilityEvictionPolicy(
+        context_width=4,
+        candidate_width=6,
+        hidden=8,
+    )
+    bank = GatedResidualCapabilityEvictionPolicyBank(
+        base,
+        context_width=4,
+        candidate_width=6,
+        max_slots=2,
+    )
+    key_a = torch.tensor([1.0, 0.0, 0.0, 0.0])
+    key_b = torch.tensor([0.0, 1.0, 0.0, 0.0])
+    assert bank.add_slot(key_a) == 0
+    assert bank.add_slot(key_b) == 1
+    context = key_a.unsqueeze(0)
+    candidates = torch.randn(1, 3, 6)
+    optimizer = torch.optim.Adam(bank.trainable_parameters(0), lr=0.02)
+    selected_before = bank.score_candidates(context, candidates)
+    for _ in range(8):
+        scores = bank.residual_slots[0](
+            torch.cat((context[:, None, :].expand(-1, 3, -1), candidates), dim=-1)
+        ).squeeze(-1)
+        selected = int(scores.argmax())
+        bank.adaptation_step(
+            context,
+            candidates,
+            0,
+            selected,
+            1.0,
+            optimizer=optimizer,
+        )
+    bank.activate_slot(0)
+    selected_after = bank.score_candidates(context, candidates)
+
+    assert torch.allclose(
+        bank.route_scores(torch.stack((key_a, key_b))),
+        torch.eye(2),
+    )
+    assert torch.equal(selected_before, base.score_candidates(context, candidates))
+    assert not torch.equal(selected_after, selected_before)
+    bank.freeze_slot(0)
+    with pytest.raises(RuntimeError, match="frozen"):
+        bank.trainable_parameters(0)

@@ -1824,3 +1824,10 @@ candidate summaries before this transaction. It is trained outside the
 controller from scalar verifier utility and does not receive physical slot
 indices or semantic names. The learned maintenance audit is archived at
 `session_records/brainworkshop_external_temporal_regime_policy_learned_maintenance_promoted_2026-08-12/`.
+
+`GatedResidualCapabilityEvictionPolicyBank` extends the same lifecycle to
+nonstationary maintenance objectives: an immutable base scorer handles unknown
+contexts, while independently activated/frozen residual scorers learn distinct
+candidate rankings from fresh scalar utilities behind opaque binding keys.
+Evidence is archived at
+`session_records/brainworkshop_external_temporal_regime_policy_nonstationary_maintenance_promoted_2026-08-12/`.

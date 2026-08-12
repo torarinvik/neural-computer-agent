@@ -48,6 +48,9 @@ EXTERNAL_OUTCOME_PROGRAM_PRIOR_SELECTION_SCHEMA = (
 EXTERNAL_OUTCOME_PROGRAM_CELL_BANK_SCHEMA = (
     "neural-computer.external-outcome-program-cell-bank.v1"
 )
+EXTERNAL_CAPABILITY_EVICTION_RESIDUAL_BANK_SCHEMA = (
+    "neural-computer.external-capability-eviction-residual-bank.v1"
+)
 
 
 @dataclass(frozen=True)
@@ -2839,6 +2842,212 @@ class ExternalCapabilityEvictionPolicy(nn.Module):
             candidate=candidates.reshape(-1, self.candidate_width),
         )
         return self(flat).reshape(candidates.shape[:2])
+
+
+class GatedResidualCapabilityEvictionPolicyBank(nn.Module):
+    """Route nonstationary maintenance policies through isolated residuals.
+
+    The base eviction scorer is frozen.  Each opaque external binding can
+    acquire one zero-initialized candidate scorer, train from fresh scalar
+    verifier utilities, and be activated only after independent promotion.
+    Unknown bindings fall back to the base scorer; activated bindings do not
+    alter one another.  The bank never interprets context keys or candidate
+    semantics.
+    """
+
+    schema = EXTERNAL_CAPABILITY_EVICTION_RESIDUAL_BANK_SCHEMA
+
+    def __init__(
+        self,
+        base: ExternalCapabilityEvictionPolicy,
+        *,
+        context_width: int,
+        candidate_width: int,
+        max_slots: int | None = None,
+        route_threshold: float = 0.75,
+    ) -> None:
+        super().__init__()
+        if not isinstance(base, ExternalCapabilityEvictionPolicy):
+            raise TypeError("eviction residual bank base is invalid")
+        if context_width < 1 or candidate_width < 1:
+            raise ValueError("eviction residual bank widths must be positive")
+        if base.context_width != context_width or base.candidate_width != candidate_width:
+            raise ValueError("eviction residual bank base widths do not match")
+        if max_slots is not None and (
+            not isinstance(max_slots, int) or isinstance(max_slots, bool) or max_slots < 1
+        ):
+            raise ValueError("eviction residual bank max slots is invalid")
+        if not math.isfinite(route_threshold) or not -1.0 <= route_threshold <= 1.0:
+            raise ValueError("eviction residual bank route threshold is invalid")
+        self.base = base
+        for parameter in self.base.parameters():
+            parameter.requires_grad_(False)
+        self.context_width = int(context_width)
+        self.candidate_width = int(candidate_width)
+        self.max_slots = max_slots
+        self.route_threshold = float(route_threshold)
+        self.residual_slots = nn.ModuleList()
+        self.slot_keys = nn.ParameterList()
+        self.register_buffer("slot_active", torch.empty(0, dtype=torch.bool))
+        self.register_buffer("slot_frozen", torch.empty(0, dtype=torch.bool))
+
+    @property
+    def slot_count(self) -> int:
+        return len(self.residual_slots)
+
+    def configuration(self) -> dict[str, int | float | str]:
+        return {
+            "schema": self.schema,
+            "base_schema": self.base.schema,
+            "context_width": self.context_width,
+            "candidate_width": self.candidate_width,
+            "slot_count": self.slot_count,
+            "max_slots": self.max_slots if self.max_slots is not None else 0,
+            "active_slots": int(self.slot_active.sum().item()),
+            "frozen_slots": int(self.slot_frozen.sum().item()),
+            "routing": "opaque_binding_cosine_key_v1",
+            "residual": "zero_initialized_candidate_scorer_v1",
+            "frozen_base": True,
+            "updates": "single_scalar_verifier_utility_without_replay_v1",
+        }
+
+    def _validate_context(self, context: torch.Tensor) -> None:
+        if context.ndim != 2 or context.shape[1] != self.context_width:
+            raise ValueError("eviction residual bank context has the wrong shape")
+        if not bool(torch.isfinite(context).all()):
+            raise ValueError("eviction residual bank context must be finite")
+        if not bool(context.square().sum(dim=-1).gt(1e-12).all()):
+            raise ValueError("eviction residual bank context cannot be zero")
+
+    def _validate_candidates(self, candidates: torch.Tensor) -> None:
+        if candidates.ndim != 3 or candidates.shape[2] != self.candidate_width:
+            raise ValueError("eviction residual bank candidates have the wrong shape")
+        if not bool(torch.isfinite(candidates).all()):
+            raise ValueError("eviction residual bank candidates must be finite")
+
+    @torch.no_grad()
+    def add_slot(self, context_key: torch.Tensor) -> int:
+        if self.max_slots is not None and self.slot_count >= self.max_slots:
+            raise RuntimeError("eviction residual bank slot capacity is exhausted")
+        if context_key.ndim != 1 or context_key.shape[0] != self.context_width:
+            raise ValueError("eviction residual bank slot key has the wrong shape")
+        self._validate_context(context_key.unsqueeze(0))
+        reference = next(self.base.parameters())
+        residual = nn.Linear(self.context_width + self.candidate_width, 1).to(
+            device=reference.device,
+            dtype=reference.dtype,
+        )
+        nn.init.zeros_(residual.weight)
+        nn.init.zeros_(residual.bias)
+        key = F.normalize(context_key.detach(), dim=0).to(reference)
+        self.residual_slots.append(residual)
+        self.slot_keys.append(nn.Parameter(key, requires_grad=False))
+        self.slot_active = torch.cat(
+            (self.slot_active, torch.zeros(1, dtype=torch.bool, device=key.device))
+        )
+        self.slot_frozen = torch.cat(
+            (self.slot_frozen, torch.zeros(1, dtype=torch.bool, device=key.device))
+        )
+        return self.slot_count - 1
+
+    @torch.no_grad()
+    def activate_slot(self, slot_index: int) -> None:
+        if not 0 <= slot_index < self.slot_count:
+            raise IndexError("eviction residual bank slot is out of range")
+        self.slot_active[slot_index] = True
+
+    @torch.no_grad()
+    def freeze_slot(self, slot_index: int) -> None:
+        if not 0 <= slot_index < self.slot_count:
+            raise IndexError("eviction residual bank slot is out of range")
+        self.slot_frozen[slot_index] = True
+        for parameter in self.residual_slots[slot_index].parameters():
+            parameter.requires_grad_(False)
+
+    def trainable_parameters(self, slot_index: int):
+        if not 0 <= slot_index < self.slot_count:
+            raise IndexError("eviction residual bank slot is out of range")
+        if bool(self.slot_frozen[slot_index]):
+            raise RuntimeError("eviction residual bank slot is frozen")
+        return self.residual_slots[slot_index].parameters()
+
+    def route_scores(self, context: torch.Tensor) -> torch.Tensor:
+        self._validate_context(context)
+        if not self.slot_count:
+            raise RuntimeError("eviction residual bank has no slots")
+        keys = torch.stack(tuple(self.slot_keys), dim=0).to(context)
+        return F.normalize(context, dim=-1) @ keys.transpose(0, 1)
+
+    def score_candidates(
+        self,
+        context: torch.Tensor,
+        candidates: torch.Tensor,
+    ) -> torch.Tensor:
+        self._validate_context(context)
+        self._validate_candidates(candidates)
+        if context.shape[0] != candidates.shape[0]:
+            raise ValueError("eviction residual bank batch sizes do not match")
+        base_scores = self.base.score_candidates(context, candidates)
+        if not self.slot_count:
+            return base_scores
+        routes = self.route_scores(context)
+        selected = routes.argmax(dim=-1)
+        residual_scores = []
+        repeated_context = context[:, None, :].expand(
+            -1, candidates.shape[1], -1
+        )
+        features = torch.cat((repeated_context, candidates), dim=-1)
+        for slot in self.residual_slots:
+            residual_scores.append(slot(features).squeeze(-1))
+        stacked = torch.stack(residual_scores, dim=1)
+        batch_indices = torch.arange(context.shape[0], device=context.device)
+        chosen_residual = stacked[batch_indices, selected]
+        active = self.slot_active[selected].to(context.device)
+        routed = routes[batch_indices, selected] >= self.route_threshold
+        return torch.where((active & routed).unsqueeze(-1), chosen_residual, base_scores)
+
+    def adaptation_step(
+        self,
+        context: torch.Tensor,
+        candidates: torch.Tensor,
+        slot_index: int,
+        selected_index: int,
+        verifier_utility: float,
+        *,
+        temperature: float = 1.0,
+        optimizer: torch.optim.Optimizer | None = None,
+    ) -> float:
+        self._validate_context(context)
+        self._validate_candidates(candidates)
+        if context.shape[0] != 1:
+            raise ValueError("eviction residual bank adaptation needs one context")
+        if not 0 <= slot_index < self.slot_count:
+            raise IndexError("eviction residual bank slot is out of range")
+        if not 0 <= selected_index < candidates.shape[1]:
+            raise IndexError("eviction residual bank candidate is out of range")
+        if not math.isfinite(verifier_utility) or not 0.0 <= verifier_utility <= 1.0:
+            raise ValueError("eviction residual bank utility must lie in [0, 1]")
+        if temperature <= 0.0 or not math.isfinite(temperature):
+            raise ValueError("eviction residual bank temperature is invalid")
+        if bool(self.slot_frozen[slot_index]):
+            raise RuntimeError("eviction residual bank slot is frozen")
+        repeated_context = context[:, None, :].expand(
+            -1, candidates.shape[1], -1
+        )
+        features = torch.cat((repeated_context, candidates), dim=-1)
+        scores = self.residual_slots[slot_index](features).squeeze(-1)[0]
+        loss = -(verifier_utility - 0.5) * torch.log_softmax(
+            scores / temperature, dim=-1
+        )[selected_index]
+        selected_optimizer = optimizer
+        if selected_optimizer is None:
+            selected_optimizer = torch.optim.SGD(
+                self.trainable_parameters(slot_index), lr=0.01
+            )
+        selected_optimizer.zero_grad(set_to_none=True)
+        loss.backward()
+        selected_optimizer.step()
+        return float(loss.detach())
 
 
 def _validate_inputs(
