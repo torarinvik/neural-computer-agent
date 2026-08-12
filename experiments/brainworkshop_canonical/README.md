@@ -1102,3 +1102,20 @@ updates per seed; the rejected 10k/20k calibration is archived alongside the
 promoted reports. This remains bounded structure selection, not general
 continual learning. Evidence is in
 `session_records/brainworkshop_external_temporal_shared_basis_structure_growth_promoted_2026-08-12/`.
+
+## Repeated raw-value shared-structure growth (2026-08-12)
+
+`external_temporal_shared_basis_repeated_growth.py` transfers the v2 raw-value
+structure policy through four cohorts: rank `2 → 4 → 4 → 4`. Each successor
+cohort arrives without replaying earlier values. Forward and reversed physical
+insertion order, complete prefix retention after every stage, eight
+verifier-gated copy-on-write commits, exact reload, stale-version rejection,
+checksum corruption, frozen controller/encoder, and zero replay are tested.
+
+Seeds 17 and 18 reached held-out rank-1/2/4 scores of
+`0.8594/0.9844/1.0000` and `0.9219/1.0000/1.0000` after 20,000 scalar
+updates, and both selected `2 → 4 → 4 → 4` while retaining all 24 routes. The
+3,000-update safety-only calibration was rejected for weak transfer and is
+archived. This is repeated bounded structure selection, not general
+continual learning. Evidence is in
+`session_records/brainworkshop_external_temporal_shared_basis_repeated_growth_promoted_2026-08-12/`.

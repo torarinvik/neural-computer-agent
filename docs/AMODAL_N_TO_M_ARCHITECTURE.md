@@ -10493,3 +10493,34 @@ structure-selection transfer, not semantic structure discovery, arbitrary new
 computation, unrestricted memory growth, repeated growth/reversal, or general
 continual learning. Evidence and accounting are archived in
 `session_records/brainworkshop_external_temporal_shared_basis_structure_growth_promoted_2026-08-12/`.
+
+## Repeated raw-value shared-structure growth (2026-08-12)
+
+The v2 `OpaqueSharedBasisStructurePolicy` adds a bounded
+row-permutation-invariant pairwise summary to the singular spectrum it already
+computes. It still consumes only opaque value rows, occupancy, and runtime
+candidate ranks; unoccupied padding is ignored, and precomputed candidate
+reconstruction error remains outside the policy ABI. The policy receives one
+scalar verifier utility per fresh bank and emits only a candidate index.
+
+The stronger two-seed canonical stream presents four cohorts with structure
+`rank 2 → rank 4 → rank 4 → rank 4`. At every transition, the memory backend
+performs an independent route/value retention check, expected-version check,
+and copy-on-write persistence. Both forward and reversed physical insertion
+orders are tested.
+
+At `20,000` unique scalar-utility updates per seed, held-out rank-1/2/4
+accuracy was `0.8594/0.9844/1.0000` and `0.9219/1.0000/1.0000`; both fresh
+controls were weaker. Both seeds selected `2 → 4 → 4 → 4`, retained all 24
+routes after each transition, and passed reload, stale-version,
+checksum-corruption, frozen-core, and zero-replay gates. A 3,000-update
+calibration passed live safety but failed held-out transfer and remains
+rejected in the archive.
+
+This promotes repeated bounded external structure-policy transfer, not
+semantic structure discovery, arbitrary new computation, unrestricted memory
+growth, regime reversal, or general continual learning. The next pressure is
+genuinely changing or competing subspaces, reversal controls, and reducing
+scalar-feedback cost below 20,000 unique banks. Evidence and accounting are
+archived in
+`session_records/brainworkshop_external_temporal_shared_basis_repeated_growth_promoted_2026-08-12/`.

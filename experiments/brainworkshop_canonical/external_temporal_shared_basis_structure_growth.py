@@ -41,7 +41,7 @@ from .external_temporal_shared_basis_policy_growth import (
 )
 
 SHARED_BASIS_STRUCTURE_GROWTH_SCHEMA = (
-    "neural-computer.brainworkshop-external-temporal-shared-basis-structure-growth.v1"
+    "neural-computer.brainworkshop-external-temporal-shared-basis-structure-growth.v2"
 )
 FEATURE_WIDTH = EVENT_WIDTH
 POLICY_HIDDEN = 128
@@ -385,11 +385,11 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         ),
         "seed": args.seed,
         "architecture": {
-            "policy": "opaque_shared_basis_structure_policy_v1",
+            "policy": "opaque_shared_basis_structure_policy_v2",
             "policy_signal": "single_scalar_verifier_utility_without_replay",
             "memory": "persistent_shared_basis_content_addressed_memory_v1",
             "candidate_ranks": CANDIDATE_RANKS,
-            "feature_contract": "opaque_singular_spectrum_row_permutation_invariant_v1",
+            "feature_contract": "opaque_spectral_pairwise_structure_row_permutation_invariant_v2",
             "forbidden_features": "precomputed_candidate_reconstruction_error_v1",
             "controller": "frozen_canonical_amodal_controller",
             "event_encoder": "frozen_learned_event_encoder",
@@ -429,7 +429,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--seed", type=int, default=17)
-    parser.add_argument("--policy-updates", type=int, default=50_000)
+    parser.add_argument("--policy-updates", type=int, default=20_000)
     parser.add_argument("--report-out", type=Path, required=True)
     run(parser.parse_args())
 

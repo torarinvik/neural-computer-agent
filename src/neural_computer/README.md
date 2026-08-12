@@ -1755,3 +1755,11 @@ candidate index; `SharedBasisContentAddressedMemory` still owns independent
 route/value verification, versioned copy-on-write, and persistence. The
 canonical two-seed transfer audit is archived at
 `session_records/brainworkshop_external_temporal_shared_basis_structure_growth_promoted_2026-08-12/`.
+
+The v2 structure policy also has a repeated-growth audit: its spectral plus
+normalized pairwise summary transfers rank selection through three successive
+external memory growth transitions while ignoring unoccupied padding. The
+policy and controller remain external/frozen respectively; the shared-basis
+memory independently verifies each copy-on-write replacement. Evidence is
+archived at
+`session_records/brainworkshop_external_temporal_shared_basis_repeated_growth_promoted_2026-08-12/`.

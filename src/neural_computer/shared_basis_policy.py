@@ -19,7 +19,7 @@ SHARED_BASIS_COMPRESSION_POLICY_SCHEMA = (
     "neural-computer.opaque-shared-basis-compression-policy.v1"
 )
 SHARED_BASIS_STRUCTURE_POLICY_SCHEMA = (
-    "neural-computer.opaque-shared-basis-structure-policy.v1"
+    "neural-computer.opaque-shared-basis-structure-policy.v2"
 )
 
 
@@ -200,7 +200,14 @@ class OpaqueSharedBasisStructurePolicy(nn.Module):
         self.hidden = int(hidden)
         self.max_spectral_bins = int(max_spectral_bins)
         self.learning_rate = float(learning_rate)
-        self.global_feature_width = 2 * self.max_spectral_bins + 3
+        # The singular spectrum captures global rank structure.  Pairwise
+        # normalized-row statistics retain bounded information about how that
+        # structure is distributed across opaque records without exposing a
+        # candidate reconstruction error from the memory evaluator.
+        self.pairwise_feature_width = 6
+        self.global_feature_width = 2 * self.max_spectral_bins + 3 + (
+            self.pairwise_feature_width
+        )
         self.candidate_feature_width = self.global_feature_width + 5
         self.scorer = nn.Sequential(
             nn.Linear(self.candidate_feature_width, hidden),
@@ -215,7 +222,7 @@ class OpaqueSharedBasisStructurePolicy(nn.Module):
             "hidden": self.hidden,
             "max_spectral_bins": self.max_spectral_bins,
             "learning_rate": self.learning_rate,
-            "features": "opaque_singular_spectrum_row_permutation_invariant_v1",
+            "features": "opaque_spectral_pairwise_structure_row_permutation_invariant_v2",
             "forbidden_features": "precomputed_candidate_reconstruction_error_v1",
             "updates": "single_scalar_verifier_utility_without_replay_v1",
             "proposal": "candidate_index_only_v1",
@@ -271,8 +278,56 @@ class OpaqueSharedBasisStructurePolicy(nn.Module):
         normalized_padded[:, :bins] = normalized
         cumulative_padded[:, :bins] = cumulative
         row_count = occupied.sum(dim=-1, keepdim=True).to(values.dtype)
-        occupied_fraction = row_count / values.shape[1]
+        # Normalize by the learned value width rather than the transport
+        # capacity.  Unoccupied padding is an ABI detail and must not alter a
+        # proposal when the same logical rows are presented compactly.
+        occupied_fraction = row_count / float(self.value_width)
         mean_norm = singular.square().sum(dim=-1, keepdim=True).sqrt() / row_count.sqrt().clamp_min(1.0)
+        normalized_rows = masked_values / masked_values.square().sum(
+            dim=-1, keepdim=True
+        ).sqrt().clamp_min(1e-6)
+        pairwise = torch.abs(normalized_rows @ normalized_rows.transpose(-1, -2))
+        pair_mask = occupied.unsqueeze(-1) & occupied.unsqueeze(-2)
+        pair_mask = pair_mask & ~torch.eye(
+            values.shape[1], dtype=torch.bool, device=values.device
+        ).unsqueeze(0)
+        pair_count = pair_mask.sum(dim=(-1, -2)).to(values.dtype).unsqueeze(-1)
+        pair_values = pairwise * pair_mask.to(values.dtype)
+        pair_mean = pair_values.sum(dim=(-1, -2), keepdim=False) / pair_count.squeeze(-1).clamp_min(1.0)
+        pair_mean = pair_mean.unsqueeze(-1)
+        pair_second = pair_values.square().sum(
+            dim=(-1, -2), keepdim=False
+        ) / pair_count.squeeze(-1).clamp_min(1.0)
+        pair_second = pair_second.unsqueeze(-1)
+        pair_std = (pair_second - pair_mean.square()).clamp_min(0.0).sqrt()
+        pair_max = pair_values.masked_fill(~pair_mask, 0.0).amax(dim=(-1, -2)).unsqueeze(-1)
+        sorted_pairs = pair_values.masked_fill(~pair_mask, float("inf")).reshape(
+            values.shape[0], -1
+        ).sort(dim=-1).values
+        safe_pair_count = pair_count.squeeze(-1).to(torch.long).clamp_min(1)
+        quantile_indices = torch.stack(
+            (
+                (safe_pair_count - 1) // 4,
+                (safe_pair_count - 1) // 2,
+                (safe_pair_count - 1) * 3 // 4,
+            ),
+            dim=-1,
+        )
+        pair_quantiles = sorted_pairs.gather(1, quantile_indices)
+        pair_quantiles = torch.where(
+            pair_count > 0,
+            pair_quantiles,
+            torch.zeros_like(pair_quantiles),
+        )
+        pairwise_features = torch.cat(
+            (
+                pair_mean,
+                pair_std,
+                pair_max,
+                pair_quantiles,
+            ),
+            dim=-1,
+        )
         global_features = torch.cat(
             (
                 normalized_padded,
@@ -280,6 +335,7 @@ class OpaqueSharedBasisStructurePolicy(nn.Module):
                 row_count / 16.0,
                 occupied_fraction,
                 mean_norm,
+                pairwise_features,
             ),
             dim=-1,
         )

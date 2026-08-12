@@ -92,6 +92,27 @@ def test_shared_basis_structure_policy_is_row_permutation_invariant() -> None:
     )
 
 
+def test_shared_basis_structure_policy_ignores_unoccupied_padding() -> None:
+    policy = OpaqueSharedBasisStructurePolicy(
+        value_width=8,
+        hidden=16,
+        max_spectral_bins=4,
+    ).eval()
+    generator = torch.Generator().manual_seed(12)
+    occupied_values = torch.randn(1, 5, 8, generator=generator)
+    padded_values = torch.cat((occupied_values, torch.full((1, 3, 8), 99.0)), dim=1)
+    occupied = torch.tensor([[True, True, True, True, True, False, False, False]])
+    ranks = torch.tensor([1, 2, 4], dtype=torch.long)
+    padded = policy(padded_values, occupied, ranks)
+    compact = policy(
+        occupied_values,
+        torch.ones(1, 5, dtype=torch.bool),
+        ranks,
+    )
+
+    assert torch.allclose(padded.logits, compact.logits)
+
+
 def test_shared_basis_structure_policy_proposes_and_adapts_from_scalar_utility() -> None:
     policy = OpaqueSharedBasisStructurePolicy(
         value_width=8,
