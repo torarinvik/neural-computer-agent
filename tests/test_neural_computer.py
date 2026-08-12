@@ -22,6 +22,7 @@ from neural_computer import (
     EventWaitPolicy,
     EventWaitStatistics,
     ExecutableArtifactMemory,
+    ExternalTemporalAddressIndex,
     ExternalTemporalHistoryEventBridge,
     ExternalTemporalHistoryMemory,
     ExternalTemporalOffsetSelector,
@@ -1158,6 +1159,164 @@ def test_metadata_temporal_history_preserves_per_row_absence_masks() -> None:
     assert second.read.duration_present is not None
     assert second.read.timestamp_present[:, 0].tolist() == [True, False]
     assert second.read.duration_present[:, 0].tolist() == [True, False]
+
+
+def test_external_temporal_address_index_reads_opaque_locations_and_reloads() -> None:
+    history = ExternalTemporalHistoryMemory(
+        width=4,
+        scope_capacity=2,
+        metadata=True,
+        source_key_width=1,
+    )
+    first = torch.tensor(
+        [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0]]
+    )
+    second = torch.tensor(
+        [[0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0]]
+    )
+    scopes = torch.tensor([0, 1], dtype=torch.long)
+    history.append(
+        first,
+        scope=scopes,
+        confidence=torch.tensor([0.8, 0.9]),
+        source_key=torch.tensor([[0.1], [0.2]]),
+        timestamp=torch.tensor([1.0, 1.0]),
+        duration=torch.tensor([0.1, 0.2]),
+    )
+    history.append(
+        second,
+        scope=scopes,
+        confidence=torch.tensor([0.7, 0.6]),
+        source_key=torch.tensor([[0.3], [0.4]]),
+        timestamp=torch.tensor([2.0, 2.0]),
+        duration=torch.tensor([0.3, 0.4]),
+    )
+    index = ExternalTemporalAddressIndex(
+        key_width=3,
+        scope_capacity=2,
+        write_match_threshold=0.99,
+        read_match_threshold=0.8,
+    )
+    keys = torch.tensor(
+        [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]], dtype=torch.float32
+    )
+    receipt = index.write(
+        keys,
+        target_scopes=torch.tensor([0, 1], dtype=torch.long),
+        target_positions=torch.tensor([0, 1], dtype=torch.long),
+        strength=torch.ones(2),
+        scope=scopes,
+    )
+    assert receipt.committed.tolist() == [True, True]
+    resolved = index.read_history(history, keys, scope=scopes)
+    assert resolved.address.hit.tolist() == [True, True]
+    assert torch.equal(
+        resolved.history.values[:, 0], torch.stack((first[0], second[1]))
+    )
+    assert resolved.history.timestamp_present is not None
+    assert resolved.history.timestamp_present[:, 0].tolist() == [True, True]
+
+    unknown = index.read_history(
+        history,
+        torch.tensor([[0.0, 0.0, 1.0], [0.0, 0.0, 1.0]]),
+        scope=scopes,
+    )
+    assert unknown.address.hit.tolist() == [False, False]
+    assert unknown.address.target_positions.tolist() == [[-1], [-1]]
+    assert unknown.history.present.tolist() == [[False], [False]]
+
+    history.append(
+        torch.tensor(
+            [[0.0, 0.0, 0.0, 1.0], [1.0, 1.0, 0.0, 0.0]]
+        ),
+        scope=scopes,
+    )
+    stable = index.read_history(history, keys, scope=scopes)
+    assert stable.history.positions.tolist() == [[0], [1]]
+    assert torch.equal(
+        stable.history.values[:, 0], torch.stack((first[0], second[1]))
+    )
+
+    index.write(
+        torch.tensor([[0.0, 0.0, 1.0]]),
+        target_scopes=torch.tensor([0], dtype=torch.long),
+        target_positions=torch.tensor([99], dtype=torch.long),
+        strength=torch.ones(1),
+    )
+    missing = index.read_history(history, torch.tensor([[0.0, 0.0, 1.0]]))
+    assert missing.address.hit.tolist() == [True]
+    assert missing.history.present.tolist() == [[False]]
+
+    restored = ExternalTemporalAddressIndex.from_payload(index.payload())
+    assert restored.digest() == index.digest()
+    corrupted = index.payload()
+    corrupted_state = corrupted["state"]
+    assert isinstance(corrupted_state, dict)
+    corrupted_state["keys"] = corrupted_state["keys"].clone()
+    corrupted_state["keys"][0, 0] += 0.25
+    with pytest.raises(ValueError, match="checksum"):
+        ExternalTemporalAddressIndex.from_payload(corrupted)
+
+
+def test_runtime_external_address_keeps_misses_explicit_and_current_state_persistent() -> None:
+    controller = AmodalCognitiveController(
+        width=4,
+        workspace_slots=2,
+        intention_width=3,
+        feedback_width=2,
+        event_window_capacity=2,
+    )
+    runtime = AmodalControllerRuntime(
+        controller,
+        encoders={"stream": nn.Identity()},
+    )
+    history = ExternalTemporalHistoryMemory(width=4)
+    previous = torch.tensor([[1.0, 0.0, 0.0, 0.0]])
+    history.append(previous)
+    index = ExternalTemporalAddressIndex(
+        key_width=3,
+        read_match_threshold=0.9,
+    )
+    key = torch.tensor([[1.0, 0.0, 0.0]])
+    index.write(
+        key,
+        target_scopes=torch.zeros(1, dtype=torch.long),
+        target_positions=torch.zeros(1, dtype=torch.long),
+        strength=torch.ones(1),
+    )
+    feedback = _feedback(1, 2)
+    state = runtime.initial_state(1, device="cpu")
+    current = torch.tensor([[0.0, 1.0, 0.0, 0.0]])
+    _output, state, addressed, result = runtime.step_streams_with_external_address(
+        {"stream": current},
+        state,
+        feedback,
+        history,
+        index,
+        key,
+    )
+    assert addressed.address.hit.tolist() == [True]
+    assert result.read.present.tolist() == [[True]]
+    assert result.events.present.tolist() == [[True, True]]
+    assert torch.equal(result.events.payload[0, 0], previous[0])
+    assert torch.equal(result.events.payload[0, 1], current[0])
+    assert state.event_window.present.tolist() == [[True, False]]
+
+    miss_key = torch.tensor([[0.0, 0.0, 1.0]])
+    _output, _state, missed, miss_result = runtime.step_streams_with_external_address(
+        {"stream": current},
+        state,
+        feedback,
+        history,
+        index,
+        miss_key,
+        append_history=False,
+    )
+    assert missed.address.hit.tolist() == [False]
+    assert missed.history.present.tolist() == [[False]]
+    assert miss_result.events.present.tolist() == [[False, True]]
+    assert torch.equal(miss_result.events.payload[0, 0], torch.zeros(4))
+    assert torch.equal(miss_result.events.payload[0, 1], current[0])
 
 
 def test_external_temporal_memory_contract_probe_passes(tmp_path) -> None:

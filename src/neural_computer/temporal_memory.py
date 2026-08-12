@@ -1,10 +1,10 @@
 """Append-only temporal history owned by external memory.
 
 The controller and external programs exchange learned event tensors.  This
-module stores those tensors as scoped, append-only records and exposes only a
-generic relative-offset read.  Sequence positions, scope IDs, and physical
-record indices remain memory-side state; no task name, modality, or verifier
-target is represented in the contract.
+module stores those tensors as scoped, append-only records and exposes generic
+relative-offset and stable-position reads.  Sequence positions, scope IDs,
+and physical record indices remain memory-side state; no task name, modality,
+or verifier target is represented in the contract.
 """
 
 from __future__ import annotations
@@ -224,9 +224,10 @@ class ExternalTemporalHistoryMemory(nn.Module):
 
     ``append`` assigns an internal monotonic position per scope.  After an
     append, ``read_relative(offsets)`` interprets offset zero as the newest
-    present record, offset one as the preceding record, and so on.  Missing
-    history is represented by ``present=False`` rather than fabricated zero
-    evidence.  The store grows by appending records and never resizes any
+    present record, offset one as the preceding record, and so on, while
+    ``read_positions(positions)`` addresses stable absolute positions.
+    Missing history is represented by ``present=False`` rather than fabricated
+    zero evidence.  The store grows by appending records and never resizes any
     controller or learned adapter.
     """
 
@@ -297,7 +298,7 @@ class ExternalTemporalHistoryMemory(nn.Module):
                 if self.metadata
                 else "append_only_scoped_temporal_records_v1"
             ),
-            "addressing": "opaque_relative_offset_v1",
+            "addressing": "opaque_relative_offsets_and_absolute_positions_v1",
             "missing_history": "explicit_present_mask_v1",
         }
 
@@ -763,6 +764,101 @@ class ExternalTemporalHistoryMemory(nn.Module):
         )
 
     @torch.no_grad()
+    def read_positions(
+        self,
+        positions: torch.Tensor,
+        *,
+        scope: torch.Tensor | None = None,
+    ) -> ExternalTemporalHistoryRead:
+        """Read stable absolute positions within each opaque scope."""
+
+        if positions.ndim != 2 or positions.dtype is not torch.long:
+            raise ValueError("temporal history positions must be int64 [batch, query]")
+        if bool(torch.any(positions < 0)):
+            raise ValueError("temporal history positions cannot be negative")
+        batch, query_count = positions.shape
+        scope_ids = self._scope_ids(scope, batch, device=self.values.device)
+        positions = positions.to(device=self.values.device)
+        values = torch.zeros(
+            batch,
+            query_count,
+            self.width,
+            device=self.values.device,
+            dtype=self.values.dtype,
+        )
+        present = torch.zeros(
+            batch, query_count, dtype=torch.bool, device=self.values.device
+        )
+        resolved_positions = torch.full(
+            (batch, query_count), -1, dtype=torch.long, device=self.values.device
+        )
+        if self.metadata:
+            confidences = torch.zeros(
+                batch,
+                query_count,
+                device=self.values.device,
+                dtype=self.values.dtype,
+            )
+            source_keys = torch.zeros(
+                batch,
+                query_count,
+                self.source_key_width,
+                device=self.values.device,
+                dtype=self.values.dtype,
+            )
+            timestamps = torch.zeros_like(confidences)
+            timestamp_present = torch.zeros(
+                batch, query_count, dtype=torch.bool, device=self.values.device
+            )
+            durations = torch.zeros_like(confidences)
+            duration_present = torch.zeros(
+                batch, query_count, dtype=torch.bool, device=self.values.device
+            )
+        for row, scope_id in enumerate(scope_ids.tolist()):
+            record_indices = torch.nonzero(
+                self.occupied & (self.scopes == scope_id), as_tuple=False
+            ).reshape(-1)
+            if not record_indices.numel():
+                continue
+            row_positions = self.positions[record_indices]
+            for query_index, target in enumerate(positions[row].tolist()):
+                matches = torch.nonzero(
+                    row_positions == int(target), as_tuple=False
+                ).reshape(-1)
+                if not matches.numel():
+                    continue
+                record_index = record_indices[int(matches[0].item())]
+                values[row, query_index] = self.values[record_index]
+                present[row, query_index] = True
+                resolved_positions[row, query_index] = int(target)
+                if self.metadata:
+                    confidences[row, query_index] = self.confidences[record_index]
+                    source_keys[row, query_index] = self.source_keys[record_index]
+                    timestamps[row, query_index] = self.timestamps[record_index]
+                    timestamp_present[row, query_index] = self.timestamp_present[
+                        record_index
+                    ]
+                    durations[row, query_index] = self.durations[record_index]
+                    duration_present[row, query_index] = self.duration_present[
+                        record_index
+                    ]
+        return ExternalTemporalHistoryRead(
+            values=values,
+            present=present,
+            positions=resolved_positions,
+            confidence=confidences if self.metadata else None,
+            source_key=source_keys if self.metadata else None,
+            timestamp=timestamps if self.metadata else None,
+            timestamp_present=timestamp_present if self.metadata else None,
+            duration=durations if self.metadata else None,
+            duration_present=duration_present if self.metadata else None,
+        ).validate(
+            width=self.width,
+            batch=batch,
+            query_count=query_count,
+        )
+
+    @torch.no_grad()
     def clear(self, scope: torch.Tensor | None = None) -> None:
         """Clear all records or only the selected opaque scopes."""
 
@@ -910,6 +1006,7 @@ class ExternalTemporalHistoryEventBridge(nn.Module):
         *,
         scope: torch.Tensor | None = None,
         append_current: bool = True,
+        _read_override: ExternalTemporalHistoryRead | None = None,
     ) -> ExternalTemporalHistoryEventBridgeResult:
         if not isinstance(collection, AmodalEventCollection):
             raise TypeError("temporal history bridge needs an event collection")
@@ -948,7 +1045,11 @@ class ExternalTemporalHistoryEventBridge(nn.Module):
         # This read intentionally precedes every append below.  A query for
         # offset zero therefore means the most recent prior record, never the
         # current input being processed on this tick.
-        read = history.read_relative(offsets, scope=scope)
+        read = (
+            history.read_relative(offsets, scope=scope)
+            if _read_override is None
+            else _read_override.validate(width=self.event_width, batch=batch)
+        )
         read_values = read.values.to(
             device=collection.payload.device,
             dtype=collection.payload.dtype,
@@ -1126,3 +1227,37 @@ class ExternalTemporalHistoryEventBridge(nn.Module):
             read=read,
             appends=tuple(appends),
         ).validate(width=self.event_width, batch=batch)
+
+    @torch.no_grad()
+    def augment_from_read(
+        self,
+        collection: AmodalEventCollection,
+        history: ExternalTemporalHistoryMemory,
+        read: ExternalTemporalHistoryRead,
+        *,
+        scope: torch.Tensor | None = None,
+        append_current: bool = True,
+    ) -> ExternalTemporalHistoryEventBridgeResult:
+        """Augment from a validated external read without re-addressing it.
+
+        Content-addressed memory can resolve a stable history position through
+        a replaceable index.  This entry point preserves that read exactly and
+        lets the bridge append current events without converting the stable
+        position back into a shifting relative offset.
+        """
+
+        if not isinstance(read, ExternalTemporalHistoryRead):
+            raise TypeError("temporal history bridge read must use the history ABI")
+        if read.values.ndim != 3:
+            raise ValueError("temporal history bridge read must be [batch, query, width]")
+        placeholder_offsets = torch.zeros(
+            read.values.shape[:2], dtype=torch.long, device=read.values.device
+        )
+        return self.augment(
+            collection,
+            history,
+            placeholder_offsets,
+            scope=scope,
+            append_current=append_current,
+            _read_override=read,
+        )

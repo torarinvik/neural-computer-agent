@@ -89,6 +89,10 @@ from .representation import (
     REPRESENTATION_SPACE_SCHEMA,
     validate_representation_space_id,
 )
+from .temporal_index import (
+    ExternalTemporalAddressedRead,
+    ExternalTemporalAddressIndex,
+)
 from .temporal_memory import (
     ExternalTemporalHistoryEventBridge,
     ExternalTemporalHistoryEventBridgeResult,
@@ -1018,6 +1022,79 @@ class AmodalControllerRuntime(nn.Module):
             memory_scope=memory_scope,
         )
         return output, next_state, augmented
+
+    def step_streams_with_external_address(
+        self,
+        streams: Mapping[str, torch.Tensor | AmodalEvent],
+        state: ControllerState,
+        feedback: ControllerFeedback,
+        history: ExternalTemporalHistoryMemory,
+        address_index: ExternalTemporalAddressIndex,
+        address_keys: torch.Tensor,
+        *,
+        address_scope: torch.Tensor | None = None,
+        append_history: bool = True,
+        elapsed: torch.Tensor | float = 1.0,
+        batch_size: int | None = None,
+        device: torch.device | str | None = None,
+        dtype: torch.dtype = torch.float32,
+        disable_workspace: bool = False,
+        memory_scope: torch.Tensor | None = None,
+    ) -> tuple[
+        AmodalRuntimeOutput,
+        ControllerState,
+        ExternalTemporalAddressedRead,
+        ExternalTemporalHistoryEventBridgeResult,
+    ]:
+        """Run one cycle through an opaque external content address.
+
+        The address index and temporal history are independent external state.
+        A learned key selects one opaque history location; the controller sees
+        only the resulting event token and explicit missing-evidence mask. The
+        The bridge receives the index's already-resolved read directly, so an
+        index miss remains explicit and no shifting relative offset is used.
+        """
+
+        if not isinstance(history, ExternalTemporalHistoryMemory):
+            raise TypeError("external history must use the temporal history ABI")
+        if not isinstance(address_index, ExternalTemporalAddressIndex):
+            raise TypeError("external address index must use the temporal address ABI")
+        events = self.encode_streams(
+            streams,
+            batch_size=batch_size,
+            device=device,
+            dtype=dtype,
+        )
+        if address_keys.ndim != 2 or address_keys.shape[0] != events.payload.shape[0]:
+            raise ValueError("temporal address keys must match the stream batch")
+        if events.payload.shape[1] + 1 > self.controller.event_window_capacity:
+            raise ValueError(
+                "external address query exceeds the controller event-window capacity"
+            )
+        addressed = address_index.read_history(
+            history,
+            address_keys,
+            scope=address_scope,
+        )
+        target_scopes = addressed.address.target_scopes[:, 0].clamp_min(0)
+        bridge = ExternalTemporalHistoryEventBridge(self.event_width)
+        augmented = bridge.augment_from_read(
+            events,
+            history,
+            addressed.history,
+            scope=target_scopes,
+            append_current=append_history,
+        )
+        output, next_state = self.step_events(
+            augmented.events,
+            state,
+            feedback,
+            persistent_events=events,
+            elapsed=elapsed,
+            disable_workspace=disable_workspace,
+            memory_scope=memory_scope,
+        )
+        return output, next_state, addressed, augmented
 
     def initial_state(
         self,

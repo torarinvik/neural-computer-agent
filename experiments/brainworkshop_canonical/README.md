@@ -898,6 +898,22 @@ capability experiment must train the offset selector from scalar outcomes.
 Evidence is archived in
 `session_records/brainworkshop_external_temporal_memory_contract_2026-08-12/`.
 
+## Stable external temporal address-index contract (2026-08-12)
+
+`ExternalTemporalAddressIndex` now provides the canonical content-addressed
+extension. It maps a learned opaque query key to an opaque namespace and a
+stable absolute history position while keeping event payloads in the separate
+`ExternalTemporalHistoryMemory` file. Relative offsets were deliberately not
+used for this pointer: appending newer records would otherwise retarget older
+addresses.
+
+The focused ABI/runtime tests cover metadata preservation, explicit misses,
+out-of-range targets, checksum reload, corruption rejection, stable retrieval
+after appends, transient addressed context, and current-token persistence. This
+is a storage qualification only; no verifier bits, optimizer updates, replay,
+or learned-addressing claim is made. Evidence is archived in
+`session_records/brainworkshop_external_temporal_address_index_contract_2026-08-12/`.
+
 ## Canonical runtime history bridge (2026-08-12)
 
 The production runtime now exposes

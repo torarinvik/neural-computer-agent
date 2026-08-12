@@ -654,6 +654,15 @@ from .stream_binding import (
     ExternalStreamBindingResult,
     ExternalStreamBindingRetirementReceipt,
 )
+from .temporal_index import (
+    EXTERNAL_TEMPORAL_ADDRESS_INDEX_SCHEMA,
+    EXTERNAL_TEMPORAL_ADDRESS_READ_SCHEMA,
+    EXTERNAL_TEMPORAL_ADDRESS_WRITE_SCHEMA,
+    ExternalTemporalAddressedRead,
+    ExternalTemporalAddressIndex,
+    ExternalTemporalAddressRead,
+    ExternalTemporalAddressWriteReceipt,
+)
 from .temporal_memory import (
     EXTERNAL_TEMPORAL_HISTORY_APPEND_SCHEMA,
     EXTERNAL_TEMPORAL_HISTORY_EVENT_BRIDGE_SCHEMA,
@@ -944,6 +953,9 @@ __all__ = [
     "EXTERNAL_STREAM_BINDING_PROMOTION_SCHEMA",
     "EXTERNAL_STREAM_BINDING_REPLACEMENT_SCHEMA",
     "EXTERNAL_STREAM_BINDING_RETIREMENT_SCHEMA",
+    "EXTERNAL_TEMPORAL_ADDRESS_INDEX_SCHEMA",
+    "EXTERNAL_TEMPORAL_ADDRESS_READ_SCHEMA",
+    "EXTERNAL_TEMPORAL_ADDRESS_WRITE_SCHEMA",
     "EXTERNAL_TEMPORAL_HISTORY_APPEND_SCHEMA",
     "EXTERNAL_TEMPORAL_HISTORY_EVENT_BRIDGE_SCHEMA",
     "EXTERNAL_TEMPORAL_HISTORY_METADATA_SCHEMA",
@@ -1264,6 +1276,10 @@ __all__ = [
     "ExternalStreamBindingReplacementReceipt",
     "ExternalStreamBindingResult",
     "ExternalStreamBindingRetirementReceipt",
+    "ExternalTemporalAddressIndex",
+    "ExternalTemporalAddressRead",
+    "ExternalTemporalAddressWriteReceipt",
+    "ExternalTemporalAddressedRead",
     "ExternalTemporalHistoryAppendReceipt",
     "ExternalTemporalHistoryEventBridge",
     "ExternalTemporalHistoryEventBridgeResult",

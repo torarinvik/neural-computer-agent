@@ -1,0 +1,33 @@
+{
+  "schema": "neural-computer.brainworkshop-external-temporal-address-index-contract.v1",
+  "claim_boundary": "External opaque temporal address-index and runtime ABI qualification only; no learned addressing, learned capability gain, or general continual-learning claim.",
+  "architecture": {
+    "address_index": "external_temporal_address_index_v2",
+    "history": "external_temporal_history_memory_v2",
+    "location": "opaque_scope_plus_absolute_position",
+    "missing_address": "explicit_hit_false_and_present_false",
+    "controller_parameters_touched": false,
+    "controller_persistent_context": "current_event_tokens_only"
+  },
+  "focused_tests": 6,
+  "full_suite_tests": 865,
+  "gates": {
+    "metadata_preserving_read": true,
+    "explicit_address_miss": true,
+    "out_of_range_target_is_absent": true,
+    "stable_after_new_appends": true,
+    "payload_reload_exact": true,
+    "corrupted_payload_rejected": true,
+    "runtime_miss_stays_absent": true,
+    "current_token_persists": true,
+    "zero_replayed_examples": true
+  },
+  "accounting": {
+    "unique_verifier_bits": 0,
+    "unique_logical_lifetimes": 0,
+    "optimizer_updates": 0,
+    "replayed_examples": 0,
+    "controller_updates": 0
+  },
+  "status": "promoted_storage_and_runtime_contract"
+}

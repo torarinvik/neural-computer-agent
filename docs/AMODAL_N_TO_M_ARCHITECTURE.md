@@ -11102,3 +11102,26 @@ historical confidence from presence; v2 preserves event metadata explicitly.
 Offset selection remains external caller/trainer state. Learned
 query-conditioned addressing, compression, and unrestricted memory growth
 remain open promotion targets.
+
+### Canonical opaque temporal address index
+
+`ExternalTemporalAddressIndex` adds the missing replaceable content-address
+boundary without putting physical memory coordinates into the controller. It
+maps a learned opaque query key to an opaque index namespace and a stable
+`(target_scope, target_position)` location. The target position is absolute
+within the append-only history scope; using a relative offset here would shift
+old records whenever newer events arrived and would make learned addresses
+silently incorrect.
+
+`AmodalControllerRuntime.step_streams_with_external_address()` resolves the
+index first, reads the external history at that stable location, and gives the
+bridge the resolved read directly. A miss remains an explicit `hit=False`
+result with `-1` location fields and `present=False` history evidence. Current
+tokens still enter the controller's persistent event window while addressed
+history remains transient processing context. The index and history have
+independent versioned payloads and checksums, so either can be replaced or
+reloaded without resizing the controller. This is a storage and interface
+qualification; learned query discovery, compression, and general continual
+learning still require causal outcome-only promotion experiments.
+The storage/runtime qualification is archived in
+`session_records/brainworkshop_external_temporal_address_index_contract_2026-08-12/`.
