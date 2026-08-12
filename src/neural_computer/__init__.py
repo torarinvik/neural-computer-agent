@@ -105,6 +105,7 @@ from .control_flow_search import (
     ControlFlowOutcomeSearch,
     ControlFlowProposal,
     ControlFlowSearchState,
+    iter_control_flow_programs,
 )
 from .controller import (
     CONTROLLER_STATE_SCHEMA,
@@ -1469,6 +1470,7 @@ __all__ = [
     "failure_gated_candidate_scores",
     "failure_gated_view_scores",
     "freeze_core",
+    "iter_control_flow_programs",
     "load_growth_artifact",
     "load_runtime_components",
     "paired_counterfactual_advantage",

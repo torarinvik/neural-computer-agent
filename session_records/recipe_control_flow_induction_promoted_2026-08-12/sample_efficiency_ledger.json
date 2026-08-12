@@ -1,0 +1,29 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment_id": "recipe-control-flow-induction-2026-08-12",
+  "status": "promoted_bounded_from_scratch_control_flow",
+  "source": "in_repository_run",
+  "seeds": [17, 18, 19, 20],
+  "input_orders": ["forward", "reversed"],
+  "finite_candidate_space": 13824,
+  "checked_candidates_per_seed_and_order": [36, 36, 36, 36, 36, 36, 36, 36],
+  "unique_verifier_bits_per_seed_and_order": [288, 288, 288, 288, 288, 288, 288, 288],
+  "unique_logical_lifetimes_per_seed_and_order": [36, 36, 36, 36, 36, 36, 36, 36],
+  "stable_bits_to_threshold_per_seed_and_order": [288, 288, 288, 288, 288, 288, 288, 288],
+  "optimizer_updates_per_seed_and_order": [0, 0, 0, 0, 0, 0, 0, 0],
+  "replayed_examples_per_seed_and_order": [0, 0, 0, 0, 0, 0, 0, 0],
+  "heldout_accuracy_per_seed_and_order": [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+  "controls": {
+    "from_scratch_no_source_scaffold": true,
+    "finite_search_certified_target_found": true,
+    "protected_source_retained": true,
+    "exact_reload": true,
+    "missing_evidence_no_write": true,
+    "shuffled_feedback_rejected": true,
+    "corruption_rejected": true,
+    "budget_exhaustion_distinguished_from_inexpressible": true,
+    "zero_replayed_examples": true,
+    "zero_optimizer_updates": true
+  },
+  "claim_boundary": "Promoted bounded from-scratch loop induction in a finite generic control-flow search space; not efficient arbitrary program synthesis, unrestricted execution, or general continual learning."
+}

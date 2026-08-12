@@ -6,14 +6,41 @@ import hashlib
 import math
 from collections.abc import Sequence
 from dataclasses import dataclass
+from itertools import product
 
 import torch
 
-from .control_flow import ControlFlowProgram
+from .control_flow import ControlFlowInstruction, ControlFlowProgram
 
 CONTROL_FLOW_SEARCH_SCHEMA = "neural-computer.external-control-flow-search.v1"
 CONTROL_FLOW_PROPOSAL_SCHEMA = "neural-computer.external-control-flow-proposal.v1"
 CONTROL_FLOW_MUTATION_OPERATORS = ("replace_instruction", "swap_instructions")
+
+
+def iter_control_flow_programs(
+    *,
+    counter_count: int,
+    min_length: int = 1,
+    max_length: int,
+):
+    """Enumerate a finite generic program space without target knowledge.
+
+    The final instruction is always ``HALT``.  All earlier positions range
+    over the generic counter/jump basis, including every in-range target.
+    Callers must treat an interrupted iterator as budget exhaustion rather than
+    as proof that a target is inexpressible.
+    """
+
+    if counter_count < 2 or min_length < 1 or max_length < min_length:
+        raise ValueError("control-flow enumeration bounds are invalid")
+    for length in range(min_length, max_length + 1):
+        atoms = ControlFlowOutcomeSearch._generic_instructions(
+            counter_count=counter_count,
+            program_length=length,
+        )
+        halt = ControlFlowInstruction("halt")
+        for prefix in product(atoms, repeat=length - 1):
+            yield ControlFlowProgram(counter_count, (*prefix, halt)).validate()
 
 
 def _scoped_digest(scope: str, digest: str) -> str:
@@ -187,9 +214,7 @@ class ControlFlowOutcomeSearch:
     @staticmethod
     def _generic_instructions(
         *, counter_count: int, program_length: int
-    ) -> tuple[object, ...]:
-        from .control_flow import ControlFlowInstruction
-
+    ) -> tuple[ControlFlowInstruction, ...]:
         instructions: list[ControlFlowInstruction] = []
         for counter in range(counter_count):
             instructions.extend(
@@ -362,4 +387,5 @@ __all__ = [
     "ControlFlowOutcomeSearch",
     "ControlFlowProposal",
     "ControlFlowSearchState",
+    "iter_control_flow_programs",
 ]

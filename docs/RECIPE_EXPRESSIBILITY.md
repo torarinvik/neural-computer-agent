@@ -188,6 +188,25 @@ external-file growth boundary, not unrestricted program induction or general
 continual learning. Evidence is archived in
 `session_records/recipe_control_flow_growth_promoted_2026-08-12/`.
 
+## Bounded from-scratch control-flow induction
+
+The next audit removes the executable source scaffold. A generic finite
+enumerator searches all four-instruction programs over the two-counter basis,
+while the verifier privately checks a loop that clears an opaque counter. The
+search receives only scalar exact-match outcomes and admits an equivalent
+program into the external file memory; it does not need to recover the
+verifier's canonical instruction sequence. Across four seeds and both input
+orders it reaches `1.0000` held-out and reload accuracy, retains a protected
+straight-line source file, and rejects missing evidence, shuffled feedback,
+and corruption. A ten-candidate cut-off reports `budget_exhausted`, proving
+that a budget stop is not mislabeled as `inexpressible`.
+
+This is the first bounded from-scratch loop-induction result, but it is still
+finite enumeration over one short program length. It does not establish
+efficient arbitrary program synthesis, unrestricted execution, or general
+continual learning. Evidence is archived in
+`session_records/recipe_control_flow_induction_promoted_2026-08-12/`.
+
 ## Outcome-only external recipe files and scope isolation
 
 The recipe basis now has a versioned external-file bridge:

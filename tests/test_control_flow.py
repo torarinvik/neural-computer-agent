@@ -8,6 +8,7 @@ from neural_computer import (
     ControlFlowOutcomeSearch,
     ControlFlowProgram,
     ControlFlowProgramMemory,
+    iter_control_flow_programs,
 )
 
 
@@ -139,5 +140,27 @@ def test_control_flow_growth_promotes_loop_file_with_reversed_input_order() -> N
     assert all(
         bool(item["gates"]["missing_evidence_no_write"])
         and bool(item["gates"]["reward_shuffled_rejected"])
+        for item in report["reports"]
+    )
+
+
+def test_control_flow_program_enumerator_has_a_certifiable_finite_bound() -> None:
+    programs = tuple(
+        iter_control_flow_programs(counter_count=2, min_length=1, max_length=1)
+    )
+
+    assert len(programs) == 1
+    assert programs[0].instructions[-1].op == "halt"
+
+
+def test_control_flow_induction_promotes_from_scratch_loop_search() -> None:
+    from experiments.recipe_expressibility.control_flow_program_induction import run
+
+    report = run((17,))
+
+    assert report["promoted"]
+    assert all(
+        item["search"]["status"] == "expressible"
+        and item["gates"]["budget_exhaustion_is_not_inexpressible"]
         for item in report["reports"]
     )
