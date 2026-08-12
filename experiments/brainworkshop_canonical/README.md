@@ -1330,3 +1330,22 @@ This promotes scalable archive retrieval and integrity, not 1,024 learned
 capabilities, semantic compression, or general continual learning. Evidence is
 archived at
 `session_records/brainworkshop_external_temporal_archive_scale_reversal_promoted_2026-08-12/`.
+
+## Episodic executable-artifact reactivation (2026-08-12)
+
+`episodic_artifact_reactivation.py` connects the growable episodic archive to
+the existing opaque external executable-file bank. A learned context/signature
+lookup returns only an artifact digest; a separate held-out execution probe
+must verify the staged hot-bank replacement before the index commits it.
+
+Across seeds 24101 and 24102, four cold executable artifacts were interleaved
+through a two-slot hot cache. A protected artifact survived every swap, two
+cold artifacts were reactivated, an old artifact was revisited without replay,
+missing and corrupt handles were rejected, and the shared interpreter stayed
+byte-identical. Failed and mutating retention probes left the episodic index
+unchanged. Online optimizer updates and replayed examples were zero.
+
+This promotes a bounded replay-free reactivation contract for external
+capability files. It does not establish unrestricted memory growth, automatic
+new computation, or general continual learning. Evidence is archived at
+`session_records/brainworkshop_episodic_artifact_reactivation_promoted_2026-08-12/`.

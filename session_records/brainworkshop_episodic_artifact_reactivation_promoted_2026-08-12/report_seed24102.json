@@ -1,0 +1,104 @@
+{
+  "schema": "neural-computer.brainworkshop-episodic-artifact-reactivation.v1",
+  "claim_boundary": "bounded replay-free reactivation of opaque executable capability files through a verifier-gated episodic index with a frozen shared interpreter; not unrestricted memory growth or general continual learning",
+  "seed": 24102,
+  "configuration": {
+    "artifact_count": 4,
+    "hot_active_slots": 2,
+    "held_out_registers": 64,
+    "execution_tolerance": 1e-06,
+    "online_inputs": [
+      "learned context/signature keys",
+      "opaque artifact handles",
+      "scalar verifier outcomes"
+    ]
+  },
+  "interpreter_final_loss": 6.742871845187744e-15,
+  "initial_handles": [
+    "61f8fb064fb64a2ed7287f1cd1b654b716c8615adff276536705d902f5bb896a",
+    "0330349ed83c9ff9cb760ad32ad54e24973eccf02000ce32ef14c0207d703856",
+    "39b9966bc20593785f9b286dd39046c153e28ba6ad715cd5b685a91974e35a79",
+    "03f168e685516e65ab0c632b21b66e1185c47429a94fe3ebfe4a4af5c4eed491"
+  ],
+  "final_active_binding_ids": [
+    0,
+    1
+  ],
+  "final_active_handles": [
+    "61f8fb064fb64a2ed7287f1cd1b654b716c8615adff276536705d902f5bb896a",
+    "0330349ed83c9ff9cb760ad32ad54e24973eccf02000ce32ef14c0207d703856"
+  ],
+  "receipts": {
+    "protected": {
+      "accepted": false,
+      "binding_id": 2,
+      "slot": 0,
+      "artifact_handle": "39b9966bc20593785f9b286dd39046c153e28ba6ad715cd5b685a91974e35a79",
+      "source_version": 9,
+      "destination_version": 9,
+      "reason": "protected active binding cannot be displaced",
+      "schema": "neural-computer.episodic-artifact-activation.v1"
+    },
+    "failed": {
+      "accepted": false,
+      "binding_id": 2,
+      "slot": 1,
+      "artifact_handle": "39b9966bc20593785f9b286dd39046c153e28ba6ad715cd5b685a91974e35a79",
+      "source_version": 9,
+      "destination_version": 9,
+      "reason": "held-out retention probe failed",
+      "schema": "neural-computer.episodic-artifact-activation.v1"
+    },
+    "mutating": {
+      "accepted": false,
+      "binding_id": 2,
+      "slot": 1,
+      "artifact_handle": "39b9966bc20593785f9b286dd39046c153e28ba6ad715cd5b685a91974e35a79",
+      "source_version": 9,
+      "destination_version": 9,
+      "reason": "retention probe mutated the candidate",
+      "schema": "neural-computer.episodic-artifact-activation.v1"
+    },
+    "missing": {
+      "accepted": false,
+      "binding_id": 4,
+      "slot": 1,
+      "artifact_handle": "missing-external-artifact",
+      "source_version": 12,
+      "destination_version": 12,
+      "reason": "held-out retention probe failed",
+      "schema": "neural-computer.episodic-artifact-activation.v1"
+    }
+  },
+  "probe_accounting": {
+    "reactivation": 384,
+    "runtime": 128
+  },
+  "gates": {
+    "protected_resident_rejected_without_write": true,
+    "failed_probe_rejected_without_write": true,
+    "mutating_probe_rejected_without_write": true,
+    "cold_artifact_reactivated": true,
+    "old_artifact_revisited_without_replay": true,
+    "protected_artifact_survived_all_swaps": true,
+    "missing_artifact_rejected_without_write": true,
+    "active_hot_bank_executes_expected_files": true,
+    "index_and_executable_memory_round_trip": true,
+    "corrupted_index_rejected": true,
+    "shared_interpreter_frozen": true,
+    "zero_online_optimizer_updates": true,
+    "zero_replayed_examples": true
+  },
+  "promoted": true,
+  "accounting": {
+    "unique_verifier_bits": 512,
+    "unique_logical_lifetimes": 5,
+    "optimizer_updates": 500,
+    "online_optimizer_updates": 0,
+    "replayed_examples": 0,
+    "latency_seconds": 0.7690179999917746,
+    "stable_bits_to_threshold": null,
+    "retention_on_mastered_primitives": 1.0,
+    "transfer_ratio_against_fresh": null
+  }
+}

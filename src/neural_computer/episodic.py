@@ -16,7 +16,7 @@ import hashlib
 import json
 import os
 import tempfile
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -62,6 +62,43 @@ class EpisodicBindingLookup:
     binding_id: int | None
     similarity: float
     active_slot: int | None
+
+
+@dataclass(frozen=True)
+class EpisodicArtifactBindingLookup:
+    """Signature lookup plus an opaque external capability-file handle."""
+
+    binding_id: int | None
+    artifact_handle: str | None
+    similarity: float
+    active_slot: int | None
+
+
+@dataclass(frozen=True)
+class EpisodicArtifactActivationReceipt:
+    """Verifier-gated result for reactivating one external capability handle."""
+
+    accepted: bool
+    binding_id: int
+    slot: int
+    artifact_handle: str
+    source_version: int
+    destination_version: int
+    reason: str
+    schema: str = "neural-computer.episodic-artifact-activation.v1"
+
+    def validate(self) -> EpisodicArtifactActivationReceipt:
+        if self.schema != "neural-computer.episodic-artifact-activation.v1":
+            raise ValueError("unsupported episodic artifact activation schema")
+        if self.binding_id < 0 or self.slot < 0:
+            raise ValueError("episodic artifact activation identifiers are invalid")
+        if not self.artifact_handle:
+            raise ValueError("episodic artifact activation handle is empty")
+        if self.source_version < 0 or self.destination_version < 0:
+            raise ValueError("episodic artifact activation versions are invalid")
+        if not self.reason:
+            raise ValueError("episodic artifact activation reason is empty")
+        return self
 
 
 @dataclass(frozen=True)
@@ -222,6 +259,10 @@ class EpisodicBindingArchive:
     @property
     def record_count(self) -> int:
         return len(self._context_keys)
+
+    @property
+    def version(self) -> int:
+        return self._version
 
     def configuration(self) -> dict[str, int | float | str]:
         return {
@@ -855,6 +896,7 @@ class EpisodicBindingArchive:
             raise ValueError("episodic binding archive snapshot checksum mismatch")
         self._load_tensor_state(normalized)
 
+
     @classmethod
     def from_payload(cls, payload: Mapping[str, object]) -> EpisodicBindingArchive:
         """Restore a validated archive snapshot without controller state."""
@@ -986,6 +1028,277 @@ class EpisodicBindingArchive:
             raise ValueError("episodic binding archive version is invalid")
         return archive
 
+
+class EpisodicBindingArtifactIndex:
+    """Bind episodic records to independently owned opaque capability files.
+
+    The index is intentionally a coordinator, not an executor.  It stores a
+    stable external handle such as a content digest or logical file ID beside
+    the episodic archive record.  A caller may use the returned reactivation
+    request to load an executable artifact, fast-weight state, or another
+    replaceable memory object from its own backend.  No file payload, task
+    label, modality identity, or device protocol crosses this boundary.
+    """
+
+    schema = "neural-computer.episodic-binding-artifact-index.v1"
+
+    def __init__(self, archive: EpisodicBindingArchive) -> None:
+        if not isinstance(archive, EpisodicBindingArchive):
+            raise TypeError("episodic artifact index needs an episodic archive")
+        self.archive = archive
+        self._artifact_handles: list[str | None] = []
+
+    @classmethod
+    def create(
+        cls,
+        context_width: int,
+        signature_width: int,
+        *,
+        active_slots: int,
+        matching_threshold: float = 0.85,
+        prior_strength: float = 1.0,
+        mastery_threshold: float = 0.8,
+        min_mastery_observations: int = 8,
+        reversal_threshold: float = 0.5,
+        reversal_patience: int = 4,
+    ) -> EpisodicBindingArtifactIndex:
+        return cls(
+            EpisodicBindingArchive(
+                context_width,
+                signature_width,
+                active_slots=active_slots,
+                matching_threshold=matching_threshold,
+                prior_strength=prior_strength,
+                mastery_threshold=mastery_threshold,
+                min_mastery_observations=min_mastery_observations,
+                reversal_threshold=reversal_threshold,
+                reversal_patience=reversal_patience,
+            )
+        )
+
+    @property
+    def record_count(self) -> int:
+        return self.archive.record_count
+
+    @property
+    def active_binding_ids(self) -> tuple[int | None, ...]:
+        return self.archive.active_binding_ids
+
+    def configuration(self) -> dict[str, object]:
+        return {
+            "schema": self.schema,
+            "archive": self.archive.configuration(),
+            "state": "opaque_handle_index_over_external_capability_files_v1",
+        }
+
+    @staticmethod
+    def _validate_handle(handle: str) -> str:
+        if not isinstance(handle, str) or not handle:
+            raise ValueError("episodic artifact handle must be a non-empty string")
+        if len(handle) > 4096:
+            raise ValueError("episodic artifact handle is too long")
+        return handle
+
+    def artifact_handle(self, binding_id: int) -> str | None:
+        self.archive._validate_binding_id(binding_id)
+        return self._artifact_handles[binding_id]
+
+    def register(
+        self,
+        context_key: torch.Tensor,
+        signature_key: torch.Tensor,
+        artifact_handle: str,
+    ) -> int:
+        """Append or identify one binding and attach its opaque file handle."""
+
+        handle = self._validate_handle(artifact_handle)
+        before = self.archive.record_count
+        binding_id = self.archive.register(context_key, signature_key)
+        if self.archive.record_count > before:
+            self._artifact_handles.append(handle)
+        elif self._artifact_handles[binding_id] not in (None, handle):
+            raise ValueError("episodic binding already has a different artifact handle")
+        elif self._artifact_handles[binding_id] is None:
+            self._artifact_handles[binding_id] = handle
+        return binding_id
+
+    def lookup(self, signature_key: torch.Tensor) -> EpisodicArtifactBindingLookup:
+        result = self.archive.lookup(signature_key)
+        return EpisodicArtifactBindingLookup(
+            binding_id=result.binding_id,
+            artifact_handle=(
+                None
+                if result.binding_id is None
+                else self.artifact_handle(result.binding_id)
+            ),
+            similarity=result.similarity,
+            active_slot=result.active_slot,
+        )
+
+    def lookup_many(
+        self,
+        signature_keys: torch.Tensor,
+    ) -> tuple[EpisodicArtifactBindingLookup, ...]:
+        return tuple(
+            EpisodicArtifactBindingLookup(
+                binding_id=result.binding_id,
+                artifact_handle=(
+                    None
+                    if result.binding_id is None
+                    else self.artifact_handle(result.binding_id)
+                ),
+                similarity=result.similarity,
+                active_slot=result.active_slot,
+            )
+            for result in self.archive.lookup_many(signature_keys)
+        )
+
+    def activate(
+        self,
+        binding_id: int,
+        slot: int,
+    ) -> EpisodicArtifactBindingLookup:
+        """Mark a file resident and return the request needed to load it."""
+
+        self.archive._validate_binding_id(binding_id)
+        handle = self.artifact_handle(binding_id)
+        if handle is None:
+            raise ValueError("episodic binding has no artifact handle")
+        self.archive.activate(binding_id, slot)
+        return EpisodicArtifactBindingLookup(
+            binding_id=binding_id,
+            artifact_handle=handle,
+            similarity=1.0,
+            active_slot=slot,
+        )
+
+    def deactivate(self, slot: int) -> int | None:
+        return self.archive.deactivate(slot)
+
+    def reactivate_verified(
+        self,
+        binding_id: int,
+        slot: int,
+        retention_probe: Callable[[EpisodicBindingArtifactIndex], bool],
+    ) -> EpisodicArtifactActivationReceipt:
+        """Reactivate a handle only after a non-mutating held-out proof.
+
+        The candidate archive is copy-on-write.  A protected resident cannot
+        be displaced, a failed probe leaves the live index unchanged, and a
+        probe that mutates its candidate is rejected.  The callback may
+        resolve the opaque handle through an independent executable-memory
+        backend, but it cannot smuggle that backend into the controller.
+        """
+
+        self.archive._validate_binding_id(binding_id)
+        self.archive._validate_slot(slot)
+        if not callable(retention_probe):
+            raise TypeError("episodic artifact activation retention probe is invalid")
+        handle = self.artifact_handle(binding_id)
+        if handle is None:
+            raise ValueError("episodic binding has no artifact handle")
+        source_version = self.archive.version
+        displaced = self.archive.active_binding(slot)
+        if (
+            displaced is not None
+            and displaced != binding_id
+            and self.archive.is_protected(displaced)
+        ):
+            return EpisodicArtifactActivationReceipt(
+                accepted=False,
+                binding_id=binding_id,
+                slot=slot,
+                artifact_handle=handle,
+                source_version=source_version,
+                destination_version=source_version,
+                reason="protected active binding cannot be displaced",
+            ).validate()
+        candidate = EpisodicBindingArtifactIndex.from_payload(self.payload())
+        candidate.archive.activate(binding_id, slot)
+        candidate_payload = candidate.payload()
+        accepted = bool(retention_probe(candidate))
+        probe_unchanged = candidate.payload() == candidate_payload
+        if not accepted or not probe_unchanged:
+            reason = (
+                "retention probe mutated the candidate"
+                if not probe_unchanged
+                else "held-out retention probe failed"
+            )
+            return EpisodicArtifactActivationReceipt(
+                accepted=False,
+                binding_id=binding_id,
+                slot=slot,
+                artifact_handle=handle,
+                source_version=source_version,
+                destination_version=source_version,
+                reason=reason,
+            ).validate()
+        self.archive = candidate.archive
+        self._artifact_handles = candidate._artifact_handles
+        return EpisodicArtifactActivationReceipt(
+            accepted=True,
+            binding_id=binding_id,
+            slot=slot,
+            artifact_handle=handle,
+            source_version=source_version,
+            destination_version=self.archive.version,
+            reason="held-out retention probe passed",
+        ).validate()
+
+    @staticmethod
+    def _payload_checksum(payload: Mapping[str, object]) -> str:
+        body = dict(payload)
+        body.pop("checksum", None)
+        canonical = json.dumps(
+            body,
+            sort_keys=True,
+            separators=(",", ":"),
+            allow_nan=False,
+        )
+        return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+    def payload(self) -> dict[str, object]:
+        """Serialize the index and nested archive with one outer checksum."""
+
+        payload: dict[str, object] = {
+            "schema": self.schema,
+            "configuration": self.configuration(),
+            "archive": self.archive.payload(),
+            "artifact_handles": list(self._artifact_handles),
+        }
+        payload["checksum"] = self._payload_checksum(payload)
+        return payload
+
+    @classmethod
+    def from_payload(
+        cls,
+        payload: Mapping[str, object],
+    ) -> EpisodicBindingArtifactIndex:
+        if payload.get("schema") != cls.schema:
+            raise ValueError("episodic artifact index schema is incompatible")
+        checksum = payload.get("checksum")
+        if not isinstance(checksum, str) or checksum != cls._payload_checksum(payload):
+            raise ValueError("episodic artifact index checksum mismatch")
+        archive_payload = payload.get("archive")
+        handles = payload.get("artifact_handles")
+        if not isinstance(archive_payload, Mapping):
+            raise TypeError("episodic artifact index archive is invalid")
+        if not isinstance(handles, list):
+            raise TypeError("episodic artifact index handles must be a list")
+        archive = EpisodicBindingArchive.from_payload(archive_payload)
+        if len(handles) != archive.record_count:
+            raise ValueError("episodic artifact index handles do not align")
+        index = cls(archive)
+        index._artifact_handles = [
+            None if handle is None else cls._validate_handle(handle)
+            for handle in handles
+        ]
+        if any(handle is None for handle in index._artifact_handles):
+            raise ValueError("episodic artifact index records need artifact handles")
+        configuration = payload.get("configuration")
+        if configuration != index.configuration():
+            raise ValueError("episodic artifact index configuration mismatch")
+        return index
 
 class EpisodicCreditHead(nn.Module):
     """Replaceable event-credit state for one external capability."""

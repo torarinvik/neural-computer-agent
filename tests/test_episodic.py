@@ -13,6 +13,7 @@ from neural_computer import (
     AdaptiveOnlineEpisodicRelationReader,
     AppendOnlyLearnedComputeCandidateScreen,
     EpisodicBindingArchive,
+    EpisodicBindingArtifactIndex,
     EpisodicBindingRouter,
     EpisodicContextEncoder,
     EpisodicCreditHead,
@@ -163,6 +164,95 @@ def test_episodic_binding_archive_compact_snapshot_round_trip_and_corruption() -
         torch.save(corrupted, path)
         with pytest.raises(ValueError, match="checksum"):
             restored.load_snapshot(path)
+
+
+def test_episodic_binding_artifact_index_reactivates_opaque_file_handles() -> None:
+    index = EpisodicBindingArtifactIndex.create(
+        context_width=3,
+        signature_width=4,
+        active_slots=2,
+        matching_threshold=0.9,
+    )
+    contexts = torch.eye(3)
+    signatures = torch.eye(4)[:3]
+    handles = ("sha256:artifact-a", "logical-file-b", "opaque-file-c")
+    binding_ids = [
+        index.register(context, signature, handle)
+        for context, signature, handle in zip(contexts, signatures, handles, strict=True)
+    ]
+    index.activate(binding_ids[0], 0)
+    index.activate(binding_ids[1], 1)
+    lookup_c = index.lookup(signatures[2])
+    assert lookup_c.binding_id == binding_ids[2]
+    assert lookup_c.artifact_handle == handles[2]
+    assert lookup_c.active_slot is None
+    request = index.activate(binding_ids[2], 1)
+    assert request.artifact_handle == handles[2]
+    assert request.active_slot == 1
+    assert index.lookup(signatures[1]).active_slot is None
+
+    restored = EpisodicBindingArtifactIndex.from_payload(index.payload())
+    assert restored.lookup(signatures[2]) == index.lookup(signatures[2])
+    assert restored.active_binding_ids == index.active_binding_ids
+    corrupted = index.payload()
+    corrupted["artifact_handles"] = list(corrupted["artifact_handles"])
+    corrupted["artifact_handles"][0] = "sha256:tampered"
+    with pytest.raises(ValueError, match="checksum"):
+        EpisodicBindingArtifactIndex.from_payload(corrupted)
+
+
+def test_episodic_artifact_reactivation_is_retention_gated_and_copy_on_write() -> None:
+    index = EpisodicBindingArtifactIndex.create(
+        context_width=3,
+        signature_width=4,
+        active_slots=2,
+        min_mastery_observations=1,
+    )
+    keys = torch.eye(3)
+    signatures = torch.eye(4)[:3]
+    handles = ("file-a", "file-b", "file-c")
+    binding_ids = [
+        index.register(context, signature, handle)
+        for context, signature, handle in zip(keys, signatures, handles, strict=True)
+    ]
+    index.activate(binding_ids[0], 0)
+    index.activate(binding_ids[1], 1)
+    index.archive.observe(binding_ids[0], 1.0, step=0)
+    before = index.payload()
+
+    protected = index.reactivate_verified(binding_ids[2], 0, lambda _: True)
+    assert not protected.accepted
+    assert "protected" in protected.reason
+    assert index.payload() == before
+
+    failed = index.reactivate_verified(binding_ids[2], 1, lambda _: False)
+    assert not failed.accepted
+    assert failed.reason == "held-out retention probe failed"
+    assert index.payload() == before
+
+    mutated = index.reactivate_verified(
+        binding_ids[2],
+        1,
+        lambda candidate: (
+            candidate.archive.observe(binding_ids[2], 1.0, step=1) or True
+        ),
+    )
+    assert not mutated.accepted
+    assert "mutated" in mutated.reason
+    assert index.payload() == before
+
+    accepted = index.reactivate_verified(
+        binding_ids[2],
+        1,
+        lambda candidate: (
+            candidate.lookup(signatures[2]).artifact_handle == handles[2]
+        ),
+    )
+    assert accepted.accepted
+    assert accepted.destination_version > accepted.source_version
+    assert index.lookup(signatures[2]).active_slot == 1
+    assert index.lookup(signatures[1]).active_slot is None
+    assert index.lookup(signatures[0]).active_slot == 0
 
 
 def test_episodic_context_encoder_masks_padding_and_normalizes_context() -> None:

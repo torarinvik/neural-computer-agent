@@ -10824,3 +10824,28 @@ about 166 KB while preserving retrieval and checksum rejection; this is
 representation compaction, not semantic learned compression. Evidence and
 accounting are archived at
 `session_records/brainworkshop_external_temporal_archive_scale_reversal_promoted_2026-08-12/`.
+
+## Episodic executable-artifact reactivation (2026-08-12)
+
+The archive-to-capability seam is now explicit. `EpisodicBindingArtifactIndex`
+stores one opaque external artifact handle per immutable episodic
+context/signature record; it does not own executable tensors or interpret
+them. `reactivate_verified()` stages a candidate active residency through
+copy-on-write, refuses to displace a protected resident, and commits only
+when a caller-owned held-out retention probe passes without mutating the
+candidate. The external program memory remains independently versioned and
+replaceable.
+
+`episodic_artifact_reactivation.py` exercised this seam with four cold
+executable artifacts and a two-slot hot cache across seeds 24101 and 24102.
+Both seeds reactivated two cold artifacts, revisited an old artifact after
+multiple swaps without replay, preserved a protected artifact, rejected
+failed/mutating/missing/corrupt candidates without write, passed index and
+executable-memory reload, and kept the shared interpreter byte-identical.
+Online optimizer updates and replayed examples were zero; the audit charged
+512 held-out verifier bits per seed.
+
+This promotes bounded replay-free reactivation of external capability files,
+not unrestricted memory growth, automatic synthesis of new computation, or
+general continual learning. Evidence and accounting are archived at
+`session_records/brainworkshop_episodic_artifact_reactivation_promoted_2026-08-12/`.

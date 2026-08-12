@@ -18,6 +18,9 @@ from experiments.brainworkshop_canonical.cross_family_rule_growth import (
     run as run_cross_family_rule_growth,
 )
 from experiments.brainworkshop_canonical.environment import NBackVerifierStep
+from experiments.brainworkshop_canonical.episodic_artifact_reactivation import (
+    run as run_episodic_artifact_reactivation,
+)
 from experiments.brainworkshop_canonical.external_compute_growth import (
     run as run_external_compute_growth,
 )
@@ -54,6 +57,16 @@ from neural_computer import (
     ExternalWorkingMemoryCell,
     RetentionPolicyConfig,
 )
+
+
+def test_episodic_artifact_reactivation_smoke(tmp_path) -> None:
+    report = run_episodic_artifact_reactivation(
+        seed=24101,
+        report_out=tmp_path / "episodic-artifact-reactivation.json",
+    )
+    assert report["promoted"] is True
+    assert report["gates"]["old_artifact_revisited_without_replay"] is True
+    assert report["gates"]["missing_artifact_rejected_without_write"] is True
 
 
 def test_nback_verifier_hides_target_and_scores_only_after_warmup() -> None:
