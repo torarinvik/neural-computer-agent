@@ -9922,7 +9922,22 @@ even though the prediction was right, which is worth separating.
   deliberate so the number could not be improved by tuning it.
 * **One-step transitions only.** Nothing here is planning or control.
 
-Two seeds, third running. The margins agree to three decimal places
-across seeds (+0.3395, +0.3411), which is unusually tight for this
-project and is the main reason to expect the third to land in the same
-place rather than to assume it.
+**Third seed landed, and the replication is the tightest this project
+has produced.**
+
+| seed | interpreter | rule margin | grid margin | grid held-out |
+| --- | ---: | ---: | ---: | ---: |
+| 69316 | 0.9700 | +0.4099 | +0.3395 | 0.9852 |
+| 69317 | 0.9823 | +0.5895 | +0.3407 | 0.9804 |
+| 69318 | 0.9954 | +0.4598 | +0.3411 | 0.9805 |
+
+Grid margin **+0.3404 with sd 0.0007**; grid held-out **0.9820 with sd
+0.0022**; **above floor in 12 of 12 game-seeds**. For comparison, the
+forward-transfer result that took six seeds to establish (F190) had a
+cost-ratio sd of 0.128 — two orders of magnitude looser. Three seeds
+agreeing to the fourth decimal is not the usual situation here and it
+is worth saying so explicitly rather than treating tightness as
+routine.
+
+The control passed on every seed, so at no point was this read out of a
+regime that could not measure it.
