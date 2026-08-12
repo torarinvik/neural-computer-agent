@@ -32,19 +32,30 @@ TRAIN_STATES = tuple(state for state in ALL_STATES if sum(state) % 2 == 0)
 HELDOUT_STATES = tuple(state for state in ALL_STATES if sum(state) % 2 == 1)
 TARGET_THRESHOLD = 1.0
 MAX_PROPOSALS = 512
+RECURSIVE_VARIANTS = ("independent_tail", "noncommuting_chain")
+POLICY_PROFILES = ("legacy", "orientation_invariant")
 
 
 def _program(*instructions: RecipeInstruction) -> RecipeProgram:
     return RecipeProgram(SLOT_VALUES, instructions)
 
 
-def _sources() -> tuple[RecipeProgram, ...]:
-    return (
-        _program(RecipeInstruction("inc", 0, modulus=2)),
-        _program(RecipeInstruction("cinc", 1, 0, modulus=4)),
-        _program(RecipeInstruction("inc", 2, modulus=8)),
-        _program(RecipeInstruction("cdec", 2, 1, modulus=8)),
-    )
+def _sources(variant: str = "independent_tail") -> tuple[RecipeProgram, ...]:
+    if variant == "independent_tail":
+        return (
+            _program(RecipeInstruction("inc", 0, modulus=2)),
+            _program(RecipeInstruction("cinc", 1, 0, modulus=4)),
+            _program(RecipeInstruction("inc", 2, modulus=8)),
+            _program(RecipeInstruction("cdec", 2, 1, modulus=8)),
+        )
+    if variant == "noncommuting_chain":
+        return (
+            _program(RecipeInstruction("inc", 0, modulus=2)),
+            _program(RecipeInstruction("cinc", 1, 0, modulus=4)),
+            _program(RecipeInstruction("cinc", 2, 1, modulus=8)),
+            _program(RecipeInstruction("cdec", 0, 2, modulus=2)),
+        )
+    raise ValueError(f"unknown recursive composition variant: {variant!r}")
 
 
 def _serial(left: RecipeProgram, right: RecipeProgram) -> RecipeProgram:
@@ -79,7 +90,10 @@ def _accuracy(
     return float(_scores(candidate, reference, states).mean().item())
 
 
-def _policy() -> OpaqueContextRecipeCompositionMemory:
+def _policy(profile: str = "legacy") -> OpaqueContextRecipeCompositionMemory:
+    if profile not in POLICY_PROFILES:
+        raise ValueError(f"unknown composition policy profile: {profile!r}")
+    orientation_invariant = profile == "orientation_invariant"
     return OpaqueContextRecipeCompositionMemory(
         exploration_floor=0.05,
         shared_prior_weight=0.25,
@@ -89,9 +103,13 @@ def _policy() -> OpaqueContextRecipeCompositionMemory:
         mode_weight=0.5,
         left_depth_weight=0.75,
         right_depth_weight=0.75,
-        # A generic composite-left/atomic-right shape is the reusable
-        # recursive-growth prior.  It does not identify any task or opcode.
+        # The legacy profile preserves the earlier promoted diagnostic.  The
+        # orientation-invariant profile additionally scores canonical shape
+        # factors so the parent may occupy either operand.
         shape_weight=8.0,
+        canonical_shape_weight=8.0 if orientation_invariant else 0.0,
+        canonical_depth_weight=0.25 if orientation_invariant else 0.0,
+        depth_span_weight=0.25 if orientation_invariant else 0.0,
         temperature=0.05,
     )
 
@@ -170,8 +188,13 @@ def _search_until(
     }
 
 
-def _run_seed(seed: int) -> dict[str, object]:
-    sources = _sources()
+def _run_seed(
+    seed: int,
+    *,
+    variant: str = "independent_tail",
+    policy_profile: str = "legacy",
+) -> dict[str, object]:
+    sources = _sources(variant)
     depth2, depth3, depth4 = _targets(sources)
     memory = ExternalRecipeCompositionMemory(SLOT_VALUES)
     source_receipts = tuple(_admit_atomic(memory, source) for source in sources)
@@ -179,7 +202,7 @@ def _run_seed(seed: int) -> dict[str, object]:
         raise RuntimeError("an atomic source was not admitted")
     source_slots = tuple(int(receipt.slot) for receipt in source_receipts)
 
-    policy = _policy()
+    policy = _policy(policy_profile)
     depth_results: dict[str, dict[str, object]] = {}
     depth_slots: dict[str, int] = {}
     for index, (name, target) in enumerate(
@@ -260,7 +283,7 @@ def _run_seed(seed: int) -> dict[str, object]:
     fresh_search = OutcomeOnlyRecipeCompositionSearch(
         pre_depth4_memory,
         max_program_length=4,
-        policy=_policy(),
+        policy=_policy(policy_profile),
     )
     _, fresh_result = _search_until(
         fresh_search,
@@ -272,7 +295,7 @@ def _run_seed(seed: int) -> dict[str, object]:
     shuffled_search = OutcomeOnlyRecipeCompositionSearch(
         pre_depth4_memory,
         max_program_length=4,
-        policy=_policy(),
+        policy=_policy(policy_profile),
     )
     _, shuffled_result = _search_until(
         shuffled_search,
@@ -396,7 +419,12 @@ def _run_seed(seed: int) -> dict[str, object]:
             "training_states": len(TRAIN_STATES),
             "heldout_states": len(HELDOUT_STATES),
             "max_depth": 4,
+            "variant": variant,
+            "policy_profile": policy_profile,
             "policy_shape_weight": 8.0,
+            "policy_canonical_shape_weight": (
+                8.0 if policy_profile == "orientation_invariant" else 0.0
+            ),
             "learner_inputs": [
                 "opaque_composition_candidate",
                 "opaque_source_digests",
@@ -466,8 +494,20 @@ def _run_seed(seed: int) -> dict[str, object]:
     }
 
 
-def run(seeds: tuple[int, ...] = (17, 18)) -> dict[str, object]:
-    reports = tuple(_run_seed(seed) for seed in seeds)
+def run(
+    seeds: tuple[int, ...] = (17, 18),
+    *,
+    variant: str = "independent_tail",
+    policy_profile: str = "legacy",
+) -> dict[str, object]:
+    if variant not in RECURSIVE_VARIANTS:
+        raise ValueError(f"unknown recursive composition variant: {variant!r}")
+    if policy_profile not in POLICY_PROFILES:
+        raise ValueError(f"unknown composition policy profile: {policy_profile!r}")
+    reports = tuple(
+        _run_seed(seed, variant=variant, policy_profile=policy_profile)
+        for seed in seeds
+    )
     return {
         "schema": "neural-computer.verified-recursive-recipe-composition-growth.v1",
         "claim_boundary": (
@@ -476,6 +516,8 @@ def run(seeds: tuple[int, ...] = (17, 18)) -> dict[str, object]:
             "not arbitrary program induction or general continual learning"
         ),
         "seeds": list(seeds),
+        "variant": variant,
+        "policy_profile": policy_profile,
         "reports": reports,
         "promoted": all(bool(report["promoted"]) for report in reports),
     }
@@ -485,9 +527,15 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--report-out", type=Path, required=True)
     parser.add_argument("--seeds", type=int, nargs="+", default=[17, 18])
+    parser.add_argument("--variant", choices=RECURSIVE_VARIANTS, default="independent_tail")
+    parser.add_argument("--policy-profile", choices=POLICY_PROFILES, default="legacy")
     args = parser.parse_args()
     started = time.perf_counter()
-    report = run(tuple(args.seeds))
+    report = run(
+        tuple(args.seeds),
+        variant=args.variant,
+        policy_profile=args.policy_profile,
+    )
     report["wall_seconds"] = time.perf_counter() - started
     args.report_out.parent.mkdir(parents=True, exist_ok=True)
     args.report_out.write_text(json.dumps(report, indent=2) + "\n")

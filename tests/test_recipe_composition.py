@@ -225,3 +225,74 @@ def test_composition_policy_migrates_legacy_factor_only_payload() -> None:
     ).hexdigest()
     migrated = OpaqueContextRecipeCompositionMemory.from_payload(legacy)
     assert migrated.proposal_probabilities("context", (factors,))[0] > 0.0
+
+
+def test_recursive_shape_credit_is_orientation_invariant() -> None:
+    left_composite = RecipeProgramCompositionStructure(2, 1, True, False)
+    right_composite = RecipeProgramCompositionStructure(1, 2, False, True)
+
+    assert left_composite.canonical_shape_key() == "atomic+composite"
+    assert right_composite.canonical_shape_key() == "atomic+composite"
+    assert left_composite.canonical_depth_key() == "1:2"
+    assert right_composite.canonical_depth_key() == "1:2"
+    assert left_composite.depth_span_key() == right_composite.depth_span_key() == "1"
+
+
+def test_composition_policy_migrates_v2_shape_payload() -> None:
+    policy = OpaqueContextRecipeCompositionMemory()
+    factors = RecipeProgramCompositionFactors("0" * 64, "1" * 64, "append")
+    structure = RecipeProgramCompositionStructure(2, 1, True, False)
+    policy.record("context", factors, 1.0, structure=structure)
+    current = policy.payload()
+    old_factor_types = (
+        "left",
+        "right",
+        "mode",
+        "left_depth",
+        "right_depth",
+        "left_shape",
+        "right_shape",
+    )
+    v2_configuration = {
+        key: value
+        for key, value in current["configuration"].items()
+        if key
+        in {
+            "schema",
+            "exploration_floor",
+            "shared_prior_weight",
+            "exploration_bonus",
+            "left_weight",
+            "right_weight",
+            "mode_weight",
+            "left_depth_weight",
+            "right_depth_weight",
+            "shape_weight",
+            "temperature",
+            "context",
+        }
+    }
+    v2_configuration["credit"] = "scalar_composition_factor_and_shape_aggregate_v2"
+
+    def v2_stats(stats: dict[str, dict[str, list[float]]]) -> dict[str, object]:
+        return {factor_type: stats[factor_type] for factor_type in old_factor_types}
+
+    v2 = {
+        "schema": current["schema"],
+        "configuration": v2_configuration,
+        "shared": v2_stats(current["shared"]),
+        "contexts": {
+            context: v2_stats(stats)
+            for context, stats in current["contexts"].items()
+        },
+    }
+    v2["sha256"] = hashlib.sha256(
+        json.dumps(v2, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+
+    migrated = OpaqueContextRecipeCompositionMemory.from_payload(v2)
+    assert (
+        migrated.configuration()["credit"]
+        == "scalar_composition_factor_and_shape_profile_aggregate_v3"
+    )
+    assert migrated.proposal_probabilities("context", (factors,), (structure,))[0] > 0.0

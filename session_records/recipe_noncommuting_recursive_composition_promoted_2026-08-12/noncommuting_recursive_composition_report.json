@@ -1,0 +1,848 @@
+{
+  "schema": "neural-computer.verified-recursive-recipe-composition-growth.v1",
+  "claim_boundary": "bounded replay-free verifier-gated recursive growth through a depth-four external recipe file with generic structural credit; not arbitrary program induction or general continual learning",
+  "seeds": [
+    17,
+    18,
+    19,
+    20
+  ],
+  "variant": "noncommuting_chain",
+  "policy_profile": "orientation_invariant",
+  "reports": [
+    {
+      "seed": 17,
+      "configuration": {
+        "slot_values": [
+          2,
+          4,
+          8
+        ],
+        "all_states": 64,
+        "training_states": 32,
+        "heldout_states": 32,
+        "max_depth": 4,
+        "variant": "noncommuting_chain",
+        "policy_profile": "orientation_invariant",
+        "policy_shape_weight": 8.0,
+        "policy_canonical_shape_weight": 8.0,
+        "learner_inputs": [
+          "opaque_composition_candidate",
+          "opaque_source_digests",
+          "opaque_composition_mode",
+          "opaque_recursive_source_shape",
+          "deterministic_scalar_verifier_outcome"
+        ]
+      },
+      "searches": {
+        "depth2": {
+          "accepted": true,
+          "proposals": 8,
+          "quality": 1.0,
+          "unique_verifier_bits": 256,
+          "wall_seconds": 0.006273000035434961,
+          "candidate_digest": "558e0f9434409273c46fe3b7cde1348175fe7a1bc490179219b81ab5ac311b5f",
+          "structure": {
+            "schema": "neural-computer.recipe-composition-structure.v1",
+            "left_depth": 1,
+            "right_depth": 1,
+            "left_composite": false,
+            "right_composite": false
+          }
+        },
+        "depth3": {
+          "accepted": true,
+          "proposals": 12,
+          "quality": 1.0,
+          "unique_verifier_bits": 384,
+          "wall_seconds": 0.014279625029303133,
+          "candidate_digest": "485040965c7fcfa39b896a631cf8620c276a54e3935a70f83851195bef9ab424",
+          "structure": {
+            "schema": "neural-computer.recipe-composition-structure.v1",
+            "left_depth": 2,
+            "right_depth": 1,
+            "left_composite": true,
+            "right_composite": false
+          }
+        },
+        "depth4_warm": {
+          "accepted": true,
+          "proposals": 7,
+          "quality": 1.0,
+          "unique_verifier_bits": 224,
+          "wall_seconds": 0.011432458995841444,
+          "candidate_digest": "2bd52e892ebf975660aaec749e5afca7853651bd40059aa53c0a7a70fb8ed863",
+          "structure": {
+            "schema": "neural-computer.recipe-composition-structure.v1",
+            "left_depth": 3,
+            "right_depth": 1,
+            "left_composite": true,
+            "right_composite": false
+          }
+        },
+        "depth4_fresh": {
+          "accepted": true,
+          "proposals": 8,
+          "quality": 1.0,
+          "unique_verifier_bits": 256,
+          "wall_seconds": 0.012435832992196083
+        },
+        "shuffled": {
+          "accepted": false,
+          "proposals": 26,
+          "quality": 0.5,
+          "unique_verifier_bits": 832,
+          "wall_seconds": 0.03452941600698978
+        }
+      },
+      "metrics": {
+        "source_retention_minimum": 1.0,
+        "depth2_heldout_accuracy": 1.0,
+        "depth3_heldout_accuracy": 1.0,
+        "depth4_heldout_accuracy": 1.0,
+        "wrong_depth2_accuracy": 0.0,
+        "wrong_depth4_accuracy": 0.0625,
+        "warm_depth4_to_fresh_ratio": 0.875,
+        "composition_file_count": 7
+      },
+      "admissions": {
+        "sources": [
+          {
+            "schema": "neural-computer.external-recipe-program-admission.v1",
+            "accepted": true,
+            "candidate_digest": "1a3b1c8c53648bd46c48c2ab49aa21c8ee71a8a332f0029439db2cc3b5dfe727",
+            "slot": 0,
+            "observations": 64,
+            "stable_bits_to_threshold": 1,
+            "stable_prefix_minimum": 1.0,
+            "reason": "candidate verified and committed as an external recipe file"
+          },
+          {
+            "schema": "neural-computer.external-recipe-program-admission.v1",
+            "accepted": true,
+            "candidate_digest": "5eb3dca327743d99914d63a8b7d532bdca6c8f7d708cb4fa9f4c060a6b77ae9d",
+            "slot": 1,
+            "observations": 64,
+            "stable_bits_to_threshold": 1,
+            "stable_prefix_minimum": 1.0,
+            "reason": "candidate verified and committed as an external recipe file"
+          },
+          {
+            "schema": "neural-computer.external-recipe-program-admission.v1",
+            "accepted": true,
+            "candidate_digest": "94996b31ae5c557297612cb6b82601b0435aa43d4702f1f06e625c0951bbee07",
+            "slot": 2,
+            "observations": 64,
+            "stable_bits_to_threshold": 1,
+            "stable_prefix_minimum": 1.0,
+            "reason": "candidate verified and committed as an external recipe file"
+          },
+          {
+            "schema": "neural-computer.external-recipe-program-admission.v1",
+            "accepted": true,
+            "candidate_digest": "c2b9f30ae2bb8d55ea1d5bd4b1e04aed29aafdb482f2080f09aa19631e9747a4",
+            "slot": 3,
+            "observations": 64,
+            "stable_bits_to_threshold": 1,
+            "stable_prefix_minimum": 1.0,
+            "reason": "candidate verified and committed as an external recipe file"
+          }
+        ],
+        "depth4": {
+          "schema": "neural-computer.external-recipe-program-admission.v1",
+          "accepted": true,
+          "candidate_digest": "2bd52e892ebf975660aaec749e5afca7853651bd40059aa53c0a7a70fb8ed863",
+          "slot": 6,
+          "observations": 64,
+          "stable_bits_to_threshold": 1,
+          "stable_prefix_minimum": 1.0,
+          "reason": "candidate verified and committed as an external recipe file"
+        },
+        "missing_evidence": {
+          "schema": "neural-computer.external-recipe-program-admission.v1",
+          "accepted": false,
+          "candidate_digest": "bd6e08b4a51f81de0e12671bf86dfa780656ccd0a093a7e4d9ec341860c45f73",
+          "slot": null,
+          "observations": 0,
+          "stable_bits_to_threshold": null,
+          "stable_prefix_minimum": null,
+          "reason": "no verifier outcomes"
+        }
+      },
+      "provenance": {
+        "depth2": {
+          "schema": "neural-computer.recipe-composition-factors.v1",
+          "left_digest": "1a3b1c8c53648bd46c48c2ab49aa21c8ee71a8a332f0029439db2cc3b5dfe727",
+          "right_digest": "5eb3dca327743d99914d63a8b7d532bdca6c8f7d708cb4fa9f4c060a6b77ae9d",
+          "mode": "append"
+        },
+        "depth3": {
+          "schema": "neural-computer.recipe-composition-factors.v1",
+          "left_digest": "558e0f9434409273c46fe3b7cde1348175fe7a1bc490179219b81ab5ac311b5f",
+          "right_digest": "94996b31ae5c557297612cb6b82601b0435aa43d4702f1f06e625c0951bbee07",
+          "mode": "append"
+        },
+        "depth4": {
+          "schema": "neural-computer.recipe-composition-factors.v1",
+          "left_digest": "485040965c7fcfa39b896a631cf8620c276a54e3935a70f83851195bef9ab424",
+          "right_digest": "c2b9f30ae2bb8d55ea1d5bd4b1e04aed29aafdb482f2080f09aa19631e9747a4",
+          "mode": "append"
+        }
+      },
+      "gates": {
+        "atomic_sources_admitted": true,
+        "atomic_sources_protected": true,
+        "depth2_mastery": true,
+        "depth3_mastery": true,
+        "depth4_mastery": true,
+        "complete_prefix_retention": true,
+        "recursive_depths": true,
+        "depth2_provenance": true,
+        "depth3_provenance": true,
+        "depth4_provenance": true,
+        "wrong_depth2_rejected": true,
+        "wrong_depth4_rejected": true,
+        "missing_evidence_noop": true,
+        "shuffled_feedback_rejected": true,
+        "memory_persistence_exact": true,
+        "policy_persistence_exact": true,
+        "zero_replayed_examples": true,
+        "zero_controller_optimizer_updates": true
+      },
+      "promoted": true,
+      "accounting": {
+        "unique_verifier_bits": 2208,
+        "unique_logical_lifetimes": 317,
+        "optimizer_updates": 0,
+        "replayed_examples": 0,
+        "wall_seconds": 0.0789503330597654
+      }
+    },
+    {
+      "seed": 18,
+      "configuration": {
+        "slot_values": [
+          2,
+          4,
+          8
+        ],
+        "all_states": 64,
+        "training_states": 32,
+        "heldout_states": 32,
+        "max_depth": 4,
+        "variant": "noncommuting_chain",
+        "policy_profile": "orientation_invariant",
+        "policy_shape_weight": 8.0,
+        "policy_canonical_shape_weight": 8.0,
+        "learner_inputs": [
+          "opaque_composition_candidate",
+          "opaque_source_digests",
+          "opaque_composition_mode",
+          "opaque_recursive_source_shape",
+          "deterministic_scalar_verifier_outcome"
+        ]
+      },
+      "searches": {
+        "depth2": {
+          "accepted": true,
+          "proposals": 5,
+          "quality": 1.0,
+          "unique_verifier_bits": 160,
+          "wall_seconds": 0.003124792012386024,
+          "candidate_digest": "558e0f9434409273c46fe3b7cde1348175fe7a1bc490179219b81ab5ac311b5f",
+          "structure": {
+            "schema": "neural-computer.recipe-composition-structure.v1",
+            "left_depth": 1,
+            "right_depth": 1,
+            "left_composite": false,
+            "right_composite": false
+          }
+        },
+        "depth3": {
+          "accepted": true,
+          "proposals": 18,
+          "quality": 1.0,
+          "unique_verifier_bits": 576,
+          "wall_seconds": 0.019883207976818085,
+          "candidate_digest": "485040965c7fcfa39b896a631cf8620c276a54e3935a70f83851195bef9ab424",
+          "structure": {
+            "schema": "neural-computer.recipe-composition-structure.v1",
+            "left_depth": 2,
+            "right_depth": 1,
+            "left_composite": true,
+            "right_composite": false
+          }
+        },
+        "depth4_warm": {
+          "accepted": true,
+          "proposals": 16,
+          "quality": 1.0,
+          "unique_verifier_bits": 512,
+          "wall_seconds": 0.025648416951298714,
+          "candidate_digest": "2bd52e892ebf975660aaec749e5afca7853651bd40059aa53c0a7a70fb8ed863",
+          "structure": {
+            "schema": "neural-computer.recipe-composition-structure.v1",
+            "left_depth": 3,
+            "right_depth": 1,
+            "left_composite": true,
+            "right_composite": false
+          }
+        },
+        "depth4_fresh": {
+          "accepted": true,
+          "proposals": 19,
+          "quality": 1.0,
+          "unique_verifier_bits": 608,
+          "wall_seconds": 0.030348457978107035
+        },
+        "shuffled": {
+          "accepted": false,
+          "proposals": 26,
+          "quality": 0.5,
+          "unique_verifier_bits": 832,
+          "wall_seconds": 0.033602166920900345
+        }
+      },
+      "metrics": {
+        "source_retention_minimum": 1.0,
+        "depth2_heldout_accuracy": 1.0,
+        "depth3_heldout_accuracy": 1.0,
+        "depth4_heldout_accuracy": 1.0,
+        "wrong_depth2_accuracy": 0.0,
+        "wrong_depth4_accuracy": 0.0625,
+        "warm_depth4_to_fresh_ratio": 0.8421052631578947,
+        "composition_file_count": 7
+      },
+      "admissions": {
+        "sources": [
+          {
+            "schema": "neural-computer.external-recipe-program-admission.v1",
+            "accepted": true,
+            "candidate_digest": "1a3b1c8c53648bd46c48c2ab49aa21c8ee71a8a332f0029439db2cc3b5dfe727",
+            "slot": 0,
+            "observations": 64,
+            "stable_bits_to_threshold": 1,
+            "stable_prefix_minimum": 1.0,
+            "reason": "candidate verified and committed as an external recipe file"
+          },
+          {
+            "schema": "neural-computer.external-recipe-program-admission.v1",
+            "accepted": true,
+            "candidate_digest": "5eb3dca327743d99914d63a8b7d532bdca6c8f7d708cb4fa9f4c060a6b77ae9d",
+            "slot": 1,
+            "observations": 64,
+            "stable_bits_to_threshold": 1,
+            "stable_prefix_minimum": 1.0,
+            "reason": "candidate verified and committed as an external recipe file"
+          },
+          {
+            "schema": "neural-computer.external-recipe-program-admission.v1",
+            "accepted": true,
+            "candidate_digest": "94996b31ae5c557297612cb6b82601b0435aa43d4702f1f06e625c0951bbee07",
+            "slot": 2,
+            "observations": 64,
+            "stable_bits_to_threshold": 1,
+            "stable_prefix_minimum": 1.0,
+            "reason": "candidate verified and committed as an external recipe file"
+          },
+          {
+            "schema": "neural-computer.external-recipe-program-admission.v1",
+            "accepted": true,
+            "candidate_digest": "c2b9f30ae2bb8d55ea1d5bd4b1e04aed29aafdb482f2080f09aa19631e9747a4",
+            "slot": 3,
+            "observations": 64,
+            "stable_bits_to_threshold": 1,
+            "stable_prefix_minimum": 1.0,
+            "reason": "candidate verified and committed as an external recipe file"
+          }
+        ],
+        "depth4": {
+          "schema": "neural-computer.external-recipe-program-admission.v1",
+          "accepted": true,
+          "candidate_digest": "2bd52e892ebf975660aaec749e5afca7853651bd40059aa53c0a7a70fb8ed863",
+          "slot": 6,
+          "observations": 64,
+          "stable_bits_to_threshold": 1,
+          "stable_prefix_minimum": 1.0,
+          "reason": "candidate verified and committed as an external recipe file"
+        },
+        "missing_evidence": {
+          "schema": "neural-computer.external-recipe-program-admission.v1",
+          "accepted": false,
+          "candidate_digest": "bd6e08b4a51f81de0e12671bf86dfa780656ccd0a093a7e4d9ec341860c45f73",
+          "slot": null,
+          "observations": 0,
+          "stable_bits_to_threshold": null,
+          "stable_prefix_minimum": null,
+          "reason": "no verifier outcomes"
+        }
+      },
+      "provenance": {
+        "depth2": {
+          "schema": "neural-computer.recipe-composition-factors.v1",
+          "left_digest": "1a3b1c8c53648bd46c48c2ab49aa21c8ee71a8a332f0029439db2cc3b5dfe727",
+          "right_digest": "5eb3dca327743d99914d63a8b7d532bdca6c8f7d708cb4fa9f4c060a6b77ae9d",
+          "mode": "append"
+        },
+        "depth3": {
+          "schema": "neural-computer.recipe-composition-factors.v1",
+          "left_digest": "558e0f9434409273c46fe3b7cde1348175fe7a1bc490179219b81ab5ac311b5f",
+          "right_digest": "94996b31ae5c557297612cb6b82601b0435aa43d4702f1f06e625c0951bbee07",
+          "mode": "append"
+        },
+        "depth4": {
+          "schema": "neural-computer.recipe-composition-factors.v1",
+          "left_digest": "485040965c7fcfa39b896a631cf8620c276a54e3935a70f83851195bef9ab424",
+          "right_digest": "c2b9f30ae2bb8d55ea1d5bd4b1e04aed29aafdb482f2080f09aa19631e9747a4",
+          "mode": "append"
+        }
+      },
+      "gates": {
+        "atomic_sources_admitted": true,
+        "atomic_sources_protected": true,
+        "depth2_mastery": true,
+        "depth3_mastery": true,
+        "depth4_mastery": true,
+        "complete_prefix_retention": true,
+        "recursive_depths": true,
+        "depth2_provenance": true,
+        "depth3_provenance": true,
+        "depth4_provenance": true,
+        "wrong_depth2_rejected": true,
+        "wrong_depth4_rejected": true,
+        "missing_evidence_noop": true,
+        "shuffled_feedback_rejected": true,
+        "memory_persistence_exact": true,
+        "policy_persistence_exact": true,
+        "zero_replayed_examples": true,
+        "zero_controller_optimizer_updates": true
+      },
+      "promoted": true,
+      "accounting": {
+        "unique_verifier_bits": 2944,
+        "unique_logical_lifetimes": 340,
+        "optimizer_updates": 0,
+        "replayed_examples": 0,
+        "wall_seconds": 0.1126070418395102
+      }
+    },
+    {
+      "seed": 19,
+      "configuration": {
+        "slot_values": [
+          2,
+          4,
+          8
+        ],
+        "all_states": 64,
+        "training_states": 32,
+        "heldout_states": 32,
+        "max_depth": 4,
+        "variant": "noncommuting_chain",
+        "policy_profile": "orientation_invariant",
+        "policy_shape_weight": 8.0,
+        "policy_canonical_shape_weight": 8.0,
+        "learner_inputs": [
+          "opaque_composition_candidate",
+          "opaque_source_digests",
+          "opaque_composition_mode",
+          "opaque_recursive_source_shape",
+          "deterministic_scalar_verifier_outcome"
+        ]
+      },
+      "searches": {
+        "depth2": {
+          "accepted": true,
+          "proposals": 7,
+          "quality": 1.0,
+          "unique_verifier_bits": 224,
+          "wall_seconds": 0.004021500004455447,
+          "candidate_digest": "558e0f9434409273c46fe3b7cde1348175fe7a1bc490179219b81ab5ac311b5f",
+          "structure": {
+            "schema": "neural-computer.recipe-composition-structure.v1",
+            "left_depth": 1,
+            "right_depth": 1,
+            "left_composite": false,
+            "right_composite": false
+          }
+        },
+        "depth3": {
+          "accepted": true,
+          "proposals": 18,
+          "quality": 1.0,
+          "unique_verifier_bits": 576,
+          "wall_seconds": 0.01718654204159975,
+          "candidate_digest": "485040965c7fcfa39b896a631cf8620c276a54e3935a70f83851195bef9ab424",
+          "structure": {
+            "schema": "neural-computer.recipe-composition-structure.v1",
+            "left_depth": 2,
+            "right_depth": 1,
+            "left_composite": true,
+            "right_composite": false
+          }
+        },
+        "depth4_warm": {
+          "accepted": true,
+          "proposals": 15,
+          "quality": 1.0,
+          "unique_verifier_bits": 480,
+          "wall_seconds": 0.023293124977499247,
+          "candidate_digest": "2bd52e892ebf975660aaec749e5afca7853651bd40059aa53c0a7a70fb8ed863",
+          "structure": {
+            "schema": "neural-computer.recipe-composition-structure.v1",
+            "left_depth": 3,
+            "right_depth": 1,
+            "left_composite": true,
+            "right_composite": false
+          }
+        },
+        "depth4_fresh": {
+          "accepted": true,
+          "proposals": 5,
+          "quality": 1.0,
+          "unique_verifier_bits": 160,
+          "wall_seconds": 0.0077064590295776725
+        },
+        "shuffled": {
+          "accepted": false,
+          "proposals": 26,
+          "quality": 0.5,
+          "unique_verifier_bits": 832,
+          "wall_seconds": 0.03388170793186873
+        }
+      },
+      "metrics": {
+        "source_retention_minimum": 1.0,
+        "depth2_heldout_accuracy": 1.0,
+        "depth3_heldout_accuracy": 1.0,
+        "depth4_heldout_accuracy": 1.0,
+        "wrong_depth2_accuracy": 0.0,
+        "wrong_depth4_accuracy": 0.0625,
+        "warm_depth4_to_fresh_ratio": 3.0,
+        "composition_file_count": 7
+      },
+      "admissions": {
+        "sources": [
+          {
+            "schema": "neural-computer.external-recipe-program-admission.v1",
+            "accepted": true,
+            "candidate_digest": "1a3b1c8c53648bd46c48c2ab49aa21c8ee71a8a332f0029439db2cc3b5dfe727",
+            "slot": 0,
+            "observations": 64,
+            "stable_bits_to_threshold": 1,
+            "stable_prefix_minimum": 1.0,
+            "reason": "candidate verified and committed as an external recipe file"
+          },
+          {
+            "schema": "neural-computer.external-recipe-program-admission.v1",
+            "accepted": true,
+            "candidate_digest": "5eb3dca327743d99914d63a8b7d532bdca6c8f7d708cb4fa9f4c060a6b77ae9d",
+            "slot": 1,
+            "observations": 64,
+            "stable_bits_to_threshold": 1,
+            "stable_prefix_minimum": 1.0,
+            "reason": "candidate verified and committed as an external recipe file"
+          },
+          {
+            "schema": "neural-computer.external-recipe-program-admission.v1",
+            "accepted": true,
+            "candidate_digest": "94996b31ae5c557297612cb6b82601b0435aa43d4702f1f06e625c0951bbee07",
+            "slot": 2,
+            "observations": 64,
+            "stable_bits_to_threshold": 1,
+            "stable_prefix_minimum": 1.0,
+            "reason": "candidate verified and committed as an external recipe file"
+          },
+          {
+            "schema": "neural-computer.external-recipe-program-admission.v1",
+            "accepted": true,
+            "candidate_digest": "c2b9f30ae2bb8d55ea1d5bd4b1e04aed29aafdb482f2080f09aa19631e9747a4",
+            "slot": 3,
+            "observations": 64,
+            "stable_bits_to_threshold": 1,
+            "stable_prefix_minimum": 1.0,
+            "reason": "candidate verified and committed as an external recipe file"
+          }
+        ],
+        "depth4": {
+          "schema": "neural-computer.external-recipe-program-admission.v1",
+          "accepted": true,
+          "candidate_digest": "2bd52e892ebf975660aaec749e5afca7853651bd40059aa53c0a7a70fb8ed863",
+          "slot": 6,
+          "observations": 64,
+          "stable_bits_to_threshold": 1,
+          "stable_prefix_minimum": 1.0,
+          "reason": "candidate verified and committed as an external recipe file"
+        },
+        "missing_evidence": {
+          "schema": "neural-computer.external-recipe-program-admission.v1",
+          "accepted": false,
+          "candidate_digest": "bd6e08b4a51f81de0e12671bf86dfa780656ccd0a093a7e4d9ec341860c45f73",
+          "slot": null,
+          "observations": 0,
+          "stable_bits_to_threshold": null,
+          "stable_prefix_minimum": null,
+          "reason": "no verifier outcomes"
+        }
+      },
+      "provenance": {
+        "depth2": {
+          "schema": "neural-computer.recipe-composition-factors.v1",
+          "left_digest": "1a3b1c8c53648bd46c48c2ab49aa21c8ee71a8a332f0029439db2cc3b5dfe727",
+          "right_digest": "5eb3dca327743d99914d63a8b7d532bdca6c8f7d708cb4fa9f4c060a6b77ae9d",
+          "mode": "append"
+        },
+        "depth3": {
+          "schema": "neural-computer.recipe-composition-factors.v1",
+          "left_digest": "558e0f9434409273c46fe3b7cde1348175fe7a1bc490179219b81ab5ac311b5f",
+          "right_digest": "94996b31ae5c557297612cb6b82601b0435aa43d4702f1f06e625c0951bbee07",
+          "mode": "append"
+        },
+        "depth4": {
+          "schema": "neural-computer.recipe-composition-factors.v1",
+          "left_digest": "485040965c7fcfa39b896a631cf8620c276a54e3935a70f83851195bef9ab424",
+          "right_digest": "c2b9f30ae2bb8d55ea1d5bd4b1e04aed29aafdb482f2080f09aa19631e9747a4",
+          "mode": "append"
+        }
+      },
+      "gates": {
+        "atomic_sources_admitted": true,
+        "atomic_sources_protected": true,
+        "depth2_mastery": true,
+        "depth3_mastery": true,
+        "depth4_mastery": true,
+        "complete_prefix_retention": true,
+        "recursive_depths": true,
+        "depth2_provenance": true,
+        "depth3_provenance": true,
+        "depth4_provenance": true,
+        "wrong_depth2_rejected": true,
+        "wrong_depth4_rejected": true,
+        "missing_evidence_noop": true,
+        "shuffled_feedback_rejected": true,
+        "memory_persistence_exact": true,
+        "policy_persistence_exact": true,
+        "zero_replayed_examples": true,
+        "zero_controller_optimizer_updates": true
+      },
+      "promoted": true,
+      "accounting": {
+        "unique_verifier_bits": 2528,
+        "unique_logical_lifetimes": 327,
+        "optimizer_updates": 0,
+        "replayed_examples": 0,
+        "wall_seconds": 0.08608933398500085
+      }
+    },
+    {
+      "seed": 20,
+      "configuration": {
+        "slot_values": [
+          2,
+          4,
+          8
+        ],
+        "all_states": 64,
+        "training_states": 32,
+        "heldout_states": 32,
+        "max_depth": 4,
+        "variant": "noncommuting_chain",
+        "policy_profile": "orientation_invariant",
+        "policy_shape_weight": 8.0,
+        "policy_canonical_shape_weight": 8.0,
+        "learner_inputs": [
+          "opaque_composition_candidate",
+          "opaque_source_digests",
+          "opaque_composition_mode",
+          "opaque_recursive_source_shape",
+          "deterministic_scalar_verifier_outcome"
+        ]
+      },
+      "searches": {
+        "depth2": {
+          "accepted": true,
+          "proposals": 9,
+          "quality": 1.0,
+          "unique_verifier_bits": 288,
+          "wall_seconds": 0.005084333010017872,
+          "candidate_digest": "558e0f9434409273c46fe3b7cde1348175fe7a1bc490179219b81ab5ac311b5f",
+          "structure": {
+            "schema": "neural-computer.recipe-composition-structure.v1",
+            "left_depth": 1,
+            "right_depth": 1,
+            "left_composite": false,
+            "right_composite": false
+          }
+        },
+        "depth3": {
+          "accepted": true,
+          "proposals": 15,
+          "quality": 1.0,
+          "unique_verifier_bits": 480,
+          "wall_seconds": 0.013642458012327552,
+          "candidate_digest": "485040965c7fcfa39b896a631cf8620c276a54e3935a70f83851195bef9ab424",
+          "structure": {
+            "schema": "neural-computer.recipe-composition-structure.v1",
+            "left_depth": 2,
+            "right_depth": 1,
+            "left_composite": true,
+            "right_composite": false
+          }
+        },
+        "depth4_warm": {
+          "accepted": true,
+          "proposals": 10,
+          "quality": 1.0,
+          "unique_verifier_bits": 320,
+          "wall_seconds": 0.015483416966162622,
+          "candidate_digest": "2bd52e892ebf975660aaec749e5afca7853651bd40059aa53c0a7a70fb8ed863",
+          "structure": {
+            "schema": "neural-computer.recipe-composition-structure.v1",
+            "left_depth": 3,
+            "right_depth": 1,
+            "left_composite": true,
+            "right_composite": false
+          }
+        },
+        "depth4_fresh": {
+          "accepted": true,
+          "proposals": 9,
+          "quality": 1.0,
+          "unique_verifier_bits": 288,
+          "wall_seconds": 0.013999082962982357
+        },
+        "shuffled": {
+          "accepted": false,
+          "proposals": 26,
+          "quality": 0.5,
+          "unique_verifier_bits": 832,
+          "wall_seconds": 0.03334020799957216
+        }
+      },
+      "metrics": {
+        "source_retention_minimum": 1.0,
+        "depth2_heldout_accuracy": 1.0,
+        "depth3_heldout_accuracy": 1.0,
+        "depth4_heldout_accuracy": 1.0,
+        "wrong_depth2_accuracy": 0.0,
+        "wrong_depth4_accuracy": 0.0625,
+        "warm_depth4_to_fresh_ratio": 1.1111111111111112,
+        "composition_file_count": 7
+      },
+      "admissions": {
+        "sources": [
+          {
+            "schema": "neural-computer.external-recipe-program-admission.v1",
+            "accepted": true,
+            "candidate_digest": "1a3b1c8c53648bd46c48c2ab49aa21c8ee71a8a332f0029439db2cc3b5dfe727",
+            "slot": 0,
+            "observations": 64,
+            "stable_bits_to_threshold": 1,
+            "stable_prefix_minimum": 1.0,
+            "reason": "candidate verified and committed as an external recipe file"
+          },
+          {
+            "schema": "neural-computer.external-recipe-program-admission.v1",
+            "accepted": true,
+            "candidate_digest": "5eb3dca327743d99914d63a8b7d532bdca6c8f7d708cb4fa9f4c060a6b77ae9d",
+            "slot": 1,
+            "observations": 64,
+            "stable_bits_to_threshold": 1,
+            "stable_prefix_minimum": 1.0,
+            "reason": "candidate verified and committed as an external recipe file"
+          },
+          {
+            "schema": "neural-computer.external-recipe-program-admission.v1",
+            "accepted": true,
+            "candidate_digest": "94996b31ae5c557297612cb6b82601b0435aa43d4702f1f06e625c0951bbee07",
+            "slot": 2,
+            "observations": 64,
+            "stable_bits_to_threshold": 1,
+            "stable_prefix_minimum": 1.0,
+            "reason": "candidate verified and committed as an external recipe file"
+          },
+          {
+            "schema": "neural-computer.external-recipe-program-admission.v1",
+            "accepted": true,
+            "candidate_digest": "c2b9f30ae2bb8d55ea1d5bd4b1e04aed29aafdb482f2080f09aa19631e9747a4",
+            "slot": 3,
+            "observations": 64,
+            "stable_bits_to_threshold": 1,
+            "stable_prefix_minimum": 1.0,
+            "reason": "candidate verified and committed as an external recipe file"
+          }
+        ],
+        "depth4": {
+          "schema": "neural-computer.external-recipe-program-admission.v1",
+          "accepted": true,
+          "candidate_digest": "2bd52e892ebf975660aaec749e5afca7853651bd40059aa53c0a7a70fb8ed863",
+          "slot": 6,
+          "observations": 64,
+          "stable_bits_to_threshold": 1,
+          "stable_prefix_minimum": 1.0,
+          "reason": "candidate verified and committed as an external recipe file"
+        },
+        "missing_evidence": {
+          "schema": "neural-computer.external-recipe-program-admission.v1",
+          "accepted": false,
+          "candidate_digest": "bd6e08b4a51f81de0e12671bf86dfa780656ccd0a093a7e4d9ec341860c45f73",
+          "slot": null,
+          "observations": 0,
+          "stable_bits_to_threshold": null,
+          "stable_prefix_minimum": null,
+          "reason": "no verifier outcomes"
+        }
+      },
+      "provenance": {
+        "depth2": {
+          "schema": "neural-computer.recipe-composition-factors.v1",
+          "left_digest": "1a3b1c8c53648bd46c48c2ab49aa21c8ee71a8a332f0029439db2cc3b5dfe727",
+          "right_digest": "5eb3dca327743d99914d63a8b7d532bdca6c8f7d708cb4fa9f4c060a6b77ae9d",
+          "mode": "append"
+        },
+        "depth3": {
+          "schema": "neural-computer.recipe-composition-factors.v1",
+          "left_digest": "558e0f9434409273c46fe3b7cde1348175fe7a1bc490179219b81ab5ac311b5f",
+          "right_digest": "94996b31ae5c557297612cb6b82601b0435aa43d4702f1f06e625c0951bbee07",
+          "mode": "append"
+        },
+        "depth4": {
+          "schema": "neural-computer.recipe-composition-factors.v1",
+          "left_digest": "485040965c7fcfa39b896a631cf8620c276a54e3935a70f83851195bef9ab424",
+          "right_digest": "c2b9f30ae2bb8d55ea1d5bd4b1e04aed29aafdb482f2080f09aa19631e9747a4",
+          "mode": "append"
+        }
+      },
+      "gates": {
+        "atomic_sources_admitted": true,
+        "atomic_sources_protected": true,
+        "depth2_mastery": true,
+        "depth3_mastery": true,
+        "depth4_mastery": true,
+        "complete_prefix_retention": true,
+        "recursive_depths": true,
+        "depth2_provenance": true,
+        "depth3_provenance": true,
+        "depth4_provenance": true,
+        "wrong_depth2_rejected": true,
+        "wrong_depth4_rejected": true,
+        "missing_evidence_noop": true,
+        "shuffled_feedback_rejected": true,
+        "memory_persistence_exact": true,
+        "policy_persistence_exact": true,
+        "zero_replayed_examples": true,
+        "zero_controller_optimizer_updates": true
+      },
+      "promoted": true,
+      "accounting": {
+        "unique_verifier_bits": 2464,
+        "unique_logical_lifetimes": 325,
+        "optimizer_updates": 0,
+        "replayed_examples": 0,
+        "wall_seconds": 0.08154949895106256
+      }
+    }
+  ],
+  "promoted": true,
+  "wall_seconds": 0.3916394580155611
+}

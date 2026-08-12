@@ -10991,3 +10991,22 @@ non-commuting recursive compositions plus memory capacity/eviction and
 compression controls, while preserving complete-prefix retention. Evidence is
 archived at
 `session_records/recipe_recursive_composition_growth_promoted_2026-08-12/`.
+
+## Non-commuting recursive composition (2026-08-12)
+
+The recipe CPU/files seam now has a stronger order-sensitive pressure test.
+Four protected mixed-domain atomic files form a dependency chain in which each
+successor reads a slot changed by its predecessor. Across four seeds, verified
+depth-two, depth-three, and depth-four files all reached `1.0000` held-out
+accuracy, protected source retention stayed at `1.0000`, and the wrong
+depth-four order fell to `0.0625`. Provenance, persistence, missing-evidence,
+shuffled-feedback, reversal, and zero-replay controls passed.
+
+The composition policy also exposes orientation-invariant recursive shape and
+depth factors with backward-compatible payload migration. Its warm/fresh
+proposal ratios were `0.8750`, `0.8421`, `3.0000`, and `1.1111`, so this
+structural credit is not promoted as reliable sample-efficiency transfer. The
+promoted boundary is bounded external computation with learned-order-sensitive
+composition, not arbitrary program induction, unrestricted memory growth, or
+general continual learning. Evidence is archived at
+`session_records/recipe_noncommuting_recursive_composition_promoted_2026-08-12/`.

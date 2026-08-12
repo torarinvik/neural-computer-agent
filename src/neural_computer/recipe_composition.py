@@ -142,6 +142,30 @@ class RecipeProgramCompositionStructure:
             "right_composite": self.right_composite,
         }
 
+    def canonical_shape_key(self) -> str:
+        """Return an orientation-invariant source-shape descriptor."""
+
+        self.validate()
+        shapes = sorted(
+            (
+                "composite" if self.left_composite else "atomic",
+                "composite" if self.right_composite else "atomic",
+            )
+        )
+        return "+".join(shapes)
+
+    def canonical_depth_key(self) -> str:
+        """Return an orientation-invariant source-depth descriptor."""
+
+        self.validate()
+        return ":".join(str(depth) for depth in sorted((self.left_depth, self.right_depth)))
+
+    def depth_span_key(self) -> str:
+        """Return the generic depth difference between the two sources."""
+
+        self.validate()
+        return str(abs(self.left_depth - self.right_depth))
+
     @classmethod
     def from_payload(
         cls,
@@ -552,6 +576,9 @@ class OpaqueContextRecipeCompositionMemory:
         "right_depth",
         "left_shape",
         "right_shape",
+        "canonical_shape",
+        "canonical_depth",
+        "depth_span",
     )
 
     def __init__(
@@ -566,6 +593,9 @@ class OpaqueContextRecipeCompositionMemory:
         left_depth_weight: float = 0.75,
         right_depth_weight: float = 0.75,
         shape_weight: float = 0.5,
+        canonical_shape_weight: float = 0.5,
+        canonical_depth_weight: float = 0.25,
+        depth_span_weight: float = 0.25,
         temperature: float = 0.05,
     ) -> None:
         for name, value in (
@@ -578,6 +608,9 @@ class OpaqueContextRecipeCompositionMemory:
             ("left_depth_weight", left_depth_weight),
             ("right_depth_weight", right_depth_weight),
             ("shape_weight", shape_weight),
+            ("canonical_shape_weight", canonical_shape_weight),
+            ("canonical_depth_weight", canonical_depth_weight),
+            ("depth_span_weight", depth_span_weight),
             ("temperature", temperature),
         ):
             if not math.isfinite(value) or value < 0.0:
@@ -597,6 +630,9 @@ class OpaqueContextRecipeCompositionMemory:
         self.left_depth_weight = float(left_depth_weight)
         self.right_depth_weight = float(right_depth_weight)
         self.shape_weight = float(shape_weight)
+        self.canonical_shape_weight = float(canonical_shape_weight)
+        self.canonical_depth_weight = float(canonical_depth_weight)
+        self.depth_span_weight = float(depth_span_weight)
         self.temperature = float(temperature)
         self._shared: dict[str, dict[str, list[float]]] = self._empty_stats()
         self._contexts: dict[str, dict[str, dict[str, list[float]]]] = {}
@@ -648,6 +684,9 @@ class OpaqueContextRecipeCompositionMemory:
                         "right_shape",
                         "composite" if structure.right_composite else "atomic",
                     ),
+                    ("canonical_shape", structure.canonical_shape_key()),
+                    ("canonical_depth", structure.canonical_depth_key()),
+                    ("depth_span", structure.depth_span_key()),
                 )
             )
         return tuple(entries)
@@ -664,8 +703,11 @@ class OpaqueContextRecipeCompositionMemory:
             "left_depth_weight": self.left_depth_weight,
             "right_depth_weight": self.right_depth_weight,
             "shape_weight": self.shape_weight,
+            "canonical_shape_weight": self.canonical_shape_weight,
+            "canonical_depth_weight": self.canonical_depth_weight,
+            "depth_span_weight": self.depth_span_weight,
             "temperature": self.temperature,
-            "credit": "scalar_composition_factor_and_shape_aggregate_v2",
+            "credit": "scalar_composition_factor_and_shape_profile_aggregate_v3",
             "context": "opaque_external_key_v1",
         }
 
@@ -753,6 +795,21 @@ class OpaqueContextRecipeCompositionMemory:
                     "right_shape",
                     "composite" if structure.right_composite else "atomic",
                 )
+                score += self.canonical_shape_weight * self._score(
+                    local,
+                    "canonical_shape",
+                    structure.canonical_shape_key(),
+                )
+                score += self.canonical_depth_weight * self._score(
+                    local,
+                    "canonical_depth",
+                    structure.canonical_depth_key(),
+                )
+                score += self.depth_span_weight * self._score(
+                    local,
+                    "depth_span",
+                    structure.depth_span_key(),
+                )
             scores.append(score)
         logits = torch.tensor(scores, dtype=torch.float64) / self.temperature
         probabilities = torch.softmax(logits, dim=0)
@@ -826,7 +883,11 @@ class OpaqueContextRecipeCompositionMemory:
         ):
             raise TypeError("composition policy payload is malformed")
         expected = payload.get("sha256")
-        legacy = configuration.get("credit") == "scalar_composition_factor_aggregate_v1"
+        credit = configuration.get("credit")
+        legacy = credit in {
+            "scalar_composition_factor_aggregate_v1",
+            "scalar_composition_factor_and_shape_aggregate_v2",
+        }
         if legacy:
             legacy_content = {
                 "schema": payload.get("schema"),
@@ -846,6 +907,13 @@ class OpaqueContextRecipeCompositionMemory:
             left_depth_weight=float(configuration.get("left_depth_weight", 0.75)),
             right_depth_weight=float(configuration.get("right_depth_weight", 0.75)),
             shape_weight=float(configuration.get("shape_weight", 0.5)),
+            canonical_shape_weight=float(
+                configuration.get("canonical_shape_weight", 0.5)
+            ),
+            canonical_depth_weight=float(
+                configuration.get("canonical_depth_weight", 0.25)
+            ),
+            depth_span_weight=float(configuration.get("depth_span_weight", 0.25)),
             temperature=float(configuration.get("temperature", -1.0)),
         )
 

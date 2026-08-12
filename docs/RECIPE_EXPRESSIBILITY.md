@@ -295,3 +295,22 @@ replay-free verifier-gated recursive external composition through depth four,
 not arbitrary program induction, unrestricted memory growth, or general
 continual learning. Evidence and accounting are archived in
 `session_records/recipe_recursive_composition_growth_promoted_2026-08-12/`.
+
+## Non-commuting recursive composition (2026-08-12)
+
+The recursive audit now uses a dependency chain rather than mostly commuting
+operations: each later file reads a slot changed by an earlier file. The
+mixed-domain sources are `INC(0,m=2)`, `CINC(1|0,m=4)`, `CINC(2|1,m=8)`, and
+`CDEC(0|2,m=2)`. Across four seeds, depth-two through depth-four held-out
+accuracy and protected-source retention were all `1.0000`. The reversed
+depth-four order scored `0.0625` on every seed, while provenance, reload,
+missing-evidence, shuffled-feedback, and zero-replay gates passed.
+
+Orientation-invariant shape/depth factors are now part of the versioned policy
+ABI, with migration from the prior factor-only payloads. The warm/fresh
+proposal ratios in this stronger chain were `0.8750`, `0.8421`, `3.0000`, and
+`1.1111`; because the policy is not yet a reliable efficiency improvement, it
+remains diagnostic. This promotes bounded replay-free recursive composition
+with genuine order dependence, not arbitrary program induction or general
+continual learning. Evidence is archived in
+`session_records/recipe_noncommuting_recursive_composition_promoted_2026-08-12/`.
