@@ -11593,3 +11593,47 @@ are attributable to experience content by control. It does NOT claim
 the curve continues past this family's coverage (it visibly saturates
 at k=6), does not include the plant's one-off training in the ledger,
 and inherits every scope limit of the 6-slot interface.
+
+## F220 — THE AMODALITY CLAIM SURVIVES A CHANGE OF INTERFACE SCALE,
+## CONSTANTS ONLY
+
+Every finding above lives at 8x8 grids with VALUES=8, and F219 closed
+by saying the results inherit every scope limit of that interface. The
+architecture's core claim — nothing in the stack mentions the domain —
+implies something testable: moving to 12x12 grids with VALUES=12 must
+require changing CONSTANTS ONLY. `scale_up.py` is `goal_language.py`
+with three constants changed and every FamilyVerifier told the new
+size; the derivation is a 20-line script kept in the session record.
+Three seeds, sixteen worlds, F216's full protocol.
+
+**All four registered predictions pass.**
+
+  1. The plant reaches its gate at the SAME 40k updates despite the
+     larger instruction space: 1.0000, 0.9995, 0.9987.
+  2. F216's pattern reappears exactly: the free search picks sign=-1 on
+     precisely avoid1 and avoid2, all three seeds, +1 everywhere else.
+     Signed - random = +0.9069 +- 0.0669, t=+13.55, **48/48
+     world-seeds**.
+  3. Per-slot search cost grows by construction with |MODULI| alone
+     (11/7 = 1.57x) — structural, no combinatorial blow-up.
+  4. The avoid worlds sit NEARER their zero ceiling than at 8x8: 92%
+     and 95% of the attainable penalty removed (random -0.068/-0.099,
+     signed -0.0052/-0.0052) against 88%/79% before — the larger board
+     makes hazards easier to stay away from, and the system collects
+     that geometry automatically.
+
+Also preserved at scale, and worth listing because each was once a
+finding of its own: intercept improves hugely under approach goals yet
+stays net negative (-0.089 vs random's -0.896 — the F203 proxy limit);
+the bank sits slightly ABOVE the oracle on avoid (the F216 flee-nearest
+mismatch); collect and the compounds are strongly positive. The whole
+fingerprint of the 8x8 record reappears at 12x12 unchanged.
+
+**What this does and does not establish.** It establishes that the
+stack's competence is not an artefact of the interface constants it was
+developed at: plant, searches, goal language and per-world goal choice
+transfer to a 2.25x larger world with VALUES half again bigger, with
+identical training budgets. It does NOT test a change in SLOT COUNT —
+the observation still has three planes and six slots — and it reuses
+the same world mechanics; a new mechanics family remains the harder
+generality test.
