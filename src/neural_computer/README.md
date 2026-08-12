@@ -1763,3 +1763,9 @@ policy and controller remain external/frozen respectively; the shared-basis
 memory independently verifies each copy-on-write replacement. Evidence is
 archived at
 `session_records/brainworkshop_external_temporal_shared_basis_repeated_growth_promoted_2026-08-12/`.
+
+The competing-subspace audit extends the external structure policy to runtime
+ranks `(2, 4, 8)` and verifies dynamic shared-basis growth across incompatible
+subspaces. It preserves the same storage-agnostic controller boundary and
+independent verifier-gated persistence. Evidence is archived at
+`session_records/brainworkshop_external_temporal_shared_basis_competing_subspaces_promoted_2026-08-12/`.

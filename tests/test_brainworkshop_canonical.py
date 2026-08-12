@@ -664,6 +664,35 @@ def test_external_temporal_shared_basis_repeated_growth_preserves_prefixes(
     assert report["gates"]["zero_replayed_examples"]
 
 
+def test_external_temporal_shared_basis_competing_subspaces_grow_dynamic_rank(
+    tmp_path,
+) -> None:
+    from experiments.brainworkshop_canonical.external_temporal_shared_basis_competing_subspaces import (
+        run,
+    )
+
+    report = run(
+        argparse.Namespace(
+            report_out=tmp_path / "temporal-shared-basis-competing-subspaces.json",
+            seed=17,
+            policy_updates=1_000,
+        )
+    )
+
+    assert report["schema"] == (
+        "neural-computer.brainworkshop-external-temporal-shared-basis-competing-subspaces.v1"
+    )
+    assert report["architecture"]["candidate_ranks"] == (2, 4, 8)
+    assert report["gates"]["forward_subspaces_physical_forward_expected_ranks"]
+    assert report["gates"]["reversed_subspaces_physical_reversed_expected_ranks"]
+    assert report["gates"]["all_commits_accepted"]
+    assert report["gates"]["all_complete_prefixes_retained"]
+    assert report["gates"]["all_reloads_exact"]
+    assert report["gates"]["corruption_rejected"]
+    assert report["gates"]["controller_frozen"]
+    assert report["gates"]["zero_replayed_examples"]
+
+
 def test_binary_switch_family_has_a_valid_chance_baseline() -> None:
     verifier = CrossFamilyVerifier(
         family="switch_binary",

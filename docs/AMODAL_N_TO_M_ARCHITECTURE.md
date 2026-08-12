@@ -10524,3 +10524,25 @@ genuinely changing or competing subspaces, reversal controls, and reducing
 scalar-feedback cost below 20,000 unique banks. Evidence and accounting are
 archived in
 `session_records/brainworkshop_external_temporal_shared_basis_repeated_growth_promoted_2026-08-12/`.
+
+## Competing-subspace dynamic-rank growth (2026-08-12)
+
+The next pressure test expands the runtime candidate set to `(2, 4, 8)` and
+feeds four rank-two cohorts from distinct orthogonal subspaces into the frozen
+external memory. Their union changes from rank 2 to rank 4 to rank 6 to rank 8,
+requiring `2 → 4 → 8 → 8`. The v2 policy still receives only opaque value rows,
+occupancy, and candidate ranks; reconstruction error remains verifier-private.
+
+Across seeds `17` and `18`, held-out rank-2/4/8 accuracy was
+`0.9688/1.0000/1.0000`. Both seeds selected the expected dynamic sequence in
+all four combinations of subspace-arrival order and physical row order. All
+16 commits per seed were accepted, all 24 routes survived every prefix,
+storage ended at `512/768` physical/dense value scalars, and reload,
+stale-version, corruption, frozen-core, and zero-replay gates passed.
+
+This promotes bounded dynamic-rank selection under competing subspaces. It
+does not establish removal/replacement, semantic structure discovery,
+arbitrary new computation, unrestricted memory growth, or general continual
+learning. The next pressure is true regime reversal with replacement and
+capacity pressure. Evidence and accounting are archived in
+`session_records/brainworkshop_external_temporal_shared_basis_competing_subspaces_promoted_2026-08-12/`.

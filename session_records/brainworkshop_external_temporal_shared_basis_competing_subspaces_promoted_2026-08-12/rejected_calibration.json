@@ -1,0 +1,18 @@
+{
+  "experiment_id": "brainworkshop-external-temporal-shared-basis-competing-subspaces-calibration-2026-08-12",
+  "status": "rejected_before_promotion",
+  "seed": 17,
+  "updates": 100,
+  "trained_scores": {"2": 0.0, "4": 0.0, "8": 1.0},
+  "reason": "The live verifier safety boundary passed, but the held-out rank-2/4 transfer and dynamic rank sequence had not stabilized.",
+  "live_safety_gates": [
+    "all commits accepted",
+    "all complete prefixes retained",
+    "all reloads exact",
+    "all stale versions rejected",
+    "checksum corruption rejected",
+    "controller and event encoder frozen",
+    "zero replay"
+  ],
+  "next_step": "Promote only after the 5000-update two-seed dynamic-rank audit passes."
+}

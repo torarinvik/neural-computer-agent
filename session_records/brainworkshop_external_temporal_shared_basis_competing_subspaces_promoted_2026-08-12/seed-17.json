@@ -1,0 +1,408 @@
+{
+  "schema": "neural-computer.brainworkshop-external-temporal-shared-basis-competing-subspaces.v1",
+  "claim_boundary": "Outcome-trained external structure policy over runtime ranks 2/4/8, transferred through four incompatible orthogonal subspace arrivals with complete route retention and verifier-gated copy-on-write; not unrestricted semantic structure discovery, arbitrary new computation, or general continual learning.",
+  "seed": 17,
+  "architecture": {
+    "policy": "opaque_shared_basis_structure_policy_v2",
+    "policy_signal": "single_scalar_verifier_utility_without_replay",
+    "memory": "persistent_shared_basis_content_addressed_memory_v1",
+    "candidate_ranks": [
+      2,
+      4,
+      8
+    ],
+    "feature_contract": "opaque_spectral_pairwise_structure_row_permutation_invariant_v2",
+    "forbidden_features": "precomputed_candidate_reconstruction_error_v1",
+    "controller": "frozen_canonical_amodal_controller",
+    "event_encoder": "frozen_learned_event_encoder",
+    "stream": "four_incompatible_orthogonal_rank_two_cohorts"
+  },
+  "training": {
+    "optimizer_updates": 5000,
+    "unique_scalar_utilities": 5000,
+    "first_window_utility": 0.38,
+    "last_window_utility": 0.99
+  },
+  "trained_scores": {
+    "2": 0.96875,
+    "4": 1.0,
+    "8": 1.0
+  },
+  "fresh_scores": {
+    "2": 0.96875,
+    "4": 0.0,
+    "8": 0.0
+  },
+  "streams": {
+    "forward_subspaces_physical_forward": {
+      "subspace_order": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "reversed_physical_order": false,
+      "stages": [
+        {
+          "stage": 0,
+          "expected_union_rank": 2,
+          "record_count": 12,
+          "route_prefix_before": true,
+          "selection": {
+            "selected_rank": 2,
+            "candidate_index": 0,
+            "candidate_error": 0.0074453651905059814,
+            "accepted": true,
+            "basis_rows_before": 12,
+            "basis_rows_after": 2,
+            "physical_value_scalars_after": 56,
+            "version": 2
+          },
+          "route_prefix_after": true
+        },
+        {
+          "stage": 1,
+          "expected_union_rank": 4,
+          "record_count": 24,
+          "route_prefix_before": true,
+          "selection": {
+            "selected_rank": 4,
+            "candidate_index": 1,
+            "candidate_error": 0.006334438920021057,
+            "accepted": true,
+            "basis_rows_before": 14,
+            "basis_rows_after": 4,
+            "physical_value_scalars_after": 160,
+            "version": 4
+          },
+          "route_prefix_after": true
+        },
+        {
+          "stage": 2,
+          "expected_union_rank": 6,
+          "record_count": 36,
+          "route_prefix_before": true,
+          "selection": {
+            "selected_rank": 8,
+            "candidate_index": 2,
+            "candidate_error": 0.0021579936146736145,
+            "accepted": true,
+            "basis_rows_before": 16,
+            "basis_rows_after": 8,
+            "physical_value_scalars_after": 416,
+            "version": 6
+          },
+          "route_prefix_after": true
+        },
+        {
+          "stage": 3,
+          "expected_union_rank": 8,
+          "record_count": 48,
+          "route_prefix_before": true,
+          "selection": {
+            "selected_rank": 8,
+            "candidate_index": 2,
+            "candidate_error": 0.004011273384094238,
+            "accepted": true,
+            "basis_rows_before": 16,
+            "basis_rows_after": 8,
+            "physical_value_scalars_after": 512,
+            "version": 8
+          },
+          "route_prefix_after": true
+        }
+      ],
+      "complete_prefix_retention": true,
+      "reload_routes": true,
+      "stale_version_rejected": true,
+      "final_record_count": 48,
+      "final_physical_value_scalars": 512,
+      "final_dense_value_scalars": 768
+    },
+    "forward_subspaces_physical_reversed": {
+      "subspace_order": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "reversed_physical_order": true,
+      "stages": [
+        {
+          "stage": 0,
+          "expected_union_rank": 2,
+          "record_count": 12,
+          "route_prefix_before": true,
+          "selection": {
+            "selected_rank": 2,
+            "candidate_index": 0,
+            "candidate_error": 0.011354893445968628,
+            "accepted": true,
+            "basis_rows_before": 12,
+            "basis_rows_after": 2,
+            "physical_value_scalars_after": 56,
+            "version": 2
+          },
+          "route_prefix_after": true
+        },
+        {
+          "stage": 1,
+          "expected_union_rank": 4,
+          "record_count": 24,
+          "route_prefix_before": true,
+          "selection": {
+            "selected_rank": 4,
+            "candidate_index": 1,
+            "candidate_error": 0.007799580693244934,
+            "accepted": true,
+            "basis_rows_before": 14,
+            "basis_rows_after": 4,
+            "physical_value_scalars_after": 160,
+            "version": 4
+          },
+          "route_prefix_after": true
+        },
+        {
+          "stage": 2,
+          "expected_union_rank": 6,
+          "record_count": 36,
+          "route_prefix_before": true,
+          "selection": {
+            "selected_rank": 8,
+            "candidate_index": 2,
+            "candidate_error": 0.010859660804271698,
+            "accepted": true,
+            "basis_rows_before": 16,
+            "basis_rows_after": 8,
+            "physical_value_scalars_after": 416,
+            "version": 6
+          },
+          "route_prefix_after": true
+        },
+        {
+          "stage": 3,
+          "expected_union_rank": 8,
+          "record_count": 48,
+          "route_prefix_before": true,
+          "selection": {
+            "selected_rank": 8,
+            "candidate_index": 2,
+            "candidate_error": 0.01998424530029297,
+            "accepted": true,
+            "basis_rows_before": 16,
+            "basis_rows_after": 8,
+            "physical_value_scalars_after": 512,
+            "version": 8
+          },
+          "route_prefix_after": true
+        }
+      ],
+      "complete_prefix_retention": true,
+      "reload_routes": true,
+      "stale_version_rejected": true,
+      "final_record_count": 48,
+      "final_physical_value_scalars": 512,
+      "final_dense_value_scalars": 768
+    },
+    "reversed_subspaces_physical_forward": {
+      "subspace_order": [
+        3,
+        2,
+        1,
+        0
+      ],
+      "reversed_physical_order": false,
+      "stages": [
+        {
+          "stage": 0,
+          "expected_union_rank": 2,
+          "record_count": 12,
+          "route_prefix_before": true,
+          "selection": {
+            "selected_rank": 2,
+            "candidate_index": 0,
+            "candidate_error": 0.01940692961215973,
+            "accepted": true,
+            "basis_rows_before": 12,
+            "basis_rows_after": 2,
+            "physical_value_scalars_after": 56,
+            "version": 2
+          },
+          "route_prefix_after": true
+        },
+        {
+          "stage": 1,
+          "expected_union_rank": 4,
+          "record_count": 24,
+          "route_prefix_before": true,
+          "selection": {
+            "selected_rank": 4,
+            "candidate_index": 1,
+            "candidate_error": 0.006690585985779762,
+            "accepted": true,
+            "basis_rows_before": 14,
+            "basis_rows_after": 4,
+            "physical_value_scalars_after": 160,
+            "version": 4
+          },
+          "route_prefix_after": true
+        },
+        {
+          "stage": 2,
+          "expected_union_rank": 6,
+          "record_count": 36,
+          "route_prefix_before": true,
+          "selection": {
+            "selected_rank": 8,
+            "candidate_index": 2,
+            "candidate_error": 0.002633810043334961,
+            "accepted": true,
+            "basis_rows_before": 16,
+            "basis_rows_after": 8,
+            "physical_value_scalars_after": 416,
+            "version": 6
+          },
+          "route_prefix_after": true
+        },
+        {
+          "stage": 3,
+          "expected_union_rank": 8,
+          "record_count": 48,
+          "route_prefix_before": true,
+          "selection": {
+            "selected_rank": 8,
+            "candidate_index": 2,
+            "candidate_error": 0.005704820156097412,
+            "accepted": true,
+            "basis_rows_before": 16,
+            "basis_rows_after": 8,
+            "physical_value_scalars_after": 512,
+            "version": 8
+          },
+          "route_prefix_after": true
+        }
+      ],
+      "complete_prefix_retention": true,
+      "reload_routes": true,
+      "stale_version_rejected": true,
+      "final_record_count": 48,
+      "final_physical_value_scalars": 512,
+      "final_dense_value_scalars": 768
+    },
+    "reversed_subspaces_physical_reversed": {
+      "subspace_order": [
+        3,
+        2,
+        1,
+        0
+      ],
+      "reversed_physical_order": true,
+      "stages": [
+        {
+          "stage": 0,
+          "expected_union_rank": 2,
+          "record_count": 12,
+          "route_prefix_before": true,
+          "selection": {
+            "selected_rank": 2,
+            "candidate_index": 0,
+            "candidate_error": 0.005845258012413979,
+            "accepted": true,
+            "basis_rows_before": 12,
+            "basis_rows_after": 2,
+            "physical_value_scalars_after": 56,
+            "version": 2
+          },
+          "route_prefix_after": true
+        },
+        {
+          "stage": 1,
+          "expected_union_rank": 4,
+          "record_count": 24,
+          "route_prefix_before": true,
+          "selection": {
+            "selected_rank": 4,
+            "candidate_index": 1,
+            "candidate_error": 0.01190805435180664,
+            "accepted": true,
+            "basis_rows_before": 14,
+            "basis_rows_after": 4,
+            "physical_value_scalars_after": 160,
+            "version": 4
+          },
+          "route_prefix_after": true
+        },
+        {
+          "stage": 2,
+          "expected_union_rank": 6,
+          "record_count": 36,
+          "route_prefix_before": true,
+          "selection": {
+            "selected_rank": 8,
+            "candidate_index": 2,
+            "candidate_error": 0.002726048231124878,
+            "accepted": true,
+            "basis_rows_before": 16,
+            "basis_rows_after": 8,
+            "physical_value_scalars_after": 416,
+            "version": 6
+          },
+          "route_prefix_after": true
+        },
+        {
+          "stage": 3,
+          "expected_union_rank": 8,
+          "record_count": 48,
+          "route_prefix_before": true,
+          "selection": {
+            "selected_rank": 8,
+            "candidate_index": 2,
+            "candidate_error": 0.015074491500854492,
+            "accepted": true,
+            "basis_rows_before": 16,
+            "basis_rows_after": 8,
+            "physical_value_scalars_after": 512,
+            "version": 8
+          },
+          "route_prefix_after": true
+        }
+      ],
+      "complete_prefix_retention": true,
+      "reload_routes": true,
+      "stale_version_rejected": true,
+      "final_record_count": 48,
+      "final_physical_value_scalars": 512,
+      "final_dense_value_scalars": 768
+    }
+  },
+  "gates": {
+    "trained_beats_fresh": true,
+    "trained_heldout_rank_2": true,
+    "trained_heldout_rank_4": true,
+    "trained_heldout_rank_8": true,
+    "forward_subspaces_physical_forward_expected_ranks": true,
+    "forward_subspaces_physical_reversed_expected_ranks": true,
+    "reversed_subspaces_physical_forward_expected_ranks": true,
+    "reversed_subspaces_physical_reversed_expected_ranks": true,
+    "all_commits_accepted": true,
+    "all_complete_prefixes_retained": true,
+    "all_reloads_exact": true,
+    "all_stale_versions_rejected": true,
+    "subspace_order_reversal_tested": true,
+    "physical_order_reversal_tested": true,
+    "corruption_rejected": true,
+    "controller_frozen": true,
+    "event_encoder_frozen": true,
+    "zero_replayed_examples": true
+  },
+  "accounting": {
+    "unique_verifier_bits": 5384,
+    "unique_logical_lifetimes": 5192,
+    "optimizer_updates": 5000,
+    "live_compression_transactions": 16,
+    "replayed_examples": 0,
+    "controller_updates": 0,
+    "latency_seconds": 3.559122374979779
+  },
+  "status": "promoted_competing_subspace_growth"
+}

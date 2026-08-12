@@ -1119,3 +1119,18 @@ updates, and both selected `2 → 4 → 4 → 4` while retaining all 24 routes. 
 archived. This is repeated bounded structure selection, not general
 continual learning. Evidence is in
 `session_records/brainworkshop_external_temporal_shared_basis_repeated_growth_promoted_2026-08-12/`.
+
+## Competing-subspace dynamic-rank growth (2026-08-12)
+
+`external_temporal_shared_basis_competing_subspaces.py` expands candidates to
+`(2, 4, 8)` and presents four incompatible orthogonal rank-two cohorts. The
+policy must choose `2 → 4 → 8 → 8` as the union grows. Both subspace-arrival
+orders and both physical row orders are tested, with complete prefix retention
+after every verifier-gated commit.
+
+Seeds 17 and 18 both reached held-out rank-2/4/8 scores of
+`0.9688/1.0000/1.0000`; all 16 commits per seed passed, all 24 routes survived,
+and reload, stale-version, corruption, frozen-core, and zero-replay controls
+passed. This remains bounded competing-subspace structure selection, not
+general continual learning. Evidence is in
+`session_records/brainworkshop_external_temporal_shared_basis_competing_subspaces_promoted_2026-08-12/`.
