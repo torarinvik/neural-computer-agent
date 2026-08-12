@@ -990,3 +990,21 @@ promotes verifier-gated compaction of redundant learned content keys, not
 arbitrary compression, unrestricted memory growth, arbitrary new computation,
 or general continual learning. Evidence and accounting are archived in
 `session_records/brainworkshop_external_temporal_verified_compaction_growth_promoted_2026-08-12/`.
+
+## Learned live-memory compaction selection (2026-08-12)
+
+`external_temporal_learned_compaction_growth.py` transfers the existing opaque
+consolidation learner to the canonical persistent append-only memory. The
+policy is trained from scalar duplicate-rewrite utility, then sees only
+learned event keys and opaque values for a live memory containing an exact
+source key, a nearby source alias, and a target key. It must select the
+redundant pair under all physical row permutations before the held-out verifier
+allows compaction.
+
+Seeds 17 and 18 selected the redundant pair on all six permutations, versus two
+of six for the untrained policy, and both committed a one-row compaction with
+reload and checksum controls passing. This promotes memory-side learned
+proposal selection in live external memory, not end-to-end capability
+acquisition, arbitrary compression, unrestricted memory growth, or general
+continual learning. Evidence and accounting are archived in
+`session_records/brainworkshop_external_temporal_learned_compaction_growth_promoted_2026-08-12/`.

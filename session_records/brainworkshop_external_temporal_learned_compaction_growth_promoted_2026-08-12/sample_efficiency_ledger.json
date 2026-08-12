@@ -1,0 +1,26 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment_id": "brainworkshop-external-temporal-learned-compaction-growth-2026-08-12",
+  "status": "promoted_temporal_learned_compaction_growth",
+  "source": "in_repository_run",
+  "seeds": [17, 18],
+  "unique_scalar_utility_observations_per_seed": 229376,
+  "optimizer_updates_per_seed": 512,
+  "permutation_probes_per_seed": 6,
+  "content_memory_writes_per_seed": 7,
+  "replayed_examples_per_seed": 0,
+  "learned_redundant_pair_selection": [1.0, 1.0],
+  "untrained_redundant_pair_selection": [0.3333333333, 0.3333333333],
+  "controls": {
+    "learned_beats_untrained": true,
+    "candidate_permutation_invariant": true,
+    "verifier_accepts_selected_compaction": true,
+    "one_row_saved": true,
+    "reload_preserves_live_routes": true,
+    "checksum_corruption_rejected": true,
+    "frozen_controller": true,
+    "frozen_event_encoder": true,
+    "zero_replay": true
+  },
+  "claim_boundary": "Promoted transfer of learned opaque compaction proposal selection into live external memory; not end-to-end capability acquisition, arbitrary compression, unrestricted memory growth, arbitrary new computation, or general continual learning."
+}

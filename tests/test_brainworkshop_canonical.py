@@ -488,6 +488,35 @@ def test_external_temporal_verified_compaction_growth_smoke_is_verifier_gated(
     assert report["gates"]["zero_replayed_examples"]
 
 
+def test_external_temporal_learned_compaction_growth_smoke_transfers_selector(
+    tmp_path,
+) -> None:
+    from experiments.brainworkshop_canonical.external_temporal_learned_compaction_growth import (
+        run,
+    )
+
+    report = run(
+        argparse.Namespace(
+            report_out=tmp_path / "temporal-learned-compaction-growth.json",
+            seed=17,
+            policy_updates=2,
+            policy_batch_size=2,
+        )
+    )
+
+    assert report["schema"] == (
+        "neural-computer.brainworkshop-external-temporal-learned-compaction-growth.v1"
+    )
+    assert report["gates"]["learned_policy_selects_redundant_pair"]
+    assert report["gates"]["learned_beats_untrained_on_permutations"]
+    assert report["gates"]["verifier_accepts_selected_compaction"]
+    assert report["gates"]["reload_preserves_live_routes"]
+    assert report["gates"]["corruption_rejected"]
+    assert report["gates"]["controller_frozen"]
+    assert report["gates"]["event_encoder_frozen"]
+    assert report["gates"]["zero_replayed_examples"]
+
+
 def test_binary_switch_family_has_a_valid_chance_baseline() -> None:
     verifier = CrossFamilyVerifier(
         family="switch_binary",

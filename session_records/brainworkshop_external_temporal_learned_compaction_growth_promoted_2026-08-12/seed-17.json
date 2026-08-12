@@ -1,0 +1,203 @@
+{
+  "schema": "neural-computer.brainworkshop-external-temporal-learned-compaction-growth.v1",
+  "claim_boundary": "A learned opaque memory-side pair selector transferred from scalar rewrite utility to the canonical persistent external-memory ABI; not end-to-end capability acquisition, arbitrary compression, unrestricted memory growth, or general continual learning.",
+  "seed": 17,
+  "architecture": {
+    "policy": "opaque_consolidation_policy_v1",
+    "policy_training_signal": "scalar_duplicate_rewrite_utility",
+    "live_memory": "persistent_append_only_content_addressed_memory_v1",
+    "controller": "frozen_canonical_amodal_controller",
+    "event_encoder": "frozen_learned_event_encoder",
+    "source_offset": 4,
+    "target_offset": 5
+  },
+  "learned_proposals": [
+    {
+      "permutation": [
+        0,
+        1,
+        2
+      ],
+      "rows": [
+        0,
+        1
+      ],
+      "selected_redundant_pair": true
+    },
+    {
+      "permutation": [
+        0,
+        2,
+        1
+      ],
+      "rows": [
+        0,
+        2
+      ],
+      "selected_redundant_pair": true
+    },
+    {
+      "permutation": [
+        1,
+        0,
+        2
+      ],
+      "rows": [
+        0,
+        1
+      ],
+      "selected_redundant_pair": true
+    },
+    {
+      "permutation": [
+        1,
+        2,
+        0
+      ],
+      "rows": [
+        0,
+        2
+      ],
+      "selected_redundant_pair": true
+    },
+    {
+      "permutation": [
+        2,
+        0,
+        1
+      ],
+      "rows": [
+        1,
+        2
+      ],
+      "selected_redundant_pair": true
+    },
+    {
+      "permutation": [
+        2,
+        1,
+        0
+      ],
+      "rows": [
+        1,
+        2
+      ],
+      "selected_redundant_pair": true
+    }
+  ],
+  "untrained_proposals": [
+    {
+      "permutation": [
+        0,
+        1,
+        2
+      ],
+      "rows": [
+        0,
+        1
+      ],
+      "selected_redundant_pair": true
+    },
+    {
+      "permutation": [
+        0,
+        2,
+        1
+      ],
+      "rows": [
+        0,
+        1
+      ],
+      "selected_redundant_pair": false
+    },
+    {
+      "permutation": [
+        1,
+        0,
+        2
+      ],
+      "rows": [
+        0,
+        1
+      ],
+      "selected_redundant_pair": true
+    },
+    {
+      "permutation": [
+        1,
+        2,
+        0
+      ],
+      "rows": [
+        0,
+        1
+      ],
+      "selected_redundant_pair": false
+    },
+    {
+      "permutation": [
+        2,
+        0,
+        1
+      ],
+      "rows": [
+        0,
+        1
+      ],
+      "selected_redundant_pair": false
+    },
+    {
+      "permutation": [
+        2,
+        1,
+        0
+      ],
+      "rows": [
+        0,
+        1
+      ],
+      "selected_redundant_pair": false
+    }
+  ],
+  "verification": {
+    "accepted": true,
+    "source_indices": [
+      0,
+      1
+    ],
+    "rows_before": 3,
+    "rows_after": 2,
+    "rows_saved": 1,
+    "retention_checked": true,
+    "retention_accepted": true,
+    "reason": "behavior verifier passed"
+  },
+  "compaction": {
+    "scope": 0,
+    "rows_before": 3,
+    "rows_after": 2,
+    "version": 15,
+    "schema": "neural-computer.memory-compaction-receipt.v1"
+  },
+  "gates": {
+    "learned_policy_selects_redundant_pair": true,
+    "learned_beats_untrained_on_permutations": true,
+    "candidate_permutation_invariant": true,
+    "verifier_accepts_selected_compaction": true,
+    "compaction_saves_one_row": true,
+    "reload_preserves_live_routes": true,
+    "corruption_rejected": true,
+    "controller_frozen": true,
+    "event_encoder_frozen": true,
+    "zero_replayed_examples": true
+  },
+  "accounting": {
+    "unique_scalar_utility_observations": 229376,
+    "optimizer_updates": 512,
+    "permutation_probes": 6,
+    "content_memory_writes": 7,
+    "replayed_examples": 0,
+    "latency_seconds": 1.4119927090359852
+  },
+  "status": "promoted_temporal_learned_compaction_growth"
+}

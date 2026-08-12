@@ -10350,3 +10350,25 @@ capacity; learned pair selection, multi-row compression, capacity scheduling,
 and general continual learning remain open. Evidence and accounting are
 archived in
 `session_records/brainworkshop_external_temporal_verified_compaction_growth_promoted_2026-08-12/`.
+
+## Learned live-memory compaction selection (2026-08-12)
+
+The existing `OpaqueConsolidationPolicy` now composes with the canonical
+persistent append-only memory rather than ending at an isolated synthetic bank
+audit. It is trained from scalar duplicate-rewrite utility, then receives only
+learned event keys, learned values, strength, and relative age for a live
+three-row memory. A source key and nearby source alias share one opaque
+capability address; a target key carries a different address. The learned
+policy must select the redundant pair under every physical row permutation
+before the independent route verifier permits a rewrite.
+
+Across seeds `17` and `18`, the learned policy selected the redundant pair on
+all six permutations, while the untrained policy selected it twice. Both live
+compactions saved one row, passed reload and checksum-corruption controls, and
+kept the controller and event encoder frozen with zero replay. This closes the
+manual-proposal gap for this narrow redundancy case. It does not establish
+end-to-end capability acquisition or arbitrary compression: distinct skills
+still require distinct representational capacity, and learned multi-row
+compression, capacity scheduling, and general continual learning remain open.
+Evidence and accounting are archived in
+`session_records/brainworkshop_external_temporal_learned_compaction_growth_promoted_2026-08-12/`.
