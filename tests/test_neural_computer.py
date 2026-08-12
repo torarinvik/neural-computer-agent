@@ -935,6 +935,23 @@ def test_external_temporal_history_grows_and_reads_scoped_relative_offsets() -> 
     assert memory.record_count == 4
 
 
+def test_external_temporal_history_reads_absolute_positions_with_missing_masks() -> None:
+    memory = ExternalTemporalHistoryMemory(width=2, scope_capacity=2)
+    scope = torch.tensor([0, 1], dtype=torch.long)
+    memory.append(torch.tensor([[1.0, 0.0], [0.0, 1.0]]), scope=scope)
+    memory.append(torch.tensor([[2.0, 0.0], [0.0, 2.0]]), scope=scope)
+
+    read = memory.read_positions(
+        torch.tensor([[1, 0, 9], [0, 1, 9]], dtype=torch.long),
+        scope=scope,
+    )
+
+    assert read.present.tolist() == [[True, True, False], [True, True, False]]
+    assert read.positions.tolist() == [[1, 0, -1], [0, 1, -1]]
+    assert torch.equal(read.values[0, 0], torch.tensor([2.0, 0.0]))
+    assert torch.equal(read.values[1, 1], torch.tensor([0.0, 2.0]))
+
+
 def test_external_temporal_history_quiet_ticks_do_not_fabricate_or_advance() -> None:
     memory = ExternalTemporalHistoryMemory(width=2)
     memory.append(torch.tensor([[1.0, 0.0]]))

@@ -1,0 +1,18 @@
+{
+  "experiment_id": "brainworkshop-external-history-lookup-vectorized-2026-08-12",
+  "workload": {
+    "scope_capacity": 32,
+    "records_per_scope": 1000,
+    "record_count": 32000,
+    "width": 16,
+    "queries_per_scope": 4,
+    "device": "cpu",
+    "threads": 1
+  },
+  "nested_python_scan_seconds_per_read": 0.00510121,
+  "vectorized_position_index_seconds_per_read": 0.00120285,
+  "speedup": 4.24092414,
+  "exact_values_masks_positions": true,
+  "replayed_examples": 0,
+  "claim_boundary": "Storage lookup scalability improvement; not a learned-capability or general-continual-learning promotion."
+}

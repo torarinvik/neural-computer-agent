@@ -11823,6 +11823,11 @@ preserves separate token binding, while recurrent and masked-set summaries
 provide a generic sequence-computation path. The history path is external-file
 state and does not resize or modify the controller.
 
+The storage implementation resolves scoped relative and absolute positions
+through a vectorized position index rather than nested Python scans. This is
+an execution-path optimization only: opaque positions, explicit missing
+masks, append semantics, and persistence remain unchanged.
+
 The first implementation exposed a useful causal bug: feeding newest-first
 relative reads into the sequence reducer prevented a held-out triplet-parity
 file from learning, even though the events were present. Reordering the valid

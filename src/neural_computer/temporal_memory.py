@@ -299,6 +299,7 @@ class ExternalTemporalHistoryMemory(nn.Module):
                 else "append_only_scoped_temporal_records_v1"
             ),
             "addressing": "opaque_relative_offsets_and_absolute_positions_v1",
+            "lookup": "vectorized_scoped_position_index_v1",
             "missing_history": "explicit_present_mask_v1",
         }
 
@@ -420,6 +421,71 @@ class ExternalTemporalHistoryMemory(nn.Module):
 
     def validate_state(self) -> None:
         self._validate_state()
+
+    @torch.no_grad()
+    def _lookup_record_indices(
+        self,
+        scope_ids: torch.Tensor,
+        requested_positions: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        """Resolve scoped positions without row/query/record Python loops."""
+
+        if requested_positions.ndim != 2:
+            raise ValueError("requested temporal history positions must be [batch, query]")
+        batch, query_count = requested_positions.shape
+        resolved = torch.full(
+            (batch, query_count),
+            -1,
+            dtype=torch.long,
+            device=self.values.device,
+        )
+        present = torch.zeros(
+            (batch, query_count),
+            dtype=torch.bool,
+            device=self.values.device,
+        )
+        record_indices = torch.nonzero(self.occupied, as_tuple=False).reshape(-1)
+        if not record_indices.numel() or not query_count:
+            return resolved, present
+        record_scopes = self.scopes.index_select(0, record_indices)
+        record_positions = self.positions.index_select(0, record_indices)
+        stride = max(
+            1,
+            int(self.next_positions.max().item()),
+            int(record_positions.max().item()) + 1,
+        )
+        record_keys = record_scopes * stride + record_positions
+        sorted_keys, sorted_order = torch.sort(record_keys)
+        query_positions = requested_positions.clamp_min(0)
+        query_keys = scope_ids[:, None] * stride + query_positions
+        insertion = torch.searchsorted(sorted_keys, query_keys)
+        safe_insertion = insertion.clamp_max(sorted_keys.numel() - 1)
+        present = (
+            (requested_positions >= 0)
+            & (insertion < sorted_keys.numel())
+            & (sorted_keys[safe_insertion] == query_keys)
+        )
+        resolved[present] = record_indices.index_select(
+            0,
+            sorted_order[safe_insertion[present]],
+        )
+        return resolved, present
+
+    def _gather_record_field(
+        self,
+        field: torch.Tensor,
+        record_indices: torch.Tensor,
+        present: torch.Tensor,
+    ) -> torch.Tensor:
+        """Gather a record field and zero only explicitly missing reads."""
+
+        shape = (*record_indices.shape, *field.shape[1:])
+        if not field.shape[0]:
+            return torch.zeros(shape, device=field.device, dtype=field.dtype)
+        safe_indices = record_indices.clamp_min(0).reshape(-1)
+        gathered = field.index_select(0, safe_indices).reshape(shape)
+        mask = present.reshape(*present.shape, *([1] * (field.ndim - 1)))
+        return torch.where(mask, gathered, torch.zeros_like(gathered))
 
     def load_state_dict(
         self,
@@ -682,71 +748,40 @@ class ExternalTemporalHistoryMemory(nn.Module):
         batch, query_count = offsets.shape
         scope_ids = self._scope_ids(scope, batch, device=self.values.device)
         offsets = offsets.to(device=self.values.device)
-        values = torch.zeros(
-            batch,
-            query_count,
-            self.width,
-            device=self.values.device,
-            dtype=self.values.dtype,
+        newest = self.next_positions.index_select(0, scope_ids).sub(1)
+        record_indices, present = self._lookup_record_indices(
+            scope_ids,
+            newest[:, None] - offsets,
         )
-        present = torch.zeros(
-            batch, query_count, dtype=torch.bool, device=self.values.device
+        positions = torch.where(
+            present,
+            newest[:, None] - offsets,
+            torch.full_like(offsets, -1),
         )
-        positions = torch.full(
-            (batch, query_count), -1, dtype=torch.long, device=self.values.device
+        values = self._gather_record_field(
+            self.values,
+            record_indices,
+            present,
         )
         if self.metadata:
-            confidences = torch.zeros(
-                batch,
-                query_count,
-                device=self.values.device,
-                dtype=self.values.dtype,
+            confidences = self._gather_record_field(
+                self.confidences, record_indices, present
             )
-            source_keys = torch.zeros(
-                batch,
-                query_count,
-                self.source_key_width,
-                device=self.values.device,
-                dtype=self.values.dtype,
+            source_keys = self._gather_record_field(
+                self.source_keys, record_indices, present
             )
-            timestamps = torch.zeros_like(confidences)
-            timestamp_present = torch.zeros(
-                batch, query_count, dtype=torch.bool, device=self.values.device
+            timestamps = self._gather_record_field(
+                self.timestamps, record_indices, present
             )
-            durations = torch.zeros_like(confidences)
-            duration_present = torch.zeros(
-                batch, query_count, dtype=torch.bool, device=self.values.device
+            timestamp_present = self._gather_record_field(
+                self.timestamp_present, record_indices, present
             )
-        for row, scope_id in enumerate(scope_ids.tolist()):
-            newest = int(self.next_positions[scope_id].item()) - 1
-            if newest < 0:
-                continue
-            record_indices = torch.nonzero(
-                self.occupied & (self.scopes == scope_id), as_tuple=False
-            ).reshape(-1)
-            if not record_indices.numel():
-                continue
-            row_positions = self.positions[record_indices]
-            for query_index, offset in enumerate(offsets[row].tolist()):
-                target = newest - int(offset)
-                matches = torch.nonzero(row_positions == target, as_tuple=False).reshape(-1)
-                if not matches.numel():
-                    continue
-                record_index = record_indices[int(matches[0].item())]
-                values[row, query_index] = self.values[record_index]
-                present[row, query_index] = True
-                positions[row, query_index] = target
-                if self.metadata:
-                    confidences[row, query_index] = self.confidences[record_index]
-                    source_keys[row, query_index] = self.source_keys[record_index]
-                    timestamps[row, query_index] = self.timestamps[record_index]
-                    timestamp_present[row, query_index] = self.timestamp_present[
-                        record_index
-                    ]
-                    durations[row, query_index] = self.durations[record_index]
-                    duration_present[row, query_index] = self.duration_present[
-                        record_index
-                    ]
+            durations = self._gather_record_field(
+                self.durations, record_indices, present
+            )
+            duration_present = self._gather_record_field(
+                self.duration_present, record_indices, present
+            )
         return ExternalTemporalHistoryRead(
             values=values,
             present=present,
@@ -779,69 +814,39 @@ class ExternalTemporalHistoryMemory(nn.Module):
         batch, query_count = positions.shape
         scope_ids = self._scope_ids(scope, batch, device=self.values.device)
         positions = positions.to(device=self.values.device)
-        values = torch.zeros(
-            batch,
-            query_count,
-            self.width,
-            device=self.values.device,
-            dtype=self.values.dtype,
+        record_indices, present = self._lookup_record_indices(
+            scope_ids,
+            positions,
         )
-        present = torch.zeros(
-            batch, query_count, dtype=torch.bool, device=self.values.device
+        resolved_positions = torch.where(
+            present,
+            positions,
+            torch.full_like(positions, -1),
         )
-        resolved_positions = torch.full(
-            (batch, query_count), -1, dtype=torch.long, device=self.values.device
+        values = self._gather_record_field(
+            self.values,
+            record_indices,
+            present,
         )
         if self.metadata:
-            confidences = torch.zeros(
-                batch,
-                query_count,
-                device=self.values.device,
-                dtype=self.values.dtype,
+            confidences = self._gather_record_field(
+                self.confidences, record_indices, present
             )
-            source_keys = torch.zeros(
-                batch,
-                query_count,
-                self.source_key_width,
-                device=self.values.device,
-                dtype=self.values.dtype,
+            source_keys = self._gather_record_field(
+                self.source_keys, record_indices, present
             )
-            timestamps = torch.zeros_like(confidences)
-            timestamp_present = torch.zeros(
-                batch, query_count, dtype=torch.bool, device=self.values.device
+            timestamps = self._gather_record_field(
+                self.timestamps, record_indices, present
             )
-            durations = torch.zeros_like(confidences)
-            duration_present = torch.zeros(
-                batch, query_count, dtype=torch.bool, device=self.values.device
+            timestamp_present = self._gather_record_field(
+                self.timestamp_present, record_indices, present
             )
-        for row, scope_id in enumerate(scope_ids.tolist()):
-            record_indices = torch.nonzero(
-                self.occupied & (self.scopes == scope_id), as_tuple=False
-            ).reshape(-1)
-            if not record_indices.numel():
-                continue
-            row_positions = self.positions[record_indices]
-            for query_index, target in enumerate(positions[row].tolist()):
-                matches = torch.nonzero(
-                    row_positions == int(target), as_tuple=False
-                ).reshape(-1)
-                if not matches.numel():
-                    continue
-                record_index = record_indices[int(matches[0].item())]
-                values[row, query_index] = self.values[record_index]
-                present[row, query_index] = True
-                resolved_positions[row, query_index] = int(target)
-                if self.metadata:
-                    confidences[row, query_index] = self.confidences[record_index]
-                    source_keys[row, query_index] = self.source_keys[record_index]
-                    timestamps[row, query_index] = self.timestamps[record_index]
-                    timestamp_present[row, query_index] = self.timestamp_present[
-                        record_index
-                    ]
-                    durations[row, query_index] = self.durations[record_index]
-                    duration_present[row, query_index] = self.duration_present[
-                        record_index
-                    ]
+            durations = self._gather_record_field(
+                self.durations, record_indices, present
+            )
+            duration_present = self._gather_record_field(
+                self.duration_present, record_indices, present
+            )
         return ExternalTemporalHistoryRead(
             values=values,
             present=present,
