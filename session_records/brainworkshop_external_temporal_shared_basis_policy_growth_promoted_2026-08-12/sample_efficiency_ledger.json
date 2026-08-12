@@ -1,0 +1,65 @@
+{
+  "experiment_id": "brainworkshop-external-temporal-shared-basis-policy-growth-promoted-2026-08-12",
+  "status": "promoted_shared_basis_policy_growth",
+  "seeds": [17, 18],
+  "rung": "canonical two-seed outcome-trained external compression-policy transfer",
+  "architecture": "opaque_shared_basis_compression_policy_v1_plus_persistent_shared_basis_memory_v1",
+  "claim_boundary": "Outcome-trained external preference for generic shared-basis compression transferred across a nonstationary frozen canonical memory stream with verifier-gated copy-on-write; not arbitrary semantic structure discovery, unrestricted memory growth, new computation, or general continual learning.",
+  "accounting": {
+    "unique_verifier_bits_per_seed": 3048,
+    "unique_logical_lifetimes_per_seed": 3024,
+    "optimizer_updates_per_seed": 3000,
+    "replayed_examples_per_seed": 0,
+    "controller_updates_per_seed": 0,
+    "live_compression_transactions_per_seed": 4,
+    "stable_bits_to_threshold": "3000 generic scalar-utility updates; live rank choices pass on the first post-training stream",
+    "retention_on_mastered_primitives": "6 old routes retained after successor growth and 6 new routes admitted",
+    "transfer_ratio_against_fresh_learner": "trained rank-1 held-out accuracy exceeds fresh by 0.21875 on seed 18 and 0.828125 on seed 17; ranks 2 and 4 are no worse",
+    "wall_time_seconds": {
+      "seed_17": 0.980553500005044,
+      "seed_18": 0.9429194170515984
+    }
+  },
+  "per_seed": {
+    "17": {
+      "status": "promoted_shared_basis_policy_growth",
+      "trained_scores": {"1": 0.875, "2": 1.0, "4": 1.0},
+      "fresh_scores": {"1": 0.046875, "2": 0.015625, "4": 1.0},
+      "live_initial_rank": 2,
+      "live_successor_rank": 4,
+      "initial_candidate_error": 0.011241570115089417,
+      "successor_candidate_error": 0.005207061767578125,
+      "final_record_count": 12,
+      "final_physical_value_scalars": 112,
+      "final_dense_value_scalars": 192,
+      "all_gates_passed": true
+    },
+    "18": {
+      "status": "promoted_shared_basis_policy_growth",
+      "trained_scores": {"1": 0.875, "2": 1.0, "4": 1.0},
+      "fresh_scores": {"1": 0.65625, "2": 0.96875, "4": 1.0},
+      "live_initial_rank": 2,
+      "live_successor_rank": 4,
+      "initial_candidate_error": 0.005572812631726265,
+      "successor_candidate_error": 0.0045909583568573,
+      "final_record_count": 12,
+      "final_physical_value_scalars": 112,
+      "final_dense_value_scalars": 192,
+      "all_gates_passed": true
+    }
+  },
+  "controls": [
+    "held-out generic rank-1/rank-2/rank-4 transfer",
+    "fresh policy comparison",
+    "old route retention after successor growth",
+    "new route retention after growth",
+    "forward and reversed physical row order",
+    "stale expected version rejected",
+    "exact persistent reload",
+    "checksum corruption rejected",
+    "frozen controller",
+    "frozen event encoder",
+    "zero replay"
+  ],
+  "next_bottleneck": "online structure discovery and repeated nonstationary shared-basis growth without relying on a precomputed reconstruction-error feature or a single controlled successor transition"
+}

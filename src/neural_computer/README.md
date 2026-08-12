@@ -1737,3 +1737,11 @@ The canonical two-seed pressure test is archived at
 `session_records/brainworkshop_external_temporal_shared_basis_compression_promoted_2026-08-12/`.
 It qualifies verifier-gated shared storage compression only; rank selection is
 deterministic in this first boundary audit.
+
+`OpaqueSharedBasisCompressionPolicy` is the external learned selector for
+runtime-sized shared-basis candidates. It consumes only generic candidate
+statistics and learns from one scalar verifier utility per proposal. Its
+candidate index is advisory; `SharedBasisContentAddressedMemory` still owns
+route/value verification, expected-version checks, and atomic persistence.
+The canonical policy-growth audit is archived at
+`session_records/brainworkshop_external_temporal_shared_basis_policy_growth_promoted_2026-08-12/`.

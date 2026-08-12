@@ -1060,3 +1060,25 @@ continual learning. The next experiment must learn the structure/rank proposal
 from scalar outcomes and challenge it with evolving residuals and long
 nonstationary retention streams. Evidence is archived in
 `session_records/brainworkshop_external_temporal_shared_basis_compression_promoted_2026-08-12/`.
+
+## Outcome-trained shared-basis policy growth (2026-08-12)
+
+`external_temporal_shared_basis_policy_growth.py` trains a generic external
+compression selector from one scalar utility per fresh candidate bank. It sees
+only rank, reconstruction error, physical-size, occupancy, and width
+statistics, and emits a candidate index. The memory verifier remains
+authoritative for route/value retention and versioned copy-on-write commit.
+
+Across seeds `17` and `18`, held-out rank-selection accuracy was
+`0.875/1.000/1.000` for ranks `1/2/4`. In the live frozen canonical stream the
+policy selected rank `2` for six old records, then rank `4` after six successor
+records arrived; all old and new routes remained readable without replay.
+Reversal, reload, stale-version, corruption, frozen-core, and zero-replay
+gates passed.
+
+This promotes one replay-free outcome-trained compression preference and one
+nonstationary growth transfer. It does not establish online semantic structure
+discovery, unrestricted memory growth, arbitrary computation, or general
+continual learning: reconstruction error is still supplied as a candidate
+feature, and only one successor transition is tested. Evidence is archived in
+`session_records/brainworkshop_external_temporal_shared_basis_policy_growth_promoted_2026-08-12/`.

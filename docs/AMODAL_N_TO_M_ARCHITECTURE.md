@@ -10436,3 +10436,32 @@ deterministic SVD in this audit. The next pressure is an outcome-trained
 structure/rank proposal on evolving residuals and long nonstationary streams.
 Evidence and accounting are archived in
 `session_records/brainworkshop_external_temporal_shared_basis_compression_promoted_2026-08-12/`.
+
+## Outcome-trained shared-basis policy growth (2026-08-12)
+
+`OpaqueSharedBasisCompressionPolicy` is a replaceable external selector that
+scores a runtime-sized set of candidate representations from generic
+rank/error/storage statistics. It receives one scalar verifier utility per
+proposal and emits only a candidate index; it does not receive task labels,
+semantic targets, or raw modality data. The selected candidate remains subject
+to the memory backend's independent route/value verifier and versioned
+copy-on-write commit.
+
+The two-seed canonical audit trains on fresh generic low-rank banks, then
+transfers the policy to a frozen event boundary with six old rank-two values.
+It selects rank `2`, protects those routes, admits six new rank-four successor
+values, and selects rank `4` without replaying the old cohort. Held-out
+rank-selection accuracy is `0.875/1.000/1.000` for ranks `1/2/4` on both seeds;
+fresh policies are weaker on rank one. Forward and reversed physical order,
+old/new retention, reload, stale-version, corruption, frozen-core, and
+zero-replay gates pass.
+
+This promotes a narrow outcome-trained external compression preference and one
+nonstationary growth transfer. It does not establish online semantic structure
+discovery, unrestricted memory growth, arbitrary computation, or general
+continual learning. The policy still receives a precomputed reconstruction
+error feature, and only one successor transition is tested. The next pressure
+is repeated online structure discovery and reversal without that precomputed
+candidate-quality shortcut.
+Evidence and accounting are archived in
+`session_records/brainworkshop_external_temporal_shared_basis_policy_growth_promoted_2026-08-12/`.

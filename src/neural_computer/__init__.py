@@ -549,6 +549,12 @@ from .runtime import (
     RuntimeMigrationExample,
     RuntimeMigrationReceipt,
 )
+from .shared_basis_policy import (
+    SHARED_BASIS_COMPRESSION_POLICY_SCHEMA,
+    OpaqueSharedBasisCompressionPolicy,
+    SharedBasisCompressionPlan,
+    SharedBasisCompressionPolicyOutput,
+)
 from .state_store import OPAQUE_STATE_STORE_SCHEMA, PersistentOpaqueStateStore
 from .stream_binding import (
     EXTERNAL_LEARNED_MULTI_STREAM_ROUTER_SCHEMA,
@@ -931,6 +937,7 @@ __all__ = [
     "RECIPE_BASIS_SCHEMA",
     "REPRESENTATION_SPACE_SCHEMA",
     "RETENTION_LEDGER_SCHEMA",
+    "SHARED_BASIS_COMPRESSION_POLICY_SCHEMA",
     "SHARED_BASIS_COMPRESSION_SCHEMA",
     "SHARED_BASIS_MEMORY_BACKEND_FORMAT",
     "SHARED_BASIS_MEMORY_SCHEMA",
@@ -1221,6 +1228,7 @@ __all__ = [
     "OpaqueCapacityPlannerAdapter",
     "OpaqueConsolidationPolicy",
     "OpaqueProtocolDecoder",
+    "OpaqueSharedBasisCompressionPolicy",
     "OpaqueViewRouteExtension",
     "PageLocalLearnedComputeCandidateScreen",
     "PersistentAppendOnlyContentAddressedMemory",
@@ -1242,6 +1250,8 @@ __all__ = [
     "RetentionPolicyConfig",
     "RuntimeMigrationExample",
     "RuntimeMigrationReceipt",
+    "SharedBasisCompressionPlan",
+    "SharedBasisCompressionPolicyOutput",
     "SharedBasisCompressionReceipt",
     "SharedBasisContentAddressedMemory",
     "StagedCapabilityReceipt",
