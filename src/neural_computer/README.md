@@ -1878,3 +1878,23 @@ snapshot for durable storage; the scale audit reduced a 1,024-record archive
 from about 645 KB JSON to about 166 KB while preserving retrieval. The
 scale/reversal audit is archived at
 `session_records/brainworkshop_external_temporal_archive_scale_reversal_promoted_2026-08-12/`.
+
+## Canonical external temporal-history bridge
+
+`ExternalTemporalHistoryEventBridge` and
+`AmodalControllerRuntime.step_streams_with_external_history()` now connect the
+replaceable temporal store to the production `INPUT -> PROCESS -> OUTPUT`
+boundary. On each tick the bridge reads caller-selected relative offsets
+before appending the current learned event tokens. Current and historical
+tokens remain separate on the event axis, and missing records remain explicit
+`present=False` tokens rather than fabricated evidence. The runtime rejects a
+query that exceeds the controller's bounded event-window capacity before
+mutating external memory.
+
+This is an integration and causality contract, not a general continual-
+learning result. The v1 store persists learned payloads and derives historical
+confidence from presence; it does not yet persist source keys, timestamps, or
+durations, so the bridge fails closed when those fields are present. Offset
+selection is still caller/trainer state, and the controller remains bounded by
+its event window. Learned query-conditioned addressing, history compression,
+and unrestricted continual learning require separate promotion experiments.

@@ -11069,3 +11069,32 @@ updates. This is bounded repeated external maintenance, not unrestricted
 growth, semantic compression, arbitrary new computation, or general
 continual learning. Evidence is archived in
 `session_records/recipe_repeated_maintenance_promoted_2026-08-12/`.
+
+## Canonical external temporal-history bridge
+
+The production runtime now has an explicit bridge from the replaceable
+`ExternalTemporalHistoryMemory` store into the canonical event-token path:
+
+```text
+N encoders -> current learned events
+                         \\
+                          -> causal history bridge -> one controller/memory
+external temporal file -> prior learned event tokens /
+                                      -> intention bus -> M decoders
+```
+
+`ExternalTemporalHistoryEventBridge` performs the relative-history read before
+appending the current tick. It concatenates current and requested prior
+payloads on the event axis, preserves separate presence masks, and fails
+closed when the v1 payload-only history ABI would discard source/timing
+metadata. `AmodalControllerRuntime.step_streams_with_external_history()` also
+rejects queries larger than the controller's event-window capacity before any
+append, so external storage can grow without silently changing the controller
+contract.
+
+This is a causal transport integration, not evidence of general continual
+learning. The history ABI currently stores learned payloads only, derives
+historical confidence from presence, and leaves offset selection to external
+caller/trainer state. Learned query-conditioned addressing, compression,
+metadata-preserving history versions, and unrestricted memory growth remain
+open promotion targets.

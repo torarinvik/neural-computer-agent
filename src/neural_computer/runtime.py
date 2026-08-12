@@ -89,6 +89,11 @@ from .representation import (
     REPRESENTATION_SPACE_SCHEMA,
     validate_representation_space_id,
 )
+from .temporal_memory import (
+    ExternalTemporalHistoryEventBridge,
+    ExternalTemporalHistoryEventBridgeResult,
+    ExternalTemporalHistoryMemory,
+)
 from .world_model import (
     ExternalModelBasedPlanner,
     ExternalTransitionModelBank,
@@ -923,6 +928,72 @@ class AmodalControllerRuntime(nn.Module):
             disable_workspace=disable_workspace,
             memory_scope=memory_scope,
         )
+
+    def step_streams_with_external_history(
+        self,
+        streams: Mapping[str, torch.Tensor | AmodalEvent],
+        state: ControllerState,
+        feedback: ControllerFeedback,
+        history: ExternalTemporalHistoryMemory,
+        history_offsets: torch.Tensor,
+        *,
+        history_scope: torch.Tensor | None = None,
+        append_history: bool = True,
+        elapsed: torch.Tensor | float = 1.0,
+        batch_size: int | None = None,
+        device: torch.device | str | None = None,
+        dtype: torch.dtype = torch.float32,
+        disable_workspace: bool = False,
+        memory_scope: torch.Tensor | None = None,
+    ) -> tuple[
+        AmodalRuntimeOutput,
+        ControllerState,
+        ExternalTemporalHistoryEventBridgeResult,
+    ]:
+        """Run one cycle with causal, externally stored learned history.
+
+        The current encoded streams and explicitly requested prior history
+        tokens remain separate event tokens at the controller boundary.  The
+        history read occurs before the current tick is appended, and the
+        method rejects a query that would overflow the controller's bounded
+        event window instead of silently losing older tokens.
+        """
+        if not isinstance(history, ExternalTemporalHistoryMemory):
+            raise TypeError("external history must use the temporal history ABI")
+        events = self.encode_streams(
+            streams,
+            batch_size=batch_size,
+            device=device,
+            dtype=dtype,
+        )
+        if history_offsets.ndim != 2 or history_offsets.dtype is not torch.long:
+            raise ValueError("external history offsets must be int64 [batch, query]")
+        if history_offsets.shape[0] != events.payload.shape[0]:
+            raise ValueError("external history offsets batch does not match streams")
+        if (
+            events.payload.shape[1] + history_offsets.shape[1]
+            > self.controller.event_window_capacity
+        ):
+            raise ValueError(
+                "external history query exceeds the controller event-window capacity"
+            )
+        bridge = ExternalTemporalHistoryEventBridge(self.event_width)
+        augmented = bridge.augment(
+            events,
+            history,
+            history_offsets,
+            scope=history_scope,
+            append_current=append_history,
+        )
+        output, next_state = self.step_events(
+            augmented.events,
+            state,
+            feedback,
+            elapsed=elapsed,
+            disable_workspace=disable_workspace,
+            memory_scope=memory_scope,
+        )
+        return output, next_state, augmented
 
     def initial_state(
         self,

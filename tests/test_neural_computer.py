@@ -22,6 +22,7 @@ from neural_computer import (
     EventWaitPolicy,
     EventWaitStatistics,
     ExecutableArtifactMemory,
+    ExternalTemporalHistoryEventBridge,
     ExternalTemporalHistoryMemory,
     ExternalTemporalOffsetSelector,
     MemoryBackend,
@@ -961,6 +962,104 @@ def test_external_temporal_history_payload_round_trip_and_scope_clear() -> None:
         scope=scope,
     ).present.tolist() == [[False], [True]]
     assert memory.record_count == 2
+
+
+def test_runtime_history_bridge_reads_before_append_and_keeps_tokens_separate() -> None:
+    controller = AmodalCognitiveController(
+        width=4,
+        workspace_slots=2,
+        intention_width=3,
+        feedback_width=2,
+        event_window_capacity=3,
+    )
+    runtime = AmodalControllerRuntime(
+        controller,
+        encoders={"stream": nn.Identity()},
+    )
+    memory = ExternalTemporalHistoryMemory(width=4, scope_capacity=2)
+    state = runtime.initial_state(2, device="cpu")
+    feedback = _feedback(2, 2)
+    offsets = torch.tensor([[0, 1], [0, 1]], dtype=torch.long)
+    scope = torch.tensor([0, 1], dtype=torch.long)
+
+    first = torch.tensor(
+        [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0]]
+    )
+    _output, state, first_result = runtime.step_streams_with_external_history(
+        {"stream": first},
+        state,
+        feedback,
+        memory,
+        offsets,
+        history_scope=scope,
+    )
+    assert first_result.read.present.tolist() == [[False, False], [False, False]]
+    assert first_result.events.present.tolist() == [
+        [True, False, False],
+        [True, False, False],
+    ]
+    assert memory.record_count == 2
+
+    second = torch.tensor(
+        [[0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0]]
+    )
+    _output, _state, second_result = runtime.step_streams_with_external_history(
+        {"stream": second},
+        state,
+        feedback,
+        memory,
+        offsets,
+        history_scope=scope,
+    )
+    assert second_result.read.present.tolist() == [[True, False], [True, False]]
+    assert torch.equal(second_result.events.payload[0, 1], first[0])
+    assert torch.equal(second_result.events.payload[1, 1], first[1])
+    assert second_result.appends[0].positions.tolist() == [1, 1]
+
+    quiet = ExternalTemporalHistoryEventBridge(4).augment(
+        AmodalEventCollection.empty(2, 4),
+        memory,
+        offsets,
+        scope=scope,
+        append_current=False,
+    )
+    assert quiet.events.present.tolist() == [
+        [True, True],
+        [True, True],
+    ]
+
+
+def test_runtime_history_bridge_rejects_unpreserved_metadata_and_overflow() -> None:
+    bridge = ExternalTemporalHistoryEventBridge(4)
+    memory = ExternalTemporalHistoryMemory(width=4)
+    metadata = AmodalEventCollection.from_events(
+        [
+            AmodalEvent(
+                torch.ones(1, 4),
+                timestamp=torch.ones(1),
+            )
+        ]
+    )
+    with pytest.raises(ValueError, match="timing metadata"):
+        bridge.augment(metadata, memory, torch.zeros(1, 1, dtype=torch.long))
+
+    controller = AmodalCognitiveController(
+        width=4,
+        workspace_slots=2,
+        intention_width=3,
+        feedback_width=2,
+        event_window_capacity=1,
+    )
+    runtime = AmodalControllerRuntime(controller, encoders={"stream": nn.Identity()})
+    with pytest.raises(ValueError, match="event-window capacity"):
+        runtime.step_streams_with_external_history(
+            {"stream": torch.ones(1, 4)},
+            runtime.initial_state(1, device="cpu"),
+            _feedback(1, 2),
+            memory,
+            torch.zeros(1, 1, dtype=torch.long),
+        )
+    assert memory.record_count == 0
 
 
 def test_external_temporal_memory_contract_probe_passes(tmp_path) -> None:

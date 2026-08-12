@@ -18,6 +18,8 @@ import torch
 from torch import nn
 from torch.distributions import Categorical
 
+from .interface import AmodalEventCollection
+
 EXTERNAL_TEMPORAL_HISTORY_SCHEMA = (
     "neural-computer.external-temporal-history.v1"
 )
@@ -30,6 +32,30 @@ EXTERNAL_TEMPORAL_HISTORY_APPEND_SCHEMA = (
 EXTERNAL_TEMPORAL_OFFSET_SELECTOR_SCHEMA = (
     "neural-computer.external-temporal-offset-selector.v1"
 )
+EXTERNAL_TEMPORAL_HISTORY_EVENT_BRIDGE_SCHEMA = (
+    "neural-computer.external-temporal-history-event-bridge.v1"
+)
+
+
+@dataclass(frozen=True)
+class ExternalTemporalHistoryEventBridgeResult:
+    """Causal history augmentation plus the memory-side append receipts."""
+
+    events: AmodalEventCollection
+    read: ExternalTemporalHistoryRead
+    appends: tuple[ExternalTemporalHistoryAppendReceipt, ...]
+    schema: str = EXTERNAL_TEMPORAL_HISTORY_EVENT_BRIDGE_SCHEMA
+
+    def validate(self, *, width: int, batch: int | None = None) -> ExternalTemporalHistoryEventBridgeResult:
+        if self.schema != EXTERNAL_TEMPORAL_HISTORY_EVENT_BRIDGE_SCHEMA:
+            raise ValueError("unsupported temporal history event bridge schema")
+        self.events.validate(width=width)
+        self.read.validate(width=width, batch=batch)
+        if batch is not None and self.events.payload.shape[0] != batch:
+            raise ValueError("temporal history bridge event batch does not match")
+        for receipt in self.appends:
+            receipt.validate(batch=batch)
+        return self
 
 
 @dataclass(frozen=True)
@@ -522,3 +548,100 @@ class ExternalTemporalHistoryMemory(nn.Module):
             raise ValueError("temporal history payload checksum mismatch")
         memory.validate_state()
         return memory
+
+
+class ExternalTemporalHistoryEventBridge(nn.Module):
+    """Causally augment learned events with externally stored history.
+
+    The bridge reads the requested prior records *before* appending the
+    current collection.  It returns current tokens followed by separately
+    bindable historical tokens and explicit presence masks for missing
+    history.  The controller still owns all processing; this object only
+    adapts a replaceable external history store into the canonical event bus.
+
+    The v1 history store contains learned payload tensors only.  To avoid
+    silently discarding transport structure, collections carrying source
+    keys, timestamps, or durations are rejected until a history ABI that
+    persists those fields is selected explicitly.
+    """
+
+    schema = EXTERNAL_TEMPORAL_HISTORY_EVENT_BRIDGE_SCHEMA
+
+    def __init__(self, event_width: int) -> None:
+        super().__init__()
+        if event_width < 1:
+            raise ValueError("temporal history bridge event width must be positive")
+        self.event_width = int(event_width)
+
+    def configuration(self) -> dict[str, int | str]:
+        return {
+            "schema": self.schema,
+            "event_width": self.event_width,
+            "ordering": "current_tokens_then_prior_relative_tokens_v1",
+            "causality": "read_before_append_v1",
+            "missing_history": "explicit_present_mask_v1",
+            "metadata": "payload_only_with_derived_presence_confidence_v1",
+        }
+
+    @torch.no_grad()
+    def augment(
+        self,
+        collection: AmodalEventCollection,
+        history: ExternalTemporalHistoryMemory,
+        offsets: torch.Tensor,
+        *,
+        scope: torch.Tensor | None = None,
+        append_current: bool = True,
+    ) -> ExternalTemporalHistoryEventBridgeResult:
+        if not isinstance(collection, AmodalEventCollection):
+            raise TypeError("temporal history bridge needs an event collection")
+        if not isinstance(history, ExternalTemporalHistoryMemory):
+            raise TypeError("temporal history bridge needs external history memory")
+        collection.validate(width=self.event_width)
+        if history.width != self.event_width:
+            raise ValueError("temporal history width does not match event width")
+        if offsets.ndim != 2 or offsets.dtype is not torch.long:
+            raise ValueError("temporal history bridge offsets must be int64 [batch, query]")
+        batch = collection.payload.shape[0]
+        if offsets.shape[0] != batch:
+            raise ValueError("temporal history bridge offsets batch does not match")
+        if collection.source_key is not None:
+            raise ValueError(
+                "temporal history bridge v1 cannot preserve event source keys"
+            )
+        if collection.timestamp is not None or collection.duration is not None:
+            raise ValueError(
+                "temporal history bridge v1 cannot preserve event timing metadata"
+            )
+
+        # This read intentionally precedes every append below.  A query for
+        # offset zero therefore means the most recent prior record, never the
+        # current input being processed on this tick.
+        read = history.read_relative(offsets, scope=scope)
+        read_values = read.values.to(
+            device=collection.payload.device,
+            dtype=collection.payload.dtype,
+        )
+        read_present = read.present.to(device=collection.payload.device)
+        read_confidence = read_present.to(dtype=collection.confidence.dtype)
+        events = AmodalEventCollection(
+            payload=torch.cat((collection.payload, read_values), dim=1),
+            present=torch.cat((collection.present, read_present), dim=1),
+            confidence=torch.cat((collection.confidence, read_confidence), dim=1),
+        ).validate(width=self.event_width)
+
+        appends: list[ExternalTemporalHistoryAppendReceipt] = []
+        if append_current:
+            for index in range(collection.payload.shape[1]):
+                appends.append(
+                    history.append(
+                        collection.payload[:, index],
+                        present=collection.present[:, index],
+                        scope=scope,
+                    )
+                )
+        return ExternalTemporalHistoryEventBridgeResult(
+            events=events,
+            read=read,
+            appends=tuple(appends),
+        ).validate(width=self.event_width, batch=batch)

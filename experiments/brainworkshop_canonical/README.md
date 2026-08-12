@@ -898,6 +898,25 @@ capability experiment must train the offset selector from scalar outcomes.
 Evidence is archived in
 `session_records/brainworkshop_external_temporal_memory_contract_2026-08-12/`.
 
+## Canonical runtime history bridge (2026-08-12)
+
+The production runtime now exposes
+`AmodalControllerRuntime.step_streams_with_external_history()`. It reads
+caller-selected relative offsets from `ExternalTemporalHistoryMemory` before
+appending the current learned event tokens, then passes current and historical
+tokens together through the ordinary amodal event bus. The bridge preserves
+per-token presence masks, keeps history out of the controller's fixed state,
+and rejects both unpreserved timing/source metadata and event-window overflow
+instead of silently dropping information.
+
+This closes the transport seam between the external temporal file and the
+canonical runtime; it does not promote a new learned-capability result. The
+current history ABI stores learned payloads only, offset selection remains
+external, and the controller still has a bounded query window. The next
+experiment should train a query-conditioned offset/address policy against
+scalar outcomes and measure stable-prefix retention, reversal, missing-history,
+memory-corruption, shuffled-outcome, and zero-replay controls.
+
 ## Outcome-only learned temporal offset growth (2026-08-12)
 
 The next step trains an external file to choose a relative history offset from
