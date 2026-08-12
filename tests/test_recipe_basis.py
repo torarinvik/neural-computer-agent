@@ -20,7 +20,7 @@ def _pair_states() -> tuple[tuple[int, ...], ...]:
 
 
 def test_baseline_fail_closed_reports_atomic_gap() -> None:
-    target = paired_increment_target(0, 1)
+    target = paired_increment_target(0, 1, modulus=8)
     result = RecipeBasis(allow_parallel=False).expressibility_probe(
         target,
         states=_pair_states(),

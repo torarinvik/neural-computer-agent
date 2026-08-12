@@ -497,7 +497,7 @@ def paired_increment_target(
     first: int,
     second: int,
     *,
-    modulus: int = 8,
+    modulus: int,
 ) -> Callable[[tuple[int, ...]], tuple[int, ...]]:
     """Return a generic two-slot simultaneous increment effect.
 
