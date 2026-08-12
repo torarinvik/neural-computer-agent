@@ -65,6 +65,13 @@ parser.add_argument("--examples", type=int, default=32,
 parser.add_argument("--batch-size", type=int, default=64)
 parser.add_argument("--lr", type=float, default=1e-3)
 parser.add_argument(
+    "--pool", type=int, default=6000,
+    help="labelled real-family examples the WAKE phase produces once, "
+         "for the sleep phase to train on. Enumerating per batch would "
+         "mean ~960,000 family draws per run and is also the wrong "
+         "shape: a system that re-solved every family each time it "
+         "revisited one would not be learning from its own history.")
+parser.add_argument(
     "--real-training", action="store_true",
     help="train on transitions from REAL families with labels found by "
          "enumeration — the search feeding the reader, as the design "
@@ -233,14 +240,28 @@ def real_batch(count: int, generator: torch.Generator):
             torch.tensor([r[5] for r in rows]))
 
 
+# The wake phase runs ONCE and produces a dataset; the sleep phase
+# trains on it. Enumerating per batch would mean ~960,000 family draws
+# for a full run, and is also the wrong shape — a system that had to
+# re-solve every family every time it revisited one would not be
+# learning from its own history, which is the entire point.
+pool = None
+if args.real_training:
+    pool = real_batch(args.pool, torch.Generator().manual_seed(
+        args.seed * 15485863))
+
 reader = Reader(args.dim)
 optimizer = torch.optim.AdamW(reader.parameters(), lr=args.lr,
                               weight_decay=0.01)
 gen = torch.Generator().manual_seed(args.seed * 104729)
 curve = []
 for update in range(args.reader_updates):
-    draw = real_batch if args.real_training else make_batch
-    before, after, ops, ii, jj, mm = draw(args.batch_size, gen)
+    if args.real_training:
+        pick = torch.randint(0, pool[0].shape[0], (args.batch_size,),
+                             generator=gen)
+        before, after, ops, ii, jj, mm = (t[pick] for t in pool)
+    else:
+        before, after, ops, ii, jj, mm = make_batch(args.batch_size, gen)
     if args.shuffle_labels:
         perm = torch.randperm(args.batch_size, generator=gen)
         ops, ii, jj, mm = ops[perm], ii[perm], jj[perm], mm[perm]
