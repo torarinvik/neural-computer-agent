@@ -713,6 +713,45 @@ def test_external_temporal_shared_artifact_consolidation_smoke_preserves_views(
     assert report["gates"]["zero_replayed_examples"]
 
 
+def test_external_temporal_online_compositional_growth_fails_closed_without_mastery(
+    tmp_path,
+) -> None:
+    from experiments.brainworkshop_canonical.external_temporal_online_compositional_growth import (
+        run,
+    )
+
+    report = run(
+        argparse.Namespace(
+            report_out=tmp_path / "temporal-online-compositional-growth.json",
+            seed=17,
+            source_updates=1,
+            source_evaluation_lifetimes=1,
+            source_route_lifetimes=1,
+            target_route_updates=1,
+            policy_updates=10,
+            policy_batch_size=2,
+            batch_size=2,
+            data_steps=10,
+            retention_lifetimes=1,
+            learning_rate=3e-3,
+            entropy_weight=0.01,
+        )
+    )
+
+    assert report["schema"] == (
+        "neural-computer.brainworkshop-external-temporal-"
+        "online-compositional-growth.v1"
+    )
+    assert report["status"] == "rejected"
+    assert report["gates"]["forward_rejections_non_mutating"]
+    assert report["gates"]["reversed_rejections_non_mutating"]
+    assert report["gates"]["forward_corruption_rejected"]
+    assert report["gates"]["reversed_corruption_rejected"]
+    assert report["gates"]["controller_frozen"]
+    assert report["gates"]["event_encoder_frozen"]
+    assert report["gates"]["zero_replayed_examples"]
+
+
 def test_external_temporal_content_retrieval_growth_smoke_preserves_memory_contract(
     tmp_path,
 ) -> None:

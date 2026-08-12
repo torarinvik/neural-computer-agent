@@ -11250,3 +11250,37 @@ temporal capabilities. It does not qualify arbitrary semantic compression,
 unrestricted memory growth, arbitrary new computation, or general continual
 learning. Evidence and accounting are archived in
 `session_records/brainworkshop_external_temporal_shared_artifact_consolidation_promoted_2026-08-12/`.
+
+### Repeated online compositional temporal growth
+
+The next composition pressure test combines fresh temporal route acquisition
+with repeated external consolidation. Six anonymous routes arrive as three
+distinct shared-basis pairs. Each pair is acquired from fresh scalar temporal
+evidence, inserted into a four-row `ExecutableArtifactMemory`, reduced from
+two physical rows to one by the opaque consolidation policy, and re-read
+before the next pair arrives. After each rewrite the compacted memory is
+explicitly grown back to hot capacity; this makes the grow/consolidate
+lifecycle observable rather than treating capacity as an implicit constant.
+
+The raw and already-composed artifacts use one fixed-width opaque ABI:
+`shared_basis`, two residual-view tensors, and two opaque address tensors.
+This was necessary because the first repeated audit rejected at the third
+pair: variable artifact schemas made an already-composed row incomparable to
+a fresh row, so the policy no longer selected the shared pair. The fixed ABI
+is a representation contract, not a semantic field map; the policy still
+receives only planner-generated tensors, keys, strength, and age.
+
+Across seeds `17`, `18`, and `19`, both forward and reversed insertion streams
+accept all three rewrites and retain every earlier route at `1.0000` minimum
+fresh verification accuracy after each later pair. Learned pair selection is
+`1.0000` at every stage. The first stage has no competing pair and therefore
+cannot separate shuffled or untrained controls; after alternatives exist,
+learned selection beats both controls at every stage. Rejected transactions
+are non-mutating, reload and corruption checks pass, and the controller,
+event encoder, and acquired file remain frozen with zero replay.
+
+This promotes bounded repeated online compositional growth with external
+memory expansion and consolidation. It does not qualify unrestricted memory
+growth, arbitrary new computation, semantic ontology formation, or general
+continual learning. Evidence and accounting are archived in
+`session_records/brainworkshop_external_temporal_online_compositional_growth_promoted_2026-08-12/`.

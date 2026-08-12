@@ -1324,6 +1324,47 @@ PYTHONPATH=src uv run python -m experiments.brainworkshop_canonical.external_tem
   --report-out /tmp/brainworkshop-temporal-shared-artifact.json
 ```
 
+## Repeated online compositional temporal growth (promoted bounded rung)
+
+`external_temporal_online_compositional_growth.py` composes fresh route
+acquisition with repeated shared-view consolidation. Six anonymous temporal
+routes arrive as three distinct shared-basis pairs. Each pair is learned from
+fresh scalar evidence, inserted into a four-row artifact capacity, reduced
+from two rows to one by a generic opaque policy, and re-read before the next
+pair arrives. The compacted snapshot is grown back to hot capacity explicitly.
+
+Across seeds `17`, `18`, and `19`, all forward and reversed streams accept all
+three rewrites, and every earlier route remains at `1.0000` minimum fresh
+verification accuracy after each later pair. Learned pair selection is
+`1.0000` at every stage. The first stage has only two candidates, so its
+shuffled and untrained rates are necessarily `1.0000`; after alternatives
+exist, shuffled rates are `0.8333/0.8333/0.0000` and
+`0.0000/0.2500/0.0000` across the latter two stages for seeds 17/18/19,
+while untrained rates are `0.3333` and `0.1667`. Both insertion orders pass
+reload, corruption, and non-mutating rejection controls. The controller,
+event encoder, and acquired file remain frozen with zero replay.
+
+Each seed accounts for `43,904` unique verifier bits, `48` temporal logical
+lifetimes, `48,000` policy-training lifetimes, `64` policy-audit lifetimes,
+`48,112` total logical lifetimes, `3,000` optimizer updates, and zero replay.
+Serialized bytes reduce `6,338 → 3,169`, `9,507 → 6,338`, and
+`12,676 → 9,507`, ending with three physical rows for six logical routes.
+This promotes bounded repeated online compositional growth, not unrestricted
+memory growth, arbitrary new computation, semantic ontology formation, or
+general continual learning. Evidence and complete reports are archived in
+`session_records/brainworkshop_external_temporal_online_compositional_growth_promoted_2026-08-12/`.
+
+Run it with:
+
+```bash
+PYTHONPATH=src uv run python -m experiments.brainworkshop_canonical.external_temporal_online_compositional_growth \
+  --source-updates 128 --source-evaluation-lifetimes 4 \
+  --source-route-lifetimes 8 --target-route-updates 8 \
+  --policy-updates 3000 --policy-batch-size 16 --batch-size 16 \
+  --data-steps 14 --retention-lifetimes 4 --seed 17 \
+  --report-out /tmp/brainworkshop-temporal-online-compositional.json
+```
+
 ## Related-key temporal content retrieval (historical v1; current v2 rejected)
 
 `external_temporal_content_retrieval_growth.py` composes that address
