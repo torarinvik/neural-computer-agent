@@ -1178,3 +1178,17 @@ record count stayed at 26 while physical storage stayed at 168 versus 416
 dense value scalars. This is a bounded repeated-reversal and capacity-reuse
 result, not general continual learning. Evidence is archived at
 `session_records/brainworkshop_external_temporal_shared_basis_alternating_regimes_promoted_2026-08-12/`.
+
+## Gated residual online adaptation (2026-08-12)
+
+`external_temporal_regime_policy_online_adaptation.py` first trains the raw
+external regime detector on stable and disjoint banks, then freezes it and
+grows a zero-initialized `GatedResidualRegimeChangePolicy` from fresh scalar
+utilities. The online stream has non-periodic stable intervals, partially
+overlapping shifts, and disjoint shifts. No earlier pair is replayed.
+
+Seeds 17 and 18 raised partial-overlap replacement from `0.0156` to `0.8203`
+and `0.8906` while retaining `1.0000` stable keep and disjoint replacement.
+The rejected naive single-policy update is retained as a negative control: it
+learned the new shift but erased stable behavior. Evidence is archived at
+`session_records/brainworkshop_external_temporal_regime_policy_online_adaptation_promoted_2026-08-12/`.

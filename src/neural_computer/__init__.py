@@ -463,7 +463,9 @@ from .recipe_basis import (
     paired_increment_target,
 )
 from .regime_policy import (
+    GATED_RESIDUAL_REGIME_POLICY_SCHEMA,
     REGIME_CHANGE_POLICY_SCHEMA,
+    GatedResidualRegimeChangePolicy,
     OpaqueRegimeChangePolicy,
     RegimeChangePlan,
     RegimeChangePolicyOutput,
@@ -922,6 +924,7 @@ __all__ = [
     "EXTERNAL_TRANSITION_SPARSE_EVIDENCE_SCHEMA",
     "EXTERNAL_TRANSITION_SUPPORT_STATISTICS_SCHEMA",
     "EXTERNAL_WORKING_MEMORY_CELL_SCHEMA",
+    "GATED_RESIDUAL_REGIME_POLICY_SCHEMA",
     "GOAL_CONDITIONED_MEMORY_RELEVANCE_SCHEMA",
     "GROWTH_PRIOR_SCHEMA",
     "HOLDOUT_LEDGER_SCHEMA",
@@ -1206,6 +1209,7 @@ __all__ = [
     "FactoredTransitionQuarantineReceipt",
     "FactoredTransitionRouteResult",
     "FactorizedOpaqueAddressRouter",
+    "GatedResidualRegimeChangePolicy",
     "GoalConditionedMemoryProposal",
     "GoalConditionedModelSelection",
     "GrowthLoadReceipt",

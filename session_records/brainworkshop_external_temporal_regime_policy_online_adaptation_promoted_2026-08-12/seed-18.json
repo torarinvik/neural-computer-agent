@@ -1,0 +1,114 @@
+{
+  "schema": "neural-computer.brainworkshop-external-temporal-regime-policy-online-adaptation.v1",
+  "claim_boundary": "A scalar-trained external regime trigger adapts online without replay to partially overlapping shifts while retaining stable and disjoint boundaries; not general continual learning.",
+  "seed": 18,
+  "architecture": {
+    "policy": "opaque_regime_change_policy_v1",
+    "residual_policy": "gated_residual_regime_change_policy_v1",
+    "feature_contract": "opaque_spectral_cross_bank_structure_v1",
+    "forbidden_features": "task_labels_regime_ids_candidate_reconstruction_error_v1",
+    "controller": "frozen_canonical_amodal_controller",
+    "event_encoder": "frozen_learned_event_encoder"
+  },
+  "pretraining": {
+    "optimizer_updates": 1000,
+    "unique_scalar_utilities": 1000,
+    "first_window_utility": 0.77,
+    "last_window_utility": 1.0
+  },
+  "before_scores": {
+    "stable_keep": 1.0,
+    "partial_replace": 0.015625,
+    "disjoint_replace": 1.0
+  },
+  "online_adaptation": {
+    "unique_scalar_utilities": 144,
+    "optimizer_updates": 144,
+    "replayed_examples": 0,
+    "stage_accuracy": {
+      "0": 1.0,
+      "1": 0.038461538461538464,
+      "2": 1.0,
+      "3": 1.0,
+      "4": 1.0,
+      "5": 0.2727272727272727,
+      "6": 1.0,
+      "7": 1.0
+    },
+    "stream_utility": 0.7152777777777778,
+    "stage_plan": [
+      [
+        "stable",
+        14
+      ],
+      [
+        "partial",
+        26
+      ],
+      [
+        "stable",
+        8
+      ],
+      [
+        "disjoint",
+        38
+      ],
+      [
+        "stable",
+        12
+      ],
+      [
+        "partial",
+        22
+      ],
+      [
+        "disjoint",
+        18
+      ],
+      [
+        "stable",
+        6
+      ]
+    ]
+  },
+  "after_scores": {
+    "stable_keep": 1.0,
+    "partial_replace": 0.890625,
+    "disjoint_replace": 1.0
+  },
+  "exact_scores_after": {
+    "stable_keep": 1.0,
+    "shift_replace": 1.0
+  },
+  "fresh_scores": {
+    "stable_keep": 1.0,
+    "partial_replace": 0.0,
+    "disjoint_replace": 0.0
+  },
+  "gates": {
+    "pretrained_stable_keep": true,
+    "pretrained_disjoint_replace": true,
+    "online_partial_replace": true,
+    "online_stable_retained": true,
+    "online_disjoint_retained": true,
+    "online_partial_beats_pretrained": true,
+    "online_beats_fresh": true,
+    "online_stream_utility": true,
+    "exact_stable_after": true,
+    "exact_shift_after": true,
+    "controller_frozen": true,
+    "event_encoder_frozen": true,
+    "zero_replayed_examples": true
+  },
+  "accounting": {
+    "pretraining_scalar_updates": 1000,
+    "online_scalar_updates": 144,
+    "total_optimizer_updates": 1144,
+    "replayed_examples": 0,
+    "controller_updates": 0,
+    "unique_verifier_bits": 1144,
+    "unique_logical_lifetimes": 1144,
+    "latency_seconds": 1.2603359579807147
+  },
+  "status": "promoted_online_partial_overlap"
+}

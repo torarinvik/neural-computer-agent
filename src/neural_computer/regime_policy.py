@@ -16,6 +16,9 @@ import torch
 from torch import nn
 
 REGIME_CHANGE_POLICY_SCHEMA = "neural-computer.opaque-regime-change-policy.v1"
+GATED_RESIDUAL_REGIME_POLICY_SCHEMA = (
+    "neural-computer.gated-residual-regime-change-policy.v1"
+)
 
 
 @dataclass(frozen=True)
@@ -296,8 +299,201 @@ class OpaqueRegimeChangePolicy(nn.Module):
         return float(loss.detach())
 
 
+class GatedResidualRegimeChangePolicy(nn.Module):
+    """Grow a trainable external residual without changing a frozen policy.
+
+    The base detector is an immutable capability snapshot.  A zero-initialized
+    residual can learn a new boundary online, but deterministic inference uses
+    it only when its preferred action has at least ``override_margin`` more
+    logit evidence than the base detector's preferred action.  This keeps the
+    old policy available as a protected fallback while the external residual
+    grows.
+    """
+
+    schema = GATED_RESIDUAL_REGIME_POLICY_SCHEMA
+
+    def __init__(
+        self,
+        base: OpaqueRegimeChangePolicy,
+        *,
+        override_margin: float = 0.0,
+    ) -> None:
+        super().__init__()
+        if not isinstance(base, OpaqueRegimeChangePolicy):
+            raise TypeError("gated residual base must be an opaque regime policy")
+        if not math.isfinite(override_margin) or override_margin < 0.0:
+            raise ValueError("gated residual override margin must be non-negative")
+        self.base = base
+        for parameter in self.base.parameters():
+            parameter.requires_grad_(False)
+        self.override_margin = float(override_margin)
+        self.residual = nn.Linear(base.feature_width, 2)
+        nn.init.zeros_(self.residual.weight)
+        nn.init.zeros_(self.residual.bias)
+
+    @property
+    def value_width(self) -> int:
+        return self.base.value_width
+
+    def configuration(self) -> dict[str, int | float | str]:
+        return {
+            "schema": self.schema,
+            "base_schema": self.base.schema,
+            "value_width": self.value_width,
+            "feature_contract": "base_opaque_spectral_cross_bank_structure_v1",
+            "residual": "zero_initialized_external_linear_v1",
+            "override": "base_fallback_margin_gate_v1",
+            "override_margin": self.override_margin,
+            "frozen_base": True,
+            "updates": "single_scalar_verifier_utility_without_replay_v1",
+        }
+
+    def trainable_parameters(self):
+        """Return only the new external residual parameters."""
+
+        return self.residual.parameters()
+
+    def _logits(
+        self,
+        current_values: torch.Tensor,
+        current_occupied: torch.Tensor,
+        incoming_values: torch.Tensor,
+        incoming_occupied: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        with torch.no_grad():
+            base_logits = self.base(
+                current_values,
+                current_occupied,
+                incoming_values,
+                incoming_occupied,
+            ).logits
+        features = self.base._features(
+            current_values,
+            current_occupied,
+            incoming_values,
+            incoming_occupied,
+        )
+        residual_logits = self.residual(features)
+        return base_logits, residual_logits, base_logits + residual_logits
+
+    def forward(
+        self,
+        current_values: torch.Tensor,
+        current_occupied: torch.Tensor,
+        incoming_values: torch.Tensor,
+        incoming_occupied: torch.Tensor,
+    ) -> RegimeChangePolicyOutput:
+        _base_logits, _residual_logits, combined = self._logits(
+            current_values,
+            current_occupied,
+            incoming_values,
+            incoming_occupied,
+        )
+        return RegimeChangePolicyOutput(logits=combined)
+
+    def _gated_logits(
+        self,
+        base_logits: torch.Tensor,
+        residual_logits: torch.Tensor,
+    ) -> torch.Tensor:
+        base_index = base_logits.argmax(dim=-1)
+        residual_index = residual_logits.argmax(dim=-1)
+        base_score = base_logits.gather(-1, base_index.unsqueeze(-1)).squeeze(-1)
+        residual_score = residual_logits.gather(
+            -1, residual_index.unsqueeze(-1)
+        ).squeeze(-1)
+        use_residual = (
+            residual_score > self.override_margin
+        ) & (residual_score >= base_score + self.override_margin)
+        return torch.where(
+            use_residual.unsqueeze(-1),
+            residual_logits,
+            base_logits,
+        )
+
+    @torch.no_grad()
+    def propose(
+        self,
+        current_values: torch.Tensor,
+        current_occupied: torch.Tensor,
+        incoming_values: torch.Tensor,
+        incoming_occupied: torch.Tensor,
+        *,
+        explore: bool = False,
+        temperature: float = 1.0,
+        generator: torch.Generator | None = None,
+    ) -> RegimeChangePlan | tuple[RegimeChangePlan, ...]:
+        if not isinstance(explore, bool):
+            raise TypeError("gated residual explore flag must be boolean")
+        if temperature <= 0.0 or not math.isfinite(temperature):
+            raise ValueError("gated residual temperature must be positive")
+        base_logits, residual_logits, combined = self._logits(
+            current_values,
+            current_occupied,
+            incoming_values,
+            incoming_occupied,
+        )
+        logits = combined if explore else self._gated_logits(
+            base_logits, residual_logits
+        )
+        plans: list[RegimeChangePlan] = []
+        for row in logits:
+            if explore:
+                probabilities = torch.softmax(row / temperature, dim=-1)
+                index = int(torch.multinomial(probabilities, 1, generator=generator))
+            else:
+                index = int(row.argmax())
+            plans.append(
+                RegimeChangePlan(
+                    replace=index == 1,
+                    score=row[index].detach().clone(),
+                )
+            )
+        return plans[0] if len(plans) == 1 else tuple(plans)
+
+    def adaptation_step(
+        self,
+        current_values: torch.Tensor,
+        current_occupied: torch.Tensor,
+        incoming_values: torch.Tensor,
+        incoming_occupied: torch.Tensor,
+        plan: RegimeChangePlan,
+        verifier_utility: float,
+        *,
+        optimizer: torch.optim.Optimizer | None = None,
+    ) -> float:
+        self.base._validate_bank(current_values, current_occupied)
+        self.base._validate_bank(incoming_values, incoming_occupied)
+        if current_values.shape[0] != 1 or incoming_values.shape[0] != 1:
+            raise ValueError("gated residual adaptation needs one bank pair")
+        if not isinstance(plan, RegimeChangePlan):
+            raise TypeError("gated residual plan is invalid")
+        if not math.isfinite(verifier_utility) or not 0.0 <= verifier_utility <= 1.0:
+            raise ValueError("gated residual utility must lie in [0, 1]")
+        _base_logits, _residual_logits, logits = self._logits(
+            current_values,
+            current_occupied,
+            incoming_values,
+            incoming_occupied,
+        )
+        index = int(plan.replace)
+        log_probability = torch.log_softmax(logits[0], dim=-1)[index]
+        loss = -(verifier_utility - 0.5) * log_probability
+        selected_optimizer = optimizer
+        if selected_optimizer is None:
+            selected_optimizer = torch.optim.SGD(
+                self.trainable_parameters(), lr=self.base.learning_rate
+            )
+        selected_optimizer.zero_grad()
+        loss.backward()
+        selected_optimizer.step()
+        return float(loss.detach())
+
+
 __all__ = [
+    "GATED_RESIDUAL_REGIME_POLICY_SCHEMA",
     "REGIME_CHANGE_POLICY_SCHEMA",
+    "GatedResidualRegimeChangePolicy",
     "OpaqueRegimeChangePolicy",
     "RegimeChangePlan",
     "RegimeChangePolicyOutput",

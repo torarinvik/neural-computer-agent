@@ -10615,3 +10615,24 @@ semantic change-point discovery, unrestricted memory growth, arbitrary new
 computation, or general continual learning. Evidence and accounting are
 archived in
 `session_records/brainworkshop_external_temporal_shared_basis_alternating_regimes_promoted_2026-08-12/`.
+
+## Gated residual online adaptation (2026-08-12)
+
+The single-policy online adaptation calibration exposed catastrophic
+forgetting: partial-overlap replacement improved, but stable keep collapsed.
+The promoted boundary therefore freezes the existing external detector and
+adds a zero-initialized residual policy. Online scalar utilities update only
+the residual. Deterministic inference falls back to the frozen detector unless
+the residual has positive, stronger evidence for its preferred action.
+
+Across seeds `17` and `18`, 144 fresh online utilities raised held-out
+partial-overlap replacement from `0.0156` to `0.8203/0.8906`, while stable keep
+and disjoint replacement remained `1.0000`. Exact stable and fully shifted
+retention, frozen controller/encoder, and zero-replay controls passed. The
+negative single-policy result is archived with the promotion evidence.
+
+This promotes parameter-isolated residual growth as one anti-forgetting
+mechanism. It does not establish arbitrary residual-slot routing, unrestricted
+external growth, arbitrary new computation, or general continual learning.
+Evidence and accounting are archived in
+`session_records/brainworkshop_external_temporal_regime_policy_online_adaptation_promoted_2026-08-12/`.

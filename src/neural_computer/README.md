@@ -1794,3 +1794,12 @@ shared-basis representation; no stale occurrence is appended. Stable probes
 are exact memory no-ops, and the controller/encoder remain frozen. Evidence
 is archived at
 `session_records/brainworkshop_external_temporal_shared_basis_alternating_regimes_promoted_2026-08-12/`.
+
+`GatedResidualRegimeChangePolicy` is the first explicit parameter-isolated
+anti-forgetting boundary for online external adaptation. It keeps an
+immutable `OpaqueRegimeChangePolicy` as the fallback and grows a zero-start
+residual from scalar verifier utilities. The residual can override only when
+its evidence is positive and stronger than the base action, preserving the
+old capability while new external state learns. Its canonical partial-overlap
+audit, including the rejected unconstrained-update control, is archived at
+`session_records/brainworkshop_external_temporal_regime_policy_online_adaptation_promoted_2026-08-12/`.

@@ -786,6 +786,38 @@ def test_external_temporal_shared_basis_alternates_without_capacity_growth(
     assert report["gates"]["zero_replayed_examples"]
 
 
+def test_external_temporal_regime_policy_learns_partial_overlap_without_forgetting(
+    tmp_path,
+) -> None:
+    from experiments.brainworkshop_canonical.external_temporal_regime_policy_online_adaptation import (
+        run,
+    )
+
+    report = run(
+        argparse.Namespace(
+            report_out=tmp_path / "temporal-regime-online-adaptation.json",
+            seed=17,
+            pretrain_updates=1_000,
+            online_updates_scale=2,
+        )
+    )
+
+    assert report["schema"] == (
+        "neural-computer.brainworkshop-external-temporal-regime-policy-"
+        "online-adaptation.v1"
+    )
+    assert report["architecture"]["residual_policy"] == (
+        "gated_residual_regime_change_policy_v1"
+    )
+    assert report["gates"]["online_partial_replace"]
+    assert report["gates"]["online_stable_retained"]
+    assert report["gates"]["online_disjoint_retained"]
+    assert report["gates"]["exact_stable_after"]
+    assert report["gates"]["exact_shift_after"]
+    assert report["gates"]["controller_frozen"]
+    assert report["gates"]["zero_replayed_examples"]
+
+
 def test_binary_switch_family_has_a_valid_chance_baseline() -> None:
     verifier = CrossFamilyVerifier(
         family="switch_binary",

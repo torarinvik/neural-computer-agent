@@ -3,6 +3,7 @@ from __future__ import annotations
 import torch
 
 from neural_computer import (
+    GatedResidualRegimeChangePolicy,
     OpaqueRegimeChangePolicy,
     RegimeChangePlan,
 )
@@ -82,3 +83,45 @@ def test_regime_policy_ignores_unoccupied_padding_and_adapts() -> None:
 
     assert isinstance(plan, RegimeChangePlan)
     assert torch.isfinite(torch.tensor(loss))
+
+
+def test_gated_residual_keeps_base_frozen_and_starts_as_base_fallback() -> None:
+    base = OpaqueRegimeChangePolicy(
+        value_width=8,
+        hidden=16,
+        max_spectral_bins=4,
+    ).eval()
+    policy = GatedResidualRegimeChangePolicy(base)
+    current, current_occupied, incoming, incoming_occupied = _banks()
+    base_plan = base.propose(
+        current,
+        current_occupied,
+        incoming,
+        incoming_occupied,
+    )
+    residual_plan = policy.propose(
+        current,
+        current_occupied,
+        incoming,
+        incoming_occupied,
+    )
+
+    assert residual_plan.replace == base_plan.replace
+    assert all(not parameter.requires_grad for parameter in base.parameters())
+    before = {name: value.detach().clone() for name, value in base.state_dict().items()}
+    optimizer = torch.optim.Adam(policy.trainable_parameters(), lr=0.01)
+    policy.adaptation_step(
+        current,
+        current_occupied,
+        incoming,
+        incoming_occupied,
+        residual_plan,
+        1.0,
+        optimizer=optimizer,
+    )
+
+    assert all(torch.equal(value, before[name]) for name, value in base.state_dict().items())
+    assert any(
+        bool(torch.any(parameter.detach() != 0.0))
+        for parameter in policy.residual.parameters()
+    )
