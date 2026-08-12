@@ -342,62 +342,68 @@ def play(config, mode, bank, seed, encoder, pair_a, pair_b,
 variants = family_variants()
 train_games = variants[:args.train_games]
 held_games = variants[args.held_from:args.held_to]
+pairs = [q for q in itertools.permutations(range(SLOTS), 2)]
 
-# ------------------------------------------- choosing the goal's slots
-# Every ordered pair-of-pairs over six slots, scored by REWARD on the
-# training games only. The chosen pair is then frozen and never revisited.
-pairs = [p for p in itertools.permutations(range(SLOTS), 2)]
-def choose_goal(encoder):
-    games = train_games[:args.search_games]
-    banks = {c.name: build_bank(c, args.seed * 31, encoder) for c in games}
-    # A slot that is ABSENT in most rows cannot carry a goal: its cost is
-    # the same whatever the agent does. Admissibility is a property of the
-    # interface's sentinel, not of grids, so this adds no domain knowledge.
-    present = torch.zeros(SLOTS)
-    for c in games:
-        v = FamilyVerifier(c, batch_size=args.observations, seed=args.seed * 31)
-        v.reset(seed=args.seed * 31)
-        code = encoder(v.observation())
-        present += (code < VALUES).float().mean(dim=0)
-    present /= len(games)
-    usable = {s for s in range(SLOTS) if float(present[s]) >= 0.9}
+
+def usable_slots(config, encoder):
+    """Which slots this world actually populates.
+
+    Presence is a per-WORLD property and averaging it across worlds was
+    wrong: collect and intercept fill slots 0-3 and leave 4-5 absent,
+    avoid fills 0,1 and 4,5 and leaves 2,3 absent, so the average put
+    every object slot below any sensible threshold and admitted nothing.
+
+    In the pure avoid worlds slots 2 and 3 are absent, so the fixed goal
+    (0,1)->(2,3) names slots that do not exist and the planner there is
+    blind. F203 itself tested collect and intercept, which do populate
+    0-3, so this does not explain F203's negative arms -- but any run
+    that includes an avoid world inherits it."""
+    v = FamilyVerifier(config, batch_size=args.observations,
+                       seed=args.seed * 31)
+    v.reset(seed=args.seed * 31)
+    present = (encoder(v.observation()) < VALUES).float().mean(dim=0)
+    return {s for s in range(SLOTS) if float(present[s]) >= 0.9}
+
+
+def choose_goal(config, encoder, bank):
+    """Pick this world's goal from its OWN admissible slots, scored on
+    episodes that the final evaluation does not reuse."""
+    usable = usable_slots(config, encoder)
     best, best_reward = None, -1e9
     for pa in pairs:
         for pb in pairs:
-            # the two pairs must be disjoint -- matching a slot to itself
-            # is solved by doing nothing -- and (a,b) is the same goal as
-            # its within-pair swap, so only keep one ordering
             if set(pa) & set(pb) or pa[0] > pa[1]:
                 continue
             if not (set(pa) | set(pb)) <= usable:
                 continue
-            total = sum(play(c, "bank", banks[c.name], args.seed * 977,
-                             encoder, pa, pb,
-                             episodes=args.search_episodes,
-                             steps=args.search_steps) for c in games)
-            if total > best_reward:
-                best, best_reward = (pa, pb), total / len(games)
+            reward = play(config, "bank", bank, args.seed * 977 + 1, encoder,
+                          pa, pb, episodes=args.search_episodes,
+                          steps=args.search_steps)
+            if reward > best_reward:
+                best, best_reward = (pa, pb), reward
     return best, round(best_reward, 4), sorted(usable)
 
 
 results = {}
-arms = [("handwritten_fixed_goal", enc_handwritten, ((0, 1), (2, 3))),
-        ("discovered_fixed_goal", enc_discovered, ((0, 1), (2, 3)))]
-chosen, train_reward, usable_d = choose_goal(enc_discovered)
-report["chosen_goal_pairs"] = {"avatar_pair": list(chosen[0]),
-                               "target_pair": list(chosen[1]),
-                               "train_reward": train_reward, "usable_slots": usable_d}
-arms.append(("discovered_chosen_goal", enc_discovered, chosen))
-chosen_hw, train_hw, usable_h = choose_goal(enc_handwritten)
-report["chosen_goal_pairs_handwritten"] = {
-    "avatar_pair": list(chosen_hw[0]), "target_pair": list(chosen_hw[1]),
-    "train_reward": train_hw, "usable_slots": usable_h}
-arms.append(("handwritten_chosen_goal", enc_handwritten, chosen_hw))
-
-for label, encoder, (pa, pb) in arms:
-    rows = {}
+for label, encoder, mode in (
+        ("handwritten_fixed_goal", enc_handwritten, "fixed"),
+        ("handwritten_chosen_goal", enc_handwritten, "chosen"),
+        ("discovered_fixed_goal", enc_discovered, "fixed"),
+        ("discovered_chosen_goal", enc_discovered, "chosen")):
+    rows, goals = {}, {}
     for config in held_games:
         bank = build_bank(config, args.seed * 31, encoder)
+        if mode == "fixed":
+            pa, pb = (0, 1), (2, 3)
+            picked = None
+        else:
+            picked, train_reward, usable = choose_goal(config, encoder, bank)
+            if picked is None:            # world admits no goal at all
+                continue
+            pa, pb = picked
+            goals[config.name] = {"goal": [list(pa), list(pb)],
+                                  "select_reward": train_reward,
+                                  "usable_slots": usable}
         rows[config.name] = {
             "random": play(config, "random", None, args.seed * 977,
                            encoder, pa, pb),
@@ -405,14 +411,17 @@ for label, encoder, (pa, pb) in arms:
                          encoder, pa, pb),
             "oracle": play(config, "oracle", None, args.seed * 977,
                            encoder, pa, pb)}
+    if not rows:
+        results[label] = {"scored_games": 0}
+        continue
     results[label] = {
-        "goal": [list(pa), list(pb)],
-        "per_game": rows,
+        "scored_games": len(rows), "per_game": rows, "chosen_goals": goals,
         **{f"mean_{k}": round(sum(v[k] for v in rows.values()) / len(rows), 4)
            for k in ("random", "bank", "oracle")}}
-    print(f"  {label:<26} random {results[label]['mean_random']:+.4f}  "
-          f"bank {results[label]['mean_bank']:+.4f}  "
-          f"oracle {results[label]['mean_oracle']:+.4f}", flush=True)
+    print(f"  {label:<26} n={len(rows):<3} random "
+          f"{results[label]['mean_random']:+.4f}  bank "
+          f"{results[label]['mean_bank']:+.4f}  oracle "
+          f"{results[label]['mean_oracle']:+.4f}", flush=True)
 
 report["results"] = results
 print(json.dumps(report, indent=2))

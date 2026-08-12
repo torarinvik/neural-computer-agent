@@ -431,10 +431,30 @@ def score_encoder(encoder, games, seeds=(0,), with_coverage=True):
                 moving = (hb != ha).any(dim=0)
                 if int(moving.sum()) == 0:
                     continue
+                # Count each DISTINCT slot column once. The first search
+                # bought margin by repeating a predictable slot -- four
+                # copies of the avatar row -- and coverage does not
+                # punish duplication, only collapse. Averaging over
+                # distinct columns removes the incentive without adding
+                # a parameter.
+                seen, keep = set(), []
+                for s in range(SLOTS):
+                    if not bool(moving[s]):
+                        continue
+                    signature = (tuple(hb[:, s].tolist()),
+                                 tuple(ha[:, s].tolist()))
+                    if signature in seen:
+                        continue
+                    seen.add(signature)
+                    keep.append(s)
+                if not keep:
+                    continue
+                unique = torch.zeros(SLOTS, dtype=torch.bool)
+                unique[keep] = True
                 got = run_parallel(hb, per_slot_search(fb, fa))
                 margins.append(
-                    float((got[:, moving] == ha[:, moving]).float().mean())
-                    - float((hb[:, moving] == ha[:, moving]).float().mean()))
+                    float((got[:, unique] == ha[:, unique]).float().mean())
+                    - float((hb[:, unique] == ha[:, unique]).float().mean()))
                 coverages.append(coverage_of(encoder, config, action,
                                              777001 + action + 1000 * offset))
     if not margins:

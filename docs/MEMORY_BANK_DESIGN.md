@@ -11228,3 +11228,70 @@ Re-run, the search spans all three channels and the ranking inverts back:
 5 duplicate 0 and 1 — for a one-pixel avatar `centre` equals `peak` — so
 the greedy step still buys margin by repeating a predictable slot.
 Coverage does not punish duplication, only collapse.
+
+## F214 — THE GOAL NO LONGER HAS TO BE SUPPLIED, AND PERCEPTION STILL
+## DOES
+
+Every finding from F203 on carried the same caveat: "the goal is
+SUPPLIED, not learned." It was written as "move slot pair (0,1) toward
+slot pair (2,3)" — stated in the interface rather than in grid terms,
+but still naming slots, and only correct because the hand-written
+perception guarantees what those slots hold.
+
+F213's discovered encoder makes that assumption false: it puts channel
+2's column in slot 2 and channel 1's row in slot 3, a pair that is not a
+position. So a discovered perception should break a hand-written goal,
+and if it does, the two cannot be chosen independently. Four arms, three
+seeds, eight held-out worlds each.
+
+| arm | random | BANK | oracle |
+| --- | ---: | ---: | ---: |
+| handwritten + fixed goal | -0.4212 | **+0.5013** | +1.2129 |
+| handwritten + CHOSEN goal | -0.4212 | **+0.5189** | +1.1992 |
+| discovered + fixed goal | -0.4212 | -0.5013 | -0.4277 |
+| discovered + CHOSEN goal | -0.4212 | **+0.2005** | +0.2194 |
+
+| paired, bank arm | | |
+| --- | ---: | --- |
+| discovered fixed - handwritten fixed | -1.0026 +- 0.1049 | t=-9.56, 0/3 |
+| discovered chosen - discovered fixed | +0.7018 +- 0.0266 | **t=+26.39, 3/3** |
+| discovered chosen - handwritten fixed | -0.3008 +- 0.0840 | t=-3.58, 0/3 |
+| handwritten chosen - handwritten fixed | +0.0176 +- 0.0176 | t=+1.00, 1/3 |
+
+**The goal can be found instead of written.** Searching a world's own
+admissible slot pairs by reward, on episodes the evaluation does not
+reuse, **rediscovers the hand-written goal (0,1)->(2,3) on seven of
+eight worlds** and is statistically neutral against it overall. Nothing
+told the search what a goal looks like beyond the FORM "match one slot
+pair to another"; which pairs, and in which world, it worked out from
+reward. That removes one of the two hand-written components.
+
+**Perception and goal are coupled, and the coupling is removable.** A
+discovered perception with a hand-written goal collapses below random
+(-0.5013 against random's -0.4212). Choosing the goal recovers +0.7018
+of that, at t=+26.39 on 3 of 3 seeds.
+
+**Perception discovery still fails end-to-end, and that is the honest
+headline.** Even with its own goal, the discovered encoder reaches
++0.2005 against the hand-written encoder's +0.5013 — worse by 0.3008,
+t=-3.58, on every seed. The programmability criterion picks an encoder
+that PREDICTS well and PLANS worse.
+
+**And F213's margin was inflated.** Closing the duplicate-slot loophole
+— counting each distinct slot column once, so repeating a predictable
+slot buys nothing — drops the discovered encoder from 0.4451 to 0.3598
+on held-out worlds, below `absolute`'s 0.4423. With both loopholes shut,
+**the criterion no longer prefers a discovered encoder to a hand-written
+one.** F213's headline should be read as superseded.
+
+**Two bugs found by diagnostics before they became findings.** The first
+version of the goal search reported that choosing the goal HURT the
+hand-written encoder at t=-8.60, which would have been a striking
+result. It was mine: ABSENT was masked to 0 in the predicted state and
+left at 8 in the reference, so a goal naming an absent slot produced an
+identical cost for all four actions — [8.41, 8.41, 8.41, 8.41] on
+collect1 — and a blind planner always takes action 0, which at a starved
+search budget beat the real goal. The second was averaging slot presence
+ACROSS worlds when presence is per-world: collect and intercept fill
+slots 0-3, avoid fills 0,1 and 4,5, and the average admitted nothing at
+all. Fixed, the same comparison reads t=+1.00.
