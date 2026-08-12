@@ -29,6 +29,9 @@ from experiments.brainworkshop_canonical.external_compute_growth import (
 from experiments.brainworkshop_canonical.external_compute_depth_selection import (
     run as run_external_compute_depth_selection,
 )
+from experiments.brainworkshop_canonical.external_compute_depth_probe import (
+    run as run_external_compute_depth_probe,
+)
 from experiments.brainworkshop_canonical.external_compute_open_growth import (
     run as run_external_compute_open_growth,
 )
@@ -313,6 +316,33 @@ def test_external_compute_depth_selection_smoke_is_outcome_only_and_fail_closed(
     assert report["gates"]["event_encoder_unchanged"]
     assert report["gates"]["shuffled_control_fails_closed"]
     assert report["accounting"]["calibration_optimizer_updates"] == 0
+    assert report["accounting"]["replayed_examples"] == 0
+
+
+def test_external_compute_depth_probe_smoke_keeps_deeper_window_external(
+    tmp_path,
+) -> None:
+    report = run_external_compute_depth_probe(
+        argparse.Namespace(
+            report_out=tmp_path / "external-compute-depth-probe.json",
+            seed=17,
+            updates=2,
+            batch_size=2,
+            steps=8,
+            retention_lifetimes=1,
+            event_window_size=6,
+            query_count=6,
+            learning_rate=1e-2,
+            entropy_weight=0.01,
+        )
+    )
+
+    assert report["schema"] == (
+        "neural-computer.brainworkshop-external-compute-depth-probe.v1"
+    )
+    assert report["architecture"]["query_count"] == 6
+    assert report["gates"]["frozen_controller"]
+    assert report["gates"]["frozen_event_encoder"]
     assert report["accounting"]["replayed_examples"] == 0
 
 

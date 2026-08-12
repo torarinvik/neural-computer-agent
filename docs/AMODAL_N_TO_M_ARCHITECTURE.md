@@ -11934,3 +11934,24 @@ unconstrained nonstationary learning, learned compression, unrestricted
 memory growth, arbitrary program induction, or general continual learning.
 Evidence is archived at
 `session_records/brainworkshop_external_history_depth_maintenance_promoted_2026-08-12/`.
+
+## Generic external-history n-back-5 depth (2026-08-12)
+
+The replaceable flattened external-compute basis now has a replicated
+six-record depth rung: five preceding learned events plus the current event.
+The controller, learned event frontend, instruction interpreter, and decoder
+interfaces remain unchanged. Across seeds `17` and `18`, n-back-5 reached
+`1.0000` on every one of four fresh lifetimes after 512 attempted-outcome
+updates, with zero replay and frozen controller/frontend digests.
+
+The variable-history attention reducer was held out as a negative control. At
+the same n-back-5 depth it remained around `0.74–0.78` after both 192 and 512
+updates on seed `17`; therefore the result does not claim that the variable
+attention path has learned equivalent capacity. A related ABI correction now
+compacts masked records before recurrence and maps their states back to the
+opaque read positions, with a padding-position invariance test.
+
+This promotes deeper bounded generic temporal computation, not unrestricted
+history growth, learned compression, arbitrary program induction, or general
+continual learning. Evidence is archived at
+`session_records/brainworkshop_external_history_nback5_depth_promoted_2026-08-12/`.

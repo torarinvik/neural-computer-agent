@@ -2597,25 +2597,56 @@ class ExternalRegisterComputeBasis(nn.Module):
                     # sequence reducer consumes valid records oldest to
                     # newest, followed by the current event.  Keeping these
                     # concerns separate preserves opaque addressing while
-                    # making the causal order explicit to the reducer.
-                    sequence = torch.cat((window, current_event.unsqueeze(1)), dim=1)
-                    sequence_mask = torch.cat(
-                        (
-                            read_mask,
-                            torch.ones(
-                                register.shape[0],
-                                1,
-                                dtype=torch.bool,
-                                device=register.device,
-                            ),
-                        ),
-                        dim=1,
+                    # making the causal order explicit to the reducer.  The
+                    # external read may be left-padded or sparsely masked, so
+                    # compact valid history before the recurrent pass.  This
+                    # prevents padding from changing the hidden state and
+                    # keeps the current event at the true sequence boundary.
+                    history_length = read_mask.sum(dim=1)
+                    history_rank = read_mask.to(torch.long).cumsum(dim=1) - 1
+                    compact_history = torch.zeros_like(window)
+                    compact_history.scatter_add_(
+                        1,
+                        history_rank.clamp_min(0).unsqueeze(-1).expand_as(window),
+                        window * read_mask.unsqueeze(-1).to(window.dtype),
                     )
-                    sequence_states, _ = self.history_recurrent(sequence)
-                    history_states = sequence_states[:, :-1]
+                    compact_sequence = torch.zeros(
+                        register.shape[0],
+                        window.shape[1] + 1,
+                        self.event_width,
+                        device=register.device,
+                        dtype=register.dtype,
+                    )
+                    compact_sequence[:, :-1] = compact_history
+                    compact_sequence.scatter_add_(
+                        1,
+                        history_length[:, None, None].expand(
+                            -1, 1, self.event_width
+                        ),
+                        current_event.unsqueeze(1),
+                    )
+                    sequence_mask = (
+                        torch.arange(
+                            compact_sequence.shape[1],
+                            device=register.device,
+                        )
+                        .unsqueeze(0)
+                        <= history_length[:, None]
+                    )
+                    sequence_states, _ = self.history_recurrent(compact_sequence)
+                    compact_history_states = sequence_states[:, :-1]
+                    ranked_history_states = compact_history_states.gather(
+                        1,
+                        history_rank.clamp_min(0).unsqueeze(-1).expand_as(
+                            compact_history_states
+                        ),
+                    )
+                    history_states = ranked_history_states * read_mask.unsqueeze(
+                        -1
+                    ).to(compact_history_states.dtype)
                     keys = self.history_key(history_states)
                     values = self.history_value(history_states)
-                    last_index = sequence_mask.sum(dim=1).clamp_min(1) - 1
+                    last_index = history_length
                     summary = sequence_states.gather(
                         1,
                         last_index[:, None, None].expand(

@@ -1,0 +1,11 @@
+{
+  "seed": 18,
+  "fresh_accuracy": [1.0, 1.0, 1.0, 1.0],
+  "training_tail": [1.0, 1.0, 1.0, 1.0, 1.0],
+  "gates": {
+    "fresh_depth_mastered": true,
+    "frozen_controller": true,
+    "frozen_event_encoder": true,
+    "zero_replayed_examples": true
+  }
+}

@@ -1909,3 +1909,22 @@ This promotes replay-free stale-depth maintenance, not unrestricted
 nonstationary learning. The reversal failures are an explicit scalar-outcome
 control rather than a learned environmental change. Evidence is archived at
 `session_records/brainworkshop_external_history_depth_maintenance_promoted_2026-08-12/`.
+
+## Generic external-history n-back-5 depth (2026-08-12)
+
+The generic flattened external event ABI now supports a six-record active
+window: five preceding learned events plus the current event. Across seeds
+`17` and `18`, n-back-5 reached `1.0000` on all four fresh lifetimes after
+512 attempted-outcome updates, with the controller and event frontend frozen
+and zero replay.
+
+The variable-history attention path was run as a negative control at the same
+depth and plateaued around `0.74–0.78` after both 192 and 512 updates on seed
+17. The implementation nevertheless received an important correctness fix:
+masked history is compacted before recurrence and mapped back to opaque read
+positions, so padding placement cannot alter valid-token computation.
+
+This promotes deeper bounded generic temporal computation. It does not promote
+unrestricted history, learned compression, arbitrary program induction, or
+general continual learning. Evidence and accounting are archived at
+`session_records/brainworkshop_external_history_nback5_depth_promoted_2026-08-12/`.
