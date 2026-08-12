@@ -9865,3 +9865,64 @@ instruction set was fitted to rule families and its generality was an
 artefact of never having looked. That result would be worth more than
 the confirmation, and recording the prediction now is what makes it
 readable either way.
+
+## F192 — THE AMODAL CLAIM, DEMONSTRATED: one frozen interpreter
+## predicts rule families AND grid games
+
+The claim this project is built on, tested for the first time rather
+than argued from construction. One interpreter, trained ONLY on random
+programs over random slot states — no rule family, no grid, nothing
+from either domain ever touches its weights — then recipes searched for
+both.
+
+**The control passes.** Interpreter 0.9700 and 0.9954 on unseen
+programs; rule families reproduce their established margin at +0.4099
+and +0.4598. So the probe works and the rest can be read.
+
+| domain | held-out | identity floor | margin |
+| --- | ---: | ---: | ---: |
+| rule families | 0.9990 / 1.0000 | 0.5891 / 0.5403 | +0.4099 / +0.4598 |
+| **grid games** | **0.9852 / 0.9805** | 0.6458 / 0.6394 | **+0.3395 / +0.3411** |
+
+Per game, both seeds:
+
+| game | held-out | floor | margin |
+| --- | ---: | ---: | ---: |
+| collect1 | 0.9927 / 0.9941 | 0.77 | +0.219 / +0.219 |
+| collect2 | 0.9707 / 0.9546 | 0.75 | +0.218 / +0.223 |
+| intercept1 | 0.9937 / 0.9922 | 0.53 | +0.463 / +0.460 |
+| intercept2 | 0.9839 / 0.9810 | 0.53 | +0.458 / +0.463 |
+
+**An avatar moving on an 8x8 board among falling objects, and a
+procedurally generated rule family, are predicted by the SAME frozen
+weights to 0.98 and 0.999.** The two domains share the slot interface
+and nothing else. The instruction set was developed across roughly a
+hundred measurements on rule families alone, and it transfers to a
+domain it was never shaped against.
+
+**P3 confirmed on its metric, and for a different reason than I gave.**
+I predicted the grid margin would be smaller because object motion is
+independent of the action and no single instruction expresses it. The
+margin IS smaller, 0.34 against 0.41 — but grid ACCURACY is 0.985
+against 0.999, nearly equal. The smaller margin is almost entirely the
+higher floor, not a capability shortfall. The stated reason was wrong
+even though the prediction was right, which is worth separating.
+
+**What this does NOT show, stated plainly.**
+
+* **Two of six variants could not be measured at all.** `avoid1` and
+  `avoid2` produced no usable slots and are absent from the table, not
+  averaged in as zeros. Whatever they need, this encoding does not
+  supply it.
+* **The perception is hand-written and shallow.** `slot_state` takes
+  the avatar's argmax and the single nearest object per plane, so a
+  world with several objects is only partly described. This measures
+  the interpreter GIVEN a working encoder; it is not an end-to-end
+  perception result, and using the unchanged `game_slots` encoder was
+  deliberate so the number could not be improved by tuning it.
+* **One-step transitions only.** Nothing here is planning or control.
+
+Two seeds, third running. The margins agree to three decimal places
+across seeds (+0.3395, +0.3411), which is unusually tight for this
+project and is the main reason to expect the third to land in the same
+place rather than to assume it.
