@@ -10194,3 +10194,44 @@ lesson, and then read exactly such a mean and reported a null. The
 paired view took one command. **A lesson recorded is not a lesson
 applied**, and the gap between those two is where this session has lost
 the most time.
+
+## F198 — wide rules do NOT unlock the arity-2 actions: arity is
+## necessary, not sufficient
+
+F197 established that cross-domain transfer occurs on exactly the one
+game with arity-1 actions. F195 predicted the fix: prime with families
+drawn `wide=True`, whose `pair` op writes TWO slots, and transfer
+should reach the arity-2 grid actions.
+
+| priming | primed cheaper | stranger cheaper | the wins |
+| --- | ---: | ---: | --- |
+| narrow | 2/18 | 0/18 | collect1 at 0.536, 0.632 |
+| **wide** | **2/18** | 0/18 | collect1 at 0.867, 0.692 |
+
+**Refuted, and cleanly.** The same two game-seeds win, both still
+`collect1`, and on seed 69316 the wide library is WORSE than the narrow
+one (0.867 against 0.536). Not one arity-2 action became reachable.
+
+**Why, and it sharpens the account rather than replacing it.** A rule
+family's `pair` op writes two slots by incrementing BOTH. A grid's
+arity-2 action writes two slots with different, coupled values — the
+avatar moves one way and the object slot re-ranks another. Writing two
+slots is not the same as writing the RIGHT two slots.
+
+So **arity is a necessary condition for transfer, not a sufficient
+one**, and the reason is combinatorial. An arity-1 action is nearly
+determined by "which slot, which direction", a space small enough that
+rule families cover it densely — which is why `collect1` transfers at
+all. An arity-2 action ranges over pairs of coupled effects, and
+`pair`'s "increment both" occupies one corner of that space. Raising
+the source arity does not help unless it raises COVERAGE of the target
+arity's function space, and one op does not.
+
+**Three predictions from the arity account, in order:** F195 predicted
+the null's cause (confirmed, F196's measurements), F197 predicted where
+transfer WOULD appear (confirmed, exactly `collect1`), and F195
+predicted wide rules would extend it (refuted, here). Two of three, and
+the one that failed fails for a reason the account itself explains once
+stated properly — which is the difference between a theory that is
+adjusting to data and one that is being sharpened by it. Recorded so
+the distinction stays checkable rather than asserted.
