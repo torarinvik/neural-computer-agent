@@ -65,6 +65,17 @@ parser.add_argument("--fit-target", type=float, default=0.99)
 parser.add_argument("--games", type=int, default=6)
 parser.add_argument("--rule-families", type=int, default=6)
 parser.add_argument(
+    "--horizon", type=int, default=0,
+    help="roll each recipe forward this many steps and score against "
+         "the real game at every step, with the floor RECOMPUTED at "
+         "each horizon — a frozen-start floor gets worse as the rollout "
+         "runs, so holding it fixed would flatter the model.")
+parser.add_argument(
+    "--absolute-objects", action="store_true",
+    help="encode object slots by raster order rather than by distance "
+         "from the avatar. F196 measured this and it does NOT reduce "
+         "grid arity; kept so the refutation is reproducible.")
+parser.add_argument(
     "--wide-rules", action="store_true",
     help="draw the priming rule families with the `pair` op enabled, "
          "so their actions write TWO slots. F195 found cross-domain "
@@ -422,6 +433,66 @@ for config in family_variants()[:args.games]:
             results.setdefault(f"grid_{tag}", {})[config.name] = out
     if f"grid_cold" in results and config.name in results["grid_cold"]:
         results["grid_games"][config.name] = results["grid_cold"][config.name]
+# ------------------------------------------------------------ horizon
+# One-step prediction is established (F192, F194). Everything that ACTS
+# needs it to COMPOUND: a planner rolls a recipe forward k steps and
+# scores the result, so the question is not whether the model is right
+# once but how fast being right decays. Compounding error is the
+# standard failure of learned world models and the reason F150 had to
+# check the search arithmetic, so it is measured rather than assumed.
+#
+# The floor rises with horizon too and must be recomputed at each k:
+# "the state never changed from where it started" gets WORSE as the
+# rollout goes on, so a fixed floor would flatter the model.
+def horizon_curve(config, recipe, steps: int, seed: int):
+    verifier = FamilyVerifier(config, batch_size=args.eval_rows,
+                              seed=seed)
+    verifier.reset(seed=seed)
+    truth = slot_state(verifier.observation())
+    start = truth.clone()
+    predicted = truth.clone()
+    generator = torch.Generator().manual_seed(seed + 71)
+    out = []
+    for step in range(steps):
+        action = torch.randint(0, verifier.action_count,
+                               (args.eval_rows,), generator=generator)
+        verifier.step(action)
+        truth = slot_state(verifier.observation())
+        nxt = predicted.clone()
+        for act, cand in recipe.items():
+            keep = action == act
+            if not bool(keep.any()) or cand is None:
+                continue
+            src = torch.where(predicted[keep] < VALUES, predicted[keep],
+                              torch.zeros_like(predicted[keep]))
+            with torch.no_grad():
+                nxt[keep] = interp(cand, src).argmax(-1)
+        predicted = nxt
+        alive = (truth[:, 0] < VALUES) & (start[:, 0] < VALUES)
+        if int(alive.sum()) < 8:
+            break
+        t = torch.where(truth < VALUES, truth, torch.zeros_like(truth))
+        used = (t[alive] < VALUES).all(dim=0)
+        hit = (predicted[alive][:, used] == t[alive][:, used]).float().mean()
+        idf = (start[alive][:, used] == t[alive][:, used]).float().mean()
+        out.append({"step": step + 1, "accuracy": round(float(hit), 4),
+                    "frozen_start_floor": round(float(idf), 4)})
+    return out
+
+
+if args.horizon:
+    report["horizon"] = {}
+    for config in family_variants()[:args.games]:
+        obs = game_transitions(config, args.observations, args.seed * 31)
+        held = game_transitions(config, args.eval_rows, args.seed * 977)[:3]
+        got = solve_and_score(obs[0], obs[1], obs[2], obs[3], held)
+        if not got:
+            continue
+        rec = {k: v for k, v in zip(range(len(got["recipe"])),
+                                    got["recipe"])}
+        report["horizon"][config.name] = horizon_curve(
+            config, rec, args.horizon, args.seed * 977)
+
 report["rule_programs_stored"] = len(rule_programs)
 report["wide_rules"] = args.wide_rules
 report["absolute_objects"] = args.absolute_objects
