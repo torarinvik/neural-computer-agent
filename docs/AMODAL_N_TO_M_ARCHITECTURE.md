@@ -11597,3 +11597,24 @@ promotes bounded runtime-owned route reachability, not arbitrary program
 induction, unrestricted memory growth, or general continual learning. Evidence
 is archived at
 `session_records/control_flow_runtime_autonomous_route_growth_promoted_2026-08-12/`.
+
+### Balanced open-world discovery as the external bank grows
+
+Uniform epsilon exploration is not sufficient for open-world growth: an
+unseen context's chance of testing its new file falls as `1/N`. The context
+route evidence now exposes a balanced external behavior policy. Until a
+context has a protected winner, it samples only among the least-attempted
+opaque files; after mastery, it returns to exploit-plus-inverse-attempt
+novelty exploration. Exact behavior probabilities and selected propensities
+remain available for accounting. This policy is memory-side and does not
+interpret program contents or add a controller branch.
+
+The three-seed pressure test admitted eight files incrementally and learned
+eight unseen interleaved contexts without caller slot overrides. Every context
+selected its matching file, including the newest file; one context reversed
+while seven others remained retained; context keys stayed distinct; reload,
+corruption, protected-file, frozen-controller, zero-replay, and shuffled
+feedback controls passed. This promotes bounded open-world route discovery,
+not unrestricted memory growth, arbitrary program induction, or general
+continual learning. Evidence is archived at
+`session_records/control_flow_runtime_open_world_route_growth_promoted_2026-08-12/`.

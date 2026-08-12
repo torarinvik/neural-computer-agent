@@ -616,6 +616,84 @@ class PersistentOpaqueContextRouteEvidence:
             device=contexts.device,
         )
 
+    def behavior_probabilities(
+        self,
+        contexts: torch.Tensor,
+        *,
+        exploration: float = 0.0,
+        strategy: str = "stochastic",
+    ) -> torch.Tensor:
+        """Return exact exploitation/novelty probabilities for opaque routes.
+
+        The exploitation mass follows the context's protected preferred slot.
+        Exploration is weighted by ``1 / (1 + attempts)`` for each slot in that
+        context's external ledger, so a newly appended file remains discoverable
+        as the bank grows instead of receiving only ``epsilon / N`` forever.
+        Unknown contexts have zero attempts for every slot and therefore explore
+        uniformly.  This method returns behavior probabilities only; it does not
+        mutate or create context rows.
+        """
+
+        if not isinstance(contexts, torch.Tensor) or contexts.ndim != 2:
+            raise ValueError("context-route contexts must have shape [batch, width]")
+        if contexts.shape[1] != self.width:
+            raise ValueError(f"context-route contexts must have shape [batch, {self.width}]")
+        if contexts.shape[0] < 1:
+            raise ValueError("context-route contexts cannot be empty")
+        if not 0.0 <= exploration <= 1.0 or not math.isfinite(float(exploration)):
+            raise ValueError("context-route exploration must lie in [0, 1]")
+        if strategy not in {"stochastic", "balanced"}:
+            raise ValueError("context-route exploration strategy is unsupported")
+        if self.slot_count < 1:
+            raise ValueError("context-route bank has no slots")
+
+        rows: list[torch.Tensor] = []
+        for context in contexts:
+            record = self._find_record(context, create=False)
+            if record is None:
+                attempts = torch.zeros(
+                    self.slot_count,
+                    dtype=torch.float32,
+                    device=contexts.device,
+                )
+                preferred = 0
+            else:
+                status = record.evidence.status()
+                attempts = torch.tensor(
+                    status.attempts,
+                    dtype=torch.float32,
+                    device=contexts.device,
+                )
+                preferred = record.evidence.preferred_order(
+                    slot_count=self.slot_count
+                )[0]
+                if strategy == "balanced" and status.preferred_slot is None:
+                    least_attempts = attempts.amin()
+                    least_attempted = attempts == least_attempts
+                    rows.append(
+                        least_attempted.to(dtype=torch.float32)
+                        / least_attempted.sum().clamp_min(1.0)
+                    )
+                    continue
+            if strategy == "balanced" and record is None:
+                least_attempts = attempts.amin()
+                least_attempted = attempts == least_attempts
+                rows.append(
+                    least_attempted.to(dtype=torch.float32)
+                    / least_attempted.sum().clamp_min(1.0)
+                )
+                continue
+            novelty = torch.reciprocal(1.0 + attempts)
+            novelty = novelty / novelty.sum().clamp_min(1e-8)
+            exploitation = torch.zeros(
+                self.slot_count,
+                dtype=novelty.dtype,
+                device=contexts.device,
+            )
+            exploitation[preferred] = 1.0
+            rows.append((1.0 - exploration) * exploitation + exploration * novelty)
+        return torch.stack(rows, dim=0)
+
     def protected_slots(self) -> tuple[bool, ...]:
         """Return whether any learned context protects each physical slot."""
 

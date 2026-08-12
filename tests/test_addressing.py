@@ -259,6 +259,65 @@ def test_context_route_evidence_conditions_preference_on_opaque_learned_key() ->
     assert table.preferred_slots(torch.stack((cue_a, cue_b))).tolist() == [1, 0]
 
 
+def test_context_route_behavior_probabilities_prioritize_untried_slots() -> None:
+    table = PersistentOpaqueContextRouteEvidence(
+        width=4,
+        min_mastery_observations=2,
+    )
+    for _ in range(4):
+        table.append_slot()
+    cue = torch.tensor([1.0, 0.0, 0.0, 0.0])
+    for _ in range(8):
+        table.observe(cue, 0, 1.0)
+
+    probabilities = table.behavior_probabilities(
+        torch.stack((cue, torch.tensor([0.0, 1.0, 0.0, 0.0]))),
+        exploration=1.0,
+    )
+
+    assert torch.allclose(probabilities.sum(dim=-1), torch.ones(2))
+    assert probabilities[0, 1] > probabilities[0, 0]
+    assert probabilities[0, 2] == probabilities[0, 3]
+    assert torch.allclose(probabilities[1], torch.full((4,), 0.25))
+
+
+def test_context_route_balanced_strategy_covers_unmastered_slots_before_exploit() -> None:
+    table = PersistentOpaqueContextRouteEvidence(
+        width=4,
+        min_mastery_observations=2,
+    )
+    for _ in range(4):
+        table.append_slot()
+    cue = torch.tensor([1.0, 0.0, 0.0, 0.0])
+    table.observe(cue, 0, 0.0)
+    table.observe(cue, 1, 0.0)
+
+    probabilities = table.behavior_probabilities(
+        cue.unsqueeze(0),
+        exploration=0.1,
+        strategy="balanced",
+    )
+
+    assert probabilities[0].tolist() == [0.0, 0.0, 0.5, 0.5]
+
+
+def test_context_route_rejects_unknown_exploration_strategy() -> None:
+    table = PersistentOpaqueContextRouteEvidence(width=2)
+    table.append_slot()
+    with pytest.raises(ValueError, match="strategy"):
+        table.behavior_probabilities(
+            torch.ones(1, 2),
+            strategy="unknown",
+        )
+
+
+def test_context_route_behavior_probabilities_reject_invalid_exploration() -> None:
+    table = PersistentOpaqueContextRouteEvidence(width=2)
+    table.append_slot()
+    with pytest.raises(ValueError, match="exploration"):
+        table.behavior_probabilities(torch.ones(1, 2), exploration=1.1)
+
+
 def test_context_route_evidence_can_generalize_a_protected_prior_without_aliasing() -> None:
     table = PersistentOpaqueContextRouteEvidence(
         width=4,

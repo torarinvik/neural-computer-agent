@@ -442,6 +442,7 @@ class ControlFlowProgramAmodalRuntime(nn.Module):
         program_route_evidence: PersistentOpaqueContextRouteEvidence | None = None,
         program_route_query_adapter: nn.Module | None = None,
         program_route_exploration: float = 0.0,
+        program_route_exploration_strategy: str = "stochastic",
         max_steps: int = 128,
         max_counter: int = 1_000_000,
         trace_limit: int = 0,
@@ -457,6 +458,8 @@ class ControlFlowProgramAmodalRuntime(nn.Module):
             raise TypeError("control-flow runtime program slot must be an integer")
         if not 0.0 <= float(program_route_exploration) <= 1.0:
             raise ValueError("control-flow program route exploration is invalid")
+        if program_route_exploration_strategy not in {"stochastic", "balanced"}:
+            raise ValueError("control-flow program route exploration strategy is invalid")
         if max_steps < 1 or max_counter < 1 or trace_limit < 0:
             raise ValueError("control-flow runtime bounds are invalid")
         if adapter.intention_width != runtime.intention_width:
@@ -547,6 +550,7 @@ class ControlFlowProgramAmodalRuntime(nn.Module):
         self.program_route_evidence = program_route_evidence
         self.program_route_query_adapter = program_route_query_adapter
         self.program_route_exploration = float(program_route_exploration)
+        self.program_route_exploration_strategy = program_route_exploration_strategy
         self.max_steps = int(max_steps)
         self.max_counter = int(max_counter)
         self.trace_limit = int(trace_limit)
@@ -582,6 +586,7 @@ class ControlFlowProgramAmodalRuntime(nn.Module):
             "route_feedback": "explicit_external_router_or_pending_evidence_v2",
             "route_evidence_credit": "pending_opaque_query_explicit_scalar_feedback_v2",
             "route_evidence_exploration": "exact_behavior_propensity_v1",
+            "route_evidence_exploration_strategy": self.program_route_exploration_strategy,
             "program_route_override": "optional_external_opaque_slot_v1",
             "program_route_query_adapter": (
                 None
@@ -740,26 +745,11 @@ class ControlFlowProgramAmodalRuntime(nn.Module):
                 raise ValueError("control-flow program route override is out of range")
             return selected, None, None, features, router_state
         if route_evidence is not None:
-            preferred = route_evidence.preferred_slots(features)
-            if self.program_route_exploration <= 0.0:
-                return preferred, None, None, features, router_state
-            active_count = route_evidence.slot_count
-            probabilities = torch.full(
-                (batch, active_count),
-                self.program_route_exploration / active_count,
-                device=device,
-                dtype=features.dtype,
-            )
-            probabilities.scatter_add_(
-                1,
-                preferred.unsqueeze(-1),
-                torch.full(
-                    (batch, 1),
-                    1.0 - self.program_route_exploration,
-                    device=device,
-                    dtype=features.dtype,
-                ),
-            )
+            probabilities = route_evidence.behavior_probabilities(
+                features,
+                exploration=self.program_route_exploration,
+                strategy=self.program_route_exploration_strategy,
+            ).to(device=device, dtype=features.dtype)
             selected = torch.multinomial(probabilities, 1).squeeze(-1)
             propensity = probabilities.gather(1, selected.unsqueeze(-1)).squeeze(-1)
             return selected, probabilities, propensity, features, router_state

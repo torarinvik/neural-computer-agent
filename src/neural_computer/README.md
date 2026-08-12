@@ -2028,3 +2028,10 @@ credits that pending attempt directly into external route evidence and can
 explore newly admitted files without a caller-supplied slot override. Exact
 exploration propensities are returned for verifier accounting; route IDs and
 outcomes remain outside the controller.
+
+`PersistentOpaqueContextRouteEvidence.behavior_probabilities()` also supports
+`strategy="balanced"`. During acquisition it restricts exploration to the
+least-attempted opaque files, preventing the probability of discovering a new
+file from collapsing with bank size. Once a context is protected, the normal
+exploit-plus-novelty distribution resumes. Both modes expose exact behavior
+probabilities and do not add a reasoning path to the controller.

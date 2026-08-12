@@ -758,3 +758,27 @@ Evidence is archived at
 This promotes bounded route reachability and external credit assignment. It
 does not establish unrestricted memory growth, arbitrary program induction, or
 general continual learning.
+
+## Balanced open-world external-file discovery (2026-08-12)
+
+The first eight-context audit exposed a real acquisition problem: novelty
+weighting alone left an unseen context with a uniform lottery over eight files,
+so the newest target could receive no trial. The external route policy now has
+a balanced mode that samples among the least-attempted files until a context
+has a protected winner. This keeps candidate coverage broad as the file bank
+grows while preserving exact propensities and exploit-plus-novelty behavior
+after mastery.
+
+Across three seeds, eight files were admitted incrementally and eight unseen
+contexts were learned in an interleaved stream. All eight context-to-file
+bindings were correct, including the newest file. One binding reversed while
+the other seven remained correct; context keys remained distinct; protected
+files, reload, corruption, frozen-controller, zero-replay, and shuffled
+feedback controls passed. The audit charged `462` verifier bits per arm and
+seed, or `2,772` across the six positive and shuffled arms, with zero optimizer
+updates. Evidence is archived at
+`session_records/control_flow_runtime_open_world_route_growth_promoted_2026-08-12/`.
+
+This promotes bounded open-world route discovery and acquisition coverage. It
+does not establish unbounded memory growth, arbitrary program induction, or
+general continual learning.
