@@ -973,3 +973,20 @@ This qualifies one bounded content-addressed retrieval composition, not learned
 compression, capacity management, arbitrary new computation, or general
 continual learning. Evidence and accounting are archived in
 `session_records/brainworkshop_external_temporal_content_retrieval_growth_promoted_2026-08-12/`.
+
+## Verified external temporal-memory compaction (2026-08-12)
+
+`external_temporal_verified_compaction_growth.py` adds the missing commit
+boundary to the append-only memory. It writes an exact source key, a nearby
+source alias with the same opaque capability address, and an exact target key.
+A held-out route verifier approves only the redundant source/alias merge; a
+destructive source/target merge is rejected before mutation. The memory commit
+is versioned and scope-safe, so stale verifiers cannot overwrite newer state.
+
+Seeds 17 and 18 both retained exact and related-key source and target routes at
+`1.0000` after reducing three records to two. Reload, checksum-corruption,
+stale-version, frozen-core, frozen-file, and zero-replay controls passed. This
+promotes verifier-gated compaction of redundant learned content keys, not
+arbitrary compression, unrestricted memory growth, arbitrary new computation,
+or general continual learning. Evidence and accounting are archived in
+`session_records/brainworkshop_external_temporal_verified_compaction_growth_promoted_2026-08-12/`.

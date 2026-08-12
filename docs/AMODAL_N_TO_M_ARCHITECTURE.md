@@ -10326,3 +10326,27 @@ it does not qualify learned compression, capacity management, arbitrary new
 computation, or general continual learning. Evidence and accounting are
 archived in
 `session_records/brainworkshop_external_temporal_content_retrieval_growth_promoted_2026-08-12/`.
+
+## Verified external temporal-memory compaction (2026-08-12)
+
+The append-only memory now exposes a versioned, scope-safe
+`replace_from_candidates` commit boundary. A memory-side policy can propose a
+rewrite, while an independent verifier evaluates the candidate before the
+memory adopts it. The expected store version prevents a stale verifier from
+overwriting newer state, and persistent stores snapshot the accepted rewrite
+atomically.
+
+The two-seed pressure test writes three learned records: an exact source key,
+a nearby source alias with the same opaque capability address, and an exact
+target key. A held-out route verifier accepts the source/alias merge and
+rejects a source/target merge before mutation. Seeds `17` and `18` both kept
+exact and related-key source and target accuracy at `1.0000` after saving one
+row. Reload, checksum corruption, stale-version, frozen-controller,
+frozen-encoder, frozen-capability-file, and zero-replay gates passed.
+
+This qualifies safe compaction of redundant learned content keys, not arbitrary
+compression. Distinct capabilities still need distinct representational
+capacity; learned pair selection, multi-row compression, capacity scheduling,
+and general continual learning remain open. Evidence and accounting are
+archived in
+`session_records/brainworkshop_external_temporal_verified_compaction_growth_promoted_2026-08-12/`.

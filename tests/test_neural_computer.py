@@ -25,6 +25,7 @@ from neural_computer import (
     ExternalTemporalHistoryMemory,
     ExternalTemporalOffsetSelector,
     MemoryBackend,
+    MemoryCandidates,
     MemoryQuery,
     OpaqueProtocolDecoder,
     PersistentAppendOnlyContentAddressedMemory,
@@ -799,6 +800,66 @@ def test_append_only_memory_grows_without_replacing_prior_records() -> None:
         assert torch.allclose(read.value, values[index : index + 1], atol=1e-5)
     assert memory.read(MemoryQuery(extra_key)).hit.tolist() == [True]
     assert memory.candidates().occupied.sum().item() == 9
+
+
+def test_append_only_memory_commits_verified_compaction_without_cross_scope_loss(
+    tmp_path,
+) -> None:
+    path = tmp_path / "compaction-memory.pt"
+    memory = PersistentAppendOnlyContentAddressedMemory(
+        width=4,
+        path=path,
+        write_threshold=0.0,
+        write_match_threshold=0.999,
+        scope_capacity=2,
+    )
+    keys = torch.eye(4)[:3]
+    values = torch.roll(keys, shifts=1, dims=1)
+    memory.write(
+        keys,
+        values,
+        torch.ones(3),
+        scope=torch.tensor([0, 0, 1], dtype=torch.long),
+    )
+    source_version = int(memory.store_version.item())
+    source_candidates = memory.candidates(scope=torch.tensor([0], dtype=torch.long))
+    compacted = MemoryCandidates(
+        keys=source_candidates.keys.clone(),
+        values=source_candidates.values.clone(),
+        strengths=source_candidates.strengths.clone(),
+        timestamps=source_candidates.timestamps.clone(),
+        occupied=torch.tensor([[True, False]]),
+    )
+
+    receipt = memory.replace_from_candidates(
+        compacted,
+        scope=0,
+        expected_version=source_version,
+    )
+
+    assert receipt.rows_before == 2
+    assert receipt.rows_after == 1
+    assert memory.record_count == 2
+    assert memory.read(
+        MemoryQuery(keys[2:3], scope=torch.tensor([1], dtype=torch.long))
+    ).hit.tolist() == [True]
+    restored = PersistentAppendOnlyContentAddressedMemory(
+        width=4,
+        path=path,
+        write_threshold=0.0,
+        write_match_threshold=0.999,
+        scope_capacity=2,
+    )
+    assert restored.record_count == 2
+    assert restored.read(
+        MemoryQuery(keys[0:1], scope=torch.tensor([0], dtype=torch.long))
+    ).hit.tolist() == [True]
+    with pytest.raises(RuntimeError, match="stale"):
+        memory.replace_from_candidates(
+            compacted,
+            scope=0,
+            expected_version=source_version,
+        )
 
 
 def test_append_only_memory_isolated_scopes_and_empty_reads() -> None:

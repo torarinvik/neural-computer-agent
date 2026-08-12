@@ -28,6 +28,7 @@ LEGACY_MEMORY_SNAPSHOT_FORMAT = "neural-computer.memory-snapshot.v1"
 MEMORY_SNAPSHOT_FORMAT = "neural-computer.memory-snapshot.v2"
 APPEND_ONLY_MEMORY_SNAPSHOT_FORMAT = "neural-computer.append-only-memory-snapshot.v1"
 MEMORY_MIGRATION_SCHEMA = "neural-computer.memory-representation-migration.v1"
+MEMORY_COMPACTION_SCHEMA = "neural-computer.memory-compaction-receipt.v1"
 # Writes reject collisions more strictly than reads reject near-misses. Keeping
 # these contracts separate prevents a noisy query from hallucinating the
 # nearest occupied row while preserving exact content-addressed writes.
@@ -109,6 +110,26 @@ class MemoryWriteReceipt:
             raise ValueError("memory receipt batch does not match controller batch")
         if not isinstance(self.version, int) or self.version < 0:
             raise ValueError("memory version cannot be negative")
+        return self
+
+
+@dataclass(frozen=True)
+class MemoryCompactionReceipt:
+    """Auditable copy-on-write replacement of one append-only scope."""
+
+    scope: int
+    rows_before: int
+    rows_after: int
+    version: int
+    schema: str = MEMORY_COMPACTION_SCHEMA
+
+    def validate(self) -> MemoryCompactionReceipt:
+        if self.schema != MEMORY_COMPACTION_SCHEMA:
+            raise ValueError("unsupported memory compaction receipt schema")
+        if self.scope < 0 or min(self.rows_before, self.rows_after) < 0:
+            raise ValueError("memory compaction row counts are invalid")
+        if self.version < 0:
+            raise ValueError("memory compaction version cannot be negative")
         return self
 
 
@@ -1366,6 +1387,97 @@ class AppendOnlyContentAddressedMemory(MemoryBackend):
             occupied=torch.stack(occupied_rows),
         ).validate(width=self.width, capacity=capacity, batch=batch)
 
+    @torch.no_grad()
+    def replace_from_candidates(
+        self,
+        candidates: MemoryCandidates,
+        *,
+        scope: int | torch.Tensor | None = None,
+        expected_version: int | None = None,
+    ) -> MemoryCompactionReceipt:
+        """Commit a caller-verified compacted snapshot for one scope.
+
+        The memory does not decide whether a rewrite is behavior-preserving.
+        A replaceable policy and an independent verifier must validate the
+        candidate first. ``expected_version`` then prevents a stale verifier
+        from overwriting a newer append-only state. Rows in other scopes are
+        copied byte-for-byte and remain outside the compaction candidate.
+        """
+
+        if not isinstance(candidates, MemoryCandidates):
+            raise TypeError("memory compaction candidates are invalid")
+        candidates.validate(
+            width=self.width,
+            capacity=candidates.keys.shape[1],
+            batch=1,
+        )
+        if scope is None:
+            scope_id = 0
+        elif isinstance(scope, torch.Tensor):
+            if scope.numel() != 1 or scope.dtype != torch.long:
+                raise ValueError("memory compaction scope must be one int64 value")
+            scope_id = int(scope.reshape(()).item())
+        elif isinstance(scope, int) and not isinstance(scope, bool):
+            scope_id = int(scope)
+        else:
+            raise TypeError("memory compaction scope must be an int or int64 tensor")
+        if not 0 <= scope_id < self.scope_capacity:
+            raise ValueError("memory compaction scope is outside the configured range")
+        if expected_version is not None:
+            if not isinstance(expected_version, int) or isinstance(expected_version, bool):
+                raise TypeError("expected memory version must be an integer")
+            if expected_version != int(self.store_version.item()):
+                raise RuntimeError("memory compaction candidate is stale")
+
+        source_indices = self._record_indices(scope_id)
+        candidate_indices = torch.nonzero(
+            candidates.occupied[0], as_tuple=False
+        ).reshape(-1)
+        other_indices = torch.nonzero(
+            self.occupied & (self.scopes != scope_id), as_tuple=False
+        ).reshape(-1)
+        candidate_keys = candidates.keys[0, candidate_indices].to(self.keys)
+        candidate_values = candidates.values[0, candidate_indices].to(self.values)
+        candidate_strengths = candidates.strengths[0, candidate_indices].to(
+            self.strengths
+        )
+        candidate_timestamps = candidates.timestamps[0, candidate_indices].to(
+            self.timestamps
+        )
+        candidate_scopes = torch.full(
+            (candidate_indices.numel(),),
+            scope_id,
+            dtype=torch.long,
+            device=self.scopes.device,
+        )
+        self._buffers["keys"] = torch.cat(
+            [self.keys[other_indices].detach().clone(), candidate_keys.detach()]
+        )
+        self._buffers["values"] = torch.cat(
+            [self.values[other_indices].detach().clone(), candidate_values.detach()]
+        )
+        self._buffers["strengths"] = torch.cat(
+            [self.strengths[other_indices].detach().clone(), candidate_strengths.detach()]
+        )
+        self._buffers["timestamps"] = torch.cat(
+            [self.timestamps[other_indices].detach().clone(), candidate_timestamps.detach()]
+        )
+        self._buffers["scopes"] = torch.cat(
+            [self.scopes[other_indices].detach().clone(), candidate_scopes]
+        )
+        self._buffers["occupied"] = torch.ones(
+            self.keys.shape[0], dtype=torch.bool, device=self.keys.device
+        )
+        self._pending_writes.clear()
+        self.store_version.add_(1)
+        self.validate_state()
+        return MemoryCompactionReceipt(
+            scope=scope_id,
+            rows_before=int(source_indices.numel()),
+            rows_after=int(candidate_indices.numel()),
+            version=int(self.store_version.item()),
+        ).validate()
+
     def _append_record(
         self,
         key: torch.Tensor,
@@ -1631,6 +1743,31 @@ class PersistentAppendOnlyContentAddressedMemory(AppendOnlyContentAddressedMemor
                 self.load_state_dict(previous)
                 self._pending_writes = previous_pending
                 raise
+        return receipt
+
+    @torch.no_grad()
+    def replace_from_candidates(
+        self,
+        candidates: MemoryCandidates,
+        *,
+        scope: int | torch.Tensor | None = None,
+        expected_version: int | None = None,
+    ) -> MemoryCompactionReceipt:
+        previous = {
+            name: value.detach().clone() for name, value in self.state_dict().items()
+        }
+        previous_pending = dict(self._pending_writes)
+        receipt = super().replace_from_candidates(
+            candidates,
+            scope=scope,
+            expected_version=expected_version,
+        )
+        try:
+            self.snapshot(self.path)
+        except Exception:
+            self.load_state_dict(previous)
+            self._pending_writes = previous_pending
+            raise
         return receipt
 
     @torch.no_grad()
