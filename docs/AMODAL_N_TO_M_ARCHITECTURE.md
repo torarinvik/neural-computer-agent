@@ -10810,3 +10810,17 @@ external-memory lifecycle result. It does not establish unrestricted archive
 growth, arbitrary new computation, compression quality, or general continual
 learning. Evidence and the accounting ledger are archived at
 `session_records/brainworkshop_external_temporal_interleaved_binding_archive_promoted_2026-08-12/`.
+
+The archive contract is now hardened for larger external memory. Version 2
+caches normalized signature rows and exposes batched lookup, records explicit
+protection/reversal state, and rejects modified serialized payloads with a
+canonical SHA-256 checksum. The two-seed 1,024-record audit passed known and
+unknown retrieval, query-order invariance, reload, protected-sibling reversal,
+corruption, frozen-core, and zero-replay gates. This is a promoted storage and
+integrity result; it does not establish learned acquisition of 1,024
+capabilities, arbitrary compression, or general continual learning. A compact
+tensor snapshot reduced the 1,024-record artifact from about 645 KB JSON to
+about 166 KB while preserving retrieval and checksum rejection; this is
+representation compaction, not semantic learned compression. Evidence and
+accounting are archived at
+`session_records/brainworkshop_external_temporal_archive_scale_reversal_promoted_2026-08-12/`.

@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import tempfile
+from pathlib import Path
+
 import pytest
 import torch
 
@@ -75,8 +78,91 @@ def test_episodic_binding_archive_retains_evicted_records_and_round_trips() -> N
     assert restored.lookup(signature_b).active_slot is None
     assert restored.is_protected(binding_a)
     assert restored.configuration()["schema"] == (
-        "neural-computer.episodic-binding-archive.v1"
+        "neural-computer.episodic-binding-archive.v2"
     )
+
+
+def test_episodic_binding_archive_batches_lookup_and_rejects_corruption() -> None:
+    archive = EpisodicBindingArchive(
+        context_width=3,
+        signature_width=4,
+        active_slots=2,
+        matching_threshold=0.95,
+        min_mastery_observations=2,
+        reversal_threshold=0.5,
+        reversal_patience=2,
+    )
+    keys = [
+        torch.eye(3)[0],
+        torch.eye(3)[1],
+        torch.eye(3)[2],
+    ]
+    signatures = [
+        torch.tensor([1.0, 0.0, 0.0, 0.0]),
+        torch.tensor([0.0, 1.0, 0.0, 0.0]),
+        torch.tensor([0.0, 0.0, 1.0, 0.0]),
+    ]
+    records = [archive.register(key, signature) for key, signature in zip(keys, signatures)]
+    archive.activate(records[0], 0)
+    archive.activate(records[1], 1)
+    archive.observe(records[0], 1.0, step=0)
+    archive.observe(records[0], 1.0, step=1)
+    assert archive.is_protected(records[0])
+    archive.observe(records[0], 0.0, step=2)
+    archive.observe(records[0], 0.0, step=3)
+    status = archive.status()
+    assert status.reversal_count[records[0]] == 1
+    assert not archive.is_protected(records[0])
+
+    batch = archive.lookup_many(torch.stack((signatures[0], signatures[1], signatures[2])))
+    assert tuple(result.binding_id for result in batch) == (
+        records[0],
+        records[1],
+        records[2],
+    )
+    corrupted = archive.payload()
+    corrupted["signature_keys"][0][0] += 0.125
+    with pytest.raises(ValueError, match="checksum"):
+        EpisodicBindingArchive.from_payload(corrupted)
+
+
+def test_episodic_binding_archive_compact_snapshot_round_trip_and_corruption() -> None:
+    archive = EpisodicBindingArchive(
+        context_width=3,
+        signature_width=4,
+        active_slots=2,
+        min_mastery_observations=2,
+    )
+    record_a = archive.register(
+        torch.tensor([1.0, 0.0, 0.0]),
+        torch.tensor([1.0, 0.0, 0.0, 0.0]),
+    )
+    record_b = archive.register(
+        torch.tensor([0.0, 1.0, 0.0]),
+        torch.tensor([0.0, 1.0, 0.0, 0.0]),
+    )
+    archive.activate(record_a, 0)
+    archive.activate(record_b, 1)
+    archive.observe(record_a, 1.0, step=0)
+    archive.observe(record_a, 1.0, step=1)
+
+    with tempfile.TemporaryDirectory() as directory:
+        path = Path(directory) / "archive.pt"
+        archive.snapshot(path)
+        restored = EpisodicBindingArchive(
+            context_width=3,
+            signature_width=4,
+            active_slots=2,
+            min_mastery_observations=2,
+        )
+        restored.load_snapshot(path)
+        assert restored.payload() == archive.payload()
+        assert restored.active_binding_ids == (record_a, record_b)
+        corrupted = torch.load(path, weights_only=False)
+        corrupted["state_dict"]["attempts"][0] += 1
+        torch.save(corrupted, path)
+        with pytest.raises(ValueError, match="checksum"):
+            restored.load_snapshot(path)
 
 
 def test_episodic_context_encoder_masks_padding_and_normalizes_context() -> None:

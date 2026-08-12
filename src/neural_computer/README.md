@@ -1868,3 +1868,13 @@ add a controller or modality-specific reasoning branch.
 
 The repeated interleaved archive audit is archived at
 `session_records/brainworkshop_external_temporal_interleaved_binding_archive_promoted_2026-08-12/`.
+
+`EpisodicBindingArchive` v2 adds a cached normalized signature matrix and
+`lookup_many()` for batch retrieval, explicit protection latches and reversal
+streak/count telemetry, and a canonical SHA-256 checksum over serialized
+payloads. v1 payloads remain readable for migration, while new payloads are
+integrity-checked. `snapshot()` / `load_snapshot()` provide a compact tensor
+snapshot for durable storage; the scale audit reduced a 1,024-record archive
+from about 645 KB JSON to about 166 KB while preserving retrieval. The
+scale/reversal audit is archived at
+`session_records/brainworkshop_external_temporal_archive_scale_reversal_promoted_2026-08-12/`.

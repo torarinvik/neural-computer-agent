@@ -1312,3 +1312,21 @@ controls were `0.3086/0.3301`. This promotes growable external episodic storage
 and bounded anti-thrashing lifecycle behavior, not unrestricted memory growth
 or general continual learning. Evidence is archived at
 `session_records/brainworkshop_external_temporal_interleaved_binding_archive_promoted_2026-08-12/`.
+
+## Archive scale, reversal, and integrity (2026-08-12)
+
+`external_temporal_archive_scale_reversal.py` pressure-tests the archive as a
+real long-term memory substrate rather than only a two-slot lifecycle helper.
+`EpisodicBindingArchive` v2 adds cached/batched signature retrieval, explicit
+scalar reversal telemetry, and a canonical SHA-256 payload checksum.
+
+Across seeds 17 and 18, 1,024-record archives achieved `1.0000` known-query
+retrieval, `0.0000` unknown false-known rate, `1.0000` query-order invariance,
+perfect reload, protected-sibling survival through reversal, and corruption
+rejection. The controller and event encoder were frozen and replay was zero.
+The compact tensor snapshot reduced the 1,024-record persistence artifact to
+about 166 KB while preserving retrieval and rejecting snapshot corruption.
+This promotes scalable archive retrieval and integrity, not 1,024 learned
+capabilities, semantic compression, or general continual learning. Evidence is
+archived at
+`session_records/brainworkshop_external_temporal_archive_scale_reversal_promoted_2026-08-12/`.

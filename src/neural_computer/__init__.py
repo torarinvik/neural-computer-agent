@@ -120,6 +120,7 @@ from .entry import (
     ExternalEntryRepertoire,
 )
 from .episodic import (
+    EPISODIC_BINDING_ARCHIVE_SNAPSHOT_FORMAT,
     EXTERNAL_WORKING_MEMORY_CELL_SCHEMA,
     AdaptiveOnlineEpisodicRelationReader,
     EpisodicBindingArchive,
@@ -735,6 +736,7 @@ __all__ = [
     "DEFAULT_MEMORY_KEY_SPACE_ID",
     "DEFAULT_MEMORY_VALUE_SPACE_ID",
     "DEFAULT_STATE_SPACE_ID",
+    "EPISODIC_BINDING_ARCHIVE_SNAPSHOT_FORMAT",
     "EVENT_BRIDGE_SCHEMA",
     "EVENT_SCHEMA",
     "EVENT_WAIT_STATISTICS_SCHEMA",

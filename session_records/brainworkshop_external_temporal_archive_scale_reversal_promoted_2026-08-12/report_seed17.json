@@ -1,0 +1,81 @@
+{
+  "schema": "neural-computer.brainworkshop-external-temporal-archive-scale-reversal.v1",
+  "claim_boundary": "A checksummed external episodic archive scales opaque signature retrieval to the configured record count, preserves query-order invariance, and demotes a stale protected record from scalar reversal evidence; not learned capability acquisition or solved compression.",
+  "seed": 17,
+  "architecture": {
+    "archive": "episodic_binding_archive_v2",
+    "retrieval": "cached_matrix_and_batched_lookup_v1",
+    "integrity": "canonical_sha256_payload_checksum_v1",
+    "reversal": "latched_stable_prefix_with_scalar_failure_patience_v1",
+    "controller": "frozen_canonical_amodal_controller",
+    "event_encoder": "frozen_learned_event_encoder",
+    "forbidden_features": "semantic_labels_task_ids_protocol_formats"
+  },
+  "archive": {
+    "record_count": 1024,
+    "active_slots": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "payload_bytes": 644617,
+    "compact_snapshot_bytes": 166121,
+    "schema": "neural-computer.episodic-binding-archive.v2"
+  },
+  "retrieval": {
+    "query_count": 512,
+    "known_accuracy": 1.0,
+    "unknown_false_known_rate": 0.0,
+    "permutation_accuracy": 1.0,
+    "scalar_batch_consistency": true,
+    "lookup_seconds": 0.0017385000828653574,
+    "queries_per_second": 294506.7446624063,
+    "reloaded_known_accuracy": 1.0,
+    "reloaded_unknown_false_known_rate": 0.0
+  },
+  "reversal": {
+    "protected_before": true,
+    "reversed_record_demoted": true,
+    "protected_sibling_after": true,
+    "reversal_count": 1
+  },
+  "corruption_rejected": true,
+  "compact_snapshot": {
+    "bytes": 166121,
+    "known_accuracy": 1.0,
+    "unknown_false_known_rate": 0.0,
+    "corruption_rejected": true
+  },
+  "gates": {
+    "archive_reached_scale": true,
+    "batch_known_retrieval": true,
+    "batch_unknown_rejection": true,
+    "query_order_invariance": true,
+    "scalar_batch_consistency": true,
+    "protected_prefix_before_reversal": true,
+    "reversal_demotes_stale_record": true,
+    "protected_sibling_survives_reversal": true,
+    "reload_known_retrieval": true,
+    "reload_unknown_rejection": true,
+    "corruption_rejected": true,
+    "compact_snapshot_known_retrieval": true,
+    "compact_snapshot_unknown_rejection": true,
+    "compact_snapshot_corruption_rejected": true,
+    "active_residency_reloaded": true,
+    "controller_frozen": true,
+    "event_encoder_frozen": true,
+    "zero_replayed_training_examples": true
+  },
+  "accounting": {
+    "unique_verifier_bits": 1048,
+    "unique_logical_lifetimes": 1048,
+    "optimizer_updates": 0,
+    "replayed_examples": 0,
+    "controller_updates": 0,
+    "retrieval_verifier_bits": 1024,
+    "reversal_verifier_bits": 24,
+    "latency_seconds": 0.40618554200045764
+  },
+  "status": "promoted_archive_scale_reversal_integrity"
+}
