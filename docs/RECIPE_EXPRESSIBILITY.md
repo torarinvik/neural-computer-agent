@@ -285,6 +285,29 @@ The earlier shared-feedback audit remains archived as a rejected diagnostic at
 promotion report is archived at
 `session_records/control_flow_runtime_routing_promoted_2026-08-12/`.
 
+## Full-information four-file route credit — bounded promotion
+
+The next route-bank rung adds a replaceable
+`ExternalControllerTrajectoryQueryAdapter` and four protected generic files.
+For each fresh lifetime, the verifier evaluates every active file and sends
+the external router a full outcome vector. This spends four fresh verifier
+outcomes per lifetime to remove sampled-action credit variance; the controller
+still receives quiet feedback and remains frozen.
+
+Across four seeds and both forward/reversed physical-file orders, all eight
+verifier arms reached `1.0000` held-out accuracy on amplitude-2 events, from a
+`0.2500` fresh baseline. The paired independent-random-outcome nulls were
+`0.1250`, `0.1250`, `0.2500`, and `0.2500`, within the predeclared `+/-0.15`
+band around the four-file chance floor. Protected files, frozen controller,
+zero replay, zero controller optimizer updates, exact reload, corruption
+rejection, and missing-evidence no-op gates all passed.
+
+This promotes bounded full-information outcome-only routing among four
+generic external files with an opaque trajectory address. It does not promote
+learned codec adaptation, arbitrary new computation, unrestricted memory
+growth, or general continual learning. Evidence is archived in
+`session_records/control_flow_runtime_four_file_counterfactual_promoted_2026-08-12/`.
+
 ## Outcome-only external recipe files and scope isolation
 
 The recipe basis now has a versioned external-file bridge:

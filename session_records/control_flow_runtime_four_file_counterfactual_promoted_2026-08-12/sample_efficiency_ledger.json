@@ -1,0 +1,50 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "control_flow_runtime_four_file_counterfactual_promoted_2026-08-12",
+  "status": "promoted_bounded_full_information_four_file_routing",
+  "claim_boundary": "bounded full-information outcome-only routing among four generic external files with frozen controller and isolated file state; not arbitrary new computation, unrestricted memory growth, or general continual learning",
+  "seeds": [17, 18, 19, 20],
+  "per_seed": {
+    "unique_training_verifier_outcomes_per_arm": 12000,
+    "logical_training_lifetimes": 3000,
+    "optimizer_updates": 0,
+    "replayed_examples": 0,
+    "route_state_updates": 3000,
+    "program_candidates_per_lifetime": 4,
+    "heldout_episodes_per_arm": 400,
+    "wall_seconds_forward_plus_reversed_verifier": {
+      "17": 8.560604374972172,
+      "18": 8.436573333921842,
+      "19": 8.460646167048253,
+      "20": 8.510943709057756
+    }
+  },
+  "verifier_heldout_accuracy": {
+    "17_forward": 1.0,
+    "17_reversed": 1.0,
+    "18_forward": 1.0,
+    "18_reversed": 1.0,
+    "19_forward": 1.0,
+    "19_reversed": 1.0,
+    "20_forward": 1.0,
+    "20_reversed": 1.0
+  },
+  "stable_bits_to_threshold": {
+    "all_verifier_arms": 4
+  },
+  "reward_shuffled_paired_heldout_accuracy": {
+    "17": 0.125,
+    "18": 0.125,
+    "19": 0.25,
+    "20": 0.25
+  },
+  "transfer_ratio_against_fresh_learner": {
+    "all_verifier_arms": 4.0
+  },
+  "notes": [
+    "Full-information outcome vectors reduce route credit variance without entering the controller feedback stream.",
+    "The trajectory query uses only opaque controller representation and event-window statistics.",
+    "Physical file order was reversed in paired arms and all protected files remained byte-identical.",
+    "This is a bounded route-bank promotion, not a general continual-learning result."
+  ]
+}

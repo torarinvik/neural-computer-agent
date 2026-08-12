@@ -137,6 +137,51 @@ def test_external_outcome_credit_supports_independent_batched_trajectories() -> 
     assert bool(torch.any(updated.policy != 0.0))
 
 
+def test_external_outcome_credit_supports_full_information_counterfactual_feedback() -> None:
+    rule = ExternalOutcomeCreditPlasticity(
+        feature_width=3,
+        action_count=3,
+        initial_learning_rate=0.5,
+        initial_baseline_rate=0.1,
+    )
+    state = rule.record_decision(
+        rule.initial_state(1),
+        torch.tensor([[1.0, 0.0, 0.0]]),
+        torch.tensor([1]),
+        torch.tensor([1.0 / 3.0]),
+    )
+    updated = rule.apply_counterfactual_feedback(
+        state,
+        torch.tensor([[1.0, 0.0, 0.0]]),
+        torch.tensor([[1.0, 0.0, 0.0]]),
+    )
+
+    assert int(updated.policy[0, 0].argmax()) == 0
+    assert torch.equal(updated.eligibility, torch.zeros_like(updated.eligibility))
+    assert updated.decisions.tolist() == [4]
+    assert updated.feedbacks.tolist() == [3]
+    assert rule.configuration()["counterfactual_update"] == (
+        "mean_full_information_policy_gradient_v1"
+    )
+
+
+def test_external_outcome_credit_counterfactual_missing_evidence_is_exact_noop() -> None:
+    rule = ExternalOutcomeCreditPlasticity(feature_width=2, action_count=3)
+    state = rule.apply_counterfactual_feedback(
+        rule.initial_state(1),
+        torch.tensor([[1.0, -1.0]]),
+        torch.tensor([[1.0, 0.0, 0.0]]),
+        present=torch.zeros(1, dtype=torch.bool),
+    )
+
+    initial = rule.initial_state(1)
+    assert torch.equal(state.policy, initial.policy)
+    assert torch.equal(state.eligibility, initial.eligibility)
+    assert torch.equal(state.baseline, initial.baseline)
+    assert torch.equal(state.decisions, initial.decisions)
+    assert torch.equal(state.feedbacks, initial.feedbacks)
+
+
 def test_external_outcome_credit_missing_feedback_preserves_external_state() -> None:
     rule = ExternalOutcomeCreditPlasticity(feature_width=2, action_count=2)
     state = rule.record_decision(
@@ -227,6 +272,29 @@ def test_external_outcome_program_router_appends_and_round_trips() -> None:
     assert torch.equal(restored.credit.policy, state.credit.policy)
     assert torch.equal(restored.credit.feedbacks, state.credit.feedbacks)
     assert router.action_mask(restored).tolist() == [[True, True, False]]
+
+
+def test_external_outcome_program_router_applies_counterfactual_route_credit() -> None:
+    router = ExternalOutcomeProgramRouter(
+        feature_width=2,
+        program_capacity=4,
+        initial_programs=3,
+        initial_learning_rate=0.5,
+        initial_trace_decay=0.0,
+    )
+    state = router.apply_counterfactual_feedback(
+        router.initial_state(1),
+        torch.tensor([[1.0, 0.0]]),
+        torch.tensor([[1.0, 0.0, 0.0, 0.0]]),
+    )
+
+    assert int(router.logits(state, torch.tensor([[1.0, 0.0]])).argmax()) == 0
+    assert state.credit.decisions.tolist() == [3]
+    assert state.credit.feedbacks.tolist() == [3]
+    assert torch.equal(
+        state.credit.policy[..., 3],
+        torch.zeros_like(state.credit.policy[..., 3]),
+    )
 
 
 def test_external_outcome_program_router_can_activate_a_conservative_new_route() -> None:

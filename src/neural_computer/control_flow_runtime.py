@@ -294,6 +294,7 @@ class ControlFlowRuntimeOutput:
     program_slot: int | None
     selected_program_slots: torch.Tensor | None = None
     program_digests: tuple[str, ...] = ()
+    program_route_query: torch.Tensor | None = None
     program_route_probabilities: torch.Tensor | None = None
     program_route_propensities: torch.Tensor | None = None
     schema: str = CONTROL_FLOW_RUNTIME_SCHEMA
@@ -320,6 +321,7 @@ class ControlFlowProgramAmodalRuntime(nn.Module):
         program_memory: ControlFlowProgramMemory | None = None,
         program_slot: int = 0,
         program_router: ExternalOutcomeProgramRouter | None = None,
+        program_route_query_adapter: nn.Module | None = None,
         program_route_exploration: float = 0.0,
         max_steps: int = 128,
         max_counter: int = 1_000_000,
@@ -356,20 +358,33 @@ class ControlFlowProgramAmodalRuntime(nn.Module):
         if program_router is not None:
             if program_memory is None or program is not None:
                 raise ValueError("control-flow program routing requires program memory")
-            if program_router.feature_width != runtime.intention_width:
-                raise ValueError(
-                    "control-flow program router must consume opaque intentions"
-                )
             if program_router.initial_programs != program_memory.file_count:
                 raise ValueError(
                     "control-flow program router and memory file counts differ"
                 )
+        if program_route_query_adapter is not None:
+            if program_router is None:
+                raise ValueError(
+                    "a route query adapter requires a program router"
+                )
+            if not isinstance(program_route_query_adapter, nn.Module):
+                raise TypeError("control-flow route query adapter must be a module")
+            query_width = getattr(program_route_query_adapter, "query_width", None)
+            if query_width is not None and query_width != program_router.feature_width:
+                raise ValueError(
+                    "control-flow route query adapter width does not match router"
+                )
+        elif program_router is not None and program_router.feature_width != runtime.intention_width:
+            raise ValueError(
+                "control-flow program router must consume opaque intentions"
+            )
         self.runtime = runtime
         self.adapter = adapter
         self.program = program
         self.program_memory = program_memory
         self.program_slot = None if program is not None else int(program_slot)
         self.program_router = program_router
+        self.program_route_query_adapter = program_route_query_adapter
         self.program_route_exploration = float(program_route_exploration)
         self.max_steps = int(max_steps)
         self.max_counter = int(max_counter)
@@ -399,6 +414,11 @@ class ControlFlowProgramAmodalRuntime(nn.Module):
                 else self.program_router.configuration()
             ),
             "route_feedback": "optional_external_router_only_v1",
+            "program_route_query_adapter": (
+                None
+                if self.program_route_query_adapter is None
+                else self.program_route_query_adapter.configuration()
+            ),
             "program_route_exploration": self.program_route_exploration,
             "max_steps": self.max_steps,
             "max_counter": self.max_counter,
@@ -473,19 +493,23 @@ class ControlFlowProgramAmodalRuntime(nn.Module):
 
     def _select_programs(
         self,
-        intention: IntentEvent,
+        controller_output: ControllerOutput,
+        controller_state: ControllerState,
         router_state: ExternalOutcomeProgramRouterState | None,
     ) -> tuple[
         torch.Tensor,
         torch.Tensor | None,
         torch.Tensor | None,
+        torch.Tensor | None,
         ExternalOutcomeProgramRouterState | None,
     ]:
+        intention = controller_output.intention
         batch = intention.payload.shape[0]
         device = intention.payload.device
         if self.program is not None:
             return (
                 torch.full((batch,), -1, dtype=torch.long, device=device),
+                None,
                 None,
                 None,
                 router_state,
@@ -499,13 +523,34 @@ class ControlFlowProgramAmodalRuntime(nn.Module):
                 ),
                 None,
                 None,
+                None,
                 router_state,
             )
         if router_state is None:
             raise RuntimeError("control-flow program router state is missing")
         if router_state.active_programs != self.program_memory.file_count:
             raise RuntimeError("control-flow program memory and router are out of sync")
-        features = intention.payload.detach()
+        if self.program_route_query_adapter is None:
+            features = intention.payload.detach()
+        else:
+            features = self.program_route_query_adapter(
+                controller_output,
+                controller_state,
+            )
+            if (
+                not isinstance(features, torch.Tensor)
+                or features.ndim != 2
+                or features.shape[0] != batch
+                or features.shape[1] != self.program_router.feature_width
+            ):
+                raise ValueError(
+                    "control-flow route query adapter returned the wrong shape"
+                )
+            if not bool(torch.isfinite(features).all()):
+                raise ValueError(
+                    "control-flow route query adapter returned non-finite features"
+                )
+            features = features.detach()
         behavior = self.program_router.behavior_probabilities(
             router_state,
             features,
@@ -527,7 +572,7 @@ class ControlFlowProgramAmodalRuntime(nn.Module):
             selected,
             propensity,
         )
-        return selected, behavior, propensity, next_router_state
+        return selected, behavior, propensity, features, next_router_state
 
     def step_events(
         self,
@@ -602,8 +647,14 @@ class ControlFlowProgramAmodalRuntime(nn.Module):
                 present=feedback_present,
                 terminal=feedback_present,
             )
-        selected_slots, route_probabilities, route_propensities, router_state = (
-            self._select_programs(controller_output.intention, router_state)
+        (
+            selected_slots,
+            route_probabilities,
+            route_propensities,
+            route_query,
+            router_state,
+        ) = (
+            self._select_programs(controller_output, next_controller, router_state)
         )
         encoded = torch.zeros(
             batch,
@@ -712,6 +763,9 @@ class ControlFlowProgramAmodalRuntime(nn.Module):
             program_slot=uniform_slot,
             selected_program_slots=selected_slots.detach().clone(),
             program_digests=tuple(program_digests),
+            program_route_query=(
+                None if route_query is None else route_query.detach().clone()
+            ),
             program_route_probabilities=(
                 None
                 if route_probabilities is None

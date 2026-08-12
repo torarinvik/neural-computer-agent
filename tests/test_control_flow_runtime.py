@@ -16,6 +16,7 @@ from neural_computer import (
     ControlFlowProgramAmodalRuntime,
     ControlFlowProgramMemory,
     ControllerFeedback,
+    ExternalControllerTrajectoryQueryAdapter,
     ExternalOutcomeProgramRouter,
     IntentEvent,
 )
@@ -99,6 +100,7 @@ def _agent(
     *,
     memory: ControlFlowProgramMemory | None = None,
     router: ExternalOutcomeProgramRouter | None = None,
+    query_adapter: nn.Module | None = None,
 ) -> ControlFlowProgramAmodalRuntime:
     controller = AmodalCognitiveController(
         width=4,
@@ -119,6 +121,7 @@ def _agent(
         _OpaqueCounterCodec(intention_width=2, counter_count=2),
         **source,
         program_router=router,
+        program_route_query_adapter=query_adapter,
         max_steps=8,
     )
 
@@ -271,6 +274,38 @@ def test_control_flow_runtime_routes_multiple_files_with_isolated_counter_state(
     credit["policy"][0, 0, 0] += 1.0
     with pytest.raises(ValueError, match="checksum"):
         agent.state_from_payload(corrupted)
+
+
+def test_control_flow_runtime_exposes_replaceable_trajectory_route_query() -> None:
+    memory = ControlFlowProgramMemory(2)
+    memory.add_program(_program(), protect=True)
+    memory.add_program(_other_program(), protect=True)
+    router = ExternalOutcomeProgramRouter(
+        feature_width=20,
+        program_capacity=2,
+        initial_programs=2,
+    )
+    query_adapter = ExternalControllerTrajectoryQueryAdapter(
+        controller_width=4,
+        query_width=20,
+    )
+    agent = _agent(
+        memory=memory,
+        router=router,
+        query_adapter=query_adapter,
+    )
+
+    output, _ = agent.step_events(
+        [AmodalEvent(torch.tensor([[1.0, 0.0, 0.0, 0.0]]))],
+        agent.initial_state(1, device="cpu"),
+        _feedback(1),
+    )
+
+    assert output.program_route_query is not None
+    assert output.program_route_query.shape == (1, 20)
+    assert bool(torch.isfinite(output.program_route_query).all())
+    assert not output.program_route_query.requires_grad
+    assert agent.configuration()["program_route_query_adapter"]["query_width"] == 20
 
 
 def test_control_flow_runtime_can_credit_router_without_repeating_outcome_to_controller() -> None:

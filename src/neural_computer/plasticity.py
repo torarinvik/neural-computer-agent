@@ -637,6 +637,7 @@ class ExternalOutcomeCreditPlasticity(nn.Module):
             "action_count": self.action_count,
             "update_rule": "importance_weighted_delayed_policy_gradient_v1",
             "trace": "decayed_log_probability_gradient_v1",
+            "counterfactual_update": "mean_full_information_policy_gradient_v1",
             "state": "external_capability_policy_and_eligibility_v1",
             "learning_rate": float(self.learning_rate.detach()),
             "trace_decay": float(self.trace_decay.detach()),
@@ -873,6 +874,136 @@ class ExternalOutcomeCreditPlasticity(nn.Module):
             baseline=updated_baseline,
             decisions=state.decisions,
             feedbacks=next_feedbacks,
+        )
+        self._validate_state(next_state)
+        return next_state
+
+    def apply_counterfactual_feedback(
+        self,
+        state: ExternalOutcomeCreditState,
+        features: torch.Tensor,
+        outcomes: torch.Tensor,
+        *,
+        present: torch.Tensor | None = None,
+        action_mask: torch.Tensor | None = None,
+        baseline_override: torch.Tensor | None = None,
+    ) -> ExternalOutcomeCreditState:
+        """Apply one scalar outcome for every currently active action.
+
+        This is the full-information counterpart to :meth:`apply_feedback`.
+        A caller-owned verifier may evaluate every candidate against the same
+        fresh lifetime and pass the resulting utility vector without exposing
+        the vector to the controller.  The update averages the score-gradient
+        contribution over active candidates, so its scale does not grow merely
+        because the external bank grows.  Eligibility from a sampled route is
+        cleared for present rows because these outcomes are terminal for the
+        counterfactual probe.
+        """
+
+        self._validate_state(state)
+        batch_size = state.policy.shape[0]
+        self._validate_features(features, batch_size=batch_size)
+        if outcomes.ndim != 2 or outcomes.shape != (
+            batch_size,
+            self.action_count,
+        ):
+            raise ValueError(
+                "counterfactual outcomes must have shape [batch, action_count]"
+            )
+        if not bool(torch.isfinite(outcomes).all()):
+            raise ValueError("counterfactual outcomes must be finite")
+        if bool(((outcomes < 0.0) | (outcomes > 1.0)).any()):
+            raise ValueError("counterfactual outcomes must lie in [0, 1]")
+        if present is None:
+            present = torch.ones(
+                batch_size,
+                dtype=torch.bool,
+                device=features.device,
+            )
+        self._validate_presence(present, batch_size, device=features.device)
+        if action_mask is None:
+            action_mask = torch.ones(
+                batch_size,
+                self.action_count,
+                dtype=torch.bool,
+                device=features.device,
+            )
+        self._validate_action_mask(
+            action_mask,
+            batch_size=batch_size,
+            device=features.device,
+        )
+        if baseline_override is not None:
+            if (
+                baseline_override.shape != (batch_size,)
+                or not bool(torch.isfinite(baseline_override).all())
+            ):
+                raise ValueError(
+                    "counterfactual baseline override must be finite [batch]"
+                )
+            if bool(((baseline_override < 0.0) | (baseline_override > 1.0)).any()):
+                raise ValueError(
+                    "counterfactual baseline override must lie in [0, 1]"
+                )
+            if baseline_override.device != features.device:
+                raise ValueError(
+                    "counterfactual baseline override is on the wrong device"
+                )
+
+        probabilities = self.logits(
+            state,
+            features,
+            action_mask=action_mask,
+        ).softmax(dim=-1)
+        active = action_mask.to(dtype=features.dtype)
+        active_count = active.sum(dim=-1, keepdim=True)
+        baseline = state.baseline if baseline_override is None else baseline_override
+        centered = (outcomes - baseline.unsqueeze(-1)) * active
+        identity = torch.eye(
+            self.action_count,
+            device=features.device,
+            dtype=features.dtype,
+        ).reshape(1, 1, self.action_count, self.action_count)
+        score_gradient = features.unsqueeze(-1).unsqueeze(-1) * (
+            identity - probabilities.unsqueeze(1).unsqueeze(-1)
+        )
+        score_gradient = score_gradient * (
+            active.unsqueeze(1).unsqueeze(-1)
+            * active.unsqueeze(1).unsqueeze(2)
+        )
+        policy_update = (
+            self.learning_rate.to(dtype=state.policy.dtype)
+            * (score_gradient * centered.unsqueeze(1).unsqueeze(2)).sum(dim=-1)
+            / active_count.unsqueeze(-1)
+        )
+        next_policy = torch.where(
+            present[:, None, None],
+            state.policy + policy_update,
+            state.policy,
+        )
+        observed_outcome = (outcomes * active).sum(dim=-1) / active_count.squeeze(-1)
+        baseline_rate = self.baseline_rate.to(dtype=state.baseline.dtype)
+        next_baseline = state.baseline + baseline_rate * (
+            observed_outcome - state.baseline
+        )
+        next_baseline = torch.where(present, next_baseline, state.baseline)
+        next_eligibility = torch.where(
+            present[:, None, None],
+            torch.zeros_like(state.eligibility),
+            state.eligibility,
+        )
+        counterfactual_count = active_count.squeeze(-1).to(torch.long)
+        counterfactual_count = torch.where(
+            present,
+            counterfactual_count,
+            torch.zeros_like(counterfactual_count),
+        )
+        next_state = ExternalOutcomeCreditState(
+            policy=next_policy,
+            eligibility=next_eligibility,
+            baseline=next_baseline,
+            decisions=state.decisions + counterfactual_count,
+            feedbacks=state.feedbacks + counterfactual_count,
         )
         self._validate_state(next_state)
         return next_state
@@ -1577,6 +1708,32 @@ class ExternalOutcomeProgramRouter(nn.Module):
                 ),
                 active_programs=next_state.active_programs,
             )
+        self._validate_state(next_state)
+        return next_state
+
+    def apply_counterfactual_feedback(
+        self,
+        state: ExternalOutcomeProgramRouterState,
+        features: torch.Tensor,
+        outcomes: torch.Tensor,
+        *,
+        present: torch.Tensor | None = None,
+        baseline_override: torch.Tensor | None = None,
+    ) -> ExternalOutcomeProgramRouterState:
+        """Update route policy from one verifier outcome per active file."""
+
+        self._validate_state(state)
+        next_state = ExternalOutcomeProgramRouterState(
+            credit=self.credit_rule.apply_counterfactual_feedback(
+                state.credit,
+                features,
+                outcomes,
+                present=present,
+                action_mask=self.action_mask(state),
+                baseline_override=baseline_override,
+            ),
+            active_programs=state.active_programs,
+        )
         self._validate_state(next_state)
         return next_state
 

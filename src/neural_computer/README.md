@@ -1641,6 +1641,17 @@ credit to the external router while keeping the controller's own feedback
 stream separate; omitting it preserves the historical shared-feedback
 behavior.
 
+For a larger bank, `ControlFlowProgramAmodalRuntime` can attach a replaceable
+`ExternalControllerTrajectoryQueryAdapter`. Its detached query combines the
+opaque post-step controller representation with bounded event-window
+statistics and is exposed only to the external router. The promoted
+four-file counterfactual audit sends full candidate outcome vectors to that
+router, reaches `1.0000` held-out accuracy across four seeds and reversed file
+orders, and keeps the controller frozen with zero replay. This remains a
+bounded route-bank result, not arbitrary new computation or general
+continual learning; evidence is archived at
+`session_records/control_flow_runtime_four_file_counterfactual_promoted_2026-08-12/`.
+
 `ExternalProgramRuntimeState.payload()` and `from_payload()` provide a
 versioned tensor-only pause/resume checkpoint for the controller working state
 and every isolated executable-file state. Executable artifacts and model

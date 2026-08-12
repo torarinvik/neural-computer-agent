@@ -11414,3 +11414,26 @@ The earlier shared-feedback audit remains archived as a rejected diagnostic at
 `session_records/control_flow_runtime_routing_rejected_2026-08-12/`; the
 promotion report is archived at
 `session_records/control_flow_runtime_routing_promoted_2026-08-12/`.
+
+### Full-information four-file route credit — bounded promotion
+
+The route bank now has a stronger credit-assignment rung. A replaceable
+`ExternalControllerTrajectoryQueryAdapter` builds an opaque address from the
+post-step controller representation and bounded event-window statistics. Four
+protected generic external files are evaluated on every fresh lifetime, and
+the external router receives the resulting full outcome vector; the
+controller receives quiet feedback and remains frozen.
+
+Across four seeds and both forward/reversed file orders, all eight verifier
+arms reached `1.0000` held-out accuracy on amplitude-2 events, against a
+`0.2500` fresh baseline. Paired independent-random-outcome nulls were
+`0.1250`, `0.1250`, `0.2500`, and `0.2500`, within a predeclared `+/-0.15`
+band around the four-file chance floor. The controller stayed byte-identical;
+all external files remained protected; missing evidence was an exact no-op;
+reload, corruption, zero-replay, and zero-controller-update gates passed.
+
+This promotes bounded full-information outcome-only routing among four
+generic external files with an opaque trajectory address. It does not promote
+learned codec adaptation, arbitrary new computation, unrestricted memory
+growth, or general continual learning. Evidence is archived at
+`session_records/control_flow_runtime_four_file_counterfactual_promoted_2026-08-12/`.
