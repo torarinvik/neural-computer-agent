@@ -689,6 +689,22 @@ if args.synthesize:
                 if len(head) < args.program_len and head not in seen_start:
                     seen_start.add(head)
                     starts.append(head)
+        # LONGEST FIRST. F191 measured the mechanism working and the
+        # aggregate losing: the seeds that transferred worst improved
+        # (r = -0.800 against how badly they had done) while the two
+        # best degraded, and families solved fell 15/36 to 7/36. The
+        # cause was F157's dilution returning in a search that has no
+        # sampling distribution — every added sub-prefix pushes a
+        # genuinely useful whole fragment later in the enumeration.
+        #
+        # Ordering fixes that without discarding anything. A longer
+        # prefix encodes more of what an earlier family actually
+        # learned, so trying it first keeps the win for a seed whose
+        # stored solution exposes the shared prefix, while a seed whose
+        # does not simply falls through to the shorter ones instead of
+        # paying for them up front. Strictly better under BOTH
+        # conditions rather than a trade between them.
+        starts.sort(key=len, reverse=True)
         for head in starts:
             for one in pool:
                 tail = list(head) + [one]
