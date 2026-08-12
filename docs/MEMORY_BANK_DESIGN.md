@@ -10848,3 +10848,128 @@ neither a lookup table nor a retrieval index.
     every slot written by a COPY or a conditional reading another slot,
     no NOOPs. It barely moves: 0.9992 random, 0.9975 coupled. The plant
     is the most robust component measured.
+
+## F210 — WHICH TRAINING DOMAINS ARE THE COMPOUND LIFTS: 113 DOMAINS,
+## AND A HEADLINE OF MINE THAT THE HELD-OUT SPLIT REVERSED
+
+F206 found by accident that mixing random parallel programs into the
+wake pool made the reader read NEW worlds for the first time, and
+nothing about grid games predicted that a domain of pure noise would be
+what helped. This asks the question on purpose: over many unrelated
+domains, which ones transfer, and is that measurable in advance.
+
+**The battery.** 113 domains, built to be as unlike each other as the
+slot interface allows: arithmetic (Collatz, GCD, affine, odometers,
+triangular), bitwise (XOR, Gray code, LFSR, popcount, bit reversal),
+order statistics (sorting networks, bubble passes, rank, median),
+neighbourhood rules (rule 110, life-like, diffusion, reflection),
+indirection (pointer chase, gather, scatter, queues, stacks), state
+machines (traffic lights, elevators, vending, flip-flops), aggregation
+(prefix scans, checksums, histograms), the plant's own program families,
+and the real domains. Checked rather than asserted: applied to identical
+states, **109 of 113 produce distinct outputs**, and the four collisions
+are parameter coincidences at one seed. Two that were genuinely the same
+function (`shift_left` is `double`) were removed.
+
+**The method.** One reader per domain, trained on that domain alone,
+evaluated on every domain. Each cell is the fraction of the ACHIEVABLE
+margin recovered — (reader - identity floor) / (search - identity floor)
+— because a raw fit of 0.9 means something different in a domain whose
+floor is 0.85 than in one whose floor is 0.15.
+
+### The mistake, and what it cost
+
+My first version had no test set. An `all_domains` arm trains on every
+evaluation domain, so it was scored IN distribution while a 3-domain arm
+was scored out of distribution on 110 of 113 targets. I reported from it:
+"all domains +0.6181 against top-3's +0.2482, breadth dominates,
+there is no small set of compound lifts that substitutes for breadth."
+
+**Every fourth domain is now held out of every curriculum and of the
+ranking, and is the only thing the arms are scored on. The conclusion
+reverses.**
+
+| arm | domains | HELD-OUT | eligible |
+| --- | ---: | ---: | ---: |
+| **spread10** | 10 | **+0.5414** | +0.3001 |
+| top10 | 10 | +0.3995 | +0.3233 |
+| random50 | 50 | +0.3798 | +0.6297 |
+| real domains only | 4 | +0.3763 | +0.1696 |
+| top3 | 3 | +0.3702 | +0.2054 |
+| top25 | 25 | +0.3626 | +0.5359 |
+| **all 85 eligible** | 85 | **+0.3486** | **+0.7057** |
+| random25 | 25 | +0.3296 | +0.5452 |
+| spread25 | 25 | +0.3060 | +0.4958 |
+| random10 | 10 | +0.2096 | +0.2862 |
+| bottom3 | 3 | +0.0460 | -0.0190 |
+| random3 | 3 | +0.0165 | +0.1981 |
+
+**Training on all 85 domains is no better than training on three.**
+Paired, all-eligible minus top3 is -0.0217 +- 0.0847, t=-0.26. The
+eligible column is the diagnosis: +0.7057 in distribution against
++0.3486 out of it. The breadth arm was learning its 85 domains, not
+learning to read.
+
+### What survives, and it is the thing that was asked
+
+**The ranking predicts, and the null says it is not decoration.**
+
+| paired, held-out | | |
+| --- | ---: | --- |
+| top3 - random3 | +0.3537 +- 0.0771 | t=+4.59, 3/3 |
+| top3 - SHUFFLED ranking | +0.3712 +- 0.0683 | t=+5.43, 3/3 |
+| top3 - real domains only | -0.0060 +- 0.0768 | t=-0.08 |
+
+The shuffled-ranking arm — same ranking, order permuted, take the
+"top" three — scores **-0.0010**, nothing at all. So generality measured
+from single-domain readers is real information about which curricula
+will work.
+
+**And diversity beats generality at a fixed budget.** Choosing ten
+domains to be far apart in transfer PROFILE beats choosing the ten
+individually strongest: **+0.1420 +- 0.0601, t=+2.36, 3/3 seeds**. Two
+adversarial curricula confirm the mechanism from the other side —
+`redundant_top3` (individually strong, nearly identical profiles) scores
++0.2622 against top3's +0.3702, and `anti_spread3` (mutually closest
+profiles) scores **-0.0855**, actively worse than doing nothing.
+
+At 25 domains the advantage is gone (spread25 - top25 = -0.0566,
+t=-0.58). Diversity pays where redundancy is expensive, which is at
+small budgets.
+
+### Why there is no single compound lift
+
+Variance explained by successive factors: 0.253, 0.197, 0.135, 0.070,
+0.050, 0.040. **The first factor carries a quarter; there is no `g` of
+task space here.** The factors are interpretable, which is what makes
+the spread result mean something:
+
+  * **Factor 1** separates the plant's own program families
+    (`prog_random`, `prog_dense`, `prog_sparse2/3`) from `pointer_chase`,
+    `gather_from_first`, `digit_carry`, `base3_counter`, `bubble_pass` —
+    that is, EXACTLY EXPRESSIBLE against ONLY APPROXIMABLE.
+  * **Factor 2** separates the real spatial domains (`grid_compound`,
+    `grid_navigate`, `bounce_walker`, `diffusion`) from pure slot
+    shuffling (`random_permutation`, `neighbour_min/max`,
+    `prog_copy_only`, `reverse_row`).
+
+A curriculum picked by generality alone stacks several domains on one
+factor. Picking for spread covers both, which is why ten spread domains
+beat eighty-five.
+
+### The compound lifts
+
+`saturate_down` (+0.309), `prog_dense` (+0.277), `prog_random` (+0.263),
+`collatz` (+0.214), `gray_code` (+0.205), `flip_flop` (+0.199),
+`grid_compound` (+0.189). The top-3 is IDENTICAL across seeds. Rank
+stability overall is Spearman 0.677, top-10 overlap 7/10.
+
+**The bottom is not stable and should not be quoted.** Bottom-10 overlap
+across seeds is 4/10, so the negative-transfer domains named by any one
+seed (`traffic_light` at -0.140, and others) are largely noise. What IS
+stable is that a badly chosen small curriculum can be worse than
+useless: `anti_spread3` at -0.0855 across three seeds.
+
+**One specific asymmetry worth chasing.** `saturate_down` is the single
+best domain and `saturate_up` sits near the bottom, though they differ
+only in sign. I do not know why.
