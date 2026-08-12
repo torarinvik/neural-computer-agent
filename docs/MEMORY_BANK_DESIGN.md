@@ -10080,3 +10080,62 @@ Priming with WIDE rule families should transfer where narrow ones do
 not, and if it still does not, arity was not the barrier and something
 about grid dynamics is genuinely unreachable from rule-family
 structure. Either answer is worth more than the null alone.
+
+## F196 — the arity barrier is real, and BOTH my explanations for it
+## are wrong
+
+F195 found cross-domain transfer null and blamed an arity mismatch:
+grid actions change two or three slots, rule-family actions change one.
+It then offered a mechanism — the object slots are avatar-RELATIVE
+("nearest by distance"), so moving the avatar re-ranks them and turns a
+one-slot move into a three-slot write. That mechanism predicts a fix:
+encode objects by raster order instead, and grid arity should fall
+toward one.
+
+**Refuted. Absolute encoding barely moves it.**
+
+| game | relative | absolute |
+| --- | --- | --- |
+| collect1 | 3, 2, 1, 1 | 3, 2, 1, 1 |
+| collect2 | 3, 3, 3, 3 | 3, 1, 3, 1 |
+| intercept1 | 3, 3, 2, 2 | 3, 3, 2, 2 |
+| avoid1 | 2, 2, 2, 2 | 2, 2, 2, 2 |
+
+**Second hypothesis, also refuted.** If the encoding is not responsible,
+perhaps the world evolves regardless of the action — fallers falling,
+hazards moving — and that is what the extra slots record. Decomposing
+by running the SAME start state under two different actions separates
+them: slots differing between the two outcomes are action-dependent,
+slots that changed identically under both are the world proceeding
+anyway.
+
+| game | slots changed | action-dependent | world-regardless |
+| --- | ---: | ---: | ---: |
+| collect1 | 3 | 4 | **0** |
+| collect2 | 3 | 4 | 1 |
+| intercept1 | 2 | 4 | 1 |
+| avoid1 | 2 | 2 | 1 |
+
+The change is almost entirely ACTION-dependent. World dynamics account
+for at most one slot.
+
+**So what is actually happening**, since two clean stories both failed:
+the action changes the WORLD, not just the avatar. Moving onto an item
+consumes it, which changes which object occupies the object slots under
+either encoding — raster order re-ranks when the first object is
+removed exactly as distance order re-ranks when the avatar moves. The
+arity is not an artefact of how objects are indexed and not the world
+running on its own clock; it is that a grid action has CONSEQUENCES
+beyond the mover, and a rule-family action does not.
+
+That makes the mismatch intrinsic to this domain pair rather than a bug
+to fix. Rule families are a poor SOURCE for grid transfer, and the
+honest form of the founding objective's cross-domain version is
+narrower: transfer needs source tasks whose actions have the same
+consequence structure, not merely the same interface.
+
+**Two hypotheses, two refutations, one run each.** Both were plausible,
+both were stated with a predicted signature, and both died on the
+signature. Recorded because the arity FACT survives all of it — grid 2
+to 3, rules 1 — and it is the fact, not either story, that explains
+F195.

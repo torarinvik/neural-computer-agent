@@ -213,10 +213,23 @@ def slot_state(screen: torch.Tensor) -> torch.Tensor:
             mask = frames[row, plane] > 0
             if not bool(mask.any()):
                 continue
-            distance = (rows_ix - ar).abs() + (cols_ix - ac).abs()
-            distance = torch.where(mask, distance,
-                                   torch.full_like(distance, 999))
-            pick = int(distance.reshape(-1).argmin())
+            if args.absolute_objects:
+                # ABSOLUTE object slots: first in raster order, chosen
+                # without reference to the avatar. F195 found grid
+                # actions change two or three slots while rule-family
+                # actions change one, and located the cause here — a
+                # NEAREST-object slot is avatar-relative, so moving the
+                # avatar changes which object is nearest and where it
+                # is recorded, turning a one-slot move into a two or
+                # three slot write. Absolute slots break that coupling,
+                # and if arity is really the barrier this is what
+                # should let a rule-family program solve a grid action.
+                pick = int(mask.reshape(-1).float().argmax())
+            else:
+                distance = (rows_ix - ar).abs() + (cols_ix - ac).abs()
+                distance = torch.where(mask, distance,
+                                       torch.full_like(distance, 999))
+                pick = int(distance.reshape(-1).argmin())
             out[row, base], out[row, base + 1] = pick // WIDTH, pick % WIDTH
     return out
 
@@ -411,6 +424,7 @@ for config in family_variants()[:args.games]:
         results["grid_games"][config.name] = results["grid_cold"][config.name]
 report["rule_programs_stored"] = len(rule_programs)
 report["wide_rules"] = args.wide_rules
+report["absolute_objects"] = args.absolute_objects
 
 report["results"] = results
 for domain, block in results.items():
