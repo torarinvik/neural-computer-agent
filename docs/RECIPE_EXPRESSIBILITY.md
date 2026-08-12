@@ -165,6 +165,29 @@ unbounded program library. The next audit must compare this compiler against
 stochastic proposal search under matched verifier bits, then test retention and
 held-out transfer when a discovered sequence is stored as an external file.
 
+## Generic external control flow
+
+The external computation boundary now has a separate versioned counter-machine
+ABI with `INC`, `DEC`, unconditional jump, zero/nonzero conditional jump, and
+`HALT`. Two non-negative counters plus zero-tested control flow provide the
+standard unbounded counter-machine foundation for general computation, while
+every deployed execution remains fail-closed under an explicit step budget and
+counter limit. This is a computational substrate, not a hand-written task
+solver or a claim that the controller has learned universal program induction.
+
+The `ControlFlowOutcomeSearch` proposal layer updates only aggregate scalar
+outcome credit and keeps program files in `ControlFlowProgramMemory`. It does
+not persist verifier rows or expose target program names. The four-seed audit
+started from one protected transfer file and acquired a second transfer file
+whose loop increments a different opaque counter. Both forward and reversed
+input orders reached `1.0000` held-out execution, retained the source file,
+reloaded exactly, rejected shuffled feedback and corrupted payloads, and
+performed no replay or optimizer updates. The experiment intentionally keeps
+the source scaffold fixed; this promotes a narrow loop/control-flow and
+external-file growth boundary, not unrestricted program induction or general
+continual learning. Evidence is archived in
+`session_records/recipe_control_flow_growth_promoted_2026-08-12/`.
+
 ## Outcome-only external recipe files and scope isolation
 
 The recipe basis now has a versioned external-file bridge:

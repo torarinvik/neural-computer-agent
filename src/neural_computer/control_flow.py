@@ -1,0 +1,383 @@
+"""Generic external control-flow programs with a fail-closed executor.
+
+The recipe boundary previously stored only straight-line instruction sequences.
+This module adds the smallest generic control-flow substrate needed for
+loop-like reusable computation: non-negative counters, increment/decrement,
+unconditional and zero-tested jumps, and halt.  It is a two-counter-machine
+style ABI, so the *potential* computation class is unbounded even though every
+runtime execution is bounded by an explicit step budget and counter limit.
+
+The executor is an external-memory component.  It does not inspect raw
+modalities, task names, verifier answers, or device protocols.  Programs are
+opaque durable files; scalar verifier outcomes are accepted only by the
+separate admission boundary and are never persisted.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import math
+from collections.abc import Sequence
+from dataclasses import dataclass
+from typing import Literal
+
+CONTROL_FLOW_INSTRUCTION_SCHEMA = (
+    "neural-computer.external-control-flow-instruction.v1"
+)
+CONTROL_FLOW_PROGRAM_SCHEMA = "neural-computer.external-control-flow-program.v1"
+CONTROL_FLOW_EXECUTION_SCHEMA = (
+    "neural-computer.external-control-flow-execution.v1"
+)
+CONTROL_FLOW_MEMORY_SCHEMA = "neural-computer.external-control-flow-memory.v1"
+
+ControlFlowOp = Literal[
+    "inc",
+    "dec",
+    "jump",
+    "jump_if_zero",
+    "jump_if_nonzero",
+    "halt",
+]
+ExecutionStatus = Literal[
+    "halted",
+    "step_budget_exhausted",
+    "counter_limit",
+    "counter_underflow",
+]
+
+
+def _digest_payload(payload: object) -> str:
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+    return hashlib.sha256(encoded).hexdigest()
+
+
+@dataclass(frozen=True)
+class ControlFlowInstruction:
+    """One generic instruction in the external counter-machine ABI."""
+
+    op: ControlFlowOp
+    counter: int | None = None
+    target: int | None = None
+
+    def validate(self, *, counter_count: int, program_length: int) -> None:
+        if counter_count < 2:
+            raise ValueError("control-flow programs need at least two counters")
+        if program_length < 1:
+            raise ValueError("control-flow programs need at least one instruction")
+        if self.op in ("inc", "dec"):
+            if self.counter is None or not 0 <= self.counter < counter_count:
+                raise ValueError("counter instruction has an invalid counter")
+            if self.target is not None:
+                raise ValueError("counter instruction cannot carry a jump target")
+            return
+        if self.op == "halt":
+            if self.counter is not None or self.target is not None:
+                raise ValueError("halt cannot carry operands")
+            return
+        if self.op == "jump":
+            if self.counter is not None:
+                raise ValueError("unconditional jump cannot carry a counter")
+        elif self.op in ("jump_if_zero", "jump_if_nonzero"):
+            if self.counter is None or not 0 <= self.counter < counter_count:
+                raise ValueError("conditional jump has an invalid counter")
+        else:
+            raise ValueError(f"unsupported control-flow operation: {self.op!r}")
+        if self.target is None or not 0 <= self.target < program_length:
+            raise ValueError("jump target is outside the program")
+
+    def payload(self) -> dict[str, object]:
+        return {
+            "schema": CONTROL_FLOW_INSTRUCTION_SCHEMA,
+            "op": self.op,
+            "counter": self.counter,
+            "target": self.target,
+        }
+
+    @classmethod
+    def from_payload(cls, payload: object) -> ControlFlowInstruction:
+        if not isinstance(payload, dict):
+            raise TypeError("control-flow instruction payload must be a mapping")
+        if payload.get("schema") != CONTROL_FLOW_INSTRUCTION_SCHEMA:
+            raise ValueError("unsupported control-flow instruction schema")
+        return cls(
+            op=payload.get("op"),
+            counter=(None if payload.get("counter") is None else int(payload["counter"])),
+            target=(None if payload.get("target") is None else int(payload["target"])),
+        )
+
+
+@dataclass(frozen=True)
+class ControlFlowExecution:
+    """Result of one bounded external execution."""
+
+    counters: tuple[int, ...]
+    instruction_pointer: int
+    steps: int
+    status: ExecutionStatus
+    trace: tuple[tuple[int, tuple[int, ...]], ...] = ()
+    schema: str = CONTROL_FLOW_EXECUTION_SCHEMA
+
+    def validate(self, *, counter_count: int) -> ControlFlowExecution:
+        if self.schema != CONTROL_FLOW_EXECUTION_SCHEMA:
+            raise ValueError("unsupported control-flow execution schema")
+        if len(self.counters) != counter_count or any(
+            not isinstance(value, int) or value < 0 for value in self.counters
+        ):
+            raise ValueError("control-flow execution counters are invalid")
+        if self.instruction_pointer < 0 or self.steps < 0:
+            raise ValueError("control-flow execution positions are invalid")
+        if self.status not in (
+            "halted",
+            "step_budget_exhausted",
+            "counter_limit",
+            "counter_underflow",
+        ):
+            raise ValueError("control-flow execution status is invalid")
+        for pointer, state in self.trace:
+            if pointer < 0 or len(state) != counter_count:
+                raise ValueError("control-flow execution trace is invalid")
+        return self
+
+
+@dataclass(frozen=True)
+class ControlFlowProgram:
+    """A portable counter-machine program stored outside the controller."""
+
+    counter_count: int
+    instructions: tuple[ControlFlowInstruction, ...]
+    schema: str = CONTROL_FLOW_PROGRAM_SCHEMA
+
+    def validate(self) -> ControlFlowProgram:
+        if self.schema != CONTROL_FLOW_PROGRAM_SCHEMA:
+            raise ValueError("unsupported control-flow program schema")
+        if self.counter_count < 2:
+            raise ValueError("control-flow programs need at least two counters")
+        if not self.instructions:
+            raise ValueError("control-flow programs need at least one instruction")
+        for instruction in self.instructions:
+            instruction.validate(
+                counter_count=self.counter_count,
+                program_length=len(self.instructions),
+            )
+        if self.instructions[-1].op != "halt":
+            raise ValueError("control-flow programs must end with halt")
+        return self
+
+    def payload(self) -> dict[str, object]:
+        self.validate()
+        return {
+            "schema": self.schema,
+            "counter_count": self.counter_count,
+            "instructions": [instruction.payload() for instruction in self.instructions],
+        }
+
+    @classmethod
+    def from_payload(cls, payload: object) -> ControlFlowProgram:
+        if not isinstance(payload, dict):
+            raise TypeError("control-flow program payload must be a mapping")
+        instructions = payload.get("instructions")
+        if not isinstance(instructions, list):
+            raise TypeError("control-flow program instructions must be a list")
+        return cls(
+            counter_count=int(payload.get("counter_count", -1)),
+            instructions=tuple(
+                ControlFlowInstruction.from_payload(instruction)
+                for instruction in instructions
+            ),
+            schema=payload.get("schema"),
+        ).validate()
+
+    def digest(self) -> str:
+        return _digest_payload(self.payload())
+
+    def execute(
+        self,
+        counters: Sequence[int],
+        *,
+        max_steps: int,
+        max_counter: int = 1_000_000,
+        trace_limit: int = 0,
+    ) -> ControlFlowExecution:
+        """Execute with explicit resource bounds and no implicit wraparound."""
+
+        self.validate()
+        if len(counters) != self.counter_count or any(
+            not isinstance(value, int) or value < 0 for value in counters
+        ):
+            raise ValueError("initial counters are invalid")
+        if max_steps < 1 or max_counter < 1:
+            raise ValueError("execution bounds must be positive")
+        state = list(counters)
+        pointer = 0
+        trace: list[tuple[int, tuple[int, ...]]] = []
+        for steps in range(max_steps):
+            instruction = self.instructions[pointer]
+            if len(trace) < trace_limit:
+                trace.append((pointer, tuple(state)))
+            if instruction.op == "halt":
+                return ControlFlowExecution(
+                    tuple(state), pointer, steps + 1, "halted", tuple(trace)
+                ).validate(counter_count=self.counter_count)
+            if instruction.op == "inc":
+                assert instruction.counter is not None
+                state[instruction.counter] += 1
+                if state[instruction.counter] > max_counter:
+                    return ControlFlowExecution(
+                        tuple(state), pointer, steps + 1, "counter_limit", tuple(trace)
+                    ).validate(counter_count=self.counter_count)
+                pointer += 1
+            elif instruction.op == "dec":
+                assert instruction.counter is not None
+                if state[instruction.counter] == 0:
+                    return ControlFlowExecution(
+                        tuple(state), pointer, steps + 1, "counter_underflow", tuple(trace)
+                    ).validate(counter_count=self.counter_count)
+                state[instruction.counter] -= 1
+                pointer += 1
+            elif instruction.op == "jump":
+                assert instruction.target is not None
+                pointer = instruction.target
+            else:
+                assert instruction.counter is not None and instruction.target is not None
+                condition = state[instruction.counter] == 0
+                if instruction.op == "jump_if_nonzero":
+                    condition = not condition
+                pointer = instruction.target if condition else pointer + 1
+            if pointer >= len(self.instructions):
+                raise RuntimeError("validated control-flow program fell off its end")
+        return ControlFlowExecution(
+            tuple(state), pointer, max_steps, "step_budget_exhausted", tuple(trace)
+        ).validate(counter_count=self.counter_count)
+
+
+@dataclass(frozen=True)
+class ControlFlowAdmissionReceipt:
+    accepted: bool
+    slot: int | None
+    stable_bits_to_threshold: int | None
+    reason: str
+
+
+class ControlFlowProgramMemory:
+    """Checksummed external files with protected slots and scalar admission."""
+
+    schema = CONTROL_FLOW_MEMORY_SCHEMA
+
+    def __init__(self, counter_count: int) -> None:
+        if counter_count < 2:
+            raise ValueError("control-flow memory needs at least two counters")
+        self.counter_count = int(counter_count)
+        self._programs: list[ControlFlowProgram] = []
+        self._protected: list[bool] = []
+
+    @property
+    def file_count(self) -> int:
+        return len(self._programs)
+
+    def add_program(self, program: ControlFlowProgram, *, protect: bool = False) -> int:
+        program.validate()
+        if program.counter_count != self.counter_count:
+            raise ValueError("control-flow program counter width is incompatible")
+        self._programs.append(program)
+        self._protected.append(bool(protect))
+        return len(self._programs) - 1
+
+    def program(self, slot: int) -> ControlFlowProgram:
+        if not 0 <= slot < self.file_count:
+            raise IndexError("control-flow memory slot is out of range")
+        return self._programs[slot]
+
+    def protect_file(self, slot: int) -> None:
+        if not 0 <= slot < self.file_count:
+            raise IndexError("control-flow memory slot is out of range")
+        self._protected[slot] = True
+
+    def is_file_protected(self, slot: int) -> bool:
+        if not 0 <= slot < self.file_count:
+            raise IndexError("control-flow memory slot is out of range")
+        return self._protected[slot]
+
+    def admit_verified(
+        self,
+        program: ControlFlowProgram,
+        outcomes: Sequence[float],
+        *,
+        threshold: float = 1.0,
+        min_observations: int = 1,
+        min_stable_observations: int = 1,
+        protect: bool = False,
+    ) -> ControlFlowAdmissionReceipt:
+        program.validate()
+        if program.counter_count != self.counter_count:
+            raise ValueError("control-flow program counter width is incompatible")
+        values = tuple(float(value) for value in outcomes)
+        if not values or any(not math.isfinite(value) or not 0.0 <= value <= 1.0 for value in values):
+            raise ValueError("control-flow outcomes must be finite probabilities")
+        if not 0.0 < threshold <= 1.0 or min_observations < 1 or min_stable_observations < 1:
+            raise ValueError("control-flow admission thresholds are invalid")
+        stable = None
+        for index in range(len(values)):
+            if len(values) - index >= min_stable_observations and min(values[index:]) >= threshold:
+                stable = index + 1
+                break
+        accepted = len(values) >= min_observations and stable is not None
+        if not accepted:
+            return ControlFlowAdmissionReceipt(
+                False,
+                None,
+                stable,
+                "control-flow verifier prefix did not remain above threshold",
+            )
+        slot = self.add_program(program, protect=protect)
+        return ControlFlowAdmissionReceipt(
+            True,
+            slot,
+            stable,
+            "control-flow program admitted after stable verifier prefix",
+        )
+
+    def payload(self) -> dict[str, object]:
+        body = {
+            "schema": self.schema,
+            "counter_count": self.counter_count,
+            "programs": [program.payload() for program in self._programs],
+            "protected": list(self._protected),
+        }
+        return {**body, "sha256": _digest_payload(body)}
+
+    @classmethod
+    def from_payload(cls, payload: object) -> ControlFlowProgramMemory:
+        if not isinstance(payload, dict) or payload.get("schema") != cls.schema:
+            raise ValueError("unsupported control-flow memory payload")
+        unsigned = {key: value for key, value in payload.items() if key != "sha256"}
+        if payload.get("sha256") != _digest_payload(unsigned):
+            raise ValueError("control-flow memory checksum mismatch")
+        programs = payload.get("programs")
+        protected = payload.get("protected")
+        if not isinstance(programs, list) or not isinstance(protected, list):
+            raise TypeError("control-flow memory payload is incomplete")
+        if len(programs) != len(protected):
+            raise ValueError("control-flow memory metadata lengths differ")
+        memory = cls(int(payload.get("counter_count", -1)))
+        for raw, is_protected in zip(programs, protected, strict=True):
+            if not isinstance(is_protected, bool):
+                raise TypeError("control-flow protected metadata must be boolean")
+            memory.add_program(ControlFlowProgram.from_payload(raw), protect=is_protected)
+        return memory
+
+    def digest(self) -> str:
+        return str(self.payload()["sha256"])
+
+
+__all__ = [
+    "CONTROL_FLOW_EXECUTION_SCHEMA",
+    "CONTROL_FLOW_INSTRUCTION_SCHEMA",
+    "CONTROL_FLOW_MEMORY_SCHEMA",
+    "CONTROL_FLOW_PROGRAM_SCHEMA",
+    "ControlFlowAdmissionReceipt",
+    "ControlFlowExecution",
+    "ControlFlowInstruction",
+    "ControlFlowProgram",
+    "ControlFlowProgramMemory",
+]

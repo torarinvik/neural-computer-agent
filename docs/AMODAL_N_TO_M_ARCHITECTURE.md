@@ -11310,3 +11310,28 @@ unrestricted memory growth, arbitrary new computation, universal regime
 discovery, or general continual learning. Evidence and accounting are
 archived in
 `session_records/brainworkshop_external_temporal_compositional_reversal_promoted_2026-08-12/`.
+
+### Generic external control-flow substrate
+
+The external computation boundary previously stored only finite straight-line
+recipes. `ControlFlowProgram` now adds a versioned generic counter-machine ABI:
+increment, decrement, unconditional jump, zero/nonzero conditional jump, and
+halt. Two non-negative counters provide the standard unbounded counter-machine
+foundation for general computation; deployed runs remain fail-closed through
+explicit step and counter limits. The executor is external program machinery,
+not a task-specific controller branch.
+
+`ControlFlowOutcomeSearch` updates only aggregate scalar outcome credit while
+`ControlFlowProgramMemory` owns protected, checksummed files. In the promoted
+four-seed audit, a protected transfer scaffold acquired a second loop program
+that increments a different opaque destination counter. Forward and reversed
+input orders reached `1.0000` held-out and reload accuracy, retained the source
+file, rejected shuffled feedback, missing evidence, and corrupted payloads,
+and used zero replay and zero optimizer updates.
+
+This promotes a narrow external loop/control-flow and file-growth boundary,
+not arbitrary program synthesis from scratch, unbounded deployment execution,
+or general continual learning. The next pressure is structural synthesis
+beyond one-edit scaffold adaptation and integration with the amodal intention
+boundary. Evidence and accounting are archived in
+`session_records/recipe_control_flow_growth_promoted_2026-08-12/`.

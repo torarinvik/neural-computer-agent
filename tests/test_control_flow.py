@@ -1,0 +1,143 @@
+from __future__ import annotations
+
+import pytest
+import torch
+
+from neural_computer import (
+    ControlFlowInstruction,
+    ControlFlowOutcomeSearch,
+    ControlFlowProgram,
+    ControlFlowProgramMemory,
+)
+
+
+def _transfer_program() -> ControlFlowProgram:
+    return ControlFlowProgram(
+        2,
+        (
+            ControlFlowInstruction("jump_if_zero", counter=0, target=4),
+            ControlFlowInstruction("dec", counter=0),
+            ControlFlowInstruction("inc", counter=1),
+            ControlFlowInstruction("jump", target=0),
+            ControlFlowInstruction("halt"),
+        ),
+    )
+
+
+def test_control_flow_executes_data_dependent_loop_with_opaque_counters() -> None:
+    program = _transfer_program()
+
+    for amount in (0, 1, 4, 11):
+        result = program.execute((amount, 0), max_steps=100)
+
+        assert result.status == "halted"
+        assert result.counters == (0, amount)
+
+
+def test_control_flow_fails_closed_on_resource_bounds() -> None:
+    program = _transfer_program()
+
+    exhausted = program.execute((4, 0), max_steps=3)
+    assert exhausted.status == "step_budget_exhausted"
+    assert exhausted.counters == (3, 1)
+
+    with pytest.raises(ValueError, match="must end with halt"):
+        ControlFlowProgram(
+            2,
+            (ControlFlowInstruction("jump", target=0),),
+        ).validate()
+
+
+def test_control_flow_memory_admission_is_scalar_gated_and_persistent() -> None:
+    program = _transfer_program()
+    memory = ControlFlowProgramMemory(2)
+    before = memory.digest()
+
+    rejected = memory.admit_verified(
+        program,
+        [1.0, 0.0],
+        min_observations=2,
+        min_stable_observations=2,
+    )
+    assert not rejected.accepted
+    assert memory.file_count == 0
+    assert memory.digest() == before
+
+    accepted = memory.admit_verified(
+        program,
+        [1.0, 1.0, 1.0],
+        min_observations=3,
+        min_stable_observations=2,
+        protect=True,
+    )
+    assert accepted.accepted and accepted.slot == 0
+    assert memory.is_file_protected(0)
+    restored = ControlFlowProgramMemory.from_payload(memory.payload())
+    assert restored.digest() == memory.digest()
+    assert restored.program(0).execute((7, 0), max_steps=100).counters == (0, 7)
+
+
+def test_control_flow_outcome_search_can_learn_one_opaque_instruction_edit() -> None:
+    target = _transfer_program()
+    parent = ControlFlowProgram(
+        2,
+        (
+            ControlFlowInstruction("jump_if_zero", counter=0, target=4),
+            ControlFlowInstruction("dec", counter=0),
+            ControlFlowInstruction("inc", counter=0),
+            ControlFlowInstruction("jump", target=0),
+            ControlFlowInstruction("halt"),
+        ),
+    )
+    search = ControlFlowOutcomeSearch()
+    state = search.initial_state()
+    generator = torch.Generator().manual_seed(23)
+
+    accepted = None
+    for _ in range(256):
+        proposal = search.propose(
+            state,
+            parent,
+            generator=generator,
+            scope="opaque-context-a",
+        )
+        quality = [
+            float(
+                proposal.program.execute((amount, 0), max_steps=100).status == "halted"
+                and proposal.program.execute((amount, 0), max_steps=100).counters
+                == target.execute((amount, 0), max_steps=100).counters
+            )
+            for amount in (0, 1, 3, 7)
+        ]
+        feedback = search.record_outcomes(
+            state,
+            proposal,
+            quality,
+            min_observations=4,
+            min_stable_observations=2,
+        )
+        state = feedback.state
+        if feedback.accepted:
+            accepted = feedback
+            break
+
+    assert accepted is not None
+    assert accepted.proposal.program.digest() == target.digest()
+    assert "outcomes" not in state.payload()
+
+
+def test_control_flow_growth_promotes_loop_file_with_reversed_input_order() -> None:
+    from experiments.recipe_expressibility.control_flow_program_growth import run
+
+    report = run((17,))
+
+    assert report["promoted"]
+    assert all(
+        bool(item["promoted"])
+        for item in report["reports"]
+    )
+    assert all(
+        bool(item["gates"]["missing_evidence_no_write"])
+        and bool(item["gates"]["reward_shuffled_rejected"])
+        for item in report["reports"]
+    )
