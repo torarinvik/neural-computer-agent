@@ -857,6 +857,39 @@ def test_external_temporal_regime_policy_routes_isolated_binding_slots(
     assert report["gates"]["zero_replayed_examples"]
 
 
+def test_external_temporal_regime_policy_learns_full_bank_maintenance(
+    tmp_path,
+) -> None:
+    from experiments.brainworkshop_canonical.external_temporal_regime_policy_learned_maintenance import (
+        run,
+    )
+
+    report = run(
+        argparse.Namespace(
+            report_out=tmp_path / "temporal-regime-learned-maintenance.json",
+            seed=17,
+            policy_updates=1_000,
+            maintenance_updates=3_000,
+        )
+    )
+
+    assert report["schema"] == (
+        "neural-computer.brainworkshop-external-temporal-regime-policy-"
+        "learned-maintenance.v1"
+    )
+    assert report["gates"]["trained_maintenance_transfer"]
+    assert report["gates"]["forward_selects_disposable_slot"]
+    assert report["gates"]["reverse_selects_disposable_slot"]
+    assert report["gates"]["forward_copy_on_write_accepted"]
+    assert report["gates"]["reverse_copy_on_write_accepted"]
+    assert report["gates"]["forward_sibling_retained"]
+    assert report["gates"]["reverse_sibling_retained"]
+    assert report["gates"]["forward_new_binding_learns"]
+    assert report["gates"]["reverse_new_binding_learns"]
+    assert report["gates"]["controller_frozen"]
+    assert report["gates"]["zero_replayed_examples"]
+
+
 def test_binary_switch_family_has_a_valid_chance_baseline() -> None:
     verifier = CrossFamilyVerifier(
         family="switch_binary",

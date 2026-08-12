@@ -1,0 +1,39 @@
+{
+  "experiment_id": "brainworkshop-external-temporal-regime-policy-learned-maintenance-promoted-2026-08-12",
+  "status": "promoted_learned_maintenance",
+  "seeds": [17, 18],
+  "rung": "canonical two-seed learned opaque victim selection with order permutation and verified slot reuse",
+  "architecture": "external_capability_eviction_policy_v1_plus_gated_residual_regime_policy_bank_v1",
+  "claim_boundary": "A scalar-trained external maintenance policy chooses the weak opaque slot under candidate-order permutation; verifier-gated copy-on-write reuse retains the sibling and admits a new binding. This is bounded maintenance choice, not general continual learning.",
+  "accounting": {
+    "maintenance_optimizer_updates_per_seed": 3000,
+    "base_optimizer_updates_per_seed": 1000,
+    "slot_optimizer_updates_per_seed": 432,
+    "total_optimizer_updates_per_seed": 4432,
+    "unique_verifier_bits_per_seed": 4432,
+    "unique_logical_lifetimes_per_seed": 4432,
+    "replayed_examples_per_seed": 0,
+    "controller_updates_per_seed": 0,
+    "stable_bits_to_threshold": "3000 maintenance updates, 1000 base updates, and 432 isolated slot updates; all selector, sibling-retention, replacement, and new-binding gates passed on both seeds",
+    "retention_on_mastered_primitives": "sibling stable/disjoint behavior remained at 1.0; sibling partial retention was 0.8047/0.8438",
+    "transfer_ratio_against_fresh_selector": "trained selector accuracy was 0.9648/0.9258; fresh controls were 0.3477/0.3516",
+    "wall_time_seconds": {
+      "seed_17": 2.2564494580728933,
+      "seed_18": 2.1088566669495776
+    }
+  },
+  "controls": [
+    "held-out scalar-trained victim selection",
+    "fresh selector comparison",
+    "forward candidate order",
+    "reversed candidate order",
+    "opaque key plus generic reliability/age features",
+    "verifier-gated copy-on-write replacement",
+    "sibling retention",
+    "new binding acquisition",
+    "frozen controller",
+    "frozen event encoder",
+    "zero replay"
+  ],
+  "next_bottleneck": "Long nonstationary streams with multiple protected slots, conflicting reliability/age/compression signals, and learned maintenance choices that remain stable under repeated replacement."
+}

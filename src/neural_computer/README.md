@@ -1818,3 +1818,9 @@ their trainable-parameter path rejects updates. An optional `max_slots` bound
 rejects unverified capacity growth. `slot_replacement_candidate()` and
 `replace_slot_from_candidate()` provide copy-on-write, verifier-gated reuse of
 a full slot without mutating live state on rejection.
+
+The generic `ExternalCapabilityEvictionPolicy` can rank the bank's opaque
+candidate summaries before this transaction. It is trained outside the
+controller from scalar verifier utility and does not receive physical slot
+indices or semantic names. The learned maintenance audit is archived at
+`session_records/brainworkshop_external_temporal_regime_policy_learned_maintenance_promoted_2026-08-12/`.

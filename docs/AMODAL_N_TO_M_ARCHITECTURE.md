@@ -10673,3 +10673,23 @@ continual learning. The 96-update overadaptation rejection is retained as
 evidence that slot allocation needs verifier-gated stopping and consolidation.
 Evidence and accounting are archived in
 `session_records/brainworkshop_external_temporal_regime_policy_binding_slots_promoted_2026-08-12/`.
+
+## Learned full-bank maintenance choice (2026-08-12)
+
+The residual lifecycle no longer requires the victim slot to be selected by
+the experiment. `ExternalCapabilityEvictionPolicy` ranks variable opaque
+candidate slots from generic binding-key, reliability, and age telemetry and
+learns from one scalar verifier utility per fresh bank. Candidate order is
+permuted independently; semantic names, task labels, physical indices, and
+verifier targets remain outside the policy input.
+
+Across seeds `17` and `18`, held-out selection reached `0.9648/0.9258` versus
+fresh controls `0.3477/0.3516`. Forward and reversed candidate orders selected
+the weak slot, verifier-gated copy-on-write reuse retained the sibling, and the
+new binding learned after reuse. The controller and event encoder remained
+frozen with zero replay.
+
+This promotes bounded learned maintenance choice, not autonomous redundancy
+discovery, universal eviction economics, unrestricted memory growth, or
+general continual learning. Evidence and accounting are archived in
+`session_records/brainworkshop_external_temporal_regime_policy_learned_maintenance_promoted_2026-08-12/`.

@@ -1209,6 +1209,21 @@ archived as a rejection because stable retention collapsed on one seed. Evidence
 is archived at
 `session_records/brainworkshop_external_temporal_regime_policy_binding_slots_promoted_2026-08-12/`.
 
+## Learned full-bank maintenance choice (2026-08-12)
+
+`external_temporal_regime_policy_learned_maintenance.py` trains the existing
+external eviction policy from scalar verifier utilities, then uses it to
+select which full residual slot to reuse. The policy receives only opaque keys
+and generic reliability/age telemetry; candidate order is reversed in a
+control. The selected slot is replaced through the residual bank's
+copy-on-write verifier, while the sibling is retained and the new binding is
+learned afterward.
+
+Seeds 17 and 18 passed selector transfer, both orderings, sibling retention,
+new-binding acquisition, frozen-core, and zero-replay gates. Evidence is
+archived at
+`session_records/brainworkshop_external_temporal_regime_policy_learned_maintenance_promoted_2026-08-12/`.
+
 The promoted lifecycle run also builds copy-on-write replacement candidates.
 An unsafe candidate is rejected without mutation; a verified candidate reuses
 slot B for a new opaque binding while binding A remains retained. Eviction,
