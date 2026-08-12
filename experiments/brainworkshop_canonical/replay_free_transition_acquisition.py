@@ -142,6 +142,7 @@ class OnlineTransitionDiscoveryReport:
     adaptive_address: bool = False
     random_feature_width: int = 128
     pretrain_context_encoder: bool = False
+    provisional_evidence_lease_bundles: int = 0
     context_encoder_optimizer_updates: int = 0
     context_encoder_rows_consumed_once: int = 0
     external_memory_update_mode: str = "sufficient_statistics"
@@ -802,6 +803,7 @@ def run_online_transition_discovery_audit(
     adaptive_address: bool = False,
     random_feature_width: int = 128,
     pretrain_context_encoder: bool = False,
+    provisional_evidence_lease_bundles: int = 0,
     external_memory_update_mode: str = "sufficient_statistics",
     admission_observations: int | None = None,
     early_admission_observations: int | None = None,
@@ -836,7 +838,11 @@ def run_online_transition_discovery_audit(
         raise ValueError("online transition discovery needs a continuation lifetime")
     if promotion_heldout_lifetimes < 2:
         raise ValueError("online transition promotion needs multiple held-out lifetimes")
-    if context_aggregation not in {"last_token", "mean_pool"}:
+    if context_aggregation not in {
+        "last_token",
+        "mean_pool",
+        "recency_weighted_and_latest",
+    }:
         raise ValueError("online transition context aggregation is unsupported")
     if window_statistics not in {
         "masked_mean_and_max_v1",
@@ -866,6 +872,14 @@ def run_online_transition_discovery_audit(
         raise ValueError("random feature width must be a positive integer")
     if not isinstance(pretrain_context_encoder, bool):
         raise TypeError("context encoder pretraining flag must be boolean")
+    if (
+        not isinstance(provisional_evidence_lease_bundles, int)
+        or isinstance(provisional_evidence_lease_bundles, bool)
+        or provisional_evidence_lease_bundles < 0
+    ):
+        raise ValueError(
+            "provisional evidence lease bundle count must be a non-negative integer"
+        )
     if discovery_probe_mode not in {
         "none",
         "active",
@@ -1148,6 +1162,7 @@ def run_online_transition_discovery_audit(
         provisional_context_similarity_threshold=0.98,
         provisional_context_similarity_margin=0.005,
         provisional_context_error_tolerance=0.15,
+        provisional_evidence_lease_bundles=provisional_evidence_lease_bundles,
         prior_selection_probe=(
             lambda transfer, fresh, observation: (
                 float(transfer.loss(observation).detach()),
@@ -1350,6 +1365,7 @@ def run_online_transition_discovery_audit(
             adaptive_address=adaptive_address,
             random_feature_width=random_feature_width,
             pretrain_context_encoder=pretrain_context_encoder,
+            provisional_evidence_lease_bundles=provisional_evidence_lease_bundles,
             goal_conditioned=goal_conditioned,
             target_goal_horizon=goal_horizon if goal_conditioned else 0,
             prior_selection_cost_aware=prior_selection_cost_aware,
@@ -1537,6 +1553,7 @@ def run_online_transition_discovery_audit(
             adaptive_address=adaptive_address,
             random_feature_width=random_feature_width,
             pretrain_context_encoder=pretrain_context_encoder,
+            provisional_evidence_lease_bundles=provisional_evidence_lease_bundles,
             goal_conditioned=goal_conditioned,
             target_goal_horizon=goal_horizon if goal_conditioned else 0,
             prior_selection_cost_aware=prior_selection_cost_aware,
@@ -1784,6 +1801,7 @@ def run_online_transition_discovery_audit(
         adaptive_address=adaptive_address,
         random_feature_width=random_feature_width,
         pretrain_context_encoder=pretrain_context_encoder,
+        provisional_evidence_lease_bundles=provisional_evidence_lease_bundles,
         goal_conditioned=goal_conditioned,
         target_goal_fragment_admitted=goal_fragment_admitted,
         target_goal_fragment_used=goal_fragment_used,

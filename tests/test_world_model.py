@@ -2517,6 +2517,50 @@ def test_online_router_persists_provisional_evidence_window() -> None:
     assert restored.state_payload()["bank"]["sha256"] == bank.digest()
 
 
+def test_online_router_uses_one_bounded_provisional_evidence_lease() -> None:
+    bank = ExternalTransitionModelBank(
+        1,
+        1,
+        2,
+        model_family=EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY,
+        capacity=2,
+    )
+    bank.ensure_context(torch.tensor([1.0, 0.0]))
+    router = ExternalOnlineTransitionContextRouter(
+        bank,
+        ExternalTransitionContextEncoder(1, 1, hidden_width=8, context_width=2),
+        match_tolerance=1e-8,
+        continuation_tolerance=1e-8,
+        admission_observations=1,
+        max_contexts=2,
+        defer_admission=True,
+        candidate_model_families=(EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY,),
+        provisional_evidence_lease_bundles=1,
+    )
+    first = ExternalTransitionObservation(
+        state=torch.tensor([[0.1]]),
+        intention=torch.tensor([[0.2]]),
+        next_state=torch.tensor([[4.0]]),
+    )
+    second = ExternalTransitionObservation(
+        state=torch.tensor([[0.3]]),
+        intention=torch.tensor([[-0.4]]),
+        next_state=torch.tensor([[-5.0]]),
+    )
+
+    assert router.observe(first).status == "staged"
+    assert router.provisional_evidence_count(0) == 1
+    leased = router.observe(second)
+
+    assert leased.status == "staged"
+    assert router.provisional_evidence_count(0) == 2
+    assert router._provisional_candidates[0].continuity_lease_remaining == 0
+    restored = ExternalOnlineTransitionContextRouter.from_payload(
+        router.state_payload()
+    )
+    assert restored._provisional_candidates[0].continuity_lease_remaining == 0
+
+
 def test_online_router_promotes_candidate_with_verified_capacity_growth() -> None:
     torch.manual_seed(1215)
     bank = ExternalTransitionModelBank(2, 1, 4, hidden_width=8, capacity=1)

@@ -1927,3 +1927,28 @@ not general continual learning, unrestricted memory growth, or universal
 transfer. Candidate staging, held-out fit, recursive rollout, and retention
 remain active bottlenecks. Evidence is archived in
 `session_records/model_family_recursive_fallback_screen_2026-08-12/`.
+
+## Bounded provisional evidence lease (2026-08-12)
+
+The online router now exposes an opt-in, bounded continuity lease for the
+specific case in which one isolated candidate has filled the external bank's
+provisional capacity but its model has not yet reached the strict continuation
+tolerance. A lease can route a fixed number of additional opaque evidence
+bundles to that candidate. It is external mutable state, expires after the
+configured budget, is serialized independently, and never writes a committed
+slot or bypasses held-out, recursive, fresh-challenger, or retention gates. It
+is disabled by default (`provisional_evidence_lease_bundles=0`). When another
+provisional candidate can still be staged, the lease is not used, preserving
+separation of simultaneously arriving novel streams.
+
+On exact seeds `80–103`, masked state, tight routing, and the active-interleaved
+four-arm matrix, one lease bundle raised complete gates from `62/96` to `63/96`,
+promotions from `68/96` to `71/96`, and fresh-challenger improvements from
+`62/96` to `63/96`. The gain was concentrated in the changed-cue n-back-5 arm
+(`17/24` to `19/24`); the same-cue arms did not improve uniformly. All `96`
+runs kept the controller unchanged, source slots byte-stable, and replay at
+zero, with `2,868` transition rows consumed once in each arm. The matched
+post-training active control fell from `58/96` without the lease to `57/96`
+with it, so the lease is retained as an opt-in evidence-flow policy, not as a
+global default or a claim of general continual learning. Evidence is archived
+in `session_records/provisional_evidence_lease_screen_2026-08-12/`.

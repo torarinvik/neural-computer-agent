@@ -6337,6 +6337,7 @@ class _ProvisionalTransitionCandidate:
     model: nn.Module
     model_family: str
     observations: list[ExternalTransitionObservation]
+    continuity_lease_remaining: int = 0
     address_adapter: ExternalTransitionContextAddressAdapter | None = None
     evidence_count: int = 0
     deferred_observations: list[ExternalTransitionObservation] = field(
@@ -6386,6 +6387,7 @@ class ExternalOnlineTransitionContextRouter:
         provisional_context_similarity_threshold: float | None = None,
         provisional_context_similarity_margin: float = 0.0,
         provisional_context_error_tolerance: float | None = None,
+        provisional_evidence_lease_bundles: int = 0,
         ambiguous_evidence_policy: str = "discard",
         quarantine_capacity: int = 0,
         evidence_evaluator: nn.Module | None = None,
@@ -6477,6 +6479,14 @@ class ExternalOnlineTransitionContextRouter:
         ):
             raise ValueError(
                 "provisional context error tolerance cannot be negative"
+            )
+        if (
+            not isinstance(provisional_evidence_lease_bundles, int)
+            or isinstance(provisional_evidence_lease_bundles, bool)
+            or provisional_evidence_lease_bundles < 0
+        ):
+            raise ValueError(
+                "provisional evidence lease bundle count must be a non-negative integer"
             )
         if ambiguous_evidence_policy not in {"discard", "quarantine"}:
             raise ValueError("ambiguous evidence policy must be discard or quarantine")
@@ -6664,6 +6674,9 @@ class ExternalOnlineTransitionContextRouter:
             self.provisional_continuation_tolerance
             if provisional_context_error_tolerance is None
             else provisional_context_error_tolerance
+        )
+        self.provisional_evidence_lease_bundles = int(
+            provisional_evidence_lease_bundles
         )
         self.ambiguous_evidence_policy = str(ambiguous_evidence_policy)
         self.quarantine_capacity = int(quarantine_capacity)
@@ -6860,6 +6873,9 @@ class ExternalOnlineTransitionContextRouter:
             ),
             "provisional_context_error_tolerance": (
                 self.provisional_context_error_tolerance
+            ),
+            "provisional_evidence_lease_bundles": (
+                self.provisional_evidence_lease_bundles
             ),
             "conflict_patience": self.conflict_patience,
             "defer_admission": self.defer_admission,
@@ -7619,6 +7635,7 @@ class ExternalOnlineTransitionContextRouter:
                     if family != self.candidate_model_families[0]
                 },
                 prior_selection=prior_selection,
+                continuity_lease_remaining=self.provisional_evidence_lease_bundles,
             )
         )
         return len(self._provisional_candidates) - 1
@@ -8117,6 +8134,21 @@ class ExternalOnlineTransitionContextRouter:
                         bundle,
                         candidate_index=candidate_index,
                     )
+                if (
+                    self.provisional_evidence_lease_bundles > 0
+                    and len(self._provisional_candidates) == 1
+                    and self.max_contexts is not None
+                    and not self.auto_grow
+                    and self.bank.context_count + len(self._provisional_candidates)
+                    >= self.max_contexts
+                    and self._provisional_candidates[0].continuity_lease_remaining
+                    > 0
+                ):
+                    candidate = self._provisional_candidates[0]
+                    candidate.continuity_lease_remaining -= 1
+                    self._resolve_quarantine(anchor_candidate_index=0)
+                    self._pending.clear()
+                    return self._staged_result(bundle, candidate_index=0)
             if self.max_contexts is not None and not self.auto_grow and (
                 self.bank.context_count + len(self._provisional_candidates)
                 >= self.max_contexts
@@ -8847,6 +8879,7 @@ class ExternalOnlineTransitionContextRouter:
                     for family, model in candidate.models().items()
                 },
                 "evidence_count": candidate.evidence_count,
+                "continuity_lease_remaining": candidate.continuity_lease_remaining,
                 "observations": [
                     self._observation_payload(row) for row in candidate.observations
                 ],
@@ -9188,6 +9221,10 @@ class ExternalOnlineTransitionContextRouter:
             evidence_count = candidate_payload.get(
                 "evidence_count", len(observations_payload)
             )
+            continuity_lease_remaining = candidate_payload.get(
+                "continuity_lease_remaining",
+                router.provisional_evidence_lease_bundles,
+            )
             if not isinstance(provisional_context, torch.Tensor):
                 raise TypeError("online transition provisional context is not a tensor")
             if not isinstance(provisional_model, Mapping):
@@ -9207,6 +9244,14 @@ class ExternalOnlineTransitionContextRouter:
             if not isinstance(evidence_count, int) or evidence_count < 0:
                 raise ValueError(
                     "online transition provisional evidence count is invalid"
+                )
+            if (
+                not isinstance(continuity_lease_remaining, int)
+                or isinstance(continuity_lease_remaining, bool)
+                or continuity_lease_remaining < 0
+            ):
+                raise ValueError(
+                    "online transition provisional continuity lease is invalid"
                 )
             if (
                 router.provisional_evidence_policy
@@ -9288,6 +9333,7 @@ class ExternalOnlineTransitionContextRouter:
                     model=restored_models[primary_family],
                     model_family=primary_family,
                     observations=observations,
+                    continuity_lease_remaining=continuity_lease_remaining,
                     address_adapter=(
                         None
                         if candidate_address_adapter_payload is None

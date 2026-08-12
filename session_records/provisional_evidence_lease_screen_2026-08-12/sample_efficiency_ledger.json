@@ -1,0 +1,63 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "provisional_evidence_lease_screen_2026-08-12",
+  "status": "opt_in_policy_retained_global_default_rejected",
+  "configuration": {
+    "seeds": "80-103",
+    "steps": 6,
+    "window_statistics": "masked_mean_and_max_v1",
+    "window_gain": 0.05,
+    "routing_match_tolerance": 0.01,
+    "candidate_model_families": [
+      "affine",
+      "random_features"
+    ],
+    "provisional_evidence_lease_bundles": 1,
+    "controller_updates": 0,
+    "replayed_examples": 0
+  },
+  "matched_results": {
+    "baseline_active_interleaved": {
+      "complete": "62/96",
+      "promotions": "68/96",
+      "fresh_challenger_improvements": "62/96",
+      "unique_verifier_bits": 2267,
+      "transition_rows_consumed_once": 2868
+    },
+    "lease_active_interleaved": {
+      "complete": "63/96",
+      "promotions": "71/96",
+      "fresh_challenger_improvements": "63/96",
+      "unique_verifier_bits": 2271,
+      "transition_rows_consumed_once": 2868
+    },
+    "baseline_post_training_active": {
+      "complete": "58/96",
+      "promotions": "62/96",
+      "fresh_challenger_improvements": "58/96",
+      "unique_verifier_bits": 2259,
+      "transition_rows_consumed_once": 2868
+    },
+    "lease_post_training_active": {
+      "complete": "57/96",
+      "promotions": "66/96",
+      "fresh_challenger_improvements": "57/96",
+      "unique_verifier_bits": 2269,
+      "transition_rows_consumed_once": 2868
+    },
+    "lease_passive": {
+      "complete": "51/96",
+      "promotions": "60/96",
+      "fresh_challenger_improvements": "51/96",
+      "unique_verifier_bits": 2251,
+      "transition_rows_consumed_once": 2868
+    }
+  },
+  "controls": {
+    "controller_unchanged": "96/96 in every reported arm",
+    "source_slot_byte_stable": "96/96 in every reported arm",
+    "replayed_examples": 0,
+    "lease_capacity_guard": "only one provisional candidate at full capacity",
+    "heldout_recursive_retention_gates": "enabled"
+  }
+}
