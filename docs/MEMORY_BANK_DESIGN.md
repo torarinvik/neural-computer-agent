@@ -10417,3 +10417,58 @@ forward pass instead of enumerating. And unlike search, this improves
 with experience: the wake phase produces labels, the sleep phase
 consumes them, and world 1001 is free where world 1 cost an
 enumeration.
+
+## F203 — THE LOOP IS CLOSED: planning with the bank matches planning
+## with the true simulator
+
+Three seeds, interpreter gate passing (0.9700, 0.9823, 0.9954). The
+agent plans by rolling recipes forward, takes the best action, and acts
+in the real game.
+
+| game | random | **BANK** | oracle (true simulator) |
+| --- | ---: | ---: | ---: |
+| collect1 | 0.161 | **2.719** | 2.719 |
+| collect2 | 0.307 | **3.802** | 3.802 |
+| intercept1 | -0.880 | **-0.724** | -0.724 |
+| intercept2 | -1.719 | **-1.141** | -1.766 |
+| MEAN | -0.533 | **1.164** | 1.008 |
+
+**On three of four games the bank arm equals the oracle to three
+decimals.** The planner picks the lowest-cost action; identical scores
+give identical choices give identical trajectories. So recipes of one
+or two instructions, held outside the weights as integers and executed
+by an interpreter that never saw a game, are **decision-equivalent to
+the true environment** for this task.
+
+Against random the margin is large and consistent: -0.533 to 1.164 on
+the mean, and every game improves.
+
+**The bank beating the oracle is NOT a strength and should not be read
+as one.** On `intercept2` the bank scores -1.141 against the oracle's
+-1.766. A model cannot be better than the reality it models. What it
+means is that the OBJECTIVE is a proxy — minimise slot-distance to the
+positive object — and the oracle optimises that proxy perfectly, which
+on `intercept` is the wrong thing to optimise. The bank's model error
+happens to pull it off a bad objective. That is luck, and the honest
+statement is that both intercept games are NEGATIVE for every arm,
+because the goal I supplied does not describe them.
+
+**Three bugs in the objective, each caught by the oracle.** Scoring
+absent objects as zero cost made the planner prefer futures where the
+object vanished. Pricing absent high then made it avoid COLLECTING,
+because collecting makes the object briefly absent — success looked
+exactly like failure. And scoring the post-action state at all was
+wrong, since reaching the target consumes it; the fix was to score the
+new avatar position against the OLD object position, so the target does
+not move while the plan is evaluated. **A perfect-model arm scoring
+0.000 against random's 0.042 is uninterpretable as a model result and
+unmistakable as an objective bug.** Without that ceiling every one of
+these would have read as "the bank's model is bad".
+
+**Stated at its real scope.** The goal is supplied, not learned. The
+planner is greedy at depth one, because deeper lookahead is worse with
+a proxy this shape. Two of four games are net negative for everyone.
+What is demonstrated is narrower than "an agent that plays games" and
+larger than anything the project had: **a frozen amodal interpreter,
+plus a bank of integer recipes found by search, plans and acts in real
+grid worlds as well as a perfect simulator does.**
