@@ -62,3 +62,28 @@ Reproduce: `python -m experiments.games_amodal.probes.factored
 and `...probes.factored_control --train-source mixed --wake-games 15
 --synthetic-share 0.3 --game-from 15 --game-to 25 --seed S`.
 Single-threaded (`torch.set_num_threads(1)` is pinned in-script).
+
+## F208 reader + repair, 3 seeds
+
+Six executions check the reader's six instructions; only failing slots
+are re-searched.
+
+    held-out worlds     fit      candidates  slots fixed
+    identity floor      0.4820            0    -
+    reader alone        0.7803            1    0
+    repair t=0.80       0.8347          383    1.32
+    repair t=0.98       0.8372          962    3.18
+    full search         0.8370         1119    6
+
+    rule families       fit      candidates  slots fixed
+    reader alone        0.8822            1    0
+    repair t=0.80       0.9395         22.5    0.10
+    full search         0.9414        167.2    6
+
+    seen shapes         fit      candidates
+    reader alone        0.8388            1     <- BEATS the search
+    repair t=0.80       0.8373          258
+    full search         0.8359          910
+
+On seen shapes repair makes the answer WORSE, because the reader is
+already better than a fresh search over 32 examples.

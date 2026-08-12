@@ -10704,3 +10704,58 @@ The planner is greedy at depth one. Six of the ten test worlds are net
 negative for every arm including the oracle, because the objective does
 not describe intercept or avoid. Perception is still the hand-written
 `slot_state`.
+
+## F208 — SEARCH BECOMES VERIFICATION: THE READER PROPOSES, AND
+## ENUMERATION IS SPENT ONLY WHERE THE CHECK FAILS
+
+F205 to F207 left one gap open and it was the same gap in both
+instruments: on genuinely novel worlds the search still beat the reader,
+by +0.0567 on fit (t=8.57) and +0.0887 on return (t=2.14). F202
+predicted the shape of the answer without being able to build it —
+"search becomes VERIFICATION rather than discovery" — and the parallel
+language is what makes it buildable, because a program that factors by
+slot can be CHECKED by slot.
+
+The reader emits six instructions. Each is executed once against the
+column it writes: six executions, no enumeration. Slots that reproduce
+their column above a threshold are kept; the rest are re-searched. Three
+seeds, restricted to moving slots, scored on transitions nothing was
+fit on.
+
+| held-out worlds (arity 4.125) | fit | candidates | slots re-searched |
+| --- | ---: | ---: | ---: |
+| identity floor | 0.4820 | 0 | — |
+| reader alone | 0.7803 | **1** | 0 |
+| reader + repair, t=0.80 | 0.8347 | 383 | 1.32 |
+| reader + repair, t=0.98 | **0.8372** | 962 | 3.18 |
+| full search | 0.8370 | 1,119 | 6 |
+
+| held-out rule families | fit | candidates | slots re-searched |
+| --- | ---: | ---: | ---: |
+| identity floor | 0.1692 | 0 | — |
+| reader alone | 0.8822 | **1** | 0 |
+| reader + repair, t=0.80 | **0.9395** | **22.5** | **0.10** |
+| full search | 0.9414 | 167.2 | 6 |
+
+**On rule families, repairing one slot in ten recovers 99.8% of the
+search's fit at 13% of its cost.** On worlds of a kind never seen,
+repairing 1.32 slots of six recovers 99.7% at 34%. Raise the threshold
+and it passes the full search outright (0.8372 against 0.8370), because
+a slot the reader got right is often righter than the slot the search
+picked — the search takes the first exact fit on 32 rows, the reader
+takes what worlds of this kind usually do.
+
+**Where repair is COUNTERPRODUCTIVE, which is the more interesting
+half.** On seen world shapes the reader alone scores 0.8388 and the full
+search 0.8359, so repair can only move it toward the worse answer, and
+it does: 0.8373. **Once the reader has seen worlds of a kind, checking
+its work against a fresh search makes the answer worse.** That is
+amortisation actually completing — the accumulated experience of many
+worlds beats re-deriving from 32 examples of this one.
+
+**Stated at its real scope.** The threshold is a knob I chose, and 0.80
+is a good setting rather than a principled one; a system with a compute
+budget would set it from the budget. The check costs six executions,
+which is why the cost column starts at 6 and not 0. And repair inherits
+every limitation of the search it calls, including that the search is
+fit to 32 examples.

@@ -138,6 +138,7 @@ PLANES = 3
 PAR_OPS = ("NOOP", "INC", "DEC", "CINC", "CDEC", "COPY", "SINC", "SDEC")
 MODULI = tuple(range(2, VALUES + 1))
 NOOP = (0, 0, 0)
+REPAIR_THRESHOLDS = (0.80, 0.90, 0.95, 0.98, 1.00)
 
 
 def slot_write(state, s, op, j, m):
@@ -417,12 +418,20 @@ def family_transitions(family, count: int, action: int, generator):
 
 
 # ------------------------------------------------------ the wake phase
-def per_slot_search(before, after):
+def per_slot_search(before, after, only=None):
     """Six independent searches. Slot s is fit against column s alone, so
     what a program does to the other five cannot make it look better or
-    worse here. Returns the program and the number of candidates tried."""
+    worse here. Returns the program and the number of candidates tried.
+
+    `only` restricts the search to a subset of slots, which is what makes
+    REPAIR possible: the reader proposes a whole program, each slot is
+    checked in one pass, and enumeration is spent only where the check
+    failed."""
     program, cost = [], 0
     for s in range(SLOTS):
+        if only is not None and s not in only:
+            program.append(None)
+            continue
         want = after[:, s]
         best, best_score = NOOP, -1.0
         for op in range(len(PAR_OPS)):
@@ -629,6 +638,32 @@ def evaluate_world(fit_pair, held_pair, wrong_pair=None,
     searched, cost = per_slot_search(fb[:args.examples], fa[:args.examples])
     guessed = read_program(fb[:args.examples], fa[:args.examples])
 
+    # REPAIR: the architecture's own stated endpoint, that search becomes
+    # VERIFICATION rather than discovery. Check each of the reader's six
+    # instructions against the column it writes -- one execution per
+    # slot, no enumeration -- and re-search only the slots that fail.
+    # Where the reader is right this costs six checks instead of a
+    # thousand candidates; where it is wrong the search is still there.
+    # A THRESHOLD of 1.0 -- repair anything not exact -- is the wrong
+    # default in a noisy domain: no grid column is exactly reproducible,
+    # so every slot is re-searched and nothing is saved. Sweeping the
+    # threshold traces the frontier between one forward pass and the full
+    # search, which is the useful object.
+    fbe, fae = fb[:args.examples], fa[:args.examples]
+    checked = [float((slot_write(fbe, s, *guessed[s]) == fae[:, s])
+                     .float().mean()) for s in range(SLOTS)]
+    repairs = {}
+    for threshold in REPAIR_THRESHOLDS:
+        bad = {s for s in range(SLOTS) if checked[s] < threshold}
+        spent = SLOTS                        # one execution per slot
+        fixed = list(guessed)
+        if bad:
+            patch, extra = per_slot_search(fbe, fae, only=bad)
+            spent += extra
+            for s in bad:
+                fixed[s] = patch[s]
+        repairs[threshold] = (fixed, spent, len(bad))
+
     # The used-slot block is padded with slots the action never touches,
     # and every arm including the identity gets those for free. `moving`
     # is the sharp version: only the slots that actually change.
@@ -649,6 +684,11 @@ def evaluate_world(fit_pair, held_pair, wrong_pair=None,
                                      .float().mean())
                                if int(moving.sum()) else None),
            "search_cost": cost, "reader_cost": 1,
+           **{f"repair{t}": fit_of(p, used) for t, (p, _, _) in repairs.items()},
+           **{f"repair{t}_moving": fit_of(p, moving)
+              for t, (p, _, _) in repairs.items()},
+           **{f"repair{t}_cost": c for t, (_, c, _) in repairs.items()},
+           **{f"repair{t}_slots": n for t, (_, _, n) in repairs.items()},
            "agreement": float(sum(int(searched[s] == guessed[s])
                                   for s in range(SLOTS)) / SLOTS),
            "changed": int(moving.sum())}
@@ -784,6 +824,12 @@ for label, rows in sections.items():
         "reader_fit_moving": mean_moving("reader_moving"),
         "reader_wrong_world": mean("reader_wrong_world"),
         "exact_program_agreement": mean("agreement"),
+        "repair": {str(t): {
+            "fit_moving": mean_moving(f"repair{t}_moving"),
+            "fit": mean(f"repair{t}"),
+            "candidates": mean(f"repair{t}_cost"),
+            "slots_repaired": mean(f"repair{t}_slots")}
+            for t in REPAIR_THRESHOLDS},
         "search_candidates": mean("search_cost"),
         "reader_forward_passes": 1,
         "mean_changed_slots": mean("changed")}
