@@ -11358,3 +11358,24 @@ existing opaque intention bus through a replaceable adapter.
 
 Evidence is archived in
 `session_records/recipe_control_flow_frontier_growth_promoted_2026-08-12/`.
+
+### Canonical typed control-flow intention bridge
+
+The typed `ControlFlowProgram` ABI is now connected to the production amodal
+runtime through `ControlFlowProgramAmodalRuntime`. A versioned,
+replaceable `ControlFlowIntentionAdapter` owns the opaque intention-to-counter
+codec; the controller never receives counters, instruction pointers, program
+slots, or control-flow operations. The runtime executes the selected external
+file under explicit step and counter limits, converts the result back to an
+`IntentEvent`, and sends only that opaque intention through the existing `M`
+decoder bus.
+
+The bridge persists controller state and external counter state separately,
+supports checksummed pause/resume, reads memory-backed files without resizing
+the controller, and keeps controller parameters frozen during execution. The
+focused boundary tests cover output-bus fan-out, batch-order preservation,
+state reload and checksum rejection, width mismatch rejection, and external
+state replacement. This establishes canonical ABI integration; it is not a
+learned adapter result, a promoted program-selection result, or evidence of
+general continual learning. The next pressure is learned adapter training and
+content-addressed multi-file routing under held-out composition controls.

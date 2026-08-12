@@ -232,6 +232,25 @@ efficient arbitrary program synthesis, unbounded execution, unrestricted
 memory growth, or general continual learning. Evidence is archived in
 `session_records/recipe_control_flow_frontier_growth_promoted_2026-08-12/`.
 
+## Canonical typed control-flow intention bridge
+
+`ControlFlowProgramAmodalRuntime` now connects the typed counter-machine file
+to the canonical `AmodalControllerRuntime`. The independently versioned
+`ControlFlowIntentionAdapter` is the only component that translates between
+opaque learned intentions and integer counters. The controller itself never
+sees instruction pointers, counters, program slots, or control-flow opcodes.
+After bounded execution, the adapter returns an opaque `IntentEvent`, which is
+validated and fanned out through the existing decoder bus.
+
+The bridge has separate checksummed controller/external state, memory-backed
+file support, explicit step/counter limits, and no controller parameter
+updates. Regression coverage verifies frozen-core execution, batch
+permutation, exact reload, checksum rejection, and ABI-width rejection. This
+is an interface integration result, not a learned program-routing or general
+continual-learning promotion. The next experiment must train or adapt the
+external codec and route multiple files using held-out composition and
+missing/corrupted-state controls.
+
 ## Outcome-only external recipe files and scope isolation
 
 The recipe basis now has a versioned external-file bridge:
