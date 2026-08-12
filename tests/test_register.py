@@ -250,6 +250,56 @@ def test_history_attention_is_invariant_to_mask_padding_position() -> None:
     assert torch.allclose(compact, padded, atol=1e-6, rtol=1e-6)
 
 
+def test_history_indexed_reader_preserves_relative_age_slots() -> None:
+    torch.manual_seed(924)
+    basis = ExternalRegisterComputeBasis(
+        8,
+        5,
+        hidden=10,
+        event_width=4,
+        event_window_size=0,
+        event_read_mode="history_indexed",
+        register_input_mode="event_window_only",
+    )
+    register = torch.randn(1, 8)
+    code = torch.randn(1, 5)
+    tokens = torch.randn(1, 3, 4)
+    current_event = torch.randn(1, 4)
+    compact_history = torch.zeros(1, 7, 4)
+    compact_history[:, :3] = tokens
+    compact_mask = torch.tensor([[True, True, True, False, False, False, False]])
+    padded_history = torch.zeros(1, 7, 4)
+    padded_history[:, -3:] = tokens
+    padded_mask = torch.tensor([[False, False, False, False, True, True, True]])
+    compact_age = torch.zeros(1, 7)
+    compact_age[:, :3] = torch.tensor([[3.0, 2.0, 1.0]])
+    padded_age = torch.zeros(1, 7)
+    padded_age[:, -3:] = torch.tensor([[3.0, 2.0, 1.0]])
+
+    compact = basis(
+        register,
+        code,
+        event_history=compact_history,
+        event_history_mask=compact_mask,
+        event_history_age=compact_age,
+        current_event=current_event,
+    )
+    padded = basis(
+        register,
+        code,
+        event_history=padded_history,
+        event_history_mask=padded_mask,
+        event_history_age=padded_age,
+        current_event=current_event,
+    )
+
+    assert torch.allclose(compact, padded, atol=1e-6, rtol=1e-6)
+    assert basis.configuration()["history_contract"] == (
+        "variable_external_history_indexed_v1"
+    )
+    assert basis.configuration()["history_age_slot_count"] == 8
+
+
 def test_history_compute_basis_can_condition_content_addressing_on_current_event() -> None:
     torch.manual_seed(922)
     basis = ExternalRegisterComputeBasis(

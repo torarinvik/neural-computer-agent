@@ -124,7 +124,8 @@ def _routed_episode(
         or system.external_history_query_counts is not None
     )
     history_mode = (
-        system.machine.basis_event_read_mode == "history_attention"
+        system.machine.basis_event_read_mode
+        in ("history_attention", "history_indexed")
         or external_history_mode
     )
     history_scopes = torch.arange(batch_size, dtype=torch.long)
@@ -189,7 +190,8 @@ def _routed_episode(
                     query_count = max(1, history_lengths[slot])
                 history_query_count_for_read = (
                     query_count
-                    if system.machine.basis_event_read_mode == "history_attention"
+                    if system.machine.basis_event_read_mode
+                    in ("history_attention", "history_indexed")
                     else max(0, query_count - 1)
                 )
                 offsets = torch.arange(
@@ -210,7 +212,10 @@ def _routed_episode(
                     state=register_states[slot],
                     present=present,
                 )
-                if system.machine.basis_event_read_mode == "history_attention":
+                if system.machine.basis_event_read_mode in (
+                    "history_attention",
+                    "history_indexed",
+                ):
                     execute_kwargs = {
                         "event_history": history_read.values,
                         "event_history_mask": history_read.present,

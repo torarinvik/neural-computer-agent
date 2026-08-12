@@ -87,7 +87,7 @@ def _basis(
     event_read_mode: str = "flattened_window",
     history_query_mode: str = "instruction_only",
 ) -> ExternalRegisterComputeBasis:
-    if event_read_mode == "history_attention":
+    if event_read_mode in ("history_attention", "history_indexed"):
         if event_window_size:
             raise ValueError("history attention cannot use a fixed event window")
         event_width = EVENT_WIDTH
@@ -127,7 +127,7 @@ def _build(
         raise ValueError("external compute slot count must be positive")
     if basis_hidden < 1:
         raise ValueError("external compute basis hidden width must be positive")
-    if basis_event_read_mode == "history_attention":
+    if basis_event_read_mode in ("history_attention", "history_indexed"):
         if event_window_size:
             raise ValueError("history attention cannot use a fixed event window")
     elif event_window_size < 1:
@@ -137,7 +137,7 @@ def _build(
             raise ValueError("external history query count must be non-negative")
         if (
             external_history_query_count == 0
-            and basis_event_read_mode != "history_attention"
+            and basis_event_read_mode not in ("history_attention", "history_indexed")
         ):
             raise ValueError(
                 "zero external history query count is only valid for history attention"
@@ -321,6 +321,8 @@ def _episode(
     entropy_weight: float = 0.0,
     credit_mode: str = "reinforce",
     shuffle_outcomes: bool = False,
+    shuffle_actions: bool = False,
+    corrupt_external_history: bool = False,
     history_query_count: int | None = None,
 ) -> tuple[torch.Tensor, torch.Tensor, int]:
     """Run one fresh verifier lifetime through INPUT -> PROCESS -> OUTPUT."""
@@ -395,7 +397,8 @@ def _episode(
             )
             history_query_count_for_read = (
                 query_count
-                if machine.basis_event_read_mode == "history_attention"
+                if machine.basis_event_read_mode
+                in ("history_attention", "history_indexed")
                 else max(0, query_count - 1)
             )
             offsets = torch.arange(
@@ -415,9 +418,15 @@ def _episode(
                 intention=controller_output.intention,
                 state=register_state,
             )
-            if machine.basis_event_read_mode == "history_attention":
+            if machine.basis_event_read_mode in (
+                "history_attention",
+                "history_indexed",
+            ):
+                history_values = history_read.values
+                if corrupt_external_history:
+                    history_values = history_values.flip(dims=(1,))
                 execute_kwargs = {
-                    "event_history": history_read.values,
+                    "event_history": history_values,
                     "event_history_mask": history_read.present,
                     "event_history_age": offsets.to(
                         dtype=collection.payload.dtype
@@ -457,11 +466,21 @@ def _episode(
             if train
             else logits.argmax(dim=-1)
         )
+        submitted_action = (
+            torch.randint(
+                0,
+                ACTION_COUNT,
+                action.shape,
+                device=action.device,
+            )
+            if shuffle_actions
+            else action
+        )
         selected_logits.append(
             logits.gather(1, action[:, None]).squeeze(1)
         )
         propensity = probabilities.gather(1, action[:, None]).squeeze(1)
-        scored = verifier.score(action)
+        scored = verifier.score(submitted_action)
         delivered_reward = (
             scored.reward.roll(1) if shuffle_outcomes else scored.reward
         )
@@ -471,12 +490,12 @@ def _episode(
         delivered_rewards.append(delivered_reward)
         eligible.append(scored.eligible)
         feedback = ControllerFeedback(
-            action=agent.keypress_encoder(action),
+            action=agent.keypress_encoder(submitted_action),
             reward=delivered_reward,
             propensity=propensity,
             has_feedback=torch.ones(batch_size),
         )
-        previous_action = F.one_hot(action, ACTION_COUNT).to(torch.float32)
+        previous_action = F.one_hot(submitted_action, ACTION_COUNT).to(torch.float32)
 
     reward_tensor = torch.stack(rewards, dim=1)
     delivered_reward_tensor = torch.stack(delivered_rewards, dim=1)
@@ -570,6 +589,8 @@ def _evaluate(
     steps: int,
     seed: int,
     reset_external_each_step: bool = False,
+    shuffle_actions: bool = False,
+    corrupt_external_history: bool = False,
     history_query_count: int | None = None,
 ) -> list[dict[str, float | int]]:
     rows: list[dict[str, float | int]] = []
@@ -584,6 +605,8 @@ def _evaluate(
             seed=seed + lifetime,
             train=False,
             reset_external_each_step=reset_external_each_step,
+            shuffle_actions=shuffle_actions,
+            corrupt_external_history=corrupt_external_history,
             history_query_count=history_query_count,
         )
         rows.append(

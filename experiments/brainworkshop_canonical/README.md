@@ -1971,3 +1971,23 @@ This promotes deeper bounded generic temporal computation. It does not promote
 unrestricted history, learned compression, arbitrary program induction, or
 general continual learning. Evidence and accounting are archived at
 `session_records/brainworkshop_external_history_nback5_depth_promoted_2026-08-12/`.
+
+## Relative-age indexed external history (2026-08-13)
+
+The variable-history reader now has a generic `history_indexed` variant. It
+maps each valid external record into an opaque relative-age slot using the
+memory-provided age and explicit presence mask, then exposes the separate
+slots plus the current event to the replaceable compute file. This removes the
+learned attention reducer's fragile content-selection step without giving the
+file a task name, target bit, or raw modality format. The controller, event
+frontend, and keypress boundary remain unchanged.
+
+With dynamic history (`event_window_size=0`, query count `0`), n-back-5 reached
+`1.0000` on all four fresh lifetimes across seeds `17` and `18` after `512`
+attempted-outcome updates. Both runs passed frozen-controller/frontend and
+zero-replay gates. Missing-history, corrupted-history, action-shuffled,
+reward-shuffled, and n-back-4 depth-shift controls all failed the mastery
+threshold. The result promotes bounded relative-age addressing, not learned
+unbounded compression, arbitrary program induction, or general continual
+learning. Evidence and accounting are archived at
+`session_records/brainworkshop_external_history_indexed_nback5_depth_promoted_2026-08-13/`.

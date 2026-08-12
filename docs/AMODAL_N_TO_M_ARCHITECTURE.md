@@ -11999,3 +11999,26 @@ This promotes deeper bounded generic temporal computation, not unrestricted
 history growth, learned compression, arbitrary program induction, or general
 continual learning. Evidence is archived at
 `session_records/brainworkshop_external_history_nback5_depth_promoted_2026-08-12/`.
+
+## Relative-age indexed external history (2026-08-13)
+
+The external register ABI now also exposes `history_indexed`, a generic
+variable-history reader that routes valid learned event tensors into separate
+opaque relative-age slots using the memory-provided integer ages and presence
+mask. The current event remains a separate input. This preserves binding and
+causal lag identity without asking a learned attention reducer to discover the
+age address and content comparison simultaneously. No controller, frontend, or
+decoder parameter shape changes, and the reader receives no task or verifier
+metadata.
+
+The matched n-back-5 probe used dynamic external history (`event_window_size=0`,
+query count `0`) and trained only the replaceable external file from attempted
+scalar outcomes. Across seeds `17` and `18`, all four fresh lifetimes reached
+`1.0000` after `512` updates. Both runs kept the controller and event frontend
+byte-identical and replayed zero examples. Missing-history, memory-corruption,
+action-shuffled, reward-shuffled, and n-back-4 depth-shift controls all failed
+the mastery gate. This is a promotion of bounded relative-age addressing; it
+does not establish learned unbounded memory growth, learned compression,
+arbitrary program induction, or general continual learning. Evidence is
+archived at
+`session_records/brainworkshop_external_history_indexed_nback5_depth_promoted_2026-08-13/`.

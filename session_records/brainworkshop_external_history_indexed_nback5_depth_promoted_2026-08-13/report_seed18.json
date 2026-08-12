@@ -1,0 +1,207 @@
+{
+  "schema": "neural-computer.brainworkshop-external-compute-depth-probe.v2",
+  "claim_boundary": "Outcome-only acquisition of a deeper n-back-5 computation through a generic six-record external event window; not unbounded history, learned compression, arbitrary program induction, or general continual learning.",
+  "architecture": {
+    "family": "nback5",
+    "event_read_mode": "history_indexed",
+    "event_window_size": 0,
+    "query_count": 0,
+    "query_count_semantics": "q_minus_one_previous_records_plus_current_event",
+    "control_updates": 128,
+    "boundary": "rendered_event -> frozen_amodal_controller -> external_compute_file -> keypress_decoder"
+  },
+  "training_tail": [
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0
+  ],
+  "fresh": [
+    {
+      "lifetime": 1,
+      "accuracy": 1.0,
+      "unique_verifier_bits": 320,
+      "replayed_examples": 0
+    },
+    {
+      "lifetime": 2,
+      "accuracy": 1.0,
+      "unique_verifier_bits": 320,
+      "replayed_examples": 0
+    },
+    {
+      "lifetime": 3,
+      "accuracy": 1.0,
+      "unique_verifier_bits": 320,
+      "replayed_examples": 0
+    },
+    {
+      "lifetime": 4,
+      "accuracy": 1.0,
+      "unique_verifier_bits": 320,
+      "replayed_examples": 0
+    }
+  ],
+  "controls": {
+    "missing_history": [
+      {
+        "lifetime": 1,
+        "accuracy": 0.3687500059604645,
+        "unique_verifier_bits": 320,
+        "replayed_examples": 0
+      },
+      {
+        "lifetime": 2,
+        "accuracy": 0.4000000059604645,
+        "unique_verifier_bits": 320,
+        "replayed_examples": 0
+      },
+      {
+        "lifetime": 3,
+        "accuracy": 0.3687500059604645,
+        "unique_verifier_bits": 320,
+        "replayed_examples": 0
+      },
+      {
+        "lifetime": 4,
+        "accuracy": 0.3812499940395355,
+        "unique_verifier_bits": 320,
+        "replayed_examples": 0
+      }
+    ],
+    "corrupted_history": [
+      {
+        "lifetime": 1,
+        "accuracy": 0.574999988079071,
+        "unique_verifier_bits": 320,
+        "replayed_examples": 0
+      },
+      {
+        "lifetime": 2,
+        "accuracy": 0.6312500238418579,
+        "unique_verifier_bits": 320,
+        "replayed_examples": 0
+      },
+      {
+        "lifetime": 3,
+        "accuracy": 0.6656249761581421,
+        "unique_verifier_bits": 320,
+        "replayed_examples": 0
+      },
+      {
+        "lifetime": 4,
+        "accuracy": 0.640625,
+        "unique_verifier_bits": 320,
+        "replayed_examples": 0
+      }
+    ],
+    "action_shuffled": [
+      {
+        "lifetime": 1,
+        "accuracy": 0.48124998807907104,
+        "unique_verifier_bits": 320,
+        "replayed_examples": 0
+      },
+      {
+        "lifetime": 2,
+        "accuracy": 0.49687498807907104,
+        "unique_verifier_bits": 320,
+        "replayed_examples": 0
+      },
+      {
+        "lifetime": 3,
+        "accuracy": 0.515625,
+        "unique_verifier_bits": 320,
+        "replayed_examples": 0
+      },
+      {
+        "lifetime": 4,
+        "accuracy": 0.518750011920929,
+        "unique_verifier_bits": 320,
+        "replayed_examples": 0
+      }
+    ],
+    "depth_shift_nback4": [
+      {
+        "lifetime": 1,
+        "accuracy": 0.6534090638160706,
+        "unique_verifier_bits": 352,
+        "replayed_examples": 0
+      },
+      {
+        "lifetime": 2,
+        "accuracy": 0.6193181872367859,
+        "unique_verifier_bits": 352,
+        "replayed_examples": 0
+      },
+      {
+        "lifetime": 3,
+        "accuracy": 0.625,
+        "unique_verifier_bits": 352,
+        "replayed_examples": 0
+      },
+      {
+        "lifetime": 4,
+        "accuracy": 0.6079545617103577,
+        "unique_verifier_bits": 352,
+        "replayed_examples": 0
+      }
+    ],
+    "reward_shuffled": [
+      {
+        "lifetime": 1,
+        "accuracy": 0.24062499403953552,
+        "unique_verifier_bits": 320,
+        "replayed_examples": 0
+      },
+      {
+        "lifetime": 2,
+        "accuracy": 0.26875001192092896,
+        "unique_verifier_bits": 320,
+        "replayed_examples": 0
+      },
+      {
+        "lifetime": 3,
+        "accuracy": 0.21250000596046448,
+        "unique_verifier_bits": 320,
+        "replayed_examples": 0
+      },
+      {
+        "lifetime": 4,
+        "accuracy": 0.19687500596046448,
+        "unique_verifier_bits": 320,
+        "replayed_examples": 0
+      }
+    ],
+    "reward_shuffled_training_tail": [
+      0.5,
+      0.47187501192092896,
+      0.43437498807907104,
+      0.5375000238418579,
+      0.518750011920929
+    ]
+  },
+  "gates": {
+    "fresh_depth_mastered": true,
+    "frozen_controller": true,
+    "frozen_event_encoder": true,
+    "zero_replayed_examples": true,
+    "missing_history_control_rejects_mastery": true,
+    "corrupted_history_control_rejects_mastery": true,
+    "action_shuffled_control_rejects_mastery": true,
+    "depth_shift_control_rejects_mastery": true,
+    "reward_shuffled_control_rejects_mastery": true
+  },
+  "accounting": {
+    "unique_verifier_bits": 163840,
+    "unique_logical_lifetimes": 16384,
+    "optimizer_updates": 512,
+    "replayed_examples": 0,
+    "stable_bits_to_threshold": 163840,
+    "control_unique_verifier_bits": 40960,
+    "control_optimizer_updates": 128,
+    "wall_time_seconds": 99.62287995906081
+  },
+  "status": "promoted"
+}
