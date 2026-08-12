@@ -419,6 +419,32 @@ controller optimizer updates. Evidence is archived in
 This promotes bounded reusable external composition, not arbitrary program
 induction, unrestricted memory growth, or general continual learning.
 
+## Outcome-only composition search through the canonical runtime (2026-08-12)
+
+The remaining manual assumption in the preceding audit was the ordered factor
+list: the caller still supplied which files to compose.  The new
+`ControlFlowCompositionSearch` enumerates opaque file-slot sequences,
+materializes each candidate through the generic control-flow ABI, and admits
+only a candidate whose scalar verifier prefix remains above threshold.  Its
+restartable state is bound to the checksummed file-memory digest and stores
+only scoped candidate identities and aggregate quality; individual verifier
+rows never enter durable state.  Changing the underlying file memory
+invalidates the search state.
+
+Across three seeds, forward/reversed file order, and verifier/reward-shuffled
+route arms, the canonical audit admitted a searched composition, reached
+`1.0000` component/composed held-out mastery, route/execution, and source
+retention in every verifier arm, and kept the controller frozen with zero
+replay and zero controller optimizer updates.  The search evaluated seven
+opaque two-file candidates before admission in this bounded neighborhood.  In
+one valid run it selected a behaviorally equivalent `(fresh, acquired)` pair
+rather than the provenance expected by the old hand-written factor list; the
+held-out verifier correctly accepts behavior, not semantic provenance.  This
+is a stronger boundary than manual composition but still bounded search over
+existing files, not general program induction, unrestricted memory growth, or
+general continual learning. Evidence is archived in
+`session_records/control_flow_runtime_composition_search_promoted_2026-08-12/`.
+
 ## Outcome-only external recipe files and scope isolation
 
 The recipe basis now has a versioned external-file bridge:

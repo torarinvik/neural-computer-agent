@@ -322,6 +322,49 @@ class ControlFlowAdmissionReceipt:
     reason: str
 
 
+def evaluate_control_flow_admission(
+    program: ControlFlowProgram,
+    outcomes: Sequence[float],
+    *,
+    threshold: float = 1.0,
+    min_observations: int = 1,
+    min_stable_observations: int = 1,
+) -> ControlFlowAdmissionReceipt:
+    """Evaluate scalar admission without mutating external program memory."""
+
+    program.validate()
+    values = tuple(float(value) for value in outcomes)
+    if not values or any(
+        not math.isfinite(value) or not 0.0 <= value <= 1.0 for value in values
+    ):
+        raise ValueError("control-flow outcomes must be finite probabilities")
+    if (
+        not 0.0 < threshold <= 1.0
+        or min_observations < 1
+        or min_stable_observations < 1
+    ):
+        raise ValueError("control-flow admission thresholds are invalid")
+    stable = None
+    for index in range(len(values)):
+        if (
+            len(values) - index >= min_stable_observations
+            and min(values[index:]) >= threshold
+        ):
+            stable = index + 1
+            break
+    accepted = len(values) >= min_observations and stable is not None
+    return ControlFlowAdmissionReceipt(
+        accepted,
+        None,
+        stable,
+        (
+            "control-flow verifier prefix did not remain above threshold"
+            if not accepted
+            else "control-flow program passed a stable verifier prefix"
+        ),
+    )
+
+
 class ControlFlowProgramMemory:
     """Checksummed external files with protected slots and scalar admission."""
 
@@ -411,29 +454,20 @@ class ControlFlowProgramMemory:
         program.validate()
         if program.counter_count != self.counter_count:
             raise ValueError("control-flow program counter width is incompatible")
-        values = tuple(float(value) for value in outcomes)
-        if not values or any(not math.isfinite(value) or not 0.0 <= value <= 1.0 for value in values):
-            raise ValueError("control-flow outcomes must be finite probabilities")
-        if not 0.0 < threshold <= 1.0 or min_observations < 1 or min_stable_observations < 1:
-            raise ValueError("control-flow admission thresholds are invalid")
-        stable = None
-        for index in range(len(values)):
-            if len(values) - index >= min_stable_observations and min(values[index:]) >= threshold:
-                stable = index + 1
-                break
-        accepted = len(values) >= min_observations and stable is not None
-        if not accepted:
-            return ControlFlowAdmissionReceipt(
-                False,
-                None,
-                stable,
-                "control-flow verifier prefix did not remain above threshold",
-            )
+        receipt = evaluate_control_flow_admission(
+            program,
+            outcomes,
+            threshold=threshold,
+            min_observations=min_observations,
+            min_stable_observations=min_stable_observations,
+        )
+        if not receipt.accepted:
+            return receipt
         slot = self.add_program(program, protect=protect)
         return ControlFlowAdmissionReceipt(
             True,
             slot,
-            stable,
+            receipt.stable_bits_to_threshold,
             "control-flow program admitted after stable verifier prefix",
         )
 
@@ -481,4 +515,5 @@ __all__ = [
     "ControlFlowProgram",
     "ControlFlowProgramMemory",
     "compose_control_flow_programs",
+    "evaluate_control_flow_admission",
 ]

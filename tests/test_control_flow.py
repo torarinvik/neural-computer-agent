@@ -4,6 +4,7 @@ import pytest
 import torch
 
 from neural_computer import (
+    ControlFlowCompositionSearch,
     ControlFlowFrontierState,
     ControlFlowInstruction,
     ControlFlowOutcomeSearch,
@@ -172,6 +173,75 @@ def test_control_flow_memory_composes_and_verifies_existing_files() -> None:
     )
     assert receipt.accepted and receipt.slot == 2
     assert memory.is_file_protected(2)
+
+
+def test_control_flow_composition_search_discovers_opaque_file_order() -> None:
+    first = ControlFlowProgram(
+        2,
+        (
+            ControlFlowInstruction("inc", counter=0),
+            ControlFlowInstruction("halt"),
+        ),
+    )
+    second = ControlFlowProgram(
+        2,
+        (
+            ControlFlowInstruction("jump_if_zero", counter=0, target=2),
+            ControlFlowInstruction("inc", counter=1),
+            ControlFlowInstruction("halt"),
+        ),
+    )
+    decoy = ControlFlowProgram(
+        2,
+        (
+            ControlFlowInstruction("inc", counter=1),
+            ControlFlowInstruction("halt"),
+        ),
+    )
+    memory = ControlFlowProgramMemory(2)
+    memory.add_program(first, protect=True)
+    memory.add_program(second, protect=True)
+    memory.add_program(decoy, protect=True)
+    search = ControlFlowCompositionSearch(memory, min_program_length=2, max_program_length=2)
+    state = search.initial_state()
+    target = compose_control_flow_programs((first, second))
+    initial_states = ((0, 0), (1, 0), (4, 0))
+
+    accepted = None
+    for _ in range(256):
+        proposal = search.propose_exhaustive(state, scope="opaque-composition")
+        outcomes = tuple(
+            float(
+                proposal.program.execute(initial, max_steps=32).status
+                == target.execute(initial, max_steps=32).status
+                and proposal.program.execute(initial, max_steps=32).counters
+                == target.execute(initial, max_steps=32).counters
+            )
+            for initial in initial_states
+        )
+        feedback = search.record_outcomes(
+            state,
+            proposal,
+            outcomes,
+            min_observations=len(initial_states),
+            min_stable_observations=len(initial_states),
+        )
+        state = feedback.state
+        if feedback.receipt.accepted:
+            accepted = feedback
+            break
+
+    assert accepted is not None
+    assert accepted.proposal.slots == (0, 1)
+    assert accepted.proposal.program.digest() == target.digest()
+    assert accepted.receipt.slot is None
+    assert "outcomes" not in state.payload()
+    restored = type(state).from_payload(state.payload())
+    assert restored == state
+
+    memory.add_program(target)
+    with pytest.raises(ValueError, match="memory changed"):
+        search.propose_exhaustive(state, scope="opaque-composition")
 
 
 def test_control_flow_outcome_search_can_learn_one_opaque_instruction_edit() -> None:

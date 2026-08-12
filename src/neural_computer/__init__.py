@@ -97,6 +97,15 @@ from .control_flow import (
     ControlFlowProgram,
     ControlFlowProgramMemory,
     compose_control_flow_programs,
+    evaluate_control_flow_admission,
+)
+from .control_flow_composition import (
+    CONTROL_FLOW_COMPOSITION_PROPOSAL_SCHEMA,
+    CONTROL_FLOW_COMPOSITION_SEARCH_SCHEMA,
+    ControlFlowCompositionFeedback,
+    ControlFlowCompositionProposal,
+    ControlFlowCompositionSearch,
+    ControlFlowCompositionSearchState,
 )
 from .control_flow_frontier import (
     CONTROL_FLOW_FRONTIER_HYPOTHESIS_SCHEMA,
@@ -834,6 +843,8 @@ __all__ = [
     "CONSOLIDATION_OPERATION_COUNT",
     "CONSOLIDATION_POLICY_SCHEMA",
     "CONTROLLER_STATE_SCHEMA",
+    "CONTROL_FLOW_COMPOSITION_PROPOSAL_SCHEMA",
+    "CONTROL_FLOW_COMPOSITION_SEARCH_SCHEMA",
     "CONTROL_FLOW_EXECUTION_SCHEMA",
     "CONTROL_FLOW_FRONTIER_HYPOTHESIS_SCHEMA",
     "CONTROL_FLOW_FRONTIER_MUTATION_OPERATORS",
@@ -1154,6 +1165,10 @@ __all__ = [
     "ConsolidationProposal",
     "ContentAddressedMemory",
     "ControlFlowAdmissionReceipt",
+    "ControlFlowCompositionFeedback",
+    "ControlFlowCompositionProposal",
+    "ControlFlowCompositionSearch",
+    "ControlFlowCompositionSearchState",
     "ControlFlowExecution",
     "ControlFlowFeedback",
     "ControlFlowFrontierFeedback",
@@ -1502,6 +1517,7 @@ __all__ = [
     "credit_weights_from_logits",
     "decompress_growth_artifact",
     "episodic_context_contrastive_loss",
+    "evaluate_control_flow_admission",
     "evaluate_external_program_admission",
     "evaluate_promotion",
     "evaluate_recipe_program_admission",

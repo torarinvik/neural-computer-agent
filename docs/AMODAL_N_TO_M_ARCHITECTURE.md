@@ -11537,3 +11537,26 @@ bounded reusable external computation, not arbitrary program induction,
 unrestricted memory growth, or general continual learning. Evidence is
 archived at
 `session_records/control_flow_runtime_composed_program_promoted_2026-08-12/`.
+
+### Outcome-only composition search through the canonical runtime
+
+The canonical composition boundary no longer requires the caller to provide
+the ordered factor list. `ControlFlowCompositionSearch` enumerates opaque
+file-slot sequences in a bounded neighborhood, materializes each candidate
+outside the controller, and evaluates it only through deterministic scalar
+verifier outcomes. Its persistent state is checksummed against the source
+file-memory digest and contains candidate identities plus aggregate quality,
+never raw outcome rows. A changed external memory invalidates the search state
+before further proposals are accepted.
+
+Across three seeds and forward/reversed physical-file orders, the searched
+composition passed held-out execution, canonical route/execution, source
+retention, reload, corruption, and reward-shuffled controls. The controller
+remained frozen and replay/controller optimizer updates were zero. One
+accepted candidate used a behaviorally equivalent opaque factor order rather
+than the old hand-written provenance order; this is the correct verifier
+semantics for reusable behavior and shows why semantic provenance must not be
+assumed from a successful outcome. The result is still bounded composition
+search over existing files, not unrestricted memory growth, arbitrary program
+induction, or general continual learning. Evidence is archived at
+`session_records/control_flow_runtime_composition_search_promoted_2026-08-12/`.

@@ -338,6 +338,19 @@ not arbitrary program induction or general continual learning. Evidence is
 archived under
 `session_records/control_flow_runtime_acquired_program_promoted_2026-08-12/`.
 
+`ControlFlowCompositionSearch` removes the last manual factor-order assumption
+from the canonical composition rung. It enumerates opaque ordered file-slot
+sequences, exposes only scalar verifier outcomes to its admission evaluator,
+and persists a memory-digest-bound state containing candidate identities and
+aggregate quality rather than verifier rows. A changed file memory invalidates
+the state before another proposal can be made. The promoted bounded audit
+searched seven two-file candidates before admitting a held-out-mastered
+composition across forward/reversed file order and verifier controls. The
+accepted sequence may be behaviorally equivalent to another provenance order;
+that is expected because the verifier establishes reusable behavior, not
+hand-labeled factor identity. This remains bounded external composition, not
+general program induction or unrestricted continual learning.
+
 ### Reusable external composition reaches the canonical runtime
 
 The typed control-flow ABI can now compose existing external files by

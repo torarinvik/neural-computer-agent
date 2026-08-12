@@ -50,6 +50,7 @@ from neural_computer import (
     AmodalCognitiveController,
     AmodalControllerRuntime,
     AmodalEvent,
+    ControlFlowCompositionSearch,
     ControlFlowInstruction,
     ControlFlowProgram,
     ControlFlowProgramAmodalRuntime,
@@ -129,7 +130,8 @@ def _acquire(seed: int, *, reverse_inputs: bool) -> dict[str, object]:
 
 def _build_logical_memory(
     candidate: ControlFlowProgram,
-) -> tuple[ControlFlowProgramMemory, ControlFlowProgram]:
+    amounts: tuple[int, ...],
+) -> tuple[ControlFlowProgramMemory, ControlFlowProgram, dict[str, object]]:
     composition_memory = ControlFlowProgramMemory(COUNTER_COUNT)
     composition_memory.add_program(_warm_root(), protect=True)
     composition_memory.add_program(_fresh_root(), protect=True)
@@ -138,22 +140,41 @@ def _build_logical_memory(
     if (acquired_slot, suffix_slot) != (2, 3):
         raise RuntimeError("composition source slots are not stable")
     private_composed = compose_control_flow_programs((_private_target(), _suffix()))
-    candidate_composed = composition_memory.compose((acquired_slot, suffix_slot))
-    outcomes = tuple(
-        float(
-            candidate_composed.execute((amount, 0), max_steps=MAX_STEPS).status
-            == "halted"
-            and candidate_composed.execute((amount, 0), max_steps=MAX_STEPS).counters
-            == private_composed.execute((amount, 0), max_steps=MAX_STEPS).counters
-        )
-        for amount in TRAIN_AMOUNTS
+    search = ControlFlowCompositionSearch(
+        composition_memory,
+        min_program_length=2,
+        max_program_length=2,
     )
-    receipt = composition_memory.compose_verified(
-        (acquired_slot, suffix_slot),
-        outcomes,
+    search_state = search.initial_state()
+    accepted_proposal = None
+    accepted_outcomes: tuple[float, ...] | None = None
+    for _ in range(256):
+        proposal = search.propose_exhaustive(
+            search_state,
+            scope="control-flow-runtime-composition",
+        )
+        outcomes = _outcomes(proposal.program, private_composed, amounts)
+        feedback = search.record_outcomes(
+            search_state,
+            proposal,
+            outcomes,
+            threshold=VERIFIER_THRESHOLD,
+            min_observations=len(amounts),
+            min_stable_observations=len(amounts),
+        )
+        search_state = feedback.state
+        if feedback.receipt.accepted:
+            accepted_proposal = proposal
+            accepted_outcomes = outcomes
+            break
+    if accepted_proposal is None or accepted_outcomes is None:
+        raise RuntimeError("control-flow composition search did not find a verified order")
+    receipt = composition_memory.admit_verified(
+        accepted_proposal.program,
+        accepted_outcomes,
         threshold=VERIFIER_THRESHOLD,
-        min_observations=len(TRAIN_AMOUNTS),
-        min_stable_observations=len(TRAIN_AMOUNTS),
+        min_observations=len(amounts),
+        min_stable_observations=len(amounts),
         protect=True,
     )
     if not receipt.accepted or receipt.slot != 4:
@@ -164,7 +185,14 @@ def _build_logical_memory(
     memory.add_program(composition_memory.program(4), protect=True)
     memory.add_program(candidate, protect=True)
     memory.add_program(_suffix(), protect=True)
-    return memory, private_composed
+    return memory, private_composed, {
+        "evaluations": search_state.proposals,
+        "accepted": search_state.accepted,
+        "accepted_slots": list(accepted_proposal.slots),
+        "accepted_candidate_digest": accepted_proposal.program.digest(),
+        "admission_stable_bits_to_threshold": receipt.stable_bits_to_threshold,
+        "state": search_state.payload(),
+    }
 
 
 def _make_runtime(
@@ -313,7 +341,13 @@ def _run_arm(
     acquisition = _acquire(seed, reverse_inputs=reverse_files)
     candidate = acquisition["candidate"]
     assert isinstance(candidate, ControlFlowProgram)
-    logical_memory, private_composed = _build_logical_memory(candidate)
+    amounts = acquisition["amounts"]
+    if not isinstance(amounts, tuple):
+        raise TypeError("acquisition did not return a tuple of verifier amounts")
+    logical_memory, private_composed, composition_search = _build_logical_memory(
+        candidate,
+        amounts,
+    )
     logical_programs = tuple(
         logical_memory.program(slot) for slot in range(logical_memory.file_count)
     )
@@ -388,6 +422,11 @@ def _run_arm(
     gates = {
         "frontier_acquired_component": acquisition["warm"]["status"] == "expressible",
         "acquired_component_heldout_mastery": acquisition["heldout_accuracy"] >= 0.95,
+        "composition_search_admitted": composition_search["accepted"] == 1,
+        "composition_search_candidate_is_admitted": composition_search[
+            "accepted_candidate_digest"
+        ]
+        == composed_program.digest(),
         "composition_admitted": composed_program.digest() != candidate.digest(),
         "composed_program_heldout_mastery": min(heldout_composed) >= VERIFIER_THRESHOLD,
         "canonical_composed_execution_mastered": composed_result["execution_accuracy"] >= 0.95,
@@ -406,7 +445,7 @@ def _run_arm(
         "zero_controller_optimizer_updates": True,
     }
     return {
-        "schema": "neural-computer.control-flow-runtime-composed-program.v1",
+        "schema": "neural-computer.control-flow-runtime-composed-program.v2",
         "seed": seed,
         "reverse_inputs": reverse_files,
         "feedback_mode": "reward_shuffled" if shuffled else "verifier_scalar",
@@ -423,6 +462,7 @@ def _run_arm(
             "fresh_evaluations": acquisition["fresh"]["evaluations"],
             "acquired_component_heldout_accuracy": acquisition["heldout_accuracy"],
             "acquired_component_digest": candidate.digest(),
+            "composition_search": composition_search,
             "composed_program_digest": composed_program.digest(),
             "private_composed_digest": private_composed.digest(),
             "composed_heldout_accuracy": sum(heldout_composed) / len(heldout_composed),
@@ -445,9 +485,11 @@ def _run_arm(
         "accounting": {
             "unique_verifier_bits": int(acquisition["warm"]["evaluations"])
             * len(TRAIN_AMOUNTS)
+            + int(composition_search["evaluations"]) * len(amounts)
             + source_updates
             + composed_updates,
             "unique_logical_lifetimes": int(acquisition["warm"]["evaluations"])
+            + int(composition_search["evaluations"])
             + source_updates
             + composed_updates,
             "optimizer_updates": 0,
@@ -472,7 +514,7 @@ def run(seeds: tuple[int, ...] = SEEDS) -> dict[str, object]:
         report for report in reports if report["feedback_mode"] == "reward_shuffled"
     )
     return {
-        "schema": "neural-computer.control-flow-runtime-composed-program.v1",
+        "schema": "neural-computer.control-flow-runtime-composed-program.v2",
         "claim_boundary": (
             "bounded outcome-only acquisition of one generic external component, "
             "verified external composition, and canonical frozen-controller "
