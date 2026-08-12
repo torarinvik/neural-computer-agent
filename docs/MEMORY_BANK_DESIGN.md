@@ -11083,3 +11083,64 @@ them, and three failed the same way: the thing that selected was
 evaluated on data it had already seen.** The no-test-set matrix, the
 in-sample ranking, and the single-quarter split are one mistake in three
 costumes.
+
+## F212 — THE READER IS NOW AMODAL, AND THE FIX MADE IT MORE ACCURATE
+
+F209's attack 3 found the sharpest defect in the architecture: the
+per-slot search is permutation-equivariant to four decimals and the
+plant has no notion of which slot is which, but the READER lost two
+thirds of its margin when the six slots were relabelled. It had learned
+that slot 0 is an avatar row — a convention, and conventions do not
+survive relabelling.
+
+The cause was its shape, so the fix is structural rather than more data:
+
+  1. **One token per slot** instead of one pooled vector per world, each
+     token carrying that slot's before/after value marginals AND the
+     joint before-value x after-value table, which is what says "this
+     slot increments" without saying which slot it is.
+  2. **Attention across slots**, which is equivariant by construction.
+  3. **Shared heads** — one `op` head and one `modulus` head applied to
+     every token. A head indexed by slot position cannot be equivariant.
+  4. **The `j` argument as a RELATION.** "Slot 4" is meaningless after
+     relabelling; "the slot my query attends to" is not, so `j` is a
+     bilinear score between the writing token and every candidate token.
+
+No slot embedding anywhere. Both readers trained on the same pool from
+the same labels, three seeds.
+
+| held-out battery domains | floor | plain | permuted | gap | search |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| indexed (F205's) | 0.2595 | 0.3359 | 0.3292 | +0.0067 | 0.5095 |
+| **equivariant** | 0.2595 | **0.4250** | **0.4250** | **0.0000** | 0.5095 |
+
+| the REAL domains, where the attack landed | floor | plain | permuted | gap |
+| --- | ---: | ---: | ---: | ---: |
+| indexed | 0.3091 | 0.4737 | 0.3542 | **+0.1194** |
+| **equivariant** | 0.3091 | **0.4983** | **0.4983** | **0.0000** |
+
+**Exact equivariance, checked as a property of the function rather than
+as a score**: read a world, read it again with the slots permuted, map
+the second program back, and ask whether it is the SAME program.
+Indexed: 0.0243. Equivariant: **1.0000, all three seeds.** That is not a
+statistical result and does not have an error bar.
+
+**And it is more accurate, not less.** Paired, equivariant minus
+indexed: +0.0891 (t=+14.90) on held-out battery domains, +0.0246
+(t=+3.49) on the real domains unpermuted, +0.1441 (t=+8.04) on the real
+domains permuted. The inductive bias pays for itself; making the reader
+unable to learn slot conventions made it better at reading.
+
+**Where the indexed reader's gap hides.** On the battery it is only
++0.0067, because 113 synthetic domains carry no consistent slot
+convention to learn. The gap appears where a convention exists — the
+real domains, +0.1194. A permutation test run only on synthetic worlds
+would have reported the defect as absent, which is worth remembering
+about tests of invariance in general: they measure the training
+distribution's regularities as much as the model's.
+
+**Scope.** The equivariant reader has 202k parameters against 78k, so
+some of the accuracy gain may be capacity rather than structure; the
+equivariance itself is structural and cannot be. It has not yet been put
+through F207's control loop or F208's repair, both of which assume the
+indexed reader's interface.
