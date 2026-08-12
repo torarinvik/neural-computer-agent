@@ -2,7 +2,7 @@
 
 This pressure test keeps the learned external files and fixed controller from
 the mixed-depth retention rung, then gives an isolated memory-side policy the
-candidate depths ``1..5``. The policy sees only attempted-lifetime accuracy;
+candidate depths ``1..6``. The policy sees only attempted-lifetime accuracy;
 it exposes a depth only after a stable-prefix mastery gate and fails closed if
 all candidates are exhausted without evidence. A maintenance phase then
 demotes one protected depth after patient failures and promotes a replacement
@@ -32,6 +32,7 @@ from .external_compute_growth import (
     _train_stage,
     ComputeGrowthSystem,
 )
+from .external_compute_route_bank import _family_steps
 
 DEPTH_SELECTION_SCHEMA = (
     "neural-computer.brainworkshop-external-compute-depth-selection.v1"
@@ -41,9 +42,9 @@ DEFAULT_SCHEDULE = (
     ("triplet_parity", 8, 4),
     ("parity2", 10, 4),
     ("switch_binary", 11, 4),
-    ("nback4", 12, 5),
+    ("nback5", 12, 6),
 )
-CANDIDATE_QUERY_COUNTS = (1, 2, 3, 4, 5)
+CANDIDATE_QUERY_COUNTS = (1, 2, 3, 4, 5, 6)
 MASTERY_THRESHOLD = 0.99
 
 
@@ -64,7 +65,7 @@ def _train_files(
     system = _build(
         seed,
         slot_count=len(DEFAULT_SCHEDULE),
-        event_window_size=5,
+        event_window_size=6,
         basis_event_read_mode="flattened_window",
         external_history_query_counts=tuple(
             query_count for _, _, query_count in DEFAULT_SCHEDULE
@@ -93,7 +94,7 @@ def _train_files(
                 cue_symbol=cue_symbol,
                 updates=updates,
                 batch_size=batch_size,
-                steps=steps,
+                steps=max(steps, _family_steps(family)),
                 seed=seed + 10_000 * (slot + 1),
                 learning_rate=learning_rate,
                 entropy_weight=0.01,
@@ -132,7 +133,7 @@ def _calibrate_depths(
                 cue_symbol=cue_symbol,
                 lifetimes=probe_lifetimes,
                 batch_size=batch_size,
-                steps=steps,
+                steps=max(steps, _family_steps(family)),
                 seed=seed + slot * 100_000 + query_count * 1_000,
                 history_query_count=query_count,
             )
@@ -160,7 +161,7 @@ def _calibrate_depths(
                 cue_symbol=cue_symbol,
                 lifetimes=retention_lifetimes,
                 batch_size=batch_size,
-                steps=steps,
+                steps=max(steps, _family_steps(family)),
                 seed=seed + 500_000 + slot * 1_000,
                 history_query_count=selected_depth,
             )
@@ -263,7 +264,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                 cue_symbol=DEFAULT_SCHEDULE[0][1],
                 lifetimes=args.probe_lifetimes,
                 batch_size=args.batch_size,
-                steps=args.steps,
+                steps=max(args.steps, _family_steps(DEFAULT_SCHEDULE[0][0])),
                 seed=args.seed + 900_000,
                 history_query_count=replacement_depth,
             )
@@ -345,7 +346,12 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         ),
         "architecture": {
             "boundary": "frozen_amodal_controller -> isolated external_depth_policy -> external_history_file",
+            "file_schedule": [
+                {"family": family, "cue": cue, "trained_query_count": query}
+                for family, cue, query in DEFAULT_SCHEDULE
+            ],
             "candidate_query_counts": CANDIDATE_QUERY_COUNTS,
+            "shared_event_window_size": 6,
             "query_count_semantics": "q_minus_one_previous_records_plus_current_event",
             "policy": "persistent_opaque_depth_evidence_v1",
             "mastery_threshold": MASTERY_THRESHOLD,

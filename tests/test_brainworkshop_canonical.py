@@ -27,6 +27,7 @@ from experiments.brainworkshop_canonical.external_compute_growth import (
     run as run_external_compute_growth,
 )
 from experiments.brainworkshop_canonical.external_compute_depth_selection import (
+    CANDIDATE_QUERY_COUNTS,
     run as run_external_compute_depth_selection,
 )
 from experiments.brainworkshop_canonical.external_compute_depth_probe import (
@@ -319,6 +320,7 @@ def test_external_compute_depth_selection_smoke_is_outcome_only_and_fail_closed(
     assert report["gates"]["shuffled_control_fails_closed"]
     assert report["accounting"]["calibration_optimizer_updates"] == 0
     assert report["accounting"]["replayed_examples"] == 0
+    assert CANDIDATE_QUERY_COUNTS == (1, 2, 3, 4, 5, 6)
 
 
 def test_external_compute_depth_probe_smoke_keeps_deeper_window_external(

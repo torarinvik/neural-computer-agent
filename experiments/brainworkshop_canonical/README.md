@@ -1914,6 +1914,25 @@ unrestricted memory growth, arbitrary program induction, or general
 continual learning. Evidence and accounting are archived at
 `session_records/brainworkshop_external_history_depth_selection_promoted_2026-08-12/`.
 
+## Outcome-only external-history depth selection through n-back-5 (2026-08-13)
+
+The same policy now evaluates candidate query counts `1..6` against a six-event
+shared window and a five-file bank ending in `nback5`. Across seeds `17` and
+`18`, n-back-5 selected depth `6`; the complete profiles were `[1, 4, 2, 2,
+6]` and `[1, 3, 2, 2, 6]`. Every selected depth retained mastery on four fresh
+lifetimes. Four patient failures demoted the first file's stale depth `1`,
+and a fresh depth `2` replacement re-mastered it on eight lifetimes in both
+seeds.
+
+Policy reload, controller/frontend immutability, external-file immutability,
+shuffled-outcome fail-closed behavior, and zero replay all passed. This
+promotes outcome-only active-depth selection and replay-free maintenance
+through n-back-5. It remains an external bounded policy rather than learned
+neural depth inference or learned compression, and does not establish
+unrestricted memory growth, arbitrary program induction, or general continual
+learning. Evidence is archived at
+`session_records/brainworkshop_external_history_nback5_depth_selection_promoted_2026-08-13/`.
+
 ## Replay-free external-history depth maintenance (2026-08-12)
 
 The depth policy also handles stale evidence. After protecting the selected
