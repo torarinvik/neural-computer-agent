@@ -11295,3 +11295,76 @@ search budget beat the real goal. The second was averaging slot presence
 ACROSS worlds when presence is per-world: collect and intercept fill
 slots 0-3, avoid fills 0,1 and 4,5, and the average admitted nothing at
 all. Fixed, the same comparison reads t=+1.00.
+
+## F215 — PERCEPTION SELECTED BY CONTROL: THE PIPELINE WITH NO
+## HAND-WRITTEN PERCEPTION AND NO HAND-WRITTEN GOAL MATCHES THE
+## HAND-WRITTEN STACK
+
+F213 and F214 established that prediction-based criteria cannot choose a
+perception: an encoder can predict well and plan badly. The conclusion
+was sitting in that sentence — the criterion should BE planning. Rank
+candidate encoders by the reward earned when their transitions are
+compiled into recipes and planned with, each world's goal chosen by
+F214's mechanism. The environment's return cannot be gamed the way the
+margin was: both F213 breaks rewarded a property a degenerate encoder
+could maximise while discarding the world, and return is not a property
+of the encoder.
+
+Fourteen candidates from the F213 vocabulary (six coherent families,
+eight random six-subsets), ranked by control on the eight TRAIN worlds
+only; the top five re-ranked at full fidelity (the cheap argmax was
+noisy — near-ties at 16 episodes); the winner then evaluated on the
+eight HELD-OUT worlds with the frozen plant, against references that
+never influenced the choice. Three seeds.
+
+**The criterion is validated as a ranking.** Spearman between
+train-world control and held-out planning margin, over all fourteen
+candidates: **+0.754, +0.921, +0.899**. Noise ranks last, the degenerate
+count/extent encoder at zero, position encoders on top. This is the
+correlation the programmability criterion never had.
+
+**End to end, paired against the hand-written stack:**
+
+| seed | pipeline winner | pipeline margin | hand-written margin |
+| --- | --- | ---: | ---: |
+| 1234 | vocab_lasts | +0.6875 | +0.6738 |
+| 4242 | vocab_random3 | +1.1602 | +1.0644 |
+| 69316 | vocab_lasts | +0.9239 | +1.0293 |
+
+    pipeline - handwritten, per seed:        +0.0014 +- 0.0584  t=+0.02
+    paired per (seed, world), n=24:          +0.0013 +- 0.1496  t=+0.01
+    no-selection null (mean of candidates):  +0.3668
+    selection adds over picking blind:       +0.5571
+
+**Statistically identical.** A perception assembled from generic tensor
+reductions — chosen by reward, with each world's goal also chosen by
+reward — plans exactly as well as the perception and goal a human wrote
+for these games. On seed 4242 the winner was a RANDOM six-subset of the
+vocabulary, and it beat the hand-written stack on its seed (+1.1602
+against +1.0644), so the curated families are not load-bearing.
+
+**The F213 criterion's divergence, confirmed on the selection side.**
+Its own pick (`vocab_greedy_margin`) ranks 6th-8th of fourteen under
+control and scores +0.2780 held-out against `vocab_lasts`' +0.8711 —
+the same encoder the margin criterion preferred is one control
+correctly rejects.
+
+**Two artifacts caught by their own controls before becoming claims.**
+The first run skipped worlds where an encoder admitted no goal, which
+let `vocab_peaks` post +1.3667 on the five easiest worlds and made
+random subsets look better than hand-written; scoring no-goal worlds at
+the random policy's return — the honest price of an encoder that cannot
+express a goal there — collapsed that entirely (`vocab_random3` +0.72
+-> +0.07 as a mean; the F210 missing-test-set mistake, one level down.
+And two of four registered predictions were refuted: `vocab_peaks` did
+NOT win the cheap argmax (near-ties), and the cheap argmax itself picked
+random subsets on two of three seeds until the refinement stage.
+
+**Scope, stated plainly.** This is selection among fourteen candidates,
+not open search over the 594k-encoder space; the goal FORM (match one
+slot pair to another) is still supplied; the games are still 8x8
+single-avatar worlds; and the hand-written encoder is matched, not
+beaten. What is gone is the requirement that a human write either the
+perception or the goal for these worlds: the last two domain-specific
+components of the pipeline are now chosen by the environment's own
+reward from domain-general parts.
