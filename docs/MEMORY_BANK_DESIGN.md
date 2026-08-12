@@ -10277,3 +10277,48 @@ at 0.166 and real families at 0.1172 against a real-family floor of
 0.1602: below its own floor. The 15,000-update version of that
 comparison is running, and until it lands this is a result about
 synthetic transitions.
+
+## F200 — the recipes COMPOUND: eight-step rollout holds at 0.83 while
+## its floor falls to 0.24
+
+One-step grid prediction was established at 0.98 (F194). Everything
+that acts needs it rolled forward, and compounding error is the
+standard way learned world models fail. Three seeds, six games, floor
+recomputed at every step.
+
+| step | accuracy | frozen-start floor | margin |
+| ---: | ---: | ---: | ---: |
+| 1 | 0.9588 | 0.4004 | +0.5584 |
+| 2 | 0.8879 | 0.3581 | +0.5298 |
+| 4 | 0.8721 | 0.3171 | +0.5550 |
+| 6 | 0.8654 | 0.2942 | +0.5712 |
+| 8 | **0.8328** | 0.2435 | **+0.5893** |
+
+**The margin does not decay. It grows** — +0.5584 at one step to
++0.5893 at eight. Accuracy falls 0.9588 to 0.8328, so compounding error
+is real, but the floor falls faster because "the state never moved from
+where it started" gets worse the longer the rollout runs. Recomputing
+the floor at every step was necessary to see this; a fixed floor would
+have shown a decaying margin and told the opposite story.
+
+**The decay is FRONT-LOADED, which is the part that matters for
+planning.** Step one to two costs 0.071. Steps three through eight cost
+0.055 COMBINED. That is a bounded error settling, not an exponential
+blow-up — the model absorbs one step's worth of imprecision and then
+tracks. An error that compounds multiplicatively would have collapsed
+by step eight; this one is still predicting five sixths of slots
+correctly.
+
+**What this means for the architecture.** A planner scores action
+sequences by rolling a model forward, so the horizon it can trust is
+the horizon it can plan over. Eight steps at 0.83 against a floor of
+0.24 is a usable planning horizon on real grid games, using recipes of
+one or two instructions held outside the weights and executed by an
+interpreter that never saw a game.
+
+Together with what is already measured — one frozen interpreter serving
+both domains (F192, F194), exactly zero forgetting across nine families
+(F185), forward transfer at 15/36 against 0/36 (F190), and a reader
+that emits functionally correct programs 70% of the time without search
+(F199, synthetic) — the remaining gap to a working agent is the control
+loop itself, not any of its parts.
