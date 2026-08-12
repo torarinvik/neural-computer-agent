@@ -14,10 +14,12 @@ from neural_computer import (
     ControlFlowProgramFrontier,
     ControlFlowProgramFrontierGrowth,
     ControlFlowProgramMemory,
+    ControlFlowSpliceSearch,
     compose_control_flow_programs,
     delete_control_flow_instruction,
     insert_control_flow_instruction,
     iter_control_flow_programs,
+    splice_control_flow_program,
 )
 
 
@@ -213,6 +215,171 @@ def test_control_flow_memory_composes_and_verifies_existing_files() -> None:
     )
     assert receipt.accepted and receipt.slot == 2
     assert memory.is_file_protected(2)
+
+
+def test_control_flow_splice_rebases_parent_and_fragment_jumps() -> None:
+    parent = ControlFlowProgram(
+        2,
+        (
+            ControlFlowInstruction("jump_if_zero", counter=0, target=3),
+            ControlFlowInstruction("dec", counter=0),
+            ControlFlowInstruction("jump", target=0),
+            ControlFlowInstruction("halt"),
+        ),
+    )
+    fragment = ControlFlowProgram(
+        2,
+        (
+            ControlFlowInstruction("jump_if_zero", counter=1, target=4),
+            ControlFlowInstruction("dec", counter=1),
+            ControlFlowInstruction("inc", counter=0),
+            ControlFlowInstruction("jump", target=0),
+            ControlFlowInstruction("halt"),
+        ),
+    )
+
+    spliced = splice_control_flow_program(parent, 3, fragment)
+
+    assert spliced.instructions[0].target == 3
+    assert spliced.instructions[3].op == "jump_if_zero"
+    assert spliced.instructions[3].target == 7
+    assert spliced.instructions[6].target == 3
+    assert spliced.instructions[2].op == "jump"
+    assert spliced.instructions[2].target == 0
+    for initial in ((0, 0), (3, 0), (0, 2), (4, 3)):
+        parent_result = parent.execute(initial, max_steps=100)
+        fragment_result = fragment.execute(parent_result.counters, max_steps=100)
+        spliced_result = spliced.execute(initial, max_steps=300)
+        assert spliced_result.status == "halted"
+        assert spliced_result.counters == fragment_result.counters
+
+
+def test_control_flow_splice_rejects_invalid_boundaries_and_abis() -> None:
+    parent = ControlFlowProgram(
+        2,
+        (
+            ControlFlowInstruction("inc", counter=0),
+            ControlFlowInstruction("halt"),
+        ),
+    )
+    fragment = ControlFlowProgram(
+        2,
+        (
+            ControlFlowInstruction("inc", counter=1),
+            ControlFlowInstruction("halt"),
+        ),
+    )
+
+    with pytest.raises(ValueError, match="position"):
+        splice_control_flow_program(parent, 2, fragment)
+    with pytest.raises(ValueError, match="position"):
+        splice_control_flow_program(parent, -1, fragment)
+    with pytest.raises(ValueError, match="common counter width"):
+        splice_control_flow_program(parent, 0, ControlFlowProgram(3, fragment.instructions))
+    with pytest.raises(ValueError, match="non-terminal body"):
+        splice_control_flow_program(parent, 0, ControlFlowProgram(2, (ControlFlowInstruction("halt"),)))
+
+
+def test_control_flow_memory_splices_verifies_and_reloads_existing_files() -> None:
+    memory = ControlFlowProgramMemory(2)
+    parent_slot = memory.add_program(
+        ControlFlowProgram(
+            2,
+            (
+                ControlFlowInstruction("inc", counter=0),
+                ControlFlowInstruction("halt"),
+            ),
+        ),
+        protect=True,
+    )
+    fragment_slot = memory.add_program(
+        ControlFlowProgram(
+            2,
+            (
+                ControlFlowInstruction("inc", counter=1),
+                ControlFlowInstruction("halt"),
+            ),
+        ),
+        protect=True,
+    )
+
+    receipt = memory.splice_verified(
+        parent_slot,
+        0,
+        fragment_slot,
+        (1.0, 1.0, 1.0),
+        min_observations=3,
+        min_stable_observations=2,
+        protect=True,
+    )
+
+    assert receipt.accepted and receipt.slot == 2
+    assert memory.is_file_protected(receipt.slot)
+    assert memory.program(receipt.slot).execute((0, 0), max_steps=16).counters == (1, 1)
+    restored = ControlFlowProgramMemory.from_payload(memory.payload())
+    assert restored.digest() == memory.digest()
+
+
+def test_control_flow_splice_search_discovers_opaque_fragment_insertion() -> None:
+    parent = _transfer_program()
+    fragment = ControlFlowProgram(
+        2,
+        (
+            ControlFlowInstruction("inc", counter=0),
+            ControlFlowInstruction("inc", counter=0),
+            ControlFlowInstruction("halt"),
+        ),
+    )
+    decoy = ControlFlowProgram(
+        2,
+        (
+            ControlFlowInstruction("inc", counter=0),
+            ControlFlowInstruction("halt"),
+        ),
+    )
+    memory = ControlFlowProgramMemory(2)
+    parent_slot = memory.add_program(parent, protect=True)
+    fragment_slot = memory.add_program(fragment, protect=True)
+    memory.add_program(decoy, protect=True)
+    target = memory.splice(parent_slot, len(parent.instructions) - 1, fragment_slot)
+    search = ControlFlowSpliceSearch(memory, min_program_length=2, max_program_length=8)
+    state = search.initial_state()
+    initial_states = ((0, 0), (1, 0), (4, 0), (0, 2))
+
+    accepted = None
+    for _ in range(256):
+        proposal = search.propose_exhaustive(state, scope="opaque-splice")
+        outcomes = tuple(
+            float(
+                proposal.program.execute(initial, max_steps=300).status
+                == target.execute(initial, max_steps=300).status
+                and proposal.program.execute(initial, max_steps=300).counters
+                == target.execute(initial, max_steps=300).counters
+            )
+            for initial in initial_states
+        )
+        feedback = search.record_outcomes(
+            state,
+            proposal,
+            outcomes,
+            min_observations=len(initial_states),
+            min_stable_observations=len(initial_states),
+        )
+        state = feedback.state
+        if feedback.receipt.accepted:
+            accepted = feedback
+            break
+
+    assert accepted is not None
+    assert accepted.proposal.parent_slot == parent_slot
+    assert accepted.proposal.position == len(parent.instructions) - 1
+    assert accepted.proposal.fragment_slot == fragment_slot
+    assert accepted.proposal.program.digest() == target.digest()
+    assert "outcomes" not in state.payload()
+    assert type(state).from_payload(state.payload()) == state
+    memory.add_program(target)
+    with pytest.raises(ValueError, match="memory changed"):
+        search.propose_exhaustive(state, scope="opaque-splice")
 
 
 def test_control_flow_composition_search_discovers_opaque_file_order() -> None:
@@ -494,6 +661,23 @@ def test_control_flow_factorized_frontier_preserves_generic_runtime_boundary() -
     assert policy.payload()["configuration"]["credit"] == (
         "scalar_factor_aggregate_without_candidate_rows_v1"
     )
+
+
+def test_control_flow_fragment_splice_audit_promotes_behavior_only_assembly() -> None:
+    from experiments.recipe_expressibility.control_flow_fragment_splice import run
+
+    report = run((31,))
+
+    assert report["status"] == "promoted_outcome_only_reusable_fragment_splicing"
+    assert all(
+        bool(item["promoted"])
+        and all(
+            float(stage["heldout_accuracy"]) == 1.0
+            for stage in item["stage_reports"]
+        )
+        for item in report["warm_reports"]
+    )
+    assert all(item["not_promoted"] for item in report["shuffled_reports"])
 
 
 def test_control_flow_induction_promotes_from_scratch_loop_search() -> None:

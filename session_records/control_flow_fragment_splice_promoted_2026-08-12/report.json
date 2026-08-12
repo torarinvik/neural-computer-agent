@@ -1,0 +1,947 @@
+{
+  "schema": "neural-computer.recipe-control-flow-fragment-splice-audit.v1",
+  "status": "promoted_outcome_only_reusable_fragment_splicing",
+  "seeds": [
+    31,
+    32,
+    33,
+    34
+  ],
+  "warm_reports": [
+    {
+      "seed": 31,
+      "reverse_inputs": false,
+      "stage_reports": [
+        {
+          "seed": 31,
+          "reverse_inputs": false,
+          "shuffled": false,
+          "parent_slot": 0,
+          "fragment_slot": 2,
+          "target_digest": "c1b4fedf9a8632a5aa3d23f12abde9f7c1efa437aace44d406df41c0900c709c",
+          "accepted_digest": "c1b4fedf9a8632a5aa3d23f12abde9f7c1efa437aace44d406df41c0900c709c",
+          "accepted_parent_slot": 2,
+          "accepted_position": 0,
+          "accepted_fragment_slot": 0,
+          "evaluations": 18,
+          "heldout_accuracy": 1.0,
+          "admitted": true,
+          "retention": true,
+          "state_reload_exact": true,
+          "memory_checksum_rejected": true,
+          "missing_evidence_no_write": true,
+          "accounting": {
+            "unique_verifier_bits": 90,
+            "unique_logical_lifetimes": 18,
+            "optimizer_updates": 0,
+            "replayed_examples": 0,
+            "verifier_seconds": 0.001075125066563487,
+            "mean_verifier_latency_seconds": 5.972917036463817e-05,
+            "wall_seconds": 0.022716292063705623
+          }
+        },
+        {
+          "seed": 132,
+          "reverse_inputs": false,
+          "shuffled": false,
+          "parent_slot": 1,
+          "fragment_slot": 2,
+          "target_digest": "b152bd66de8fe2631f7807a3990191c9dd26209305925218defb6fcc936a3940",
+          "accepted_digest": "b152bd66de8fe2631f7807a3990191c9dd26209305925218defb6fcc936a3940",
+          "accepted_parent_slot": 1,
+          "accepted_position": 4,
+          "accepted_fragment_slot": 2,
+          "evaluations": 15,
+          "heldout_accuracy": 1.0,
+          "admitted": true,
+          "retention": true,
+          "state_reload_exact": true,
+          "memory_checksum_rejected": true,
+          "missing_evidence_no_write": true,
+          "accounting": {
+            "unique_verifier_bits": 75,
+            "unique_logical_lifetimes": 15,
+            "optimizer_updates": 0,
+            "replayed_examples": 0,
+            "verifier_seconds": 0.0007979621877893806,
+            "mean_verifier_latency_seconds": 5.31974791859587e-05,
+            "wall_seconds": 0.024514583055861294
+          }
+        }
+      ],
+      "reusable_target_materialized": true,
+      "promoted": true,
+      "accounting": {
+        "unique_verifier_bits": 165.0,
+        "unique_logical_lifetimes": 33.0,
+        "optimizer_updates": 0.0,
+        "replayed_examples": 0.0,
+        "verifier_seconds": 0.0018730872543528676,
+        "wall_seconds": 0.04723087511956692
+      }
+    },
+    {
+      "seed": 31,
+      "reverse_inputs": true,
+      "stage_reports": [
+        {
+          "seed": 31,
+          "reverse_inputs": true,
+          "shuffled": false,
+          "parent_slot": 0,
+          "fragment_slot": 2,
+          "target_digest": "c1b4fedf9a8632a5aa3d23f12abde9f7c1efa437aace44d406df41c0900c709c",
+          "accepted_digest": "c1b4fedf9a8632a5aa3d23f12abde9f7c1efa437aace44d406df41c0900c709c",
+          "accepted_parent_slot": 2,
+          "accepted_position": 0,
+          "accepted_fragment_slot": 0,
+          "evaluations": 18,
+          "heldout_accuracy": 1.0,
+          "admitted": true,
+          "retention": true,
+          "state_reload_exact": true,
+          "memory_checksum_rejected": true,
+          "missing_evidence_no_write": true,
+          "accounting": {
+            "unique_verifier_bits": 90,
+            "unique_logical_lifetimes": 18,
+            "optimizer_updates": 0,
+            "replayed_examples": 0,
+            "verifier_seconds": 0.001540457014925778,
+            "mean_verifier_latency_seconds": 8.558094527365433e-05,
+            "wall_seconds": 0.026653500040993094
+          }
+        },
+        {
+          "seed": 132,
+          "reverse_inputs": true,
+          "shuffled": false,
+          "parent_slot": 1,
+          "fragment_slot": 2,
+          "target_digest": "b152bd66de8fe2631f7807a3990191c9dd26209305925218defb6fcc936a3940",
+          "accepted_digest": "b152bd66de8fe2631f7807a3990191c9dd26209305925218defb6fcc936a3940",
+          "accepted_parent_slot": 1,
+          "accepted_position": 4,
+          "accepted_fragment_slot": 2,
+          "evaluations": 15,
+          "heldout_accuracy": 1.0,
+          "admitted": true,
+          "retention": true,
+          "state_reload_exact": true,
+          "memory_checksum_rejected": true,
+          "missing_evidence_no_write": true,
+          "accounting": {
+            "unique_verifier_bits": 75,
+            "unique_logical_lifetimes": 15,
+            "optimizer_updates": 0,
+            "replayed_examples": 0,
+            "verifier_seconds": 0.00100491673219949,
+            "mean_verifier_latency_seconds": 6.699444881329934e-05,
+            "wall_seconds": 0.028377833077684045
+          }
+        }
+      ],
+      "reusable_target_materialized": true,
+      "promoted": true,
+      "accounting": {
+        "unique_verifier_bits": 165.0,
+        "unique_logical_lifetimes": 33.0,
+        "optimizer_updates": 0.0,
+        "replayed_examples": 0.0,
+        "verifier_seconds": 0.002545373747125268,
+        "wall_seconds": 0.05503133311867714
+      }
+    },
+    {
+      "seed": 32,
+      "reverse_inputs": false,
+      "stage_reports": [
+        {
+          "seed": 32,
+          "reverse_inputs": false,
+          "shuffled": false,
+          "parent_slot": 0,
+          "fragment_slot": 2,
+          "target_digest": "c1b4fedf9a8632a5aa3d23f12abde9f7c1efa437aace44d406df41c0900c709c",
+          "accepted_digest": "c1b4fedf9a8632a5aa3d23f12abde9f7c1efa437aace44d406df41c0900c709c",
+          "accepted_parent_slot": 0,
+          "accepted_position": 4,
+          "accepted_fragment_slot": 2,
+          "evaluations": 15,
+          "heldout_accuracy": 1.0,
+          "admitted": true,
+          "retention": true,
+          "state_reload_exact": true,
+          "memory_checksum_rejected": true,
+          "missing_evidence_no_write": true,
+          "accounting": {
+            "unique_verifier_bits": 75,
+            "unique_logical_lifetimes": 15,
+            "optimizer_updates": 0,
+            "replayed_examples": 0,
+            "verifier_seconds": 0.0006225431570783257,
+            "mean_verifier_latency_seconds": 4.150287713855505e-05,
+            "wall_seconds": 0.013238874962553382
+          }
+        },
+        {
+          "seed": 133,
+          "reverse_inputs": false,
+          "shuffled": false,
+          "parent_slot": 1,
+          "fragment_slot": 2,
+          "target_digest": "b152bd66de8fe2631f7807a3990191c9dd26209305925218defb6fcc936a3940",
+          "accepted_digest": "88e89b4326952b182059b85d5a31d838f2cf4ea206f2ac485939671db3564e4b",
+          "accepted_parent_slot": 2,
+          "accepted_position": 2,
+          "accepted_fragment_slot": 1,
+          "evaluations": 2,
+          "heldout_accuracy": 1.0,
+          "admitted": true,
+          "retention": true,
+          "state_reload_exact": true,
+          "memory_checksum_rejected": true,
+          "missing_evidence_no_write": true,
+          "accounting": {
+            "unique_verifier_bits": 10,
+            "unique_logical_lifetimes": 2,
+            "optimizer_updates": 0,
+            "replayed_examples": 0,
+            "verifier_seconds": 5.9165991842746735e-05,
+            "mean_verifier_latency_seconds": 2.9582995921373367e-05,
+            "wall_seconds": 0.003843875019811094
+          }
+        }
+      ],
+      "reusable_target_materialized": false,
+      "promoted": true,
+      "accounting": {
+        "unique_verifier_bits": 85.0,
+        "unique_logical_lifetimes": 17.0,
+        "optimizer_updates": 0.0,
+        "replayed_examples": 0.0,
+        "verifier_seconds": 0.0006817091489210725,
+        "wall_seconds": 0.017082749982364476
+      }
+    },
+    {
+      "seed": 32,
+      "reverse_inputs": true,
+      "stage_reports": [
+        {
+          "seed": 32,
+          "reverse_inputs": true,
+          "shuffled": false,
+          "parent_slot": 0,
+          "fragment_slot": 2,
+          "target_digest": "c1b4fedf9a8632a5aa3d23f12abde9f7c1efa437aace44d406df41c0900c709c",
+          "accepted_digest": "c1b4fedf9a8632a5aa3d23f12abde9f7c1efa437aace44d406df41c0900c709c",
+          "accepted_parent_slot": 0,
+          "accepted_position": 4,
+          "accepted_fragment_slot": 2,
+          "evaluations": 15,
+          "heldout_accuracy": 1.0,
+          "admitted": true,
+          "retention": true,
+          "state_reload_exact": true,
+          "memory_checksum_rejected": true,
+          "missing_evidence_no_write": true,
+          "accounting": {
+            "unique_verifier_bits": 75,
+            "unique_logical_lifetimes": 15,
+            "optimizer_updates": 0,
+            "replayed_examples": 0,
+            "verifier_seconds": 0.0007506260881200433,
+            "mean_verifier_latency_seconds": 5.0041739208002885e-05,
+            "wall_seconds": 0.01693425001576543
+          }
+        },
+        {
+          "seed": 133,
+          "reverse_inputs": true,
+          "shuffled": false,
+          "parent_slot": 1,
+          "fragment_slot": 2,
+          "target_digest": "b152bd66de8fe2631f7807a3990191c9dd26209305925218defb6fcc936a3940",
+          "accepted_digest": "88e89b4326952b182059b85d5a31d838f2cf4ea206f2ac485939671db3564e4b",
+          "accepted_parent_slot": 2,
+          "accepted_position": 2,
+          "accepted_fragment_slot": 1,
+          "evaluations": 2,
+          "heldout_accuracy": 1.0,
+          "admitted": true,
+          "retention": true,
+          "state_reload_exact": true,
+          "memory_checksum_rejected": true,
+          "missing_evidence_no_write": true,
+          "accounting": {
+            "unique_verifier_bits": 10,
+            "unique_logical_lifetimes": 2,
+            "optimizer_updates": 0,
+            "replayed_examples": 0,
+            "verifier_seconds": 0.0001001671189442277,
+            "mean_verifier_latency_seconds": 5.008355947211385e-05,
+            "wall_seconds": 0.006478165974840522
+          }
+        }
+      ],
+      "reusable_target_materialized": false,
+      "promoted": true,
+      "accounting": {
+        "unique_verifier_bits": 85.0,
+        "unique_logical_lifetimes": 17.0,
+        "optimizer_updates": 0.0,
+        "replayed_examples": 0.0,
+        "verifier_seconds": 0.000850793207064271,
+        "wall_seconds": 0.02341241599060595
+      }
+    },
+    {
+      "seed": 33,
+      "reverse_inputs": false,
+      "stage_reports": [
+        {
+          "seed": 33,
+          "reverse_inputs": false,
+          "shuffled": false,
+          "parent_slot": 0,
+          "fragment_slot": 2,
+          "target_digest": "c1b4fedf9a8632a5aa3d23f12abde9f7c1efa437aace44d406df41c0900c709c",
+          "accepted_digest": "c1b4fedf9a8632a5aa3d23f12abde9f7c1efa437aace44d406df41c0900c709c",
+          "accepted_parent_slot": 0,
+          "accepted_position": 4,
+          "accepted_fragment_slot": 2,
+          "evaluations": 16,
+          "heldout_accuracy": 1.0,
+          "admitted": true,
+          "retention": true,
+          "state_reload_exact": true,
+          "memory_checksum_rejected": true,
+          "missing_evidence_no_write": true,
+          "accounting": {
+            "unique_verifier_bits": 80,
+            "unique_logical_lifetimes": 16,
+            "optimizer_updates": 0,
+            "replayed_examples": 0,
+            "verifier_seconds": 0.0010825820500031114,
+            "mean_verifier_latency_seconds": 6.766137812519446e-05,
+            "wall_seconds": 0.021296042017638683
+          }
+        },
+        {
+          "seed": 134,
+          "reverse_inputs": false,
+          "shuffled": false,
+          "parent_slot": 1,
+          "fragment_slot": 2,
+          "target_digest": "b152bd66de8fe2631f7807a3990191c9dd26209305925218defb6fcc936a3940",
+          "accepted_digest": "79390257168c3a222d2c557f663541b8f3895c29f12bc298f50af761275fe1ab",
+          "accepted_parent_slot": 2,
+          "accepted_position": 1,
+          "accepted_fragment_slot": 1,
+          "evaluations": 14,
+          "heldout_accuracy": 1.0,
+          "admitted": true,
+          "retention": true,
+          "state_reload_exact": true,
+          "memory_checksum_rejected": true,
+          "missing_evidence_no_write": true,
+          "accounting": {
+            "unique_verifier_bits": 70,
+            "unique_logical_lifetimes": 14,
+            "optimizer_updates": 0,
+            "replayed_examples": 0,
+            "verifier_seconds": 0.0007642899872735143,
+            "mean_verifier_latency_seconds": 5.459214194810816e-05,
+            "wall_seconds": 0.025345209054648876
+          }
+        }
+      ],
+      "reusable_target_materialized": false,
+      "promoted": true,
+      "accounting": {
+        "unique_verifier_bits": 150.0,
+        "unique_logical_lifetimes": 30.0,
+        "optimizer_updates": 0.0,
+        "replayed_examples": 0.0,
+        "verifier_seconds": 0.0018468720372766256,
+        "wall_seconds": 0.04664125107228756
+      }
+    },
+    {
+      "seed": 33,
+      "reverse_inputs": true,
+      "stage_reports": [
+        {
+          "seed": 33,
+          "reverse_inputs": true,
+          "shuffled": false,
+          "parent_slot": 0,
+          "fragment_slot": 2,
+          "target_digest": "c1b4fedf9a8632a5aa3d23f12abde9f7c1efa437aace44d406df41c0900c709c",
+          "accepted_digest": "c1b4fedf9a8632a5aa3d23f12abde9f7c1efa437aace44d406df41c0900c709c",
+          "accepted_parent_slot": 0,
+          "accepted_position": 4,
+          "accepted_fragment_slot": 2,
+          "evaluations": 16,
+          "heldout_accuracy": 1.0,
+          "admitted": true,
+          "retention": true,
+          "state_reload_exact": true,
+          "memory_checksum_rejected": true,
+          "missing_evidence_no_write": true,
+          "accounting": {
+            "unique_verifier_bits": 80,
+            "unique_logical_lifetimes": 16,
+            "optimizer_updates": 0,
+            "replayed_examples": 0,
+            "verifier_seconds": 0.0011962071293964982,
+            "mean_verifier_latency_seconds": 7.476294558728114e-05,
+            "wall_seconds": 0.02321895898785442
+          }
+        },
+        {
+          "seed": 134,
+          "reverse_inputs": true,
+          "shuffled": false,
+          "parent_slot": 1,
+          "fragment_slot": 2,
+          "target_digest": "b152bd66de8fe2631f7807a3990191c9dd26209305925218defb6fcc936a3940",
+          "accepted_digest": "79390257168c3a222d2c557f663541b8f3895c29f12bc298f50af761275fe1ab",
+          "accepted_parent_slot": 2,
+          "accepted_position": 1,
+          "accepted_fragment_slot": 1,
+          "evaluations": 14,
+          "heldout_accuracy": 1.0,
+          "admitted": true,
+          "retention": true,
+          "state_reload_exact": true,
+          "memory_checksum_rejected": true,
+          "missing_evidence_no_write": true,
+          "accounting": {
+            "unique_verifier_bits": 70,
+            "unique_logical_lifetimes": 14,
+            "optimizer_updates": 0,
+            "replayed_examples": 0,
+            "verifier_seconds": 0.0009650420397520065,
+            "mean_verifier_latency_seconds": 6.893157426800047e-05,
+            "wall_seconds": 0.02882729098200798
+          }
+        }
+      ],
+      "reusable_target_materialized": false,
+      "promoted": true,
+      "accounting": {
+        "unique_verifier_bits": 150.0,
+        "unique_logical_lifetimes": 30.0,
+        "optimizer_updates": 0.0,
+        "replayed_examples": 0.0,
+        "verifier_seconds": 0.0021612491691485047,
+        "wall_seconds": 0.0520462499698624
+      }
+    },
+    {
+      "seed": 34,
+      "reverse_inputs": false,
+      "stage_reports": [
+        {
+          "seed": 34,
+          "reverse_inputs": false,
+          "shuffled": false,
+          "parent_slot": 0,
+          "fragment_slot": 2,
+          "target_digest": "c1b4fedf9a8632a5aa3d23f12abde9f7c1efa437aace44d406df41c0900c709c",
+          "accepted_digest": "c1b4fedf9a8632a5aa3d23f12abde9f7c1efa437aace44d406df41c0900c709c",
+          "accepted_parent_slot": 2,
+          "accepted_position": 0,
+          "accepted_fragment_slot": 0,
+          "evaluations": 3,
+          "heldout_accuracy": 1.0,
+          "admitted": true,
+          "retention": true,
+          "state_reload_exact": true,
+          "memory_checksum_rejected": true,
+          "missing_evidence_no_write": true,
+          "accounting": {
+            "unique_verifier_bits": 15,
+            "unique_logical_lifetimes": 3,
+            "optimizer_updates": 0,
+            "replayed_examples": 0,
+            "verifier_seconds": 0.00015470897778868675,
+            "mean_verifier_latency_seconds": 5.1569659262895584e-05,
+            "wall_seconds": 0.005820041988044977
+          }
+        },
+        {
+          "seed": 135,
+          "reverse_inputs": false,
+          "shuffled": false,
+          "parent_slot": 1,
+          "fragment_slot": 2,
+          "target_digest": "b152bd66de8fe2631f7807a3990191c9dd26209305925218defb6fcc936a3940",
+          "accepted_digest": "b152bd66de8fe2631f7807a3990191c9dd26209305925218defb6fcc936a3940",
+          "accepted_parent_slot": 2,
+          "accepted_position": 0,
+          "accepted_fragment_slot": 1,
+          "evaluations": 4,
+          "heldout_accuracy": 1.0,
+          "admitted": true,
+          "retention": true,
+          "state_reload_exact": true,
+          "memory_checksum_rejected": true,
+          "missing_evidence_no_write": true,
+          "accounting": {
+            "unique_verifier_bits": 20,
+            "unique_logical_lifetimes": 4,
+            "optimizer_updates": 0,
+            "replayed_examples": 0,
+            "verifier_seconds": 0.00014849996659904718,
+            "mean_verifier_latency_seconds": 3.7124991649761796e-05,
+            "wall_seconds": 0.008511708001606166
+          }
+        }
+      ],
+      "reusable_target_materialized": true,
+      "promoted": true,
+      "accounting": {
+        "unique_verifier_bits": 35.0,
+        "unique_logical_lifetimes": 7.0,
+        "optimizer_updates": 0.0,
+        "replayed_examples": 0.0,
+        "verifier_seconds": 0.00030320894438773394,
+        "wall_seconds": 0.014331749989651144
+      }
+    },
+    {
+      "seed": 34,
+      "reverse_inputs": true,
+      "stage_reports": [
+        {
+          "seed": 34,
+          "reverse_inputs": true,
+          "shuffled": false,
+          "parent_slot": 0,
+          "fragment_slot": 2,
+          "target_digest": "c1b4fedf9a8632a5aa3d23f12abde9f7c1efa437aace44d406df41c0900c709c",
+          "accepted_digest": "c1b4fedf9a8632a5aa3d23f12abde9f7c1efa437aace44d406df41c0900c709c",
+          "accepted_parent_slot": 2,
+          "accepted_position": 0,
+          "accepted_fragment_slot": 0,
+          "evaluations": 3,
+          "heldout_accuracy": 1.0,
+          "admitted": true,
+          "retention": true,
+          "state_reload_exact": true,
+          "memory_checksum_rejected": true,
+          "missing_evidence_no_write": true,
+          "accounting": {
+            "unique_verifier_bits": 15,
+            "unique_logical_lifetimes": 3,
+            "optimizer_updates": 0,
+            "replayed_examples": 0,
+            "verifier_seconds": 0.00010750105138868093,
+            "mean_verifier_latency_seconds": 3.583368379622698e-05,
+            "wall_seconds": 0.004540708032436669
+          }
+        },
+        {
+          "seed": 135,
+          "reverse_inputs": true,
+          "shuffled": false,
+          "parent_slot": 1,
+          "fragment_slot": 2,
+          "target_digest": "b152bd66de8fe2631f7807a3990191c9dd26209305925218defb6fcc936a3940",
+          "accepted_digest": "b152bd66de8fe2631f7807a3990191c9dd26209305925218defb6fcc936a3940",
+          "accepted_parent_slot": 2,
+          "accepted_position": 0,
+          "accepted_fragment_slot": 1,
+          "evaluations": 4,
+          "heldout_accuracy": 1.0,
+          "admitted": true,
+          "retention": true,
+          "state_reload_exact": true,
+          "memory_checksum_rejected": true,
+          "missing_evidence_no_write": true,
+          "accounting": {
+            "unique_verifier_bits": 20,
+            "unique_logical_lifetimes": 4,
+            "optimizer_updates": 0,
+            "replayed_examples": 0,
+            "verifier_seconds": 0.0002030420582741499,
+            "mean_verifier_latency_seconds": 5.0760514568537474e-05,
+            "wall_seconds": 0.00935425003990531
+          }
+        }
+      ],
+      "reusable_target_materialized": true,
+      "promoted": true,
+      "accounting": {
+        "unique_verifier_bits": 35.0,
+        "unique_logical_lifetimes": 7.0,
+        "optimizer_updates": 0.0,
+        "replayed_examples": 0.0,
+        "verifier_seconds": 0.00031054310966283083,
+        "wall_seconds": 0.013894958072341979
+      }
+    }
+  ],
+  "fresh_reports": [
+    {
+      "seed": 31,
+      "stage_reports": [
+        {
+          "seed": 31,
+          "reverse_inputs": false,
+          "shuffled": false,
+          "parent_slot": 0,
+          "fragment_slot": 2,
+          "target_digest": "c1b4fedf9a8632a5aa3d23f12abde9f7c1efa437aace44d406df41c0900c709c",
+          "accepted_digest": "c1b4fedf9a8632a5aa3d23f12abde9f7c1efa437aace44d406df41c0900c709c",
+          "accepted_parent_slot": 2,
+          "accepted_position": 0,
+          "accepted_fragment_slot": 0,
+          "evaluations": 18,
+          "heldout_accuracy": 1.0,
+          "admitted": true,
+          "retention": true,
+          "state_reload_exact": true,
+          "memory_checksum_rejected": true,
+          "missing_evidence_no_write": true,
+          "accounting": {
+            "unique_verifier_bits": 90,
+            "unique_logical_lifetimes": 18,
+            "optimizer_updates": 0,
+            "replayed_examples": 0,
+            "verifier_seconds": 0.0012709612492471933,
+            "mean_verifier_latency_seconds": 7.060895829151075e-05,
+            "wall_seconds": 0.021756708971224725
+          }
+        },
+        {
+          "seed": 132,
+          "reverse_inputs": false,
+          "shuffled": false,
+          "parent_slot": 1,
+          "fragment_slot": 2,
+          "target_digest": "b152bd66de8fe2631f7807a3990191c9dd26209305925218defb6fcc936a3940",
+          "accepted_digest": "b152bd66de8fe2631f7807a3990191c9dd26209305925218defb6fcc936a3940",
+          "accepted_parent_slot": 1,
+          "accepted_position": 4,
+          "accepted_fragment_slot": 2,
+          "evaluations": 15,
+          "heldout_accuracy": 1.0,
+          "admitted": true,
+          "retention": true,
+          "state_reload_exact": true,
+          "memory_checksum_rejected": true,
+          "missing_evidence_no_write": true,
+          "accounting": {
+            "unique_verifier_bits": 75,
+            "unique_logical_lifetimes": 15,
+            "optimizer_updates": 0,
+            "replayed_examples": 0,
+            "verifier_seconds": 0.0010302067967131734,
+            "mean_verifier_latency_seconds": 6.868045311421156e-05,
+            "wall_seconds": 0.03085745801217854
+          }
+        }
+      ],
+      "all_targets_found": true,
+      "accounting": {
+        "unique_verifier_bits": 165.0,
+        "unique_logical_lifetimes": 33.0,
+        "optimizer_updates": 0.0,
+        "replayed_examples": 0.0,
+        "verifier_seconds": 0.0023011680459603667,
+        "wall_seconds": 0.052614166983403265
+      }
+    },
+    {
+      "seed": 32,
+      "stage_reports": [
+        {
+          "seed": 32,
+          "reverse_inputs": false,
+          "shuffled": false,
+          "parent_slot": 0,
+          "fragment_slot": 2,
+          "target_digest": "c1b4fedf9a8632a5aa3d23f12abde9f7c1efa437aace44d406df41c0900c709c",
+          "accepted_digest": "c1b4fedf9a8632a5aa3d23f12abde9f7c1efa437aace44d406df41c0900c709c",
+          "accepted_parent_slot": 0,
+          "accepted_position": 4,
+          "accepted_fragment_slot": 2,
+          "evaluations": 15,
+          "heldout_accuracy": 1.0,
+          "admitted": true,
+          "retention": true,
+          "state_reload_exact": true,
+          "memory_checksum_rejected": true,
+          "missing_evidence_no_write": true,
+          "accounting": {
+            "unique_verifier_bits": 75,
+            "unique_logical_lifetimes": 15,
+            "optimizer_updates": 0,
+            "replayed_examples": 0,
+            "verifier_seconds": 0.0008691677358001471,
+            "mean_verifier_latency_seconds": 5.79445157200098e-05,
+            "wall_seconds": 0.01967554201837629
+          }
+        },
+        {
+          "seed": 133,
+          "reverse_inputs": false,
+          "shuffled": false,
+          "parent_slot": 1,
+          "fragment_slot": 2,
+          "target_digest": "b152bd66de8fe2631f7807a3990191c9dd26209305925218defb6fcc936a3940",
+          "accepted_digest": "88e89b4326952b182059b85d5a31d838f2cf4ea206f2ac485939671db3564e4b",
+          "accepted_parent_slot": 2,
+          "accepted_position": 2,
+          "accepted_fragment_slot": 1,
+          "evaluations": 2,
+          "heldout_accuracy": 1.0,
+          "admitted": true,
+          "retention": true,
+          "state_reload_exact": true,
+          "memory_checksum_rejected": true,
+          "missing_evidence_no_write": true,
+          "accounting": {
+            "unique_verifier_bits": 10,
+            "unique_logical_lifetimes": 2,
+            "optimizer_updates": 0,
+            "replayed_examples": 0,
+            "verifier_seconds": 7.429090328514576e-05,
+            "mean_verifier_latency_seconds": 3.714545164257288e-05,
+            "wall_seconds": 0.0051572080701589584
+          }
+        }
+      ],
+      "all_targets_found": true,
+      "accounting": {
+        "unique_verifier_bits": 85.0,
+        "unique_logical_lifetimes": 17.0,
+        "optimizer_updates": 0.0,
+        "replayed_examples": 0.0,
+        "verifier_seconds": 0.0009434586390852928,
+        "wall_seconds": 0.02483275008853525
+      }
+    },
+    {
+      "seed": 33,
+      "stage_reports": [
+        {
+          "seed": 33,
+          "reverse_inputs": false,
+          "shuffled": false,
+          "parent_slot": 0,
+          "fragment_slot": 2,
+          "target_digest": "c1b4fedf9a8632a5aa3d23f12abde9f7c1efa437aace44d406df41c0900c709c",
+          "accepted_digest": "c1b4fedf9a8632a5aa3d23f12abde9f7c1efa437aace44d406df41c0900c709c",
+          "accepted_parent_slot": 0,
+          "accepted_position": 4,
+          "accepted_fragment_slot": 2,
+          "evaluations": 16,
+          "heldout_accuracy": 1.0,
+          "admitted": true,
+          "retention": true,
+          "state_reload_exact": true,
+          "memory_checksum_rejected": true,
+          "missing_evidence_no_write": true,
+          "accounting": {
+            "unique_verifier_bits": 80,
+            "unique_logical_lifetimes": 16,
+            "optimizer_updates": 0,
+            "replayed_examples": 0,
+            "verifier_seconds": 0.0012029168428853154,
+            "mean_verifier_latency_seconds": 7.518230268033221e-05,
+            "wall_seconds": 0.021476458059623837
+          }
+        },
+        {
+          "seed": 134,
+          "reverse_inputs": false,
+          "shuffled": false,
+          "parent_slot": 1,
+          "fragment_slot": 2,
+          "target_digest": "b152bd66de8fe2631f7807a3990191c9dd26209305925218defb6fcc936a3940",
+          "accepted_digest": "79390257168c3a222d2c557f663541b8f3895c29f12bc298f50af761275fe1ab",
+          "accepted_parent_slot": 2,
+          "accepted_position": 1,
+          "accepted_fragment_slot": 1,
+          "evaluations": 14,
+          "heldout_accuracy": 1.0,
+          "admitted": true,
+          "retention": true,
+          "state_reload_exact": true,
+          "memory_checksum_rejected": true,
+          "missing_evidence_no_write": true,
+          "accounting": {
+            "unique_verifier_bits": 70,
+            "unique_logical_lifetimes": 14,
+            "optimizer_updates": 0,
+            "replayed_examples": 0,
+            "verifier_seconds": 0.000906126108020544,
+            "mean_verifier_latency_seconds": 6.472329343003886e-05,
+            "wall_seconds": 0.027192667010240257
+          }
+        }
+      ],
+      "all_targets_found": true,
+      "accounting": {
+        "unique_verifier_bits": 150.0,
+        "unique_logical_lifetimes": 30.0,
+        "optimizer_updates": 0.0,
+        "replayed_examples": 0.0,
+        "verifier_seconds": 0.0021090429509058595,
+        "wall_seconds": 0.048669125069864094
+      }
+    },
+    {
+      "seed": 34,
+      "stage_reports": [
+        {
+          "seed": 34,
+          "reverse_inputs": false,
+          "shuffled": false,
+          "parent_slot": 0,
+          "fragment_slot": 2,
+          "target_digest": "c1b4fedf9a8632a5aa3d23f12abde9f7c1efa437aace44d406df41c0900c709c",
+          "accepted_digest": "c1b4fedf9a8632a5aa3d23f12abde9f7c1efa437aace44d406df41c0900c709c",
+          "accepted_parent_slot": 2,
+          "accepted_position": 0,
+          "accepted_fragment_slot": 0,
+          "evaluations": 3,
+          "heldout_accuracy": 1.0,
+          "admitted": true,
+          "retention": true,
+          "state_reload_exact": true,
+          "memory_checksum_rejected": true,
+          "missing_evidence_no_write": true,
+          "accounting": {
+            "unique_verifier_bits": 15,
+            "unique_logical_lifetimes": 3,
+            "optimizer_updates": 0,
+            "replayed_examples": 0,
+            "verifier_seconds": 0.00015133304987102747,
+            "mean_verifier_latency_seconds": 5.044434995700916e-05,
+            "wall_seconds": 0.00514179200399667
+          }
+        },
+        {
+          "seed": 135,
+          "reverse_inputs": false,
+          "shuffled": false,
+          "parent_slot": 1,
+          "fragment_slot": 2,
+          "target_digest": "b152bd66de8fe2631f7807a3990191c9dd26209305925218defb6fcc936a3940",
+          "accepted_digest": "b152bd66de8fe2631f7807a3990191c9dd26209305925218defb6fcc936a3940",
+          "accepted_parent_slot": 2,
+          "accepted_position": 0,
+          "accepted_fragment_slot": 1,
+          "evaluations": 4,
+          "heldout_accuracy": 1.0,
+          "admitted": true,
+          "retention": true,
+          "state_reload_exact": true,
+          "memory_checksum_rejected": true,
+          "missing_evidence_no_write": true,
+          "accounting": {
+            "unique_verifier_bits": 20,
+            "unique_logical_lifetimes": 4,
+            "optimizer_updates": 0,
+            "replayed_examples": 0,
+            "verifier_seconds": 0.00013162510003894567,
+            "mean_verifier_latency_seconds": 3.290627500973642e-05,
+            "wall_seconds": 0.006756040966138244
+          }
+        }
+      ],
+      "all_targets_found": true,
+      "accounting": {
+        "unique_verifier_bits": 35.0,
+        "unique_logical_lifetimes": 7.0,
+        "optimizer_updates": 0.0,
+        "replayed_examples": 0.0,
+        "verifier_seconds": 0.00028295814990997314,
+        "wall_seconds": 0.011897832970134914
+      }
+    }
+  ],
+  "shuffled_reports": [
+    {
+      "seed": 31,
+      "not_promoted": true,
+      "accepted": false,
+      "accounting": {
+        "unique_verifier_bits": 200,
+        "unique_logical_lifetimes": 40,
+        "optimizer_updates": 0,
+        "replayed_examples": 0,
+        "verifier_seconds": 3.866280894726515e-05,
+        "mean_verifier_latency_seconds": 9.665702236816287e-07,
+        "wall_seconds": 0.03850245801731944
+      }
+    },
+    {
+      "seed": 32,
+      "not_promoted": true,
+      "accepted": false,
+      "accounting": {
+        "unique_verifier_bits": 200,
+        "unique_logical_lifetimes": 40,
+        "optimizer_updates": 0,
+        "replayed_examples": 0,
+        "verifier_seconds": 4.125060513615608e-05,
+        "mean_verifier_latency_seconds": 1.031265128403902e-06,
+        "wall_seconds": 0.04291362501680851
+      }
+    },
+    {
+      "seed": 33,
+      "not_promoted": true,
+      "accepted": false,
+      "accounting": {
+        "unique_verifier_bits": 200,
+        "unique_logical_lifetimes": 40,
+        "optimizer_updates": 0,
+        "replayed_examples": 0,
+        "verifier_seconds": 4.533503670245409e-05,
+        "mean_verifier_latency_seconds": 1.1333759175613523e-06,
+        "wall_seconds": 0.046120750019326806
+      }
+    },
+    {
+      "seed": 34,
+      "not_promoted": true,
+      "accepted": false,
+      "accounting": {
+        "unique_verifier_bits": 200,
+        "unique_logical_lifetimes": 40,
+        "optimizer_updates": 0,
+        "replayed_examples": 0,
+        "verifier_seconds": 4.8667192459106445e-05,
+        "mean_verifier_latency_seconds": 1.2166798114776612e-06,
+        "wall_seconds": 0.04781454207841307
+      }
+    }
+  ],
+  "gates": {
+    "warm_fragment_assembly_promoted": true,
+    "warm_order_invariant": true,
+    "fresh_control_is_matched": true,
+    "shuffled_feedback_not_promoted": true,
+    "zero_replayed_examples": true,
+    "zero_optimizer_updates": true
+  },
+  "claim_boundary": "Promoted bounded outcome-only reuse and arbitrary-boundary splicing of verified multi-instruction external fragments; not efficient arbitrary program synthesis, unrestricted memory growth, or general continual learning.",
+  "accounting": {
+    "unique_verifier_bits": 2105,
+    "unique_logical_lifetimes": 421,
+    "optimizer_updates": 0,
+    "replayed_examples": 0,
+    "verifier_seconds": 0.016383380047045648,
+    "mean_verifier_latency_seconds": 3.891539203573788e-05,
+    "wall_seconds": 0.5830368335591629
+  },
+  "wall_seconds": 0.5836075000697747
+}

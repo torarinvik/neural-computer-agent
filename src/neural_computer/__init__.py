@@ -100,6 +100,7 @@ from .control_flow import (
     delete_control_flow_instruction,
     evaluate_control_flow_admission,
     insert_control_flow_instruction,
+    splice_control_flow_program,
 )
 from .control_flow_composition import (
     CONTROL_FLOW_COMPOSITION_PROPOSAL_SCHEMA,
@@ -108,6 +109,14 @@ from .control_flow_composition import (
     ControlFlowCompositionProposal,
     ControlFlowCompositionSearch,
     ControlFlowCompositionSearchState,
+)
+from .control_flow_splice import (
+    CONTROL_FLOW_SPLICE_PROPOSAL_SCHEMA,
+    CONTROL_FLOW_SPLICE_SEARCH_SCHEMA,
+    ControlFlowSpliceFeedback,
+    ControlFlowSpliceProposal,
+    ControlFlowSpliceSearch,
+    ControlFlowSpliceSearchState,
 )
 from .control_flow_frontier import (
     CONTROL_FLOW_FRONTIER_GROWTH_PROPOSAL_SCHEMA,
@@ -1193,6 +1202,12 @@ __all__ = [
     "ControlFlowCompositionProposal",
     "ControlFlowCompositionSearch",
     "ControlFlowCompositionSearchState",
+    "ControlFlowSpliceFeedback",
+    "ControlFlowSpliceProposal",
+    "ControlFlowSpliceSearch",
+    "ControlFlowSpliceSearchState",
+    "CONTROL_FLOW_SPLICE_PROPOSAL_SCHEMA",
+    "CONTROL_FLOW_SPLICE_SEARCH_SCHEMA",
     "ControlFlowExecution",
     "ControlFlowFeedback",
     "ControlFlowFrontierFeedback",
@@ -1560,6 +1575,7 @@ __all__ = [
     "failure_gated_view_scores",
     "freeze_core",
     "insert_control_flow_instruction",
+    "splice_control_flow_program",
     "iter_control_flow_programs",
     "load_growth_artifact",
     "load_runtime_components",

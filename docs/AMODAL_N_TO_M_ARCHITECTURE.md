@@ -11682,3 +11682,24 @@ search bottleneck, but it is not yet efficient arbitrary program synthesis,
 unrestricted memory growth, arbitrary new computation acquisition, or general
 continual learning. Evidence and the sample-efficiency ledger are archived in
 `session_records/control_flow_factorized_loop_growth_promoted_2026-08-12/`.
+
+### Verified multi-instruction fragment splicing
+
+The external computation boundary also supports inserting one verified opaque
+file into another at an arbitrary instruction boundary. The transformation is
+ABI-generic: it preserves the counter width, shifts parent edges after the
+boundary, sends boundary-targeting edges through the inserted body, rebases
+fragment-local edges, and sends the fragment's terminal edge to the original
+continuation. `ControlFlowSpliceSearch` selects the parent, insertion point,
+and fragment using only scalar verifier outcomes; its restartable state is
+bound to the checksummed external-file view and does not persist verifier
+rows, task labels, or controller parameters.
+
+The promoted audit reached held-out-perfect behavior for two assemblies across
+four seeds and reversed verifier-state orders, retained protected source files,
+passed persistence and checksum controls, and admitted nothing under shuffled
+feedback. Equivalent assemblies are intentionally judged by behavior rather
+than a presumed file provenance. This is a bounded external-memory
+composition primitive, not evidence of efficient arbitrary program synthesis,
+unrestricted memory growth, or general continual learning. Evidence is
+archived in `session_records/control_flow_fragment_splice_promoted_2026-08-12/`.

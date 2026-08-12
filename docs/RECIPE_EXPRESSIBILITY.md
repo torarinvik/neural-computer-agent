@@ -868,3 +868,31 @@ This promotes bounded replay-free factorized structural-credit transfer across
 longer external loop programs. It does not establish efficient arbitrary
 program synthesis, unrestricted memory growth, arbitrary semantic learning, or
 general continual learning.
+
+## Outcome-only reusable multi-instruction fragment splicing
+
+Sequential composition is insufficient when a reusable file must be inserted
+inside an existing control-flow graph. `splice_control_flow_program` now
+inserts an opaque fragment at any instruction boundary, rebases both the
+parent and fragment jump graphs, routes incoming edges at the boundary through
+the fragment, and redirects the fragment's terminal edge to the original
+continuation. `ControlFlowSpliceSearch` enumerates parent, position, and
+fragment candidates from external memory and admits only stable scalar
+verifier prefixes. Search state stores checksummed-memory identity, candidate
+identity, and aggregate quality; it stores no verifier rows or provenance
+labels.
+
+Across four seeds and forward/reversed verifier-state orders, the audit
+materialized two held-out-perfect assemblies while retaining protected source
+files, exact-reloading search and memory state, rejecting checksum corruption,
+and refusing empty-evidence writes. A matched fresh control also passed, while
+shuffled feedback admitted no candidate. When multiple file arrangements
+produce the same behavior, the verifier accepts the behavior rather than
+forcing a hand-assigned parent/fragment provenance; the selected slots remain
+diagnostic only.
+
+This promotes bounded outcome-only multi-instruction fragment splicing and
+behavioral reuse. It does not establish efficient arbitrary program synthesis,
+unrestricted memory growth, arbitrary new computation acquisition, or general
+continual learning. Evidence is archived in
+`session_records/control_flow_fragment_splice_promoted_2026-08-12/`.

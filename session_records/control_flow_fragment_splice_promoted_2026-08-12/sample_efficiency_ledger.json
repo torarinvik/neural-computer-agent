@@ -1,0 +1,48 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "control_flow_fragment_splice",
+  "date": "2026-08-12",
+  "status": "promoted",
+  "seeds": [31, 32, 33, 34],
+  "arms": {
+    "warm_forward_reverse": {
+      "arms": 8,
+      "unique_verifier_bits": 870,
+      "unique_logical_lifetimes": 174,
+      "optimizer_updates": 0,
+      "replayed_examples": 0,
+      "heldout_accuracy": 1.0,
+      "retention_accuracy": 1.0
+    },
+    "matched_fresh": {
+      "arms": 4,
+      "unique_verifier_bits": 435,
+      "unique_logical_lifetimes": 87,
+      "optimizer_updates": 0,
+      "replayed_examples": 0,
+      "heldout_accuracy": 1.0
+    },
+    "reward_shuffled": {
+      "arms": 4,
+      "unique_verifier_bits": 800,
+      "unique_logical_lifetimes": 160,
+      "optimizer_updates": 0,
+      "replayed_examples": 0,
+      "promoted_candidates": 0
+    }
+  },
+  "aggregate": {
+    "unique_verifier_bits": 2105,
+    "unique_logical_lifetimes": 421,
+    "optimizer_updates": 0,
+    "replayed_examples": 0,
+    "wall_seconds": 0.5830368335591629,
+    "verifier_seconds": 0.016383380047045648,
+    "mean_verifier_latency_seconds": 3.891539203573788e-05
+  },
+  "retention": {
+    "mastered_assemblies": 2,
+    "all_protected_sources_retained": true
+  },
+  "claim_boundary": "bounded outcome-only multi-instruction fragment splicing and behavioral reuse, not general continual learning"
+}

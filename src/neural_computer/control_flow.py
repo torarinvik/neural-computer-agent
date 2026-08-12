@@ -392,6 +392,76 @@ def compose_control_flow_programs(
     return ControlFlowProgram(counter_count, tuple(instructions)).validate()
 
 
+def splice_control_flow_program(
+    program: ControlFlowProgram,
+    position: int,
+    fragment: ControlFlowProgram,
+) -> ControlFlowProgram:
+    """Insert a verified multi-instruction fragment into a program.
+
+    Both files use the same counter ABI and terminate with ``HALT``.  The
+    fragment's terminal exits to the original instruction at ``position``;
+    its internal jump targets are rebased, while every parent edge after the
+    insertion boundary shifts by the fragment body length. Edges targeting the
+    boundary itself enter the inserted fragment, preserving the usual meaning
+    of inserting a block before an instruction.
+    This is a structural transformation only: no task-specific macro or
+    controller branch is introduced.
+    """
+
+    program.validate()
+    fragment.validate()
+    if program.counter_count != fragment.counter_count:
+        raise ValueError("spliced control-flow programs need a common counter width")
+    if not 0 <= position <= len(program.instructions) - 1:
+        raise ValueError("control-flow splice position is invalid")
+    fragment_body = fragment.instructions[:-1]
+    if not fragment_body:
+        raise ValueError("control-flow splice fragment needs a non-terminal body")
+    shift = len(fragment_body)
+    fragment_terminal = len(fragment.instructions) - 1
+    continuation = position + shift
+
+    def shift_parent_target(instruction: ControlFlowInstruction) -> ControlFlowInstruction:
+        if instruction.op not in {"jump", "jump_if_zero", "jump_if_nonzero"}:
+            return instruction
+        assert instruction.target is not None
+        target = instruction.target + (shift if instruction.target > position else 0)
+        return ControlFlowInstruction(
+            instruction.op,
+            counter=instruction.counter,
+            target=target,
+        )
+
+    def rebase_fragment_target(
+        instruction: ControlFlowInstruction,
+    ) -> ControlFlowInstruction:
+        if instruction.op not in {"jump", "jump_if_zero", "jump_if_nonzero"}:
+            return instruction
+        assert instruction.target is not None
+        target = (
+            continuation
+            if instruction.target == fragment_terminal
+            else position + instruction.target
+        )
+        return ControlFlowInstruction(
+            instruction.op,
+            counter=instruction.counter,
+            target=target,
+        )
+
+    rebased_fragment = tuple(rebase_fragment_target(item) for item in fragment_body)
+    rebased_parent = tuple(shift_parent_target(item) for item in program.instructions)
+    return ControlFlowProgram(
+        program.counter_count,
+        (
+            *rebased_parent[:position],
+            *rebased_fragment,
+            *rebased_parent[position:],
+        ),
+    ).validate()
+
+
 @dataclass(frozen=True)
 class ControlFlowAdmissionReceipt:
     accepted: bool
@@ -498,6 +568,30 @@ class ControlFlowProgramMemory:
             tuple(self.program(slot) for slot in normalized)
         )
 
+    def splice(
+        self,
+        parent_slot: int,
+        position: int,
+        fragment_slot: int,
+    ) -> ControlFlowProgram:
+        """Insert one existing opaque file into another at ``position``."""
+
+        for name, slot in (
+            ("parent", parent_slot),
+            ("fragment", fragment_slot),
+        ):
+            if not isinstance(slot, int) or isinstance(slot, bool):
+                raise TypeError(f"control-flow {name} slot must be an integer")
+            if not 0 <= slot < self.file_count:
+                raise IndexError(f"control-flow {name} slot is out of range")
+        if not isinstance(position, int) or isinstance(position, bool):
+            raise TypeError("control-flow splice position must be an integer")
+        return splice_control_flow_program(
+            self.program(parent_slot),
+            position,
+            self.program(fragment_slot),
+        )
+
     def compose_verified(
         self,
         slots: Sequence[int],
@@ -512,6 +606,29 @@ class ControlFlowProgramMemory:
 
         return self.admit_verified(
             self.compose(slots),
+            outcomes,
+            threshold=threshold,
+            min_observations=min_observations,
+            min_stable_observations=min_stable_observations,
+            protect=protect,
+        )
+
+    def splice_verified(
+        self,
+        parent_slot: int,
+        position: int,
+        fragment_slot: int,
+        outcomes: Sequence[float],
+        *,
+        threshold: float = 1.0,
+        min_observations: int = 1,
+        min_stable_observations: int = 1,
+        protect: bool = False,
+    ) -> ControlFlowAdmissionReceipt:
+        """Splice existing files and admit the result through scalar evidence."""
+
+        return self.admit_verified(
+            self.splice(parent_slot, position, fragment_slot),
             outcomes,
             threshold=threshold,
             min_observations=min_observations,
@@ -596,4 +713,5 @@ __all__ = [
     "delete_control_flow_instruction",
     "evaluate_control_flow_admission",
     "insert_control_flow_instruction",
+    "splice_control_flow_program",
 ]
