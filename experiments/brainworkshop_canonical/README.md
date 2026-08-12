@@ -1279,3 +1279,18 @@ retained-sibling and new-binding accuracy, retired-binding unknown rate,
 permutation, reload, frozen-core, and shuffled-route controls were all clean.
 Evidence is archived at
 `session_records/brainworkshop_external_temporal_online_binding_capacity_promoted_2026-08-12/`.
+
+## Learned episodic binding victim selection (2026-08-12)
+
+`external_temporal_learned_binding_victim_selection.py` removes the remaining
+manual victim-slot choice. The generic `ExternalCapabilityEvictionPolicy`
+learns from opaque incoming signatures and reliability/age telemetry, then
+selects the disposable physical slot under forward and reversed candidate
+orders. A verifier protects sibling A and admits new binding C only after the
+copy-on-write candidate passes retention.
+
+Seeds 17 and 18 reached `0.8047/0.8184` held-out victim transfer and
+`0.3086/0.3301` reward-shuffled controls. Both orderings selected the weak
+slot and both transactions retained the sibling and acquired the new binding.
+Evidence is archived at
+`session_records/brainworkshop_external_temporal_learned_binding_victim_selection_promoted_2026-08-12/`.

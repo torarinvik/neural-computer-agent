@@ -1849,3 +1849,11 @@ copy-on-write and retention-probed. This allows a frozen router to recognize
 and safely admit a novel external binding without silently assigning it a
 retired slot. The online capacity audit is archived at
 `session_records/brainworkshop_external_temporal_online_binding_capacity_promoted_2026-08-12/`.
+
+The generic `ExternalCapabilityEvictionPolicy` can now drive the router’s
+capacity transaction: it ranks opaque binding candidates from incoming
+signature plus generic reliability/age telemetry, while the verifier retains
+protected siblings and authorizes copy-on-write replacement. The promoted
+victim-selection audit demonstrates transfer under candidate permutation with
+zero controller updates; the policy remains an external replaceable learner,
+not a controller reasoning branch.

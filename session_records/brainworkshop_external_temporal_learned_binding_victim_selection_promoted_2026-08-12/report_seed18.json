@@ -1,0 +1,102 @@
+{
+  "schema": "neural-computer.brainworkshop-external-temporal-learned-binding-victim-selection.v1",
+  "claim_boundary": "A generic external eviction policy learns opaque victim selection from scalar utility and transfers it to verifier-gated episodic binding replacement under row permutation; not universal eviction economics or general continual learning.",
+  "seed": 18,
+  "architecture": {
+    "victim_policy": "external_capability_eviction_policy_v1",
+    "candidate_features": "opaque_signature_plus_reliability_age_v1",
+    "router": "episodic_binding_router_v3",
+    "replacement": "copy_on_write_retention_verified_v1",
+    "forbidden_features": "physical_slot_indices_semantic_names_correct_unattempted_slot_task_labels",
+    "controller": "frozen_canonical_amodal_controller",
+    "event_encoder": "frozen_learned_event_encoder"
+  },
+  "policy_training": {
+    "optimizer_updates": 3000,
+    "unique_scalar_utilities": 3000,
+    "first_window_utility": 0.34,
+    "last_window_utility": 0.84,
+    "reward_shuffled": 0
+  },
+  "router_training": {
+    "optimizer_updates": 1000,
+    "unique_scalar_utilities": 1000,
+    "first_window_utility": 0.96,
+    "last_window_utility": 0.93
+  },
+  "policy_accuracy": 0.818359375,
+  "shuffled_policy_training": {
+    "optimizer_updates": 3000,
+    "unique_scalar_utilities": 3000,
+    "first_window_utility": 0.58,
+    "last_window_utility": 0.52,
+    "reward_shuffled": 1
+  },
+  "shuffled_policy_accuracy": 0.330078125,
+  "live": {
+    "(0, 1)": {
+      "selected_position": 1,
+      "selected_physical_slot": 1,
+      "expected_physical_slot": 1,
+      "scores": [
+        -23.401081085205078,
+        28.852108001708984
+      ]
+    },
+    "(1, 0)": {
+      "selected_position": 0,
+      "selected_physical_slot": 1,
+      "expected_physical_slot": 1,
+      "scores": [
+        28.852108001708984,
+        -23.401081085205078
+      ]
+    }
+  },
+  "transactions": {
+    "(0, 1)": {
+      "selected_position": 1,
+      "selected_physical_slot": 1,
+      "accepted": true,
+      "retained_a": true,
+      "new_c": true
+    },
+    "(1, 0)": {
+      "selected_position": 0,
+      "selected_physical_slot": 1,
+      "accepted": true,
+      "retained_a": true,
+      "new_c": true
+    }
+  },
+  "gates": {
+    "held_out_policy_mastery": true,
+    "reward_shuffled_policy_rejects_mastery": true,
+    "forward_order_selects_weak_slot": true,
+    "reverse_order_selects_weak_slot": true,
+    "forward_replacement_accepted": true,
+    "reverse_replacement_accepted": true,
+    "forward_sibling_retained": true,
+    "reverse_sibling_retained": true,
+    "forward_new_binding_acquired": true,
+    "reverse_new_binding_acquired": true,
+    "controller_frozen": true,
+    "event_encoder_frozen": true,
+    "zero_replayed_training_examples": true
+  },
+  "accounting": {
+    "unique_verifier_bits": 8792,
+    "unique_logical_lifetimes": 8792,
+    "policy_optimizer_updates": 3000,
+    "router_optimizer_updates": 1000,
+    "policy_verifier_bits": 3000,
+    "shuffled_policy_verifier_bits": 3000,
+    "router_verifier_bits": 1000,
+    "retention_probe_verifier_bits": 768,
+    "diagnostic_verifier_bits": 1024,
+    "replayed_examples": 0,
+    "controller_updates": 0,
+    "latency_seconds": 2.172009415924549
+  },
+  "status": "promoted_learned_binding_victim_selection"
+}

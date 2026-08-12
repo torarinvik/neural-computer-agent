@@ -10770,3 +10770,24 @@ reuse, not unrestricted growth, autonomous ontology formation, arbitrary new
 computation, or general continual learning. Evidence and checksums are
 archived at
 `session_records/brainworkshop_external_temporal_online_binding_capacity_promoted_2026-08-12/`.
+
+## Learned victim choice for episodic binding capacity (2026-08-12)
+
+The online capacity boundary no longer requires the experiment to nominate the
+victim slot. `ExternalCapabilityEvictionPolicy` receives an incoming opaque
+episode signature and generic candidate telemetry only; it learns a
+disposability score from the scalar utility of the slot actually attempted.
+Physical slot indices, semantic names, correct unattempted rows, and task
+labels remain outside the policy. A separate verifier protects sibling A and
+commits a replacement only when the new binding C and every protected route
+pass held-out probes.
+
+Across two seeds, held-out victim transfer was `0.8047/0.8184`, while
+reward-shuffled controls were `0.3086/0.3301`. Forward and reversed candidate
+orders both selected the weak slot, and both copy-on-write transactions
+retained the sibling and acquired the new binding. The controller and learned
+event encoder were unchanged. This promotes bounded learned maintenance
+choice, not universal eviction economics or general continual learning.
+
+Evidence and accounting are archived at
+`session_records/brainworkshop_external_temporal_learned_binding_victim_selection_promoted_2026-08-12/`.
