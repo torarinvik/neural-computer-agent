@@ -1,0 +1,70 @@
+{
+  "schema": "neural-computer.recipe-control-flow-adaptive-growth-audit.v1",
+  "status": "promoted_replay_free_adaptive_control_flow_growth",
+  "seeds": [17, 18, 19, 20],
+  "positive_orders": ["forward", "reversed"],
+  "curriculum": {
+    "initial_horizon": 2,
+    "horizons": [3, 4, 5],
+    "rungs": 3,
+    "counter_count": 2,
+    "max_candidates_per_rung": 600,
+    "verifier_inputs_per_candidate": 5
+  },
+  "positive_candidate_evaluations_by_seed": {
+    "17": [74, 74],
+    "18": [121, 121],
+    "19": [32, 32],
+    "20": [151, 151]
+  },
+  "positive_final_rung_evaluations_by_seed": {
+    "17": [33, 33],
+    "18": [53, 53],
+    "19": [3, 3],
+    "20": [44, 44]
+  },
+  "fresh_candidate_evaluations_by_seed": {
+    "17": [25, 112, 600],
+    "18": [37, 356, 600],
+    "19": [42, 402, 600],
+    "20": [26, 95, 600]
+  },
+  "fresh_targets_found_by_seed": {
+    "17": [true, true, false],
+    "18": [true, true, false],
+    "19": [true, true, false],
+    "20": [true, true, false]
+  },
+  "shuffled_accepted_rungs_by_seed": {
+    "17": 0,
+    "18": 0,
+    "19": 0,
+    "20": 0
+  },
+  "gates": {
+    "positive_arms_promoted": true,
+    "horizon_grew_one_step_at_a_time": true,
+    "all_heldout_mastered": true,
+    "all_prior_programs_retained": true,
+    "state_reload_exact": true,
+    "memory_reload_exact": true,
+    "memory_corruption_rejected": true,
+    "missing_evidence_no_write": true,
+    "shuffled_feedback_not_promoted": true,
+    "zero_replayed_examples": true,
+    "zero_optimizer_updates": true
+  },
+  "accounting": {
+    "positive_verifier_bits": 3780,
+    "positive_logical_lifetimes": 756,
+    "shuffled_verifier_bits": 4800,
+    "shuffled_logical_lifetimes": 960,
+    "fresh_verifier_bits": 17475,
+    "fresh_logical_lifetimes": 3495,
+    "total_verifier_bits": 26055,
+    "total_logical_lifetimes": 5211,
+    "optimizer_updates": 0,
+    "replayed_examples": 0
+  },
+  "claim_boundary": "Promoted bounded replay-free adaptive-horizon structural growth through three one-instruction curriculum rungs with held-out retention of earlier external programs; not efficient arbitrary program synthesis, unrestricted execution, unrestricted memory growth, or general continual learning."
+}

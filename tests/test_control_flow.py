@@ -10,6 +10,7 @@ from neural_computer import (
     ControlFlowOutcomeSearch,
     ControlFlowProgram,
     ControlFlowProgramFrontier,
+    ControlFlowProgramFrontierGrowth,
     ControlFlowProgramMemory,
     compose_control_flow_programs,
     iter_control_flow_programs,
@@ -403,3 +404,101 @@ def test_control_flow_frontier_growth_keeps_fresh_exhaustion_distinct() -> None:
         and item["gates"]["termination_is_not_inexpressible"]
         for item in report["reports"]
     )
+
+
+def test_adaptive_frontier_growth_preserves_credit_and_rejects_stale_proposals() -> None:
+    root = ControlFlowProgram(
+        2,
+        (
+            ControlFlowInstruction("inc", counter=0),
+            ControlFlowInstruction("halt"),
+        ),
+    )
+    growth = ControlFlowProgramFrontierGrowth(
+        2,
+        initial_horizon=2,
+        maximum_horizon=4,
+        beam_width=16,
+        max_depth=8,
+    )
+    state = growth.initial_state(root, root_quality=1.0)
+    before_reject = state.digest()
+    rejected_receipt, rejected_state = growth.expand_horizon_verified(
+        state,
+        lambda _: False,
+    )
+    assert not rejected_receipt.accepted
+    assert rejected_state.digest() == before_reject
+
+    expanded_receipt, state = growth.expand_horizon_verified(state, lambda _: True)
+    assert expanded_receipt.accepted
+    assert state.horizon == 3
+
+    generator = torch.Generator().manual_seed(9017)
+    qualified = None
+    stale_proposal = None
+    for _ in range(256):
+        proposal = growth.propose(state, generator=generator)
+        if len(proposal.proposal.program.instructions) == 3:
+            feedback = growth.record_outcomes(
+                state,
+                proposal,
+                (1.0, 1.0),
+                min_observations=2,
+                min_stable_observations=2,
+            )
+            state = feedback.state
+            if feedback.accepted:
+                qualified = proposal.proposal.program
+                break
+        else:
+            state = growth.record_outcomes(
+                state,
+                proposal,
+                (0.0, 0.0),
+                min_observations=2,
+                min_stable_observations=2,
+            ).state
+    assert qualified is not None
+    old_evaluations = state.frontier.evaluations
+    stale_proposal = growth.propose(state, generator=generator)
+    promoted_receipt, state = growth.promote_root_verified(
+        state,
+        qualified,
+        lambda candidate: candidate.frontier.root_digest == qualified.digest(),
+    )
+    assert promoted_receipt.accepted
+    assert state.frontier.root_digest == qualified.digest()
+    assert state.rung == 1
+    assert state.frontier.evaluations == old_evaluations
+    assert len(state.qualified_programs) == 2
+    with pytest.raises(ValueError, match="rung"):
+        growth.record_outcomes(state, stale_proposal, (1.0, 1.0))
+
+    expanded_receipt, expanded_state = growth.expand_horizon_verified(state, lambda _: True)
+    assert expanded_receipt.accepted
+    assert expanded_state.horizon == 4
+    with pytest.raises(ValueError, match="stale"):
+        growth.record_outcomes(expanded_state, stale_proposal, (1.0, 1.0))
+
+    restored = type(expanded_state).from_payload(expanded_state.payload())
+    assert restored.digest() == expanded_state.digest()
+    assert "outcomes" not in expanded_state.payload()
+
+
+def test_adaptive_control_flow_growth_promotes_curriculum_and_retention() -> None:
+    from experiments.recipe_expressibility.control_flow_adaptive_growth import run
+
+    report = run((17,))
+
+    assert report["status"] == "promoted_replay_free_adaptive_control_flow_growth"
+    assert report["gates"] == {
+        "positive_arms_promoted": True,
+        "shuffled_feedback_not_promoted": True,
+    }
+    assert all(
+        bool(item["gates"]["all_prior_programs_retained"])
+        and bool(item["gates"]["horizon_grew_one_step_at_a_time"])
+        for item in report["positive_reports"]
+    )
+    assert report["fresh_reports"][0]["stage_reports"][-1]["found"] is False

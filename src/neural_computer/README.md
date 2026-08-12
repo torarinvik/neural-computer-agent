@@ -2035,3 +2035,11 @@ least-attempted opaque files, preventing the probability of discovering a new
 file from collapsing with bank size. Once a context is protected, the normal
 exploit-plus-novelty distribution resumes. Both modes expose exact behavior
 probabilities and do not add a reasoning path to the controller.
+
+`ControlFlowProgramFrontierGrowth` is the replay-free adaptive curriculum for
+the external control-flow search boundary. Its proposals carry the current
+horizon and rung; `expand_horizon_verified()` and
+`promote_root_verified()` are copy-on-write retention transactions. Only
+aggregate operator credit and opaque candidate digests survive a rung change,
+so old verifier rows are not replayed and stale proposals cannot cross the
+search ABI. The controller remains outside this memory-side learner.

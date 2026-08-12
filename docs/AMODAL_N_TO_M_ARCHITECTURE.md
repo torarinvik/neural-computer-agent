@@ -11618,3 +11618,23 @@ feedback controls passed. This promotes bounded open-world route discovery,
 not unrestricted memory growth, arbitrary program induction, or general
 continual learning. Evidence is archived at
 `session_records/control_flow_runtime_open_world_route_growth_promoted_2026-08-12/`.
+
+### Replay-free adaptive growth of the external computation frontier
+
+The external control-flow search now has a separate adaptive-horizon state
+contract. Each proposal carries the horizon and curriculum rung that produced
+it; expanding the horizon or promoting a longer root therefore invalidates
+stale proposals. Aggregate operator credit and opaque candidate digests carry
+forward between rungs, while raw verifier rows remain absent. Horizon growth
+and root promotion are caller-owned copy-on-write transactions guarded by
+held-out retention.
+
+Across four seeds and forward/reversed verifier-state orders, the frontier
+grew from a length-two root through lengths three, four, and five. Every new
+file reached held-out accuracy `1.0000`, and all earlier files remained at
+`1.0000` after later growth. A fresh source-to-length control exhausted its
+length-five budget in every seed, while shuffled feedback qualified no rung.
+This promotes bounded replay-free adaptive external structural growth; it is
+not arbitrary program induction, unrestricted execution, or general
+continual learning. Evidence is archived at
+`session_records/recipe_control_flow_adaptive_growth_promoted_2026-08-12/`.

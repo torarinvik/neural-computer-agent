@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import hashlib
 import math
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 
 import torch
@@ -24,6 +24,15 @@ CONTROL_FLOW_FRONTIER_HYPOTHESIS_SCHEMA = (
 )
 CONTROL_FLOW_FRONTIER_PROPOSAL_SCHEMA = (
     "neural-computer.external-control-flow-frontier-proposal.v1"
+)
+CONTROL_FLOW_FRONTIER_GROWTH_SCHEMA = (
+    "neural-computer.external-control-flow-frontier-growth.v1"
+)
+CONTROL_FLOW_FRONTIER_GROWTH_PROPOSAL_SCHEMA = (
+    "neural-computer.external-control-flow-frontier-growth-proposal.v1"
+)
+CONTROL_FLOW_FRONTIER_GROWTH_RECEIPT_SCHEMA = (
+    "neural-computer.external-control-flow-frontier-growth-receipt.v1"
 )
 CONTROL_FLOW_FRONTIER_MUTATION_OPERATORS = (
     "replace_instruction",
@@ -600,14 +609,491 @@ class ControlFlowProgramFrontier:
         )
 
 
+@dataclass(frozen=True)
+class ControlFlowFrontierGrowthState:
+    """Replay-free adaptive-horizon state for external program induction.
+
+    The frontier statistics and candidate digests survive curriculum growth;
+    only the allowed program horizon and current search root change.  No raw
+    verifier rows are retained.  Executable files remain owned by the separate
+    ``ControlFlowProgramMemory`` boundary.
+    """
+
+    frontier: ControlFlowFrontierState
+    horizon: int
+    qualified_programs: tuple[tuple[str, float], ...]
+    rung: int = 0
+    schema: str = CONTROL_FLOW_FRONTIER_GROWTH_SCHEMA
+
+    def validate(self) -> ControlFlowFrontierGrowthState:
+        if self.schema != CONTROL_FLOW_FRONTIER_GROWTH_SCHEMA:
+            raise ValueError("unsupported control-flow frontier-growth schema")
+        self.frontier.validate()
+        if self.horizon < 1:
+            raise ValueError("control-flow frontier growth horizon is invalid")
+        if self.rung < 0:
+            raise ValueError("control-flow frontier growth rung is invalid")
+        if len(self.qualified_programs) < 1:
+            raise ValueError("control-flow frontier growth has no qualified programs")
+        digests = tuple(item[0] for item in self.qualified_programs)
+        if len(set(digests)) != len(digests):
+            raise ValueError("control-flow qualified program digests are not unique")
+        for digest, quality in self.qualified_programs:
+            if not _digest_is_valid(digest):
+                raise ValueError("control-flow qualified program digest is malformed")
+            if not math.isfinite(quality) or not 0.0 <= quality <= 1.0:
+                raise ValueError("control-flow qualified program quality is invalid")
+        if self.frontier.root_digest not in digests:
+            raise ValueError("control-flow frontier root is not qualified")
+        for hypothesis in self.frontier.hypotheses:
+            if len(hypothesis.program.instructions) > self.horizon:
+                raise ValueError("frontier hypothesis exceeds the active horizon")
+        return self
+
+    def payload(self) -> dict[str, object]:
+        self.validate()
+        body = {
+            "schema": self.schema,
+            "frontier": self.frontier.payload(),
+            "horizon": self.horizon,
+            "qualified_programs": [
+                {"digest": digest, "quality": quality}
+                for digest, quality in self.qualified_programs
+            ],
+            "rung": self.rung,
+        }
+        return {**body, "sha256": _digest_payload(body)}
+
+    @classmethod
+    def from_payload(cls, payload: object) -> ControlFlowFrontierGrowthState:
+        if not isinstance(payload, dict):
+            raise TypeError("control-flow frontier-growth payload must be a mapping")
+        expected = payload.get("sha256")
+        body = {key: value for key, value in payload.items() if key != "sha256"}
+        if not isinstance(expected, str) or expected != _digest_payload(body):
+            raise ValueError("control-flow frontier-growth checksum mismatch")
+        raw_frontier = body.get("frontier")
+        raw_qualified = body.get("qualified_programs")
+        if not isinstance(raw_frontier, dict) or not isinstance(raw_qualified, list):
+            raise TypeError("control-flow frontier-growth payload is incomplete")
+        qualified: list[tuple[str, float]] = []
+        for record in raw_qualified:
+            if not isinstance(record, dict):
+                raise TypeError("control-flow qualified program record is malformed")
+            qualified.append((record.get("digest"), float(record.get("quality", float("nan")))))
+        return cls(
+            frontier=ControlFlowFrontierState.from_payload(raw_frontier),
+            horizon=int(body.get("horizon", -1)),
+            qualified_programs=tuple(qualified),
+            rung=int(body.get("rung", -1)),
+            schema=body.get("schema"),
+        ).validate()
+
+    def digest(self) -> str:
+        return str(self.payload()["sha256"])
+
+
+@dataclass(frozen=True)
+class ControlFlowFrontierGrowthProposal:
+    """A frontier proposal bound to the horizon that generated it."""
+
+    proposal: ControlFlowFrontierProposal
+    horizon: int
+    rung: int
+    schema: str = CONTROL_FLOW_FRONTIER_GROWTH_PROPOSAL_SCHEMA
+
+    def validate(self) -> ControlFlowFrontierGrowthProposal:
+        if self.schema != CONTROL_FLOW_FRONTIER_GROWTH_PROPOSAL_SCHEMA:
+            raise ValueError("unsupported control-flow frontier-growth proposal schema")
+        self.proposal.validate()
+        if self.horizon < 1:
+            raise ValueError("control-flow frontier-growth proposal horizon is invalid")
+        if self.rung < 0:
+            raise ValueError("control-flow frontier-growth proposal rung is invalid")
+        return self
+
+
+@dataclass(frozen=True)
+class ControlFlowFrontierGrowthReceipt:
+    """Copy-on-write receipt for a horizon or search-root transition."""
+
+    accepted: bool
+    operation: str
+    source_horizon: int
+    destination_horizon: int
+    source_digest: str
+    destination_digest: str
+    source_rung: int
+    destination_rung: int
+    qualified_count: int
+    reason: str
+    schema: str = CONTROL_FLOW_FRONTIER_GROWTH_RECEIPT_SCHEMA
+
+    def validate(self) -> ControlFlowFrontierGrowthReceipt:
+        if self.schema != CONTROL_FLOW_FRONTIER_GROWTH_RECEIPT_SCHEMA:
+            raise ValueError("unsupported control-flow frontier-growth receipt schema")
+        if self.operation not in {"expand_horizon", "promote_root"}:
+            raise ValueError("control-flow frontier-growth operation is invalid")
+        if self.source_horizon < 1 or self.destination_horizon < 1:
+            raise ValueError("control-flow frontier-growth receipt horizons are invalid")
+        if self.source_rung < 0 or self.destination_rung < 0:
+            raise ValueError("control-flow frontier-growth receipt rungs are invalid")
+        if self.qualified_count < 1:
+            raise ValueError("control-flow frontier-growth qualified count is invalid")
+        for digest in (self.source_digest, self.destination_digest):
+            if not _digest_is_valid(digest):
+                raise ValueError("control-flow frontier-growth receipt digest is malformed")
+        if not self.reason:
+            raise ValueError("control-flow frontier-growth receipt reason is empty")
+        if self.accepted:
+            if self.destination_horizon < self.source_horizon:
+                raise ValueError("accepted frontier growth cannot shrink its horizon")
+            if self.destination_rung < self.source_rung:
+                raise ValueError("accepted frontier growth cannot rewind its rung")
+        elif (
+            self.destination_horizon != self.source_horizon
+            or self.destination_digest != self.source_digest
+            or self.destination_rung != self.source_rung
+        ):
+            raise ValueError("rejected frontier growth must preserve its source state")
+        return self
+
+
+@dataclass(frozen=True)
+class ControlFlowFrontierGrowthFeedback:
+    """Outcome feedback with the adaptive-growth state boundary attached."""
+
+    proposal: ControlFlowFrontierGrowthProposal
+    quality: float
+    accepted: bool
+    stable_bits_to_threshold: int | None
+    state: ControlFlowFrontierGrowthState
+
+
+class ControlFlowProgramFrontierGrowth:
+    """Adaptive curriculum over the generic external control-flow frontier.
+
+    Horizon expansion and root promotion are independent, verifier-gated
+    copy-on-write transactions.  Operator statistics and seen candidate
+    digests are carried forward, so the next rung learns from prior proposal
+    experience without replaying prior verifier rows.
+    """
+
+    schema = CONTROL_FLOW_FRONTIER_GROWTH_SCHEMA
+
+    def __init__(
+        self,
+        counter_count: int,
+        *,
+        initial_horizon: int,
+        maximum_horizon: int,
+        beam_width: int = 16,
+        max_depth: int = 8,
+        min_program_length: int = 1,
+        minimum_quality: float = 0.0,
+        parent_temperature: float = 0.5,
+        exploration: float = 0.5,
+        proposal_retry_limit: int = 128,
+    ) -> None:
+        if initial_horizon < 1 or maximum_horizon < initial_horizon:
+            raise ValueError("control-flow frontier growth horizons are invalid")
+        self.counter_count = int(counter_count)
+        self.initial_horizon = int(initial_horizon)
+        self.maximum_horizon = int(maximum_horizon)
+        self._frontier_kwargs = {
+            "beam_width": beam_width,
+            "max_depth": max_depth,
+            "min_program_length": min_program_length,
+            "minimum_quality": minimum_quality,
+            "parent_temperature": parent_temperature,
+            "exploration": exploration,
+            "proposal_retry_limit": proposal_retry_limit,
+        }
+        self._frontier_at(initial_horizon)
+
+    def _frontier_at(self, horizon: int) -> ControlFlowProgramFrontier:
+        if not 1 <= horizon <= self.maximum_horizon:
+            raise ValueError("control-flow frontier growth horizon is outside bounds")
+        return ControlFlowProgramFrontier(
+            self.counter_count,
+            max_program_length=horizon,
+            **self._frontier_kwargs,
+        )
+
+    def configuration(self) -> dict[str, object]:
+        return {
+            "schema": self.schema,
+            "counter_count": self.counter_count,
+            "initial_horizon": self.initial_horizon,
+            "maximum_horizon": self.maximum_horizon,
+            "frontier": self._frontier_at(self.initial_horizon).configuration(),
+            "growth": "one_horizon_step_then_retention_v1",
+            "state": "opaque_qualified_digests_and_aggregate_credit_v1",
+        }
+
+    def initial_state(
+        self,
+        root: ControlFlowProgram,
+        *,
+        root_quality: float = 0.0,
+    ) -> ControlFlowFrontierGrowthState:
+        root.validate()
+        if root.counter_count != self.counter_count:
+            raise ValueError("control-flow frontier-growth root counter width is invalid")
+        if len(root.instructions) > self.initial_horizon:
+            raise ValueError("control-flow frontier-growth root exceeds initial horizon")
+        frontier = self._frontier_at(self.initial_horizon)
+        state = ControlFlowFrontierGrowthState(
+            frontier=frontier.initial_state(root, root_quality=root_quality),
+            horizon=self.initial_horizon,
+            qualified_programs=((root.digest(), float(root_quality)),),
+        )
+        return state.validate()
+
+    def propose(
+        self,
+        state: ControlFlowFrontierGrowthState,
+        *,
+        generator: torch.Generator,
+    ) -> ControlFlowFrontierGrowthProposal:
+        state.validate()
+        proposal = self._frontier_at(state.horizon).propose(
+            state.frontier,
+            generator=generator,
+        )
+        return ControlFlowFrontierGrowthProposal(
+            proposal,
+            state.horizon,
+            state.rung,
+        ).validate()
+
+    def record_outcomes(
+        self,
+        state: ControlFlowFrontierGrowthState,
+        proposal: ControlFlowFrontierGrowthProposal,
+        outcomes: Sequence[float],
+        *,
+        threshold: float = 1.0,
+        min_observations: int = 1,
+        min_stable_observations: int = 1,
+    ) -> ControlFlowFrontierGrowthFeedback:
+        state.validate()
+        proposal.validate()
+        if proposal.horizon != state.horizon:
+            raise ValueError("control-flow frontier-growth proposal horizon is stale")
+        if proposal.rung != state.rung:
+            raise ValueError("control-flow frontier-growth proposal rung is stale")
+        feedback = self._frontier_at(state.horizon).record_outcomes(
+            state.frontier,
+            proposal.proposal,
+            outcomes,
+            threshold=threshold,
+            min_observations=min_observations,
+            min_stable_observations=min_stable_observations,
+        )
+        qualified = state.qualified_programs
+        if feedback.accepted:
+            qualified = (*qualified, (feedback.proposal.program.digest(), feedback.quality))
+        next_state = ControlFlowFrontierGrowthState(
+            frontier=feedback.state,
+            horizon=state.horizon,
+            qualified_programs=qualified,
+            rung=state.rung,
+        ).validate()
+        return ControlFlowFrontierGrowthFeedback(
+            proposal=proposal,
+            quality=feedback.quality,
+            accepted=feedback.accepted,
+            stable_bits_to_threshold=feedback.stable_bits_to_threshold,
+            state=next_state,
+        )
+
+    @staticmethod
+    def _receipt(
+        *,
+        accepted: bool,
+        operation: str,
+        source: ControlFlowFrontierGrowthState,
+        destination: ControlFlowFrontierGrowthState,
+        reason: str,
+    ) -> ControlFlowFrontierGrowthReceipt:
+        return ControlFlowFrontierGrowthReceipt(
+            accepted=accepted,
+            operation=operation,
+            source_horizon=source.horizon,
+            destination_horizon=destination.horizon,
+            source_digest=source.digest(),
+            destination_digest=destination.digest(),
+            source_rung=source.rung,
+            destination_rung=destination.rung,
+            qualified_count=len(destination.qualified_programs),
+            reason=reason,
+        ).validate()
+
+    def expand_horizon_verified(
+        self,
+        state: ControlFlowFrontierGrowthState,
+        retention_probe: Callable[[ControlFlowFrontierGrowthState], bool],
+    ) -> tuple[ControlFlowFrontierGrowthReceipt, ControlFlowFrontierGrowthState]:
+        state.validate()
+        if not callable(retention_probe):
+            raise TypeError("control-flow frontier-growth retention probe must be callable")
+        destination_horizon = state.horizon + 1
+        if destination_horizon > self.maximum_horizon:
+            return (
+                self._receipt(
+                    accepted=False,
+                    operation="expand_horizon",
+                    source=state,
+                    destination=state,
+                    reason="maximum frontier horizon reached",
+                ),
+                state,
+            )
+        candidate = ControlFlowFrontierGrowthState(
+            frontier=state.frontier,
+            horizon=destination_horizon,
+            qualified_programs=state.qualified_programs,
+            rung=state.rung,
+        ).validate()
+        if not bool(retention_probe(candidate)):
+            return (
+                self._receipt(
+                    accepted=False,
+                    operation="expand_horizon",
+                    source=state,
+                    destination=state,
+                    reason="retention_probe_rejected",
+                ),
+                state,
+            )
+        return (
+            self._receipt(
+                accepted=True,
+                operation="expand_horizon",
+                source=state,
+                destination=candidate,
+                reason="horizon expanded after retention probe",
+            ),
+            candidate,
+        )
+
+    def promote_root_verified(
+        self,
+        state: ControlFlowFrontierGrowthState,
+        candidate: ControlFlowProgram,
+        retention_probe: Callable[[ControlFlowFrontierGrowthState], bool],
+    ) -> tuple[ControlFlowFrontierGrowthReceipt, ControlFlowFrontierGrowthState]:
+        state.validate()
+        candidate.validate()
+        if candidate.counter_count != self.counter_count:
+            raise ValueError("control-flow frontier-growth candidate counter width is invalid")
+        if not callable(retention_probe):
+            raise TypeError("control-flow frontier-growth retention probe must be callable")
+        candidate_digest = candidate.digest()
+        qualified = dict(state.qualified_programs)
+        if candidate_digest not in qualified:
+            return (
+                self._receipt(
+                    accepted=False,
+                    operation="promote_root",
+                    source=state,
+                    destination=state,
+                    reason="candidate was not verifier-qualified",
+                ),
+                state,
+            )
+        current_root = next(
+            hypothesis.program
+            for hypothesis in state.frontier.hypotheses
+            if hypothesis.program.digest() == state.frontier.root_digest
+        )
+        if len(candidate.instructions) <= len(current_root.instructions):
+            return (
+                self._receipt(
+                    accepted=False,
+                    operation="promote_root",
+                    source=state,
+                    destination=state,
+                    reason="root promotion must increase program length",
+                ),
+                state,
+            )
+        if len(candidate.instructions) > state.horizon:
+            return (
+                self._receipt(
+                    accepted=False,
+                    operation="promote_root",
+                    source=state,
+                    destination=state,
+                    reason="candidate exceeds active frontier horizon",
+                ),
+                state,
+            )
+        old = state.frontier
+        root_hypothesis = ControlFlowFrontierHypothesis(
+            program=candidate,
+            parent_digest=None,
+            depth=0,
+            quality=qualified[candidate_digest],
+        ).validate()
+        rebased_frontier = ControlFlowFrontierState(
+            hypotheses=(root_hypothesis,),
+            reward_totals=old.reward_totals.clone(),
+            reward_counts=old.reward_counts.clone(),
+            accepted_counts=old.accepted_counts.clone(),
+            failed_counts=old.failed_counts.clone(),
+            seen_candidate_digests=old.seen_candidate_digests,
+            root_digest=candidate_digest,
+            evaluations=old.evaluations,
+            accepted=old.accepted,
+            best_quality=old.best_quality,
+        ).validate()
+        candidate_state = ControlFlowFrontierGrowthState(
+            frontier=rebased_frontier,
+            horizon=state.horizon,
+            qualified_programs=state.qualified_programs,
+            rung=state.rung + 1,
+        ).validate()
+        if not bool(retention_probe(candidate_state)):
+            return (
+                self._receipt(
+                    accepted=False,
+                    operation="promote_root",
+                    source=state,
+                    destination=state,
+                    reason="retention_probe_rejected",
+                ),
+                state,
+            )
+        return (
+            self._receipt(
+                accepted=True,
+                operation="promote_root",
+                source=state,
+                destination=candidate_state,
+                reason="qualified longer program promoted as next search root",
+            ),
+            candidate_state,
+        )
+
+
 __all__ = [
+    "CONTROL_FLOW_FRONTIER_GROWTH_PROPOSAL_SCHEMA",
+    "CONTROL_FLOW_FRONTIER_GROWTH_RECEIPT_SCHEMA",
+    "CONTROL_FLOW_FRONTIER_GROWTH_SCHEMA",
     "CONTROL_FLOW_FRONTIER_HYPOTHESIS_SCHEMA",
     "CONTROL_FLOW_FRONTIER_MUTATION_OPERATORS",
     "CONTROL_FLOW_FRONTIER_PROPOSAL_SCHEMA",
     "CONTROL_FLOW_FRONTIER_SCHEMA",
     "ControlFlowFrontierFeedback",
+    "ControlFlowFrontierGrowthFeedback",
+    "ControlFlowFrontierGrowthProposal",
+    "ControlFlowFrontierGrowthReceipt",
+    "ControlFlowFrontierGrowthState",
     "ControlFlowFrontierHypothesis",
     "ControlFlowFrontierProposal",
     "ControlFlowFrontierState",
     "ControlFlowProgramFrontier",
+    "ControlFlowProgramFrontierGrowth",
 ]

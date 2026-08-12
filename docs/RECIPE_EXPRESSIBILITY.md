@@ -782,3 +782,33 @@ updates. Evidence is archived at
 This promotes bounded open-world route discovery and acquisition coverage. It
 does not establish unbounded memory growth, arbitrary program induction, or
 general continual learning.
+
+## Replay-free adaptive-horizon control-flow growth (2026-08-12)
+
+The external control-flow frontier now has an independent adaptive-growth
+boundary. A proposal is tagged with both the active horizon and curriculum
+rung, so horizon expansion or root promotion invalidates stale proposals. The
+growth state carries only aggregate operator credit, opaque candidate digests,
+and qualified scalar quality; it never stores verifier rows. Horizon expansion
+and longer-root promotion are copy-on-write retention transactions.
+
+The four-seed audit began at a length-two root and grew through lengths three,
+four, and five. Both forward and reversed verifier-state orders reached every
+rung; each new program scored `1.0000` on held-out initial states, and every
+earlier external file stayed at `1.0000` after subsequent growth. Reload,
+corruption, missing-evidence, stale-rung, and shuffled-feedback controls
+passed. The matched fresh source-to-length control found lengths three and
+four but exhausted 600 candidate evaluations at length five in all four
+seeds. This is a curriculum-efficiency signal, not a formal warm/fresh
+transfer promotion because the fresh final gate did not cross.
+
+The positive arms charged `3,780` verifier bits, shuffled controls `4,800`, and
+fresh controls `17,475`; the complete audit charged `26,055` bits across
+`5,211` logical lifetimes with zero replay and zero optimizer/controller
+updates. Evidence is archived at
+`session_records/recipe_control_flow_adaptive_growth_promoted_2026-08-12/`.
+
+This promotes bounded replay-free adaptive-horizon structural growth with
+retention. It does not establish efficient arbitrary program synthesis,
+unrestricted execution, unrestricted memory growth, or general continual
+learning.

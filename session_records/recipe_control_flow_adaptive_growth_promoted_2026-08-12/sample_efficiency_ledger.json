@@ -1,0 +1,31 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment_id": "recipe-control-flow-adaptive-growth-promoted-2026-08-12",
+  "status": "promoted_replay_free_adaptive_control_flow_growth",
+  "seeds": [17, 18, 19, 20],
+  "rung": "four-seed forward/reversed bounded systems promotion",
+  "unique_verifier_bits": 26055,
+  "unique_logical_lifetimes": 5211,
+  "optimizer_updates": 0,
+  "replayed_examples": 0,
+  "wall_time_seconds": "see runnable audit output",
+  "latency": "see runnable audit output",
+  "stable_bits_to_threshold": {
+    "positive_final_rung_by_seed": {"17": 165, "18": 265, "19": 15, "20": 220},
+    "fresh_final_rung_per_seed": 3000
+  },
+  "retention_on_mastered_primitives": 1.0,
+  "transfer_ratio_against_fresh_learner": null,
+  "controls": {
+    "fresh": true,
+    "passive": "not applicable to external-search audit",
+    "action_shuffled": "not applicable",
+    "reward_shuffled": true,
+    "missing_evidence": true,
+    "memory_corruption": true,
+    "reversal": true,
+    "state_reload": true,
+    "controller_frozen": "external-only boundary; zero controller updates"
+  },
+  "claim_boundary": "Bounded replay-free adaptive-horizon external structural growth with retention; not efficient arbitrary program synthesis, unrestricted execution, unrestricted memory growth, or general continual learning."
+}
