@@ -1952,3 +1952,22 @@ post-training active control fell from `58/96` without the lease to `57/96`
 with it, so the lease is retained as an opt-in evidence-flow policy, not as a
 global default or a claim of general continual learning. Evidence is archived
 in `session_records/provisional_evidence_lease_screen_2026-08-12/`.
+
+## Explicit missing-evidence delivery and append-time retention (2026-08-12)
+
+The canonical Brain Workshop rollout now preserves the distinction between an
+observed scalar outcome and an unavailable outcome. Its optional audit mask has
+shape `[batch, verifier.steps]`; masked outcomes are delivered to external
+readers with `present=False`, and outcome-driven routing and external outcome
+memory do not update from them. The rollout exposes both verifier-truth traces
+for evaluation and delivered-feedback traces for learner accounting.
+
+The open external-compute harness also re-evaluates every admitted file after
+each later append using fresh verifier lifetimes. Admission requires both
+stable direct mastery and stable protected-prefix behavior; failure rolls back
+the candidate. The four-event eight-file screen admitted seven files with all
+append-time prefix gates passing, then rejected n-back-4 at a minimum fresh
+accuracy of `0.7375`. This isolates the next bottleneck as scalable external
+history/capacity, rather than an unmeasured missing-evidence or retention
+failure. The result is archived in
+`session_records/brainworkshop_open_growth_prefix_retention_screen_2026-08-12/`.

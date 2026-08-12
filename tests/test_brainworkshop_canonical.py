@@ -2234,6 +2234,50 @@ def test_rollout_can_record_only_present_verifier_outcomes_externally() -> None:
     )
 
 
+def test_rollout_preserves_missing_feedback_as_absence_in_external_memory() -> None:
+    class RecordingCell(ExternalWorkingMemoryCell):
+        def __init__(self) -> None:
+            super().__init__(
+                event_width=8,
+                action_width=2,
+                memory_capacity=3,
+                context_width=8,
+                hidden=16,
+            )
+            self.present_log: list[torch.Tensor | None] = []
+
+        def step(self, event, action, outcome, state, present=None):
+            self.present_log.append(
+                None if present is None else present.detach().clone()
+            )
+            return super().step(event, action, outcome, state, present)
+
+    cell = RecordingCell()
+    agent = CanonicalBrainWorkshopAgent(
+        n_back=2,
+        event_width=8,
+        intention_width=4,
+        feedback_width=4,
+        reader_kind="relation",
+        working_memory_cell=cell,
+        seed=17,
+    )
+    observed = torch.ones(2, 5, dtype=torch.bool)
+    observed[:, 2] = False
+    rollout = agent.rollout(
+        NBackVerifier(batch_size=2, n_back=2, steps=5, seed=29),
+        sample=False,
+        feedback_observation_mask=observed,
+    )
+
+    assert int(rollout.eligible.sum()) == 6
+    assert int(rollout.feedback_present.sum()) == 4
+    assert len(cell.present_log) == 5
+    assert all(value is not None for value in cell.present_log)
+    assert not bool(cell.present_log[3].any())
+    assert bool(cell.present_log[4].all())
+
+
 def test_cross_family_growth_smoke_keeps_route_and_core_boundaries(tmp_path) -> None:
     report = run_cross_family_rule_growth(
         argparse.Namespace(

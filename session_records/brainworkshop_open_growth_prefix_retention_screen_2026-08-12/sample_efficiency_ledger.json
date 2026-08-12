@@ -1,0 +1,32 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "brainworkshop_open_growth_prefix_retention_screen_2026-08-12",
+  "claim_boundary": "Decisive negative screen for eight-file append-only external-compute growth with fresh protected-prefix retention after every append; bounded seven-file prefix passed, n-back-4 did not.",
+  "runs": [
+    {
+      "seed": 17,
+      "event_window_size": 4,
+      "target_file_count": 8,
+      "accepted_file_count": 7,
+      "candidate_attempts": 8,
+      "unique_verifier_bits": 1197568,
+      "protected_prefix_verifier_bits": 33792,
+      "unique_logical_lifetimes": 101632,
+      "optimizer_updates": 1536,
+      "route_memory_updates": 1628,
+      "minimum_direct_accuracy": 0.8636363745,
+      "minimum_protected_prefix_accuracy": 0.8551136255,
+      "rejected_nback4_accuracies": [0.7625, 0.7875, 0.75625, 0.7375],
+      "shuffled_control_maximum": 0.2760416667,
+      "replayed_examples": 0,
+      "stable_bits_to_threshold": null
+    }
+  ],
+  "threshold": 0.8,
+  "notes": [
+    "Every append-time protected-prefix probe passed for the seven admitted files.",
+    "The n-back-4 failure is a bounded four-event representation limit, not evidence of prefix forgetting.",
+    "The strengthened harness gates admission on both direct mastery and fresh prefix retention.",
+    "This remains bounded external-memory scaling and does not claim general continual learning."
+  ]
+}

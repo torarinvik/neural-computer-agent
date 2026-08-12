@@ -1,0 +1,47 @@
+{
+  "schema": "neural-computer.brainworkshop-external-compute-open-growth.v1",
+  "experiment": "brainworkshop_open_growth_prefix_retention_screen_2026-08-12",
+  "seed": 17,
+  "event_window_size": 4,
+  "target_file_count": 8,
+  "accepted_file_count": 7,
+  "candidate_attempts": 8,
+  "accepted_schedule": [
+    "symbol_parity",
+    "triplet_parity",
+    "parity2",
+    "switch_binary",
+    "nback2",
+    "symbol_parity_odd",
+    "nback3"
+  ],
+  "rejected_candidate": {
+    "family": "nback4",
+    "fresh_accuracies": [0.7625, 0.7875, 0.75625, 0.7375]
+  },
+  "minimum_direct_accuracy": 0.8636363745,
+  "minimum_protected_prefix_accuracy": 0.8551136255,
+  "shuffled_control_maximum": 0.2760416667,
+  "gates": {
+    "target_file_count_admitted": false,
+    "every_admitted_file_mastered": true,
+    "protected_prefix_retained_after_each_append": true,
+    "every_route_mastered": true,
+    "same_context_reversal": true,
+    "old_file_retained_after_reversal": true,
+    "route_reload_exact": true,
+    "frozen_controller": true,
+    "frozen_event_encoder": true,
+    "zero_replayed_examples": true
+  },
+  "accounting": {
+    "unique_verifier_bits": 1197568,
+    "protected_prefix_verifier_bits": 33792,
+    "unique_logical_lifetimes": 101632,
+    "optimizer_updates": 1536,
+    "route_memory_updates": 1628,
+    "replayed_examples": 0,
+    "stable_bits_to_threshold": null
+  },
+  "claim_boundary": "Append-time stable-prefix gating and bounded seven-file external-compute growth; not general continual learning."
+}

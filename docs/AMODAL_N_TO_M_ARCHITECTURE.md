@@ -11790,3 +11790,24 @@ continual learning. All runs retained source bytes, left the controller
 unchanged, consumed zero replay, and used the same transition-row budget.
 Evidence is archived in
 `session_records/interleaved_active_discovery_screen_2026-08-12/`.
+
+## Append-time prefix retention and missing-evidence transport (2026-08-12)
+
+The canonical Brain Workshop runner now carries verifier presence explicitly
+through the entire learner-visible boundary. An unavailable scalar outcome is
+passed to every episodic reader as `present=False`; it is not encoded as an
+observed zero. Outcome-driven route advancement, intention-memory writes, and
+context-route evidence updates are likewise gated by the delivered presence
+mask, while verifier truth remains available only to the audit trace.
+
+The open external-compute growth harness now treats protected-prefix retention
+as an append transaction gate. After every candidate is trained, every earlier
+admitted file is evaluated on fresh verifier lifetimes. The candidate is
+rolled back if direct mastery or any protected prefix fails. In the four-event
+screen, seven files passed this gate and the eighth (n-back-4) was rejected at
+`0.7625, 0.7875, 0.7563, 0.7375`; the minimum protected-prefix accuracy was
+`0.8551`. The rejection is a bounded event-window capacity limit, not evidence
+of forgetting. This promotes a stronger retention contract, not unrestricted
+history, arbitrary program induction, or general continual learning. Evidence
+is archived in
+`session_records/brainworkshop_open_growth_prefix_retention_screen_2026-08-12/`.

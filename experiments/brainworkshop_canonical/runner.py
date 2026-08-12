@@ -46,6 +46,8 @@ class CanonicalRollout:
     actions: torch.Tensor
     rewards: torch.Tensor
     eligible: torch.Tensor
+    feedback_rewards: torch.Tensor
+    feedback_present: torch.Tensor
     propensities: torch.Tensor
     context: torch.Tensor
     episode_scores: torch.Tensor
@@ -60,6 +62,17 @@ class CanonicalRollout:
     @property
     def replayed_examples(self) -> int:
         return 0
+
+    @property
+    def observed_feedback_accuracy(self) -> torch.Tensor:
+        """Return accuracy over outcomes actually delivered to the learner."""
+
+        count = self.feedback_present.sum(dim=1)
+        correct = (
+            self.feedback_rewards
+            * self.feedback_present.to(self.feedback_rewards.dtype)
+        ).sum(dim=1)
+        return correct / count.clamp_min(1)
 
 
 class RelationCapabilityExtension(nn.Module):
@@ -655,6 +668,7 @@ class CanonicalBrainWorkshopAgent(nn.Module):
         record_context_route: bool = False,
         context_route_failure_patience: int = 1,
         record_intention_memory: bool = False,
+        feedback_observation_mask: torch.Tensor | None = None,
     ) -> CanonicalRollout:
         """Run one online episode without replay or optimizer updates.
 
@@ -669,6 +683,13 @@ class CanonicalBrainWorkshopAgent(nn.Module):
         ``context_route_failure_patience`` is an external route-policy knob:
         fallback requires that many consecutive eligible failures for the
         current context candidate. It does not change controller computation.
+
+        ``feedback_observation_mask`` is an optional audit-only delivery mask
+        with shape ``[batch, verifier.steps]``.  It models missing verifier
+        evidence without changing the verifier's private score.  Undelivered
+        outcomes are represented to every external reader as
+        ``present=False`` and cannot advance outcome-driven routing or update
+        outcome memories.
         """
 
         if not 0.0 <= exploration_probability < 1.0:
@@ -681,6 +702,20 @@ class CanonicalBrainWorkshopAgent(nn.Module):
             raise TypeError("intention-memory recording flag must be boolean")
         if sum((learned_route, persistent_route, context_route)) > 1:
             raise ValueError("route policies are mutually exclusive")
+        if feedback_observation_mask is not None:
+            if feedback_observation_mask.ndim != 2 or feedback_observation_mask.shape != (
+                verifier.batch_size,
+                verifier.steps,
+            ):
+                raise ValueError(
+                    "feedback_observation_mask must have shape "
+                    "[batch, verifier.steps]"
+                )
+            if feedback_observation_mask.dtype != torch.bool:
+                raise TypeError("feedback_observation_mask must be boolean")
+            feedback_observation_mask = feedback_observation_mask.to(
+                device=verifier.device
+            )
 
         verifier.reset()
         state = self.initial_state(verifier.batch_size, device=verifier.device)
@@ -729,6 +764,8 @@ class CanonicalBrainWorkshopAgent(nn.Module):
         action_trace: list[torch.Tensor] = []
         reward_trace: list[torch.Tensor] = []
         eligible_trace: list[torch.Tensor] = []
+        feedback_reward_trace: list[torch.Tensor] = []
+        feedback_present_trace: list[torch.Tensor] = []
         propensity_trace: list[torch.Tensor] = []
         selected_slot_trace: list[torch.Tensor] = []
 
@@ -838,6 +875,7 @@ class CanonicalBrainWorkshopAgent(nn.Module):
                     action=previous_actions,
                     outcome=feedback.reward,
                     state=reader_states[index],
+                    present=feedback.has_feedback > 0.0,
                 )
                 contexts.append(
                     context_output.context
@@ -953,32 +991,44 @@ class CanonicalBrainWorkshopAgent(nn.Module):
                 ),
             ).squeeze(1)
             scored = verifier.score(decision.key_index)
+            score_index = verifier.position - 1
+            if feedback_observation_mask is None:
+                observed_present = scored.eligible
+            else:
+                observed_present = scored.eligible & feedback_observation_mask[:, score_index]
+            observed_reward = torch.where(
+                observed_present,
+                scored.reward,
+                torch.zeros_like(scored.reward),
+            )
             if record_intention_memory:
                 self.observe_intention(
                     output.intention.payload.detach(),
-                    utility=scored.reward.detach(),
+                    utility=observed_reward.detach(),
                     propensity=propensity.detach(),
-                    timestamp=verifier.position,
-                    outcome_mask=scored.eligible.detach(),
+                    timestamp=score_index,
+                    outcome_mask=observed_present.detach(),
                 )
             event_trace.append(collection.payload[:, 0])
             action_trace.append(decision.key_index)
             reward_trace.append(scored.reward)
             eligible_trace.append(scored.eligible)
+            feedback_reward_trace.append(observed_reward)
+            feedback_present_trace.append(observed_present)
             propensity_trace.append(propensity)
             selected_slot_trace.append(selected_slot)
             feedback = ControllerFeedback(
                 action=self.keypress_encoder(decision.key_index),
-                reward=scored.reward,
+                reward=observed_reward,
                 propensity=propensity,
-                has_feedback=scored.eligible.to(scored.reward.dtype),
+                has_feedback=observed_present.to(scored.reward.dtype),
             )
             previous_actions = torch.nn.functional.one_hot(
                 decision.key_index,
                 num_classes=NBackVerifier.action_count,
             ).to(collection.payload.dtype)
             if forced_slot is None and len(readers) > 1:
-                failed = scored.eligible & (scored.reward < 0.5)
+                failed = observed_present & (observed_reward < 0.5)
                 if context_route and context_route_order is not None:
                     can_advance = route_cursor < len(readers) - 1
                     context_failure_streak = torch.where(
@@ -1022,6 +1072,8 @@ class CanonicalBrainWorkshopAgent(nn.Module):
         actions = torch.stack(action_trace, dim=1)
         rewards = torch.stack(reward_trace, dim=1)
         eligible = torch.stack(eligible_trace, dim=1)
+        feedback_rewards = torch.stack(feedback_reward_trace, dim=1)
+        feedback_present = torch.stack(feedback_present_trace, dim=1)
         propensities = torch.stack(propensity_trace, dim=1)
         selected_slots = torch.stack(selected_slot_trace, dim=1)
         episode_scores = (
@@ -1036,8 +1088,15 @@ class CanonicalBrainWorkshopAgent(nn.Module):
                         self.capability_address_for(slot), score
                     )
         if persistent_route:
+            observed_count = feedback_present.sum(dim=1)
+            observed_scores = (
+                (feedback_rewards * feedback_present.to(feedback_rewards.dtype)).sum(dim=1)
+                / observed_count.clamp_min(1)
+            )
             for slot in range(len(readers)):
-                for score in episode_scores[final_slots == slot]:
+                for score in observed_scores[
+                    (final_slots == slot) & (observed_count > 0)
+                ]:
                     self.route_evidence.observe(slot, score)
         if context_route and record_context_route and route_context is not None:
             context_rows: list[torch.Tensor] = []
@@ -1045,11 +1104,11 @@ class CanonicalBrainWorkshopAgent(nn.Module):
             outcome_rows: list[torch.Tensor] = []
             for row in range(rewards.shape[0]):
                 for slot in range(len(readers)):
-                    attempted = (selected_slots[row] == slot) & eligible[row]
+                    attempted = (selected_slots[row] == slot) & feedback_present[row]
                     if bool(attempted.any()):
                         context_rows.append(route_context[row])
                         slot_rows.append(slot)
-                        outcome_rows.append(rewards[row][attempted].mean())
+                        outcome_rows.append(feedback_rewards[row][attempted].mean())
             if context_rows:
                 self.context_route_evidence.observe_batch(
                     torch.stack(context_rows),
@@ -1065,6 +1124,8 @@ class CanonicalBrainWorkshopAgent(nn.Module):
             actions=actions,
             rewards=rewards,
             eligible=eligible,
+            feedback_rewards=feedback_rewards,
+            feedback_present=feedback_present,
             propensities=propensities,
             context=context,
             episode_scores=episode_scores,

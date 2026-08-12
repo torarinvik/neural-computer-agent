@@ -162,6 +162,45 @@ def _stable(rows: list[dict[str, float | int]]) -> bool:
     ) >= ROUTE_MASTERY_THRESHOLD
 
 
+def _evaluate_protected_prefix(
+    system: ComputeGrowthSystem,
+    accepted_schedule: list[tuple[str, int]],
+    *,
+    lifetimes: int,
+    batch_size: int,
+    seed: int,
+) -> list[dict[str, object]]:
+    """Re-test every admitted file after a later append transaction.
+
+    This is a fresh verifier probe, not replay. The result is attached to the
+    append transaction so a new file cannot be promoted if it damages an
+    earlier capability's stable prefix.
+    """
+
+    rows: list[dict[str, object]] = []
+    for slot, (family, cue_symbol) in enumerate(accepted_schedule):
+        fresh = _evaluate(
+            system,
+            family=family,
+            slot=slot,
+            cue_symbol=cue_symbol,
+            lifetimes=lifetimes,
+            batch_size=batch_size,
+            steps=14,
+            seed=seed + slot * 1_000,
+        )
+        rows.append(
+            {
+                "slot": slot,
+                "family": family,
+                "cue": cue_symbol,
+                "fresh_probe": fresh,
+                "stable": _stable(fresh),
+            }
+        )
+    return rows
+
+
 def _transition_probe(
     system: ComputeGrowthSystem,
     evidence: PersistentOpaqueContextRouteEvidence,
@@ -228,6 +267,12 @@ def _status(
 def run(args: argparse.Namespace) -> dict[str, object]:
     entropy_weight = float(getattr(args, "entropy_weight", 0.01))
     credit_mode = str(getattr(args, "credit_mode", "attempted_bce"))
+    prefix_retention_arg = getattr(args, "prefix_retention_lifetimes", None)
+    prefix_retention_lifetimes = (
+        args.retention_lifetimes
+        if prefix_retention_arg is None
+        else int(prefix_retention_arg)
+    )
     event_window_size = int(
         getattr(args, "event_window_size", EVENT_WINDOW_SIZE)
     )
@@ -243,6 +288,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         args.transition_batches,
         args.batch_size,
         args.retention_lifetimes,
+        prefix_retention_lifetimes,
     ) < 1:
         raise ValueError("open-growth budgets must be positive")
     if args.batch_size != 32:
@@ -272,6 +318,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     allocation: list[dict[str, object]] = []
     histories: list[list[dict[str, float | int]]] = []
     direct: list[list[dict[str, float | int]]] = []
+    prefix_retention_stages: list[dict[str, object]] = []
     file_digests: list[str] = []
     accepted_schedule: list[tuple[str, int]] = []
     attempted_training_bits = 0
@@ -305,15 +352,28 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             14 - RULES[family].warmup
         )
         attempted_optimizer_updates += args.file_updates
-        accepted = _stable(fresh)
+        direct_mastery = _stable(fresh)
+        protected_prefix = _evaluate_protected_prefix(
+            system,
+            accepted_schedule,
+            lifetimes=prefix_retention_lifetimes,
+            batch_size=args.batch_size,
+            seed=args.seed + 50_000 + attempt_index * 10_000,
+        )
+        prefix_mastery = all(
+            bool(row["stable"]) for row in protected_prefix
+        )
+        accepted = direct_mastery and prefix_mastery
         receipt: dict[str, object] = {
             "attempt_index": attempt_index,
             "family": family,
             "cue": cue_symbol,
             "candidate_slot": slot,
             "accepted": accepted,
-            "stable_direct_mastery": accepted,
+            "stable_direct_mastery": direct_mastery,
+            "stable_protected_prefix": prefix_mastery,
             "fresh_probe": fresh,
+            "protected_prefix": protected_prefix,
         }
         if not accepted:
             if accepted_schedule:
@@ -372,6 +432,14 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         accepted_schedule.append((family, cue_symbol))
         histories.append(history)
         direct.append(fresh)
+        prefix_retention_stages.append(
+            {
+                "after_attempt": attempt_index,
+                "accepted_file_count": len(accepted_schedule),
+                "protected_prefix": protected_prefix,
+                "stable": prefix_mastery,
+            }
+        )
         file_digests.append(_digest(*_slot_modules(system, slot)))
         allocation.append(receipt)
         if len(accepted_schedule) >= args.target_file_count:
@@ -502,6 +570,9 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     gates = {
         "target_file_count_admitted": accepted_count >= args.target_file_count,
         "every_admitted_file_mastered": all(_stable(rows) for rows in direct),
+        "protected_prefix_retained_after_each_append": all(
+            bool(stage["stable"]) for stage in prefix_retention_stages
+        ),
         "every_route_mastered": all(
             float(result["accuracy"]) >= ROUTE_MASTERY_THRESHOLD
             for result in routed
@@ -582,6 +653,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "allocation": allocation,
         "histories_tail": [history[-5:] for history in histories],
         "direct": direct,
+        "protected_prefix_retention": prefix_retention_stages,
         "routed": routed,
         "route_history_tails": [history[-5:] for history in route_histories],
         "reward_shuffled_nback2_control": {
@@ -622,12 +694,24 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             + sum(int(result["unique_verifier_bits"]) for result in routed)
             + sum(int(row["unique_verifier_bits"]) for row in transition)
             + sum(int(row["unique_verifier_bits"]) for row in old_forced),
+            "protected_prefix_verifier_bits": args.batch_size
+            * prefix_retention_lifetimes
+            * sum(
+                14 - RULES[str(row["family"])].warmup
+                for stage in prefix_retention_stages
+                for row in stage["protected_prefix"]
+            ),
             "unique_logical_lifetimes": args.batch_size
             * (
                 len(allocation) * args.file_updates
                 + (accepted_count - 1) * args.route_updates
                 + args.route_calibration_lifetimes
                 + args.transition_batches
+                + prefix_retention_lifetimes
+                * sum(
+                    len(stage["protected_prefix"])
+                    for stage in prefix_retention_stages
+                )
             ),
             "optimizer_updates": attempted_optimizer_updates,
             "control_optimizer_updates": args.file_updates,
@@ -664,6 +748,7 @@ def main() -> None:
     parser.add_argument("--transition-batches", type=int, default=12)
     parser.add_argument("--batch-size", type=int, default=32)
     parser.add_argument("--retention-lifetimes", type=int, default=4)
+    parser.add_argument("--prefix-retention-lifetimes", type=int, default=None)
     parser.add_argument("--learning-rate", type=float, default=3e-3)
     parser.add_argument("--event-window-size", type=int, default=EVENT_WINDOW_SIZE)
     parser.add_argument("--entropy-weight", type=float, default=0.01)
