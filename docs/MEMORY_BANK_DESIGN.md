@@ -9988,3 +9988,36 @@ change can reach at all. F163's filter, F175's cap, F186's transfer
 instrument, F187's ceiling and now this were all measured in regimes
 where the varied quantity could not move the outcome for most cases.
 The check is cheap and I keep not running it first.
+
+## F194 — F192 extends to all six games once the row bug is fixed
+
+Dropping terminal rows rather than slots (the fix above) makes `avoid`
+measurable. Three seeds, control passing on all.
+
+| game | held-out | floor | margin | rows kept |
+| --- | ---: | ---: | ---: | --- |
+| collect1 | 0.9936 | 0.7752 | +0.2184 | 256/256 |
+| collect2 | 0.9596 | 0.7396 | +0.2201 | 256/256 |
+| intercept1 | 0.9932 | 0.5317 | +0.4615 | 256/256 |
+| intercept2 | 0.9816 | 0.5199 | +0.4618 | 256/256 |
+| **avoid1** | **0.8750** | 0.5308 | **+0.3442** | 253/256 |
+| **avoid2** | **0.8314** | 0.5053 | **+0.3261** | 246/256 |
+
+**Above floor in 18 of 18 game-seeds.** Grid margin +0.3381, +0.3366,
++0.3413 across seeds — still tight, and now over the whole variant set
+rather than the two-thirds that happened not to trip the bug.
+
+`avoid` is genuinely the hardest, 0.83-0.88 against 0.96-0.99
+elsewhere, and it is the one whose episodes terminate. Predicting the
+step after a hazard lands is exactly the case a one-step transition
+model has least information about. Recorded as a real difficulty rather
+than smoothed into the mean.
+
+**The correction that matters more than the numbers.** F192 recorded
+"avoid produced no usable slots" as a limitation of the ENCODING. It
+was a bug in my scoring, and 2% of rows caused it. I had written the
+limitation into a finding and moved on. What surfaced it was following
+up a stated limitation instead of accepting it — and the general lesson
+is that a component which silently DISAPPEARS from results is worse
+than one that fails loudly, which is why the probe now reports
+`rows_kept`, `rows_total` and `usable_slots` for every family.

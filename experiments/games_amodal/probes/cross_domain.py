@@ -284,8 +284,14 @@ def readable_rows(before, after):
     return (before[:, 0] < VALUES) & (after[:, 0] < VALUES)
 
 
-def solve_and_score(before, action, after, n_actions, held):
-    """Search a recipe per action, then score it on FRESH transitions."""
+def solve_and_score(before, action, after, n_actions, held, library=None):
+    """Search a recipe per action, then score it on FRESH transitions.
+
+    `library` is a list of whole programs to TRY FIRST, before the
+    enumeration. That is the cross-domain transfer question: a program
+    found while solving a rule family is just integers over slots, so
+    nothing stops it being proposed for a grid game. Whether it HELPS
+    is the measurement."""
     alive = readable_rows(before, after)
     if int(alive.sum()) < 8:
         return None
@@ -304,6 +310,15 @@ def solve_and_score(before, action, after, n_actions, held):
         a, b = src[keep], dst[keep]
         writes = set((a != b).any(dim=0).nonzero().flatten().tolist())
         best, best_score = None, -1.0
+        for cand in (library or []):
+            tried += 1
+            with torch.no_grad():
+                got = interp(cand, a).argmax(-1)
+            sc = float((got[:, used] == b[:, used]).float().mean())
+            if sc > best_score:
+                best, best_score = cand, sc
+            if best_score >= args.fit_target:
+                break
         for depth in range(1, args.enum_depth + 1):
             if best_score >= args.fit_target:
                 break
@@ -332,7 +347,8 @@ def solve_and_score(before, action, after, n_actions, held):
         hits += int((got[:, used] == hdst[keep][:, used]).sum())
         ident += int((hsrc[keep][:, used] == hdst[keep][:, used]).sum())
         total += int(keep.sum()) * int(used.sum())
-    return {"held_out": round(hits / max(total, 1), 4),
+    return {"recipe": [c for c in recipe.values() if c is not None],
+            "held_out": round(hits / max(total, 1), 4),
             "identity": round(ident / max(total, 1), 4),
             "candidates": tried, "actions": len(recipe),
             "rows_kept": int(alive.sum()), "rows_total": int(alive.numel()),
@@ -340,6 +356,7 @@ def solve_and_score(before, action, after, n_actions, held):
 
 
 results = {"rule_families": {}, "grid_games": {}}
+rule_programs: list = []
 
 gen = torch.Generator().manual_seed(args.seed * 7919)
 rules = [("line", Family("line")), ("dial", Family("dial")),
@@ -353,13 +370,31 @@ for name, family in rules[:args.rule_families]:
     out = solve_and_score(obs[0], obs[1], obs[2], obs[3], held)
     if out:
         results["rule_families"][name] = out
+        rule_programs.extend(out.pop("recipe", []))
 
+# CROSS-DOMAIN TRANSFER. Three arms per grid game, differing only in
+# what the search may try before it enumerates:
+#   cold      nothing — the F192 configuration
+#   primed    the programs that solved RULE FAMILIES, verbatim
+#   stranger  the same COUNT of random programs, the F161 control that
+#             separates "the library holds full-length elements" from
+#             "the library holds useful ones"
+stranger_gen = torch.Generator().manual_seed(args.seed * 15485863)
+strangers = [random_program(stranger_gen, args.program_len)
+             for _ in rule_programs]
+arms = {"cold": None, "primed": rule_programs, "stranger": strangers}
 for config in family_variants()[:args.games]:
     obs = game_transitions(config, args.observations, args.seed * 31)
     held = game_transitions(config, args.eval_rows, args.seed * 977)[:3]
-    out = solve_and_score(obs[0], obs[1], obs[2], obs[3], held)
-    if out:
-        results["grid_games"][config.name] = out
+    for tag, lib in arms.items():
+        out = solve_and_score(obs[0], obs[1], obs[2], obs[3], held,
+                              library=lib)
+        if out:
+            out.pop("recipe", None)
+            results.setdefault(f"grid_{tag}", {})[config.name] = out
+    if f"grid_cold" in results and config.name in results["grid_cold"]:
+        results["grid_games"][config.name] = results["grid_cold"][config.name]
+report["rule_programs_stored"] = len(rule_programs)
 
 report["results"] = results
 for domain, block in results.items():
