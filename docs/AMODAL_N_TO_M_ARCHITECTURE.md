@@ -11891,3 +11891,26 @@ mixed bounded temporal depths. It is not yet a learned query-depth policy,
 learned compression mechanism, unrestricted memory growth, arbitrary program
 induction, or general continual learning. Evidence is archived at
 `session_records/brainworkshop_external_history_multiscale_route_promoted_2026-08-12/`.
+
+## Outcome-only external-history depth selection (2026-08-12)
+
+The external memory boundary now includes an isolated, checksummed depth
+policy. For each opaque file it probes candidate active query counts in
+ascending order and promotes a candidate only when its attempted scalar
+outcomes satisfy a stable-prefix mastery gate. Unknown or inconclusive files
+fail closed with no preferred depth. This policy receives no task name, rule
+ID, correct action, or unattempted-action label, and it has no trainable path
+into the controller.
+
+Across seeds `17` and `18`, it selected the same minimal stable query profile
+`[1, 3, 2, 2, 5]` for the five-file mixed-depth bank. The selected depth
+retained every file at `1.0000` on four fresh lifetimes. Policy reload,
+controller/frontend immutability, file immutability, shuffled-outcome
+fail-closed, and zero-replay gates all passed; calibration used zero optimizer
+updates.
+
+This promotes outcome-only active-depth selection as a memory-side contract.
+It is not yet learned neural depth inference, learned compression,
+unrestricted memory growth, arbitrary program induction, or general
+continual learning. Evidence is archived at
+`session_records/brainworkshop_external_history_depth_selection_promoted_2026-08-12/`.

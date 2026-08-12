@@ -392,6 +392,196 @@ class PersistentOpaqueRouteEvidence:
         return ledger
 
 
+class PersistentOpaqueDepthEvidence:
+    """Choose an external history depth from outcome-only evidence.
+
+    Each append-only file owns an independent route-evidence ledger whose
+    opaque slots are candidate query depths.  The policy exposes no preferred
+    depth until one candidate passes the stable-prefix mastery gate.  Before
+    that point, ``next_probe_query_count`` returns each untried candidate in
+    ascending order and then fails closed with ``None``.  The policy is
+    memory-side mutable state and has no trainable path into the controller.
+    """
+
+    schema = "neural-computer.persistent-opaque-depth-evidence.v1"
+
+    def __init__(
+        self,
+        query_counts: Iterable[int],
+        *,
+        prior_strength: float = 1.0,
+        mastery_threshold: float = 0.8,
+        min_mastery_observations: int = 8,
+        reversal_threshold: float = 0.5,
+        reversal_patience: int = 4,
+    ) -> None:
+        counts = tuple(int(query_count) for query_count in query_counts)
+        if not counts or any(query_count < 1 for query_count in counts):
+            raise ValueError("depth-evidence query counts must be positive")
+        if counts != tuple(sorted(set(counts))):
+            raise ValueError("depth-evidence query counts must be sorted and unique")
+        self.query_counts = counts
+        self.prior_strength = float(prior_strength)
+        self.mastery_threshold = float(mastery_threshold)
+        self.min_mastery_observations = int(min_mastery_observations)
+        self.reversal_threshold = float(reversal_threshold)
+        self.reversal_patience = int(reversal_patience)
+        self._ledgers: list[PersistentOpaqueRouteEvidence] = []
+        self._version = 0
+
+        # Reuse the route ledger's fail-closed parameter validation.
+        PersistentOpaqueRouteEvidence(
+            prior_strength=self.prior_strength,
+            mastery_threshold=self.mastery_threshold,
+            min_mastery_observations=self.min_mastery_observations,
+            reversal_threshold=self.reversal_threshold,
+            reversal_patience=self.reversal_patience,
+        )
+
+    @property
+    def file_count(self) -> int:
+        return len(self._ledgers)
+
+    def _validate_file(self, file_slot: int) -> None:
+        if not isinstance(file_slot, int) or not 0 <= file_slot < self.file_count:
+            raise IndexError("depth-evidence file slot is outside the bank")
+
+    def _validate_query_count(self, query_count: int) -> int:
+        if query_count not in self.query_counts:
+            raise ValueError("depth-evidence query count is outside the candidate set")
+        return self.query_counts.index(query_count)
+
+    def _ledger(self, file_slot: int) -> PersistentOpaqueRouteEvidence:
+        self._validate_file(file_slot)
+        return self._ledgers[file_slot]
+
+    def _new_ledger(self) -> PersistentOpaqueRouteEvidence:
+        ledger = PersistentOpaqueRouteEvidence(
+            prior_strength=self.prior_strength,
+            mastery_threshold=self.mastery_threshold,
+            min_mastery_observations=self.min_mastery_observations,
+            reversal_threshold=self.reversal_threshold,
+            reversal_patience=self.reversal_patience,
+        )
+        for _ in self.query_counts:
+            ledger.append_slot()
+        return ledger
+
+    def append_file(self) -> int:
+        """Append one file with an independent depth ledger."""
+
+        self._ledgers.append(self._new_ledger())
+        self._version += 1
+        return self.file_count - 1
+
+    def preferred_query_count(self, file_slot: int) -> int | None:
+        """Return a depth only after it passes the stable mastery gate."""
+
+        preferred = self._ledger(file_slot).status().preferred_slot
+        return None if preferred is None else self.query_counts[preferred]
+
+    def probe_order(self, file_slot: int) -> tuple[int, ...]:
+        """Return the persistent-first candidate order for one file."""
+
+        order = self._ledger(file_slot).preferred_order()
+        return tuple(self.query_counts[index] for index in order)
+
+    def next_probe_query_count(self, file_slot: int) -> int | None:
+        """Return the next untried depth, or fail closed after exhaustion."""
+
+        ledger = self._ledger(file_slot)
+        status = ledger.status()
+        if status.preferred_slot is not None:
+            return self.query_counts[status.preferred_slot]
+        order = ledger.preferred_order()
+        for index in order:
+            if status.attempts[index] == 0:
+                return self.query_counts[index]
+        return None
+
+    def observe(
+        self,
+        file_slot: int,
+        query_count: int,
+        outcome: float | torch.Tensor,
+    ) -> None:
+        """Record one attempted depth and its deterministic scalar outcome."""
+
+        ledger = self._ledger(file_slot)
+        ledger.observe(self._validate_query_count(query_count), outcome)
+        self._version += 1
+
+    def statuses(self) -> tuple[PersistentRouteEvidenceStatus, ...]:
+        """Return immutable audit views for every file's depth ledger."""
+
+        return tuple(ledger.status() for ledger in self._ledgers)
+
+    def configuration(self) -> dict[str, object]:
+        return {
+            "schema": self.schema,
+            "query_counts": self.query_counts,
+            "prior_strength": self.prior_strength,
+            "mastery_threshold": self.mastery_threshold,
+            "min_mastery_observations": self.min_mastery_observations,
+            "reversal_threshold": self.reversal_threshold,
+            "reversal_patience": self.reversal_patience,
+            "file_count": self.file_count,
+            "state": "checksummed_outcome_only_depth_evidence_v1",
+        }
+
+    def payload(self) -> dict[str, object]:
+        payload: dict[str, object] = {
+            **self.configuration(),
+            "query_counts": list(self.query_counts),
+            "ledgers": [ledger.payload() for ledger in self._ledgers],
+            "version": self._version,
+        }
+        payload["sha256"] = _payload_digest(payload)
+        return payload
+
+    def digest(self) -> str:
+        """Return the checksum of this external depth policy."""
+
+        return str(self.payload()["sha256"])
+
+    @classmethod
+    def from_payload(cls, payload: dict[str, object]) -> PersistentOpaqueDepthEvidence:
+        """Restore a validated outcome-only depth policy snapshot."""
+
+        unsigned = dict(payload)
+        expected_digest = unsigned.pop("sha256", None)
+        if expected_digest is not None and (
+            not isinstance(expected_digest, str)
+            or expected_digest != _payload_digest(unsigned)
+        ):
+            raise ValueError("depth-evidence checksum mismatch")
+        if unsigned.get("schema") != cls.schema:
+            raise ValueError("depth-evidence schema is incompatible")
+        query_counts = unsigned.get("query_counts")
+        ledgers = unsigned.get("ledgers")
+        if not isinstance(query_counts, list) or not isinstance(ledgers, list):
+            raise TypeError("depth-evidence payload rows must be lists")
+        restored = cls(
+            query_counts,
+            prior_strength=float(unsigned["prior_strength"]),
+            mastery_threshold=float(unsigned["mastery_threshold"]),
+            min_mastery_observations=int(unsigned["min_mastery_observations"]),
+            reversal_threshold=float(unsigned["reversal_threshold"]),
+            reversal_patience=int(unsigned["reversal_patience"]),
+        )
+        restored._ledgers = [
+            PersistentOpaqueRouteEvidence.from_payload(ledger)
+            for ledger in ledgers
+        ]
+        for ledger in restored._ledgers:
+            if ledger.slot_count != len(restored.query_counts):
+                raise ValueError("depth-evidence ledger width does not match")
+        restored._version = int(unsigned.get("version", 0))
+        if restored._version < 0:
+            raise ValueError("depth-evidence version must be non-negative")
+        return restored
+
+
 @dataclass
 class _ContextRouteRecord:
     key: tuple[float, ...]

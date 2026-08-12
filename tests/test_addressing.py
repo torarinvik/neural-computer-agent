@@ -10,6 +10,7 @@ from neural_computer import (
     OpaqueCandidateGrowthRouter,
     OpaqueViewRouteExtension,
     PersistentOpaqueContextRouteEvidence,
+    PersistentOpaqueDepthEvidence,
     PersistentOpaqueRouteEvidence,
     attempted_outcome_loss,
     failure_gated_candidate_scores,
@@ -242,6 +243,46 @@ def test_persistent_route_evidence_round_trips_without_semantic_fields() -> None
     assert restored.payload() == evidence.payload()
     assert "task" not in restored.payload()
     assert "label" not in restored.payload()
+
+
+def test_persistent_depth_evidence_selects_only_stable_outcome_supported_depths() -> None:
+    evidence = PersistentOpaqueDepthEvidence((1, 2, 3), min_mastery_observations=2)
+    assert evidence.append_file() == 0
+    assert evidence.preferred_query_count(0) is None
+    assert evidence.next_probe_query_count(0) == 1
+
+    evidence.observe(0, 1, 0.0)
+    evidence.observe(0, 1, 0.0)
+    assert evidence.preferred_query_count(0) is None
+    assert evidence.next_probe_query_count(0) == 2
+
+    evidence.observe(0, 2, 1.0)
+    evidence.observe(0, 2, 1.0)
+    assert evidence.preferred_query_count(0) == 2
+    assert evidence.next_probe_query_count(0) == 2
+
+    restored = PersistentOpaqueDepthEvidence.from_payload(evidence.payload())
+    assert restored.payload() == evidence.payload()
+    assert "task" not in restored.payload()
+    assert "label" not in restored.payload()
+
+
+def test_persistent_depth_evidence_fails_closed_after_unmastered_candidates() -> None:
+    evidence = PersistentOpaqueDepthEvidence((1, 2), min_mastery_observations=2)
+    evidence.append_file()
+    for query_count in (1, 2):
+        evidence.observe(0, query_count, 0.0)
+        evidence.observe(0, query_count, 0.0)
+
+    assert evidence.preferred_query_count(0) is None
+    assert evidence.next_probe_query_count(0) is None
+
+
+def test_persistent_depth_evidence_requires_sorted_unique_positive_candidates() -> None:
+    with pytest.raises(ValueError, match="sorted and unique"):
+        PersistentOpaqueDepthEvidence((2, 1, 2))
+    with pytest.raises(ValueError, match="positive"):
+        PersistentOpaqueDepthEvidence((0, 1))
 
 
 def test_context_route_evidence_conditions_preference_on_opaque_learned_key() -> None:

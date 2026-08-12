@@ -26,6 +26,9 @@ from experiments.brainworkshop_canonical.external_compute_growth import (
     _episode as episode_external_compute,
     run as run_external_compute_growth,
 )
+from experiments.brainworkshop_canonical.external_compute_depth_selection import (
+    run as run_external_compute_depth_selection,
+)
 from experiments.brainworkshop_canonical.external_compute_open_growth import (
     run as run_external_compute_open_growth,
 )
@@ -284,6 +287,33 @@ def test_bounded_external_history_supports_per_file_query_depths() -> None:
     assert system.external_history_query_counts == (4, 5)
     assert system.machine.event_window_size == 5
     assert all(torch.isfinite(value) for value in (shallow[0], shallow[1], deep[0], deep[1]))
+
+
+def test_external_compute_depth_selection_smoke_is_outcome_only_and_fail_closed(
+    tmp_path,
+) -> None:
+    report = run_external_compute_depth_selection(
+        argparse.Namespace(
+            report_out=tmp_path / "external-compute-depth-selection.json",
+            seed=17,
+            updates=2,
+            batch_size=2,
+            steps=6,
+            probe_lifetimes=2,
+            retention_lifetimes=1,
+            learning_rate=1e-2,
+        )
+    )
+
+    assert report["schema"] == (
+        "neural-computer.brainworkshop-external-compute-depth-selection.v1"
+    )
+    assert report["gates"]["policy_reload_exact"]
+    assert report["gates"]["controller_unchanged"]
+    assert report["gates"]["event_encoder_unchanged"]
+    assert report["gates"]["shuffled_control_fails_closed"]
+    assert report["accounting"]["calibration_optimizer_updates"] == 0
+    assert report["accounting"]["replayed_examples"] == 0
 
 
 def test_external_compute_route_smoke_uses_content_addressed_outcome_evidence(

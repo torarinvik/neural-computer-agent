@@ -1867,3 +1867,25 @@ selection, learned compression, unrestricted memory growth, arbitrary program
 induction, or general continual learning. Evidence and accounting are
 archived at
 `session_records/brainworkshop_external_history_multiscale_route_promoted_2026-08-12/`.
+
+## Outcome-only external-history depth selection (2026-08-12)
+
+`external_compute_depth_selection.py` adds an isolated memory-side policy for
+choosing a file's active history depth. It probes candidate query counts in
+ascending order and commits a depth only after every probe lifetime passes the
+stable-prefix mastery gate. If all candidates fail, the policy exposes no
+depth. The controller, event frontend, and external files are not updated by
+calibration.
+
+Across seeds `17` and `18`, the policy selected the same minimal stable
+profile `[1, 3, 2, 2, 5]` for `symbol_parity`, `triplet_parity`, `parity2`,
+`switch_binary`, and `nback4`. Every selected depth retained `1.0000` on four
+fresh lifetimes. Policy reload, frozen-core/frontend, file-immutability,
+shuffled-outcome fail-closed, and zero-replay gates all passed. Calibration
+performed no optimizer updates.
+
+This promotes outcome-only retrieval-depth selection and a fail-closed
+memory policy. It is not neural depth learning, learned compression,
+unrestricted memory growth, arbitrary program induction, or general
+continual learning. Evidence and accounting are archived at
+`session_records/brainworkshop_external_history_depth_selection_promoted_2026-08-12/`.
