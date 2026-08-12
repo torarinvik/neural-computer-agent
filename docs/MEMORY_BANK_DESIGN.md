@@ -11003,3 +11003,83 @@ useless: `anti_spread3` at -0.0855 across three seeds.
 **One specific asymmetry worth chasing.** `saturate_down` is the single
 best domain and `saturate_up` sits near the bottom, though they differ
 only in sign. I do not know why.
+
+## F211 — THE BALANCED DESIGN: SELECTING FOR COVERAGE WORKS, SELECTING
+## FOR STRENGTH DOES NOT, AND F210's TWO CLAIMS SWAP PLACES
+
+F210 held out one quarter of the battery (`i % 4 == 3`) and reported
+from three seeds on that quarter. Nothing about a curriculum claim
+should depend on WHICH quarter is the test set, so this runs the full
+grid: **3 seeds x 4 held-out quarters = 12 cells**, paired per cell.
+
+| curriculum | domains | MEAN | sd | per quarter |
+| --- | ---: | ---: | ---: | --- |
+| all eligible | 85 | **+0.3613** | 0.100 | +0.256 +0.386 +0.455 +0.349 |
+| random50 | 50 | +0.3541 | 0.062 | +0.317 +0.343 +0.377 +0.380 |
+| **spread10** | 10 | **+0.3268** | 0.196 | +0.064 +0.353 +0.349 +0.541 |
+| random25 | 25 | +0.2998 | 0.095 | |
+| spread25 | 25 | +0.2980 | 0.118 | |
+| top25 | 25 | +0.2363 | 0.160 | |
+| real domains only | 4 | +0.2029 | 0.124 | |
+| top10 | 10 | +0.2017 | 0.210 | |
+| top3 | 3 | +0.1802 | 0.210 | |
+| random10 | 10 | +0.1695 | 0.149 | |
+| random3 | 3 | +0.1298 | 0.121 | |
+| bottom3 | 3 | +0.0441 | 0.186 | |
+
+| paired over 12 cells | | |
+| --- | ---: | --- |
+| spread10 - random10 | +0.1574 +- 0.0365 | **t=+4.31, 12/12** |
+| all eligible - real domains only | +0.1584 +- 0.0368 | **t=+4.30, 10/12** |
+| all eligible - top3 | +0.1811 +- 0.0559 | **t=+3.24, 11/12** |
+| spread10 - top10 | +0.1252 +- 0.0415 | **t=+3.02, 11/12** |
+| all eligible - random25 | +0.0615 +- 0.0269 | t=+2.28, 10/12 |
+| all eligible - spread10 | +0.0345 +- 0.0480 | t=+0.72, 8/12 |
+| **top3 - random3** | +0.0504 +- 0.0672 | **t=+0.75, 6/12** |
+| **top10 - random10** | +0.0322 +- 0.0452 | **t=+0.71, 6/12** |
+
+**Both of F210's headline claims move, in opposite directions.**
+
+  * **"The generality ranking predicts" is REFUTED.** On the q3 split it
+    was +0.3537, t=+4.59. Over all four quarters it is +0.0504, t=+0.75,
+    winning 6 of 12 — a coin flip. **Picking training domains by how
+    much they individually transfer does not work.** The earlier number
+    was a property of one quarter, and the cross-seed test could not
+    catch it because that test varied the SEED and held the split fixed.
+  * **"Diversity beats generality" is CONFIRMED.** It was the claim I
+    withdrew as under-powered (t=+0.97 imported). Over 12 cells,
+    spread10 beats top10 by +0.1252 (t=+3.02, 11/12) and beats random10
+    by +0.1574 (t=+4.31, **12 of 12**).
+
+**Ten domains chosen for coverage match all eighty-five** (t=+0.72), and
+they do it at an eighth of the domains. That is the ROI result, and the
+selection criterion is COVERAGE OF THE TRANSFER PROFILE SPACE, not
+individual strength — top10 with the same budget scores +0.2017 against
+spread10's +0.3268.
+
+**The curriculum this project has actually been using is the weakest
+arm but one.** Grid games plus rule families — four domains — scores
++0.2029, and the full battery beats it by +0.1584 (t=+4.30). Ten spread
+domains beat it by +0.124.
+
+**What the adversarial curricula show, all 12 cells.** `anti_spread3`
+(three mutually-closest profiles) scores **-0.0049**, nothing at all.
+`redundant_top3` (individually strong, near-identical profiles) scores
++0.0972. `shuffled_ranking_top3` scores +0.0380. Every way of choosing a
+small curriculum that ignores coverage lands near zero.
+
+**Where this is NOT resolved.** `spread10` is anchored on the
+highest-generality domain and then maximises distance. The same
+construction from a RANDOM anchor scores +0.1822 against spread10's
++0.2553 (t=+1.10, 5/9) and against top10's +0.1357 (t=+1.12, 6/9) — it
+sits between them and is separable from neither. So **whether the
+mechanism is spread alone, or spread plus a strong anchor, is not
+settled by nine cells.** Given that generality-based selection is itself
+refuted, the anchor is unlikely to be doing much, but that is an
+inference and not a measurement.
+
+**Four of my claims have now been overturned by attacks I built against
+them, and three failed the same way: the thing that selected was
+evaluated on data it had already seen.** The no-test-set matrix, the
+in-sample ranking, and the single-quarter split are one mistake in three
+costumes.
