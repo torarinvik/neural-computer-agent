@@ -11010,3 +11010,20 @@ promoted boundary is bounded external computation with learned-order-sensitive
 composition, not arbitrary program induction, unrestricted memory growth, or
 general continual learning. Evidence is archived at
 `session_records/recipe_noncommuting_recursive_composition_promoted_2026-08-12/`.
+
+## Provenance-closed recursive recipe compaction (2026-08-12)
+
+Finite-capacity management now reaches the executable recipe boundary. The
+copy-on-write compactor keeps requested roots, their transitive source
+closure, and every protected file; it removes only unreachable files and
+requires an independent verifier before adoption. Rejected candidates leave
+the source memory unchanged.
+
+Across four seeds, a ten-file store containing a protected non-commuting
+depth-four chain compacted to seven files, removing three unreferenced decoys.
+Root mastery, protected-source retention, checksum reload, source immutability,
+and rejected-no-op controls all passed with zero replay and zero controller
+updates. This is a bounded storage-integrity result. Learned victim choice,
+semantic compression, unrestricted archive growth, and general continual
+learning remain open. Evidence is archived at
+`session_records/recipe_recursive_compaction_promoted_2026-08-12/`.

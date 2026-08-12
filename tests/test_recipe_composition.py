@@ -24,6 +24,17 @@ def _fragment_a() -> RecipeProgram:
     return RecipeProgram(SLOT_VALUES, (_instruction("inc", 0, 2),))
 
 
+def _instruction_program(
+    operation: str,
+    first: int,
+    modulus: int,
+) -> RecipeProgram:
+    return RecipeProgram(
+        SLOT_VALUES,
+        (_instruction(operation, first, modulus),),
+    )
+
+
 def _instruction(
     operation: str,
     first: int,
@@ -99,6 +110,58 @@ def test_composition_memory_is_verifier_gated_provenanced_and_persistent() -> No
     assert restored.digest() == memory.digest()
     assert restored.provenance(2) == candidate.factors
     assert restored.program(2).digest() == target.digest()
+
+
+def test_compaction_keeps_provenance_closure_and_is_transactional() -> None:
+    memory = ExternalRecipeCompositionMemory(SLOT_VALUES)
+    left = memory.add_program(_fragment_a())
+    right = memory.add_program(_fragment_b())
+    memory.protect_file(left)
+    memory.protect_file(right)
+    target = _target()
+    candidate = next(
+        item
+        for item in memory.composition_candidates(max_program_length=2)
+        if item.program.digest() == target.digest()
+    )
+    composed = memory.admit_verified_composition(
+        candidate,
+        _outcomes(candidate.program, target),
+        threshold=1.0,
+        min_observations=len(STATES),
+        min_stable_observations=len(STATES),
+        protect=True,
+    )
+    assert composed.accepted and composed.slot == 2
+    decoy = memory.add_program(_instruction_program("dec", 0, 2))
+    before = memory.digest()
+
+    rejected_candidate, rejected = memory.compact_verified(
+        (composed.slot,),
+        verifier=lambda _: False,
+    )
+    assert rejected_candidate is None
+    assert not rejected.accepted
+    assert memory.digest() == before
+    assert memory.file_count == 4
+
+    compacted, accepted = memory.compact_verified(
+        (composed.slot,),
+        verifier=lambda candidate: (
+            candidate.file_count == 3
+            and candidate.program(2).digest() == target.digest()
+            and candidate.is_file_protected(0)
+            and candidate.is_file_protected(1)
+        ),
+    )
+    assert compacted is not None
+    assert accepted.accepted
+    assert accepted.retained_slots == (0, 1, 2)
+    assert decoy not in accepted.retained_slots
+    assert compacted.provenance(2) == candidate.factors
+    assert all(
+        compacted.execute(2, state) == target.execute(state) for state in STATES
+    )
 
 
 def test_composition_policy_reuses_source_factors_without_candidate_rows() -> None:

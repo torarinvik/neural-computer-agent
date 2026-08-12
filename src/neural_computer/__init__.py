@@ -477,6 +477,7 @@ from .recipe_basis import (
 )
 from .recipe_composition import (
     RECIPE_COMPOSITION_CANDIDATE_SCHEMA,
+    RECIPE_COMPOSITION_COMPACTION_SCHEMA,
     RECIPE_COMPOSITION_FACTORS_SCHEMA,
     RECIPE_COMPOSITION_MEMORY_SCHEMA,
     RECIPE_COMPOSITION_MODES,
@@ -487,6 +488,7 @@ from .recipe_composition import (
     ExternalRecipeCompositionMemory,
     OpaqueContextRecipeCompositionMemory,
     OutcomeOnlyRecipeCompositionSearch,
+    RecipeCompositionCompactionReceipt,
     RecipeProgramCompositionCandidate,
     RecipeProgramCompositionFactors,
     RecipeProgramCompositionFeedback,
@@ -1009,6 +1011,7 @@ __all__ = [
     "PROMOTION_SCHEMA",
     "RECIPE_BASIS_SCHEMA",
     "RECIPE_COMPOSITION_CANDIDATE_SCHEMA",
+    "RECIPE_COMPOSITION_COMPACTION_SCHEMA",
     "RECIPE_COMPOSITION_FACTORS_SCHEMA",
     "RECIPE_COMPOSITION_MEMORY_SCHEMA",
     "RECIPE_COMPOSITION_MODES",
@@ -1359,6 +1362,7 @@ __all__ = [
     "PromotionGate",
     "PromotionRejected",
     "RecipeBasis",
+    "RecipeCompositionCompactionReceipt",
     "RecipeInstruction",
     "RecipeProgram",
     "RecipeProgramAdmissionReceipt",

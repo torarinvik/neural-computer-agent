@@ -314,3 +314,21 @@ remains diagnostic. This promotes bounded replay-free recursive composition
 with genuine order dependence, not arbitrary program induction or general
 continual learning. Evidence is archived in
 `session_records/recipe_noncommuting_recursive_composition_promoted_2026-08-12/`.
+
+## Provenance-closed recursive compaction (2026-08-12)
+
+`ExternalRecipeCompositionMemory.compact_verified()` adds the missing finite
+capacity transaction for executable recipe files. It creates a copy-on-write
+candidate containing the requested roots, their complete transitive
+provenance closure, and all protected files. An independent behavior verifier
+must accept the candidate before the caller adopts it; rejection leaves the
+source memory byte-identical.
+
+The four-seed audit populated ten files with a protected non-commuting
+depth-four chain and three unreferenced decoys. Every run compacted to the
+seven-file closure, removed all three decoys, retained the root and protected
+sources at `1.0000`, reloaded exactly, and passed the rejected-no-op and
+zero-replay controls. This promotes safe bounded storage compaction, not
+learned eviction economics, semantic compression, unrestricted growth, or
+general continual learning. Evidence is archived in
+`session_records/recipe_recursive_compaction_promoted_2026-08-12/`.

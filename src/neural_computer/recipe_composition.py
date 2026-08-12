@@ -12,7 +12,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 
 import torch
@@ -31,6 +31,9 @@ RECIPE_COMPOSITION_POLICY_SCHEMA = "neural-computer.recipe-composition-policy.v1
 RECIPE_COMPOSITION_CANDIDATE_SCHEMA = "neural-computer.recipe-composition-candidate.v1"
 RECIPE_COMPOSITION_PROPOSAL_SCHEMA = "neural-computer.recipe-composition-proposal.v1"
 RECIPE_COMPOSITION_SEARCH_SCHEMA = "neural-computer.recipe-composition-search.v1"
+RECIPE_COMPOSITION_COMPACTION_SCHEMA = (
+    "neural-computer.recipe-composition-compaction.v1"
+)
 RECIPE_COMPOSITION_MODES = ("append", "prepend")
 
 
@@ -180,6 +183,46 @@ class RecipeProgramCompositionStructure:
             right_composite=bool(payload.get("right_composite", False)),
             schema=str(payload.get("schema", "")),
         ).validate()
+
+
+@dataclass(frozen=True)
+class RecipeCompositionCompactionReceipt:
+    """Auditable result of one verifier-gated copy-on-write compaction."""
+
+    accepted: bool
+    requested_slots: tuple[int, ...]
+    retained_slots: tuple[int, ...]
+    source_file_count: int
+    candidate_file_count: int
+    reason: str
+    schema: str = RECIPE_COMPOSITION_COMPACTION_SCHEMA
+
+    def validate(self) -> RecipeCompositionCompactionReceipt:
+        if self.schema != RECIPE_COMPOSITION_COMPACTION_SCHEMA:
+            raise ValueError("unsupported recipe compaction receipt schema")
+        if not self.requested_slots:
+            raise ValueError("recipe compaction receipt needs requested slots")
+        if len(set(self.requested_slots)) != len(self.requested_slots):
+            raise ValueError("recipe compaction requested slots must be distinct")
+        if len(set(self.retained_slots)) != len(self.retained_slots):
+            raise ValueError("recipe compaction retained slots must be distinct")
+        if self.source_file_count < 1 or self.candidate_file_count < 1:
+            raise ValueError("recipe compaction file counts must be positive")
+        if self.candidate_file_count > self.source_file_count:
+            raise ValueError("recipe compaction cannot increase file count")
+        return self
+
+    def payload(self) -> dict[str, object]:
+        self.validate()
+        return {
+            "schema": self.schema,
+            "accepted": self.accepted,
+            "requested_slots": list(self.requested_slots),
+            "retained_slots": list(self.retained_slots),
+            "source_file_count": self.source_file_count,
+            "candidate_file_count": self.candidate_file_count,
+            "reason": self.reason,
+        }
 
 
 @dataclass(frozen=True)
@@ -405,6 +448,79 @@ class ExternalRecipeCompositionMemory:
     def _validate_all_provenance(self) -> None:
         for slot in range(self.file_count):
             self._validate_provenance_slot(slot)
+
+    def compact_verified(
+        self,
+        requested_slots: Sequence[int],
+        *,
+        verifier: Callable[[ExternalRecipeCompositionMemory], bool],
+    ) -> tuple[ExternalRecipeCompositionMemory | None, RecipeCompositionCompactionReceipt]:
+        """Build a smaller provenance-closed memory and verify it before adoption.
+
+        ``requested_slots`` are the external roots the caller wants to keep.
+        Every transitive composition source and every currently protected file
+        is retained automatically. The source memory is never mutated; the
+        caller adopts the returned candidate only when the independent
+        behavior verifier accepts it.
+        """
+
+        requested = tuple(int(slot) for slot in requested_slots)
+        if not requested or len(set(requested)) != len(requested):
+            raise ValueError("recipe compaction needs distinct nonempty roots")
+        if any(not 0 <= slot < self.file_count for slot in requested):
+            raise ValueError("recipe compaction root is outside memory")
+        if not callable(verifier):
+            raise TypeError("recipe compaction verifier must be callable")
+        retained = set(requested)
+        retained.update(
+            slot for slot in range(self.file_count) if self.is_file_protected(slot)
+        )
+        pending = list(retained)
+        while pending:
+            slot = pending.pop()
+            factors = self.provenance(slot)
+            if factors is None:
+                continue
+            left_slot = self._slot_for_digest(factors.left_digest, before=slot)
+            right_slot = self._slot_for_digest(factors.right_digest, before=slot)
+            for source_slot in (left_slot, right_slot):
+                if source_slot not in retained:
+                    retained.add(source_slot)
+                    pending.append(source_slot)
+
+        retained_slots = tuple(
+            slot for slot in range(self.file_count) if slot in retained
+        )
+        compacted = ExternalRecipeCompositionMemory(
+            self.basis.slot_values,
+            allow_parallel=self.basis.allow_parallel,
+        )
+        for old_slot in retained_slots:
+            program = self.program(old_slot)
+            new_slot = compacted.files.add_program(program)
+            factors = self.provenance(old_slot)
+            compacted._provenance.append(factors)
+            if self.is_file_protected(old_slot):
+                compacted.protect_file(new_slot)
+        compacted._validate_all_provenance()
+        receipt = RecipeCompositionCompactionReceipt(
+            accepted=False,
+            requested_slots=requested,
+            retained_slots=retained_slots,
+            source_file_count=self.file_count,
+            candidate_file_count=compacted.file_count,
+            reason="candidate compaction is awaiting independent verification",
+        ).validate()
+        if not bool(verifier(compacted)):
+            return None, receipt
+        return compacted, RecipeCompositionCompactionReceipt(
+            accepted=True,
+            requested_slots=requested,
+            retained_slots=retained_slots,
+            source_file_count=self.file_count,
+            candidate_file_count=compacted.file_count,
+            reason="provenance-closed recipe compaction passed verification",
+        ).validate()
 
     def _validate_source_candidate(
         self,
@@ -1167,6 +1283,7 @@ class OutcomeOnlyRecipeCompositionSearch:
 
 __all__ = [
     "RECIPE_COMPOSITION_CANDIDATE_SCHEMA",
+    "RECIPE_COMPOSITION_COMPACTION_SCHEMA",
     "RECIPE_COMPOSITION_FACTORS_SCHEMA",
     "RECIPE_COMPOSITION_MEMORY_SCHEMA",
     "RECIPE_COMPOSITION_MODES",
@@ -1177,6 +1294,7 @@ __all__ = [
     "ExternalRecipeCompositionMemory",
     "OpaqueContextRecipeCompositionMemory",
     "OutcomeOnlyRecipeCompositionSearch",
+    "RecipeCompositionCompactionReceipt",
     "RecipeProgramCompositionCandidate",
     "RecipeProgramCompositionFactors",
     "RecipeProgramCompositionFeedback",
