@@ -11753,3 +11753,22 @@ This isolates the next architectural target: learn when factual surprise and
 opaque context stability justify staging, rather than hard-coding one evidence
 prefix for every regime. Evidence is archived in
 `session_records/early_admission_window_screen_2026-08-12/`.
+
+## Adaptive factual-surprise admission screen
+
+The external online router now has an opt-in, serialized admission policy that
+keeps the complete pending prefix and permits an early route only when enough
+of that prefix is factually surprising against all committed models. It is a
+memory-side boundary policy: it does not add a controller branch, consume task
+labels, or mutate committed slots. When the gate is not satisfied, the router
+waits for the ordinary maximum window.
+
+The first three-row/`0.02`/`2-of-3` screen was rejected. Across exact seeds
+`80–103`, same-cue active complete gates fell `45/72 -> 35/72`, matched passive
+gates fell `38/72 -> 35/72`, and the different-cue n-back-5 control fell
+`13/24 -> 10/24` active and `11/24 -> 7/24` passive. The adaptive rule reduced
+rows consumed but did not preserve held-out fresh-challenger promotion. This
+is a negative result for one threshold policy, not evidence that learned
+surprise or context stability cannot improve admission. The six-row default
+therefore remains canonical. Evidence is archived in
+`session_records/adaptive_surprise_admission_screen_2026-08-12/`.

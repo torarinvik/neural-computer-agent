@@ -1854,3 +1854,28 @@ default remains necessary for the canonical seed-93 smoke contract. The next
 high-ROI step is a learned factual-surprise/context-stability admission rule,
 not a global fixed-window change. Evidence is archived in
 `session_records/early_admission_window_screen_2026-08-12/`.
+
+## Adaptive factual-surprise admission screen (2026-08-12)
+
+The router now exposes an opt-in prefix policy that retains every pending row
+and may process it before the conservative maximum only when a configured
+fraction of the prefix is factually surprising against every committed model.
+The rule is read-only with respect to committed memory, serializes its
+configuration, and falls back to the full window when the surprise gate is not
+met. The six-row default is unchanged.
+
+The first matched screen used a three-row minimum, mean squared prediction
+surprise `0.02`, and a `2/3` surprising-row fraction. It was rejected as a
+capability gain: complete gates fell from `45/72` to `35/72` on same-cue
+active discovery and from `38/72` to `35/72` on matched passive discovery. The
+different-cue n-back-5 control also fell from `13/24` to `10/24` active and
+from `11/24` to `7/24` passive. The adaptive arm consumed fewer transition
+rows (`2,130` versus `2,148` per 72-run same-cue arm), but the lower evidence
+budget did not preserve the full promotion gate. Controllers stayed unchanged,
+source slots stayed byte-stable, and replay remained zero in all arms.
+
+This rejects a naive fixed-threshold surprise rule, not factual surprise or
+adaptive admission in general. The next design must calibrate surprise against
+opaque context stability and held-out promotion risk before it can replace a
+fixed evidence budget. Evidence is archived in
+`session_records/adaptive_surprise_admission_screen_2026-08-12/`.

@@ -147,6 +147,9 @@ class OnlineTransitionDiscoveryReport:
     external_memory_update_mode: str = "sufficient_statistics"
     external_memory_optimizer_updates: int = 0
     admission_observations: int = 0
+    early_admission_observations: int | None = None
+    early_admission_surprise_threshold: float | None = None
+    early_admission_surprise_fraction: float = 1.0
     discovery_probe_mode: str = "none"
     discovery_probe_rows: int = 0
     target_n_back: int = 3
@@ -801,6 +804,9 @@ def run_online_transition_discovery_audit(
     pretrain_context_encoder: bool = False,
     external_memory_update_mode: str = "sufficient_statistics",
     admission_observations: int | None = None,
+    early_admission_observations: int | None = None,
+    early_admission_surprise_threshold: float | None = None,
+    early_admission_surprise_fraction: float = 1.0,
     discovery_probe_mode: str = "none",
     target_n_back: int = 3,
     target_cue_symbol: int = 7,
@@ -888,6 +894,37 @@ def run_online_transition_discovery_audit(
         or selected_admission_observations < 1
     ):
         raise ValueError("online admission observations must be positive")
+    if (early_admission_observations is None) != (
+        early_admission_surprise_threshold is None
+    ):
+        raise ValueError(
+            "early admission observations and surprise threshold must be set together"
+        )
+    if early_admission_observations is not None and (
+        not isinstance(early_admission_observations, int)
+        or isinstance(early_admission_observations, bool)
+        or early_admission_observations < 1
+        or early_admission_observations >= selected_admission_observations
+    ):
+        raise ValueError(
+            "early admission observations must be a positive prefix below the full admission count"
+        )
+    if early_admission_surprise_threshold is not None and (
+        not isinstance(early_admission_surprise_threshold, (float, int))
+        or isinstance(early_admission_surprise_threshold, bool)
+        or not math.isfinite(float(early_admission_surprise_threshold))
+        or float(early_admission_surprise_threshold) < 0.0
+    ):
+        raise ValueError(
+            "early admission surprise threshold must be finite and non-negative"
+        )
+    if (
+        not isinstance(early_admission_surprise_fraction, (float, int))
+        or isinstance(early_admission_surprise_fraction, bool)
+        or not math.isfinite(float(early_admission_surprise_fraction))
+        or not 0.0 < float(early_admission_surprise_fraction) <= 1.0
+    ):
+        raise ValueError("early admission surprise fraction must lie in (0, 1]")
     if goal_horizon < 1 or goal_horizon > steps - 1:
         raise ValueError("online goal horizon must fit held-out transitions")
     if goal_verifier_threshold <= 0.0 or not math.isfinite(
@@ -1090,6 +1127,9 @@ def run_online_transition_discovery_audit(
         bank,
         context_encoder,
         admission_observations=selected_admission_observations,
+        early_admission_observations=early_admission_observations,
+        early_admission_surprise_threshold=early_admission_surprise_threshold,
+        early_admission_surprise_fraction=early_admission_surprise_fraction,
         match_tolerance=routing_match_tolerance,
         match_margin=0.0,
         continuation_tolerance=routing_match_tolerance,
@@ -1287,6 +1327,9 @@ def run_online_transition_discovery_audit(
             external_memory_update_mode=external_memory_update_mode,
             external_memory_optimizer_updates=external_memory_optimizer_updates[0],
             admission_observations=selected_admission_observations,
+            early_admission_observations=early_admission_observations,
+            early_admission_surprise_threshold=early_admission_surprise_threshold,
+            early_admission_surprise_fraction=early_admission_surprise_fraction,
             discovery_probe_mode=discovery_probe_mode,
             discovery_probe_rows=active_probe_rows,
             target_n_back=target_n_back,
@@ -1471,6 +1514,9 @@ def run_online_transition_discovery_audit(
             external_memory_update_mode=external_memory_update_mode,
             external_memory_optimizer_updates=external_memory_optimizer_updates[0],
             admission_observations=selected_admission_observations,
+            early_admission_observations=early_admission_observations,
+            early_admission_surprise_threshold=early_admission_surprise_threshold,
+            early_admission_surprise_fraction=early_admission_surprise_fraction,
             discovery_probe_mode=discovery_probe_mode,
             discovery_probe_rows=active_probe_rows,
             target_n_back=target_n_back,
@@ -1724,6 +1770,9 @@ def run_online_transition_discovery_audit(
         external_memory_update_mode=external_memory_update_mode,
         external_memory_optimizer_updates=external_memory_optimizer_updates[0],
         admission_observations=selected_admission_observations,
+        early_admission_observations=early_admission_observations,
+        early_admission_surprise_threshold=early_admission_surprise_threshold,
+        early_admission_surprise_fraction=early_admission_surprise_fraction,
         discovery_probe_mode=discovery_probe_mode,
         discovery_probe_rows=active_probe_rows,
         target_n_back=target_n_back,
@@ -1777,6 +1826,9 @@ def main() -> None:
         default="sufficient_statistics",
     )
     parser.add_argument("--admission-observations", type=int)
+    parser.add_argument("--early-admission-observations", type=int)
+    parser.add_argument("--early-admission-surprise-threshold", type=float)
+    parser.add_argument("--early-admission-surprise-fraction", type=float, default=1.0)
     parser.add_argument(
         "--discovery-probe-mode",
         choices=("none", "active", "passive"),
@@ -1819,6 +1871,11 @@ def main() -> None:
             pretrain_context_encoder=args.pretrain_context_encoder,
             external_memory_update_mode=args.external_memory_update_mode,
             admission_observations=args.admission_observations,
+            early_admission_observations=args.early_admission_observations,
+            early_admission_surprise_threshold=(
+                args.early_admission_surprise_threshold
+            ),
+            early_admission_surprise_fraction=args.early_admission_surprise_fraction,
             discovery_probe_mode=args.discovery_probe_mode,
             target_n_back=args.target_n_back,
             target_cue_symbol=args.target_cue_symbol,

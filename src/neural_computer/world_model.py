@@ -6405,6 +6405,9 @@ class ExternalOnlineTransitionContextRouter:
         prior_selection_fresh_cost: float = 0.0,
         prior_selection_cost_weight: float = 0.0,
         prior_selection_cost_ledger: ExternalRoutedIntentionCostLedger | None = None,
+        early_admission_observations: int | None = None,
+        early_admission_surprise_threshold: float | None = None,
+        early_admission_surprise_fraction: float = 1.0,
     ) -> None:
         if (
             bank.state_width != context_encoder.state_width
@@ -6548,6 +6551,39 @@ class ExternalOnlineTransitionContextRouter:
             raise ValueError("online evidence evaluator and bank widths differ")
         if admission_observations < 1:
             raise ValueError("online context admission count must be positive")
+        if (early_admission_observations is None) != (
+            early_admission_surprise_threshold is None
+        ):
+            raise ValueError(
+                "early admission observations and surprise threshold must be set together"
+            )
+        if early_admission_observations is not None and (
+            not isinstance(early_admission_observations, int)
+            or isinstance(early_admission_observations, bool)
+            or early_admission_observations < 1
+            or early_admission_observations >= admission_observations
+        ):
+            raise ValueError(
+                "early admission observations must be a positive prefix below the full admission count"
+            )
+        if early_admission_surprise_threshold is not None and (
+            not isinstance(early_admission_surprise_threshold, (float, int))
+            or isinstance(early_admission_surprise_threshold, bool)
+            or not math.isfinite(float(early_admission_surprise_threshold))
+            or float(early_admission_surprise_threshold) < 0.0
+        ):
+            raise ValueError(
+                "early admission surprise threshold must be finite and non-negative"
+            )
+        if (
+            not isinstance(early_admission_surprise_fraction, (float, int))
+            or isinstance(early_admission_surprise_fraction, bool)
+            or not math.isfinite(float(early_admission_surprise_fraction))
+            or not 0.0 < float(early_admission_surprise_fraction) <= 1.0
+        ):
+            raise ValueError(
+                "early admission surprise fraction must lie in (0, 1]"
+            )
         if max_contexts is not None and max_contexts < 1:
             raise ValueError("online context maximum must be positive")
         if not isinstance(auto_grow, bool):
@@ -6587,6 +6623,19 @@ class ExternalOnlineTransitionContextRouter:
             None if outlier_tolerance is None else float(outlier_tolerance)
         )
         self.admission_observations = int(admission_observations)
+        self.early_admission_observations = (
+            None
+            if early_admission_observations is None
+            else int(early_admission_observations)
+        )
+        self.early_admission_surprise_threshold = (
+            None
+            if early_admission_surprise_threshold is None
+            else float(early_admission_surprise_threshold)
+        )
+        self.early_admission_surprise_fraction = float(
+            early_admission_surprise_fraction
+        )
         self.max_contexts = max_contexts
         self.auto_grow = auto_grow
         self.continuation_tolerance = float(
@@ -6793,6 +6842,11 @@ class ExternalOnlineTransitionContextRouter:
             "minimum_inlier_fraction": self.minimum_inlier_fraction,
             "outlier_tolerance": self.outlier_tolerance,
             "admission_observations": self.admission_observations,
+            "early_admission_observations": self.early_admission_observations,
+            "early_admission_surprise_threshold": (
+                self.early_admission_surprise_threshold
+            ),
+            "early_admission_surprise_fraction": self.early_admission_surprise_fraction,
             "max_contexts": self.max_contexts,
             "auto_grow": self.auto_grow,
             "continuation_tolerance": self.continuation_tolerance,
@@ -7443,6 +7497,44 @@ class ExternalOnlineTransitionContextRouter:
             context_width=self.bank.context_width,
         )
 
+    def _early_admission_ready(self) -> bool:
+        """Return whether the retained prefix is factually surprising enough.
+
+        This is an opt-in admission policy. It never identifies a task or
+        stream by name and never mutates a committed model. Each pending row
+        is scored independently against the best committed factual model;
+        requiring both a mean-surprise floor and a configurable fraction of
+        surprising rows prevents one isolated outlier from shortening the
+        admission window.
+        """
+
+        if (
+            self.early_admission_observations is None
+            or self.early_admission_surprise_threshold is None
+            or self.pending_observations < self.early_admission_observations
+            or self.pending_observations >= self.admission_observations
+            or self.bank.context_count == 0
+        ):
+            return False
+        threshold = self.early_admission_surprise_threshold
+        surprises = [
+            min(
+                self._slot_error(index, observation)
+                for index in range(self.bank.context_count)
+            )
+            for observation in self._pending
+        ]
+        if not surprises:
+            return False
+        surprising_fraction = sum(
+            error >= threshold for error in surprises
+        ) / len(surprises)
+        mean_surprise = math.fsum(surprises) / len(surprises)
+        return (
+            surprising_fraction >= self.early_admission_surprise_fraction
+            and mean_surprise >= threshold
+        )
+
     def _candidate_context(
         self,
         observation: ExternalTransitionObservation,
@@ -7783,7 +7875,10 @@ class ExternalOnlineTransitionContextRouter:
         if observation.state.shape[0] != 1:
             raise ValueError("online context routing accepts one transition row")
         self._pending.append(self._clone_observation(observation))
-        if self.pending_observations < self.admission_observations:
+        if (
+            self.pending_observations < self.admission_observations
+            and not self._early_admission_ready()
+        ):
             return self._pending_result()
 
         bundle = self._merge_observations(self._pending)
@@ -8859,6 +8954,19 @@ class ExternalOnlineTransitionContextRouter:
                 else float(configuration["outlier_tolerance"])
             ),
             admission_observations=int(configuration["admission_observations"]),
+            early_admission_observations=(
+                None
+                if configuration.get("early_admission_observations") is None
+                else int(configuration["early_admission_observations"])
+            ),
+            early_admission_surprise_threshold=(
+                None
+                if configuration.get("early_admission_surprise_threshold") is None
+                else float(configuration["early_admission_surprise_threshold"])
+            ),
+            early_admission_surprise_fraction=float(
+                configuration.get("early_admission_surprise_fraction", 1.0)
+            ),
             max_contexts=(
                 None
                 if configuration.get("max_contexts") is None

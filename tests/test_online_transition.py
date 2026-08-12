@@ -585,6 +585,124 @@ def test_router_stages_and_promotes_affine_candidate_without_optimizer() -> None
     assert router.bank.models[0].sample_count.item() == 4
 
 
+def test_router_can_admit_a_factually_surprising_prefix_without_dropping_rows() -> None:
+    bank = ExternalTransitionModelBank(
+        2,
+        1,
+        4,
+        model_family="affine_sufficient_statistics_v1",
+        affine_ridge=1e-7,
+        capacity=2,
+    )
+    source = _affine_observation(4)
+    source_context = torch.tensor([1.0, 0.0, 0.0, 0.0])
+    source_index = bank.ensure_context(source_context)
+    bank.adaptation_step(
+        source,
+        source_context.unsqueeze(0).expand(source.state.shape[0], -1),
+        None,
+    )
+    router = ExternalOnlineTransitionContextRouter(
+        bank,
+        ExternalTransitionContextEncoder(2, 1, hidden_width=8, context_width=4),
+        match_tolerance=1e-8,
+        continuation_tolerance=1e-8,
+        admission_observations=4,
+        early_admission_observations=2,
+        early_admission_surprise_threshold=0.5,
+        early_admission_surprise_fraction=1.0,
+        max_contexts=2,
+        defer_admission=True,
+    )
+    target = ExternalTransitionObservation(
+        state=source.state,
+        intention=source.intention,
+        next_state=source.next_state + 1.0,
+        confidence=source.confidence,
+    )
+    first = router.observe(
+        ExternalTransitionObservation(
+            state=target.state[:1],
+            intention=target.intention[:1],
+            next_state=target.next_state[:1],
+            confidence=target.confidence[:1],
+        )
+    )
+    second = router.observe(
+        ExternalTransitionObservation(
+            state=target.state[1:2],
+            intention=target.intention[1:2],
+            next_state=target.next_state[1:2],
+            confidence=target.confidence[1:2],
+        )
+    )
+
+    assert first.status == "pending"
+    assert first.pending_observations == 1
+    assert second.status == "staged"
+    assert second.pending_observations == 0
+    assert second.observation is not None
+    assert second.observation.state.shape == (2, 2)
+    assert router.provisional_candidate_count == 1
+    assert source_index == 0
+
+
+def test_router_factually_unsurprising_prefix_waits_for_full_window_and_reloads() -> None:
+    bank = ExternalTransitionModelBank(
+        2,
+        1,
+        4,
+        model_family="affine_sufficient_statistics_v1",
+        affine_ridge=1e-7,
+        capacity=2,
+    )
+    source = _affine_observation(4)
+    source_context = torch.tensor([1.0, 0.0, 0.0, 0.0])
+    bank.ensure_context(source_context)
+    bank.adaptation_step(
+        source,
+        source_context.unsqueeze(0).expand(source.state.shape[0], -1),
+        None,
+    )
+    router = ExternalOnlineTransitionContextRouter(
+        bank,
+        ExternalTransitionContextEncoder(2, 1, hidden_width=8, context_width=4),
+        match_tolerance=1e-8,
+        admission_observations=4,
+        early_admission_observations=2,
+        early_admission_surprise_threshold=0.5,
+        early_admission_surprise_fraction=1.0,
+        max_contexts=2,
+        defer_admission=True,
+    )
+    results = []
+    for row in range(4):
+        results.append(
+            router.observe(
+                ExternalTransitionObservation(
+                    state=source.state[row : row + 1],
+                    intention=source.intention[row : row + 1],
+                    next_state=source.next_state[row : row + 1],
+                    confidence=source.confidence[row : row + 1],
+                )
+            )
+        )
+    assert [result.status for result in results[:3]] == [
+        "pending",
+        "pending",
+        "pending",
+    ]
+    assert results[3].status == "matched"
+    assert results[3].observation is not None
+    assert results[3].observation.state.shape == (4, 2)
+    restored = ExternalOnlineTransitionContextRouter.from_payload(
+        router.state_payload()
+    )
+    assert restored.configuration() == router.configuration()
+    assert restored.early_admission_observations == 2
+    assert restored.early_admission_surprise_threshold == 0.5
+
+
 def test_verified_preferred_slot_can_use_explicit_bounded_continuation_tolerance() -> None:
     bank = ExternalTransitionModelBank(
         2,
