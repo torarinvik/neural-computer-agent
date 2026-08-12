@@ -6707,6 +6707,13 @@ class ExternalOnlineTransitionContextRouter:
             raise IndexError("provisional candidate index is out of range")
         return self._provisional_candidates[candidate_index].model
 
+    def provisional_model_family_at(self, candidate_index: int) -> str:
+        """Return the currently selected opaque hypothesis family."""
+
+        if not 0 <= candidate_index < len(self._provisional_candidates):
+            raise IndexError("provisional candidate index is out of range")
+        return self._provisional_candidates[candidate_index].model_family
+
     def provisional_context_at(self, candidate_index: int) -> torch.Tensor:
         """Return one detached opaque candidate key."""
 
@@ -6871,6 +6878,9 @@ class ExternalOnlineTransitionContextRouter:
                 else self.evidence_evaluator.configuration()
             ),
             "provisional_candidates": "isolated_indexed_copy_on_write_v1",
+            "provisional_family_selection": (
+                "fresh_scalar_prediction_error_portfolio_v1"
+            ),
             "active_probe": (
                 "read_only_uncertainty_weighted_model_disagreement_request_v1"
             ),
@@ -7541,15 +7551,16 @@ class ExternalOnlineTransitionContextRouter:
         candidate.evidence_count += int(observation.state.shape[0])
         if self.provisional_evidence_policy == "cumulative_replay":
             candidate.observations.append(self._clone_observation(observation))
+        _, prediction_error = self._select_provisional_model_family(
+            candidate,
+            observation,
+        )
         return ExternalOnlineTransitionContextResult(
             status="staged",
             slot_index=candidate_index,
             context=candidate.context.detach().clone(),
             pending_observations=0,
-            prediction_error=self._slot_error_from_model(
-                candidate.model,
-                observation,
-            ),
+            prediction_error=prediction_error,
             observation=observation,
         ).validate(
             state_width=self.bank.state_width,
@@ -7564,6 +7575,38 @@ class ExternalOnlineTransitionContextRouter:
     ) -> float:
         prediction = model(observation.state, observation.intention)
         return float((prediction - observation.next_state).square().mean().detach())
+
+    def _select_provisional_model_family(
+        self,
+        candidate: _ProvisionalTransitionCandidate,
+        observation: ExternalTransitionObservation,
+    ) -> tuple[str, float]:
+        """Expose the best current opaque hypothesis without discarding alternatives.
+
+        The portfolio remains available for held-out promotion.  This selector only
+        chooses which isolated hypothesis the caller sees between observations, using
+        factual scalar prediction error and a stable incumbent tie-break.
+        """
+
+        errors = {
+            family: self._slot_error_from_model(model, observation)
+            for family, model in candidate.models().items()
+        }
+        best_family = min(
+            errors,
+            key=lambda family: (
+                errors[family],
+                0 if family == candidate.model_family else 1,
+                family,
+            ),
+        )
+        if best_family != candidate.model_family:
+            current_family = candidate.model_family
+            current_model = candidate.model
+            candidate.model = candidate.alternatives.pop(best_family)
+            candidate.model_family = best_family
+            candidate.alternatives[current_family] = current_model
+        return best_family, errors[best_family]
 
     def _candidate_error(
         self,
@@ -8152,6 +8195,7 @@ class ExternalOnlineTransitionContextRouter:
                     for observation in resolved_after_update
                 )
                 candidate.deferred_observations.clear()
+            self._select_provisional_model_family(candidate, result.observation)
             return float(primary_loss.detach())
         if (
             result.slot_index is None

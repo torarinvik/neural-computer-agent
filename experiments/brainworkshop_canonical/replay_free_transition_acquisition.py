@@ -1165,7 +1165,7 @@ def run_online_transition_discovery_audit(
         active_probe_bank = ExternalTransitionModelBank.from_payload(bank.payload())
         active_probe_index = active_probe_bank.ensure_context(
             candidate_context,
-            model_family=candidate_model_families[0],
+            model_family=router.provisional_model_family_at(0),
         )
         active_probe_bank.models[active_probe_index].load_state_dict(
             router.provisional_model_at(0).state_dict()
@@ -1300,7 +1300,7 @@ def run_online_transition_discovery_audit(
     shadow_bank = ExternalTransitionModelBank.from_payload(bank.payload())
     shadow_index = shadow_bank.ensure_context(
         candidate_context,
-        model_family=candidate_model_families[0],
+        model_family=router.provisional_model_family_at(0),
     )
     shadow_bank.models[shadow_index].load_state_dict(
         router.provisional_model_at(0).state_dict()

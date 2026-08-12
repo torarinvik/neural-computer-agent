@@ -7,6 +7,8 @@ import torch
 from neural_computer import (
     EXTERNAL_FACTORED_TRANSITION_EXACT_RESIDUAL_MODE,
     EXTERNAL_FACTORED_TRANSITION_LEARNED_RESIDUAL_MODE,
+    EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY,
+    EXTERNAL_TRANSITION_MIXED_MODEL_FAMILY,
     EXTERNAL_TRANSITION_RANDOM_FEATURE_MODEL_FAMILY,
     ExternalAffineTransitionStatistics,
     ExternalBoundTransitionModel,
@@ -2351,6 +2353,65 @@ def test_online_router_stages_candidate_before_heldout_verified_promotion() -> N
     assert router.bank.context_count == 2
     assert router.provisional_model is None
     assert router.bank.models[0].digest() == source_digest
+
+
+def test_online_router_exposes_best_provisional_portfolio_hypothesis() -> None:
+    bank = ExternalTransitionModelBank(
+        2,
+        1,
+        4,
+        hidden_width=8,
+        capacity=2,
+        model_family=EXTERNAL_TRANSITION_MIXED_MODEL_FAMILY,
+    )
+    encoder = ExternalTransitionContextEncoder(2, 1, hidden_width=8, context_width=4)
+    router = ExternalOnlineTransitionContextRouter(
+        bank,
+        encoder,
+        candidate_model_families=(
+            EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY,
+            EXTERNAL_TRANSITION_RANDOM_FEATURE_MODEL_FAMILY,
+        ),
+        defer_admission=True,
+    )
+    observation = ExternalTransitionObservation(
+        state=torch.tensor([[0.2, -0.4]]),
+        intention=torch.tensor([[0.7]]),
+        next_state=torch.zeros(1, 2),
+    )
+
+    class ConstantModel(torch.nn.Module):
+        def __init__(self, value: float) -> None:
+            super().__init__()
+            self.value = value
+
+        def forward(self, state: torch.Tensor, intention: torch.Tensor) -> torch.Tensor:
+            del intention
+            return torch.full_like(state, self.value)
+
+    router._stage_candidate(
+        torch.tensor([0.0, 0.0, 0.0, 1.0]),
+        observation=observation,
+        prior_index=None,
+    )
+    candidate = router._provisional_candidates[0]
+    candidate.model = ConstantModel(1.0)
+    candidate.alternatives = {
+        EXTERNAL_TRANSITION_RANDOM_FEATURE_MODEL_FAMILY: ConstantModel(0.0),
+    }
+
+    staged = router._staged_result(observation, candidate_index=0)
+
+    assert staged.prediction_error == pytest.approx(0.0)
+    assert (
+        router.provisional_model_family_at(0)
+        == EXTERNAL_TRANSITION_RANDOM_FEATURE_MODEL_FAMILY
+    )
+    assert router.provisional_model_at(0) is candidate.model
+    assert set(candidate.models()) == {
+        EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY,
+        EXTERNAL_TRANSITION_RANDOM_FEATURE_MODEL_FAMILY,
+    }
 
 
 def test_online_router_persists_provisional_evidence_window() -> None:

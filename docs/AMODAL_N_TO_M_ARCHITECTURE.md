@@ -11703,3 +11703,20 @@ than a presumed file provenance. This is a bounded external-memory
 composition primitive, not evidence of efficient arbitrary program synthesis,
 unrestricted memory growth, or general continual learning. Evidence is
 archived in `session_records/control_flow_fragment_splice_promoted_2026-08-12/`.
+
+## Provisional model-family portfolios
+
+An isolated online candidate may contain several replaceable opaque transition
+model families. The router now exposes the family with the lowest factual
+one-step error during provisional execution, while retaining every alternative
+for the independent held-out promotion gate. The active family is serialized
+with the candidate, and copy-on-write shadow probes use that family explicitly;
+callers no longer silently assume that the first configured family has the
+right parameter shape.
+
+This boundary correction was neutral on the hard n-back-5 active-discovery
+screen (`5/8` complete gates, equal to baseline), so it is not evidence of a
+continual-learning gain. It makes the staged/executing interface coherent and
+keeps model-family selection outside the frozen controller. The evidence and
+negative cumulative-selector control are archived in
+`session_records/provisional_portfolio_execution_screen_2026-08-12/`.

@@ -1290,9 +1290,9 @@ def test_mixed_router_adapts_both_families_and_promotes_verified_winner() -> Non
     }
     router.adaptation_step(staged, None)
     assert int(
-        router._provisional_candidates[0].alternatives[
-            "affine_sufficient_statistics_v1"
-        ].sample_count
+        router._provisional_candidates[0]
+        .models()["affine_sufficient_statistics_v1"]
+        .sample_count
     ) == 8
 
     restored = ExternalOnlineTransitionContextRouter.from_payload(

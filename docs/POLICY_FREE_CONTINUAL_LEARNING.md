@@ -1792,3 +1792,23 @@ or `0.15` produced the same hard-regime complete gates (`5/8` active,
 being rescued by a looser threshold; recursive and retention checks remain
 the correct boundary. This negative screen is recorded in
 `session_records/promotion_tolerance_screen_2026-08-11/`.
+
+## Portfolio-aware provisional execution screen (2026-08-12)
+
+The online transition router now keeps its isolated model-family portfolio
+available for held-out promotion while exposing the lowest-error factual
+hypothesis to caller-owned provisional execution. The selected family is
+persisted, and the canonical shadow-bank and active-probe paths copy the
+selected family rather than assuming that the first configured family is
+correct. This closes a real interface mismatch between staging and execution;
+it does not add a controller branch or expose semantic metadata.
+
+On the hard masked n-back-5 active-discovery rung, the boundary fix reached
+`5/8` complete gates, matching the existing baseline. All eight runs preserved
+the frozen controller and source slot, consumed `234` transition rows once,
+and replayed zero examples. The cumulative-error selector was rejected at
+`4/8`; the fresh-error selector is retained as a plumbing improvement only.
+This is not promoted as a continual-learning or sample-efficiency gain. The
+remaining bottleneck is still reliable pre-admission evidence and held-out
+model-family verification. Evidence is archived in
+`session_records/provisional_portfolio_execution_screen_2026-08-12/`.

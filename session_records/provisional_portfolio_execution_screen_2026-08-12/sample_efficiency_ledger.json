@@ -1,0 +1,40 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment_id": "provisional-portfolio-execution-screen-nback5-2026-08-12",
+  "status": "neutral_boundary_fix_not_promoted_as_learning_gain",
+  "source": "in_repository_run",
+  "seeds": [80, 81, 82, 83, 84, 85, 86, 87],
+  "configuration": {
+    "target_n_back": 5,
+    "target_cue_symbol": 6,
+    "steps": 6,
+    "routing_match_tolerance": 0.01,
+    "window_statistics": "masked_mean_and_max_v1",
+    "window_gain": 0.05,
+    "discovery_probe_mode": "active",
+    "provisional_family_selection": "fresh_scalar_prediction_error_portfolio_v1",
+    "controller_frozen": true,
+    "replay_free": true
+  },
+  "arm": {
+    "complete_gates": 5,
+    "target_model_improved_on_heldout": 5,
+    "target_promotion_accepted": 6,
+    "unique_verifier_bits": 146,
+    "transition_rows_consumed_once": 234,
+    "replayed_examples": 0,
+    "controller_unchanged_runs": 8,
+    "source_slot_byte_stable_runs": 8
+  },
+  "per_seed": {
+    "80": {"complete_gate": true, "target_promotion_accepted": true, "target_model_improved_on_heldout": true},
+    "81": {"complete_gate": true, "target_promotion_accepted": true, "target_model_improved_on_heldout": true},
+    "82": {"complete_gate": false, "target_promotion_accepted": false, "target_model_improved_on_heldout": false},
+    "83": {"complete_gate": true, "target_promotion_accepted": true, "target_model_improved_on_heldout": true},
+    "84": {"complete_gate": true, "target_promotion_accepted": true, "target_model_improved_on_heldout": true},
+    "85": {"complete_gate": true, "target_promotion_accepted": true, "target_model_improved_on_heldout": true},
+    "86": {"complete_gate": false, "target_promotion_accepted": false, "target_model_improved_on_heldout": false},
+    "87": {"complete_gate": false, "target_promotion_accepted": true, "target_model_improved_on_heldout": false}
+  },
+  "claim_boundary": "The portfolio-aware provisional boundary removes static model-family exposure and preserves held-out alternatives, but does not improve the hard-regime complete gate over the existing baseline."
+}
