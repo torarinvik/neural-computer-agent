@@ -11368,3 +11368,66 @@ beaten. What is gone is the requirement that a human write either the
 perception or the goal for these worlds: the last two domain-specific
 components of the pipeline are now chosen by the environment's own
 reward from domain-general parts.
+
+## F216 — THE GOAL'S SIGN IS DISCOVERED PER WORLD, AND THE SYSTEM NOW
+## DOES SOMETHING THE HAND-WRITTEN STACK NEVER COULD
+
+Since F203 the avoid worlds have been net negative for every arm and the
+recorded reason was "the objective does not describe avoid" — the only
+goal form was approach. F214/F215 made goals and perception things
+control search chooses; this widens the goal language by ONE BIT:
+
+    goal = (pair_a, pair_b, sign),  cost = sign x distance
+
+Three seeds, sixteen worlds, three forced languages plus the free
+choice, the F214 selection protocol throughout.
+
+**The free search uses the new bit exactly where it should.** Sign -1 is
+chosen on avoid1 and avoid2 on 3 of 3 seeds, and +1 on every other
+world on every seed. Nothing told it which worlds are about staying
+away; the environment's return did.
+
+**On the avoid worlds it buys most of what is attainable.** The only
+reward there is -1 on hazard contact, so the ceiling is 0.000 exactly:
+
+| world | random | approach | SIGNED | ceiling | penalty removed |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| avoid1 | -0.130 | -0.135 | **-0.016** | 0.000 | **88%** |
+| avoid2 | -0.229 | -0.156 | **-0.047** | 0.000 | **79%** |
+
+    signed - random, pure avoid:   +0.1484 +- 0.0248  t=+5.99  6/6
+    signed - approach, pure avoid: +0.1146 +- 0.0360  t=+3.18  5/6
+    signed - approach, all 48:     +0.0143, identical on 42/48 (the
+                                   wider language costs nothing where
+                                   the old one was right)
+
+The hand-written stack NEVER had an avoid goal — a human wrote
+approach-(0,1)->(2,3) and that was the system's entire notion of
+wanting. This is the first result that goes beyond what the hand-written
+pipeline could express rather than matching it.
+
+**Two registered predictions were wrong, in instructive ways.**
+Prediction 1 said avoid worlds would go POSITIVE; positive is
+unattainable — there is no positive reward in those worlds, a fact I
+should have checked before registering the prediction rather than
+after. Prediction 4 said the oracle under the signed goal would confirm
+the language; instead the BANK beats the oracle there (-0.016 vs
+-0.099, -0.047 vs -0.224), which by F203's principle means the
+flee-the-nearest-hazard proxy is still mismatched — optimising it
+EXACTLY walks into more contact than optimising it fuzzily. The sign is
+right and the shape is still wrong; a goal over all hazards rather than
+the nearest one is the open next step.
+
+**The bug that nearly wrote a false finding, and the instrument that
+caught it.** The first run reported approach == avoid == signed to the
+byte on the pure avoid worlds. Opposite goals producing identical
+behaviour means a dead component upstream, and it was: `build_bank`
+required ALL six slots present per row, avoid worlds have slots 2,3
+absent by construction, so every row was dropped and the planner tied
+into constant action 0 for every goal. This is the THIRD appearance of
+the row-versus-slot sentinel lesson (F155, F192, here). The tell —
+byte-identical returns under opposite objectives — joins byte-identical
+outputs (F163) in the instrument list. The fix also snapped the pure
+collect and intercept worlds back to their F203 values (collect1 bank
++1.708 against the buggy run's +0.052), confirming the same empty-bank
+failure had silently flattened every single-object world in this probe.
