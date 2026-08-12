@@ -1205,6 +1205,46 @@ PYTHONPATH=src uv run python -m experiments.brainworkshop_canonical.external_tem
   --report-out /tmp/brainworkshop-open-query-capacity.json
 ```
 
+## Interleaved replay-free capability admission (promoted bounded rung)
+
+`external_temporal_interleaved_admission.py` removes the remaining
+experiment-level separation between acquisition and capacity pressure. Six
+fresh opaque query/address routes are learned sequentially from new scalar
+counterfactual probes; each is admitted immediately into a three-slot hot
+cache backed by a seven-record growable archive. Previously acquired routes
+are revisited between admissions, and every replacement is copy-on-write and
+verifier-gated. The protected source, controller, event encoder, and frozen
+capability file remain unchanged.
+
+Across seeds `17`, `18`, and `19`, all `20/20` gates pass. The archive grows to
+seven routes while the cache performs `14` replacements and `14` genuine
+learned-policy victim choices. Every fresh admission and cold reactivation is
+accepted; the protected source is never evicted; active, archived, and 20%
+related-key routes remain at `1.0000`; unknown-key miss, reload, checksum
+rejection, frozen-core/file, and zero-replay controls pass. Held-out victim
+policy accuracy is `0.9336`, `0.9297`, and `0.9199`, while reward-shuffled
+controls remain below mastery (`0.3027`, `0.2070`, `0.3418`).
+
+Each seed accounts for `171,776` unique verifier bits, `48,128`
+counterfactual-arm bits, `25,344/25,920/25,728` capacity-retention bits,
+`3,000` policy updates, seven archive records, three active slots, and zero
+replay. This promotes bounded replay-free interleaved capability admission
+under capacity pressure; it does not establish unrestricted memory growth,
+learned compression, arbitrary new computation, or general continual learning.
+Evidence and complete raw reports are archived in
+`session_records/brainworkshop_external_temporal_interleaved_admission_promoted_2026-08-12/`.
+
+Run it with:
+
+```bash
+PYTHONPATH=src uv run python -m experiments.brainworkshop_canonical.external_temporal_interleaved_admission \
+  --source-updates 128 --source-evaluation-lifetimes 4 \
+  --source-route-lifetimes 8 --target-route-updates 8 --admission-count 6 \
+  --policy-updates 3000 --policy-eval-episodes 512 --batch-size 16 \
+  --data-steps 14 --retention-lifetimes 4 --seed 17 \
+  --report-out /tmp/brainworkshop-interleaved-admission.json
+```
+
 ## Related-key temporal content retrieval (historical v1; current v2 rejected)
 
 `external_temporal_content_retrieval_growth.py` composes that address

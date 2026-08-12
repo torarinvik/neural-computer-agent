@@ -11170,3 +11170,29 @@ reactivation. It does not qualify unrestricted memory growth, learned
 compression, arbitrary new computation, or general continual learning.
 Evidence and accounting are archived in
 `session_records/brainworkshop_external_temporal_open_query_capacity_promoted_2026-08-12/`.
+
+### Interleaved replay-free capability admission
+
+`external_temporal_interleaved_admission.py` closes the experiment-level gap
+between learning a new route and exercising memory pressure. Six fresh opaque
+query/address routes are acquired sequentially from new scalar
+counterfactual probes. Each route is registered immediately in a growable
+seven-record episodic archive and admitted into a three-slot hot cache; prior
+routes are revisited between admissions. A learned generic victim policy has
+two eligible residents to choose between after the protected source, and an
+independent copy-on-write route verifier owns every commit.
+
+Across seeds `17`, `18`, and `19`, all `20/20` gates pass: 14 replacements and
+14 genuine policy choices, successful fresh admission and cold reactivation,
+protected-source retention, `1.0000` active/archive/related-key route
+accuracy, unknown-key miss, reload and checksum rejection, frozen
+controller/encoder/file, and zero replay. Held-out policy accuracy is
+`0.9336`, `0.9297`, and `0.9199`; reward-shuffled controls remain below
+mastery. The runs use `171,776` unique verifier bits and
+`25,344/25,920/25,728` capacity-retention bits.
+
+This promotes bounded replay-free interleaved capability admission under
+capacity pressure. It does not qualify unrestricted memory growth, learned
+compression, arbitrary new computation, or general continual learning.
+Evidence and accounting are archived in
+`session_records/brainworkshop_external_temporal_interleaved_admission_promoted_2026-08-12/`.

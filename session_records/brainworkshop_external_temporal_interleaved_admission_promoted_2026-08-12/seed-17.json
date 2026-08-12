@@ -1,0 +1,1384 @@
+{
+  "schema": "neural-computer.brainworkshop-external-temporal-interleaved-admission.v1",
+  "claim_boundary": "Replay-free interleaved admission of fresh opaque temporal routes into a growable archive under a three-slot verifier-gated hot cache; not unrestricted memory growth, learned compression, arbitrary new computation, or general continual learning.",
+  "seed": 17,
+  "architecture": {
+    "long_term_archive": "episodic_binding_artifact_index_v1",
+    "hot_cache": "three_slot_opaque_reactivation_cache",
+    "victim_policy": "external_capability_eviction_policy_v1",
+    "replacement": "copy_on_write_retention_verified_v1",
+    "source_protection": "stable_scalar_prefix_v1",
+    "controller": "frozen_canonical_amodal_controller",
+    "event_encoder": "frozen_learned_event_encoder",
+    "capability_file": "frozen_external_temporal_capability_file",
+    "admission_stages": [
+      [
+        5,
+        5
+      ],
+      [
+        6,
+        6
+      ],
+      [
+        7,
+        7
+      ],
+      [
+        8,
+        8
+      ],
+      [
+        9,
+        5
+      ],
+      [
+        10,
+        6
+      ]
+    ],
+    "archive_records": 7,
+    "active_slots": 3,
+    "forbidden_features": "query_depth_route_id_route_position_semantic_names_task_ids_replayed_streams"
+  },
+  "policy_training": {
+    "optimizer_updates": 3000,
+    "unique_scalar_utilities": 3000,
+    "first_window_utility": 0.47,
+    "last_window_utility": 0.96,
+    "reward_shuffled": 0
+  },
+  "policy_accuracy": 0.93359375,
+  "shuffled_policy_training": {
+    "optimizer_updates": 3000,
+    "unique_scalar_utilities": 3000,
+    "first_window_utility": 0.46,
+    "last_window_utility": 0.47,
+    "reward_shuffled": 1
+  },
+  "shuffled_policy_accuracy": 0.302734375,
+  "routes": [
+    {
+      "route_id": 0,
+      "query_symbol": 0,
+      "depth": 4,
+      "position": 3,
+      "handle": "opaque-temporal-route-23ee6824925ec6e559389c8c6c8635c92b5dd359b20ed24788645277ac2144b9",
+      "key_digest": "23ee6824925ec6e559389c8c6c8635c92b5dd359b20ed24788645277ac2144b9",
+      "history_tail": [
+        {
+          "lifetime": 1,
+          "accuracy": 1.0,
+          "selected_offset": 4,
+          "unique_verifier_bits": 160,
+          "replayed_examples": 0
+        },
+        {
+          "lifetime": 2,
+          "accuracy": 1.0,
+          "selected_offset": 4,
+          "unique_verifier_bits": 160,
+          "replayed_examples": 0
+        },
+        {
+          "lifetime": 3,
+          "accuracy": 1.0,
+          "selected_offset": 4,
+          "unique_verifier_bits": 160,
+          "replayed_examples": 0
+        },
+        {
+          "lifetime": 4,
+          "accuracy": 1.0,
+          "selected_offset": 4,
+          "unique_verifier_bits": 160,
+          "replayed_examples": 0
+        },
+        {
+          "lifetime": 5,
+          "accuracy": 1.0,
+          "selected_offset": 4,
+          "unique_verifier_bits": 160,
+          "replayed_examples": 0
+        },
+        {
+          "lifetime": 6,
+          "accuracy": 1.0,
+          "selected_offset": 4,
+          "unique_verifier_bits": 160,
+          "replayed_examples": 0
+        },
+        {
+          "lifetime": 7,
+          "accuracy": 1.0,
+          "selected_offset": 4,
+          "unique_verifier_bits": 160,
+          "replayed_examples": 0
+        },
+        {
+          "lifetime": 8,
+          "accuracy": 1.0,
+          "selected_offset": 4,
+          "unique_verifier_bits": 160,
+          "replayed_examples": 0
+        }
+      ]
+    },
+    {
+      "route_id": 1,
+      "query_symbol": 5,
+      "depth": 5,
+      "position": 4,
+      "handle": "opaque-temporal-route-4852233ff663f58f5754e45f2fccfe5f49e75adf973cce89fafa1cc1bad2214e",
+      "key_digest": "4852233ff663f58f5754e45f2fccfe5f49e75adf973cce89fafa1cc1bad2214e",
+      "history_tail": [
+        {
+          "update": 1,
+          "best_observed_offset": 5,
+          "best_true_offset": 5,
+          "best_observed_accuracy": 1.0,
+          "best_true_accuracy": 1.0,
+          "unique_verifier_bits": 144,
+          "counterfactual_verifier_bits": 1152,
+          "replayed_examples": 0
+        },
+        {
+          "update": 2,
+          "best_observed_offset": 5,
+          "best_true_offset": 5,
+          "best_observed_accuracy": 1.0,
+          "best_true_accuracy": 1.0,
+          "unique_verifier_bits": 144,
+          "counterfactual_verifier_bits": 1152,
+          "replayed_examples": 0
+        },
+        {
+          "update": 3,
+          "best_observed_offset": 5,
+          "best_true_offset": 5,
+          "best_observed_accuracy": 1.0,
+          "best_true_accuracy": 1.0,
+          "unique_verifier_bits": 144,
+          "counterfactual_verifier_bits": 1152,
+          "replayed_examples": 0
+        },
+        {
+          "update": 4,
+          "best_observed_offset": 5,
+          "best_true_offset": 5,
+          "best_observed_accuracy": 1.0,
+          "best_true_accuracy": 1.0,
+          "unique_verifier_bits": 144,
+          "counterfactual_verifier_bits": 1152,
+          "replayed_examples": 0
+        },
+        {
+          "update": 5,
+          "best_observed_offset": 5,
+          "best_true_offset": 5,
+          "best_observed_accuracy": 1.0,
+          "best_true_accuracy": 1.0,
+          "unique_verifier_bits": 144,
+          "counterfactual_verifier_bits": 1152,
+          "replayed_examples": 0
+        },
+        {
+          "update": 6,
+          "best_observed_offset": 5,
+          "best_true_offset": 5,
+          "best_observed_accuracy": 1.0,
+          "best_true_accuracy": 1.0,
+          "unique_verifier_bits": 144,
+          "counterfactual_verifier_bits": 1152,
+          "replayed_examples": 0
+        },
+        {
+          "update": 7,
+          "best_observed_offset": 5,
+          "best_true_offset": 5,
+          "best_observed_accuracy": 1.0,
+          "best_true_accuracy": 1.0,
+          "unique_verifier_bits": 144,
+          "counterfactual_verifier_bits": 1152,
+          "replayed_examples": 0
+        },
+        {
+          "update": 8,
+          "best_observed_offset": 5,
+          "best_true_offset": 5,
+          "best_observed_accuracy": 1.0,
+          "best_true_accuracy": 1.0,
+          "unique_verifier_bits": 144,
+          "counterfactual_verifier_bits": 1152,
+          "replayed_examples": 0
+        }
+      ]
+    },
+    {
+      "route_id": 2,
+      "query_symbol": 6,
+      "depth": 6,
+      "position": 5,
+      "handle": "opaque-temporal-route-67c8f3ae08db0d97058b00791e568681016cb7884315808503c6412d0b669809",
+      "key_digest": "67c8f3ae08db0d97058b00791e568681016cb7884315808503c6412d0b669809",
+      "history_tail": [
+        {
+          "update": 1,
+          "best_observed_offset": 6,
+          "best_true_offset": 6,
+          "best_observed_accuracy": 1.0,
+          "best_true_accuracy": 1.0,
+          "unique_verifier_bits": 128,
+          "counterfactual_verifier_bits": 1024,
+          "replayed_examples": 0
+        },
+        {
+          "update": 2,
+          "best_observed_offset": 6,
+          "best_true_offset": 6,
+          "best_observed_accuracy": 1.0,
+          "best_true_accuracy": 1.0,
+          "unique_verifier_bits": 128,
+          "counterfactual_verifier_bits": 1024,
+          "replayed_examples": 0
+        },
+        {
+          "update": 3,
+          "best_observed_offset": 6,
+          "best_true_offset": 6,
+          "best_observed_accuracy": 1.0,
+          "best_true_accuracy": 1.0,
+          "unique_verifier_bits": 128,
+          "counterfactual_verifier_bits": 1024,
+          "replayed_examples": 0
+        },
+        {
+          "update": 4,
+          "best_observed_offset": 6,
+          "best_true_offset": 6,
+          "best_observed_accuracy": 1.0,
+          "best_true_accuracy": 1.0,
+          "unique_verifier_bits": 128,
+          "counterfactual_verifier_bits": 1024,
+          "replayed_examples": 0
+        },
+        {
+          "update": 5,
+          "best_observed_offset": 6,
+          "best_true_offset": 6,
+          "best_observed_accuracy": 1.0,
+          "best_true_accuracy": 1.0,
+          "unique_verifier_bits": 128,
+          "counterfactual_verifier_bits": 1024,
+          "replayed_examples": 0
+        },
+        {
+          "update": 6,
+          "best_observed_offset": 6,
+          "best_true_offset": 6,
+          "best_observed_accuracy": 1.0,
+          "best_true_accuracy": 1.0,
+          "unique_verifier_bits": 128,
+          "counterfactual_verifier_bits": 1024,
+          "replayed_examples": 0
+        },
+        {
+          "update": 7,
+          "best_observed_offset": 6,
+          "best_true_offset": 6,
+          "best_observed_accuracy": 1.0,
+          "best_true_accuracy": 1.0,
+          "unique_verifier_bits": 128,
+          "counterfactual_verifier_bits": 1024,
+          "replayed_examples": 0
+        },
+        {
+          "update": 8,
+          "best_observed_offset": 6,
+          "best_true_offset": 6,
+          "best_observed_accuracy": 1.0,
+          "best_true_accuracy": 1.0,
+          "unique_verifier_bits": 128,
+          "counterfactual_verifier_bits": 1024,
+          "replayed_examples": 0
+        }
+      ]
+    },
+    {
+      "route_id": 3,
+      "query_symbol": 7,
+      "depth": 7,
+      "position": 6,
+      "handle": "opaque-temporal-route-872f9904436f0f7d9378c8a312c104fc16ce7ed73e379b768a827bea339eb742",
+      "key_digest": "872f9904436f0f7d9378c8a312c104fc16ce7ed73e379b768a827bea339eb742",
+      "history_tail": [
+        {
+          "update": 1,
+          "best_observed_offset": 7,
+          "best_true_offset": 7,
+          "best_observed_accuracy": 1.0,
+          "best_true_accuracy": 1.0,
+          "unique_verifier_bits": 112,
+          "counterfactual_verifier_bits": 896,
+          "replayed_examples": 0
+        },
+        {
+          "update": 2,
+          "best_observed_offset": 7,
+          "best_true_offset": 7,
+          "best_observed_accuracy": 1.0,
+          "best_true_accuracy": 1.0,
+          "unique_verifier_bits": 112,
+          "counterfactual_verifier_bits": 896,
+          "replayed_examples": 0
+        },
+        {
+          "update": 3,
+          "best_observed_offset": 7,
+          "best_true_offset": 7,
+          "best_observed_accuracy": 1.0,
+          "best_true_accuracy": 1.0,
+          "unique_verifier_bits": 112,
+          "counterfactual_verifier_bits": 896,
+          "replayed_examples": 0
+        },
+        {
+          "update": 4,
+          "best_observed_offset": 7,
+          "best_true_offset": 7,
+          "best_observed_accuracy": 1.0,
+          "best_true_accuracy": 1.0,
+          "unique_verifier_bits": 112,
+          "counterfactual_verifier_bits": 896,
+          "replayed_examples": 0
+        },
+        {
+          "update": 5,
+          "best_observed_offset": 7,
+          "best_true_offset": 7,
+          "best_observed_accuracy": 1.0,
+          "best_true_accuracy": 1.0,
+          "unique_verifier_bits": 112,
+          "counterfactual_verifier_bits": 896,
+          "replayed_examples": 0
+        },
+        {
+          "update": 6,
+          "best_observed_offset": 7,
+          "best_true_offset": 7,
+          "best_observed_accuracy": 1.0,
+          "best_true_accuracy": 1.0,
+          "unique_verifier_bits": 112,
+          "counterfactual_verifier_bits": 896,
+          "replayed_examples": 0
+        },
+        {
+          "update": 7,
+          "best_observed_offset": 7,
+          "best_true_offset": 7,
+          "best_observed_accuracy": 1.0,
+          "best_true_accuracy": 1.0,
+          "unique_verifier_bits": 112,
+          "counterfactual_verifier_bits": 896,
+          "replayed_examples": 0
+        },
+        {
+          "update": 8,
+          "best_observed_offset": 7,
+          "best_true_offset": 7,
+          "best_observed_accuracy": 1.0,
+          "best_true_accuracy": 1.0,
+          "unique_verifier_bits": 112,
+          "counterfactual_verifier_bits": 896,
+          "replayed_examples": 0
+        }
+      ]
+    },
+    {
+      "route_id": 4,
+      "query_symbol": 8,
+      "depth": 8,
+      "position": 7,
+      "handle": "opaque-temporal-route-48415a19040af6857b157e354ec60e2e6b2a50cda332113d8f426d8f84eede09",
+      "key_digest": "48415a19040af6857b157e354ec60e2e6b2a50cda332113d8f426d8f84eede09",
+      "history_tail": [
+        {
+          "update": 1,
+          "best_observed_offset": 8,
+          "best_true_offset": 8,
+          "best_observed_accuracy": 1.0,
+          "best_true_accuracy": 1.0,
+          "unique_verifier_bits": 96,
+          "counterfactual_verifier_bits": 768,
+          "replayed_examples": 0
+        },
+        {
+          "update": 2,
+          "best_observed_offset": 8,
+          "best_true_offset": 8,
+          "best_observed_accuracy": 1.0,
+          "best_true_accuracy": 1.0,
+          "unique_verifier_bits": 96,
+          "counterfactual_verifier_bits": 768,
+          "replayed_examples": 0
+        },
+        {
+          "update": 3,
+          "best_observed_offset": 8,
+          "best_true_offset": 8,
+          "best_observed_accuracy": 1.0,
+          "best_true_accuracy": 1.0,
+          "unique_verifier_bits": 96,
+          "counterfactual_verifier_bits": 768,
+          "replayed_examples": 0
+        },
+        {
+          "update": 4,
+          "best_observed_offset": 8,
+          "best_true_offset": 8,
+          "best_observed_accuracy": 1.0,
+          "best_true_accuracy": 1.0,
+          "unique_verifier_bits": 96,
+          "counterfactual_verifier_bits": 768,
+          "replayed_examples": 0
+        },
+        {
+          "update": 5,
+          "best_observed_offset": 8,
+          "best_true_offset": 8,
+          "best_observed_accuracy": 1.0,
+          "best_true_accuracy": 1.0,
+          "unique_verifier_bits": 96,
+          "counterfactual_verifier_bits": 768,
+          "replayed_examples": 0
+        },
+        {
+          "update": 6,
+          "best_observed_offset": 8,
+          "best_true_offset": 8,
+          "best_observed_accuracy": 1.0,
+          "best_true_accuracy": 1.0,
+          "unique_verifier_bits": 96,
+          "counterfactual_verifier_bits": 768,
+          "replayed_examples": 0
+        },
+        {
+          "update": 7,
+          "best_observed_offset": 8,
+          "best_true_offset": 8,
+          "best_observed_accuracy": 1.0,
+          "best_true_accuracy": 1.0,
+          "unique_verifier_bits": 96,
+          "counterfactual_verifier_bits": 768,
+          "replayed_examples": 0
+        },
+        {
+          "update": 8,
+          "best_observed_offset": 8,
+          "best_true_offset": 8,
+          "best_observed_accuracy": 1.0,
+          "best_true_accuracy": 1.0,
+          "unique_verifier_bits": 96,
+          "counterfactual_verifier_bits": 768,
+          "replayed_examples": 0
+        }
+      ]
+    },
+    {
+      "route_id": 5,
+      "query_symbol": 9,
+      "depth": 5,
+      "position": 4,
+      "handle": "opaque-temporal-route-21685cf6c55ce03d15a364cc5c9dee7be6c76ce42ab035129b8046a3366bde99",
+      "key_digest": "21685cf6c55ce03d15a364cc5c9dee7be6c76ce42ab035129b8046a3366bde99",
+      "history_tail": [
+        {
+          "update": 1,
+          "best_observed_offset": 5,
+          "best_true_offset": 5,
+          "best_observed_accuracy": 1.0,
+          "best_true_accuracy": 1.0,
+          "unique_verifier_bits": 144,
+          "counterfactual_verifier_bits": 1152,
+          "replayed_examples": 0
+        },
+        {
+          "update": 2,
+          "best_observed_offset": 5,
+          "best_true_offset": 5,
+          "best_observed_accuracy": 1.0,
+          "best_true_accuracy": 1.0,
+          "unique_verifier_bits": 144,
+          "counterfactual_verifier_bits": 1152,
+          "replayed_examples": 0
+        },
+        {
+          "update": 3,
+          "best_observed_offset": 5,
+          "best_true_offset": 5,
+          "best_observed_accuracy": 1.0,
+          "best_true_accuracy": 1.0,
+          "unique_verifier_bits": 144,
+          "counterfactual_verifier_bits": 1152,
+          "replayed_examples": 0
+        },
+        {
+          "update": 4,
+          "best_observed_offset": 5,
+          "best_true_offset": 5,
+          "best_observed_accuracy": 1.0,
+          "best_true_accuracy": 1.0,
+          "unique_verifier_bits": 144,
+          "counterfactual_verifier_bits": 1152,
+          "replayed_examples": 0
+        },
+        {
+          "update": 5,
+          "best_observed_offset": 5,
+          "best_true_offset": 5,
+          "best_observed_accuracy": 1.0,
+          "best_true_accuracy": 1.0,
+          "unique_verifier_bits": 144,
+          "counterfactual_verifier_bits": 1152,
+          "replayed_examples": 0
+        },
+        {
+          "update": 6,
+          "best_observed_offset": 5,
+          "best_true_offset": 5,
+          "best_observed_accuracy": 1.0,
+          "best_true_accuracy": 1.0,
+          "unique_verifier_bits": 144,
+          "counterfactual_verifier_bits": 1152,
+          "replayed_examples": 0
+        },
+        {
+          "update": 7,
+          "best_observed_offset": 5,
+          "best_true_offset": 5,
+          "best_observed_accuracy": 1.0,
+          "best_true_accuracy": 1.0,
+          "unique_verifier_bits": 144,
+          "counterfactual_verifier_bits": 1152,
+          "replayed_examples": 0
+        },
+        {
+          "update": 8,
+          "best_observed_offset": 5,
+          "best_true_offset": 5,
+          "best_observed_accuracy": 1.0,
+          "best_true_accuracy": 1.0,
+          "unique_verifier_bits": 144,
+          "counterfactual_verifier_bits": 1152,
+          "replayed_examples": 0
+        }
+      ]
+    },
+    {
+      "route_id": 6,
+      "query_symbol": 10,
+      "depth": 6,
+      "position": 5,
+      "handle": "opaque-temporal-route-5373260998456dde40833faaa8541ff76f582b8a49e3ec5de96018bad17e3bd5",
+      "key_digest": "5373260998456dde40833faaa8541ff76f582b8a49e3ec5de96018bad17e3bd5",
+      "history_tail": [
+        {
+          "update": 1,
+          "best_observed_offset": 6,
+          "best_true_offset": 6,
+          "best_observed_accuracy": 1.0,
+          "best_true_accuracy": 1.0,
+          "unique_verifier_bits": 128,
+          "counterfactual_verifier_bits": 1024,
+          "replayed_examples": 0
+        },
+        {
+          "update": 2,
+          "best_observed_offset": 6,
+          "best_true_offset": 6,
+          "best_observed_accuracy": 1.0,
+          "best_true_accuracy": 1.0,
+          "unique_verifier_bits": 128,
+          "counterfactual_verifier_bits": 1024,
+          "replayed_examples": 0
+        },
+        {
+          "update": 3,
+          "best_observed_offset": 6,
+          "best_true_offset": 6,
+          "best_observed_accuracy": 1.0,
+          "best_true_accuracy": 1.0,
+          "unique_verifier_bits": 128,
+          "counterfactual_verifier_bits": 1024,
+          "replayed_examples": 0
+        },
+        {
+          "update": 4,
+          "best_observed_offset": 6,
+          "best_true_offset": 6,
+          "best_observed_accuracy": 1.0,
+          "best_true_accuracy": 1.0,
+          "unique_verifier_bits": 128,
+          "counterfactual_verifier_bits": 1024,
+          "replayed_examples": 0
+        },
+        {
+          "update": 5,
+          "best_observed_offset": 6,
+          "best_true_offset": 6,
+          "best_observed_accuracy": 1.0,
+          "best_true_accuracy": 1.0,
+          "unique_verifier_bits": 128,
+          "counterfactual_verifier_bits": 1024,
+          "replayed_examples": 0
+        },
+        {
+          "update": 6,
+          "best_observed_offset": 6,
+          "best_true_offset": 6,
+          "best_observed_accuracy": 1.0,
+          "best_true_accuracy": 1.0,
+          "unique_verifier_bits": 128,
+          "counterfactual_verifier_bits": 1024,
+          "replayed_examples": 0
+        },
+        {
+          "update": 7,
+          "best_observed_offset": 6,
+          "best_true_offset": 6,
+          "best_observed_accuracy": 1.0,
+          "best_true_accuracy": 1.0,
+          "unique_verifier_bits": 128,
+          "counterfactual_verifier_bits": 1024,
+          "replayed_examples": 0
+        },
+        {
+          "update": 8,
+          "best_observed_offset": 6,
+          "best_true_offset": 6,
+          "best_observed_accuracy": 1.0,
+          "best_true_accuracy": 1.0,
+          "unique_verifier_bits": 128,
+          "counterfactual_verifier_bits": 1024,
+          "replayed_examples": 0
+        }
+      ]
+    }
+  ],
+  "arrivals": [
+    {
+      "ordinal": 0,
+      "kind": "fresh_admission",
+      "route_id": 1,
+      "active_before": false,
+      "replacement": false,
+      "destination_slot": 1,
+      "order": null,
+      "scores": null,
+      "raw_policy_selected": false,
+      "displaced_binding_id": null,
+      "receipt": {
+        "accepted": true,
+        "binding_id": 1,
+        "slot": 1,
+        "artifact_handle": "opaque-temporal-route-4852233ff663f58f5754e45f2fccfe5f49e75adf973cce89fafa1cc1bad2214e",
+        "source_version": 11,
+        "destination_version": 12,
+        "reason": "held-out retention probe passed",
+        "schema": "neural-computer.episodic-artifact-activation.v1"
+      }
+    },
+    {
+      "ordinal": 1,
+      "kind": "revisit",
+      "route_id": 0,
+      "active_before": true,
+      "replacement": false,
+      "probe_passed": true
+    },
+    {
+      "ordinal": 2,
+      "kind": "fresh_admission",
+      "route_id": 2,
+      "active_before": false,
+      "replacement": false,
+      "destination_slot": 2,
+      "order": null,
+      "scores": null,
+      "raw_policy_selected": false,
+      "displaced_binding_id": null,
+      "receipt": {
+        "accepted": true,
+        "binding_id": 2,
+        "slot": 2,
+        "artifact_handle": "opaque-temporal-route-67c8f3ae08db0d97058b00791e568681016cb7884315808503c6412d0b669809",
+        "source_version": 15,
+        "destination_version": 16,
+        "reason": "held-out retention probe passed",
+        "schema": "neural-computer.episodic-artifact-activation.v1"
+      }
+    },
+    {
+      "ordinal": 3,
+      "kind": "revisit",
+      "route_id": 0,
+      "active_before": true,
+      "replacement": false,
+      "probe_passed": true
+    },
+    {
+      "ordinal": 4,
+      "kind": "fresh_admission",
+      "route_id": 3,
+      "active_before": false,
+      "replacement": true,
+      "destination_slot": 1,
+      "order": [
+        0,
+        1,
+        2
+      ],
+      "scores": [
+        -37.99894332885742,
+        -13.7036714553833,
+        -21.214313507080078
+      ],
+      "raw_policy_selected": true,
+      "displaced_binding_id": 1,
+      "receipt": {
+        "accepted": true,
+        "binding_id": 3,
+        "slot": 1,
+        "artifact_handle": "opaque-temporal-route-872f9904436f0f7d9378c8a312c104fc16ce7ed73e379b768a827bea339eb742",
+        "source_version": 19,
+        "destination_version": 20,
+        "reason": "held-out retention probe passed",
+        "schema": "neural-computer.episodic-artifact-activation.v1"
+      }
+    },
+    {
+      "ordinal": 5,
+      "kind": "revisit",
+      "route_id": 1,
+      "active_before": false,
+      "replacement": true,
+      "destination_slot": 2,
+      "order": [
+        2,
+        1,
+        0
+      ],
+      "scores": [
+        -6.063293933868408,
+        -10.621520042419434,
+        -22.920392990112305
+      ],
+      "raw_policy_selected": true,
+      "displaced_binding_id": 2,
+      "receipt": {
+        "accepted": true,
+        "binding_id": 1,
+        "slot": 2,
+        "artifact_handle": "opaque-temporal-route-4852233ff663f58f5754e45f2fccfe5f49e75adf973cce89fafa1cc1bad2214e",
+        "source_version": 21,
+        "destination_version": 22,
+        "reason": "held-out retention probe passed",
+        "schema": "neural-computer.episodic-artifact-activation.v1"
+      }
+    },
+    {
+      "ordinal": 6,
+      "kind": "fresh_admission",
+      "route_id": 4,
+      "active_before": false,
+      "replacement": true,
+      "destination_slot": 1,
+      "order": [
+        0,
+        1,
+        2
+      ],
+      "scores": [
+        -27.61202049255371,
+        -16.852388381958008,
+        -22.898706436157227
+      ],
+      "raw_policy_selected": true,
+      "displaced_binding_id": 3,
+      "receipt": {
+        "accepted": true,
+        "binding_id": 4,
+        "slot": 1,
+        "artifact_handle": "opaque-temporal-route-48415a19040af6857b157e354ec60e2e6b2a50cda332113d8f426d8f84eede09",
+        "source_version": 24,
+        "destination_version": 25,
+        "reason": "held-out retention probe passed",
+        "schema": "neural-computer.episodic-artifact-activation.v1"
+      }
+    },
+    {
+      "ordinal": 7,
+      "kind": "revisit",
+      "route_id": 2,
+      "active_before": false,
+      "replacement": true,
+      "destination_slot": 2,
+      "order": [
+        2,
+        1,
+        0
+      ],
+      "scores": [
+        -46.98966979980469,
+        -51.75381851196289,
+        -53.596885681152344
+      ],
+      "raw_policy_selected": true,
+      "displaced_binding_id": 1,
+      "receipt": {
+        "accepted": true,
+        "binding_id": 2,
+        "slot": 2,
+        "artifact_handle": "opaque-temporal-route-67c8f3ae08db0d97058b00791e568681016cb7884315808503c6412d0b669809",
+        "source_version": 26,
+        "destination_version": 27,
+        "reason": "held-out retention probe passed",
+        "schema": "neural-computer.episodic-artifact-activation.v1"
+      }
+    },
+    {
+      "ordinal": 8,
+      "kind": "fresh_admission",
+      "route_id": 5,
+      "active_before": false,
+      "replacement": true,
+      "destination_slot": 1,
+      "order": [
+        0,
+        1,
+        2
+      ],
+      "scores": [
+        -25.971635818481445,
+        -24.827930450439453,
+        -27.107255935668945
+      ],
+      "raw_policy_selected": true,
+      "displaced_binding_id": 4,
+      "receipt": {
+        "accepted": true,
+        "binding_id": 5,
+        "slot": 1,
+        "artifact_handle": "opaque-temporal-route-21685cf6c55ce03d15a364cc5c9dee7be6c76ce42ab035129b8046a3366bde99",
+        "source_version": 29,
+        "destination_version": 30,
+        "reason": "held-out retention probe passed",
+        "schema": "neural-computer.episodic-artifact-activation.v1"
+      }
+    },
+    {
+      "ordinal": 9,
+      "kind": "revisit",
+      "route_id": 3,
+      "active_before": false,
+      "replacement": true,
+      "destination_slot": 1,
+      "order": [
+        2,
+        1,
+        0
+      ],
+      "scores": [
+        -25.42564582824707,
+        -19.26485252380371,
+        -24.089706420898438
+      ],
+      "raw_policy_selected": true,
+      "displaced_binding_id": 5,
+      "receipt": {
+        "accepted": true,
+        "binding_id": 3,
+        "slot": 1,
+        "artifact_handle": "opaque-temporal-route-872f9904436f0f7d9378c8a312c104fc16ce7ed73e379b768a827bea339eb742",
+        "source_version": 31,
+        "destination_version": 32,
+        "reason": "held-out retention probe passed",
+        "schema": "neural-computer.episodic-artifact-activation.v1"
+      }
+    },
+    {
+      "ordinal": 10,
+      "kind": "fresh_admission",
+      "route_id": 6,
+      "active_before": false,
+      "replacement": true,
+      "destination_slot": 2,
+      "order": [
+        0,
+        1,
+        2
+      ],
+      "scores": [
+        -31.43720817565918,
+        -36.33958435058594,
+        -32.48710632324219
+      ],
+      "raw_policy_selected": false,
+      "displaced_binding_id": 2,
+      "receipt": {
+        "accepted": true,
+        "binding_id": 6,
+        "slot": 2,
+        "artifact_handle": "opaque-temporal-route-5373260998456dde40833faaa8541ff76f582b8a49e3ec5de96018bad17e3bd5",
+        "source_version": 34,
+        "destination_version": 35,
+        "reason": "held-out retention probe passed",
+        "schema": "neural-computer.episodic-artifact-activation.v1"
+      }
+    },
+    {
+      "ordinal": 11,
+      "kind": "revisit",
+      "route_id": 4,
+      "active_before": false,
+      "replacement": true,
+      "destination_slot": 2,
+      "order": [
+        2,
+        1,
+        0
+      ],
+      "scores": [
+        -18.7646541595459,
+        -20.09932518005371,
+        -16.353702545166016
+      ],
+      "raw_policy_selected": false,
+      "displaced_binding_id": 6,
+      "receipt": {
+        "accepted": true,
+        "binding_id": 4,
+        "slot": 2,
+        "artifact_handle": "opaque-temporal-route-48415a19040af6857b157e354ec60e2e6b2a50cda332113d8f426d8f84eede09",
+        "source_version": 36,
+        "destination_version": 37,
+        "reason": "held-out retention probe passed",
+        "schema": "neural-computer.episodic-artifact-activation.v1"
+      }
+    },
+    {
+      "ordinal": 100,
+      "kind": "final_sweep",
+      "route_id": 0,
+      "active_before": true,
+      "replacement": false,
+      "probe_passed": true
+    },
+    {
+      "ordinal": 101,
+      "kind": "final_sweep",
+      "route_id": 1,
+      "active_before": false,
+      "replacement": true,
+      "destination_slot": 1,
+      "order": [
+        2,
+        1,
+        0
+      ],
+      "scores": [
+        -17.899560928344727,
+        -5.979170322418213,
+        -25.589235305786133
+      ],
+      "raw_policy_selected": true,
+      "displaced_binding_id": 3,
+      "receipt": {
+        "accepted": true,
+        "binding_id": 1,
+        "slot": 1,
+        "artifact_handle": "opaque-temporal-route-4852233ff663f58f5754e45f2fccfe5f49e75adf973cce89fafa1cc1bad2214e",
+        "source_version": 39,
+        "destination_version": 40,
+        "reason": "held-out retention probe passed",
+        "schema": "neural-computer.episodic-artifact-activation.v1"
+      }
+    },
+    {
+      "ordinal": 102,
+      "kind": "final_sweep",
+      "route_id": 2,
+      "active_before": false,
+      "replacement": true,
+      "destination_slot": 2,
+      "order": [
+        0,
+        1,
+        2
+      ],
+      "scores": [
+        -59.2176513671875,
+        -52.31898498535156,
+        -50.070335388183594
+      ],
+      "raw_policy_selected": true,
+      "displaced_binding_id": 4,
+      "receipt": {
+        "accepted": true,
+        "binding_id": 2,
+        "slot": 2,
+        "artifact_handle": "opaque-temporal-route-67c8f3ae08db0d97058b00791e568681016cb7884315808503c6412d0b669809",
+        "source_version": 41,
+        "destination_version": 42,
+        "reason": "held-out retention probe passed",
+        "schema": "neural-computer.episodic-artifact-activation.v1"
+      }
+    },
+    {
+      "ordinal": 103,
+      "kind": "final_sweep",
+      "route_id": 3,
+      "active_before": false,
+      "replacement": true,
+      "destination_slot": 1,
+      "order": [
+        2,
+        1,
+        0
+      ],
+      "scores": [
+        -30.807931900024414,
+        -26.317338943481445,
+        -32.98664855957031
+      ],
+      "raw_policy_selected": true,
+      "displaced_binding_id": 1,
+      "receipt": {
+        "accepted": true,
+        "binding_id": 3,
+        "slot": 1,
+        "artifact_handle": "opaque-temporal-route-872f9904436f0f7d9378c8a312c104fc16ce7ed73e379b768a827bea339eb742",
+        "source_version": 43,
+        "destination_version": 44,
+        "reason": "held-out retention probe passed",
+        "schema": "neural-computer.episodic-artifact-activation.v1"
+      }
+    },
+    {
+      "ordinal": 104,
+      "kind": "final_sweep",
+      "route_id": 4,
+      "active_before": false,
+      "replacement": true,
+      "destination_slot": 1,
+      "order": [
+        0,
+        1,
+        2
+      ],
+      "scores": [
+        -25.771011352539062,
+        -24.113584518432617,
+        -24.63308334350586
+      ],
+      "raw_policy_selected": true,
+      "displaced_binding_id": 3,
+      "receipt": {
+        "accepted": true,
+        "binding_id": 4,
+        "slot": 1,
+        "artifact_handle": "opaque-temporal-route-48415a19040af6857b157e354ec60e2e6b2a50cda332113d8f426d8f84eede09",
+        "source_version": 45,
+        "destination_version": 46,
+        "reason": "held-out retention probe passed",
+        "schema": "neural-computer.episodic-artifact-activation.v1"
+      }
+    },
+    {
+      "ordinal": 105,
+      "kind": "final_sweep",
+      "route_id": 5,
+      "active_before": false,
+      "replacement": true,
+      "destination_slot": 2,
+      "order": [
+        2,
+        1,
+        0
+      ],
+      "scores": [
+        -23.19162940979004,
+        -34.91736602783203,
+        -26.314950942993164
+      ],
+      "raw_policy_selected": true,
+      "displaced_binding_id": 2,
+      "receipt": {
+        "accepted": true,
+        "binding_id": 5,
+        "slot": 2,
+        "artifact_handle": "opaque-temporal-route-21685cf6c55ce03d15a364cc5c9dee7be6c76ce42ab035129b8046a3366bde99",
+        "source_version": 47,
+        "destination_version": 48,
+        "reason": "held-out retention probe passed",
+        "schema": "neural-computer.episodic-artifact-activation.v1"
+      }
+    },
+    {
+      "ordinal": 106,
+      "kind": "final_sweep",
+      "route_id": 6,
+      "active_before": false,
+      "replacement": true,
+      "destination_slot": 2,
+      "order": [
+        0,
+        1,
+        2
+      ],
+      "scores": [
+        -34.476829528808594,
+        -41.50830078125,
+        -33.46255111694336
+      ],
+      "raw_policy_selected": true,
+      "displaced_binding_id": 5,
+      "receipt": {
+        "accepted": true,
+        "binding_id": 6,
+        "slot": 2,
+        "artifact_handle": "opaque-temporal-route-5373260998456dde40833faaa8541ff76f582b8a49e3ec5de96018bad17e3bd5",
+        "source_version": 49,
+        "destination_version": 50,
+        "reason": "held-out retention probe passed",
+        "schema": "neural-computer.episodic-artifact-activation.v1"
+      }
+    }
+  ],
+  "final_active": [
+    {
+      "slot": 0,
+      "binding_id": 0,
+      "route_id": 0,
+      "accuracy": 1.0
+    },
+    {
+      "slot": 1,
+      "binding_id": 4,
+      "route_id": 4,
+      "accuracy": 1.0
+    },
+    {
+      "slot": 2,
+      "binding_id": 6,
+      "route_id": 6,
+      "accuracy": 1.0
+    }
+  ],
+  "related_results": [
+    {
+      "route_id": 0,
+      "resolved_route_id": 0,
+      "hit": true,
+      "similarity": 0.9754897356033325,
+      "accuracy": 1.0
+    },
+    {
+      "route_id": 1,
+      "resolved_route_id": 1,
+      "hit": true,
+      "similarity": 0.977336049079895,
+      "accuracy": 1.0
+    },
+    {
+      "route_id": 2,
+      "resolved_route_id": 2,
+      "hit": true,
+      "similarity": 0.9826489686965942,
+      "accuracy": 1.0
+    },
+    {
+      "route_id": 3,
+      "resolved_route_id": 3,
+      "hit": true,
+      "similarity": 0.985489010810852,
+      "accuracy": 1.0
+    },
+    {
+      "route_id": 4,
+      "resolved_route_id": 4,
+      "hit": true,
+      "similarity": 0.9699751138687134,
+      "accuracy": 1.0
+    },
+    {
+      "route_id": 5,
+      "resolved_route_id": 5,
+      "hit": true,
+      "similarity": 0.956455409526825,
+      "accuracy": 1.0
+    },
+    {
+      "route_id": 6,
+      "resolved_route_id": 6,
+      "hit": true,
+      "similarity": 0.9662518501281738,
+      "accuracy": 1.0
+    }
+  ],
+  "restored_active": [
+    {
+      "slot": 0,
+      "binding_id": 0,
+      "handle": "opaque-temporal-route-23ee6824925ec6e559389c8c6c8635c92b5dd359b20ed24788645277ac2144b9"
+    },
+    {
+      "slot": 1,
+      "binding_id": 4,
+      "handle": "opaque-temporal-route-48415a19040af6857b157e354ec60e2e6b2a50cda332113d8f426d8f84eede09"
+    },
+    {
+      "slot": 2,
+      "binding_id": 6,
+      "handle": "opaque-temporal-route-5373260998456dde40833faaa8541ff76f582b8a49e3ec5de96018bad17e3bd5"
+    }
+  ],
+  "archive_status": {
+    "record_count": 7,
+    "active_slots": [
+      0,
+      4,
+      6
+    ],
+    "attempts": [
+      11,
+      3,
+      3,
+      3,
+      3,
+      2,
+      2
+    ],
+    "successes": [
+      11.0,
+      3.0,
+      3.0,
+      3.0,
+      3.0,
+      2.0,
+      2.0
+    ],
+    "posterior": [
+      0.9230769230769231,
+      0.8,
+      0.8,
+      0.8,
+      0.8,
+      0.75,
+      0.75
+    ],
+    "stable_prefix_minimum": [
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "protected": [
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ],
+    "protection_latched": [
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ],
+    "reversal_streak": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "reversal_count": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "last_seen": [
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27
+    ],
+    "version": 51
+  },
+  "unknown_lookup": {
+    "binding_id": null,
+    "similarity": 0.2860034108161926,
+    "active_slot": null
+  },
+  "gates": {
+    "held_out_victim_policy_mastery": true,
+    "reward_shuffled_policy_rejects_mastery": true,
+    "source_route_protected": true,
+    "fresh_admission_count_grew": true,
+    "all_fresh_admissions_accepted": true,
+    "all_reactivations_accepted": true,
+    "protected_source_never_evicted": true,
+    "policy_had_multiple_eligible_choices": true,
+    "repeated_replacements_occurred": true,
+    "active_noop_probes_passed": true,
+    "all_active_routes_mastered": true,
+    "all_archive_routes_reactivatable": true,
+    "all_related_keys_resolve": true,
+    "unknown_key_not_claimed": true,
+    "reload_preserves_active_routes": true,
+    "corruption_rejected": true,
+    "frozen_controller": true,
+    "frozen_event_encoder": true,
+    "frozen_promoted_file": true,
+    "zero_replayed_examples": true
+  },
+  "accounting": {
+    "unique_verifier_bits": 171776,
+    "counterfactual_verifier_bits": 48128,
+    "capacity_retention_verifier_bits": 25344,
+    "policy_verifier_bits": 3000,
+    "shuffled_policy_verifier_bits": 3000,
+    "unique_logical_lifetimes": 3112,
+    "optimizer_updates": 4072,
+    "online_controller_updates": 0,
+    "online_capability_updates": 0,
+    "archive_records": 7,
+    "active_slots": 3,
+    "replacement_count": 14,
+    "policy_choice_count": 14,
+    "policy_raw_match_count": 12,
+    "reactivation_failures": 0,
+    "replayed_examples": 0,
+    "latency_seconds": 109.65404699998908,
+    "stable_bits_to_threshold": 171776
+  },
+  "status": "promoted_interleaved_admission"
+}
