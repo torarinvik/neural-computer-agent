@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import hashlib
+import json
 from itertools import product
 
+import pytest
 import torch
 
 from neural_computer import (
@@ -10,6 +13,7 @@ from neural_computer import (
     RecipeInstruction,
     RecipeProgram,
     RecipeProgramCompositionFactors,
+    RecipeProgramCompositionStructure,
 )
 
 SLOT_VALUES = (2, 8)
@@ -120,3 +124,104 @@ def test_composition_policy_reuses_source_factors_without_candidate_rows() -> No
         probabilities,
     )
     assert "outcomes" not in policy.payload()
+
+
+def test_recursive_provenance_and_shape_survive_reload_and_reject_rewrites() -> None:
+    memory = ExternalRecipeCompositionMemory(SLOT_VALUES)
+    first = memory.add_program(_fragment_a())
+    second = memory.add_program(_fragment_b())
+    memory.protect_file(first)
+    memory.protect_file(second)
+    depth2 = next(
+        candidate
+        for candidate in memory.composition_candidates(max_program_length=2)
+        if candidate.program.digest() == _target().digest()
+    )
+    receipt2 = memory.admit_verified_composition(
+        depth2,
+        _outcomes(depth2.program, _target()),
+        threshold=1.0,
+        min_observations=len(STATES),
+        min_stable_observations=len(STATES),
+        protect=True,
+    )
+    assert receipt2.accepted and receipt2.slot == 2
+    depth3_target = RecipeProgram(
+        SLOT_VALUES,
+        _target().instructions + _fragment_b().instructions,
+    )
+    depth3 = next(
+        candidate
+        for candidate in memory.composition_candidates(max_program_length=3)
+        if candidate.program.digest() == depth3_target.digest()
+    )
+    assert depth3.structure == RecipeProgramCompositionStructure(2, 1, True, False)
+    receipt3 = memory.admit_verified_composition(
+        depth3,
+        _outcomes(depth3.program, depth3_target),
+        threshold=1.0,
+        min_observations=len(STATES),
+        min_stable_observations=len(STATES),
+        protect=True,
+    )
+    assert receipt3.accepted and receipt3.slot == 3
+    assert memory.composition_depth(3) == 3
+
+    restored = ExternalRecipeCompositionMemory.from_payload(memory.payload())
+    assert restored.composition_depth(3) == 3
+    assert restored.composition_structure(2, 1) == depth3.structure
+
+    tampered = memory.payload()
+    raw_factors = dict(tampered["provenance"][3])
+    raw_factors["right_digest"] = _fragment_a().digest()
+    tampered["provenance"] = list(tampered["provenance"])
+    tampered["provenance"][3] = raw_factors
+    content = {key: value for key, value in tampered.items() if key != "sha256"}
+    tampered["sha256"] = hashlib.sha256(
+        json.dumps(content, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    with pytest.raises(ValueError, match="provenance"):
+        ExternalRecipeCompositionMemory.from_payload(tampered)
+
+
+def test_composition_policy_migrates_legacy_factor_only_payload() -> None:
+    policy = OpaqueContextRecipeCompositionMemory()
+    factors = RecipeProgramCompositionFactors("0" * 64, "1" * 64, "append")
+    policy.record("context", factors, 1.0)
+    current = policy.payload()
+    legacy_configuration = {
+        key: value
+        for key, value in current["configuration"].items()
+        if key
+        in {
+            "schema",
+            "exploration_floor",
+            "shared_prior_weight",
+            "exploration_bonus",
+            "left_weight",
+            "right_weight",
+            "mode_weight",
+            "temperature",
+            "context",
+        }
+    }
+    legacy_configuration["credit"] = "scalar_composition_factor_aggregate_v1"
+    legacy_factor_types = ("left", "right", "mode")
+
+    def legacy_stats(stats: dict[str, dict[str, list[float]]]) -> dict[str, object]:
+        return {factor_type: stats[factor_type] for factor_type in legacy_factor_types}
+
+    legacy = {
+        "schema": current["schema"],
+        "configuration": legacy_configuration,
+        "shared": legacy_stats(current["shared"]),
+        "contexts": {
+            context: legacy_stats(stats)
+            for context, stats in current["contexts"].items()
+        },
+    }
+    legacy["sha256"] = hashlib.sha256(
+        json.dumps(legacy, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    migrated = OpaqueContextRecipeCompositionMemory.from_payload(legacy)
+    assert migrated.proposal_probabilities("context", (factors,))[0] > 0.0

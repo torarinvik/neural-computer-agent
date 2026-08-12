@@ -1,0 +1,47 @@
+{
+  "schema": "neural-computer.verified-recursive-recipe-composition-growth.v1",
+  "status": "promoted_bounded_verifier_gated_depth_four_recursive_external_composition",
+  "seeds": [17, 18, 19, 20],
+  "unique_verifier_bits_per_seed": [2624, 2848, 2912, 2560],
+  "unique_logical_lifetimes_per_seed": [330, 337, 339, 328],
+  "optimizer_updates": 0,
+  "replayed_examples": 0,
+  "heldout_accuracy": {
+    "depth2": [1.0, 1.0, 1.0, 1.0],
+    "depth3": [1.0, 1.0, 1.0, 1.0],
+    "depth4": [1.0, 1.0, 1.0, 1.0],
+    "source_retention_minimum": [1.0, 1.0, 1.0, 1.0]
+  },
+  "wrong_program_accuracy": {
+    "depth2_reversed": [0.0, 0.0, 0.0, 0.0],
+    "depth4_wrong_parent_order": [0.75, 0.75, 0.75, 0.75]
+  },
+  "proposal_counts": {
+    "depth2": [7, 8, 7, 9],
+    "depth3": [10, 2, 17, 8],
+    "depth4_warm": [7, 25, 8, 8],
+    "depth4_fresh": [24, 20, 25, 21],
+    "shuffled_control": [26, 26, 26, 26]
+  },
+  "warm_transfer_diagnostic": {
+    "warm_to_fresh_proposal_ratio": [0.2916666667, 1.25, 0.32, 0.380952381],
+    "not_slower_than_fresh": [true, false, true, true],
+    "promoted": false,
+    "claim": "not promoted as a reliable sample-efficiency gain"
+  },
+  "controls": {
+    "four_seeds": true,
+    "mixed_per_family_moduli": true,
+    "recursive_depth_four_chain": true,
+    "protected_source_retention": true,
+    "complete_prefix_retention": true,
+    "reversal_rejection": true,
+    "missing_evidence_noop": true,
+    "shuffled_verifier_rejection": true,
+    "memory_checksum_reload": true,
+    "policy_checksum_reload": true,
+    "zero_replay": true,
+    "zero_controller_optimizer_updates": true
+  },
+  "claim_boundary": "Promoted bounded replay-free verifier-gated recursive external composition through depth four; no claim of arbitrary program induction, unrestricted memory growth, or general continual learning."
+}

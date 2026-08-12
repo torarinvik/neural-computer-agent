@@ -10965,3 +10965,29 @@ transfer is not promoted. This does not establish arbitrary program
 induction, unrestricted memory growth, or general continual learning.
 Evidence and accounting are archived at
 `session_records/recipe_composition_growth_promoted_2026-08-12/`.
+
+## Recursive external recipe composition (2026-08-12)
+
+The external CPU/files boundary now supports verified recursive growth through
+depth four. `ExternalRecipeCompositionMemory` records opaque source digests,
+validates that every composite is reconstructed from earlier immutable files,
+and exposes a versioned generic shape descriptor containing only source depth
+and composite/atomic structure. A replaceable outcome-only policy can use that
+descriptor and scalar verifier quality; the controller and atomic interpreter
+remain frozen.
+
+Across four seeds, four mixed-domain atomic files were composed into depth-two,
+depth-three, and depth-four files with `1.0000` held-out accuracy at every
+depth and `1.0000` retention on every protected source. Reversal, missing
+evidence, shuffled feedback, persistence, provenance, and zero-replay gates
+passed. The run therefore promotes a bounded external-memory composition
+capability. Its warm/fresh proposal ratios were `0.2917`, `1.2500`, `0.3200`,
+and `0.3810`; because seed 18 was slower than fresh, the optional structural
+proposal transfer is not promoted as a reliable sample-efficiency gain.
+
+This result is still not arbitrary program induction, unrestricted memory
+growth, or general continual learning. The next pressure is a larger family of
+non-commuting recursive compositions plus memory capacity/eviction and
+compression controls, while preserving complete-prefix retention. Evidence is
+archived at
+`session_records/recipe_recursive_composition_growth_promoted_2026-08-12/`.

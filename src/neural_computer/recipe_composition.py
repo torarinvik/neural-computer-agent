@@ -25,6 +25,7 @@ from .recipe_program import (
 )
 
 RECIPE_COMPOSITION_FACTORS_SCHEMA = "neural-computer.recipe-composition-factors.v1"
+RECIPE_COMPOSITION_STRUCTURE_SCHEMA = "neural-computer.recipe-composition-structure.v1"
 RECIPE_COMPOSITION_MEMORY_SCHEMA = "neural-computer.recipe-composition-memory.v1"
 RECIPE_COMPOSITION_POLICY_SCHEMA = "neural-computer.recipe-composition-policy.v1"
 RECIPE_COMPOSITION_CANDIDATE_SCHEMA = "neural-computer.recipe-composition-candidate.v1"
@@ -100,6 +101,64 @@ class RecipeProgramCompositionFactors:
 
 
 @dataclass(frozen=True)
+class RecipeProgramCompositionStructure:
+    """Generic shape metadata for recursive external-file composition.
+
+    The descriptor says only how many composition layers each source carries
+    and whether it is itself composite.  It contains no task, modality, or
+    semantic capability identity.  Keeping this separate from direct source
+    digests lets scalar credit reuse a recursive growth pattern without
+    pretending that unrelated whole-file hashes are interchangeable.
+    """
+
+    left_depth: int
+    right_depth: int
+    left_composite: bool
+    right_composite: bool
+    schema: str = RECIPE_COMPOSITION_STRUCTURE_SCHEMA
+
+    def validate(self) -> RecipeProgramCompositionStructure:
+        if self.schema != RECIPE_COMPOSITION_STRUCTURE_SCHEMA:
+            raise ValueError("unsupported recipe composition structure schema")
+        if self.left_depth < 1 or self.right_depth < 1:
+            raise ValueError("composition source depth must be positive")
+        if not isinstance(self.left_composite, bool) or not isinstance(
+            self.right_composite, bool
+        ):
+            raise TypeError("composition source composite flags must be boolean")
+        if self.left_composite != (self.left_depth > 1):
+            raise ValueError("left composition depth and shape disagree")
+        if self.right_composite != (self.right_depth > 1):
+            raise ValueError("right composition depth and shape disagree")
+        return self
+
+    def payload(self) -> dict[str, object]:
+        self.validate()
+        return {
+            "schema": self.schema,
+            "left_depth": self.left_depth,
+            "right_depth": self.right_depth,
+            "left_composite": self.left_composite,
+            "right_composite": self.right_composite,
+        }
+
+    @classmethod
+    def from_payload(
+        cls,
+        payload: Mapping[str, object],
+    ) -> RecipeProgramCompositionStructure:
+        if not isinstance(payload, Mapping):
+            raise TypeError("composition structure payload must be a mapping")
+        return cls(
+            left_depth=int(payload.get("left_depth", -1)),
+            right_depth=int(payload.get("right_depth", -1)),
+            left_composite=bool(payload.get("left_composite", False)),
+            right_composite=bool(payload.get("right_composite", False)),
+            schema=str(payload.get("schema", "")),
+        ).validate()
+
+
+@dataclass(frozen=True)
 class RecipeProgramCompositionCandidate:
     """One composition candidate plus its source-file provenance."""
 
@@ -107,6 +166,7 @@ class RecipeProgramCompositionCandidate:
     right_slot: int
     factors: RecipeProgramCompositionFactors
     program: RecipeProgram
+    structure: RecipeProgramCompositionStructure | None = None
     schema: str = RECIPE_COMPOSITION_CANDIDATE_SCHEMA
 
     def validate(self) -> RecipeProgramCompositionCandidate:
@@ -119,6 +179,8 @@ class RecipeProgramCompositionCandidate:
         self.factors.validate()
         if not isinstance(self.program, RecipeProgram):
             raise TypeError("composition candidate program has the wrong type")
+        if self.structure is not None:
+            self.structure.validate()
         return self
 
     def payload(self) -> dict[str, object]:
@@ -129,7 +191,34 @@ class RecipeProgramCompositionCandidate:
             "right_slot": self.right_slot,
             "factors": self.factors.payload(),
             "program": self.program.payload(),
+            "structure": (
+                None if self.structure is None else self.structure.payload()
+            ),
         }
+
+    @classmethod
+    def from_payload(
+        cls,
+        payload: Mapping[str, object],
+    ) -> RecipeProgramCompositionCandidate:
+        if not isinstance(payload, Mapping):
+            raise TypeError("composition candidate payload must be a mapping")
+        raw_structure = payload.get("structure")
+        structure = (
+            None
+            if raw_structure is None
+            else RecipeProgramCompositionStructure.from_payload(raw_structure)
+        )
+        return cls(
+            left_slot=int(payload.get("left_slot", -1)),
+            right_slot=int(payload.get("right_slot", -1)),
+            factors=RecipeProgramCompositionFactors.from_payload(
+                payload.get("factors", {})
+            ),
+            program=RecipeProgram.from_payload(payload.get("program", {})),
+            structure=structure,
+            schema=str(payload.get("schema", "")),
+        ).validate()
 
 
 class ExternalRecipeCompositionMemory:
@@ -205,6 +294,94 @@ class ExternalRecipeCompositionMemory:
             raise ValueError("composition memory slot is out of range")
         return self._provenance[slot]
 
+    def _slot_for_digest(self, digest: str, *, before: int | None = None) -> int:
+        """Resolve an opaque source digest to an earlier physical file slot."""
+
+        _validate_digest(digest, label="composition source")
+        limit = self.file_count if before is None else before
+        for slot in range(limit):
+            if self.program(slot).digest() == digest:
+                return slot
+        raise ValueError("composition provenance references a missing earlier file")
+
+    def composition_depth(
+        self,
+        slot: int,
+        *,
+        _visiting: frozenset[int] = frozenset(),
+    ) -> int:
+        """Return generic recursive composition depth for one stored file."""
+
+        if not 0 <= slot < self.file_count:
+            raise ValueError("composition memory slot is out of range")
+        if slot in _visiting:
+            raise ValueError("composition provenance contains a cycle")
+        factors = self._provenance[slot]
+        if factors is None:
+            return 1
+        factors.validate()
+        left_slot = self._slot_for_digest(factors.left_digest, before=slot)
+        right_slot = self._slot_for_digest(factors.right_digest, before=slot)
+        next_visiting = _visiting | {slot}
+        return max(
+            self.composition_depth(left_slot, _visiting=next_visiting),
+            self.composition_depth(right_slot, _visiting=next_visiting),
+        ) + 1
+
+    def composition_structure(
+        self,
+        left_slot: int,
+        right_slot: int,
+    ) -> RecipeProgramCompositionStructure:
+        """Describe source shape without assigning semantic meaning."""
+
+        if not 0 <= left_slot < self.file_count or not 0 <= right_slot < self.file_count:
+            raise ValueError("composition source slot is outside memory")
+        return RecipeProgramCompositionStructure(
+            left_depth=self.composition_depth(left_slot),
+            right_depth=self.composition_depth(right_slot),
+            left_composite=self.provenance(left_slot) is not None,
+            right_composite=self.provenance(right_slot) is not None,
+        ).validate()
+
+    def _validate_provenance_slot(
+        self,
+        slot: int,
+        *,
+        visiting: frozenset[int] = frozenset(),
+    ) -> None:
+        """Verify that every recorded composition is an actual earlier concat."""
+
+        if slot in visiting:
+            raise ValueError("composition provenance contains a cycle")
+        factors = self.provenance(slot)
+        if factors is None:
+            return
+        factors.validate()
+        left_slot = self._slot_for_digest(factors.left_digest, before=slot)
+        right_slot = self._slot_for_digest(factors.right_digest, before=slot)
+        left = self.program(left_slot)
+        right = self.program(right_slot)
+        instructions = (
+            left.instructions + right.instructions
+            if factors.mode == "append"
+            else right.instructions + left.instructions
+        )
+        expected = RecipeProgram(
+            self.basis.slot_values,
+            instructions,
+            allow_parallel=self.basis.allow_parallel,
+        )
+        if expected.digest() != self.program(slot).digest():
+            raise ValueError("composition provenance does not reconstruct its file")
+        next_visiting = visiting | {slot}
+        self._validate_provenance_slot(left_slot, visiting=next_visiting)
+        self._validate_provenance_slot(right_slot, visiting=next_visiting)
+
+    def _validate_all_provenance(self) -> None:
+        for slot in range(self.file_count):
+            self._validate_provenance_slot(slot)
+
     def _validate_source_candidate(
         self,
         candidate: RecipeProgramCompositionCandidate,
@@ -218,6 +395,12 @@ class ExternalRecipeCompositionMemory:
             raise ValueError("composition left provenance does not match its slot")
         if right.digest() != candidate.factors.right_digest:
             raise ValueError("composition right provenance does not match its slot")
+        expected_structure = self.composition_structure(
+            candidate.left_slot,
+            candidate.right_slot,
+        )
+        if candidate.structure is not None and candidate.structure != expected_structure:
+            raise ValueError("composition candidate structure does not match its sources")
         instructions = (
             left.instructions + right.instructions
             if candidate.factors.mode == "append"
@@ -274,6 +457,7 @@ class ExternalRecipeCompositionMemory:
                             left.digest(), right.digest(), mode
                         ),
                         program,
+                        self.composition_structure(left_slot, right_slot),
                     ).validate()
                     seen.add(digest)
                     candidates.append(candidate)
@@ -302,6 +486,7 @@ class ExternalRecipeCompositionMemory:
             if receipt.slot is None or receipt.slot != len(self._provenance):
                 raise RuntimeError("composition provenance slot did not append atomically")
             self._provenance.append(candidate.factors)
+            self._validate_provenance_slot(receipt.slot)
         return receipt
 
     def _content_payload(self) -> dict[str, object]:
@@ -348,6 +533,7 @@ class ExternalRecipeCompositionMemory:
             if factors.left_digest not in digests or factors.right_digest not in digests:
                 raise ValueError("recipe composition provenance references a missing file")
             memory._provenance.append(factors)
+        memory._validate_all_provenance()
         expected = payload.get("sha256")
         if not isinstance(expected, str) or expected != memory.digest():
             raise ValueError("recipe composition memory checksum mismatch")
@@ -355,10 +541,18 @@ class ExternalRecipeCompositionMemory:
 
 
 class OpaqueContextRecipeCompositionMemory:
-    """Aggregate scalar composition credit over opaque source-file factors."""
+    """Aggregate scalar credit over opaque direct and recursive factors."""
 
     schema = RECIPE_COMPOSITION_POLICY_SCHEMA
-    _FACTOR_TYPES = ("left", "right", "mode")
+    _FACTOR_TYPES = (
+        "left",
+        "right",
+        "mode",
+        "left_depth",
+        "right_depth",
+        "left_shape",
+        "right_shape",
+    )
 
     def __init__(
         self,
@@ -369,6 +563,9 @@ class OpaqueContextRecipeCompositionMemory:
         left_weight: float = 1.0,
         right_weight: float = 1.0,
         mode_weight: float = 0.5,
+        left_depth_weight: float = 0.75,
+        right_depth_weight: float = 0.75,
+        shape_weight: float = 0.5,
         temperature: float = 0.05,
     ) -> None:
         for name, value in (
@@ -378,6 +575,9 @@ class OpaqueContextRecipeCompositionMemory:
             ("left_weight", left_weight),
             ("right_weight", right_weight),
             ("mode_weight", mode_weight),
+            ("left_depth_weight", left_depth_weight),
+            ("right_depth_weight", right_depth_weight),
+            ("shape_weight", shape_weight),
             ("temperature", temperature),
         ):
             if not math.isfinite(value) or value < 0.0:
@@ -394,6 +594,9 @@ class OpaqueContextRecipeCompositionMemory:
         self.left_weight = float(left_weight)
         self.right_weight = float(right_weight)
         self.mode_weight = float(mode_weight)
+        self.left_depth_weight = float(left_depth_weight)
+        self.right_depth_weight = float(right_depth_weight)
+        self.shape_weight = float(shape_weight)
         self.temperature = float(temperature)
         self._shared: dict[str, dict[str, list[float]]] = self._empty_stats()
         self._contexts: dict[str, dict[str, dict[str, list[float]]]] = {}
@@ -423,13 +626,31 @@ class OpaqueContextRecipeCompositionMemory:
     @staticmethod
     def _entries(
         factors: RecipeProgramCompositionFactors,
+        structure: RecipeProgramCompositionStructure | None = None,
     ) -> tuple[tuple[str, str], ...]:
         factors.validate()
-        return (
+        entries = [
             ("left", factors.left_digest),
             ("right", factors.right_digest),
             ("mode", factors.mode),
-        )
+        ]
+        if structure is not None:
+            structure.validate()
+            entries.extend(
+                (
+                    ("left_depth", str(structure.left_depth)),
+                    ("right_depth", str(structure.right_depth)),
+                    (
+                        "left_shape",
+                        "composite" if structure.left_composite else "atomic",
+                    ),
+                    (
+                        "right_shape",
+                        "composite" if structure.right_composite else "atomic",
+                    ),
+                )
+            )
+        return tuple(entries)
 
     def configuration(self) -> dict[str, object]:
         return {
@@ -440,8 +661,11 @@ class OpaqueContextRecipeCompositionMemory:
             "left_weight": self.left_weight,
             "right_weight": self.right_weight,
             "mode_weight": self.mode_weight,
+            "left_depth_weight": self.left_depth_weight,
+            "right_depth_weight": self.right_depth_weight,
+            "shape_weight": self.shape_weight,
             "temperature": self.temperature,
-            "credit": "scalar_composition_factor_aggregate_v1",
+            "credit": "scalar_composition_factor_and_shape_aggregate_v2",
             "context": "opaque_external_key_v1",
         }
 
@@ -450,13 +674,15 @@ class OpaqueContextRecipeCompositionMemory:
         context: str,
         factors: RecipeProgramCompositionFactors,
         quality: float,
+        *,
+        structure: RecipeProgramCompositionStructure | None = None,
     ) -> None:
         self._validate_context(context)
         factors.validate()
         if not math.isfinite(quality) or not 0.0 <= quality <= 1.0:
             raise ValueError("composition quality must lie in [0, 1]")
         local = self._contexts.setdefault(context, self._empty_stats())
-        for factor_type, key in self._entries(factors):
+        for factor_type, key in self._entries(factors, structure):
             local_entry = local[factor_type].setdefault(key, [0.0, 0.0])
             local_entry[0] += float(quality)
             local_entry[1] += 1.0
@@ -485,6 +711,7 @@ class OpaqueContextRecipeCompositionMemory:
         self,
         context: str,
         factors: Sequence[RecipeProgramCompositionFactors],
+        structures: Sequence[RecipeProgramCompositionStructure | None] | None = None,
     ) -> torch.Tensor:
         self._validate_context(context)
         candidates = tuple(factors)
@@ -492,14 +719,41 @@ class OpaqueContextRecipeCompositionMemory:
             raise ValueError("composition candidate set cannot be empty")
         for candidate in candidates:
             candidate.validate()
+        if structures is None:
+            resolved_structures = (None,) * len(candidates)
+        else:
+            resolved_structures = tuple(structures)
+            if len(resolved_structures) != len(candidates):
+                raise ValueError("composition structures must align with candidates")
+            for structure in resolved_structures:
+                if structure is not None:
+                    structure.validate()
         local = self._contexts.get(context, self._empty_stats())
         scores = []
-        for candidate in candidates:
-            scores.append(
+        for candidate, structure in zip(candidates, resolved_structures, strict=True):
+            score = (
                 self.left_weight * self._score(local, "left", candidate.left_digest)
                 + self.right_weight * self._score(local, "right", candidate.right_digest)
                 + self.mode_weight * self._score(local, "mode", candidate.mode)
             )
+            if structure is not None:
+                score += self.left_depth_weight * self._score(
+                    local, "left_depth", str(structure.left_depth)
+                )
+                score += self.right_depth_weight * self._score(
+                    local, "right_depth", str(structure.right_depth)
+                )
+                score += self.shape_weight * self._score(
+                    local,
+                    "left_shape",
+                    "composite" if structure.left_composite else "atomic",
+                )
+                score += self.shape_weight * self._score(
+                    local,
+                    "right_shape",
+                    "composite" if structure.right_composite else "atomic",
+                )
+            scores.append(score)
         logits = torch.tensor(scores, dtype=torch.float64) / self.temperature
         probabilities = torch.softmax(logits, dim=0)
         return (1.0 - self.exploration_floor) * probabilities + (
@@ -515,7 +769,9 @@ class OpaqueContextRecipeCompositionMemory:
     ) -> tuple[int, float]:
         values = tuple(candidates)
         probabilities = self.proposal_probabilities(
-            context, tuple(candidate.factors for candidate in values)
+            context,
+            tuple(candidate.factors for candidate in values),
+            tuple(candidate.structure for candidate in values),
         )
         index = int(torch.multinomial(probabilities, 1, generator=generator))
         return index, float(probabilities[index].item())
@@ -569,6 +825,17 @@ class OpaqueContextRecipeCompositionMemory:
             or not isinstance(contexts, Mapping)
         ):
             raise TypeError("composition policy payload is malformed")
+        expected = payload.get("sha256")
+        legacy = configuration.get("credit") == "scalar_composition_factor_aggregate_v1"
+        if legacy:
+            legacy_content = {
+                "schema": payload.get("schema"),
+                "configuration": configuration,
+                "shared": shared,
+                "contexts": contexts,
+            }
+            if not isinstance(expected, str) or expected != _payload_digest(legacy_content):
+                raise ValueError("legacy composition policy checksum mismatch")
         policy = cls(
             exploration_floor=float(configuration.get("exploration_floor", -1.0)),
             shared_prior_weight=float(configuration.get("shared_prior_weight", -1.0)),
@@ -576,6 +843,9 @@ class OpaqueContextRecipeCompositionMemory:
             left_weight=float(configuration.get("left_weight", -1.0)),
             right_weight=float(configuration.get("right_weight", -1.0)),
             mode_weight=float(configuration.get("mode_weight", -1.0)),
+            left_depth_weight=float(configuration.get("left_depth_weight", 0.75)),
+            right_depth_weight=float(configuration.get("right_depth_weight", 0.75)),
+            shape_weight=float(configuration.get("shape_weight", 0.5)),
             temperature=float(configuration.get("temperature", -1.0)),
         )
 
@@ -583,6 +853,9 @@ class OpaqueContextRecipeCompositionMemory:
             loaded = policy._empty_stats()
             for factor_type in policy._FACTOR_TYPES:
                 values = raw.get(factor_type)
+                if values is None:
+                    # v1 policy payloads predate recursive shape factors.
+                    values = {}
                 if not isinstance(values, Mapping):
                     raise TypeError("composition factor table is malformed")
                 for key, entry in values.items():
@@ -598,8 +871,7 @@ class OpaqueContextRecipeCompositionMemory:
             if not isinstance(raw, Mapping):
                 raise TypeError("composition context table is malformed")
             policy._contexts[str(context)] = load(raw)
-        expected = payload.get("sha256")
-        if not isinstance(expected, str) or expected != policy.digest():
+        if not legacy and (not isinstance(expected, str) or expected != policy.digest()):
             raise ValueError("composition policy checksum mismatch")
         return policy
 
@@ -810,7 +1082,12 @@ class OutcomeOnlyRecipeCompositionSearch:
         )
         quality = float(values.mean().item()) if values.numel() else 0.0
         if self.policy is not None:
-            self.policy.record(proposal.context, proposal.candidate.factors, quality)
+            self.policy.record(
+                proposal.context,
+                proposal.candidate.factors,
+                quality,
+                structure=proposal.candidate.structure,
+            )
         next_state = RecipeProgramCompositionSearchState(
             (*state.seen_candidate_digests, scoped),
             state.proposals + 1,
@@ -828,6 +1105,7 @@ __all__ = [
     "RECIPE_COMPOSITION_POLICY_SCHEMA",
     "RECIPE_COMPOSITION_PROPOSAL_SCHEMA",
     "RECIPE_COMPOSITION_SEARCH_SCHEMA",
+    "RECIPE_COMPOSITION_STRUCTURE_SCHEMA",
     "ExternalRecipeCompositionMemory",
     "OpaqueContextRecipeCompositionMemory",
     "OutcomeOnlyRecipeCompositionSearch",
@@ -836,4 +1114,5 @@ __all__ = [
     "RecipeProgramCompositionFeedback",
     "RecipeProgramCompositionProposal",
     "RecipeProgramCompositionSearchState",
+    "RecipeProgramCompositionStructure",
 ]

@@ -483,6 +483,7 @@ from .recipe_composition import (
     RECIPE_COMPOSITION_POLICY_SCHEMA,
     RECIPE_COMPOSITION_PROPOSAL_SCHEMA,
     RECIPE_COMPOSITION_SEARCH_SCHEMA,
+    RECIPE_COMPOSITION_STRUCTURE_SCHEMA,
     ExternalRecipeCompositionMemory,
     OpaqueContextRecipeCompositionMemory,
     OutcomeOnlyRecipeCompositionSearch,
@@ -491,6 +492,7 @@ from .recipe_composition import (
     RecipeProgramCompositionFeedback,
     RecipeProgramCompositionProposal,
     RecipeProgramCompositionSearchState,
+    RecipeProgramCompositionStructure,
 )
 from .recipe_program import (
     RECIPE_CONTEXT_PROPOSAL_MEMORY_SCHEMA,
@@ -1013,6 +1015,7 @@ __all__ = [
     "RECIPE_COMPOSITION_POLICY_SCHEMA",
     "RECIPE_COMPOSITION_PROPOSAL_SCHEMA",
     "RECIPE_COMPOSITION_SEARCH_SCHEMA",
+    "RECIPE_COMPOSITION_STRUCTURE_SCHEMA",
     "RECIPE_CONTEXT_PROPOSAL_MEMORY_SCHEMA",
     "RECIPE_FACTORIZED_CONTEXT_PROPOSAL_MEMORY_SCHEMA",
     "RECIPE_PROGRAM_ADMISSION_SCHEMA",
@@ -1366,6 +1369,7 @@ __all__ = [
     "RecipeProgramCompositionFeedback",
     "RecipeProgramCompositionProposal",
     "RecipeProgramCompositionSearchState",
+    "RecipeProgramCompositionStructure",
     "RecipeProgramProposalFactors",
     "RecipeProgramSearchState",
     "RegimeChangePlan",

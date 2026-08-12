@@ -268,3 +268,30 @@ sample-efficiency diagnostic is `[1.0, 3.0, 1.0, 1.0]` in proposal-count
 ratios across seeds, so it remains a follow-up rather than a promoted
 transfer claim. Evidence is archived under
 `session_records/recipe_composition_growth_promoted_2026-08-12/`.
+
+## Recursive external composition through depth four (2026-08-12)
+
+The composition seam now carries generic recursive provenance and a
+versioned structural descriptor: source depths and composite/atomic shape are
+available to the replaceable outcome-only policy without exposing task names,
+verifier rows, or semantic labels. Memory validation recursively reconstructs
+every composite from earlier immutable files, rejecting forward references,
+cycles, and rewritten provenance. Legacy factor-only policy payloads migrate
+through a checksum-verified compatibility path.
+
+The four-seed mixed-domain audit admitted four protected atomic files, then
+grew verified depth-two, depth-three, and depth-four files with zero replay and
+zero controller updates. Held-out accuracy was `1.0000` at every depth and
+source retention stayed at `1.0000` on all seeds. Reversed programs failed
+behaviorally, missing evidence was a no-op, shuffled feedback was rejected,
+and memory/policy reloads were exact. The generic recursive gate accepts the
+parent composite on either operand; this is necessary because the composition
+mode describes instruction order, not parent-side identity.
+
+The warm/fresh proposal ratios were `0.2917`, `1.2500`, `0.3200`, and
+`0.3810`. Because one seed was slower than fresh, structural proposal transfer
+remains diagnostic rather than promoted. The promoted claim is bounded
+replay-free verifier-gated recursive external composition through depth four,
+not arbitrary program induction, unrestricted memory growth, or general
+continual learning. Evidence and accounting are archived in
+`session_records/recipe_recursive_composition_growth_promoted_2026-08-12/`.
