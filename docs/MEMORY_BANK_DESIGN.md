@@ -10925,17 +10925,43 @@ The shuffled-ranking arm — same ranking, order permuted, take the
 from single-domain readers is real information about which curricula
 will work.
 
-**And diversity beats generality at a fixed budget.** Choosing ten
-domains to be far apart in transfer PROFILE beats choosing the ten
-individually strongest: **+0.1420 +- 0.0601, t=+2.36, 3/3 seeds**. Two
-adversarial curricula confirm the mechanism from the other side —
-`redundant_top3` (individually strong, nearly identical profiles) scores
-+0.2622 against top3's +0.3702, and `anti_spread3` (mutually closest
-profiles) scores **-0.0855**, actively worse than doing nothing.
+**And ten spread domains beat all eighty-five.** Choosing ten domains to
+be far apart in transfer PROFILE scores +0.5414 against the full
+battery's +0.3486. Two adversarial curricula confirm the mechanism from
+the other side — `redundant_top3` (individually strong, nearly identical
+profiles) scores +0.2622 against top3's +0.3702, and `anti_spread3`
+(mutually closest profiles) scores **-0.0855**, actively worse than
+doing nothing.
 
 At 25 domains the advantage is gone (spread25 - top25 = -0.0566,
 t=-0.58). Diversity pays where redundancy is expensive, which is at
 small budgets.
+
+### The cross-seed test, and the claim it took back
+
+Both the ranking and the spread selection are computed from the same
+readers the arms are then judged beside. That is selection on the data,
+so each seed was re-run using a DIFFERENT seed's ranking — a selection
+that has never seen this run's readers or eval draws.
+
+| paired, held-out | own ranking | IMPORTED ranking |
+| --- | --- | --- |
+| top3 - random3 | +0.3537, t=+4.59 | **+0.2743 +- 0.0752, t=+3.65, 3/3** |
+| top3 - shuffled ranking | +0.3712, t=+5.43 | **+0.3657 +- 0.1047, t=+3.49, 3/3** |
+| spread10 - all 85 | +0.1928 | **+0.0897 +- 0.0314, t=+2.86, 3/3** |
+| spread10 - random10 | +0.3318 | **+0.2287 +- 0.0778, t=+2.94, 3/3** |
+| spread10 - top10 | +0.1420, t=+2.36 | **+0.1369 +- 0.1411, t=+0.97, 2/3** |
+
+Three claims survive selection: the ranking predicts, ten spread domains
+beat the whole battery, and spread beats random at the same budget.
+
+**One does not. "Diversity beats generality at a fixed budget" was
+significant only with the in-sample ranking** — t=+2.36 own, t=+0.97
+imported. The point estimate barely moves (+0.1420 to +0.1369) and the
+error triples, so this is under-powered rather than refuted, but at
+three seeds it is not established and should not be quoted as though it
+were. What IS established at the same budget is spread over RANDOM
+(t=+2.94), which is a weaker and different statement.
 
 ### Why there is no single compound lift
 

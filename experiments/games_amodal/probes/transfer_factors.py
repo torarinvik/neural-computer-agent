@@ -67,6 +67,11 @@ parser.add_argument("--eval-rows", type=int, default=96)
 parser.add_argument("--pool", type=int, default=1500)
 parser.add_argument("--eval-worlds", type=int, default=48)
 parser.add_argument("--combo-pool", type=int, default=1500)
+parser.add_argument("--split-offset", type=int, default=3,
+                    help="which residue class mod 4 is held out. The "
+                         "headline should not depend on WHICH quarter of "
+                         "the battery is the test set; changing this is "
+                         "the attack on that.")
 parser.add_argument("--ranking-from", default="",
                     help="use ANOTHER run's generality ranking to choose "
                          "the top-k arms. The within-run ranking is fitted "
@@ -168,7 +173,8 @@ NAMES = domain_names()
 # The generality ranking is likewise computed on ELIGIBLE targets only,
 # because a ranking fitted on the targets it will be judged against has
 # seen the answer.
-HELD_OUT = [n for i, n in enumerate(NAMES) if i % 4 == 3]
+HELD_OUT = [n for i, n in enumerate(NAMES)
+            if i % 4 == args.split_offset % 4]
 ELIGIBLE = [n for n in NAMES if n not in HELD_OUT]
 
 
@@ -372,10 +378,15 @@ def sample_group(k):
 # target. Cluster the profiles and take one domain per cluster, so the
 # group spans the space of things-that-can-be-taught instead of stacking
 # several domains that teach the same thing well.
-def spread_group(k):
+def spread_group(k, anchor=None):
+    """Maximise distance between transfer PROFILES.
+
+    `anchor` exists because spread starting from the best domain could
+    be winning on the anchor alone -- top-1 plus nine pieces of filler.
+    Starting from a domain chosen at random removes that explanation."""
     rows = {NAMES[r]: M[r] for r in range(len(NAMES))
             if NAMES[r] in ELIGIBLE}
-    chosen = [ranked[0]]
+    chosen = [anchor or ranked[0]]
     while len(chosen) < k:
         best, best_distance = None, -1.0
         for name in ELIGIBLE:
@@ -401,6 +412,9 @@ arms = {
     "top25": ranked[:25],
     "random25": sample_group(25),
     "spread25": spread_group(25),
+    "spread10_random_anchor": spread_group(
+        10, anchor=ELIGIBLE[int(torch.randint(0, len(ELIGIBLE), (1,),
+                                              generator=rng))]),
     "random50": sample_group(50),
     "all_eligible": ELIGIBLE,
     # the curriculum the project has actually been using, as a baseline
