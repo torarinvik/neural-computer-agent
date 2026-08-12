@@ -29,6 +29,12 @@ slot and is retained as a warning: new partial replacement reached 1.0, but
 stable keep collapsed for the adapted slots. Slot growth therefore still needs
 capacity-aware stopping and consolidation.
 
+The promoted lifecycle run additionally builds copy-on-write replacement
+candidates. An unsafe candidate is rejected without mutation; a verified
+candidate reuses slot B's physical capacity for binding C. Binding A remains
+retained, binding B is evicted, and binding C reaches at least `0.8984`
+partial replacement while stable/disjoint behavior remains retained.
+
 This promotes isolated opaque binding routing, not autonomous binding
 discovery, arbitrary skill composition, unrestricted slot growth, or general
 continual learning.

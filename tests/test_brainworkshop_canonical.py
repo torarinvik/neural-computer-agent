@@ -839,6 +839,7 @@ def test_external_temporal_regime_policy_routes_isolated_binding_slots(
         "binding-slots.v1"
     )
     assert report["gates"]["routes_select_distinct_slots"]
+    assert report["gates"]["initial_routes_select_distinct"]
     assert report["gates"]["phase_a_learns_binding_a"]
     assert report["gates"]["phase_a_does_not_change_slot_b"]
     assert report["gates"]["phase_b_learns_binding_b"]
@@ -847,6 +848,11 @@ def test_external_temporal_regime_policy_routes_isolated_binding_slots(
     assert report["gates"]["both_slots_promoted_and_frozen"]
     assert report["gates"]["frozen_update_rejected"]
     assert report["gates"]["third_slot_rejected_at_capacity"]
+    assert report["gates"]["unsafe_replacement_rejected"]
+    assert report["gates"]["capacity_reuse_accepted"]
+    assert report["gates"]["old_binding_b_evicted"]
+    assert report["gates"]["binding_a_retained_after_capacity_reuse"]
+    assert report["gates"]["binding_c_learns_after_reuse"]
     assert report["gates"]["base_frozen"]
     assert report["gates"]["zero_replayed_examples"]
 

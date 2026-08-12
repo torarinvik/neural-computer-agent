@@ -10660,6 +10660,13 @@ bank rejected later updates to frozen slots and rejected a third allocation at
 the configured two-slot capacity. The 96-update overadaptation rejection is
 retained as evidence that promotion/stopping must be part of the lifecycle.
 
+The full-bank lifecycle now also supports copy-on-write slot replacement. An
+unsafe candidate is rejected without mutating live state; an independently
+verified candidate reuses one full slot for a new opaque binding while another
+binding remains retained. This is the first safe capacity-reuse boundary for
+residual slots, not learned redundancy discovery or general continual
+learning.
+
 This promotes isolated opaque binding routing, not autonomous binding
 discovery, unrestricted slot growth, arbitrary skill composition, or general
 continual learning. The 96-update overadaptation rejection is retained as

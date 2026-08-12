@@ -173,6 +173,10 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     )
     slot_a = bank.add_slot(key_a)
     slot_b = bank.add_slot(key_b)
+    initial_routes_select_distinct = torch.equal(
+        bank.route_slot(torch.stack((key_a, key_b))),
+        torch.tensor([slot_a, slot_b]),
+    )
     base_before = _snapshot(base)
     slot_b_before_phase_a = _snapshot(bank.residual_slots[slot_b])
     phase_a_training = _adapt_slot(
@@ -241,17 +245,73 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         bank.add_slot(torch.tensor([0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0]))
     except RuntimeError as error:
         third_slot_rejected = "capacity" in str(error).lower()
+    key_c = torch.tensor(
+        [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    )
+
+    def retains_binding_a(candidate) -> bool:
+        scores = _evaluate_binding(
+            candidate,
+            context=key_a,
+            seed=args.seed + 834_000,
+            episodes=64,
+        )
+        return (
+            scores["partial_replace"] >= 0.75
+            and scores["stable_keep"] >= 0.80
+            and scores["disjoint_replace"] >= 0.80
+        )
+
+    unsafe_candidate = bank.slot_replacement_candidate(slot_a, key_c)
+    unsafe_replacement_rejected = not bank.replace_slot_from_candidate(
+        unsafe_candidate,
+        slot_a,
+        retention_probe=retains_binding_a,
+    )
+    reuse_candidate = bank.slot_replacement_candidate(slot_b, key_c)
+    capacity_reuse_accepted = bank.replace_slot_from_candidate(
+        reuse_candidate,
+        slot_b,
+        retention_probe=retains_binding_a,
+    )
+    phase_c_training = _adapt_slot(
+        bank,
+        slot_index=slot_b,
+        context=key_c,
+        seed=args.seed + 2_000,
+        updates=args.slot_updates,
+    )
+    phase_c = {
+        "binding_a": _evaluate_binding(
+            bank,
+            context=key_a,
+            seed=args.seed + 835_000,
+        ),
+        "binding_c": _evaluate_binding(
+            bank,
+            context=key_c,
+            seed=args.seed + 835_000,
+        ),
+    }
+    phase_c_promoted = (
+        phase_c["binding_c"]["partial_replace"] >= 0.80
+        and phase_c["binding_c"]["stable_keep"] >= 0.80
+        and phase_c["binding_c"]["disjoint_replace"] >= 0.80
+    )
+    if phase_c_promoted:
+        bank.freeze_slot(slot_b)
     controller_after = _digest(system.agent.controller)
     encoder_after = _digest(system.agent.runtime.encoders["stimulus"])
     gates = {
         "two_slots_bound": bank.slot_count == 2,
         "both_slots_promoted_and_frozen": (
-            phase_a_promoted and phase_b_promoted and int(bank.slot_frozen.sum()) == 2
+            phase_a_promoted and phase_c_promoted and int(bank.slot_frozen.sum()) == 2
         ),
         "routes_select_distinct_slots": torch.equal(
-            bank.route_slot(torch.stack((key_a, key_b))),
+            bank.route_slot(torch.stack((key_a, key_c))),
             torch.tensor([slot_a, slot_b]),
         ),
+        "initial_routes_select_distinct": initial_routes_select_distinct,
         "phase_a_learns_binding_a": phase_a["binding_a"]["partial_replace"] >= 0.80,
         "phase_a_leaves_binding_b_base": (
             phase_a["binding_b"]["partial_replace"] <= 0.25
@@ -266,6 +326,15 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         ),
         "frozen_update_rejected": frozen_update_rejected,
         "third_slot_rejected_at_capacity": third_slot_rejected,
+        "unsafe_replacement_rejected": unsafe_replacement_rejected,
+        "capacity_reuse_accepted": capacity_reuse_accepted,
+        "old_binding_b_evicted": not torch.allclose(bank.slot_keys[slot_b], key_b),
+        "binding_a_retained_after_capacity_reuse": (
+            phase_c["binding_a"]["partial_replace"] >= 0.75
+            and phase_c["binding_a"]["stable_keep"] >= 0.80
+            and phase_c["binding_a"]["disjoint_replace"] >= 0.80
+        ),
+        "binding_c_learns_after_reuse": phase_c_promoted,
         "binding_a_stable_retained": phase_b["binding_a"]["stable_keep"] >= 0.80,
         "binding_b_stable_retained": phase_b["binding_b"]["stable_keep"] >= 0.80,
         "binding_a_disjoint_retained": phase_b["binding_a"]["disjoint_replace"] >= 0.80,
@@ -298,8 +367,10 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "pretraining": pretraining,
         "phase_a_training": phase_a_training,
         "phase_b_training": phase_b_training,
+        "phase_c_training": phase_c_training,
         "phase_a": phase_a,
         "phase_b": phase_b,
+        "phase_c": phase_c,
         "base_geometry_only_control": _evaluate_families(
             base,
             seed=args.seed + 832_000,
@@ -307,10 +378,10 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "gates": gates,
         "accounting": {
             "pretraining_scalar_updates": args.policy_updates,
-            "online_scalar_updates": args.slot_updates * 2,
-            "total_optimizer_updates": args.policy_updates + args.slot_updates * 2,
-            "unique_verifier_bits": args.policy_updates + args.slot_updates * 2,
-            "unique_logical_lifetimes": args.policy_updates + args.slot_updates * 2,
+            "online_scalar_updates": args.slot_updates * 3,
+            "total_optimizer_updates": args.policy_updates + args.slot_updates * 3,
+            "unique_verifier_bits": args.policy_updates + args.slot_updates * 3,
+            "unique_logical_lifetimes": args.policy_updates + args.slot_updates * 3,
             "replayed_examples": 0,
             "controller_updates": 0,
             "latency_seconds": perf_counter() - started,

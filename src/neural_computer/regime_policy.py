@@ -9,6 +9,7 @@ reconstruction errors, or a hand-written regime identifier.
 
 from __future__ import annotations
 
+import copy
 import math
 from dataclasses import dataclass
 
@@ -612,6 +613,72 @@ class GatedResidualRegimePolicyBank(nn.Module):
         self.slot_frozen[slot_index] = True
         for parameter in self.residual_slots[slot_index].parameters():
             parameter.requires_grad_(False)
+
+    @torch.no_grad()
+    def slot_replacement_candidate(
+        self,
+        slot_index: int,
+        context_key: torch.Tensor,
+    ) -> GatedResidualRegimePolicyBank:
+        """Build a copy-on-write candidate that reuses one physical slot."""
+
+        if not 0 <= slot_index < self.slot_count:
+            raise IndexError("residual policy bank slot is out of range")
+        if context_key.ndim != 1 or context_key.shape[0] != self.context_width:
+            raise ValueError("residual policy bank replacement key is invalid")
+        self._validate_context(context_key.unsqueeze(0))
+        candidate = copy.deepcopy(self)
+        reference = next(candidate.base.parameters())
+        residual = nn.Linear(
+            candidate.base.feature_width + candidate.context_width,
+            2,
+        ).to(device=reference.device, dtype=reference.dtype)
+        nn.init.zeros_(residual.weight)
+        nn.init.zeros_(residual.bias)
+        key = F.normalize(context_key.detach(), dim=0).to(reference)
+        candidate.residual_slots[slot_index] = residual
+        candidate.slot_keys[slot_index] = nn.Parameter(key, requires_grad=False)
+        candidate.slot_frozen[slot_index] = False
+        return candidate
+
+    @torch.no_grad()
+    def replace_slot_from_candidate(
+        self,
+        candidate: GatedResidualRegimePolicyBank,
+        slot_index: int,
+        *,
+        retention_probe=None,
+    ) -> bool:
+        """Verifier-gated, atomic replacement of one external residual slot."""
+
+        if not isinstance(candidate, GatedResidualRegimePolicyBank):
+            raise TypeError("residual policy bank replacement candidate is invalid")
+        if not 0 <= slot_index < self.slot_count:
+            raise IndexError("residual policy bank slot is out of range")
+        if candidate.slot_count != self.slot_count:
+            raise ValueError("residual policy bank candidate slot count changed")
+        if any(
+            not torch.equal(value, candidate.base.state_dict()[name])
+            for name, value in self.base.state_dict().items()
+        ):
+            raise ValueError("residual policy bank candidate changed frozen base")
+        expected = self.configuration().copy()
+        observed = candidate.configuration().copy()
+        expected.pop("frozen_slots", None)
+        observed.pop("frozen_slots", None)
+        if expected != observed:
+            raise ValueError("residual policy bank candidate configuration changed")
+        accepted = retention_probe is None or bool(retention_probe(candidate))
+        if not accepted:
+            return False
+        self.residual_slots[slot_index].load_state_dict(
+            candidate.residual_slots[slot_index].state_dict()
+        )
+        self.slot_keys[slot_index].data.copy_(candidate.slot_keys[slot_index].data)
+        self.slot_frozen[slot_index] = candidate.slot_frozen[slot_index]
+        for parameter in self.residual_slots[slot_index].parameters():
+            parameter.requires_grad_(not bool(self.slot_frozen[slot_index]))
+        return True
 
     def route_scores(self, context: torch.Tensor) -> torch.Tensor:
         self._validate_context(context)

@@ -1209,6 +1209,12 @@ archived as a rejection because stable retention collapsed on one seed. Evidence
 is archived at
 `session_records/brainworkshop_external_temporal_regime_policy_binding_slots_promoted_2026-08-12/`.
 
+The promoted lifecycle run also builds copy-on-write replacement candidates.
+An unsafe candidate is rejected without mutation; a verified candidate reuses
+slot B for a new opaque binding while binding A remains retained. Eviction,
+capacity reuse, and subsequent promotion are all checked under the same
+external verifier boundary.
+
 The promoted run also freezes each slot after its retention probe and rejects
 updates to frozen slots plus a third allocation beyond the configured bank
 capacity. This makes slot stopping an explicit verifier-gated operation rather

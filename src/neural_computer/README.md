@@ -1815,5 +1815,6 @@ at
 
 Slots can be verifier-promoted and frozen through `freeze_slot()`, after which
 their trainable-parameter path rejects updates. An optional `max_slots` bound
-rejects unverified capacity growth. Eviction and verified replacement remain
-open lifecycle work.
+rejects unverified capacity growth. `slot_replacement_candidate()` and
+`replace_slot_from_candidate()` provide copy-on-write, verifier-gated reuse of
+a full slot without mutating live state on rejection.

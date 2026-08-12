@@ -29,6 +29,11 @@
     "unique_scalar_utilities": 72,
     "mean_utility": 0.4027777777777778
   },
+  "phase_c_training": {
+    "optimizer_updates": 72,
+    "unique_scalar_utilities": 72,
+    "mean_utility": 0.4583333333333333
+  },
   "phase_a": {
     "binding_a": {
       "partial_replace": 0.9453125,
@@ -53,6 +58,18 @@
       "disjoint_replace": 1.0
     }
   },
+  "phase_c": {
+    "binding_a": {
+      "partial_replace": 0.8671875,
+      "stable_keep": 1.0,
+      "disjoint_replace": 1.0
+    },
+    "binding_c": {
+      "partial_replace": 0.8984375,
+      "stable_keep": 0.9921875,
+      "disjoint_replace": 1.0
+    }
+  },
   "base_geometry_only_control": {
     "stable_keep": 1.0,
     "partial_replace": 0.015625,
@@ -62,6 +79,7 @@
     "two_slots_bound": true,
     "both_slots_promoted_and_frozen": true,
     "routes_select_distinct_slots": true,
+    "initial_routes_select_distinct": true,
     "phase_a_learns_binding_a": true,
     "phase_a_leaves_binding_b_base": true,
     "phase_a_does_not_change_slot_b": true,
@@ -70,6 +88,11 @@
     "phase_b_does_not_change_slot_a": true,
     "frozen_update_rejected": true,
     "third_slot_rejected_at_capacity": true,
+    "unsafe_replacement_rejected": true,
+    "capacity_reuse_accepted": true,
+    "old_binding_b_evicted": true,
+    "binding_a_retained_after_capacity_reuse": true,
+    "binding_c_learns_after_reuse": true,
     "binding_a_stable_retained": true,
     "binding_b_stable_retained": true,
     "binding_a_disjoint_retained": true,
@@ -81,13 +104,13 @@
   },
   "accounting": {
     "pretraining_scalar_updates": 1000,
-    "online_scalar_updates": 144,
-    "total_optimizer_updates": 1144,
-    "unique_verifier_bits": 1144,
-    "unique_logical_lifetimes": 1144,
+    "online_scalar_updates": 216,
+    "total_optimizer_updates": 1216,
+    "unique_verifier_bits": 1216,
+    "unique_logical_lifetimes": 1216,
     "replayed_examples": 0,
     "controller_updates": 0,
-    "latency_seconds": 1.480496208067052
+    "latency_seconds": 2.098284792038612
   },
   "status": "promoted_binding_slots"
 }

@@ -187,3 +187,32 @@ def test_residual_policy_bank_routes_opaque_bindings_and_isolates_slots() -> Non
         bank.trainable_parameters(0)
     with pytest.raises(RuntimeError, match="capacity"):
         bank.add_slot(torch.tensor([0.0, 0.0, 1.0, 0.0]))
+
+
+def test_residual_policy_bank_replacement_is_copy_on_write_and_verifier_gated() -> None:
+    base = OpaqueRegimeChangePolicy(
+        value_width=8,
+        hidden=16,
+        max_spectral_bins=4,
+    ).eval()
+    bank = GatedResidualRegimePolicyBank(base, context_width=4, max_slots=2)
+    key_a = torch.tensor([1.0, 0.0, 0.0, 0.0])
+    key_b = torch.tensor([0.0, 1.0, 0.0, 0.0])
+    key_c = torch.tensor([0.0, 0.0, 1.0, 0.0])
+    bank.add_slot(key_a)
+    bank.add_slot(key_b)
+    before = bank.slot_keys[1].detach().clone()
+    candidate = bank.slot_replacement_candidate(1, key_c)
+
+    assert torch.equal(bank.slot_keys[1], before)
+    assert not bank.replace_slot_from_candidate(candidate, 1, retention_probe=lambda _: False)
+    assert torch.equal(bank.slot_keys[1], before)
+    assert bank.replace_slot_from_candidate(candidate, 1, retention_probe=lambda _: True)
+    assert torch.allclose(bank.slot_keys[1], key_c)
+    assert not bool(bank.slot_frozen[1])
+
+    tampered = bank.slot_replacement_candidate(1, key_b)
+    with torch.no_grad():
+        tampered.base.scorer[0].weight[0, 0] += 1.0
+    with pytest.raises(ValueError, match="frozen base"):
+        bank.replace_slot_from_candidate(tampered, 1, retention_probe=lambda _: True)
