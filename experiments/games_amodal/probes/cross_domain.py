@@ -264,8 +264,32 @@ def enumerate_programs(writes, moduli, depth):
                 yield [a, b] + [pad] * (args.program_len - 2)
 
 
+def readable_rows(before, after):
+    """Rows with an avatar in BOTH states.
+
+    F192 could not measure `avoid1` or `avoid2` at all, and the cause
+    was mine rather than the domain's: those games can END an episode,
+    so after a step about 2% of rows have no avatar. The used-slot mask
+    requires a slot present in EVERY row, so two percent of rows removed
+    all six slots and voided the family.
+
+    This is F155's lesson inverted. There the fix was to mask SLOTS
+    rather than drop rows, because a family using four slots marked the
+    other two with a sentinel and dropping rows on that discarded
+    everything. Here the sentinel means something different — the row
+    has no successor to predict — and the right move is to drop the
+    ROW. The same sentinel needs opposite handling depending on whether
+    it marks an unused slot or a terminated episode, which is exactly
+    the kind of thing that does not survive being assumed."""
+    return (before[:, 0] < VALUES) & (after[:, 0] < VALUES)
+
+
 def solve_and_score(before, action, after, n_actions, held):
     """Search a recipe per action, then score it on FRESH transitions."""
+    alive = readable_rows(before, after)
+    if int(alive.sum()) < 8:
+        return None
+    before, action, after = before[alive], action[alive], after[alive]
     used = (before < VALUES).all(dim=0) & (after < VALUES).all(dim=0)
     if int(used.sum()) == 0:
         return None
@@ -294,6 +318,8 @@ def solve_and_score(before, action, after, n_actions, held):
                     break
         recipe[act] = best
     hb, ha, hn = held
+    keep_rows = readable_rows(hb, hn)
+    hb, ha, hn = hb[keep_rows], ha[keep_rows], hn[keep_rows]
     hsrc = torch.where(hb < VALUES, hb, torch.zeros_like(hb))
     hdst = torch.where(hn < VALUES, hn, torch.zeros_like(hn))
     hits = total = ident = 0
@@ -308,7 +334,9 @@ def solve_and_score(before, action, after, n_actions, held):
         total += int(keep.sum()) * int(used.sum())
     return {"held_out": round(hits / max(total, 1), 4),
             "identity": round(ident / max(total, 1), 4),
-            "candidates": tried, "actions": len(recipe)}
+            "candidates": tried, "actions": len(recipe),
+            "rows_kept": int(alive.sum()), "rows_total": int(alive.numel()),
+            "usable_slots": int(used.sum())}
 
 
 results = {"rule_families": {}, "grid_games": {}}
