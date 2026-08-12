@@ -150,6 +150,35 @@ def test_all_arithmetic_variants_honor_the_explicit_modulus() -> None:
     )[0] == 1
 
 
+def test_global_modulus_failure_is_distinct_from_four_valued_swap() -> None:
+    values = (2, 2, 4, 4, 8, 8)
+    states = tuple(product(*(range(value) for value in values)))
+
+    def family_increment(state: tuple[int, ...], slot: int) -> tuple[int, ...]:
+        result = list(state)
+        result[slot] = (result[slot] + 1) % values[slot]
+        return tuple(result)
+
+    def legacy_global_increment(state: tuple[int, ...], slot: int) -> tuple[int, ...]:
+        result = list(state)
+        result[slot] = (result[slot] + 1) % 8
+        return tuple(result)
+
+    for slot in (0, 1):
+        matches = sum(
+            legacy_global_increment(state, slot) == family_increment(state, slot)
+            for state in states
+        ) / len(states)
+        assert matches == 0.5
+
+    swap = RecipeInstruction("swap", 2, 3)
+    assert all(
+        swap.apply(state, values=values)
+        == (*state[:2], state[3], state[2], *state[4:])
+        for state in states
+    )
+
+
 def test_modulus_is_observable_in_basis_candidates() -> None:
     basis = RecipeBasis(slot_values=(2, 2, 8, 8, 8, 8))
     candidates = basis.atomic_candidates()
