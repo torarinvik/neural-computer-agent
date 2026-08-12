@@ -754,6 +754,38 @@ def test_external_temporal_shared_basis_learned_trigger_noops_then_replaces(
     assert report["gates"]["zero_replayed_examples"]
 
 
+def test_external_temporal_shared_basis_alternates_without_capacity_growth(
+    tmp_path,
+) -> None:
+    from experiments.brainworkshop_canonical.external_temporal_shared_basis_alternating_regimes import (
+        run,
+    )
+
+    report = run(
+        argparse.Namespace(
+            report_out=tmp_path / "temporal-shared-basis-alternating-regimes.json",
+            seed=17,
+            policy_updates=1_000,
+        )
+    )
+
+    assert report["schema"] == (
+        "neural-computer.brainworkshop-external-temporal-shared-basis-"
+        "alternating-regimes.v1"
+    )
+    assert report["architecture"]["protected_scopes"] == 3
+    assert report["gates"]["detector_transfer_shift_replace"]
+    assert report["gates"]["forward_all_shifts_detected"]
+    assert report["gates"]["reversed_all_replacements_accepted"]
+    assert report["gates"]["forward_protected_retained"]
+    assert report["gates"]["forward_old_routes_removed"]
+    assert report["gates"]["forward_capacity_reused"]
+    assert report["gates"]["reversed_capacity_reused"]
+    assert report["gates"]["corruption_rejected"]
+    assert report["gates"]["controller_frozen"]
+    assert report["gates"]["zero_replayed_examples"]
+
+
 def test_binary_switch_family_has_a_valid_chance_baseline() -> None:
     verifier = CrossFamilyVerifier(
         family="switch_binary",

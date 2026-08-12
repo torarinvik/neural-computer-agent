@@ -1,0 +1,48 @@
+{
+  "experiment_id": "brainworkshop-external-temporal-shared-basis-alternating-regimes-promoted-2026-08-12",
+  "status": "promoted_alternating_regimes",
+  "seeds": [17, 18],
+  "rung": "canonical two-seed outcome-trained repeated hidden A-B reversal with three protected scopes",
+  "architecture": "opaque_regime_change_policy_v1_plus_opaque_shared_basis_structure_policy_v2_plus_shared_basis_rewrite_v1",
+  "claim_boundary": "The frozen controller and event encoder transfer an external scalar-trained keep/replace trigger through five alternating opaque boundaries; three protected scopes survive and one working scope reuses bounded factorized capacity. This is not general continual learning or unrestricted memory growth.",
+  "accounting": {
+    "unique_verifier_bits_per_seed": 2120,
+    "unique_logical_lifetimes_per_seed": 2090,
+    "detector_optimizer_updates_per_seed": 1000,
+    "structure_optimizer_updates_per_seed": 1000,
+    "total_optimizer_updates_per_seed": 2000,
+    "replayed_examples_per_seed": 0,
+    "controller_updates_per_seed": 0,
+    "hidden_replacement_boundaries_per_stream": 5,
+    "live_replacement_transactions_per_stream": 5,
+    "live_compression_transactions_per_stream": 6,
+    "logical_record_count_per_stream": 26,
+    "physical_value_scalars_per_stream": 168,
+    "dense_value_scalars_per_stream": 416,
+    "stable_bits_to_threshold": "1000 detector and 1000 structure-policy scalar updates; all five keep/replace boundaries and all six capacity checkpoints passed on both seeds",
+    "retention_on_mastered_primitives": "18 protected routes retained; each prior working occurrence removed before the next occurrence was admitted",
+    "transfer_ratio_against_fresh_detector": "trained stable/shift accuracy was 1.0/1.0 on both seeds; fresh controls missed shifted replacement on both seeds",
+    "wall_time_seconds": {
+      "seed_17": 1.7991247090976685,
+      "seed_18": 1.6671951670432463
+    }
+  },
+  "controls": [
+    "held-out stable keep and shifted replace detector transfer",
+    "fresh detector comparison",
+    "five alternating hidden regime boundaries",
+    "stable exact no-op version control",
+    "stable exact no-op byte digest",
+    "three protected scopes",
+    "new opaque working addresses at every occurrence",
+    "constant logical record capacity",
+    "constant factorized physical capacity",
+    "exact persistent reload",
+    "stale-version rejection",
+    "checksum corruption rejected",
+    "frozen controller",
+    "frozen event encoder",
+    "zero replay"
+  ],
+  "next_bottleneck": "Longer non-periodic streams with unknown stable intervals, partial regime overlap, external-memory eviction/compression tradeoffs, and online detector adaptation without replay."
+}

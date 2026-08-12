@@ -1162,3 +1162,19 @@ averaged `0.5000`. Persistence, corruption, frozen-core, and zero-replay
 gates passed. This is a narrow learned regime-trigger boundary, not general
 change-point discovery or general continual learning. Evidence is archived at
 `session_records/brainworkshop_external_temporal_shared_basis_learned_regime_trigger_promoted_2026-08-12/`.
+
+## Alternating hidden regimes with protected scopes (2026-08-12)
+
+`external_temporal_shared_basis_alternating_regimes.py` transfers the learned
+keep/replace trigger through five hidden `A ↔ B` working-regime reversals. It
+tests a stable no-op before every boundary, fresh opaque addresses for every
+working occurrence, three protected scopes, verifier-gated rewrites, and
+shared-basis compression after each replacement. Forward and reversed
+physical row orders are both required to pass.
+
+Seeds 17 and 18 passed all 34 gates: every boundary was detected and replaced,
+all protected routes survived, stale routes disappeared, and the logical
+record count stayed at 26 while physical storage stayed at 168 versus 416
+dense value scalars. This is a bounded repeated-reversal and capacity-reuse
+result, not general continual learning. Evidence is archived at
+`session_records/brainworkshop_external_temporal_shared_basis_alternating_regimes_promoted_2026-08-12/`.

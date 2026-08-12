@@ -1786,3 +1786,11 @@ verifier, expected-version check, and protected-scope isolation. It does not
 add a modality-specific reasoning branch or enter the frozen controller. The
 canonical two-seed audit is archived at
 `session_records/brainworkshop_external_temporal_shared_basis_learned_regime_trigger_promoted_2026-08-12/`.
+
+The alternating-regime audit drives the same external trigger through five
+hidden working-scope reversals while three protected scopes remain isolated.
+Each accepted rewrite replaces the working logical rows and then reuses the
+shared-basis representation; no stale occurrence is appended. Stable probes
+are exact memory no-ops, and the controller/encoder remain frozen. Evidence
+is archived at
+`session_records/brainworkshop_external_temporal_shared_basis_alternating_regimes_promoted_2026-08-12/`.

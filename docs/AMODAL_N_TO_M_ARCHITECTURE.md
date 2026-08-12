@@ -10593,3 +10593,25 @@ autonomous semantic change-point discovery, unrestricted memory growth,
 arbitrary new computation, or general continual learning. Evidence and
 accounting are archived in
 `session_records/brainworkshop_external_temporal_shared_basis_learned_regime_trigger_promoted_2026-08-12/`.
+
+## Alternating hidden regimes with protected scopes (2026-08-12)
+
+The next pressure test runs the learned external trigger through five hidden
+working-regime reversals, `A → B → A → B → A → B`, while three protected
+scopes remain in the same persistent memory. The detector receives only the
+current and incoming opaque value banks; before each boundary, a stable copy
+must be an exact keep/no-op and the shifted bank must trigger replacement.
+Every replacement uses fresh opaque addresses, so prior working routes must
+be removed rather than silently shadowed.
+
+Across seeds `17` and `18`, all five boundaries were detected and accepted in
+both forward and reversed physical row order. The logical store stayed at 26
+records and factorized physical value storage stayed at 168 scalars versus
+416 dense scalars at all six checkpoints. Protected routes, reload, stale
+version, corruption, frozen-core, and zero-replay controls passed.
+
+This promotes bounded repeated reversal and capacity reuse, not autonomous
+semantic change-point discovery, unrestricted memory growth, arbitrary new
+computation, or general continual learning. Evidence and accounting are
+archived in
+`session_records/brainworkshop_external_temporal_shared_basis_alternating_regimes_promoted_2026-08-12/`.
