@@ -841,3 +841,30 @@ This promotes bounded replay-free adaptive growth of non-commuting external
 loop programs with retention. It does not establish efficient arbitrary
 program synthesis, unrestricted execution, unrestricted memory growth, or
 general continual learning.
+
+## Factorized control-flow structural credit
+
+The next bottleneck was proposal granularity. `ControlFlowProgramFrontier`
+previously learned only aggregate credit for `replace`, `insert`, `delete`,
+and `swap`, while sampling the edited position and instruction uniformly. The
+new replaceable `ControlFlowFrontierProposalMemory` stores only scalar quality
+over three generic factors: operator, position relative to the non-terminal
+boundary, and opaque instruction identity. It is external to the controller
+and is persisted separately from the executable frontier and files.
+
+The four-seed audit used a clear-loop root and grew through three
+non-commuting transfer loops of lengths five, six, and seven. All eight warm
+arms (forward and reversed verifier-state order) reached `1.0000` held-out
+accuracy and retained every earlier loop at `1.0000`. A matched fresh-policy
+control also reached every rung. On the later two rungs, warm/fresh proposal
+ratios ranged from `0.0024` to `0.4444`, with mean `0.1056`. Reward-shuffled
+controls promoted zero rungs. Frontier, executable-file, proposal-memory,
+missing-evidence, reload, and checksum gates passed; replay and optimizer
+updates were zero. Accounting was `23,335` unique verifier bits across `4,667`
+logical lifetimes. Evidence is archived under
+`session_records/control_flow_factorized_loop_growth_promoted_2026-08-12/`.
+
+This promotes bounded replay-free factorized structural-credit transfer across
+longer external loop programs. It does not establish efficient arbitrary
+program synthesis, unrestricted memory growth, arbitrary semantic learning, or
+general continual learning.

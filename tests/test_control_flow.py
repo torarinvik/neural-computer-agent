@@ -5,6 +5,8 @@ import torch
 
 from neural_computer import (
     ControlFlowCompositionSearch,
+    ControlFlowFrontierProposalFactors,
+    ControlFlowFrontierProposalMemory,
     ControlFlowFrontierState,
     ControlFlowInstruction,
     ControlFlowOutcomeSearch,
@@ -414,6 +416,84 @@ def test_control_flow_frontier_acquires_a_two_edit_program_and_reloads() -> None
     restored = ControlFlowFrontierState.from_payload(state.payload())
     assert restored.digest() == state.digest()
     assert "outcomes" not in state.payload()
+
+
+def test_control_flow_factorized_credit_uses_relative_position_without_candidate_rows() -> None:
+    source = ControlFlowProgram(
+        2,
+        (
+            ControlFlowInstruction("inc", counter=0),
+            ControlFlowInstruction("halt"),
+        ),
+    )
+    target = ControlFlowProgram(
+        2,
+        (
+            ControlFlowInstruction("inc", counter=0),
+            ControlFlowInstruction("inc", counter=1),
+            ControlFlowInstruction("halt"),
+        ),
+    )
+    factors = ControlFlowProgramFrontier.proposal_factors(source, 1, target)
+
+    assert factors.primary_position == 0
+    assert len(factors.instruction_digests) == 1
+
+    memory = ControlFlowFrontierProposalMemory(
+        exploration_floor=0.2,
+        shared_prior_weight=0.25,
+    )
+    memory.record("context-a", 1.0, factors=factors)
+    alternative = ControlFlowFrontierProposalFactors(
+        operator_index=1,
+        primary_position=0,
+        instruction_digests=("1" * 64,),
+    )
+    memory.record("context-a", 0.0, factors=alternative)
+    probabilities = memory.proposal_probabilities("context-a", (factors, alternative))
+
+    assert float(probabilities[0]) > float(probabilities[1])
+    assert bool(torch.all(probabilities >= 0.1))
+    payload_text = str(memory.payload())
+    assert target.digest() not in payload_text
+
+    restored = ControlFlowFrontierProposalMemory.from_payload(memory.payload())
+    assert restored.digest() == memory.digest()
+    assert torch.equal(
+        restored.proposal_probabilities("context-a", (factors, alternative)),
+        probabilities,
+    )
+
+
+def test_control_flow_factorized_frontier_preserves_generic_runtime_boundary() -> None:
+    source = ControlFlowProgram(
+        2,
+        (
+            ControlFlowInstruction("inc", counter=0),
+            ControlFlowInstruction("halt"),
+        ),
+    )
+    policy = ControlFlowFrontierProposalMemory(exploration_floor=0.05)
+    frontier = ControlFlowProgramFrontier(
+        2,
+        max_program_length=3,
+        proposal_policy=policy,
+    )
+    state = frontier.initial_state(source, root_quality=1.0)
+    proposal = frontier.propose(
+        state,
+        generator=torch.Generator().manual_seed(77),
+        context="opaque-context",
+    )
+
+    assert proposal.context == "opaque-context"
+    assert proposal.factors is not None
+    feedback = frontier.record_outcomes(state, proposal, (0.0, 0.0))
+    assert feedback.state.evaluations == 1
+    assert feedback.state.accepted == 0
+    assert policy.payload()["configuration"]["credit"] == (
+        "scalar_factor_aggregate_without_candidate_rows_v1"
+    )
 
 
 def test_control_flow_induction_promotes_from_scratch_loop_search() -> None:

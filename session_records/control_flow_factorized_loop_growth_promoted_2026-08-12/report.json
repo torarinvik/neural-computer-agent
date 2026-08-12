@@ -1,0 +1,759 @@
+{
+  "schema": "neural-computer.recipe-control-flow-factorized-loop-growth-audit.v1",
+  "status": "promoted_factorized_replay_free_loop_growth",
+  "seeds": [
+    17,
+    18,
+    19,
+    20
+  ],
+  "warm_reports": [
+    {
+      "seed": 17,
+      "reverse_inputs": false,
+      "stage_reports": [
+        {
+          "stage": 1,
+          "target_length": 5,
+          "candidate_digest": "cc0659a18534dda1c85f470da698bb9af315ca28aa52ad71bd49153a4fe12fa4",
+          "candidate_evaluations": 69,
+          "stable_bits_to_threshold": 1,
+          "heldout_accuracy": 1.0,
+          "retention_accuracy": 1.0,
+          "state_reload_exact": true,
+          "memory_reload_exact": true,
+          "proposal_memory_reload_exact": true
+        },
+        {
+          "stage": 2,
+          "target_length": 6,
+          "candidate_digest": "42152281dca284532ed0c2c56dce70e3d20fc5b02b0d01941e0ae25ab7ba8a1e",
+          "candidate_evaluations": 5,
+          "stable_bits_to_threshold": 1,
+          "heldout_accuracy": 1.0,
+          "retention_accuracy": 1.0,
+          "state_reload_exact": true,
+          "memory_reload_exact": true,
+          "proposal_memory_reload_exact": true
+        },
+        {
+          "stage": 3,
+          "target_length": 7,
+          "candidate_digest": "396cf243d69582351a1b38e37b17dc9407a7de5fa4d25e301f2700e8358df5d0",
+          "candidate_evaluations": 10,
+          "stable_bits_to_threshold": 1,
+          "heldout_accuracy": 1.0,
+          "retention_accuracy": 1.0,
+          "state_reload_exact": true,
+          "memory_reload_exact": true,
+          "proposal_memory_reload_exact": true
+        }
+      ],
+      "gates": {
+        "all_loop_rungs_discovered": true,
+        "all_heldout_mastered": true,
+        "all_prior_loops_retained": true,
+        "horizon_grew_one_step_at_a_time": true,
+        "state_reload_exact": true,
+        "memory_reload_exact": true,
+        "proposal_memory_reload_exact": true,
+        "proposal_memory_corruption_rejected": true,
+        "missing_evidence_no_write": true,
+        "zero_replayed_examples": true,
+        "zero_optimizer_updates": true
+      },
+      "accounting": {
+        "unique_verifier_bits": 420,
+        "unique_logical_lifetimes": 84,
+        "optimizer_updates": 0,
+        "replayed_examples": 0,
+        "wall_seconds": 0.8024152079597116,
+        "verifier_seconds": 0.003906376659870148,
+        "mean_verifier_latency_seconds": 4.650448404607319e-05
+      },
+      "promoted": true
+    },
+    {
+      "seed": 17,
+      "reverse_inputs": true,
+      "stage_reports": [
+        {
+          "stage": 1,
+          "target_length": 5,
+          "candidate_digest": "cc0659a18534dda1c85f470da698bb9af315ca28aa52ad71bd49153a4fe12fa4",
+          "candidate_evaluations": 69,
+          "stable_bits_to_threshold": 1,
+          "heldout_accuracy": 1.0,
+          "retention_accuracy": 1.0,
+          "state_reload_exact": true,
+          "memory_reload_exact": true,
+          "proposal_memory_reload_exact": true
+        },
+        {
+          "stage": 2,
+          "target_length": 6,
+          "candidate_digest": "42152281dca284532ed0c2c56dce70e3d20fc5b02b0d01941e0ae25ab7ba8a1e",
+          "candidate_evaluations": 5,
+          "stable_bits_to_threshold": 1,
+          "heldout_accuracy": 1.0,
+          "retention_accuracy": 1.0,
+          "state_reload_exact": true,
+          "memory_reload_exact": true,
+          "proposal_memory_reload_exact": true
+        },
+        {
+          "stage": 3,
+          "target_length": 7,
+          "candidate_digest": "396cf243d69582351a1b38e37b17dc9407a7de5fa4d25e301f2700e8358df5d0",
+          "candidate_evaluations": 10,
+          "stable_bits_to_threshold": 1,
+          "heldout_accuracy": 1.0,
+          "retention_accuracy": 1.0,
+          "state_reload_exact": true,
+          "memory_reload_exact": true,
+          "proposal_memory_reload_exact": true
+        }
+      ],
+      "gates": {
+        "all_loop_rungs_discovered": true,
+        "all_heldout_mastered": true,
+        "all_prior_loops_retained": true,
+        "horizon_grew_one_step_at_a_time": true,
+        "state_reload_exact": true,
+        "memory_reload_exact": true,
+        "proposal_memory_reload_exact": true,
+        "proposal_memory_corruption_rejected": true,
+        "missing_evidence_no_write": true,
+        "zero_replayed_examples": true,
+        "zero_optimizer_updates": true
+      },
+      "accounting": {
+        "unique_verifier_bits": 420,
+        "unique_logical_lifetimes": 84,
+        "optimizer_updates": 0,
+        "replayed_examples": 0,
+        "wall_seconds": 0.7573677499312907,
+        "verifier_seconds": 0.003756334539502859,
+        "mean_verifier_latency_seconds": 4.471826832741499e-05
+      },
+      "promoted": true
+    },
+    {
+      "seed": 18,
+      "reverse_inputs": false,
+      "stage_reports": [
+        {
+          "stage": 1,
+          "target_length": 5,
+          "candidate_digest": "cc0659a18534dda1c85f470da698bb9af315ca28aa52ad71bd49153a4fe12fa4",
+          "candidate_evaluations": 29,
+          "stable_bits_to_threshold": 1,
+          "heldout_accuracy": 1.0,
+          "retention_accuracy": 1.0,
+          "state_reload_exact": true,
+          "memory_reload_exact": true,
+          "proposal_memory_reload_exact": true
+        },
+        {
+          "stage": 2,
+          "target_length": 6,
+          "candidate_digest": "42152281dca284532ed0c2c56dce70e3d20fc5b02b0d01941e0ae25ab7ba8a1e",
+          "candidate_evaluations": 4,
+          "stable_bits_to_threshold": 1,
+          "heldout_accuracy": 1.0,
+          "retention_accuracy": 1.0,
+          "state_reload_exact": true,
+          "memory_reload_exact": true,
+          "proposal_memory_reload_exact": true
+        },
+        {
+          "stage": 3,
+          "target_length": 7,
+          "candidate_digest": "396cf243d69582351a1b38e37b17dc9407a7de5fa4d25e301f2700e8358df5d0",
+          "candidate_evaluations": 1,
+          "stable_bits_to_threshold": 1,
+          "heldout_accuracy": 1.0,
+          "retention_accuracy": 1.0,
+          "state_reload_exact": true,
+          "memory_reload_exact": true,
+          "proposal_memory_reload_exact": true
+        }
+      ],
+      "gates": {
+        "all_loop_rungs_discovered": true,
+        "all_heldout_mastered": true,
+        "all_prior_loops_retained": true,
+        "horizon_grew_one_step_at_a_time": true,
+        "state_reload_exact": true,
+        "memory_reload_exact": true,
+        "proposal_memory_reload_exact": true,
+        "proposal_memory_corruption_rejected": true,
+        "missing_evidence_no_write": true,
+        "zero_replayed_examples": true,
+        "zero_optimizer_updates": true
+      },
+      "accounting": {
+        "unique_verifier_bits": 170,
+        "unique_logical_lifetimes": 34,
+        "optimizer_updates": 0,
+        "replayed_examples": 0,
+        "wall_seconds": 0.29745125002227724,
+        "verifier_seconds": 0.0014681651955470443,
+        "mean_verifier_latency_seconds": 4.318132928079542e-05
+      },
+      "promoted": true
+    },
+    {
+      "seed": 18,
+      "reverse_inputs": true,
+      "stage_reports": [
+        {
+          "stage": 1,
+          "target_length": 5,
+          "candidate_digest": "cc0659a18534dda1c85f470da698bb9af315ca28aa52ad71bd49153a4fe12fa4",
+          "candidate_evaluations": 29,
+          "stable_bits_to_threshold": 1,
+          "heldout_accuracy": 1.0,
+          "retention_accuracy": 1.0,
+          "state_reload_exact": true,
+          "memory_reload_exact": true,
+          "proposal_memory_reload_exact": true
+        },
+        {
+          "stage": 2,
+          "target_length": 6,
+          "candidate_digest": "42152281dca284532ed0c2c56dce70e3d20fc5b02b0d01941e0ae25ab7ba8a1e",
+          "candidate_evaluations": 4,
+          "stable_bits_to_threshold": 1,
+          "heldout_accuracy": 1.0,
+          "retention_accuracy": 1.0,
+          "state_reload_exact": true,
+          "memory_reload_exact": true,
+          "proposal_memory_reload_exact": true
+        },
+        {
+          "stage": 3,
+          "target_length": 7,
+          "candidate_digest": "396cf243d69582351a1b38e37b17dc9407a7de5fa4d25e301f2700e8358df5d0",
+          "candidate_evaluations": 1,
+          "stable_bits_to_threshold": 1,
+          "heldout_accuracy": 1.0,
+          "retention_accuracy": 1.0,
+          "state_reload_exact": true,
+          "memory_reload_exact": true,
+          "proposal_memory_reload_exact": true
+        }
+      ],
+      "gates": {
+        "all_loop_rungs_discovered": true,
+        "all_heldout_mastered": true,
+        "all_prior_loops_retained": true,
+        "horizon_grew_one_step_at_a_time": true,
+        "state_reload_exact": true,
+        "memory_reload_exact": true,
+        "proposal_memory_reload_exact": true,
+        "proposal_memory_corruption_rejected": true,
+        "missing_evidence_no_write": true,
+        "zero_replayed_examples": true,
+        "zero_optimizer_updates": true
+      },
+      "accounting": {
+        "unique_verifier_bits": 170,
+        "unique_logical_lifetimes": 34,
+        "optimizer_updates": 0,
+        "replayed_examples": 0,
+        "wall_seconds": 0.2982039169874042,
+        "verifier_seconds": 0.0015128746163100004,
+        "mean_verifier_latency_seconds": 4.449631224441178e-05
+      },
+      "promoted": true
+    },
+    {
+      "seed": 19,
+      "reverse_inputs": false,
+      "stage_reports": [
+        {
+          "stage": 1,
+          "target_length": 5,
+          "candidate_digest": "cc0659a18534dda1c85f470da698bb9af315ca28aa52ad71bd49153a4fe12fa4",
+          "candidate_evaluations": 84,
+          "stable_bits_to_threshold": 1,
+          "heldout_accuracy": 1.0,
+          "retention_accuracy": 1.0,
+          "state_reload_exact": true,
+          "memory_reload_exact": true,
+          "proposal_memory_reload_exact": true
+        },
+        {
+          "stage": 2,
+          "target_length": 6,
+          "candidate_digest": "42152281dca284532ed0c2c56dce70e3d20fc5b02b0d01941e0ae25ab7ba8a1e",
+          "candidate_evaluations": 1,
+          "stable_bits_to_threshold": 1,
+          "heldout_accuracy": 1.0,
+          "retention_accuracy": 1.0,
+          "state_reload_exact": true,
+          "memory_reload_exact": true,
+          "proposal_memory_reload_exact": true
+        },
+        {
+          "stage": 3,
+          "target_length": 7,
+          "candidate_digest": "396cf243d69582351a1b38e37b17dc9407a7de5fa4d25e301f2700e8358df5d0",
+          "candidate_evaluations": 5,
+          "stable_bits_to_threshold": 1,
+          "heldout_accuracy": 1.0,
+          "retention_accuracy": 1.0,
+          "state_reload_exact": true,
+          "memory_reload_exact": true,
+          "proposal_memory_reload_exact": true
+        }
+      ],
+      "gates": {
+        "all_loop_rungs_discovered": true,
+        "all_heldout_mastered": true,
+        "all_prior_loops_retained": true,
+        "horizon_grew_one_step_at_a_time": true,
+        "state_reload_exact": true,
+        "memory_reload_exact": true,
+        "proposal_memory_reload_exact": true,
+        "proposal_memory_corruption_rejected": true,
+        "missing_evidence_no_write": true,
+        "zero_replayed_examples": true,
+        "zero_optimizer_updates": true
+      },
+      "accounting": {
+        "unique_verifier_bits": 450,
+        "unique_logical_lifetimes": 90,
+        "optimizer_updates": 0,
+        "replayed_examples": 0,
+        "wall_seconds": 0.7588249170221388,
+        "verifier_seconds": 0.0048956688260659575,
+        "mean_verifier_latency_seconds": 5.439632028962175e-05
+      },
+      "promoted": true
+    },
+    {
+      "seed": 19,
+      "reverse_inputs": true,
+      "stage_reports": [
+        {
+          "stage": 1,
+          "target_length": 5,
+          "candidate_digest": "cc0659a18534dda1c85f470da698bb9af315ca28aa52ad71bd49153a4fe12fa4",
+          "candidate_evaluations": 84,
+          "stable_bits_to_threshold": 1,
+          "heldout_accuracy": 1.0,
+          "retention_accuracy": 1.0,
+          "state_reload_exact": true,
+          "memory_reload_exact": true,
+          "proposal_memory_reload_exact": true
+        },
+        {
+          "stage": 2,
+          "target_length": 6,
+          "candidate_digest": "42152281dca284532ed0c2c56dce70e3d20fc5b02b0d01941e0ae25ab7ba8a1e",
+          "candidate_evaluations": 1,
+          "stable_bits_to_threshold": 1,
+          "heldout_accuracy": 1.0,
+          "retention_accuracy": 1.0,
+          "state_reload_exact": true,
+          "memory_reload_exact": true,
+          "proposal_memory_reload_exact": true
+        },
+        {
+          "stage": 3,
+          "target_length": 7,
+          "candidate_digest": "396cf243d69582351a1b38e37b17dc9407a7de5fa4d25e301f2700e8358df5d0",
+          "candidate_evaluations": 5,
+          "stable_bits_to_threshold": 1,
+          "heldout_accuracy": 1.0,
+          "retention_accuracy": 1.0,
+          "state_reload_exact": true,
+          "memory_reload_exact": true,
+          "proposal_memory_reload_exact": true
+        }
+      ],
+      "gates": {
+        "all_loop_rungs_discovered": true,
+        "all_heldout_mastered": true,
+        "all_prior_loops_retained": true,
+        "horizon_grew_one_step_at_a_time": true,
+        "state_reload_exact": true,
+        "memory_reload_exact": true,
+        "proposal_memory_reload_exact": true,
+        "proposal_memory_corruption_rejected": true,
+        "missing_evidence_no_write": true,
+        "zero_replayed_examples": true,
+        "zero_optimizer_updates": true
+      },
+      "accounting": {
+        "unique_verifier_bits": 450,
+        "unique_logical_lifetimes": 90,
+        "optimizer_updates": 0,
+        "replayed_examples": 0,
+        "wall_seconds": 0.8012355000246316,
+        "verifier_seconds": 0.004842622671276331,
+        "mean_verifier_latency_seconds": 5.380691856973701e-05
+      },
+      "promoted": true
+    },
+    {
+      "seed": 20,
+      "reverse_inputs": false,
+      "stage_reports": [
+        {
+          "stage": 1,
+          "target_length": 5,
+          "candidate_digest": "cc0659a18534dda1c85f470da698bb9af315ca28aa52ad71bd49153a4fe12fa4",
+          "candidate_evaluations": 267,
+          "stable_bits_to_threshold": 1,
+          "heldout_accuracy": 1.0,
+          "retention_accuracy": 1.0,
+          "state_reload_exact": true,
+          "memory_reload_exact": true,
+          "proposal_memory_reload_exact": true
+        },
+        {
+          "stage": 2,
+          "target_length": 6,
+          "candidate_digest": "42152281dca284532ed0c2c56dce70e3d20fc5b02b0d01941e0ae25ab7ba8a1e",
+          "candidate_evaluations": 1,
+          "stable_bits_to_threshold": 1,
+          "heldout_accuracy": 1.0,
+          "retention_accuracy": 1.0,
+          "state_reload_exact": true,
+          "memory_reload_exact": true,
+          "proposal_memory_reload_exact": true
+        },
+        {
+          "stage": 3,
+          "target_length": 7,
+          "candidate_digest": "396cf243d69582351a1b38e37b17dc9407a7de5fa4d25e301f2700e8358df5d0",
+          "candidate_evaluations": 2,
+          "stable_bits_to_threshold": 1,
+          "heldout_accuracy": 1.0,
+          "retention_accuracy": 1.0,
+          "state_reload_exact": true,
+          "memory_reload_exact": true,
+          "proposal_memory_reload_exact": true
+        }
+      ],
+      "gates": {
+        "all_loop_rungs_discovered": true,
+        "all_heldout_mastered": true,
+        "all_prior_loops_retained": true,
+        "horizon_grew_one_step_at_a_time": true,
+        "state_reload_exact": true,
+        "memory_reload_exact": true,
+        "proposal_memory_reload_exact": true,
+        "proposal_memory_corruption_rejected": true,
+        "missing_evidence_no_write": true,
+        "zero_replayed_examples": true,
+        "zero_optimizer_updates": true
+      },
+      "accounting": {
+        "unique_verifier_bits": 1350,
+        "unique_logical_lifetimes": 270,
+        "optimizer_updates": 0,
+        "replayed_examples": 0,
+        "wall_seconds": 2.0819477090844885,
+        "verifier_seconds": 0.013112821849063039,
+        "mean_verifier_latency_seconds": 4.8566006848381626e-05
+      },
+      "promoted": true
+    },
+    {
+      "seed": 20,
+      "reverse_inputs": true,
+      "stage_reports": [
+        {
+          "stage": 1,
+          "target_length": 5,
+          "candidate_digest": "cc0659a18534dda1c85f470da698bb9af315ca28aa52ad71bd49153a4fe12fa4",
+          "candidate_evaluations": 267,
+          "stable_bits_to_threshold": 1,
+          "heldout_accuracy": 1.0,
+          "retention_accuracy": 1.0,
+          "state_reload_exact": true,
+          "memory_reload_exact": true,
+          "proposal_memory_reload_exact": true
+        },
+        {
+          "stage": 2,
+          "target_length": 6,
+          "candidate_digest": "42152281dca284532ed0c2c56dce70e3d20fc5b02b0d01941e0ae25ab7ba8a1e",
+          "candidate_evaluations": 1,
+          "stable_bits_to_threshold": 1,
+          "heldout_accuracy": 1.0,
+          "retention_accuracy": 1.0,
+          "state_reload_exact": true,
+          "memory_reload_exact": true,
+          "proposal_memory_reload_exact": true
+        },
+        {
+          "stage": 3,
+          "target_length": 7,
+          "candidate_digest": "396cf243d69582351a1b38e37b17dc9407a7de5fa4d25e301f2700e8358df5d0",
+          "candidate_evaluations": 2,
+          "stable_bits_to_threshold": 1,
+          "heldout_accuracy": 1.0,
+          "retention_accuracy": 1.0,
+          "state_reload_exact": true,
+          "memory_reload_exact": true,
+          "proposal_memory_reload_exact": true
+        }
+      ],
+      "gates": {
+        "all_loop_rungs_discovered": true,
+        "all_heldout_mastered": true,
+        "all_prior_loops_retained": true,
+        "horizon_grew_one_step_at_a_time": true,
+        "state_reload_exact": true,
+        "memory_reload_exact": true,
+        "proposal_memory_reload_exact": true,
+        "proposal_memory_corruption_rejected": true,
+        "missing_evidence_no_write": true,
+        "zero_replayed_examples": true,
+        "zero_optimizer_updates": true
+      },
+      "accounting": {
+        "unique_verifier_bits": 1350,
+        "unique_logical_lifetimes": 270,
+        "optimizer_updates": 0,
+        "replayed_examples": 0,
+        "wall_seconds": 2.0936482079559937,
+        "verifier_seconds": 0.013154184794984758,
+        "mean_verifier_latency_seconds": 4.871920294438799e-05
+      },
+      "promoted": true
+    }
+  ],
+  "fresh_reports": [
+    {
+      "seed": 17,
+      "stage_reports": [
+        {
+          "stage": 1,
+          "found": true,
+          "candidate_evaluations": 174,
+          "stable_bits_to_threshold": 1
+        },
+        {
+          "stage": 2,
+          "found": true,
+          "candidate_evaluations": 31,
+          "stable_bits_to_threshold": 1
+        },
+        {
+          "stage": 3,
+          "found": true,
+          "candidate_evaluations": 74,
+          "stable_bits_to_threshold": 1
+        }
+      ],
+      "all_targets_found": true,
+      "accounting": {
+        "unique_verifier_bits": 1395,
+        "unique_logical_lifetimes": 279,
+        "optimizer_updates": 0,
+        "replayed_examples": 0,
+        "verifier_seconds": 0.014575209585018456,
+        "mean_verifier_latency_seconds": 5.2240894569958624e-05,
+        "wall_seconds": 3.092810958973132
+      }
+    },
+    {
+      "seed": 18,
+      "stage_reports": [
+        {
+          "stage": 1,
+          "found": true,
+          "candidate_evaluations": 97,
+          "stable_bits_to_threshold": 1
+        },
+        {
+          "stage": 2,
+          "found": true,
+          "candidate_evaluations": 9,
+          "stable_bits_to_threshold": 1
+        },
+        {
+          "stage": 3,
+          "found": true,
+          "candidate_evaluations": 418,
+          "stable_bits_to_threshold": 1
+        }
+      ],
+      "all_targets_found": true,
+      "accounting": {
+        "unique_verifier_bits": 2620,
+        "unique_logical_lifetimes": 524,
+        "optimizer_updates": 0,
+        "replayed_examples": 0,
+        "verifier_seconds": 0.031306841992773116,
+        "mean_verifier_latency_seconds": 5.974588166559755e-05,
+        "wall_seconds": 8.983111166046001
+      }
+    },
+    {
+      "seed": 19,
+      "stage_reports": [
+        {
+          "stage": 1,
+          "found": true,
+          "candidate_evaluations": 15,
+          "stable_bits_to_threshold": 1
+        },
+        {
+          "stage": 2,
+          "found": true,
+          "candidate_evaluations": 14,
+          "stable_bits_to_threshold": 1
+        },
+        {
+          "stage": 3,
+          "found": true,
+          "candidate_evaluations": 270,
+          "stable_bits_to_threshold": 1
+        }
+      ],
+      "all_targets_found": true,
+      "accounting": {
+        "unique_verifier_bits": 1495,
+        "unique_logical_lifetimes": 299,
+        "optimizer_updates": 0,
+        "replayed_examples": 0,
+        "verifier_seconds": 0.01620787149295211,
+        "mean_verifier_latency_seconds": 5.420692807007394e-05,
+        "wall_seconds": 5.001420333981514
+      }
+    },
+    {
+      "seed": 20,
+      "stage_reports": [
+        {
+          "stage": 1,
+          "found": true,
+          "candidate_evaluations": 101,
+          "stable_bits_to_threshold": 1
+        },
+        {
+          "stage": 2,
+          "found": true,
+          "candidate_evaluations": 353,
+          "stable_bits_to_threshold": 1
+        },
+        {
+          "stage": 3,
+          "found": true,
+          "candidate_evaluations": 235,
+          "stable_bits_to_threshold": 1
+        }
+      ],
+      "all_targets_found": true,
+      "accounting": {
+        "unique_verifier_bits": 3445,
+        "unique_logical_lifetimes": 689,
+        "optimizer_updates": 0,
+        "replayed_examples": 0,
+        "verifier_seconds": 0.03562645299825817,
+        "mean_verifier_latency_seconds": 5.1707478952479204e-05,
+        "wall_seconds": 8.789427625015378
+      }
+    }
+  ],
+  "shuffled_reports": [
+    {
+      "seed": 17,
+      "accepted_rungs": 0,
+      "not_promoted": true,
+      "accounting": {
+        "unique_verifier_bits": 2400,
+        "unique_logical_lifetimes": 480,
+        "optimizer_updates": 0,
+        "replayed_examples": 0,
+        "verifier_seconds": 0.0,
+        "mean_verifier_latency_seconds": 0.0,
+        "wall_seconds": 5.304912833031267
+      }
+    },
+    {
+      "seed": 18,
+      "accepted_rungs": 0,
+      "not_promoted": true,
+      "accounting": {
+        "unique_verifier_bits": 2400,
+        "unique_logical_lifetimes": 480,
+        "optimizer_updates": 0,
+        "replayed_examples": 0,
+        "verifier_seconds": 0.0,
+        "mean_verifier_latency_seconds": 0.0,
+        "wall_seconds": 5.185107000055723
+      }
+    },
+    {
+      "seed": 19,
+      "accepted_rungs": 0,
+      "not_promoted": true,
+      "accounting": {
+        "unique_verifier_bits": 2400,
+        "unique_logical_lifetimes": 480,
+        "optimizer_updates": 0,
+        "replayed_examples": 0,
+        "verifier_seconds": 0.0,
+        "mean_verifier_latency_seconds": 0.0,
+        "wall_seconds": 5.416938833077438
+      }
+    },
+    {
+      "seed": 20,
+      "accepted_rungs": 0,
+      "not_promoted": true,
+      "accounting": {
+        "unique_verifier_bits": 2400,
+        "unique_logical_lifetimes": 480,
+        "optimizer_updates": 0,
+        "replayed_examples": 0,
+        "verifier_seconds": 0.0,
+        "mean_verifier_latency_seconds": 0.0,
+        "wall_seconds": 5.35895420901943
+      }
+    }
+  ],
+  "later_transfer_ratios": [
+    0.16129032258064516,
+    0.13513513513513514,
+    0.16129032258064516,
+    0.13513513513513514,
+    0.4444444444444444,
+    0.0023923444976076554,
+    0.4444444444444444,
+    0.0023923444976076554,
+    0.07142857142857142,
+    0.018518518518518517,
+    0.07142857142857142,
+    0.018518518518518517,
+    0.0028328611898017,
+    0.00851063829787234,
+    0.0028328611898017,
+    0.00851063829787234
+  ],
+  "gates": {
+    "warm_arms_promoted": true,
+    "warm_later_transfer_has_margin": true,
+    "fresh_control_is_matched": true,
+    "shuffled_feedback_not_promoted": true
+  },
+  "claim_boundary": "Promoted bounded factorized replay-free structural credit transfer through non-commuting external loop growth; not efficient arbitrary program synthesis, unrestricted memory growth, or general continual learning.",
+  "accounting": {
+    "unique_verifier_bits": 23335,
+    "unique_logical_lifetimes": 4667,
+    "optimizer_updates": 0,
+    "replayed_examples": 0,
+    "wall_seconds": 55.02377741818782,
+    "verifier_seconds": 0.144365425221622,
+    "mean_verifier_latency_seconds": 3.093323874472295e-05
+  },
+  "wall_seconds": 55.024089374928735
+}

@@ -11656,3 +11656,29 @@ promotes bounded replay-free non-commuting external loop growth, not arbitrary
 program induction, unrestricted execution, or general continual learning.
 Evidence is archived at
 `session_records/recipe_control_flow_adaptive_loop_growth_promoted_2026-08-12/`.
+
+### Factorized structural credit for external program growth
+
+The loop-growth frontier's remaining implementation bottleneck was coarse
+credit assignment: aggregate operator statistics could learn that insertion
+was useful, but not which generic insertion position or opaque instruction
+should be reused as the program grew. `ControlFlowFrontierProposalMemory`
+adds a replaceable external state layer over operator, position-relative-to-
+the-nonterminal-boundary, and opaque instruction factors. It stores aggregate
+scalar quality only; candidate program digests, verifier rows, task labels,
+and controller parameters remain outside the learner.
+
+Across four seeds and both forward/reversed verifier-state orders, the warm
+frontier grew three non-commuting loop rungs with held-out and retention
+accuracy `1.0000`. A matched fresh-policy control also mastered all rungs, but
+the warm/fresh proposal ratio on later rungs ranged from `0.0024` to `0.4444`
+(mean `0.1056`). Reward-shuffled controls promoted zero rungs. State, policy,
+file reload, missing-evidence, and checksum gates passed with zero replay and
+zero optimizer updates; the audit charged `23,335` unique verifier bits and
+`4,667` logical lifetimes.
+
+This is a promoted bounded structural-credit transfer result. It narrows the
+search bottleneck, but it is not yet efficient arbitrary program synthesis,
+unrestricted memory growth, arbitrary new computation acquisition, or general
+continual learning. Evidence and the sample-efficiency ledger are archived in
+`session_records/control_flow_factorized_loop_growth_promoted_2026-08-12/`.

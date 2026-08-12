@@ -10,12 +10,13 @@ from __future__ import annotations
 
 import hashlib
 import math
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 
 import torch
 
 from .control_flow import (
+    ControlFlowInstruction,
     ControlFlowProgram,
     delete_control_flow_instruction,
     insert_control_flow_instruction,
@@ -28,6 +29,12 @@ CONTROL_FLOW_FRONTIER_HYPOTHESIS_SCHEMA = (
 )
 CONTROL_FLOW_FRONTIER_PROPOSAL_SCHEMA = (
     "neural-computer.external-control-flow-frontier-proposal.v1"
+)
+CONTROL_FLOW_FRONTIER_PROPOSAL_FACTORS_SCHEMA = (
+    "neural-computer.external-control-flow-frontier-proposal-factors.v1"
+)
+CONTROL_FLOW_FRONTIER_PROPOSAL_MEMORY_SCHEMA = (
+    "neural-computer.external-control-flow-frontier-proposal-memory.v1"
 )
 CONTROL_FLOW_FRONTIER_GROWTH_SCHEMA = (
     "neural-computer.external-control-flow-frontier-growth.v1"
@@ -77,6 +84,10 @@ def _digest_payload(value: object) -> str:
 
     visit(value)
     return digest.hexdigest()
+
+
+def _instruction_digest(instruction: ControlFlowInstruction) -> str:
+    return _digest_payload(instruction.payload())
 
 
 @dataclass(frozen=True)
@@ -240,6 +251,386 @@ class ControlFlowFrontierState:
 
 
 @dataclass(frozen=True)
+class ControlFlowFrontierProposalFactors:
+    """Generic factors describing one structural edit.
+
+    Positions are represented relative to the parent's non-terminal boundary,
+    so an edit immediately before ``HALT`` has the same factor at every
+    program length.  Instruction identity is opaque and content-addressed;
+    no counter-machine operation is interpreted by the policy.
+    """
+
+    operator_index: int
+    primary_position: int
+    secondary_position: int | None = None
+    instruction_digests: tuple[str, ...] = ()
+    schema: str = CONTROL_FLOW_FRONTIER_PROPOSAL_FACTORS_SCHEMA
+
+    def validate(self) -> ControlFlowFrontierProposalFactors:
+        if self.schema != CONTROL_FLOW_FRONTIER_PROPOSAL_FACTORS_SCHEMA:
+            raise ValueError("unsupported control-flow frontier factors schema")
+        if not 0 <= self.operator_index < len(CONTROL_FLOW_FRONTIER_MUTATION_OPERATORS):
+            raise ValueError("control-flow frontier factors operator is invalid")
+        if self.operator_index == 3:
+            if self.secondary_position is None or not (
+                self.primary_position < self.secondary_position
+            ):
+                raise ValueError("control-flow swap factors need ordered positions")
+            expected_instructions = 2
+        else:
+            if self.secondary_position is not None:
+                raise ValueError(
+                    "non-swap control-flow factors cannot have a second position"
+                )
+            expected_instructions = 1
+        if len(self.instruction_digests) != expected_instructions:
+            raise ValueError("control-flow frontier factor instruction count is invalid")
+        for digest in self.instruction_digests:
+            if not _digest_is_valid(digest):
+                raise ValueError("control-flow frontier factor instruction digest is invalid")
+        return self
+
+    def payload(self) -> dict[str, object]:
+        self.validate()
+        return {
+            "schema": self.schema,
+            "operator_index": self.operator_index,
+            "primary_position": self.primary_position,
+            "secondary_position": self.secondary_position,
+            "instruction_digests": list(self.instruction_digests),
+        }
+
+    @classmethod
+    def from_payload(
+        cls,
+        payload: Mapping[str, object],
+    ) -> ControlFlowFrontierProposalFactors:
+        if not isinstance(payload, Mapping):
+            raise TypeError("control-flow frontier factors payload must be a mapping")
+        raw_instructions = payload.get("instruction_digests", ())
+        if not isinstance(raw_instructions, Sequence) or isinstance(
+            raw_instructions, (str, bytes)
+        ):
+            raise TypeError("control-flow frontier factor instructions are malformed")
+        secondary = payload.get("secondary_position")
+        return cls(
+            operator_index=int(payload.get("operator_index", -1)),
+            primary_position=int(payload.get("primary_position", -1)),
+            secondary_position=None if secondary is None else int(secondary),
+            instruction_digests=tuple(str(value) for value in raw_instructions),
+            schema=str(payload.get("schema", "")),
+        ).validate()
+
+
+class ControlFlowFrontierProposalMemory:
+    """External scalar credit over reusable control-flow edit factors.
+
+    The memory never stores candidate program digests or verifier rows.  It
+    stores only aggregate quality for opaque instruction, relative-position,
+    and operator factors, with a shared prior plus context-local overrides.
+    """
+
+    schema = CONTROL_FLOW_FRONTIER_PROPOSAL_MEMORY_SCHEMA
+    _FACTOR_TYPES = ("instruction", "position", "operator")
+
+    def __init__(
+        self,
+        *,
+        exploration_floor: float = 0.1,
+        shared_prior_weight: float = 0.25,
+        exploration_bonus: float = 0.25,
+        instruction_weight: float = 1.0,
+        position_weight: float = 0.75,
+        operator_weight: float = 0.25,
+        temperature: float = 0.25,
+    ) -> None:
+        for name, value in (
+            ("exploration_floor", exploration_floor),
+            ("shared_prior_weight", shared_prior_weight),
+            ("exploration_bonus", exploration_bonus),
+            ("instruction_weight", instruction_weight),
+            ("position_weight", position_weight),
+            ("operator_weight", operator_weight),
+            ("temperature", temperature),
+        ):
+            if not math.isfinite(value) or value < 0.0:
+                raise ValueError(f"control-flow proposal {name} is invalid")
+        if exploration_floor >= 1.0:
+            raise ValueError("control-flow proposal exploration floor must be < 1")
+        if instruction_weight + position_weight + operator_weight <= 0.0:
+            raise ValueError("control-flow proposal weights cannot all be zero")
+        if temperature <= 0.0:
+            raise ValueError("control-flow proposal temperature must be positive")
+        self.exploration_floor = float(exploration_floor)
+        self.shared_prior_weight = float(shared_prior_weight)
+        self.exploration_bonus = float(exploration_bonus)
+        self.instruction_weight = float(instruction_weight)
+        self.position_weight = float(position_weight)
+        self.operator_weight = float(operator_weight)
+        self.temperature = float(temperature)
+        self._context_stats: dict[str, dict[str, dict[str, list[float]]]] = {}
+        self._shared_stats = self._empty_stats()
+
+    @classmethod
+    def _empty_stats(cls) -> dict[str, dict[str, list[float]]]:
+        return {factor_type: {} for factor_type in cls._FACTOR_TYPES}
+
+    @staticmethod
+    def _validate_context(context: str) -> None:
+        if not isinstance(context, str) or not context or "\0" in context:
+            raise ValueError("control-flow proposal context must be a non-empty opaque key")
+
+    @staticmethod
+    def _aggregate(entry: Sequence[float] | None) -> tuple[float, float]:
+        if entry is None:
+            return 0.0, 0.0
+        if len(entry) != 2:
+            raise ValueError("control-flow proposal aggregate is malformed")
+        total, count = float(entry[0]), float(entry[1])
+        if not math.isfinite(total) or not math.isfinite(count):
+            raise ValueError("control-flow proposal aggregate is non-finite")
+        if total < 0.0 or count < 0.0 or total > count:
+            raise ValueError("control-flow proposal aggregate is outside [0, 1]")
+        return total, count
+
+    @classmethod
+    def _factor_entries(
+        cls,
+        factors: ControlFlowFrontierProposalFactors,
+    ) -> tuple[tuple[str, str], ...]:
+        factors.validate()
+        positions = [factors.primary_position]
+        if factors.secondary_position is not None:
+            positions.append(factors.secondary_position)
+        return (
+            ("operator", str(factors.operator_index)),
+            *[
+                ("position", f"{factors.operator_index}:{position}")
+                for position in positions
+            ],
+            *[("instruction", digest) for digest in factors.instruction_digests],
+        )
+
+    def configuration(self) -> dict[str, object]:
+        return {
+            "schema": self.schema,
+            "exploration_floor": self.exploration_floor,
+            "shared_prior_weight": self.shared_prior_weight,
+            "exploration_bonus": self.exploration_bonus,
+            "instruction_weight": self.instruction_weight,
+            "position_weight": self.position_weight,
+            "operator_weight": self.operator_weight,
+            "temperature": self.temperature,
+            "credit": "scalar_factor_aggregate_without_candidate_rows_v1",
+            "context": "opaque_external_key_v1",
+            "position": "relative_to_nonterminal_boundary_v1",
+            "instruction": "content_addressed_generic_instruction_digest_v1",
+        }
+
+    def record(
+        self,
+        context: str,
+        quality: float,
+        *,
+        factors: ControlFlowFrontierProposalFactors,
+    ) -> None:
+        self._validate_context(context)
+        if not math.isfinite(quality) or not 0.0 <= quality <= 1.0:
+            raise ValueError("control-flow proposal quality must lie in [0, 1]")
+        context_stats = self._context_stats.setdefault(context, self._empty_stats())
+        for factor_type, key in self._factor_entries(factors):
+            local = context_stats[factor_type].setdefault(key, [0.0, 0.0])
+            local[0] += float(quality)
+            local[1] += 1.0
+            shared = self._shared_stats[factor_type].setdefault(key, [0.0, 0.0])
+            shared[0] += float(quality)
+            shared[1] += 1.0
+
+    def _factor_score(
+        self,
+        context_stats: Mapping[str, Mapping[str, Sequence[float]]],
+        factor_type: str,
+        key: str,
+        *,
+        shared_weight: float,
+    ) -> float:
+        local_total, local_count = self._aggregate(
+            context_stats.get(factor_type, {}).get(key)
+        )
+        shared_total, shared_count = self._aggregate(
+            self._shared_stats[factor_type].get(key)
+        )
+        effective_count = local_count + shared_weight * shared_count
+        effective_total = local_total + shared_weight * shared_total
+        mean = effective_total / effective_count if effective_count else 0.0
+        bonus = self.exploration_bonus * math.sqrt(
+            math.log1p(local_count + shared_weight * shared_count + 1.0)
+            / (effective_count + 1.0)
+        )
+        return mean + bonus
+
+    def proposal_probabilities(
+        self,
+        context: str,
+        factors: Sequence[ControlFlowFrontierProposalFactors],
+    ) -> torch.Tensor:
+        self._validate_context(context)
+        factor_list = tuple(factors)
+        if not factor_list:
+            raise ValueError("control-flow proposal candidate set cannot be empty")
+        for item in factor_list:
+            item.validate()
+        context_stats = self._context_stats.get(context, self._empty_stats())
+        scores: list[float] = []
+        for item in factor_list:
+            entries = self._factor_entries(item)
+            scores_by_type: dict[str, list[float]] = {
+                factor_type: [] for factor_type in self._FACTOR_TYPES
+            }
+            for factor_type, key in entries:
+                shared_weight = (
+                    0.0
+                    if any(context_stats[factor_type].values())
+                    else self.shared_prior_weight
+                )
+                scores_by_type[factor_type].append(
+                    self._factor_score(
+                        context_stats,
+                        factor_type,
+                        key,
+                        shared_weight=shared_weight,
+                    )
+                )
+            instruction = sum(scores_by_type["instruction"]) / max(
+                1, len(scores_by_type["instruction"])
+            )
+            position = sum(scores_by_type["position"]) / max(
+                1, len(scores_by_type["position"])
+            )
+            operator = self._factor_score(
+                context_stats,
+                "operator",
+                str(item.operator_index),
+                shared_weight=(
+                    0.0
+                    if any(context_stats["operator"].values())
+                    else self.shared_prior_weight
+                ),
+            )
+            scores.append(
+                self.instruction_weight * instruction
+                + self.position_weight * position
+                + self.operator_weight * operator
+            )
+        logits = torch.tensor(scores, dtype=torch.float64) / self.temperature
+        probabilities = torch.softmax(logits, dim=0)
+        return (1.0 - self.exploration_floor) * probabilities + (
+            self.exploration_floor / len(factor_list)
+        )
+
+    def select(
+        self,
+        context: str,
+        candidate_digests: Sequence[str],
+        *,
+        factors: Sequence[ControlFlowFrontierProposalFactors],
+        generator: torch.Generator,
+    ) -> tuple[int, float]:
+        digests = tuple(candidate_digests)
+        if len(digests) != len(tuple(factors)):
+            raise ValueError("control-flow candidates and factors disagree")
+        if any(not _digest_is_valid(digest) for digest in digests):
+            raise ValueError("control-flow candidate digest is malformed")
+        probabilities = self.proposal_probabilities(context, factors)
+        index = int(torch.multinomial(probabilities, 1, generator=generator).item())
+        return index, float(probabilities[index].item())
+
+    @classmethod
+    def _serialize_stats(
+        cls,
+        stats: Mapping[str, Mapping[str, Sequence[float]]],
+    ) -> dict[str, dict[str, list[float]]]:
+        serialized: dict[str, dict[str, list[float]]] = {}
+        for factor_type in cls._FACTOR_TYPES:
+            values = stats.get(factor_type)
+            if not isinstance(values, Mapping):
+                raise TypeError("control-flow proposal factor table is malformed")
+            serialized[factor_type] = {}
+            for key, entry in sorted(values.items()):
+                total, count = cls._aggregate(entry)
+                serialized[factor_type][str(key)] = [total, count]
+        return serialized
+
+    def _content_payload(self) -> dict[str, object]:
+        return {
+            "schema": self.schema,
+            "configuration": self.configuration(),
+            "shared_stats": self._serialize_stats(self._shared_stats),
+            "context_stats": {
+                context: self._serialize_stats(stats)
+                for context, stats in sorted(self._context_stats.items())
+            },
+        }
+
+    def digest(self) -> str:
+        return _digest_payload(self._content_payload())
+
+    def payload(self) -> dict[str, object]:
+        body = self._content_payload()
+        return {**body, "sha256": _digest_payload(body)}
+
+    @classmethod
+    def from_payload(
+        cls,
+        payload: Mapping[str, object],
+    ) -> ControlFlowFrontierProposalMemory:
+        if not isinstance(payload, Mapping) or payload.get("schema") != cls.schema:
+            raise ValueError("unsupported control-flow proposal memory payload")
+        configuration = payload.get("configuration")
+        shared_stats = payload.get("shared_stats")
+        context_stats = payload.get("context_stats")
+        if (
+            not isinstance(configuration, Mapping)
+            or not isinstance(shared_stats, Mapping)
+            or not isinstance(context_stats, Mapping)
+        ):
+            raise TypeError("control-flow proposal memory payload is malformed")
+        memory = cls(
+            exploration_floor=float(configuration.get("exploration_floor", -1.0)),
+            shared_prior_weight=float(configuration.get("shared_prior_weight", -1.0)),
+            exploration_bonus=float(configuration.get("exploration_bonus", -1.0)),
+            instruction_weight=float(configuration.get("instruction_weight", -1.0)),
+            position_weight=float(configuration.get("position_weight", -1.0)),
+            operator_weight=float(configuration.get("operator_weight", -1.0)),
+            temperature=float(configuration.get("temperature", -1.0)),
+        )
+
+        def load_stats(raw: Mapping[str, object]) -> dict[str, dict[str, list[float]]]:
+            loaded = memory._empty_stats()
+            for factor_type in memory._FACTOR_TYPES:
+                values = raw.get(factor_type)
+                if not isinstance(values, Mapping):
+                    raise TypeError("control-flow proposal factor table is malformed")
+                for key, entry in values.items():
+                    if not isinstance(entry, Sequence) or isinstance(entry, (str, bytes)):
+                        raise TypeError("control-flow proposal aggregate is malformed")
+                    total, count = memory._aggregate(entry)
+                    loaded[factor_type][str(key)] = [total, count]
+            return loaded
+
+        memory._shared_stats = load_stats(shared_stats)
+        for context, stats in context_stats.items():
+            memory._validate_context(str(context))
+            if not isinstance(stats, Mapping):
+                raise TypeError("control-flow proposal context table is malformed")
+            memory._context_stats[str(context)] = load_stats(stats)
+        expected = payload.get("sha256")
+        if not isinstance(expected, str) or expected != memory.digest():
+            raise ValueError("control-flow proposal memory checksum mismatch")
+        return memory
+
+
+@dataclass(frozen=True)
 class ControlFlowFrontierProposal:
     program: ControlFlowProgram
     parent_digest: str
@@ -247,6 +638,8 @@ class ControlFlowFrontierProposal:
     operator_index: int
     attempt_id: int
     selection_probability: float
+    context: str = "default"
+    factors: ControlFlowFrontierProposalFactors | None = None
     schema: str = CONTROL_FLOW_FRONTIER_PROPOSAL_SCHEMA
 
     def validate(self) -> ControlFlowFrontierProposal:
@@ -265,6 +658,12 @@ class ControlFlowFrontierProposal:
             raise ValueError("control-flow frontier proposal operator/index disagree")
         if self.attempt_id < 0 or not 0.0 < self.selection_probability <= 1.0:
             raise ValueError("control-flow frontier proposal metadata is invalid")
+        if not isinstance(self.context, str) or not self.context or "\0" in self.context:
+            raise ValueError("control-flow frontier proposal context is malformed")
+        if self.factors is not None:
+            self.factors.validate()
+            if self.factors.operator_index != self.operator_index:
+                raise ValueError("control-flow frontier proposal factors/operator disagree")
         return self
 
 
@@ -294,6 +693,7 @@ class ControlFlowProgramFrontier:
         parent_temperature: float = 0.5,
         exploration: float = 0.5,
         proposal_retry_limit: int = 128,
+        proposal_policy: ControlFlowFrontierProposalMemory | None = None,
     ) -> None:
         if counter_count < 2:
             raise ValueError("control-flow frontier needs at least two counters")
@@ -318,6 +718,11 @@ class ControlFlowProgramFrontier:
         self.parent_temperature = float(parent_temperature)
         self.exploration = float(exploration)
         self.proposal_retry_limit = int(proposal_retry_limit)
+        if proposal_policy is not None and not isinstance(
+            proposal_policy, ControlFlowFrontierProposalMemory
+        ):
+            raise TypeError("control-flow frontier proposal policy has the wrong type")
+        self.proposal_policy = proposal_policy
 
     def configuration(self) -> dict[str, object]:
         return {
@@ -334,6 +739,11 @@ class ControlFlowProgramFrontier:
             "operators": CONTROL_FLOW_FRONTIER_MUTATION_OPERATORS,
             "updates": "scalar_verifier_aggregate_only_v1",
             "commit": "caller_owned_heldout_copy_on_write_v1",
+            "proposal_credit": (
+                None
+                if self.proposal_policy is None
+                else self.proposal_policy.configuration()
+            ),
         }
 
     def initial_state(
@@ -431,6 +841,157 @@ class ControlFlowProgramFrontier:
             (means + bonus).masked_fill(~available, float("-inf")), dim=0
         )
 
+    @staticmethod
+    def _relative_position(position: int, program_length: int) -> int:
+        """Encode a position relative to the non-terminal boundary."""
+
+        return position - (program_length - 1)
+
+    @classmethod
+    def proposal_factors(
+        cls,
+        parent: ControlFlowProgram,
+        operator_index: int,
+        program: ControlFlowProgram,
+    ) -> ControlFlowFrontierProposalFactors:
+        """Infer generic factors for a valid one-edit control-flow neighbor."""
+
+        parent.validate()
+        program.validate()
+        if parent.counter_count != program.counter_count:
+            raise ValueError("control-flow proposal factor counter widths differ")
+        parent_boundary = len(parent.instructions) - 1
+        if operator_index == 0:
+            if len(parent.instructions) != len(program.instructions):
+                raise ValueError("replacement candidate has the wrong length")
+            differences = [
+                index
+                for index, (before, after) in enumerate(
+                    zip(parent.instructions, program.instructions, strict=True)
+                )
+                if before != after
+            ]
+            if len(differences) != 1 or differences[0] >= parent_boundary:
+                raise ValueError("replacement candidate is not one non-terminal edit")
+            position = differences[0]
+            return ControlFlowFrontierProposalFactors(
+                operator_index,
+                cls._relative_position(position, len(parent.instructions)),
+                instruction_digests=(_instruction_digest(program.instructions[position]),),
+            ).validate()
+        if operator_index == 1:
+            if len(program.instructions) != len(parent.instructions) + 1:
+                raise ValueError("insertion candidate has the wrong length")
+            for position in range(parent_boundary + 1):
+                try:
+                    reduced = delete_control_flow_instruction(program, position)
+                except ValueError:
+                    continue
+                if reduced.digest() == parent.digest():
+                    return ControlFlowFrontierProposalFactors(
+                        operator_index,
+                        cls._relative_position(position, len(parent.instructions)),
+                        instruction_digests=(
+                            _instruction_digest(program.instructions[position]),
+                        ),
+                    ).validate()
+            raise ValueError("insertion candidate does not contain its parent")
+        if operator_index == 2:
+            if len(program.instructions) != len(parent.instructions) - 1:
+                raise ValueError("deletion candidate has the wrong length")
+            for position in range(parent_boundary):
+                try:
+                    reduced = delete_control_flow_instruction(parent, position)
+                except ValueError:
+                    continue
+                if reduced.digest() == program.digest():
+                    return ControlFlowFrontierProposalFactors(
+                        operator_index,
+                        cls._relative_position(position, len(parent.instructions)),
+                        instruction_digests=(_instruction_digest(parent.instructions[position]),),
+                    ).validate()
+            raise ValueError("deletion candidate is not a one-edit neighbor")
+        if operator_index == 3:
+            if len(parent.instructions) != len(program.instructions):
+                raise ValueError("swap candidate has the wrong length")
+            for first in range(parent_boundary):
+                for second in range(first + 1, parent_boundary):
+                    swapped = list(parent.instructions)
+                    swapped[first], swapped[second] = swapped[second], swapped[first]
+                    if tuple(swapped) == program.instructions:
+                        return ControlFlowFrontierProposalFactors(
+                            operator_index,
+                            cls._relative_position(first, len(parent.instructions)),
+                            cls._relative_position(second, len(parent.instructions)),
+                            (
+                                _instruction_digest(parent.instructions[first]),
+                                _instruction_digest(parent.instructions[second]),
+                            ),
+                        ).validate()
+            raise ValueError("swap candidate is not a two-position edit")
+        raise ValueError("control-flow proposal operator is invalid")
+
+    def exhaustive_candidates(
+        self,
+        parent: ControlFlowProgram,
+    ) -> tuple[tuple[int, ControlFlowProgram], ...]:
+        """Enumerate the finite one-edit neighborhood without target labels."""
+
+        parent.validate()
+        candidates: list[tuple[int, ControlFlowProgram]] = []
+        seen: set[str] = set()
+
+        def add(operator_index: int, candidate: ControlFlowProgram) -> None:
+            digest = candidate.digest()
+            if digest == parent.digest() or digest in seen:
+                return
+            seen.add(digest)
+            candidates.append((operator_index, candidate))
+
+        non_halt = len(parent.instructions) - 1
+        atoms = control_flow_instruction_bank(
+            counter_count=self.counter_count,
+            program_length=len(parent.instructions),
+        )
+        for position in range(non_halt):
+            for atom in atoms:
+                instructions = list(parent.instructions)
+                instructions[position] = atom
+                try:
+                    add(0, ControlFlowProgram(self.counter_count, tuple(instructions)).validate())
+                except ValueError:
+                    continue
+        if len(parent.instructions) < self.max_program_length:
+            atoms = control_flow_instruction_bank(
+                counter_count=self.counter_count,
+                program_length=len(parent.instructions) + 1,
+            )
+            for position in range(non_halt + 1):
+                for atom in atoms:
+                    try:
+                        add(1, insert_control_flow_instruction(parent, position, atom))
+                    except ValueError:
+                        continue
+        if len(parent.instructions) > self.min_program_length:
+            for position in range(non_halt):
+                try:
+                    add(2, delete_control_flow_instruction(parent, position))
+                except ValueError:
+                    continue
+        if non_halt > 1:
+            for first in range(non_halt):
+                for second in range(first + 1, non_halt):
+                    instructions = list(parent.instructions)
+                    instructions[first], instructions[second] = (
+                        instructions[second],
+                        instructions[first],
+                    )
+                    try:
+                        add(3, ControlFlowProgram(self.counter_count, tuple(instructions)).validate())
+                    except ValueError:
+                        continue
+        return tuple(candidates)
+
     def _mutate(
         self,
         parent: ControlFlowProgram,
@@ -475,8 +1036,41 @@ class ControlFlowProgramFrontier:
         state: ControlFlowFrontierState,
         *,
         generator: torch.Generator,
+        context: str = "default",
     ) -> ControlFlowFrontierProposal:
         state.validate()
+        if not isinstance(context, str) or not context or "\0" in context:
+            raise ValueError("control-flow frontier proposal context is malformed")
+        if self.proposal_policy is not None:
+            parent = self._parent(state, generator=generator)
+            available = tuple(
+                (
+                    operator_index,
+                    candidate,
+                    self.proposal_factors(parent.program, operator_index, candidate),
+                )
+                for operator_index, candidate in self.exhaustive_candidates(parent.program)
+                if candidate.digest() not in state.seen_candidate_digests
+            )
+            if not available:
+                raise RuntimeError("control-flow frontier proposal neighborhood is exhausted")
+            selected, probability = self.proposal_policy.select(
+                context,
+                tuple(candidate.digest() for _, candidate, _ in available),
+                factors=tuple(factors for _, _, factors in available),
+                generator=generator,
+            )
+            operator_index, candidate, factors = available[selected]
+            return ControlFlowFrontierProposal(
+                program=candidate,
+                parent_digest=parent.program.digest(),
+                operator=CONTROL_FLOW_FRONTIER_MUTATION_OPERATORS[operator_index],
+                operator_index=operator_index,
+                attempt_id=state.evaluations,
+                selection_probability=probability,
+                context=context,
+                factors=factors,
+            ).validate()
         for _ in range(self.proposal_retry_limit):
             parent = self._parent(state, generator=generator)
             excluded = torch.zeros(
@@ -515,6 +1109,12 @@ class ControlFlowProgramFrontier:
                     operator_index=operator_index,
                     attempt_id=state.evaluations,
                     selection_probability=float(probabilities[operator_index].item()),
+                    context=context,
+                    factors=self.proposal_factors(
+                        parent.program,
+                        operator_index,
+                        candidate,
+                    ),
                 ).validate()
         raise RuntimeError("control-flow frontier proposal neighborhood is exhausted")
 
@@ -588,6 +1188,14 @@ class ControlFlowProgramFrontier:
                     depth=parent.depth + 1,
                     quality=quality,
                 ).validate()
+            )
+        if self.proposal_policy is not None:
+            if proposal.factors is None:
+                raise ValueError("control-flow frontier proposal policy requires factors")
+            self.proposal_policy.record(
+                proposal.context,
+                quality,
+                factors=proposal.factors,
             )
         next_state = ControlFlowFrontierState(
             hypotheses=self._prune(hypotheses, root_digest=state.root_digest),
@@ -798,6 +1406,7 @@ class ControlFlowProgramFrontierGrowth:
         parent_temperature: float = 0.5,
         exploration: float = 0.5,
         proposal_retry_limit: int = 128,
+        proposal_policy: ControlFlowFrontierProposalMemory | None = None,
     ) -> None:
         if initial_horizon < 1 or maximum_horizon < initial_horizon:
             raise ValueError("control-flow frontier growth horizons are invalid")
@@ -812,6 +1421,7 @@ class ControlFlowProgramFrontierGrowth:
             "parent_temperature": parent_temperature,
             "exploration": exploration,
             "proposal_retry_limit": proposal_retry_limit,
+            "proposal_policy": proposal_policy,
         }
         self._frontier_at(initial_horizon)
 
@@ -859,11 +1469,13 @@ class ControlFlowProgramFrontierGrowth:
         state: ControlFlowFrontierGrowthState,
         *,
         generator: torch.Generator,
+        context: str = "default",
     ) -> ControlFlowFrontierGrowthProposal:
         state.validate()
         proposal = self._frontier_at(state.horizon).propose(
             state.frontier,
             generator=generator,
+            context=context,
         )
         return ControlFlowFrontierGrowthProposal(
             proposal,
@@ -1088,6 +1700,8 @@ __all__ = [
     "CONTROL_FLOW_FRONTIER_GROWTH_SCHEMA",
     "CONTROL_FLOW_FRONTIER_HYPOTHESIS_SCHEMA",
     "CONTROL_FLOW_FRONTIER_MUTATION_OPERATORS",
+    "CONTROL_FLOW_FRONTIER_PROPOSAL_FACTORS_SCHEMA",
+    "CONTROL_FLOW_FRONTIER_PROPOSAL_MEMORY_SCHEMA",
     "CONTROL_FLOW_FRONTIER_PROPOSAL_SCHEMA",
     "CONTROL_FLOW_FRONTIER_SCHEMA",
     "ControlFlowFrontierFeedback",
@@ -1097,6 +1711,8 @@ __all__ = [
     "ControlFlowFrontierGrowthState",
     "ControlFlowFrontierHypothesis",
     "ControlFlowFrontierProposal",
+    "ControlFlowFrontierProposalFactors",
+    "ControlFlowFrontierProposalMemory",
     "ControlFlowFrontierState",
     "ControlFlowProgramFrontier",
     "ControlFlowProgramFrontierGrowth",

@@ -1,0 +1,53 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "control_flow_factorized_loop_growth",
+  "date": "2026-08-12",
+  "status": "promoted",
+  "seeds": [17, 18, 19, 20],
+  "arms": {
+    "warm_forward_reverse": {
+      "arms": 8,
+      "unique_verifier_bits": 4780,
+      "unique_logical_lifetimes": 956,
+      "optimizer_updates": 0,
+      "replayed_examples": 0,
+      "stable_bits_to_threshold": 1,
+      "heldout_accuracy": 1.0,
+      "retention_accuracy": 1.0
+    },
+    "matched_fresh": {
+      "arms": 4,
+      "unique_verifier_bits": 8955,
+      "unique_logical_lifetimes": 1791,
+      "optimizer_updates": 0,
+      "replayed_examples": 0,
+      "stable_bits_to_threshold": 1,
+      "heldout_accuracy": 1.0
+    },
+    "reward_shuffled": {
+      "arms": 4,
+      "unique_verifier_bits": 9600,
+      "unique_logical_lifetimes": 1920,
+      "optimizer_updates": 0,
+      "replayed_examples": 0,
+      "promoted_rungs": 0
+    }
+  },
+  "aggregate": {
+    "unique_verifier_bits": 23335,
+    "unique_logical_lifetimes": 4667,
+    "optimizer_updates": 0,
+    "replayed_examples": 0,
+    "wall_seconds": 55.024089374928735,
+    "verifier_seconds": 0.144365425221622,
+    "mean_verifier_latency_seconds": 0.00003093323874472295,
+    "warm_to_fresh_later_rung_ratio_mean": 0.10556910451157456,
+    "warm_to_fresh_later_rung_ratio_min": 0.0023923444976076554,
+    "warm_to_fresh_later_rung_ratio_max": 0.4444444444444444
+  },
+  "retention": {
+    "mastered_loop_rungs": 3,
+    "all_prior_rungs_retained": true
+  },
+  "claim_boundary": "bounded replay-free factorized structural-credit transfer, not general continual learning"
+}
