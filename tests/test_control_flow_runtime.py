@@ -16,6 +16,7 @@ from neural_computer import (
     ControlFlowProgramAmodalRuntime,
     ControlFlowProgramMemory,
     ControllerFeedback,
+    ExternalOutcomeProgramRouter,
     IntentEvent,
 )
 
@@ -52,6 +53,28 @@ class _EchoDecoder(nn.Module):
         return intention.payload
 
 
+class _SignRouter(ExternalOutcomeProgramRouter):
+    """Deterministic test router; production routing remains outcome-trained."""
+
+    def behavior_probabilities(
+        self,
+        state,
+        features: torch.Tensor,
+        *,
+        exploration: float = 0.0,
+    ) -> torch.Tensor:
+        self._validate_state(state)
+        selected = (features[:, 0] <= 0.0).to(torch.long)
+        probabilities = torch.zeros(
+            features.shape[0],
+            self.program_capacity,
+            device=features.device,
+            dtype=features.dtype,
+        )
+        probabilities.scatter_(1, selected.unsqueeze(-1), 1.0)
+        return probabilities
+
+
 def _program() -> ControlFlowProgram:
     return ControlFlowProgram(
         2,
@@ -62,8 +85,20 @@ def _program() -> ControlFlowProgram:
     )
 
 
+def _other_program() -> ControlFlowProgram:
+    return ControlFlowProgram(
+        2,
+        (
+            ControlFlowInstruction("inc", counter=1),
+            ControlFlowInstruction("halt"),
+        ),
+    )
+
+
 def _agent(
-    *, memory: ControlFlowProgramMemory | None = None
+    *,
+    memory: ControlFlowProgramMemory | None = None,
+    router: ExternalOutcomeProgramRouter | None = None,
 ) -> ControlFlowProgramAmodalRuntime:
     controller = AmodalCognitiveController(
         width=4,
@@ -83,6 +118,7 @@ def _agent(
         runtime,
         _OpaqueCounterCodec(intention_width=2, counter_count=2),
         **source,
+        program_router=router,
         max_steps=8,
     )
 
@@ -182,6 +218,59 @@ def test_control_flow_runtime_reads_a_checksummed_memory_backed_file() -> None:
     assert output.program_slot == slot
     assert output.program_digest == memory.program(slot).digest()
     assert memory.is_file_protected(slot)
+
+
+def test_control_flow_runtime_routes_multiple_files_with_isolated_counter_state() -> None:
+    memory = ControlFlowProgramMemory(2)
+    memory.add_program(_program(), protect=True)
+    memory.add_program(_other_program(), protect=True)
+    router = _SignRouter(
+        feature_width=2,
+        program_capacity=2,
+        initial_programs=2,
+    )
+    agent = _agent(memory=memory, router=router)
+    state = agent.initial_state(2, device="cpu")
+    output, state = agent.step_events(
+        [
+            AmodalEvent(
+                torch.tensor(
+                    [[1.0, 0.0, 0.0, 0.0], [-1.0, 0.0, 0.0, 0.0]]
+                )
+            )
+        ],
+        state,
+        _feedback(2),
+    )
+
+    expected_slots = (
+        output.controller.intention.payload[:, 0] <= 0.0
+    ).to(torch.long)
+    assert torch.equal(output.selected_program_slots, expected_slots)
+    assert output.program_route_probabilities is not None
+    assert torch.equal(
+        output.program_route_probabilities.argmax(dim=-1), expected_slots
+    )
+    assert set(state.program_counters) == {0, 1}
+    assert output.program_digests == tuple(
+        memory.program(int(slot)).digest() for slot in expected_slots.tolist()
+    )
+
+    restored = agent.state_from_payload(
+        state.payload(program_router=router)
+    )
+    assert restored.digest(program_router=router) == state.digest(
+        program_router=router
+    )
+    corrupted = state.payload(program_router=router)
+    corrupted_router = corrupted["program_router"]
+    assert isinstance(corrupted_router, dict)
+    credit = corrupted_router["credit"]
+    assert isinstance(credit, dict)
+    credit["policy"] = credit["policy"].clone()
+    credit["policy"][0, 0, 0] += 1.0
+    with pytest.raises(ValueError, match="checksum"):
+        agent.state_from_payload(corrupted)
 
 
 def test_control_flow_runtime_rejects_mismatched_adapter_or_program_width() -> None:

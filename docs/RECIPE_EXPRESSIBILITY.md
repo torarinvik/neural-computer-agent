@@ -247,9 +247,35 @@ file support, explicit step/counter limits, and no controller parameter
 updates. Regression coverage verifies frozen-core execution, batch
 permutation, exact reload, checksum rejection, and ABI-width rejection. This
 is an interface integration result, not a learned program-routing or general
-continual-learning promotion. The next experiment must train or adapt the
-external codec and route multiple files using held-out composition and
-missing/corrupted-state controls.
+continual-learning promotion. The next pressure is seed-stable learned
+route/codec training under held-out composition and missing/corrupted-state
+controls.
+
+## Multi-file typed control-flow routing — infrastructure qualified, learning promotion rejected
+
+The canonical bridge now accepts the existing generic
+`ExternalOutcomeProgramRouter` over opaque intention features and maintains a
+separate counter state for each external file. Route choices, exact
+propensities, per-file execution digests, and delayed scalar feedback remain
+outside the controller; the decoder still receives only the resulting opaque
+intention. Boundary tests cover mixed batch routing, isolated file state,
+checksummed routed-state reload, and route-state corruption rejection.
+
+The canonical bridge was also exercised with the generic
+`ExternalOutcomeProgramRouter`: two protected files retained separate counter
+state, route propensities and per-file digests were emitted, and checksummed
+pause/resume and corruption rejection passed. The controller, adapter, and
+external files were frozen; route state received one delayed scalar outcome per
+fresh episode, with zero replay and zero controller optimizer updates.
+
+The four-seed, forward/reversed-file audit is retained as a rejected promotion.
+Six of eight verifier arms reached `1.0000` held-out accuracy, but both seed-20
+arms remained at `0.5000`. The reward-shuffled control also reached `0.0000` or
+`1.0000` in several symmetric arms, so it is not yet a clean causal null. This
+qualifies the multi-file ABI and isolated-state seam only; it does not promote
+learned routing, arbitrary new computation, unrestricted growth, or general
+continual learning. Evidence is archived in
+`session_records/control_flow_runtime_routing_rejected_2026-08-12/`.
 
 ## Outcome-only external recipe files and scope isolation
 

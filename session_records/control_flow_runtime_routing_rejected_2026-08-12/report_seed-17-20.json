@@ -1,0 +1,831 @@
+{
+  "schema": "neural-computer.control-flow-runtime-routing.v1",
+  "claim_boundary": "bounded outcome-only routing among two generic external control-flow files with frozen controller and isolated file state; not arbitrary new computation, unrestricted memory growth, or general continual learning",
+  "seeds": [
+    17,
+    18,
+    19,
+    20
+  ],
+  "reports": [
+    {
+      "seed": 17,
+      "reverse_files": false,
+      "feedback_mode": "verifier",
+      "schema": "neural-computer.control-flow-runtime-routing.v1",
+      "architecture": {
+        "train_episodes": 1000,
+        "heldout_episodes": 200,
+        "heldout_amplitude": 2.0,
+        "route_exploration": 0.1,
+        "learner_inputs": "opaque_controller_intention_and_scalar_outcome",
+        "forbidden_features": "logical_target_slot, program names, verifier rows, raw modality data"
+      },
+      "train_accuracy": 0.788,
+      "stable_training_prefix": 58,
+      "heldout_accuracy": 1.0,
+      "heldout_stable_prefix": 1,
+      "fresh_accuracy": 0.5,
+      "transfer_ratio_against_fresh": 2.0,
+      "source_program_digests": [
+        "08808bda14f0163a78058462e4165a313a817b55f9e5ec9ae77d12dfc65c6332",
+        "e1a8a346dc58fbd75c20a464832745e2ac64736ab92e45665e9e9d0b3da3c848"
+      ],
+      "program_memory_digest": "680119f63f8254df7e9f501210e907413b0fdb926735d41e770d6f42514544c2",
+      "missing_feedback_policy_unchanged": true,
+      "gates": {
+        "trained_heldout_mastery": true,
+        "stable_training_prefix": true,
+        "fresh_control_measured": true,
+        "reward_shuffled_control_measured": true,
+        "candidate_order_permutation": true,
+        "all_external_files_retained": true,
+        "controller_frozen": true,
+        "missing_feedback_no_policy_update": true,
+        "state_reload_exact": true,
+        "state_corruption_rejected": true,
+        "zero_replayed_examples": true,
+        "zero_controller_optimizer_updates": true
+      },
+      "accounting": {
+        "unique_verifier_bits": 1000,
+        "unique_logical_lifetimes": 1000,
+        "optimizer_updates": 0,
+        "replayed_examples": 0,
+        "wall_seconds": 1.237800500006415,
+        "latency_seconds_per_lifetime": 0.001237800500006415,
+        "stable_bits_to_threshold": 58,
+        "retention_on_mastered_primitives": 1.0
+      },
+      "promoted": true
+    },
+    {
+      "seed": 17,
+      "reverse_files": false,
+      "feedback_mode": "reward_shuffled",
+      "schema": "neural-computer.control-flow-runtime-routing.v1",
+      "architecture": {
+        "train_episodes": 1000,
+        "heldout_episodes": 200,
+        "heldout_amplitude": 2.0,
+        "route_exploration": 0.1,
+        "learner_inputs": "opaque_controller_intention_and_scalar_outcome",
+        "forbidden_features": "logical_target_slot, program names, verifier rows, raw modality data"
+      },
+      "train_accuracy": 0.515,
+      "stable_training_prefix": null,
+      "heldout_accuracy": 0.5,
+      "heldout_stable_prefix": null,
+      "fresh_accuracy": 0.5,
+      "transfer_ratio_against_fresh": 1.0,
+      "source_program_digests": [
+        "08808bda14f0163a78058462e4165a313a817b55f9e5ec9ae77d12dfc65c6332",
+        "e1a8a346dc58fbd75c20a464832745e2ac64736ab92e45665e9e9d0b3da3c848"
+      ],
+      "program_memory_digest": "680119f63f8254df7e9f501210e907413b0fdb926735d41e770d6f42514544c2",
+      "missing_feedback_policy_unchanged": true,
+      "gates": {
+        "trained_heldout_mastery": false,
+        "stable_training_prefix": false,
+        "fresh_control_measured": true,
+        "reward_shuffled_control_measured": true,
+        "candidate_order_permutation": true,
+        "all_external_files_retained": true,
+        "controller_frozen": true,
+        "missing_feedback_no_policy_update": true,
+        "state_reload_exact": true,
+        "state_corruption_rejected": true,
+        "zero_replayed_examples": true,
+        "zero_controller_optimizer_updates": true
+      },
+      "accounting": {
+        "unique_verifier_bits": 1000,
+        "unique_logical_lifetimes": 1000,
+        "optimizer_updates": 0,
+        "replayed_examples": 0,
+        "wall_seconds": 1.2109742920147255,
+        "latency_seconds_per_lifetime": 0.0012109742920147254,
+        "stable_bits_to_threshold": null,
+        "retention_on_mastered_primitives": 1.0
+      },
+      "promoted": false
+    },
+    {
+      "seed": 17,
+      "reverse_files": true,
+      "feedback_mode": "verifier",
+      "schema": "neural-computer.control-flow-runtime-routing.v1",
+      "architecture": {
+        "train_episodes": 1000,
+        "heldout_episodes": 200,
+        "heldout_amplitude": 2.0,
+        "route_exploration": 0.1,
+        "learner_inputs": "opaque_controller_intention_and_scalar_outcome",
+        "forbidden_features": "logical_target_slot, program names, verifier rows, raw modality data"
+      },
+      "train_accuracy": 0.777,
+      "stable_training_prefix": 968,
+      "heldout_accuracy": 1.0,
+      "heldout_stable_prefix": 1,
+      "fresh_accuracy": 0.5,
+      "transfer_ratio_against_fresh": 2.0,
+      "source_program_digests": [
+        "e1a8a346dc58fbd75c20a464832745e2ac64736ab92e45665e9e9d0b3da3c848",
+        "08808bda14f0163a78058462e4165a313a817b55f9e5ec9ae77d12dfc65c6332"
+      ],
+      "program_memory_digest": "79bfb9189625c13c4ecbabbbbfca69f2d79ac52dcffc23a61780c385a01d1b84",
+      "missing_feedback_policy_unchanged": true,
+      "gates": {
+        "trained_heldout_mastery": true,
+        "stable_training_prefix": true,
+        "fresh_control_measured": true,
+        "reward_shuffled_control_measured": true,
+        "candidate_order_permutation": true,
+        "all_external_files_retained": true,
+        "controller_frozen": true,
+        "missing_feedback_no_policy_update": true,
+        "state_reload_exact": true,
+        "state_corruption_rejected": true,
+        "zero_replayed_examples": true,
+        "zero_controller_optimizer_updates": true
+      },
+      "accounting": {
+        "unique_verifier_bits": 1000,
+        "unique_logical_lifetimes": 1000,
+        "optimizer_updates": 0,
+        "replayed_examples": 0,
+        "wall_seconds": 1.1924147920217365,
+        "latency_seconds_per_lifetime": 0.0011924147920217365,
+        "stable_bits_to_threshold": 968,
+        "retention_on_mastered_primitives": 1.0
+      },
+      "promoted": true
+    },
+    {
+      "seed": 17,
+      "reverse_files": true,
+      "feedback_mode": "reward_shuffled",
+      "schema": "neural-computer.control-flow-runtime-routing.v1",
+      "architecture": {
+        "train_episodes": 1000,
+        "heldout_episodes": 200,
+        "heldout_amplitude": 2.0,
+        "route_exploration": 0.1,
+        "learner_inputs": "opaque_controller_intention_and_scalar_outcome",
+        "forbidden_features": "logical_target_slot, program names, verifier rows, raw modality data"
+      },
+      "train_accuracy": 0.485,
+      "stable_training_prefix": 1000,
+      "heldout_accuracy": 0.5,
+      "heldout_stable_prefix": 200,
+      "fresh_accuracy": 0.5,
+      "transfer_ratio_against_fresh": 1.0,
+      "source_program_digests": [
+        "e1a8a346dc58fbd75c20a464832745e2ac64736ab92e45665e9e9d0b3da3c848",
+        "08808bda14f0163a78058462e4165a313a817b55f9e5ec9ae77d12dfc65c6332"
+      ],
+      "program_memory_digest": "79bfb9189625c13c4ecbabbbbfca69f2d79ac52dcffc23a61780c385a01d1b84",
+      "missing_feedback_policy_unchanged": true,
+      "gates": {
+        "trained_heldout_mastery": false,
+        "stable_training_prefix": true,
+        "fresh_control_measured": true,
+        "reward_shuffled_control_measured": true,
+        "candidate_order_permutation": true,
+        "all_external_files_retained": true,
+        "controller_frozen": true,
+        "missing_feedback_no_policy_update": true,
+        "state_reload_exact": true,
+        "state_corruption_rejected": true,
+        "zero_replayed_examples": true,
+        "zero_controller_optimizer_updates": true
+      },
+      "accounting": {
+        "unique_verifier_bits": 1000,
+        "unique_logical_lifetimes": 1000,
+        "optimizer_updates": 0,
+        "replayed_examples": 0,
+        "wall_seconds": 1.177872542059049,
+        "latency_seconds_per_lifetime": 0.001177872542059049,
+        "stable_bits_to_threshold": 1000,
+        "retention_on_mastered_primitives": 1.0
+      },
+      "promoted": false
+    },
+    {
+      "seed": 18,
+      "reverse_files": false,
+      "feedback_mode": "verifier",
+      "schema": "neural-computer.control-flow-runtime-routing.v1",
+      "architecture": {
+        "train_episodes": 1000,
+        "heldout_episodes": 200,
+        "heldout_amplitude": 2.0,
+        "route_exploration": 0.1,
+        "learner_inputs": "opaque_controller_intention_and_scalar_outcome",
+        "forbidden_features": "logical_target_slot, program names, verifier rows, raw modality data"
+      },
+      "train_accuracy": 0.889,
+      "stable_training_prefix": 1,
+      "heldout_accuracy": 1.0,
+      "heldout_stable_prefix": 1,
+      "fresh_accuracy": 0.5,
+      "transfer_ratio_against_fresh": 2.0,
+      "source_program_digests": [
+        "08808bda14f0163a78058462e4165a313a817b55f9e5ec9ae77d12dfc65c6332",
+        "e1a8a346dc58fbd75c20a464832745e2ac64736ab92e45665e9e9d0b3da3c848"
+      ],
+      "program_memory_digest": "680119f63f8254df7e9f501210e907413b0fdb926735d41e770d6f42514544c2",
+      "missing_feedback_policy_unchanged": true,
+      "gates": {
+        "trained_heldout_mastery": true,
+        "stable_training_prefix": true,
+        "fresh_control_measured": true,
+        "reward_shuffled_control_measured": true,
+        "candidate_order_permutation": true,
+        "all_external_files_retained": true,
+        "controller_frozen": true,
+        "missing_feedback_no_policy_update": true,
+        "state_reload_exact": true,
+        "state_corruption_rejected": true,
+        "zero_replayed_examples": true,
+        "zero_controller_optimizer_updates": true
+      },
+      "accounting": {
+        "unique_verifier_bits": 1000,
+        "unique_logical_lifetimes": 1000,
+        "optimizer_updates": 0,
+        "replayed_examples": 0,
+        "wall_seconds": 1.1790297910338268,
+        "latency_seconds_per_lifetime": 0.0011790297910338268,
+        "stable_bits_to_threshold": 1,
+        "retention_on_mastered_primitives": 1.0
+      },
+      "promoted": true
+    },
+    {
+      "seed": 18,
+      "reverse_files": false,
+      "feedback_mode": "reward_shuffled",
+      "schema": "neural-computer.control-flow-runtime-routing.v1",
+      "architecture": {
+        "train_episodes": 1000,
+        "heldout_episodes": 200,
+        "heldout_amplitude": 2.0,
+        "route_exploration": 0.1,
+        "learner_inputs": "opaque_controller_intention_and_scalar_outcome",
+        "forbidden_features": "logical_target_slot, program names, verifier rows, raw modality data"
+      },
+      "train_accuracy": 0.587,
+      "stable_training_prefix": 998,
+      "heldout_accuracy": 0.0,
+      "heldout_stable_prefix": null,
+      "fresh_accuracy": 0.5,
+      "transfer_ratio_against_fresh": 0.0,
+      "source_program_digests": [
+        "08808bda14f0163a78058462e4165a313a817b55f9e5ec9ae77d12dfc65c6332",
+        "e1a8a346dc58fbd75c20a464832745e2ac64736ab92e45665e9e9d0b3da3c848"
+      ],
+      "program_memory_digest": "680119f63f8254df7e9f501210e907413b0fdb926735d41e770d6f42514544c2",
+      "missing_feedback_policy_unchanged": true,
+      "gates": {
+        "trained_heldout_mastery": false,
+        "stable_training_prefix": true,
+        "fresh_control_measured": true,
+        "reward_shuffled_control_measured": false,
+        "candidate_order_permutation": true,
+        "all_external_files_retained": true,
+        "controller_frozen": true,
+        "missing_feedback_no_policy_update": true,
+        "state_reload_exact": true,
+        "state_corruption_rejected": true,
+        "zero_replayed_examples": true,
+        "zero_controller_optimizer_updates": true
+      },
+      "accounting": {
+        "unique_verifier_bits": 1000,
+        "unique_logical_lifetimes": 1000,
+        "optimizer_updates": 0,
+        "replayed_examples": 0,
+        "wall_seconds": 1.1989184999838471,
+        "latency_seconds_per_lifetime": 0.001198918499983847,
+        "stable_bits_to_threshold": 998,
+        "retention_on_mastered_primitives": 1.0
+      },
+      "promoted": false
+    },
+    {
+      "seed": 18,
+      "reverse_files": true,
+      "feedback_mode": "verifier",
+      "schema": "neural-computer.control-flow-runtime-routing.v1",
+      "architecture": {
+        "train_episodes": 1000,
+        "heldout_episodes": 200,
+        "heldout_amplitude": 2.0,
+        "route_exploration": 0.1,
+        "learner_inputs": "opaque_controller_intention_and_scalar_outcome",
+        "forbidden_features": "logical_target_slot, program names, verifier rows, raw modality data"
+      },
+      "train_accuracy": 0.877,
+      "stable_training_prefix": 999,
+      "heldout_accuracy": 1.0,
+      "heldout_stable_prefix": 1,
+      "fresh_accuracy": 0.5,
+      "transfer_ratio_against_fresh": 2.0,
+      "source_program_digests": [
+        "e1a8a346dc58fbd75c20a464832745e2ac64736ab92e45665e9e9d0b3da3c848",
+        "08808bda14f0163a78058462e4165a313a817b55f9e5ec9ae77d12dfc65c6332"
+      ],
+      "program_memory_digest": "79bfb9189625c13c4ecbabbbbfca69f2d79ac52dcffc23a61780c385a01d1b84",
+      "missing_feedback_policy_unchanged": true,
+      "gates": {
+        "trained_heldout_mastery": true,
+        "stable_training_prefix": true,
+        "fresh_control_measured": true,
+        "reward_shuffled_control_measured": true,
+        "candidate_order_permutation": true,
+        "all_external_files_retained": true,
+        "controller_frozen": true,
+        "missing_feedback_no_policy_update": true,
+        "state_reload_exact": true,
+        "state_corruption_rejected": true,
+        "zero_replayed_examples": true,
+        "zero_controller_optimizer_updates": true
+      },
+      "accounting": {
+        "unique_verifier_bits": 1000,
+        "unique_logical_lifetimes": 1000,
+        "optimizer_updates": 0,
+        "replayed_examples": 0,
+        "wall_seconds": 1.1839153330074623,
+        "latency_seconds_per_lifetime": 0.0011839153330074623,
+        "stable_bits_to_threshold": 999,
+        "retention_on_mastered_primitives": 1.0
+      },
+      "promoted": true
+    },
+    {
+      "seed": 18,
+      "reverse_files": true,
+      "feedback_mode": "reward_shuffled",
+      "schema": "neural-computer.control-flow-runtime-routing.v1",
+      "architecture": {
+        "train_episodes": 1000,
+        "heldout_episodes": 200,
+        "heldout_amplitude": 2.0,
+        "route_exploration": 0.1,
+        "learner_inputs": "opaque_controller_intention_and_scalar_outcome",
+        "forbidden_features": "logical_target_slot, program names, verifier rows, raw modality data"
+      },
+      "train_accuracy": 0.413,
+      "stable_training_prefix": null,
+      "heldout_accuracy": 1.0,
+      "heldout_stable_prefix": 1,
+      "fresh_accuracy": 0.5,
+      "transfer_ratio_against_fresh": 2.0,
+      "source_program_digests": [
+        "e1a8a346dc58fbd75c20a464832745e2ac64736ab92e45665e9e9d0b3da3c848",
+        "08808bda14f0163a78058462e4165a313a817b55f9e5ec9ae77d12dfc65c6332"
+      ],
+      "program_memory_digest": "79bfb9189625c13c4ecbabbbbfca69f2d79ac52dcffc23a61780c385a01d1b84",
+      "missing_feedback_policy_unchanged": true,
+      "gates": {
+        "trained_heldout_mastery": true,
+        "stable_training_prefix": false,
+        "fresh_control_measured": true,
+        "reward_shuffled_control_measured": false,
+        "candidate_order_permutation": true,
+        "all_external_files_retained": true,
+        "controller_frozen": true,
+        "missing_feedback_no_policy_update": true,
+        "state_reload_exact": true,
+        "state_corruption_rejected": true,
+        "zero_replayed_examples": true,
+        "zero_controller_optimizer_updates": true
+      },
+      "accounting": {
+        "unique_verifier_bits": 1000,
+        "unique_logical_lifetimes": 1000,
+        "optimizer_updates": 0,
+        "replayed_examples": 0,
+        "wall_seconds": 1.2027539160335436,
+        "latency_seconds_per_lifetime": 0.0012027539160335437,
+        "stable_bits_to_threshold": null,
+        "retention_on_mastered_primitives": 1.0
+      },
+      "promoted": false
+    },
+    {
+      "seed": 19,
+      "reverse_files": false,
+      "feedback_mode": "verifier",
+      "schema": "neural-computer.control-flow-runtime-routing.v1",
+      "architecture": {
+        "train_episodes": 1000,
+        "heldout_episodes": 200,
+        "heldout_amplitude": 2.0,
+        "route_exploration": 0.1,
+        "learner_inputs": "opaque_controller_intention_and_scalar_outcome",
+        "forbidden_features": "logical_target_slot, program names, verifier rows, raw modality data"
+      },
+      "train_accuracy": 0.841,
+      "stable_training_prefix": 1,
+      "heldout_accuracy": 1.0,
+      "heldout_stable_prefix": 1,
+      "fresh_accuracy": 0.5,
+      "transfer_ratio_against_fresh": 2.0,
+      "source_program_digests": [
+        "08808bda14f0163a78058462e4165a313a817b55f9e5ec9ae77d12dfc65c6332",
+        "e1a8a346dc58fbd75c20a464832745e2ac64736ab92e45665e9e9d0b3da3c848"
+      ],
+      "program_memory_digest": "680119f63f8254df7e9f501210e907413b0fdb926735d41e770d6f42514544c2",
+      "missing_feedback_policy_unchanged": true,
+      "gates": {
+        "trained_heldout_mastery": true,
+        "stable_training_prefix": true,
+        "fresh_control_measured": true,
+        "reward_shuffled_control_measured": true,
+        "candidate_order_permutation": true,
+        "all_external_files_retained": true,
+        "controller_frozen": true,
+        "missing_feedback_no_policy_update": true,
+        "state_reload_exact": true,
+        "state_corruption_rejected": true,
+        "zero_replayed_examples": true,
+        "zero_controller_optimizer_updates": true
+      },
+      "accounting": {
+        "unique_verifier_bits": 1000,
+        "unique_logical_lifetimes": 1000,
+        "optimizer_updates": 0,
+        "replayed_examples": 0,
+        "wall_seconds": 1.192524958983995,
+        "latency_seconds_per_lifetime": 0.001192524958983995,
+        "stable_bits_to_threshold": 1,
+        "retention_on_mastered_primitives": 1.0
+      },
+      "promoted": true
+    },
+    {
+      "seed": 19,
+      "reverse_files": false,
+      "feedback_mode": "reward_shuffled",
+      "schema": "neural-computer.control-flow-runtime-routing.v1",
+      "architecture": {
+        "train_episodes": 1000,
+        "heldout_episodes": 200,
+        "heldout_amplitude": 2.0,
+        "route_exploration": 0.1,
+        "learner_inputs": "opaque_controller_intention_and_scalar_outcome",
+        "forbidden_features": "logical_target_slot, program names, verifier rows, raw modality data"
+      },
+      "train_accuracy": 0.363,
+      "stable_training_prefix": null,
+      "heldout_accuracy": 0.0,
+      "heldout_stable_prefix": null,
+      "fresh_accuracy": 0.5,
+      "transfer_ratio_against_fresh": 0.0,
+      "source_program_digests": [
+        "08808bda14f0163a78058462e4165a313a817b55f9e5ec9ae77d12dfc65c6332",
+        "e1a8a346dc58fbd75c20a464832745e2ac64736ab92e45665e9e9d0b3da3c848"
+      ],
+      "program_memory_digest": "680119f63f8254df7e9f501210e907413b0fdb926735d41e770d6f42514544c2",
+      "missing_feedback_policy_unchanged": true,
+      "gates": {
+        "trained_heldout_mastery": false,
+        "stable_training_prefix": false,
+        "fresh_control_measured": true,
+        "reward_shuffled_control_measured": false,
+        "candidate_order_permutation": true,
+        "all_external_files_retained": true,
+        "controller_frozen": true,
+        "missing_feedback_no_policy_update": true,
+        "state_reload_exact": true,
+        "state_corruption_rejected": true,
+        "zero_replayed_examples": true,
+        "zero_controller_optimizer_updates": true
+      },
+      "accounting": {
+        "unique_verifier_bits": 1000,
+        "unique_logical_lifetimes": 1000,
+        "optimizer_updates": 0,
+        "replayed_examples": 0,
+        "wall_seconds": 1.230801166035235,
+        "latency_seconds_per_lifetime": 0.001230801166035235,
+        "stable_bits_to_threshold": null,
+        "retention_on_mastered_primitives": 1.0
+      },
+      "promoted": false
+    },
+    {
+      "seed": 19,
+      "reverse_files": true,
+      "feedback_mode": "verifier",
+      "schema": "neural-computer.control-flow-runtime-routing.v1",
+      "architecture": {
+        "train_episodes": 1000,
+        "heldout_episodes": 200,
+        "heldout_amplitude": 2.0,
+        "route_exploration": 0.1,
+        "learner_inputs": "opaque_controller_intention_and_scalar_outcome",
+        "forbidden_features": "logical_target_slot, program names, verifier rows, raw modality data"
+      },
+      "train_accuracy": 0.837,
+      "stable_training_prefix": 1,
+      "heldout_accuracy": 1.0,
+      "heldout_stable_prefix": 1,
+      "fresh_accuracy": 0.5,
+      "transfer_ratio_against_fresh": 2.0,
+      "source_program_digests": [
+        "e1a8a346dc58fbd75c20a464832745e2ac64736ab92e45665e9e9d0b3da3c848",
+        "08808bda14f0163a78058462e4165a313a817b55f9e5ec9ae77d12dfc65c6332"
+      ],
+      "program_memory_digest": "79bfb9189625c13c4ecbabbbbfca69f2d79ac52dcffc23a61780c385a01d1b84",
+      "missing_feedback_policy_unchanged": true,
+      "gates": {
+        "trained_heldout_mastery": true,
+        "stable_training_prefix": true,
+        "fresh_control_measured": true,
+        "reward_shuffled_control_measured": true,
+        "candidate_order_permutation": true,
+        "all_external_files_retained": true,
+        "controller_frozen": true,
+        "missing_feedback_no_policy_update": true,
+        "state_reload_exact": true,
+        "state_corruption_rejected": true,
+        "zero_replayed_examples": true,
+        "zero_controller_optimizer_updates": true
+      },
+      "accounting": {
+        "unique_verifier_bits": 1000,
+        "unique_logical_lifetimes": 1000,
+        "optimizer_updates": 0,
+        "replayed_examples": 0,
+        "wall_seconds": 1.18368437490426,
+        "latency_seconds_per_lifetime": 0.00118368437490426,
+        "stable_bits_to_threshold": 1,
+        "retention_on_mastered_primitives": 1.0
+      },
+      "promoted": true
+    },
+    {
+      "seed": 19,
+      "reverse_files": true,
+      "feedback_mode": "reward_shuffled",
+      "schema": "neural-computer.control-flow-runtime-routing.v1",
+      "architecture": {
+        "train_episodes": 1000,
+        "heldout_episodes": 200,
+        "heldout_amplitude": 2.0,
+        "route_exploration": 0.1,
+        "learner_inputs": "opaque_controller_intention_and_scalar_outcome",
+        "forbidden_features": "logical_target_slot, program names, verifier rows, raw modality data"
+      },
+      "train_accuracy": 0.637,
+      "stable_training_prefix": 1000,
+      "heldout_accuracy": 1.0,
+      "heldout_stable_prefix": 1,
+      "fresh_accuracy": 0.5,
+      "transfer_ratio_against_fresh": 2.0,
+      "source_program_digests": [
+        "e1a8a346dc58fbd75c20a464832745e2ac64736ab92e45665e9e9d0b3da3c848",
+        "08808bda14f0163a78058462e4165a313a817b55f9e5ec9ae77d12dfc65c6332"
+      ],
+      "program_memory_digest": "79bfb9189625c13c4ecbabbbbfca69f2d79ac52dcffc23a61780c385a01d1b84",
+      "missing_feedback_policy_unchanged": true,
+      "gates": {
+        "trained_heldout_mastery": true,
+        "stable_training_prefix": true,
+        "fresh_control_measured": true,
+        "reward_shuffled_control_measured": false,
+        "candidate_order_permutation": true,
+        "all_external_files_retained": true,
+        "controller_frozen": true,
+        "missing_feedback_no_policy_update": true,
+        "state_reload_exact": true,
+        "state_corruption_rejected": true,
+        "zero_replayed_examples": true,
+        "zero_controller_optimizer_updates": true
+      },
+      "accounting": {
+        "unique_verifier_bits": 1000,
+        "unique_logical_lifetimes": 1000,
+        "optimizer_updates": 0,
+        "replayed_examples": 0,
+        "wall_seconds": 1.2036109580658376,
+        "latency_seconds_per_lifetime": 0.0012036109580658375,
+        "stable_bits_to_threshold": 1000,
+        "retention_on_mastered_primitives": 1.0
+      },
+      "promoted": false
+    },
+    {
+      "seed": 20,
+      "reverse_files": false,
+      "feedback_mode": "verifier",
+      "schema": "neural-computer.control-flow-runtime-routing.v1",
+      "architecture": {
+        "train_episodes": 1000,
+        "heldout_episodes": 200,
+        "heldout_amplitude": 2.0,
+        "route_exploration": 0.1,
+        "learner_inputs": "opaque_controller_intention_and_scalar_outcome",
+        "forbidden_features": "logical_target_slot, program names, verifier rows, raw modality data"
+      },
+      "train_accuracy": 0.828,
+      "stable_training_prefix": 1,
+      "heldout_accuracy": 0.5,
+      "heldout_stable_prefix": 200,
+      "fresh_accuracy": 0.5,
+      "transfer_ratio_against_fresh": 1.0,
+      "source_program_digests": [
+        "08808bda14f0163a78058462e4165a313a817b55f9e5ec9ae77d12dfc65c6332",
+        "e1a8a346dc58fbd75c20a464832745e2ac64736ab92e45665e9e9d0b3da3c848"
+      ],
+      "program_memory_digest": "680119f63f8254df7e9f501210e907413b0fdb926735d41e770d6f42514544c2",
+      "missing_feedback_policy_unchanged": true,
+      "gates": {
+        "trained_heldout_mastery": false,
+        "stable_training_prefix": true,
+        "fresh_control_measured": true,
+        "reward_shuffled_control_measured": true,
+        "candidate_order_permutation": true,
+        "all_external_files_retained": true,
+        "controller_frozen": true,
+        "missing_feedback_no_policy_update": true,
+        "state_reload_exact": true,
+        "state_corruption_rejected": true,
+        "zero_replayed_examples": true,
+        "zero_controller_optimizer_updates": true
+      },
+      "accounting": {
+        "unique_verifier_bits": 1000,
+        "unique_logical_lifetimes": 1000,
+        "optimizer_updates": 0,
+        "replayed_examples": 0,
+        "wall_seconds": 1.1816603750921786,
+        "latency_seconds_per_lifetime": 0.0011816603750921786,
+        "stable_bits_to_threshold": 1,
+        "retention_on_mastered_primitives": 1.0
+      },
+      "promoted": false
+    },
+    {
+      "seed": 20,
+      "reverse_files": false,
+      "feedback_mode": "reward_shuffled",
+      "schema": "neural-computer.control-flow-runtime-routing.v1",
+      "architecture": {
+        "train_episodes": 1000,
+        "heldout_episodes": 200,
+        "heldout_amplitude": 2.0,
+        "route_exploration": 0.1,
+        "learner_inputs": "opaque_controller_intention_and_scalar_outcome",
+        "forbidden_features": "logical_target_slot, program names, verifier rows, raw modality data"
+      },
+      "train_accuracy": 0.53,
+      "stable_training_prefix": 1000,
+      "heldout_accuracy": 0.5,
+      "heldout_stable_prefix": null,
+      "fresh_accuracy": 0.5,
+      "transfer_ratio_against_fresh": 1.0,
+      "source_program_digests": [
+        "08808bda14f0163a78058462e4165a313a817b55f9e5ec9ae77d12dfc65c6332",
+        "e1a8a346dc58fbd75c20a464832745e2ac64736ab92e45665e9e9d0b3da3c848"
+      ],
+      "program_memory_digest": "680119f63f8254df7e9f501210e907413b0fdb926735d41e770d6f42514544c2",
+      "missing_feedback_policy_unchanged": true,
+      "gates": {
+        "trained_heldout_mastery": false,
+        "stable_training_prefix": true,
+        "fresh_control_measured": true,
+        "reward_shuffled_control_measured": true,
+        "candidate_order_permutation": true,
+        "all_external_files_retained": true,
+        "controller_frozen": true,
+        "missing_feedback_no_policy_update": true,
+        "state_reload_exact": true,
+        "state_corruption_rejected": true,
+        "zero_replayed_examples": true,
+        "zero_controller_optimizer_updates": true
+      },
+      "accounting": {
+        "unique_verifier_bits": 1000,
+        "unique_logical_lifetimes": 1000,
+        "optimizer_updates": 0,
+        "replayed_examples": 0,
+        "wall_seconds": 1.183172499993816,
+        "latency_seconds_per_lifetime": 0.001183172499993816,
+        "stable_bits_to_threshold": 1000,
+        "retention_on_mastered_primitives": 1.0
+      },
+      "promoted": false
+    },
+    {
+      "seed": 20,
+      "reverse_files": true,
+      "feedback_mode": "verifier",
+      "schema": "neural-computer.control-flow-runtime-routing.v1",
+      "architecture": {
+        "train_episodes": 1000,
+        "heldout_episodes": 200,
+        "heldout_amplitude": 2.0,
+        "route_exploration": 0.1,
+        "learner_inputs": "opaque_controller_intention_and_scalar_outcome",
+        "forbidden_features": "logical_target_slot, program names, verifier rows, raw modality data"
+      },
+      "train_accuracy": 0.83,
+      "stable_training_prefix": 1,
+      "heldout_accuracy": 0.5,
+      "heldout_stable_prefix": 200,
+      "fresh_accuracy": 0.5,
+      "transfer_ratio_against_fresh": 1.0,
+      "source_program_digests": [
+        "e1a8a346dc58fbd75c20a464832745e2ac64736ab92e45665e9e9d0b3da3c848",
+        "08808bda14f0163a78058462e4165a313a817b55f9e5ec9ae77d12dfc65c6332"
+      ],
+      "program_memory_digest": "79bfb9189625c13c4ecbabbbbfca69f2d79ac52dcffc23a61780c385a01d1b84",
+      "missing_feedback_policy_unchanged": true,
+      "gates": {
+        "trained_heldout_mastery": false,
+        "stable_training_prefix": true,
+        "fresh_control_measured": true,
+        "reward_shuffled_control_measured": true,
+        "candidate_order_permutation": true,
+        "all_external_files_retained": true,
+        "controller_frozen": true,
+        "missing_feedback_no_policy_update": true,
+        "state_reload_exact": true,
+        "state_corruption_rejected": true,
+        "zero_replayed_examples": true,
+        "zero_controller_optimizer_updates": true
+      },
+      "accounting": {
+        "unique_verifier_bits": 1000,
+        "unique_logical_lifetimes": 1000,
+        "optimizer_updates": 0,
+        "replayed_examples": 0,
+        "wall_seconds": 1.1940664170542732,
+        "latency_seconds_per_lifetime": 0.0011940664170542732,
+        "stable_bits_to_threshold": 1,
+        "retention_on_mastered_primitives": 1.0
+      },
+      "promoted": false
+    },
+    {
+      "seed": 20,
+      "reverse_files": true,
+      "feedback_mode": "reward_shuffled",
+      "schema": "neural-computer.control-flow-runtime-routing.v1",
+      "architecture": {
+        "train_episodes": 1000,
+        "heldout_episodes": 200,
+        "heldout_amplitude": 2.0,
+        "route_exploration": 0.1,
+        "learner_inputs": "opaque_controller_intention_and_scalar_outcome",
+        "forbidden_features": "logical_target_slot, program names, verifier rows, raw modality data"
+      },
+      "train_accuracy": 0.47,
+      "stable_training_prefix": null,
+      "heldout_accuracy": 0.5,
+      "heldout_stable_prefix": 200,
+      "fresh_accuracy": 0.5,
+      "transfer_ratio_against_fresh": 1.0,
+      "source_program_digests": [
+        "e1a8a346dc58fbd75c20a464832745e2ac64736ab92e45665e9e9d0b3da3c848",
+        "08808bda14f0163a78058462e4165a313a817b55f9e5ec9ae77d12dfc65c6332"
+      ],
+      "program_memory_digest": "79bfb9189625c13c4ecbabbbbfca69f2d79ac52dcffc23a61780c385a01d1b84",
+      "missing_feedback_policy_unchanged": true,
+      "gates": {
+        "trained_heldout_mastery": false,
+        "stable_training_prefix": false,
+        "fresh_control_measured": true,
+        "reward_shuffled_control_measured": true,
+        "candidate_order_permutation": true,
+        "all_external_files_retained": true,
+        "controller_frozen": true,
+        "missing_feedback_no_policy_update": true,
+        "state_reload_exact": true,
+        "state_corruption_rejected": true,
+        "zero_replayed_examples": true,
+        "zero_controller_optimizer_updates": true
+      },
+      "accounting": {
+        "unique_verifier_bits": 1000,
+        "unique_logical_lifetimes": 1000,
+        "optimizer_updates": 0,
+        "replayed_examples": 0,
+        "wall_seconds": 1.1860406249761581,
+        "latency_seconds_per_lifetime": 0.0011860406249761582,
+        "stable_bits_to_threshold": null,
+        "retention_on_mastered_primitives": 1.0
+      },
+      "promoted": false
+    }
+  ],
+  "promoted": false,
+  "reward_shuffled_null_within_boundary": false,
+  "candidate_order_permutation_covered": true
+}
