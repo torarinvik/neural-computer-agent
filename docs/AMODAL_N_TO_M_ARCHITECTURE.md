@@ -11196,3 +11196,27 @@ capacity pressure. It does not qualify unrestricted memory growth, learned
 compression, arbitrary new computation, or general continual learning.
 Evidence and accounting are archived in
 `session_records/brainworkshop_external_temporal_interleaved_admission_promoted_2026-08-12/`.
+
+### Learned temporal executable-artifact alias consolidation
+
+The frozen temporal capability path now composes with the replaceable
+`ExecutableArtifactMemory` alias/consolidation boundary. Three learned
+opaque route addresses are stored as external artifacts; one route is
+duplicated under an exact key and a nearby learned key. A generic
+`OpaqueConsolidationPolicy` selects the redundant pair from opaque keys,
+artifact summaries, strength, and age. It does not receive route IDs, query
+depths, semantic labels, or verifier answers.
+
+Across seeds `17`, `18`, and `19`, all `15/15` gates pass. The learned policy
+selects the redundant pair across all 24 physical permutations, shuffled
+controls select it `0.0000` of the time, and untrained controls `0.1667`.
+Verifier-gated copy-on-write reduces four physical rows to three while exact
+and alias routes remain at `1.0000`; rejected transactions leave the source
+manifest unchanged, reload and hash-corruption controls pass, and the
+controller, encoder, acquired file, and training stream remain frozen/unused.
+
+This promotes narrow learned external alias consolidation. It does not
+qualify arbitrary semantic compression, unrestricted memory growth, arbitrary
+new computation, or general continual learning. Evidence and accounting are
+archived in
+`session_records/brainworkshop_external_temporal_artifact_alias_consolidation_promoted_2026-08-12/`.

@@ -1,0 +1,465 @@
+{
+  "schema": "neural-computer.brainworkshop-external-temporal-artifact-alias-consolidation.v1",
+  "claim_boundary": "A learned opaque consolidation policy selects redundant temporal artifact rows and an independent verifier safely retains exact and alias routes after one physical-row reduction; not arbitrary semantic compression, unrestricted growth, or general continual learning.",
+  "seed": 19,
+  "architecture": {
+    "route_source": "frozen_external_temporal_capability_file",
+    "artifact_backend": "executable_artifact_memory_v2",
+    "policy": "opaque_consolidation_policy_v1",
+    "policy_signal": "scalar_duplicate_rewrite_utility",
+    "replacement": "copy_on_write_retention_verified_v1",
+    "route_count": 3,
+    "physical_rows_before": 4,
+    "physical_rows_after": 3,
+    "forbidden_features": "query_depth_route_id_semantic_names_task_ids_replayed_streams"
+  },
+  "routes": [
+    {
+      "route_id": 0,
+      "query_symbol": 0,
+      "depth": 4,
+      "position": 3,
+      "key_digest": "9994986492d1a2f94b1d19ff52488388b69ca0df6c77cd09d078eb55395ed697"
+    },
+    {
+      "route_id": 1,
+      "query_symbol": 5,
+      "depth": 5,
+      "position": 4,
+      "key_digest": "f91acf28fc23f31c894ece0b978986c6f6507c61bce26c11f429e89ece6ad9a9"
+    },
+    {
+      "route_id": 2,
+      "query_symbol": 6,
+      "depth": 6,
+      "position": 5,
+      "key_digest": "32d6079269d81ecd873c27614ba0845e40e788ec2b3c2c52f89ef5964d6598bf"
+    }
+  ],
+  "permutation_records": [
+    {
+      "permutation": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "learned_pair": [
+        0,
+        1
+      ],
+      "learned_redundant_pair": true,
+      "shuffled_redundant_pair": false,
+      "untrained_redundant_pair": true
+    },
+    {
+      "permutation": [
+        0,
+        1,
+        3,
+        2
+      ],
+      "learned_pair": [
+        0,
+        1
+      ],
+      "learned_redundant_pair": true,
+      "shuffled_redundant_pair": false,
+      "untrained_redundant_pair": true
+    },
+    {
+      "permutation": [
+        0,
+        2,
+        1,
+        3
+      ],
+      "learned_pair": [
+        0,
+        2
+      ],
+      "learned_redundant_pair": true,
+      "shuffled_redundant_pair": false,
+      "untrained_redundant_pair": false
+    },
+    {
+      "permutation": [
+        0,
+        2,
+        3,
+        1
+      ],
+      "learned_pair": [
+        0,
+        3
+      ],
+      "learned_redundant_pair": true,
+      "shuffled_redundant_pair": false,
+      "untrained_redundant_pair": false
+    },
+    {
+      "permutation": [
+        0,
+        3,
+        1,
+        2
+      ],
+      "learned_pair": [
+        0,
+        2
+      ],
+      "learned_redundant_pair": true,
+      "shuffled_redundant_pair": false,
+      "untrained_redundant_pair": false
+    },
+    {
+      "permutation": [
+        0,
+        3,
+        2,
+        1
+      ],
+      "learned_pair": [
+        0,
+        3
+      ],
+      "learned_redundant_pair": true,
+      "shuffled_redundant_pair": false,
+      "untrained_redundant_pair": false
+    },
+    {
+      "permutation": [
+        1,
+        0,
+        2,
+        3
+      ],
+      "learned_pair": [
+        0,
+        1
+      ],
+      "learned_redundant_pair": true,
+      "shuffled_redundant_pair": false,
+      "untrained_redundant_pair": true
+    },
+    {
+      "permutation": [
+        1,
+        0,
+        3,
+        2
+      ],
+      "learned_pair": [
+        0,
+        1
+      ],
+      "learned_redundant_pair": true,
+      "shuffled_redundant_pair": false,
+      "untrained_redundant_pair": true
+    },
+    {
+      "permutation": [
+        1,
+        2,
+        0,
+        3
+      ],
+      "learned_pair": [
+        0,
+        2
+      ],
+      "learned_redundant_pair": true,
+      "shuffled_redundant_pair": false,
+      "untrained_redundant_pair": false
+    },
+    {
+      "permutation": [
+        1,
+        2,
+        3,
+        0
+      ],
+      "learned_pair": [
+        0,
+        3
+      ],
+      "learned_redundant_pair": true,
+      "shuffled_redundant_pair": false,
+      "untrained_redundant_pair": false
+    },
+    {
+      "permutation": [
+        1,
+        3,
+        0,
+        2
+      ],
+      "learned_pair": [
+        0,
+        2
+      ],
+      "learned_redundant_pair": true,
+      "shuffled_redundant_pair": false,
+      "untrained_redundant_pair": false
+    },
+    {
+      "permutation": [
+        1,
+        3,
+        2,
+        0
+      ],
+      "learned_pair": [
+        0,
+        3
+      ],
+      "learned_redundant_pair": true,
+      "shuffled_redundant_pair": false,
+      "untrained_redundant_pair": false
+    },
+    {
+      "permutation": [
+        2,
+        0,
+        1,
+        3
+      ],
+      "learned_pair": [
+        1,
+        2
+      ],
+      "learned_redundant_pair": true,
+      "shuffled_redundant_pair": false,
+      "untrained_redundant_pair": false
+    },
+    {
+      "permutation": [
+        2,
+        0,
+        3,
+        1
+      ],
+      "learned_pair": [
+        1,
+        3
+      ],
+      "learned_redundant_pair": true,
+      "shuffled_redundant_pair": false,
+      "untrained_redundant_pair": false
+    },
+    {
+      "permutation": [
+        2,
+        1,
+        0,
+        3
+      ],
+      "learned_pair": [
+        1,
+        2
+      ],
+      "learned_redundant_pair": true,
+      "shuffled_redundant_pair": false,
+      "untrained_redundant_pair": false
+    },
+    {
+      "permutation": [
+        2,
+        1,
+        3,
+        0
+      ],
+      "learned_pair": [
+        1,
+        3
+      ],
+      "learned_redundant_pair": true,
+      "shuffled_redundant_pair": false,
+      "untrained_redundant_pair": false
+    },
+    {
+      "permutation": [
+        2,
+        3,
+        0,
+        1
+      ],
+      "learned_pair": [
+        2,
+        3
+      ],
+      "learned_redundant_pair": true,
+      "shuffled_redundant_pair": false,
+      "untrained_redundant_pair": false
+    },
+    {
+      "permutation": [
+        2,
+        3,
+        1,
+        0
+      ],
+      "learned_pair": [
+        2,
+        3
+      ],
+      "learned_redundant_pair": true,
+      "shuffled_redundant_pair": false,
+      "untrained_redundant_pair": false
+    },
+    {
+      "permutation": [
+        3,
+        0,
+        1,
+        2
+      ],
+      "learned_pair": [
+        1,
+        2
+      ],
+      "learned_redundant_pair": true,
+      "shuffled_redundant_pair": false,
+      "untrained_redundant_pair": false
+    },
+    {
+      "permutation": [
+        3,
+        0,
+        2,
+        1
+      ],
+      "learned_pair": [
+        1,
+        3
+      ],
+      "learned_redundant_pair": true,
+      "shuffled_redundant_pair": false,
+      "untrained_redundant_pair": false
+    },
+    {
+      "permutation": [
+        3,
+        1,
+        0,
+        2
+      ],
+      "learned_pair": [
+        1,
+        2
+      ],
+      "learned_redundant_pair": true,
+      "shuffled_redundant_pair": false,
+      "untrained_redundant_pair": false
+    },
+    {
+      "permutation": [
+        3,
+        1,
+        2,
+        0
+      ],
+      "learned_pair": [
+        1,
+        3
+      ],
+      "learned_redundant_pair": true,
+      "shuffled_redundant_pair": false,
+      "untrained_redundant_pair": false
+    },
+    {
+      "permutation": [
+        3,
+        2,
+        0,
+        1
+      ],
+      "learned_pair": [
+        2,
+        3
+      ],
+      "learned_redundant_pair": true,
+      "shuffled_redundant_pair": false,
+      "untrained_redundant_pair": false
+    },
+    {
+      "permutation": [
+        3,
+        2,
+        1,
+        0
+      ],
+      "learned_pair": [
+        2,
+        3
+      ],
+      "learned_redundant_pair": true,
+      "shuffled_redundant_pair": false,
+      "untrained_redundant_pair": false
+    }
+  ],
+  "selected_pair": [
+    0,
+    1
+  ],
+  "selected_pair_is_redundant": true,
+  "rejected_receipt": {
+    "accepted": false,
+    "source_indices": [
+      2,
+      3
+    ],
+    "rows_before": 4,
+    "rows_after": 4,
+    "rows_saved": 0,
+    "reason": "behavior verifier rejected candidate bank"
+  },
+  "compaction_receipt": {
+    "accepted": true,
+    "source_indices": [
+      0,
+      1
+    ],
+    "rows_before": 4,
+    "rows_after": 3,
+    "rows_saved": 1,
+    "reason": "behavior verifier passed"
+  },
+  "policy_accuracy": {
+    "learned_redundant_pair_rate": 1.0,
+    "shuffled_redundant_pair_rate": 0.0,
+    "untrained_redundant_pair_rate": 0.16666666666666666
+  },
+  "gates": {
+    "learned_policy_selects_redundant_pair": true,
+    "learned_beats_shuffled_control": true,
+    "learned_beats_untrained_control": true,
+    "candidate_permutation_invariant": true,
+    "protected_aliases_observed": true,
+    "rejected_compaction_did_not_mutate_source": true,
+    "verifier_accepts_selected_compaction": true,
+    "compaction_saves_one_physical_row": true,
+    "all_exact_and_alias_routes_retained": true,
+    "reload_preserves_routes": true,
+    "corruption_rejected": true,
+    "frozen_controller": true,
+    "frozen_event_encoder": true,
+    "frozen_promoted_file": true,
+    "zero_replayed_examples": true
+  },
+  "accounting": {
+    "unique_verifier_bits": 168576,
+    "policy_verifier_bits": 1344000,
+    "shuffled_policy_verifier_bits": 1344000,
+    "capacity_retention_verifier_bits": 16,
+    "unique_logical_lifetimes": 48024,
+    "optimizer_updates": 3000,
+    "route_count": 3,
+    "physical_rows_before": 4,
+    "physical_rows_after": 3,
+    "replayed_examples": 0,
+    "latency_seconds": 94.98009637510404,
+    "stable_bits_to_threshold": 168576
+  },
+  "status": "promoted_temporal_artifact_alias_consolidation"
+}

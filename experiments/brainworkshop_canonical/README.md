@@ -1245,6 +1245,43 @@ PYTHONPATH=src uv run python -m experiments.brainworkshop_canonical.external_tem
   --report-out /tmp/brainworkshop-interleaved-admission.json
 ```
 
+## Learned temporal executable-artifact alias consolidation (promoted bounded rung)
+
+`external_temporal_artifact_alias_consolidation.py` composes the frozen
+temporal capability path with `ExecutableArtifactMemory`. Three acquired
+opaque routes are materialized as external route artifacts; one route is
+represented twice under exact and nearby learned keys. A generic
+`OpaqueConsolidationPolicy` must select that redundant pair across every
+physical row permutation, after which an independent verifier authorizes a
+copy-on-write rewrite.
+
+Across seeds `17`, `18`, and `19`, all `15/15` gates pass. Learned redundant-
+pair selection is `1.0000` across 24 permutations, reward-shuffled controls
+are `0.0000`, and untrained controls are `0.1667`. The accepted rewrite
+reduces four physical rows to three while retaining exact and alias routes at
+`1.0000`; rejected compaction is source-byte-stable, reload preserves routes,
+artifact corruption is rejected, and controller/encoder/file/replay controls
+pass.
+
+Each seed accounts for `168,576` unique temporal verifier bits, `1,344,000`
+policy verifier bits, `16` alias-retention verifier bits, `3,000` policy
+updates, `48,024` policy logical lifetimes, and zero replay. This promotes
+narrow learned external alias consolidation, not arbitrary semantic
+compression, unrestricted memory growth, arbitrary new computation, or
+general continual learning. Evidence is archived in
+`session_records/brainworkshop_external_temporal_artifact_alias_consolidation_promoted_2026-08-12/`.
+
+Run it with:
+
+```bash
+PYTHONPATH=src uv run python -m experiments.brainworkshop_canonical.external_temporal_artifact_alias_consolidation \
+  --source-updates 128 --source-evaluation-lifetimes 4 \
+  --source-route-lifetimes 8 --target-route-updates 8 \
+  --policy-updates 3000 --policy-batch-size 16 --batch-size 16 \
+  --data-steps 14 --retention-lifetimes 4 --seed 17 \
+  --report-out /tmp/brainworkshop-temporal-artifact-alias.json
+```
+
 ## Related-key temporal content retrieval (historical v1; current v2 rejected)
 
 `external_temporal_content_retrieval_growth.py` composes that address
