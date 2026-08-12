@@ -11534,3 +11534,62 @@ rollouts for world 1. The founding objective — prior tasks make novel
 tasks cheaper than scratch — now holds for every learned component of
 the system, with the searches retained as the verifiers of what the
 readers propose.
+
+## F219 — THE FOUNDING CURVE: EXPERIENCE MAKES THE NEXT WORLD ~24x
+## CHEAPER, AND THE CURVE'S SHAPE IS AS INFORMATIVE AS ITS DROP
+
+The founding objective is a sentence: given task A, novel task B should
+be faster to learn than from scratch. This measures it as a curve.
+Three seeds; each fixes a random 25-world sequence, solves the first k
+cold, keeps its OWN solutions as reader labels (no human labels
+anywhere), then meets six never-seen eval worlds and pays a metered
+acquisition cost. k in {0, 6, 12, 18}.
+
+| k | prog candidates (warm/cold) | goal rollouts (warm/cold) | return warm | return cold | random |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 0 | 2720 / 3584 | 4.0 / 173 | **-0.428** | +0.688 | -0.397 |
+| 6 | 1370 / 3584 | 3.2 / 173 | +0.545 | +0.688 | -0.397 |
+| 12 | 1313 / 3584 | 3.6 / 173 | +0.603 | +0.688 | -0.397 |
+| 18 | 1398 / 3584 | 3.3 / 173 | **+0.615** | +0.688 | -0.397 |
+
+    warm - cold return, paired per (seed, world), n=18:
+      k=0: -1.1163  t=-5.23     k=12: -0.0851  t=-2.15
+      k=6: -0.1432  t=-1.63     k=18: -0.0729  t=-1.07
+    shuffled-label readers at k=18: 2360-2814 candidates
+      (experienced readers: 1088-1614; cold: 3348-3762)
+
+Costing a rollout at its 320 interaction steps, a new world at k=18
+costs ~1,400 candidate checks + ~1,050 steps against the cold ~3,600 +
+~55,000: **about 24x cheaper, at a competence deficit of -0.073 that is
+not distinguishable from zero** (against a +1.09 margin over random).
+
+**Prediction 1 (cost falls, competence at parity): half right.** The
+fall is real but NOT monotonic — it happens entirely in the first six
+worlds and then flattens (per-seed: 3214->1310->1297->1491;
+2516->1174->1075->1088; 2430->1626->1568->1614). Six worlds of this
+family already cover its mechanics; the flat tail is the family's
+size showing, consistent with F206's counting argument. And parity is
+approached, not proven: the k=12 deficit is SIGNIFICANT (t=-2.15) and
+k=18's -0.073 is a null with error bars, not a demonstrated zero.
+
+**Prediction 2 (the k=0 floor is task-general skill): REFUTED in the
+half that matters.** Synthetic-only readers do cut program cost (2720
+vs 3584) and goal cost (4 vs 173) — but the acquired worlds PLAY at
+-0.428, below random. Cheap acquisition that cannot play is not
+amortisation, and the k=0 row is the proof that the curve's value
+lives in the competence column, not the cost column. What rescues
+competence between k=0 and k=6 is real experience.
+
+**Prediction 3 (shuffled labels forfeit the savings): CONFIRMED.**
+Exposure without content pays 66-77% of cold where experience pays
+~35%. The residue below cold is the repair machinery itself (a wrong
+proposal still passes the slot check occasionally); the gap between
+shuffled and experienced is what experience is worth.
+
+**What this claims and what it does not.** Within this world family,
+the founding objective now holds as a measured curve, end-to-end, with
+self-labelled experience, at near-parity competence, and the savings
+are attributable to experience content by control. It does NOT claim
+the curve continues past this family's coverage (it visibly saturates
+at k=6), does not include the plant's one-off training in the ledger,
+and inherits every scope limit of the 6-slot interface.
