@@ -9941,3 +9941,50 @@ routine.
 
 The control passed on every seed, so at no point was this read out of a
 regime that could not measure it.
+
+## F193 — longest-first ordering is a NULL, and it says why the whole
+## sub-prefix idea was wrong
+
+F191 measured sub-prefix composition losing (solved 15/36 -> 7/36) and
+diagnosed dilution. I proposed ordering as the fix and claimed it would
+be **"strictly better under both conditions rather than a trade between
+them"** — a strong claim, stated before the run.
+
+Six paired seeds:
+
+| configuration | cost | sd | solved |
+| --- | ---: | ---: | ---: |
+| whole-fragment (F190) | 0.702 | 0.128 | **15/36** |
+| sub-prefix (F191) | 0.723 | 0.080 | 7/36 |
+| longest-first (this) | 0.727 | 0.079 | 7/36 |
+
+**Ordering changed essentially nothing.** Per seed the two sub-prefix
+configurations agree to within 0.005 — 0.698/0.703, 0.629/0.631,
+0.779/0.781, 0.862/0.865, 0.728/0.731, 0.644/0.649 — and the solved
+counts are identical.
+
+**And that near-identity is the finding.** Ordering can only matter
+when a search TERMINATES EARLY, because a search that exhausts its
+enumeration ends with the same best candidate whatever order it visited
+them in. Only 7 of 36 families reach the fit target; the other 29
+exhaust. So ordering was irrelevant for 80% of the measurement by
+construction, and my "strictly better under both conditions" was wrong
+in a way I could have derived before spending six runs: **the dominant
+condition is the one where order does not exist.**
+
+The damage sub-prefixes do is that the enumeration gets BIGGER, so
+families that were solved inside budget no longer are. Reordering
+cannot undo a size increase.
+
+**Reverted to whole fragments.** F190's configuration is the best
+measured and stays the default. The sub-prefix idea has now lost twice,
+on two different mechanisms, and the honest summary is that composing
+over sub-programs is a good idea that this search cannot afford —
+not that it is wrong in principle.
+
+**Pattern worth naming, since it is the fifth time.** Before optimising
+an ordering, a threshold, or a filter, ask what fraction of cases the
+change can reach at all. F163's filter, F175's cap, F186's transfer
+instrument, F187's ceiling and now this were all measured in regimes
+where the varied quantity could not move the outcome for most cases.
+The check is cheap and I keep not running it first.

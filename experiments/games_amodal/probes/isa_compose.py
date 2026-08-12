@@ -682,13 +682,25 @@ if args.synthesize:
         # later family needs is the stored program's own prefix. A bank
         # that can only be replayed entire is barely a bank; the
         # composable unit is the sub-program.
+        # WHOLE stored fragments only. Sub-prefix expansion was measured
+        # twice and lost twice: directly (F191, solved 15/36 -> 7/36) and
+        # after reordering it longest-first (F193, 7/36 and cost within
+        # 0.005 of unordered on every seed).
+        #
+        # F193 is why the ordering idea was wrong rather than merely
+        # unlucky. Ordering can only matter when a search TERMINATES
+        # EARLY, and only 7 of 36 families reach the fit target — the
+        # other 29 exhaust their enumeration, where order changes
+        # nothing at all. I claimed longest-first was "strictly better
+        # under both conditions". It is irrelevant under the dominant
+        # one, and the damage sub-prefixes do is that the enumeration
+        # gets bigger, which reordering cannot undo.
         starts, seen_start = [], set()
         for stored in (prefixes or []):
-            for cut in range(1, len(stored) + 1):
-                head = tuple(stored[:cut])
-                if len(head) < args.program_len and head not in seen_start:
-                    seen_start.add(head)
-                    starts.append(head)
+            head = tuple(stored)
+            if len(head) < args.program_len and head not in seen_start:
+                seen_start.add(head)
+                starts.append(head)
         # LONGEST FIRST. F191 measured the mechanism working and the
         # aggregate losing: the seeds that transferred worst improved
         # (r = -0.800 against how badly they had done) while the two
@@ -704,7 +716,6 @@ if args.synthesize:
         # does not simply falls through to the shorter ones instead of
         # paying for them up front. Strictly better under BOTH
         # conditions rather than a trade between them.
-        starts.sort(key=len, reverse=True)
         for head in starts:
             for one in pool:
                 tail = list(head) + [one]
