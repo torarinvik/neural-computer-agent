@@ -1,0 +1,116 @@
+{
+  "schema": "neural-computer.brainworkshop-external-temporal-online-binding-capacity.v1",
+  "claim_boundary": "An external episodic binding router discovers a bounded novel binding, rejects unsafe capacity reuse, and verifier-gates replacement while retaining a sibling without replay; not unrestricted growth or general continual learning.",
+  "seed": 18,
+  "architecture": {
+    "router": "episodic_binding_router_v3",
+    "learned_route": "episodic_context_encoder_v1",
+    "novelty_path": "immutable_generic_episode_signature_v1",
+    "replacement": "copy_on_write_retention_verified_v1",
+    "novelty": "immutable_signature_threshold_separate_from_route_score_v1",
+    "training_signal": "attempted_slot_scalar_verifier_utility_v1",
+    "forbidden_features": "task_labels_correct_unattempted_slot_english_trace_controller_state_v1",
+    "controller": "frozen_canonical_amodal_controller",
+    "event_encoder": "frozen_learned_event_encoder"
+  },
+  "training": {
+    "optimizer_updates": 1000,
+    "unique_scalar_utilities": 1000,
+    "first_window_utility": 0.96,
+    "last_window_utility": 0.93
+  },
+  "initial": {
+    "family_a": {
+      "accuracy": 1.0,
+      "known_rate": 1.0
+    },
+    "family_b": {
+      "accuracy": 1.0,
+      "known_rate": 1.0
+    }
+  },
+  "initial_permuted": 1.0,
+  "refreshed": [
+    true,
+    true
+  ],
+  "consolidated": {
+    "family_a": {
+      "accuracy": 1.0,
+      "known_rate": 1.0
+    },
+    "family_b": {
+      "accuracy": 1.0,
+      "known_rate": 1.0
+    }
+  },
+  "consolidated_permuted": 1.0,
+  "novel_c_before_replacement": {
+    "accuracy": 0.0,
+    "known_rate": 0.0
+  },
+  "capacity_rejected": true,
+  "unsafe_rejected": true,
+  "unsafe_unchanged": true,
+  "after_replacement": {
+    "retained_a": {
+      "accuracy": 1.0,
+      "known_rate": 1.0
+    },
+    "new_c": {
+      "accuracy": 1.0,
+      "known_rate": 1.0
+    },
+    "retired_b": {
+      "accuracy": 1.0,
+      "known_rate": 0.0
+    }
+  },
+  "after_permuted": 1.0,
+  "reloaded": {
+    "retained_a": {
+      "accuracy": 1.0,
+      "known_rate": 1.0
+    },
+    "new_c": {
+      "accuracy": 1.0,
+      "known_rate": 1.0
+    }
+  },
+  "shuffled_control": 0.5,
+  "gates": {
+    "initial_route_mastery": true,
+    "initial_permutation_mastery": true,
+    "both_key_consolidations_accepted": true,
+    "consolidated_known_mastery": true,
+    "novel_c_has_no_known_route": true,
+    "capacity_growth_is_verifier_gated": true,
+    "unsafe_replacement_rejected_without_mutation": true,
+    "new_c_acquired": true,
+    "retained_a_survives_replacement": true,
+    "retired_b_is_not_known": true,
+    "replacement_permutation_mastery": true,
+    "exact_reload_retention": true,
+    "reward_shuffled_control_rejects_mastery": true,
+    "all_live_slots_frozen": true,
+    "encoder_frozen": true,
+    "controller_frozen": true,
+    "event_encoder_frozen": true,
+    "zero_replayed_examples": true
+  },
+  "accounting": {
+    "unique_verifier_bits": 6608,
+    "unique_logical_lifetimes": 6608,
+    "active_router_verifier_bits": 1000,
+    "retention_probe_verifier_bits": 512,
+    "active_diagnostic_verifier_bits": 3584,
+    "shuffled_control_verifier_bits": 1512,
+    "router_optimizer_updates": 1000,
+    "replacement_probe_lifetimes": 512,
+    "replayed_examples": 512,
+    "replayed_training_examples": 0,
+    "controller_updates": 0,
+    "latency_seconds": 2.7152396249584854
+  },
+  "status": "promoted_online_binding_capacity"
+}

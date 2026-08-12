@@ -75,8 +75,9 @@ def test_episodic_binding_router_keeps_opaque_slots_permutation_equivariant() ->
 
     assert torch.equal(route.selected_slot, torch.tensor([0, 1]))
     assert torch.equal(permuted.selected_slot, torch.tensor([1, 0]))
+    assert torch.equal(route.known, torch.tensor([True, True]))
     assert router.configuration()["schema"] == (
-        "neural-computer.episodic-binding-router.v1"
+        "neural-computer.episodic-binding-router.v3"
     )
 
 
@@ -106,6 +107,98 @@ def test_episodic_binding_router_adapts_from_attempted_scalar_utility() -> None:
 
     assert torch.isfinite(torch.tensor(loss))
     assert any(parameter.grad is not None for parameter in router.encoder.parameters())
+
+
+def test_episodic_binding_router_detects_unknown_and_replaces_copy_on_write() -> None:
+    router = EpisodicBindingRouter(
+        event_width=4,
+        action_width=2,
+        hidden=8,
+        context_width=4,
+        max_slots=2,
+        route_threshold=0.75,
+    )
+    key_a = torch.tensor([1.0, 0.0, 0.0, 0.0])
+    key_b = torch.tensor([0.0, 1.0, 0.0, 0.0])
+    key_c = torch.tensor([0.0, 0.0, 1.0, 0.0])
+    key_d = torch.tensor([0.0, 0.0, 0.0, 1.0])
+    router.add_slot(key_a)
+    router.add_slot(key_b)
+
+    unknown = router.route(key_c.unsqueeze(0))
+    assert torch.equal(unknown.known, torch.tensor([False]))
+    with pytest.raises(RuntimeError, match="capacity"):
+        router.add_slot(key_c)
+
+    before = router.slot_keys[1].detach().clone()
+    candidate = router.slot_replacement_candidate(1, key_c)
+    assert torch.equal(router.slot_keys[1], before)
+    assert not router.replace_slot_from_candidate(
+        candidate,
+        1,
+        retention_probe=lambda _: False,
+    )
+    assert torch.equal(router.slot_keys[1], before)
+    assert router.replace_slot_from_candidate(
+        candidate,
+        1,
+        retention_probe=lambda proposal: bool(
+            proposal.route(key_a.unsqueeze(0)).known.item()
+            and proposal.route(key_c.unsqueeze(0)).known.item()
+        ),
+    )
+    assert torch.equal(router.slot_keys[0], key_a)
+    assert torch.equal(router.slot_keys[1], key_c)
+
+    tampered = router.slot_replacement_candidate(1, key_d)
+    with torch.no_grad():
+        next(tampered.encoder.parameters()).add_(1.0)
+    with pytest.raises(ValueError, match="encoder"):
+        router.replace_slot_from_candidate(tampered, 1, retention_probe=lambda _: True)
+
+
+def test_episodic_binding_signature_preserves_novelty_and_permutation() -> None:
+    router = EpisodicBindingRouter(
+        event_width=2,
+        action_width=1,
+        hidden=8,
+        context_width=4,
+        max_slots=2,
+        route_threshold=0.75,
+        signature_weight=1.0,
+    )
+    events = torch.tensor(
+        [
+            [[1.0, 0.0], [1.0, 0.0]],
+            [[0.0, 1.0], [0.0, 1.0]],
+            [[-1.0, 0.0], [-1.0, 0.0]],
+        ]
+    )
+    actions = torch.zeros(3, 2, 1)
+    outcomes = torch.zeros(3, 2)
+    encoded = router.encode_binding(events, actions, outcomes)
+    assert encoded.signature.shape == (3, 2 * 2 + 1 + 2)
+    router.add_slot(encoded.context[0], encoded.signature[0])
+    router.add_slot(encoded.context[1], encoded.signature[1])
+
+    known = router.route(
+        encoded.context[:2],
+        signature=encoded.signature[:2],
+    )
+    novel = router.route(
+        encoded.context[2:3],
+        signature=encoded.signature[2:3],
+    )
+    permuted = router.route(
+        encoded.context[:2],
+        signature=encoded.signature[:2],
+        slot_order=torch.tensor([1, 0]),
+    )
+
+    assert torch.equal(known.selected_slot, torch.tensor([0, 1]))
+    assert torch.equal(known.known, torch.tensor([True, True]))
+    assert torch.equal(novel.known, torch.tensor([False]))
+    assert torch.equal(permuted.selected_slot, torch.tensor([1, 0]))
 
 
 def test_episodic_context_contrastive_loss_has_gradient() -> None:

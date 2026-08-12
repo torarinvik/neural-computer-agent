@@ -1841,3 +1841,11 @@ replaceable external state. The two-seed learned-binding audit reached perfect
 forward and candidate-order-permuted routing, retained behavior after exact
 reload, and stayed at chance under reward shuffling. Evidence is archived at
 `session_records/brainworkshop_external_temporal_learned_binding_routing_promoted_2026-08-12/`.
+
+The v3 binding router adds an immutable generic episode signature alongside the
+learned route embedding. Signature-keyed novelty evidence is kept separate
+from the trainable route score, and key consolidation plus replacement are
+copy-on-write and retention-probed. This allows a frozen router to recognize
+and safely admit a novel external binding without silently assigning it a
+retired slot. The online capacity audit is archived at
+`session_records/brainworkshop_external_temporal_online_binding_capacity_promoted_2026-08-12/`.

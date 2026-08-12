@@ -10737,3 +10737,36 @@ pressure.
 
 Evidence is archived at
 `session_records/brainworkshop_external_temporal_learned_binding_routing_promoted_2026-08-12/`.
+
+## Online episodic binding capacity and safe replacement (2026-08-12)
+
+The first learned binding audit exposed a real limitation: argmax routing can
+remain correct while its cosine score is too poorly calibrated to distinguish
+an unseen binding, and a frozen encoder can map a novel binding onto a retired
+one. `EpisodicBindingRouter` v3 addresses this with two explicitly separated
+paths. A scalar-trained episodic route embedding selects among learned opaque
+keys; an immutable generic episode signature supplies novelty evidence and is
+stored alongside each key. The signature is built only from learned event
+content, opaque actions, scalar outcomes, and presence, not semantic labels or
+protocol fields.
+
+`slot_replacement_candidate()` and `replace_slot_from_candidate()` now support
+key consolidation and bounded capacity reuse as copy-on-write transactions.
+The external verifier must retain every protected sibling and master the new
+binding before a replacement commits; rejected candidates leave the live bank
+byte-stable. The controller, learned event encoder, and promoted route
+encoder remain frozen during online growth.
+
+The two-seed promoted audit used 1,000 fresh route updates per seed. Both seeds
+reached `1.0000` initial and consolidated known rates, `0.0000` known rate for
+the novel binding before admission, `1.0000` retained-sibling and new-binding
+accuracy after replacement, `0.0000` known rate for the retired binding, and
+`1.0000` permutation/reload accuracy. The learned-route reward-shuffled null
+was `0.5000`. Accounting records `6,608` unique verifier bits per seed, `512`
+explicitly replayed reload diagnostics, and zero replayed training examples.
+
+This promotes bounded online binding discovery and retention-safe capacity
+reuse, not unrestricted growth, autonomous ontology formation, arbitrary new
+computation, or general continual learning. Evidence and checksums are
+archived at
+`session_records/brainworkshop_external_temporal_online_binding_capacity_promoted_2026-08-12/`.

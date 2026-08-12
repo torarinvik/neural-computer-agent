@@ -1263,3 +1263,19 @@ This promotes bounded learned binding discovery, not autonomous ontology
 formation, unrestricted slot growth, or general continual learning. Evidence
 is archived at
 `session_records/brainworkshop_external_temporal_learned_binding_routing_promoted_2026-08-12/`.
+
+## Online episodic binding capacity (2026-08-12)
+
+`external_temporal_online_binding_capacity.py` pressure-tests the next
+lifecycle boundary. The router learns two bindings, consolidates their keys
+through held-out copy-on-write probes, recognizes a third binding as novel,
+rejects an unsafe replacement, and verifier-gates replacement of one slot
+while retaining its sibling. The learned route embedding is paired with an
+immutable generic episode signature so novelty detection does not depend on
+the learned encoder having already seen the future binding.
+
+Seeds 17 and 18 passed all gates: initial and consolidated known rates,
+retained-sibling and new-binding accuracy, retired-binding unknown rate,
+permutation, reload, frozen-core, and shuffled-route controls were all clean.
+Evidence is archived at
+`session_records/brainworkshop_external_temporal_online_binding_capacity_promoted_2026-08-12/`.

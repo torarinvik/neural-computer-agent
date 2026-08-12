@@ -11,6 +11,7 @@ is not a controller branch or a symbolic task solver.
 
 from __future__ import annotations
 
+import copy
 from collections.abc import Mapping
 from dataclasses import dataclass
 
@@ -38,6 +39,15 @@ class EpisodicBindingRoute:
     context: torch.Tensor
     scores: torch.Tensor
     selected_slot: torch.Tensor
+    known: torch.Tensor
+
+
+@dataclass(frozen=True)
+class EpisodicBindingContext:
+    """Learned route context plus an immutable generic episode signature."""
+
+    context: torch.Tensor
+    signature: torch.Tensor
 
 
 @dataclass(frozen=True)
@@ -333,7 +343,7 @@ class EpisodicBindingRouter(nn.Module):
     external memory.
     """
 
-    schema = "neural-computer.episodic-binding-router.v1"
+    schema = "neural-computer.episodic-binding-router.v3"
 
     def __init__(
         self,
@@ -344,6 +354,8 @@ class EpisodicBindingRouter(nn.Module):
         context_width: int = 32,
         max_slots: int | None = None,
         temperature: float = 0.2,
+        route_threshold: float = 0.75,
+        signature_weight: float = 0.5,
     ) -> None:
         super().__init__()
         if max_slots is not None and (
@@ -354,6 +366,14 @@ class EpisodicBindingRouter(nn.Module):
             raise ValueError("episodic binding router max slots is invalid")
         if not torch.isfinite(torch.tensor(temperature)) or temperature <= 0.0:
             raise ValueError("episodic binding router temperature is invalid")
+        if not torch.isfinite(torch.tensor(route_threshold)) or not (
+            -1.0 <= route_threshold <= 1.0
+        ):
+            raise ValueError("episodic binding router route threshold is invalid")
+        if not torch.isfinite(torch.tensor(signature_weight)) or not (
+            0.0 <= signature_weight <= 1.0
+        ):
+            raise ValueError("episodic binding router signature weight is invalid")
         self.encoder = EpisodicContextEncoder(
             event_width,
             action_width,
@@ -366,7 +386,15 @@ class EpisodicBindingRouter(nn.Module):
         self.context_width = int(context_width)
         self.max_slots = max_slots
         self.temperature = float(temperature)
+        self.route_threshold = float(route_threshold)
+        self.signature_weight = float(signature_weight)
+        self.signature_width = 2 * self.event_width + self.action_width + 2
         self.slot_keys = nn.ParameterList()
+        self.slot_signatures = nn.ParameterList()
+        self.register_buffer("slot_frozen", torch.empty(0, dtype=torch.bool))
+        self.register_buffer(
+            "slot_signature_active", torch.empty(0, dtype=torch.bool)
+        )
 
     @property
     def slot_count(self) -> int:
@@ -382,7 +410,12 @@ class EpisodicBindingRouter(nn.Module):
             "slot_count": self.slot_count,
             "max_slots": self.max_slots if self.max_slots is not None else 0,
             "temperature": self.temperature,
-            "state": "external_encoder_plus_opaque_fixed_slot_keys_v1",
+            "route_threshold": self.route_threshold,
+            "signature_width": self.signature_width,
+            "signature_weight": self.signature_weight,
+            "frozen_slots": int(self.slot_frozen.sum().item()),
+            "active_signatures": int(self.slot_signature_active.sum().item()),
+            "state": "external_encoder_plus_immutable_episode_signature_v3",
             "updates": "attempted_slot_scalar_utility_without_replay_v1",
         }
 
@@ -397,8 +430,88 @@ class EpisodicBindingRouter(nn.Module):
 
         return self.encoder(events, actions, outcomes, present).context
 
+    def binding_signature(
+        self,
+        events: torch.Tensor,
+        actions: torch.Tensor,
+        outcomes: torch.Tensor,
+        present: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        """Return a generic, non-semantic signature for binding discovery.
+
+        The signature preserves first-observed and aggregate learned event
+        content plus aggregate opaque action/outcome context.  It is not
+        trainable route state and carries no task or protocol field.  Keeping
+        this path separate from the learned route embedding gives novelty
+        detection a stable reference when the learned encoder has only seen a
+        subset of future bindings.
+        """
+
+        present = _validate_episode_inputs(events, actions, outcomes, present)
+        present_float = present.to(dtype=events.dtype)
+        count = present_float.sum(dim=1, keepdim=True).clamp_min(1.0)
+        first_index = present.to(torch.long).argmax(dim=1)
+        first_event = events[
+            torch.arange(events.shape[0], device=events.device), first_index
+        ]
+        mean_event = (events * present_float.unsqueeze(-1)).sum(dim=1) / count
+        mean_action = (actions * present_float.unsqueeze(-1)).sum(dim=1) / count
+        mean_outcome = (outcomes * present_float).sum(dim=1) / count.squeeze(-1)
+        signature = torch.cat(
+            (
+                first_event,
+                mean_event,
+                mean_action,
+                mean_outcome.unsqueeze(-1),
+                present_float.mean(dim=1, keepdim=True),
+            ),
+            dim=-1,
+        )
+        return F.normalize(signature, dim=-1)
+
+    def encode_binding(
+        self,
+        events: torch.Tensor,
+        actions: torch.Tensor,
+        outcomes: torch.Tensor,
+        present: torch.Tensor | None = None,
+    ) -> EpisodicBindingContext:
+        """Encode one episode for learned routing and novelty discovery."""
+
+        return EpisodicBindingContext(
+            context=self.encode(events, actions, outcomes, present),
+            signature=self.binding_signature(
+                events, actions, outcomes, present
+            ),
+        )
+
+    def _validate_signature(self, signature: torch.Tensor) -> None:
+        if signature.ndim != 2 or signature.shape[1] != self.signature_width:
+            raise ValueError(
+                "episodic binding signature has the wrong shape"
+            )
+        if not bool(torch.isfinite(signature).all()):
+            raise ValueError("episodic binding signature must be finite")
+
+    def _validate_signature_key(self, signature_key: torch.Tensor) -> None:
+        if (
+            signature_key.ndim != 1
+            or signature_key.shape[0] != self.signature_width
+        ):
+            raise ValueError(
+                "episodic binding signature key has the wrong shape"
+            )
+        if not bool(torch.isfinite(signature_key).all()):
+            raise ValueError("episodic binding signature key must be finite")
+        if not bool(signature_key.square().sum().gt(1e-12)):
+            raise ValueError("episodic binding signature key cannot be zero")
+
     @torch.no_grad()
-    def add_slot(self, context_key: torch.Tensor) -> int:
+    def add_slot(
+        self,
+        context_key: torch.Tensor,
+        signature_key: torch.Tensor | None = None,
+    ) -> int:
         """Provision one opaque slot from an observed context snapshot."""
 
         if self.max_slots is not None and self.slot_count >= self.max_slots:
@@ -414,13 +527,141 @@ class EpisodicBindingRouter(nn.Module):
         reference = next(self.encoder.parameters())
         key = F.normalize(context_key.detach(), dim=0).to(reference)
         self.slot_keys.append(nn.Parameter(key, requires_grad=False))
+        if signature_key is None:
+            signature = torch.zeros(
+                self.signature_width,
+                device=reference.device,
+                dtype=reference.dtype,
+            )
+            signature_active = False
+        else:
+            self._validate_signature_key(signature_key)
+            signature = F.normalize(signature_key.detach(), dim=0).to(reference)
+            signature_active = True
+        self.slot_signatures.append(nn.Parameter(signature, requires_grad=False))
+        self.slot_frozen = torch.cat(
+            (
+                self.slot_frozen,
+                torch.zeros(1, dtype=torch.bool, device=key.device),
+            )
+        )
+        self.slot_signature_active = torch.cat(
+            (
+                self.slot_signature_active,
+                torch.tensor(
+                    [signature_active],
+                    dtype=torch.bool,
+                    device=key.device,
+                ),
+            )
+        )
         return self.slot_count - 1
+
+    @torch.no_grad()
+    def freeze_slot(self, slot_index: int) -> None:
+        """Mark one externally verified binding as protected from replacement."""
+
+        if not 0 <= slot_index < self.slot_count:
+            raise IndexError("episodic binding router slot is out of range")
+        self.slot_frozen[slot_index] = True
+
+    @torch.no_grad()
+    def slot_replacement_candidate(
+        self,
+        slot_index: int,
+        context_key: torch.Tensor,
+        signature_key: torch.Tensor | None = None,
+    ) -> "EpisodicBindingRouter":
+        """Build a copy-on-write candidate for one physical binding slot."""
+
+        if not 0 <= slot_index < self.slot_count:
+            raise IndexError("episodic binding router slot is out of range")
+        if context_key.ndim != 1 or context_key.shape[0] != self.context_width:
+            raise ValueError("episodic binding replacement key has the wrong shape")
+        if not bool(torch.isfinite(context_key).all()):
+            raise ValueError("episodic binding replacement key must be finite")
+        if not bool(context_key.square().sum().gt(1e-12)):
+            raise ValueError("episodic binding replacement key cannot be zero")
+        candidate = copy.deepcopy(self)
+        reference = next(candidate.encoder.parameters())
+        key = F.normalize(context_key.detach(), dim=0).to(reference)
+        candidate.slot_keys[slot_index] = nn.Parameter(key, requires_grad=False)
+        if signature_key is not None:
+            candidate._validate_signature_key(signature_key)
+            signature = F.normalize(signature_key.detach(), dim=0).to(reference)
+            candidate.slot_signatures[slot_index] = nn.Parameter(
+                signature,
+                requires_grad=False,
+            )
+            candidate.slot_signature_active[slot_index] = True
+        candidate.slot_frozen[slot_index] = False
+        return candidate
+
+    @torch.no_grad()
+    def replace_slot_from_candidate(
+        self,
+        candidate: "EpisodicBindingRouter",
+        slot_index: int,
+        *,
+        retention_probe=None,
+    ) -> bool:
+        """Commit a replacement only after an independent retention probe."""
+
+        if not isinstance(candidate, EpisodicBindingRouter):
+            raise TypeError("episodic binding replacement candidate is invalid")
+        if not 0 <= slot_index < self.slot_count:
+            raise IndexError("episodic binding router slot is out of range")
+        if candidate.slot_count != self.slot_count:
+            raise ValueError("episodic binding candidate slot count changed")
+        if any(
+            not torch.equal(value, candidate.encoder.state_dict()[name])
+            for name, value in self.encoder.state_dict().items()
+        ):
+            raise ValueError("episodic binding candidate changed the encoder")
+        expected = self.configuration().copy()
+        observed = candidate.configuration().copy()
+        expected.pop("frozen_slots", None)
+        observed.pop("frozen_slots", None)
+        if expected != observed:
+            raise ValueError("episodic binding candidate configuration changed")
+        for index in range(self.slot_count):
+            if index == slot_index:
+                continue
+            if not torch.equal(self.slot_keys[index], candidate.slot_keys[index]):
+                raise ValueError("episodic binding candidate changed a sibling key")
+            if bool(self.slot_frozen[index]) != bool(candidate.slot_frozen[index]):
+                raise ValueError("episodic binding candidate changed a sibling state")
+            if not torch.equal(
+                self.slot_signatures[index], candidate.slot_signatures[index]
+            ):
+                raise ValueError(
+                    "episodic binding candidate changed a sibling signature"
+                )
+            if bool(self.slot_signature_active[index]) != bool(
+                candidate.slot_signature_active[index]
+            ):
+                raise ValueError(
+                    "episodic binding candidate changed a sibling signature state"
+                )
+        accepted = retention_probe is None or bool(retention_probe(candidate))
+        if not accepted:
+            return False
+        self.slot_keys[slot_index].data.copy_(candidate.slot_keys[slot_index].data)
+        self.slot_signatures[slot_index].data.copy_(
+            candidate.slot_signatures[slot_index].data
+        )
+        self.slot_frozen[slot_index] = candidate.slot_frozen[slot_index]
+        self.slot_signature_active[slot_index] = candidate.slot_signature_active[
+            slot_index
+        ]
+        return True
 
     def route_scores(
         self,
         context: torch.Tensor,
         *,
         slot_order: torch.Tensor | None = None,
+        signature: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """Return cosine scores, optionally under a physical slot permutation."""
 
@@ -431,11 +672,14 @@ class EpisodicBindingRouter(nn.Module):
         if self.slot_count < 1:
             raise RuntimeError("episodic binding router has no slots")
         keys = torch.stack(tuple(self.slot_keys), dim=0).to(context)
+        learned_scores = F.normalize(context, dim=-1) @ keys.transpose(0, 1)
+        order = None
         if slot_order is not None:
             if (
                 slot_order.ndim != 1
                 or slot_order.shape[0] != self.slot_count
-                or slot_order.dtype not in (torch.int8, torch.int16, torch.int32, torch.int64)
+                or slot_order.dtype
+                not in (torch.int8, torch.int16, torch.int32, torch.int64)
             ):
                 raise ValueError("episodic binding router slot order is invalid")
             if sorted(slot_order.detach().cpu().tolist()) != list(
@@ -444,20 +688,65 @@ class EpisodicBindingRouter(nn.Module):
                 raise ValueError(
                     "episodic binding router slot order is not a permutation"
                 )
-            keys = keys[slot_order.to(device=keys.device)]
-        return F.normalize(context, dim=-1) @ keys.transpose(0, 1)
+            order = slot_order.to(device=keys.device)
+        if signature is None or not bool(self.slot_signature_active.any()):
+            return learned_scores if order is None else learned_scores[:, order]
+        self._validate_signature(signature)
+        if signature.shape[0] != context.shape[0]:
+            raise ValueError("episodic binding signature batch does not match")
+        signatures = torch.stack(tuple(self.slot_signatures), dim=0).to(context)
+        signature_scores = F.normalize(signature, dim=-1) @ signatures.transpose(
+            0, 1
+        )
+        active = self.slot_signature_active.to(context.device)
+        combined = torch.where(
+            active.unsqueeze(0),
+            (1.0 - self.signature_weight) * learned_scores
+            + self.signature_weight * signature_scores,
+            learned_scores,
+        )
+        return combined if order is None else combined[:, order]
 
     def route(
         self,
         context: torch.Tensor,
         *,
         slot_order: torch.Tensor | None = None,
+        route_threshold: float | None = None,
+        signature: torch.Tensor | None = None,
     ) -> EpisodicBindingRoute:
-        scores = self.route_scores(context, slot_order=slot_order)
+        scores = self.route_scores(
+            context,
+            slot_order=slot_order,
+            signature=signature,
+        )
+        selected_threshold = (
+            self.route_threshold
+            if route_threshold is None
+            else float(route_threshold)
+        )
+        if not torch.isfinite(torch.tensor(selected_threshold)) or not (
+            -1.0 <= selected_threshold <= 1.0
+        ):
+            raise ValueError("episodic binding route threshold is invalid")
+        if signature is not None and bool(self.slot_signature_active.any()):
+            self._validate_signature(signature)
+            signatures = torch.stack(tuple(self.slot_signatures), dim=0).to(
+                context
+            )
+            signature_scores = F.normalize(signature, dim=-1) @ signatures.T
+            active = self.slot_signature_active.to(context.device)
+            known_score = signature_scores.masked_fill(
+                ~active.unsqueeze(0),
+                torch.finfo(signature_scores.dtype).min,
+            ).max(dim=-1).values
+        else:
+            known_score = scores.max(dim=-1).values
         return EpisodicBindingRoute(
             context=context,
             scores=scores,
             selected_slot=scores.argmax(dim=-1),
+            known=known_score >= selected_threshold,
         )
 
     def trainable_parameters(self):
@@ -482,6 +771,7 @@ class EpisodicBindingRouter(nn.Module):
         selected_slot: int,
         verifier_utility: float,
         *,
+        signature: torch.Tensor | None = None,
         optimizer: torch.optim.Optimizer | None = None,
         baseline: float = 0.5,
         temperature: float | None = None,
@@ -510,7 +800,7 @@ class EpisodicBindingRouter(nn.Module):
         parameters = tuple(self.trainable_parameters())
         if not parameters:
             raise RuntimeError("episodic binding router encoder is frozen")
-        scores = self.route_scores(context)
+        scores = self.route_scores(context, signature=signature)
         loss = -(verifier_utility - baseline) * torch.log_softmax(
             scores / selected_temperature, dim=-1
         )[0, selected_slot]
