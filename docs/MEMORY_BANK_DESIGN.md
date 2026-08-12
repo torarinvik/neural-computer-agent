@@ -10235,3 +10235,45 @@ the one that failed fails for a reason the account itself explains once
 stated properly — which is the difference between a theory that is
 adjusting to data and one that is being sharpened by it. Recorded so
 the distinction stays checkable rather than asserted.
+
+## F199 — a reader trained on the search's own labels is functionally
+## correct 70% of the time, against a control at 3.6%
+
+Three seeds, 15,000 updates, on synthetic transitions.
+
+| | op | arg_i | arg_j | arg_m | exact | **functional** |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| trained | 0.9408 | 0.8516 | 0.3262 | 0.5996 | 0.1614 | **0.7012** |
+| shuffled control | 0.1094 | 0.1634 | 0.1666 | 0.1530 | 0.0007 | **0.0358** |
+| chance | 0.1111 | 0.1667 | 0.1667 | 0.1429 | — | — |
+
+Per seed: 0.6992, 0.6895, 0.7148 — tight. Shuffled: 0.1055, 0.0, 0.002.
+
+**The control is what makes this readable.** A reader that had merely
+learned which programs are COMMON would score above chance on every
+field while reading nothing from the transitions. Shuffled sits at
+chance on all four fields and at 0.0358 functionally, so the trained
+reader is reading the transitions and not the label distribution.
+
+**Exact 0.1614 against functional 0.7012, and the gap is the finding
+rather than a caveat.** The reader usually names a DIFFERENT instruction
+that does the SAME THING — SWAP where COPY suffices, any op on a slot
+the transitions never move, any modulus on a slot whose values never
+reach the wrap. Field accuracy would have understated this fourfold,
+which is why `functionally_correct` was made the headline BEFORE the
+run rather than chosen after seeing which number was larger.
+
+`arg_j` is the weakest field at 0.3262, and that is correct behaviour:
+`j` is read only by the conditional, copy and swap ops, so for an INC
+or DEC the transitions contain no information about it and there is
+nothing to learn. A reader scoring high on `arg_j` would be suspicious.
+
+**What this does NOT yet show, and it is the thing that matters.**
+Training draws a random instruction applied to RANDOM states. Real
+families are structured — a three-valued family only ever shows 0-2 —
+so this measures whether the architecture CAN read, not whether it
+reads what the system needs. A first check at 400 updates put synthetic
+at 0.166 and real families at 0.1172 against a real-family floor of
+0.1602: below its own floor. The 15,000-update version of that
+comparison is running, and until it lands this is a result about
+synthetic transitions.
