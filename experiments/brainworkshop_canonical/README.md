@@ -1826,3 +1826,18 @@ It does not establish unrestricted learned temporal dependency, learned
 compression, arbitrary program induction, or general continual learning.
 Evidence and accounting are archived at
 `session_records/brainworkshop_external_history_bounded_open_growth_promoted_2026-08-12/`.
+
+## External-history n-back-4 depth probe (2026-08-12)
+
+With `--history-query-count 5`, a fresh external file receives four preceding
+learned events plus the current event while the complete lifetime remains in
+append-only storage. On seeds `17` and `18`, direct n-back-4 acquisition
+reached `1.0000` on all four fresh probe lifetimes after 192 attempted-outcome
+updates. This confirms that the corrected external-history boundary supports a
+deeper temporal dependency than n-back-2.
+
+This is a bounded direct-depth promotion only. It does not establish
+multi-file n-back-4 retention, unrestricted learned query depth, learned
+compression, arbitrary program induction, or general continual learning.
+Evidence and accounting are archived at
+`session_records/brainworkshop_external_history_nback4_depth_probe_promoted_2026-08-12/`.

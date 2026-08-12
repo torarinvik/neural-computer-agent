@@ -11862,3 +11862,9 @@ null-control, frozen-core, file-immutability, and zero-replay gate passing.
 This promotes a scalable memory/query boundary, not unrestricted learned
 temporal dependency or general continual learning. Evidence is archived at
 `session_records/brainworkshop_external_history_bounded_open_growth_promoted_2026-08-12/`.
+
+The same boundary also acquired direct n-back-4 depth on seeds `17` and `18`
+when the active request was widened to four preceding records plus the
+current event. Every fresh probe was `1.0000`. This validates deeper bounded
+temporal dependence through the external interface, but not multi-file
+n-back-4 retention or unrestricted learned query depth.
