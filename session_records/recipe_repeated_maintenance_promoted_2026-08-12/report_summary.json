@@ -1,0 +1,20 @@
+{
+  "schema": "neural-computer.repeated-recipe-maintenance-summary.v1",
+  "status": "promoted_bounded_repeated_external_maintenance",
+  "seeds": [73001, 73002, 73003, 73004],
+  "stable_update": [128, 256, 128, 128],
+  "stable_verifier_bits": [380928, 761856, 380928, 380928],
+  "forward_replacements": [8, 8, 8, 8],
+  "reversed_replacements": [8, 8, 8, 8],
+  "fresh_control_replacements": [2, 2, 2, 2],
+  "shuffled_control_replacements": [2, 2, 2, 2],
+  "final_file_count": [28, 28, 28, 28],
+  "unique_verifier_bits_per_seed": [2585600, 2585600, 2585600, 2585600],
+  "total_unique_verifier_bits": 10342400,
+  "optimizer_updates_per_seed": [1024, 1024, 1024, 1024],
+  "total_optimizer_updates": 4096,
+  "unique_logical_lifetimes_per_seed": [1056, 1056, 1056, 1056],
+  "replayed_examples": 0,
+  "controller_optimizer_updates": 0,
+  "claim_boundary": "Promoted bounded repeated verifier-gated recipe replacement with counterfactual eviction credit and protected-source retention; unrestricted growth, semantic compression, and general continual learning remain unproven."
+}

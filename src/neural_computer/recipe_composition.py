@@ -713,6 +713,11 @@ class ExternalRecipeCompositionMemory:
     def digest(self) -> str:
         return _payload_digest(self._content_payload())
 
+    def copy_on_write(self) -> ExternalRecipeCompositionMemory:
+        """Return an independently checksummed transaction working copy."""
+
+        return type(self).from_payload(self.payload())
+
     def payload(self) -> dict[str, object]:
         return {**self._content_payload(), "sha256": self.digest()}
 

@@ -1,0 +1,555 @@
+{
+  "schema": "neural-computer.repeated-recipe-maintenance.v1",
+  "claim_boundary": "bounded repeated verifier-gated recipe replacement with exact counterfactual maintenance credit and protected-source retention; not unrestricted memory growth or general continual learning",
+  "seed": 73003,
+  "configuration": {
+    "root_depths": [
+      2,
+      3,
+      4,
+      5
+    ],
+    "incoming_depths": [
+      2,
+      3,
+      4,
+      5,
+      2,
+      3,
+      4,
+      5
+    ],
+    "stages": 8,
+    "active_root_capacity": 4,
+    "credit_mode": "counterfactual",
+    "utility_objective": "evict",
+    "controller": "frozen_or_not_present",
+    "replay": "zero"
+  },
+  "training": {
+    "optimizer_updates": 512,
+    "unique_verifier_bits": 1523712,
+    "first_window_utility": 0.2625604134518653,
+    "last_window_utility": 0.9963358705863357,
+    "mean_utility": 0.828702704369789,
+    "probe_history": [
+      {
+        "update": 64,
+        "accuracy": 0.5,
+        "verifier_bits": 190464
+      },
+      {
+        "update": 128,
+        "accuracy": 1.0,
+        "verifier_bits": 380928
+      },
+      {
+        "update": 192,
+        "accuracy": 1.0,
+        "verifier_bits": 571392
+      },
+      {
+        "update": 256,
+        "accuracy": 1.0,
+        "verifier_bits": 761856
+      },
+      {
+        "update": 320,
+        "accuracy": 1.0,
+        "verifier_bits": 952320
+      },
+      {
+        "update": 384,
+        "accuracy": 1.0,
+        "verifier_bits": 1142784
+      },
+      {
+        "update": 448,
+        "accuracy": 1.0,
+        "verifier_bits": 1333248
+      },
+      {
+        "update": 512,
+        "accuracy": 1.0,
+        "verifier_bits": 1523712
+      }
+    ],
+    "stable_accuracy_threshold": 0.9,
+    "stable_update": 128,
+    "stable_verifier_bits": 380928
+  },
+  "shuffled_training": {
+    "optimizer_updates": 512,
+    "unique_verifier_bits": 1048576,
+    "first_window_utility": 0.5034499106695876,
+    "last_window_utility": 0.4570985601749271,
+    "mean_utility": 0.4942026916451141,
+    "probe_history": [],
+    "stable_accuracy_threshold": 0.9,
+    "stable_update": null,
+    "stable_verifier_bits": null
+  },
+  "forward": {
+    "physical_order": "forward",
+    "commit": true,
+    "stages": [
+      {
+        "stage": 0,
+        "pressure_rank": 0,
+        "expected_victim_depth": 2,
+        "selected_depth": 2,
+        "selected_expected_victim": true,
+        "accepted": true,
+        "source_retained": true,
+        "file_count": 28,
+        "candidate_file_count": 29,
+        "source_unchanged_before_adoption": true
+      },
+      {
+        "stage": 1,
+        "pressure_rank": 1,
+        "expected_victim_depth": 3,
+        "selected_depth": 3,
+        "selected_expected_victim": true,
+        "accepted": true,
+        "source_retained": true,
+        "file_count": 28,
+        "candidate_file_count": 30,
+        "source_unchanged_before_adoption": true
+      },
+      {
+        "stage": 2,
+        "pressure_rank": 2,
+        "expected_victim_depth": 4,
+        "selected_depth": 4,
+        "selected_expected_victim": true,
+        "accepted": true,
+        "source_retained": true,
+        "file_count": 28,
+        "candidate_file_count": 31,
+        "source_unchanged_before_adoption": true
+      },
+      {
+        "stage": 3,
+        "pressure_rank": 3,
+        "expected_victim_depth": 5,
+        "selected_depth": 5,
+        "selected_expected_victim": true,
+        "accepted": true,
+        "source_retained": true,
+        "file_count": 28,
+        "candidate_file_count": 32,
+        "source_unchanged_before_adoption": true
+      },
+      {
+        "stage": 4,
+        "pressure_rank": 0,
+        "expected_victim_depth": 2,
+        "selected_depth": 2,
+        "selected_expected_victim": true,
+        "accepted": true,
+        "source_retained": true,
+        "file_count": 28,
+        "candidate_file_count": 29,
+        "source_unchanged_before_adoption": true
+      },
+      {
+        "stage": 5,
+        "pressure_rank": 1,
+        "expected_victim_depth": 3,
+        "selected_depth": 3,
+        "selected_expected_victim": true,
+        "accepted": true,
+        "source_retained": true,
+        "file_count": 28,
+        "candidate_file_count": 30,
+        "source_unchanged_before_adoption": true
+      },
+      {
+        "stage": 6,
+        "pressure_rank": 2,
+        "expected_victim_depth": 4,
+        "selected_depth": 4,
+        "selected_expected_victim": true,
+        "accepted": true,
+        "source_retained": true,
+        "file_count": 28,
+        "candidate_file_count": 31,
+        "source_unchanged_before_adoption": true
+      },
+      {
+        "stage": 7,
+        "pressure_rank": 3,
+        "expected_victim_depth": 5,
+        "selected_depth": 5,
+        "selected_expected_victim": true,
+        "accepted": true,
+        "source_retained": true,
+        "file_count": 28,
+        "candidate_file_count": 32,
+        "source_unchanged_before_adoption": true
+      }
+    ],
+    "all_replacements_accepted": true,
+    "all_sources_retained": true,
+    "reload_active_roots": true,
+    "rejected_compaction_noop": true,
+    "final_file_count": 28,
+    "initial_file_count": 28,
+    "verifier_bits": 3584
+  },
+  "reversed": {
+    "physical_order": "reversed",
+    "commit": true,
+    "stages": [
+      {
+        "stage": 0,
+        "pressure_rank": 0,
+        "expected_victim_depth": 2,
+        "selected_depth": 2,
+        "selected_expected_victim": true,
+        "accepted": true,
+        "source_retained": true,
+        "file_count": 28,
+        "candidate_file_count": 29,
+        "source_unchanged_before_adoption": true
+      },
+      {
+        "stage": 1,
+        "pressure_rank": 1,
+        "expected_victim_depth": 3,
+        "selected_depth": 3,
+        "selected_expected_victim": true,
+        "accepted": true,
+        "source_retained": true,
+        "file_count": 28,
+        "candidate_file_count": 30,
+        "source_unchanged_before_adoption": true
+      },
+      {
+        "stage": 2,
+        "pressure_rank": 2,
+        "expected_victim_depth": 4,
+        "selected_depth": 4,
+        "selected_expected_victim": true,
+        "accepted": true,
+        "source_retained": true,
+        "file_count": 28,
+        "candidate_file_count": 31,
+        "source_unchanged_before_adoption": true
+      },
+      {
+        "stage": 3,
+        "pressure_rank": 3,
+        "expected_victim_depth": 5,
+        "selected_depth": 5,
+        "selected_expected_victim": true,
+        "accepted": true,
+        "source_retained": true,
+        "file_count": 28,
+        "candidate_file_count": 32,
+        "source_unchanged_before_adoption": true
+      },
+      {
+        "stage": 4,
+        "pressure_rank": 0,
+        "expected_victim_depth": 2,
+        "selected_depth": 2,
+        "selected_expected_victim": true,
+        "accepted": true,
+        "source_retained": true,
+        "file_count": 28,
+        "candidate_file_count": 29,
+        "source_unchanged_before_adoption": true
+      },
+      {
+        "stage": 5,
+        "pressure_rank": 1,
+        "expected_victim_depth": 3,
+        "selected_depth": 3,
+        "selected_expected_victim": true,
+        "accepted": true,
+        "source_retained": true,
+        "file_count": 28,
+        "candidate_file_count": 30,
+        "source_unchanged_before_adoption": true
+      },
+      {
+        "stage": 6,
+        "pressure_rank": 2,
+        "expected_victim_depth": 4,
+        "selected_depth": 4,
+        "selected_expected_victim": true,
+        "accepted": true,
+        "source_retained": true,
+        "file_count": 28,
+        "candidate_file_count": 31,
+        "source_unchanged_before_adoption": true
+      },
+      {
+        "stage": 7,
+        "pressure_rank": 3,
+        "expected_victim_depth": 5,
+        "selected_depth": 5,
+        "selected_expected_victim": true,
+        "accepted": true,
+        "source_retained": true,
+        "file_count": 28,
+        "candidate_file_count": 32,
+        "source_unchanged_before_adoption": true
+      }
+    ],
+    "all_replacements_accepted": true,
+    "all_sources_retained": true,
+    "reload_active_roots": true,
+    "rejected_compaction_noop": true,
+    "final_file_count": 28,
+    "initial_file_count": 28,
+    "verifier_bits": 3584
+  },
+  "fresh_control": {
+    "physical_order": "forward",
+    "commit": false,
+    "stages": [
+      {
+        "stage": 0,
+        "pressure_rank": 0,
+        "expected_victim_depth": 2,
+        "selected_depth": 2,
+        "selected_expected_victim": true,
+        "accepted": true,
+        "source_retained": true,
+        "file_count": 28,
+        "candidate_file_count": 29,
+        "source_unchanged_before_adoption": true
+      },
+      {
+        "stage": 1,
+        "pressure_rank": 1,
+        "expected_victim_depth": 3,
+        "selected_depth": 2,
+        "selected_expected_victim": false,
+        "accepted": false,
+        "source_retained": true,
+        "file_count": 28,
+        "candidate_file_count": 30,
+        "source_unchanged_before_adoption": true
+      },
+      {
+        "stage": 2,
+        "pressure_rank": 2,
+        "expected_victim_depth": 4,
+        "selected_depth": 2,
+        "selected_expected_victim": false,
+        "accepted": false,
+        "source_retained": true,
+        "file_count": 28,
+        "candidate_file_count": 31,
+        "source_unchanged_before_adoption": true
+      },
+      {
+        "stage": 3,
+        "pressure_rank": 3,
+        "expected_victim_depth": 5,
+        "selected_depth": 2,
+        "selected_expected_victim": false,
+        "accepted": false,
+        "source_retained": true,
+        "file_count": 28,
+        "candidate_file_count": 32,
+        "source_unchanged_before_adoption": true
+      },
+      {
+        "stage": 4,
+        "pressure_rank": 0,
+        "expected_victim_depth": 2,
+        "selected_depth": 2,
+        "selected_expected_victim": true,
+        "accepted": true,
+        "source_retained": true,
+        "file_count": 28,
+        "candidate_file_count": 29,
+        "source_unchanged_before_adoption": true
+      },
+      {
+        "stage": 5,
+        "pressure_rank": 1,
+        "expected_victim_depth": 3,
+        "selected_depth": 2,
+        "selected_expected_victim": false,
+        "accepted": false,
+        "source_retained": true,
+        "file_count": 28,
+        "candidate_file_count": 30,
+        "source_unchanged_before_adoption": true
+      },
+      {
+        "stage": 6,
+        "pressure_rank": 2,
+        "expected_victim_depth": 4,
+        "selected_depth": 2,
+        "selected_expected_victim": false,
+        "accepted": false,
+        "source_retained": true,
+        "file_count": 28,
+        "candidate_file_count": 31,
+        "source_unchanged_before_adoption": true
+      },
+      {
+        "stage": 7,
+        "pressure_rank": 3,
+        "expected_victim_depth": 5,
+        "selected_depth": 2,
+        "selected_expected_victim": false,
+        "accepted": false,
+        "source_retained": true,
+        "file_count": 28,
+        "candidate_file_count": 32,
+        "source_unchanged_before_adoption": true
+      }
+    ],
+    "all_replacements_accepted": false,
+    "all_sources_retained": true,
+    "reload_active_roots": false,
+    "rejected_compaction_noop": false,
+    "final_file_count": 28,
+    "initial_file_count": 28,
+    "verifier_bits": 3072
+  },
+  "shuffled_control": {
+    "physical_order": "forward",
+    "commit": false,
+    "stages": [
+      {
+        "stage": 0,
+        "pressure_rank": 0,
+        "expected_victim_depth": 2,
+        "selected_depth": 5,
+        "selected_expected_victim": false,
+        "accepted": false,
+        "source_retained": true,
+        "file_count": 28,
+        "candidate_file_count": 29,
+        "source_unchanged_before_adoption": true
+      },
+      {
+        "stage": 1,
+        "pressure_rank": 1,
+        "expected_victim_depth": 3,
+        "selected_depth": 5,
+        "selected_expected_victim": false,
+        "accepted": false,
+        "source_retained": true,
+        "file_count": 28,
+        "candidate_file_count": 30,
+        "source_unchanged_before_adoption": true
+      },
+      {
+        "stage": 2,
+        "pressure_rank": 2,
+        "expected_victim_depth": 4,
+        "selected_depth": 5,
+        "selected_expected_victim": false,
+        "accepted": false,
+        "source_retained": true,
+        "file_count": 28,
+        "candidate_file_count": 31,
+        "source_unchanged_before_adoption": true
+      },
+      {
+        "stage": 3,
+        "pressure_rank": 3,
+        "expected_victim_depth": 5,
+        "selected_depth": 5,
+        "selected_expected_victim": true,
+        "accepted": true,
+        "source_retained": true,
+        "file_count": 28,
+        "candidate_file_count": 32,
+        "source_unchanged_before_adoption": true
+      },
+      {
+        "stage": 4,
+        "pressure_rank": 0,
+        "expected_victim_depth": 2,
+        "selected_depth": 5,
+        "selected_expected_victim": false,
+        "accepted": false,
+        "source_retained": true,
+        "file_count": 28,
+        "candidate_file_count": 29,
+        "source_unchanged_before_adoption": true
+      },
+      {
+        "stage": 5,
+        "pressure_rank": 1,
+        "expected_victim_depth": 3,
+        "selected_depth": 5,
+        "selected_expected_victim": false,
+        "accepted": false,
+        "source_retained": true,
+        "file_count": 28,
+        "candidate_file_count": 30,
+        "source_unchanged_before_adoption": true
+      },
+      {
+        "stage": 6,
+        "pressure_rank": 2,
+        "expected_victim_depth": 4,
+        "selected_depth": 5,
+        "selected_expected_victim": false,
+        "accepted": false,
+        "source_retained": true,
+        "file_count": 28,
+        "candidate_file_count": 31,
+        "source_unchanged_before_adoption": true
+      },
+      {
+        "stage": 7,
+        "pressure_rank": 3,
+        "expected_victim_depth": 5,
+        "selected_depth": 5,
+        "selected_expected_victim": true,
+        "accepted": true,
+        "source_retained": true,
+        "file_count": 28,
+        "candidate_file_count": 32,
+        "source_unchanged_before_adoption": true
+      }
+    ],
+    "all_replacements_accepted": false,
+    "all_sources_retained": true,
+    "reload_active_roots": false,
+    "rejected_compaction_noop": false,
+    "final_file_count": 28,
+    "initial_file_count": 28,
+    "verifier_bits": 3072
+  },
+  "gates": {
+    "trained_stable": true,
+    "shuffled_training_not_stable": true,
+    "forward_replacements_accepted": true,
+    "reversed_replacements_accepted": true,
+    "forward_sources_retained": true,
+    "reversed_sources_retained": true,
+    "forward_reload_active_roots": true,
+    "reversed_reload_active_roots": true,
+    "forward_rejected_noop": true,
+    "reversed_rejected_noop": true,
+    "fresh_policy_not_perfect": true,
+    "shuffled_policy_not_perfect": true,
+    "policy_reload_exact": true,
+    "zero_replayed_examples": true,
+    "zero_controller_optimizer_updates": true
+  },
+  "promoted": true,
+  "accounting": {
+    "unique_verifier_bits": 2585600,
+    "unique_logical_lifetimes": 1056,
+    "optimizer_updates": 1024,
+    "replayed_examples": 0,
+    "controller_optimizer_updates": 0,
+    "live_replacement_transactions": 16,
+    "latency_seconds": 46.277965250075795
+  }
+}

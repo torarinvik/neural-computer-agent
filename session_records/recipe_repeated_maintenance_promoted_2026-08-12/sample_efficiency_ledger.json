@@ -1,0 +1,28 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment_id": "recipe-repeated-maintenance-promoted-2026-08-12",
+  "status": "promoted_bounded_repeated_external_maintenance",
+  "source": "in_repository_run",
+  "unique_verifier_bits_per_seed": [2585600, 2585600, 2585600, 2585600],
+  "unique_logical_lifetimes_per_seed": [1056, 1056, 1056, 1056],
+  "optimizer_updates_per_seed": [1024, 1024, 1024, 1024],
+  "replayed_examples": 0,
+  "controller_optimizer_updates": 0,
+  "stable_bits_to_threshold": [380928, 761856, 380928, 380928],
+  "retention_on_mastered_primitives": [1.0, 1.0, 1.0, 1.0],
+  "repeated_replacement_retention": [1.0, 1.0, 1.0, 1.0],
+  "fixed_capacity_file_count": [28, 28, 28, 28],
+  "controls": {
+    "counterfactual_eviction_credit": true,
+    "candidate_order_permutation": true,
+    "reversed_physical_storage": true,
+    "reward_shuffled_training": true,
+    "fresh_policy": true,
+    "protected_source_retention": true,
+    "policy_reload_exact": true,
+    "rejected_transaction_noop": true,
+    "zero_replay": true,
+    "zero_controller_updates": true
+  },
+  "claim_boundary": "Promoted bounded external maintenance state; universal eviction economics, semantic compression, unrestricted archive growth, and general continual learning remain unproven."
+}

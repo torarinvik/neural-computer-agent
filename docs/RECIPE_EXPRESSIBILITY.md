@@ -403,3 +403,29 @@ semantic compression, unrestricted memory growth, or general continual
 learning. The verifier cost grows linearly with candidate count. Evidence is
 archived at
 `session_records/recipe_learned_eviction_four_counterfactual_promoted_2026-08-12/`.
+
+## Repeated fixed-capacity recipe replacement (2026-08-12)
+
+The next audit moves from isolated eviction lifetimes to an evolving external
+bank. A frozen counterfactual policy repeatedly selects one active recursive
+root for replacement; a copy-on-write verifier must preserve every other
+mastered root, all protected source files, and the incoming root. Eight
+replacements are performed at fixed capacity, then the same stream is replayed
+against reversed physical source order.
+
+Across four seeds, all `8/8` forward and reversed replacements committed,
+protected sources remained present, checksummed reloads retained active roots,
+and rejected transactions left the source memory unchanged. The bank stayed at
+`28` files. The trained policy reached stable `>=0.90` victim selection at
+updates `128`, `256`, `128`, and `128`, while a fresh policy and a
+reward-shuffled policy each accepted only `2/8` stream selections. The
+counterfactual objective is explicitly `evict`; the underlying verifier still
+checks retention and controls adoption.
+
+Accounting is `2,585,600` unique verifier bits and `1,024` optimizer updates
+per seed, with `1,056` unique logical lifetimes, zero replay, and zero
+controller updates. This promotes bounded repeated verifier-gated external
+maintenance and fixed-capacity replacement. It does not establish unrestricted
+memory growth, semantic compression, arbitrary new computation, or general
+continual learning. Evidence is archived at
+`session_records/recipe_repeated_maintenance_promoted_2026-08-12/`.

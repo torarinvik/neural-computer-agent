@@ -47,6 +47,7 @@ PROBE_INTERVAL = 64
 PROBE_EPISODES = 32
 STABLE_ACCURACY_THRESHOLD = 0.90
 CREDIT_MODES = ("sampled", "counterfactual")
+UTILITY_OBJECTIVES = ("retain", "evict")
 CAUSAL_MARGIN = 0.20
 TEMPERATURE = 0.7
 
@@ -169,6 +170,7 @@ def _episode(
     seed: int,
     *,
     candidate_depths: tuple[int, ...],
+    source_bank_size: int | None = None,
 ) -> tuple[
     ExternalRecipeCompositionMemory,
     tuple[int, ...],
@@ -191,7 +193,12 @@ def _episode(
     if any(depth < 2 or depth > 6 for depth in depths):
         raise ValueError("recipe eviction candidate depth is outside the audit range")
     memory = ExternalRecipeCompositionMemory(SLOT_VALUES)
-    sources = _source_programs()
+    all_sources = _source_programs()
+    required_source_count = sum(depths)
+    bank_size = required_source_count if source_bank_size is None else int(source_bank_size)
+    if bank_size < required_source_count or bank_size > len(all_sources):
+        raise ValueError("recipe source bank size is outside the available range")
+    sources = all_sources[:bank_size]
     roots: list[int] = []
     source_cursor = 0
     for depth in depths:
@@ -214,6 +221,8 @@ def _episode(
                 protect=prefix_depth < depth,
             )
         roots.append(root_slot)
+    for source in sources[source_cursor:]:
+        _admit_atomic(memory, source, protect=True)
 
     pressure_regime = seed % CANDIDATE_COUNT
     pressure = pressure_regime / (CANDIDATE_COUNT - 1)
@@ -294,18 +303,32 @@ def _episode_tensors(
     seed: int,
     *,
     candidate_depths: tuple[int, ...],
+    source_bank_size: int | None = None,
 ) -> tuple[ExternalRecipeCompositionMemory, tuple[int, ...], int, torch.Tensor, torch.Tensor]:
-    return _episode(seed, candidate_depths=candidate_depths)
+    return _episode(
+        seed,
+        candidate_depths=candidate_depths,
+        source_bank_size=source_bank_size,
+    )
 
 
 def _verifier_bits_for_episode(
     candidate_depths: tuple[int, ...],
     *,
     candidate_evaluations: int = 1,
+    source_bank_size: int | None = None,
 ) -> int:
     if candidate_evaluations < 1:
         raise ValueError("candidate evaluations must be positive")
-    admission_and_composition = 2 * sum(candidate_depths) - len(candidate_depths)
+    required_source_count = sum(candidate_depths)
+    bank_size = (
+        required_source_count
+        if source_bank_size is None
+        else int(source_bank_size)
+    )
+    if bank_size < required_source_count or bank_size > len(_source_programs()):
+        raise ValueError("recipe source bank size is outside the available range")
+    admission_and_composition = bank_size + sum(candidate_depths) - len(candidate_depths)
     return (admission_and_composition + candidate_evaluations) * len(ALL_STATES)
 
 
@@ -315,9 +338,13 @@ def _train(
     candidate_depths: tuple[int, ...],
     credit_mode: str,
     shuffled_utility: bool = False,
+    source_bank_size: int | None = None,
+    utility_objective: str = "retain",
 ) -> tuple[ExternalCapabilityEvictionPolicy, dict[str, object]]:
     if credit_mode not in CREDIT_MODES:
         raise ValueError(f"unknown maintenance credit mode: {credit_mode!r}")
+    if utility_objective not in UTILITY_OBJECTIVES:
+        raise ValueError(f"unknown maintenance utility objective: {utility_objective!r}")
     torch.manual_seed(seed)
     policy = _policy()
     optimizer = torch.optim.Adam(policy.parameters(), lr=0.02)
@@ -330,14 +357,18 @@ def _train(
         memory, ordered, root_slot, context, telemetry = _episode_tensors(
             episode_seed,
             candidate_depths=candidate_depths,
+            source_bank_size=source_bank_size,
         )
         scores = policy.score_candidates(context, telemetry)[0]
         probabilities = torch.softmax(scores / TEMPERATURE, dim=-1)
         if credit_mode == "counterfactual":
             utility_values = _attempt_all(memory, ordered, root_slot)
+            if utility_objective == "evict":
+                utility_values = 1.0 - utility_values
             verifier_bits += _verifier_bits_for_episode(
                 candidate_depths,
                 candidate_evaluations=len(ordered),
+                source_bank_size=source_bank_size,
             )
             if shuffled_utility:
                 utility_values = torch.randint(
@@ -350,9 +381,14 @@ def _train(
             utility = expected_utility
             loss = -(probabilities * utility_values).sum()
         else:
-            verifier_bits += _verifier_bits_for_episode(candidate_depths)
+            verifier_bits += _verifier_bits_for_episode(
+                candidate_depths,
+                source_bank_size=source_bank_size,
+            )
             selected = int(torch.multinomial(probabilities, 1, generator=generator))
             utility, _, _ = _attempt_selected(memory, ordered, root_slot, selected)
+            if utility_objective == "evict":
+                utility = 1.0 - utility
             if shuffled_utility:
                 utility = float(torch.randint(2, (), generator=generator))
             loss = -(utility - 0.5) * torch.log_softmax(
@@ -368,6 +404,8 @@ def _train(
                 seed + 700_000 + update,
                 candidate_depths=candidate_depths,
                 episodes=PROBE_EPISODES,
+                source_bank_size=source_bank_size,
+                utility_objective=utility_objective,
             )
             verifier_bits += int(probe["unique_verifier_bits"])
             probes.append(
@@ -408,7 +446,11 @@ def _evaluate(
     candidate_depths: tuple[int, ...],
     episodes: int | None = None,
     corrupt_features: bool = False,
+    source_bank_size: int | None = None,
+    utility_objective: str = "retain",
 ) -> dict[str, float | int]:
+    if utility_objective not in UTILITY_OBJECTIVES:
+        raise ValueError(f"unknown maintenance utility objective: {utility_objective!r}")
     episode_count = EVAL_EPISODES if episodes is None else int(episodes)
     if episode_count < 1:
         raise ValueError("evaluation episodes must be positive")
@@ -419,8 +461,12 @@ def _evaluate(
         memory, ordered, root_slot, context, telemetry = _episode_tensors(
             seed + index * 19,
             candidate_depths=candidate_depths,
+            source_bank_size=source_bank_size,
         )
-        verifier_bits += _verifier_bits_for_episode(candidate_depths)
+        verifier_bits += _verifier_bits_for_episode(
+            candidate_depths,
+            source_bank_size=source_bank_size,
+        )
         if corrupt_features:
             telemetry = torch.zeros_like(telemetry)
         selected = int(policy.score_candidates(context, telemetry)[0].argmax())
@@ -430,6 +476,8 @@ def _evaluate(
             root_slot,
             selected,
         )
+        if utility_objective == "evict":
+            utility = 1.0 - utility
         correct += int(utility >= 1.0)
         accepted += int(did_accept)
     return {

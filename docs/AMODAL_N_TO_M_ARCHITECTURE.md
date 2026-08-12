@@ -11054,3 +11054,18 @@ reward-shuffled null stayed at the four-way chance floor. The gain is bounded
 external maintenance with an explicit linear verifier-cost tradeoff, not
 general continual learning. Evidence is archived in
 `session_records/recipe_learned_eviction_four_counterfactual_promoted_2026-08-12/`.
+
+The next audit made this a repeated lifecycle rather than eight independent
+eviction episodes. A frozen counterfactual policy repeatedly replaces one of
+four active recursive recipe roots through copy-on-write compaction. Each
+transaction must preserve the other mastered roots, the incoming root, and
+all protected source files, while keeping the external bank at its initial
+`28`-file capacity. Four seeds passed all `8/8` forward and reversed-order
+replacements, checksum reload, source immutability, and rejected-transaction
+no-op gates. Fresh and reward-shuffled policies each accepted only `2/8`
+stream selections. The promotion uses `2,585,600` unique verifier bits and
+`1,024` optimizer updates per seed, with zero replay and zero controller
+updates. This is bounded repeated external maintenance, not unrestricted
+growth, semantic compression, arbitrary new computation, or general
+continual learning. Evidence is archived in
+`session_records/recipe_repeated_maintenance_promoted_2026-08-12/`.

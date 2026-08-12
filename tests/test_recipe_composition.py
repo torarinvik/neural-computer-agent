@@ -165,6 +165,23 @@ def test_compaction_keeps_provenance_closure_and_is_transactional() -> None:
     )
 
 
+def test_copy_on_write_memory_is_independent_and_checksum_verified() -> None:
+    memory = ExternalRecipeCompositionMemory(SLOT_VALUES)
+    slot = memory.add_program(_fragment_a())
+    memory.protect_file(slot)
+    source_digest = memory.digest()
+
+    working = memory.copy_on_write()
+    assert working.digest() == source_digest
+    assert working.is_file_protected(slot)
+    working.add_program(_fragment_b())
+
+    assert memory.digest() == source_digest
+    assert working.digest() != source_digest
+    restored = ExternalRecipeCompositionMemory.from_payload(working.payload())
+    assert restored.digest() == working.digest()
+
+
 def test_recipe_candidate_telemetry_is_permutation_safe_and_structural() -> None:
     memory = ExternalRecipeCompositionMemory(SLOT_VALUES)
     left = memory.add_program(_fragment_a())
