@@ -300,6 +300,55 @@ def test_history_indexed_reader_preserves_relative_age_slots() -> None:
     assert basis.configuration()["history_age_slot_count"] == 8
 
 
+def test_history_indexed_reader_supports_wider_versioned_age_abi() -> None:
+    torch.manual_seed(925)
+    basis = ExternalRegisterComputeBasis(
+        8,
+        5,
+        hidden=10,
+        event_width=4,
+        event_window_size=0,
+        event_read_mode="history_indexed",
+        register_input_mode="event_window_only",
+        history_age_slot_count=16,
+    )
+    register = torch.randn(1, 8)
+    code = torch.randn(1, 5)
+    history = torch.randn(1, 16, 4)
+    mask = torch.zeros(1, 16, dtype=torch.bool)
+    mask[:, :3] = True
+    age = torch.zeros(1, 16)
+    age[:, :3] = torch.tensor([[15.0, 8.0, 0.0]])
+    current_event = torch.randn(1, 4)
+
+    output = basis(
+        register,
+        code,
+        event_history=history,
+        event_history_mask=mask,
+        event_history_age=age,
+        current_event=current_event,
+    )
+    artifact = basis.artifact()
+    rehydrated = ExternalRegisterComputeBasis.from_artifact(artifact)
+
+    assert output.shape == (1, 8)
+    assert torch.isfinite(output).all()
+    assert basis.configuration()["history_age_slot_count"] == 16
+    assert rehydrated.configuration() == basis.configuration()
+    assert torch.allclose(
+        output,
+        rehydrated(
+            register,
+            code,
+            event_history=history,
+            event_history_mask=mask,
+            event_history_age=age,
+            current_event=current_event,
+        ),
+    )
+
+
 def test_history_compute_basis_can_condition_content_addressing_on_current_event() -> None:
     torch.manual_seed(922)
     basis = ExternalRegisterComputeBasis(

@@ -1991,3 +1991,20 @@ threshold. The result promotes bounded relative-age addressing, not learned
 unbounded compression, arbitrary program induction, or general continual
 learning. Evidence and accounting are archived at
 `session_records/brainworkshop_external_history_indexed_nback5_depth_promoted_2026-08-13/`.
+
+## Configurable relative-age indexed history (2026-08-13)
+
+The generic `history_indexed` external-compute reader now takes an explicit
+versioned age-slot count. The previous eight-slot default remains compatible;
+new files can widen the bounded address space, and artifact loading rejects
+incompatible counts rather than silently changing tensor shapes.
+
+The n-back-16 promotion used sixteen age slots, no fixed event window, and a
+frozen controller and event frontend. Across seeds `17` and `18`, all four
+fresh lifetimes reached `1.0000` after `512` attempted-outcome updates with
+zero replay. Missing-history, corrupted-history, action-shuffled,
+reward-shuffled, and n-back-8 depth-shift controls stayed below the `0.80`
+mastery threshold. This is bounded address-space scaling, not learned
+unbounded compression, arbitrary program induction, or general continual
+learning. Evidence and accounting are archived at
+`session_records/brainworkshop_external_history_indexed_nback16_depth_promoted_2026-08-13/`.

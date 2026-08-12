@@ -2248,6 +2248,7 @@ class ExternalRegisterComputeBasis(nn.Module):
         event_read_mode: str = "flattened_window",
         register_input_mode: str = "full",
         history_query_mode: str = "instruction_only",
+        history_age_slot_count: int | None = None,
     ) -> None:
         super().__init__()
         if min(register_width, instruction_width, hidden) < 1:
@@ -2287,6 +2288,20 @@ class ExternalRegisterComputeBasis(nn.Module):
             raise ValueError(
                 "current-event history queries require history attention"
             )
+        if event_read_mode == "history_indexed":
+            effective_history_age_slot_count = (
+                self.HISTORY_AGE_SLOT_COUNT
+                if history_age_slot_count is None
+                else int(history_age_slot_count)
+            )
+            if effective_history_age_slot_count < 1:
+                raise ValueError("indexed history age slot count must be positive")
+        elif history_age_slot_count is not None:
+            raise ValueError(
+                "history age slot count is only valid for indexed history"
+            )
+        else:
+            effective_history_age_slot_count = 0
         self.register_width = int(register_width)
         self.instruction_width = int(instruction_width)
         self.hidden = int(hidden)
@@ -2301,7 +2316,7 @@ class ExternalRegisterComputeBasis(nn.Module):
             self.HISTORY_HEAD_COUNT if event_read_mode == "history_attention" else 1
         )
         self.history_age_slot_count = (
-            self.HISTORY_AGE_SLOT_COUNT
+            effective_history_age_slot_count
             if event_read_mode == "history_indexed"
             else 0
         )
@@ -2457,6 +2472,10 @@ class ExternalRegisterComputeBasis(nn.Module):
             "history_indexed",
         ):
             configuration.setdefault("history_query_mode", "instruction_only")
+        if configuration.get("event_read_mode") == "history_indexed":
+            configuration.setdefault(
+                "history_age_slot_count", cls.HISTORY_AGE_SLOT_COUNT
+            )
         if expected_configuration is not None:
             expected = dict(expected_configuration)
             expected.setdefault("register_input_mode", "full")
@@ -2475,6 +2494,11 @@ class ExternalRegisterComputeBasis(nn.Module):
             ),
             history_query_mode=str(
                 configuration.get("history_query_mode", "instruction_only")
+            ),
+            history_age_slot_count=(
+                int(configuration["history_age_slot_count"])
+                if configuration.get("event_read_mode") == "history_indexed"
+                else None
             ),
         )
         current = basis.state_dict()
@@ -2942,6 +2966,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         basis_event_read_mode: str = "flattened_window",
         basis_register_input_mode: str = "full",
         basis_history_query_mode: str = "instruction_only",
+        basis_history_age_slot_count: int | None = None,
         event_input_mode: str = "frontend",
         event_window_size: int = 0,
         role_count: int = 4,
@@ -2990,6 +3015,20 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             raise ValueError(
                 "current-event history queries require history attention"
             )
+        if basis_event_read_mode == "history_indexed":
+            effective_basis_history_age_slot_count = (
+                ExternalRegisterComputeBasis.HISTORY_AGE_SLOT_COUNT
+                if basis_history_age_slot_count is None
+                else int(basis_history_age_slot_count)
+            )
+            if effective_basis_history_age_slot_count < 1:
+                raise ValueError("indexed history age slot count must be positive")
+        elif basis_history_age_slot_count is not None:
+            raise ValueError(
+                "basis history age slot count is only valid for indexed history"
+            )
+        else:
+            effective_basis_history_age_slot_count = 0
         if event_input_mode not in (
             "frontend",
             "append_controller_state",
@@ -3052,6 +3091,8 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             or basis.event_read_mode != basis_event_read_mode
             or basis.register_input_mode != basis_register_input_mode
             or basis.history_query_mode != basis_history_query_mode
+            or basis.history_age_slot_count
+            != effective_basis_history_age_slot_count
             or (
                 (
                     event_window_size
@@ -3078,6 +3119,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         self.basis_event_read_mode = basis_event_read_mode
         self.basis_register_input_mode = basis_register_input_mode
         self.basis_history_query_mode = basis_history_query_mode
+        self.basis_history_age_slot_count = effective_basis_history_age_slot_count
         self.event_input_mode = event_input_mode
         self.event_window_size = int(event_window_size)
         self.role_count = int(role_count)
@@ -3279,6 +3321,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             "basis_event_read_mode": self.basis_event_read_mode,
             "basis_register_input_mode": self.basis_register_input_mode,
             "basis_history_query_mode": self.basis_history_query_mode,
+            "basis_history_age_slot_count": self.basis_history_age_slot_count,
             "event_input_mode": self.event_input_mode,
             "event_window_size": self.event_window_size,
             "role_count": self.role_count,
@@ -3347,6 +3390,11 @@ class ExternalCapabilityRegisterMachine(nn.Module):
                 event_read_mode=self.basis_event_read_mode,
                 register_input_mode=self.basis_register_input_mode,
                 history_query_mode=self.basis_history_query_mode,
+                history_age_slot_count=(
+                    self.basis_history_age_slot_count
+                    if self.basis_event_read_mode == "history_indexed"
+                    else None
+                ),
                 event_width=(
                     self.event_width
                     if self.event_window_size
@@ -3364,6 +3412,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             or basis.event_read_mode != self.basis_event_read_mode
             or basis.register_input_mode != self.basis_register_input_mode
             or basis.history_query_mode != self.basis_history_query_mode
+            or basis.history_age_slot_count != self.basis_history_age_slot_count
             or (
                 (
                     self.event_window_size
@@ -3419,7 +3468,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
                 configuration["history_age_slot_count"] = (
                     self.basis_slots[0].history_age_slot_count
                     if self.basis_slots
-                    else ExternalRegisterComputeBasis.HISTORY_AGE_SLOT_COUNT
+                    else self.basis_history_age_slot_count
                 )
         return configuration
 

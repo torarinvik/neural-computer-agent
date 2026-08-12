@@ -86,6 +86,7 @@ def _basis(
     event_window_size: int = EVENT_WINDOW_SIZE,
     event_read_mode: str = "flattened_window",
     history_query_mode: str = "instruction_only",
+    history_age_slot_count: int | None = None,
 ) -> ExternalRegisterComputeBasis:
     if event_read_mode in ("history_attention", "history_indexed"):
         if event_window_size:
@@ -104,6 +105,7 @@ def _basis(
         microsteps=2,
         event_read_mode=event_read_mode,
         history_query_mode=history_query_mode,
+        history_age_slot_count=history_age_slot_count,
         register_input_mode=(
             "event_window_only"
         ),
@@ -118,6 +120,7 @@ def _build(
     event_window_size: int = EVENT_WINDOW_SIZE,
     basis_event_read_mode: str = "flattened_window",
     basis_history_query_mode: str = "instruction_only",
+    basis_history_age_slot_count: int | None = None,
     external_history_query_count: int | None = None,
     external_history_query_counts: tuple[int, ...] | None = None,
 ) -> ComputeGrowthSystem:
@@ -175,6 +178,7 @@ def _build(
                 event_window_size=event_window_size,
                 event_read_mode=basis_event_read_mode,
                 history_query_mode=basis_history_query_mode,
+                history_age_slot_count=basis_history_age_slot_count,
             )
             for _ in range(slot_count)
         ),
@@ -182,6 +186,7 @@ def _build(
         basis_microsteps=2,
         basis_event_read_mode=basis_event_read_mode,
         basis_history_query_mode=basis_history_query_mode,
+        basis_history_age_slot_count=basis_history_age_slot_count,
         basis_register_input_mode=(
             "event_window_only"
         ),

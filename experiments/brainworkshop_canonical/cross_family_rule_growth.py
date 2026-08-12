@@ -57,6 +57,7 @@ RULES = {
     "nback4": RuleSpec("nback4", 4),
     "nback5": RuleSpec("nback5", 5),
     "nback8": RuleSpec("nback8", 8),
+    "nback16": RuleSpec("nback16", 16),
     "parity2": RuleSpec("parity2", 2),
     "switch": RuleSpec("switch", 1),
     "symbol_parity": RuleSpec("symbol_parity", 0),

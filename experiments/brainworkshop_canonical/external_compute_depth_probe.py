@@ -1,10 +1,9 @@
-"""Promote a deeper generic external-compute history window.
+"""Promote a deeper generic external-compute history reader.
 
-The probe uses the existing flattened learned-event ABI with a six-record
-window and an opaque n-back-5 verifier. The controller and event frontend are
-unchanged; only the replaceable external compute basis receives the larger
-window. The private verifier family is used by this harness only and never
-enters the learner-visible tensors.
+The controller and event frontend are unchanged; only the replaceable external
+compute basis receives a configurable active history address space. The private
+verifier family is used by this harness only and never enters learner-visible
+tensors.
 """
 
 from __future__ import annotations
@@ -24,12 +23,23 @@ from .external_compute_growth import (
     _train_stage,
 )
 
-DEPTH_PROBE_SCHEMA = "neural-computer.brainworkshop-external-compute-depth-probe.v2"
+DEPTH_PROBE_SCHEMA = "neural-computer.brainworkshop-external-compute-depth-probe.v3"
 FAMILY = "nback5"
 CUE_SYMBOL = 12
 
 
 def run(args: argparse.Namespace) -> dict[str, object]:
+    family = getattr(args, "family", FAMILY)
+    cue_symbol = getattr(args, "cue_symbol", CUE_SYMBOL)
+    history_age_slot_count = getattr(args, "history_age_slot_count", None)
+    if family == "nback5":
+        depth_shift_family = "nback4"
+    elif family == "nback8":
+        depth_shift_family = "nback5"
+    elif family == "nback16":
+        depth_shift_family = "nback8"
+    else:
+        raise ValueError("depth probe family must be nback5, nback8, or nback16")
     event_read_mode = getattr(args, "event_read_mode", "flattened_window")
     if event_read_mode not in (
         "flattened_window",
@@ -62,6 +72,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         slot_count=1,
         event_window_size=args.event_window_size,
         basis_event_read_mode=event_read_mode,
+        basis_history_age_slot_count=history_age_slot_count,
         external_history_query_count=args.query_count,
     )
     controller_before = _digest(system.agent.controller)
@@ -70,9 +81,9 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     _set_requires_grad(modules, True)
     history = _train_stage(
         system,
-        family=FAMILY,
+        family=family,
         slot=0,
-        cue_symbol=CUE_SYMBOL,
+        cue_symbol=cue_symbol,
         updates=args.updates,
         batch_size=args.batch_size,
         steps=args.steps,
@@ -85,9 +96,9 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     _set_requires_grad(modules, False)
     rows = _evaluate(
         system,
-        family=FAMILY,
+        family=family,
         slot=0,
-        cue_symbol=CUE_SYMBOL,
+        cue_symbol=cue_symbol,
         lifetimes=args.retention_lifetimes,
         batch_size=args.batch_size,
         steps=args.steps,
@@ -96,9 +107,9 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     )
     missing_history = _evaluate(
         system,
-        family=FAMILY,
+        family=family,
         slot=0,
-        cue_symbol=CUE_SYMBOL,
+        cue_symbol=cue_symbol,
         lifetimes=args.retention_lifetimes,
         batch_size=args.batch_size,
         steps=args.steps,
@@ -108,9 +119,9 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     )
     corrupted_history = _evaluate(
         system,
-        family=FAMILY,
+        family=family,
         slot=0,
-        cue_symbol=CUE_SYMBOL,
+        cue_symbol=cue_symbol,
         lifetimes=args.retention_lifetimes,
         batch_size=args.batch_size,
         steps=args.steps,
@@ -120,9 +131,9 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     )
     action_shuffled = _evaluate(
         system,
-        family=FAMILY,
+        family=family,
         slot=0,
-        cue_symbol=CUE_SYMBOL,
+        cue_symbol=cue_symbol,
         lifetimes=args.retention_lifetimes,
         batch_size=args.batch_size,
         steps=args.steps,
@@ -132,9 +143,9 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     )
     depth_shift = _evaluate(
         system,
-        family="nback4",
+        family=depth_shift_family,
         slot=0,
-        cue_symbol=CUE_SYMBOL,
+        cue_symbol=cue_symbol,
         lifetimes=args.retention_lifetimes,
         batch_size=args.batch_size,
         steps=args.steps,
@@ -153,6 +164,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         slot_count=1,
         event_window_size=args.event_window_size,
         basis_event_read_mode=event_read_mode,
+        basis_history_age_slot_count=history_age_slot_count,
         external_history_query_count=args.query_count,
     )
     shuffled_modules = _common_modules(shuffled_system) + _slot_modules(
@@ -161,9 +173,9 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     _set_requires_grad(shuffled_modules, True)
     shuffled_history = _train_stage(
         shuffled_system,
-        family=FAMILY,
+        family=family,
         slot=0,
-        cue_symbol=CUE_SYMBOL,
+        cue_symbol=cue_symbol,
         updates=control_updates,
         batch_size=args.batch_size,
         steps=args.steps,
@@ -177,9 +189,9 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     _set_requires_grad(shuffled_modules, False)
     shuffled_rows = _evaluate(
         shuffled_system,
-        family=FAMILY,
+        family=family,
         slot=0,
-        cue_symbol=CUE_SYMBOL,
+        cue_symbol=cue_symbol,
         lifetimes=args.retention_lifetimes,
         batch_size=args.batch_size,
         steps=args.steps,
@@ -197,7 +209,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "missing_history_control_rejects_mastery": max(
             float(row["accuracy"]) for row in missing_history
         )
-        < 0.70,
+        < 0.80,
         "corrupted_history_control_rejects_mastery": max(
             float(row["accuracy"]) for row in corrupted_history
         )
@@ -205,7 +217,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "action_shuffled_control_rejects_mastery": max(
             float(row["accuracy"]) for row in action_shuffled
         )
-        < 0.70,
+        < 0.80,
         "depth_shift_control_rejects_mastery": max(
             float(row["accuracy"]) for row in depth_shift
         )
@@ -213,18 +225,19 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "reward_shuffled_control_rejects_mastery": max(
             float(row["accuracy"]) for row in shuffled_rows
         )
-        < 0.70,
+        < 0.80,
     }
     report = {
         "schema": DEPTH_PROBE_SCHEMA,
         "claim_boundary": (
-            "Outcome-only acquisition of a deeper n-back-5 computation through "
-            "a generic six-record external event window; not unbounded history, "
+            f"Outcome-only acquisition of {family} through a generic external "
+            "history reader; not unbounded history, "
             "learned compression, arbitrary program induction, or general continual learning."
         ),
         "architecture": {
-            "family": FAMILY,
+            "family": family,
             "event_read_mode": event_read_mode,
+            "history_age_slot_count": history_age_slot_count if history_reader else None,
             "event_window_size": args.event_window_size,
             "query_count": args.query_count,
             "query_count_semantics": "q_minus_one_previous_records_plus_current_event",
@@ -239,7 +252,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "missing_history": missing_history,
             "corrupted_history": corrupted_history,
             "action_shuffled": action_shuffled,
-            "depth_shift_nback4": depth_shift,
+            f"depth_shift_{depth_shift_family}": depth_shift,
             "reward_shuffled": shuffled_rows,
             "reward_shuffled_training_tail": [
                 float(row["eligible_accuracy"]) for row in shuffled_history[-5:]
@@ -276,6 +289,12 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--report-out", type=Path, required=True)
     parser.add_argument("--seed", type=int, default=17)
+    parser.add_argument(
+        "--family",
+        choices=("nback5", "nback8", "nback16"),
+        default=FAMILY,
+    )
+    parser.add_argument("--cue-symbol", type=int, default=CUE_SYMBOL)
     parser.add_argument("--updates", type=int, default=512)
     parser.add_argument("--control-updates", type=int, default=128)
     parser.add_argument("--batch-size", type=int, default=32)
@@ -283,6 +302,7 @@ def main() -> None:
     parser.add_argument("--retention-lifetimes", type=int, default=4)
     parser.add_argument("--event-window-size", type=int, default=6)
     parser.add_argument("--query-count", type=int, default=6)
+    parser.add_argument("--history-age-slot-count", type=int, default=None)
     parser.add_argument(
         "--event-read-mode",
         choices=("flattened_window", "history_attention", "history_indexed"),

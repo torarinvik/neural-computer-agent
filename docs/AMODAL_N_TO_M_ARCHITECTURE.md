@@ -12022,3 +12022,27 @@ does not establish learned unbounded memory growth, learned compression,
 arbitrary program induction, or general continual learning. Evidence is
 archived at
 `session_records/brainworkshop_external_history_indexed_nback5_depth_promoted_2026-08-13/`.
+
+## Configurable relative-age indexed history (2026-08-13)
+
+The `history_indexed` ABI no longer hides one global eight-slot ceiling. Its
+relative-age slot count is now an explicit, version-checked property of the
+replaceable external compute file. Existing artifacts default to eight slots;
+new files can select a larger bounded address space without resizing the
+controller, event frontend, interpreter, or decoder. Artifact loading rejects
+slot-count mismatches instead of silently reconstructing a different tensor
+shape.
+
+A 16-slot file was promoted on two seeds using an opaque n-back-16 verifier.
+With sixteen relative-age slots and no fixed event window, every one of four
+fresh lifetimes reached `1.0000` after `512` attempted-outcome updates. The
+controller and event frontend remained byte-identical and replayed examples
+were zero. Missing-history, corrupted-history, action-shuffled,
+reward-shuffled, and the n-back-8 depth-shift controls all remained below the
+`0.80` mastery threshold.
+
+This removes a structural ABI ceiling and promotes bounded 16-step relative
+age addressing. It still does not establish unrestricted history growth,
+learned compression, arbitrary program induction, or general continual
+learning. Evidence and accounting are archived at
+`session_records/brainworkshop_external_history_indexed_nback16_depth_promoted_2026-08-13/`.

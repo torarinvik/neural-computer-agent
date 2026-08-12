@@ -1,0 +1,47 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "brainworkshop_external_history_indexed_nback16_depth_promoted_2026-08-13",
+  "claim_boundary": "versioned bounded relative-age addressing through a replaceable external compute file; not general continual learning",
+  "arms": [
+    {
+      "seed": 17,
+      "status": "promoted",
+      "unique_verifier_bits": 163840,
+      "unique_logical_lifetimes": 16384,
+      "optimizer_updates": 512,
+      "replayed_examples": 0,
+      "stable_bits_to_threshold": 163840,
+      "latency": "129.72598616709 seconds wall time",
+      "fresh_accuracy": [1.0, 1.0, 1.0, 1.0],
+      "control_max_accuracy": {
+        "missing_history": 0.668749988079071,
+        "corrupted_history": 0.65625,
+        "action_shuffled": 0.5093749761581421,
+        "reward_shuffled": 0.7718750238418579,
+        "depth_shift_nback8": 0.6336805820465088
+      },
+      "control_unique_verifier_bits": 40960,
+      "control_optimizer_updates": 128
+    },
+    {
+      "seed": 18,
+      "status": "promoted",
+      "unique_verifier_bits": 163840,
+      "unique_logical_lifetimes": 16384,
+      "optimizer_updates": 512,
+      "replayed_examples": 0,
+      "stable_bits_to_threshold": 163840,
+      "latency": "147.6638394589536 seconds wall time",
+      "fresh_accuracy": [1.0, 1.0, 1.0, 1.0],
+      "control_max_accuracy": {
+        "missing_history": 0.48750001192092896,
+        "corrupted_history": 0.65625,
+        "action_shuffled": 0.5249999761581421,
+        "reward_shuffled": 0.7906249761581421,
+        "depth_shift_nback8": 0.6857638955116272
+      },
+      "control_unique_verifier_bits": 40960,
+      "control_optimizer_updates": 128
+    }
+  ]
+}

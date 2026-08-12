@@ -342,7 +342,7 @@ def test_external_compute_depth_probe_smoke_keeps_deeper_window_external(
     )
 
     assert report["schema"] == (
-        "neural-computer.brainworkshop-external-compute-depth-probe.v2"
+        "neural-computer.brainworkshop-external-compute-depth-probe.v3"
     )
     assert report["architecture"]["query_count"] == 6
     assert report["gates"]["frozen_controller"]
