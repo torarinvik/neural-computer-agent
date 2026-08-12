@@ -42,6 +42,7 @@ SHARED_BASIS_MEMORY_SNAPSHOT_FORMAT = (
 )
 SHARED_BASIS_MEMORY_SCHEMA = "neural-computer.shared-basis-memory.v1"
 SHARED_BASIS_COMPRESSION_SCHEMA = "neural-computer.shared-basis-compression.v1"
+SHARED_BASIS_REWRITE_SCHEMA = "neural-computer.shared-basis-rewrite.v1"
 
 
 @dataclass(frozen=True)
@@ -75,6 +76,35 @@ class SharedBasisCompressionReceipt:
             raise ValueError("shared-basis compression error is invalid")
         if not isinstance(self.reason, str) or not self.reason:
             raise ValueError("shared-basis compression reason is missing")
+        return self
+
+
+@dataclass(frozen=True)
+class SharedBasisRewriteReceipt:
+    """Auditable verifier-gated logical record replacement."""
+
+    accepted: bool
+    rows_before: int
+    rows_after: int
+    basis_rows_before: int
+    basis_rows_after: int
+    version: int
+    reason: str
+    schema: str = SHARED_BASIS_REWRITE_SCHEMA
+
+    def validate(self) -> SharedBasisRewriteReceipt:
+        if self.schema != SHARED_BASIS_REWRITE_SCHEMA:
+            raise ValueError("unsupported shared-basis rewrite schema")
+        if min(
+            self.rows_before,
+            self.rows_after,
+            self.basis_rows_before,
+            self.basis_rows_after,
+            self.version,
+        ) < 0:
+            raise ValueError("shared-basis rewrite counts are invalid")
+        if not isinstance(self.reason, str) or not self.reason:
+            raise ValueError("shared-basis rewrite reason is missing")
         return self
 
 
@@ -697,6 +727,193 @@ class SharedBasisContentAddressedMemory(MemoryBackend):
         ).validate()
 
     @torch.no_grad()
+    def rewrite_candidate(
+        self,
+        candidates: MemoryCandidates,
+        *,
+        basis_rows: int,
+        scope: int | torch.Tensor | None = None,
+    ) -> SharedBasisContentAddressedMemory:
+        """Build a copy-on-write candidate with a changed logical row set.
+
+        The candidate may remove, retain, or add rows within one external
+        scope.  Other scopes are copied unchanged.  No state is mutated until
+        :meth:`replace_from_rewrite_candidate` accepts an independent
+        retention probe.
+        """
+
+        if not isinstance(candidates, MemoryCandidates):
+            raise TypeError("shared-basis rewrite candidates are invalid")
+        candidates.validate(
+            width=self.width,
+            capacity=candidates.keys.shape[1],
+            batch=1,
+        )
+        if (
+            not isinstance(basis_rows, int)
+            or isinstance(basis_rows, bool)
+            or not 1 <= basis_rows <= self.width
+        ):
+            raise ValueError("shared-basis rewrite basis rank is invalid")
+        if scope is None:
+            scope_id = 0
+        elif isinstance(scope, torch.Tensor):
+            if scope.numel() != 1 or scope.dtype != torch.long:
+                raise ValueError("shared-basis rewrite scope must be one int64 value")
+            scope_id = int(scope.reshape(()).item())
+        elif isinstance(scope, int) and not isinstance(scope, bool):
+            scope_id = int(scope)
+        else:
+            raise TypeError("shared-basis rewrite scope must be an int or int64 tensor")
+        if not 0 <= scope_id < self.scope_capacity:
+            raise ValueError("shared-basis rewrite scope is outside the range")
+
+        candidate_indices = torch.nonzero(
+            candidates.occupied[0], as_tuple=False
+        ).reshape(-1)
+        other_indices = torch.nonzero(
+            self.occupied & (self.scopes != scope_id), as_tuple=False
+        ).reshape(-1)
+        current_values = self._materialized_values()
+        keys = torch.cat(
+            (
+                self.keys[other_indices],
+                candidates.keys[0, candidate_indices].to(self.keys),
+            ),
+            dim=0,
+        )
+        values = torch.cat(
+            (
+                current_values[other_indices],
+                candidates.values[0, candidate_indices].to(self.keys),
+            ),
+            dim=0,
+        )
+        strengths = torch.cat(
+            (
+                self.strengths[other_indices],
+                candidates.strengths[0, candidate_indices].to(self.strengths),
+            ),
+            dim=0,
+        )
+        timestamps = torch.cat(
+            (
+                self.timestamps[other_indices],
+                candidates.timestamps[0, candidate_indices].to(self.timestamps),
+            ),
+            dim=0,
+        )
+        scopes = torch.cat(
+            (
+                self.scopes[other_indices],
+                torch.full(
+                    (candidate_indices.numel(),),
+                    scope_id,
+                    dtype=torch.long,
+                    device=self.keys.device,
+                ),
+            ),
+            dim=0,
+        )
+        if values.numel():
+            _left, _singular, right = torch.linalg.svd(values, full_matrices=False)
+            rank = min(basis_rows, right.shape[0])
+            basis = right[:rank].contiguous()
+            coefficients = values @ basis.transpose(0, 1)
+        else:
+            basis = self.keys.new_empty((0, self.width))
+            coefficients = self.keys.new_empty((0, 0))
+        candidate = SharedBasisContentAddressedMemory(
+            self.width,
+            write_threshold=self.write_threshold,
+            write_match_threshold=self.write_match_threshold,
+            read_match_threshold=self.read_match_threshold,
+            basis_tolerance=self.basis_tolerance,
+            scope_capacity=self.scope_capacity,
+        )
+        state = {
+            name: value.detach().clone() for name, value in self.state_dict().items()
+        }
+        state.update(
+            {
+                "basis": basis,
+                "keys": keys,
+                "coefficients": coefficients,
+                "strengths": strengths,
+                "timestamps": timestamps,
+                "scopes": scopes,
+                "occupied": torch.ones(
+                    keys.shape[0], dtype=torch.bool, device=keys.device
+                ),
+            }
+        )
+        candidate.load_state_dict(state)
+        candidate.validate_state()
+        return candidate
+
+    @torch.no_grad()
+    def replace_from_rewrite_candidate(
+        self,
+        candidate: SharedBasisContentAddressedMemory,
+        *,
+        expected_version: int | None = None,
+        retention_probe: Callable[[SharedBasisContentAddressedMemory], bool]
+        | None = None,
+    ) -> SharedBasisRewriteReceipt:
+        """Verify and atomically commit a changed logical row set."""
+
+        if not isinstance(candidate, SharedBasisContentAddressedMemory):
+            raise TypeError("shared-basis rewrite candidate is invalid")
+        candidate.validate_state()
+        if expected_version is not None:
+            if not isinstance(expected_version, int) or isinstance(expected_version, bool):
+                raise TypeError("shared-basis expected version must be an integer")
+            if expected_version != int(self.store_version.item()):
+                raise RuntimeError("shared-basis rewrite candidate is stale")
+        candidate_configuration = candidate.configuration()
+        expected_configuration = self.configuration()
+        candidate_configuration.pop("persistence", None)
+        expected_configuration.pop("persistence", None)
+        if candidate_configuration != expected_configuration:
+            raise ValueError("shared-basis rewrite configuration does not match")
+        rows_before = self.record_count
+        basis_before = self.basis_count
+        accepted = retention_probe is None or bool(retention_probe(candidate))
+        if not accepted:
+            return SharedBasisRewriteReceipt(
+                accepted=False,
+                rows_before=rows_before,
+                rows_after=rows_before,
+                basis_rows_before=basis_before,
+                basis_rows_after=basis_before,
+                version=int(self.store_version.item()),
+                reason="shared-basis rewrite retention verifier rejected candidate",
+            ).validate()
+        for name in (
+            "basis",
+            "keys",
+            "coefficients",
+            "strengths",
+            "timestamps",
+            "scopes",
+            "occupied",
+        ):
+            self._buffers[name] = candidate.state_dict()[name].detach().clone().to(
+                self._buffers[name]
+            )
+        self.store_version.add_(1)
+        self.validate_state()
+        return SharedBasisRewriteReceipt(
+            accepted=True,
+            rows_before=rows_before,
+            rows_after=self.record_count,
+            basis_rows_before=basis_before,
+            basis_rows_after=self.basis_count,
+            version=int(self.store_version.item()),
+            reason="shared-basis rewrite passed retention verification",
+        ).validate()
+
+    @torch.no_grad()
     def clear(self) -> None:
         device = self.keys.device
         self._buffers["basis"] = torch.empty((0, self.width), device=device)
@@ -816,6 +1033,20 @@ class PersistentSharedBasisContentAddressedMemory(SharedBasisContentAddressedMem
         return receipt
 
     @torch.no_grad()
+    def replace_from_rewrite_candidate(self, *args: Any, **kwargs: Any):
+        previous = {
+            name: value.detach().clone() for name, value in self.state_dict().items()
+        }
+        receipt = super().replace_from_rewrite_candidate(*args, **kwargs)
+        if receipt.accepted:
+            try:
+                self.snapshot(self.path)
+            except Exception:
+                self.load_state_dict(previous)
+                raise
+        return receipt
+
+    @torch.no_grad()
     def clear(self) -> None:
         previous = {
             name: value.detach().clone() for name, value in self.state_dict().items()
@@ -833,7 +1064,9 @@ __all__ = [
     "SHARED_BASIS_MEMORY_BACKEND_FORMAT",
     "SHARED_BASIS_MEMORY_SCHEMA",
     "SHARED_BASIS_MEMORY_SNAPSHOT_FORMAT",
+    "SHARED_BASIS_REWRITE_SCHEMA",
     "PersistentSharedBasisContentAddressedMemory",
     "SharedBasisCompressionReceipt",
     "SharedBasisContentAddressedMemory",
+    "SharedBasisRewriteReceipt",
 ]

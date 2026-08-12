@@ -10546,3 +10546,27 @@ arbitrary new computation, unrestricted memory growth, or general continual
 learning. The next pressure is true regime reversal with replacement and
 capacity pressure. Evidence and accounting are archived in
 `session_records/brainworkshop_external_temporal_shared_basis_competing_subspaces_promoted_2026-08-12/`.
+
+## Verifier-gated shared-basis regime replacement (2026-08-12)
+
+The shared-basis backend now exposes a separate `shared_basis_rewrite_v1`
+boundary for changing the logical row set of one external scope. A rewrite
+candidate may remove stale rows and admit new rows, but it cannot mutate the
+live memory until an independent retention probe and expected-version check
+pass. Other scopes are copied unchanged, and persistent accepted rewrites are
+atomically checksummed.
+
+The two-seed canonical audit protects six source routes and gives a working
+scope twelve routes from two incompatible rank-two subspaces. The policy first
+selects rank `8`; the working scope is then replaced by twelve new routes in a
+different rank-two regime, and the policy selects rank `4`. Both seeds retained
+all protected routes, removed all old working addresses, admitted all new
+working addresses, reduced storage from `272` to `136` value scalars, and
+passed forward/reversed, reload, stale-version, corruption, frozen-core, and
+zero-replay controls.
+
+This promotes bounded verifier-gated regime replacement and capacity reuse. It
+does not establish learned change-point detection, semantic regime discovery,
+arbitrary new computation, unrestricted memory growth, or general continual
+learning. Evidence and accounting are archived in
+`session_records/brainworkshop_external_temporal_shared_basis_regime_replacement_promoted_2026-08-12/`.

@@ -693,6 +693,36 @@ def test_external_temporal_shared_basis_competing_subspaces_grow_dynamic_rank(
     assert report["gates"]["zero_replayed_examples"]
 
 
+def test_external_temporal_shared_basis_regime_replacement_protects_scope(
+    tmp_path,
+) -> None:
+    from experiments.brainworkshop_canonical.external_temporal_shared_basis_regime_replacement import (
+        run,
+    )
+
+    report = run(
+        argparse.Namespace(
+            report_out=tmp_path / "temporal-shared-basis-regime-replacement.json",
+            seed=17,
+            policy_updates=1_000,
+        )
+    )
+
+    assert report["schema"] == (
+        "neural-computer.brainworkshop-external-temporal-shared-basis-regime-replacement.v1"
+    )
+    assert report["architecture"]["memory_rewrite"] == "shared_basis_rewrite_v1"
+    assert report["gates"]["forward_compression_rank_8"]
+    assert report["gates"]["forward_replacement_rank_4"]
+    assert report["gates"]["forward_protected_retained"]
+    assert report["gates"]["forward_new_working_admitted"]
+    assert report["gates"]["forward_old_working_removed"]
+    assert report["gates"]["reversed_reload_routes"]
+    assert report["gates"]["corruption_rejected"]
+    assert report["gates"]["controller_frozen"]
+    assert report["gates"]["zero_replayed_examples"]
+
+
 def test_binary_switch_family_has_a_valid_chance_baseline() -> None:
     verifier = CrossFamilyVerifier(
         family="switch_binary",

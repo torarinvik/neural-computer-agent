@@ -1134,3 +1134,15 @@ and reload, stale-version, corruption, frozen-core, and zero-replay controls
 passed. This remains bounded competing-subspace structure selection, not
 general continual learning. Evidence is in
 `session_records/brainworkshop_external_temporal_shared_basis_competing_subspaces_promoted_2026-08-12/`.
+
+## Verifier-gated shared-basis regime replacement (2026-08-12)
+
+`external_temporal_shared_basis_regime_replacement.py` uses the new
+`shared_basis_rewrite_v1` API to replace one working memory scope while
+retaining a protected source scope. The old working regime selects rank `8`;
+after replacing twelve old routes with twelve new routes, the new regime
+selects rank `4`. Both seeds retained six protected routes, removed the old
+working keys, admitted the new working keys, and passed persistence,
+stale-version, corruption, frozen-core, and zero-replay controls. This is
+bounded regime replacement, not general continual learning. Evidence is in
+`session_records/brainworkshop_external_temporal_shared_basis_regime_replacement_promoted_2026-08-12/`.

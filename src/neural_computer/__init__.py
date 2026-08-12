@@ -157,9 +157,11 @@ from .factorized_memory import (
     SHARED_BASIS_MEMORY_BACKEND_FORMAT,
     SHARED_BASIS_MEMORY_SCHEMA,
     SHARED_BASIS_MEMORY_SNAPSHOT_FORMAT,
+    SHARED_BASIS_REWRITE_SCHEMA,
     PersistentSharedBasisContentAddressedMemory,
     SharedBasisCompressionReceipt,
     SharedBasisContentAddressedMemory,
+    SharedBasisRewriteReceipt,
 )
 from .fragments import (
     EXTERNAL_SKILL_FRAGMENT_BANK_SCHEMA,
@@ -945,6 +947,7 @@ __all__ = [
     "SHARED_BASIS_MEMORY_BACKEND_FORMAT",
     "SHARED_BASIS_MEMORY_SCHEMA",
     "SHARED_BASIS_MEMORY_SNAPSHOT_FORMAT",
+    "SHARED_BASIS_REWRITE_SCHEMA",
     "SHARED_BASIS_STRUCTURE_POLICY_SCHEMA",
     "AdaptiveOnlineEpisodicRelationReader",
     "AmodalCognitiveController",
@@ -1259,6 +1262,7 @@ __all__ = [
     "SharedBasisCompressionPolicyOutput",
     "SharedBasisCompressionReceipt",
     "SharedBasisContentAddressedMemory",
+    "SharedBasisRewriteReceipt",
     "SharedBasisStructurePlan",
     "StagedCapabilityReceipt",
     "accumulate_current_gradients",

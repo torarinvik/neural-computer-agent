@@ -6,6 +6,7 @@ import pytest
 import torch
 
 from neural_computer import (
+    MemoryCandidates,
     MemoryQuery,
     PersistentSharedBasisContentAddressedMemory,
     SharedBasisContentAddressedMemory,
@@ -198,3 +199,56 @@ def test_persistent_shared_basis_memory_rolls_back_on_snapshot_failure(
 
     for name, tensor in before.items():
         assert torch.equal(memory.state_dict()[name], tensor)
+
+
+def test_shared_basis_rewrite_replaces_logical_rows_verifier_gated() -> None:
+    keys, values = _payloads(23)
+    memory = SharedBasisContentAddressedMemory(
+        8,
+        write_threshold=0.0,
+        write_match_threshold=0.999,
+        basis_tolerance=1e-8,
+    )
+    _write(memory, keys[:6], values[:6])
+    replacement = MemoryCandidates(
+        keys=keys[6:].unsqueeze(0),
+        values=values[6:].unsqueeze(0),
+        strengths=torch.ones(1, 6),
+        timestamps=torch.zeros(1, 6),
+        occupied=torch.ones(1, 6, dtype=torch.bool),
+    )
+    candidate = memory.rewrite_candidate(replacement, basis_rows=2)
+    version = int(memory.store_version.item())
+    before = {
+        name: tensor.detach().clone() for name, tensor in memory.state_dict().items()
+    }
+
+    rejected = memory.replace_from_rewrite_candidate(
+        candidate,
+        expected_version=version,
+        retention_probe=lambda _candidate: False,
+    )
+    assert not rejected.accepted
+    assert int(memory.store_version.item()) == version
+    for name, tensor in before.items():
+        assert torch.equal(memory.state_dict()[name], tensor)
+
+    accepted = memory.replace_from_rewrite_candidate(
+        candidate,
+        expected_version=version,
+        retention_probe=lambda current: _routes_match(
+            current,
+            keys[6:],
+            values[6:],
+            tolerance=0.01,
+        ),
+    )
+    assert accepted.accepted
+    assert accepted.rows_before == accepted.rows_after == 6
+    assert accepted.basis_rows_after == 2
+    assert _routes_match(memory, keys[6:], values[6:], tolerance=0.01)
+    with pytest.raises(RuntimeError, match="stale"):
+        memory.replace_from_rewrite_candidate(
+            candidate,
+            expected_version=version,
+        )

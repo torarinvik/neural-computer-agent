@@ -1769,3 +1769,10 @@ ranks `(2, 4, 8)` and verifies dynamic shared-basis growth across incompatible
 subspaces. It preserves the same storage-agnostic controller boundary and
 independent verifier-gated persistence. Evidence is archived at
 `session_records/brainworkshop_external_temporal_shared_basis_competing_subspaces_promoted_2026-08-12/`.
+
+`SharedBasisContentAddressedMemory` also exposes `rewrite_candidate()` and
+`replace_from_rewrite_candidate()` for verifier-gated logical row replacement
+inside one scope. Other scopes remain isolated and unchanged; the controller
+still sees only ordinary materialized memory reads. The protected-scope regime
+replacement audit is archived at
+`session_records/brainworkshop_external_temporal_shared_basis_regime_replacement_promoted_2026-08-12/`.
