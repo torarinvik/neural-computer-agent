@@ -513,6 +513,7 @@ class GatedResidualRegimePolicyBank(nn.Module):
         context_width: int,
         override_margin: float = 0.0,
         route_threshold: float = 0.75,
+        max_slots: int | None = None,
     ) -> None:
         super().__init__()
         if not isinstance(base, OpaqueRegimeChangePolicy):
@@ -523,14 +524,20 @@ class GatedResidualRegimePolicyBank(nn.Module):
             raise ValueError("residual policy bank override margin is invalid")
         if not math.isfinite(route_threshold) or not -1.0 <= route_threshold <= 1.0:
             raise ValueError("residual policy bank route threshold is invalid")
+        if max_slots is not None and (
+            not isinstance(max_slots, int) or isinstance(max_slots, bool) or max_slots < 1
+        ):
+            raise ValueError("residual policy bank max slots is invalid")
         self.base = base
         for parameter in self.base.parameters():
             parameter.requires_grad_(False)
         self.context_width = int(context_width)
         self.override_margin = float(override_margin)
         self.route_threshold = float(route_threshold)
+        self.max_slots = max_slots
         self.residual_slots = nn.ModuleList()
         self.slot_keys = nn.ParameterList()
+        self.register_buffer("slot_frozen", torch.empty(0, dtype=torch.bool))
 
     @property
     def slot_count(self) -> int:
@@ -543,6 +550,8 @@ class GatedResidualRegimePolicyBank(nn.Module):
             "value_width": self.base.value_width,
             "context_width": self.context_width,
             "slot_count": self.slot_count,
+            "max_slots": self.max_slots if self.max_slots is not None else 0,
+            "frozen_slots": int(self.slot_frozen.sum().item()),
             "residual": "independent_zero_initialized_linear_slots_v1",
             "routing": "opaque_binding_cosine_key_v1",
             "override": "base_fallback_margin_gate_v1",
@@ -567,6 +576,8 @@ class GatedResidualRegimePolicyBank(nn.Module):
     def add_slot(self, context_key: torch.Tensor) -> int:
         """Append an isolated residual bound to one opaque context key."""
 
+        if self.max_slots is not None and self.slot_count >= self.max_slots:
+            raise RuntimeError("residual policy bank slot capacity is exhausted")
         if context_key.ndim != 1 or context_key.shape[0] != self.context_width:
             raise ValueError("residual policy bank slot key has the wrong shape")
         self._validate_context(context_key.unsqueeze(0))
@@ -580,12 +591,27 @@ class GatedResidualRegimePolicyBank(nn.Module):
         key = F.normalize(context_key.detach(), dim=0).to(reference)
         self.residual_slots.append(residual)
         self.slot_keys.append(nn.Parameter(key, requires_grad=False))
+        self.slot_frozen = torch.cat(
+            (self.slot_frozen, torch.zeros(1, dtype=torch.bool, device=key.device))
+        )
         return self.slot_count - 1
 
     def trainable_parameters(self, slot_index: int):
         if not 0 <= slot_index < self.slot_count:
             raise IndexError("residual policy bank slot is out of range")
+        if bool(self.slot_frozen[slot_index]):
+            raise RuntimeError("residual policy bank slot is frozen")
         return self.residual_slots[slot_index].parameters()
+
+    @torch.no_grad()
+    def freeze_slot(self, slot_index: int) -> None:
+        """Consolidate a verifier-promoted slot against later mutation."""
+
+        if not 0 <= slot_index < self.slot_count:
+            raise IndexError("residual policy bank slot is out of range")
+        self.slot_frozen[slot_index] = True
+        for parameter in self.residual_slots[slot_index].parameters():
+            parameter.requires_grad_(False)
 
     def route_scores(self, context: torch.Tensor) -> torch.Tensor:
         self._validate_context(context)
@@ -749,6 +775,8 @@ class GatedResidualRegimePolicyBank(nn.Module):
             selected_optimizer = torch.optim.SGD(
                 self.trainable_parameters(slot_index), lr=self.base.learning_rate
             )
+        if bool(self.slot_frozen[slot_index]):
+            raise RuntimeError("residual policy bank slot is frozen")
         selected_optimizer.zero_grad()
         loss.backward()
         selected_optimizer.step()

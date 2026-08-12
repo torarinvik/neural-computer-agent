@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import pytest
 import torch
 
 from neural_computer import (
@@ -134,7 +135,7 @@ def test_residual_policy_bank_routes_opaque_bindings_and_isolates_slots() -> Non
         hidden=16,
         max_spectral_bins=4,
     ).eval()
-    bank = GatedResidualRegimePolicyBank(base, context_width=4)
+    bank = GatedResidualRegimePolicyBank(base, context_width=4, max_slots=2)
     key_a = torch.tensor([1.0, 0.0, 0.0, 0.0])
     key_b = torch.tensor([0.0, 1.0, 0.0, 0.0])
     assert bank.add_slot(key_a) == 0
@@ -180,3 +181,9 @@ def test_residual_policy_bank_routes_opaque_bindings_and_isolates_slots() -> Non
         torch.equal(value, base.state_dict()[name])
         for name, value in base_before.items()
     )
+    bank.freeze_slot(0)
+    bank.freeze_slot(1)
+    with pytest.raises(RuntimeError, match="frozen"):
+        bank.trainable_parameters(0)
+    with pytest.raises(RuntimeError, match="capacity"):
+        bank.add_slot(torch.tensor([0.0, 0.0, 1.0, 0.0]))

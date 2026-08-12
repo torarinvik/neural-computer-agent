@@ -10655,6 +10655,11 @@ and disjoint replacement remained at least `0.9766` and `1.0000` respectively.
 The controller, event encoder, and base detector remained frozen with zero
 replay.
 
+Each slot was frozen only after its independent retention probe passed. The
+bank rejected later updates to frozen slots and rejected a third allocation at
+the configured two-slot capacity. The 96-update overadaptation rejection is
+retained as evidence that promotion/stopping must be part of the lifecycle.
+
 This promotes isolated opaque binding routing, not autonomous binding
 discovery, unrestricted slot growth, arbitrary skill composition, or general
 continual learning. The 96-update overadaptation rejection is retained as

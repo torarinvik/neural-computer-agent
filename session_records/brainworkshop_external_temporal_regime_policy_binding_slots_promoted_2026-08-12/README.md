@@ -19,7 +19,10 @@ Across both seeds, slot B remained byte-identical while slot A learned, and
 slot A remained byte-identical while slot B learned. The base detector,
 controller, and event encoder stayed frozen; routes selected distinct slots;
 stable keep and disjoint replacement were retained for both bindings; and
-144 online scalar utilities per seed were consumed with zero replay.
+144 online scalar utilities per seed were consumed with zero replay. After
+each fresh capability passed its retention probe, its slot was frozen. Further
+updates to frozen slots were rejected, and a third allocation was rejected at
+the configured two-slot capacity.
 
 The `rejected_overadaptation_seed-17.json` calibration used 96 updates per
 slot and is retained as a warning: new partial replacement reached 1.0, but

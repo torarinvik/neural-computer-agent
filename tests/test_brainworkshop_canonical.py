@@ -844,6 +844,9 @@ def test_external_temporal_regime_policy_routes_isolated_binding_slots(
     assert report["gates"]["phase_b_learns_binding_b"]
     assert report["gates"]["binding_a_retained_after_slot_b_growth"]
     assert report["gates"]["phase_b_does_not_change_slot_a"]
+    assert report["gates"]["both_slots_promoted_and_frozen"]
+    assert report["gates"]["frozen_update_rejected"]
+    assert report["gates"]["third_slot_rejected_at_capacity"]
     assert report["gates"]["base_frozen"]
     assert report["gates"]["zero_replayed_examples"]
 

@@ -1812,3 +1812,8 @@ boundary needed before attempting general multi-capability continual
 learning; it does not assign semantic meaning to keys. Evidence is archived
 at
 `session_records/brainworkshop_external_temporal_regime_policy_binding_slots_promoted_2026-08-12/`.
+
+Slots can be verifier-promoted and frozen through `freeze_slot()`, after which
+their trainable-parameter path rejects updates. An optional `max_slots` bound
+rejects unverified capacity growth. Eviction and verified replacement remain
+open lifecycle work.

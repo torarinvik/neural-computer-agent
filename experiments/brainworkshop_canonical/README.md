@@ -1208,3 +1208,8 @@ above `0.9766` and `1.0000`. The 96-update overadaptation calibration is
 archived as a rejection because stable retention collapsed on one seed. Evidence
 is archived at
 `session_records/brainworkshop_external_temporal_regime_policy_binding_slots_promoted_2026-08-12/`.
+
+The promoted run also freezes each slot after its retention probe and rejects
+updates to frozen slots plus a third allocation beyond the configured bank
+capacity. This makes slot stopping an explicit verifier-gated operation rather
+than an optimizer convention.

@@ -8,6 +8,7 @@
     "context": "opaque_binding_cosine_key_v1",
     "context_width": 8,
     "slot_count": 2,
+    "max_slots": 2,
     "forbidden_features": "task_labels_regime_ids_semantic_slot_names_v1",
     "controller": "frozen_canonical_amodal_controller",
     "event_encoder": "frozen_learned_event_encoder"
@@ -59,6 +60,7 @@
   },
   "gates": {
     "two_slots_bound": true,
+    "both_slots_promoted_and_frozen": true,
     "routes_select_distinct_slots": true,
     "phase_a_learns_binding_a": true,
     "phase_a_leaves_binding_b_base": true,
@@ -66,6 +68,8 @@
     "phase_b_learns_binding_b": true,
     "binding_a_retained_after_slot_b_growth": true,
     "phase_b_does_not_change_slot_a": true,
+    "frozen_update_rejected": true,
+    "third_slot_rejected_at_capacity": true,
     "binding_a_stable_retained": true,
     "binding_b_stable_retained": true,
     "binding_a_disjoint_retained": true,
@@ -83,7 +87,7 @@
     "unique_logical_lifetimes": 1144,
     "replayed_examples": 0,
     "controller_updates": 0,
-    "latency_seconds": 1.4901837089564651
+    "latency_seconds": 1.7130414580460638
   },
   "status": "promoted_binding_slots"
 }

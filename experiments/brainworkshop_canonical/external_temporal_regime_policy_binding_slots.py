@@ -169,6 +169,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         context_width=CONTEXT_WIDTH,
         override_margin=0.0,
         route_threshold=0.75,
+        max_slots=2,
     )
     slot_a = bank.add_slot(key_a)
     slot_b = bank.add_slot(key_b)
@@ -193,6 +194,13 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             seed=args.seed + 830_000,
         ),
     }
+    phase_a_promoted = (
+        phase_a["binding_a"]["partial_replace"] >= 0.80
+        and phase_a["binding_a"]["stable_keep"] >= 0.80
+        and phase_a["binding_a"]["disjoint_replace"] >= 0.80
+    )
+    if phase_a_promoted:
+        bank.freeze_slot(slot_a)
     slot_a_after_phase_a = _snapshot(bank.residual_slots[slot_a])
     slot_b_unchanged_after_phase_a = _unchanged(
         bank.residual_slots[slot_b], slot_b_before_phase_a
@@ -216,10 +224,30 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             seed=args.seed + 831_000,
         ),
     }
+    phase_b_promoted = (
+        phase_b["binding_b"]["partial_replace"] >= 0.80
+        and phase_b["binding_b"]["stable_keep"] >= 0.80
+        and phase_b["binding_b"]["disjoint_replace"] >= 0.80
+    )
+    if phase_b_promoted:
+        bank.freeze_slot(slot_b)
+    frozen_update_rejected = False
+    try:
+        bank.trainable_parameters(slot_a)
+    except RuntimeError as error:
+        frozen_update_rejected = "frozen" in str(error).lower()
+    third_slot_rejected = False
+    try:
+        bank.add_slot(torch.tensor([0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0]))
+    except RuntimeError as error:
+        third_slot_rejected = "capacity" in str(error).lower()
     controller_after = _digest(system.agent.controller)
     encoder_after = _digest(system.agent.runtime.encoders["stimulus"])
     gates = {
         "two_slots_bound": bank.slot_count == 2,
+        "both_slots_promoted_and_frozen": (
+            phase_a_promoted and phase_b_promoted and int(bank.slot_frozen.sum()) == 2
+        ),
         "routes_select_distinct_slots": torch.equal(
             bank.route_slot(torch.stack((key_a, key_b))),
             torch.tensor([slot_a, slot_b]),
@@ -236,6 +264,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "phase_b_does_not_change_slot_a": _unchanged(
             bank.residual_slots[slot_a], slot_a_after_phase_a
         ),
+        "frozen_update_rejected": frozen_update_rejected,
+        "third_slot_rejected_at_capacity": third_slot_rejected,
         "binding_a_stable_retained": phase_b["binding_a"]["stable_keep"] >= 0.80,
         "binding_b_stable_retained": phase_b["binding_b"]["stable_keep"] >= 0.80,
         "binding_a_disjoint_retained": phase_b["binding_a"]["disjoint_replace"] >= 0.80,
@@ -260,6 +290,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "context": "opaque_binding_cosine_key_v1",
             "context_width": CONTEXT_WIDTH,
             "slot_count": bank.slot_count,
+            "max_slots": 2,
             "forbidden_features": "task_labels_regime_ids_semantic_slot_names_v1",
             "controller": "frozen_canonical_amodal_controller",
             "event_encoder": "frozen_learned_event_encoder",
