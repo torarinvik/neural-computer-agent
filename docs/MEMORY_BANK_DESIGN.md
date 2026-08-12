@@ -11431,3 +11431,51 @@ outputs (F163) in the instrument list. The fix also snapped the pure
 collect and intercept worlds back to their F203 values (collect1 bank
 +1.708 against the buggy run's +0.052), confirming the same empty-bank
 failure had silently flattened every single-object world in this probe.
+
+## F217 — THE GOAL READER DOES NOT WORK, AND THE REASON IS WHERE GOALS
+## LIVE
+
+The dynamics side of the architecture is amortised (F205-F208); the goal
+side is not — F214/F216 pay 180-360 full-rollout evaluations per world.
+The obvious completion is a goal reader: wake = the goal search labels
+worlds, sleep = an equivariant reader maps (state, next, reward)
+evidence to (pair_a, pair_b, sign), test = one forward pass on held-out
+worlds. Four designs were tried; all failed; each failure localises the
+problem further.
+
+| iteration | change | read - mode | read - scrambled | sign on avoid |
+| --- | --- | --- | --- | --- |
+| 1 | dense synthetic reward, compound held set | -0.80, t=-3.9 | +0.14, t=+1.4 | (not tested) |
+| 2 | SPARSE contact reward, pure-world held set | -0.29, t=-1.7 | +0.06, t=+1.3 | 0/6 |
+| 3 | evidence 48 -> 512 transitions | -0.23, t=-2.3 | +0.05, t=+0.4 | 0/6, right pair 5/6 |
+| 4 | event-normalised reward features | -0.68, t=-3.7 | -0.25, t=-1.8 | 2/6, pairs destabilised |
+
+The baselines never let it hide: the reader lost to the constant
+mode-goal in every design, and the reward-scrambled control — identical
+evidence with the reward column permuted — was never significantly
+below the real reader, meaning the reward channel was never truly read.
+
+**What the iterations localised.** Iteration 3 is the informative one:
+with 512 transitions the reader points at exactly the reward-carrying
+slot pair on the avoid worlds (5/6) — the PAIR is recoverable from
+dynamics alone, since the hazard slots are the only moving non-avatar
+slots. The SIGN is not recoverable, because it lives only in reward
+events, and a random policy in these worlds pays reward on about 1% of
+steps: 48-transition evidence carries ~0.5 events, 512-transition
+evidence ~5. Iteration 4 made the ~5 events loud in the features and
+the pair reading destabilised — the reader traded its reliable
+dynamics signal for an unreliable reward one and got worse on both.
+
+**The honest statement of the boundary.** A goal is a property of the
+reward function; the reward function is visible only where reward
+fires; and a small random-policy sample of a sparse-reward world
+contains almost no such places. The dynamics reader worked because
+every transition carries dynamics information; the goal reader fails
+because almost no transition carries goal information. Amortising goal
+inference needs evidence gathered where reward LIVES — exploration
+that seeks reward events — or far larger evidence sets, and either is
+a different probe than "read the goal from what a random policy saw."
+
+Not promoted. Recorded as the boundary the F214-F216 arc stops at: per
+world goals are DISCOVERED (by search, at 180-360 rollouts) but not yet
+READ.
