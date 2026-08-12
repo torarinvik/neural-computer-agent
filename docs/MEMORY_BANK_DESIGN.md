@@ -10955,6 +10955,10 @@ that has never seen this run's readers or eval draws.
 Three claims survive selection: the ranking predicts, ten spread domains
 beat the whole battery, and spread beats random at the same budget.
 
+**One of those three does not survive the NEXT attack — see F211. The
+held-out quarter was `i % 4 == 3`, and nothing about the claim should
+depend on which quarter that is. It does.**
+
 **One does not. "Diversity beats generality at a fixed budget" was
 significant only with the in-sample ranking** — t=+2.36 own, t=+0.97
 imported. The point estimate barely moves (+0.1420 to +0.1369) and the
