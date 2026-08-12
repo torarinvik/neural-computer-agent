@@ -11479,3 +11479,58 @@ a different probe than "read the goal from what a random policy saw."
 Not promoted. Recorded as the boundary the F214-F216 arc stops at: per
 world goals are DISCOVERED (by search, at 180-360 rollouts) but not yet
 READ.
+
+## F218 — GOAL ACQUISITION AMORTISED 90x AT PARITY WITH THE SEARCH
+
+F217 localised the boundary: the goal's PAIR is readable from dynamics
+(every transition carries dynamics information) and its SIGN is not (it
+lives in reward events a random policy almost never sees). F208's
+pattern — read what is readable, verify a shortlist — applies exactly:
+
+    read     the pair, one forward pass over 512 random transitions
+    verify   FOUR rollout evaluations: {reader's pair, wake-prior mode
+             pair} x {+1, -1}
+    search   360 rollout evaluations (the F216 incumbent)
+
+Three seeds, seven held-out pure worlds, wake on compounds + synthetic
+goal-worlds only:
+
+| world | random | mode | read | read+2 | READ+BEAM(4) | searched(360) |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| collect1 | +0.104 | +1.620 | +0.755 | +0.755 | **+1.620** | +1.708 |
+| collect2 | +0.276 | +2.344 | +2.016 | +1.948 | **+2.344** | +2.521 |
+| intercept1 | -0.870 | -0.380 | -0.380 | -0.380 | **-0.380** | -0.375 |
+| intercept2 | -1.656 | -1.021 | -1.021 | -1.021 | **-1.021** | -1.078 |
+| avoid1 | -0.130 | -0.109 | -0.417 | -0.016 | **-0.016** | -0.016 |
+| avoid2 | -0.229 | -0.188 | -0.443 | -0.047 | **-0.047** | -0.047 |
+| navigate1 | +0.161 | +0.870 | +0.990 | +0.990 | **+0.990** | +0.990 |
+| MEAN | -0.335 | +0.448 | +0.214 | +0.318 | **+0.499** | +0.529 |
+
+    read_beam - searched : -0.0305 +- 0.0415  t=-0.74   PARITY
+    read_beam - mode     : +0.0506 +- 0.0218  t=+2.32
+    read_beam - random   : +0.8333 +- 0.1701  t=+4.90  21/21
+    beam goal == searched goal exactly: 14/21; where they differ the
+    returns match or exceed (intercept2: beam -1.021 vs search -1.078,
+    the search having overfit its own selection episodes)
+
+**Both beam components are necessary, and the table shows it.** On the
+avoid worlds the mode pair (2,3) names slots that do not exist — the
+mode arm sits at random there — and only the READER's (4,5) pair
+reaches the search's -0.016/-0.047. On collect1 the reader misreads and
+only the MODE pair recovers +1.620. Neither alone reaches parity;
+F217's four failed designs are what proved a reader alone cannot.
+
+**Scope, stated plainly.** Parity is a null result at n=21: the CI
+allows a deficit up to ~0.07. The verification budget (4 rollouts) is
+2 x the goal-language width, so richer goal languages grow the beam.
+The sign search inside verification uses the same selection stream as
+the incumbent search, so the comparison is symmetric by construction.
+
+**What this completes.** With F205-F208 (programs) and now F218
+(goals), BOTH discovery loops amortise with experience: a new world's
+dynamics cost one forward pass plus per-slot checks, and its goal costs
+one forward pass plus four rollouts, against ~900 candidates and 360
+rollouts for world 1. The founding objective — prior tasks make novel
+tasks cheaper than scratch — now holds for every learned component of
+the system, with the searches retained as the verifiers of what the
+readers propose.
