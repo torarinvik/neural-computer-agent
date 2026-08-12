@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 from collections.abc import Iterable
 from dataclasses import dataclass
 
@@ -399,7 +400,10 @@ class PersistentOpaqueContextRouteEvidence:
     task identifier.  The table stores the key and one independent
     :class:`PersistentOpaqueRouteEvidence` ledger per matched context.  A
     candidate becomes preferred only through that ledger's stable-prefix gate;
-    unknown contexts fall back to append order.  The table is intentionally a
+    unknown contexts fall back to append order.  An opt-in generalization
+    tolerance lets a protected nearest context provide a prior for a related
+    key; observing that related key still creates an independent row, so the
+    source memory cannot be overwritten.  The table is intentionally a
     replaceable memory-side policy and has no trainable path into the
     controller.
     """
@@ -411,6 +415,7 @@ class PersistentOpaqueContextRouteEvidence:
         width: int,
         *,
         matching_tolerance: float = 1e-4,
+        generalization_tolerance: float = 0.0,
         prior_strength: float = 1.0,
         mastery_threshold: float = 0.8,
         min_mastery_observations: int = 8,
@@ -421,8 +426,16 @@ class PersistentOpaqueContextRouteEvidence:
             raise ValueError("context-route width must be positive")
         if matching_tolerance < 0.0:
             raise ValueError("context-route matching tolerance must be non-negative")
+        if (
+            generalization_tolerance < 0.0
+            or not math.isfinite(generalization_tolerance)
+        ):
+            raise ValueError(
+                "context-route generalization tolerance must be finite and non-negative"
+            )
         self.width = int(width)
         self.matching_tolerance = float(matching_tolerance)
+        self.generalization_tolerance = float(generalization_tolerance)
         self.prior_strength = float(prior_strength)
         self.mastery_threshold = float(mastery_threshold)
         self.min_mastery_observations = int(min_mastery_observations)
@@ -447,6 +460,7 @@ class PersistentOpaqueContextRouteEvidence:
             "schema": self.schema,
             "width": self.width,
             "matching_tolerance": self.matching_tolerance,
+            "generalization_tolerance": self.generalization_tolerance,
             "prior_strength": self.prior_strength,
             "mastery_threshold": self.mastery_threshold,
             "min_mastery_observations": self.min_mastery_observations,
@@ -485,16 +499,24 @@ class PersistentOpaqueContextRouteEvidence:
             context.detach().to(device="cpu", dtype=torch.float32), dim=0
         ).contiguous()
 
-    def _find_record(self, context: torch.Tensor, *, create: bool) -> _ContextRouteRecord | None:
+    def _nearest_record(
+        self, context: torch.Tensor
+    ) -> tuple[_ContextRouteRecord | None, float]:
         key = self._validate_context(context)
-        if self._records:
-            keys = torch.tensor(
-                [record.key for record in self._records], dtype=key.dtype
-            )
-            distances = torch.linalg.vector_norm(keys - key, dim=1)
-            nearest = int(distances.argmin())
-            if float(distances[nearest]) <= self.matching_tolerance:
-                return self._records[nearest]
+        if not self._records:
+            return None, math.inf
+        keys = torch.tensor([record.key for record in self._records], dtype=key.dtype)
+        distances = torch.linalg.vector_norm(keys - key, dim=1)
+        nearest = int(distances.argmin())
+        return self._records[nearest], float(distances[nearest])
+
+    def _find_record(
+        self, context: torch.Tensor, *, create: bool
+    ) -> _ContextRouteRecord | None:
+        key = self._validate_context(context)
+        record, distance = self._nearest_record(context)
+        if record is not None and distance <= self.matching_tolerance:
+            return record
         if not create:
             return None
         evidence = PersistentOpaqueRouteEvidence(
@@ -513,12 +535,54 @@ class PersistentOpaqueContextRouteEvidence:
         self._version += 1
         return record
 
+    def _nearest_preferred_record(
+        self,
+        context: torch.Tensor,
+        *,
+        exclude: _ContextRouteRecord | None = None,
+    ) -> tuple[_ContextRouteRecord | None, float]:
+        key = self._validate_context(context)
+        candidates = [
+            record
+            for record in self._records
+            if record is not exclude
+            and record.evidence.status().preferred_slot is not None
+        ]
+        if not candidates:
+            return None, math.inf
+        keys = torch.tensor([record.key for record in candidates], dtype=key.dtype)
+        distances = torch.linalg.vector_norm(keys - key, dim=1)
+        nearest = int(distances.argmin())
+        return candidates[nearest], float(distances[nearest])
+
     def preferred_order(self, context: torch.Tensor) -> tuple[int, ...]:
-        """Return the learned order for a context, or append order if unseen."""
+        """Return a safe exact/nearby learned order or append order."""
 
         if self.slot_count < 1:
             raise ValueError("context-route bank has no slots")
         record = self._find_record(context, create=False)
+        if self.generalization_tolerance > self.matching_tolerance:
+            allow_prior = record is None
+            if record is not None:
+                status = record.evidence.status()
+                allow_prior = (
+                    status.preferred_slot is None
+                    and (
+                        status.last_outcome is None
+                        or status.last_outcome > self.reversal_threshold
+                    )
+                )
+            nearest, distance = self._nearest_preferred_record(
+                context,
+                exclude=record,
+            )
+            if (
+                allow_prior
+                and
+                nearest is not None
+                and distance <= self.generalization_tolerance
+            ):
+                record = nearest
         if record is None:
             return tuple(range(self.slot_count))
         return record.evidence.preferred_order(slot_count=self.slot_count)
@@ -626,6 +690,7 @@ class PersistentOpaqueContextRouteEvidence:
             "schema": self.schema,
             "width": self.width,
             "matching_tolerance": self.matching_tolerance,
+            "generalization_tolerance": self.generalization_tolerance,
             "prior_strength": self.prior_strength,
             "mastery_threshold": self.mastery_threshold,
             "min_mastery_observations": self.min_mastery_observations,
@@ -662,6 +727,9 @@ class PersistentOpaqueContextRouteEvidence:
         table = cls(
             int(unsigned["width"]),
             matching_tolerance=float(unsigned["matching_tolerance"]),
+            generalization_tolerance=float(
+                unsigned.get("generalization_tolerance", 0.0)
+            ),
             prior_strength=float(unsigned["prior_strength"]),
             mastery_threshold=float(unsigned["mastery_threshold"]),
             min_mastery_observations=int(unsigned["min_mastery_observations"]),

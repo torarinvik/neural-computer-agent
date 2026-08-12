@@ -337,6 +337,30 @@ content search, arbitrary new computation, or general continual learning.
 Evidence is archived in
 `session_records/control_flow_runtime_context_conditioned_growth_promoted_2026-08-12/`.
 
+## Gated related-context route transfer — bounded promotion
+
+The external route table now has an opt-in `generalization_tolerance`. When a
+new learned trajectory query lies within that distance of a protected context
+with a stable preferred file, it may borrow that preference as a cold-start
+prior. The new query is not aliased to the old row: its first observed scalar
+outcome creates independent evidence, and a local reversal can override the
+prior without changing the source context.
+
+Across three seeds and both physical-file orders, an unseen related query
+transferred at `1.0000` versus `0.0000` for a matched fresh table. A distant
+query stayed on append-order fallback. After the related context's correct file
+reversed, it relearned at `1.0000` while the original source remained at
+`1.0000`. Reward-shuffled arms transferred at `0.0000`; route persistence,
+checksum rejection, protected-file retention, frozen controller, and zero
+replay/controller updates passed. Each verifier arm used `64` unique scalar
+verifier bits and `64` logical lifetimes.
+
+This promotes bounded metric-neighborhood prior reuse and isolated local
+reversal. It does not establish semantic relatedness, robust representation
+migration, content search, unrestricted memory growth, arbitrary new
+computation, or general continual learning. Evidence is archived in
+`session_records/control_flow_runtime_related_context_transfer_promoted_2026-08-12/`.
+
 ## Outcome-only external recipe files and scope isolation
 
 The recipe basis now has a versioned external-file bridge:

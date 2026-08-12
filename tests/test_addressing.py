@@ -259,6 +259,39 @@ def test_context_route_evidence_conditions_preference_on_opaque_learned_key() ->
     assert table.preferred_slots(torch.stack((cue_a, cue_b))).tolist() == [1, 0]
 
 
+def test_context_route_evidence_can_generalize_a_protected_prior_without_aliasing() -> None:
+    table = PersistentOpaqueContextRouteEvidence(
+        width=4,
+        matching_tolerance=1e-5,
+        generalization_tolerance=0.1,
+        min_mastery_observations=2,
+    )
+    table.append_slot()
+    table.append_slot()
+    source = torch.tensor([1.0, 0.0, 0.0, 0.0])
+    related = torch.tensor([1.0, 0.05, 0.0, 0.0])
+    unrelated = torch.tensor([0.0, 1.0, 0.0, 0.0])
+
+    for _ in range(2):
+        table.observe(source, 1, 1.0)
+
+    assert table.preferred_order(related) == (1, 0)
+    assert table.preferred_order(unrelated) == (0, 1)
+    assert not table.has_context(related)
+
+    table.observe(related, 0, 1.0)
+    assert table.context_count == 2
+    assert table.preferred_order(source) == (1, 0)
+    assert table.preferred_order(related) == (1, 0)
+    table.observe(related, 0, 0.0)
+    assert table.preferred_order(related) == (0, 1)
+
+    restored = PersistentOpaqueContextRouteEvidence.from_payload(table.payload())
+    assert restored.preferred_order(related) == (0, 1)
+    assert restored.preferred_order(source) == (1, 0)
+    assert restored.configuration()["generalization_tolerance"] == 0.1
+
+
 def test_context_route_evidence_reset_clears_protection_for_reused_slot() -> None:
     table = PersistentOpaqueContextRouteEvidence(width=4)
     table.append_slot()

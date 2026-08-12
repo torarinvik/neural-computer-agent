@@ -301,6 +301,17 @@ previously bad slot without clearing other context rows. Evidence is archived
 under
 `session_records/control_flow_runtime_context_conditioned_growth_promoted_2026-08-12/`.
 
+`PersistentOpaqueContextRouteEvidence` also exposes an opt-in gated
+`generalization_tolerance`. A protected preferred route can seed a nearby
+unseen trajectory query, while the new query remains an independent row and
+can later reverse locally. The canonical three-seed audit reached `1.0000`
+related transfer and `1.0000` local reversal with `1.0000` source retention in
+both file orders; fresh related lookup was `0.0000`, distant lookup stayed on
+fallback, and reward-shuffled transfer was `0.0000`. This is bounded
+metric-neighborhood external-memory reuse, not semantic understanding or
+general continual learning. Evidence is archived under
+`session_records/control_flow_runtime_related_context_transfer_promoted_2026-08-12/`.
+
 The delayed score-function route credit path is batch-safe: each trajectory's
 feature gradient is expanded across the action axis before updating its
 independent eligibility tensor. This keeps batched route learning equivalent

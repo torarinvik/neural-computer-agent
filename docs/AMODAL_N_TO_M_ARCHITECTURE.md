@@ -11461,3 +11461,22 @@ The route ledger now persists a recovery streak, allowing fresh stable success
 to promote a previously bad candidate while leaving other context rows
 untouched. Evidence is archived at
 `session_records/control_flow_runtime_context_conditioned_growth_promoted_2026-08-12/`.
+
+### Gated related-context route transfer — bounded promotion
+
+`PersistentOpaqueContextRouteEvidence` now supports an opt-in
+`generalization_tolerance` at the memory boundary. A protected nearest context
+may provide a preferred-slot prior for a new learned route query, but the
+query's own evidence remains an independent row. Once local evidence exists,
+it can reverse the binding without mutating the source row. Unknown or distant
+queries still use append-order fallback.
+
+The three-seed canonical audit transferred an unseen nearby trajectory query at
+`1.0000` in both physical-file orders, versus `0.0000` for matched fresh
+tables. A distant query did not inherit the source prior. After a local target
+reversal, the related row reached `1.0000` while the source remained `1.0000`;
+reward-shuffled transfer was `0.0000`. Persistence, checksum, protected-file,
+frozen-controller, and zero-replay gates passed. This is metric-neighborhood
+external-memory reuse, not semantic generalization or general continual
+learning. Evidence is archived at
+`session_records/control_flow_runtime_related_context_transfer_promoted_2026-08-12/`.

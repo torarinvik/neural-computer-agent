@@ -1,0 +1,29 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment_id": "control-flow-runtime-related-context-transfer-2026-08-12",
+  "status": "promoted_bounded_metric_neighborhood_transfer",
+  "source": "in_repository_run",
+  "seeds": [17, 18, 19],
+  "verifier_arms": 6,
+  "unique_verifier_bits_per_arm": 64,
+  "unique_logical_lifetimes_per_arm": 64,
+  "optimizer_updates_per_arm": 0,
+  "replayed_examples_per_arm": 0,
+  "related_transfer_accuracy": [1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+  "matched_fresh_related_accuracy": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+  "related_reversal_accuracy": [1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+  "source_retention_after_reversal": [1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+  "reward_shuffled_related_transfer_accuracy": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+  "controls": {
+    "near_far_query_distance_gate": true,
+    "matched_fresh_control": true,
+    "reward_shuffled_null": true,
+    "candidate_order_permutation": true,
+    "protected_files": true,
+    "frozen_controller": true,
+    "exact_evidence_reload": true,
+    "checksum_corruption_rejected": true,
+    "zero_replay": true
+  },
+  "claim_boundary": "Promoted bounded gated metric-neighborhood prior reuse and isolated local reversal; not semantic generalization, unrestricted memory growth, arbitrary new computation, or general continual learning."
+}
