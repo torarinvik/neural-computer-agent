@@ -399,6 +399,26 @@ establish arbitrary program induction, unrestricted memory growth, or general
 continual learning. Evidence is archived in
 `session_records/control_flow_runtime_acquired_program_promoted_2026-08-12/`.
 
+## Reusable external composition through the canonical runtime
+
+The typed control-flow ABI now materializes a sequential composition from
+existing external files. It relocates internal jump targets, maps each
+component's terminal halt to the next file, rejects incompatible counter
+widths and ambiguous internal halts, and admits the resulting ordinary file
+through the same scalar stable-prefix verifier.
+
+The canonical audit first acquired a transfer loop, composed it with a second
+external increment file, and routed the resulting artifact through the frozen
+amodal runtime. Across three seeds and both physical-file orders, component
+and composed held-out mastery, composed route/execution, and source retention
+were all `1.0000`; fresh and reward-shuffled controls were `0.0000`. The
+controller and external files stayed unchanged, with zero replay and zero
+controller optimizer updates. Evidence is archived in
+`session_records/control_flow_runtime_composed_program_promoted_2026-08-12/`.
+
+This promotes bounded reusable external composition, not arbitrary program
+induction, unrestricted memory growth, or general continual learning.
+
 ## Outcome-only external recipe files and scope isolation
 
 The recipe basis now has a versioned external-file bridge:

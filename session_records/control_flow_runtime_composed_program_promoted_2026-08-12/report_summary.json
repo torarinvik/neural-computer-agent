@@ -1,0 +1,23 @@
+{
+  "schema": "neural-computer.control-flow-runtime-composed-program.v1",
+  "status": "promoted_bounded_reusable_external_composition_and_canonical_execution",
+  "seeds": [17, 18, 19],
+  "verifier_arms": 6,
+  "acquired_component_heldout_accuracy": [1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+  "composed_artifact_heldout_accuracy": [1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+  "canonical_composed_route_accuracy": [1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+  "canonical_composed_execution_accuracy": [1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+  "source_retention_accuracy": [1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+  "fresh_composed_selection_accuracy": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+  "fresh_composed_execution_accuracy": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+  "reward_shuffled_composed_route_accuracy": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+  "unique_verifier_bits_per_verifier_arm": [752, 752, 816, 816, 1624, 1624],
+  "unique_logical_lifetimes_per_verifier_arm": [164, 164, 172, 172, 273, 273],
+  "optimizer_updates": 0,
+  "replayed_examples": 0,
+  "controller_frozen": true,
+  "external_files_retained": true,
+  "evidence_reload_exact": true,
+  "checksum_corruption_rejected": true,
+  "claim_boundary": "bounded reusable external composition and canonical frozen-controller execution; not arbitrary program induction, unrestricted memory growth, or general continual learning"
+}

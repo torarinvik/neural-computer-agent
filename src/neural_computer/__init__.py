@@ -96,6 +96,7 @@ from .control_flow import (
     ControlFlowInstruction,
     ControlFlowProgram,
     ControlFlowProgramMemory,
+    compose_control_flow_programs,
 )
 from .control_flow_frontier import (
     CONTROL_FLOW_FRONTIER_HYPOTHESIS_SCHEMA,
@@ -1494,6 +1495,7 @@ __all__ = [
     "apply_consolidation_proposal",
     "apply_sequence",
     "attempted_outcome_loss",
+    "compose_control_flow_programs",
     "compose_growth_artifacts",
     "compress_growth_artifact",
     "control_flow_instruction_bank",

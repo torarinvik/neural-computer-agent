@@ -1,0 +1,29 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment_id": "control-flow-runtime-composed-program-2026-08-12",
+  "status": "promoted_bounded_reusable_external_composition_and_canonical_execution",
+  "source": "in_repository_run",
+  "seeds": [17, 18, 19],
+  "verifier_arms": 6,
+  "unique_verifier_bits_per_arm": [752, 752, 816, 816, 1624, 1624],
+  "unique_logical_lifetimes_per_arm": [164, 164, 172, 172, 273, 273],
+  "optimizer_updates_per_arm": 0,
+  "replayed_examples_per_arm": 0,
+  "stable_bits_to_threshold": null,
+  "latency_seconds_per_arm": [0.157, 0.149, 0.151, 0.172, 0.191, 0.202],
+  "controls": {
+    "acquired_component_heldout_mastery": true,
+    "composed_artifact_heldout_mastery": true,
+    "canonical_route_and_execution_mastery": true,
+    "matched_fresh_control": true,
+    "reward_shuffled_null": true,
+    "forward_and_reversed_file_order": true,
+    "protected_external_files": true,
+    "frozen_controller": true,
+    "exact_evidence_reload": true,
+    "checksum_corruption_rejected": true,
+    "zero_replay": true,
+    "zero_controller_optimizer_updates": true
+  },
+  "claim_boundary": "Promoted bounded reusable external composition through the canonical runtime; not arbitrary program induction, unrestricted memory growth, or general continual learning."
+}

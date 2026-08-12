@@ -338,6 +338,18 @@ not arbitrary program induction or general continual learning. Evidence is
 archived under
 `session_records/control_flow_runtime_acquired_program_promoted_2026-08-12/`.
 
+### Reusable external composition reaches the canonical runtime
+
+The typed control-flow ABI can now compose existing external files by
+relocating jumps and safely transferring terminal halts. The composed file is
+admitted through scalar verifier evidence and remains outside the controller.
+The canonical three-seed audit reached `1.0000` component/composed mastery,
+route, execution, and source retention in both file orders; fresh and
+reward-shuffled controls were `0.0000`, with zero replay and controller
+updates. This is bounded reusable external computation, not arbitrary program
+induction or general continual learning. Evidence is archived under
+`session_records/control_flow_runtime_composed_program_promoted_2026-08-12/`.
+
 The delayed score-function route credit path is batch-safe: each trajectory's
 feature gradient is expanded across the action axis before updating its
 independent eligibility tensor. This keeps batched route learning equivalent

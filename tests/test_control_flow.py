@@ -10,6 +10,7 @@ from neural_computer import (
     ControlFlowProgram,
     ControlFlowProgramFrontier,
     ControlFlowProgramMemory,
+    compose_control_flow_programs,
     iter_control_flow_programs,
 )
 
@@ -78,6 +79,99 @@ def test_control_flow_memory_admission_is_scalar_gated_and_persistent() -> None:
     restored = ControlFlowProgramMemory.from_payload(memory.payload())
     assert restored.digest() == memory.digest()
     assert restored.program(0).execute((7, 0), max_steps=100).counters == (0, 7)
+
+
+def test_control_flow_composition_relocates_internal_and_terminal_jumps() -> None:
+    first = ControlFlowProgram(
+        2,
+        (
+            ControlFlowInstruction("jump_if_zero", counter=0, target=3),
+            ControlFlowInstruction("dec", counter=0),
+            ControlFlowInstruction("jump", target=0),
+            ControlFlowInstruction("halt"),
+        ),
+    )
+    second = ControlFlowProgram(
+        2,
+        (
+            ControlFlowInstruction("jump_if_zero", counter=1, target=3),
+            ControlFlowInstruction("dec", counter=1),
+            ControlFlowInstruction("jump", target=0),
+            ControlFlowInstruction("halt"),
+        ),
+    )
+
+    composed = compose_control_flow_programs((first, second))
+
+    assert composed.instructions[0].target == 3
+    assert composed.instructions[3].op == "jump_if_zero"
+    assert composed.instructions[3].target == 6
+    assert composed.instructions[6].op == "halt"
+    for initial in ((0, 0), (2, 0), (0, 3), (4, 2)):
+        first_result = first.execute(initial, max_steps=100)
+        second_result = second.execute(first_result.counters, max_steps=100)
+        composed_result = composed.execute(initial, max_steps=200)
+        assert composed_result.status == "halted"
+        assert composed_result.counters == second_result.counters
+
+
+def test_control_flow_composition_rejects_ambiguous_or_incompatible_files() -> None:
+    with pytest.raises(ValueError, match="at least one"):
+        compose_control_flow_programs(())
+    with pytest.raises(ValueError, match="internal halt"):
+        compose_control_flow_programs(
+            (
+                ControlFlowProgram(
+                    2,
+                    (
+                        ControlFlowInstruction("halt"),
+                        ControlFlowInstruction("halt"),
+                    ),
+                ),
+            )
+        )
+    with pytest.raises(ValueError, match="common counter width"):
+        compose_control_flow_programs(
+            (
+                ControlFlowProgram(2, (ControlFlowInstruction("halt"),)),
+                ControlFlowProgram(3, (ControlFlowInstruction("halt"),)),
+            )
+        )
+
+
+def test_control_flow_memory_composes_and_verifies_existing_files() -> None:
+    memory = ControlFlowProgramMemory(2)
+    first = memory.add_program(
+        ControlFlowProgram(
+            2,
+            (
+                ControlFlowInstruction("inc", counter=0),
+                ControlFlowInstruction("halt"),
+            ),
+        ),
+        protect=True,
+    )
+    second = memory.add_program(
+        ControlFlowProgram(
+            2,
+            (
+                ControlFlowInstruction("inc", counter=1),
+                ControlFlowInstruction("halt"),
+            ),
+        ),
+        protect=True,
+    )
+    candidate = memory.compose((first, second))
+    assert candidate.execute((0, 0), max_steps=16).counters == (1, 1)
+    receipt = memory.compose_verified(
+        (first, second),
+        (1.0, 1.0, 1.0),
+        min_observations=3,
+        min_stable_observations=2,
+        protect=True,
+    )
+    assert receipt.accepted and receipt.slot == 2
+    assert memory.is_file_protected(2)
 
 
 def test_control_flow_outcome_search_can_learn_one_opaque_instruction_edit() -> None:

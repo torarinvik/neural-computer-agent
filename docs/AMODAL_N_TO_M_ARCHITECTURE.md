@@ -11517,3 +11517,23 @@ external file admission, and canonical frozen-controller execution. It does
 not establish arbitrary program induction, unrestricted memory growth, or
 general continual learning. Evidence is archived at
 `session_records/control_flow_runtime_acquired_program_promoted_2026-08-12/`.
+
+### Reusable external composition through the canonical runtime
+
+The typed control-flow ABI now materializes sequential compositions from
+existing external files. Internal and terminal jump targets are relocated
+without exposing control-flow fields to the controller; incompatible counter
+widths and ambiguous internal halts fail closed. The composed result is an
+ordinary checksummed external file and is admitted only after scalar verifier
+evidence reaches a stable prefix.
+
+The three-seed canonical audit acquired a transfer loop, composed it with a
+second external increment file, and routed the composed artifact through the
+frozen amodal runtime in both physical file orders. Component and composed
+held-out mastery, composed route/execution, and source retention were
+`1.0000` in every verifier arm. Fresh and reward-shuffled controls were
+`0.0000`; replay and controller optimizer updates were zero. This promotes
+bounded reusable external computation, not arbitrary program induction,
+unrestricted memory growth, or general continual learning. Evidence is
+archived at
+`session_records/control_flow_runtime_composed_program_promoted_2026-08-12/`.

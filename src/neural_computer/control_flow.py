@@ -251,6 +251,69 @@ class ControlFlowProgram:
         ).validate(counter_count=self.counter_count)
 
 
+def compose_control_flow_programs(
+    programs: Sequence[ControlFlowProgram],
+) -> ControlFlowProgram:
+    """Materialize a sequential composition with relocated jump targets.
+
+    Each component is an external file with one terminal ``halt``. The
+    terminal halt transfers to the next component, while the final terminal
+    halt becomes the composition's single halt. Internal halts are rejected
+    because they would make the declared sequence silently skip later files.
+    The returned program is ordinary control-flow ABI data; no task-specific
+    composition operator enters the controller.
+    """
+
+    if not programs:
+        raise ValueError("control-flow composition needs at least one program")
+    validated = tuple(program.validate() for program in programs)
+    counter_count = validated[0].counter_count
+    if any(program.counter_count != counter_count for program in validated):
+        raise ValueError("composed control-flow programs need a common counter width")
+    if any(
+        instruction.op == "halt"
+        for program in validated
+        for instruction in program.instructions[:-1]
+    ):
+        raise ValueError("composed control-flow programs cannot contain internal halt")
+
+    body_lengths = tuple(len(program.instructions) - 1 for program in validated)
+    offsets: list[int] = []
+    offset = 0
+    for length in body_lengths:
+        offsets.append(offset)
+        offset += length
+    total_body_length = offset
+    instructions: list[ControlFlowInstruction] = []
+    for program_index, program in enumerate(validated):
+        component_offset = offsets[program_index]
+        next_target = (
+            offsets[program_index + 1]
+            if program_index + 1 < len(validated)
+            else total_body_length
+        )
+        terminal_index = len(program.instructions) - 1
+        for instruction in program.instructions[:-1]:
+            if instruction.op not in {"jump", "jump_if_zero", "jump_if_nonzero"}:
+                instructions.append(instruction)
+                continue
+            assert instruction.target is not None
+            target = (
+                next_target
+                if instruction.target == terminal_index
+                else component_offset + instruction.target
+            )
+            instructions.append(
+                ControlFlowInstruction(
+                    instruction.op,
+                    counter=instruction.counter,
+                    target=target,
+                )
+            )
+    instructions.append(ControlFlowInstruction("halt"))
+    return ControlFlowProgram(counter_count, tuple(instructions)).validate()
+
+
 @dataclass(frozen=True)
 class ControlFlowAdmissionReceipt:
     accepted: bool
@@ -297,6 +360,43 @@ class ControlFlowProgramMemory:
         if not 0 <= slot < self.file_count:
             raise IndexError("control-flow memory slot is out of range")
         return self._protected[slot]
+
+    def compose(self, slots: Sequence[int]) -> ControlFlowProgram:
+        """Materialize a sequential composition from existing opaque files."""
+
+        if not slots:
+            raise ValueError("control-flow composition needs at least one slot")
+        normalized: list[int] = []
+        for slot in slots:
+            if not isinstance(slot, int) or isinstance(slot, bool):
+                raise TypeError("control-flow composition slots must be integers")
+            if not 0 <= slot < self.file_count:
+                raise IndexError("control-flow composition slot is out of range")
+            normalized.append(slot)
+        return compose_control_flow_programs(
+            tuple(self.program(slot) for slot in normalized)
+        )
+
+    def compose_verified(
+        self,
+        slots: Sequence[int],
+        outcomes: Sequence[float],
+        *,
+        threshold: float = 1.0,
+        min_observations: int = 1,
+        min_stable_observations: int = 1,
+        protect: bool = False,
+    ) -> ControlFlowAdmissionReceipt:
+        """Compose existing files and admit the result through scalar evidence."""
+
+        return self.admit_verified(
+            self.compose(slots),
+            outcomes,
+            threshold=threshold,
+            min_observations=min_observations,
+            min_stable_observations=min_stable_observations,
+            protect=protect,
+        )
 
     def admit_verified(
         self,
@@ -380,4 +480,5 @@ __all__ = [
     "ControlFlowInstruction",
     "ControlFlowProgram",
     "ControlFlowProgramMemory",
+    "compose_control_flow_programs",
 ]
