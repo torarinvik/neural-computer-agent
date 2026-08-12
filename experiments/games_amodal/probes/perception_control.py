@@ -57,6 +57,11 @@ parser.add_argument("--train-games", type=int, default=8,
                     help="games the goal pair may be chosen on")
 parser.add_argument("--held-from", type=int, default=8)
 parser.add_argument("--held-to", type=int, default=16)
+parser.add_argument("--search-episodes", type=int, default=32,
+                    help="cheaper fidelity while RANKING goal pairs; the "
+                         "chosen pair is then evaluated at full budget")
+parser.add_argument("--search-steps", type=int, default=10)
+parser.add_argument("--search-games", type=int, default=6)
 parser.add_argument("--json", default="")
 args = parser.parse_args()
 
@@ -282,24 +287,37 @@ def build_bank(config, seed, encoder):
     return bank
 
 
-def play(config, mode, bank, seed, encoder, pair_a, pair_b):
-    v = FamilyVerifier(config, batch_size=args.episodes, seed=seed)
+def play(config, mode, bank, seed, encoder, pair_a, pair_b,
+         episodes=None, steps=None):
+    episodes = episodes or args.episodes
+    steps = steps or args.steps
+    v = FamilyVerifier(config, batch_size=episodes, seed=seed)
     v.reset(seed=seed)
     g = torch.Generator().manual_seed(seed + 4242)
-    total = torch.zeros(args.episodes)
-    for _ in range(args.steps):
+    total = torch.zeros(episodes)
+    for _ in range(steps):
         if mode == "random":
-            action = torch.randint(0, 4, (args.episodes,), generator=g)
+            action = torch.randint(0, 4, (episodes,), generator=g)
         else:
             best = None
             reference = encoder(v.observation())
-            action = torch.zeros(args.episodes, dtype=torch.long)
+            # ABSENT must be handled the SAME way on both sides. Masking
+            # the predicted state but not the reference made a slot that
+            # is absent compare against 8 on one side and 0 on the other,
+            # which is how a goal naming absent slots produced a constant
+            # cost across all four actions -- a blind planner that always
+            # takes action 0.
+            reference = torch.where(reference < VALUES, reference,
+                                    torch.zeros_like(reference))
+            action = torch.zeros(episodes, dtype=torch.long)
             for act in range(4):
                 if mode == "oracle":
                     shadow = copy.deepcopy(v)
-                    shadow.step(torch.full((args.episodes,), act))
-                    cost = goal_cost(encoder(shadow.observation()), reference,
-                                     pair_a, pair_b)
+                    shadow.step(torch.full((episodes,), act))
+                    seen = encoder(shadow.observation())
+                    cost = goal_cost(torch.where(seen < VALUES, seen,
+                                                 torch.zeros_like(seen)),
+                                     reference, pair_a, pair_b)
                 else:
                     state = encoder(v.observation())
                     state = torch.where(state < VALUES, state,
@@ -315,7 +333,7 @@ def play(config, mode, bank, seed, encoder, pair_a, pair_b):
                     take = cost < best
                     best = torch.where(take, cost, best)
                     action = torch.where(take,
-                                         torch.full((args.episodes,), act),
+                                         torch.full((episodes,), act),
                                          action)
         total += v.step(action).reward
     return round(float(total.mean()), 4)
@@ -330,31 +348,50 @@ held_games = variants[args.held_from:args.held_to]
 # training games only. The chosen pair is then frozen and never revisited.
 pairs = [p for p in itertools.permutations(range(SLOTS), 2)]
 def choose_goal(encoder):
-    banks = {c.name: build_bank(c, args.seed * 31, encoder) for c in train_games}
+    games = train_games[:args.search_games]
+    banks = {c.name: build_bank(c, args.seed * 31, encoder) for c in games}
+    # A slot that is ABSENT in most rows cannot carry a goal: its cost is
+    # the same whatever the agent does. Admissibility is a property of the
+    # interface's sentinel, not of grids, so this adds no domain knowledge.
+    present = torch.zeros(SLOTS)
+    for c in games:
+        v = FamilyVerifier(c, batch_size=args.observations, seed=args.seed * 31)
+        v.reset(seed=args.seed * 31)
+        code = encoder(v.observation())
+        present += (code < VALUES).float().mean(dim=0)
+    present /= len(games)
+    usable = {s for s in range(SLOTS) if float(present[s]) >= 0.9}
     best, best_reward = None, -1e9
     for pa in pairs:
         for pb in pairs:
-            if pa == pb:
+            # the two pairs must be disjoint -- matching a slot to itself
+            # is solved by doing nothing -- and (a,b) is the same goal as
+            # its within-pair swap, so only keep one ordering
+            if set(pa) & set(pb) or pa[0] > pa[1]:
+                continue
+            if not (set(pa) | set(pb)) <= usable:
                 continue
             total = sum(play(c, "bank", banks[c.name], args.seed * 977,
-                             encoder, pa, pb) for c in train_games)
+                             encoder, pa, pb,
+                             episodes=args.search_episodes,
+                             steps=args.search_steps) for c in games)
             if total > best_reward:
-                best, best_reward = (pa, pb), total / len(train_games)
-    return best, round(best_reward, 4)
+                best, best_reward = (pa, pb), total / len(games)
+    return best, round(best_reward, 4), sorted(usable)
 
 
 results = {}
 arms = [("handwritten_fixed_goal", enc_handwritten, ((0, 1), (2, 3))),
         ("discovered_fixed_goal", enc_discovered, ((0, 1), (2, 3)))]
-chosen, train_reward = choose_goal(enc_discovered)
+chosen, train_reward, usable_d = choose_goal(enc_discovered)
 report["chosen_goal_pairs"] = {"avatar_pair": list(chosen[0]),
                                "target_pair": list(chosen[1]),
-                               "train_reward": train_reward}
+                               "train_reward": train_reward, "usable_slots": usable_d}
 arms.append(("discovered_chosen_goal", enc_discovered, chosen))
-chosen_hw, train_hw = choose_goal(enc_handwritten)
+chosen_hw, train_hw, usable_h = choose_goal(enc_handwritten)
 report["chosen_goal_pairs_handwritten"] = {
     "avatar_pair": list(chosen_hw[0]), "target_pair": list(chosen_hw[1]),
-    "train_reward": train_hw}
+    "train_reward": train_hw, "usable_slots": usable_h}
 arms.append(("handwritten_chosen_goal", enc_handwritten, chosen_hw))
 
 for label, encoder, (pa, pb) in arms:
