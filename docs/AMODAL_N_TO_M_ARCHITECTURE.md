@@ -11480,3 +11480,15 @@ frozen-controller, and zero-replay gates passed. This is metric-neighborhood
 external-memory reuse, not semantic generalization or general continual
 learning. Evidence is archived at
 `session_records/control_flow_runtime_related_context_transfer_promoted_2026-08-12/`.
+
+### Route-query representation migration guard
+
+Persistent route evidence now carries a versioned `query_space_id`, while the
+replaceable trajectory-query adapter declares its own identity. The canonical
+control-flow runtime compares the two and fails closed before route selection
+when they differ. This prevents an equal-width but incompatible learned query
+projection from silently corrupting persisted addresses. Payloads from before
+this field are readable under the explicit default `opaque-route-query-v1`;
+changing the query ABI requires a deliberate version bump and evidence
+migration or reset. This is an ABI-integrity boundary, not evidence of
+learning or semantic transfer.

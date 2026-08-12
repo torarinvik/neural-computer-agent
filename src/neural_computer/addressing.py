@@ -19,6 +19,11 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
+from .representation import (
+    DEFAULT_ROUTE_QUERY_SPACE_ID,
+    validate_representation_space_id,
+)
+
 
 def _payload_digest(payload: dict[str, object]) -> str:
     """Hash a JSON-compatible opaque-memory payload without its digest."""
@@ -416,6 +421,7 @@ class PersistentOpaqueContextRouteEvidence:
         *,
         matching_tolerance: float = 1e-4,
         generalization_tolerance: float = 0.0,
+        query_space_id: str = DEFAULT_ROUTE_QUERY_SPACE_ID,
         prior_strength: float = 1.0,
         mastery_threshold: float = 0.8,
         min_mastery_observations: int = 8,
@@ -436,6 +442,10 @@ class PersistentOpaqueContextRouteEvidence:
         self.width = int(width)
         self.matching_tolerance = float(matching_tolerance)
         self.generalization_tolerance = float(generalization_tolerance)
+        self.query_space_id = validate_representation_space_id(
+            query_space_id,
+            name="context-route query_space_id",
+        )
         self.prior_strength = float(prior_strength)
         self.mastery_threshold = float(mastery_threshold)
         self.min_mastery_observations = int(min_mastery_observations)
@@ -461,6 +471,7 @@ class PersistentOpaqueContextRouteEvidence:
             "width": self.width,
             "matching_tolerance": self.matching_tolerance,
             "generalization_tolerance": self.generalization_tolerance,
+            "query_space_id": self.query_space_id,
             "prior_strength": self.prior_strength,
             "mastery_threshold": self.mastery_threshold,
             "min_mastery_observations": self.min_mastery_observations,
@@ -691,6 +702,7 @@ class PersistentOpaqueContextRouteEvidence:
             "width": self.width,
             "matching_tolerance": self.matching_tolerance,
             "generalization_tolerance": self.generalization_tolerance,
+            "query_space_id": self.query_space_id,
             "prior_strength": self.prior_strength,
             "mastery_threshold": self.mastery_threshold,
             "min_mastery_observations": self.min_mastery_observations,
@@ -729,6 +741,9 @@ class PersistentOpaqueContextRouteEvidence:
             matching_tolerance=float(unsigned["matching_tolerance"]),
             generalization_tolerance=float(
                 unsigned.get("generalization_tolerance", 0.0)
+            ),
+            query_space_id=str(
+                unsigned.get("query_space_id", DEFAULT_ROUTE_QUERY_SPACE_ID)
             ),
             prior_strength=float(unsigned["prior_strength"]),
             mastery_threshold=float(unsigned["mastery_threshold"]),

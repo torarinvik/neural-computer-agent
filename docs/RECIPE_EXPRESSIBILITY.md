@@ -361,6 +361,19 @@ migration, content search, unrestricted memory growth, arbitrary new
 computation, or general continual learning. Evidence is archived in
 `session_records/control_flow_runtime_related_context_transfer_promoted_2026-08-12/`.
 
+## Route-query representation migration guard
+
+The route evidence payload now records a versioned `query_space_id`, and
+`ExternalControllerTrajectoryQueryAdapter` declares the same identity. The
+canonical control-flow runtime rejects a route table paired with an
+incompatible query space before it can select or execute a file. This closes a
+silent-failure mode in which equal-width but differently trained projections
+could reinterpret every persisted address. Legacy payloads without the field
+remain readable as `opaque-route-query-v1`; changing the learned query ABI
+requires an explicit version bump and a fresh or migrated evidence table.
+
+This is an interface-integrity safeguard, not a learning-capability claim.
+
 ## Outcome-only external recipe files and scope isolation
 
 The recipe basis now has a versioned external-file bridge:

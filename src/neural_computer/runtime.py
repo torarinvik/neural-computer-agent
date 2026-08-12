@@ -86,6 +86,7 @@ from .representation import (
     DEFAULT_CONTROLLER_STATE_SPACE_ID,
     DEFAULT_EVENT_SPACE_ID,
     DEFAULT_INTENTION_SPACE_ID,
+    DEFAULT_ROUTE_QUERY_SPACE_ID,
     REPRESENTATION_SPACE_SCHEMA,
     validate_representation_space_id,
 )
@@ -1800,6 +1801,7 @@ class ExternalControllerTrajectoryQueryAdapter(nn.Module):
         hidden_width: int = 0,
         trajectory_statistics: str = "masked_mean_and_max_v1",
         recency_decay: float = 0.75,
+        query_space_id: str = DEFAULT_ROUTE_QUERY_SPACE_ID,
     ) -> None:
         super().__init__()
         if controller_width < 1 or hidden_width < 0:
@@ -1821,6 +1823,10 @@ class ExternalControllerTrajectoryQueryAdapter(nn.Module):
         self.hidden_width = int(hidden_width)
         self.trajectory_statistics = str(trajectory_statistics)
         self.recency_decay = float(recency_decay)
+        self.query_space_id = validate_representation_space_id(
+            query_space_id,
+            name="trajectory-query query_space_id",
+        )
         if hidden_width:
             self.network = nn.Sequential(
                 nn.Linear(self.input_width, hidden_width),
@@ -1840,6 +1846,7 @@ class ExternalControllerTrajectoryQueryAdapter(nn.Module):
             "event_feature_width": self.event_feature_width,
             "input_width": self.input_width,
             "query_width": self.query_width,
+            "query_space_id": self.query_space_id,
             "hidden_width": self.hidden_width,
             "input": "opaque_controller_state_plus_event_token_trajectory_v1",
             "statistics": self.trajectory_statistics,

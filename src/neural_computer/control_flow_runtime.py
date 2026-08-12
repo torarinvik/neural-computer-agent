@@ -397,6 +397,19 @@ class ControlFlowProgramAmodalRuntime(nn.Module):
                 raise ValueError(
                     "control-flow route query adapter width does not match route evidence"
                 )
+            query_space_id = getattr(
+                program_route_query_adapter,
+                "query_space_id",
+                None,
+            )
+            if (
+                program_route_evidence is not None
+                and query_space_id is not None
+                and query_space_id != program_route_evidence.query_space_id
+            ):
+                raise ValueError(
+                    "control-flow route query space does not match route evidence"
+                )
         elif program_router is not None and program_router.feature_width != runtime.intention_width:
             raise ValueError(
                 "control-flow program router must consume opaque intentions"

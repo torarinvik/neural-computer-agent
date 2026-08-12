@@ -292,6 +292,19 @@ def test_context_route_evidence_can_generalize_a_protected_prior_without_aliasin
     assert restored.configuration()["generalization_tolerance"] == 0.1
 
 
+def test_context_route_evidence_persists_query_space_identity() -> None:
+    table = PersistentOpaqueContextRouteEvidence(
+        width=3,
+        query_space_id="route-query-v2",
+    )
+    table.append_slot()
+
+    restored = PersistentOpaqueContextRouteEvidence.from_payload(table.payload())
+
+    assert restored.query_space_id == "route-query-v2"
+    assert restored.payload() == table.payload()
+
+
 def test_context_route_evidence_reset_clears_protection_for_reused_slot() -> None:
     table = PersistentOpaqueContextRouteEvidence(width=4)
     table.append_slot()

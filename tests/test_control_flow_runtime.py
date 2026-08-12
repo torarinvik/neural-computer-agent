@@ -325,6 +325,30 @@ def test_control_flow_runtime_consumes_context_route_evidence_in_cycle() -> None
     assert routed.program_route_query is not None
 
 
+def test_control_flow_runtime_rejects_incompatible_route_query_space() -> None:
+    memory = ControlFlowProgramMemory(2)
+    memory.add_program(_program(), protect=True)
+    memory.add_program(_other_program(), protect=True)
+    evidence = PersistentOpaqueContextRouteEvidence(
+        width=20,
+        query_space_id="route-query-v2",
+    )
+    evidence.append_slot()
+    evidence.append_slot()
+    query_adapter = ExternalControllerTrajectoryQueryAdapter(
+        controller_width=4,
+        query_width=20,
+        query_space_id="route-query-v1",
+    )
+
+    with pytest.raises(ValueError, match="query space"):
+        _agent(
+            memory=memory,
+            query_adapter=query_adapter,
+            route_evidence=evidence,
+        )
+
+
 def test_control_flow_runtime_routes_multiple_files_with_isolated_counter_state() -> None:
     memory = ControlFlowProgramMemory(2)
     memory.add_program(_program(), protect=True)

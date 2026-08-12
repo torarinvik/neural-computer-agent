@@ -312,6 +312,14 @@ metric-neighborhood external-memory reuse, not semantic understanding or
 general continual learning. Evidence is archived under
 `session_records/control_flow_runtime_related_context_transfer_promoted_2026-08-12/`.
 
+Route evidence and its replaceable trajectory-query adapter now share a
+versioned `query_space_id`. The canonical runtime rejects mismatched IDs
+before executing an external file, preventing silent address corruption after
+an incompatible projection change. Pre-identity payloads migrate to the
+explicit `opaque-route-query-v1` default; new query representations must bump
+the ID and intentionally migrate or reset their external evidence. This is a
+durability/ABI safeguard, not a capability claim.
+
 The delayed score-function route credit path is batch-safe: each trajectory's
 feature gradient is expanded across the action axis before updating its
 independent eligibility tensor. This keeps batched route learning equivalent
