@@ -418,6 +418,13 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "controller": "frozen_canonical_amodal_controller",
             "event_encoder": "frozen_learned_event_encoder",
             "capability": "external_temporal_capability_file_frozen_after_target",
+            "history_transport": (
+                "canonical_runtime_external_history_event_bridge_v1"
+            ),
+            "history_causality": "read_before_current_append",
+            "bridge_offset_semantics": (
+                "logical_lag_minus_one_for_pre_append_relative_read"
+            ),
             "address_memory": "persistent_append_only_content_addressed_memory_v1",
             "query": "learned_event_tensor_plus_related_noise",
             "read_match_threshold": READ_MATCH_THRESHOLD,

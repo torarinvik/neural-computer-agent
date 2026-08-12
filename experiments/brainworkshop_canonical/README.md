@@ -1018,6 +1018,22 @@ compression, capacity management, arbitrary new computation, or general
 continual learning. Evidence and accounting are archived in
 `session_records/brainworkshop_external_temporal_content_retrieval_growth_promoted_2026-08-12/`.
 
+## Canonical-bridge related-key retrieval replication (2026-08-12)
+
+The related-key retrieval composition now consumes temporal events produced by
+the canonical pre-append history bridge. The persistent content-addressed
+memory stores only opaque learned query keys and capability-address values; it
+does not enter the controller or reinterpret protocol fields. Exact and 20%
+normalized-perturbation keys must recover the logical lags `4` and `5`, while
+the bridge receives their prior-record offsets `3` and `4`.
+
+Seeds `17` and `18` each pass the full retrieval, persistence, clear, reload,
+checksum-corruption, frozen-capability, frozen-core, and zero-replay gates at
+the stable bridge-integrated query-address rung. This remains bounded related-
+key retrieval, not learned compression, capacity management, arbitrary new
+computation, or general continual learning. Evidence is archived in
+`session_records/brainworkshop_external_temporal_content_retrieval_bridge_promoted_2026-08-12/`.
+
 ## Verified external temporal-memory compaction (2026-08-12)
 
 `external_temporal_verified_compaction_growth.py` adds the missing commit

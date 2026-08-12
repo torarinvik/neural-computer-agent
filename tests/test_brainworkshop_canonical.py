@@ -464,6 +464,12 @@ def test_external_temporal_content_retrieval_growth_smoke_preserves_memory_contr
     assert report["schema"] == (
         "neural-computer.brainworkshop-external-temporal-content-retrieval-growth.v1"
     )
+    assert report["architecture"]["history_transport"] == (
+        "canonical_runtime_external_history_event_bridge_v1"
+    )
+    assert report["architecture"]["history_causality"] == (
+        "read_before_current_append"
+    )
     assert report["gates"]["two_routes_written"]
     assert report["gates"]["clear_memory_removes_hits"]
     assert report["gates"]["reload_preserves_noisy_routes"]
