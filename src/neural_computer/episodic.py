@@ -51,6 +51,30 @@ class EpisodicBindingContext:
 
 
 @dataclass(frozen=True)
+class EpisodicBindingLookup:
+    """Opaque archive lookup result for one learned binding signature."""
+
+    binding_id: int | None
+    similarity: float
+    active_slot: int | None
+
+
+@dataclass(frozen=True)
+class EpisodicBindingArchiveStatus:
+    """Auditable external archive state without semantic task labels."""
+
+    record_count: int
+    active_slots: tuple[int | None, ...]
+    attempts: tuple[int, ...]
+    successes: tuple[float, ...]
+    posterior: tuple[float, ...]
+    stable_prefix_minimum: tuple[float, ...]
+    protected: tuple[bool, ...]
+    last_seen: tuple[int, ...]
+    version: int
+
+
+@dataclass(frozen=True)
 class OnlineEpisodicRelationState:
     """External fixed-window state for online relation retrieval."""
 
@@ -113,6 +137,388 @@ def credit_weights_from_logits(
         dim=-1,
     )
     return torch.where(present, weights, torch.zeros_like(weights))
+
+
+class EpisodicBindingArchive:
+    """Growable external files for bindings behind a bounded active cache.
+
+    The archive stores normalized learned context/signature keys and only
+    generic scalar verifier telemetry.  Replacing an active router slot clears
+    its cache residency, never the archived record.  A later episode can find
+    the old record by its immutable trajectory signature and reactivate it
+    without replaying the old training stream or changing the controller.
+
+    This is deliberately a memory-side lifecycle primitive, not a reasoning
+    branch.  It does not assign meaning to coordinates, expose task labels, or
+    manufacture outcomes for unattempted bindings.
+    """
+
+    schema = "neural-computer.episodic-binding-archive.v1"
+
+    def __init__(
+        self,
+        context_width: int,
+        signature_width: int,
+        *,
+        active_slots: int,
+        matching_threshold: float = 0.85,
+        prior_strength: float = 1.0,
+        mastery_threshold: float = 0.8,
+        min_mastery_observations: int = 8,
+    ) -> None:
+        if min(context_width, signature_width, active_slots) < 1:
+            raise ValueError("episodic binding archive dimensions must be positive")
+        if not torch.isfinite(torch.tensor(matching_threshold)) or not (
+            -1.0 <= matching_threshold <= 1.0
+        ):
+            raise ValueError("episodic binding archive matching threshold is invalid")
+        if prior_strength <= 0.0:
+            raise ValueError("episodic binding archive prior must be positive")
+        if not 0.0 <= mastery_threshold <= 1.0:
+            raise ValueError("episodic binding archive mastery threshold is invalid")
+        if min_mastery_observations < 1:
+            raise ValueError("episodic binding archive mastery observations are invalid")
+        self.context_width = int(context_width)
+        self.signature_width = int(signature_width)
+        self.active_slots = int(active_slots)
+        self.matching_threshold = float(matching_threshold)
+        self.prior_strength = float(prior_strength)
+        self.mastery_threshold = float(mastery_threshold)
+        self.min_mastery_observations = int(min_mastery_observations)
+        self._context_keys: list[tuple[float, ...]] = []
+        self._signature_keys: list[tuple[float, ...]] = []
+        self._attempts: list[int] = []
+        self._successes: list[float] = []
+        self._stable_prefix_minimum: list[float] = []
+        self._last_seen: list[int] = []
+        self._active_slots: list[int | None] = [None] * self.active_slots
+        self._version = 0
+
+    @property
+    def record_count(self) -> int:
+        return len(self._context_keys)
+
+    def configuration(self) -> dict[str, int | float | str]:
+        return {
+            "schema": self.schema,
+            "context_width": self.context_width,
+            "signature_width": self.signature_width,
+            "active_slots": self.active_slots,
+            "record_count": self.record_count,
+            "matching_threshold": self.matching_threshold,
+            "prior_strength": self.prior_strength,
+            "mastery_threshold": self.mastery_threshold,
+            "min_mastery_observations": self.min_mastery_observations,
+            "state": "immutable_binding_records_plus_bounded_active_cache_v1",
+        }
+
+    @staticmethod
+    def _normalize_key(
+        value: torch.Tensor,
+        *,
+        width: int,
+        name: str,
+    ) -> torch.Tensor:
+        if not isinstance(value, torch.Tensor):
+            raise TypeError(f"{name} must be a tensor")
+        if value.ndim != 1 or value.shape[0] != width:
+            raise ValueError(f"{name} must have shape [{width}]")
+        if not bool(torch.isfinite(value).all()):
+            raise ValueError(f"{name} must contain only finite values")
+        if not bool(value.square().sum().gt(1e-12)):
+            raise ValueError(f"{name} cannot be zero")
+        return F.normalize(value.detach().to(device="cpu", dtype=torch.float32), dim=0)
+
+    def _validate_binding_id(self, binding_id: int) -> None:
+        if not isinstance(binding_id, int) or not 0 <= binding_id < self.record_count:
+            raise IndexError("episodic binding archive record is out of range")
+
+    def _validate_slot(self, slot: int) -> None:
+        if not isinstance(slot, int) or not 0 <= slot < self.active_slots:
+            raise IndexError("episodic binding archive active slot is out of range")
+
+    def lookup(
+        self,
+        signature_key: torch.Tensor,
+        *,
+        threshold: float | None = None,
+    ) -> EpisodicBindingLookup:
+        """Find the nearest immutable record, if it clears the novelty gate."""
+
+        signature = self._normalize_key(
+            signature_key,
+            width=self.signature_width,
+            name="episodic binding archive signature",
+        )
+        selected_threshold = (
+            self.matching_threshold if threshold is None else float(threshold)
+        )
+        if not torch.isfinite(torch.tensor(selected_threshold)) or not (
+            -1.0 <= selected_threshold <= 1.0
+        ):
+            raise ValueError("episodic binding archive lookup threshold is invalid")
+        if not self._signature_keys:
+            return EpisodicBindingLookup(None, -1.0, None)
+        keys = torch.tensor(self._signature_keys, dtype=signature.dtype)
+        scores = keys @ signature
+        best_score, best_index = scores.max(dim=0)
+        value = float(best_score)
+        binding_id = int(best_index)
+        if value < selected_threshold:
+            return EpisodicBindingLookup(None, value, None)
+        active_slot = next(
+            (
+                slot
+                for slot, active_binding in enumerate(self._active_slots)
+                if active_binding == binding_id
+            ),
+            None,
+        )
+        return EpisodicBindingLookup(binding_id, value, active_slot)
+
+    def register(
+        self,
+        context_key: torch.Tensor,
+        signature_key: torch.Tensor,
+    ) -> int:
+        """Append a novel external record or return its existing opaque id."""
+
+        context = self._normalize_key(
+            context_key,
+            width=self.context_width,
+            name="episodic binding archive context",
+        )
+        signature = self._normalize_key(
+            signature_key,
+            width=self.signature_width,
+            name="episodic binding archive signature",
+        )
+        existing = self.lookup(signature)
+        if existing.binding_id is not None:
+            return existing.binding_id
+        self._context_keys.append(tuple(float(value) for value in context.tolist()))
+        self._signature_keys.append(tuple(float(value) for value in signature.tolist()))
+        self._attempts.append(0)
+        self._successes.append(0.0)
+        self._stable_prefix_minimum.append(1.0)
+        self._last_seen.append(-1)
+        self._version += 1
+        return self.record_count - 1
+
+    def context_key(self, binding_id: int) -> torch.Tensor:
+        self._validate_binding_id(binding_id)
+        return torch.tensor(self._context_keys[binding_id], dtype=torch.float32)
+
+    def signature_key(self, binding_id: int) -> torch.Tensor:
+        self._validate_binding_id(binding_id)
+        return torch.tensor(self._signature_keys[binding_id], dtype=torch.float32)
+
+    def active_binding(self, slot: int) -> int | None:
+        self._validate_slot(slot)
+        return self._active_slots[slot]
+
+    def binding_slot(self, binding_id: int) -> int | None:
+        self._validate_binding_id(binding_id)
+        return next(
+            (
+                slot
+                for slot, active_binding in enumerate(self._active_slots)
+                if active_binding == binding_id
+            ),
+            None,
+        )
+
+    @property
+    def active_binding_ids(self) -> tuple[int | None, ...]:
+        return tuple(self._active_slots)
+
+    def activate(self, binding_id: int, slot: int) -> None:
+        """Move one archived record into one active cache slot."""
+
+        self._validate_binding_id(binding_id)
+        self._validate_slot(slot)
+        for index, active_binding in enumerate(self._active_slots):
+            if active_binding == binding_id:
+                self._active_slots[index] = None
+        self._active_slots[slot] = binding_id
+        self._version += 1
+
+    def deactivate(self, slot: int) -> int | None:
+        """Remove one active residency while retaining its archive record."""
+
+        self._validate_slot(slot)
+        binding_id = self._active_slots[slot]
+        self._active_slots[slot] = None
+        self._version += 1
+        return binding_id
+
+    def observe(
+        self,
+        binding_id: int,
+        outcome: float | torch.Tensor,
+        *,
+        step: int,
+    ) -> None:
+        """Update only generic scalar evidence for an attempted record."""
+
+        self._validate_binding_id(binding_id)
+        if not isinstance(step, int) or step < 0:
+            raise ValueError("episodic binding archive step must be non-negative")
+        if isinstance(outcome, torch.Tensor):
+            if outcome.numel() != 1:
+                raise ValueError("episodic binding archive outcome must be scalar")
+            value = float(outcome.detach().cpu().item())
+        else:
+            value = float(outcome)
+        if not torch.isfinite(torch.tensor(value)) or not 0.0 <= value <= 1.0:
+            raise ValueError("episodic binding archive outcome must lie in [0, 1]")
+        self._attempts[binding_id] += 1
+        self._successes[binding_id] += value
+        mean = self._successes[binding_id] / self._attempts[binding_id]
+        self._stable_prefix_minimum[binding_id] = min(
+            self._stable_prefix_minimum[binding_id], mean
+        )
+        self._last_seen[binding_id] = step
+        self._version += 1
+
+    def posterior(self, binding_id: int) -> float:
+        """Return a Beta-smoothed scalar reliability estimate."""
+
+        self._validate_binding_id(binding_id)
+        return (
+            self._successes[binding_id] + self.prior_strength
+        ) / (self._attempts[binding_id] + 2.0 * self.prior_strength)
+
+    def is_protected(self, binding_id: int) -> bool:
+        """Return whether the stable-prefix verifier gate protects a record."""
+
+        self._validate_binding_id(binding_id)
+        return (
+            self._attempts[binding_id] >= self.min_mastery_observations
+            and self._stable_prefix_minimum[binding_id] >= self.mastery_threshold
+        )
+
+    def telemetry(
+        self,
+        binding_id: int,
+        *,
+        step: int,
+        age_horizon: int = 1,
+    ) -> tuple[float, float]:
+        """Return generic reliability/recency features for a memory policy."""
+
+        self._validate_binding_id(binding_id)
+        if not isinstance(step, int) or step < 0 or age_horizon < 1:
+            raise ValueError("episodic binding archive telemetry horizon is invalid")
+        last_seen = self._last_seen[binding_id]
+        age = step + 1 if last_seen < 0 else max(0, step - last_seen)
+        return self.posterior(binding_id), min(1.0, age / age_horizon)
+
+    def status(self) -> EpisodicBindingArchiveStatus:
+        return EpisodicBindingArchiveStatus(
+            record_count=self.record_count,
+            active_slots=self.active_binding_ids,
+            attempts=tuple(self._attempts),
+            successes=tuple(self._successes),
+            posterior=tuple(self.posterior(index) for index in range(self.record_count)),
+            stable_prefix_minimum=tuple(self._stable_prefix_minimum),
+            protected=tuple(
+                self.is_protected(index) for index in range(self.record_count)
+            ),
+            last_seen=tuple(self._last_seen),
+            version=self._version,
+        )
+
+    def payload(self) -> dict[str, object]:
+        """Serialize the archive as a versioned, JSON-compatible memory file."""
+
+        status = self.status()
+        return {
+            "schema": self.schema,
+            "configuration": self.configuration(),
+            "context_keys": [list(key) for key in self._context_keys],
+            "signature_keys": [list(key) for key in self._signature_keys],
+            "attempts": list(status.attempts),
+            "successes": list(status.successes),
+            "stable_prefix_minimum": list(status.stable_prefix_minimum),
+            "last_seen": list(status.last_seen),
+            "active_slots": list(status.active_slots),
+            "version": status.version,
+        }
+
+    @classmethod
+    def from_payload(cls, payload: Mapping[str, object]) -> EpisodicBindingArchive:
+        """Restore a validated archive snapshot without controller state."""
+
+        if payload.get("schema") != cls.schema:
+            raise ValueError("episodic binding archive schema is incompatible")
+        configuration = payload.get("configuration")
+        if not isinstance(configuration, Mapping):
+            raise TypeError("episodic binding archive configuration is invalid")
+        archive = cls(
+            int(configuration["context_width"]),
+            int(configuration["signature_width"]),
+            active_slots=int(configuration["active_slots"]),
+            matching_threshold=float(configuration["matching_threshold"]),
+            prior_strength=float(configuration["prior_strength"]),
+            mastery_threshold=float(configuration["mastery_threshold"]),
+            min_mastery_observations=int(configuration["min_mastery_observations"]),
+        )
+        context_keys = payload.get("context_keys")
+        signature_keys = payload.get("signature_keys")
+        attempts = payload.get("attempts")
+        successes = payload.get("successes")
+        prefixes = payload.get("stable_prefix_minimum")
+        last_seen = payload.get("last_seen")
+        active_slots = payload.get("active_slots")
+        rows = (context_keys, signature_keys, attempts, successes, prefixes, last_seen)
+        if not all(isinstance(rows_value, list) for rows_value in rows):
+            raise TypeError("episodic binding archive rows must be lists")
+        count = len(context_keys)
+        if any(len(rows_value) != count for rows_value in rows):
+            raise ValueError("episodic binding archive rows have different lengths")
+        if not isinstance(active_slots, list) or len(active_slots) != archive.active_slots:
+            raise ValueError("episodic binding archive active slots are invalid")
+        for context, signature, attempt, success, prefix, seen in zip(
+            context_keys, signature_keys, attempts, successes, prefixes, last_seen
+        ):
+            if not isinstance(context, list) or not isinstance(signature, list):
+                raise TypeError("episodic binding archive keys must be lists")
+            context_tensor = archive._normalize_key(
+                torch.tensor(context),
+                width=archive.context_width,
+                name="episodic binding archive context",
+            )
+            signature_tensor = archive._normalize_key(
+                torch.tensor(signature),
+                width=archive.signature_width,
+                name="episodic binding archive signature",
+            )
+            if not isinstance(attempt, int) or attempt < 0:
+                raise ValueError("episodic binding archive attempts are invalid")
+            if not isinstance(success, (int, float)) or not 0.0 <= float(success) <= attempt:
+                raise ValueError("episodic binding archive successes are invalid")
+            if not isinstance(prefix, (int, float)) or not 0.0 <= float(prefix) <= 1.0:
+                raise ValueError("episodic binding archive stable prefixes are invalid")
+            if not isinstance(seen, int) or seen < -1:
+                raise ValueError("episodic binding archive last-seen values are invalid")
+            archive._context_keys.append(tuple(float(value) for value in context_tensor.tolist()))
+            archive._signature_keys.append(tuple(float(value) for value in signature_tensor.tolist()))
+            archive._attempts.append(attempt)
+            archive._successes.append(float(success))
+            archive._stable_prefix_minimum.append(float(prefix))
+            archive._last_seen.append(seen)
+        for slot, binding_id in enumerate(active_slots):
+            if binding_id is not None and (
+                not isinstance(binding_id, int)
+                or not 0 <= binding_id < archive.record_count
+            ):
+                raise ValueError("episodic binding archive active id is invalid")
+            archive._active_slots[slot] = binding_id
+        archive._version = int(payload.get("version", 0))
+        if archive._version < 0:
+            raise ValueError("episodic binding archive version is invalid")
+        return archive
 
 
 class EpisodicCreditHead(nn.Module):
@@ -571,7 +977,7 @@ class EpisodicBindingRouter(nn.Module):
         slot_index: int,
         context_key: torch.Tensor,
         signature_key: torch.Tensor | None = None,
-    ) -> "EpisodicBindingRouter":
+    ) -> EpisodicBindingRouter:
         """Build a copy-on-write candidate for one physical binding slot."""
 
         if not 0 <= slot_index < self.slot_count:
@@ -600,7 +1006,7 @@ class EpisodicBindingRouter(nn.Module):
     @torch.no_grad()
     def replace_slot_from_candidate(
         self,
-        candidate: "EpisodicBindingRouter",
+        candidate: EpisodicBindingRouter,
         slot_index: int,
         *,
         retention_probe=None,

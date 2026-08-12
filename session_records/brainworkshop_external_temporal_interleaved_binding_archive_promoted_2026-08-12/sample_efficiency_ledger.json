@@ -1,0 +1,42 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "brainworkshop_external_temporal_interleaved_binding_archive_promoted_2026-08-12",
+  "status": "promoted",
+  "claim_boundary": "Growable external episodic binding archive with verifier-gated bounded active-cache replacement and anti-thrashing; not general continual learning.",
+  "seeds": [17, 18],
+  "metrics": {
+    "unique_verifier_bits": {"seed_17": 10231, "seed_18": 10231},
+    "unique_logical_lifetimes": {"seed_17": 10231, "seed_18": 10231},
+    "optimizer_updates": {"seed_17": 7000, "seed_18": 7000},
+    "replayed_examples": {"seed_17": 0, "seed_18": 0},
+    "controller_updates": {"seed_17": 0, "seed_18": 0},
+    "retention_probe_verifier_bits": {"seed_17": 1152, "seed_18": 1152},
+    "stable_bits_to_threshold": {
+      "seed_17": "stable-prefix gate: 8 successful observations for protection",
+      "seed_18": "stable-prefix gate: 8 successful observations for protection"
+    },
+    "replacement_count": {"seed_17": 6, "seed_18": 6},
+    "avoidable_replacements": {"seed_17": 0, "seed_18": 0},
+    "active_noop_checks": {"seed_17": 12, "seed_18": 12},
+    "archive_record_count": {"seed_17": 4, "seed_18": 4},
+    "inactive_archive_records": {"seed_17": 2, "seed_18": 2},
+    "policy_transfer_accuracy": {"seed_17": 0.8046875, "seed_18": 0.818359375},
+    "reward_shuffled_control_accuracy": {"seed_17": 0.30859375, "seed_18": 0.330078125},
+    "retention": {"seed_17": "all replacement and reload gates passed", "seed_18": "all replacement and reload gates passed"},
+    "transfer_ratio": {"seed_17": "not measured: lifecycle pressure test", "seed_18": "not measured: lifecycle pressure test"},
+    "latency_seconds": {"seed_17": 2.764557374990545, "seed_18": 2.7585116249974817}
+  },
+  "controls": [
+    "reward-shuffled victim-policy training",
+    "physical candidate-order permutation",
+    "held-out active retention probes",
+    "router/archive reload",
+    "frozen controller digest",
+    "frozen event-encoder digest"
+  ],
+  "notes": [
+    "Returning bindings are read from the external archive and do not retrain the router.",
+    "Only scalar verifier outcomes and generic learned signatures are exposed to the memory-side lifecycle.",
+    "The four-family pressure test remains bounded and synthetic."
+  ]
+}

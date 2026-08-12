@@ -1857,3 +1857,14 @@ protected siblings and authorizes copy-on-write replacement. The promoted
 victim-selection audit demonstrates transfer under candidate permutation with
 zero controller updates; the policy remains an external replaceable learner,
 not a controller reasoning branch.
+
+`EpisodicBindingArchive` is the long-term memory-side file boundary for the
+episodic router. It appends immutable learned context/signature records and
+generic scalar reliability/age telemetry while keeping only a bounded active
+slot residency map. Eviction clears cache residency rather than deleting the
+record; a later signature lookup can reactivate the record without replaying
+the old training stream. It has an independent versioned payload and does not
+add a controller or modality-specific reasoning branch.
+
+The repeated interleaved archive audit is archived at
+`session_records/brainworkshop_external_temporal_interleaved_binding_archive_promoted_2026-08-12/`.

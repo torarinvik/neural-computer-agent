@@ -10791,3 +10791,22 @@ choice, not universal eviction economics or general continual learning.
 
 Evidence and accounting are archived at
 `session_records/brainworkshop_external_temporal_learned_binding_victim_selection_promoted_2026-08-12/`.
+
+## Growable external episodic binding archive (2026-08-12)
+
+The active episodic router must not also be the long-term archive. The new
+`EpisodicBindingArchive` stores immutable learned context/signature records and
+generic scalar reliability and recency evidence outside the frozen controller.
+Active-slot replacement changes residency only; it does not erase the old
+record. Signature lookup can therefore find a returned capability and
+verifier-gated copy-on-write can reactivate it without replaying its previous
+training stream.
+
+The repeated-interleaving audit introduced four anonymous bindings through six
+replacement cycles across seeds 17 and 18. It passed protected-resident
+retention, zero avoidable evictions, twelve active no-op probes, archive/reload
+integrity, frozen-core, and zero-replay gates. This is a promoted bounded
+external-memory lifecycle result. It does not establish unrestricted archive
+growth, arbitrary new computation, compression quality, or general continual
+learning. Evidence and the accounting ledger are archived at
+`session_records/brainworkshop_external_temporal_interleaved_binding_archive_promoted_2026-08-12/`.

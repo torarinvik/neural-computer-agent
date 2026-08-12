@@ -1294,3 +1294,21 @@ Seeds 17 and 18 reached `0.8047/0.8184` held-out victim transfer and
 slot and both transactions retained the sibling and acquired the new binding.
 Evidence is archived at
 `session_records/brainworkshop_external_temporal_learned_binding_victim_selection_promoted_2026-08-12/`.
+
+## Growable interleaved episodic binding archive (2026-08-12)
+
+`external_temporal_interleaved_binding_archive.py` separates long-term
+external storage from the bounded active router. Four anonymous bindings are
+introduced and revisited through six interleaved replacement cycles. The
+archive keeps inactive records searchable by immutable generic signatures;
+the active cache uses the scalar stable-prefix gate to protect a mastered
+resident and avoid replacement thrashing.
+
+Seeds 17 and 18 both passed six verifier-gated replacements, zero protected or
+avoidable evictions, twelve active no-op probes, four archived records with two
+inactive recoverable records, reload, frozen-core, and zero-replay gates. The
+held-out victim policy remained at `0.8047/0.8184`, while reward-shuffled
+controls were `0.3086/0.3301`. This promotes growable external episodic storage
+and bounded anti-thrashing lifecycle behavior, not unrestricted memory growth
+or general continual learning. Evidence is archived at
+`session_records/brainworkshop_external_temporal_interleaved_binding_archive_promoted_2026-08-12/`.

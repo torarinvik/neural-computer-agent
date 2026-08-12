@@ -9,6 +9,7 @@ from experiments.compute_candidate_screen_amodal.train import (
 from neural_computer import (
     AdaptiveOnlineEpisodicRelationReader,
     AppendOnlyLearnedComputeCandidateScreen,
+    EpisodicBindingArchive,
     EpisodicBindingRouter,
     EpisodicContextEncoder,
     EpisodicCreditHead,
@@ -36,6 +37,46 @@ from neural_computer import (
     select_reusable_compute_slot,
     select_reusable_compute_slot_by_efficiency,
 )
+
+
+def test_episodic_binding_archive_retains_evicted_records_and_round_trips() -> None:
+    archive = EpisodicBindingArchive(
+        context_width=4,
+        signature_width=5,
+        active_slots=2,
+        matching_threshold=0.9,
+        min_mastery_observations=2,
+    )
+    key_a = torch.tensor([1.0, 0.0, 0.0, 0.0])
+    key_b = torch.tensor([0.0, 1.0, 0.0, 0.0])
+    key_c = torch.tensor([0.0, 0.0, 1.0, 0.0])
+    signature_a = torch.tensor([1.0, 0.0, 0.0, 0.0, 0.0])
+    signature_b = torch.tensor([0.0, 1.0, 0.0, 0.0, 0.0])
+    signature_c = torch.tensor([0.0, 0.0, 1.0, 0.0, 0.0])
+    binding_a = archive.register(key_a, signature_a)
+    binding_b = archive.register(key_b, signature_b)
+    archive.activate(binding_a, 0)
+    archive.activate(binding_b, 1)
+    archive.observe(binding_a, 1.0, step=0)
+    archive.observe(binding_a, 1.0, step=1)
+    assert archive.is_protected(binding_a)
+
+    binding_c = archive.register(key_c, signature_c)
+    archive.activate(binding_c, 1)
+    lookup_b = archive.lookup(signature_b)
+    assert lookup_b.binding_id == binding_b
+    assert lookup_b.active_slot is None
+    assert archive.active_binding_ids == (binding_a, binding_c)
+    assert archive.record_count == 3
+
+    restored = EpisodicBindingArchive.from_payload(archive.payload())
+    assert restored.active_binding_ids == (binding_a, binding_c)
+    assert restored.lookup(signature_b).binding_id == binding_b
+    assert restored.lookup(signature_b).active_slot is None
+    assert restored.is_protected(binding_a)
+    assert restored.configuration()["schema"] == (
+        "neural-computer.episodic-binding-archive.v1"
+    )
 
 
 def test_episodic_context_encoder_masks_padding_and_normalizes_context() -> None:
