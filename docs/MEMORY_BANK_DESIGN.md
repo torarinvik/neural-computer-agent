@@ -10364,3 +10364,56 @@ search, feeding the reader as the design intended. If that closes the
 gap, the sleep phase works and search becomes verification. If it does
 not, the reader's limit is something other than the input distribution
 and this session will have located it.
+
+## F202 — THE READER REPLACES THE SEARCH: 1.0000 on held-out real
+## families, three seeds, control at 0.0534
+
+| training distribution | real-family functional | floor |
+| --- | ---: | ---: |
+| random instructions over RANDOM states (F199/F201) | 0.2929 | 0.1693 |
+| **REAL families, labels found by enumeration** | **1.0000** | 0.1693 |
+| shuffled-label control | 0.0534 | 0.1693 |
+
+Per seed: **1.0000, 1.0000, 1.0000.** Not 0.99 — every held-out family,
+every seed.
+
+**This is the problem the project failed at three times.** F117 tried a
+reader and got a null. F138 established the representation was capable
+(0.9723 distilled) while ordinary training sat near chance. F164
+narrowed it to optimisation reliability and left it open, and F182
+found the same instability again in a second component. The thing that
+finally moved it was not a better architecture, a better loss, or more
+capacity — it was **feeding the reader the distribution it would
+actually face** (F201). The same network, the same budget, the same
+everything else: 0.2929 to 1.0000.
+
+**Scope, checked rather than assumed, because a perfect score demands
+it.**
+
+* *Is the evaluation the class the reader can express?* Yes, and
+  completely: **150 of 150** evaluated families are exactly one
+  instruction. That is not a filter I applied — it is what rule
+  families ARE, and it is F195's arity measurement seen from the other
+  side. So this is a complete result on its class, not a good result on
+  a cherry-picked slice of one.
+* *Is the eval set disjoint from training?* Effectively: 2 of 200
+  eval specs recurred among 400 training draws, about 1%. Removing
+  them cannot move 1.0000 meaningfully.
+* *Could the reader be guessing?* The shuffled-label control sits at
+  0.0534, below the 0.1693 identity floor. It is not the label
+  distribution.
+
+**What this does NOT cover, and it is the honest boundary.**
+Multi-instruction recipes. Grid actions change two or three slots
+(F195, F196) and the reader emits ONE instruction, so it cannot address
+them at all. Search remains the mechanism for everything above arity 1,
+and the deep families of F190 are entirely outside this.
+
+**What it means for the architecture.** For the class it covers, the
+loop is closed: a new world's transitions go in, its program comes out,
+and the frozen interpreter runs it. Search becomes VERIFICATION rather
+than discovery — the system can check the reader's answer with one
+forward pass instead of enumerating. And unlike search, this improves
+with experience: the wake phase produces labels, the sleep phase
+consumes them, and world 1001 is free where world 1 cost an
+enumeration.
