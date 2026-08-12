@@ -10745,13 +10745,16 @@ a slot the reader got right is often righter than the slot the search
 picked — the search takes the first exact fit on 32 rows, the reader
 takes what worlds of this kind usually do.
 
-**Where repair is COUNTERPRODUCTIVE, which is the more interesting
-half.** On seen world shapes the reader alone scores 0.8388 and the full
-search 0.8359, so repair can only move it toward the worse answer, and
-it does: 0.8373. **Once the reader has seen worlds of a kind, checking
-its work against a fresh search makes the answer worse.** That is
-amortisation actually completing — the accumulated experience of many
-worlds beats re-deriving from 32 examples of this one.
+**Where repair stops paying, which is the more interesting half.** On
+seen world shapes the reader alone scores 0.8388 against the full
+search's 0.8359, and repair lands between them at 0.8373. The reader's
+edge over the search there is -0.0029 +- 0.0018, t=-1.57, which is NOT
+significant — the honest statement is that they are EQUAL, not that the
+reader wins. What repair does is spend 258 candidates to move a
+level-with-the-search answer nowhere. **Once the reader has seen worlds
+of a kind, verification stops buying anything and only costs.** The
+threshold is what turns that off, and a system with a compute budget
+should learn where to set it rather than be told.
 
 **Stated at its real scope.** The threshold is a knob I chose, and 0.80
 is a good setting rather than a principled one; a system with a compute

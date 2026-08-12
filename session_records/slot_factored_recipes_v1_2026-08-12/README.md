@@ -85,5 +85,5 @@ are re-searched.
     repair t=0.80       0.8373          258
     full search         0.8359          910
 
-On seen shapes repair makes the answer WORSE, because the reader is
-already better than a fresh search over 32 examples.
+On seen shapes repair stops paying: reader and search are EQUAL there
+(-0.0029 +- 0.0018, t=-1.57, not significant), so repair only costs.
