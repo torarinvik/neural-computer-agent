@@ -39,6 +39,8 @@ from experiments.brainworkshop_canonical.external_compute_route import (
     run as run_external_compute_route,
 )
 from experiments.brainworkshop_canonical.external_compute_route_bank import (
+    _family_steps,
+    _parse_query_counts,
     run as run_external_compute_route_bank,
 )
 from experiments.brainworkshop_canonical.external_compute_route_reversal import (
@@ -2437,3 +2439,10 @@ def test_cross_family_growth_smoke_keeps_route_and_core_boundaries(tmp_path) -> 
     assert report["training_rule"]["family"] == "triplet_parity"
     assert report["target_warmup"]["family"] == "parity2"
     assert report["accounting"]["optimizer_updates"] == 5
+
+
+def test_external_compute_route_bank_accepts_generic_depth_profile() -> None:
+    assert _parse_query_counts("4,4,4,4,6", slot_count=5) == (4, 4, 4, 4, 6)
+    assert _family_steps("nback5") == 15
+    with pytest.raises(ValueError, match="history query profile"):
+        _parse_query_counts("4,6", slot_count=5)

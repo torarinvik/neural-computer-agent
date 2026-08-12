@@ -1,0 +1,72 @@
+{
+  "experiment_id": "brainworkshop-external-history-nback5-route-2026-08-13",
+  "claim_boundary": "Replicated outcome-only retention and routing of five opaque external computation files at mixed bounded active history profile (4,4,4,4,6); not learned depth selection, learned compression, unrestricted memory growth, arbitrary program induction, or general continual learning.",
+  "seeds": [17, 18],
+  "configuration": {
+    "file_schedule": [
+      ["symbol_parity", 7, 4],
+      ["triplet_parity", 8, 4],
+      ["parity2", 10, 4],
+      ["switch_binary", 11, 4],
+      ["nback5", 12, 6]
+    ],
+    "active_query_count_semantics": "q_minus_one_previous_records_plus_current_event",
+    "shared_event_window_size": 6,
+    "history_storage": "append_only_external_history_v1",
+    "basis_event_read_mode": "flattened_window",
+    "controller": "frozen_after_first_file",
+    "event_frontend": "frozen_after_first_file",
+    "updates_per_file": 512,
+    "batch_size": 32,
+    "steps_by_family": {
+      "symbol_parity": 14,
+      "triplet_parity": 14,
+      "parity2": 14,
+      "switch_binary": 14,
+      "nback5": 15
+    },
+    "fresh_lifetimes": 4,
+    "route_updates_per_new_file": 256,
+    "route_calibration_lifetimes": 8,
+    "credit_mode": "attempted_bce",
+    "entropy_weight": 0.01,
+    "replayed_examples": 0
+  },
+  "accounting_per_seed": {
+    "unique_verifier_bits": 1363456,
+    "audit_verifier_bits": 15360,
+    "unique_logical_lifetimes": 114688,
+    "optimizer_updates": 2560,
+    "route_memory_updates": 1032,
+    "stable_bits_to_threshold": 1363456,
+    "replayed_examples": 0
+  },
+  "runs": {
+    "seed17": {
+      "direct_all_mastered": true,
+      "routed_all_mastered": true,
+      "all_routes_select_correct_file": true,
+      "route_reload_exact": true,
+      "unknown_accuracy": 0.5195312649011612,
+      "no_file_accuracy": 0.4859374910593033,
+      "files_unchanged": true,
+      "controller_frozen": true,
+      "event_frontend_frozen": true,
+      "status": "promoted",
+      "wall_time_seconds": 417.29156041599344
+    },
+    "seed18": {
+      "direct_all_mastered": true,
+      "routed_all_mastered": true,
+      "all_routes_select_correct_file": true,
+      "route_reload_exact": true,
+      "unknown_accuracy": 0.5093750208616257,
+      "no_file_accuracy": 0.4828124940395355,
+      "files_unchanged": true,
+      "controller_frozen": true,
+      "event_frontend_frozen": true,
+      "status": "promoted",
+      "wall_time_seconds": 433.3836519169854
+    }
+  }
+}

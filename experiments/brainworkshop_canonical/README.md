@@ -1868,6 +1868,30 @@ induction, or general continual learning. Evidence and accounting are
 archived at
 `session_records/brainworkshop_external_history_multiscale_route_promoted_2026-08-12/`.
 
+## Mixed-depth external-history n-back-5 retention and routing (2026-08-13)
+
+The same generic route-bank harness now accepts an explicit per-file query
+profile and verifier-dependent episode length. With profile `(4, 4, 4, 4,
+6)` and a six-record flattened event window, the fifth file receives five
+preceding records plus the current event and learns `nback5` without resizing
+the controller, event frontend, or shared interpreter. The training signal is
+an explicit attempted-outcome BCE option with entropy regularization; the
+previous REINFORCE default was retained for backward-compatible baseline runs.
+
+Across seeds `17` and `18`, all five direct files and all five learned routes
+reached `1.0000` on four fresh lifetimes. Every route selected the correct file
+at `1.0000`; route reload was exact; unknown-context controls were near chance
+(`0.5195` and `0.5094`); no-file controls were near chance (`0.4859` and
+`0.4828`); all file digests were unchanged during routing; and the controller,
+event frontend, and all replay counts satisfied their freeze/zero gates.
+
+This promotes replicated replay-free retention and routing at a deeper mixed
+bounded temporal profile. The active-depth profile remains an external memory
+configuration, so this does not establish learned depth selection, learned
+compression, unrestricted memory growth, arbitrary program induction, or
+general continual learning. Evidence and accounting are archived at
+`session_records/brainworkshop_external_history_nback5_route_promoted_2026-08-13/`.
+
 ## Outcome-only external-history depth selection (2026-08-12)
 
 `external_compute_depth_selection.py` adds an isolated memory-side policy for

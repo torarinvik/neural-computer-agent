@@ -11892,6 +11892,31 @@ learned compression mechanism, unrestricted memory growth, arbitrary program
 induction, or general continual learning. Evidence is archived at
 `session_records/brainworkshop_external_history_multiscale_route_promoted_2026-08-12/`.
 
+## Mixed-depth external-history n-back-5 retention and routing (2026-08-13)
+
+The same generic external route bank now supports an explicit per-file query
+profile and family-dependent verifier lifetime. With profile `(4, 4, 4, 4,
+6)`, a six-record flattened event window gives the fifth file five preceding
+records plus the current event while leaving the controller, event frontend,
+and shared interpreter fixed. The full lifetime remains append-only external
+state; only the active read width changes.
+
+Across seeds `17` and `18`, five files (`symbol_parity`, `triplet_parity`,
+`parity2`, `switch_binary`, and `nback5`) reached `1.0000` on every direct and
+routed fresh lifetime. Every route selected the correct file at `1.0000`, route
+reload was exact, unknown and no-file controls stayed near chance, all file
+digests were unchanged during routing, and the controller/frontend freeze and
+zero-replay gates passed. Direct training used attempted-outcome BCE with a
+small entropy term; the credit mode is recorded as an explicit harness
+parameter rather than being hidden in the route experiment.
+
+This promotes replicated replay-free retention and routing at a deeper mixed
+bounded temporal profile. The active-depth profile remains externally
+configured, so this is not learned depth selection, learned compression,
+unrestricted memory growth, arbitrary program induction, or general continual
+learning. Evidence is archived at
+`session_records/brainworkshop_external_history_nback5_route_promoted_2026-08-13/`.
+
 ## Outcome-only external-history depth selection (2026-08-12)
 
 The external memory boundary now includes an isolated, checksummed depth

@@ -55,6 +55,29 @@ DEFAULT_SCHEDULE = (
 )
 
 
+def _family_steps(family: str) -> int:
+    """Use the shortest calibrated lifetime that exposes the rule."""
+
+    if family not in RULES:
+        raise ValueError("unsupported private rule family")
+    return max(14, RULES[family].warmup + 10)
+
+
+def _parse_query_counts(
+    raw: str | None,
+    *,
+    slot_count: int,
+) -> tuple[int, ...] | None:
+    """Parse a generic per-file active-history profile from the CLI."""
+
+    if raw is None:
+        return None
+    values = tuple(int(part.strip()) for part in raw.split(",") if part.strip())
+    if len(values) != slot_count or any(value < 1 for value in values):
+        raise ValueError("history query profile must match slot count and be positive")
+    return values
+
+
 def _context_key(system: ComputeGrowthSystem, cue_symbol: int) -> torch.Tensor:
     """Return the learned event representation for a rendered cue."""
 
@@ -83,7 +106,7 @@ def _routed_episode(
     verifier = CrossFamilyVerifier(
         family=family,
         batch_size=32,
-        steps=14,
+        steps=_family_steps(family),
         cue_symbol=cue_symbol,
         seed=seed,
     )
@@ -369,8 +392,23 @@ def _all_modules(system: ComputeGrowthSystem):
 
 
 def run(args: argparse.Namespace) -> dict[str, object]:
-    if len(DEFAULT_SCHEDULE) != args.slot_count:
-        raise ValueError("the promoted route-bank rung uses four fixed families")
+    schedule = (
+        DEFAULT_SCHEDULE + (("nback5", 12),)
+        if args.final_family == "nback5"
+        else DEFAULT_SCHEDULE[:-1]
+        + ((args.final_family, DEFAULT_SCHEDULE[-1][1]),)
+    )
+    if len(schedule) != args.slot_count:
+        raise ValueError("slot count must match the selected route-bank schedule")
+    history_query_counts = _parse_query_counts(
+        getattr(args, "history_query_counts", None),
+        slot_count=args.slot_count,
+    )
+    event_window_size = int(getattr(args, "event_window_size", 4))
+    entropy_weight = float(getattr(args, "entropy_weight", 0.0))
+    credit_mode = str(getattr(args, "credit_mode", "reinforce"))
+    if event_window_size < 1:
+        raise ValueError("event window size must be positive")
     if min(
         args.slot_count,
         args.file_updates,
@@ -384,15 +422,17 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         raise ValueError("the calibrated route-bank harness requires batch size 32")
     if args.learning_rate <= 0.0:
         raise ValueError("learning rate must be positive")
-    schedule = DEFAULT_SCHEDULE[:-1] + (
-        (args.final_family, DEFAULT_SCHEDULE[-1][1]),
-    )
-
+    if entropy_weight < 0.0:
+        raise ValueError("entropy weight cannot be negative")
+    if credit_mode not in {"reinforce", "attempted_bce"}:
+        raise ValueError("unsupported route-bank credit mode")
     started = perf_counter()
     system = _build(
         args.seed,
         slot_count=args.slot_count,
         basis_hidden=args.basis_hidden,
+        event_window_size=event_window_size,
+        external_history_query_counts=history_query_counts,
     )
     controller_before = _digest(system.agent.controller)
     encoder_before = _digest(system.agent.runtime.encoders["stimulus"])
@@ -415,9 +455,16 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                 cue_symbol=cue_symbol,
                 updates=args.file_updates,
                 batch_size=args.batch_size,
-                steps=14,
+                steps=_family_steps(family),
                 seed=args.seed + 10_000 * (slot + 1),
                 learning_rate=args.learning_rate,
+                entropy_weight=entropy_weight,
+                credit_mode=credit_mode,
+                history_query_count=(
+                    None
+                    if history_query_counts is None
+                    else history_query_counts[slot]
+                ),
             )
         )
         _set_requires_grad(all_modules, False)
@@ -429,8 +476,13 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                 cue_symbol=cue_symbol,
                 lifetimes=args.retention_lifetimes,
                 batch_size=args.batch_size,
-                steps=14,
+                steps=_family_steps(family),
                 seed=args.seed + 50_000 + slot * 1_000,
+                history_query_count=(
+                    None
+                    if history_query_counts is None
+                    else history_query_counts[slot]
+                ),
             )
         )
         file_digests_before.append(_digest(*_slot_modules(system, slot)))
@@ -553,21 +605,23 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "zero_replayed_examples": True,
     }
     training_bits = args.batch_size * args.file_updates * sum(
-        14 - RULES[family].warmup for family, _cue in schedule
+        _family_steps(family) - RULES[family].warmup
+        for family, _cue in schedule
     )
     training_bits += args.batch_size * args.route_updates * sum(
-        14 - RULES[family].warmup for family, _cue in schedule[1:]
+        _family_steps(family) - RULES[family].warmup
+        for family, _cue in schedule[1:]
     )
     training_bits += args.batch_size * args.route_calibration_lifetimes * (
-        14 - RULES[schedule[0][0]].warmup
+        _family_steps(schedule[0][0]) - RULES[schedule[0][0]].warmup
     )
     report = {
         "schema": ROUTE_BANK_SCHEMA,
         "claim_boundary": (
-            "Outcome-only content-addressed routing across four isolated generic "
-            "external compute files with a frozen controller and zero replay; "
-            "this remains bounded append-only growth and is not unrestricted "
-            "memory expansion or general continual learning."
+            f"Outcome-only content-addressed routing across {len(schedule)} "
+            "isolated generic external compute files with a frozen controller "
+            "and zero replay; this remains bounded append-only growth and is "
+            "not unrestricted memory expansion or general continual learning."
         ),
         "architecture": {
             "route_query": "learned_event_tensor_key",
@@ -580,6 +634,10 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             ],
             "unknown_context_policy": "append_order_fallback",
             "basis_hidden": args.basis_hidden,
+            "event_window_size": event_window_size,
+            "external_history_query_counts": history_query_counts,
+            "credit_mode": credit_mode,
+            "entropy_weight": entropy_weight,
         },
         "seed": args.seed,
         "direct": direct,
@@ -608,7 +666,11 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "latency_seconds": perf_counter() - started,
             "stable_bits_to_threshold": training_bits if all(gates.values()) else None,
         },
-        "status": "promoted_four_file_route_bank" if all(gates.values()) else "rejected",
+        "status": (
+            "promoted_route_bank"
+            if all(gates.values())
+            else "rejected"
+        ),
     }
     if args.report_out is not None:
         args.report_out.parent.mkdir(parents=True, exist_ok=True)
@@ -626,11 +688,23 @@ def main() -> None:
     parser.add_argument("--batch-size", type=int, default=32)
     parser.add_argument("--retention-lifetimes", type=int, default=4)
     parser.add_argument("--learning-rate", type=float, default=3e-3)
+    parser.add_argument(
+        "--credit-mode",
+        choices=("reinforce", "attempted_bce"),
+        default="reinforce",
+    )
+    parser.add_argument("--entropy-weight", type=float, default=0.0)
     parser.add_argument("--basis-hidden", type=int, default=32)
     parser.add_argument(
         "--final-family",
-        choices=("switch", "switch_binary", "nback2"),
+        choices=("switch", "switch_binary", "nback2", "nback5"),
         default="switch_binary",
+    )
+    parser.add_argument("--event-window-size", type=int, default=4)
+    parser.add_argument(
+        "--history-query-counts",
+        default=None,
+        help="comma-separated active query counts, one per external file",
     )
     parser.add_argument("--report-out", type=Path, required=True)
     args = parser.parse_args()
