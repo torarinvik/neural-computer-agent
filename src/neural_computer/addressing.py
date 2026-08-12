@@ -9,12 +9,25 @@ to the frozen controller.
 
 from __future__ import annotations
 
+import hashlib
+import json
 from collections.abc import Iterable
 from dataclasses import dataclass
 
 import torch
 from torch import nn
 from torch.nn import functional as F
+
+
+def _payload_digest(payload: dict[str, object]) -> str:
+    """Hash a JSON-compatible opaque-memory payload without its digest."""
+
+    encoded = json.dumps(
+        payload,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
 
 
 @dataclass(frozen=True)
@@ -28,6 +41,7 @@ class PersistentRouteEvidenceStatus:
     protected: tuple[bool, ...]
     reversal_streak: tuple[int, ...]
     reversal_count: tuple[int, ...]
+    recovery_streak: tuple[int, ...]
     preferred_slot: int | None
     last_slot: int | None
     last_outcome: float | None
@@ -76,6 +90,7 @@ class PersistentOpaqueRouteEvidence:
         self._protected: list[bool] = []
         self._reversal_streak: list[int] = []
         self._reversal_count: list[int] = []
+        self._recovery_streak: list[int] = []
         self._preferred_slot: int | None = None
         self._last_slot: int | None = None
         self._last_outcome: float | None = None
@@ -94,6 +109,7 @@ class PersistentOpaqueRouteEvidence:
         self._protected.append(False)
         self._reversal_streak.append(0)
         self._reversal_count.append(0)
+        self._recovery_streak.append(0)
         self._version += 1
         return len(self._attempts) - 1
 
@@ -107,6 +123,7 @@ class PersistentOpaqueRouteEvidence:
         self._protected[slot] = False
         self._reversal_streak[slot] = 0
         self._reversal_count[slot] = 0
+        self._recovery_streak[slot] = 0
         if self._preferred_slot == slot:
             self._preferred_slot = None
         if self._last_slot == slot:
@@ -133,6 +150,10 @@ class PersistentOpaqueRouteEvidence:
         was_protected = self._protected[slot]
         self._attempts[slot] += 1
         self._successes[slot] += value
+        if value >= self.mastery_threshold:
+            self._recovery_streak[slot] += 1
+        else:
+            self._recovery_streak[slot] = 0
         reversed_slot = False
         if was_protected:
             if value <= self.reversal_threshold:
@@ -147,9 +168,21 @@ class PersistentOpaqueRouteEvidence:
                 self._attempts[slot] = 0
                 self._successes[slot] = 0.0
                 self._stable_prefix_minimum[slot] = 1.0
+                self._recovery_streak[slot] = 0
                 if self._preferred_slot == slot:
                     self._preferred_slot = None
-        if not reversed_slot and not self._protected[slot] and self._attempts[slot] >= self.min_mastery_observations:
+        if (
+            not reversed_slot
+            and not self._protected[slot]
+            and self._recovery_streak[slot] >= self.min_mastery_observations
+        ):
+            self._stable_prefix_minimum[slot] = 1.0
+            self._protected[slot] = True
+        elif (
+            not reversed_slot
+            and not self._protected[slot]
+            and self._attempts[slot] >= self.min_mastery_observations
+        ):
             prefix_mean = self._successes[slot] / self._attempts[slot]
             self._stable_prefix_minimum[slot] = min(
                 self._stable_prefix_minimum[slot], prefix_mean
@@ -197,6 +230,7 @@ class PersistentOpaqueRouteEvidence:
             protected=tuple(self._protected),
             reversal_streak=tuple(self._reversal_streak),
             reversal_count=tuple(self._reversal_count),
+            recovery_streak=tuple(self._recovery_streak),
             preferred_slot=self._preferred_slot,
             last_slot=self._last_slot,
             last_outcome=self._last_outcome,
@@ -207,7 +241,7 @@ class PersistentOpaqueRouteEvidence:
         """Serialize the opaque evidence state without semantic metadata."""
 
         status = self.status()
-        return {
+        payload: dict[str, object] = {
             "schema": self.schema,
             "prior_strength": self.prior_strength,
             "mastery_threshold": self.mastery_threshold,
@@ -220,27 +254,44 @@ class PersistentOpaqueRouteEvidence:
             "protected": list(status.protected),
             "reversal_streak": list(status.reversal_streak),
             "reversal_count": list(status.reversal_count),
+            "recovery_streak": list(status.recovery_streak),
             "preferred_slot": status.preferred_slot,
             "last_slot": status.last_slot,
             "last_outcome": status.last_outcome,
             "version": status.version,
         }
+        payload["sha256"] = _payload_digest(payload)
+        return payload
+
+    def digest(self) -> str:
+        """Return the checksum of the external evidence state."""
+
+        return str(self.payload()["sha256"])
 
     @classmethod
     def from_payload(cls, payload: dict[str, object]) -> PersistentOpaqueRouteEvidence:
         """Restore a validated external route-evidence snapshot."""
 
-        if payload.get("schema") != cls.schema:
+        unsigned = dict(payload)
+        expected_digest = unsigned.pop("sha256", None)
+        if expected_digest is not None and (
+            not isinstance(expected_digest, str)
+            or expected_digest != _payload_digest(unsigned)
+        ):
+            raise ValueError("route-evidence checksum mismatch")
+        if unsigned.get("schema") != cls.schema:
             raise ValueError("route-evidence schema is incompatible")
         ledger = cls(
-            prior_strength=float(payload["prior_strength"]),
-            mastery_threshold=float(payload["mastery_threshold"]),
-            min_mastery_observations=int(payload.get("min_mastery_observations", 8)),
-            reversal_threshold=float(payload.get("reversal_threshold", 0.5)),
-            reversal_patience=int(payload.get("reversal_patience", 4)),
+            prior_strength=float(unsigned["prior_strength"]),
+            mastery_threshold=float(unsigned["mastery_threshold"]),
+            min_mastery_observations=int(
+                unsigned.get("min_mastery_observations", 8)
+            ),
+            reversal_threshold=float(unsigned.get("reversal_threshold", 0.5)),
+            reversal_patience=int(unsigned.get("reversal_patience", 4)),
         )
-        attempts = payload["attempts"]
-        successes = payload["successes"]
+        attempts = unsigned["attempts"]
+        successes = unsigned["successes"]
         if not isinstance(attempts, list) or not isinstance(successes, list):
             raise TypeError("route-evidence rows must be lists")
         if len(attempts) != len(successes):
@@ -252,10 +303,11 @@ class PersistentOpaqueRouteEvidence:
                 raise ValueError("route-evidence successes are invalid")
             ledger._attempts.append(attempt)
             ledger._successes.append(float(success))
-        prefix = payload.get("stable_prefix_minimum")
-        protected = payload.get("protected")
-        reversal_streak = payload.get("reversal_streak")
-        reversal_count = payload.get("reversal_count")
+        prefix = unsigned.get("stable_prefix_minimum")
+        protected = unsigned.get("protected")
+        reversal_streak = unsigned.get("reversal_streak")
+        reversal_count = unsigned.get("reversal_count")
+        recovery_streak = unsigned.get("recovery_streak")
         if prefix is None:
             prefix = [
                 1.0
@@ -273,17 +325,31 @@ class PersistentOpaqueRouteEvidence:
             reversal_streak = [0 for _ in ledger._attempts]
         if reversal_count is None:
             reversal_count = [0 for _ in ledger._attempts]
+        if recovery_streak is None:
+            recovery_streak = [0 for _ in ledger._attempts]
         if not isinstance(prefix, list) or not isinstance(protected, list):
             raise TypeError("route-evidence gate rows must be lists")
         if not isinstance(reversal_streak, list) or not isinstance(reversal_count, list):
             raise TypeError("route-evidence reversal rows must be lists")
+        if not isinstance(recovery_streak, list):
+            raise TypeError("route-evidence recovery rows must be a list")
         if any(
             len(rows) != len(ledger._attempts)
-            for rows in (prefix, protected, reversal_streak, reversal_count)
+            for rows in (
+                prefix,
+                protected,
+                reversal_streak,
+                reversal_count,
+                recovery_streak,
+            )
         ):
             raise ValueError("route-evidence gate rows have different lengths")
-        for minimum, is_protected, streak, count in zip(
-            prefix, protected, reversal_streak, reversal_count
+        for minimum, is_protected, streak, count, recovery in zip(
+            prefix,
+            protected,
+            reversal_streak,
+            reversal_count,
+            recovery_streak,
         ):
             if not isinstance(minimum, (int, float)) or not 0.0 <= float(minimum) <= 1.0:
                 raise ValueError("route-evidence stable prefixes are invalid")
@@ -293,25 +359,28 @@ class PersistentOpaqueRouteEvidence:
                 raise ValueError("route-evidence reversal streaks are invalid")
             if not isinstance(count, int) or count < 0:
                 raise ValueError("route-evidence reversal counts are invalid")
+            if not isinstance(recovery, int) or recovery < 0:
+                raise ValueError("route-evidence recovery streaks are invalid")
             ledger._stable_prefix_minimum.append(float(minimum))
             ledger._protected.append(is_protected)
             ledger._reversal_streak.append(streak)
             ledger._reversal_count.append(count)
-        preferred = payload.get("preferred_slot")
+            ledger._recovery_streak.append(recovery)
+        preferred = unsigned.get("preferred_slot")
         if preferred is not None:
             ledger._validate_slot(int(preferred))
             ledger._preferred_slot = int(preferred)
-        last_slot = payload.get("last_slot")
+        last_slot = unsigned.get("last_slot")
         if last_slot is not None:
             ledger._validate_slot(int(last_slot))
             ledger._last_slot = int(last_slot)
-        last_outcome = payload.get("last_outcome")
+        last_outcome = unsigned.get("last_outcome")
         if last_outcome is not None:
             value = float(last_outcome)
             if not 0.0 <= value <= 1.0:
                 raise ValueError("route-evidence last outcome is invalid")
             ledger._last_outcome = value
-        ledger._version = int(payload.get("version", 0))
+        ledger._version = int(unsigned.get("version", 0))
         if ledger._version < 0:
             raise ValueError("route-evidence version must be non-negative")
         return ledger
@@ -370,6 +439,21 @@ class PersistentOpaqueContextRouteEvidence:
     @property
     def context_count(self) -> int:
         return len(self._records)
+
+    def configuration(self) -> dict[str, int | float | str]:
+        """Return static ABI metadata without embedding mutable evidence."""
+
+        return {
+            "schema": self.schema,
+            "width": self.width,
+            "matching_tolerance": self.matching_tolerance,
+            "prior_strength": self.prior_strength,
+            "mastery_threshold": self.mastery_threshold,
+            "min_mastery_observations": self.min_mastery_observations,
+            "reversal_threshold": self.reversal_threshold,
+            "reversal_patience": self.reversal_patience,
+            "state": "checksummed_opaque_context_route_evidence_v1",
+        }
 
     def append_slot(self) -> int:
         """Append one opaque route slot to every learned context row."""
@@ -538,7 +622,7 @@ class PersistentOpaqueContextRouteEvidence:
     def payload(self) -> dict[str, object]:
         """Serialize context keys and opaque scalar route evidence."""
 
-        return {
+        payload: dict[str, object] = {
             "schema": self.schema,
             "width": self.width,
             "matching_tolerance": self.matching_tolerance,
@@ -554,24 +638,38 @@ class PersistentOpaqueContextRouteEvidence:
                 for record in self._records
             ],
         }
+        payload["sha256"] = _payload_digest(payload)
+        return payload
+
+    def digest(self) -> str:
+        """Return the checksum of the context-conditioned evidence state."""
+
+        return str(self.payload()["sha256"])
 
     @classmethod
     def from_payload(cls, payload: dict[str, object]) -> PersistentOpaqueContextRouteEvidence:
         """Restore a validated context-conditioned route table."""
 
-        if payload.get("schema") != cls.schema:
+        unsigned = dict(payload)
+        expected_digest = unsigned.pop("sha256", None)
+        if expected_digest is not None and (
+            not isinstance(expected_digest, str)
+            or expected_digest != _payload_digest(unsigned)
+        ):
+            raise ValueError("context-route checksum mismatch")
+        if unsigned.get("schema") != cls.schema:
             raise ValueError("context-route schema is incompatible")
         table = cls(
-            int(payload["width"]),
-            matching_tolerance=float(payload["matching_tolerance"]),
-            prior_strength=float(payload["prior_strength"]),
-            mastery_threshold=float(payload["mastery_threshold"]),
-            min_mastery_observations=int(payload["min_mastery_observations"]),
-            reversal_threshold=float(payload.get("reversal_threshold", 0.5)),
-            reversal_patience=int(payload.get("reversal_patience", 4)),
+            int(unsigned["width"]),
+            matching_tolerance=float(unsigned["matching_tolerance"]),
+            prior_strength=float(unsigned["prior_strength"]),
+            mastery_threshold=float(unsigned["mastery_threshold"]),
+            min_mastery_observations=int(unsigned["min_mastery_observations"]),
+            reversal_threshold=float(unsigned.get("reversal_threshold", 0.5)),
+            reversal_patience=int(unsigned.get("reversal_patience", 4)),
         )
-        slot_count = payload["slot_count"]
-        contexts = payload["contexts"]
+        slot_count = unsigned["slot_count"]
+        contexts = unsigned["contexts"]
         if not isinstance(slot_count, int) or slot_count < 0:
             raise ValueError("context-route slot count is invalid")
         if not isinstance(contexts, list):
@@ -609,7 +707,7 @@ class PersistentOpaqueContextRouteEvidence:
                     evidence=evidence,
                 )
             )
-        version = payload.get("version", 0)
+        version = unsigned.get("version", 0)
         if not isinstance(version, int) or version < 0:
             raise ValueError("context-route version is invalid")
         table._version = version

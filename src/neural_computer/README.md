@@ -284,6 +284,23 @@ preferred, and the old capability remains independently retained. A separate
 same-cue replacement audit is also promoted. These are bounded
 failure-driven external-memory results, not general continual learning.
 
+The canonical control-flow runtime now consumes the same route evidence inside
+its opaque selection seam. A three-seed, forward/reversed-file audit learned
+four context-to-file bindings sequentially from selected-file scalar outcomes,
+retained every earlier context without replay, and recovered one reversed
+binding at `1.0000` held-out accuracy. The controller stayed byte-identical;
+fresh and reward-shuffled controls were `0.2500`. Route memory is checksummed
+and reloadable independently from runtime state. This remains bounded
+context-conditioned external memory, not unrestricted growth or general
+continual learning.
+
+The audit caught a reversal failure in lifetime-average promotion: a candidate
+with earlier failures could never recover. `PersistentRouteEvidence` therefore
+persists a recovery streak so a fresh stable success run can promote a
+previously bad slot without clearing other context rows. Evidence is archived
+under
+`session_records/control_flow_runtime_context_conditioned_growth_promoted_2026-08-12/`.
+
 The delayed score-function route credit path is batch-safe: each trajectory's
 feature gradient is expanded across the action axis before updating its
 independent eligibility tensor. This keeps batched route learning equivalent

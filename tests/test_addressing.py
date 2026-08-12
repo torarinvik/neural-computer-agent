@@ -215,6 +215,24 @@ def test_persistent_route_evidence_can_reset_a_reused_slot() -> None:
     assert evidence.preferred_order() == (0, 1)
 
 
+def test_persistent_route_evidence_can_recover_a_previously_bad_slot() -> None:
+    evidence = PersistentOpaqueRouteEvidence(
+        min_mastery_observations=2,
+        reversal_patience=2,
+    )
+    evidence.append_slot()
+    evidence.append_slot()
+    evidence.observe(1, 0.0)
+    evidence.observe(1, 0.0)
+    assert evidence.status().protected == (False, False)
+
+    evidence.observe(1, 1.0)
+    evidence.observe(1, 1.0)
+
+    assert evidence.status().protected == (False, True)
+    assert evidence.preferred_order() == (1, 0)
+
+
 def test_persistent_route_evidence_round_trips_without_semantic_fields() -> None:
     evidence = PersistentOpaqueRouteEvidence(prior_strength=2.0)
     evidence.append_slot()
@@ -270,6 +288,17 @@ def test_context_route_evidence_round_trips_opaque_rows() -> None:
     assert restored.preferred_order(context) == (1, 0)
     assert "task" not in restored.payload()
     assert "label" not in restored.payload()
+
+
+def test_context_route_evidence_rejects_checksum_corruption() -> None:
+    table = PersistentOpaqueContextRouteEvidence(width=3)
+    table.append_slot()
+    table.observe(torch.tensor([1.0, 0.0, 0.0]), 0, 1.0)
+    payload = table.payload()
+    payload["version"] = int(payload["version"]) + 1
+
+    with pytest.raises(ValueError, match="checksum"):
+        PersistentOpaqueContextRouteEvidence.from_payload(payload)
 
 
 def test_route_evidence_retires_a_stale_mapping_after_patient_failures() -> None:

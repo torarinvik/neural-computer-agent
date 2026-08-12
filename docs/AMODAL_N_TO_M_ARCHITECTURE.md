@@ -11437,3 +11437,27 @@ generic external files with an opaque trajectory address. It does not promote
 learned codec adaptation, arbitrary new computation, unrestricted memory
 growth, or general continual learning. Evidence is archived at
 `session_records/control_flow_runtime_four_file_counterfactual_promoted_2026-08-12/`.
+
+### Sequential context-conditioned external-file growth — bounded promotion
+
+The canonical runtime now has a direct external-memory route boundary:
+`PersistentOpaqueContextRouteEvidence` consumes the detached opaque trajectory
+query exposed by `ControlFlowProgramAmodalRuntime` and chooses among protected
+files without entering the controller. An explicit opaque slot override is
+available only as an external exploration hook; it is rejected alongside the
+trainable internal router and cannot add a controller reasoning branch.
+
+The three-seed audit learned four context-to-file bindings sequentially with
+scalar selected-file outcomes, no old-context replay, and a final reversal of
+one context. Both physical file orders passed at `1.0000` retention after
+growth and reversal; fresh and reward-shuffled controls were `0.2500`. The
+controller was byte-identical, files remained protected, and route/runtime
+reload and checksum gates passed. This is a bounded external-memory result,
+not general continual learning or unrestricted memory growth.
+
+The audit also found a real nonstationarity bottleneck: lifetime-average
+promotion made early failures permanently block a later correct candidate.
+The route ledger now persists a recovery streak, allowing fresh stable success
+to promote a previously bad candidate while leaving other context rows
+untouched. Evidence is archived at
+`session_records/control_flow_runtime_context_conditioned_growth_promoted_2026-08-12/`.

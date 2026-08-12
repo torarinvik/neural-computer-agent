@@ -1,0 +1,21 @@
+{
+  "schema": "neural-computer.control-flow-runtime-context-conditioned-growth.v1",
+  "status": "promoted_bounded_context_conditioned_external_growth",
+  "seeds": [17, 18, 19],
+  "verifier_arms": 6,
+  "verifier_heldout_accuracy": 1.0,
+  "fresh_accuracy": 0.25,
+  "reward_shuffled_paired_fresh_accuracy": [0.25, 0.25, 0.25],
+  "contexts": 4,
+  "external_files": 4,
+  "unique_verifier_bits_per_arm": 160,
+  "unique_logical_lifetimes_per_arm": 160,
+  "optimizer_updates": 0,
+  "replayed_examples": 0,
+  "controller_frozen": true,
+  "reversal_recovery": true,
+  "candidate_order_permutation": true,
+  "exact_reload": true,
+  "checksum_corruption_rejected": true,
+  "claim_boundary": "bounded sequential context-conditioned routing into isolated external control-flow files; not unrestricted memory growth, arbitrary new computation, or general continual learning"
+}

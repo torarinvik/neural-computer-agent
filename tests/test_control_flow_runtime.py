@@ -19,6 +19,7 @@ from neural_computer import (
     ExternalControllerTrajectoryQueryAdapter,
     ExternalOutcomeProgramRouter,
     IntentEvent,
+    PersistentOpaqueContextRouteEvidence,
 )
 
 
@@ -101,6 +102,7 @@ def _agent(
     memory: ControlFlowProgramMemory | None = None,
     router: ExternalOutcomeProgramRouter | None = None,
     query_adapter: nn.Module | None = None,
+    route_evidence: PersistentOpaqueContextRouteEvidence | None = None,
 ) -> ControlFlowProgramAmodalRuntime:
     controller = AmodalCognitiveController(
         width=4,
@@ -121,6 +123,7 @@ def _agent(
         _OpaqueCounterCodec(intention_width=2, counter_count=2),
         **source,
         program_router=router,
+        program_route_evidence=route_evidence,
         program_route_query_adapter=query_adapter,
         max_steps=8,
     )
@@ -221,6 +224,105 @@ def test_control_flow_runtime_reads_a_checksummed_memory_backed_file() -> None:
     assert output.program_slot == slot
     assert output.program_digest == memory.program(slot).digest()
     assert memory.is_file_protected(slot)
+
+
+def test_control_flow_runtime_accepts_external_opaque_route_override() -> None:
+    memory = ControlFlowProgramMemory(2)
+    memory.add_program(_program(), protect=True)
+    memory.add_program(_other_program(), protect=True)
+    query_adapter = ExternalControllerTrajectoryQueryAdapter(
+        controller_width=4,
+        query_width=20,
+    )
+    agent = _agent(memory=memory, query_adapter=query_adapter)
+
+    output, state = agent.step_events(
+        [AmodalEvent(torch.tensor([[1.0, 0.0, 0.0, 0.0]]))],
+        agent.initial_state(1, device="cpu"),
+        _feedback(1),
+        program_route_override=torch.tensor([1], dtype=torch.int64),
+    )
+
+    assert torch.equal(output.selected_program_slots, torch.tensor([1]))
+    assert output.program_digest == memory.program(1).digest()
+    assert output.program_route_query is not None
+    assert output.program_route_query.shape == (1, 20)
+    assert set(state.program_counters) == {0, 1}
+
+    with pytest.raises(ValueError, match="out of range"):
+        agent.step_events(
+            [AmodalEvent(torch.tensor([[1.0, 0.0, 0.0, 0.0]]))],
+            agent.initial_state(1, device="cpu"),
+            _feedback(1),
+            program_route_override=torch.tensor([2], dtype=torch.int64),
+        )
+
+
+def test_control_flow_runtime_allows_external_exploration_with_route_evidence() -> None:
+    memory = ControlFlowProgramMemory(2)
+    memory.add_program(_program(), protect=True)
+    memory.add_program(_other_program(), protect=True)
+    evidence = PersistentOpaqueContextRouteEvidence(width=20)
+    evidence.append_slot()
+    evidence.append_slot()
+    query_adapter = ExternalControllerTrajectoryQueryAdapter(
+        controller_width=4,
+        query_width=20,
+    )
+    agent = _agent(
+        memory=memory,
+        query_adapter=query_adapter,
+        route_evidence=evidence,
+    )
+
+    output, _ = agent.step_events(
+        [AmodalEvent(torch.tensor([[1.0, 0.0, 0.0, 0.0]]))],
+        agent.initial_state(1, device="cpu"),
+        _feedback(1),
+        program_route_override=torch.tensor([1], dtype=torch.int64),
+    )
+
+    assert torch.equal(output.selected_program_slots, torch.tensor([1]))
+    assert output.program_route_query is not None
+
+
+def test_control_flow_runtime_consumes_context_route_evidence_in_cycle() -> None:
+    memory = ControlFlowProgramMemory(2)
+    memory.add_program(_program(), protect=True)
+    memory.add_program(_other_program(), protect=True)
+    evidence = PersistentOpaqueContextRouteEvidence(
+        width=20,
+        min_mastery_observations=2,
+    )
+    evidence.append_slot()
+    evidence.append_slot()
+    query_adapter = ExternalControllerTrajectoryQueryAdapter(
+        controller_width=4,
+        query_width=20,
+    )
+    agent = _agent(
+        memory=memory,
+        query_adapter=query_adapter,
+        route_evidence=evidence,
+    )
+    first, _ = agent.step_events(
+        [AmodalEvent(torch.tensor([[1.0, 0.0, 0.0, 0.0]]))],
+        agent.initial_state(1, device="cpu"),
+        _feedback(1),
+    )
+    assert first.program_slot == 0
+    assert first.program_route_query is not None
+    for _ in range(2):
+        evidence.observe(first.program_route_query[0], 1, 1.0)
+
+    routed, _ = agent.step_events(
+        [AmodalEvent(torch.tensor([[1.0, 0.0, 0.0, 0.0]]))],
+        agent.initial_state(1, device="cpu"),
+        _feedback(1),
+    )
+
+    assert routed.program_slot == 1
+    assert routed.program_route_query is not None
 
 
 def test_control_flow_runtime_routes_multiple_files_with_isolated_counter_state() -> None:

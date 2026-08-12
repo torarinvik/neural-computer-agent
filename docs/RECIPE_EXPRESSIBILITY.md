@@ -308,6 +308,35 @@ learned codec adaptation, arbitrary new computation, unrestricted memory
 growth, or general continual learning. Evidence is archived in
 `session_records/control_flow_runtime_four_file_counterfactual_promoted_2026-08-12/`.
 
+## Sequential context-conditioned external-file growth — bounded promotion
+
+The canonical control-flow runtime now consumes a replaceable
+`PersistentOpaqueContextRouteEvidence` table directly at its opaque route
+query boundary. Four protected generic files were acquired one context at a
+time using only the scalar verifier outcome for the externally selected file;
+old contexts received no replay while later contexts were learned. A final
+single-context reversal changed the correct file and exercised external
+recovery without mutating the other context rows.
+
+Across three seeds and both forward/reversed physical-file orders, all six
+verifier arms reached `1.0000` held-out accuracy on all four contexts after
+growth and after reversal. Fresh banks scored `0.2500`; reward-shuffled nulls
+also scored `0.2500`. The controller stayed byte-identical, all files stayed
+protected, route and runtime reloads were exact, checksum corruption was
+rejected, and replay/controller optimizer updates were zero. The short rung
+used `160` scalar verifier bits per arm, with `32` fresh lifetimes per context
+and reversal.
+
+The first run exposed and fixed an important reversal flaw: lifetime-average
+promotion permanently poisoned a candidate that had failed before a
+nonstationary reversal. Persisted recovery streaks now allow a fresh stable
+success run to promote that candidate while retaining unrelated evidence. This
+promotes bounded sequential context-conditioned external-memory growth and
+reversal recovery only; it does not establish unrestricted memory growth,
+content search, arbitrary new computation, or general continual learning.
+Evidence is archived in
+`session_records/control_flow_runtime_context_conditioned_growth_promoted_2026-08-12/`.
+
 ## Outcome-only external recipe files and scope isolation
 
 The recipe basis now has a versioned external-file bridge:
