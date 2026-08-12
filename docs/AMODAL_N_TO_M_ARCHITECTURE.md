@@ -11737,3 +11737,19 @@ boundary, not general continual learning; unresolved-candidate capacity and
 held-out model-family verification remain the next constraints. Evidence is
 archived in
 `session_records/candidate_overlap_retention_2026-08-12/`.
+
+## Admission evidence budget
+
+The online boundary remains caller-configurable: a conservative prefix can
+wait for six rows, while the canonical same-cue pressure test has a verified
+three-row opt-in. With overlap-safe candidate retention, that early rung
+improves the exact active three-regime screen from `45/72` to `53/72` complete
+gates and the matched passive arm from `38/72` to `45/72`, without changing
+the controller or replaying evidence. It is not made the global default,
+because a different-cue n-back-5 screen regresses and the existing seed-93
+smoke contract requires the conservative setting.
+
+This isolates the next architectural target: learn when factual surprise and
+opaque context stability justify staging, rather than hard-coding one evidence
+prefix for every regime. Evidence is archived in
+`session_records/early_admission_window_screen_2026-08-12/`.

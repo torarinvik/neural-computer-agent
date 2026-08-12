@@ -1836,3 +1836,21 @@ continual learning or unrestricted memory growth. Capacity under unresolved
 candidates and held-out model-family verification remain open bottlenecks.
 Evidence is archived in
 `session_records/candidate_overlap_retention_2026-08-12/`.
+
+## Early provisional-admission window screen (2026-08-12)
+
+The retained-candidate boundary makes a shorter pre-admission window useful:
+the canonical acquisition harness was screened with three rows instead of
+waiting for the conservative six-row prefix. With the same frozen controller,
+masked state, route tolerance, and promotion gates, same-cue active discovery
+rose from `45/72` to `53/72` complete gates across n-back-3/4/5; the matched
+passive arm rose from `38/72` to `45/72`. All `72` active runs preserved the
+source slot and controller, replayed zero examples, and consumed `2,148`
+transition rows once.
+
+This is intentionally an opt-in experiment-level rung. A different-cue
+n-back-5 arm fell from `13/24` to `12/24`, and the conservative six-row
+default remains necessary for the canonical seed-93 smoke contract. The next
+high-ROI step is a learned factual-surprise/context-stability admission rule,
+not a global fixed-window change. Evidence is archived in
+`session_records/early_admission_window_screen_2026-08-12/`.
