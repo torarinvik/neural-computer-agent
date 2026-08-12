@@ -14,6 +14,7 @@ from neural_computer import (
     ControlFlowIntentionAdapter,
     ControlFlowProgram,
     ControlFlowProgramAmodalRuntime,
+    ControlFlowProgramGrowthReceipt,
     ControlFlowProgramMemory,
     ControllerFeedback,
     ExternalControllerTrajectoryQueryAdapter,
@@ -224,6 +225,126 @@ def test_control_flow_runtime_reads_a_checksummed_memory_backed_file() -> None:
     assert output.program_slot == slot
     assert output.program_digest == memory.program(slot).digest()
     assert memory.is_file_protected(slot)
+
+
+def test_verified_program_growth_atomically_appends_memory_route_and_counters() -> None:
+    memory = ControlFlowProgramMemory(2)
+    memory.add_program(_program(), protect=True)
+    evidence = PersistentOpaqueContextRouteEvidence(width=20)
+    evidence.append_slot()
+    query_adapter = ExternalControllerTrajectoryQueryAdapter(
+        controller_width=4,
+        query_width=20,
+    )
+    agent = _agent(
+        memory=memory,
+        query_adapter=query_adapter,
+        route_evidence=evidence,
+    )
+    state = agent.initial_state(1, device="cpu")
+    controller_snapshot = {
+        name: value.detach().clone()
+        for name, value in agent.runtime.controller.state_dict().items()
+    }
+
+    receipt, grown = agent.admit_program_verified(
+        state,
+        _other_program(),
+        (1.0, 1.0),
+        protect=True,
+    )
+
+    assert isinstance(receipt, ControlFlowProgramGrowthReceipt)
+    assert receipt.accepted
+    assert receipt.slot == 1
+    assert memory.file_count == 1
+    assert agent.program_memory is not None
+    assert agent.program_memory.file_count == 2
+    assert agent.program_route_evidence is not None
+    assert evidence.slot_count == 1
+    assert agent.program_route_evidence.slot_count == 2
+    assert set(grown.program_counters) == {0, 1}
+    assert all(
+        torch.equal(value, agent.runtime.controller.state_dict()[name])
+        for name, value in controller_snapshot.items()
+    )
+
+    output, _ = agent.step_events(
+        [AmodalEvent(torch.ones(1, 4))],
+        grown,
+        _feedback(1),
+        program_route_override=torch.tensor([1], dtype=torch.int64),
+    )
+    assert output.program_slot == 1
+    assert output.program_digest == agent.program_memory.program(1).digest()
+
+
+def test_verified_program_growth_expands_router_capacity_without_changing_old_columns() -> None:
+    memory = ControlFlowProgramMemory(2)
+    memory.add_program(_program(), protect=True)
+    router = ExternalOutcomeProgramRouter(
+        feature_width=2,
+        program_capacity=1,
+        initial_programs=1,
+    )
+    agent = _agent(memory=memory, router=router)
+    state = agent.initial_state(1, device="cpu")
+    old_policy = state.program_router.credit.policy.clone()
+
+    receipt, grown = agent.admit_program_verified(
+        state,
+        _other_program(),
+        (1.0, 1.0),
+        protect=True,
+    )
+
+    assert receipt.accepted
+    assert receipt.source_router_capacity == 1
+    assert receipt.destination_router_capacity == 2
+    assert agent.program_router is not None
+    assert agent.program_router.program_capacity == 2
+    assert grown.program_router is not None
+    assert grown.program_router.active_programs == 2
+    assert torch.equal(grown.program_router.credit.policy[..., :1], old_policy)
+    assert set(grown.program_counters) == {0, 1}
+
+
+def test_rejected_verified_program_growth_is_transactional() -> None:
+    memory = ControlFlowProgramMemory(2)
+    memory.add_program(_program(), protect=True)
+    evidence = PersistentOpaqueContextRouteEvidence(width=20)
+    evidence.append_slot()
+    query_adapter = ExternalControllerTrajectoryQueryAdapter(
+        controller_width=4,
+        query_width=20,
+    )
+    agent = _agent(
+        memory=memory,
+        query_adapter=query_adapter,
+        route_evidence=evidence,
+    )
+    state = agent.initial_state(1, device="cpu")
+    before_digest = state.digest()
+
+    receipt, unchanged = agent.admit_program_verified(
+        state,
+        _other_program(),
+        (0.0, 0.0),
+        threshold=1.0,
+        min_observations=2,
+        min_stable_observations=2,
+    )
+
+    assert not receipt.accepted
+    assert unchanged is state
+    assert receipt.state_digest_before == before_digest
+    assert receipt.state_digest_after == before_digest
+    assert memory.file_count == 1
+    assert agent.program_memory is not None
+    assert agent.program_memory.file_count == 1
+    assert evidence.slot_count == 1
+    assert agent.program_route_evidence is not None
+    assert agent.program_route_evidence.slot_count == 1
 
 
 def test_control_flow_runtime_accepts_external_opaque_route_override() -> None:

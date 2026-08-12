@@ -11560,3 +11560,20 @@ assumed from a successful outcome. The result is still bounded composition
 search over existing files, not unrestricted memory growth, arbitrary program
 induction, or general continual learning. Evidence is archived at
 `session_records/control_flow_runtime_composition_search_promoted_2026-08-12/`.
+
+### Synchronized growth of the external computation boundary
+
+`ControlFlowProgramAmodalRuntime.admit_program_verified()` is the canonical
+transaction for adding an external control-flow file after scalar verifier
+admission. It stages the checksummed program memory, any route capacity/state,
+opaque context evidence, and per-file execution counters together. A failed
+verifier prefix returns the original state; a successful append commits only
+after exact retention of pre-existing router columns and all cross-boundary
+invariants. The controller and event encoders remain frozen, and the
+controller-facing ABI remains opaque learned events to opaque intentions.
+
+This closes an implementation seam needed for scalable external memory, but it
+is deliberately a bounded lifecycle result. It does not establish autonomous
+program induction, unbounded storage economics, or general continual learning.
+Evidence is archived at
+`session_records/control_flow_runtime_program_growth_promoted_2026-08-12/`.

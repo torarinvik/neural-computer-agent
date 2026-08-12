@@ -13,6 +13,7 @@ without changing controller parameters.
 
 from __future__ import annotations
 
+import copy
 import hashlib
 from abc import ABC, abstractmethod
 from collections.abc import Mapping, Sequence
@@ -26,6 +27,7 @@ from .control_flow import (
     ControlFlowExecution,
     ControlFlowProgram,
     ControlFlowProgramMemory,
+    evaluate_control_flow_admission,
 )
 from .controller import ControllerOutput, ControllerState
 from .interface import (
@@ -45,6 +47,9 @@ CONTROL_FLOW_INTENTION_ADAPTER_SCHEMA = (
 )
 CONTROL_FLOW_RUNTIME_SCHEMA = "neural-computer.control-flow-runtime.v1"
 CONTROL_FLOW_RUNTIME_STATE_SCHEMA = "neural-computer.control-flow-runtime-state.v1"
+CONTROL_FLOW_PROGRAM_GROWTH_SCHEMA = (
+    "neural-computer.control-flow-program-growth.v1"
+)
 
 
 def _digest_payload(value: object) -> str:
@@ -281,6 +286,66 @@ class ControlFlowRuntimeState:
         program_router: ExternalOutcomeProgramRouter | None = None,
     ) -> str:
         return str(self.payload(program_router=program_router)["sha256"])
+
+
+@dataclass(frozen=True)
+class ControlFlowProgramGrowthReceipt:
+    """Copy-on-write receipt for one synchronized external-file admission."""
+
+    accepted: bool
+    slot: int | None
+    source_file_count: int
+    destination_file_count: int
+    source_router_capacity: int | None
+    destination_router_capacity: int | None
+    state_digest_before: str
+    state_digest_after: str
+    reason: str
+    schema: str = CONTROL_FLOW_PROGRAM_GROWTH_SCHEMA
+
+    def validate(self) -> ControlFlowProgramGrowthReceipt:
+        if self.schema != CONTROL_FLOW_PROGRAM_GROWTH_SCHEMA:
+            raise ValueError("unsupported control-flow program-growth schema")
+        if not isinstance(self.accepted, bool):
+            raise TypeError("control-flow program-growth acceptance must be boolean")
+        if self.source_file_count < 1:
+            raise ValueError("control-flow source file count must be positive")
+        if self.destination_file_count < self.source_file_count:
+            raise ValueError("control-flow growth cannot shrink file count")
+        if self.accepted:
+            if self.slot != self.source_file_count:
+                raise ValueError("accepted control-flow growth must append one file")
+            if self.destination_file_count != self.source_file_count + 1:
+                raise ValueError("accepted control-flow growth must add one file")
+        elif self.slot is not None or self.destination_file_count != self.source_file_count:
+            raise ValueError("rejected control-flow growth must preserve the bank")
+        for name, digest in (
+            ("before", self.state_digest_before),
+            ("after", self.state_digest_after),
+        ):
+            if (
+                not isinstance(digest, str)
+                or len(digest) != 64
+                or any(character not in "0123456789abcdef" for character in digest)
+            ):
+                raise ValueError(f"control-flow growth {name} digest is malformed")
+        for name, capacity in (
+            ("source", self.source_router_capacity),
+            ("destination", self.destination_router_capacity),
+        ):
+            if capacity is not None and (
+                not isinstance(capacity, int) or isinstance(capacity, bool) or capacity < 1
+            ):
+                raise ValueError(f"control-flow growth {name} router capacity is invalid")
+        if (
+            self.source_router_capacity is not None
+            and self.destination_router_capacity is not None
+            and self.destination_router_capacity < self.source_router_capacity
+        ):
+            raise ValueError("control-flow growth cannot shrink router capacity")
+        if not isinstance(self.reason, str) or not self.reason:
+            raise ValueError("control-flow growth reason cannot be empty")
+        return self
 
 
 @dataclass(frozen=True)
@@ -659,6 +724,207 @@ class ControlFlowProgramAmodalRuntime(nn.Module):
         )
         return selected, behavior, propensity, features, next_router_state
 
+    def admit_program_verified(
+        self,
+        state: ControlFlowRuntimeState,
+        program: ControlFlowProgram,
+        outcomes: Sequence[float],
+        *,
+        threshold: float = 1.0,
+        min_observations: int = 1,
+        min_stable_observations: int = 1,
+        protect: bool = False,
+        route_initialization: str = "conservative",
+    ) -> tuple[ControlFlowProgramGrowthReceipt, ControlFlowRuntimeState]:
+        """Atomically append one verified external program file.
+
+        The executable file, route address space, context evidence, and
+        per-file counter state are staged on copy-on-write candidates.  The
+        live runtime is changed only after the scalar verifier prefix passes
+        and every dependent boundary can accept the new slot.  If a router
+        needs more capacity, its pre-existing columns are checked for exact
+        structural retention before the capacity change is committed.
+
+        This is deliberately a memory-side lifecycle operation.  It does not
+        update controller parameters, replay examples, or interpret the
+        program's instruction data.
+        """
+
+        if not isinstance(state, ControlFlowRuntimeState):
+            raise TypeError("control-flow runtime state has the wrong type")
+        state.validate()
+        if self.program_memory is None or self.program is not None:
+            raise ValueError(
+                "verified program growth requires a memory-backed control-flow runtime"
+            )
+        if not isinstance(program, ControlFlowProgram):
+            raise TypeError("verified program growth requires a control-flow program")
+        program.validate()
+        if program.counter_count != self.adapter.counter_count:
+            raise ValueError("verified program counter width does not match adapter")
+        if route_initialization not in {"neutral", "conservative"}:
+            raise ValueError("route initialization must be neutral or conservative")
+
+        source_memory = self.program_memory
+        source_file_count = source_memory.file_count
+        source_router = self.program_router
+        source_evidence = self.program_route_evidence
+        if source_router is not None and source_evidence is not None:
+            raise RuntimeError("control-flow runtime cannot use two route stores")
+        if source_router is not None:
+            if state.program_router is None:
+                raise ValueError("control-flow route state is missing")
+            if state.program_router.active_programs != source_file_count:
+                raise ValueError(
+                    "control-flow route state is not synchronized with program memory"
+                )
+            source_router_capacity: int | None = source_router.program_capacity
+            source_router_state = state.program_router
+        else:
+            if state.program_router is not None:
+                raise ValueError("control-flow state has a route state without a router")
+            source_router_capacity = None
+            source_router_state = None
+        if source_evidence is not None and source_evidence.slot_count != source_file_count:
+            raise ValueError(
+                "control-flow route evidence is not synchronized with program memory"
+            )
+
+        state_digest_before = state.digest(program_router=source_router)
+        admission = evaluate_control_flow_admission(
+            program,
+            outcomes,
+            threshold=threshold,
+            min_observations=min_observations,
+            min_stable_observations=min_stable_observations,
+        )
+        if not admission.accepted:
+            receipt = ControlFlowProgramGrowthReceipt(
+                accepted=False,
+                slot=None,
+                source_file_count=source_file_count,
+                destination_file_count=source_file_count,
+                source_router_capacity=source_router_capacity,
+                destination_router_capacity=source_router_capacity,
+                state_digest_before=state_digest_before,
+                state_digest_after=state_digest_before,
+                reason=admission.reason,
+            )
+            return receipt.validate(), state
+
+        # Stage every mutable external boundary independently.  The source
+        # objects remain untouched until the final assignments below.
+        candidate_memory = ControlFlowProgramMemory.from_payload(source_memory.payload())
+        candidate_slot = candidate_memory.add_program(program, protect=protect)
+        candidate_router = None if source_router is None else copy.deepcopy(source_router)
+        candidate_router_state = source_router_state
+        candidate_evidence = (
+            None
+            if source_evidence is None
+            else PersistentOpaqueContextRouteEvidence.from_payload(
+                source_evidence.payload()
+            )
+        )
+
+        destination_router_capacity = source_router_capacity
+        if candidate_router is not None:
+            assert candidate_router_state is not None
+            if candidate_router.program_capacity < candidate_memory.file_count:
+                destination_router_capacity = max(
+                    candidate_memory.file_count,
+                    max(2, candidate_router.program_capacity * 2),
+                )
+                retained_columns = {
+                    name: getattr(candidate_router_state.credit, name).detach().clone()
+                    for name in (
+                        "policy",
+                        "eligibility",
+                        "baseline",
+                        "decisions",
+                        "feedbacks",
+                    )
+                }
+                source_active = candidate_router_state.active_programs
+
+                def structural_retention_probe(
+                    _router: ExternalOutcomeProgramRouter,
+                    candidate_state: ExternalOutcomeProgramRouterState,
+                ) -> bool:
+                    if candidate_state.active_programs != source_active:
+                        return False
+                    for name, source_value in retained_columns.items():
+                        value = getattr(candidate_state.credit, name)
+                        if name in {"policy", "eligibility"}:
+                            value = value[..., : source_router_capacity]
+                            source_value = source_value[..., : source_router_capacity]
+                        if not torch.equal(value, source_value):
+                            return False
+                    return True
+
+                growth_receipt, candidate_router_state = (
+                    candidate_router.grow_capacity_verified(
+                        candidate_router_state,
+                        destination_router_capacity,
+                        structural_retention_probe,
+                    )
+                )
+                if not growth_receipt.accepted:
+                    receipt = ControlFlowProgramGrowthReceipt(
+                        accepted=False,
+                        slot=None,
+                        source_file_count=source_file_count,
+                        destination_file_count=source_file_count,
+                        source_router_capacity=source_router_capacity,
+                        destination_router_capacity=source_router_capacity,
+                        state_digest_before=state_digest_before,
+                        state_digest_after=state_digest_before,
+                        reason=growth_receipt.reason,
+                    )
+                    return receipt.validate(), state
+            candidate_router_state = candidate_router.append_program(
+                candidate_router_state,
+                initialization=route_initialization,
+            )
+        if candidate_evidence is not None:
+            candidate_evidence.append_slot()
+
+        next_program_counters = {
+            int(slot): counters.detach().clone()
+            for slot, counters in state.program_counters.items()
+        }
+        if (
+            source_router is not None
+            or source_evidence is not None
+            or self.program_route_query_adapter is not None
+        ):
+            next_program_counters[candidate_slot] = state.counters.detach().clone()
+        next_state = ControlFlowRuntimeState(
+            controller=state.controller,
+            counters=state.counters,
+            counter_count=state.counter_count,
+            program_counters=next_program_counters,
+            program_router=candidate_router_state,
+        ).validate()
+        state_digest_after = next_state.digest(program_router=candidate_router)
+
+        # Commit only after all staged components and their cross-boundary
+        # invariants validate successfully.
+        self.program_memory = candidate_memory
+        self.program_router = candidate_router
+        self.program_route_evidence = candidate_evidence
+        receipt = ControlFlowProgramGrowthReceipt(
+            accepted=True,
+            slot=candidate_slot,
+            source_file_count=source_file_count,
+            destination_file_count=candidate_memory.file_count,
+            source_router_capacity=source_router_capacity,
+            destination_router_capacity=destination_router_capacity,
+            state_digest_before=state_digest_before,
+            state_digest_after=state_digest_after,
+            reason="verified program admitted with synchronized external route state",
+        )
+        return receipt.validate(), next_state
+
     def step_events(
         self,
         events: AmodalEventCollection | Sequence[AmodalEvent],
@@ -873,10 +1139,12 @@ class ControlFlowProgramAmodalRuntime(nn.Module):
 
 __all__ = [
     "CONTROL_FLOW_INTENTION_ADAPTER_SCHEMA",
+    "CONTROL_FLOW_PROGRAM_GROWTH_SCHEMA",
     "CONTROL_FLOW_RUNTIME_SCHEMA",
     "CONTROL_FLOW_RUNTIME_STATE_SCHEMA",
     "ControlFlowIntentionAdapter",
     "ControlFlowProgramAmodalRuntime",
+    "ControlFlowProgramGrowthReceipt",
     "ControlFlowRuntimeOutput",
     "ControlFlowRuntimeState",
 ]

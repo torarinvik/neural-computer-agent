@@ -120,9 +120,11 @@ from .control_flow_frontier import (
 )
 from .control_flow_runtime import (
     CONTROL_FLOW_INTENTION_ADAPTER_SCHEMA,
+    CONTROL_FLOW_PROGRAM_GROWTH_SCHEMA,
     CONTROL_FLOW_RUNTIME_SCHEMA,
     CONTROL_FLOW_RUNTIME_STATE_SCHEMA,
     ControlFlowIntentionAdapter,
+    ControlFlowProgramGrowthReceipt,
     ControlFlowProgramAmodalRuntime,
     ControlFlowRuntimeOutput,
     ControlFlowRuntimeState,
@@ -855,6 +857,7 @@ __all__ = [
     "CONTROL_FLOW_MEMORY_SCHEMA",
     "CONTROL_FLOW_MUTATION_OPERATORS",
     "CONTROL_FLOW_PROGRAM_SCHEMA",
+    "CONTROL_FLOW_PROGRAM_GROWTH_SCHEMA",
     "CONTROL_FLOW_PROPOSAL_SCHEMA",
     "CONTROL_FLOW_RUNTIME_SCHEMA",
     "CONTROL_FLOW_RUNTIME_STATE_SCHEMA",
@@ -1179,6 +1182,7 @@ __all__ = [
     "ControlFlowIntentionAdapter",
     "ControlFlowOutcomeSearch",
     "ControlFlowProgram",
+    "ControlFlowProgramGrowthReceipt",
     "ControlFlowProgramAmodalRuntime",
     "ControlFlowProgramFrontier",
     "ControlFlowProgramMemory",

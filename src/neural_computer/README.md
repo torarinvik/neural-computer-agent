@@ -2009,3 +2009,15 @@ history token. The runtime path
 already-resolved read directly to the bridge, preserving the stable address
 without converting it into a shifting relative offset. This remains an
 external storage contract, not a learned capability claim.
+
+### Transactional growth of external control-flow files
+
+`ControlFlowProgramAmodalRuntime.admit_program_verified()` is the canonical
+memory-side lifecycle for adding a new control-flow file after scalar verifier
+admission. It stages executable memory, route capacity/state, context evidence,
+and per-file counters together, then commits them only after all cross-boundary
+checks pass. Router capacity growth copies old columns exactly and keeps the
+new route inactive until the append is admitted; failed verifier prefixes do
+not mutate the live runtime. The controller remains frozen and sees only the
+same opaque event/intention interfaces. This is a bounded external growth
+contract, not a claim of general continual learning.

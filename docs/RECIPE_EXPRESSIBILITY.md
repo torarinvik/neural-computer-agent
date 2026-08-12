@@ -709,3 +709,30 @@ maintenance and fixed-capacity replacement. It does not establish unrestricted
 memory growth, semantic compression, arbitrary new computation, or general
 continual learning. Evidence is archived at
 `session_records/recipe_repeated_maintenance_promoted_2026-08-12/`.
+
+## Synchronized external program-file growth (2026-08-12)
+
+The canonical runtime now exposes one copy-on-write admission transaction for
+an expanding control-flow file bank. `admit_program_verified()` stages the new
+checksummed executable file together with its route capacity/state, opaque
+context evidence, and per-file counter state. Nothing is committed until the
+scalar verifier prefix is stable. A rejected candidate returns the original
+runtime state and leaves every external object unchanged.
+
+The route-capacity branch grows only after an exact structural retention check
+of every pre-existing router column. The evidence branch appends one opaque
+slot to every existing context row. In both cases the frozen controller and
+the existing executable files remain byte-identical. The API therefore closes
+the synchronization seam between external memory growth and runtime use; it
+does not make program induction autonomous.
+
+The three-seed audit passed evidence-backed growth, router-capacity growth,
+target execution, source retention, exact memory reload, rejected-candidate
+rollback, synchronized counters, and frozen-controller controls. It charged
+`18` unique verifier bits per seed, with zero optimizer updates and zero
+replay. Evidence is archived at
+`session_records/control_flow_runtime_program_growth_promoted_2026-08-12/`.
+
+This promotes a narrow external-memory lifecycle contract. It remains bounded
+growth of verifier-admitted files, not unrestricted memory growth, arbitrary
+program induction, or general continual learning.
