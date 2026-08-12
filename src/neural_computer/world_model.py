@@ -8500,95 +8500,154 @@ class ExternalOnlineTransitionContextRouter:
                 reason="committed model-bank capacity is full",
             ).validate()
 
-        candidate_bank = ExternalTransitionModelBank.from_payload(self.bank.payload())
         target_capacity = (
             self.bank.capacity if destination_capacity is None else destination_capacity
         )
-        if target_capacity is not None:
-            candidate_content_before_growth = candidate_bank.content_digest()
-            candidate_bank.capacity = target_capacity
-            if candidate_bank.content_digest() != candidate_content_before_growth:
-                raise RuntimeError("candidate capacity growth changed model content")
-        candidate_count_before = candidate_bank.context_count
-        bank_candidate_index = candidate_bank.ensure_context(
-            context,
-            model_family=selected_family,
-        )
-        if bank_candidate_index != candidate_count_before:
-            return ExternalTransitionModelCandidateReceipt(
-                accepted=False,
-                slot_index=None,
-                context_count=self.bank.context_count,
-                heldout_error=float("inf"),
-                candidate_digest=candidate_digest,
-                content_digest_before=before,
-                content_digest_after=before,
-                reason="provisional context duplicates a committed context",
-            ).validate()
-        candidate_bank.models[bank_candidate_index].load_state_dict(model.state_dict())
         heldout_observations_all = (heldout_observation, *additional_observations)
-        heldout_error = max(
-            float(
-                candidate_bank.loss(
-                    observation,
-                    context.unsqueeze(0).expand(observation.state.shape[0], -1),
-                ).detach()
-            )
-            for observation in heldout_observations_all
+        rollout_error_tolerance = (
+            prediction_tolerance
+            if rollout_error_tolerance is None
+            else rollout_error_tolerance
         )
-        if heldout_error > prediction_tolerance:
-            return ExternalTransitionModelCandidateReceipt(
-                accepted=False,
-                slot_index=None,
-                context_count=self.bank.context_count,
-                heldout_error=heldout_error,
-                candidate_digest=candidate_digest,
-                content_digest_before=before,
-                content_digest_after=before,
-                reason="held-out candidate prediction failed",
-            ).validate()
-        heldout_rollout_error: float | None = None
-        if heldout_rollouts:
-            rollout_error_tolerance = (
-                prediction_tolerance
-                if rollout_error_tolerance is None
-                else rollout_error_tolerance
+
+        # The one-step family selector is only an ordering hint. A compact
+        # family can fit held-out rows while still compounding error over a
+        # deployed rollout. Try every one-step-accepted family through the
+        # complete recursive and retention gates before committing the first
+        # family that passes all of them.
+        accepted_families = sorted(
+            (receipt for receipt in selection.candidates if receipt.accepted),
+            key=lambda receipt: (
+                0 if receipt.model_family == selected_family else 1,
+                receipt.storage_bytes,
+                receipt.heldout_error,
+                receipt.model_family,
+            ),
+        )
+        failures: list[tuple[str, float, float | None, str]] = []
+        verified_candidate: tuple[
+            str, nn.Module, ExternalTransitionModelBank, float, float | None
+        ] | None = None
+
+        for family_receipt in accepted_families:
+            family = family_receipt.model_family
+            family_model = candidate_models[family]
+            candidate_bank = ExternalTransitionModelBank.from_payload(
+                self.bank.payload()
             )
-            rollout_errors = [
-                ExternalModelBasedPlanner(
-                    candidate_bank,
-                    beam_width=1,
-                ).rollout_error(
-                    rollout,
-                    transition_context=context.unsqueeze(0),
+            if target_capacity is not None:
+                candidate_content_before_growth = candidate_bank.content_digest()
+                candidate_bank.capacity = target_capacity
+                if candidate_bank.content_digest() != candidate_content_before_growth:
+                    raise RuntimeError(
+                        "candidate capacity growth changed model content"
+                    )
+            candidate_count_before = candidate_bank.context_count
+            bank_candidate_index = candidate_bank.ensure_context(
+                context,
+                model_family=family,
+            )
+            if bank_candidate_index != candidate_count_before:
+                failures.append(
+                    (
+                        family,
+                        float("inf"),
+                        None,
+                        "provisional context duplicates a committed context",
+                    )
                 )
-                for rollout in heldout_rollouts
-            ]
-            heldout_rollout_error = max(rollout_errors)
-            if any(error > rollout_error_tolerance for error in rollout_errors):
-                return ExternalTransitionModelCandidateReceipt(
-                    accepted=False,
-                    slot_index=None,
-                    context_count=self.bank.context_count,
-                    heldout_error=heldout_error,
-                    candidate_digest=candidate_digest,
-                    content_digest_before=before,
-                    content_digest_after=before,
-                    reason="held-out recursive candidate rollout failed",
-                    heldout_rollout_error=heldout_rollout_error,
-                ).validate()
-        if not bool(retention_probe(candidate_bank)):
+                continue
+            candidate_bank.models[bank_candidate_index].load_state_dict(
+                family_model.state_dict()
+            )
+            heldout_error = max(
+                float(
+                    candidate_bank.loss(
+                        observation,
+                        context.unsqueeze(0).expand(
+                            observation.state.shape[0], -1
+                        ),
+                    ).detach()
+                )
+                for observation in heldout_observations_all
+            )
+            if heldout_error > prediction_tolerance:
+                failures.append(
+                    (
+                        family,
+                        heldout_error,
+                        None,
+                        "held-out candidate prediction failed",
+                    )
+                )
+                continue
+
+            heldout_rollout_error: float | None = None
+            if heldout_rollouts:
+                rollout_errors = [
+                    ExternalModelBasedPlanner(
+                        candidate_bank,
+                        beam_width=1,
+                    ).rollout_error(
+                        rollout,
+                        transition_context=context.unsqueeze(0),
+                    )
+                    for rollout in heldout_rollouts
+                ]
+                heldout_rollout_error = max(rollout_errors)
+                if any(
+                    error > rollout_error_tolerance for error in rollout_errors
+                ):
+                    failures.append(
+                        (
+                            family,
+                            heldout_error,
+                            heldout_rollout_error,
+                            "held-out recursive candidate rollout failed",
+                        )
+                    )
+                    continue
+            if not bool(retention_probe(candidate_bank)):
+                failures.append(
+                    (
+                        family,
+                        heldout_error,
+                        heldout_rollout_error,
+                        "candidate retention probe failed",
+                    )
+                )
+                continue
+            verified_candidate = (
+                family,
+                family_model,
+                candidate_bank,
+                heldout_error,
+                heldout_rollout_error,
+            )
+            break
+
+        if verified_candidate is None:
+            failed_family, heldout_error, heldout_rollout_error, reason = failures[0]
             return ExternalTransitionModelCandidateReceipt(
                 accepted=False,
                 slot_index=None,
                 context_count=self.bank.context_count,
                 heldout_error=heldout_error,
-                candidate_digest=candidate_digest,
+                candidate_digest=candidate_models[failed_family].digest(),
                 content_digest_before=before,
                 content_digest_after=before,
-                reason="candidate retention probe failed",
+                reason=reason,
                 heldout_rollout_error=heldout_rollout_error,
             ).validate()
+
+        (
+            selected_family,
+            model,
+            candidate_bank,
+            heldout_error,
+            heldout_rollout_error,
+        ) = verified_candidate
+        candidate_digest = model.digest()
 
         prior_cost_observation: ExternalRoutedIntentionCostObservationReceipt | None = None
         updated_cost_state = None

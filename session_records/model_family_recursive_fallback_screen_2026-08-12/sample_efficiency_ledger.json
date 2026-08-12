@@ -1,0 +1,41 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment_id": "model-family-recursive-fallback-screen-2026-08-12",
+  "status": "promoted_gate_preserving_candidate_fallback",
+  "source": "in_repository_run",
+  "seeds": [80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103],
+  "configuration": {
+    "control_mode": "active",
+    "candidate_mode": "active_interleaved",
+    "target_cue_symbols": [6, 7],
+    "target_n_back": [3, 4, 5],
+    "steps": 6,
+    "window_statistics": "masked_mean_and_max_v1",
+    "window_gain": 0.05,
+    "routing_match_tolerance": 0.01,
+    "controller_frozen": true,
+    "replay_free": true,
+    "active_probe_lifetimes_per_run": 1,
+    "family_selection": "one_step_verified_then_recursive_and_retention_fallback_v1"
+  },
+  "post_training_active": {
+    "same_cue_nback3": {"complete_gates": 16, "promotions": 16, "fresh_challenger_improvements": 16, "unique_verifier_bits": 768, "transition_rows_consumed_once": 720},
+    "same_cue_nback4": {"complete_gates": 15, "promotions": 18, "fresh_challenger_improvements": 15, "unique_verifier_bits": 604, "transition_rows_consumed_once": 714},
+    "same_cue_nback5": {"complete_gates": 14, "promotions": 15, "fresh_challenger_improvements": 14, "unique_verifier_bits": 443, "transition_rows_consumed_once": 714},
+    "different_cue_nback5": {"complete_gates": 13, "promotions": 16, "fresh_challenger_improvements": 13, "unique_verifier_bits": 448, "transition_rows_consumed_once": 720},
+    "aggregate": {"complete_gates": 58, "promotions": 65, "fresh_challenger_improvements": 58, "unique_verifier_bits": 2263, "transition_rows_consumed_once": 2868, "controller_unchanged_runs": 96, "source_slot_byte_stable_runs": 96, "replayed_examples": 0}
+  },
+  "active_interleaved_after_fallback": {
+    "same_cue_nback3": {"complete_gates": 16, "promotions": 18, "fresh_challenger_improvements": 16, "unique_verifier_bits": 774, "transition_rows_consumed_once": 720},
+    "same_cue_nback4": {"complete_gates": 14, "promotions": 15, "fresh_challenger_improvements": 14, "unique_verifier_bits": 598, "transition_rows_consumed_once": 714},
+    "same_cue_nback5": {"complete_gates": 15, "promotions": 18, "fresh_challenger_improvements": 15, "unique_verifier_bits": 446, "transition_rows_consumed_once": 714},
+    "different_cue_nback5": {"complete_gates": 17, "promotions": 17, "fresh_challenger_improvements": 17, "unique_verifier_bits": 449, "transition_rows_consumed_once": 720},
+    "aggregate": {"complete_gates": 62, "promotions": 68, "fresh_challenger_improvements": 62, "unique_verifier_bits": 2267, "transition_rows_consumed_once": 2868, "controller_unchanged_runs": 96, "source_slot_byte_stable_runs": 96, "replayed_examples": 0}
+  },
+  "matched_same_cue_nback5_active_passive_control": {
+    "active": {"complete_gates": 14, "promotions": 15, "fresh_challenger_improvements": 14},
+    "passive": {"complete_gates": 13, "promotions": 16, "fresh_challenger_improvements": 13},
+    "active_interleaved": {"complete_gates": 15, "promotions": 18, "fresh_challenger_improvements": 15}
+  },
+  "claim_boundary": "Gate-preserving external model-family fallback improves a bounded rendered acquisition pressure test; this is not general continual learning or unrestricted memory growth."
+}

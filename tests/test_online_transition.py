@@ -10,6 +10,7 @@ from neural_computer import (
     ExternalGoalRepresentationAlignmentStatistics,
     ExternalGoalRepresentationRandomFeatureAlignmentStatistics,
     ExternalGoalRepresentationRandomFeatureGrowthReceipt,
+    ExternalModelBasedPlanner,
     ExternalOnlineTransitionContextRouter,
     ExternalRandomFeatureTransitionStatistics,
     ExternalSparseTransitionEvidenceIndex,
@@ -1429,6 +1430,73 @@ def test_mixed_router_adapts_both_families_and_promotes_verified_winner() -> Non
     )
     assert receipt.accepted
     assert router.bank.model_family_at(0) == "affine_sufficient_statistics_v1"
+
+
+def test_promotion_tries_other_heldout_family_after_recursive_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    bank = ExternalTransitionModelBank(
+        2,
+        1,
+        4,
+        model_family="mixed_verified_v1",
+        affine_ridge=1e-7,
+        random_feature_width=32,
+        capacity=1,
+    )
+    encoder = ExternalTransitionContextEncoder(2, 1, hidden_width=8, context_width=4)
+    router = ExternalOnlineTransitionContextRouter(
+        bank,
+        encoder,
+        match_tolerance=1e-8,
+        continuation_tolerance=1e9,
+        admission_observations=16,
+        max_contexts=1,
+        defer_admission=True,
+    )
+    observation = _affine_observation(16)
+    for row in range(observation.state.shape[0] - 1):
+        router.observe(
+            ExternalTransitionObservation(
+                state=observation.state[row : row + 1],
+                intention=observation.intention[row : row + 1],
+                next_state=observation.next_state[row : row + 1],
+                confidence=torch.ones(1),
+            )
+        )
+    staged = router.observe(
+        ExternalTransitionObservation(
+            state=observation.state[-1:],
+            intention=observation.intention[-1:],
+            next_state=observation.next_state[-1:],
+            confidence=torch.ones(1),
+        )
+    )
+    assert staged.status == "staged"
+    router.adaptation_step(staged, None)
+
+    attempted_families: list[str] = []
+
+    def recursive_error(self: ExternalModelBasedPlanner, *_args: object, **_kwargs: object) -> float:
+        family = self.model.model_family_at(self.model.context_count - 1)
+        attempted_families.append(family)
+        return 1.0 if family == "affine_sufficient_statistics_v1" else 0.0
+
+    monkeypatch.setattr(ExternalModelBasedPlanner, "rollout_error", recursive_error)
+    receipt = router.promote_staged_candidate(
+        _affine_observation(4),
+        lambda candidate: True,
+        prediction_tolerance=0.05,
+        heldout_rollout=_affine_rollout(),
+        rollout_error_tolerance=0.5,
+    )
+
+    assert receipt.accepted
+    assert attempted_families[:2] == [
+        "affine_sufficient_statistics_v1",
+        "random_feature_sufficient_statistics_v1",
+    ]
+    assert router.bank.model_family_at(0) == "random_feature_sufficient_statistics_v1"
 
 
 def test_streaming_statistics_candidate_does_not_retain_raw_evidence() -> None:

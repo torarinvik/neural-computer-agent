@@ -1899,3 +1899,31 @@ default. The control preserved `2,868` transition rows once, zero replay,
 controller immutability, and source-slot byte stability in all 96 runs per
 arm. Evidence is archived in
 `session_records/interleaved_active_discovery_screen_2026-08-12/`.
+
+## Recursive model-family fallback (2026-08-12)
+
+The promotion path had a subtle completeness failure: it selected the smallest
+candidate that passed one-step held-out prediction, then tested recursive
+rollout and retention only on that family. A compact affine candidate could
+therefore fail recursive verification while an independently trained
+random-feature candidate, which had already passed the one-step gate, was
+never tried.
+
+One-step selection is now only an ordering preference. Every one-step-accepted
+family is evaluated through the existing held-out, recursive, and retention
+gates, and the smallest family that passes all of them is committed. No
+threshold or fresh-challenger condition changed.
+
+On exact seeds `80–103` with the same masked state, route tolerance, frozen
+controller, and one active probe lifetime, active-interleaved complete gates
+rose from `61/96` to `62/96`; promotions rose from `65/96` to `68/96` and
+fresh-challenger improvements from `61/96` to `62/96`. The hard same-cue
+n-back-5 arm rose from `14/24` to `15/24`. Controller and source retention
+passed in all `96` runs, transition rows were consumed once, and replay was
+zero. The matched passive hard arm remained `13/24`.
+
+This promotes a verifier-completeness and candidate-selection improvement,
+not general continual learning, unrestricted memory growth, or universal
+transfer. Candidate staging, held-out fit, recursive rollout, and retention
+remain active bottlenecks. Evidence is archived in
+`session_records/model_family_recursive_fallback_screen_2026-08-12/`.
