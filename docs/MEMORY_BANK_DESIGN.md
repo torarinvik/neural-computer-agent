@@ -10762,3 +10762,89 @@ budget would set it from the budget. The check costs six executions,
 which is why the cost column starts at 6 and not 0. And repair inherits
 every limitation of the search it calls, including that the search is
 fit to 32 examples.
+
+## F209 — ATTACKS ON F204-F208: TWO CLAIMS BROKE, TWO PREDICTIONS OF
+## MINE WERE WRONG, AND THE BREAK HAD A FIX IN IT
+
+F204-F208's controls were the ordinary kind — floors, shuffled labels,
+held-out splits, a wrong-world arm. Those show a result is not nothing.
+None of them was CHOSEN to break the claim. These were, with the
+prediction written into the probe before the run so it could not be
+revised afterwards.
+
+**ATTACK 1 succeeded: the language claim is distribution-specific.**
+Parallel semantics provably cannot express `INC 0; INC 0`, nor a chain
+whose second write reads what the first wrote. Building worlds out of
+exactly those, 200 per kind, three seeds:
+
+| adversarial world | parallel | seq depth-1 | seq depth-2 |
+| --- | ---: | ---: | ---: |
+| chained | 0.8541 | 0.8544 | **1.0000** |
+| `INC;INC` | 0.8695 | 0.8545 | **0.9999** |
+
+F204 said parallel matches or beats sequential depth-2. **On worlds I
+chose rather than inherited, it loses outright.** The correct statement
+is that parallel is not more expressive — it is cheaper, flat in arity,
+and better on the distributions that actually occur here, and strictly
+worse where a real data dependence exists.
+
+**And the attack contained its own fix.** Try parallel first; if it does
+not reproduce the evidence, fall back to sequential depth-2 and keep
+whichever fits the FIT rows better (choosing on held-out rows would be
+choosing with the answer):
+
+| worlds | parallel | HYBRID t=0.95 | candidates | fallback rate |
+| --- | ---: | ---: | ---: | ---: |
+| chained | 0.8541 | **1.0000** | 670 | 100% |
+| `INC;INC` | 0.8695 | **0.9999** | 363 | 100% |
+| held-out rule families | 1.0000 | 1.0000 | 200 | **0%** |
+| held-out grid games | 0.8492 | 0.8562 | 27,517 | 23% |
+
+The hybrid is free where parallel already suffices — on rule families it
+never falls back — and it recovers the adversarial worlds completely and
+cheaply, because a world that IS exactly expressible makes the
+sequential search exit early. On grid worlds it buys +0.007 for 24x the
+cost, which is a bad trade and is what the threshold is for.
+
+**ATTACK 3 succeeded: the READER is not amodal, although the language
+and the plant are.** Permuting the six slots yields a legitimate world.
+The per-slot search is permutation-equivariant by construction and must
+be unaffected — it is, to four decimals, which is also a check that the
+attack is wired correctly.
+
+| | reader | reader permuted | search | search permuted |
+| --- | ---: | ---: | ---: | ---: |
+| held-out games | 0.7920 | **0.6053** | 0.8492 | 0.8492 |
+| held-out rule families | 0.9418 | **0.5662** | 1.0000 | 1.0000 |
+
+The reader loses two thirds of its margin on rule families. It has
+slot-indexed heads and trained where slots 0 and 1 are always the
+avatar, so it learned a convention rather than a structure. **This is
+the sharpest open defect in the architecture**, and it is a defect of
+one component: everything under the reader is address-agnostic.
+
+**ATTACK 2 failed to break it, and the baselines were much stronger
+than F205's.** "What does action k usually do" is the right competitor
+on grid worlds, since every world here shares its avatar dynamics; and
+nearest-neighbour retrieval over the wake pool is the right competitor
+for a learned reader.
+
+| | identity | per-action mode | NN retrieval | READER | search |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| held-out games | 0.4820 | 0.6769 | 0.6381 | **0.7920** | 0.8492 |
+| held-out rule families | 0.1692 | n/a | 0.6067 | **0.9418** | 1.0000 |
+
+The reader clears the hostile baselines by +0.115 and +0.335. It is
+neither a lookup table nor a retrieval index.
+
+**TWO PREDICTIONS OF MINE WERE REFUTED.**
+
+  * I predicted the search would degrade faster than the reader on
+    starved evidence, since at four rows almost anything fits. Wrong:
+    the reader is worse at EVERY budget and the gap NARROWS with more
+    data (games 4/8/16/32 rows, reader vs search: 0.6418/0.7271,
+    0.7062/0.7898, 0.7469/0.8240, 0.7920/0.8492).
+  * I predicted the plant would fall on maximally coupled programs —
+    every slot written by a COPY or a conditional reading another slot,
+    no NOOPs. It barely moves: 0.9992 random, 0.9975 coupled. The plant
+    is the most robust component measured.
