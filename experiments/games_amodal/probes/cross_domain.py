@@ -64,6 +64,13 @@ parser.add_argument("--enum-depth", type=int, default=2)
 parser.add_argument("--fit-target", type=float, default=0.99)
 parser.add_argument("--games", type=int, default=6)
 parser.add_argument("--rule-families", type=int, default=6)
+parser.add_argument(
+    "--wide-rules", action="store_true",
+    help="draw the priming rule families with the `pair` op enabled, "
+         "so their actions write TWO slots. F195 found cross-domain "
+         "transfer null because rule actions change one slot and grid "
+         "actions change two or three — an arity mismatch, not a "
+         "content one. This tests that diagnosis directly.")
 parser.add_argument("--json", default="")
 args = parser.parse_args()
 
@@ -362,8 +369,16 @@ gen = torch.Generator().manual_seed(args.seed * 7919)
 rules = [("line", Family("line")), ("dial", Family("dial")),
          ("toggle", Family("toggle")), ("perm", Family("perm"))]
 while len(rules) < args.rule_families:
+    # F195: rule-family actions change ONE slot while grid actions
+    # change two or three, so no stored rule program can solve a grid
+    # action however well the interpreter executes it. `wide` enables
+    # the `pair` op, which writes two slots at once — the missing arity
+    # class. If transfer appears here and not without, arity was the
+    # barrier; if it still does not, grid dynamics are unreachable from
+    # rule-family structure for some other reason.
     rules.append((f"proc{len(rules)}",
-                  RandomFamily(random_family_spec(gen))))
+                  RandomFamily(random_family_spec(gen,
+                                                  wide=args.wide_rules))))
 for name, family in rules[:args.rule_families]:
     obs = rule_transitions(family, args.observations, args.seed * 31)
     held = rule_transitions(family, args.eval_rows, args.seed * 977)[:3]
@@ -395,6 +410,7 @@ for config in family_variants()[:args.games]:
     if f"grid_cold" in results and config.name in results["grid_cold"]:
         results["grid_games"][config.name] = results["grid_cold"][config.name]
 report["rule_programs_stored"] = len(rule_programs)
+report["wide_rules"] = args.wide_rules
 
 report["results"] = results
 for domain, block in results.items():

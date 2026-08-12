@@ -10021,3 +10021,62 @@ up a stated limitation instead of accepting it — and the general lesson
 is that a component which silently DISAPPEARS from results is worse
 than one that fails loudly, which is why the probe now reports
 `rows_kept`, `rows_total` and `usable_slots` for every family.
+
+## F195 — cross-domain transfer is a NULL, and the cause is an ARITY
+## MISMATCH that predicts when it would work
+
+F192 established one frozen interpreter serving both domains, which
+made a sharper question askable: does a program found while solving a
+RULE FAMILY make a GRID GAME cheaper to solve? Three arms, three seeds,
+control passing throughout.
+
+| game | cold | primed | stranger |
+| --- | ---: | ---: | ---: |
+| collect1 | 9861 | 9781 | 9961 |
+| intercept1 | 7209 | 7309 | 7309 |
+| avoid1 | 25920 | 26020 | 26020 |
+| **TOTAL** | **198874** | **199294** | **199474** |
+| ratio to cold | 1.000 | **1.002** | 1.003 |
+
+**Null, and cleanly so.** Priming costs exactly the library's size and
+buys nothing: 1.002 against 1.003 for the stranger control, and
+held-out accuracy identical to four decimals across all three arms
+(0.9391), so the library never changed which recipe was chosen. One
+game of six moved at all (collect1, 0.992) and that is inside noise.
+
+**The design made the null mean something specific**, and it does:
+*no rule-family program exactly solves a grid action.* The reason is
+measurable in one line, and it is not subtle:
+
+| domain | slots changed per action |
+| --- | --- |
+| GRID collect1 | 3, 2, 1, 1 |
+| GRID intercept1 | 3, 3, 2, 2 |
+| GRID avoid1 | 2, 2, 2, 2 |
+| RULE line | 1, 1 |
+| RULE dial | 1, 1, 1, 1, 1, 1 |
+| RULE proc0 | 1, 2, 0, 1, 1 |
+| RULE proc1 | 1, 1, 1, 1, 1 |
+
+**Rule-family actions change ONE slot; grid actions change two or
+three.** A stored program that writes one slot cannot solve an action
+that changes three, whatever the interpreter can execute. The two
+domains produce recipes in different ARITY CLASSES, and the transfer
+failed for a reason that has nothing to do with either domain's
+content.
+
+The cause of the grid arity is the encoding itself: slots 2-5 hold the
+NEAREST object's coordinates, which are relative to the avatar, so
+moving the avatar changes which object is nearest and where it sits.
+One avatar move plus one or two object-slot updates is two or three
+writes. That coupling is a property of `game_slots`' perception, not of
+grid worlds.
+
+**And this converts the null into a prediction.** If arity is the
+barrier, transfer should appear when the source families produce
+multi-slot writes. `random_family_spec(wide=True)` enables the `pair`
+op, which changes two slots at once — precisely the missing class.
+Priming with WIDE rule families should transfer where narrow ones do
+not, and if it still does not, arity was not the barrier and something
+about grid dynamics is genuinely unreachable from rule-family
+structure. Either answer is worth more than the null alone.
