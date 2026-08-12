@@ -1,0 +1,39 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "multi-append-external-capability-v4-two-unseen-2026-08-06",
+  "status": "replicated_promoted_two_unseen_procedure_acquisition",
+  "seeds": [69316, 69317],
+  "base_operations": ["reverse", "forward", "complement"],
+  "append_operations": ["rotate", "adjacent_xor", "complement_rotate", "prefix_parity", "global_parity"],
+  "parent_updates_per_seed": [128, 128],
+  "old_capability_updates_per_seed": [256, 256],
+  "append_capability_updates_per_seed": [256, 256],
+  "base_route_updates_per_seed": [1024, 1024],
+  "extension_route_updates_per_append_per_seed": [512, 512],
+  "reward_shuffled_extension_updates_per_append_per_seed": [512, 512],
+  "batch_size": 16,
+  "route_batch_size": 16,
+  "audit_count": 64,
+  "retention_probes": 8,
+  "physical_rows": 8,
+  "unique_logical_lifetimes_per_seed": [165888, 165888],
+  "unique_verifier_bits_per_seed": [413696, 413696],
+  "optimizer_updates_per_seed": [2176, 2176],
+  "route_optimizer_updates_per_seed": [6144, 6144],
+  "route_unique_lifetimes_per_seed": [98304, 98304],
+  "route_unique_verifier_bits_per_seed": [196608, 196608],
+  "replayed_examples_per_seed": [0, 0],
+  "distribution_shifts_per_seed": [5, 5],
+  "wall_seconds": [1057.6435092500033, 860.0451602499961],
+  "prefix_parity_behavior_per_seed": [0.87890625, 0.8359375],
+  "global_parity_behavior_per_seed": [1.0, 1.0],
+  "route_rates_per_seed": [
+    {"old": 1.0, "rotate4": 1.0, "adjacent_xor4": 1.0, "complement_rotate4": 1.0, "prefix_parity4": 1.0, "global_parity4": 1.0, "combined": 1.0},
+    {"old": 1.0, "rotate4": 1.0, "adjacent_xor4": 1.0, "complement_rotate4": 1.0, "prefix_parity4": 1.0, "global_parity4": 1.0, "combined": 1.0}
+  ],
+  "reward_shuffled_selection_per_seed": [
+    {"rotate4": 0.0, "adjacent_xor4": 0.0, "complement_rotate4": 0.0, "prefix_parity4": 0.0, "global_parity4": 0.0},
+    {"rotate4": 0.0, "adjacent_xor4": 0.0, "complement_rotate4": 0.0, "prefix_parity4": 0.0, "global_parity4": 0.0}
+  ],
+  "claim_boundary": "Replicated route-isolated acquisition of two unseen temporal procedures with protected prior artifacts, causal routing, persistent reload, and zero replay; not general continual learning or arbitrary program induction."
+}

@@ -6,6 +6,7 @@ import torch
 from neural_computer import (
     FactorizedOpaqueAddressRouter,
     OpaqueAddressRouter,
+    OpaqueAppendOnlyRouteChain,
     OpaqueCandidateGrowthRouter,
     OpaqueViewRouteExtension,
     PersistentOpaqueContextRouteEvidence,
@@ -101,6 +102,87 @@ def test_failure_gated_view_scores_preserve_old_routes_until_failure() -> None:
     )
 
     assert scores.argmax(dim=-1).tolist() == [1, 2]
+
+
+def test_append_only_route_chain_keeps_all_new_rows_cold_until_failure() -> None:
+    base = OpaqueAddressRouter(width=4, hidden=8)
+    chain = OpaqueAppendOnlyRouteChain(
+        base,
+        width=4,
+        extensions=(
+            OpaqueViewRouteExtension(width=4, hidden=8),
+            OpaqueViewRouteExtension(width=4, hidden=8),
+        ),
+    )
+    query = torch.randn(3, 4)
+    keys = torch.randn(2, 4)
+
+    cold = chain(query, keys)
+    assert cold.shape == (3, 4)
+    assert torch.equal(cold.argmax(dim=-1), base(query, keys).argmax(dim=-1))
+
+
+def test_append_only_route_chain_activates_only_the_failed_stage() -> None:
+    base = OpaqueAddressRouter(width=4, hidden=8)
+    first = OpaqueViewRouteExtension(width=4, hidden=8)
+    second = OpaqueViewRouteExtension(width=4, hidden=8)
+    with torch.no_grad():
+        first.score.bias.fill_(2.0)
+        second.score.bias.fill_(2.0)
+    chain = OpaqueAppendOnlyRouteChain(
+        base,
+        width=4,
+        extensions=(first, second),
+    )
+    query = torch.randn(2, 4)
+    keys = torch.randn(2, 4)
+
+    first_failed = chain(
+        query,
+        keys,
+        torch.tensor([[True, False], [True, False]]),
+    )
+    second_failed = chain(
+        query,
+        keys,
+        torch.tensor([[True, True], [True, True]]),
+    )
+    assert first_failed.argmax(dim=-1).tolist() == [2, 2]
+    assert second_failed.argmax(dim=-1).tolist() == [3, 3]
+
+
+def test_append_only_route_chain_cannot_skip_an_unfailed_prior_stage() -> None:
+    base = OpaqueAddressRouter(width=4, hidden=8)
+    first = OpaqueViewRouteExtension(width=4, hidden=8)
+    second = OpaqueViewRouteExtension(width=4, hidden=8)
+    with torch.no_grad():
+        first.score.bias.fill_(1.0)
+        second.score.bias.fill_(3.0)
+    chain = OpaqueAppendOnlyRouteChain(
+        base,
+        width=4,
+        extensions=(first, second),
+    )
+    query = torch.randn(2, 4)
+    keys = torch.randn(2, 4)
+
+    skipped = chain(
+        query,
+        keys,
+        torch.tensor([[False, True], [False, True]]),
+    )
+
+    assert bool((skipped.argmax(dim=-1) < 2).all())
+
+
+def test_append_only_route_chain_rejects_misaligned_failure_state() -> None:
+    chain = OpaqueAppendOnlyRouteChain(
+        OpaqueAddressRouter(width=4, hidden=8),
+        width=4,
+        extensions=(OpaqueViewRouteExtension(width=4, hidden=8),),
+    )
+    with pytest.raises(ValueError, match="failed_stages"):
+        chain(torch.randn(2, 4), torch.randn(2, 4), torch.zeros(2, 2))
 
 
 def test_persistent_route_evidence_prefers_last_stable_opaque_slot() -> None:

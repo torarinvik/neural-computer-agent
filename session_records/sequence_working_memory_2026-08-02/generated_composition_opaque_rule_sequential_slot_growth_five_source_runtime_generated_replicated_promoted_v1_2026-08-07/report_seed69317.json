@@ -1,0 +1,647 @@
+{
+  "schema": "neural-computer.generated-composition-sequential-slot-isolated-consolidation-report.v1",
+  "claim_boundary": "A frozen controller acquired a finite nonstationary sequence of external procedures. Each new neural slot was trained from fresh outcomes only, then appended under an opaque alias into one retention-gated physical artifact row. This is bounded replay-free slot-isolated growth, not dense shared-weight consolidation or general continual learning.",
+  "seed": 69317,
+  "source_ids": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "target_id": 5,
+  "program_source": "runtime_generated_opaque_rule",
+  "program_seed": 4242,
+  "primitive_family": "opaque_rule",
+  "program_count": 6,
+  "program_depth": 8,
+  "programs": [
+    [
+      "rule:d4",
+      "rule:43",
+      "rule:0e",
+      "rule:c7",
+      "rule:c2",
+      "rule:a4",
+      "rule:8c",
+      "rule:5e"
+    ],
+    [
+      "rule:fc",
+      "rule:0c",
+      "rule:f0",
+      "rule:50",
+      "rule:4f",
+      "rule:f3",
+      "rule:3d",
+      "rule:0d"
+    ],
+    [
+      "rule:40",
+      "rule:48",
+      "rule:5c",
+      "rule:ac",
+      "rule:3e",
+      "rule:57",
+      "rule:79",
+      "rule:77"
+    ],
+    [
+      "rule:e4",
+      "rule:1f",
+      "rule:8c",
+      "rule:ac",
+      "rule:02",
+      "rule:a3",
+      "rule:56",
+      "rule:ac"
+    ],
+    [
+      "rule:b6",
+      "rule:c9",
+      "rule:ce",
+      "rule:a4",
+      "rule:9d",
+      "rule:55",
+      "rule:b0",
+      "rule:f8"
+    ],
+    [
+      "rule:f6",
+      "rule:8e",
+      "rule:2b",
+      "rule:33",
+      "rule:c1",
+      "rule:dc",
+      "rule:ee",
+      "rule:f1"
+    ]
+  ],
+  "budgets": {
+    "parent_updates": 128,
+    "source_updates": 256,
+    "target_updates": 256,
+    "batch_size": 16,
+    "audit_count": 64,
+    "retention_probes": 4,
+    "eval_every": 32,
+    "reversal_patience": 4
+  },
+  "sources": [
+    {
+      "id": 0,
+      "behavior": 1.0,
+      "stable_bits_to_threshold": 2048,
+      "artifact_digest": "e1725e65edb19e56143a555657135b02555d6bf2a6027d175d6bc93d66763548",
+      "payload_bytes": 335456
+    },
+    {
+      "id": 1,
+      "behavior": 0.96875,
+      "stable_bits_to_threshold": 8192,
+      "artifact_digest": "fddf84623049ae2bbcba7109cf0bdd9ac4ffd1884c420aa33ad239c5ebccb89f",
+      "payload_bytes": 335456
+    },
+    {
+      "id": 2,
+      "behavior": 1.0,
+      "stable_bits_to_threshold": 2048,
+      "artifact_digest": "e5bd978c6a6ffe3ca24716e6708d577c3cf3e8919834afe2a6434b3e1f84a1df",
+      "payload_bytes": 335456
+    },
+    {
+      "id": 3,
+      "behavior": 0.98828125,
+      "stable_bits_to_threshold": 4096,
+      "artifact_digest": "477b68ade95525c9e2c3e9da7cae177a45364b593fd43ea09f58f496d723dbe1",
+      "payload_bytes": 335456
+    },
+    {
+      "id": 4,
+      "behavior": 0.94921875,
+      "stable_bits_to_threshold": 4096,
+      "artifact_digest": "a27fcfed4b8ff012d8553953a5bb7d33cc3325215a17669f7636b0d80812c93b",
+      "payload_bytes": 335456
+    }
+  ],
+  "source_key_similarity": [
+    [
+      1.0,
+      0.972189724445343,
+      0.9896172285079956,
+      0.9982810020446777,
+      0.9838443994522095
+    ],
+    [
+      0.972189724445343,
+      1.0000001192092896,
+      0.9943408966064453,
+      0.9628176689147949,
+      0.9970759153366089
+    ],
+    [
+      0.9896172285079956,
+      0.9943408966064453,
+      1.0000001192092896,
+      0.9827476143836975,
+      0.9979332089424133
+    ],
+    [
+      0.9982810020446777,
+      0.9628176689147949,
+      0.9827476143836975,
+      1.0,
+      0.9760957956314087
+    ],
+    [
+      0.9838443994522095,
+      0.9970759749412537,
+      0.9979333877563477,
+      0.9760957360267639,
+      0.9999999403953552
+    ]
+  ],
+  "sequential_stages": [
+    {
+      "stage": 1,
+      "new_source_id": 1,
+      "active_source_ids_before": [
+        0
+      ],
+      "admission": {
+        "accepted": true,
+        "action": "grow",
+        "index": 1,
+        "source_capacity": 1,
+        "destination_capacity": 2,
+        "rows_before": 1,
+        "rows_after": 2,
+        "reason": "grown store validated and admitted"
+      },
+      "mode": "opaque_alias_addressed_slot_append",
+      "new_slot_trained_from_fresh_outcomes_only": true,
+      "candidate_behavior_before_rewrite": {
+        "0": 1.0,
+        "1": 0.98828125
+      },
+      "candidate_payload_bytes": 670912,
+      "source_payload_bytes": 670912,
+      "new_source_stable_bits_to_threshold": 8192,
+      "retention_probe_outcomes": [
+        [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        [
+          0.9765625,
+          0.97265625,
+          0.9765625,
+          0.9609375
+        ]
+      ],
+      "verifier_passed": true,
+      "consolidation": {
+        "accepted": true,
+        "source_indices": [
+          0,
+          1
+        ],
+        "rows_before": 2,
+        "rows_after": 1,
+        "rows_saved": 1,
+        "reason": "behavior verifier passed"
+      },
+      "accepted": true,
+      "active_source_ids_after": [
+        0,
+        1
+      ],
+      "behavior_after_reload": {
+        "0": 1.0,
+        "1": 0.9765625
+      },
+      "physical_row": 0,
+      "physical_row_payload_bytes": 670912
+    },
+    {
+      "stage": 2,
+      "new_source_id": 2,
+      "active_source_ids_before": [
+        0,
+        1
+      ],
+      "admission": {
+        "accepted": true,
+        "action": "grow",
+        "index": 1,
+        "source_capacity": 1,
+        "destination_capacity": 2,
+        "rows_before": 1,
+        "rows_after": 2,
+        "reason": "grown store validated and admitted"
+      },
+      "mode": "opaque_alias_addressed_slot_append",
+      "new_slot_trained_from_fresh_outcomes_only": true,
+      "candidate_behavior_before_rewrite": {
+        "0": 1.0,
+        "1": 0.97265625,
+        "2": 1.0
+      },
+      "candidate_payload_bytes": 1006368,
+      "source_payload_bytes": 1006368,
+      "new_source_stable_bits_to_threshold": 2048,
+      "retention_probe_outcomes": [
+        [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        [
+          0.9609375,
+          0.97265625,
+          0.96484375,
+          0.97265625
+        ],
+        [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ]
+      ],
+      "verifier_passed": true,
+      "consolidation": {
+        "accepted": true,
+        "source_indices": [
+          0,
+          1
+        ],
+        "rows_before": 2,
+        "rows_after": 1,
+        "rows_saved": 1,
+        "reason": "behavior verifier passed"
+      },
+      "accepted": true,
+      "active_source_ids_after": [
+        0,
+        1,
+        2
+      ],
+      "behavior_after_reload": {
+        "0": 1.0,
+        "1": 0.96484375,
+        "2": 1.0
+      },
+      "physical_row": 0,
+      "physical_row_payload_bytes": 1006368
+    },
+    {
+      "stage": 3,
+      "new_source_id": 3,
+      "active_source_ids_before": [
+        0,
+        1,
+        2
+      ],
+      "admission": {
+        "accepted": true,
+        "action": "grow",
+        "index": 1,
+        "source_capacity": 1,
+        "destination_capacity": 2,
+        "rows_before": 1,
+        "rows_after": 2,
+        "reason": "grown store validated and admitted"
+      },
+      "mode": "opaque_alias_addressed_slot_append",
+      "new_slot_trained_from_fresh_outcomes_only": true,
+      "candidate_behavior_before_rewrite": {
+        "0": 1.0,
+        "1": 0.97265625,
+        "2": 1.0,
+        "3": 0.984375
+      },
+      "candidate_payload_bytes": 1341824,
+      "source_payload_bytes": 1341824,
+      "new_source_stable_bits_to_threshold": 4096,
+      "retention_probe_outcomes": [
+        [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        [
+          0.98828125,
+          0.96875,
+          0.96875,
+          0.96484375
+        ],
+        [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        [
+          0.984375,
+          0.98046875,
+          0.984375,
+          0.98046875
+        ]
+      ],
+      "verifier_passed": true,
+      "consolidation": {
+        "accepted": true,
+        "source_indices": [
+          0,
+          1
+        ],
+        "rows_before": 2,
+        "rows_after": 1,
+        "rows_saved": 1,
+        "reason": "behavior verifier passed"
+      },
+      "accepted": true,
+      "active_source_ids_after": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "behavior_after_reload": {
+        "0": 1.0,
+        "1": 0.96484375,
+        "2": 1.0,
+        "3": 0.984375
+      },
+      "physical_row": 0,
+      "physical_row_payload_bytes": 1341824
+    },
+    {
+      "stage": 4,
+      "new_source_id": 4,
+      "active_source_ids_before": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "admission": {
+        "accepted": true,
+        "action": "grow",
+        "index": 1,
+        "source_capacity": 1,
+        "destination_capacity": 2,
+        "rows_before": 1,
+        "rows_after": 2,
+        "reason": "grown store validated and admitted"
+      },
+      "mode": "opaque_alias_addressed_slot_append",
+      "new_slot_trained_from_fresh_outcomes_only": true,
+      "candidate_behavior_before_rewrite": {
+        "0": 1.0,
+        "1": 0.97265625,
+        "2": 1.0,
+        "3": 0.98828125,
+        "4": 0.94140625
+      },
+      "candidate_payload_bytes": 1677280,
+      "source_payload_bytes": 1677280,
+      "new_source_stable_bits_to_threshold": 4096,
+      "retention_probe_outcomes": [
+        [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        [
+          0.984375,
+          0.97265625,
+          0.96484375,
+          0.98046875
+        ],
+        [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        [
+          0.984375,
+          0.984375,
+          0.98046875,
+          0.984375
+        ],
+        [
+          0.93359375,
+          0.9453125,
+          0.94140625,
+          0.9453125
+        ]
+      ],
+      "verifier_passed": true,
+      "consolidation": {
+        "accepted": true,
+        "source_indices": [
+          0,
+          1
+        ],
+        "rows_before": 2,
+        "rows_after": 1,
+        "rows_saved": 1,
+        "reason": "behavior verifier passed"
+      },
+      "accepted": true,
+      "active_source_ids_after": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "behavior_after_reload": {
+        "0": 1.0,
+        "1": 0.984375,
+        "2": 1.0,
+        "3": 0.98828125,
+        "4": 0.9375
+      },
+      "physical_row": 0,
+      "physical_row_payload_bytes": 1677280
+    }
+  ],
+  "active_source_ids": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "active_source_views": [
+    "slot0",
+    "slot1",
+    "slot2",
+    "slot3",
+    "slot4"
+  ],
+  "active_source_behavior_after_reload": {
+    "0": 1.0,
+    "1": 0.984375,
+    "2": 1.0,
+    "3": 0.98828125,
+    "4": 0.9375
+  },
+  "shared_physical_row": 0,
+  "shared_physical_payload_bytes": 1677280,
+  "source_payload_bytes": 1677280,
+  "target": {
+    "attempted": true,
+    "inherited_behavior": 0.99609375,
+    "fresh_behavior": 0.984375,
+    "inherited_stable_bits_to_threshold": 4096,
+    "fresh_stable_bits_to_threshold": 4096,
+    "trained_from_first_slot_only": true,
+    "admission": {
+      "accepted": true,
+      "action": "grow",
+      "index": 1,
+      "source_capacity": 1,
+      "destination_capacity": 2,
+      "rows_before": 1,
+      "rows_after": 2,
+      "reason": "grown store validated and admitted"
+    },
+    "row": 1,
+    "behavior_after_reload": 1.0,
+    "protected_after_reload": true
+  },
+  "reversal": {
+    "attempted": true,
+    "shared_alias": {
+      "before": {
+        "key_digest": "0bcf87bdace2b0cb8a295dd87d68da68649f72c1b8b2944e36aabb7183681303",
+        "observations": 4,
+        "lifetime_observations": 4,
+        "mean_outcome": 0.94140625,
+        "stable_prefix_minimum": 0.94140625,
+        "recent_mean": 0.94140625,
+        "protected": true,
+        "reversal_streak": 0,
+        "reversal_count": 0,
+        "last_step": 76
+      },
+      "after_reversal": {
+        "key_digest": "0bcf87bdace2b0cb8a295dd87d68da68649f72c1b8b2944e36aabb7183681303",
+        "observations": 0,
+        "lifetime_observations": 8,
+        "mean_outcome": 0.0,
+        "stable_prefix_minimum": 1.0,
+        "recent_mean": 0.0,
+        "protected": false,
+        "reversal_streak": 0,
+        "reversal_count": 1,
+        "last_step": 84
+      },
+      "after_reversal_row_protected": true,
+      "after_recovery": {
+        "key_digest": "0bcf87bdace2b0cb8a295dd87d68da68649f72c1b8b2944e36aabb7183681303",
+        "observations": 4,
+        "lifetime_observations": 12,
+        "mean_outcome": 1.0,
+        "stable_prefix_minimum": 1.0,
+        "recent_mean": 1.0,
+        "protected": true,
+        "reversal_streak": 0,
+        "reversal_count": 1,
+        "last_step": 88
+      },
+      "reversal_detected": true,
+      "alias_released": true,
+      "alias_recovered": true
+    },
+    "target_row": {
+      "before": {
+        "key_digest": "e6429e2413bf547678cfab86ad1131a9b1c4137c7ef929a5977b35bb12d35e10",
+        "observations": 4,
+        "lifetime_observations": 4,
+        "mean_outcome": 0.998046875,
+        "stable_prefix_minimum": 0.998046875,
+        "recent_mean": 0.998046875,
+        "protected": true,
+        "reversal_streak": 0,
+        "reversal_count": 0,
+        "last_step": 80
+      },
+      "after_reversal": {
+        "key_digest": "e6429e2413bf547678cfab86ad1131a9b1c4137c7ef929a5977b35bb12d35e10",
+        "observations": 0,
+        "lifetime_observations": 8,
+        "mean_outcome": 0.0,
+        "stable_prefix_minimum": 1.0,
+        "recent_mean": 0.0,
+        "protected": false,
+        "reversal_streak": 0,
+        "reversal_count": 1,
+        "last_step": 92
+      },
+      "after_reversal_row_protected": false,
+      "after_recovery": {
+        "key_digest": "e6429e2413bf547678cfab86ad1131a9b1c4137c7ef929a5977b35bb12d35e10",
+        "observations": 4,
+        "lifetime_observations": 12,
+        "mean_outcome": 1.0,
+        "stable_prefix_minimum": 1.0,
+        "recent_mean": 1.0,
+        "protected": true,
+        "reversal_streak": 0,
+        "reversal_count": 1,
+        "last_step": 96
+      },
+      "reversal_detected": true,
+      "alias_released": true,
+      "alias_recovered": true
+    },
+    "shared_physical_row_stayed_protected": true,
+    "target_physical_row_released": true
+  },
+  "memory_corruption_control": {
+    "rejected": true,
+    "error_type": "ValueError"
+  },
+  "frozen_core": {
+    "digest_before": "9b072c9e96c64a17ebea9f245da6bdbe6e2abd951a8d43b5541d883a54a1902a",
+    "digest_after": "9b072c9e96c64a17ebea9f245da6bdbe6e2abd951a8d43b5541d883a54a1902a",
+    "unchanged": true
+  },
+  "accounting": {
+    "unique_verifier_bits": 176128,
+    "unique_logical_lifetimes": 59392,
+    "optimizer_updates": 1920,
+    "consolidation_optimizer_updates": 0,
+    "replayed_examples": 0,
+    "retention_observations": 76
+  },
+  "gates": {
+    "parent_stable": true,
+    "sources_stable": true,
+    "sources_mastered": true,
+    "source_addresses_separated": true,
+    "all_sequential_stages_adopted": true,
+    "all_sources_retained_after_reload": true,
+    "all_source_aliases_share_one_physical_row": true,
+    "target_grown_and_reloaded_mastered": true,
+    "shared_alias_reversal_isolated_and_recovered": true,
+    "target_reversal_released_and_recovered": true,
+    "memory_corruption_rejected": true,
+    "final_bank_reload_exact": true,
+    "core_unchanged": true,
+    "no_replayed_examples": true
+  },
+  "wall_seconds": 248.93187504200614,
+  "promoted": true
+}

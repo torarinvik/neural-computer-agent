@@ -13,6 +13,7 @@ import argparse
 import json
 import time
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 import torch
 from torch.nn import functional as F
@@ -37,7 +38,10 @@ from experiments.episodic_context_credit_amodal.train import (
 )
 from neural_computer import (
     CapabilityRetentionLedger,
+    ConfidenceAwareCapabilityStaging,
     EpisodicContextEncoder,
+    ExecutableArtifactMemory,
+    ExternalCapabilityLifecycle,
     OpaqueCandidateGrowthRouter,
     RetentionPolicyConfig,
     failure_gated_candidate_scores,
@@ -222,13 +226,19 @@ def _route_scores(
     family: int,
     disabled_phase: int | None = None,
     limit: int | None = None,
+    expected_row: int | None = None,
 ) -> tuple[torch.Tensor, list[float], list[float]]:
+    # The family index is the physical row only in canonical ordering.
+    # Permutation audits must provide the remapped physical target; otherwise
+    # the diagnostic treats a correctly selected permuted row as a failure and
+    # incorrectly activates later growth routers.
+    success_row = family if expected_row is None else expected_row
     scores = base_router(query, old_keys)
     attempts: list[float] = []
     activations: list[float] = []
     selected_expansions = expansions if limit is None else expansions[:limit]
     for phase, (router, keys, _start) in enumerate(selected_expansions):
-        failed = scores.argmax(dim=-1) != family
+        failed = scores.argmax(dim=-1) != success_row
         attempts.append(float(failed.to(torch.float32).mean()))
         residual = router(query, keys)
         if phase == disabled_phase:
@@ -252,6 +262,7 @@ def _shared_selection(
     batch_size: int,
     disabled_phase: int | None = None,
     limit: int | None = None,
+    expected_row: int | None = None,
 ) -> tuple[float, list[float], list[float]]:
     families = torch.full((batch_size,), family, dtype=torch.long)
     query = query_fn(families, seed)
@@ -263,6 +274,7 @@ def _shared_selection(
         family=family,
         disabled_phase=disabled_phase,
         limit=limit,
+        expected_row=expected_row,
     )
     return float((scores.argmax(dim=-1) == family).float().mean()), attempts, activations
 
@@ -292,15 +304,8 @@ def _permuted_new_route_accuracy(
         permuted = list(expansions)
         router, keys, family_start = permuted[phase]
         permuted[phase] = (router, keys[permutation], family_start)
-        score, _attempts, _activations = _shared_selection(
-            base_router,
-            query_fn,
-            old_keys,
-            tuple(permuted),
-            family=family,
-            seed=seed + offset * 1009,
-            batch_size=batch_size,
-        )
+        expected_local = int((permutation == local).nonzero(as_tuple=False)[0])
+        expected = start + expected_local
         families = torch.full((batch_size,), family, dtype=torch.long)
         query = query_fn(families, seed + offset * 1009)
         scores, _attempts, _activations = _route_scores(
@@ -309,12 +314,10 @@ def _permuted_new_route_accuracy(
             old_keys,
             tuple(permuted),
             family=family,
+            expected_row=expected,
         )
-        expected_local = int((permutation == local).nonzero(as_tuple=False)[0])
-        expected = start + expected_local
         correct += int((scores.argmax(dim=-1) == expected).sum())
         total += batch_size
-        del score
     return correct / total
 
 
@@ -355,6 +358,83 @@ def _candidate_score_permutation_accuracy(
     return correct / total
 
 
+def _staged_admission_audit(
+    all_keys: torch.Tensor,
+    observations: list[list[float]],
+) -> dict[str, object]:
+    """Replay only scalar audit outcomes through the memory admission boundary.
+
+    This is a state-machine audit, not a second verifier run.  The route
+    outcomes were already collected by the retention audit; staging consumes
+    those scalar results to distinguish capabilities that earned executable
+    admission from capabilities that must remain pending.
+    """
+
+    config = RetentionPolicyConfig(
+        mastery_threshold=0.8,
+        min_mastery_observations=4,
+        reversal_threshold=0.5,
+        reversal_patience=4,
+        recent_window=4,
+    )
+    with TemporaryDirectory(prefix="shared-growth-staging-") as directory:
+        memory = ExecutableArtifactMemory(
+            Path(directory) / "memory",
+            width=all_keys.shape[1],
+            capacity=all_keys.shape[0],
+            retention_ledger=CapabilityRetentionLedger(
+                all_keys.shape[1], config=config
+            ),
+        )
+        lifecycle = ExternalCapabilityLifecycle(memory)
+        staging = ConfidenceAwareCapabilityStaging(lifecycle)
+        for key in all_keys:
+            staging.stage(key, {"opaque_route_key": key})
+
+        admitted: set[int] = set()
+        admission_round: dict[int, int] = {}
+        for repetition in range(len(observations[0])):
+            for family, values in enumerate(observations):
+                outcome = values[repetition]
+                key = all_keys[family]
+                if family in admitted:
+                    memory.retention.observe(key, outcome)
+                    continue
+                receipt = staging.observe(key, outcome)
+                if receipt.accepted:
+                    admitted.add(family)
+                    admission_round[family] = repetition + 1
+
+        memory.save()
+        memory.validate()
+        occupied = memory.occupied
+        protected = memory.protection_mask()
+        final_status = [memory.retention.status(key) for key in all_keys if memory.retention.contains(key)]
+        pending = sorted(
+            family for family in range(all_keys.shape[0]) if family not in admitted
+        )
+        return {
+            "admitted_count": len(admitted),
+            "admitted_slots": sorted(admitted),
+            "admission_round": {
+                str(family): round_index
+                for family, round_index in sorted(admission_round.items())
+            },
+            "pending_count": len(pending),
+            "pending_slots": pending,
+            "occupied_count": len(occupied),
+            "protected_occupied_count": sum(
+                bool(protected[index]) for index in occupied
+            ),
+            "all_occupied_rows_protected": bool(occupied)
+            and all(bool(protected[index]) for index in occupied),
+            "pending_does_not_consume_capacity": len(occupied) == len(admitted),
+            "stable_admitted_statuses": sum(
+                status.protected for status in final_status
+            ),
+        }
+
+
 def _retention_reversal_audit_shared(
     base_router,
     query_fn,
@@ -390,6 +470,7 @@ def _retention_reversal_audit_shared(
     for key, values in zip(all_keys, observations, strict=True):
         for value in values:
             ledger.observe(key, value)
+    staged_admission = _staged_admission_audit(all_keys, observations)
     initial_statuses = [ledger.status(key) for key in all_keys]
     full_bank_choice = ledger.choose_eviction_index(
         all_keys, torch.arange(all_keys.shape[0], dtype=torch.float32)
@@ -433,6 +514,7 @@ def _retention_reversal_audit_shared(
         "observation_count": sum(len(values) for values in observations)
         + config.reversal_patience
         + config.min_mastery_observations,
+        "staged_admission": staged_admission,
     }
 
 
@@ -453,6 +535,22 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         shift_lengths,
         family_counts,
     )
+    if args.shared_route_updates_per_shift is None:
+        shared_updates_by_shift = [
+            args.shared_route_updates for _ in schedule[1:]
+        ]
+    else:
+        shared_updates_by_shift = list(
+            _parse_int_list(
+                args.shared_route_updates_per_shift,
+                name="--shared-route-updates-per-shift",
+                minimum=1,
+            )
+        )
+        if len(shared_updates_by_shift) != len(schedule) - 1:
+            raise SystemExit(
+                "--shared-route-updates-per-shift must provide one value per shift"
+            )
     new_families = tuple(
         family
         for start, end, _length in schedule[1:]
@@ -563,7 +661,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             query,
             phase_keys,
             phase_families,
-            updates=args.shared_route_updates,
+            updates=shared_updates_by_shift[phase],
             batch_size=args.batch_size,
             seed=args.seed + start,
             hidden=args.shared_route_hidden,
@@ -572,7 +670,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             query,
             phase_keys,
             phase_families,
-            updates=args.shared_route_updates,
+            updates=shared_updates_by_shift[phase],
             batch_size=args.batch_size,
             seed=args.seed + start + 10_000,
             shuffled=True,
@@ -597,6 +695,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                 "shift_index": phase + 1,
                 "episode_length": episode_length,
                 "families": list(phase_families),
+                "shared_route_updates": shared_updates_by_shift[phase],
                 "minimum_route_selection": min(selections.values()),
                 "route_selection": selections,
             }
@@ -713,7 +812,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             for start, end, length in schedule[1:]
             for _ in range(end - start)
         )
-        + (args.route_updates + 2 * shift_count * args.shared_route_updates)
+        + (args.route_updates + 2 * sum(shared_updates_by_shift))
         * args.batch_size
         * 2
         + int(retention["observation_count"])
@@ -722,7 +821,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         args.context_updates * 2
         + args.credit_updates
         + args.route_updates
-        + shift_count * 2 * args.shared_route_updates
+        + 2 * sum(shared_updates_by_shift)
         + len(new_families) * args.external_credit_updates
         + int(retention["observation_count"])
     )
@@ -746,6 +845,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "new_families": list(new_families),
         "candidate_key_bootstrap": args.candidate_key_bootstrap,
         "route_query_representation": args.route_query_representation,
+        "shared_route_updates_by_shift": shared_updates_by_shift,
         "shared_expansion_count": shift_count,
         "max_candidates_per_expansion": max(
             end - start for start, end, _length in schedule[1:]
@@ -771,7 +871,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                 args.context_updates
                 + args.credit_updates
                 + args.route_updates
-                + 2 * shift_count * args.shared_route_updates
+                + 2 * sum(shared_updates_by_shift)
                 + len(new_families) * args.external_credit_updates
             ),
             "replayed_examples": 0,
@@ -825,6 +925,7 @@ def main() -> None:
     parser.add_argument("--external-credit-updates", type=int, default=128)
     parser.add_argument("--route-updates", type=int, default=1024)
     parser.add_argument("--shared-route-updates", type=int, default=1024)
+    parser.add_argument("--shared-route-updates-per-shift", default=None)
     parser.add_argument("--shared-route-hidden", type=int, default=48)
     parser.add_argument(
         "--candidate-key-bootstrap",

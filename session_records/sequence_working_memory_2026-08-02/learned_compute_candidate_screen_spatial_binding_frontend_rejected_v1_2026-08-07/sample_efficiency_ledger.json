@@ -1,0 +1,35 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "learned_compute_candidate_screen_spatial_binding_frontend_rejected_v1",
+  "claim": "Preserving coarse spatial binding improves candidate-key separation but does not yet improve strict append-only acquisition.",
+  "candidate_count": 20,
+  "append_stage_sizes": [2, 2, 2, 2, 2],
+  "calibration_updates_per_stage": 32,
+  "replayed_examples": 0,
+  "runs": [
+    {
+      "seed": 69316,
+      "promoted": false,
+      "unseen_top1_accuracy": 0.8958333135,
+      "unseen_min_per_target_accuracy": 0.0,
+      "candidate_key_max_nearest_neighbor_cosine": 0.9880664349,
+      "candidate_key_effective_rank": 7.0060949326,
+      "optimizer_updates": 704,
+      "unique_verifier_bits": 127488,
+      "unique_logical_lifetimes": 127104,
+      "replayed_examples": 0
+    },
+    {
+      "seed": 69317,
+      "promoted": false,
+      "unseen_top1_accuracy": 0.8020833135,
+      "unseen_min_per_target_accuracy": 0.0,
+      "candidate_key_max_nearest_neighbor_cosine": 0.9859810472,
+      "candidate_key_effective_rank": 6.1551055908,
+      "optimizer_updates": 704,
+      "unique_verifier_bits": 127488,
+      "unique_logical_lifetimes": 127104,
+      "replayed_examples": 0
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "generated-composition-routed-medium-rejected-v1-2026-08-06",
+  "status": "rejected_full_grammar_from_scratch",
+  "seed": 69316,
+  "stack": "routed",
+  "program_count": 2,
+  "parent_updates": 128,
+  "capability_updates": 256,
+  "batch_size": 16,
+  "audit_count": 64,
+  "unique_logical_lifetimes": 8192,
+  "unique_verifier_bits": 24576,
+  "optimizer_updates": 384,
+  "replayed_examples": 0,
+  "parent_stable_bits_to_threshold": 2048,
+  "generated_stable_bits_to_threshold": null,
+  "generated_behavior": 0.640625,
+  "claim_boundary": "Rejected routed acquisition of the full generated composition grammar from scratch; no weights promoted."
+}

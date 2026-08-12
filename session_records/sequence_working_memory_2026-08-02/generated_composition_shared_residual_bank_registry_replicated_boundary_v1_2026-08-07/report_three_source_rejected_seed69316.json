@@ -1,0 +1,223 @@
+{
+  "schema": "neural-computer.generated-composition-shared-residual-bank-report.v1",
+  "claim_boundary": "A frozen controller acquired a finite sequence of opaque runtime procedures. One shared context encoder was trained on the first procedure, then frozen; each later procedure trained only an isolated residual slot and decoder from fresh outcomes. This is bounded shared-computation growth, not general continual learning.",
+  "seed": 69316,
+  "source_ids": [
+    0,
+    1,
+    2
+  ],
+  "programs": [
+    [
+      "global_parity",
+      "rotate",
+      "reverse",
+      "forward",
+      "adjacent_xor",
+      "rotate",
+      "rotate",
+      "complement"
+    ],
+    [
+      "complement",
+      "reverse",
+      "adjacent_xor",
+      "rotate",
+      "forward",
+      "global_parity",
+      "rotate",
+      "reverse"
+    ],
+    [
+      "adjacent_xor",
+      "reverse",
+      "reverse",
+      "complement",
+      "forward",
+      "reverse",
+      "prefix_parity",
+      "reverse"
+    ]
+  ],
+  "budgets": {
+    "parent_updates": 64,
+    "slot_updates": 128,
+    "batch_size": 16,
+    "audit_count": 64,
+    "retention_probes": 4,
+    "eval_every": 32,
+    "torch_threads": 1
+  },
+  "stages": [
+    {
+      "stage": 0,
+      "program_id": 0,
+      "slot_index": 0,
+      "trainable_parameters": 40291,
+      "stable_bits_to_threshold": 2048,
+      "new_slot_behavior": 1.0,
+      "new_slot_probe_outcomes": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "retained_old_slot_behavior": [],
+      "retained_old_slot_probe_outcomes": [],
+      "fresh_outcomes_only": true
+    },
+    {
+      "stage": 1,
+      "program_id": 1,
+      "slot_index": 1,
+      "trainable_parameters": 4482,
+      "stable_bits_to_threshold": 2048,
+      "new_slot_behavior": 0.875,
+      "new_slot_probe_outcomes": [
+        0.88671875,
+        0.87890625,
+        0.8828125,
+        0.875
+      ],
+      "retained_old_slot_behavior": [
+        1.0
+      ],
+      "retained_old_slot_probe_outcomes": [
+        [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ]
+      ],
+      "fresh_outcomes_only": true
+    },
+    {
+      "stage": 2,
+      "program_id": 2,
+      "slot_index": 2,
+      "trainable_parameters": 4482,
+      "stable_bits_to_threshold": null,
+      "new_slot_behavior": 0.55078125,
+      "new_slot_probe_outcomes": [
+        0.57421875,
+        0.55078125,
+        0.55078125,
+        0.55859375
+      ],
+      "retained_old_slot_behavior": [
+        1.0,
+        0.87890625
+      ],
+      "retained_old_slot_probe_outcomes": [
+        [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        [
+          0.87890625,
+          0.87890625,
+          0.87890625,
+          0.87890625
+        ]
+      ],
+      "fresh_outcomes_only": true
+    }
+  ],
+  "final_behavior": [
+    1.0,
+    0.87890625,
+    0.54296875
+  ],
+  "final_probe_outcomes": [
+    [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    [
+      0.8828125,
+      0.87890625,
+      0.87890625,
+      0.87890625
+    ],
+    [
+      0.56640625,
+      0.5703125,
+      0.56640625,
+      0.54296875
+    ]
+  ],
+  "reload_behavior": [
+    1.0,
+    0.87890625,
+    0.54296875
+  ],
+  "reload_probe_outcomes": [
+    [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    [
+      0.8828125,
+      0.87890625,
+      0.87890625,
+      0.87890625
+    ],
+    [
+      0.56640625,
+      0.5703125,
+      0.56640625,
+      0.54296875
+    ]
+  ],
+  "parameter_accounting": {
+    "full_program_plus_decoder_per_slot": 40291,
+    "shared_bank_plus_decoder_total": 49255,
+    "ratio_to_independent_slots": 0.4074938158232194,
+    "shared_context_encoder": 35809,
+    "residual_per_slot": 4176,
+    "decoder_per_slot": 306
+  },
+  "frozen_core": {
+    "digest_before": "f97115efa49befdbbf102259384d49e1818a10835f51368b7665b49a6afcef0b",
+    "digest_after": "f97115efa49befdbbf102259384d49e1818a10835f51368b7665b49a6afcef0b",
+    "unchanged": true
+  },
+  "accounting": {
+    "unique_verifier_bits": 38912,
+    "unique_logical_lifetimes": 13312,
+    "optimizer_updates": 448,
+    "replayed_examples": 0,
+    "retention_observations": 48
+  },
+  "controls": {
+    "old_slot_weights_unchanged": true,
+    "shared_base_frozen_after_first_slot": true,
+    "shared_base_digest_stable_after_growth": true,
+    "final_reload_exact": true,
+    "parent_unchanged": true,
+    "no_replayed_examples": true
+  },
+  "gates": {
+    "parent_stable": true,
+    "all_slots_stable": false,
+    "all_slots_mastered": false,
+    "retained_during_growth": true,
+    "retained_after_reload": false,
+    "old_slot_weights_unchanged": true,
+    "shared_base_frozen_after_first_slot": true,
+    "shared_base_digest_stable_after_growth": true,
+    "shared_payload_reduced": true,
+    "final_reload_exact": true,
+    "core_unchanged": true,
+    "no_replayed_examples": true
+  },
+  "wall_seconds": 36.63331437500892,
+  "promoted": false
+}

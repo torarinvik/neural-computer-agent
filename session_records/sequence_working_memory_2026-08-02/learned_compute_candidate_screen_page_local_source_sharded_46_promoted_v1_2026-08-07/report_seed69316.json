@@ -1,0 +1,731 @@
+{
+  "schema": "neural-computer.page-local-source-sharded-report.v1",
+  "claim_boundary": "Independent normalized source pages reduce protected candidate competition behind cumulative scalar verifier gates while raw append pages retain representation-matched growth. This is a bounded source-sharding result, not general continual learning.",
+  "seed": 69316,
+  "candidate_count": 46,
+  "source_candidate_count": 20,
+  "unseen_candidate_count": 26,
+  "source_page_size": 10,
+  "source_page_count": 2,
+  "append_stage_sizes": [
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2
+  ],
+  "representation_assignment": {
+    "source_pages": "frozen_affine_normalized_v1",
+    "unseen_pages": "raw_identity_v1",
+    "selection": "physical_page_order_experiment_v1"
+  },
+  "candidate_key_normalizer": {
+    "schema": "neural-computer.external-capability-opaque-signature-normalizer.v1",
+    "width": 32,
+    "epsilon": 0.0001,
+    "fitted": true,
+    "statistics": "permutation_invariant_key_set_affine_v1",
+    "append_policy": "never_refit_existing_address_space_v1"
+  },
+  "candidate_key_diagnostics": {
+    "raw": {
+      "candidate_count": 46,
+      "mean_off_diagonal_cosine": 0.7091364860534668,
+      "max_off_diagonal_cosine": 0.9976922869682312,
+      "min_off_diagonal_cosine": -0.39911898970603943,
+      "nearest_neighbor_cosine": [
+        0.9949329495429993,
+        0.9890178442001343,
+        0.9860673546791077,
+        0.9953190684318542,
+        0.9962393641471863,
+        0.9907407164573669,
+        0.9952096939086914,
+        0.9877678155899048,
+        0.9867181181907654,
+        0.9955904483795166,
+        0.9956238865852356,
+        0.9927693009376526,
+        0.9953190684318542,
+        0.9969449639320374,
+        0.9912944436073303,
+        0.9955904483795166,
+        0.9954047799110413,
+        0.9968271255493164,
+        0.987644374370575,
+        0.994896650314331,
+        0.9929507970809937,
+        0.9976922869682312,
+        0.9954047799110413,
+        0.9914297461509705,
+        0.994896650314331,
+        0.9952453374862671,
+        0.9976922869682312,
+        0.9907407164573669,
+        0.9907732009887695,
+        0.9854129552841187,
+        0.9927693009376526,
+        0.9968271255493164,
+        0.9912944436073303,
+        0.9842353463172913,
+        0.9886073470115662,
+        0.9948075413703918,
+        0.987644374370575,
+        0.9962393641471863,
+        0.9949329495429993,
+        0.9877678155899048,
+        0.9953719973564148,
+        0.9914297461509705,
+        0.9886073470115662,
+        0.9969449639320374,
+        0.9907732009887695,
+        0.9956238865852356
+      ],
+      "effective_rank": 5.423140048980713
+    },
+    "normalized": {
+      "candidate_count": 46,
+      "mean_off_diagonal_cosine": -0.0031449480447918177,
+      "max_off_diagonal_cosine": 0.9933578968048096,
+      "min_off_diagonal_cosine": -0.9626263380050659,
+      "nearest_neighbor_cosine": [
+        0.984822690486908,
+        0.8214088082313538,
+        0.7454267740249634,
+        0.9781708717346191,
+        0.9828989505767822,
+        0.9069941639900208,
+        0.8941730856895447,
+        0.9510756731033325,
+        0.903204083442688,
+        0.9351796507835388,
+        0.9557907581329346,
+        0.6924338936805725,
+        0.9711892008781433,
+        0.9933578968048096,
+        0.891046404838562,
+        0.9308661818504333,
+        0.8989779949188232,
+        0.9913315176963806,
+        0.9195979237556458,
+        0.9069941639900208,
+        0.9683148860931396,
+        0.9896190166473389,
+        0.9163862466812134,
+        0.8787149786949158,
+        0.903204083442688,
+        0.97118079662323,
+        0.988195538520813,
+        0.8634621500968933,
+        0.6701260209083557,
+        0.9195979237556458,
+        0.8576145768165588,
+        0.9913315176963806,
+        0.891046404838562,
+        0.7407901883125305,
+        0.8214088082313538,
+        0.984822690486908,
+        0.8524916172027588,
+        0.9828989505767822,
+        0.9781708717346191,
+        0.93212890625,
+        0.97118079662323,
+        0.9128657579421997,
+        0.8380393981933594,
+        0.9933578968048096,
+        0.9128657579421997,
+        0.9557907581329346
+      ],
+      "effective_rank": 11.897315979003906
+    }
+  },
+  "configuration": {
+    "schema": "neural-computer.external-capability-page-local-learned-compute-screen.v1",
+    "query_width": 32,
+    "key_width": 32,
+    "latent_width": 32,
+    "hidden": 64,
+    "activation_margin": 1.0,
+    "base_screen": {
+      "schema": "neural-computer.external-capability-learned-compute-screen.v1",
+      "query_width": 32,
+      "key_width": 32,
+      "latent_width": 32,
+      "hidden": 64,
+      "query": "learned_event_tensor_v1",
+      "candidate_key": "opaque_external_compute_signature_v1",
+      "outcome": "attempted_scalar_verifier_v1",
+      "cold_start": "zero_until_explicit_evidence_enable_v1",
+      "enabled": true,
+      "role": "order_only_fresh_admission_required"
+    },
+    "base_query_view": {
+      "schema": "neural-computer.external-capability-opaque-signature-normalizer.v1",
+      "width": 32,
+      "epsilon": 0.0001,
+      "fitted": true,
+      "statistics": "permutation_invariant_key_set_affine_v1",
+      "append_policy": "never_refit_existing_address_space_v1"
+    },
+    "base_key_view": {
+      "schema": "neural-computer.external-capability-opaque-signature-normalizer.v1",
+      "width": 32,
+      "epsilon": 0.0001,
+      "fitted": true,
+      "statistics": "permutation_invariant_key_set_affine_v1",
+      "append_policy": "never_refit_existing_address_space_v1"
+    },
+    "extension_sizes": [
+      10,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2
+    ],
+    "extension_screens": [
+      {
+        "schema": "neural-computer.external-capability-learned-compute-screen.v1",
+        "query_width": 32,
+        "key_width": 32,
+        "latent_width": 32,
+        "hidden": 64,
+        "query": "learned_event_tensor_v1",
+        "candidate_key": "opaque_external_compute_signature_v1",
+        "outcome": "attempted_scalar_verifier_v1",
+        "cold_start": "zero_until_explicit_evidence_enable_v1",
+        "enabled": true,
+        "role": "order_only_fresh_admission_required"
+      },
+      {
+        "schema": "neural-computer.external-capability-learned-compute-screen.v1",
+        "query_width": 32,
+        "key_width": 32,
+        "latent_width": 32,
+        "hidden": 64,
+        "query": "learned_event_tensor_v1",
+        "candidate_key": "opaque_external_compute_signature_v1",
+        "outcome": "attempted_scalar_verifier_v1",
+        "cold_start": "zero_until_explicit_evidence_enable_v1",
+        "enabled": true,
+        "role": "order_only_fresh_admission_required"
+      },
+      {
+        "schema": "neural-computer.external-capability-learned-compute-screen.v1",
+        "query_width": 32,
+        "key_width": 32,
+        "latent_width": 32,
+        "hidden": 64,
+        "query": "learned_event_tensor_v1",
+        "candidate_key": "opaque_external_compute_signature_v1",
+        "outcome": "attempted_scalar_verifier_v1",
+        "cold_start": "zero_until_explicit_evidence_enable_v1",
+        "enabled": true,
+        "role": "order_only_fresh_admission_required"
+      },
+      {
+        "schema": "neural-computer.external-capability-learned-compute-screen.v1",
+        "query_width": 32,
+        "key_width": 32,
+        "latent_width": 32,
+        "hidden": 64,
+        "query": "learned_event_tensor_v1",
+        "candidate_key": "opaque_external_compute_signature_v1",
+        "outcome": "attempted_scalar_verifier_v1",
+        "cold_start": "zero_until_explicit_evidence_enable_v1",
+        "enabled": true,
+        "role": "order_only_fresh_admission_required"
+      },
+      {
+        "schema": "neural-computer.external-capability-learned-compute-screen.v1",
+        "query_width": 32,
+        "key_width": 32,
+        "latent_width": 32,
+        "hidden": 64,
+        "query": "learned_event_tensor_v1",
+        "candidate_key": "opaque_external_compute_signature_v1",
+        "outcome": "attempted_scalar_verifier_v1",
+        "cold_start": "zero_until_explicit_evidence_enable_v1",
+        "enabled": true,
+        "role": "order_only_fresh_admission_required"
+      },
+      {
+        "schema": "neural-computer.external-capability-learned-compute-screen.v1",
+        "query_width": 32,
+        "key_width": 32,
+        "latent_width": 32,
+        "hidden": 64,
+        "query": "learned_event_tensor_v1",
+        "candidate_key": "opaque_external_compute_signature_v1",
+        "outcome": "attempted_scalar_verifier_v1",
+        "cold_start": "zero_until_explicit_evidence_enable_v1",
+        "enabled": true,
+        "role": "order_only_fresh_admission_required"
+      },
+      {
+        "schema": "neural-computer.external-capability-learned-compute-screen.v1",
+        "query_width": 32,
+        "key_width": 32,
+        "latent_width": 32,
+        "hidden": 64,
+        "query": "learned_event_tensor_v1",
+        "candidate_key": "opaque_external_compute_signature_v1",
+        "outcome": "attempted_scalar_verifier_v1",
+        "cold_start": "zero_until_explicit_evidence_enable_v1",
+        "enabled": true,
+        "role": "order_only_fresh_admission_required"
+      },
+      {
+        "schema": "neural-computer.external-capability-learned-compute-screen.v1",
+        "query_width": 32,
+        "key_width": 32,
+        "latent_width": 32,
+        "hidden": 64,
+        "query": "learned_event_tensor_v1",
+        "candidate_key": "opaque_external_compute_signature_v1",
+        "outcome": "attempted_scalar_verifier_v1",
+        "cold_start": "zero_until_explicit_evidence_enable_v1",
+        "enabled": true,
+        "role": "order_only_fresh_admission_required"
+      },
+      {
+        "schema": "neural-computer.external-capability-learned-compute-screen.v1",
+        "query_width": 32,
+        "key_width": 32,
+        "latent_width": 32,
+        "hidden": 64,
+        "query": "learned_event_tensor_v1",
+        "candidate_key": "opaque_external_compute_signature_v1",
+        "outcome": "attempted_scalar_verifier_v1",
+        "cold_start": "zero_until_explicit_evidence_enable_v1",
+        "enabled": true,
+        "role": "order_only_fresh_admission_required"
+      },
+      {
+        "schema": "neural-computer.external-capability-learned-compute-screen.v1",
+        "query_width": 32,
+        "key_width": 32,
+        "latent_width": 32,
+        "hidden": 64,
+        "query": "learned_event_tensor_v1",
+        "candidate_key": "opaque_external_compute_signature_v1",
+        "outcome": "attempted_scalar_verifier_v1",
+        "cold_start": "zero_until_explicit_evidence_enable_v1",
+        "enabled": true,
+        "role": "order_only_fresh_admission_required"
+      },
+      {
+        "schema": "neural-computer.external-capability-learned-compute-screen.v1",
+        "query_width": 32,
+        "key_width": 32,
+        "latent_width": 32,
+        "hidden": 64,
+        "query": "learned_event_tensor_v1",
+        "candidate_key": "opaque_external_compute_signature_v1",
+        "outcome": "attempted_scalar_verifier_v1",
+        "cold_start": "zero_until_explicit_evidence_enable_v1",
+        "enabled": true,
+        "role": "order_only_fresh_admission_required"
+      },
+      {
+        "schema": "neural-computer.external-capability-learned-compute-screen.v1",
+        "query_width": 32,
+        "key_width": 32,
+        "latent_width": 32,
+        "hidden": 64,
+        "query": "learned_event_tensor_v1",
+        "candidate_key": "opaque_external_compute_signature_v1",
+        "outcome": "attempted_scalar_verifier_v1",
+        "cold_start": "zero_until_explicit_evidence_enable_v1",
+        "enabled": true,
+        "role": "order_only_fresh_admission_required"
+      },
+      {
+        "schema": "neural-computer.external-capability-learned-compute-screen.v1",
+        "query_width": 32,
+        "key_width": 32,
+        "latent_width": 32,
+        "hidden": 64,
+        "query": "learned_event_tensor_v1",
+        "candidate_key": "opaque_external_compute_signature_v1",
+        "outcome": "attempted_scalar_verifier_v1",
+        "cold_start": "zero_until_explicit_evidence_enable_v1",
+        "enabled": true,
+        "role": "order_only_fresh_admission_required"
+      },
+      {
+        "schema": "neural-computer.external-capability-learned-compute-screen.v1",
+        "query_width": 32,
+        "key_width": 32,
+        "latent_width": 32,
+        "hidden": 64,
+        "query": "learned_event_tensor_v1",
+        "candidate_key": "opaque_external_compute_signature_v1",
+        "outcome": "attempted_scalar_verifier_v1",
+        "cold_start": "zero_until_explicit_evidence_enable_v1",
+        "enabled": true,
+        "role": "order_only_fresh_admission_required"
+      }
+    ],
+    "extension_query_views": [
+      {
+        "schema": "neural-computer.external-capability-opaque-signature-normalizer.v1",
+        "width": 32,
+        "epsilon": 0.0001,
+        "fitted": true,
+        "statistics": "permutation_invariant_key_set_affine_v1",
+        "append_policy": "never_refit_existing_address_space_v1"
+      },
+      {
+        "schema": "neural-computer.external-capability-opaque-signature-identity.v1",
+        "width": 32,
+        "transform": "identity_v1"
+      },
+      {
+        "schema": "neural-computer.external-capability-opaque-signature-identity.v1",
+        "width": 32,
+        "transform": "identity_v1"
+      },
+      {
+        "schema": "neural-computer.external-capability-opaque-signature-identity.v1",
+        "width": 32,
+        "transform": "identity_v1"
+      },
+      {
+        "schema": "neural-computer.external-capability-opaque-signature-identity.v1",
+        "width": 32,
+        "transform": "identity_v1"
+      },
+      {
+        "schema": "neural-computer.external-capability-opaque-signature-identity.v1",
+        "width": 32,
+        "transform": "identity_v1"
+      },
+      {
+        "schema": "neural-computer.external-capability-opaque-signature-identity.v1",
+        "width": 32,
+        "transform": "identity_v1"
+      },
+      {
+        "schema": "neural-computer.external-capability-opaque-signature-identity.v1",
+        "width": 32,
+        "transform": "identity_v1"
+      },
+      {
+        "schema": "neural-computer.external-capability-opaque-signature-identity.v1",
+        "width": 32,
+        "transform": "identity_v1"
+      },
+      {
+        "schema": "neural-computer.external-capability-opaque-signature-identity.v1",
+        "width": 32,
+        "transform": "identity_v1"
+      },
+      {
+        "schema": "neural-computer.external-capability-opaque-signature-identity.v1",
+        "width": 32,
+        "transform": "identity_v1"
+      },
+      {
+        "schema": "neural-computer.external-capability-opaque-signature-identity.v1",
+        "width": 32,
+        "transform": "identity_v1"
+      },
+      {
+        "schema": "neural-computer.external-capability-opaque-signature-identity.v1",
+        "width": 32,
+        "transform": "identity_v1"
+      },
+      {
+        "schema": "neural-computer.external-capability-opaque-signature-identity.v1",
+        "width": 32,
+        "transform": "identity_v1"
+      }
+    ],
+    "extension_key_views": [
+      {
+        "schema": "neural-computer.external-capability-opaque-signature-normalizer.v1",
+        "width": 32,
+        "epsilon": 0.0001,
+        "fitted": true,
+        "statistics": "permutation_invariant_key_set_affine_v1",
+        "append_policy": "never_refit_existing_address_space_v1"
+      },
+      {
+        "schema": "neural-computer.external-capability-opaque-signature-identity.v1",
+        "width": 32,
+        "transform": "identity_v1"
+      },
+      {
+        "schema": "neural-computer.external-capability-opaque-signature-identity.v1",
+        "width": 32,
+        "transform": "identity_v1"
+      },
+      {
+        "schema": "neural-computer.external-capability-opaque-signature-identity.v1",
+        "width": 32,
+        "transform": "identity_v1"
+      },
+      {
+        "schema": "neural-computer.external-capability-opaque-signature-identity.v1",
+        "width": 32,
+        "transform": "identity_v1"
+      },
+      {
+        "schema": "neural-computer.external-capability-opaque-signature-identity.v1",
+        "width": 32,
+        "transform": "identity_v1"
+      },
+      {
+        "schema": "neural-computer.external-capability-opaque-signature-identity.v1",
+        "width": 32,
+        "transform": "identity_v1"
+      },
+      {
+        "schema": "neural-computer.external-capability-opaque-signature-identity.v1",
+        "width": 32,
+        "transform": "identity_v1"
+      },
+      {
+        "schema": "neural-computer.external-capability-opaque-signature-identity.v1",
+        "width": 32,
+        "transform": "identity_v1"
+      },
+      {
+        "schema": "neural-computer.external-capability-opaque-signature-identity.v1",
+        "width": 32,
+        "transform": "identity_v1"
+      },
+      {
+        "schema": "neural-computer.external-capability-opaque-signature-identity.v1",
+        "width": 32,
+        "transform": "identity_v1"
+      },
+      {
+        "schema": "neural-computer.external-capability-opaque-signature-identity.v1",
+        "width": 32,
+        "transform": "identity_v1"
+      },
+      {
+        "schema": "neural-computer.external-capability-opaque-signature-identity.v1",
+        "width": 32,
+        "transform": "identity_v1"
+      },
+      {
+        "schema": "neural-computer.external-capability-opaque-signature-identity.v1",
+        "width": 32,
+        "transform": "identity_v1"
+      }
+    ],
+    "failure_signal": "cumulative_stage_scalar_verifier_failure_v1",
+    "activation": "page_local_rank_margin_v1",
+    "role": "order_only_fresh_admission_required"
+  },
+  "budgets": {
+    "parent_updates": 32,
+    "source_updates_per_page": 512,
+    "raw_template_updates": 512,
+    "calibration_updates_per_stage": 32,
+    "batch_size": 12,
+    "audit_count": 96,
+    "key_samples": 12
+  },
+  "training": {
+    "source_pages": [
+      {
+        "optimizer_updates": 512,
+        "unique_verifier_bits": 61440,
+        "unique_logical_lifetimes": 61440,
+        "informative_candidate_pairs": 55296,
+        "replayed_examples": 0,
+        "final_loss": 5.1739207265200093e-05
+      },
+      {
+        "optimizer_updates": 512,
+        "unique_verifier_bits": 61440,
+        "unique_logical_lifetimes": 61440,
+        "informative_candidate_pairs": 55296,
+        "replayed_examples": 0,
+        "final_loss": 0.00035502982791513205
+      }
+    ],
+    "raw_template": {
+      "optimizer_updates": 512,
+      "unique_verifier_bits": 282624,
+      "unique_logical_lifetimes": 282624,
+      "informative_candidate_pairs": 276480,
+      "replayed_examples": 0,
+      "final_loss": 0.016233272850513458
+    },
+    "reward_shuffled_page": {
+      "optimizer_updates": 512,
+      "unique_verifier_bits": 61440,
+      "unique_logical_lifetimes": 61440,
+      "informative_candidate_pairs": 55296,
+      "replayed_examples": 0,
+      "final_loss": 0.6936664581298828
+    },
+    "unseen_pages": {
+      "optimizer_updates": 416,
+      "unique_verifier_bits": 9984,
+      "unique_logical_lifetimes": 9984,
+      "informative_candidate_pairs": 4992,
+      "informative_outcomes": 0,
+      "replayed_examples": 0,
+      "final_loss": 1.117858008341583e-28
+    }
+  },
+  "accounting": {
+    "unique_verifier_bits": 477696,
+    "unique_logical_lifetimes": 477312,
+    "optimizer_updates": 2496,
+    "replayed_examples": 0,
+    "wall_seconds": 63.05522220800049,
+    "retention_floor": 1.0
+  },
+  "known_context_metrics": {
+    "top1_accuracy": 1.0,
+    "mean_fresh_attempts": 1.0,
+    "fresh_verifier_authorized_rate": 1.0,
+    "failed_extension_gate": 0.0342261902987957,
+    "per_target_top1_accuracy": [
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ]
+  },
+  "unseen_candidate_metrics": {
+    "top1_accuracy": 1.0,
+    "mean_fresh_attempts": 1.0,
+    "fresh_verifier_authorized_rate": 1.0,
+    "failed_extension_gate": 0.5446428656578064,
+    "per_target_top1_accuracy": [
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ]
+  },
+  "cold_metrics": {
+    "top1_accuracy": 0.0520833320915699,
+    "per_target_top1_accuracy": [
+      1.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ]
+  },
+  "reward_shuffled_metrics": {
+    "top1_accuracy": 0.1979166716337204,
+    "per_target_top1_accuracy": [
+      1.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ]
+  },
+  "known_candidate_permutation_accuracy": 1.0,
+  "unseen_candidate_permutation_accuracy": 1.0,
+  "controls": {
+    "parent_digest_before": "a9a7debc79ef1d72d0ef5db36c5da83d1dd5f75742c9789af45aebde233634f4",
+    "parent_digest_after": "a9a7debc79ef1d72d0ef5db36c5da83d1dd5f75742c9789af45aebde233634f4",
+    "parent_unchanged": true,
+    "reload_exact": true,
+    "fresh_admission_required": true
+  },
+  "gates": {
+    "parent_stable": true,
+    "known_context_generalization": true,
+    "known_context_per_candidate_mastery": true,
+    "unseen_candidate_acquired": true,
+    "unseen_candidate_per_candidate_mastery": true,
+    "known_context_beats_cold_start": true,
+    "known_candidate_permutation": true,
+    "unseen_candidate_permutation": true,
+    "reward_shuffled_null": true,
+    "source_pages_immutable_during_growth": true,
+    "reload_exact": true,
+    "reload_behavior_exact": true,
+    "core_unchanged": true,
+    "no_replayed_examples": true
+  },
+  "promoted": true,
+  "wall_seconds": 63.05522220800049
+}

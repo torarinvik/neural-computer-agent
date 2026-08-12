@@ -1,0 +1,55 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "shared-growth-router-6to8to10to12-trajectory-stats-v1-2026-08-06",
+  "status": "promoted_shared_router_bounded_three_shift_growth",
+  "claim_boundary": "One permutation-equivariant shared candidate router per shift can acquire 30 new opaque capabilities across three nonstationary shifts while a frozen controller and earlier external state retain 32 total capabilities with zero replay. This remains bounded continual learning.",
+  "seeds": [69316, 69317],
+  "distribution_shift_sequence": [6, 8, 10, 12],
+  "families_per_shift": [8, 10, 12],
+  "total_capabilities": 32,
+  "shared_expansion_count": 3,
+  "max_candidates_per_expansion": 12,
+  "route_query_representation": "trajectory_stats",
+  "candidate_key_bootstrap": "random",
+  "training_batch_size": 16,
+  "audit_batch_size": 64,
+  "shared_route_updates": 16384,
+  "shared_route_hidden": 256,
+  "unique_verifier_bits": 9077264,
+  "unique_logical_lifetimes": 211984,
+  "optimizer_updates": 209408,
+  "replayed_examples": 0,
+  "wall_time_seconds": 472.213099,
+  "stable_bits_to_threshold": null,
+  "retention_on_mastered_primitives": [1.0, 1.0],
+  "transfer_ratio_against_fresh_learner": null,
+  "verification": {
+    "phase_1_minimum_route_selection": [0.984375, 0.9375],
+    "phase_2_minimum_route_selection": [0.984375, 0.96875],
+    "phase_3_minimum_route_selection": [0.953125, 0.9375],
+    "old_route_retained": [true, true],
+    "candidate_permutation_invariant": [true, true],
+    "new_candidate_permutation_invariant": [true, true],
+    "credit_signal_survives_all_shifts": [true, true],
+    "new_routes_causal": [true, true],
+    "retention_reversal_safe": [true, true],
+    "zero_centered_antithetic_reward_shuffled_not_selected": [true, true],
+    "zero_replay": [true, true],
+    "strict_operational_route_permutation": [0.990625, 0.9911458333333333],
+    "promotion_gate_passed": true
+  },
+  "rejected_controls": [
+    {
+      "description": "Narrow context-only query with hidden size 128 and 8,192 shared-router updates",
+      "reason": "late-shift route floor collapsed on the matched full schedule"
+    },
+    {
+      "description": "Trajectory-statistics query with hidden size 64 and 4,096 shared-router updates",
+      "reason": "one seed failed the single 12-way route floor; capacity and acquisition depth were insufficient"
+    },
+    {
+      "description": "Query-prototype candidate-key bootstrap control",
+      "reason": "single-shift route acquisition failed; random opaque keys with learned candidate-conditioned scoring were retained"
+    }
+  ]
+}

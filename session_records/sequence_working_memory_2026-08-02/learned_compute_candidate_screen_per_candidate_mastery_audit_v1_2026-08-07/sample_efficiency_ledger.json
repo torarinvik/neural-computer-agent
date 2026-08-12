@@ -1,0 +1,37 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "learned_compute_candidate_screen_per_candidate_mastery_audit_v1",
+  "claim": "Aggregate routing can hide candidate-specific failures; strict per-target mastery and key-separation diagnostics are required before promoting append-only growth.",
+  "candidate_count": 20,
+  "append_stage_sizes": [2, 2, 2, 2, 2],
+  "calibration_updates_per_stage": 32,
+  "replayed_examples": 0,
+  "runs": [
+    {
+      "seed": 69316,
+      "promoted": true,
+      "unseen_top1_accuracy": 1.0,
+      "unseen_min_per_target_accuracy": 1.0,
+      "known_min_per_target_accuracy": 1.0,
+      "candidate_key_max_nearest_neighbor_cosine": 0.9955904484,
+      "candidate_key_effective_rank": 4.4744887352,
+      "optimizer_updates": 704,
+      "unique_verifier_bits": 127488,
+      "unique_logical_lifetimes": 127104,
+      "replayed_examples": 0
+    },
+    {
+      "seed": 69317,
+      "promoted": false,
+      "unseen_top1_accuracy": 0.8958333135,
+      "unseen_min_per_target_accuracy": 0.0,
+      "known_min_per_target_accuracy": 0.0,
+      "candidate_key_max_nearest_neighbor_cosine": 0.9982139468,
+      "candidate_key_effective_rank": 3.5933654308,
+      "optimizer_updates": 704,
+      "unique_verifier_bits": 127488,
+      "unique_logical_lifetimes": 127104,
+      "replayed_examples": 0
+    }
+  ]
+}

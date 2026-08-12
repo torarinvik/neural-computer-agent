@@ -1,0 +1,319 @@
+{
+  "schema": "neural-computer.generated-composition-shared-residual-bank-report.v1",
+  "claim_boundary": "A frozen controller acquired a finite sequence of opaque runtime procedures. One shared context encoder was trained on the first procedure, then frozen; each later procedure trained only an isolated residual slot and decoder from fresh outcomes. This is bounded shared-computation growth, not general continual learning.",
+  "seed": 69316,
+  "source_ids": [
+    0,
+    1,
+    2
+  ],
+  "bank_mode": "reusable_compute_library",
+  "admission_policy": "all_candidate_trials_best_fresh_probe",
+  "programs": [
+    [
+      "rule:d4",
+      "rule:43",
+      "rule:0e",
+      "rule:c7",
+      "rule:c2",
+      "rule:a4",
+      "rule:8c",
+      "rule:5e"
+    ],
+    [
+      "rule:fc",
+      "rule:0c",
+      "rule:f0",
+      "rule:50",
+      "rule:4f",
+      "rule:f3",
+      "rule:3d",
+      "rule:0d"
+    ],
+    [
+      "rule:40",
+      "rule:48",
+      "rule:5c",
+      "rule:ac",
+      "rule:3e",
+      "rule:57",
+      "rule:79",
+      "rule:77"
+    ]
+  ],
+  "budgets": {
+    "parent_updates": 64,
+    "slot_updates": 256,
+    "batch_size": 16,
+    "audit_count": 64,
+    "retention_probes": 4,
+    "eval_every": 32,
+    "torch_threads": 1
+  },
+  "stages": [
+    {
+      "stage": 0,
+      "program_id": 0,
+      "slot_index": 0,
+      "trainable_parameters": 51028,
+      "stable_bits_to_threshold": 2048,
+      "new_slot_behavior": 1.0,
+      "new_slot_probe_outcomes": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "retained_old_slot_behavior": [],
+      "retained_old_slot_probe_outcomes": [],
+      "reuse_trial": null,
+      "fresh_outcomes_only": true
+    },
+    {
+      "stage": 1,
+      "program_id": 1,
+      "slot_index": 1,
+      "trainable_parameters": 15219,
+      "stable_bits_to_threshold": 8192,
+      "new_slot_behavior": 0.9140625,
+      "new_slot_probe_outcomes": [
+        0.9140625,
+        0.921875,
+        0.92578125,
+        0.93359375
+      ],
+      "retained_old_slot_behavior": [
+        1.0
+      ],
+      "retained_old_slot_probe_outcomes": [
+        [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ]
+      ],
+      "reuse_trial": {
+        "candidates": [
+          {
+            "compute_slot": 0,
+            "behavior": 0.63671875,
+            "probe_outcomes": [
+              0.63671875,
+              0.63671875,
+              0.65234375,
+              0.63671875
+            ],
+            "stable_bits_to_threshold": null,
+            "fresh_outcomes_only": true
+          }
+        ],
+        "decision": "grow",
+        "selected_compute_slot": null,
+        "candidate_scores": [
+          [
+            0,
+            0.63671875
+          ]
+        ],
+        "decision_reason": "no_compute_candidate_passed_fresh_probe_floor",
+        "fresh_outcomes_only": true
+      },
+      "fresh_outcomes_only": true
+    },
+    {
+      "stage": 2,
+      "program_id": 2,
+      "slot_index": 2,
+      "trainable_parameters": 5506,
+      "stable_bits_to_threshold": 2048,
+      "new_slot_behavior": 1.0,
+      "new_slot_probe_outcomes": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "retained_old_slot_behavior": [
+        1.0,
+        0.91015625
+      ],
+      "retained_old_slot_probe_outcomes": [
+        [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        [
+          0.921875,
+          0.91015625,
+          0.9296875,
+          0.93359375
+        ]
+      ],
+      "reuse_trial": {
+        "candidates": [
+          {
+            "compute_slot": 0,
+            "behavior": 1.0,
+            "probe_outcomes": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "stable_bits_to_threshold": 2048,
+            "fresh_outcomes_only": true
+          },
+          {
+            "compute_slot": 1,
+            "behavior": 1.0,
+            "probe_outcomes": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "stable_bits_to_threshold": 2048,
+            "fresh_outcomes_only": true
+          }
+        ],
+        "decision": "reuse",
+        "selected_compute_slot": 0,
+        "candidate_scores": [
+          [
+            0,
+            1.0
+          ],
+          [
+            1,
+            1.0
+          ]
+        ],
+        "decision_reason": "fresh_probe_floor_passed:1.000000",
+        "fresh_outcomes_only": true
+      },
+      "fresh_outcomes_only": true
+    }
+  ],
+  "final_behavior": [
+    1.0,
+    0.92578125,
+    1.0
+  ],
+  "final_probe_outcomes": [
+    [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    [
+      0.94140625,
+      0.9375,
+      0.92578125,
+      0.94921875
+    ],
+    [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ]
+  ],
+  "reload_behavior": [
+    1.0,
+    0.92578125,
+    1.0
+  ],
+  "reload_probe_outcomes": [
+    [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    [
+      0.94140625,
+      0.9375,
+      0.92578125,
+      0.94921875
+    ],
+    [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ]
+  ],
+  "memory_corruption": {
+    "slot": 2,
+    "corrupted_behavior": 0.0,
+    "corrupted_probe_outcomes": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "recovered_behavior": 1.0,
+    "recovered_probe_outcomes": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "clean_digest": "430fe72712c5119f4fcba32b55aa1ffc266a814a950d5bb7a05065a3c38b6c39",
+    "corrupted_digest": "7dd51dd0865b1af8b19d27b683638e5ba76e73b1e8664dc058a15f31d2a4bc8e",
+    "recovered_digest": "430fe72712c5119f4fcba32b55aa1ffc266a814a950d5bb7a05065a3c38b6c39",
+    "checksum_mismatch_detected": true
+  },
+  "parameter_accounting": {
+    "full_program_plus_decoder_per_slot": 40291,
+    "shared_bank_plus_decoder_total": 71753,
+    "ratio_to_independent_slots": 0.5936230589130741,
+    "shared_context_encoder": 35809,
+    "residual_per_slot": 14913,
+    "physical_compute_slots": 2,
+    "logical_bindings": 3,
+    "decoder_per_slot": 306
+  },
+  "frozen_core": {
+    "digest_before": "f97115efa49befdbbf102259384d49e1818a10835f51368b7665b49a6afcef0b",
+    "digest_after": "f97115efa49befdbbf102259384d49e1818a10835f51368b7665b49a6afcef0b",
+    "unchanged": true
+  },
+  "accounting": {
+    "unique_verifier_bits": 124928,
+    "unique_logical_lifetimes": 41984,
+    "optimizer_updates": 1344,
+    "replayed_examples": 0,
+    "retention_observations": 48
+  },
+  "controls": {
+    "old_slot_weights_unchanged": true,
+    "shared_base_frozen_after_first_slot": true,
+    "shared_base_digest_stable_after_growth": true,
+    "final_reload_exact": true,
+    "memory_corruption_detected_and_recovered": true,
+    "parent_unchanged": true,
+    "no_replayed_examples": true
+  },
+  "gates": {
+    "parent_stable": true,
+    "all_slots_stable": true,
+    "all_slots_mastered": true,
+    "retained_during_growth": true,
+    "retained_after_reload": true,
+    "old_slot_weights_unchanged": true,
+    "shared_base_frozen_after_first_slot": true,
+    "shared_base_digest_stable_after_growth": true,
+    "shared_payload_reduced": true,
+    "final_reload_exact": true,
+    "memory_corruption_detected_and_recovered": true,
+    "core_unchanged": true,
+    "no_replayed_examples": true
+  },
+  "wall_seconds": 86.30902616598178,
+  "promoted": true
+}

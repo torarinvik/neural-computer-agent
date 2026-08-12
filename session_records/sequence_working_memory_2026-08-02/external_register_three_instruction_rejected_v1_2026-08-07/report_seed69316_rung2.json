@@ -1,0 +1,116 @@
+{
+  "schema": "neural-computer.external-register-three-instruction-report.v1",
+  "claim_boundary": "Three opaque external instructions compose a verifier-private rendered reverse-complement-rotate program through one frozen parent and factorized register; this is not general continual learning.",
+  "seed": 69316,
+  "triple_composition_ids": [
+    6
+  ],
+  "reversed_triple_composition_ids": [
+    7
+  ],
+  "parent": {
+    "updates": 128,
+    "final_heldout_accuracy": 1.0
+  },
+  "primitive_updates": 256,
+  "composition_updates": 256,
+  "credit_mode": "paired_counterfactual",
+  "batch_size": 16,
+  "span": 4,
+  "audit_count": 64,
+  "results": {
+    "reverse_before_second_instruction": 0.9921875,
+    "reverse_after_second_instruction": 0.99609375,
+    "reverse_after_third_instruction": 0.99609375,
+    "complement_before_third_instruction": 0.96875,
+    "complement_after_third_instruction": 0.96484375,
+    "rotate": 0.91796875,
+    "composition": 0.67578125,
+    "reversed_order_composition": 0.68359375,
+    "reward_shuffled_composition": 0.453125,
+    "fresh_composition": 1.0,
+    "missing_evidence_composition": 0.5
+  },
+  "learning_curves": {
+    "composition": [
+      {
+        "update": 64,
+        "heldout_accuracy": 0.65234375
+      },
+      {
+        "update": 128,
+        "heldout_accuracy": 0.7265625
+      },
+      {
+        "update": 192,
+        "heldout_accuracy": 0.703125
+      },
+      {
+        "update": 256,
+        "heldout_accuracy": 0.68359375
+      }
+    ],
+    "fresh": [
+      {
+        "update": 64,
+        "heldout_accuracy": 0.796875
+      },
+      {
+        "update": 128,
+        "heldout_accuracy": 0.984375
+      },
+      {
+        "update": 192,
+        "heldout_accuracy": 1.0
+      },
+      {
+        "update": 256,
+        "heldout_accuracy": 1.0
+      }
+    ]
+  },
+  "persistence": {
+    "machine_digest": "422caa1d680f39cb6af54bab147f7c812f97fd469b8b52033e7a9f95dceb1bd2",
+    "reloaded_machine_digest": "422caa1d680f39cb6af54bab147f7c812f97fd469b8b52033e7a9f95dceb1bd2",
+    "decoder_digest": "4234a9bed55ea3ce0ccf8367e9107e5bdba9c365c4f7ae9f00d3c95b4ff46c9c",
+    "reloaded_decoder_digest": "4234a9bed55ea3ce0ccf8367e9107e5bdba9c365c4f7ae9f00d3c95b4ff46c9c",
+    "reload_exact": true,
+    "reloaded_composition": 0.67578125,
+    "machine_store_digest": "ccc4091da44be9afeb0e3c9169347b96504176e51ff66fc26055efdc1bab52e0",
+    "corruption_rejected": true
+  },
+  "frozen_core": {
+    "parent_digest_before": "0deb8fcf2769628696558bc23f4977bdfaedf302a0f385c17a6b55efa3828872",
+    "parent_digest_after": "0deb8fcf2769628696558bc23f4977bdfaedf302a0f385c17a6b55efa3828872",
+    "unchanged": true
+  },
+  "accounting": {
+    "unique_verifier_bits": 114688,
+    "unique_logical_lifetimes": 28672,
+    "optimizer_updates": 1920,
+    "replayed_examples": 0,
+    "wall_seconds": 68.28229866598849,
+    "stable_bits_to_threshold": null,
+    "composition_stable_bits_to_threshold": null,
+    "fresh_stable_bits_to_threshold": 16384,
+    "retention_on_mastered_primitives": 0.91796875,
+    "transfer_ratio_against_fresh_learner": null
+  },
+  "promotion": {
+    "accepted": false,
+    "gates": {
+      "composition_stable": false,
+      "fresh_stable": true,
+      "positive_stable_transfer": false,
+      "retained_reverse": true,
+      "retained_complement": true,
+      "retained_rotate": true,
+      "reward_shuffled_rejected": true,
+      "missing_evidence_rejected": true,
+      "reload_exact": true,
+      "corruption_rejected": true,
+      "frozen_parent": true
+    },
+    "reason": "one_or_more_registered_gates_failed"
+  }
+}

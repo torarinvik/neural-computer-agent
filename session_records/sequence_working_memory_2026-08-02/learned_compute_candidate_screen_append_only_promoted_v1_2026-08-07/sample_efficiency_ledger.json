@@ -1,0 +1,46 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "learned_compute_candidate_screen_append_only_promoted_v1",
+  "claim": "An isolated learned screen extension acquires outcome-unseen candidates after scalar verifier failure without changing the mastered base screen.",
+  "replayed_examples": 0,
+  "runs": [
+    {
+      "seed": 69316,
+      "promoted": true,
+      "known_candidates": 4,
+      "outcome_unseen_candidates": 2,
+      "known_novel_context_top1_accuracy": 1.0,
+      "known_novel_context_mean_fresh_attempts": 1.0,
+      "cold_start_top1_accuracy": 0.25,
+      "unseen_pre_failure_top1_accuracy": 0.0,
+      "unseen_post_failure_top1_accuracy": 1.0,
+      "base_candidate_permutation_accuracy": 1.0,
+      "extension_candidate_permutation_accuracy": 1.0,
+      "reward_shuffled_top1_accuracy": 0.25,
+      "optimizer_updates": 352,
+      "calibration_optimizer_updates": 64,
+      "unique_verifier_bits": 20736,
+      "unique_logical_lifetimes": 20352,
+      "replayed_examples": 0
+    },
+    {
+      "seed": 69317,
+      "promoted": true,
+      "known_candidates": 4,
+      "outcome_unseen_candidates": 2,
+      "known_novel_context_top1_accuracy": 1.0,
+      "known_novel_context_mean_fresh_attempts": 1.0,
+      "cold_start_top1_accuracy": 0.25,
+      "unseen_pre_failure_top1_accuracy": 0.0,
+      "unseen_post_failure_top1_accuracy": 1.0,
+      "base_candidate_permutation_accuracy": 1.0,
+      "extension_candidate_permutation_accuracy": 1.0,
+      "reward_shuffled_top1_accuracy": 0.25,
+      "optimizer_updates": 352,
+      "calibration_optimizer_updates": 64,
+      "unique_verifier_bits": 20736,
+      "unique_logical_lifetimes": 20352,
+      "replayed_examples": 0
+    }
+  ]
+}

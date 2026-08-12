@@ -1,0 +1,49 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "generated_composition_shared_residual_compute_opaque_four_replicated_promoted_v1",
+  "objective": "Test fourth-slot replay-free acquisition and retention with a frozen shared basis and isolated local recurrent compute.",
+  "claim_boundary": "Promoted for four runtime-generated opaque procedures at two seeds. This is bounded external compute growth, not general continual learning.",
+  "runs": [
+    {
+      "report": "report_seed69316.json",
+      "seed": 69316,
+      "primitive_family": "opaque_rule",
+      "source_ids": [0, 1, 2, 3],
+      "promoted": true,
+      "unique_verifier_bits": 100352,
+      "unique_logical_lifetimes": 33792,
+      "optimizer_updates": 1088,
+      "replayed_examples": 0,
+      "wall_seconds": 80.28068424999947,
+      "stable_bits_to_threshold": [2048, 4096, 4096, 4096],
+      "final_behavior": [1.0, 0.890625, 1.0, 0.9765625],
+      "reload_behavior": [1.0, 0.890625, 1.0, 0.9765625],
+      "parameter_ratio_to_independent_slots": 0.5999168548807426
+    },
+    {
+      "report": "report_seed69317.json",
+      "seed": 69317,
+      "primitive_family": "opaque_rule",
+      "source_ids": [0, 1, 2, 3],
+      "promoted": true,
+      "unique_verifier_bits": 100352,
+      "unique_logical_lifetimes": 33792,
+      "optimizer_updates": 1088,
+      "replayed_examples": 0,
+      "wall_seconds": 74.32816899998579,
+      "stable_bits_to_threshold": [2048, 4096, 4096, 4096],
+      "final_behavior": [1.0, 0.90234375, 1.0, 0.9453125],
+      "reload_behavior": [1.0, 0.90234375, 1.0, 0.9453125],
+      "parameter_ratio_to_independent_slots": 0.5999168548807426
+    }
+  ],
+  "controls": [
+    "fresh held-out retention probes",
+    "frozen shared-base digest",
+    "all protected old-slot digests",
+    "exact state reload",
+    "memory checksum mismatch and restoration",
+    "frozen controller digest",
+    "zero replayed examples"
+  ]
+}

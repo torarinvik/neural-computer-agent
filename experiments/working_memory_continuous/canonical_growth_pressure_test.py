@@ -65,7 +65,43 @@ class FrameEventEncoder(nn.Module):
         return self.network(frame)
 
 
-def _runtime(*, seed: int, growth: bool) -> AmodalControllerRuntime:
+class SpatialBindingFrameEventEncoder(nn.Module):
+    """Learned frontend that preserves coarse spatial binding in event tokens.
+
+    The historical frontend ends in adaptive average pooling, which is a
+    useful translation-invariant baseline but can erase the location of
+    simultaneous generic cues.  This replacement keeps the final 4x4 feature
+    map ordered before projection.  It still emits only learned event tensors;
+    no coordinate or task label is exposed to the controller.
+    """
+
+    def __init__(self, event_width: int) -> None:
+        super().__init__()
+        self.features = nn.Sequential(
+            nn.Conv2d(3, 16, 5, stride=2, padding=2),
+            nn.GELU(),
+            nn.Conv2d(16, 32, 3, stride=2, padding=1),
+            nn.GELU(),
+            nn.Conv2d(32, 32, 3, stride=2, padding=1),
+            nn.GELU(),
+        )
+        self.projection = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(32 * 4 * 4, event_width),
+            nn.GELU(),
+            nn.LayerNorm(event_width),
+        )
+
+    def forward(self, frame: torch.Tensor) -> torch.Tensor:
+        return self.projection(self.features(frame))
+
+
+def _runtime(
+    *,
+    seed: int,
+    growth: bool,
+    spatial_binding: bool = False,
+) -> AmodalControllerRuntime:
     torch.manual_seed(seed)
     controller = AmodalCognitiveController(
         width=32,
@@ -80,7 +116,13 @@ def _runtime(*, seed: int, growth: bool) -> AmodalControllerRuntime:
     )
     return AmodalControllerRuntime(
         controller,
-        encoders={"vision": FrameEventEncoder(32)},
+        encoders={
+            "vision": (
+                SpatialBindingFrameEventEncoder(32)
+                if spatial_binding
+                else FrameEventEncoder(32)
+            )
+        },
         output_bus=AmodalOutputBus(
             {"action": OpaqueProtocolDecoder(16, 2, hidden=16)}
         ),

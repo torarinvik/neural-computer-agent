@@ -1,0 +1,68 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "shared-growth-router-6to8to10to12to14-46caps-rejected-v1-2026-08-06",
+  "status": "rejected_late_shift_retention_frontier",
+  "claim_boundary": "The promoted 32-capability shared router does not automatically extend to a 46-capability, length-14 fourth shift under the tested budgets; late-shift stable protection fails despite causal routing and zero replay.",
+  "seed": 69316,
+  "distribution_shift_sequence": [6, 8, 10, 12, 14],
+  "families_per_shift": [8, 10, 12, 14],
+  "total_capabilities": 46,
+  "replayed_examples": 0,
+  "controls": [
+    {
+      "name": "hidden256_fixed8192",
+      "shared_route_updates_by_shift": [8192, 8192, 8192, 8192],
+      "shared_route_hidden": 256,
+      "unique_verifier_bits": 4292984,
+      "unique_logical_lifetimes": 75128,
+      "optimizer_updates": 73728,
+      "final_route_floor": 0.8125,
+      "retention_reversal_safe": false,
+      "promoted": false
+    },
+    {
+      "name": "hidden256_adaptive_late12288",
+      "shared_route_updates_by_shift": [8192, 8192, 8192, 12288],
+      "shared_route_hidden": 256,
+      "unique_verifier_bits": 4555128,
+      "unique_logical_lifetimes": 83320,
+      "optimizer_updates": 81920,
+      "final_route_floor": 0.71875,
+      "retention_reversal_safe": false,
+      "promoted": false
+    },
+    {
+      "name": "hidden512_fixed8192",
+      "shared_route_updates_by_shift": [8192, 8192, 8192, 8192],
+      "shared_route_hidden": 512,
+      "unique_verifier_bits": 4292984,
+      "unique_logical_lifetimes": 75128,
+      "optimizer_updates": 73728,
+      "final_route_floor": 0.796875,
+      "retention_reversal_safe": false,
+      "promoted": false
+    }
+  ],
+  "hard_failure": "late-shift route mastery and full-bank retention protection",
+  "controls_passed": [
+    "old_route_retained",
+    "candidate_permutation_invariant",
+    "new_routes_causal",
+    "reward_shuffled_not_selected",
+    "no_replay_after_shifts"
+  ],
+  "staged_admission_audit": {
+    "seeds": [69316, 69317],
+    "source": "the fixed8192 scalar route outcome streams",
+    "additional_verifier_bits": 0,
+    "additional_optimizer_updates": 0,
+    "replayed_examples": 0,
+    "stable_admitted_counts": [43, 39],
+    "pending_counts": [3, 7],
+    "occupied_counts": [43, 39],
+    "protected_occupied_counts": [43, 39],
+    "pending_does_not_consume_capacity": [true, true],
+    "all_occupied_rows_protected": [true, true],
+    "claim_boundary": "safe partial admission under a rejected 46-capability route frontier; not general continual learning"
+  }
+}

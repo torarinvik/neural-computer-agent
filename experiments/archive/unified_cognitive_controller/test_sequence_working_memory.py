@@ -142,6 +142,176 @@ def test_global_parity_is_a_distinct_visible_primitive() -> None:
     assert not torch.equal(batch.query_frames, rotate.query_frames)
 
 
+def test_generated_composition_is_deterministic_and_renders_two_primitive_cues() -> None:
+    from .train_sequence_working_memory import _GENERATED_PRIMITIVE_COLUMNS
+
+    batch = generate_sequence_memory_batch(
+        48, span=4, distractors=1, seed=260029,
+        operation="generated_composition",
+        generated_composition_ids=tuple(range(6)))
+    duplicate = generate_sequence_memory_batch(
+        48, span=4, distractors=1, seed=260029,
+        operation="generated_composition",
+        generated_composition_ids=tuple(range(6)))
+    assert torch.equal(batch.input_frames, duplicate.input_frames)
+    assert torch.equal(batch.query_frames, duplicate.query_frames)
+    assert torch.equal(batch.correct_actions, duplicate.correct_actions)
+
+    cue_columns = tuple(_GENERATED_PRIMITIVE_COLUMNS.values())
+    for row in range(batch.batch_size):
+        active = [
+            column
+            for column in cue_columns
+            if bool(
+                (
+                        batch.query_frames[row, :, :, 2:10, column:column + 3]
+                        > 0.9
+                ).any()
+            )
+        ]
+        assert len(active) == 2
+
+
+def test_generated_composition_pool_can_admit_one_new_program_at_a_time() -> None:
+    batch = generate_sequence_memory_batch(
+        32,
+        span=4,
+        distractors=1,
+        seed=260030,
+        operation="generated_composition",
+        generated_composition_ids=(0,),
+    )
+    duplicate = generate_sequence_memory_batch(
+        32,
+        span=4,
+        distractors=1,
+        seed=260030,
+        operation="generated_composition",
+        generated_composition_ids=(0,),
+    )
+    assert torch.equal(batch.query_frames, duplicate.query_frames)
+    assert torch.equal(batch.correct_actions, 1 - batch.sequence.flip(1))
+    assert torch.equal(batch.operation_bits, torch.zeros(32, dtype=torch.long))
+
+
+def test_generated_composition_order_is_learner_visible_but_not_named() -> None:
+    first = generate_sequence_memory_batch(
+        32,
+        span=4,
+        distractors=1,
+        seed=260031,
+        operation="generated_composition",
+        generated_composition_ids=(4,),
+    )
+    second = generate_sequence_memory_batch(
+        32,
+        span=4,
+        distractors=1,
+        seed=260031,
+        operation="generated_composition",
+        generated_composition_ids=(5,),
+    )
+    assert torch.equal(first.input_frames, second.input_frames)
+    assert not torch.equal(first.query_frames, second.query_frames)
+    assert not torch.equal(first.correct_actions, second.correct_actions)
+
+
+def test_generated_composition_grammar_can_emit_three_primitive_programs() -> None:
+    from .train_sequence_working_memory import _GENERATED_PRIMITIVE_COLUMNS
+
+    batch = generate_sequence_memory_batch(
+        32,
+        span=4,
+        distractors=1,
+        seed=260032,
+        operation="generated_composition",
+        generated_composition_ids=(6,),
+    )
+    expected = batch.sequence.flip(1)
+    expected = 1 - expected
+    expected = expected.roll(shifts=-1, dims=1)
+    assert torch.equal(batch.correct_actions, expected)
+    active = [
+        column
+        for column in _GENERATED_PRIMITIVE_COLUMNS.values()
+        if bool(
+            (
+                batch.query_frames[:, :, :, 2:22, column:column + 3]
+                > 0.9
+            ).any()
+        )
+    ]
+    assert len(active) == 3
+
+
+def test_generated_composition_accepts_a_withheld_four_primitive_program() -> None:
+    from .train_sequence_working_memory import _GENERATED_PRIMITIVE_COLUMNS
+
+    withheld = (("forward", "reverse", "complement", "rotate"),)
+    batch = generate_sequence_memory_batch(
+        32,
+        span=4,
+        distractors=1,
+        seed=260033,
+        operation="generated_composition",
+        generated_composition_ids=(0,),
+        generated_compositions=withheld,
+    )
+    expected = batch.sequence.flip(1)
+    expected = 1 - expected
+    expected = expected.roll(shifts=-1, dims=1)
+    assert torch.equal(batch.correct_actions, expected)
+    active = [
+        column
+        for column in _GENERATED_PRIMITIVE_COLUMNS.values()
+        if bool(
+            (
+                batch.query_frames[:, :, :, 2:22, column:column + 3]
+                > 0.9
+            ).any()
+        )
+    ]
+    assert len(active) == 4
+    for marker_start in (24, 26, 28, 30):
+        assert bool(
+            (
+                batch.query_frames[:, :, :, 27:30, marker_start:marker_start + 2]
+                > 0.8
+            ).any()
+        )
+
+
+def test_generated_composition_accepts_withheld_temporal_and_aggregation_primitives() -> None:
+    from .train_sequence_working_memory import _GENERATED_PRIMITIVE_COLUMNS
+
+    withheld = (("reverse", "adjacent_xor", "complement", "prefix_parity"),)
+    batch = generate_sequence_memory_batch(
+        32,
+        span=4,
+        distractors=1,
+        seed=260034,
+        operation="generated_composition",
+        generated_composition_ids=(0,),
+        generated_compositions=withheld,
+    )
+    expected = batch.sequence.flip(1)
+    expected = (expected != expected.roll(shifts=-1, dims=1)).long()
+    expected = 1 - expected
+    expected = torch.cumsum(expected, dim=1).remainder(2)
+    assert torch.equal(batch.correct_actions, expected)
+    active = [
+        column
+        for column in _GENERATED_PRIMITIVE_COLUMNS.values()
+        if bool(
+            (
+                batch.query_frames[:, :, :, 2:22, column:column + 3]
+                > 0.9
+            ).any()
+        )
+    ]
+    assert len(active) == 4
+
+
 def test_sequence_counterfactual_is_a_valid_pixel_rerender() -> None:
     normal = generate_sequence_memory_batch(
         32, span=2, distractors=1, seed=26003, operation="mixed")

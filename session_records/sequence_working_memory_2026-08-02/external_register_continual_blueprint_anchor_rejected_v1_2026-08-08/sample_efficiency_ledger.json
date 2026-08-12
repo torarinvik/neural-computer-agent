@@ -1,0 +1,12 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "external_register_continual_blueprint_anchor_rejected_v1",
+  "claim": "A scalar anchor on shared operator weights does not preserve mastered primitives during fresh-outcome online blueprint updates.",
+  "replayed_examples": 0,
+  "runs": [
+    {"anchor_weight": 1.0, "seed": 69316, "promoted": false, "source_mastery": false, "target_positive_transfer": true, "replayed_examples": 0},
+    {"anchor_weight": 1.0, "seed": 69317, "promoted": false, "source_mastery": false, "target_positive_transfer": false, "replayed_examples": 0},
+    {"anchor_weight": 10.0, "seed": 69316, "promoted": false, "source_mastery": false, "target_positive_transfer": true, "replayed_examples": 0},
+    {"anchor_weight": 10.0, "seed": 69317, "promoted": false, "source_mastery": false, "target_positive_transfer": false, "replayed_examples": 0}
+  ]
+}

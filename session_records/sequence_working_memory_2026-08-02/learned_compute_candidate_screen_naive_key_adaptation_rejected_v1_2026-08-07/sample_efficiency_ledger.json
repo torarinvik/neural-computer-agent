@@ -1,0 +1,14 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "learned_compute_candidate_screen_naive_key_adaptation_rejected_v1",
+  "claim": "Jointly adapting mastered and appended candidate keys causes interference and is unsafe.",
+  "candidate_count": 20,
+  "append_stage_sizes": [2, 2, 2, 2, 2],
+  "screen_updates": 512,
+  "calibration_updates_per_stage": 32,
+  "replayed_examples": 0,
+  "runs": [
+    {"seed": 69316, "promoted": false, "known_top1_accuracy": 0.9895833135, "unseen_top1_accuracy": 0.5, "unseen_min_per_target_accuracy": 0.0, "optimizer_updates": 704, "replayed_examples": 0},
+    {"seed": 69317, "promoted": false, "known_top1_accuracy": 0.8125, "unseen_top1_accuracy": 0.5, "unseen_min_per_target_accuracy": 0.0, "optimizer_updates": 704, "replayed_examples": 0}
+  ]
+}

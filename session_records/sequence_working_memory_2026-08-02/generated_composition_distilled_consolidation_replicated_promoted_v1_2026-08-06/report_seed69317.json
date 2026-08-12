@@ -1,0 +1,349 @@
+{
+  "schema": "neural-computer.generated-composition-distilled-consolidation-report.v1",
+  "claim_boundary": "One external routed stack was trained from fresh outcomes to execute two prior procedures, replacing two protected source files through one shared executable artifact. This is bounded behavior-verified neural consolidation, not general continual learning.",
+  "seed": 69317,
+  "source_ids": [
+    0,
+    2
+  ],
+  "target_id": 1,
+  "programs": [
+    [
+      "reverse",
+      "adjacent_xor",
+      "complement",
+      "prefix_parity"
+    ],
+    [
+      "prefix_parity",
+      "global_parity",
+      "rotate",
+      "complement"
+    ],
+    [
+      "global_parity",
+      "reverse",
+      "adjacent_xor",
+      "rotate"
+    ]
+  ],
+  "sources": [
+    {
+      "id": 0,
+      "behavior": 0.97265625,
+      "stable_bits_to_threshold": 8192,
+      "progress": [
+        {
+          "update": 32,
+          "unique_verifier_bits": 2048,
+          "heldout_accuracy": 0.484375
+        },
+        {
+          "update": 64,
+          "unique_verifier_bits": 4096,
+          "heldout_accuracy": 0.6875
+        },
+        {
+          "update": 96,
+          "unique_verifier_bits": 6144,
+          "heldout_accuracy": 0.74609375
+        },
+        {
+          "update": 128,
+          "unique_verifier_bits": 8192,
+          "heldout_accuracy": 0.828125
+        },
+        {
+          "update": 160,
+          "unique_verifier_bits": 10240,
+          "heldout_accuracy": 0.8671875
+        },
+        {
+          "update": 192,
+          "unique_verifier_bits": 12288,
+          "heldout_accuracy": 0.90625
+        },
+        {
+          "update": 224,
+          "unique_verifier_bits": 14336,
+          "heldout_accuracy": 0.92578125
+        },
+        {
+          "update": 256,
+          "unique_verifier_bits": 16384,
+          "heldout_accuracy": 0.9765625
+        }
+      ],
+      "artifact_digest": "2b77dd0bc9c125adcc8544e8a607a5813dd790979cd528ca2f9441b6c6f061ba"
+    },
+    {
+      "id": 2,
+      "behavior": 1.0,
+      "stable_bits_to_threshold": 2048,
+      "progress": [
+        {
+          "update": 32,
+          "unique_verifier_bits": 2048,
+          "heldout_accuracy": 1.0
+        },
+        {
+          "update": 64,
+          "unique_verifier_bits": 4096,
+          "heldout_accuracy": 1.0
+        },
+        {
+          "update": 96,
+          "unique_verifier_bits": 6144,
+          "heldout_accuracy": 1.0
+        },
+        {
+          "update": 128,
+          "unique_verifier_bits": 8192,
+          "heldout_accuracy": 1.0
+        },
+        {
+          "update": 160,
+          "unique_verifier_bits": 10240,
+          "heldout_accuracy": 1.0
+        },
+        {
+          "update": 192,
+          "unique_verifier_bits": 12288,
+          "heldout_accuracy": 1.0
+        },
+        {
+          "update": 224,
+          "unique_verifier_bits": 14336,
+          "heldout_accuracy": 1.0
+        },
+        {
+          "update": 256,
+          "unique_verifier_bits": 16384,
+          "heldout_accuracy": 1.0
+        }
+      ],
+      "artifact_digest": "1b4226b1dcdea6f1f20650e6539f57ce275ab0e04d20af218219cdd908957f14"
+    }
+  ],
+  "student_candidates": {
+    "inherited": {
+      "behavior": {
+        "0": 0.9921875,
+        "2": 1.0
+      },
+      "stable_bits_to_threshold": 2048,
+      "progress": [
+        {
+          "update": 32,
+          "unique_verifier_bits": 2048,
+          "heldout_accuracy": 0.84375
+        },
+        {
+          "update": 64,
+          "unique_verifier_bits": 4096,
+          "heldout_accuracy": 0.8125
+        },
+        {
+          "update": 96,
+          "unique_verifier_bits": 6144,
+          "heldout_accuracy": 0.921875
+        },
+        {
+          "update": 128,
+          "unique_verifier_bits": 8192,
+          "heldout_accuracy": 0.9609375
+        },
+        {
+          "update": 160,
+          "unique_verifier_bits": 10240,
+          "heldout_accuracy": 0.96484375
+        },
+        {
+          "update": 192,
+          "unique_verifier_bits": 12288,
+          "heldout_accuracy": 0.95703125
+        },
+        {
+          "update": 224,
+          "unique_verifier_bits": 14336,
+          "heldout_accuracy": 1.0
+        },
+        {
+          "update": 256,
+          "unique_verifier_bits": 16384,
+          "heldout_accuracy": 1.0
+        }
+      ]
+    },
+    "fresh": {
+      "behavior": {
+        "0": 0.81640625,
+        "2": 1.0
+      },
+      "stable_bits_to_threshold": 2048,
+      "progress": [
+        {
+          "update": 32,
+          "unique_verifier_bits": 2048,
+          "heldout_accuracy": 0.8125
+        },
+        {
+          "update": 64,
+          "unique_verifier_bits": 4096,
+          "heldout_accuracy": 0.76953125
+        },
+        {
+          "update": 96,
+          "unique_verifier_bits": 6144,
+          "heldout_accuracy": 0.828125
+        },
+        {
+          "update": 128,
+          "unique_verifier_bits": 8192,
+          "heldout_accuracy": 0.796875
+        },
+        {
+          "update": 160,
+          "unique_verifier_bits": 10240,
+          "heldout_accuracy": 0.796875
+        },
+        {
+          "update": 192,
+          "unique_verifier_bits": 12288,
+          "heldout_accuracy": 0.85546875
+        },
+        {
+          "update": 224,
+          "unique_verifier_bits": 14336,
+          "heldout_accuracy": 0.89453125
+        },
+        {
+          "update": 256,
+          "unique_verifier_bits": 16384,
+          "heldout_accuracy": 0.9140625
+        }
+      ]
+    }
+  },
+  "student_selection": {
+    "accepted": false,
+    "selected_index": null,
+    "stable_bits_to_threshold": [
+      2048,
+      2048
+    ],
+    "reason": "candidate stable-prefix result is tied",
+    "selection_policy": "stable-prefix selector; tied prefixes require a fresh maximin behavior margin for inherited weights",
+    "inherited_min_behavior": 0.9921875,
+    "fresh_min_behavior": 0.81640625,
+    "inherited_weights_help": true,
+    "behavior_margin": 0.02
+  },
+  "source_bank": {
+    "rows": [
+      0,
+      1
+    ],
+    "capacity": 2,
+    "protected": true,
+    "address_similarity": [
+      [
+        1.0,
+        0.9995977878570557
+      ],
+      [
+        0.9995977878570557,
+        1.0000001192092896
+      ]
+    ],
+    "addresses_separated": true
+  },
+  "consolidation": {
+    "accepted": true,
+    "rows_before": 2,
+    "rows_after": 1,
+    "rows_saved": 1,
+    "shared_artifact": true,
+    "behavior_after_reload": {
+      "0": 0.9921875,
+      "2": 1.0
+    },
+    "alias_digests_after_reload": {
+      "0": "cea2af3ee19529d9b334f6dd97978728302312f90f642851b564363bdd155078",
+      "2": "cea2af3ee19529d9b334f6dd97978728302312f90f642851b564363bdd155078"
+    },
+    "retention_probe_outcomes": [
+      [
+        0.99609375,
+        0.99609375,
+        0.984375,
+        0.99609375
+      ],
+      [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ]
+    ],
+    "verifier_passed": true,
+    "protected_after_reload": [
+      true,
+      true
+    ],
+    "source_payload_bytes": 670912,
+    "replacement_payload_bytes": 335456,
+    "payload_ratio": 0.5
+  },
+  "target_candidates": {
+    "stable_bits_to_threshold": [
+      2048,
+      10240
+    ],
+    "behavior": [
+      1.0,
+      1.0
+    ],
+    "selected_index": 0
+  },
+  "target_admission": {
+    "accepted": true,
+    "action": "grow",
+    "source_capacity": 1,
+    "destination_capacity": 2,
+    "behavior_after_reload": 1.0
+  },
+  "frozen_core": {
+    "digest_before": "9b072c9e96c64a17ebea9f245da6bdbe6e2abd951a8d43b5541d883a54a1902a",
+    "digest_after": "9b072c9e96c64a17ebea9f245da6bdbe6e2abd951a8d43b5541d883a54a1902a",
+    "unchanged": true
+  },
+  "accounting": {
+    "unique_verifier_bits": 153600,
+    "unique_logical_lifetimes": 51712,
+    "optimizer_updates": 1664,
+    "replayed_examples": 0
+  },
+  "gates": {
+    "parent_stable": true,
+    "sources_stable": true,
+    "sources_mastered": true,
+    "sources_protected": true,
+    "source_addresses_separated": true,
+    "student_inherited_weights_verified": true,
+    "student_both_sources_mastered": true,
+    "shared_artifact_payload_reduced": true,
+    "consolidation_accepted": true,
+    "consolidation_saved_row": true,
+    "consolidated_aliases_share_artifact": true,
+    "consolidated_sources_retained": true,
+    "consolidated_sources_protected": true,
+    "target_unique_winner": true,
+    "target_grown_after_consolidation": true,
+    "target_reloaded_mastered": true,
+    "core_unchanged": true,
+    "no_replayed_examples": true
+  },
+  "wall_seconds": 179.5505148749944,
+  "promoted": true
+}

@@ -1,0 +1,102 @@
+{
+  "schema": "neural-computer.learned-compute-screen-consolidation-report.v1",
+  "claim_boundary": "A fresh-outcome-trained replacement can compact consecutive external screen stages only when a behavior verifier accepts the immutable candidate. This is bounded verified compaction, not general continual learning or arbitrary learned compression.",
+  "seed": 69316,
+  "candidate_count": 20,
+  "known_candidate_count": 10,
+  "unseen_candidate_count": 10,
+  "source_stage_sizes": [
+    2,
+    2,
+    2,
+    2,
+    2
+  ],
+  "compact_stage_sizes": [
+    4,
+    2,
+    2,
+    2
+  ],
+  "budgets": {
+    "parent_updates": 32,
+    "screen_updates": 512,
+    "stage_updates": 32,
+    "replacement_updates": 128,
+    "distillation_weight": 1.0,
+    "batch_size": 12,
+    "audit_count": 96,
+    "key_samples": 12
+  },
+  "source_before": {
+    "top1_accuracy": 1.0,
+    "mean_fresh_attempts": 1.0,
+    "fresh_verifier_authorized_rate": 1.0,
+    "failed_extension_gate": 0.5874999761581421,
+    "permutation_accuracy": 1.0,
+    "per_target_top1_accuracy": [
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ]
+  },
+  "replacement_training": {
+    "optimizer_updates": 128,
+    "unique_verifier_bits": 6144,
+    "unique_logical_lifetimes": 6144,
+    "informative_candidate_pairs": 4608,
+    "distillation_updates": 128,
+    "replayed_examples": 0,
+    "final_loss": 3.571093797683716
+  },
+  "consolidation_receipt": {
+    "accepted": false,
+    "source_indices": [
+      0,
+      1
+    ],
+    "extension_count_before": 5,
+    "extension_count_after": 5,
+    "logical_candidates_before": 10,
+    "logical_candidates_after": 10,
+    "extensions_saved": 0,
+    "reason": "behavior verifier rejected candidate screen"
+  },
+  "compact_after": null,
+  "compact_known": null,
+  "naive_replacement_receipt": {
+    "accepted": false,
+    "extensions_saved": 0,
+    "reason": "behavior verifier rejected candidate screen"
+  },
+  "accounting": {
+    "optimizer_updates": 832,
+    "unique_verifier_bits": 132864,
+    "unique_logical_lifetimes": 132864,
+    "replayed_examples": 0
+  },
+  "gates": {
+    "parent_stable": true,
+    "consolidation_accepted": false,
+    "logical_candidates_preserved": true,
+    "extensions_reduced": false,
+    "compact_unseen_retained": false,
+    "compact_known_retained": false,
+    "compact_permutation": false,
+    "source_unchanged": true,
+    "parent_unchanged": true,
+    "naive_replacement_rejected": true,
+    "reload_exact": false,
+    "reload_behavior_exact": false,
+    "no_replayed_examples": true
+  },
+  "promoted": false,
+  "wall_seconds": 39.14602766701137
+}

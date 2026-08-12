@@ -1,0 +1,38 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "multi-append-external-capability-v3-unseen-prefix-parity-2026-08-06",
+  "status": "replicated_promoted_unseen_prefix_parity_acquisition",
+  "seeds": [69316, 69317],
+  "base_operations": ["reverse", "forward", "complement"],
+  "append_operations": ["rotate", "adjacent_xor", "complement_rotate", "prefix_parity"],
+  "parent_updates_per_seed": [128, 128],
+  "old_capability_updates_per_seed": [256, 256],
+  "append_capability_updates_per_seed": [256, 256],
+  "base_route_updates_per_seed": [1024, 1024],
+  "extension_route_updates_per_append_per_seed": [512, 512],
+  "reward_shuffled_extension_updates_per_append_per_seed": [512, 512],
+  "batch_size": 16,
+  "route_batch_size": 16,
+  "audit_count": 64,
+  "retention_probes": 8,
+  "physical_rows": 7,
+  "unique_logical_lifetimes_per_seed": [141312, 141312],
+  "unique_verifier_bits_per_seed": [354304, 354304],
+  "optimizer_updates_per_seed": [1920, 1920],
+  "route_optimizer_updates_per_seed": [5120, 5120],
+  "route_unique_lifetimes_per_seed": [81920, 81920],
+  "route_unique_verifier_bits_per_seed": [163840, 163840],
+  "replayed_examples_per_seed": [0, 0],
+  "distribution_shifts_per_seed": [4, 4],
+  "wall_seconds": [935.1730063329887, 697.5557462080033],
+  "prefix_parity_behavior_per_seed": [0.87890625, 0.8359375],
+  "route_rates_per_seed": [
+    {"old": 1.0, "rotate4": 1.0, "adjacent_xor4": 1.0, "complement_rotate4": 1.0, "prefix_parity4": 1.0, "combined": 1.0},
+    {"old": 1.0, "rotate4": 1.0, "adjacent_xor4": 1.0, "complement_rotate4": 1.0, "prefix_parity4": 1.0, "combined": 1.0}
+  ],
+  "reward_shuffled_selection_per_seed": [
+    {"rotate4": 0.0, "adjacent_xor4": 0.0, "complement_rotate4": 0.0, "prefix_parity4": 0.0},
+    {"rotate4": 0.0, "adjacent_xor4": 0.0, "complement_rotate4": 0.0, "prefix_parity4": 0.0}
+  ],
+  "claim_boundary": "Replicated route-isolated acquisition of one unseen prefix-parity procedure through external recurrent capability state, with protected prior artifacts, causal routing, persistent reload, and zero replay; not general continual learning or arbitrary program induction."
+}

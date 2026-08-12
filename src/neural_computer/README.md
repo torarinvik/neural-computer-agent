@@ -68,6 +68,27 @@ unchanged. It does not execute artifacts, choose semantic routes, or update
 controller weights. The promoted two-step growth audit uses this coordinator
 for both additions and passes frozen-core, retention, permutation, reload,
 corruption, shuffled-outcome, and zero-replay controls.
+
+`ConfidenceAwareCapabilityStaging` is the fail-closed admission boundary for
+new growth. It keeps an opaque candidate artifact outside the executable bank
+until deterministic verifier outcomes clear a stable-prefix mastery gate, then
+transfers the accumulated scalar evidence into the destination retention ledger
+without replaying old episodes. A candidate that has not earned stable mastery
+cannot evict or dilute an existing protected row. The queue is in-process by
+default, and an optional staging directory adds atomic artifact snapshots,
+checksums, and restart recovery. Admission itself remains a separate
+executable-memory transaction, so the API does not overclaim a multi-process
+distributed commit protocol.
+
+`select_capability_candidate` applies the same fail-closed idea when multiple
+replaceable learners compete for a new task. It selects only a unique
+stable-prefix winner from fresh held-out curves; unstable candidates and ties
+are rejected. This lets inherited composition state compete against a fresh
+candidate without allowing a lucky final score or a prior to silently win.
+`ExternalCapabilityLifecycle.admit_selected_candidate` makes that decision
+atomic with admission: a rejected selection leaves the executable bank
+unchanged, while only the selected opaque artifact is passed through the
+normal capacity and protection policy.
 The executable compaction audit now uses the same coordinator for all three
 rewrites and defaults its separate opaque route-acquisition arm to 2,048 fresh
 paired-outcome updates per arm after a 512-update control failed its
@@ -90,6 +111,15 @@ key coordinates. `ExecutableArtifactMemory.address_rows()` and
 `promote_index()` keep row selection separate from artifact verification and
 growth-state execution. These are replaceable memory policies, not
 modality-specific branches in the controller.
+
+`PersistentOpaqueStateStore` is the durable state boundary for those learned
+memory policies. It atomically snapshots a route or utility policy's tensor
+state together with a versioned JSON configuration and SHA-256 state digest;
+`load_module()` validates the contract before mutating the replacement module.
+This keeps learned address weights independent from both the frozen controller
+and executable artifact files, so a restart restores the policy that makes the
+files usable rather than only restoring the files themselves. It stores no
+task labels, modality formats, protocol IDs, or semantic coordinate meanings.
 
 `PersistentOpaqueRouteEvidence` is the small persistent policy for append-only
 capability banks. It stores only opaque slot attempts and scalar verifier
@@ -271,6 +301,20 @@ permutation, reload, corruption, causal wrong-artifact, and zero-replay gates.
 This is still one protected append, not repeated open-ended growth, arbitrary
 program induction, or general continual learning.
 
+`ExternalCapabilityPipeline` is the canonical variable-length composition
+boundary for those programs. It keeps one recurrent state per memory-side
+program and serially passes the opaque intention from one adapter to the next;
+an empty pipeline is an exact identity. Programs must share only the versioned
+event/action/intention dimensions, so stacking or replacing them does not
+resize the controller or add a task-specific reasoning branch. This is the
+execution foundation for testing reusable program composition; the pipeline
+itself does not claim that independently learned programs will solve an
+arbitrary novel composition. Its optional `head_only` event-visibility mode
+gives the first program the learned event while later programs receive only
+the prior opaque intention, opaque feedback, and scalar outcome. That mode is
+a diagnostic and execution contract for detecting raw-event shortcutting; it
+does not assign semantic meaning to the intermediate intention.
+
 `EpisodicCreditHead` isolates event-credit state for one external capability.
 The two-step follow-up trains one fresh head per appended procedure while the
 shared context encoder and earlier credit heads remain frozen. Across two
@@ -375,6 +419,17 @@ the current opaque context. The matched transfer audit promotes this
 parent-conditioned recurrent boundary across two seeds (`1.333x--1.667x`
 fresh-over-inherited stable-bit transfer) while retaining the parent. This is
 still a narrow transfer result, not general continual learning.
+
+The package also exposes `ExternalCapabilityRegisterMachine`. It is a
+shared learned interpreter over an external working register: capabilities
+are opaque instruction vectors in a variable-length serial chain, not new
+controller branches. A recurrent external context reads each standardized
+learned event, opaque feedback record, and controller intention; downstream
+instructions receive only the preceding register. The rendered reverse→
+complement audit promotes a narrow `2.0x` fresh-over-inherited stable-bit
+composition transfer across two seeds with retention, shuffled, missing,
+reload, corruption, frozen-core, and zero-replay controls. It remains a
+bounded result, not arbitrary program induction or general continual learning.
 
 Memory is a replaceable `MemoryBackend` v1 contract. The default
 `ContentAddressedMemory` keeps a bounded content-addressed index in the
@@ -657,3 +712,410 @@ the final shift. The 128-update control fails both seeds at the final shift,
 so prior reuse is promoted as safe state reuse, not as a reliable sample-
 efficiency gain. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/repeated_shift_growth_6to8to10to12_growth_prior_v1_2026-08-06/`.
+
+`OpaqueCandidateGrowthRouter` is the next reusable memory-side boundary. One
+candidate-conditioned, permutation-equivariant router can score a variable
+opaque candidate bank, avoiding a new learned extension module for every
+capability. The promoted 6→8→10→12 audit uses one router per shift and a
+learned trajectory-statistics query. Across two seeds it grows to 32
+capabilities with phase floors `0.9844/0.9375`, `0.9844/0.9688`, and
+`0.9531/0.9375`; causal, retention, reversal, null, and zero-replay gates
+pass. The corrected strict sequential operational route-permutation audit is
+`0.9906/0.9911`; the earlier `0.4932/0.4943` reading was a harness false
+negative caused by comparing a remapped physical row to its unpermuted family
+index. This is a bounded reusable-growth result, not general continual
+learning, and acquisition currently requires 16,384 route updates per
+expansion. See
+`session_records/sequence_working_memory_2026-08-02/shared_growth_router_6to8to10to12_trajectory_stats_v1_2026-08-06/`.
+
+The shared-router acquisition budget has since been cut to 8,192 updates per
+expansion. Both seeds still pass the full 6→8→10→12, 32-capability audit with
+phase floors `0.9844/0.9844`, `0.9688/0.9063`, and `0.9219/0.9063`, operational
+permutation `0.9875/0.9802`, causal credit, retention, reversal, null, and
+zero-replay gates. Total optimizer updates fall 46.9% versus the previous
+rung. This promotes acquisition efficiency for the existing bounded policy;
+the fixed trajectory query and random opaque-key association remain open.
+See
+`session_records/sequence_working_memory_2026-08-02/shared_growth_router_6to8to10to12_trajectory_stats_8192_v1_2026-08-06/`.
+
+## External compute-candidate screening
+
+`ExternalComputeCandidateScreen` packages the persistent opaque route ledger
+as a compute-library admission aid. It indexes learned event/context queries,
+records only attempted opaque candidate indices and deterministic scalar
+outcomes, and returns a learned-first trial order. The screen is deliberately
+not an admission policy: a fresh verifier floor must still be passed by the
+candidate that is actually tried. This lets a later experiment measure trial
+and latency savings without allowing a stale screen to create a capability
+claim. Its state is versioned and reloadable through
+`neural-computer.external-capability-compute-screen.v1`.
+
+`LearnedComputeCandidateScreen` adds a factorized query/key scorer for novel
+contexts. It is explicitly disabled until external fresh evidence enables it,
+then learns pairwise compatibility from attempted scalar outcomes. A paired
+six-candidate audit routes novel contexts over known candidates at `1.0000`
+across two seeds versus `0.2500` cold-start, with exact candidate permutation,
+reload, frozen-core, and reward-shuffled null controls. Outcome-unseen
+candidates remain a deliberate cold-start failure. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_opaque_novel_context_replicated_promoted_v1_2026-08-07/`.
+
+A direct fresh-outcome calibration of two unseen candidates acquires them at
+`1.0000` but collapses known-candidate routing to `0.2083/0.2500`; this is a
+rejected shared-screen mutation. The next design must append isolated screen
+state and preserve the frozen prior screen.
+
+The append-only replacement now passes the same two-seed pressure test:
+known routing remains `1.0000`, unseen routing is `0.0000` before the scalar
+failure gate and `1.0000` after 64 fresh updates, with permutation, reload,
+frozen-core, reward-shuffled, and zero-replay controls passing. This promotes
+safe external screen growth only; it is not a claim of unrestricted memory
+growth or general continual learning. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_append_only_promoted_v1_2026-08-07/`.
+
+The append boundary also passes a two-stage audit: four unseen candidates are
+split across two isolated extensions, later activation requires cumulative
+failure of the base and earlier stage, and both seeds reach `1.0000` unseen
+routing from `0.0000` pre-activation while known routing remains `1.0000`.
+Stage-local permutation, reload, frozen-core, reward-shuffled, and zero-replay
+controls pass. This remains bounded external growth, not general continual
+learning. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_append_only_two_stage_promoted_v1_2026-08-07/`.
+
+The boundary is now cardinality-independent: multi-candidate stages retain
+pairwise ranking, while singleton stages use attempted-outcome calibration
+from fresh positive and negative verifier attempts. A mixed `[1, 2]` two-stage
+audit reaches `1.0000` unseen routing from `0.0000` pre-activation across both
+seeds with retention, permutation, reload, null, and zero-replay controls
+passing. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_cardinality_independent_mixed_promoted_v1_2026-08-07/`.
+
+The same mixed audit passes at 128 fresh calibration updates per stage,
+halving append calibration cost. Blindly inheriting the base screen weights
+is retained only as a rejected control because it harms new-stage acquisition;
+fresh extension initialization remains canonical. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_cardinality_independent_mixed_128_promoted_v1_2026-08-07/`.
+
+Selective query-side transfer improves the same mixed audit again: copying
+only query projections and router query encoders passes both seeds at 64
+updates per stage, while fresh initialization fails one matched seed at that
+budget. Candidate-key and matching state remain fresh. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_selective_query_prior_promoted_v1_2026-08-07/`.
+
+Three sequential singleton append stages now pass both seeds at 256
+calibration updates per stage with the selective prior, while 64 fails both
+seeds and 128 fails one. A matched fresh control also passes at 256, so this
+is replicated bounded three-stage growth rather than a new three-stage prior
+efficiency claim. The immediate bottleneck is stage-wise calibration cost as
+depth grows. Evidence, accounting, and lower-budget controls are in
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_append_only_three_stage_boundary_v1_2026-08-07/`.
+
+Append-only prior initialization now accepts a validated strength in `[0, 1]`.
+Half-strength query transfer repairs the three-stage 128-update failure but
+is not a universal default: it loses one seed on the earlier two-stage
+64-update boundary. This keeps prior selection outside the frozen controller
+and makes negative transfer measurable rather than silently baked in. See
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_prior_strength_boundary_v1_2026-08-07/`.
+
+The append screen now also passes a fourteen-candidate, three-stage bank at
+32 updates per stage, with six new candidates split two per isolated stage.
+Both fresh and query-prior controls pass, so this is evidence of bounded bank
+scaling rather than a transfer advantage. The next pressure test is deeper
+sequential growth, where calibration cost and retention must compound without
+replay. See
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_append_only_bank14_three_stage_32_promoted_v1_2026-08-07/`.
+
+The same two-candidate stage contract now reaches five isolated stages in a
+twenty-candidate bank at 32 updates per stage. Fresh and query-prior controls
+both pass, so the result is repeated bounded growth, not prior efficiency.
+The next architectural boundary is safe compaction of these external screen
+extensions. See
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_append_only_bank20_five_stage_32_promoted_v1_2026-08-07/`.
+
+`AppendOnlyLearnedComputeCandidateScreen.consolidate_verified` now provides
+that compaction transaction: it accepts a caller-trained replacement for
+consecutive stages, preserves logical candidate count, never mutates the
+source, and adopts the smaller physical extension set only when a fresh
+behavior verifier passes. It is a boundary contract, not evidence that
+learned consolidation already works.
+
+The first fresh-outcome plus source-distillation compaction audit is
+intentionally rejected: strict per-candidate retention failed on both seeds,
+and a naïve copied-stage replacement was rejected. The next task is repairing
+source mastery and replacement training before any compression claim.
+
+The pairwise router control is likewise rejected: it underperforms the
+factorized router at the five-stage bank-20 rung and is not part of the
+canonical API. The active bottleneck is upstream candidate-signature
+separation and per-candidate mastery.
+
+The candidate-screen harness now records per-target top-1 mastery and
+candidate-key separation diagnostics. Aggregate routing no longer promotes an
+append boundary when one target is hidden by the mean: the strict gate requires
+every audited target to clear the mastery floor. The bank-20 audit shows why:
+one seed has aggregate unseen accuracy `0.8958` but a target at `0.0`, while
+the twenty-key representation has nearest-neighbor cosine `0.9982` and
+effective rank `3.59`. The next implementation target is therefore a richer,
+behaviorally grounded candidate signature, not another router variant.
+
+A spatial-binding frontend control shows that separation alone is not enough:
+it raises key effective rank from `3.59` to `6.16` on the weaker seed, but
+unseen routing falls from `0.8958` to `0.8021`. The next experiment must train
+the event/key alignment or its behavioral trace jointly; simply preserving
+more frontend geometry is not a sufficient fix.
+
+Full append-prior transfer is also insufficient as a general remedy: it brings
+the unseen extension to `1.0000/1.0000`, but the weaker seed retains source
+known-target holes at `0.7` and `0.0`. The next high-ROI intervention is source
+screen mastery and query/key alignment, with append initialization treated as
+solved at this bounded rung.
+
+The source-mastery intervention now passes the strict twenty-candidate,
+five-stage boundary across both seeds at 1024 source updates with full append
+priors. A matched fresh-extension control fails the hard seed on one unseen
+target, so the prior is retained as a robustness mechanism. This is a bounded
+growth result; the hard seed's key effective rank remains `3.59`, leaving
+representation/alignment as the next bottleneck.
+
+Doubling local append calibration does not change the spatial control's hard
+seed: it remains `0.8125` with two per-target holes. More extension updates
+are therefore not the next move; the alignment must adapt the candidate key to
+the observed behavioral evidence or use a better learned event signature.
+
+The frozen signature-normalizer contract was tested and rejected as a global
+replacement: it repairs source mastery but harms unseen acquisition, and a
+dual raw-plus-normalized view is worse. Future representation diversity must
+be page-local and verifier-selected, not concatenated into one undifferentiated
+address space.
+
+The page-local ABI now passes the matched bank-26/six-stage pressure test with
+the source page on a frozen affine-normalized view and append pages on raw
+identity views. A local rank-margin gate keeps page score scales independent;
+both seeds reach strict `1.0000/1.0000` known and unseen per-candidate mastery,
+with permutation, reload, null, frozen-base, frozen-core, and zero-replay gates
+passing. The promoted budget is 1,024 normalized source updates, 512 raw-prior
+updates, and 32 fresh updates per append stage. A 512/512 source split fails
+hard-seed known retention at `0.8854`, so this is a structural bounded-growth
+promotion with a measurable source-budget cost, not yet learned representation
+selection or general continual learning. See
+`experiments/compute_candidate_screen_amodal/train_page_local.py` and the
+promoted/rejected session records.
+
+At 46 candidates, the same page-local boundary retains all 26 unseen rows but
+fails strict source retention at `0.9271/0.4000` on both seeds. Normalized key
+rank is materially higher (`11.90/12.87`), so the next bottleneck is source
+screen capacity/interference rather than another global signature transform.
+Increasing scorer latent width from 32 to 64 is also rejected: known floors
+are `0.0000/0.4000` while unseen remains perfect. The next capacity test is
+router hidden width or source competition isolation. Hidden width 128 is also
+rejected (`0.8542/0.8021` known, zero per-target floor), so source competition
+isolation is now the preferred intervention.
+
+The source-sharding intervention passes the 46-candidate rung: two normalized
+source pages of ten candidates each plus raw unseen append pages reach strict
+`1.0000/1.0000` known and unseen mastery on both seeds. It reduces the audited
+cost to 2,496 optimizer updates and 477,696 verifier bits, versus 3,008 and
+1,423,872 for the unsharded page-local control. This is a promoted bounded
+source-competition and sample-efficiency result; page retrieval is still
+physical-order based and general continual learning remains unqualified.
+
+The same source sharding scales to 64 candidates with three normalized source
+pages of ten and 17 raw unseen pages: both seeds pass strict `1.0000/1.0000`
+known and unseen mastery plus permutation, null, reload, page-immutability,
+and zero-replay controls. This is a larger bounded isolation result, not yet
+learned page retrieval or general continual learning.
+
+The learned page-router audit closes the next sub-boundary. A frozen external
+router receives a learned query and opaque page summaries, then learns from
+scalar verifier outcomes produced by attempting each local page. At 64
+candidates, both seeds retrieve all three source pages and all 30 source
+candidates at `1.0000`, survive page-order permutation and exact reload, fail
+the reward-shuffled null, and leave the controller byte-identical with zero
+replay. This promotes bounded learned page addressing, not arbitrary memory
+growth or general continual learning. See
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_page_router_64_promoted_v1_2026-08-07/`.
+
+The append-only control rejects simply freezing that router and concatenating
+new page keys: 34 new candidates in 17 pages fall to `0.3958` and `0.1250`
+candidate accuracy across the two seeds. This is the current memory-growth
+blocker. The next mechanism is a separately trainable append-router overlay,
+with verifier-gated fallback from the frozen source router; see the rejected
+control at
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_page_router_append_frozen_rejected_v1_2026-08-07/`.
+
+The token-preserving append-router overlay now passes the growth rung. The
+frozen source router handles the original pages; scalar verifier failure gates
+an append router that keeps every normalized opaque candidate token rather than
+using a lossy page mean. At 64 candidates, both seeds reach strict `1.0000`
+candidate/page and per-target/per-page mastery with permutation, shuffled-null,
+frozen-source, unchanged-controller, and zero-replay controls. The cost is
+10,816 optimizer updates and 1,887,744 verifier bits per seed. This is bounded
+no-replay external page addressing, not general continual learning. Evidence:
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_page_router_append_token_overlay_64_promoted_v1_2026-08-07/`.
+
+The cost boundary has since dropped to 3,072 updates per append router. Both
+seeds retain strict `1.0000` candidate/page and per-target/per-page mastery with
+all permutation, shuffled-null, frozen-source, unchanged-controller,
+verifier-fallback, and zero-replay controls. This costs 8,768 optimizer updates
+and 1,469,952 verifier bits per seed. See the superseding record:
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_page_router_append_token_overlay_64_promoted_v2_2026-08-07/`.
+
+The overlay also survives two append generations: 30 source candidates plus
+two independent 18-candidate generations reach strict `1.0000` across 66
+candidates and 21 pages on both seeds. Each generation uses its own scalar-
+outcome-trained token router; verifier failure cascades from source to the
+later generation. The audit passes permutation, generation-local shuffled
+nulls, frozen source/controller, no unresolved rows, and zero replay. See
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_page_router_two_generations_66_promoted_v1_2026-08-07/`.
+
+The external boundary now includes an appendable, independently freezeable
+`LearnedOpaqueCandidateKeyMemory`. Its first outcome-trained update policies
+are rejected: joint base/key updates cause interference, while extension-only
+updates preserve behavior but do not beat static keys. The contract is useful
+for future behavioral memory, but no address-update policy is promoted yet.
+
+At the next capacity rung, 26 candidates across six append stages still acquire
+all unseen rows, but the source screen loses strict mastery (`0.9271/0.7500`
+known routing). This is the current capacity boundary: source interference
+must be solved before claiming scalable continual growth.
+
+Doubling the bank-26 source budget again to 2048 does not repair replication:
+one seed still has known-target holes despite perfect unseen acquisition. More
+updates are therefore not the current lever; representation and source-router
+interference are.
+
+The next 46-capability fourth-shift pressure test is intentionally rejected:
+late length-14 rows fail stable protection at hidden 256/8,192 updates,
+hidden 512, and an adaptive late-budget control. This is evidence for
+confidence-aware targeted acquisition and capacity planning, not a reason to
+weaken the retention gate. See
+`session_records/sequence_working_memory_2026-08-02/shared_growth_router_6to8to10to12to14_46caps_rejected_v1_2026-08-06/`.
+
+The matched modular route/credit boundary now passes the same fourth shift
+with 46 total capabilities when each new route and credit head is isolated
+from earlier learned state. Across seeds `69316` and `69317`, final-shift
+route floors are `0.8594` and `0.8750`; old-route retention, permutation,
+causal extension, null, full-bank protection, reversal/recovery, and
+zero-replay gates all pass. This localizes the shared-router 46-capability
+failure to interference in one mutable candidate scorer, not to external
+memory capacity. The modular result remains a bounded externally trained
+route/credit mechanism, not general continual learning. See
+`session_records/sequence_working_memory_2026-08-02/repeated_shift_growth_6to8to10to12to14_isolated_v1_2026-08-06/`.
+
+The 46-capability modular boundary also persists its external route and
+credit state independently through `PersistentOpaqueStateStore`. Across both
+seeds, 89 state files reload with exact route/credit behavior and deliberate
+checksum corruption is rejected; persistence adds no verifier bits,
+optimizer updates, or replay. This closes the durable-state boundary for the
+bounded result while leaving unbounded acquisition and general continual
+learning open. See
+`session_records/sequence_working_memory_2026-08-02/repeated_shift_growth_6to8to10to12to14_persistent_v1_2026-08-06/`.
+
+The persistent modular boundary now survives a fifth temporal shift to 62
+capabilities. A fresh 32-probe confidence screen remediates only weak
+external modules with one additional 256-update block; both seeds pass final
+route floors `0.8906` and `0.8594`, hard retention/reversal/recovery,
+persistent route/credit reload, corruption rejection, and zero replay. The
+no-remediation control remains rejected on the retention gate. This promotes
+confidence-triggered external acquisition depth, not unbounded growth,
+arbitrary program induction, or general continual learning. See
+`session_records/sequence_working_memory_2026-08-02/repeated_shift_growth_6to8to10to12to14to16_remediated_v1_2026-08-06/`.
+
+The same boundary then survives a seventh temporal shift through length 20,
+reaching 100 total capabilities. Both replicated seeds pass full-bank
+protection, isolated reversal/recovery, persistence, corruption, causal,
+shuffled, and zero-replay gates; minimum route floors are `0.8125` and
+`0.8594`. This is the current bounded external-growth result, not general
+continual learning: the family generator remains finite and arbitrary new
+computation, open-ended compression, and positive transfer against a fresh
+learner remain unverified. See
+`session_records/sequence_working_memory_2026-08-02/repeated_shift_growth_6to8to10to12to14to16to18to20_remediated_v1_2026-08-07/`.
+
+The generated-composition pressure test separately reaches nine sequential
+fresh opaque slots plus a tenth target procedure. Both replicated runs pass
+strict slot isolation, retention/reversal, reload, corruption, frozen-core,
+and zero-replay gates, but the payload remains linear and inherited target
+transfer is not positive. This is bounded external capacity growth, not
+general continual learning or arbitrary program induction. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/generated_composition_opaque_rule_sequential_slot_growth_ten_source_runtime_generated_replicated_promoted_v1_2026-08-07/`.
+
+`ExternalCapabilitySharedResidualBank` is the compact shared-computation
+candidate. It keeps one frozen context basis and appends isolated residual
+adapters with external recurrent state; old slots and the shared base can be
+protected independently. The registry pair passes replicated fresh-outcome
+retention and exact reload at `0.5556` of independent-slot payload, while
+opaque and third-procedure controls reject. This makes the boundary explicit:
+shared computation works for related procedures, but the residual path still
+needs additional compute capacity for arbitrary new procedures. See
+`session_records/sequence_working_memory_2026-08-02/generated_composition_shared_residual_bank_registry_replicated_boundary_v1_2026-08-07/`.
+
+`ExternalCapabilityResidualComputeBank` is the append-only compute extension:
+each new slot gets a compact recurrent context encoder plus an intention
+adapter, while the shared context basis and protected slots remain frozen.
+It promotes two opaque procedures at two seeds with exact reload and
+corruption recovery (`0.8906/0.9023` new-slot behavior, `1.0000` old-slot
+behavior). This closes the adapter-only capacity failure but remains bounded;
+the next challenge is verified reuse or compression of the local compute
+slots. See
+`session_records/sequence_working_memory_2026-08-02/generated_composition_shared_residual_compute_opaque_replicated_promoted_v1_2026-08-07/`.
+
+The same residual-compute contract now retains three opaque procedures across
+two seeds with reloaded floors `0.8906` and `0.9023` on the middle slot and
+`1.0000` on both outer slots. The append-only local compute slots remain
+isolated; the next challenge is reuse/compression across them rather than
+continued linear growth. See
+`session_records/sequence_working_memory_2026-08-02/generated_composition_shared_residual_compute_opaque_three_replicated_promoted_v1_2026-08-07/`.
+
+The residual-compute bank also retains four opaque procedures across two seeds;
+reloaded floors are `0.8906` and `0.9453` on the weaker local slots, with all
+other slots at `1.0000`. The next challenge is replacing linear local-slot
+growth with verified reuse or compression without sacrificing acquisition.
+See
+`session_records/sequence_working_memory_2026-08-02/generated_composition_shared_residual_compute_opaque_four_replicated_promoted_v1_2026-08-07/`.
+
+`ExternalCapabilityReusableComputeLibrary` now separates physical recurrent
+compute from logical binding adapters and states. Related procedures can share
+one verified compute module; opaque incompatibility is rejected and must grow
+new compute. See
+`session_records/sequence_working_memory_2026-08-02/generated_composition_reusable_compute_registry_replicated_promoted_boundary_v1_2026-08-07/`.
+
+`select_reusable_compute_slot` now provides the safe admission rule: reuse a
+physical compute module only when all fresh probes clear the floor, otherwise
+grow. This enables compression for compatible procedures without blocking
+arbitrary new compute. See
+`session_records/sequence_working_memory_2026-08-02/generated_composition_reuse_first_grow_policy_replicated_boundary_v1_2026-08-07/`.
+
+The candidate-reuse path now probes every physical compute module, selects the
+best fresh-verified binding, and grows only when all candidates fail. This
+supports mixed reuse/growth across three opaque procedures while retaining
+old states. See
+`session_records/sequence_working_memory_2026-08-02/generated_composition_candidate_reuse_opaque_three_replicated_promoted_v1_2026-08-07/`.
+
+The candidate screen now orders those fresh trials from learned-event evidence
+and stops at the first independently verified pass. The paired opaque audit
+passes two seeds: one ambiguous two-module run saves 19.0% of optimizer
+updates and verifier bits with identical behavior and retention, while the
+one-module run is correctly neutral. This promotes conditional trial-cost
+reduction, not verifier-free admission or general continual learning. See
+`session_records/sequence_working_memory_2026-08-02/generated_composition_candidate_screen_opaque_three_replicated_promoted_v1_2026-08-07/`.
+
+The learned page-router growth audit also has a source-only normalization
+boundary: the frozen normalizer is fit only on the original source keys while
+two independently trained append routers acquire later generations. At the
+matched promoted budget, both seeds retain strict candidate/page mastery,
+permutation, shuffled-null, immutability, reload, and zero-replay controls.
+This is bounded external growth, not unrestricted memory growth or general
+continual learning. See
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_page_router_two_generations_66_source_normalizer_promoted_v1_2026-08-08/`.
+
+The same source-only page-router contract survives three independent append
+generations: 84 opaque candidates across 30 pages, with replicated strict
+mastery, permutation, shuffled-null, immutability, reload, and zero-replay
+controls. The retained capability is bounded; routing and verifier work still
+grow linearly, so consolidation/compression remains the next frontier. See
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_page_router_three_generations_84_source_normalizer_promoted_v1_2026-08-08/`.
+
+The reusable compute library now separates physical adapter slots from logical
+bindings as well as physical recurrent compute. A compatible binding may
+share both modules after fresh verifier approval while retaining independent
+external recurrent state; no unconditional compression or general continual
+learning claim follows.

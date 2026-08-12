@@ -1,0 +1,11 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "external_register_multi_heldout_composition_rejected_v1",
+  "claim": "Four learned opaque instructions transfer across multiple held-out orders, but not yet on every order across replicated seeds.",
+  "replayed_examples": 0,
+  "runs": [
+    {"seed": 69316, "composition_updates": 128, "all_targets_transfer": true, "promoted": true, "replayed_examples": 0},
+    {"seed": 69317, "composition_updates": 128, "all_targets_transfer": false, "transfer_count": 2, "target_count": 3, "promoted": false, "replayed_examples": 0},
+    {"seed": 69317, "composition_updates": 256, "all_targets_transfer": false, "transfer_count": 2, "target_count": 3, "promoted": false, "replayed_examples": 0}
+  ]
+}

@@ -1,0 +1,43 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "learned_compute_candidate_screen_page_local_46_source_boundary_rejected_v1",
+  "claim": "The page-local representation boundary preserves unseen growth but does not retain strict source mastery at 20 protected candidates.",
+  "candidate_count": 46,
+  "source_candidate_count": 20,
+  "unseen_candidate_count": 26,
+  "append_stage_sizes": [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
+  "parent_updates": 32,
+  "normalized_base_updates": 1024,
+  "raw_template_updates": 512,
+  "reward_shuffled_updates": 1024,
+  "calibration_updates_per_stage": 32,
+  "batch_size": 12,
+  "key_samples": 12,
+  "replayed_examples": 0,
+  "runs": [
+    {
+      "seed": 69316,
+      "promoted": false,
+      "known_top1_accuracy": 0.9270833135,
+      "known_min_per_target_accuracy": 0.4000000060,
+      "unseen_top1_accuracy": 1.0,
+      "unseen_min_per_target_accuracy": 1.0,
+      "optimizer_updates": 3008,
+      "unique_verifier_bits": 1423872,
+      "unique_logical_lifetimes": 1423488,
+      "replayed_examples": 0
+    },
+    {
+      "seed": 69317,
+      "promoted": false,
+      "known_top1_accuracy": 0.9270833135,
+      "known_min_per_target_accuracy": 0.4000000060,
+      "unseen_top1_accuracy": 1.0,
+      "unseen_min_per_target_accuracy": 1.0,
+      "optimizer_updates": 3008,
+      "unique_verifier_bits": 1423872,
+      "unique_logical_lifetimes": 1423488,
+      "replayed_examples": 0
+    }
+  ]
+}

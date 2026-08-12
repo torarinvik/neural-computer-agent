@@ -1,0 +1,18 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "status": "rejected",
+  "experiment": "verifier-gated adapter sharing",
+  "date": "2026-08-08",
+  "seeds": [69316, 69317],
+  "permutation_control": "source order [2, 1, 0] run for both seeds; one promoted and one failed",
+  "unique_verifier_bits_per_run": 100352,
+  "unique_logical_lifetimes_per_run": 33792,
+  "optimizer_updates_per_run": 1088,
+  "replayed_examples": 0,
+  "wall_gpu_time": "local CPU; see reports",
+  "latency": "not measured",
+  "stable_bits_to_threshold": "incomplete for the failed middle capability",
+  "retention_on_mastered_primitives": "passed in both runs",
+  "transfer_ratio_against_fresh_learner": "not promoted",
+  "decision": "reject promotion; retain ABI and negative evidence"
+}

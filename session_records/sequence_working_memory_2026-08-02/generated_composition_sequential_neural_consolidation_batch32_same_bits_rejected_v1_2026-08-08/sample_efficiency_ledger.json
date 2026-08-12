@@ -1,0 +1,20 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "generated-composition-sequential-neural-consolidation-batch32-same-bits-rejected-v1-2026-08-08",
+  "status": "rejected_batch_scaling_candidate",
+  "seed": 69316,
+  "source_ids": [0, 2, 3, 4],
+  "target_id": 1,
+  "parent_updates": 64,
+  "source_updates": 128,
+  "consolidation_updates": 256,
+  "target_updates": 128,
+  "batch_size": 32,
+  "matched_verifier_bits": true,
+  "optimizer_updates": 2368,
+  "unique_verifier_bits": 446464,
+  "replayed_examples": 0,
+  "first_stage_candidate_behavior": {"0": 0.6953125, "2": 1.0},
+  "rejection_reason": "new source did not master while retaining the first source",
+  "claim_boundary": "Batch scaling is rejected as a drop-in optimizer-update reduction; no consolidation or continual-learning claim is made."
+}

@@ -1,0 +1,35 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "learned_compute_candidate_screen_full_prior_strict_rejected_v1",
+  "claim": "Full append-prior transfer repairs unseen extension routing but does not repair source-screen per-candidate mastery.",
+  "candidate_count": 20,
+  "append_stage_sizes": [2, 2, 2, 2, 2],
+  "calibration_updates_per_stage": 32,
+  "replayed_examples": 0,
+  "runs": [
+    {
+      "seed": 69316,
+      "promoted": true,
+      "known_top1_accuracy": 1.0,
+      "known_min_per_target_accuracy": 1.0,
+      "unseen_top1_accuracy": 1.0,
+      "unseen_min_per_target_accuracy": 1.0,
+      "optimizer_updates": 704,
+      "unique_verifier_bits": 127488,
+      "unique_logical_lifetimes": 127104,
+      "replayed_examples": 0
+    },
+    {
+      "seed": 69317,
+      "promoted": false,
+      "known_top1_accuracy": 0.8541666865,
+      "known_min_per_target_accuracy": 0.0,
+      "unseen_top1_accuracy": 1.0,
+      "unseen_min_per_target_accuracy": 1.0,
+      "optimizer_updates": 704,
+      "unique_verifier_bits": 127488,
+      "unique_logical_lifetimes": 127104,
+      "replayed_examples": 0
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "learned_compute_candidate_screen_consolidation_rejected_v1",
+  "claim": "A first fresh-outcome plus source-distillation replacement did not pass strict per-candidate retention for compacting two append stages; the transactional boundary correctly rejected both seeds.",
+  "candidate_count": 20,
+  "known_candidates": 10,
+  "source_stage_sizes": [2, 2, 2, 2, 2],
+  "proposed_source_indices": [0, 1],
+  "proposed_compact_stage_sizes": [4, 2, 2, 2],
+  "stage_updates": 32,
+  "replacement_updates": 128,
+  "distillation_weight": 1.0,
+  "replayed_examples": 0,
+  "runs": [
+    {
+      "seed": 69316,
+      "promoted": false,
+      "source_top1_accuracy": 1.0,
+      "source_min_per_target_accuracy": 1.0,
+      "replacement_accepted": false,
+      "naive_replacement_rejected": true,
+      "optimizer_updates": 832,
+      "unique_verifier_bits": 132864,
+      "unique_logical_lifetimes": 132864,
+      "replayed_examples": 0
+    },
+    {
+      "seed": 69317,
+      "promoted": false,
+      "source_top1_accuracy": 0.7916666865348816,
+      "source_min_per_target_accuracy": 0.0,
+      "replacement_accepted": false,
+      "naive_replacement_rejected": true,
+      "optimizer_updates": 832,
+      "unique_verifier_bits": 132864,
+      "unique_logical_lifetimes": 132864,
+      "replayed_examples": 0
+    }
+  ]
+}

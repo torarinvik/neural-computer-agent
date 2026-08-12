@@ -1,0 +1,15 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "learned_compute_candidate_screen_dual_signature_rejected_v1",
+  "claim": "Concatenating raw and normalized opaque signatures does not produce stable bank-26 alignment.",
+  "candidate_count": 26,
+  "append_stage_sizes": [2, 2, 2, 2, 2, 2],
+  "screen_updates": 1024,
+  "calibration_updates_per_stage": 32,
+  "signature_width": 64,
+  "replayed_examples": 0,
+  "runs": [
+    {"seed": 69316, "promoted": false, "known_top1_accuracy": 1.0, "known_min_per_target_accuracy": 1.0, "unseen_top1_accuracy": 0.9166666865, "unseen_min_per_target_accuracy": 0.0, "optimizer_updates": 1248, "replayed_examples": 0},
+    {"seed": 69317, "promoted": false, "known_top1_accuracy": 0.9479166865, "known_min_per_target_accuracy": 0.2857142985, "unseen_top1_accuracy": 0.7395833135, "unseen_min_per_target_accuracy": 0.0, "optimizer_updates": 1248, "replayed_examples": 0}
+  ]
+}

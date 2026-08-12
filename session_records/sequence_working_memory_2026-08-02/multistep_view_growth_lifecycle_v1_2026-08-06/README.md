@@ -41,4 +41,3 @@ retention confidence calibrated and proving transfer against a fresh learner.
 
 The complete machine-readable reports are `report_seed69316.json` and
 `report_seed69317.json`.
-

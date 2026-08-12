@@ -1,0 +1,35 @@
+{
+  "experiment": "external_capability_consumer_warmup_rejected_v1_2026-08-06",
+  "status": "rejected_training_strategy",
+  "claim": "Decoder-only warm-up before enabling an inherited head-only consumer was tested without replay and did not pass causal stable-prefix promotion gates.",
+  "seeds": [69316],
+  "accounting_by_arm": {
+    "warmup16_pilot": {
+      "unique_verifier_bits": 9984,
+      "unique_logical_lifetimes": 2688,
+      "optimizer_updates": 304,
+      "replayed_examples": 0,
+      "wall_seconds": 13.508076125
+    },
+    "warmup64_medium": {
+      "unique_verifier_bits": 79872,
+      "unique_logical_lifetimes": 21504,
+      "optimizer_updates": 1216,
+      "replayed_examples": 0,
+      "wall_seconds": 166.300455458
+    },
+    "no_warmup64_medium": {
+      "unique_verifier_bits": 79872,
+      "unique_logical_lifetimes": 21504,
+      "optimizer_updates": 1216,
+      "replayed_examples": 0,
+      "wall_seconds": 169.1676066670043
+    }
+  },
+  "retention_on_mastered_primitives": "The frozen head remained unchanged and reloadable; the shared controller digest was unchanged in both medium arms.",
+  "transfer_ratio_against_fresh_learner": {
+    "warmup64_medium": null,
+    "no_warmup64_medium": null
+  },
+  "reason_rejected": "Warm-up improved target accuracy from 0.640625 to 0.671875 and restored consumer causality, but reward-shuffled accuracy rose to 0.71875, above the real target, and no stable consumer mastery prefix was observed."
+}

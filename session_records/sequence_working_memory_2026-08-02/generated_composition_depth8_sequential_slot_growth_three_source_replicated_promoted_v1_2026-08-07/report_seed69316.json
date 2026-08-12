@@ -1,0 +1,866 @@
+{
+  "schema": "neural-computer.generated-composition-sequential-distilled-consolidation-report.v1",
+  "claim_boundary": "A frozen controller acquired a finite sequence of verifier-private external procedures. Each shared neural rewrite trained only on the newly arrived source and was retention-gated against earlier aliases. This is bounded replay-free sequential consolidation, not general continual learning.",
+  "seed": 69316,
+  "source_ids": [
+    0,
+    1,
+    2
+  ],
+  "target_id": 3,
+  "programs": [
+    [
+      "global_parity",
+      "rotate",
+      "reverse",
+      "forward",
+      "adjacent_xor",
+      "rotate",
+      "rotate",
+      "complement"
+    ],
+    [
+      "complement",
+      "reverse",
+      "adjacent_xor",
+      "rotate",
+      "forward",
+      "global_parity",
+      "rotate",
+      "reverse"
+    ],
+    [
+      "adjacent_xor",
+      "reverse",
+      "reverse",
+      "complement",
+      "forward",
+      "reverse",
+      "prefix_parity",
+      "reverse"
+    ],
+    [
+      "global_parity",
+      "prefix_parity",
+      "adjacent_xor",
+      "prefix_parity",
+      "prefix_parity",
+      "reverse",
+      "rotate",
+      "forward"
+    ]
+  ],
+  "budgets": {
+    "parent_updates": 128,
+    "source_updates": 256,
+    "consolidation_updates": 512,
+    "target_updates": 256,
+    "batch_size": 16,
+    "audit_count": 64,
+    "retention_probes": 4,
+    "eval_every": 32,
+    "reversal_patience": 4
+  },
+  "sources": [
+    {
+      "id": 0,
+      "behavior": 1.0,
+      "stable_bits_to_threshold": 2048,
+      "artifact_digest": "816f8ab377bd155ebc1e1391d68fec6ff3e4fe5e84f03565744b43da87e4d253",
+      "payload_bytes": 335456
+    },
+    {
+      "id": 1,
+      "behavior": 1.0,
+      "stable_bits_to_threshold": 2048,
+      "artifact_digest": "b3c9f4b7f0f7218d2c181794a76c39f7f7997f6f80e4dbdce3367651cfd343ef",
+      "payload_bytes": 335456
+    },
+    {
+      "id": 2,
+      "behavior": 0.91015625,
+      "stable_bits_to_threshold": 14336,
+      "artifact_digest": "a78dbf6b5edb42336aa6ce017cd4595d66bf87247e4fec5526e731a59e655787",
+      "payload_bytes": 335456
+    }
+  ],
+  "source_key_similarity": [
+    [
+      1.0,
+      0.9999372959136963,
+      0.9999458193778992
+    ],
+    [
+      0.9999372959136963,
+      0.9999999403953552,
+      0.9999826550483704
+    ],
+    [
+      0.9999459385871887,
+      0.9999825954437256,
+      1.0
+    ]
+  ],
+  "source_bank": {
+    "initial_capacity": 1,
+    "final_capacity": 2,
+    "final_rows": [
+      0,
+      1
+    ],
+    "final_protection_mask": [
+      true,
+      true
+    ]
+  },
+  "sequential_stages": [
+    {
+      "stage": 1,
+      "new_source_id": 1,
+      "active_source_ids_before": [
+        0
+      ],
+      "admission": {
+        "accepted": true,
+        "action": "grow",
+        "index": 1,
+        "source_capacity": 1,
+        "destination_capacity": 2,
+        "rows_before": 1,
+        "rows_after": 2,
+        "reason": "grown store validated and admitted"
+      },
+      "candidate_behavior_before_rewrite": {
+        "0": 1.0,
+        "1": 1.0
+      },
+      "fresh_new_behavior": 1.0,
+      "candidate_stable_bits_to_threshold": 10240,
+      "fresh_stable_bits_to_threshold": 2048,
+      "candidate_progress": [
+        {
+          "update": 32,
+          "unique_verifier_bits": 2048,
+          "heldout_accuracy": 0.0
+        },
+        {
+          "update": 64,
+          "unique_verifier_bits": 4096,
+          "heldout_accuracy": 0.0
+        },
+        {
+          "update": 96,
+          "unique_verifier_bits": 6144,
+          "heldout_accuracy": 0.0
+        },
+        {
+          "update": 128,
+          "unique_verifier_bits": 8192,
+          "heldout_accuracy": 0.33984375
+        },
+        {
+          "update": 160,
+          "unique_verifier_bits": 10240,
+          "heldout_accuracy": 0.859375
+        },
+        {
+          "update": 192,
+          "unique_verifier_bits": 12288,
+          "heldout_accuracy": 0.98828125
+        },
+        {
+          "update": 224,
+          "unique_verifier_bits": 14336,
+          "heldout_accuracy": 1.0
+        },
+        {
+          "update": 256,
+          "unique_verifier_bits": 16384,
+          "heldout_accuracy": 1.0
+        },
+        {
+          "update": 288,
+          "unique_verifier_bits": 18432,
+          "heldout_accuracy": 1.0
+        },
+        {
+          "update": 320,
+          "unique_verifier_bits": 20480,
+          "heldout_accuracy": 1.0
+        },
+        {
+          "update": 352,
+          "unique_verifier_bits": 22528,
+          "heldout_accuracy": 1.0
+        },
+        {
+          "update": 384,
+          "unique_verifier_bits": 24576,
+          "heldout_accuracy": 1.0
+        },
+        {
+          "update": 416,
+          "unique_verifier_bits": 26624,
+          "heldout_accuracy": 1.0
+        },
+        {
+          "update": 448,
+          "unique_verifier_bits": 28672,
+          "heldout_accuracy": 1.0
+        },
+        {
+          "update": 480,
+          "unique_verifier_bits": 30720,
+          "heldout_accuracy": 1.0
+        },
+        {
+          "update": 512,
+          "unique_verifier_bits": 32768,
+          "heldout_accuracy": 1.0
+        }
+      ],
+      "fresh_progress": [
+        {
+          "update": 32,
+          "unique_verifier_bits": 2048,
+          "heldout_accuracy": 0.92578125
+        },
+        {
+          "update": 64,
+          "unique_verifier_bits": 4096,
+          "heldout_accuracy": 1.0
+        },
+        {
+          "update": 96,
+          "unique_verifier_bits": 6144,
+          "heldout_accuracy": 1.0
+        },
+        {
+          "update": 128,
+          "unique_verifier_bits": 8192,
+          "heldout_accuracy": 1.0
+        },
+        {
+          "update": 160,
+          "unique_verifier_bits": 10240,
+          "heldout_accuracy": 1.0
+        },
+        {
+          "update": 192,
+          "unique_verifier_bits": 12288,
+          "heldout_accuracy": 1.0
+        },
+        {
+          "update": 224,
+          "unique_verifier_bits": 14336,
+          "heldout_accuracy": 1.0
+        },
+        {
+          "update": 256,
+          "unique_verifier_bits": 16384,
+          "heldout_accuracy": 1.0
+        },
+        {
+          "update": 288,
+          "unique_verifier_bits": 18432,
+          "heldout_accuracy": 1.0
+        },
+        {
+          "update": 320,
+          "unique_verifier_bits": 20480,
+          "heldout_accuracy": 1.0
+        },
+        {
+          "update": 352,
+          "unique_verifier_bits": 22528,
+          "heldout_accuracy": 1.0
+        },
+        {
+          "update": 384,
+          "unique_verifier_bits": 24576,
+          "heldout_accuracy": 1.0
+        },
+        {
+          "update": 416,
+          "unique_verifier_bits": 26624,
+          "heldout_accuracy": 1.0
+        },
+        {
+          "update": 448,
+          "unique_verifier_bits": 28672,
+          "heldout_accuracy": 1.0
+        },
+        {
+          "update": 480,
+          "unique_verifier_bits": 30720,
+          "heldout_accuracy": 1.0
+        },
+        {
+          "update": 512,
+          "unique_verifier_bits": 32768,
+          "heldout_accuracy": 1.0
+        }
+      ],
+      "candidate_trained_on_new_source_only": true,
+      "candidate_opaque_slot_masks": {
+        "0": [
+          0,
+          1
+        ],
+        "1": [
+          0,
+          1,
+          2
+        ]
+      },
+      "consolidation": {
+        "accepted": true,
+        "source_indices": [
+          0,
+          1
+        ],
+        "rows_before": 2,
+        "rows_after": 1,
+        "rows_saved": 1,
+        "reason": "behavior verifier passed"
+      },
+      "retention_probe_outcomes": [
+        [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ]
+      ],
+      "verifier_passed": true,
+      "accepted": true,
+      "active_source_ids_after": [
+        0,
+        1
+      ],
+      "behavior_after_reload": {
+        "0": 1.0,
+        "1": 1.0
+      },
+      "shared_alias_digest": "81ddb8e9c2dd3be127ad262a770dd4cf2a3238aed9198927de2b124e1335be4b"
+    },
+    {
+      "stage": 2,
+      "new_source_id": 2,
+      "active_source_ids_before": [
+        0,
+        1
+      ],
+      "admission": {
+        "accepted": true,
+        "action": "grow",
+        "index": 1,
+        "source_capacity": 1,
+        "destination_capacity": 2,
+        "rows_before": 1,
+        "rows_after": 2,
+        "reason": "grown store validated and admitted"
+      },
+      "candidate_behavior_before_rewrite": {
+        "0": 1.0,
+        "1": 1.0,
+        "2": 0.8828125
+      },
+      "fresh_new_behavior": 1.0,
+      "candidate_stable_bits_to_threshold": 18432,
+      "fresh_stable_bits_to_threshold": 10240,
+      "candidate_progress": [
+        {
+          "update": 32,
+          "unique_verifier_bits": 2048,
+          "heldout_accuracy": 0.625
+        },
+        {
+          "update": 64,
+          "unique_verifier_bits": 4096,
+          "heldout_accuracy": 0.625
+        },
+        {
+          "update": 96,
+          "unique_verifier_bits": 6144,
+          "heldout_accuracy": 0.625
+        },
+        {
+          "update": 128,
+          "unique_verifier_bits": 8192,
+          "heldout_accuracy": 0.6171875
+        },
+        {
+          "update": 160,
+          "unique_verifier_bits": 10240,
+          "heldout_accuracy": 0.6953125
+        },
+        {
+          "update": 192,
+          "unique_verifier_bits": 12288,
+          "heldout_accuracy": 0.703125
+        },
+        {
+          "update": 224,
+          "unique_verifier_bits": 14336,
+          "heldout_accuracy": 0.76953125
+        },
+        {
+          "update": 256,
+          "unique_verifier_bits": 16384,
+          "heldout_accuracy": 0.734375
+        },
+        {
+          "update": 288,
+          "unique_verifier_bits": 18432,
+          "heldout_accuracy": 0.75
+        },
+        {
+          "update": 320,
+          "unique_verifier_bits": 20480,
+          "heldout_accuracy": 0.8125
+        },
+        {
+          "update": 352,
+          "unique_verifier_bits": 22528,
+          "heldout_accuracy": 0.84375
+        },
+        {
+          "update": 384,
+          "unique_verifier_bits": 24576,
+          "heldout_accuracy": 0.87109375
+        },
+        {
+          "update": 416,
+          "unique_verifier_bits": 26624,
+          "heldout_accuracy": 0.84375
+        },
+        {
+          "update": 448,
+          "unique_verifier_bits": 28672,
+          "heldout_accuracy": 0.8359375
+        },
+        {
+          "update": 480,
+          "unique_verifier_bits": 30720,
+          "heldout_accuracy": 0.875
+        },
+        {
+          "update": 512,
+          "unique_verifier_bits": 32768,
+          "heldout_accuracy": 0.875
+        }
+      ],
+      "fresh_progress": [
+        {
+          "update": 32,
+          "unique_verifier_bits": 2048,
+          "heldout_accuracy": 0.5390625
+        },
+        {
+          "update": 64,
+          "unique_verifier_bits": 4096,
+          "heldout_accuracy": 0.625
+        },
+        {
+          "update": 96,
+          "unique_verifier_bits": 6144,
+          "heldout_accuracy": 0.66015625
+        },
+        {
+          "update": 128,
+          "unique_verifier_bits": 8192,
+          "heldout_accuracy": 0.69140625
+        },
+        {
+          "update": 160,
+          "unique_verifier_bits": 10240,
+          "heldout_accuracy": 0.78515625
+        },
+        {
+          "update": 192,
+          "unique_verifier_bits": 12288,
+          "heldout_accuracy": 0.89453125
+        },
+        {
+          "update": 224,
+          "unique_verifier_bits": 14336,
+          "heldout_accuracy": 0.9296875
+        },
+        {
+          "update": 256,
+          "unique_verifier_bits": 16384,
+          "heldout_accuracy": 0.93359375
+        },
+        {
+          "update": 288,
+          "unique_verifier_bits": 18432,
+          "heldout_accuracy": 0.92578125
+        },
+        {
+          "update": 320,
+          "unique_verifier_bits": 20480,
+          "heldout_accuracy": 0.96484375
+        },
+        {
+          "update": 352,
+          "unique_verifier_bits": 22528,
+          "heldout_accuracy": 0.99609375
+        },
+        {
+          "update": 384,
+          "unique_verifier_bits": 24576,
+          "heldout_accuracy": 0.984375
+        },
+        {
+          "update": 416,
+          "unique_verifier_bits": 26624,
+          "heldout_accuracy": 1.0
+        },
+        {
+          "update": 448,
+          "unique_verifier_bits": 28672,
+          "heldout_accuracy": 1.0
+        },
+        {
+          "update": 480,
+          "unique_verifier_bits": 30720,
+          "heldout_accuracy": 1.0
+        },
+        {
+          "update": 512,
+          "unique_verifier_bits": 32768,
+          "heldout_accuracy": 1.0
+        }
+      ],
+      "candidate_trained_on_new_source_only": true,
+      "candidate_opaque_slot_masks": {
+        "0": [
+          0,
+          1
+        ],
+        "1": [
+          0,
+          1,
+          2
+        ],
+        "2": [
+          0,
+          1,
+          2,
+          3
+        ]
+      },
+      "consolidation": {
+        "accepted": true,
+        "source_indices": [
+          0,
+          1
+        ],
+        "rows_before": 2,
+        "rows_after": 1,
+        "rows_saved": 1,
+        "reason": "behavior verifier passed"
+      },
+      "retention_probe_outcomes": [
+        [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        [
+          0.875,
+          0.87890625,
+          0.8828125,
+          0.8828125
+        ]
+      ],
+      "verifier_passed": true,
+      "accepted": true,
+      "active_source_ids_after": [
+        0,
+        1,
+        2
+      ],
+      "behavior_after_reload": {
+        "0": 1.0,
+        "1": 1.0,
+        "2": 0.87890625
+      },
+      "shared_alias_digest": "14c6fd1fea4e2674609b4e7529a0aaa11dfb5e989e41f29dc4c2de455484ad55"
+    }
+  ],
+  "active_source_ids": [
+    0,
+    1,
+    2
+  ],
+  "active_opaque_slot_masks": {
+    "0": [
+      0,
+      1
+    ],
+    "1": [
+      0,
+      1,
+      2
+    ],
+    "2": [
+      0,
+      1,
+      2,
+      3
+    ]
+  },
+  "active_source_behavior_after_reload": {
+    "0": 1.0,
+    "1": 1.0,
+    "2": 0.87890625
+  },
+  "active_alias_digests_after_reload": {
+    "0": "14c6fd1fea4e2674609b4e7529a0aaa11dfb5e989e41f29dc4c2de455484ad55",
+    "1": "14c6fd1fea4e2674609b4e7529a0aaa11dfb5e989e41f29dc4c2de455484ad55",
+    "2": "14c6fd1fea4e2674609b4e7529a0aaa11dfb5e989e41f29dc4c2de455484ad55"
+  },
+  "target": {
+    "attempted": true,
+    "inherited_behavior": 1.0,
+    "fresh_behavior": 1.0,
+    "inherited_stable_bits_to_threshold": 4096,
+    "fresh_stable_bits_to_threshold": 4096,
+    "inherited_progress": [
+      {
+        "update": 32,
+        "unique_verifier_bits": 2048,
+        "heldout_accuracy": 0.734375
+      },
+      {
+        "update": 64,
+        "unique_verifier_bits": 4096,
+        "heldout_accuracy": 0.78125
+      },
+      {
+        "update": 96,
+        "unique_verifier_bits": 6144,
+        "heldout_accuracy": 0.890625
+      },
+      {
+        "update": 128,
+        "unique_verifier_bits": 8192,
+        "heldout_accuracy": 0.875
+      },
+      {
+        "update": 160,
+        "unique_verifier_bits": 10240,
+        "heldout_accuracy": 0.96484375
+      },
+      {
+        "update": 192,
+        "unique_verifier_bits": 12288,
+        "heldout_accuracy": 0.98046875
+      },
+      {
+        "update": 224,
+        "unique_verifier_bits": 14336,
+        "heldout_accuracy": 1.0
+      },
+      {
+        "update": 256,
+        "unique_verifier_bits": 16384,
+        "heldout_accuracy": 1.0
+      }
+    ],
+    "fresh_progress": [
+      {
+        "update": 32,
+        "unique_verifier_bits": 2048,
+        "heldout_accuracy": 0.6171875
+      },
+      {
+        "update": 64,
+        "unique_verifier_bits": 4096,
+        "heldout_accuracy": 0.75
+      },
+      {
+        "update": 96,
+        "unique_verifier_bits": 6144,
+        "heldout_accuracy": 0.7578125
+      },
+      {
+        "update": 128,
+        "unique_verifier_bits": 8192,
+        "heldout_accuracy": 0.84765625
+      },
+      {
+        "update": 160,
+        "unique_verifier_bits": 10240,
+        "heldout_accuracy": 0.91796875
+      },
+      {
+        "update": 192,
+        "unique_verifier_bits": 12288,
+        "heldout_accuracy": 1.0
+      },
+      {
+        "update": 224,
+        "unique_verifier_bits": 14336,
+        "heldout_accuracy": 1.0
+      },
+      {
+        "update": 256,
+        "unique_verifier_bits": 16384,
+        "heldout_accuracy": 1.0
+      }
+    ],
+    "trained_on_target_only": true,
+    "admission": {
+      "accepted": true,
+      "action": "grow",
+      "index": 1,
+      "source_capacity": 1,
+      "destination_capacity": 2,
+      "rows_before": 1,
+      "rows_after": 2,
+      "reason": "grown store validated and admitted"
+    },
+    "row": 1,
+    "behavior_after_reload": 1.0,
+    "protected_after_reload": true
+  },
+  "reversal": {
+    "attempted": true,
+    "shared_alias": {
+      "before": {
+        "key_digest": "7fc5ccdadc154e46f692ddd1cac8e93cc8af2ec73cbaf9cd92183bb99beea92e",
+        "observations": 4,
+        "lifetime_observations": 4,
+        "mean_outcome": 0.8798828125,
+        "stable_prefix_minimum": 0.8798828125,
+        "recent_mean": 0.8798828125,
+        "protected": true,
+        "reversal_streak": 0,
+        "reversal_count": 0,
+        "last_step": 32
+      },
+      "after_reversal": {
+        "key_digest": "7fc5ccdadc154e46f692ddd1cac8e93cc8af2ec73cbaf9cd92183bb99beea92e",
+        "observations": 0,
+        "lifetime_observations": 8,
+        "mean_outcome": 0.0,
+        "stable_prefix_minimum": 1.0,
+        "recent_mean": 0.0,
+        "protected": false,
+        "reversal_streak": 0,
+        "reversal_count": 1,
+        "last_step": 40
+      },
+      "after_reversal_row_protected": true,
+      "after_recovery": {
+        "key_digest": "7fc5ccdadc154e46f692ddd1cac8e93cc8af2ec73cbaf9cd92183bb99beea92e",
+        "observations": 4,
+        "lifetime_observations": 12,
+        "mean_outcome": 1.0,
+        "stable_prefix_minimum": 1.0,
+        "recent_mean": 1.0,
+        "protected": true,
+        "reversal_streak": 0,
+        "reversal_count": 1,
+        "last_step": 44
+      },
+      "reversal_detected": true,
+      "alias_released": true,
+      "alias_recovered": true
+    },
+    "target_row": {
+      "before": {
+        "key_digest": "858f6b1b753ae12f4cc396a491455ba364fc11e1395dfd4fce214e9d0f6395e1",
+        "observations": 4,
+        "lifetime_observations": 4,
+        "mean_outcome": 1.0,
+        "stable_prefix_minimum": 1.0,
+        "recent_mean": 1.0,
+        "protected": true,
+        "reversal_streak": 0,
+        "reversal_count": 0,
+        "last_step": 36
+      },
+      "after_reversal": {
+        "key_digest": "858f6b1b753ae12f4cc396a491455ba364fc11e1395dfd4fce214e9d0f6395e1",
+        "observations": 0,
+        "lifetime_observations": 8,
+        "mean_outcome": 0.0,
+        "stable_prefix_minimum": 1.0,
+        "recent_mean": 0.0,
+        "protected": false,
+        "reversal_streak": 0,
+        "reversal_count": 1,
+        "last_step": 48
+      },
+      "after_reversal_row_protected": false,
+      "after_recovery": {
+        "key_digest": "858f6b1b753ae12f4cc396a491455ba364fc11e1395dfd4fce214e9d0f6395e1",
+        "observations": 4,
+        "lifetime_observations": 12,
+        "mean_outcome": 1.0,
+        "stable_prefix_minimum": 1.0,
+        "recent_mean": 1.0,
+        "protected": true,
+        "reversal_streak": 0,
+        "reversal_count": 1,
+        "last_step": 52
+      },
+      "reversal_detected": true,
+      "alias_released": true,
+      "alias_recovered": true
+    },
+    "shared_physical_row_stayed_protected": true,
+    "target_physical_row_released": true
+  },
+  "memory_corruption_control": {
+    "rejected": true,
+    "error_type": "ValueError"
+  },
+  "frozen_core": {
+    "digest_before": "6f6c1b2c04f52255b73768e17b8b28cf88cf14ba6a48437517fe80a07ba8a2ce",
+    "digest_after": "6f6c1b2c04f52255b73768e17b8b28cf88cf14ba6a48437517fe80a07ba8a2ce",
+    "unchanged": true
+  },
+  "accounting": {
+    "unique_verifier_bits": 323584,
+    "unique_logical_lifetimes": 108544,
+    "optimizer_updates": 3456,
+    "replayed_examples": 0,
+    "retention_observations": 52
+  },
+  "gates": {
+    "parent_stable": true,
+    "sources_stable": true,
+    "sources_mastered": true,
+    "source_addresses_separated": true,
+    "all_sequential_stages_adopted": true,
+    "all_sources_retained_after_reload": true,
+    "shared_aliases_resolve_to_one_artifact": true,
+    "target_grown_and_reloaded_mastered": true,
+    "shared_alias_reversal_isolated_and_recovered": true,
+    "target_reversal_released_and_recovered": true,
+    "memory_corruption_rejected": true,
+    "final_bank_reload_exact": true,
+    "core_unchanged": true,
+    "no_replayed_examples": true
+  },
+  "wall_seconds": 394.63410116700106,
+  "promoted": true
+}

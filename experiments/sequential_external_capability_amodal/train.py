@@ -42,6 +42,7 @@ from neural_computer import (
     ExternalCapabilityLifecycle,
     OpaqueAddressRouter,
     OpaqueViewRouteExtension,
+    PersistentOpaqueStateStore,
     RetentionPolicyConfig,
     failure_gated_view_scores,
     paired_counterfactual_ranking_loss,
@@ -571,16 +572,33 @@ def run(args: argparse.Namespace) -> dict[str, object]:
 
     router_path = root / "frozen_base_router.pt"
     extension_path = root / "appended_route_extension.pt"
-    torch.save(base_router.state_dict(), router_path)
-    torch.save(extension.state_dict(), extension_path)
+    base_router_state = PersistentOpaqueStateStore(
+        router_path,
+        configuration={
+            "component": "sequential-external-base-route",
+            "schema": "neural-computer.opaque-address-router.v1",
+            "width": ROUTE_WIDTH,
+            "hidden": 64,
+            "candidate_count": len(PROGRAMS),
+        },
+    )
+    extension_state = PersistentOpaqueStateStore(
+        extension_path,
+        configuration={
+            "component": "sequential-external-route-extension",
+            "schema": "neural-computer.opaque-view-route-extension.v1",
+            "width": ROUTE_WIDTH,
+            "hidden": 64,
+        },
+    )
+    base_router_state.save_module(base_router)
+    extension_state.save_module(extension)
     reloaded_bank = ExecutableArtifactMemory.load(grown_path)
     reloaded_router = OpaqueAddressRouter(width=ROUTE_WIDTH, hidden=64)
-    reloaded_router.load_state_dict(torch.load(router_path, weights_only=False))
+    base_router_state.load_module(reloaded_router)
     reloaded_router.eval()
     reloaded_extension = OpaqueViewRouteExtension(width=ROUTE_WIDTH, hidden=64)
-    reloaded_extension.load_state_dict(
-        torch.load(extension_path, weights_only=False)
-    )
+    extension_state.load_module(reloaded_extension)
     reloaded_extension.eval()
     reloaded_candidates = reloaded_bank.address_rows()
     reloaded_keys = torch.stack([key for _, key in reloaded_candidates])

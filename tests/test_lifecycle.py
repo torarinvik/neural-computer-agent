@@ -4,11 +4,14 @@ import pytest
 import torch
 
 from neural_computer import (
+    CapabilityCandidateSelection,
     CapabilityRetentionLedger,
+    ConfidenceAwareCapabilityStaging,
     ExecutableArtifactMemory,
     ExternalCapabilityLifecycle,
     OpaqueCapacityPlanner,
     RetentionPolicyConfig,
+    select_capability_candidate,
 )
 
 
@@ -33,6 +36,40 @@ def _memory(tmp_path, *, capacity: int) -> ExecutableArtifactMemory:
         capacity=capacity,
         retention_ledger=ledger,
     )
+
+
+def test_candidate_selector_picks_unique_stable_prefix_winner() -> None:
+    decision = select_capability_candidate(
+        (
+            (0.80, 0.80, 0.85),
+            (0.50, 0.76, 0.80),
+        ),
+        threshold=0.75,
+        bits_per_observation=16,
+    )
+
+    assert isinstance(decision, CapabilityCandidateSelection)
+    assert decision.accepted
+    assert decision.selected_index == 0
+    assert decision.stable_bits_to_threshold == (16, 32)
+    assert decision.reason == "unique stable-prefix candidate selected"
+
+
+def test_candidate_selector_rejects_ties_and_unstable_curves() -> None:
+    tied = select_capability_candidate(
+        ((0.80, 0.80), (0.90, 0.90)),
+        bits_per_observation=8,
+    )
+    unstable = select_capability_candidate(
+        ((0.80, 0.70, 0.60), (0.60, 0.70, 0.70)),
+        bits_per_observation=8,
+    )
+
+    assert not tied.accepted
+    assert tied.selected_index is None
+    assert "tied" in tied.reason
+    assert not unstable.accepted
+    assert unstable.stable_bits_to_threshold == (None, None)
 
 
 def test_lifecycle_grows_when_every_existing_capability_is_protected(tmp_path) -> None:
@@ -69,6 +106,51 @@ def test_lifecycle_grows_when_every_existing_capability_is_protected(tmp_path) -
     assert memory.occupied == (0, 1)
 
 
+def test_lifecycle_admits_only_the_stable_prefix_candidate(tmp_path) -> None:
+    memory = _memory(tmp_path, capacity=1)
+    lifecycle = ExternalCapabilityLifecycle(memory)
+    candidates = (
+        (torch.tensor([1.0, 0.0, 0.0, 0.0]), _artifact(1.0)),
+        (torch.tensor([0.0, 1.0, 0.0, 0.0]), _artifact(2.0)),
+    )
+
+    selection, receipt = lifecycle.admit_selected_candidate(
+        candidates,
+        ((0.80, 0.80), (0.50, 0.80)),
+        threshold=0.75,
+        bits_per_observation=8,
+    )
+
+    assert selection.accepted
+    assert selection.selected_index == 0
+    assert receipt is not None and receipt.accepted
+    assert lifecycle.memory.promote(candidates[0][0])[0].index == 0
+    with pytest.raises(LookupError):
+        lifecycle.memory.promote(candidates[1][0])
+
+
+def test_lifecycle_leaves_store_unchanged_when_candidate_selection_ties(
+    tmp_path,
+) -> None:
+    memory = _memory(tmp_path, capacity=1)
+    lifecycle = ExternalCapabilityLifecycle(memory)
+    candidates = (
+        (torch.tensor([1.0, 0.0, 0.0, 0.0]), _artifact(1.0)),
+        (torch.tensor([0.0, 1.0, 0.0, 0.0]), _artifact(2.0)),
+    )
+
+    selection, receipt = lifecycle.admit_selected_candidate(
+        candidates,
+        ((0.80, 0.80), (0.90, 0.90)),
+        threshold=0.75,
+        bits_per_observation=8,
+    )
+
+    assert not selection.accepted
+    assert receipt is None
+    assert lifecycle.memory.occupied == ()
+
+
 def test_lifecycle_evicts_only_an_unprotected_row(tmp_path) -> None:
     memory = _memory(tmp_path, capacity=2)
     lifecycle = ExternalCapabilityLifecycle(memory)
@@ -93,7 +175,9 @@ def test_lifecycle_evicts_only_an_unprotected_row(tmp_path) -> None:
         lifecycle.memory.promote(second)
 
 
-def test_lifecycle_planner_masks_protected_eviction_and_selects_growth(tmp_path) -> None:
+def test_lifecycle_planner_masks_protected_eviction_and_selects_growth(
+    tmp_path,
+) -> None:
     memory = _memory(tmp_path, capacity=2)
     lifecycle = ExternalCapabilityLifecycle(
         memory,
@@ -141,3 +225,120 @@ def test_lifecycle_rejects_unverified_consolidation_without_mutating_source(
     assert lifecycle.memory is memory
     assert lifecycle.memory.capacity == 2
     assert lifecycle.memory.occupied == (0, 1)
+
+
+def test_confidence_aware_staging_adopts_without_replaying_evidence(tmp_path) -> None:
+    memory = _memory(tmp_path, capacity=2)
+    lifecycle = ExternalCapabilityLifecycle(memory)
+    staging = ConfidenceAwareCapabilityStaging(
+        lifecycle,
+        candidate_threshold=0.75,
+        min_candidate_observations=2,
+    )
+    key = torch.tensor([0.0, 0.0, 1.0, 0.0])
+
+    status = staging.stage(key, _artifact(3.0))
+    assert status.observations == 0
+    assert staging.pending_count == 1
+    assert memory.occupied == ()
+
+    pending = staging.observe(key, 1.0)
+    assert pending.pending
+    assert not pending.accepted
+    assert memory.occupied == ()
+
+    admitted = staging.observe(key, 1.0)
+    assert admitted.accepted
+    assert not admitted.pending
+    assert admitted.action == "admit"
+    assert staging.pending_count == 0
+    assert memory.occupied == (0,)
+    assert memory.retention.is_protected(key)
+    assert memory.retention.status(key).observations == 2
+    memory.promote(key)
+
+
+def test_confidence_aware_staging_keeps_unstable_candidate_out_of_full_bank(
+    tmp_path,
+) -> None:
+    memory = _memory(tmp_path, capacity=2)
+    lifecycle = ExternalCapabilityLifecycle(memory)
+    first = torch.tensor([1.0, 0.0, 0.0, 0.0])
+    second = torch.tensor([0.0, 1.0, 0.0, 0.0])
+    candidate = torch.tensor([0.0, 0.0, 1.0, 0.0])
+    for key, value in ((first, 1.0), (second, 2.0)):
+        memory.put(key, _artifact(value))
+        memory.observe_retention(key, 1.0)
+        memory.observe_retention(key, 1.0)
+
+    staging = ConfidenceAwareCapabilityStaging(
+        lifecycle,
+        candidate_threshold=0.75,
+        min_candidate_observations=2,
+    )
+    staging.stage(candidate, _artifact(3.0))
+    staging.observe(candidate, 1.0)
+    result = staging.observe(candidate, 0.0)
+
+    assert not result.accepted
+    assert result.pending
+    assert "stable mastery" in result.reason
+    assert staging.pending_count == 1
+    assert memory.occupied == (0, 1)
+    assert memory.protection_mask().tolist() == [True, True]
+
+
+def test_confidence_aware_staging_reloads_pending_evidence(tmp_path) -> None:
+    memory = _memory(tmp_path, capacity=1)
+    lifecycle = ExternalCapabilityLifecycle(memory)
+    staging_directory = tmp_path / "staging"
+    staging = ConfidenceAwareCapabilityStaging(
+        lifecycle,
+        candidate_threshold=0.75,
+        min_candidate_observations=2,
+        staging_directory=staging_directory,
+    )
+    key = torch.tensor([0.0, 0.0, 1.0, 0.0])
+    staging.stage(key, _artifact(3.0))
+    staging.observe(key, 1.0)
+    assert (staging_directory / "manifest.json").is_file()
+    assert tuple(staging_directory.glob("candidate-*.pt"))
+
+    restored = ConfidenceAwareCapabilityStaging(
+        lifecycle,
+        candidate_threshold=0.75,
+        min_candidate_observations=2,
+        staging_directory=staging_directory,
+    )
+    assert restored.pending_count == 1
+    assert restored.status(key).observations == 1
+    admitted = restored.observe(key, 1.0)
+
+    assert admitted.accepted
+    assert restored.pending_count == 0
+    assert not tuple(staging_directory.glob("candidate-*.pt"))
+    assert memory.retention.status(key).observations == 2
+
+
+def test_confidence_aware_staging_rejects_corrupt_artifact_snapshot(tmp_path) -> None:
+    memory = _memory(tmp_path, capacity=1)
+    lifecycle = ExternalCapabilityLifecycle(memory)
+    staging_directory = tmp_path / "staging"
+    staging = ConfidenceAwareCapabilityStaging(
+        lifecycle,
+        candidate_threshold=0.75,
+        min_candidate_observations=2,
+        staging_directory=staging_directory,
+    )
+    key = torch.tensor([0.0, 0.0, 1.0, 0.0])
+    staging.stage(key, _artifact(3.0))
+    artifact_path = next(staging_directory.glob("candidate-*.pt"))
+    artifact_path.write_bytes(artifact_path.read_bytes() + b"corruption")
+
+    with pytest.raises(ValueError, match="checksum"):
+        ConfidenceAwareCapabilityStaging(
+            lifecycle,
+            candidate_threshold=0.75,
+            min_candidate_observations=2,
+            staging_directory=staging_directory,
+        )

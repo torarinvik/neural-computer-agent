@@ -1,0 +1,11 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "status": "no_new_compute_compression_gain",
+  "experiment": "fresh-adapter admission across protected compute slots",
+  "date": "2026-08-08",
+  "seeds": [69316, 69317],
+  "source_ids": [0, 1, 2, 3, 4],
+  "replayed_examples": 0,
+  "retention_probe_policy": "fixed held-out suite per mastered capability",
+  "decision": "retain matrix admission ABI; reject compute-consolidation claim"
+}

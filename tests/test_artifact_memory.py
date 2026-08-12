@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 import pytest
 import torch
 
@@ -109,6 +111,84 @@ def test_compaction_refuses_to_drop_a_protected_artifact(tmp_path) -> None:
             tmp_path / "unsafe-consolidation",
             verifier=lambda _: True,
         )
+
+
+def test_retention_batch_preserves_order_and_persists_once(tmp_path) -> None:
+    memory = ExecutableArtifactMemory(tmp_path / "batch", width=4, capacity=1)
+    key = torch.tensor([1.0, 0.0, 0.0, 0.0])
+    memory.put(key, _artifact(1.0))
+    original_save_retention = memory.retention.save
+    save_calls = 0
+
+    def save_once(path) -> None:
+        nonlocal save_calls
+        save_calls += 1
+        original_save_retention(path)
+
+    memory.retention.save = save_once
+
+    memory.observe_retention_batch(((key, 1.0), (key, 0.0), (key, 1.0)))
+
+    status = memory.retention.status(key)
+    assert status.observations == 3
+    assert save_calls == 1
+    restored = ExecutableArtifactMemory.load(tmp_path / "batch")
+    assert restored.retention.status(key).observations == 3
+
+
+def test_retention_only_persistence_leaves_structural_snapshot_unchanged(tmp_path) -> None:
+    directory = tmp_path / "retention-only"
+    memory = ExecutableArtifactMemory(directory, width=4, capacity=1)
+    key = torch.tensor([1.0, 0.0, 0.0, 0.0])
+    memory.put(key, _artifact(1.0))
+    manifest_before = (directory / "manifest.json").read_bytes()
+    checksum_before = (directory / "manifest.sha256").read_bytes()
+    retention_before = (directory / "retention-ledger.json").read_bytes()
+
+    memory.observe_retention(key, 1.0)
+
+    assert (directory / "manifest.json").read_bytes() == manifest_before
+    assert (directory / "manifest.sha256").read_bytes() == checksum_before
+    assert (directory / "retention-ledger.json").read_bytes() != retention_before
+
+
+def test_legacy_alias_manifest_defaults_null_bindings(tmp_path) -> None:
+    memory = ExecutableArtifactMemory(tmp_path / "legacy", width=4, capacity=1)
+    primary = torch.tensor([1.0, 0.0, 0.0, 0.0])
+    alias = torch.tensor([0.0, 1.0, 0.0, 0.0])
+    memory.put(primary, _artifact(1.0))
+    memory.alias_keys[0] = [alias]
+    memory.alias_views[0] = ["legacy-alias"]
+    memory.save()
+    manifest_path = tmp_path / "legacy" / "manifest.json"
+    (tmp_path / "legacy" / "manifest.sha256").unlink()
+    manifest = json.loads(manifest_path.read_text())
+    manifest.pop("alias_bindings")
+    manifest_path.write_text(json.dumps(manifest))
+
+    restored = ExecutableArtifactMemory.load(tmp_path / "legacy")
+
+    handle, _ = restored.promote(alias)
+    assert handle.binding is None
+
+
+def test_manifest_checksum_rejects_tampered_alias_binding(tmp_path) -> None:
+    memory = ExecutableArtifactMemory(tmp_path / "checksummed", width=4, capacity=1)
+    primary = torch.tensor([1.0, 0.0, 0.0, 0.0])
+    alias = torch.tensor([0.0, 1.0, 0.0, 0.0])
+    memory.put(primary, _artifact(1.0))
+    memory.alias_keys[0] = [alias]
+    memory.alias_views[0] = ["bound-alias"]
+    memory.alias_bindings[0] = [{"slot_indices": [0, 1]}]
+    memory.save()
+    manifest_path = tmp_path / "checksummed" / "manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    manifest["alias_bindings"][0][0]["slot_indices"] = [0, 1, 2]
+    manifest_path.write_text(json.dumps(manifest))
+
+    with pytest.raises(ValueError, match="manifest checksum"):
+        ExecutableArtifactMemory.load(tmp_path / "checksummed")
+
 
 
 def test_growth_preserves_protected_rows_and_allows_new_write(tmp_path) -> None:
@@ -387,6 +467,10 @@ def test_verified_consolidation_preserves_multiple_opaque_addresses(tmp_path) ->
         tmp_path / "consolidated",
         replacement_aliases=(first, second),
         replacement_alias_views=("left", "right"),
+        replacement_alias_bindings=(
+            {"schema": "opaque-slot-binding-v1", "slot_indices": [0, 1]},
+            {"schema": "opaque-slot-binding-v1", "slot_indices": [0, 1, 2]},
+        ),
         verifier=verifier,
     )
     assert receipt.accepted
@@ -398,7 +482,19 @@ def test_verified_consolidation_preserves_multiple_opaque_addresses(tmp_path) ->
     assert first_handle.index == second_handle.index == 0
     assert first_handle.view == "left"
     assert second_handle.view == "right"
+    assert first_handle.binding == {
+        "schema": "opaque-slot-binding-v1",
+        "slot_indices": [0, 1],
+    }
+    assert second_handle.binding == {
+        "schema": "opaque-slot-binding-v1",
+        "slot_indices": [0, 1, 2],
+    }
     assert [view for _, _, view in restored.view_candidates()] == ["left", "right"]
     promoted_view, _ = restored.promote_view(0, "right")
     assert promoted_view.view == "right"
+    assert promoted_view.binding == {
+        "schema": "opaque-slot-binding-v1",
+        "slot_indices": [0, 1, 2],
+    }
     assert len(source.occupied) == 2

@@ -1,0 +1,17 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "status": "promoted_bounded_eight_capability_protocol",
+  "experiment": "verifier-gated adapter sharing with scored growth and local recovery",
+  "date": "2026-08-08",
+  "seeds": [69316, 69317],
+  "source_ids": [0, 1, 2, 3, 4, 5, 6, 7],
+  "unique_verifier_bits_per_run": 272384,
+  "unique_logical_lifetimes_per_run": 91136,
+  "optimizer_updates_per_run": 2880,
+  "replayed_examples": 0,
+  "retention_probe_policy": "fixed held-out suite per mastered capability",
+  "retention_on_mastered_primitives": "passed",
+  "stable_bits_to_threshold": "passed",
+  "transfer_ratio_against_fresh_learner": "not measured",
+  "decision": "promote bounded eight-capability protocol; retain general-learning boundary"
+}

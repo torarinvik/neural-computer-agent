@@ -1,0 +1,73 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "generated_composition_opaque_rule_sequential_slot_growth_three_source_strict_isolated",
+  "status": "replicated_promoted",
+  "seeds": [69316, 69317],
+  "primitive_family": "opaque_rule",
+  "primitive_family_cardinality": 256,
+  "program_depth": 8,
+  "source_ids": [0, 1, 2],
+  "target_id": 3,
+  "programs": [
+    ["rule:d4", "rule:43", "rule:0e", "rule:c7", "rule:c2", "rule:a4", "rule:8c", "rule:5e"],
+    ["rule:fc", "rule:0c", "rule:f0", "rule:50", "rule:4f", "rule:f3", "rule:3d", "rule:0d"],
+    ["rule:40", "rule:48", "rule:5c", "rule:ac", "rule:3e", "rule:57", "rule:79", "rule:77"],
+    ["rule:e4", "rule:1f", "rule:8c", "rule:ac", "rule:02", "rule:a3", "rule:56", "rule:ac"]
+  ],
+  "budgets": {
+    "parent_updates": 128,
+    "source_updates": 256,
+    "consolidation_updates": 512,
+    "target_updates": 256,
+    "batch_size": 16,
+    "audit_count": 64,
+    "retention_probes": 4,
+    "eval_every": 32,
+    "reversal_patience": 4
+  },
+  "strict_binding_contract": {
+    "new_source_training_slots": [2, 3],
+    "new_source_alias_slots": [2, 3],
+    "old_aliases_remain_bound_to_prior_slots": true,
+    "old_slot_parameters_frozen_during_new_source_training": true,
+    "controller_frozen": true,
+    "replayed_examples": 0
+  },
+  "reload_behavior": {
+    "seed_69316": {"sources": [1.0, 1.0, 1.0], "target": 1.0},
+    "seed_69317": {"sources": [1.0, 0.984375, 1.0], "target": 1.0}
+  },
+  "stable_bits_to_threshold": {
+    "seed_69316": {"stage_1": 8192, "stage_2": 2048, "target": 2048},
+    "seed_69317": {"stage_1": 6144, "stage_2": 2048, "target": 2048}
+  },
+  "accounting": {
+    "unique_verifier_bits_per_seed": 323584,
+    "unique_logical_lifetimes_per_seed": 108544,
+    "optimizer_updates_per_seed": 3456,
+    "replayed_examples_per_seed": 0,
+    "retention_observations_per_seed": 52,
+    "wall_seconds": {"seed_69316": 379.7343182080076, "seed_69317": 385.7315417909995}
+  },
+  "controls": {
+    "underbudget_seed_69316": {
+      "budgets": {"parent_updates": 32, "source_updates": 64, "consolidation_updates": 128, "target_updates": 64},
+      "promoted": false,
+      "reason": "source mastery and retention were not stable",
+      "replayed_examples": 0,
+      "record": "report_strict_short_control_seed69316.json"
+    }
+  },
+  "gates": {
+    "all_sequential_stages_adopted": true,
+    "all_sources_retained_after_reload": true,
+    "target_grown_and_reloaded_mastered": true,
+    "shared_alias_reversal_isolated_and_recovered": true,
+    "target_reversal_released_and_recovered": true,
+    "memory_corruption_rejected": true,
+    "final_bank_reload_exact": true,
+    "core_unchanged": true,
+    "no_replayed_examples": true
+  },
+  "claim_boundary": "Promoted strict replay-free acquisition in fresh external slots with retention-safe alias bindings over a finite 256-member local-rule family. This is not arbitrary program induction, unrestricted memory growth, or general continual learning."
+}

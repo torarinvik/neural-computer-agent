@@ -1,0 +1,54 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "generated_composition_shared_residual_compute_opaque_replicated_promoted_v1",
+  "objective": "Add append-only local recurrent compute so a frozen shared basis can acquire a genuinely opaque new procedure without modifying old capabilities.",
+  "claim_boundary": "Promoted for two runtime-generated opaque procedures at two seeds. This is bounded external compute growth, not general continual learning or unrestricted compression.",
+  "runs": [
+    {
+      "report": "report_seed69316.json",
+      "seed": 69316,
+      "primitive_family": "opaque_rule",
+      "source_ids": [0, 1],
+      "promoted": true,
+      "unique_verifier_bits": 51200,
+      "unique_logical_lifetimes": 17408,
+      "optimizer_updates": 576,
+      "replayed_examples": 0,
+      "wall_seconds": 97.91356650000671,
+      "stable_bits_to_threshold": [2048, 4096],
+      "final_behavior": [1.0, 0.890625],
+      "reload_behavior": [1.0, 0.890625],
+      "corrupted_behavior": 0.625,
+      "recovered_behavior": 0.87890625,
+      "parameter_ratio_to_independent_slots": 0.8221066739470353
+    },
+    {
+      "report": "report_seed69317.json",
+      "seed": 69317,
+      "primitive_family": "opaque_rule",
+      "source_ids": [0, 1],
+      "promoted": true,
+      "unique_verifier_bits": 51200,
+      "unique_logical_lifetimes": 17408,
+      "optimizer_updates": 576,
+      "replayed_examples": 0,
+      "wall_seconds": 80.48616754199611,
+      "stable_bits_to_threshold": [2048, 4096],
+      "final_behavior": [1.0, 0.90234375],
+      "reload_behavior": [1.0, 0.90234375],
+      "corrupted_behavior": 0.36328125,
+      "recovered_behavior": 0.890625,
+      "parameter_ratio_to_independent_slots": 0.8221066739470353
+    }
+  ],
+  "controls": [
+    "fresh held-out retention probes",
+    "frozen shared-base digest",
+    "all protected old-slot digests",
+    "exact state reload",
+    "deliberate residual corruption and recovery",
+    "frozen controller digest",
+    "zero replayed examples",
+    "matched adapter-only opaque rejection at 0.6250"
+  ]
+}

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import random
 import time
 from collections.abc import Callable
@@ -67,16 +68,27 @@ def _pattern_bank(
         if episode_length < 2:
             raise ValueError("episode length must be at least two")
         ones = max(1, episode_length // 2)
+        total_patterns = math.comb(episode_length, ones)
+        if max_family >= total_patterns:
+            raise ValueError("requested family exceeds the generated pattern bank")
+        # Preserve the historical full-bank tensor for small experiments, but
+        # avoid materializing a combinatorial tail that the current schedule
+        # never addresses.  Family IDs are assigned in combinations() order,
+        # so the bounded prefix is exactly the same deterministic namespace.
+        materialized_count = (
+            total_patterns
+            if total_patterns <= 100_000
+            else max_family + 1
+        )
         rows = []
-        for positions in combinations(range(episode_length), ones):
+        for index, positions in enumerate(combinations(range(episode_length), ones)):
+            if index >= materialized_count:
+                break
             row = [0] * episode_length
             for position in positions:
                 row[position] = 1
             rows.append(row)
-        generated = torch.tensor(rows, dtype=torch.long)
-        if max_family >= len(generated):
-            raise ValueError("requested family exceeds the generated pattern bank")
-        return generated
+        return torch.tensor(rows, dtype=torch.long)
     if max_family < len(PATTERNS):
         return PATTERNS
     if max_family < len(EXTENDED_PATTERNS):

@@ -1,0 +1,384 @@
+{
+  "schema": "neural-computer.generated-composition-sequential-slot-isolated-consolidation-report.v1",
+  "claim_boundary": "A frozen controller acquired a finite nonstationary sequence of external procedures. Each new neural slot was trained from fresh outcomes only, then appended under an opaque alias into one retention-gated physical artifact row. This is bounded replay-free slot-isolated growth, not dense shared-weight consolidation or general continual learning.",
+  "seed": 69316,
+  "source_ids": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8
+  ],
+  "target_id": 9,
+  "program_source": "runtime_generated_opaque_rule",
+  "program_seed": 4242,
+  "primitive_family": "opaque_rule",
+  "program_count": 10,
+  "program_depth": 8,
+  "programs": [
+    [
+      "rule:d4",
+      "rule:43",
+      "rule:0e",
+      "rule:c7",
+      "rule:c2",
+      "rule:a4",
+      "rule:8c",
+      "rule:5e"
+    ],
+    [
+      "rule:fc",
+      "rule:0c",
+      "rule:f0",
+      "rule:50",
+      "rule:4f",
+      "rule:f3",
+      "rule:3d",
+      "rule:0d"
+    ],
+    [
+      "rule:40",
+      "rule:48",
+      "rule:5c",
+      "rule:ac",
+      "rule:3e",
+      "rule:57",
+      "rule:79",
+      "rule:77"
+    ],
+    [
+      "rule:e4",
+      "rule:1f",
+      "rule:8c",
+      "rule:ac",
+      "rule:02",
+      "rule:a3",
+      "rule:56",
+      "rule:ac"
+    ],
+    [
+      "rule:b6",
+      "rule:c9",
+      "rule:ce",
+      "rule:a4",
+      "rule:9d",
+      "rule:55",
+      "rule:b0",
+      "rule:f8"
+    ],
+    [
+      "rule:f6",
+      "rule:8e",
+      "rule:2b",
+      "rule:33",
+      "rule:c1",
+      "rule:dc",
+      "rule:ee",
+      "rule:f1"
+    ],
+    [
+      "rule:75",
+      "rule:fd",
+      "rule:72",
+      "rule:35",
+      "rule:e4",
+      "rule:d4",
+      "rule:d7",
+      "rule:71"
+    ],
+    [
+      "rule:7f",
+      "rule:ba",
+      "rule:6e",
+      "rule:c3",
+      "rule:2b",
+      "rule:9e",
+      "rule:1e",
+      "rule:6e"
+    ],
+    [
+      "rule:33",
+      "rule:d8",
+      "rule:04",
+      "rule:0c",
+      "rule:db",
+      "rule:68",
+      "rule:81",
+      "rule:db"
+    ],
+    [
+      "rule:f9",
+      "rule:6f",
+      "rule:d8",
+      "rule:b4",
+      "rule:7d",
+      "rule:53",
+      "rule:d8",
+      "rule:03"
+    ]
+  ],
+  "budgets": {
+    "parent_updates": 16,
+    "source_updates": 16,
+    "target_updates": 16,
+    "batch_size": 8,
+    "audit_count": 16,
+    "retention_probes": 2,
+    "eval_every": 8,
+    "reversal_patience": 4,
+    "torch_threads": 1
+  },
+  "sources": [
+    {
+      "id": 0,
+      "behavior": 1.0,
+      "stable_bits_to_threshold": 256,
+      "artifact_digest": "38aea5e162c81b7e7213689dc97413840b52b7e9961a73e1ea156ef9e6e5c934",
+      "payload_bytes": 335456
+    },
+    {
+      "id": 1,
+      "behavior": 0.625,
+      "stable_bits_to_threshold": null,
+      "artifact_digest": "0b5e73b49d1c7f2c3e9a2e5406c0a48cde8afa382c0aed1678677e763ce2ba3e",
+      "payload_bytes": 335456
+    },
+    {
+      "id": 2,
+      "behavior": 1.0,
+      "stable_bits_to_threshold": 256,
+      "artifact_digest": "092d3be208614a00083700bff9ba547e9e8e3b6accc4c88582f8436956e50d52",
+      "payload_bytes": 335456
+    },
+    {
+      "id": 3,
+      "behavior": 0.8125,
+      "stable_bits_to_threshold": 512,
+      "artifact_digest": "fb8891f0c5ee8b58d2fb961e0a943b19c4673f6e43397d86ba99e640aa12d9cc",
+      "payload_bytes": 335456
+    },
+    {
+      "id": 4,
+      "behavior": 0.75,
+      "stable_bits_to_threshold": 256,
+      "artifact_digest": "dfce23e3d5f13540fe4be5dd677138164c3a2b2918ae83514ae5fb6b68f11ba5",
+      "payload_bytes": 335456
+    },
+    {
+      "id": 5,
+      "behavior": 0.1875,
+      "stable_bits_to_threshold": null,
+      "artifact_digest": "b47fe40c89cdcb9db6023d72d0ab431042d026f9f13e75cc456811e0fb014e8f",
+      "payload_bytes": 335456
+    },
+    {
+      "id": 6,
+      "behavior": 0.75,
+      "stable_bits_to_threshold": 256,
+      "artifact_digest": "1cd5758bf663fd71003cdf836e8f58bc344841cb5d1e8b8cab29845fe5400f67",
+      "payload_bytes": 335456
+    },
+    {
+      "id": 7,
+      "behavior": 0.875,
+      "stable_bits_to_threshold": 256,
+      "artifact_digest": "08f00f095d3823d12683f8a2b6e8f3affb9c82e02350ee35c28d5f7cc15461b2",
+      "payload_bytes": 335456
+    },
+    {
+      "id": 8,
+      "behavior": 0.9375,
+      "stable_bits_to_threshold": 256,
+      "artifact_digest": "f6a0b39a2a9a4656a2ac89a4ddc338d0b38d78dcba7275b69f9bdea66639662c",
+      "payload_bytes": 335456
+    }
+  ],
+  "source_key_similarity": [
+    [
+      0.9999999403953552,
+      0.9993187189102173,
+      0.9996839761734009,
+      0.9998772740364075,
+      0.9996586441993713,
+      0.9995618462562561,
+      0.9992555379867554,
+      0.999370276927948,
+      0.999644935131073
+    ],
+    [
+      0.9993187189102173,
+      1.0000001192092896,
+      0.9994166493415833,
+      0.9991160035133362,
+      0.9994438290596008,
+      0.9996214509010315,
+      0.999276340007782,
+      0.9997130036354065,
+      0.999565601348877
+    ],
+    [
+      0.9996839761734009,
+      0.9994166493415833,
+      1.0000001192092896,
+      0.9996859431266785,
+      0.9997541904449463,
+      0.9995630383491516,
+      0.9995092153549194,
+      0.9995360374450684,
+      0.9997660517692566
+    ],
+    [
+      0.9998772740364075,
+      0.9991160035133362,
+      0.9996859431266785,
+      1.0000001192092896,
+      0.9995031952857971,
+      0.9993785619735718,
+      0.9992241263389587,
+      0.9992110729217529,
+      0.999496579170227
+    ],
+    [
+      0.9996586441993713,
+      0.9994438290596008,
+      0.9997541904449463,
+      0.9995031952857971,
+      1.0000001192092896,
+      0.9997177124023438,
+      0.9995802640914917,
+      0.9995870590209961,
+      0.999754786491394
+    ],
+    [
+      0.9995618462562561,
+      0.9996214509010315,
+      0.9995630383491516,
+      0.9993785619735718,
+      0.9997177124023438,
+      1.0000001192092896,
+      0.9997588396072388,
+      0.9998841285705566,
+      0.9995374083518982
+    ],
+    [
+      0.9992555379867554,
+      0.999276340007782,
+      0.9995092153549194,
+      0.9992241263389587,
+      0.9995802640914917,
+      0.9997588396072388,
+      1.0000001192092896,
+      0.9997514486312866,
+      0.9993127584457397
+    ],
+    [
+      0.999370276927948,
+      0.9997130036354065,
+      0.9995360374450684,
+      0.9992110729217529,
+      0.9995870590209961,
+      0.9998841285705566,
+      0.9997514486312866,
+      1.0000001192092896,
+      0.999527096748352
+    ],
+    [
+      0.9996449947357178,
+      0.999565601348877,
+      0.9997662305831909,
+      0.999496579170227,
+      0.9997547268867493,
+      0.9995373487472534,
+      0.9993127584457397,
+      0.9995270371437073,
+      1.0000001192092896
+    ]
+  ],
+  "sequential_stages": [
+    {
+      "stage": 1,
+      "new_source_id": 1,
+      "active_source_ids_before": [
+        0
+      ],
+      "admission": {
+        "accepted": true,
+        "action": "grow",
+        "index": 1,
+        "source_capacity": 1,
+        "destination_capacity": 2,
+        "rows_before": 1,
+        "rows_after": 2,
+        "reason": "grown store validated and admitted"
+      },
+      "mode": "opaque_alias_addressed_slot_append",
+      "new_slot_trained_from_fresh_outcomes_only": true,
+      "candidate_behavior_before_rewrite": {
+        "0": 1.0,
+        "1": 0.625
+      },
+      "candidate_payload_bytes": 670912,
+      "source_payload_bytes": 670912,
+      "new_source_stable_bits_to_threshold": null,
+      "accepted": false,
+      "reason": "fresh slot or retained alias failed the mastery floor"
+    }
+  ],
+  "active_source_ids": [
+    0
+  ],
+  "active_source_views": [
+    "slot0"
+  ],
+  "active_source_behavior_after_reload": {
+    "0": 1.0
+  },
+  "shared_physical_row": null,
+  "shared_physical_payload_bytes": null,
+  "source_payload_bytes": 3019104,
+  "target": {
+    "attempted": false
+  },
+  "reversal": {
+    "attempted": false
+  },
+  "memory_corruption_control": {
+    "rejected": true,
+    "error_type": "ValueError"
+  },
+  "frozen_core": {
+    "digest_before": "509010adffa6f81dbd774b06170bb71a86ec000208c5a79cdf1de980dcecadfd",
+    "digest_after": "509010adffa6f81dbd774b06170bb71a86ec000208c5a79cdf1de980dcecadfd",
+    "unchanged": true
+  },
+  "accounting": {
+    "unique_verifier_bits": 8704,
+    "unique_logical_lifetimes": 2944,
+    "optimizer_updates": 192,
+    "consolidation_optimizer_updates": 0,
+    "replayed_examples": 0,
+    "retention_observations": 66
+  },
+  "gates": {
+    "parent_stable": false,
+    "sources_stable": false,
+    "sources_mastered": false,
+    "source_addresses_separated": true,
+    "all_sequential_stages_adopted": false,
+    "all_sources_retained_after_reload": false,
+    "all_source_aliases_share_one_physical_row": false,
+    "target_grown_and_reloaded_mastered": false,
+    "shared_alias_reversal_isolated_and_recovered": false,
+    "target_reversal_released_and_recovered": false,
+    "memory_corruption_rejected": true,
+    "final_bank_reload_exact": true,
+    "core_unchanged": true,
+    "no_replayed_examples": true
+  },
+  "wall_seconds": 22.27551854099147,
+  "promoted": false
+}

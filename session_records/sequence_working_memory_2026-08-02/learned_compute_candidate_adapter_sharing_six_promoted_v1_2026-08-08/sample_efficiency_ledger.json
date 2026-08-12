@@ -1,0 +1,17 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "status": "promoted_bounded_six_capability_protocol",
+  "experiment": "verifier-gated adapter sharing with scored growth and local recovery",
+  "date": "2026-08-08",
+  "seeds": [69316, 69317],
+  "source_ids": [0, 1, 2, 3, 4, 5],
+  "unique_verifier_bits": {"seed69316": 198656, "seed69317": 223232},
+  "unique_logical_lifetimes": {"seed69316": 66560, "seed69317": 74752},
+  "optimizer_updates": {"seed69316": 2112, "seed69317": 2368},
+  "replayed_examples": 0,
+  "retention_probe_policy": "fixed held-out suite per mastered capability",
+  "retention_on_mastered_primitives": "passed",
+  "stable_bits_to_threshold": "passed",
+  "transfer_ratio_against_fresh_learner": "not measured",
+  "decision": "promote bounded six-capability protocol; retain general-learning boundary"
+}

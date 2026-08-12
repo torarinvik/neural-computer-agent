@@ -1,0 +1,39 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "repeated-shift-growth-6to8to10to12to14-isolated-v1-2026-08-06",
+  "status": "promoted_isolated_external_growth_to_46_capabilities",
+  "seeds": [69316, 69317],
+  "schedule": [
+    {"family_start": 0, "family_end": 2, "episode_length": 6},
+    {"family_start": 2, "family_end": 10, "episode_length": 8},
+    {"family_start": 10, "family_end": 20, "episode_length": 10},
+    {"family_start": 20, "family_end": 32, "episode_length": 12},
+    {"family_start": 32, "family_end": 46, "episode_length": 14}
+  ],
+  "context_updates_per_seed": [1024, 1024],
+  "credit_updates_per_seed": [512, 512],
+  "external_credit_updates_per_new_capability": [128, 128],
+  "base_route_updates_per_seed": [1024, 1024],
+  "route_extension_updates_per_new_capability": [256, 256],
+  "batch_size": 16,
+  "audit_batch_size": 64,
+  "unique_logical_lifetimes_per_seed": [477560, 477560],
+  "unique_verifier_bits_per_seed": [2916728, 2916728],
+  "optimizer_updates_per_seed": [30720, 30720],
+  "route_optimizer_updates_per_seed": [23552, 23552],
+  "credit_optimizer_updates_per_seed": [512, 512],
+  "external_credit_optimizer_updates_per_seed": [5632, 5632],
+  "replayed_examples_per_seed": [0, 0],
+  "distribution_shifts_per_seed": [4, 4],
+  "wall_seconds": [33.12666895800794, 33.063552874999004],
+  "phase_minimum_route_selection": [
+    [0.921875, 0.890625, 0.921875, 0.859375],
+    [0.890625, 0.90625, 0.859375, 0.875]
+  ],
+  "old_route_accuracy": [1.0, 1.0],
+  "candidate_permutation_accuracy": [1.0, 1.0],
+  "credit_combined_accuracy": [0.9347826086956522, 0.9130434782608695],
+  "retention_reversal_safe": [true, true],
+  "transfer_ratio_against_fresh_learner": [null, null],
+  "claim_boundary": "Promoted bounded four-shift replay-free external growth to 46 capabilities with isolated route/credit state; not unbounded growth, arbitrary program induction, positive transfer, or general continual learning."
+}

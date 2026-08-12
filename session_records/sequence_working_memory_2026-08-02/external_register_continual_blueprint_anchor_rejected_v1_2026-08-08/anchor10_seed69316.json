@@ -1,0 +1,65 @@
+{
+  "schema": "neural-computer.external-register-heldout-primitive-report.v1",
+  "claim_boundary": "Four primitive instruction codes were acquired sequentially, then the interpreter was frozen while a fifth unseen primitive was acquired from fresh outcomes. Positive transfer is required against a matched fresh interpreter.",
+  "seed": 69316,
+  "source_programs": [
+    "reverse",
+    "adjacent_xor",
+    "complement",
+    "prefix_parity"
+  ],
+  "target_program": "rotate",
+  "operator_mode": "factorized_bounded_residual",
+  "primitive_updates": 384,
+  "target_updates": 256,
+  "batch_size": 16,
+  "source_retention_before": [
+    0.609375,
+    0.546875,
+    0.78125,
+    0.984375
+  ],
+  "source_retention_after": [
+    0.609375,
+    0.546875,
+    0.78125,
+    0.984375
+  ],
+  "target": {
+    "inherited_accuracy": 1.0,
+    "fresh_accuracy": 1.0,
+    "reward_shuffled_accuracy": 0.328125,
+    "missing_evidence_accuracy": 0.5,
+    "inherited_stable_bits": 4096,
+    "fresh_stable_bits": 8192,
+    "reload_accuracy": 1.0
+  },
+  "frozen_core": {
+    "unchanged": true
+  },
+  "persistence": {
+    "corruption_rejected": true
+  },
+  "accounting": {
+    "unique_verifier_bits": 151552,
+    "optimizer_updates": 2432,
+    "replayed_examples": 0,
+    "transfer_ratio_against_fresh_learner": 2.0,
+    "wall_seconds": 289.94377783400705
+  },
+  "gates": {
+    "sources_mastered": false,
+    "sources_retained": false,
+    "target_stable": true,
+    "fresh_target_stable": true,
+    "positive_new_primitive_transfer": true,
+    "target_mastered": true,
+    "reward_shuffled_rejected": true,
+    "missing_evidence_rejected": true,
+    "reload_exact": true,
+    "corruption_rejected": true,
+    "frozen_parent": true,
+    "no_replayed_examples": true
+  },
+  "promoted": false
+}

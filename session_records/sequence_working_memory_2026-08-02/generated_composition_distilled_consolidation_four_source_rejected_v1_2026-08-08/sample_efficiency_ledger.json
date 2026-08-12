@@ -1,0 +1,12 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "status": "rejected_four_source_shared_compute_consolidation",
+  "experiment": "fresh-outcome neural consolidation of four external procedures",
+  "date": "2026-08-08",
+  "seeds": [69316, 69317],
+  "source_ids": [0, 2, 3, 4],
+  "replayed_examples": 0,
+  "consolidation_updates_tested": [512, 1024],
+  "retention_probe_policy": "fresh maximin source verification",
+  "decision": "reject shared four-source compute consolidation; retain modular growth"
+}

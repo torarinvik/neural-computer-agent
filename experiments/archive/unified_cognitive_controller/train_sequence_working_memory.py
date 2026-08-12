@@ -69,6 +69,147 @@ class SequenceMemoryBatch:
         return int(self.input_frames.shape[1])
 
 
+_GENERATED_PRIMITIVE_COLUMNS = {
+    # Generic cue patches occupy disjoint three-pixel columns. Their
+    # coordinates are rendering details, not semantic fields exposed to the
+    # controller.
+    "forward": 0,
+    "reverse": 4,
+    "complement": 8,
+    "rotate": 12,
+    "adjacent_xor": 16,
+    "prefix_parity": 20,
+    "global_parity": 24,
+}
+_OPAQUE_RULE_PREFIX = "rule:"
+_GENERATED_COMPOSITIONS = (
+    ("reverse", "complement"),
+    ("complement", "reverse"),
+    ("rotate", "complement"),
+    ("complement", "rotate"),
+    ("reverse", "rotate"),
+    ("rotate", "reverse"),
+    ("reverse", "complement", "rotate"),
+    ("rotate", "complement", "reverse"),
+    ("complement", "rotate", "reverse"),
+    ("reverse", "rotate", "complement"),
+    ("complement", "reverse", "rotate"),
+    ("rotate", "reverse", "complement"),
+)
+MAX_GENERATED_PROGRAM_DEPTH = 8
+GeneratedCompositionGrammar = tuple[tuple[str, ...], ...]
+
+
+def _resolve_generated_compositions(
+    generated_compositions: GeneratedCompositionGrammar | None,
+) -> GeneratedCompositionGrammar:
+    """Resolve and validate a verifier-private runtime program grammar."""
+
+    grammar = (
+        _GENERATED_COMPOSITIONS
+        if generated_compositions is None
+        else tuple(tuple(program) for program in generated_compositions)
+    )
+    if not grammar:
+        raise ValueError("generated composition grammar must not be empty")
+    known_primitives = set(_GENERATED_PRIMITIVE_COLUMNS)
+    for program in grammar:
+        if not program:
+            raise ValueError("generated composition programs must not be empty")
+        if any(
+            primitive not in known_primitives
+            and _parse_opaque_rule(primitive) is None
+            for primitive in program
+        ):
+            raise ValueError("generated composition contains an unknown primitive")
+        if len(program) > MAX_GENERATED_PROGRAM_DEPTH:
+            raise ValueError(
+                "generated composition programs support at most "
+                f"{MAX_GENERATED_PROGRAM_DEPTH} primitives"
+            )
+    return grammar
+
+
+def _parse_opaque_rule(primitive: str) -> int | None:
+    """Parse a verifier-private 8-bit local rule token."""
+
+    if not isinstance(primitive, str) or not primitive.startswith(_OPAQUE_RULE_PREFIX):
+        return None
+    code = primitive.removeprefix(_OPAQUE_RULE_PREFIX)
+    if len(code) != 2:
+        raise ValueError("opaque rule tokens must contain exactly two hex digits")
+    try:
+        value = int(code, 16)
+    except ValueError as error:
+        raise ValueError("opaque rule tokens must contain hexadecimal digits") from error
+    return value
+
+
+def _apply_generated_primitive(
+    sequence: torch.Tensor,
+    primitive: str,
+) -> torch.Tensor:
+    """Apply one verifier-private primitive to binary sequence rows."""
+
+    opaque_rule = _parse_opaque_rule(primitive)
+    if opaque_rule is not None:
+        previous = sequence.roll(shifts=1, dims=1).long()
+        current = sequence.long()
+        following = sequence.roll(shifts=-1, dims=1).long()
+        neighborhood = previous * 4 + current * 2 + following
+        rule = torch.tensor(opaque_rule, dtype=torch.long, device=sequence.device)
+        return torch.bitwise_and(
+            torch.bitwise_right_shift(rule, neighborhood),
+            torch.ones_like(neighborhood),
+        ).to(dtype=sequence.dtype)
+
+    if primitive == "forward":
+        return sequence
+    if primitive == "reverse":
+        return sequence.flip(1)
+    if primitive == "complement":
+        return 1 - sequence
+    if primitive == "rotate":
+        return sequence.roll(shifts=-1, dims=1)
+    if primitive == "adjacent_xor":
+        return (sequence != sequence.roll(shifts=-1, dims=1)).to(
+            dtype=sequence.dtype
+        )
+    if primitive == "prefix_parity":
+        return torch.cumsum(sequence, dim=1).remainder(2)
+    if primitive == "global_parity":
+        return sequence.sum(dim=1, keepdim=True).remainder(2).expand_as(sequence)
+    raise ValueError(f"unknown generated primitive: {primitive}")
+
+
+def _apply_generated_compositions(
+    sequence: torch.Tensor,
+    composition_ids: torch.Tensor,
+    compositions: GeneratedCompositionGrammar | None = None,
+) -> torch.Tensor:
+    """Apply one sampled primitive program independently to each row."""
+
+    grammar = _resolve_generated_compositions(compositions)
+
+    def apply_program(
+        row_sequence: torch.Tensor, primitives: tuple[str, ...]
+    ) -> torch.Tensor:
+        result = row_sequence
+        for primitive in primitives:
+            result = _apply_generated_primitive(result, primitive)
+        return result[0]
+
+    return torch.stack(
+        tuple(
+            apply_program(
+                sequence[row : row + 1],
+                grammar[int(composition_ids[row])],
+            )
+            for row in range(sequence.shape[0])
+        )
+    )
+
+
 def _balanced_binary_sequences(
         count: int, span: int, generator: torch.Generator) -> torch.Tensor:
     """Cover every binary sequence evenly before deterministic shuffling."""
@@ -97,6 +238,8 @@ def _identity_masks(
 def generate_sequence_memory_batch(
         count: int, *, span: int, distractors: int, seed: int,
         operation: str = "mixed", heldout: bool = False,
+        generated_composition_ids: tuple[int, ...] | None = None,
+        generated_compositions: GeneratedCompositionGrammar | None = None,
         position_shift: bool = False,
         position_blend: float = 0.0,
         position_augmentation: bool = False,
@@ -113,16 +256,27 @@ def generate_sequence_memory_batch(
         raise ValueError("span must be positive")
     if distractors < 0:
         raise ValueError("distractors must not be negative")
+    composition_grammar = _resolve_generated_compositions(generated_compositions)
+    if generated_composition_ids is not None:
+        if not generated_composition_ids:
+            raise ValueError("generated composition pool must not be empty")
+        if any(
+            composition_id < 0
+            or composition_id >= len(composition_grammar)
+            for composition_id in generated_composition_ids
+        ):
+            raise ValueError("generated composition ID is out of range")
     if operation not in (
         "forward", "reverse", "mixed", "complement", "complement_reverse",
         "complement_rotate", "adjacent_xor", "prefix_parity", "global_parity",
         "rotate", "undo_complement", "producer_global_parity",
+        "generated_composition",
     ):
         raise ValueError(
             "operation must be forward, reverse, mixed, complement, "
             "complement_reverse, complement_rotate, adjacent_xor, "
             "prefix_parity, global_parity, rotate, undo_complement, or "
-            "producer_global_parity"
+            "producer_global_parity, or generated_composition"
         )
     if not 0.0 <= position_blend <= 1.0:
         raise ValueError("position blend must be within [0, 1]")
@@ -131,7 +285,19 @@ def generate_sequence_memory_batch(
 
     generator = torch.Generator().manual_seed(seed)
     sequence = _balanced_binary_sequences(count, span, generator)
-    if operation in (
+    if operation == "generated_composition":
+        composition_pool = tuple(
+            range(len(composition_grammar))
+            if generated_composition_ids is None
+            else generated_composition_ids
+        )
+        pool = torch.tensor(composition_pool, dtype=torch.long)
+        composition_ids = torch.randint(
+            len(composition_pool), (count,), generator=generator
+        )
+        composition_ids = pool[composition_ids]
+        operation_bits = composition_ids.remainder(2)
+    elif operation in (
         "forward", "complement", "complement_reverse", "complement_rotate",
         "adjacent_xor", "prefix_parity", "global_parity", "rotate",
         "undo_complement", "producer_global_parity",
@@ -252,10 +418,47 @@ def generate_sequence_memory_batch(
         elif operation == "global_parity":
             # A global aggregation cue; it carries no answer or task label.
             operation_column = 28
+        elif operation == "generated_composition":
+            # The sampled grammar emits one generic primitive cue per ordered
+            # band. The verifier-private composition ID never enters the
+            # learner. Each band binds a primitive column to an ordinal marker
+            # without naming the composition or exposing its answer. Eight
+            # bands fit in the rendered 32x32 event.
+            for primitive_index, primitive in enumerate(
+                composition_grammar[int(composition_ids[row])]
+            ):
+                cue_start = 1 + primitive_index * 3
+                if primitive in _GENERATED_PRIMITIVE_COLUMNS:
+                    operation_column = _GENERATED_PRIMITIVE_COLUMNS[primitive]
+                    query_frames[
+                        row,
+                        :,
+                        :,
+                        cue_start:cue_start + 3,
+                        operation_column:operation_column + 3,
+                    ] = 0.95
+                else:
+                    opaque_rule = _parse_opaque_rule(primitive)
+                    assert opaque_rule is not None
+                    for bit in range(8):
+                        if opaque_rule & (1 << bit):
+                            query_frames[
+                                row,
+                                :,
+                                :,
+                                cue_start:cue_start + 3,
+                                bit * 3:bit * 3 + 2,
+                            ] = 0.95
+                query_frames[
+                    row, :, :, cue_start:cue_start + 3, 28:31
+                ] = 0.85
+            operation_column = None
         else:
             operation_column = 2 if int(operation_bits[row]) == 0 else 27
-        query_frames[row, :, :, 2:5, operation_column:operation_column + 3] = (
-            0.95)
+        if operation_column is not None:
+            query_frames[
+                row, :, :, 2:5, operation_column:operation_column + 3
+            ] = 0.95
         if operation == "undo_complement":
             query_frames[row, :, :, 2:5, 6:9] = 0.95
         if operation == "producer_global_parity":
@@ -280,7 +483,12 @@ def generate_sequence_memory_batch(
             operation_bits.unsqueeze(1).bool(), reverse_index, source_index
         )
     )
-    selected_sequence = torch.gather(sequence, 1, selected_index)
+    if operation == "generated_composition":
+        selected_sequence = _apply_generated_compositions(
+            sequence, composition_ids, composition_grammar
+        )
+    else:
+        selected_sequence = torch.gather(sequence, 1, selected_index)
     if operation == "adjacent_xor":
         correct = (sequence != selected_sequence).long()
     elif operation == "prefix_parity":
@@ -295,13 +503,20 @@ def generate_sequence_memory_batch(
         correct = selected_sequence
     elif operation == "producer_global_parity":
         correct = sequence.sum(dim=1, keepdim=True).remainder(2).expand_as(sequence)
+    elif operation == "generated_composition":
+        correct = selected_sequence
     else:
         correct = selected_sequence
 
     if reverse_sequence:
         sequence = sequence.flip(1)
         input_frames = input_frames.flip(1)
-        selected_sequence = torch.gather(sequence, 1, selected_index)
+        if operation == "generated_composition":
+            selected_sequence = _apply_generated_compositions(
+                sequence, composition_ids, composition_grammar
+            )
+        else:
+            selected_sequence = torch.gather(sequence, 1, selected_index)
         if operation == "adjacent_xor":
             correct = (sequence != selected_sequence).long()
         elif operation == "prefix_parity":
@@ -319,6 +534,8 @@ def generate_sequence_memory_batch(
         elif operation == "producer_global_parity":
             correct = sequence.sum(dim=1, keepdim=True).remainder(2).expand_as(
                 sequence)
+        elif operation == "generated_composition":
+            correct = selected_sequence
         else:
             correct = selected_sequence
 

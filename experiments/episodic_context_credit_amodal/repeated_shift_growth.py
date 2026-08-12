@@ -7,6 +7,7 @@ import json
 import time
 from collections.abc import Callable
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 import torch
 from torch.nn import functional as F
@@ -28,7 +29,11 @@ from experiments.episodic_context_credit_amodal.train import (
 )
 from neural_computer import (
     EpisodicContextEncoder,
+    EpisodicCreditHead,
     ExternalGrowthPrior,
+    FactorizedOpaqueAddressRouter,
+    OpaqueViewRouteExtension,
+    PersistentOpaqueStateStore,
     credit_weights_from_logits,
 )
 
@@ -46,6 +51,98 @@ def _parse_int_list(
     if not values or any(value < minimum for value in values):
         raise SystemExit(f"{name} must contain integers >= {minimum}")
     return values
+
+
+def _persist_and_reload_state(
+    state_dir: Path,
+    router: FactorizedOpaqueAddressRouter,
+    extensions: tuple[OpaqueViewRouteExtension, ...],
+    heads: dict[int, EpisodicCreditHead],
+    *,
+    route_width: int,
+    context_hidden: int,
+    context_width: int,
+) -> dict[str, object]:
+    """Persist and independently reload all memory-side learned state."""
+
+    state_dir.mkdir(parents=True, exist_ok=True)
+    base_configuration = {
+        "component": "repeated-shift-base-route",
+        "schema": "neural-computer.factorized-opaque-address-router.v1",
+        "width": route_width,
+        "hidden": 48,
+    }
+    base_store = PersistentOpaqueStateStore(
+        state_dir / "base-route.pt", configuration=base_configuration
+    )
+    digests: dict[str, str] = {"base-route": base_store.save_module(router)}
+    extension_stores: list[PersistentOpaqueStateStore] = []
+    for index, extension in enumerate(extensions):
+        store = PersistentOpaqueStateStore(
+            state_dir / f"extension-{index:03d}.pt",
+            configuration={
+                "component": "repeated-shift-route-extension",
+                "schema": "neural-computer.opaque-view-route-extension.v1",
+                "index": index,
+                "width": route_width,
+                "hidden": 48,
+            },
+        )
+        extension_stores.append(store)
+        digests[f"extension-{index:03d}"] = store.save_module(extension)
+    head_stores: list[PersistentOpaqueStateStore] = []
+    for index, family in enumerate(heads):
+        store = PersistentOpaqueStateStore(
+            state_dir / f"credit-{index:03d}.pt",
+            configuration={
+                "component": "repeated-shift-credit-head",
+                "schema": "neural-computer.episodic-credit-head.v1",
+                "index": index,
+                "family": family,
+                "hidden": context_hidden,
+                "context_width": context_width,
+            },
+        )
+        head_stores.append(store)
+        digests[f"credit-{index:03d}"] = store.save_module(heads[family])
+
+    reloaded_router = FactorizedOpaqueAddressRouter(width=route_width, hidden=48)
+    base_store.load_module(reloaded_router)
+    reloaded_extensions: list[OpaqueViewRouteExtension] = []
+    for store in extension_stores:
+        extension = OpaqueViewRouteExtension(width=route_width, hidden=48)
+        store.load_module(extension)
+        reloaded_extensions.append(extension)
+    reloaded_heads: dict[int, EpisodicCreditHead] = {}
+    for family, store in zip(heads, head_stores, strict=True):
+        head = EpisodicCreditHead(context_hidden, context_width)
+        store.load_module(head)
+        reloaded_heads[family] = head
+
+    corruption_rejected = False
+    with TemporaryDirectory(prefix="repeated-shift-corruption-") as directory:
+        probe_path = Path(directory) / "base-route.pt"
+        payload = torch.load(base_store.path, weights_only=False)
+        first_name = next(iter(payload["state_dict"]))
+        payload["state_dict"][first_name] = payload["state_dict"][first_name].clone()
+        payload["state_dict"][first_name].reshape(-1)[0] += 1.0
+        torch.save(payload, probe_path)
+        probe_store = PersistentOpaqueStateStore(
+            probe_path, configuration=base_configuration
+        )
+        try:
+            probe_store.load()
+        except ValueError as error:
+            corruption_rejected = "checksum" in str(error)
+
+    return {
+        "router": reloaded_router,
+        "extensions": tuple(reloaded_extensions),
+        "heads": reloaded_heads,
+        "digests": digests,
+        "state_file_count": len(digests),
+        "corruption_rejected": corruption_rejected,
+    }
 
 
 def _family_schedule(
@@ -149,11 +246,15 @@ def _credit_accuracy(
         family_total = int(weights.shape[0])
         correct += family_correct
         total += family_total
-        group = next(
-            index
-            for index, (start, end, _length) in enumerate(schedule[1:], start=1)
-            if start <= family < end
-        ) if family >= 2 else 0
+        group = (
+            next(
+                index
+                for index, (start, end, _length) in enumerate(schedule[1:], start=1)
+                if start <= family < end
+            )
+            if family >= 2
+            else 0
+        )
         group_correct[str(group)] = group_correct.get(str(group), 0) + family_correct
         group_total[str(group)] = group_total.get(str(group), 0) + family_total
     return {
@@ -169,6 +270,10 @@ def _credit_accuracy(
 def run(args: argparse.Namespace) -> dict[str, object]:
     started = time.perf_counter()
     seed_everything(args.seed)
+    configured_state_dir = getattr(args, "state_dir", None)
+    state_dir = configured_state_dir or (
+        args.report_out.parent / f"{args.report_out.stem}.state"
+    )
     shift_lengths = _parse_int_list(
         args.shift_episode_lengths,
         name="--shift-episode-lengths",
@@ -188,9 +293,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     if len(schedule) < 3:
         raise ValueError("the repeated-shift audit requires at least two shifts")
     new_families = tuple(
-        family
-        for start, end, _length in schedule[1:]
-        for family in range(start, end)
+        family for start, end, _length in schedule[1:] for family in range(start, end)
     )
     patterns_by_length = {
         episode_length: _pattern_bank(
@@ -274,18 +377,16 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         batch_size=args.audit_batch_size,
     )
 
-    extensions: list[torch.nn.Module] = []
-    shuffled_extensions: list[torch.nn.Module] = []
-    heads: dict[int, torch.nn.Module] = {}
+    extensions: list[OpaqueViewRouteExtension] = []
+    shuffled_extensions: list[OpaqueViewRouteExtension] = []
+    heads: dict[int, EpisodicCreditHead] = {}
     phase_reports: list[dict[str, object]] = []
     growth_prior: ExternalGrowthPrior | None = None
     prior_source_counts: list[int] = []
     for shift_index, (start, end, episode_length) in enumerate(schedule[1:], start=1):
         phase_families = tuple(range(start, end))
         phase_prior = (
-            growth_prior
-            if args.growth_initialization == "prior_average"
-            else None
+            growth_prior if args.growth_initialization == "prior_average" else None
         )
         prior_source_counts.append(
             0 if phase_prior is None else phase_prior.source_count
@@ -349,8 +450,94 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             }
         )
 
+    remediation_history: list[dict[str, object]] = []
+    remediation_optimizer_updates = 0
+    remediation_diagnostic_bits = 0
+    if args.remediation_rounds > 0 and args.remediation_updates > 0:
+        for remediation_round in range(args.remediation_rounds):
+            before: dict[str, float] = {}
+            current_extensions = tuple(extensions)
+            for family in new_families:
+                probe_scores = [
+                    _extension_selection(
+                        router,
+                        query,
+                        old_keys,
+                        family=family,
+                        extensions=current_extensions,
+                        seed=(
+                            args.seed
+                            + 300_000
+                            + remediation_round * 10_000
+                            + repetition * 101
+                            + family
+                        ),
+                        batch_size=args.audit_batch_size,
+                    )[0]
+                    for repetition in range(args.remediation_probe_repetitions)
+                ]
+                before[str(family)] = min(probe_scores)
+            remediation_diagnostic_bits += (
+                len(new_families) * args.remediation_probe_repetitions
+            )
+            weak_families = [
+                family
+                for family in new_families
+                if (before[str(family)] < args.remediation_threshold)
+            ]
+            if not weak_families:
+                break
+            for family in weak_families:
+                extension_index = new_families.index(family)
+                prior = ExternalGrowthPrior.from_module(extensions[extension_index])
+                extensions[extension_index] = train_extension(
+                    query,
+                    new_family=family,
+                    updates=args.remediation_updates,
+                    batch_size=args.batch_size,
+                    seed=(args.seed + 200_000 + remediation_round * 10_000 + family),
+                    negative_families=tuple(range(family)),
+                    growth_prior=prior,
+                    growth_prior_reset_prefixes=(),
+                    growth_prior_mix=1.0,
+                )
+                remediation_optimizer_updates += args.remediation_updates
+            after_extensions = tuple(extensions)
+            after = {
+                str(family): _extension_selection(
+                    router,
+                    query,
+                    old_keys,
+                    family=family,
+                    extensions=after_extensions,
+                    seed=args.seed + 60_001 + family,
+                    batch_size=args.audit_batch_size,
+                )[0]
+                for family in weak_families
+            }
+            remediation_history.append(
+                {
+                    "round": remediation_round + 1,
+                    "weak_families": weak_families,
+                    "before": before,
+                    "after": after,
+                }
+            )
+
     extension_tuple = tuple(extensions)
     shuffled_tuple = tuple(shuffled_extensions)
+    persistent_state = _persist_and_reload_state(
+        state_dir,
+        router,
+        extension_tuple,
+        heads,
+        route_width=int(old_keys.shape[-1]),
+        context_hidden=encoder.hidden,
+        context_width=encoder.context_width,
+    )
+    reloaded_router = persistent_state["router"]
+    reloaded_extensions = persistent_state["extensions"]
+    reloaded_heads = persistent_state["heads"]
     new_selection: dict[str, float] = {}
     ablated_selection: dict[str, float] = {}
     shuffled_selection: dict[str, float] = {}
@@ -409,26 +596,58 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         patterns_by_length=patterns_by_length,
         seed=args.seed + 70_001,
     )
+    reloaded_old_route_accuracy = _route_accuracy(
+        reloaded_router,
+        base_query,
+        old_keys,
+        families=(0, 1),
+        seed=args.seed + 50_001,
+        batch_size=args.audit_batch_size,
+    )
+    reloaded_new_selection: dict[str, float] = {}
+    for family in new_families:
+        selected, _, _, _ = _extension_selection(
+            reloaded_router,
+            query,
+            old_keys,
+            family=family,
+            extensions=reloaded_extensions,
+            seed=args.seed + 60_001 + family,
+            batch_size=args.audit_batch_size,
+        )
+        reloaded_new_selection[str(family)] = selected
+    reloaded_credit_accuracy = _credit_accuracy(
+        encoder,
+        prototypes,
+        reloaded_heads,
+        base_episode_length=args.base_episode_length,
+        new_families=new_families,
+        schedule=schedule,
+        patterns_by_length=patterns_by_length,
+        seed=args.seed + 70_001,
+    )
+    base_credit_bits = (
+        args.credit_updates * args.batch_size * args.base_episode_length * 2
+    )
+    external_credit_bits = sum(
+        args.external_credit_updates * args.batch_size * episode_length * 2
+        for _start, _end, episode_length in schedule[1:]
+        for _ in range(_end - _start)
+    )
+    route_bits = args.route_updates * args.batch_size * 2
+    extension_route_bits = (
+        2 * len(new_families) * args.extension_updates * args.batch_size * 2
+    )
+    remediation_route_bits = remediation_optimizer_updates * args.batch_size * 2
+    retention_bits = int(retention["observation_count"])
     bits = (
-        args.credit_updates
-        * args.batch_size
-        * args.base_episode_length
-        * 2
-        + sum(
-            args.external_credit_updates
-            * args.batch_size
-            * episode_length
-            * 2
-            for _start, _end, episode_length in schedule[1:]
-            for _ in range(_end - _start)
-        )
-        + (
-            args.route_updates
-            + 2 * len(new_families) * args.extension_updates
-        )
-        * args.batch_size
-        * 2
-        + int(retention["observation_count"])
+        base_credit_bits
+        + external_credit_bits
+        + route_bits
+        + extension_route_bits
+        + remediation_route_bits
+        + remediation_diagnostic_bits
+        + retention_bits
     )
     lifetimes = (
         args.context_updates * 2
@@ -437,17 +656,21 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             + args.route_updates
             + len(new_families)
             * (args.external_credit_updates + 2 * args.extension_updates)
+            + remediation_optimizer_updates
+            + remediation_diagnostic_bits
         )
         * args.batch_size
         + int(retention["observation_count"])
     )
+    wall_seconds = time.perf_counter() - started
     report: dict[str, object] = {
         "schema": "neural-computer.episodic-context-credit-repeated-shift-report.v1",
         "claim_boundary": (
-            "A frozen base capability set survives two sequential temporal "
-            "distribution shifts while fresh external routes and isolated "
-            "credit heads are acquired without replay. This is a bounded "
-            "repeated-shift diagnostic, not general continual learning."
+            f"A frozen base capability set survives {len(schedule) - 1} "
+            "sequential temporal distribution shifts while fresh external "
+            "routes and isolated credit heads are acquired without replay. "
+            "This is a bounded repeated-shift diagnostic, not general "
+            "continual learning."
         ),
         "seed": args.seed,
         "schedule": [
@@ -476,7 +699,16 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             else "none"
         ),
         "growth_prior_source_counts": prior_source_counts,
+        "remediation_history": remediation_history,
         "retention_reversal": retention,
+        "persistent_state": {
+            "state_file_count": persistent_state["state_file_count"],
+            "state_digests": persistent_state["digests"],
+            "reloaded_old_route_accuracy": reloaded_old_route_accuracy,
+            "reloaded_new_route_selection": reloaded_new_selection,
+            "reloaded_credit_position_accuracy": reloaded_credit_accuracy,
+            "corruption_rejected": persistent_state["corruption_rejected"],
+        },
         "accounting": {
             "unique_verifier_bits": bits,
             "unique_logical_lifetimes": lifetimes,
@@ -486,21 +718,39 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                 + args.route_updates
                 + len(new_families)
                 * (args.external_credit_updates + 2 * args.extension_updates)
+                + remediation_optimizer_updates
             ),
+            "base_credit_verifier_bits": base_credit_bits,
+            "external_credit_verifier_bits": external_credit_bits,
+            "base_route_verifier_bits": route_bits,
+            "extension_route_verifier_bits": extension_route_bits,
+            "remediation_route_verifier_bits": remediation_route_bits,
+            "remediation_diagnostic_verifier_bits": remediation_diagnostic_bits,
+            "retention_verifier_bits": retention_bits,
+            "route_optimizer_updates": (
+                args.route_updates + 2 * len(new_families) * args.extension_updates
+            ),
+            "credit_optimizer_updates": args.credit_updates,
+            "external_credit_optimizer_updates": (
+                len(new_families) * args.external_credit_updates
+            ),
+            "remediation_optimizer_updates": remediation_optimizer_updates,
+            "persistence_verifier_bits": 0,
+            "persistence_optimizer_updates": 0,
+            "persistence_replayed_examples": 0,
             "replayed_examples": 0,
             "distribution_shifts": len(schedule) - 1,
-            "wall_seconds": time.perf_counter() - started,
+            "wall_seconds": wall_seconds,
+            "latency_seconds_per_unique_lifetime": wall_seconds / max(lifetimes, 1),
+            "transfer_ratio_against_fresh_learner": None,
         },
     }
     report["gates"] = {
         "old_route_retained": old_route_accuracy >= 0.8,
         "candidate_permutation_invariant": permutation_accuracy >= 0.8,
-        "new_routes_recovered": all(
-            value >= 0.8 for value in new_selection.values()
-        ),
+        "new_routes_recovered": all(value >= 0.8 for value in new_selection.values()),
         "new_routes_causal": all(
-            new_selection[key] >= ablated_selection[key] + 0.5
-            for key in new_selection
+            new_selection[key] >= ablated_selection[key] + 0.5 for key in new_selection
         ),
         "reward_shuffled_not_selected": all(
             value <= 0.5 for value in shuffled_selection.values()
@@ -511,13 +761,32 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         ),
         "credit_signal_survives_all_shifts": all(
             credit_accuracy.get(key, 0.0) >= 0.66
-            for key in ("old", "combined", *[f"shift_{i}" for i in range(1, len(schedule))])
+            for key in (
+                "old",
+                "combined",
+                *[f"shift_{i}" for i in range(1, len(schedule))],
+            )
         ),
         "no_replay_after_shifts": True,
         "retention_reversal_safe": (
             retention["full_bank_refuses_eviction"]
             and retention["reversal_releases_only_target"]
             and retention["recovered_protected"]
+        ),
+        "persistent_route_reload": (
+            reloaded_old_route_accuracy >= 0.8
+            and all(value >= 0.8 for value in reloaded_new_selection.values())
+            and all(
+                abs(reloaded_new_selection[key] - new_selection[key]) <= 1e-6
+                for key in new_selection
+            )
+        ),
+        "persistent_credit_reload": all(
+            abs(reloaded_credit_accuracy[key] - credit_accuracy[key]) <= 1e-6
+            for key in credit_accuracy
+        ),
+        "persistent_state_corruption_rejected": bool(
+            persistent_state["corruption_rejected"]
         ),
     }
     report["promoted"] = all(report["gates"].values())
@@ -528,6 +797,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--seed", type=int, default=69316)
     parser.add_argument("--report-out", type=Path, required=True)
+    parser.add_argument("--state-dir", type=Path, default=None)
     parser.add_argument("--base-episode-length", type=int, default=6)
     parser.add_argument("--shift-episode-lengths", default="8,10")
     parser.add_argument("--families-per-shift", default="8,10")
@@ -536,6 +806,10 @@ def main() -> None:
     parser.add_argument("--external-credit-updates", type=int, default=128)
     parser.add_argument("--route-updates", type=int, default=1024)
     parser.add_argument("--extension-updates", type=int, default=256)
+    parser.add_argument("--remediation-updates", type=int, default=0)
+    parser.add_argument("--remediation-rounds", type=int, default=0)
+    parser.add_argument("--remediation-probe-repetitions", type=int, default=8)
+    parser.add_argument("--remediation-threshold", type=float, default=0.8)
     parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--audit-batch-size", type=int, default=64)
     parser.add_argument(
@@ -551,7 +825,14 @@ def main() -> None:
         help="fraction of prior representation to blend into a fresh adapter",
     )
     args = parser.parse_args()
-    if args.base_episode_length < 2 or args.audit_batch_size < 1:
+    if (
+        args.base_episode_length < 2
+        or args.audit_batch_size < 1
+        or args.remediation_updates < 0
+        or args.remediation_rounds < 0
+        or args.remediation_probe_repetitions < 1
+        or not 0.0 <= args.remediation_threshold <= 1.0
+    ):
         raise SystemExit("base episode length and audit batch size are invalid")
     report = run(args)
     args.report_out.parent.mkdir(parents=True, exist_ok=True)

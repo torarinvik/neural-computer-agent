@@ -1,0 +1,535 @@
+{
+  "schema": "neural-computer.generated-composition-shared-residual-bank-report.v1",
+  "claim_boundary": "A frozen controller acquired a finite sequence of opaque runtime procedures. One shared context encoder was trained on the first procedure, then frozen; each later procedure trained only an isolated residual slot and decoder from fresh outcomes. This is bounded shared-computation growth, not general continual learning.",
+  "seed": 69316,
+  "source_ids": [
+    0,
+    1,
+    2
+  ],
+  "bank_mode": "reusable_compute_library",
+  "admission_policy": "screened_first_fresh_pass",
+  "programs": [
+    [
+      "rule:d4",
+      "rule:43",
+      "rule:0e",
+      "rule:c7",
+      "rule:c2",
+      "rule:a4",
+      "rule:8c",
+      "rule:5e"
+    ],
+    [
+      "rule:fc",
+      "rule:0c",
+      "rule:f0",
+      "rule:50",
+      "rule:4f",
+      "rule:f3",
+      "rule:3d",
+      "rule:0d"
+    ],
+    [
+      "rule:40",
+      "rule:48",
+      "rule:5c",
+      "rule:ac",
+      "rule:3e",
+      "rule:57",
+      "rule:79",
+      "rule:77"
+    ]
+  ],
+  "budgets": {
+    "parent_updates": 64,
+    "slot_updates": 256,
+    "batch_size": 16,
+    "audit_count": 64,
+    "retention_probes": 4,
+    "eval_every": 32,
+    "torch_threads": 1,
+    "screen_candidates": true
+  },
+  "stages": [
+    {
+      "stage": 0,
+      "program_id": 0,
+      "slot_index": 0,
+      "trainable_parameters": 43612,
+      "stable_bits_to_threshold": 2048,
+      "new_slot_behavior": 1.0,
+      "new_slot_probe_outcomes": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "retained_old_slot_behavior": [],
+      "retained_old_slot_probe_outcomes": [],
+      "reuse_trial": null,
+      "fresh_outcomes_only": true
+    },
+    {
+      "stage": 1,
+      "program_id": 1,
+      "slot_index": 1,
+      "trainable_parameters": 7803,
+      "stable_bits_to_threshold": 10240,
+      "new_slot_behavior": 0.86328125,
+      "new_slot_probe_outcomes": [
+        0.875,
+        0.8671875,
+        0.87109375,
+        0.86328125
+      ],
+      "retained_old_slot_behavior": [
+        1.0
+      ],
+      "retained_old_slot_probe_outcomes": [
+        [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ]
+      ],
+      "reuse_trial": {
+        "candidates": [
+          {
+            "compute_slot": 0,
+            "screen_rank": 0,
+            "behavior": 0.6640625,
+            "probe_outcomes": [
+              0.67578125,
+              0.6640625,
+              0.68359375,
+              0.6796875
+            ],
+            "stable_bits_to_threshold": null,
+            "fresh_outcomes_only": true
+          }
+        ],
+        "screen_enabled": true,
+        "screen_order": [
+          0
+        ],
+        "screen_trials_attempted": 1,
+        "stopped_after_first_fresh_pass": false,
+        "decision": "grow",
+        "selected_compute_slot": null,
+        "candidate_scores": [
+          [
+            0,
+            0.6640625
+          ]
+        ],
+        "decision_reason": "no_compute_candidate_passed_fresh_probe_floor",
+        "fresh_outcomes_only": true
+      },
+      "fresh_outcomes_only": true
+    },
+    {
+      "stage": 2,
+      "program_id": 2,
+      "slot_index": 2,
+      "trainable_parameters": 4994,
+      "stable_bits_to_threshold": 2048,
+      "new_slot_behavior": 1.0,
+      "new_slot_probe_outcomes": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "retained_old_slot_behavior": [
+        1.0,
+        0.86328125
+      ],
+      "retained_old_slot_probe_outcomes": [
+        [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        [
+          0.8671875,
+          0.8671875,
+          0.87109375,
+          0.86328125
+        ]
+      ],
+      "reuse_trial": {
+        "candidates": [
+          {
+            "compute_slot": 0,
+            "screen_rank": 0,
+            "behavior": 1.0,
+            "probe_outcomes": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "stable_bits_to_threshold": 2048,
+            "fresh_outcomes_only": true
+          }
+        ],
+        "screen_enabled": true,
+        "screen_order": [
+          0,
+          1
+        ],
+        "screen_trials_attempted": 1,
+        "stopped_after_first_fresh_pass": true,
+        "decision": "reuse",
+        "selected_compute_slot": 0,
+        "candidate_scores": [
+          [
+            0,
+            1.0
+          ]
+        ],
+        "decision_reason": "fresh_probe_floor_passed:1.000000",
+        "fresh_outcomes_only": true
+      },
+      "fresh_outcomes_only": true
+    }
+  ],
+  "final_behavior": [
+    1.0,
+    0.8515625,
+    1.0
+  ],
+  "final_probe_outcomes": [
+    [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    [
+      0.87890625,
+      0.8515625,
+      0.875,
+      0.8671875
+    ],
+    [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ]
+  ],
+  "reload_behavior": [
+    1.0,
+    0.8515625,
+    1.0
+  ],
+  "reload_probe_outcomes": [
+    [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    [
+      0.87890625,
+      0.8515625,
+      0.875,
+      0.8671875
+    ],
+    [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ]
+  ],
+  "candidate_screen": {
+    "enabled": true,
+    "configuration": {
+      "schema": "neural-computer.external-capability-compute-screen.v1",
+      "width": 32,
+      "candidate_count": 2,
+      "context_count": 2,
+      "query": "learned_event_context_v1",
+      "evidence": "opaque_scalar_verifier_outcomes_v1",
+      "fallback": "global_opaque_candidate_prior_v1",
+      "role": "order_only_fresh_admission_required"
+    },
+    "payload": {
+      "schema": "neural-computer.external-capability-compute-screen.v1",
+      "width": 32,
+      "evidence": {
+        "schema": "neural-computer.persistent-opaque-context-route-evidence.v1",
+        "width": 32,
+        "matching_tolerance": 0.0001,
+        "prior_strength": 1.0,
+        "mastery_threshold": 0.75,
+        "min_mastery_observations": 1,
+        "reversal_threshold": 0.5,
+        "reversal_patience": 4,
+        "slot_count": 2,
+        "version": 12,
+        "contexts": [
+          {
+            "key": [
+              -0.009316831827163696,
+              0.0021124810446053743,
+              -0.18404150009155273,
+              0.3144417107105255,
+              -0.017808835953474045,
+              -0.19748927652835846,
+              -0.2693840563297272,
+              -0.10633062571287155,
+              -0.1648121178150177,
+              -0.05609416216611862,
+              -0.04535935819149017,
+              0.08434248715639114,
+              0.07043980807065964,
+              -0.005474152974784374,
+              -0.055454280227422714,
+              0.005982669536024332,
+              -0.1043463721871376,
+              -0.16446803510189056,
+              -0.21818505227565765,
+              -0.08886633068323135,
+              0.3090723156929016,
+              -0.21062324941158295,
+              0.31013286113739014,
+              0.09719549119472504,
+              0.44147923588752747,
+              0.11022760719060898,
+              -0.02995814010500908,
+              -0.1734038144350052,
+              0.06406532973051071,
+              0.3394140601158142,
+              -0.004655821248888969,
+              -0.009048836305737495
+            ],
+            "evidence": {
+              "schema": "neural-computer.persistent-opaque-route-evidence.v1",
+              "prior_strength": 1.0,
+              "mastery_threshold": 0.75,
+              "min_mastery_observations": 1,
+              "reversal_threshold": 0.5,
+              "reversal_patience": 4,
+              "attempts": [
+                4,
+                0
+              ],
+              "successes": [
+                2.703125,
+                0.0
+              ],
+              "stable_prefix_minimum": [
+                0.669921875,
+                1.0
+              ],
+              "protected": [
+                false,
+                false
+              ],
+              "reversal_streak": [
+                0,
+                0
+              ],
+              "reversal_count": [
+                0,
+                0
+              ],
+              "preferred_slot": null,
+              "last_slot": 0,
+              "last_outcome": 0.6796875,
+              "version": 6
+            }
+          },
+          {
+            "key": [
+              0.004830130375921726,
+              -0.009694652631878853,
+              -0.18500231206417084,
+              0.28944745659828186,
+              -0.03397822752594948,
+              -0.17603947222232819,
+              -0.26038068532943726,
+              -0.11169098317623138,
+              -0.1742655485868454,
+              -0.05903301388025284,
+              -0.06360243260860443,
+              0.08796923607587814,
+              0.06735802441835403,
+              -0.010336099192500114,
+              -0.05106468126177788,
+              0.0028478307649493217,
+              -0.10573066771030426,
+              -0.1472298949956894,
+              -0.2126118689775467,
+              -0.1018037423491478,
+              0.324177086353302,
+              -0.21925778687000275,
+              0.31020811200141907,
+              0.11798929423093796,
+              0.465579628944397,
+              0.10001694411039352,
+              -0.020701294764876366,
+              -0.17453375458717346,
+              0.060676563531160355,
+              0.31970730423927307,
+              -0.024357236921787262,
+              0.026036998257040977
+            ],
+            "evidence": {
+              "schema": "neural-computer.persistent-opaque-route-evidence.v1",
+              "prior_strength": 1.0,
+              "mastery_threshold": 0.75,
+              "min_mastery_observations": 1,
+              "reversal_threshold": 0.5,
+              "reversal_patience": 4,
+              "attempts": [
+                4,
+                0
+              ],
+              "successes": [
+                4.0,
+                0.0
+              ],
+              "stable_prefix_minimum": [
+                1.0,
+                1.0
+              ],
+              "protected": [
+                true,
+                false
+              ],
+              "reversal_streak": [
+                0,
+                0
+              ],
+              "reversal_count": [
+                0,
+                0
+              ],
+              "preferred_slot": 0,
+              "last_slot": 0,
+              "last_outcome": 1.0,
+              "version": 6
+            }
+          }
+        ]
+      },
+      "global_evidence": {
+        "schema": "neural-computer.persistent-opaque-route-evidence.v1",
+        "prior_strength": 1.0,
+        "mastery_threshold": 0.75,
+        "min_mastery_observations": 1,
+        "reversal_threshold": 0.5,
+        "reversal_patience": 4,
+        "attempts": [
+          8,
+          0
+        ],
+        "successes": [
+          6.703125,
+          0.0
+        ],
+        "stable_prefix_minimum": [
+          0.669921875,
+          1.0
+        ],
+        "protected": [
+          false,
+          false
+        ],
+        "reversal_streak": [
+          0,
+          0
+        ],
+        "reversal_count": [
+          0,
+          0
+        ],
+        "preferred_slot": null,
+        "last_slot": 0,
+        "last_outcome": 1.0,
+        "version": 10
+      }
+    },
+    "observations": 8,
+    "reload_exact": true
+  },
+  "memory_corruption": {
+    "slot": 2,
+    "corrupted_behavior": 0.0,
+    "corrupted_probe_outcomes": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "recovered_behavior": 1.0,
+    "recovered_probe_outcomes": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "clean_digest": "152dd66ccef8af320124c3671a6edb616a68142720c88617fea4668b2e8f1d26",
+    "corrupted_digest": "12abd608a0b4f6eeb83f8b60589483389b24bf0b6900ea6908fb1cc7f2df4fe6",
+    "recovered_digest": "152dd66ccef8af320124c3671a6edb616a68142720c88617fea4668b2e8f1d26",
+    "checksum_mismatch_detected": true
+  },
+  "parameter_accounting": {
+    "full_program_plus_decoder_per_slot": 40291,
+    "shared_bank_plus_decoder_total": 56409,
+    "ratio_to_independent_slots": 0.46667990370057827,
+    "shared_context_encoder": 35809,
+    "residual_per_slot": 7497,
+    "physical_compute_slots": 2,
+    "logical_bindings": 3,
+    "decoder_per_slot": 306
+  },
+  "frozen_core": {
+    "digest_before": "f97115efa49befdbbf102259384d49e1818a10835f51368b7665b49a6afcef0b",
+    "digest_after": "f97115efa49befdbbf102259384d49e1818a10835f51368b7665b49a6afcef0b",
+    "unchanged": true
+  },
+  "accounting": {
+    "unique_verifier_bits": 100352,
+    "unique_logical_lifetimes": 33792,
+    "optimizer_updates": 1088,
+    "replayed_examples": 0,
+    "retention_observations": 48,
+    "candidate_screen_observations": 8
+  },
+  "controls": {
+    "old_slot_weights_unchanged": true,
+    "shared_base_frozen_after_first_slot": true,
+    "shared_base_digest_stable_after_growth": true,
+    "final_reload_exact": true,
+    "memory_corruption_detected_and_recovered": true,
+    "parent_unchanged": true,
+    "no_replayed_examples": true,
+    "candidate_screen_reload_exact": true
+  },
+  "gates": {
+    "parent_stable": true,
+    "all_slots_stable": true,
+    "all_slots_mastered": true,
+    "retained_during_growth": true,
+    "retained_after_reload": true,
+    "old_slot_weights_unchanged": true,
+    "shared_base_frozen_after_first_slot": true,
+    "shared_base_digest_stable_after_growth": true,
+    "shared_payload_reduced": true,
+    "final_reload_exact": true,
+    "memory_corruption_detected_and_recovered": true,
+    "core_unchanged": true,
+    "no_replayed_examples": true,
+    "candidate_screen_reload_exact": true
+  },
+  "wall_seconds": 80.8585224999988,
+  "promoted": true
+}

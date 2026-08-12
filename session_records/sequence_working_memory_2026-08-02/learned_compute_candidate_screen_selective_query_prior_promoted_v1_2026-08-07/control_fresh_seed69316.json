@@ -1,0 +1,171 @@
+{
+  "schema": "neural-computer.learned-compute-candidate-screen-report.v1",
+  "claim_boundary": "A replaceable memory-side screen learned an opaque query/key compatibility relation from attempted scalar outcomes. The screen only orders candidates; fresh verifier admission remains required. This is a bounded generalization audit, not general continual learning.",
+  "seed": 69316,
+  "primitive_family": "opaque_rule",
+  "candidate_count": 10,
+  "train_candidate_count": 7,
+  "known_candidate_count": 7,
+  "unseen_candidate_count": 3,
+  "calibration_enabled": true,
+  "append_only_enabled": true,
+  "append_only_inherit_base": false,
+  "append_only_prior_mode": "none",
+  "append_only_stages": 2,
+  "append_only_stage_sizes": [
+    1,
+    2
+  ],
+  "configuration": {
+    "schema": "neural-computer.external-capability-append-only-learned-compute-screen.v1",
+    "query_width": 32,
+    "key_width": 32,
+    "latent_width": 32,
+    "hidden": 64,
+    "extension_sizes": [
+      1,
+      2
+    ],
+    "base_enabled": true,
+    "extension_enabled": [
+      true,
+      true
+    ],
+    "failure_signal": "cumulative_stage_scalar_verifier_failure_v1",
+    "growth": "isolated_append_only_memory_state_v1",
+    "role": "order_only_fresh_admission_required"
+  },
+  "budgets": {
+    "parent_updates": 32,
+    "screen_updates": 512,
+    "calibration_updates": 64,
+    "append_only_stages": 2,
+    "append_only_inherit_base": false,
+    "append_only_prior_mode": "none",
+    "append_only_stage_sizes": [
+      1,
+      2
+    ],
+    "batch_size": 12,
+    "audit_count": 96,
+    "key_samples": 12,
+    "screen_hidden": 64,
+    "latent_width": 32
+  },
+  "candidate_key_digest": "728a60172a24c537caebb678dc7e61620c137f8b80c5dad9980602198cf9ed53",
+  "training": {
+    "optimizer_updates": 512,
+    "unique_verifier_bits": 61440,
+    "unique_logical_lifetimes": 61440,
+    "informative_candidate_pairs": 55296,
+    "replayed_examples": 0,
+    "final_loss": 7.9823010310065e-05
+  },
+  "append_only_training": null,
+  "train_metrics": {
+    "top1_accuracy": 1.0,
+    "mean_fresh_attempts": 1.0,
+    "fresh_verifier_authorized_rate": 1.0
+  },
+  "novel_context_metrics": {
+    "top1_accuracy": 1.0,
+    "mean_fresh_attempts": 1.0,
+    "fresh_verifier_authorized_rate": 1.0,
+    "failed_extension_gate": 0.0
+  },
+  "unseen_candidate_metrics": {
+    "top1_accuracy": 1.0,
+    "mean_fresh_attempts": 1.0,
+    "fresh_verifier_authorized_rate": 1.0,
+    "failed_extension_gate": 0.8333333134651184
+  },
+  "append_only_unseen_pre_failure_metrics": {
+    "top1_accuracy": 0.0,
+    "mean_fresh_attempts": 3.0,
+    "fresh_verifier_authorized_rate": 0.0,
+    "failed_extension_gate": 0.0
+  },
+  "append_only_unseen_permuted_accuracy": 1.0,
+  "initial_novel_context_metrics": {
+    "top1_accuracy": 1.0,
+    "mean_fresh_attempts": 1.0,
+    "fresh_verifier_authorized_rate": 1.0
+  },
+  "initial_unseen_candidate_metrics": {
+    "top1_accuracy": 0.0,
+    "mean_fresh_attempts": 2.3854167461395264,
+    "fresh_verifier_authorized_rate": 0.0
+  },
+  "calibrated_novel_context_metrics": {
+    "top1_accuracy": 1.0,
+    "mean_fresh_attempts": 1.0,
+    "fresh_verifier_authorized_rate": 1.0,
+    "failed_extension_gate": 0.0
+  },
+  "calibrated_unseen_candidate_metrics": {
+    "top1_accuracy": 1.0,
+    "mean_fresh_attempts": 1.0,
+    "fresh_verifier_authorized_rate": 1.0,
+    "failed_extension_gate": 0.8333333134651184
+  },
+  "cold_metrics": {
+    "top1_accuracy": 0.1458333283662796,
+    "mean_fresh_attempts": 3.9479167461395264,
+    "fresh_verifier_authorized_rate": 0.1458333283662796
+  },
+  "reward_shuffled_training": {
+    "optimizer_updates": 512,
+    "unique_verifier_bits": 61440,
+    "unique_logical_lifetimes": 61440,
+    "informative_candidate_pairs": 55296,
+    "replayed_examples": 0,
+    "final_loss": 0.6935105323791504
+  },
+  "reward_shuffled_novel_context_metrics": {
+    "top1_accuracy": 0.1458333283662796,
+    "mean_fresh_attempts": 4.375,
+    "fresh_verifier_authorized_rate": 0.1458333283662796
+  },
+  "candidate_permutation_accuracy": 1.0,
+  "reload_metrics": {
+    "top1_accuracy": 1.0,
+    "mean_fresh_attempts": 1.0,
+    "fresh_verifier_authorized_rate": 1.0,
+    "failed_extension_gate": 0.0
+  },
+  "accounting": {
+    "unique_verifier_bits": 64512,
+    "unique_logical_lifetimes": 64128,
+    "optimizer_updates": 672,
+    "replayed_examples": 0,
+    "screen_informative_pairs": 55296,
+    "calibration_optimizer_updates": 128,
+    "calibration_unique_verifier_bits": 2304,
+    "calibration_unique_logical_lifetimes": 2304,
+    "calibration_informative_outcomes": 768,
+    "calibration_replayed_examples": 0
+  },
+  "controls": {
+    "parent_digest_before": "a9a7debc79ef1d72d0ef5db36c5da83d1dd5f75742c9789af45aebde233634f4",
+    "parent_digest_after": "a9a7debc79ef1d72d0ef5db36c5da83d1dd5f75742c9789af45aebde233634f4",
+    "parent_unchanged": true,
+    "screen_reload_exact": true,
+    "fresh_admission_required": true
+  },
+  "gates": {
+    "parent_stable": true,
+    "novel_context_generalization": true,
+    "novel_context_beats_cold_start": true,
+    "unseen_candidate_acquired": true,
+    "known_context_retained_after_calibration": true,
+    "candidate_permutation": true,
+    "append_only_unseen_candidate_permutation": true,
+    "reward_shuffled_null": true,
+    "reload_exact": true,
+    "reload_behavior_exact": true,
+    "core_unchanged": true,
+    "no_replayed_examples": true
+  },
+  "promoted": true,
+  "wall_seconds": 16.31758712499868
+}

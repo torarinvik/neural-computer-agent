@@ -1,0 +1,91 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "status": "rejected_four_instruction_operator_boundary",
+  "experiment": "external_register_four_instruction_rejected_v1_2026-08-07",
+  "entries": [
+    {
+      "arm": "factorized_low_rank",
+      "rung": "short",
+      "seed": 69316,
+      "unique_verifier_bits": 55296,
+      "unique_logical_lifetimes": 13824,
+      "optimizer_updates": 960,
+      "replayed_examples": 0,
+      "stable_bits_to_threshold": null,
+      "retention_on_mastered_primitives": 0.703125,
+      "decision": "reject_undertrained"
+    },
+    {
+      "arm": "factorized_low_rank",
+      "rung": "acquisition",
+      "seed": 69316,
+      "unique_verifier_bits": 147456,
+      "unique_logical_lifetimes": 36864,
+      "optimizer_updates": 2432,
+      "replayed_examples": 0,
+      "stable_bits_to_threshold": 28672,
+      "fresh_stable_bits_to_threshold": 16384,
+      "transfer_ratio_against_fresh_learner": 0.5714285714285714,
+      "retention_on_mastered_primitives": 0.7734375,
+      "decision": "reject_adjacent_xor_retention_and_transfer"
+    },
+    {
+      "arm": "factorized_film",
+      "rung": "acquisition",
+      "seed": 69316,
+      "unique_verifier_bits": 147456,
+      "unique_logical_lifetimes": 36864,
+      "optimizer_updates": 2432,
+      "replayed_examples": 0,
+      "stable_bits_to_threshold": 12288,
+      "fresh_stable_bits_to_threshold": 12288,
+      "transfer_ratio_against_fresh_learner": 1.0,
+      "retention_on_mastered_primitives": 0.8125,
+      "decision": "reject_no_positive_transfer"
+    },
+    {
+      "arm": "factorized_hybrid",
+      "rung": "acquisition",
+      "seed": 69316,
+      "unique_verifier_bits": 147456,
+      "unique_logical_lifetimes": 36864,
+      "optimizer_updates": 2432,
+      "replayed_examples": 0,
+      "stable_bits_to_threshold": null,
+      "fresh_stable_bits_to_threshold": 12288,
+      "transfer_ratio_against_fresh_learner": null,
+      "retention_on_mastered_primitives": 0.94140625,
+      "decision": "reject_unstable_serial_composition"
+    },
+    {
+      "arm": "factorized_hybrid_pretrained",
+      "rung": "deep_blueprint",
+      "seed": 69316,
+      "interpreter_pretrain_updates": 256,
+      "unique_verifier_bits": 161792,
+      "unique_logical_lifetimes": 40448,
+      "optimizer_updates": 2656,
+      "replayed_examples": 0,
+      "stable_bits_to_threshold": null,
+      "fresh_stable_bits_to_threshold": 4096,
+      "transfer_ratio_against_fresh_learner": null,
+      "retention_on_mastered_primitives": 0.93359375,
+      "decision": "reject_composition_collapse_after_pretraining"
+    },
+    {
+      "arm": "factorized_hybrid_composition_pretrained",
+      "rung": "short_blueprint",
+      "seed": 69316,
+      "interpreter_composition_pretrain_updates": 64,
+      "unique_verifier_bits": 75776,
+      "unique_logical_lifetimes": 18944,
+      "optimizer_updates": 1280,
+      "replayed_examples": 0,
+      "stable_bits_to_threshold": null,
+      "fresh_stable_bits_to_threshold": 4096,
+      "transfer_ratio_against_fresh_learner": null,
+      "retention_on_mastered_primitives": 0.78125,
+      "decision": "reject_no_mechanistic_signal_for_scaling"
+    }
+  ]
+}

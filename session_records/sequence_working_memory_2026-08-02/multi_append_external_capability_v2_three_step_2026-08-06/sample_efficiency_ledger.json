@@ -1,0 +1,37 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "multi-append-external-capability-v2-three-step-2026-08-06",
+  "status": "replicated_promoted_three_step_replay_free_external_growth",
+  "seeds": [69316, 69317],
+  "base_operations": ["reverse", "forward", "complement"],
+  "append_operations": ["rotate", "adjacent_xor", "complement_rotate"],
+  "parent_updates_per_seed": 128,
+  "old_capability_updates_per_seed": 256,
+  "append_capability_updates_per_seed": 256,
+  "base_route_updates_per_seed": 1024,
+  "extension_route_updates_per_append_per_seed": 512,
+  "reward_shuffled_extension_updates_per_append_per_seed": 512,
+  "batch_size": 16,
+  "route_batch_size": 16,
+  "audit_count": 64,
+  "retention_probes": 8,
+  "physical_rows": 6,
+  "unique_logical_lifetimes_per_seed": [116736, 116736],
+  "unique_verifier_bits_per_seed": [294912, 294912],
+  "optimizer_updates_per_seed": [1664, 1664],
+  "route_optimizer_updates_per_seed": [4096, 4096],
+  "route_unique_lifetimes_per_seed": [65536, 65536],
+  "route_unique_verifier_bits_per_seed": [131072, 131072],
+  "replayed_examples_per_seed": [0, 0],
+  "distribution_shifts_per_seed": [3, 3],
+  "wall_seconds": [580.2902462080092, 671.8713089999947],
+  "route_rates_per_seed": [
+    {"old": 1.0, "rotate4": 1.0, "adjacent_xor4": 1.0, "complement_rotate4": 1.0, "combined": 1.0},
+    {"old": 1.0, "rotate4": 1.0, "adjacent_xor4": 1.0, "complement_rotate4": 1.0, "combined": 1.0}
+  ],
+  "reward_shuffled_selection_per_seed": [
+    {"rotate4": 0.0, "adjacent_xor4": 0.0, "complement_rotate4": 0.0},
+    {"rotate4": 0.0, "adjacent_xor4": 0.0, "complement_rotate4": 0.0}
+  ],
+  "claim_boundary": "Replicated bounded three-step replay-free external growth with protected artifacts, causal routing, and persistent reload; not general continual learning or unrestricted memory growth."
+}

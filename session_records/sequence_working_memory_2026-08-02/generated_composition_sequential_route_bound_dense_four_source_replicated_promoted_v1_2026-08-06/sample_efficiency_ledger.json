@@ -1,0 +1,137 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "generated-composition-sequential-route-bound-dense-four-source-replicated-promoted-v1-2026-08-06",
+  "status": "replicated_promoted_four_source_replay_free_dense_expansion_with_opaque_slot_binding",
+  "seeds": [69316, 69317],
+  "source_ids": [0, 2, 3, 4],
+  "target_id": 1,
+  "parent_updates": 128,
+  "source_updates": 256,
+  "consolidation_updates": 512,
+  "target_updates": 256,
+  "batch_size": 16,
+  "audit_count": 64,
+  "retention_probes": 4,
+  "eval_every": 32,
+  "reversal_patience": 4,
+  "source_behavior_per_seed": [
+    [0.953125, 1.0, 0.953125, 1.0],
+    [0.97265625, 1.0, 0.984375, 1.0]
+  ],
+  "final_source_behavior_after_reload_per_seed": [
+    [0.95703125, 1.0, 0.9375, 1.0],
+    [0.98046875, 1.0, 0.984375, 1.0]
+  ],
+  "opaque_slot_masks_after_final_growth": {
+    "0": [0, 1],
+    "2": [0, 1, 2],
+    "3": [0, 1, 2, 3],
+    "4": [0, 1, 2, 3, 4]
+  },
+  "target_inherited_stable_bits_per_seed": [2048, 2048],
+  "target_fresh_stable_bits_per_seed": [14336, 8192],
+  "target_inherited_behavior_after_reload_per_seed": [1.0, 1.0],
+  "target_fresh_behavior_per_seed": [0.91796875, 1.0],
+  "shared_physical_payload_bytes_per_seed": [1341824, 1341824],
+  "source_payload_sum_bytes_per_seed": [1341824, 1341824],
+  "payload_ratio_per_seed": [1.0, 1.0],
+  "all_sequential_stages_adopted": [true, true],
+  "all_source_aliases_retained_after_reload": [true, true],
+  "all_source_aliases_share_one_physical_row": [true, true],
+  "target_admission_action_per_seed": ["grow", "grow"],
+  "shared_alias_reversal_isolated_and_recovered": [true, true],
+  "target_reversal_released_and_recovered": [true, true],
+  "memory_corruption_rejected": [true, true],
+  "core_unchanged": [true, true],
+  "unique_verifier_bits_per_seed": [446464, 446464],
+  "unique_logical_lifetimes_per_seed": [149504, 149504],
+  "optimizer_updates_per_seed": [4736, 4736],
+  "replayed_examples": 0,
+  "short_rung_rejection": {
+    "seed": 69316,
+    "parent_updates": 8,
+    "source_updates": 16,
+    "consolidation_updates": 32,
+    "target_updates": 16,
+    "promoted": false,
+    "reason": "curriculum budget was too small to protect the first source"
+  },
+  "dense_shared_expansion_rejection": {
+    "seed": 69316,
+    "source_0_behavior_before": 0.953125,
+    "source_0_behavior_after_new_source_only_update": 0.625,
+    "source_2_behavior_after_update": 1.0,
+    "promoted": false,
+    "reason": "new route stole probability mass on old inputs without replay"
+  },
+  "feedback_underflow_guard": {
+    "promoted": true,
+    "change": "clamp logged propensities to dtype tiny before next feedback validation",
+    "reason": "long four-source rollout exposed exact-zero softmax probabilities"
+  },
+  "sparse_execution_follow_up": {
+    "seed": 69316,
+    "promoted": true,
+    "reference_wall_seconds": 961.3217642920063,
+    "sparse_wall_seconds": 831.4222969580005,
+    "wall_time_ratio": 0.8648976532741588,
+    "gates_equal_to_reference": true,
+    "behavior_equal_to_reference": true,
+    "report": "report_sparse_execution_seed69316.json",
+    "remaining_bottleneck": "batch-divergent masks execute the union of active slots"
+  },
+  "grouped_execution_rejection": {
+    "seed": 69316,
+    "candidate": "python_subset_scatter_per_slot_v1",
+    "reference_wall_seconds": 831.4222969580005,
+    "candidate_wall_seconds": 935.1606820829911,
+    "candidate_wall_time_ratio": 1.1247721951943646,
+    "semantic_gates_passed": true,
+    "promoted": false,
+    "reason": "Python subset/scatter overhead exceeded saved masked-slot compute",
+    "next_direction": "compiled_or_batched_grouped_execution"
+  },
+  "persisted_binding_follow_up": {
+    "seed": 69316,
+    "promoted": true,
+    "reference_report": "report_sparse_execution_seed69316.json",
+    "report": "report_persisted_binding_seed69316.json",
+    "reference_wall_seconds": 831.4222969580005,
+    "persisted_binding_wall_seconds": 1244.6177032910055,
+    "wall_time_ratio": 1.496974170460427,
+    "gates_equal_to_reference": true,
+    "behavior_equal_to_reference": true,
+    "remaining_bottleneck": "repeated retention and manifest writes"
+  },
+  "batched_retention_follow_up": {
+    "seed": 69316,
+    "semantic_gates_passed": true,
+    "report": "report_batched_persistence_seed69316.json",
+    "focused_scalar_save_calls": 8,
+    "focused_batch_save_calls": 1,
+    "persisted_binding_wall_seconds": 1244.6177032910055,
+    "batched_wall_seconds": 1363.867502375011,
+    "wall_time_ratio": 1.095812391844248,
+    "end_to_end_speedup_promoted": false,
+    "remaining_bottleneck": "filesystem and artifact execution variance still dominates full audit wall time"
+  },
+  "retention_only_persistence_follow_up": {
+    "seed": 69316,
+    "semantic_gates_passed": true,
+    "report": "report_retention_only_persistence_seed69316.json",
+    "persisted_binding_wall_seconds": 1244.6177032910055,
+    "retention_only_wall_seconds": 1332.187087875005,
+    "wall_time_ratio": 1.0703584597522999,
+    "structural_snapshot_untouched": true,
+    "end_to_end_speedup_promoted": false,
+    "promoted_as": "retention-only write-scope and correctness boundary",
+    "reason": "semantic behavior was identical, but full-audit timing was 7.0% slower"
+  },
+  "manifest_binding_integrity": {
+    "legacy_sidecarless_load_supported": true,
+    "tampered_alias_binding_rejected": true,
+    "mechanism": "atomic manifest.sha256 sidecar"
+  },
+  "promotion_gate_passed": true,
+  "claim_boundary": "Replicated four-source replay-free dense external growth with opaque slot binding, one physical artifact row, target transfer, and reversal/recovery; sparse execution, neural compression, unrestricted memory growth, and general continual learning remain unqualified."
+}

@@ -1,0 +1,167 @@
+{
+  "schema": "neural-computer.external-register-multi-heldout-composition-report.v1",
+  "claim_boundary": "One frozen external interpreter reuses four learned opaque instructions across three new held-out compositions. Each target has an independent external decoder and fresh learner control.",
+  "seed": 69317,
+  "source_programs": [
+    "reverse",
+    "adjacent_xor",
+    "complement",
+    "prefix_parity"
+  ],
+  "target_programs": [
+    [
+      "prefix_parity",
+      "complement",
+      "reverse",
+      "adjacent_xor"
+    ],
+    [
+      "adjacent_xor",
+      "reverse",
+      "prefix_parity",
+      "complement"
+    ],
+    [
+      "complement",
+      "prefix_parity",
+      "adjacent_xor",
+      "reverse"
+    ]
+  ],
+  "target_orders": [
+    [
+      3,
+      2,
+      0,
+      1
+    ],
+    [
+      1,
+      0,
+      3,
+      2
+    ],
+    [
+      2,
+      3,
+      1,
+      0
+    ]
+  ],
+  "operator_mode": "factorized_bounded_residual",
+  "primitive_updates": 384,
+  "composition_updates": 128,
+  "batch_size": 16,
+  "source_retention_before": [
+    1.0,
+    0.8671875,
+    0.83984375,
+    0.86328125
+  ],
+  "source_retention_after": [
+    1.0,
+    0.875,
+    0.83203125,
+    0.86328125
+  ],
+  "targets": [
+    {
+      "order": [
+        3,
+        2,
+        0,
+        1
+      ],
+      "program": [
+        "prefix_parity",
+        "complement",
+        "reverse",
+        "adjacent_xor"
+      ],
+      "inherited_accuracy": 0.87890625,
+      "fresh_accuracy": 0.9375,
+      "reward_shuffled_accuracy": 0.43359375,
+      "missing_evidence_accuracy": 0.5,
+      "inherited_stable_bits": 8192,
+      "fresh_stable_bits": 8192,
+      "positive_transfer": false,
+      "mastered": true,
+      "shuffled_rejected": true,
+      "missing_rejected": true
+    },
+    {
+      "order": [
+        1,
+        0,
+        3,
+        2
+      ],
+      "program": [
+        "adjacent_xor",
+        "reverse",
+        "prefix_parity",
+        "complement"
+      ],
+      "inherited_accuracy": 1.0,
+      "fresh_accuracy": 1.0,
+      "reward_shuffled_accuracy": 0.59765625,
+      "missing_evidence_accuracy": 0.375,
+      "inherited_stable_bits": 4096,
+      "fresh_stable_bits": 8192,
+      "positive_transfer": true,
+      "mastered": true,
+      "shuffled_rejected": true,
+      "missing_rejected": true
+    },
+    {
+      "order": [
+        2,
+        3,
+        1,
+        0
+      ],
+      "program": [
+        "complement",
+        "prefix_parity",
+        "adjacent_xor",
+        "reverse"
+      ],
+      "inherited_accuracy": 0.90625,
+      "fresh_accuracy": 0.87890625,
+      "reward_shuffled_accuracy": 0.52734375,
+      "missing_evidence_accuracy": 0.5,
+      "inherited_stable_bits": 8192,
+      "fresh_stable_bits": 16384,
+      "positive_transfer": true,
+      "mastered": true,
+      "shuffled_rejected": true,
+      "missing_rejected": true
+    }
+  ],
+  "reload": {
+    "accuracy": 0.87890625
+  },
+  "frozen_core": {
+    "unchanged": true
+  },
+  "accounting": {
+    "unique_verifier_bits": 176128,
+    "optimizer_updates": 2816,
+    "replayed_examples": 0,
+    "wall_seconds": 369.8754207500024
+  },
+  "gates": {
+    "sources_mastered": true,
+    "sources_retained": true,
+    "all_targets_mastered": true,
+    "all_targets_stable": true,
+    "all_targets_transfer": false,
+    "all_shuffled_rejected": true,
+    "all_missing_rejected": true,
+    "reload_exact": true,
+    "corruption_rejected": true,
+    "frozen_parent": true,
+    "no_replayed_examples": true
+  },
+  "promoted": false
+}

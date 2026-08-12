@@ -12,6 +12,7 @@ import torch
 import torch.nn.functional as F
 
 from experiments.archive.unified_cognitive_controller.train_sequence_working_memory import (
+    GeneratedCompositionGrammar,
     generate_sequence_memory_batch,
 )
 from experiments.frozen_core_transfer_amodal.train import _train_with_progress
@@ -27,6 +28,7 @@ from neural_computer import (
     ExternalCapabilityProgram,
     OpaqueAddressRouter,
     OpaqueProtocolDecoder,
+    PersistentOpaqueStateStore,
     paired_counterfactual_ranking_loss,
 )
 
@@ -120,6 +122,8 @@ def _route_queries(
     span: int,
     count: int,
     seed: int,
+    generated_composition_ids: tuple[int, ...] | None = None,
+    generated_compositions: GeneratedCompositionGrammar | None = None,
 ) -> torch.Tensor:
     batch = generate_sequence_memory_batch(
         count,
@@ -127,6 +131,8 @@ def _route_queries(
         distractors=1,
         seed=seed,
         operation=operation,
+        generated_composition_ids=generated_composition_ids,
+        generated_compositions=generated_compositions,
     )
     state = parent.initial_state(batch.batch_size, device=batch.input_frames.device)
     zeros = torch.zeros(batch.batch_size, device=batch.input_frames.device)
@@ -232,6 +238,7 @@ def _rollout_capability(
     batch,
     *,
     train: bool,
+    capability_slot_mask: torch.Tensor | None = None,
 ) -> dict[str, torch.Tensor]:
     device = batch.input_frames.device
     state = parent.initial_state(batch.batch_size, device=device)
@@ -255,13 +262,18 @@ def _rollout_capability(
         with torch.no_grad():
             event = encoder(frame)
             output, state = parent.step_streams({"vision": frame}, state, feedback)
+        step_kwargs = {
+            "event": event,
+            "action": previous_action,
+            "outcome": previous_reward,
+            "intention": output.intention,
+            "state": capability_state,
+            "present": present,
+        }
+        if capability_slot_mask is not None:
+            step_kwargs["slot_mask"] = capability_slot_mask
         adapted, capability_state = program.step(
-            event=event,
-            action=previous_action,
-            outcome=previous_reward,
-            intention=output.intention,
-            state=capability_state,
-            present=present,
+            **step_kwargs,
         )
         return decoder(adapted)
 
@@ -302,6 +314,9 @@ def _rollout_capability(
             1,
             action.unsqueeze(1),
         ).squeeze(1).detach()
+        previous_propensity = previous_propensity.clamp_min(
+            torch.finfo(probabilities.dtype).tiny
+        )
         previous_has_feedback = torch.ones_like(previous_reward)
     return {"loss": torch.stack(losses).mean(), "rewards": torch.stack(rewards, dim=1)}
 
@@ -319,6 +334,8 @@ def _train_capability(
     audit_count: int,
     eval_every: int,
     learning_rate: float,
+    generated_composition_ids: tuple[int, ...] | None = None,
+    generated_compositions: GeneratedCompositionGrammar | None = None,
 ) -> tuple[list[dict[str, float | int]], list[dict[str, float | int]]]:
     trainable = list(program.parameters()) + list(decoder.parameters())
     optimizer = torch.optim.AdamW(trainable, lr=learning_rate, weight_decay=1e-5)
@@ -333,6 +350,8 @@ def _train_capability(
             distractors=1,
             seed=seed + update * 10_007,
             operation=operation,
+            generated_composition_ids=generated_composition_ids,
+            generated_compositions=generated_compositions,
         )
         target_result = _rollout_capability(
             parent,
@@ -378,6 +397,8 @@ def _train_capability(
                 distractors=1,
                 seed=seed + 1_000_000 + update,
                 operation=operation,
+                generated_composition_ids=generated_composition_ids,
+                generated_compositions=generated_compositions,
             )
             progress.append(
                 {
@@ -411,6 +432,9 @@ def _capability_accuracy(
     span: int,
     count: int,
     seed: int,
+    generated_composition_ids: tuple[int, ...] | None = None,
+    generated_compositions: GeneratedCompositionGrammar | None = None,
+    capability_slot_mask: torch.Tensor | None = None,
 ) -> float:
     batch = generate_sequence_memory_batch(
         count,
@@ -418,11 +442,18 @@ def _capability_accuracy(
         distractors=1,
         seed=seed,
         operation=operation,
+        generated_composition_ids=generated_composition_ids,
+        generated_compositions=generated_compositions,
     )
     return float(
-        _rollout_capability(parent, program, decoder, batch, train=False)[
-            "rewards"
-        ].mean()
+        _rollout_capability(
+            parent,
+            program,
+            decoder,
+            batch,
+            train=False,
+            capability_slot_mask=capability_slot_mask,
+        )["rewards"].mean()
     )
 
 
@@ -638,12 +669,22 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         )
 
     router_path = args.report_out.parent / "router.pt"
-    torch.save(router.state_dict(), router_path)
+    route_state = PersistentOpaqueStateStore(
+        router_path,
+        configuration={
+            "component": "parent-conditioned-artifact-route",
+            "schema": "neural-computer.opaque-address-router.v1",
+            "width": 48,
+            "hidden": 64,
+            "candidate_count": len(PROGRAMS),
+        },
+    )
+    route_state.save_module(router)
     reloaded = ExecutableArtifactMemory.load(bank_path)
     reloaded_candidates = reloaded.address_rows()
     reloaded_keys = torch.stack([key for _, key in reloaded_candidates])
     reloaded_router = OpaqueAddressRouter(width=48, hidden=64)
-    reloaded_router.load_state_dict(torch.load(router_path, weights_only=False))
+    route_state.load_module(reloaded_router)
     reloaded_router.eval()
     reloaded_route_accuracy = _route_accuracy(
         reloaded_router,

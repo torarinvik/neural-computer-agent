@@ -42,4 +42,3 @@ bounded continual memory: executable artifacts are externally acquired, the
 verifier gates consolidation, and the route learner does not synthesize an
 arbitrary new program. Open-ended nonstationary growth, robust positive
 transfer, byte-level compression, and general continual learning remain open.
-

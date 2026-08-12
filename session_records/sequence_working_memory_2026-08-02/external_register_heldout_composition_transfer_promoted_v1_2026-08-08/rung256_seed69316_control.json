@@ -1,0 +1,84 @@
+{
+  "schema": "neural-computer.external-register-heldout-composition-report.v1",
+  "claim_boundary": "A new verifier-private program composition uses only four opaque instruction vectors acquired earlier. The shared interpreter is frozen before composition acquisition; fresh learning is measured against an identical-size interpreter trained directly on the new composition.",
+  "seed": 69316,
+  "source_programs": [
+    "reverse",
+    "adjacent_xor",
+    "complement",
+    "prefix_parity"
+  ],
+  "heldout_program": [
+    "prefix_parity",
+    "complement",
+    "reverse",
+    "adjacent_xor"
+  ],
+  "instruction_order": [
+    3,
+    2,
+    0,
+    1
+  ],
+  "operator_mode": "factorized_bounded_residual",
+  "primitive_updates": 256,
+  "composition_updates": 256,
+  "batch_size": 16,
+  "span": 4,
+  "audit_count": 64,
+  "source_retention_before_composition": [
+    1.0,
+    0.890625,
+    0.90625,
+    0.8515625
+  ],
+  "source_retention_after_composition": [
+    1.0,
+    0.88671875,
+    0.8984375,
+    0.85546875
+  ],
+  "composition": {
+    "inherited_accuracy": 0.875,
+    "fresh_accuracy": 0.96875,
+    "reward_shuffled_accuracy": 0.328125,
+    "missing_evidence_accuracy": 0.5,
+    "inherited_stable_bits": 8192,
+    "fresh_stable_bits": 8192,
+    "reload_accuracy": 0.875
+  },
+  "parent": {
+    "final_accuracy": 1.0
+  },
+  "frozen_core": {
+    "before": "06562d446344c900a3f8accb6d26df0dd5b8d410147aacdd8064c34915c4620c",
+    "after": "06562d446344c900a3f8accb6d26df0dd5b8d410147aacdd8064c34915c4620c",
+    "unchanged": true
+  },
+  "persistence": {
+    "corruption_rejected": true
+  },
+  "accounting": {
+    "unique_verifier_bits": 118784,
+    "optimizer_updates": 1920,
+    "replayed_examples": 0,
+    "stable_bits_to_threshold": 8192,
+    "transfer_ratio_against_fresh_learner": 1.0,
+    "wall_seconds": 274.34481858299114
+  },
+  "gates": {
+    "sources_mastered_before_composition": true,
+    "sources_retained_after_composition": true,
+    "composition_stable": true,
+    "fresh_composition_stable": true,
+    "positive_composition_transfer": false,
+    "composition_mastered": true,
+    "reward_shuffled_rejected": true,
+    "missing_evidence_rejected": true,
+    "reload_exact": true,
+    "corruption_rejected": true,
+    "frozen_parent": true,
+    "no_replayed_examples": true
+  },
+  "promoted": false
+}

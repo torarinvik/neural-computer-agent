@@ -1,0 +1,104 @@
+{
+  "schema": "neural-computer.external-register-rendered-composition-report.v1",
+  "claim_boundary": "Rendered-event pressure test of a factorized external register; not a promotion unless the primitive and composition gates pass the full control ladder.",
+  "seed": 69316,
+  "parent": {
+    "updates": 128,
+    "final_heldout_accuracy": 1.0
+  },
+  "primitive_updates": 128,
+  "composition_updates": 128,
+  "credit_mode": "paired_counterfactual",
+  "batch_size": 16,
+  "span": 4,
+  "audit_count": 64,
+  "results": {
+    "reverse_before_second_instruction": 0.984375,
+    "reverse_after_second_instruction": 0.984375,
+    "complement": 0.85546875,
+    "composition": 0.984375,
+    "reward_shuffled_composition": 0.43359375,
+    "fresh_composition": 0.94921875,
+    "missing_evidence_composition": 0.5
+  },
+  "learning_curves": {
+    "composition": [
+      {
+        "update": 32,
+        "heldout_accuracy": 0.96484375
+      },
+      {
+        "update": 64,
+        "heldout_accuracy": 0.97265625
+      },
+      {
+        "update": 96,
+        "heldout_accuracy": 0.9765625
+      },
+      {
+        "update": 128,
+        "heldout_accuracy": 0.98828125
+      }
+    ],
+    "fresh": [
+      {
+        "update": 32,
+        "heldout_accuracy": 0.76171875
+      },
+      {
+        "update": 64,
+        "heldout_accuracy": 0.82421875
+      },
+      {
+        "update": 96,
+        "heldout_accuracy": 0.9453125
+      },
+      {
+        "update": 128,
+        "heldout_accuracy": 0.953125
+      }
+    ]
+  },
+  "persistence": {
+    "machine_digest": "2d3e523f785dc34d0e50ec2356e9dbbcf3e4e2d2a73c0e6180ac1e55d65fc47c",
+    "reloaded_machine_digest": "2d3e523f785dc34d0e50ec2356e9dbbcf3e4e2d2a73c0e6180ac1e55d65fc47c",
+    "decoder_digest": "9a2bd7834882f5060e99162896eea99a347a33e1c2a38943b369f2cedc95218e",
+    "reloaded_decoder_digest": "9a2bd7834882f5060e99162896eea99a347a33e1c2a38943b369f2cedc95218e",
+    "reload_exact": true,
+    "reloaded_composition": 0.984375,
+    "machine_store_digest": "57ffdb90b880bd76df7520052f1fa5b7158b8f31a6203b78f73a657a66ae0c5e",
+    "corruption_rejected": true
+  },
+  "frozen_core": {
+    "parent_digest_before": "0deb8fcf2769628696558bc23f4977bdfaedf302a0f385c17a6b55efa3828872",
+    "parent_digest_after": "0deb8fcf2769628696558bc23f4977bdfaedf302a0f385c17a6b55efa3828872",
+    "unchanged": true
+  },
+  "accounting": {
+    "unique_verifier_bits": 81920,
+    "unique_logical_lifetimes": 10240,
+    "optimizer_updates": 768,
+    "replayed_examples": 0,
+    "wall_seconds": 28.82117429198115,
+    "stable_bits_to_threshold": 4096,
+    "composition_stable_bits_to_threshold": 4096,
+    "fresh_stable_bits_to_threshold": 8192,
+    "retention_on_mastered_primitives": 0.984375,
+    "transfer_ratio_against_fresh_learner": 2.0
+  },
+  "promotion": {
+    "accepted": true,
+    "gates": {
+      "composition_stable": true,
+      "fresh_stable": true,
+      "positive_stable_transfer": true,
+      "retained_reverse": true,
+      "reward_shuffled_rejected": true,
+      "missing_evidence_rejected": true,
+      "reload_exact": true,
+      "corruption_rejected": true,
+      "frozen_parent": true
+    },
+    "reason": "narrow_factorized_composition_transfer_promoted"
+  }
+}

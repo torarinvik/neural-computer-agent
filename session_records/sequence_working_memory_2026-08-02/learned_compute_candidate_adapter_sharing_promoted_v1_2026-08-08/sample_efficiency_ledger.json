@@ -1,0 +1,21 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "status": "promoted_bounded_order_controlled_protocol",
+  "experiment": "verifier-gated adapter sharing with verifier-scored growth choice",
+  "date": "2026-08-08",
+  "canonical_seeds": [69316, 69317],
+  "permutation_control": "source order [2, 1, 0] run for both seeds; both promoted with local recovery enabled",
+  "accounting_by_run": {
+    "canonical_seed69316": {"unique_verifier_bits": 124928, "unique_logical_lifetimes": 41984, "optimizer_updates": 1344},
+    "canonical_seed69317": {"unique_verifier_bits": 124928, "unique_logical_lifetimes": 41984, "optimizer_updates": 1344},
+    "permuted_seed69316": {"unique_verifier_bits": 75776, "unique_logical_lifetimes": 25600, "optimizer_updates": 832},
+    "permuted_seed69317": {"unique_verifier_bits": 137216, "unique_logical_lifetimes": 46080, "optimizer_updates": 1472}
+  },
+  "replayed_examples": 0,
+  "wall_gpu_time": "local CPU; see reports",
+  "latency": "not measured",
+  "stable_bits_to_threshold": "passed canonical runs",
+  "retention_on_mastered_primitives": "passed canonical runs",
+  "transfer_ratio_against_fresh_learner": "not measured",
+  "decision": "promote bounded canonical protocol; reject order-invariant claim"
+}

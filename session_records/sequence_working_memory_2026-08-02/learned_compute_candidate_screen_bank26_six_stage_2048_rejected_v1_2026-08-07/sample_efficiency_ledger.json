@@ -1,0 +1,36 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "learned_compute_candidate_screen_bank26_six_stage_2048_rejected_v1",
+  "claim": "Doubling source updates from 1024 to 2048 does not repair replicated source mastery at bank-26.",
+  "candidate_count": 26,
+  "append_stage_sizes": [2, 2, 2, 2, 2, 2],
+  "screen_updates": 2048,
+  "calibration_updates_per_stage": 32,
+  "replayed_examples": 0,
+  "runs": [
+    {
+      "seed": 69316,
+      "promoted": false,
+      "known_top1_accuracy": 0.8958333135,
+      "known_min_per_target_accuracy": 0.2857142985,
+      "unseen_top1_accuracy": 1.0,
+      "unseen_min_per_target_accuracy": 1.0,
+      "optimizer_updates": 2272,
+      "unique_verifier_bits": 644352,
+      "unique_logical_lifetimes": 643968,
+      "replayed_examples": 0
+    },
+    {
+      "seed": 69317,
+      "promoted": true,
+      "known_top1_accuracy": 0.9895833135,
+      "known_min_per_target_accuracy": 0.8571428657,
+      "unseen_top1_accuracy": 1.0,
+      "unseen_min_per_target_accuracy": 1.0,
+      "optimizer_updates": 2272,
+      "unique_verifier_bits": 644352,
+      "unique_logical_lifetimes": 643968,
+      "replayed_examples": 0
+    }
+  ]
+}

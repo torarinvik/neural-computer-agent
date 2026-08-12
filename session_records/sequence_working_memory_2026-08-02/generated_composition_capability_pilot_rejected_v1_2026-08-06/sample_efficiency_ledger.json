@@ -1,0 +1,18 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "generated-composition-capability-pilot-rejected-v1-2026-08-06",
+  "status": "rejected_under_budget",
+  "seed": 69316,
+  "parent_updates": 32,
+  "capability_updates": 64,
+  "batch_size": 8,
+  "audit_count": 16,
+  "unique_logical_lifetimes": 768,
+  "unique_verifier_bits": 3072,
+  "optimizer_updates": 96,
+  "replayed_examples": 0,
+  "parent_stable_bits_to_threshold": 512,
+  "generated_stable_bits_to_threshold": null,
+  "generated_behavior": 0.609375,
+  "claim_boundary": "Under-budget generated-composition acquisition diagnostic; no weights or continual-learning claim promoted."
+}

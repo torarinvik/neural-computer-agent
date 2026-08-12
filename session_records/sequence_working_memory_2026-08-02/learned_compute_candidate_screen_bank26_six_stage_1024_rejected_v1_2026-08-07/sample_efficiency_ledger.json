@@ -1,0 +1,36 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "learned_compute_candidate_screen_bank26_six_stage_1024_rejected_v1",
+  "claim": "At 26 candidates and six append stages, unseen acquisition remains perfect but the source screen loses strict mastery.",
+  "candidate_count": 26,
+  "append_stage_sizes": [2, 2, 2, 2, 2, 2],
+  "screen_updates": 1024,
+  "calibration_updates_per_stage": 32,
+  "replayed_examples": 0,
+  "runs": [
+    {
+      "seed": 69316,
+      "promoted": false,
+      "known_top1_accuracy": 0.9270833135,
+      "known_min_per_target_accuracy": 0.1666666716,
+      "unseen_top1_accuracy": 1.0,
+      "unseen_min_per_target_accuracy": 1.0,
+      "optimizer_updates": 1248,
+      "unique_verifier_bits": 324864,
+      "unique_logical_lifetimes": 324480,
+      "replayed_examples": 0
+    },
+    {
+      "seed": 69317,
+      "promoted": false,
+      "known_top1_accuracy": 0.75,
+      "known_min_per_target_accuracy": 0.0,
+      "unseen_top1_accuracy": 1.0,
+      "unseen_min_per_target_accuracy": 1.0,
+      "optimizer_updates": 1248,
+      "unique_verifier_bits": 324864,
+      "unique_logical_lifetimes": 324480,
+      "replayed_examples": 0
+    }
+  ]
+}

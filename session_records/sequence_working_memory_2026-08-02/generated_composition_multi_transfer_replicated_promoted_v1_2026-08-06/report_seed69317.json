@@ -1,0 +1,391 @@
+{
+  "schema": "neural-computer.generated-composition-multi-transfer-report.v1",
+  "claim_boundary": "Two protected external artifacts were compared as frozen-file initializations for a new runtime program, then transactionally co-located as independently addressable opaque views. This is multi-source bounded external transfer and logical compaction, not unrestricted continual learning or neural weight compression.",
+  "seed": 69317,
+  "source_ids": [
+    0,
+    2
+  ],
+  "target_id": 1,
+  "programs": [
+    [
+      "reverse",
+      "adjacent_xor",
+      "complement",
+      "prefix_parity"
+    ],
+    [
+      "prefix_parity",
+      "global_parity",
+      "rotate",
+      "complement"
+    ],
+    [
+      "global_parity",
+      "reverse",
+      "adjacent_xor",
+      "rotate"
+    ]
+  ],
+  "sources": [
+    {
+      "id": 0,
+      "stable_bits_to_threshold": 12288,
+      "behavior": 0.953125,
+      "retention": [
+        0.93359375,
+        0.96484375,
+        0.9453125,
+        0.94921875
+      ],
+      "artifact_digest": "e258a2448b1706d6c46b0d5d6cef9ce1c4e89840a127a5097880808a3a8bb5cd",
+      "progress": [
+        {
+          "update": 32,
+          "unique_verifier_bits": 2048,
+          "heldout_accuracy": 0.48828125
+        },
+        {
+          "update": 64,
+          "unique_verifier_bits": 4096,
+          "heldout_accuracy": 0.63671875
+        },
+        {
+          "update": 96,
+          "unique_verifier_bits": 6144,
+          "heldout_accuracy": 0.640625
+        },
+        {
+          "update": 128,
+          "unique_verifier_bits": 8192,
+          "heldout_accuracy": 0.640625
+        },
+        {
+          "update": 160,
+          "unique_verifier_bits": 10240,
+          "heldout_accuracy": 0.7109375
+        },
+        {
+          "update": 192,
+          "unique_verifier_bits": 12288,
+          "heldout_accuracy": 0.8359375
+        },
+        {
+          "update": 224,
+          "unique_verifier_bits": 14336,
+          "heldout_accuracy": 0.90234375
+        },
+        {
+          "update": 256,
+          "unique_verifier_bits": 16384,
+          "heldout_accuracy": 0.953125
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "stable_bits_to_threshold": 2048,
+      "behavior": 1.0,
+      "retention": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "artifact_digest": "7db0809e65eea68a10705f9516c37183b89515bde9728712b6c50593935154d0",
+      "progress": [
+        {
+          "update": 32,
+          "unique_verifier_bits": 2048,
+          "heldout_accuracy": 0.9921875
+        },
+        {
+          "update": 64,
+          "unique_verifier_bits": 4096,
+          "heldout_accuracy": 1.0
+        },
+        {
+          "update": 96,
+          "unique_verifier_bits": 6144,
+          "heldout_accuracy": 1.0
+        },
+        {
+          "update": 128,
+          "unique_verifier_bits": 8192,
+          "heldout_accuracy": 1.0
+        },
+        {
+          "update": 160,
+          "unique_verifier_bits": 10240,
+          "heldout_accuracy": 1.0
+        },
+        {
+          "update": 192,
+          "unique_verifier_bits": 12288,
+          "heldout_accuracy": 1.0
+        },
+        {
+          "update": 224,
+          "unique_verifier_bits": 14336,
+          "heldout_accuracy": 1.0
+        },
+        {
+          "update": 256,
+          "unique_verifier_bits": 16384,
+          "heldout_accuracy": 1.0
+        }
+      ]
+    }
+  ],
+  "candidates": [
+    {
+      "name": "source_0",
+      "stable_bits_to_threshold": 4096,
+      "behavior": 1.0,
+      "progress": [
+        {
+          "update": 32,
+          "unique_verifier_bits": 2048,
+          "heldout_accuracy": 0.60546875
+        },
+        {
+          "update": 64,
+          "unique_verifier_bits": 4096,
+          "heldout_accuracy": 0.7734375
+        },
+        {
+          "update": 96,
+          "unique_verifier_bits": 6144,
+          "heldout_accuracy": 0.9375
+        },
+        {
+          "update": 128,
+          "unique_verifier_bits": 8192,
+          "heldout_accuracy": 0.921875
+        },
+        {
+          "update": 160,
+          "unique_verifier_bits": 10240,
+          "heldout_accuracy": 0.984375
+        },
+        {
+          "update": 192,
+          "unique_verifier_bits": 12288,
+          "heldout_accuracy": 0.984375
+        },
+        {
+          "update": 224,
+          "unique_verifier_bits": 14336,
+          "heldout_accuracy": 1.0
+        },
+        {
+          "update": 256,
+          "unique_verifier_bits": 16384,
+          "heldout_accuracy": 1.0
+        }
+      ]
+    },
+    {
+      "name": "source_2",
+      "stable_bits_to_threshold": 10240,
+      "behavior": 1.0,
+      "progress": [
+        {
+          "update": 32,
+          "unique_verifier_bits": 2048,
+          "heldout_accuracy": 0.4921875
+        },
+        {
+          "update": 64,
+          "unique_verifier_bits": 4096,
+          "heldout_accuracy": 0.5
+        },
+        {
+          "update": 96,
+          "unique_verifier_bits": 6144,
+          "heldout_accuracy": 0.5078125
+        },
+        {
+          "update": 128,
+          "unique_verifier_bits": 8192,
+          "heldout_accuracy": 0.56640625
+        },
+        {
+          "update": 160,
+          "unique_verifier_bits": 10240,
+          "heldout_accuracy": 0.91796875
+        },
+        {
+          "update": 192,
+          "unique_verifier_bits": 12288,
+          "heldout_accuracy": 0.99609375
+        },
+        {
+          "update": 224,
+          "unique_verifier_bits": 14336,
+          "heldout_accuracy": 1.0
+        },
+        {
+          "update": 256,
+          "unique_verifier_bits": 16384,
+          "heldout_accuracy": 1.0
+        }
+      ]
+    },
+    {
+      "name": "fresh",
+      "stable_bits_to_threshold": 10240,
+      "behavior": 0.95703125,
+      "progress": [
+        {
+          "update": 32,
+          "unique_verifier_bits": 2048,
+          "heldout_accuracy": 0.50390625
+        },
+        {
+          "update": 64,
+          "unique_verifier_bits": 4096,
+          "heldout_accuracy": 0.48828125
+        },
+        {
+          "update": 96,
+          "unique_verifier_bits": 6144,
+          "heldout_accuracy": 0.484375
+        },
+        {
+          "update": 128,
+          "unique_verifier_bits": 8192,
+          "heldout_accuracy": 0.54296875
+        },
+        {
+          "update": 160,
+          "unique_verifier_bits": 10240,
+          "heldout_accuracy": 0.80078125
+        },
+        {
+          "update": 192,
+          "unique_verifier_bits": 12288,
+          "heldout_accuracy": 0.9375
+        },
+        {
+          "update": 224,
+          "unique_verifier_bits": 14336,
+          "heldout_accuracy": 0.953125
+        },
+        {
+          "update": 256,
+          "unique_verifier_bits": 16384,
+          "heldout_accuracy": 0.95703125
+        }
+      ]
+    }
+  ],
+  "candidate_selection": {
+    "accepted": true,
+    "selected_index": 0,
+    "stable_bits_to_threshold": [
+      4096,
+      10240,
+      10240
+    ],
+    "reason": "unique stable-prefix candidate selected",
+    "inherited_winner": true
+  },
+  "source_bank": {
+    "capacity": 2,
+    "rows": [
+      0,
+      1
+    ],
+    "protected": true,
+    "address_similarity": [
+      [
+        1.0,
+        0.9995977878570557
+      ],
+      [
+        0.9995977878570557,
+        1.0000001192092896
+      ]
+    ],
+    "addresses_separated": true
+  },
+  "consolidation": {
+    "accepted": true,
+    "rows_before": 2,
+    "rows_after": 1,
+    "rows_saved": 1,
+    "views": [
+      "source_0",
+      "source_2"
+    ],
+    "resolved_views_after_reload": {
+      "source_0": "source_0",
+      "source_2": "source_2"
+    },
+    "behavior_after_reload": {
+      "source_0": 0.94921875,
+      "source_2": 1.0
+    },
+    "retention_probe_outcomes": [
+      [
+        0.9375,
+        0.9453125,
+        0.953125,
+        0.9453125
+      ],
+      [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ]
+    ],
+    "verifier_passed": true,
+    "protected_after_reload": [
+      true,
+      true
+    ]
+  },
+  "target_admission": {
+    "accepted": true,
+    "action": "grow",
+    "source_capacity": 1,
+    "destination_capacity": 2,
+    "reason": "grown store validated and admitted",
+    "behavior_after_admission": 1.0
+  },
+  "frozen_core": {
+    "digest_before": "9b072c9e96c64a17ebea9f245da6bdbe6e2abd951a8d43b5541d883a54a1902a",
+    "digest_after": "9b072c9e96c64a17ebea9f245da6bdbe6e2abd951a8d43b5541d883a54a1902a",
+    "unchanged": true
+  },
+  "accounting": {
+    "unique_verifier_bits": 129024,
+    "unique_logical_lifetimes": 43520,
+    "optimizer_updates": 1408,
+    "replayed_examples": 0
+  },
+  "gates": {
+    "parent_stable": true,
+    "sources_stable": true,
+    "sources_mastered": true,
+    "sources_protected": true,
+    "source_addresses_separated": true,
+    "candidate_stable": true,
+    "candidate_mastered": true,
+    "positive_multi_source_transfer": true,
+    "consolidation_accepted": true,
+    "consolidation_saved_row": true,
+    "all_views_reloaded": true,
+    "all_views_retained": true,
+    "all_views_protected": true,
+    "target_grown_after_compaction": true,
+    "target_mastered_after_admission": true,
+    "target_reload_preserved": true,
+    "core_unchanged": true,
+    "no_replayed_examples": true
+  },
+  "wall_seconds": 351.8424046660075,
+  "promoted": true
+}

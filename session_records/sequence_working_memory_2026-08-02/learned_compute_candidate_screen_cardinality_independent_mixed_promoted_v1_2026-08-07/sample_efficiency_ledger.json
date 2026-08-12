@@ -1,0 +1,50 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "learned_compute_candidate_screen_cardinality_independent_mixed_promoted_v1",
+  "claim": "Attempted-outcome calibration makes singleton append stages learnable while retaining pairwise ranking for multi-candidate stages.",
+  "replayed_examples": 0,
+  "runs": [
+    {
+      "seed": 69316,
+      "promoted": true,
+      "candidate_count": 10,
+      "known_candidates": 7,
+      "outcome_unseen_candidates": 3,
+      "append_stage_sizes": [1, 2],
+      "known_novel_context_top1_accuracy": 1.0,
+      "cold_start_top1_accuracy": 0.1458333283662796,
+      "unseen_pre_failure_top1_accuracy": 0.0,
+      "unseen_post_failure_top1_accuracy": 1.0,
+      "base_candidate_permutation_accuracy": 1.0,
+      "extension_candidate_permutation_accuracy": 1.0,
+      "reward_shuffled_top1_accuracy": 0.1458333283662796,
+      "optimizer_updates": 1056,
+      "calibration_optimizer_updates": 512,
+      "calibration_informative_outcomes": 3072,
+      "unique_verifier_bits": 71424,
+      "unique_logical_lifetimes": 71040,
+      "replayed_examples": 0
+    },
+    {
+      "seed": 69317,
+      "promoted": true,
+      "candidate_count": 10,
+      "known_candidates": 7,
+      "outcome_unseen_candidates": 3,
+      "append_stage_sizes": [1, 2],
+      "known_novel_context_top1_accuracy": 1.0,
+      "cold_start_top1_accuracy": 0.1458333283662796,
+      "unseen_pre_failure_top1_accuracy": 0.0,
+      "unseen_post_failure_top1_accuracy": 1.0,
+      "base_candidate_permutation_accuracy": 1.0,
+      "extension_candidate_permutation_accuracy": 1.0,
+      "reward_shuffled_top1_accuracy": 0.1458333283662796,
+      "optimizer_updates": 1056,
+      "calibration_optimizer_updates": 512,
+      "calibration_informative_outcomes": 3072,
+      "unique_verifier_bits": 71424,
+      "unique_logical_lifetimes": 71040,
+      "replayed_examples": 0
+    }
+  ]
+}

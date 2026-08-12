@@ -1,0 +1,33 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "repeated-shift-growth-6to8to10to12to14to16-remediated-v1-2026-08-06",
+  "status": "promoted_confidence_remediated_persistent_growth_to_62",
+  "seeds": [69316, 69317],
+  "schedule": [6, 8, 10, 12, 14, 16],
+  "total_capabilities": 62,
+  "remediation_probe_repetitions": 32,
+  "remediation_threshold": 0.8,
+  "remediation_updates_per_weak_capability": 256,
+  "remediation_rounds": 1,
+  "weak_capabilities_remediated_per_seed": [1, 4],
+  "persisted_state_files_per_seed": [121, 121],
+  "unique_logical_lifetimes_per_seed": [676344, 688632],
+  "unique_verifier_bits_per_seed": [4237688, 4262264],
+  "optimizer_updates_per_seed": [41216, 41984],
+  "remediation_optimizer_updates_per_seed": [256, 1024],
+  "replayed_examples_per_seed": [0, 0],
+  "distribution_shifts_per_seed": [5, 5],
+  "wall_seconds": [47.301041249986156, 49.004112291004276],
+  "phase_minimum_route_selection": [
+    [0.921875, 0.890625, 0.921875, 0.859375, 0.890625],
+    [0.890625, 0.90625, 0.859375, 0.875, 0.859375]
+  ],
+  "old_route_accuracy": [1.0, 1.0],
+  "candidate_permutation_accuracy": [1.0, 1.0],
+  "retention_reversal_safe": [true, true],
+  "persistent_route_reload": [true, true],
+  "persistent_credit_reload": [true, true],
+  "corruption_rejected": [true, true],
+  "transfer_ratio_against_fresh_learner": [null, null],
+  "claim_boundary": "Promoted bounded fifth-shift, persistent, replay-free external growth to 62 capabilities with confidence-triggered remediation; not unbounded expansion, arbitrary program induction, positive transfer, or general continual learning."
+}

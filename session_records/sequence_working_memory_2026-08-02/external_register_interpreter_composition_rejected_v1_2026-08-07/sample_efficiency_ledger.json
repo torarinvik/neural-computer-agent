@@ -1,0 +1,18 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "status": "rejected_diagnostic",
+  "experiment": "external_register_interpreter_composition_rejected_v1_2026-08-07",
+  "entries": [
+    {
+      "arm": "shared_interpreter_two_opaque_instructions",
+      "unique_verifier_bits": 2048000,
+      "unique_logical_lifetimes": 1024000,
+      "optimizer_updates": 4000,
+      "replayed_examples": 0,
+      "stable_bits_to_threshold": null,
+      "retention_on_mastered_primitives": null,
+      "transfer_ratio_against_fresh_learner": null,
+      "decision": "reject_composition_at_chance"
+    }
+  ]
+}

@@ -182,3 +182,118 @@ late-shift floor while the other loses a small amount on the final shift. The ma
 acquisition depth remains a real bottleneck. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/repeated_shift_growth_6to8to10to12_growth_prior_v1_2026-08-06/` and
 `session_records/sequence_working_memory_2026-08-02/repeated_shift_growth_6to8to10to12_growth_prior_ext128_rejected_v1_2026-08-06/`.
+
+The shared growth-router rung replaces those capability-local extensions with
+one permutation-equivariant candidate scorer per shift. Its learned query is
+the concatenation of context, final recurrent state, mean recurrent state,
+and max recurrent state; candidate keys remain random opaque vectors. Across
+two seeds, the 6→8→10→12 schedule reaches phase floors
+`0.9844/0.9375`, `0.9844/0.9688`, and `0.9531/0.9375` with 32 total
+capabilities, zero replay, causal credit, retention, reversal, and null gates
+all passing. The direct candidate permutation audit and corrected stricter
+sequential operational route-permutation audit are exact to rounding at
+`0.9906/0.9911`. The earlier `0.4932/0.4943` reading was a harness false
+negative caused by comparing a remapped physical row to its unpermuted family
+index. The 16,384-update shared-router budget is still high, so this promotes
+reusable bounded growth rather than general continual learning or
+sample-efficient transfer. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/shared_growth_router_6to8to10to12_trajectory_stats_v1_2026-08-06/`.
+
+The same shared router then passes 6→8→10→12 at 8,192 updates per expansion.
+Across both seeds, phase floors are `0.9844/0.9844`, `0.9688/0.9063`, and
+`0.9219/0.9063`; operational permutation is `0.9875/0.9802`, all causal,
+retention, reversal, null, and zero-replay gates pass, and the bank still
+reaches 32 capabilities. Total optimizer updates fall by 46.9% versus the
+16,384-update rung. Copy-on-write router priors and prototype-address
+controls did not replicate and are not promoted. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/shared_growth_router_6to8to10to12_trajectory_stats_8192_v1_2026-08-06/`.
+
+The fourth-shift 6→8→10→12→14 pressure test reaches 46 capabilities but is
+rejected by the hard retention gate. Hidden 256 at 8,192 updates reaches a
+`0.8125` final route floor with two late rows unprotected; extra late-shift
+updates and hidden 512 controls also fail. Routing, causal credit, null, and
+zero-replay controls remain valid. The next bottleneck is targeted,
+confidence-aware acquisition for under-mastered rows, not a weaker retention
+threshold. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/shared_growth_router_6to8to10to12to14_46caps_rejected_v1_2026-08-06/`.
+
+The same fixed-budget outcome streams now pass through the production
+`ConfidenceAwareCapabilityStaging` boundary as a memory-side audit. Seed 69316
+admits 43 of 46 candidates and leaves 3 pending; seed 69317 admits 39 and
+leaves 7 pending. In both cases all occupied rows are protected and pending
+candidates consume no executable capacity. This qualifies safe partial
+admission, not a 46-capability learning promotion: the late-shift route gate
+still fails and the original verifier stream is unchanged.
+
+An outcome-confidence target-acquisition control was also rejected against the
+promoted 32-capability rung. Concentrating shared-router updates on currently
+weak opaque candidates lowered seed-69316 phase floors to `0.9063/0.6719/0.7188`
+from the matched round-robin `0.9844/0.9688/0.9219`, and failed new-route and
+retention gates. The scheduler is discarded; evidence is in
+`session_records/sequence_working_memory_2026-08-02/shared_growth_router_outcome_confidence_rejected_v1_2026-08-06/`.
+
+The matched modular fourth-shift audit keeps each new route and credit head
+isolated instead of sharing one mutable candidate router. Under the same
+length-six → eight → ten → twelve → fourteen schedule, both seeds now pass at
+46 total capabilities: final-shift route floors are `0.8594` and `0.8750`,
+old routes remain perfect, causal/permutation/null controls pass, and the
+retention ledger protects all rows while releasing and recovering only the
+reversed target. This isolates the earlier 46-capability failure to shared
+router interference rather than external-bank capacity. The result still
+uses externally trained per-capability route/credit state and is not general
+continual learning. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/repeated_shift_growth_6to8to10to12to14_isolated_v1_2026-08-06/`.
+
+The same 46-capability modular boundary now persists every route extension
+and isolated credit head through `PersistentOpaqueStateStore`. Both seeds
+reload 89 state files into fresh modules with exact route/credit behavior and
+reject a corrupted state checksum, without verifier bits, optimizer updates,
+or replay during persistence. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/repeated_shift_growth_6to8to10to12to14_persistent_v1_2026-08-06/`.
+
+The fifth-shift follow-up extends the same persistent modular boundary to 62
+capabilities (length 6 → 8 → 10 → 12 → 14 → 16). A 32-probe confidence
+screen triggers one fresh 256-update remediation block only for weak external
+modules. Both seeds pass with final-shift route floors `0.8906` and `0.8594`,
+full-bank retention/reversal/recovery, persistent reload, corruption, and
+zero replay. The matched no-remediation seed-69317 control fails only the
+hard retention gate, so the repair is targeted acquisition rather than a
+weaker definition of mastery. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/repeated_shift_growth_6to8to10to12to14to16_remediated_v1_2026-08-06/`.
+
+The sixth-shift follow-up extends the same boundary to length 18 and 80 total
+capabilities. Seed 69316 passes directly; seed 69317 initially leaves a late
+route unprotected. A targeted remediation loop then probes fresh route
+outcomes and spends additional fresh updates only on weak families. Both seeds
+subsequently pass full-bank protection, isolated reversal/recovery,
+persistence, corruption, causal, shuffled, and zero-replay gates. This
+promotes bounded 80-capability growth, not open-ended memory or general
+continual learning. Evidence, including failed pre-remediation controls, is
+in
+`session_records/sequence_working_memory_2026-08-02/repeated_shift_growth_6to8to10to12to14to16to18_remediated_v1_2026-08-06/`.
+
+The seventh-shift follow-up extends the same boundary through length 20 and
+100 total capabilities. Both replicated seeds pass full-bank protection,
+isolated reversal/recovery, persistence, corruption, causal, shuffled, and
+zero-replay gates, with minimum route floors of `0.8125` and `0.8594`.
+This is still bounded generated-family growth rather than open-ended memory,
+arbitrary new computation, or general continual learning. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/repeated_shift_growth_6to8to10to12to14to16to18to20_remediated_v1_2026-08-07/`.
+
+The same boundary now passes an eighth shift through length 22, reaching 122
+capabilities across both seeds. Final remedied route floors are `0.859375` on
+both seeds; one raw length-22 phase fell to `0.640625` before targeted fresh
+remediation, making the confidence bottleneck explicit. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/repeated_shift_growth_6to8to10to12to14to16to18to20to22_remediated_v1_2026-08-08/`.
+
+The generated-bank implementation now scales the same repeated-shift protocol
+through length 24 without materializing the full `C(24,12)` bank. It
+deterministically materializes only the addressed prefix, preserving the
+historical family namespace while keeping memory bounded. The 6→8→10→12→14→
+16→18→20→22→24 schedule reaches 144 capabilities. Both seeds pass every
+causal-credit, retention/reversal, persistence, corruption, null, and
+zero-replay gate. The raw length-24 floors are `0.828125` and `0.796875`;
+targeted fresh remediation restores both final new-route floors to `0.859375`.
+This promotes scalable bounded growth, not open-ended memory growth or
+general continual learning. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/repeated_shift_growth_6to8to10to12to14to16to18to20to22to24_prefix_bank_v1_2026-08-08/`.
