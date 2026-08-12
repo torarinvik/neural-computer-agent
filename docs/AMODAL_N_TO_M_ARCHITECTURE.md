@@ -11839,3 +11839,21 @@ bounded two-file growth; it does not establish unrestricted memory growth,
 arbitrary program induction, or general continual learning. Evidence is
 archived at
 `session_records/brainworkshop_external_history_open_growth_promoted_2026-08-12/`.
+
+## Unbounded external history with bounded active retrieval (2026-08-12)
+
+The external memory boundary now separates storage capacity from active
+computation width. An append-only history may retain the complete lifetime,
+while a file can request a bounded active read. In the promoted four-record
+configuration, the fixed-window ABI receives the three preceding learned
+events plus the current event, then appends the current event after execution.
+This ordering is explicit because omitting the current event makes n-back
+comparison impossible even when the prior records are present.
+
+Across seeds `17` and `18`, the corrected bounded-read audit admitted five
+external files (`symbol_parity`, `triplet_parity`, `parity2`, `switch_binary`,
+and `nback2`) with every direct, protected-prefix, route, reversal, reload,
+null-control, frozen-core, file-immutability, and zero-replay gate passing.
+This promotes a scalable memory/query boundary, not unrestricted learned
+temporal dependency or general continual learning. Evidence is archived at
+`session_records/brainworkshop_external_history_bounded_open_growth_promoted_2026-08-12/`.

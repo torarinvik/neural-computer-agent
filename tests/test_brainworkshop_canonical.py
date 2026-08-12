@@ -22,6 +22,8 @@ from experiments.brainworkshop_canonical.episodic_artifact_reactivation import (
     run as run_episodic_artifact_reactivation,
 )
 from experiments.brainworkshop_canonical.external_compute_growth import (
+    _build as build_external_compute,
+    _episode as episode_external_compute,
     run as run_external_compute_growth,
 )
 from experiments.brainworkshop_canonical.external_compute_open_growth import (
@@ -218,6 +220,33 @@ def test_external_compute_growth_smoke_keeps_the_frozen_core_boundary(tmp_path) 
     assert report["gates"]["frozen_event_encoder"]
     assert report["accounting"]["replayed_examples"] == 0
     assert report["accounting"]["optimizer_updates"] == 4
+
+
+def test_bounded_external_history_reads_previous_records_plus_current_event() -> None:
+    system = build_external_compute(
+        17,
+        slot_count=1,
+        event_window_size=4,
+        basis_event_read_mode="flattened_window",
+        external_history_query_count=4,
+    )
+
+    _loss, accuracy, bits = episode_external_compute(
+        system,
+        family="nback2",
+        slot=0,
+        cue_symbol=9,
+        batch_size=2,
+        steps=4,
+        seed=29,
+        train=False,
+        history_query_count=4,
+    )
+
+    assert system.external_history_query_count == 4
+    assert system.machine.event_window_size == 4
+    assert torch.isfinite(accuracy)
+    assert bits == 4
 
 
 def test_external_compute_route_smoke_uses_content_addressed_outcome_evidence(

@@ -204,6 +204,45 @@ def test_external_compute_basis_reads_variable_history_with_explicit_missing_mas
     )
 
 
+def test_history_compute_basis_can_condition_content_addressing_on_current_event() -> None:
+    torch.manual_seed(922)
+    basis = ExternalRegisterComputeBasis(
+        8,
+        5,
+        hidden=10,
+        event_width=4,
+        event_window_size=0,
+        event_read_mode="history_attention",
+        register_input_mode="event_window_only",
+        history_query_mode="instruction_current_event",
+    )
+    register = torch.randn(3, 8)
+    code = torch.randn(3, 5)
+    history = torch.randn(3, 7, 4)
+    mask = torch.ones(3, 7, dtype=torch.bool)
+    age = torch.arange(7, dtype=torch.float32).expand(3, -1)
+    current_event = torch.randn(3, 4)
+
+    output = basis(
+        register,
+        code,
+        event_history=history,
+        event_history_mask=mask,
+        event_history_age=age,
+        current_event=current_event,
+    )
+
+    assert output.shape == (3, 8)
+    assert torch.isfinite(output).all()
+    assert basis.event_query.in_features == 9
+    assert basis.configuration()["history_contract"] == (
+        "variable_external_history_attention_v3"
+    )
+    assert basis.configuration()["history_query_mode"] == (
+        "instruction_current_event"
+    )
+
+
 def test_external_compute_basis_artifact_load_isolated_from_frozen_interpreter() -> (
     None
 ):

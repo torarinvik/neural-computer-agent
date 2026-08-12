@@ -95,7 +95,11 @@ def _routed_episode(
         system.machine.initial_state(batch_size, device="cpu")
         for _ in range(slot_count)
     ]
-    history_mode = system.machine.basis_event_read_mode == "history_attention"
+    external_history_mode = system.external_history_query_count is not None
+    history_mode = (
+        system.machine.basis_event_read_mode == "history_attention"
+        or external_history_mode
+    )
     history_scopes = torch.arange(batch_size, dtype=torch.long)
     history_memories = (
         [
@@ -150,16 +154,22 @@ def _routed_episode(
                     present=present,
                 )
             else:
-                query_count = max(1, history_lengths[slot])
-                offsets = (
-                    torch.arange(
-                        query_count - 1,
-                        -1,
-                        -1,
-                        dtype=torch.long,
-                    )
-                    .expand(batch_size, -1)
+                query_count = (
+                    system.external_history_query_count
+                    if external_history_mode
+                    else max(1, history_lengths[slot])
                 )
+                history_query_count_for_read = (
+                    query_count
+                    if system.machine.basis_event_read_mode == "history_attention"
+                    else max(0, query_count - 1)
+                )
+                offsets = torch.arange(
+                    history_query_count_for_read - 1,
+                    -1,
+                    -1,
+                    dtype=torch.long,
+                ).expand(batch_size, -1)
                 history_read = history_memories[slot].read_relative(
                     offsets,
                     scope=history_scopes,
@@ -172,14 +182,42 @@ def _routed_episode(
                     state=register_states[slot],
                     present=present,
                 )
+                execute_kwargs = (
+                    {
+                        "event_history": history_read.values,
+                        "event_history_mask": history_read.present,
+                        "event_history_age": offsets.to(
+                            dtype=collection.payload.dtype
+                        ),
+                        "current_event": collection.payload[:, 0],
+                    }
+                    if system.machine.basis_event_read_mode == "history_attention"
+                    else {
+                        "event_window": torch.cat(
+                            (
+                                history_read.values,
+                                collection.payload[:, 0].unsqueeze(1),
+                            ),
+                            dim=1,
+                        ),
+                        "event_window_mask": torch.cat(
+                            (
+                                history_read.present,
+                                torch.ones(
+                                    batch_size,
+                                    1,
+                                    dtype=torch.bool,
+                                ),
+                            ),
+                            dim=1,
+                        ),
+                    }
+                )
                 executed = system.machine.execute_chain(
                     register,
                     (system.instructions[slot],),
                     basis_slots=(slot,),
-                    event_history=history_read.values,
-                    event_history_mask=history_read.present,
-                    event_history_age=offsets.to(dtype=collection.payload.dtype),
-                    current_event=collection.payload[:, 0],
+                    **execute_kwargs,
                 )
                 history_memories[slot].append(
                     collection.payload[:, 0],

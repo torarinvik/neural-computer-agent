@@ -1801,3 +1801,28 @@ history, but it remains bounded two-file growth—not arbitrary program
 induction, unrestricted memory growth, or general continual learning.
 Evidence is archived at
 `session_records/brainworkshop_external_history_open_growth_promoted_2026-08-12/`.
+
+## Unbounded external history with bounded active reads (2026-08-12)
+
+The next audit separates memory growth from per-step computation. The external
+history remains append-only and unbounded, but a file may request a bounded
+active slice. With `--history-query-count 4`, the fixed event ABI receives the
+three preceding records plus the current event; the current event is included
+before execution and appended afterward. This preserves the causal boundary
+that the earlier adapter accidentally violated when it supplied four old
+records and omitted the current one.
+
+Across seeds `17` and `18`, the five-file promotion admitted and routed
+`symbol_parity`, `triplet_parity`, `parity2`, `switch_binary`, and `nback2`.
+Every direct and protected-prefix gate passed; `nback2` reached `1.0000` on all
+four direct lifetimes on both seeds. Reversal, old-file retention, exact route
+reload, unknown-context near-chance, reward-shuffled rejection, frozen-core
+and frontend immutability, admitted-file immutability, and zero replay all
+passed. The weakest direct file probe was `0.8636` on seed 17; all routed
+probes passed their mastery gates.
+
+This promotes a scalable external-memory/query boundary and five-file growth.
+It does not establish unrestricted learned temporal dependency, learned
+compression, arbitrary program induction, or general continual learning.
+Evidence and accounting are archived at
+`session_records/brainworkshop_external_history_bounded_open_growth_promoted_2026-08-12/`.

@@ -64,6 +64,7 @@ class ComputeGrowthSystem:
     instructions: nn.ModuleList
     readouts: nn.ModuleList
     decoders: nn.ModuleList
+    external_history_query_count: int | None = None
 
 
 def _digest(*modules: nn.Module) -> str:
@@ -83,6 +84,7 @@ def _basis(
     hidden: int = 32,
     event_window_size: int = EVENT_WINDOW_SIZE,
     event_read_mode: str = "flattened_window",
+    history_query_mode: str = "instruction_only",
 ) -> ExternalRegisterComputeBasis:
     if event_read_mode == "history_attention":
         if event_window_size:
@@ -100,6 +102,7 @@ def _basis(
         event_window_size=event_window_size,
         microsteps=2,
         event_read_mode=event_read_mode,
+        history_query_mode=history_query_mode,
         register_input_mode=(
             "event_window_only"
         ),
@@ -113,6 +116,8 @@ def _build(
     basis_hidden: int = 32,
     event_window_size: int = EVENT_WINDOW_SIZE,
     basis_event_read_mode: str = "flattened_window",
+    basis_history_query_mode: str = "instruction_only",
+    external_history_query_count: int | None = None,
 ) -> ComputeGrowthSystem:
     """Build an append-only bank of opaque files over one fixed interpreter."""
 
@@ -152,12 +157,14 @@ def _build(
                 hidden=basis_hidden,
                 event_window_size=event_window_size,
                 event_read_mode=basis_event_read_mode,
+                history_query_mode=basis_history_query_mode,
             )
             for _ in range(slot_count)
         ),
         basis_hidden=basis_hidden,
         basis_microsteps=2,
         basis_event_read_mode=basis_event_read_mode,
+        basis_history_query_mode=basis_history_query_mode,
         basis_register_input_mode=(
             "event_window_only"
         ),
@@ -178,7 +185,14 @@ def _build(
         KeypressDecoder(INTENTION_WIDTH, ACTION_COUNT, hidden=16)
         for _ in range(slot_count)
     )
-    return ComputeGrowthSystem(agent, machine, instructions, readouts, decoders)
+    return ComputeGrowthSystem(
+        agent,
+        machine,
+        instructions,
+        readouts,
+        decoders,
+        external_history_query_count=external_history_query_count,
+    )
 
 
 def _common_modules(system: ComputeGrowthSystem) -> tuple[nn.Module, ...]:
@@ -259,7 +273,7 @@ def _episode(
     register_state = machine.initial_state(batch_size, device="cpu")
     history_memory = (
         ExternalTemporalHistoryMemory(EVENT_WIDTH, scope_capacity=batch_size)
-        if machine.basis_event_read_mode == "history_attention"
+        if history_query_count is not None
         else None
     )
     history_scope = torch.arange(batch_size, dtype=torch.long)
@@ -307,15 +321,17 @@ def _episode(
                 if history_query_count
                 else max(1, history_length)
             )
-            offsets = (
-                torch.arange(
-                    query_count - 1,
-                    -1,
-                    -1,
-                    dtype=torch.long,
-                )
-                .expand(batch_size, -1)
+            history_query_count_for_read = (
+                query_count
+                if machine.basis_event_read_mode == "history_attention"
+                else max(0, query_count - 1)
             )
+            offsets = torch.arange(
+                history_query_count_for_read - 1,
+                -1,
+                -1,
+                dtype=torch.long,
+            ).expand(batch_size, -1)
             history_read = history_memory.read_relative(
                 offsets,
                 scope=history_scope,
@@ -327,14 +343,42 @@ def _episode(
                 intention=controller_output.intention,
                 state=register_state,
             )
+            execute_kwargs = (
+                {
+                    "event_history": history_read.values,
+                    "event_history_mask": history_read.present,
+                    "event_history_age": offsets.to(
+                        dtype=collection.payload.dtype
+                    ),
+                    "current_event": collection.payload[:, 0],
+                }
+                if machine.basis_event_read_mode == "history_attention"
+                else {
+                    "event_window": torch.cat(
+                        (
+                            history_read.values,
+                            collection.payload[:, 0].unsqueeze(1),
+                        ),
+                        dim=1,
+                    ),
+                    "event_window_mask": torch.cat(
+                        (
+                            history_read.present,
+                            torch.ones(
+                                batch_size,
+                                1,
+                                dtype=torch.bool,
+                            ),
+                        ),
+                        dim=1,
+                    ),
+                }
+            )
             executed = machine.execute_chain(
                 register,
                 (system.instructions[slot],),
                 basis_slots=(slot,),
-                event_history=history_read.values,
-                event_history_mask=history_read.present,
-                event_history_age=offsets.to(dtype=collection.payload.dtype),
-                current_event=collection.payload[:, 0],
+                **execute_kwargs,
             )
             history_memory.append(
                 collection.payload[:, 0],

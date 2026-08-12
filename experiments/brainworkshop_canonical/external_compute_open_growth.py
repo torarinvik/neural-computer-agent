@@ -285,9 +285,25 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     history_query_count = (
         None if history_query_arg is None else int(history_query_arg)
     )
-    basis_event_read_mode = (
-        "history_attention" if history_query_count is not None else "flattened_window"
-    )
+    if history_query_count is None:
+        basis_event_read_mode = "flattened_window"
+        effective_event_window_size = event_window_size
+        external_history_query_count = None
+    elif history_query_count == 0:
+        basis_event_read_mode = "history_attention"
+        effective_event_window_size = 0
+        external_history_query_count = 0
+    else:
+        # Keep storage unbounded while giving a fresh file a bounded active
+        # read.  This preserves the successful fixed-window learning path
+        # without placing a capacity limit on the external history itself.
+        basis_event_read_mode = "flattened_window"
+        effective_event_window_size = history_query_count
+        external_history_query_count = history_query_count
+    # Keep the promoted full-history contract unchanged.  The optional
+    # current-event-conditioned ABI is available for isolated probes, but is
+    # not promoted without a causal gain.
+    basis_history_query_mode = "instruction_only"
     if not 1 <= args.target_file_count <= len(OPEN_SCHEDULE):
         raise ValueError("target file count exceeds the calibrated schedule")
     if not args.target_file_count <= args.candidate_budget <= len(OPEN_SCHEDULE):
@@ -307,12 +323,12 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         raise ValueError("the calibrated open-growth harness requires batch size 32")
     if args.learning_rate <= 0.0:
         raise ValueError("learning rate must be positive")
-    if event_window_size < 1:
+    if effective_event_window_size < 1:
         if basis_event_read_mode != "history_attention":
             raise ValueError("event window size must be positive")
     if history_query_count is not None and history_query_count < 0:
         raise ValueError("history query count cannot be negative")
-    if basis_event_read_mode == "history_attention" and event_window_size:
+    if basis_event_read_mode == "history_attention" and effective_event_window_size:
         raise ValueError("history attention requires event_window_size=0")
     if entropy_weight < 0.0:
         raise ValueError("entropy weight cannot be negative")
@@ -328,8 +344,10 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     system = _build(
         args.seed,
         slot_count=1,
-        event_window_size=event_window_size,
+        event_window_size=effective_event_window_size,
         basis_event_read_mode=basis_event_read_mode,
+        basis_history_query_mode=basis_history_query_mode,
+        external_history_query_count=external_history_query_count,
     )
     controller_before = _digest(system.agent.controller)
     encoder_before = _digest(system.agent.runtime.encoders["stimulus"])
@@ -471,8 +489,10 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     shuffled_control_system = _build(
         args.seed + 800_000,
         slot_count=1,
-        event_window_size=event_window_size,
+        event_window_size=effective_event_window_size,
         basis_event_read_mode=basis_event_read_mode,
+        basis_history_query_mode=basis_history_query_mode,
+        external_history_query_count=external_history_query_count,
     )
     shuffled_control_history, shuffled_control = _train_and_evaluate_candidate(
         shuffled_control_system,
@@ -657,8 +677,21 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "entropy_weight": entropy_weight,
             "credit_mode": credit_mode,
             "event_window_size": event_window_size,
+            "effective_event_window_size": effective_event_window_size,
             "basis_event_read_mode": basis_event_read_mode,
             "history_query_count": history_query_count,
+            "history_storage": (
+                "append_only_unbounded_external_history_v1"
+                if history_query_count is not None
+                else "none"
+            ),
+            "active_history_read": (
+                "full_prefix"
+                if history_query_count == 0
+                else "recent_prefix_plus_current_event"
+                if history_query_count is not None
+                else "none"
+            ),
             "encoder_symbol_count": ENCODER_SYMBOL_COUNT,
             "target_file_count": args.target_file_count,
             "candidate_budget": args.candidate_budget,
@@ -779,7 +812,11 @@ def main() -> None:
         "--history-query-count",
         type=int,
         default=None,
-        help="Use variable external history; 0 reads the full available prefix.",
+        help=(
+            "Use external append-only history; 0 reads the full prefix, "
+            "and a positive value reads that many recent records plus the "
+            "current event."
+        ),
     )
     parser.add_argument("--entropy-weight", type=float, default=0.01)
     parser.add_argument(

@@ -2246,6 +2246,7 @@ class ExternalRegisterComputeBasis(nn.Module):
         microsteps: int = 1,
         event_read_mode: str = "flattened_window",
         register_input_mode: str = "full",
+        history_query_mode: str = "instruction_only",
     ) -> None:
         super().__init__()
         if min(register_width, instruction_width, hidden) < 1:
@@ -2272,6 +2273,18 @@ class ExternalRegisterComputeBasis(nn.Module):
             raise ValueError("history attention requires a positive event width")
         if register_input_mode not in ("full", "event_window_only"):
             raise ValueError("unsupported compute basis register input mode")
+        if history_query_mode not in (
+            "instruction_only",
+            "instruction_current_event",
+        ):
+            raise ValueError("unsupported history query mode")
+        if (
+            history_query_mode != "instruction_only"
+            and event_read_mode != "history_attention"
+        ):
+            raise ValueError(
+                "current-event history queries require history attention"
+            )
         self.register_width = int(register_width)
         self.instruction_width = int(instruction_width)
         self.hidden = int(hidden)
@@ -2280,6 +2293,7 @@ class ExternalRegisterComputeBasis(nn.Module):
         self.microsteps = int(microsteps)
         self.event_read_mode = event_read_mode
         self.register_input_mode = register_input_mode
+        self.history_query_mode = history_query_mode
         self.event_window_width = self.event_width * self.event_window_size
         self.history_head_count = (
             self.HISTORY_HEAD_COUNT if event_read_mode == "history_attention" else 1
@@ -2301,7 +2315,12 @@ class ExternalRegisterComputeBasis(nn.Module):
         if event_read_mode in ("attention_pool", "history_attention"):
             query_width = (
                 self.register_width if register_input_mode == "full" else 0
-            ) + self.instruction_width
+            ) + self.instruction_width + (
+                self.event_width
+                if event_read_mode == "history_attention"
+                and history_query_mode == "instruction_current_event"
+                else 0
+            )
             self.event_query = nn.Linear(
                 query_width,
                 self.hidden * self.history_head_count,
@@ -2370,8 +2389,11 @@ class ExternalRegisterComputeBasis(nn.Module):
             "signature": "one_opaque_learned_slot_key_v1",
         }
         if self.event_read_mode == "history_attention":
+            configuration["history_query_mode"] = self.history_query_mode
             configuration["history_contract"] = (
-                "variable_external_history_attention_v2"
+                "variable_external_history_attention_v3"
+                if self.history_query_mode == "instruction_current_event"
+                else "variable_external_history_attention_v2"
             )
             configuration["history_head_count"] = self.history_head_count
         return configuration
@@ -2408,6 +2430,8 @@ class ExternalRegisterComputeBasis(nn.Module):
         # v1 artifacts predate the explicit register-input isolation mode;
         # their behavior is the original full-register path.
         configuration.setdefault("register_input_mode", "full")
+        if configuration.get("event_read_mode") == "history_attention":
+            configuration.setdefault("history_query_mode", "instruction_only")
         if expected_configuration is not None:
             expected = dict(expected_configuration)
             expected.setdefault("register_input_mode", "full")
@@ -2423,6 +2447,9 @@ class ExternalRegisterComputeBasis(nn.Module):
             event_read_mode=str(configuration["event_read_mode"]),
             register_input_mode=str(
                 configuration.get("register_input_mode", "full")
+            ),
+            history_query_mode=str(
+                configuration.get("history_query_mode", "instruction_only")
             ),
         )
         current = basis.state_dict()
@@ -2547,9 +2574,20 @@ class ExternalRegisterComputeBasis(nn.Module):
             )
             if self.event_read_mode in ("attention_pool", "history_attention"):
                 query_inputs = (
-                    (basis_register, code)
+                    (
+                        basis_register,
+                        code,
+                        current_event,
+                    )
+                    if self.history_query_mode == "instruction_current_event"
+                    and self.register_input_mode == "full"
+                    else (basis_register, code)
                     if self.register_input_mode == "full"
-                    else (code,)
+                    else (
+                        (code, current_event)
+                        if self.history_query_mode == "instruction_current_event"
+                        else (code,)
+                    )
                 )
                 query = self.event_query(
                     torch.cat(query_inputs, dim=-1)
@@ -2804,6 +2842,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         basis_microsteps: int = 1,
         basis_event_read_mode: str = "flattened_window",
         basis_register_input_mode: str = "full",
+        basis_history_query_mode: str = "instruction_only",
         event_input_mode: str = "frontend",
         event_window_size: int = 0,
         role_count: int = 4,
@@ -2839,6 +2878,18 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             )
         if basis_register_input_mode not in ("full", "event_window_only"):
             raise ValueError("unsupported basis register input mode")
+        if basis_history_query_mode not in (
+            "instruction_only",
+            "instruction_current_event",
+        ):
+            raise ValueError("unsupported basis history query mode")
+        if (
+            basis_history_query_mode != "instruction_only"
+            and basis_event_read_mode != "history_attention"
+        ):
+            raise ValueError(
+                "current-event history queries require history attention"
+            )
         if event_input_mode not in (
             "frontend",
             "append_controller_state",
@@ -2900,6 +2951,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             or basis.microsteps != basis_microsteps
             or basis.event_read_mode != basis_event_read_mode
             or basis.register_input_mode != basis_register_input_mode
+            or basis.history_query_mode != basis_history_query_mode
             or (
                 (event_window_size or basis_event_read_mode == "history_attention")
                 and basis.event_width != event_width
@@ -2922,6 +2974,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         self.basis_microsteps = int(basis_microsteps)
         self.basis_event_read_mode = basis_event_read_mode
         self.basis_register_input_mode = basis_register_input_mode
+        self.basis_history_query_mode = basis_history_query_mode
         self.event_input_mode = event_input_mode
         self.event_window_size = int(event_window_size)
         self.role_count = int(role_count)
@@ -3122,6 +3175,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             "basis_microsteps": self.basis_microsteps,
             "basis_event_read_mode": self.basis_event_read_mode,
             "basis_register_input_mode": self.basis_register_input_mode,
+            "basis_history_query_mode": self.basis_history_query_mode,
             "event_input_mode": self.event_input_mode,
             "event_window_size": self.event_window_size,
             "role_count": self.role_count,
@@ -3186,6 +3240,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
                 microsteps=self.basis_microsteps,
                 event_read_mode=self.basis_event_read_mode,
                 register_input_mode=self.basis_register_input_mode,
+                history_query_mode=self.basis_history_query_mode,
                 event_width=(
                     self.event_width
                     if self.event_window_size
@@ -3201,6 +3256,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             or basis.microsteps != self.basis_microsteps
             or basis.event_read_mode != self.basis_event_read_mode
             or basis.register_input_mode != self.basis_register_input_mode
+            or basis.history_query_mode != self.basis_history_query_mode
             or (
                 (
                     self.event_window_size
@@ -3235,8 +3291,11 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             "signature": "one_opaque_learned_slot_key_v1",
         }
         if self.basis_event_read_mode == "history_attention":
+            configuration["history_query_mode"] = self.basis_history_query_mode
             configuration["history_contract"] = (
-                "variable_external_history_attention_v2"
+                "variable_external_history_attention_v3"
+                if self.basis_history_query_mode == "instruction_current_event"
+                else "variable_external_history_attention_v2"
             )
             configuration["history_head_count"] = (
                 self.basis_slots[0].history_head_count
