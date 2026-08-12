@@ -1046,6 +1046,52 @@ compression, arbitrary new computation, or general continual learning. Evidence
 is archived in
 `session_records/brainworkshop_external_temporal_query_address_bridge_v2_promoted_2026-08-12/`.
 
+## Outcome-only counterfactual query-address growth (promoted bounded rung)
+
+`external_temporal_query_counterfactual_growth.py` removes the remaining
+joint-address/readout ambiguity from the query experiment without unfreezing
+the controller. Eight fresh external capability files are trained at opaque
+candidate offsets `1..8` using paired common-random action arms and scalar
+keypress outcomes only. A candidate is admitted only when its held-out
+accuracy remains at least `0.95` across every measured lifetime. Exactly one
+candidate—the verifier-valid offset `4`—is admitted; the other seven remain
+below mastery.
+
+The admitted file is frozen. The source query is recorded at offset `4`, then
+the target query is evaluated against all eight opaque offsets on fresh paired
+episodes. The persistent context-keyed route ledger receives only those scalar
+outcomes and independently protects offset `5`. The target reaches `1.0000`
+on every retained lifetime, source mastery remains `1.0000`, and exact route
+reload reproduces the result. Unknown-query, wrong-offset, missing-history,
+shuffled-feedback, frozen-controller, frozen-event-encoder, frozen-file, and
+zero-replay gates all pass on seeds `17`, `18`, and `19`.
+
+Each seed accounts for `165,632` unique verifier bits, `336,896`
+counterfactual-arm bits, `16,704` unique logical lifetimes, `33,792`
+counterfactual logical lifetimes, `1,024` optimizer updates, `72` promoted
+route-memory updates, and zero replay. The unique-bit count treats the eight
+candidate training streams as distinct, the common held-out candidate stream
+once, and each target probe stream once; paired arms are reported separately.
+
+This promotes outcome-only acquisition of a bounded external temporal address
+and demonstrates replay-free growth of an isolated route memory while the
+controller and promoted readout remain frozen. It does not establish
+unrestricted memory growth, arbitrary new computation, general program
+induction, or general continual learning. The private verifier is used only
+for audit gates; it is not supplied to the learner. Evidence and the complete
+accounting reports are archived in
+`session_records/brainworkshop_external_temporal_query_counterfactual_growth_promoted_2026-08-12/`.
+
+Run the promoted rung with:
+
+```bash
+PYTHONPATH=src uv run python -m experiments.brainworkshop_canonical.external_temporal_query_counterfactual_growth \
+  --source-updates 128 --source-evaluation-lifetimes 4 \
+  --source-route-lifetimes 8 --target-route-updates 8 --batch-size 16 \
+  --data-steps 14 --retention-lifetimes 4 --seed 17 \
+  --report-out /tmp/brainworkshop-query-counterfactual-growth.json
+```
+
 ## Related-key temporal content retrieval (historical v1; current v2 rejected)
 
 `external_temporal_content_retrieval_growth.py` composes that address

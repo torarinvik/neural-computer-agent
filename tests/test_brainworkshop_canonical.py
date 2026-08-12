@@ -455,6 +455,39 @@ def test_external_temporal_query_address_growth_smoke_freezes_readout_on_growth(
     assert report["accounting"]["replayed_examples"] == 0
 
 
+def test_external_temporal_query_counterfactual_growth_smoke_keeps_core_frozen(
+    tmp_path,
+) -> None:
+    from experiments.brainworkshop_canonical.external_temporal_query_counterfactual_growth import (
+        run,
+    )
+
+    report = run(
+        argparse.Namespace(
+            report_out=tmp_path / "temporal-query-counterfactual-growth.json",
+            seed=17,
+            source_updates=1,
+            source_evaluation_lifetimes=1,
+            source_route_lifetimes=1,
+            target_route_updates=1,
+            batch_size=2,
+            data_steps=7,
+            retention_lifetimes=1,
+            learning_rate=3e-3,
+            entropy_weight=0.01,
+        )
+    )
+
+    assert report["schema"] == (
+        "neural-computer.brainworkshop-external-temporal-query-counterfactual-growth.v1"
+    )
+    assert report["status"] == "rejected"
+    assert report["gates"]["frozen_controller"]
+    assert report["gates"]["frozen_event_encoder"]
+    assert report["gates"]["counterfactual_credit_recorded"]
+    assert report["accounting"]["replayed_examples"] == 0
+
+
 def test_external_temporal_content_retrieval_growth_smoke_preserves_memory_contract(
     tmp_path,
 ) -> None:

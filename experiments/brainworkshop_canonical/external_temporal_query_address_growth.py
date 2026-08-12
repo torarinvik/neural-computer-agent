@@ -29,6 +29,7 @@ from neural_computer import (
     ControllerFeedback,
     ExternalTemporalHistoryMemory,
     PersistentOpaqueContextRouteEvidence,
+    paired_counterfactual_ranking_loss,
 )
 
 from .external_temporal_offset_growth import (
@@ -157,6 +158,7 @@ class GlobalSourceEpisode:
     context: torch.Tensor
     selected_offsets: torch.Tensor
     eligible_bits: int
+    counterfactual_verifier_bits: int = 0
 
 
 def _digest(module: nn.Module) -> str:
@@ -314,8 +316,17 @@ def _global_source_episode(
     seed: int,
     train: bool,
     entropy_weight: float,
+    credit_mode: str = "attempted_bce",
+    forced_offset: int | None = None,
 ) -> GlobalSourceEpisode:
     """Train one source file with its generic scalar-credit offset policy."""
+
+    if credit_mode not in {
+        "attempted_bce",
+        "paired_counterfactual",
+        "paired_scalar_probe",
+    }:
+        raise ValueError("unsupported query readout credit mode")
 
     verifier = QueryConditionalNBackVerifier(
         query_symbol=query_symbol,
@@ -335,9 +346,33 @@ def _global_source_episode(
     log_probabilities: list[torch.Tensor] = []
     entropies: list[torch.Tensor] = []
     context: torch.Tensor | None = None
+    action_logits: list[torch.Tensor] = []
     selected_logits: list[torch.Tensor] = []
     rewards: list[torch.Tensor] = []
     eligible: list[torch.Tensor] = []
+    counterfactual_utilities: list[torch.Tensor] = []
+    counterfactual_zero = (
+        QueryConditionalNBackVerifier(
+            query_symbol=query_symbol,
+            depth=depth,
+            batch_size=batch_size,
+            data_steps=data_steps,
+            seed=seed,
+        )
+        if credit_mode in {"paired_counterfactual", "paired_scalar_probe"}
+        else None
+    )
+    counterfactual_one = (
+        QueryConditionalNBackVerifier(
+            query_symbol=query_symbol,
+            depth=depth,
+            batch_size=batch_size,
+            data_steps=data_steps,
+            seed=seed,
+        )
+        if credit_mode in {"paired_counterfactual", "paired_scalar_probe"}
+        else None
+    )
     while not verifier.done:
         if selected_offsets is None:
             bridge_offsets = torch.zeros(batch_size, dtype=torch.long)
@@ -363,14 +398,23 @@ def _global_source_episode(
         if verifier.position == 1:
             context = event[0].clone()
         if verifier.position == 1:
-            (
-                selected_offsets,
-                selected_log_probability,
-                selected_entropy,
-            ) = file.offset_selector(
-                batch_size,
-                sample=train,
-            )
+            if forced_offset is None:
+                (
+                    selected_offsets,
+                    selected_log_probability,
+                    selected_entropy,
+                ) = file.offset_selector(
+                    batch_size,
+                    sample=train,
+                )
+            else:
+                if not 1 <= forced_offset <= MAX_OFFSET:
+                    raise ValueError("forced source offset is outside the domain")
+                selected_offsets = torch.full(
+                    (batch_size,), forced_offset, dtype=torch.long
+                )
+                selected_log_probability = torch.zeros(batch_size)
+                selected_entropy = torch.zeros(())
         elif selected_offsets is None:
             selected_offsets = torch.ones(batch_size, dtype=torch.long)
             selected_log_probability = torch.zeros(batch_size)
@@ -395,6 +439,23 @@ def _global_source_episode(
             action = logits.argmax(dim=-1)
         propensity = probabilities.gather(1, action[:, None]).squeeze(1)
         reward, is_eligible = verifier.score(action)
+        if counterfactual_zero is not None and counterfactual_one is not None:
+            zero_reward, zero_eligible = counterfactual_zero.score(
+                torch.zeros(batch_size, dtype=torch.long)
+            )
+            one_reward, one_eligible = counterfactual_one.score(
+                torch.ones(batch_size, dtype=torch.long)
+            )
+            if not torch.equal(is_eligible, zero_eligible) or not torch.equal(
+                is_eligible, one_eligible
+            ):
+                raise RuntimeError(
+                    "counterfactual verifier arms lost episode alignment"
+                )
+            counterfactual_utilities.append(
+                torch.stack((zero_reward, one_reward), dim=1)
+            )
+        action_logits.append(logits)
         selected_logits.append(logits.gather(1, action[:, None]).squeeze(1))
         rewards.append(reward)
         eligible.append(is_eligible)
@@ -409,6 +470,11 @@ def _global_source_episode(
     reward_tensor = torch.stack(rewards, dim=1)
     eligible_tensor = torch.stack(eligible, dim=1)
     selected_tensor = torch.stack(selected_logits, dim=1)
+    utility_tensor = (
+        torch.stack(counterfactual_utilities, dim=1)
+        if counterfactual_utilities
+        else None
+    )
     log_probability_tensor = torch.stack(log_probabilities, dim=1)
     entropy_tensor = torch.stack(entropies)
     row_denominator = eligible_tensor.sum(dim=1).clamp_min(1.0)
@@ -417,9 +483,38 @@ def _global_source_episode(
     )
     accuracy = accuracy_by_row.mean()
     if train:
-        action_loss = F.binary_cross_entropy_with_logits(
-            selected_tensor[eligible_tensor], reward_tensor[eligible_tensor]
-        )
+        if credit_mode == "attempted_bce":
+            action_loss = F.binary_cross_entropy_with_logits(
+                selected_tensor[eligible_tensor], reward_tensor[eligible_tensor]
+            )
+        elif credit_mode == "paired_counterfactual":
+            if utility_tensor is None:
+                raise RuntimeError("counterfactual utilities were not collected")
+            logits_tensor = torch.stack(action_logits, dim=1)
+            attempted = torch.tensor(
+                [[0, 1]], dtype=torch.long, device=selected_tensor.device
+            ).expand(batch_size, -1)
+            ranking_losses = tuple(
+                paired_counterfactual_ranking_loss(
+                    logits,
+                    attempted,
+                    utilities,
+                )[0]
+                for logits, utilities in zip(
+                    torch.unbind(logits_tensor, dim=1),
+                    torch.unbind(utility_tensor, dim=1),
+                    strict=True,
+                )
+            )
+            action_loss = torch.stack(ranking_losses).mean()
+        else:
+            if utility_tensor is None:
+                raise RuntimeError("counterfactual utilities were not collected")
+            logits_tensor = torch.stack(action_logits, dim=1)
+            action_loss = F.binary_cross_entropy_with_logits(
+                logits_tensor[eligible_tensor],
+                utility_tensor[eligible_tensor],
+            )
         offset_loss = -(
             ((reward_tensor - 0.5).detach() * log_probability_tensor * eligible_tensor)
             .sum()
@@ -439,6 +534,11 @@ def _global_source_episode(
         context=context,
         selected_offsets=selected_offsets,
         eligible_bits=int(eligible_tensor.sum().item()),
+        counterfactual_verifier_bits=(
+            int(utility_tensor[eligible_tensor].numel())
+            if utility_tensor is not None
+            else 0
+        ),
     )
 
 
@@ -452,6 +552,8 @@ def _train_source(
     seed: int,
     learning_rate: float,
     entropy_weight: float,
+    credit_mode: str = "attempted_bce",
+    forced_offset: int | None = None,
 ) -> list[dict[str, float | int]]:
     optimizer = torch.optim.Adam(file.parameters(), lr=learning_rate)
     history: list[dict[str, float | int]] = []
@@ -466,6 +568,8 @@ def _train_source(
             seed=seed + update,
             train=True,
             entropy_weight=entropy_weight,
+            credit_mode=credit_mode,
+            forced_offset=forced_offset,
         )
         optimizer.zero_grad(set_to_none=True)
         episode.loss.backward()
@@ -478,6 +582,7 @@ def _train_source(
                 "selected_offset": int(torch.mode(episode.selected_offsets).values),
                 "unique_verifier_bits": batch_size * episode.eligible_bits // batch_size,
                 "replayed_examples": 0,
+                "counterfactual_verifier_bits": episode.counterfactual_verifier_bits,
             }
         )
     return history
