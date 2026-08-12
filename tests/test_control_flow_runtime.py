@@ -273,6 +273,44 @@ def test_control_flow_runtime_routes_multiple_files_with_isolated_counter_state(
         agent.state_from_payload(corrupted)
 
 
+def test_control_flow_runtime_can_credit_router_without_repeating_outcome_to_controller() -> None:
+    memory = ControlFlowProgramMemory(2)
+    memory.add_program(_program(), protect=True)
+    memory.add_program(_other_program(), protect=True)
+    router = ExternalOutcomeProgramRouter(
+        feature_width=2,
+        program_capacity=2,
+        initial_programs=2,
+        initial_learning_rate=0.5,
+        initial_trace_decay=0.0,
+        initial_baseline_rate=0.05,
+    )
+    agent = _agent(memory=memory, router=router)
+    quiet = _feedback(1)
+    state = agent.initial_state(1, device="cpu")
+    first, state = agent.step_events(
+        [AmodalEvent(torch.tensor([[1.0, 0.0, 0.0, 0.0]]))],
+        state,
+        quiet,
+    )
+    policy_before = state.program_router.credit.policy.clone()
+    route_feedback = replace(
+        quiet,
+        reward=torch.ones(1),
+        has_feedback=torch.ones(1, dtype=torch.bool),
+    )
+    second, state = agent.step_events(
+        [AmodalEvent(torch.tensor([[1.0, 0.0, 0.0, 0.0]]))],
+        state,
+        quiet,
+        route_feedback=route_feedback,
+    )
+
+    assert first.controller.intention.payload.shape == second.controller.intention.payload.shape
+    assert state.program_router.credit.feedbacks.item() == 1
+    assert not torch.equal(state.program_router.credit.policy, policy_before)
+
+
 def test_control_flow_runtime_rejects_mismatched_adapter_or_program_width() -> None:
     controller = AmodalCognitiveController(
         width=4,

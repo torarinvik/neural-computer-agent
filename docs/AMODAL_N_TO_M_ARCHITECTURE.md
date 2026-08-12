@@ -11377,10 +11377,10 @@ focused boundary tests cover output-bus fan-out, batch-order preservation,
 state reload and checksum rejection, width mismatch rejection, and external
 state replacement. This establishes canonical ABI integration; it is not a
 learned adapter result, a promoted program-selection result, or evidence of
-general continual learning. The next pressure is seed-stable learned
-route/codec training under held-out composition controls.
+general continual learning. The next pressure is learned codec adaptation and
+multi-file composition beyond this two-file routing boundary.
 
-### Multi-file typed control-flow routing — infrastructure qualified, learning promotion rejected
+### Multi-file typed control-flow routing — narrow outcome-only promotion
 
 The canonical bridge now accepts the existing generic
 `ExternalOutcomeProgramRouter` over opaque intention features and maintains a
@@ -11390,18 +11390,27 @@ outside the controller; the decoder still receives only the resulting opaque
 intention. Boundary tests cover mixed-batch routing, isolated file state,
 checksummed routed-state reload, and route-state corruption rejection.
 
-The canonical bridge was also exercised with the generic
+The canonical bridge was then exercised with the generic
 `ExternalOutcomeProgramRouter`: two protected files retained separate counter
 state, route propensities and per-file digests were emitted, and checksummed
 pause/resume and corruption rejection passed. The controller, adapter, and
-external files were frozen; route state received one delayed scalar outcome per
-fresh episode, with zero replay and zero controller optimizer updates.
+external files were frozen; the router received one delayed scalar outcome per
+fresh episode through the optional route-only feedback channel, with zero
+replay and zero controller optimizer updates. The controller therefore saw the
+same quiet feedback distribution during training and evaluation.
 
-The four-seed, forward/reversed-file audit is retained as a rejected promotion.
-Six of eight verifier arms reached `1.0000` held-out accuracy, but both seed-20
-arms remained at `0.5000`. The reward-shuffled control also reached `0.0000` or
-`1.0000` in several symmetric arms, so it is not yet a clean causal null. This
-qualifies the multi-file ABI and isolated-state seam only; it does not promote
-learned routing, arbitrary new computation, unrestricted growth, or general
-continual learning. Evidence is archived in
-`session_records/control_flow_runtime_routing_rejected_2026-08-12/`.
+Across four seeds and both forward/reversed physical-file orders, all eight
+verifier arms reached `1.0000` held-out accuracy. Stable `>=0.80` training
+prefixes were measured at `119`, `1000`, `1`, `999`, `1`, `1`, `1`, and `1`
+fresh verifier bits. The paired reward-shuffled order-permutation null was
+exactly `0.5000` for every seed; individual symmetric arms sometimes drifted to
+`0.0000` or `1.0000`, so the paired permutation is an explicit promotion gate
+rather than an omitted control.
+
+This promotes bounded outcome-only routing among two generic external files
+with frozen controller and isolated file state. It does not promote arbitrary
+new computation, unrestricted memory growth, or general continual learning.
+The earlier shared-feedback audit remains archived as a rejected diagnostic at
+`session_records/control_flow_runtime_routing_rejected_2026-08-12/`; the
+promotion report is archived at
+`session_records/control_flow_runtime_routing_promoted_2026-08-12/`.

@@ -192,7 +192,12 @@ def _train(
     for episode in range(TRAIN_EPISODES):
         cue = 1.0 if episode % 2 == 0 else -1.0
         state = _with_router(agent, router_state)
-        output, next_state = agent.step_events(_event(cue), state, pending)
+        output, next_state = agent.step_events(
+            _event(cue),
+            state,
+            _feedback(),
+            route_feedback=pending,
+        )
         selected = int(output.selected_program_slots[0])
         correct = selected == _target_slot(
             cue=cue,
@@ -207,7 +212,12 @@ def _train(
         pending = _feedback(present=True, reward=reward)
     # Commit the final delayed scalar without counting another verifier bit.
     final_state = _with_router(agent, router_state)
-    _, final_state = agent.step_events(_event(1.0), final_state, pending)
+    _, final_state = agent.step_events(
+        _event(1.0),
+        final_state,
+        _feedback(),
+        route_feedback=pending,
+    )
     router_state = final_state.program_router
     return (
         router_state,
@@ -364,6 +374,7 @@ def _run_arm(
             "heldout_amplitude": 2.0,
             "route_exploration": EXPLORATION,
             "learner_inputs": "opaque_controller_intention_and_scalar_outcome",
+            "controller_feedback_protocol": "quiet_controller_with_separate_route_feedback_v1",
             "forbidden_features": (
                 "logical_target_slot, program names, verifier rows, raw modality data"
             ),
@@ -411,6 +422,18 @@ def run(seeds: tuple[int, ...] = SEEDS) -> dict[str, object]:
     shuffled_reports = tuple(
         report for report in reports if report["feedback_mode"] == "reward_shuffled"
     )
+    paired_null_accuracy: dict[str, float] = {}
+    for seed in seeds:
+        seed_reports = tuple(
+            report for report in shuffled_reports if report["seed"] == seed
+        )
+        if len(seed_reports) != 2:
+            raise RuntimeError(
+                "paired reward-shuffled null requires forward and reversed arms"
+            )
+        paired_null_accuracy[str(seed)] = sum(
+            float(report["heldout_accuracy"]) for report in seed_reports
+        ) / 2.0
     return {
         "schema": "neural-computer.control-flow-runtime-routing.v1",
         "claim_boundary": (
@@ -420,8 +443,17 @@ def run(seeds: tuple[int, ...] = SEEDS) -> dict[str, object]:
         ),
         "seeds": list(seeds),
         "reports": reports,
-        "promoted": all(bool(report["promoted"]) for report in verifier_reports),
+        "promoted": all(bool(report["promoted"]) for report in verifier_reports)
+        and all(
+            abs(accuracy - 0.5) <= REWARD_SHUFFLED_TOLERANCE
+            for accuracy in paired_null_accuracy.values()
+        ),
+        "reward_shuffled_paired_heldout_accuracy": paired_null_accuracy,
         "reward_shuffled_null_within_boundary": all(
+            abs(accuracy - 0.5) <= REWARD_SHUFFLED_TOLERANCE
+            for accuracy in paired_null_accuracy.values()
+        ),
+        "reward_shuffled_arm_accuracy_within_boundary": all(
             abs(float(report["heldout_accuracy"]) - 0.5)
             <= REWARD_SHUFFLED_TOLERANCE
             for report in shuffled_reports

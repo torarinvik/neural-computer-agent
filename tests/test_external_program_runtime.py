@@ -429,6 +429,48 @@ def test_external_program_runtime_learns_route_from_scalar_feedback_only():
     assert state.program_router.credit.feedbacks.item() >= 128
 
 
+def test_external_program_runtime_can_isolate_route_credit_from_controller_feedback():
+    memory = _PartitionedProgramMemory()
+    memory.add_artifact(_artifact())
+    memory.add_artifact(_artifact())
+    router = ExternalOutcomeProgramRouter(
+        feature_width=5,
+        program_capacity=2,
+        initial_programs=2,
+        initial_learning_rate=0.2,
+        initial_trace_decay=0.0,
+        initial_baseline_rate=0.1,
+    )
+    _runtime_module, _machine, agent = _runtime(
+        memory=memory,
+        program_query_adapter=_ConstantTrajectoryQueryAdapter(),
+        program_router=router,
+    )
+    quiet = _feedback(1)
+    state = agent.initial_state(1, device="cpu")
+    _, state = agent.step_events(
+        [AmodalEvent(torch.ones(1, 4))],
+        state,
+        quiet,
+    )
+    policy_before = state.program_router.credit.policy.clone()
+    route_feedback = ControllerFeedback(
+        action=torch.zeros(1, 3),
+        reward=torch.ones(1),
+        propensity=torch.ones(1),
+        has_feedback=torch.ones(1, dtype=torch.bool),
+    )
+    _, state = agent.step_events(
+        [AmodalEvent(torch.ones(1, 4))],
+        state,
+        quiet,
+        route_feedback=route_feedback,
+    )
+
+    assert state.program_router.credit.feedbacks.item() == 1
+    assert not torch.equal(state.program_router.credit.policy, policy_before)
+
+
 def test_external_program_runtime_router_state_round_trips_and_activates_growth():
     torch.manual_seed(9035)
     memory = _PartitionedProgramMemory()

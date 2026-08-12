@@ -2346,6 +2346,7 @@ class ExternalProgramAmodalRuntime(nn.Module):
                 if self.program_router is None
                 else self.program_router.configuration()
             ),
+            "route_feedback": "optional_external_router_only_v1",
             "program_cell": (
                 None if self.program_cell is None else self.program_cell.configuration()
             ),
@@ -2645,6 +2646,7 @@ class ExternalProgramAmodalRuntime(nn.Module):
         state: ExternalProgramRuntimeState,
         feedback: ControllerFeedback,
         *,
+        route_feedback: ControllerFeedback | None = None,
         elapsed: torch.Tensor | float = 1.0,
         disable_workspace: bool = False,
         memory_scope: torch.Tensor | None = None,
@@ -2661,12 +2663,23 @@ class ExternalProgramAmodalRuntime(nn.Module):
             disable_workspace=disable_workspace,
             memory_scope=memory_scope,
         )
+        if route_feedback is None:
+            route_feedback = feedback
+        else:
+            if self.program_router is None:
+                raise ValueError(
+                    "separate route feedback requires a program router"
+                )
+            route_feedback.validate(
+                batch=controller_output.intention.payload.shape[0],
+                action_width=self.runtime.controller.feedback_width,
+            )
         program_router_state = state.program_router
         if self.program_router is not None:
             if program_router_state is None:
                 raise RuntimeError("external program route state is missing")
-            feedback_present = feedback.has_feedback.reshape(-1).to(torch.bool)
-            feedback_reward = feedback.reward.reshape(-1)
+            feedback_present = route_feedback.has_feedback.reshape(-1).to(torch.bool)
+            feedback_reward = route_feedback.reward.reshape(-1)
             if bool(
                 ((feedback_reward < 0.0) | (feedback_reward > 1.0))
                 .logical_and(feedback_present)

@@ -1636,6 +1636,10 @@ admitted file to the route capacity without resizing the controller. Router
 eligibility and policy state are included in the checksummed runtime
 checkpoint. Eviction or compaction without an explicit route-policy migration
 is rejected at execution time rather than silently changing file meaning.
+`step_events(..., route_feedback=...)` can optionally deliver delayed scalar
+credit to the external router while keeping the controller's own feedback
+stream separate; omitting it preserves the historical shared-feedback
+behavior.
 
 `ExternalProgramRuntimeState.payload()` and `from_payload()` provide a
 versioned tensor-only pause/resume checkpoint for the controller working state

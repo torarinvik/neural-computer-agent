@@ -1,0 +1,56 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "control_flow_runtime_routing_promoted_2026-08-12",
+  "status": "promoted_bounded_outcome_only_two_file_routing",
+  "claim_boundary": "bounded outcome-only routing among two generic external control-flow files with frozen controller and isolated file state; not arbitrary new computation or general continual learning",
+  "seeds": [17, 18, 19, 20],
+  "per_seed": {
+    "unique_training_verifier_bits": 2000,
+    "heldout_audit_verifier_bits": 400,
+    "logical_training_lifetimes": 2000,
+    "optimizer_updates": 0,
+    "replayed_examples": 0,
+    "route_state_updates": 2000,
+    "wall_seconds_forward_plus_reversed": {
+      "17": 2.4464654159964994,
+      "18": 2.3799499579472467,
+      "19": 2.3752152090892196,
+      "20": 2.376594875007868
+    }
+  },
+  "verifier_heldout_accuracy": {
+    "17_forward": 1.0,
+    "17_reversed": 1.0,
+    "18_forward": 1.0,
+    "18_reversed": 1.0,
+    "19_forward": 1.0,
+    "19_reversed": 1.0,
+    "20_forward": 1.0,
+    "20_reversed": 1.0
+  },
+  "stable_bits_to_threshold": {
+    "17_forward": 119,
+    "17_reversed": 1000,
+    "18_forward": 1,
+    "18_reversed": 999,
+    "19_forward": 1,
+    "19_reversed": 1,
+    "20_forward": 1,
+    "20_reversed": 1
+  },
+  "reward_shuffled_paired_heldout_accuracy": {
+    "17": 0.5,
+    "18": 0.5,
+    "19": 0.5,
+    "20": 0.5
+  },
+  "transfer_ratio_against_fresh_learner": {
+    "all_verifier_arms": 2.0
+  },
+  "notes": [
+    "The optional route-only feedback channel keeps controller feedback quiet and identical across training and evaluation.",
+    "All external files remained protected and byte-identical.",
+    "State reload was exact and route-state corruption was rejected in every arm.",
+    "This is a bounded routing promotion, not a general continual-learning result."
+  ]
+}

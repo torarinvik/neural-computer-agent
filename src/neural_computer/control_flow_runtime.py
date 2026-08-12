@@ -398,6 +398,7 @@ class ControlFlowProgramAmodalRuntime(nn.Module):
                 if self.program_router is None
                 else self.program_router.configuration()
             ),
+            "route_feedback": "optional_external_router_only_v1",
             "program_route_exploration": self.program_route_exploration,
             "max_steps": self.max_steps,
             "max_counter": self.max_counter,
@@ -534,6 +535,7 @@ class ControlFlowProgramAmodalRuntime(nn.Module):
         state: ControlFlowRuntimeState,
         feedback: ControllerFeedback,
         *,
+        route_feedback: ControllerFeedback | None = None,
         persistent_events: AmodalEventCollection | Sequence[AmodalEvent] | None = None,
         elapsed: torch.Tensor | float = 1.0,
         disable_workspace: bool = False,
@@ -567,12 +569,23 @@ class ControlFlowProgramAmodalRuntime(nn.Module):
         device = controller_output.intention.payload.device
         if state.counters.shape[0] != batch or state.counters.device != device:
             raise ValueError("control-flow state does not match controller output")
+        if route_feedback is None:
+            route_feedback = feedback
+        else:
+            if self.program_router is None:
+                raise ValueError(
+                    "separate route feedback requires a program router"
+                )
+            route_feedback.validate(
+                batch=batch,
+                action_width=self.runtime.controller.feedback_width,
+            )
         router_state = state.program_router
         if self.program_router is not None:
             if router_state is None:
                 raise RuntimeError("control-flow program router state is missing")
-            feedback_present = feedback.has_feedback.reshape(-1).to(torch.bool)
-            feedback_reward = feedback.reward.reshape(-1)
+            feedback_present = route_feedback.has_feedback.reshape(-1).to(torch.bool)
+            feedback_reward = route_feedback.reward.reshape(-1)
             if bool(
                 ((feedback_reward < 0.0) | (feedback_reward > 1.0))
                 .logical_and(feedback_present)
