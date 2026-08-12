@@ -23,6 +23,9 @@ RECIPE_PROGRAM_SCHEMA = "neural-computer.external-recipe-program.v1"
 RECIPE_PROGRAM_MEMORY_SCHEMA = "neural-computer.external-recipe-program-memory.v1"
 RECIPE_PROGRAM_SEARCH_SCHEMA = "neural-computer.external-recipe-program-search.v2"
 RECIPE_PROGRAM_PROPOSAL_SCHEMA = "neural-computer.external-recipe-program-proposal.v2"
+RECIPE_CONTEXT_PROPOSAL_MEMORY_SCHEMA = (
+    "neural-computer.external-context-conditioned-recipe-proposal-memory.v1"
+)
 RECIPE_PROGRAM_ADMISSION_SCHEMA = "neural-computer.external-recipe-program-admission.v1"
 RECIPE_PROGRAM_MUTATION_OPERATORS = ("replace", "insert", "delete", "swap")
 
@@ -508,6 +511,237 @@ class RecipeProgramSearchState:
         ).validate()
 
 
+class OpaqueContextRecipeProposalMemory:
+    """External scalar credit for content-addressed proposals.
+
+    The memory is deliberately outside the controller.  It stores only
+    aggregate verifier quality for an opaque context and an opaque candidate
+    digest; it never stores verifier rows or a semantic task label.  A small
+    global prior can seed an unseen context, while the context-local estimate
+    takes over as soon as that context has evidence.  The exploration floor
+    keeps inherited evidence from making any candidate unreachable.
+    """
+
+    schema = RECIPE_CONTEXT_PROPOSAL_MEMORY_SCHEMA
+
+    def __init__(
+        self,
+        *,
+        exploration_floor: float = 0.2,
+        global_prior_weight: float = 0.1,
+        exploration_bonus: float = 0.5,
+        temperature: float = 0.5,
+    ) -> None:
+        for name, value in (
+            ("exploration_floor", exploration_floor),
+            ("global_prior_weight", global_prior_weight),
+            ("exploration_bonus", exploration_bonus),
+            ("temperature", temperature),
+        ):
+            if not math.isfinite(value) or value < 0.0:
+                raise ValueError(f"recipe proposal {name} is invalid")
+        if exploration_floor >= 1.0:
+            raise ValueError("recipe proposal exploration floor must be < 1")
+        if temperature <= 0.0:
+            raise ValueError("recipe proposal temperature must be positive")
+        self.exploration_floor = float(exploration_floor)
+        self.global_prior_weight = float(global_prior_weight)
+        self.exploration_bonus = float(exploration_bonus)
+        self.temperature = float(temperature)
+        self._context_stats: dict[str, dict[str, list[float]]] = {}
+        self._global_stats: dict[str, list[float]] = {}
+
+    @staticmethod
+    def _validate_context(context: str) -> None:
+        if not isinstance(context, str) or not context or "\0" in context:
+            raise ValueError("recipe proposal context must be a non-empty opaque key")
+
+    @staticmethod
+    def _validate_candidate_digest(candidate_digest: str) -> None:
+        if not isinstance(candidate_digest, str) or len(candidate_digest) != 64:
+            raise ValueError("recipe proposal candidate digest is malformed")
+        try:
+            int(candidate_digest, 16)
+        except ValueError as error:
+            raise ValueError("recipe proposal candidate digest is malformed") from error
+
+    def configuration(self) -> dict[str, object]:
+        return {
+            "schema": self.schema,
+            "exploration_floor": self.exploration_floor,
+            "global_prior_weight": self.global_prior_weight,
+            "exploration_bonus": self.exploration_bonus,
+            "temperature": self.temperature,
+            "credit": "scalar_candidate_quality_aggregate_v1",
+            "context": "opaque_external_key_v1",
+            "candidate": "content_addressed_recipe_digest_v1",
+        }
+
+    @staticmethod
+    def _validate_candidates(candidate_digests: Sequence[str]) -> tuple[str, ...]:
+        candidates = tuple(candidate_digests)
+        if not candidates:
+            raise ValueError("recipe proposal candidate set cannot be empty")
+        for digest in candidates:
+            OpaqueContextRecipeProposalMemory._validate_candidate_digest(digest)
+        if len(set(candidates)) != len(candidates):
+            raise ValueError("recipe proposal candidate set contains duplicates")
+        return candidates
+
+    @staticmethod
+    def _mean_and_count(entry: Sequence[float] | None) -> tuple[float, float]:
+        if entry is None:
+            return 0.0, 0.0
+        if len(entry) != 2:
+            raise ValueError("recipe proposal aggregate is malformed")
+        total, count = float(entry[0]), float(entry[1])
+        if not math.isfinite(total) or not math.isfinite(count):
+            raise ValueError("recipe proposal aggregate is non-finite")
+        if total < 0.0 or count < 0.0 or total > count:
+            raise ValueError("recipe proposal aggregate is outside [0, 1]")
+        return total, count
+
+    def record(self, context: str, candidate_digest: str, quality: float) -> None:
+        """Record one scalar result without retaining the underlying outcomes."""
+
+        self._validate_context(context)
+        self._validate_candidate_digest(candidate_digest)
+        if not math.isfinite(quality) or not 0.0 <= quality <= 1.0:
+            raise ValueError("recipe proposal quality must lie in [0, 1]")
+        context_stats = self._context_stats.setdefault(context, {})
+        local = context_stats.setdefault(candidate_digest, [0.0, 0.0])
+        local[0] += float(quality)
+        local[1] += 1.0
+        global_entry = self._global_stats.setdefault(candidate_digest, [0.0, 0.0])
+        global_entry[0] += float(quality)
+        global_entry[1] += 1.0
+
+    def proposal_probabilities(
+        self,
+        context: str,
+        candidate_digests: Sequence[str],
+    ) -> torch.Tensor:
+        """Return the context-conditioned distribution over opaque proposals."""
+
+        self._validate_context(context)
+        candidates = self._validate_candidates(candidate_digests)
+        local_stats = self._context_stats.get(context, {})
+        local_total = sum(self._mean_and_count(local_stats.get(digest))[1] for digest in candidates)
+        prior_total = sum(
+            self._mean_and_count(self._global_stats.get(digest))[1]
+            * self.global_prior_weight
+            for digest in candidates
+        )
+        scale = math.log1p(local_total + prior_total + 1.0)
+        scores: list[float] = []
+        for digest in candidates:
+            local_quality, local_count = self._mean_and_count(local_stats.get(digest))
+            global_quality, global_count = self._mean_and_count(
+                self._global_stats.get(digest)
+            )
+            effective_count = local_count + self.global_prior_weight * global_count
+            effective_total = (
+                local_quality * local_count
+                + self.global_prior_weight * global_quality * global_count
+            )
+            mean = effective_total / effective_count if effective_count else 0.0
+            bonus = self.exploration_bonus * math.sqrt(
+                scale / (effective_count + 1.0)
+            )
+            scores.append(mean + bonus)
+        logits = torch.tensor(scores, dtype=torch.float64) / self.temperature
+        probabilities = torch.softmax(logits, dim=0)
+        floor = self.exploration_floor
+        return (1.0 - floor) * probabilities + floor / len(candidates)
+
+    def select(
+        self,
+        context: str,
+        candidate_digests: Sequence[str],
+        *,
+        generator: torch.Generator,
+    ) -> tuple[int, float]:
+        probabilities = self.proposal_probabilities(context, candidate_digests)
+        index = int(torch.multinomial(probabilities, 1, generator=generator))
+        return index, float(probabilities[index].item())
+
+    @staticmethod
+    def _serialize_stats(
+        stats: Mapping[str, Mapping[str, Sequence[float]]],
+    ) -> dict[str, dict[str, list[float]]]:
+        serialized: dict[str, dict[str, list[float]]] = {}
+        for context, candidates in sorted(stats.items()):
+            OpaqueContextRecipeProposalMemory._validate_context(context)
+            serialized[context] = {}
+            for digest, entry in sorted(candidates.items()):
+                OpaqueContextRecipeProposalMemory._validate_candidate_digest(digest)
+                total, count = OpaqueContextRecipeProposalMemory._mean_and_count(entry)
+                serialized[context][digest] = [total, count]
+        return serialized
+
+    def _content_payload(self) -> dict[str, object]:
+        return {
+            "schema": self.schema,
+            "configuration": self.configuration(),
+            "context_stats": self._serialize_stats(self._context_stats),
+            "global_stats": self._serialize_stats({"global": self._global_stats})[
+                "global"
+            ],
+        }
+
+    def digest(self) -> str:
+        return _canonical_digest(self._content_payload())
+
+    def payload(self) -> dict[str, object]:
+        return {**self._content_payload(), "sha256": self.digest()}
+
+    @classmethod
+    def from_payload(
+        cls,
+        payload: Mapping[str, object],
+    ) -> OpaqueContextRecipeProposalMemory:
+        if not isinstance(payload, Mapping) or payload.get("schema") != cls.schema:
+            raise ValueError("unsupported context proposal memory payload")
+        configuration = payload.get("configuration")
+        context_stats = payload.get("context_stats")
+        global_stats = payload.get("global_stats")
+        if (
+            not isinstance(configuration, Mapping)
+            or not isinstance(context_stats, Mapping)
+            or not isinstance(global_stats, Mapping)
+        ):
+            raise TypeError("context proposal memory payload is malformed")
+        memory = cls(
+            exploration_floor=float(configuration.get("exploration_floor", -1.0)),
+            global_prior_weight=float(configuration.get("global_prior_weight", -1.0)),
+            exploration_bonus=float(configuration.get("exploration_bonus", -1.0)),
+            temperature=float(configuration.get("temperature", -1.0)),
+        )
+
+        def load_stats(raw: Mapping[str, object]) -> dict[str, dict[str, list[float]]]:
+            loaded: dict[str, dict[str, list[float]]] = {}
+            for context, candidates in raw.items():
+                cls._validate_context(str(context))
+                if not isinstance(candidates, Mapping):
+                    raise TypeError("context proposal candidate stats are malformed")
+                loaded[str(context)] = {}
+                for digest, entry in candidates.items():
+                    cls._validate_candidate_digest(str(digest))
+                    if not isinstance(entry, Sequence) or isinstance(entry, (str, bytes)):
+                        raise TypeError("context proposal aggregate is malformed")
+                    total, count = cls._mean_and_count(entry)
+                    loaded[str(context)][str(digest)] = [total, count]
+            return loaded
+
+        memory._context_stats = load_stats(context_stats)
+        loaded_global = load_stats({"global": global_stats})
+        memory._global_stats = loaded_global["global"]
+        expected = payload.get("sha256")
+        if not isinstance(expected, str) or expected != memory.digest():
+            raise ValueError("context proposal memory checksum mismatch")
+        return memory
+
+
 @dataclass(frozen=True)
 class RecipeProgramCandidateProposal:
     program: RecipeProgram
@@ -517,6 +751,7 @@ class RecipeProgramCandidateProposal:
     attempt_id: int
     selection_probability: float
     scope: str = "default"
+    context: str = "default"
     schema: str = RECIPE_PROGRAM_PROPOSAL_SCHEMA
 
     def validate(self) -> RecipeProgramCandidateProposal:
@@ -524,6 +759,8 @@ class RecipeProgramCandidateProposal:
             raise ValueError("unsupported recipe proposal schema")
         if not isinstance(self.scope, str) or not self.scope or "\0" in self.scope:
             raise ValueError("recipe proposal scope must be a non-empty opaque key")
+        if not isinstance(self.context, str) or not self.context or "\0" in self.context:
+            raise ValueError("recipe proposal context must be a non-empty opaque key")
         if len(self.parent_digest) != 64:
             raise ValueError("recipe proposal parent digest is malformed")
         try:
@@ -557,6 +794,7 @@ class RecipeProgramCandidateProposal:
             "attempt_id": self.attempt_id,
             "selection_probability": self.selection_probability,
             "scope": self.scope,
+            "context": self.context,
         }
 
 
@@ -581,6 +819,7 @@ class OutcomeOnlyRecipeSequenceSearch:
         max_program_length: int = 8,
         exploration: float = 0.5,
         temperature: float = 0.5,
+        proposal_policy: OpaqueContextRecipeProposalMemory | None = None,
     ) -> None:
         if not isinstance(basis, RecipeBasis):
             raise TypeError("recipe search requires a RecipeBasis")
@@ -595,6 +834,11 @@ class OutcomeOnlyRecipeSequenceSearch:
         self.max_program_length = int(max_program_length)
         self.exploration = float(exploration)
         self.temperature = float(temperature)
+        if proposal_policy is not None and not isinstance(
+            proposal_policy, OpaqueContextRecipeProposalMemory
+        ):
+            raise TypeError("recipe proposal policy has the wrong type")
+        self.proposal_policy = proposal_policy
 
     def configuration(self) -> dict[str, object]:
         return {
@@ -608,6 +852,11 @@ class OutcomeOnlyRecipeSequenceSearch:
             "updates": "scalar_verifier_aggregate_only_v1",
             "commit": "verifier_gated_external_recipe_file_v1",
             "candidate_history": "opaque_scope_local_v2",
+            "proposal_credit": (
+                None
+                if self.proposal_policy is None
+                else self.proposal_policy.configuration()
+            ),
         }
 
     def initial_state(self) -> RecipeProgramSearchState:
@@ -728,10 +977,13 @@ class OutcomeOnlyRecipeSequenceSearch:
         parent: RecipeProgram,
         *,
         scope: str = "default",
+        context: str = "default",
     ) -> RecipeProgramCandidateProposal:
         state.validate()
         if not isinstance(scope, str) or not scope or "\0" in scope:
             raise ValueError("recipe proposal scope must be a non-empty opaque key")
+        if not isinstance(context, str) or not context or "\0" in context:
+            raise ValueError("recipe proposal context must be a non-empty opaque key")
         candidates = self.exhaustive_candidates(parent)
         probability = 1.0 / max(1, len(candidates))
         for operator_index, program in candidates:
@@ -745,6 +997,7 @@ class OutcomeOnlyRecipeSequenceSearch:
                 state.proposals,
                 probability,
                 scope,
+                context,
             ).validate()
         raise RuntimeError("recipe search parent neighborhood is exhausted")
 
@@ -755,11 +1008,39 @@ class OutcomeOnlyRecipeSequenceSearch:
         *,
         generator: torch.Generator,
         scope: str = "default",
+        context: str = "default",
     ) -> RecipeProgramCandidateProposal:
         state.validate()
         self._validate_parent(parent)
         if not isinstance(scope, str) or not scope or "\0" in scope:
             raise ValueError("recipe proposal scope must be a non-empty opaque key")
+        if not isinstance(context, str) or not context or "\0" in context:
+            raise ValueError("recipe proposal context must be a non-empty opaque key")
+        if self.proposal_policy is not None:
+            available = tuple(
+                (operator_index, program)
+                for operator_index, program in self.exhaustive_candidates(parent)
+                if _scoped_candidate_key(scope, program.digest())
+                not in state.seen_candidate_digests
+            )
+            if not available:
+                raise RuntimeError("recipe search parent neighborhood is exhausted")
+            selected, probability = self.proposal_policy.select(
+                context,
+                tuple(program.digest() for _, program in available),
+                generator=generator,
+            )
+            operator_index, program = available[selected]
+            return RecipeProgramCandidateProposal(
+                program,
+                parent.digest(),
+                RECIPE_PROGRAM_MUTATION_OPERATORS[operator_index],
+                operator_index,
+                state.proposals,
+                probability,
+                scope,
+                context,
+            ).validate()
         excluded = torch.zeros(len(RECIPE_PROGRAM_MUTATION_OPERATORS), dtype=torch.bool)
         for _ in range(64):
             probabilities = self._operator_probabilities(state, parent).masked_fill(
@@ -809,12 +1090,18 @@ class OutcomeOnlyRecipeSequenceSearch:
                 state.proposals,
                 float(probabilities[operator_index]),
                 scope,
+                context,
             ).validate()
         # Learned proposal priors are allowed to miss a useful edit, but a
         # finite generic neighborhood must not be confused with an
         # inexpressible target.  Exhaustive fallback preserves coverage while
         # leaving scalar outcomes as the only admission signal.
-        return self.propose_exhaustive(state, parent, scope=scope)
+        return self.propose_exhaustive(
+            state,
+            parent,
+            scope=scope,
+            context=context,
+        )
 
     def record_outcomes(
         self,
@@ -846,6 +1133,8 @@ class OutcomeOnlyRecipeSequenceSearch:
             min_stable_observations=min_stable_observations,
         )
         quality = float(values.mean().item()) if values.numel() else 0.0
+        if self.proposal_policy is not None:
+            self.proposal_policy.record(proposal.context, digest, quality)
         totals = state.reward_totals.clone()
         counts = state.reward_counts.clone()
         accepted_counts = state.accepted_counts.clone()
@@ -873,6 +1162,7 @@ class OutcomeOnlyRecipeSequenceSearch:
 
 
 __all__ = [
+    "RECIPE_CONTEXT_PROPOSAL_MEMORY_SCHEMA",
     "RECIPE_PROGRAM_ADMISSION_SCHEMA",
     "RECIPE_PROGRAM_MEMORY_SCHEMA",
     "RECIPE_PROGRAM_MUTATION_OPERATORS",
@@ -880,6 +1170,7 @@ __all__ = [
     "RECIPE_PROGRAM_SCHEMA",
     "RECIPE_PROGRAM_SEARCH_SCHEMA",
     "ExternalRecipeProgramMemory",
+    "OpaqueContextRecipeProposalMemory",
     "OutcomeOnlyRecipeSequenceSearch",
     "RecipeProgram",
     "RecipeProgramAdmissionReceipt",

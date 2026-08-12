@@ -476,6 +476,7 @@ from .recipe_basis import (
     paired_increment_target,
 )
 from .recipe_program import (
+    RECIPE_CONTEXT_PROPOSAL_MEMORY_SCHEMA,
     RECIPE_PROGRAM_ADMISSION_SCHEMA,
     RECIPE_PROGRAM_MEMORY_SCHEMA,
     RECIPE_PROGRAM_MUTATION_OPERATORS,
@@ -483,6 +484,7 @@ from .recipe_program import (
     RECIPE_PROGRAM_SCHEMA,
     RECIPE_PROGRAM_SEARCH_SCHEMA,
     ExternalRecipeProgramMemory,
+    OpaqueContextRecipeProposalMemory,
     OutcomeOnlyRecipeSequenceSearch,
     RecipeProgram,
     RecipeProgramAdmissionReceipt,
@@ -984,6 +986,7 @@ __all__ = [
     "PROMOTION_SCHEMA",
     "RECIPE_BASIS_SCHEMA",
     "RECIPE_PROGRAM_ADMISSION_SCHEMA",
+    "RECIPE_CONTEXT_PROPOSAL_MEMORY_SCHEMA",
     "RECIPE_PROGRAM_MEMORY_SCHEMA",
     "RECIPE_PROGRAM_MUTATION_OPERATORS",
     "RECIPE_PROGRAM_PROPOSAL_SCHEMA",
@@ -1173,6 +1176,7 @@ __all__ = [
     "ExternalRandomFeatureGrowthReceipt",
     "ExternalRandomFeatureTransitionStatistics",
     "ExternalRecipeProgramMemory",
+    "OpaqueContextRecipeProposalMemory",
     "ExternalRegisterBasisCompatibilityPrior",
     "ExternalRegisterComputeBasis",
     "ExternalRegisterComputeBasisArtifact",

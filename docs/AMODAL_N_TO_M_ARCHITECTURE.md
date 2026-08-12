@@ -10887,3 +10887,28 @@ than the fresh control on both seeds. This is a useful boundary result, not a
 general continual-learning claim. The next mechanism must learn
 context-conditioned instruction/position proposal credit with an exploration
 floor before larger program frontiers are justified.
+
+## Context-conditioned outcome-only proposal credit (2026-08-12)
+
+The external recipe boundary now includes a replaceable
+`OpaqueContextRecipeProposalMemory`. It receives only an opaque context key,
+an opaque content-addressed candidate digest, and a scalar verifier quality.
+It stores aggregate credit outside the controller, keeps candidate-history
+scope separate from context, persists with a checksum, and enforces a nonzero
+exploration floor so inherited evidence cannot make a novel candidate
+unreachable.
+
+The two-seed audit trained two contradictory order-sensitive recipe targets in
+separate opaque contexts, reloaded the policy, and reacquired both targets in
+new logical lifetimes with zero replay. Held-out accuracy stayed at `1.0000`.
+Warm/fresh proposal ratios were `0.1111` and `0.1176` on seed `17`, and
+`0.1765` and `0.1818` on seed `18`. Each context preferred its own candidate,
+an unseen context remained unbiased with the floor active, shuffled feedback
+was rejected, and controller optimizer updates remained zero. Evidence and
+the sample-efficiency ledger are archived in
+`session_records/recipe_context_conditioned_proposal_credit_promoted_2026-08-12/`.
+
+This promotes only bounded replay-free contextual candidate reuse. It does not
+yet provide factorized instruction/position credit, related-context transfer,
+automatic program synthesis beyond the bounded neighborhood, unrestricted
+memory growth, or general continual learning.

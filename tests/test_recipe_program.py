@@ -6,6 +6,7 @@ import torch
 
 from neural_computer import (
     ExternalRecipeProgramMemory,
+    OpaqueContextRecipeProposalMemory,
     OutcomeOnlyRecipeSequenceSearch,
     RecipeBasis,
     RecipeInstruction,
@@ -150,3 +151,31 @@ def test_candidate_history_is_scoped_while_scalar_priors_can_transfer() -> None:
     assert second.program.digest() == first.program.digest()
     assert second.scope == "opaque-b"
     assert state.proposals == 1
+
+
+def test_context_proposal_credit_is_opaque_persistent_and_has_an_exploration_floor() -> None:
+    first = "0" * 64
+    second = "1" * 64
+    memory = OpaqueContextRecipeProposalMemory(
+        exploration_floor=0.2,
+        global_prior_weight=0.0,
+    )
+    memory.record("context-a", first, 1.0)
+    memory.record("context-a", second, 0.0)
+    memory.record("context-b", second, 1.0)
+
+    context_a = memory.proposal_probabilities("context-a", (first, second))
+    context_b = memory.proposal_probabilities("context-b", (first, second))
+    unseen = memory.proposal_probabilities("context-new", (first, second))
+
+    assert float(context_a[0]) > float(context_a[1])
+    assert float(context_b[1]) > float(context_b[0])
+    assert bool(torch.all(unseen >= 0.1))
+
+    restored = OpaqueContextRecipeProposalMemory.from_payload(memory.payload())
+    assert restored.digest() == memory.digest()
+    assert torch.equal(
+        restored.proposal_probabilities("context-a", (first, second)),
+        context_a,
+    )
+    assert "outcomes" not in memory.payload()

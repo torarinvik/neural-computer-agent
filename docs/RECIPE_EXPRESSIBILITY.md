@@ -191,3 +191,29 @@ content and position, with an explicit exploration floor. More external slots
 or longer programs are not justified until that proposal policy improves a
 held-out learning curve without sacrificing the scope-isolation and retention
 gates.
+
+## Context-conditioned proposal credit
+
+`OpaqueContextRecipeProposalMemory` adds a replaceable external policy layer
+above the sequence search. It stores aggregate scalar quality keyed by an
+opaque context and a content-addressed candidate digest; it stores no verifier
+rows, task labels, or controller updates. Candidate-history scope remains
+separate from context, so a new lifetime can reevaluate a previously seen
+candidate while retaining the old contextual credit. A nonzero exploration
+floor keeps every candidate reachable, including in an unseen context.
+
+The two-seed audit acquired two contradictory order-sensitive recipes in two
+opaque contexts, persisted the policy, then reacquired both in fresh lifetimes
+without replay. Both contexts retained `1.0000` held-out accuracy. Warm
+proposal counts were `1` versus `9` and `2` versus `17` on seed `17`, and `3`
+versus `17` and `2` versus `11` on seed `18`, for warm/fresh ratios of
+`0.1111`, `0.1176`, `0.1765`, and `0.1818`. The unseen-context distribution
+was unbiased, each trained context preferred its own recipe, shuffled feedback
+was rejected, and policy reload was exact. Evidence is archived under
+`session_records/recipe_context_conditioned_proposal_credit_promoted_2026-08-12/`.
+
+This promotes bounded replay-free contextual proposal reuse only. The policy
+currently credits an exact whole candidate digest; it does not yet factorize
+instruction identity, insertion position, or reusable sub-sequences across
+related contexts, and it does not establish general continual learning or
+unrestricted memory growth.

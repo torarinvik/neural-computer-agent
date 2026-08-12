@@ -1,0 +1,34 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "recipe-context-conditioned-proposal-credit-promoted-2026-08-12",
+  "status": "promoted_bounded_contextual_candidate_reuse",
+  "seeds": [17, 18],
+  "unique_verifier_bits": [896, 728],
+  "unique_logical_lifetimes": [108, 87],
+  "optimizer_updates": 0,
+  "replayed_examples": 0,
+  "stable_bits_to_threshold": {
+    "acquisition_and_reacquisition": [8, 8],
+    "shuffled_feedback_control": null
+  },
+  "retention_on_mastered_primitives": [1.0, 1.0],
+  "transfer_ratio_against_fresh_learner": [
+    0.1111111111111111,
+    0.11764705882352941,
+    0.17647058823529413,
+    0.18181818181818182
+  ],
+  "latency_seconds": [0.18635954102501273],
+  "controls": {
+    "two_seeds": true,
+    "contradictory_contexts": true,
+    "unseen_context": true,
+    "exploration_floor": true,
+    "scope_isolation": true,
+    "shuffled_feedback": true,
+    "reload_and_checksum": true,
+    "zero_replay": true,
+    "controller_path_untouched": true
+  },
+  "claim_boundary": "External context-conditioned aggregate proposal credit is promoted for bounded exact-candidate reuse; it is not general continual learning or unrestricted memory growth."
+}
