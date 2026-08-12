@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import random
 import time
 from pathlib import Path
 
@@ -77,35 +78,46 @@ def _bounded_search(
     *,
     reference: ControlFlowProgram,
     amounts: tuple[int, ...],
+    seed: int,
     max_candidates: int | None = None,
 ) -> tuple[ControlFlowProgram | None, dict[str, object]]:
     started = time.perf_counter()
     checked = 0
-    for candidate in iter_control_flow_programs(
-        counter_count=COUNTER_COUNT,
-        min_length=PROGRAM_LENGTH,
-        max_length=PROGRAM_LENGTH,
-    ):
+    candidates = list(
+        iter_control_flow_programs(
+            counter_count=COUNTER_COUNT,
+            min_length=PROGRAM_LENGTH,
+            max_length=PROGRAM_LENGTH,
+        )
+    )
+    random.Random(seed).shuffle(candidates)
+    for candidate in candidates:
         if max_candidates is not None and checked >= max_candidates:
+            elapsed = time.perf_counter() - started
             return None, {
                 "status": "budget_exhausted",
                 "checked_candidates": checked,
-                "wall_seconds": time.perf_counter() - started,
+                "wall_seconds": elapsed,
+                "latency_seconds_per_candidate": elapsed / checked,
             }
         checked += 1
         outcomes = _score(candidate, reference, amounts)
         if len(outcomes) == len(amounts) and min(outcomes) >= TARGET_THRESHOLD:
+            elapsed = time.perf_counter() - started
             return candidate, {
                 "status": "expressible",
                 "checked_candidates": checked,
                 "stable_bits_to_threshold": checked * len(amounts),
-                "wall_seconds": time.perf_counter() - started,
+                "wall_seconds": elapsed,
+                "latency_seconds_per_candidate": elapsed / checked,
             }
+    elapsed = time.perf_counter() - started
     return None, {
         "status": "inexpressible",
         "checked_candidates": checked,
         "stable_bits_to_threshold": None,
-        "wall_seconds": time.perf_counter() - started,
+        "wall_seconds": elapsed,
+        "latency_seconds_per_candidate": elapsed / checked if checked else None,
     }
 
 
@@ -116,7 +128,11 @@ def _run_arm(seed: int, *, reverse_inputs: bool) -> dict[str, object]:
     memory = ControlFlowProgramMemory(COUNTER_COUNT)
     source_slot = memory.add_program(source, protect=True)
 
-    candidate, search = _bounded_search(reference=target, amounts=amounts)
+    candidate, search = _bounded_search(
+        reference=target,
+        amounts=amounts,
+        seed=seed,
+    )
     admitted = None
     if candidate is not None:
         admitted = memory.admit_verified(
@@ -180,6 +196,7 @@ def _run_arm(seed: int, *, reverse_inputs: bool) -> dict[str, object]:
     _, budget_control = _bounded_search(
         reference=target,
         amounts=amounts,
+        seed=seed,
         max_candidates=10,
     )
     gates = {
@@ -224,8 +241,11 @@ def _run_arm(seed: int, *, reverse_inputs: bool) -> dict[str, object]:
             "optimizer_updates": 0,
             "replayed_examples": 0,
             "wall_seconds": float(search["wall_seconds"]),
+            "latency_seconds_per_candidate": float(
+                search["latency_seconds_per_candidate"]
+            ),
             "stable_bits_to_threshold": search.get("stable_bits_to_threshold"),
-            "transfer_ratio_against_fresh_learner": 1.0,
+            "transfer_ratio_against_fresh_learner": None,
         },
         "promoted": all(gates.values()),
     }
