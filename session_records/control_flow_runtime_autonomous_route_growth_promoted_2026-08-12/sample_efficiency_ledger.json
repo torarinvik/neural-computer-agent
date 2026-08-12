@@ -1,0 +1,27 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment_id": "control-flow-runtime-autonomous-route-growth-promoted-2026-08-12",
+  "status": "promoted_narrow_autonomous_route_reachability",
+  "rung": "three-seed interleaved route-reachability promotion",
+  "unique_verifier_bits": 2400,
+  "unique_logical_lifetimes": 2400,
+  "optimizer_updates": 0,
+  "replayed_examples": 0,
+  "stable_bits_to_threshold": {
+    "route_reachability": "not separately measured; final held-out gate is recorded in report_summary.json",
+    "reversal_recovery": "not separately measured; final held-out gate is recorded in report_summary.json"
+  },
+  "retention_on_mastered_primitives": 1.0,
+  "transfer_ratio_against_fresh_learner": null,
+  "controls": {
+    "fresh": "not applicable to runtime lifecycle promotion",
+    "passive": true,
+    "action_shuffled": "not applicable",
+    "reward_shuffled": true,
+    "missing_evidence": "pending feedback is explicit and no-op when absent",
+    "memory_corruption": true,
+    "reversal": true,
+    "legacy_state_v1_migration": true
+  },
+  "claim_boundary": "Bounded runtime-owned route reachability and delayed scalar credit; not general continual learning."
+}

@@ -56,6 +56,20 @@ class _EchoDecoder(nn.Module):
         return intention.payload
 
 
+class _ConstantRouteQuery(nn.Module):
+    query_width = 2
+    query_space_id = "opaque-route-query-v1"
+
+    def forward(self, controller_output, controller_state) -> torch.Tensor:
+        query = torch.zeros(
+            controller_output.intention.payload.shape[0],
+            self.query_width,
+            device=controller_output.intention.payload.device,
+        )
+        query[:, 0] = 1.0
+        return query
+
+
 class _SignRouter(ExternalOutcomeProgramRouter):
     """Deterministic test router; production routing remains outcome-trained."""
 
@@ -104,6 +118,7 @@ def _agent(
     router: ExternalOutcomeProgramRouter | None = None,
     query_adapter: nn.Module | None = None,
     route_evidence: PersistentOpaqueContextRouteEvidence | None = None,
+    program_route_exploration: float = 0.0,
 ) -> ControlFlowProgramAmodalRuntime:
     controller = AmodalCognitiveController(
         width=4,
@@ -126,6 +141,7 @@ def _agent(
         program_router=router,
         program_route_evidence=route_evidence,
         program_route_query_adapter=query_adapter,
+        program_route_exploration=program_route_exploration,
         max_steps=8,
     )
 
@@ -136,6 +152,15 @@ def _feedback(batch: int) -> ControllerFeedback:
         reward=torch.zeros(batch),
         propensity=torch.ones(batch),
         has_feedback=torch.zeros(batch, dtype=torch.bool),
+    )
+
+
+def _route_feedback(reward: float) -> ControllerFeedback:
+    return ControllerFeedback(
+        action=torch.zeros(1, 3),
+        reward=torch.tensor([reward]),
+        propensity=torch.ones(1),
+        has_feedback=torch.ones(1, dtype=torch.bool),
     )
 
 
@@ -209,6 +234,49 @@ def test_control_flow_runtime_preserves_permutation_and_state_reload() -> None:
     corrupted["counters"][0, 0] += 1
     with pytest.raises(ValueError, match="checksum"):
         agent.state_from_payload(corrupted)
+
+
+def test_control_flow_runtime_state_v1_payload_migrates_to_v2() -> None:
+    agent = _agent()
+    state = agent.initial_state(1, device="cpu")
+    payload = state.payload()
+    payload["schema"] = "neural-computer.control-flow-runtime-state.v1"
+    payload.pop("pending_route_query")
+    payload.pop("pending_route_slots")
+    unsigned = {key: value for key, value in payload.items() if key != "sha256"}
+
+    # Match the runtime's nested tensor checksum helper without importing an
+    # implementation-private symbol into the public test contract.
+    import hashlib
+
+    def digest(value: object) -> str:
+        result = hashlib.sha256()
+
+        def visit(item: object) -> None:
+            if isinstance(item, torch.Tensor):
+                tensor = item.detach().cpu().contiguous()
+                result.update(str(tensor.dtype).encode("utf-8"))
+                result.update(repr(tuple(tensor.shape)).encode("utf-8"))
+                result.update(tensor.numpy().tobytes())
+            elif isinstance(item, dict):
+                for key in sorted(item, key=str):
+                    result.update(str(key).encode("utf-8"))
+                    visit(item[key])
+            elif isinstance(item, (tuple, list)):
+                for child in item:
+                    visit(child)
+            else:
+                result.update(repr(item).encode("utf-8"))
+
+        visit(value)
+        return result.hexdigest()
+
+    payload["sha256"] = digest(unsigned)
+    restored = agent.state_from_payload(payload)
+
+    assert restored.schema == "neural-computer.control-flow-runtime-state.v2"
+    assert restored.pending_route_query is None
+    assert restored.pending_route_slots is None
 
 
 def test_control_flow_runtime_reads_a_checksummed_memory_backed_file() -> None:
@@ -444,6 +512,71 @@ def test_control_flow_runtime_consumes_context_route_evidence_in_cycle() -> None
 
     assert routed.program_slot == 1
     assert routed.program_route_query is not None
+
+
+def test_route_evidence_auto_credit_explores_and_reaches_newly_admitted_file() -> None:
+    torch.manual_seed(1401)
+    memory = ControlFlowProgramMemory(2)
+    memory.add_program(_program(), protect=True)
+    evidence = PersistentOpaqueContextRouteEvidence(
+        width=2,
+        min_mastery_observations=2,
+    )
+    evidence.append_slot()
+    agent = _agent(
+        memory=memory,
+        query_adapter=_ConstantRouteQuery(),
+        route_evidence=evidence,
+        program_route_exploration=0.4,
+    )
+    state = agent.initial_state(1, device="cpu")
+    receipt, state = agent.admit_program_verified(
+        state,
+        _other_program(),
+        (1.0, 1.0),
+        protect=True,
+    )
+    assert receipt.accepted
+
+    output, state = agent.step_events(
+        [AmodalEvent(torch.ones(1, 4))],
+        state,
+        _feedback(1),
+    )
+    assert output.program_route_probabilities is not None
+    assert output.program_route_propensities is not None
+    assert state.pending_route_query is not None
+    assert state.pending_route_slots is not None
+
+    for _ in range(160):
+        selected = int(output.selected_program_slots[0])
+        outcome = 1.0 if selected == 1 else 0.0
+        output, state = agent.step_events(
+            [AmodalEvent(torch.ones(1, 4))],
+            state,
+            _feedback(1),
+            route_feedback=_route_feedback(outcome),
+        )
+    agent.program_route_exploration = 0.0
+    output, state = agent.step_events(
+        [AmodalEvent(torch.ones(1, 4))],
+        state,
+        _feedback(1),
+        route_feedback=_route_feedback(
+            1.0 if int(output.selected_program_slots[0]) == 1 else 0.0
+        ),
+    )
+
+    assert output.program_slot == 1
+    assert output.program_digest == agent.program_memory.program(1).digest()
+    assert agent.program_route_evidence is not None
+    assert agent.program_route_evidence.preferred_slots(
+        torch.tensor([[1.0, 0.0]])
+    ).item() == 1
+
+    restored = agent.state_from_payload(state.payload())
+    assert restored.pending_route_query is not None
+    assert torch.equal(restored.pending_route_slots, state.pending_route_slots)
 
 
 def test_control_flow_runtime_rejects_incompatible_route_query_space() -> None:

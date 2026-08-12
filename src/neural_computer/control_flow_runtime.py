@@ -46,7 +46,10 @@ CONTROL_FLOW_INTENTION_ADAPTER_SCHEMA = (
     "neural-computer.control-flow-intention-adapter.v1"
 )
 CONTROL_FLOW_RUNTIME_SCHEMA = "neural-computer.control-flow-runtime.v1"
-CONTROL_FLOW_RUNTIME_STATE_SCHEMA = "neural-computer.control-flow-runtime-state.v1"
+CONTROL_FLOW_RUNTIME_STATE_LEGACY_SCHEMA = (
+    "neural-computer.control-flow-runtime-state.v1"
+)
+CONTROL_FLOW_RUNTIME_STATE_SCHEMA = "neural-computer.control-flow-runtime-state.v2"
 CONTROL_FLOW_PROGRAM_GROWTH_SCHEMA = (
     "neural-computer.control-flow-program-growth.v1"
 )
@@ -151,6 +154,8 @@ class ControlFlowRuntimeState:
     counter_count: int
     program_counters: Mapping[int, torch.Tensor] = field(default_factory=dict)
     program_router: ExternalOutcomeProgramRouterState | None = None
+    pending_route_query: torch.Tensor | None = None
+    pending_route_slots: torch.Tensor | None = None
     schema: str = CONTROL_FLOW_RUNTIME_STATE_SCHEMA
 
     def validate(self) -> ControlFlowRuntimeState:
@@ -183,6 +188,27 @@ class ControlFlowRuntimeState:
                 raise ValueError("control-flow program counters use the wrong device")
             if bool(torch.any(counters < 0)):
                 raise ValueError("control-flow program counters cannot be negative")
+        if (self.pending_route_query is None) != (self.pending_route_slots is None):
+            raise ValueError("pending route query and slots must be provided together")
+        if self.pending_route_query is not None:
+            if (
+                self.pending_route_query.ndim != 2
+                or self.pending_route_query.shape[0] != self.counters.shape[0]
+                or not bool(torch.isfinite(self.pending_route_query).all())
+            ):
+                raise ValueError("pending route query has the wrong shape or values")
+            if self.pending_route_query.device != self.counters.device:
+                raise ValueError("pending route query uses the wrong device")
+            assert self.pending_route_slots is not None
+            if (
+                self.pending_route_slots.ndim != 1
+                or self.pending_route_slots.shape[0] != self.counters.shape[0]
+                or self.pending_route_slots.dtype
+                not in (torch.int8, torch.int16, torch.int32, torch.int64)
+                or self.pending_route_slots.device != self.counters.device
+                or bool(torch.any(self.pending_route_slots < 0))
+            ):
+                raise ValueError("pending route slots are invalid")
         if self.program_router is not None:
             if not isinstance(self.program_router, ExternalOutcomeProgramRouterState):
                 raise TypeError("control-flow program router state has the wrong type")
@@ -219,6 +245,16 @@ class ControlFlowRuntimeState:
                 if self.program_router is None
                 else program_router.state_payload(self.program_router)
             ),
+            "pending_route_query": (
+                None
+                if self.pending_route_query is None
+                else self.pending_route_query.detach().cpu().clone()
+            ),
+            "pending_route_slots": (
+                None
+                if self.pending_route_slots is None
+                else self.pending_route_slots.detach().cpu().clone()
+            ),
         }
         return {**body, "sha256": _digest_payload(body)}
 
@@ -233,7 +269,11 @@ class ControlFlowRuntimeState:
             raise TypeError("control-flow runtime-state payload must be a mapping")
         expected = payload.get("sha256")
         unsigned = {key: value for key, value in payload.items() if key != "sha256"}
-        if payload.get("schema") != CONTROL_FLOW_RUNTIME_STATE_SCHEMA:
+        payload_schema = payload.get("schema")
+        if payload_schema not in {
+            CONTROL_FLOW_RUNTIME_STATE_LEGACY_SCHEMA,
+            CONTROL_FLOW_RUNTIME_STATE_SCHEMA,
+        }:
             raise ValueError("unsupported control-flow runtime-state schema")
         if not isinstance(expected, str) or expected != _digest_payload(unsigned):
             raise ValueError("control-flow runtime-state checksum mismatch")
@@ -271,13 +311,25 @@ class ControlFlowRuntimeState:
             raise TypeError("control-flow program router payload is malformed")
         else:
             restored_router = program_router.state_from_payload(raw_router)
+        pending_route_query = unsigned.get("pending_route_query")
+        pending_route_slots = unsigned.get("pending_route_slots")
+        if pending_route_query is not None and not isinstance(
+            pending_route_query, torch.Tensor
+        ):
+            raise TypeError("pending route query payload must be a tensor or null")
+        if pending_route_slots is not None and not isinstance(
+            pending_route_slots, torch.Tensor
+        ):
+            raise TypeError("pending route slots payload must be a tensor or null")
         return cls(
             controller=ControllerState.from_payload(controller),
             counters=counters,
             counter_count=int(unsigned.get("counter_count", -1)),
             program_counters=program_counters,
             program_router=restored_router,
-            schema=unsigned.get("schema"),
+            pending_route_query=pending_route_query,
+            pending_route_slots=pending_route_slots,
+            schema=CONTROL_FLOW_RUNTIME_STATE_SCHEMA,
         ).validate()
 
     def digest(
@@ -527,7 +579,9 @@ class ControlFlowProgramAmodalRuntime(nn.Module):
                 if self.program_route_evidence is None
                 else self.program_route_evidence.configuration()
             ),
-            "route_feedback": "optional_external_router_only_v1",
+            "route_feedback": "explicit_external_router_or_pending_evidence_v2",
+            "route_evidence_credit": "pending_opaque_query_explicit_scalar_feedback_v2",
+            "route_evidence_exploration": "exact_behavior_propensity_v1",
             "program_route_override": "optional_external_opaque_slot_v1",
             "program_route_query_adapter": (
                 None
@@ -617,6 +671,7 @@ class ControlFlowProgramAmodalRuntime(nn.Module):
         controller_state: ControllerState,
         router_state: ExternalOutcomeProgramRouterState | None,
         program_route_override: torch.Tensor | None,
+        route_evidence: PersistentOpaqueContextRouteEvidence | None = None,
     ) -> tuple[
         torch.Tensor,
         torch.Tensor | None,
@@ -684,9 +739,30 @@ class ControlFlowProgramAmodalRuntime(nn.Module):
             ):
                 raise ValueError("control-flow program route override is out of range")
             return selected, None, None, features, router_state
-        if self.program_route_evidence is not None:
-            selected = self.program_route_evidence.preferred_slots(features)
-            return selected, None, None, features, router_state
+        if route_evidence is not None:
+            preferred = route_evidence.preferred_slots(features)
+            if self.program_route_exploration <= 0.0:
+                return preferred, None, None, features, router_state
+            active_count = route_evidence.slot_count
+            probabilities = torch.full(
+                (batch, active_count),
+                self.program_route_exploration / active_count,
+                device=device,
+                dtype=features.dtype,
+            )
+            probabilities.scatter_add_(
+                1,
+                preferred.unsqueeze(-1),
+                torch.full(
+                    (batch, 1),
+                    1.0 - self.program_route_exploration,
+                    device=device,
+                    dtype=features.dtype,
+                ),
+            )
+            selected = torch.multinomial(probabilities, 1).squeeze(-1)
+            propensity = probabilities.gather(1, selected.unsqueeze(-1)).squeeze(-1)
+            return selected, probabilities, propensity, features, router_state
         if self.program_router is None:
             return (
                 torch.full(
@@ -966,17 +1042,45 @@ class ControlFlowProgramAmodalRuntime(nn.Module):
         device = controller_output.intention.payload.device
         if state.counters.shape[0] != batch or state.counters.device != device:
             raise ValueError("control-flow state does not match controller output")
+        explicit_route_feedback = route_feedback is not None
         if route_feedback is None:
             route_feedback = feedback
         else:
-            if self.program_router is None:
-                raise ValueError(
-                    "separate route feedback requires a program router"
-                )
             route_feedback.validate(
                 batch=batch,
                 action_width=self.runtime.controller.feedback_width,
             )
+        route_evidence = self.program_route_evidence
+        if (
+            route_evidence is not None
+            and explicit_route_feedback
+            and state.pending_route_query is not None
+            and state.pending_route_slots is not None
+        ):
+            if state.pending_route_query.shape[0] != batch:
+                raise ValueError("pending route query batch does not match runtime")
+            present = route_feedback.has_feedback.reshape(-1).to(torch.bool)
+            reward = route_feedback.reward.reshape(-1)
+            if bool(
+                ((reward < 0.0) | (reward > 1.0)).logical_and(present).any()
+            ):
+                raise ValueError("route evidence feedback must lie in [0, 1]")
+            if bool(present.any()):
+                if bool(
+                    (
+                        (state.pending_route_slots < 0)
+                        | (state.pending_route_slots >= route_evidence.slot_count)
+                    ).any()
+                ):
+                    raise ValueError("pending route slot is outside the evidence bank")
+                route_evidence = PersistentOpaqueContextRouteEvidence.from_payload(
+                    route_evidence.payload()
+                )
+                route_evidence.observe_batch(
+                    state.pending_route_query[present],
+                    state.pending_route_slots[present],
+                    reward[present],
+                )
         router_state = state.program_router
         if self.program_router is not None:
             if router_state is None:
@@ -1011,6 +1115,7 @@ class ControlFlowProgramAmodalRuntime(nn.Module):
                 next_controller,
                 router_state,
                 program_route_override,
+                route_evidence,
             )
         )
         encoded = torch.zeros(
@@ -1110,7 +1215,18 @@ class ControlFlowProgramAmodalRuntime(nn.Module):
             counter_count=self.adapter.counter_count,
             program_counters=next_program_counters,
             program_router=router_state,
+            pending_route_query=(
+                None
+                if route_evidence is None or route_query is None
+                else route_query.detach().clone()
+            ),
+            pending_route_slots=(
+                None
+                if route_evidence is None
+                else selected_slots.detach().clone()
+            ),
         ).validate()
+        self.program_route_evidence = route_evidence
         output = ControlFlowRuntimeOutput(
             controller=controller_output,
             executions=executions,
@@ -1141,6 +1257,7 @@ __all__ = [
     "CONTROL_FLOW_INTENTION_ADAPTER_SCHEMA",
     "CONTROL_FLOW_PROGRAM_GROWTH_SCHEMA",
     "CONTROL_FLOW_RUNTIME_SCHEMA",
+    "CONTROL_FLOW_RUNTIME_STATE_LEGACY_SCHEMA",
     "CONTROL_FLOW_RUNTIME_STATE_SCHEMA",
     "ControlFlowIntentionAdapter",
     "ControlFlowProgramAmodalRuntime",

@@ -2021,3 +2021,10 @@ new route inactive until the append is admitted; failed verifier prefixes do
 not mutate the live runtime. The controller remains frozen and sees only the
 same opaque event/intention interfaces. This is a bounded external growth
 contract, not a claim of general continual learning.
+
+`ControlFlowRuntimeState` v2 also retains the pending opaque route query and
+selected file. When a separate scalar route outcome arrives, the runtime
+credits that pending attempt directly into external route evidence and can
+explore newly admitted files without a caller-supplied slot override. Exact
+exploration propensities are returned for verifier accounting; route IDs and
+outcomes remain outside the controller.

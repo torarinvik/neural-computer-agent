@@ -736,3 +736,25 @@ replay. Evidence is archived at
 This promotes a narrow external-memory lifecycle contract. It remains bounded
 growth of verifier-admitted files, not unrestricted memory growth, arbitrary
 program induction, or general continual learning.
+
+## Runtime-owned route credit and autonomous reachability (2026-08-12)
+
+The route lifecycle now persists the previous opaque query and selected file
+in `ControlFlowRuntimeState` v2. The next step can supply an explicit scalar
+route outcome without repeating a slot ID; the runtime stages that credit into
+the external context evidence before selecting the next file. With nonzero
+exploration, a newly admitted file is sampled by an external epsilon-greedy
+distribution and its exact propensity is exposed for accounting.
+
+Across three seeds, two contexts were interleaved after a new file was
+admitted. Both context bindings were learned without overrides, one binding
+was reversed without replaying the other, and the unreversed binding stayed
+correct. State/evidence reload, checksum, protected-file, frozen-controller,
+exact-propensity, zero-replay, and shuffled-feedback controls passed. The
+positive and shuffled arms charged `400` verifier lifetimes each per seed.
+Evidence is archived at
+`session_records/control_flow_runtime_autonomous_route_growth_promoted_2026-08-12/`.
+
+This promotes bounded route reachability and external credit assignment. It
+does not establish unrestricted memory growth, arbitrary program induction, or
+general continual learning.

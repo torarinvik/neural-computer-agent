@@ -1,0 +1,41 @@
+{
+  "schema": "neural-computer.control-flow-runtime-autonomous-route-growth-audit.v1",
+  "status": "promoted_narrow_autonomous_route_reachability",
+  "seeds": [17, 18, 19],
+  "positive_results": [
+    {"seed": 17, "context_slots": {"0": 0, "1": 1}, "reversal_context_1": 0, "retained_context_0": 0},
+    {"seed": 18, "context_slots": {"0": 0, "1": 1}, "reversal_context_1": 0, "retained_context_0": 0},
+    {"seed": 19, "context_slots": {"0": 0, "1": 1}, "reversal_context_1": 0, "retained_context_0": 0}
+  ],
+  "shuffled_results": [
+    {"seed": 10017, "context_slots": {"0": 0, "1": 0}, "reversal_context_1": 0, "retained_context_0": 0},
+    {"seed": 10018, "context_slots": {"0": 0, "1": 0}, "reversal_context_1": 0, "retained_context_0": 0},
+    {"seed": 10019, "context_slots": {"0": 0, "1": 0}, "reversal_context_1": 0, "retained_context_0": 0}
+  ],
+  "gates": {
+    "admission_accepted": true,
+    "new_file_reachable_without_override": true,
+    "source_context_mastered": true,
+    "reversal_context_mastered": true,
+    "unreversed_context_retained": true,
+    "two_context_rows": true,
+    "source_file_retained": true,
+    "controller_frozen": true,
+    "route_propensity_exact": true,
+    "evidence_reload_exact": true,
+    "state_reload_exact": true,
+    "evidence_corruption_rejected": true,
+    "zero_replayed_examples": true,
+    "zero_controller_optimizer_updates": true,
+    "shuffled_null_not_mastered": true
+  },
+  "accounting": {
+    "positive_verifier_lifetimes": 1200,
+    "shuffled_verifier_lifetimes": 1200,
+    "unique_verifier_bits": 2400,
+    "unique_logical_lifetimes": 2400,
+    "optimizer_updates": 0,
+    "replayed_examples": 0
+  },
+  "claim_boundary": "Promoted bounded interleaved reachability of a newly admitted external file using runtime-owned pending route credit and exact exploration propensities under a frozen controller; not arbitrary program induction, unrestricted memory growth, or general continual learning."
+}

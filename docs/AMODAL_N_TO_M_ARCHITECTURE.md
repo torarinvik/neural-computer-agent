@@ -11577,3 +11577,23 @@ is deliberately a bounded lifecycle result. It does not establish autonomous
 program induction, unbounded storage economics, or general continual learning.
 Evidence is archived at
 `session_records/control_flow_runtime_program_growth_promoted_2026-08-12/`.
+
+### Runtime-owned route credit and newly admitted-file reachability
+
+The external route boundary now stores the previous opaque route query and
+selected file in `ControlFlowRuntimeState` v2. On the next cycle, explicit
+scalar route feedback is applied to that pending query/slot inside a staged
+copy of `PersistentOpaqueContextRouteEvidence`; the caller no longer needs to
+re-submit a physical slot ID. When exploration is enabled, newly admitted
+files are sampled by an external epsilon-greedy policy and the exact selected
+propensity is returned on the intention-side runtime output. The controller
+never receives route IDs, route rewards, or program data.
+
+The three-seed audit interleaved two contexts after admitting a second file,
+reached the new file without an override, reversed one context without
+replaying the other, retained the unreversed binding, passed state/evidence
+reload and corruption controls, and failed the shuffled-feedback null. This
+promotes bounded runtime-owned route reachability, not arbitrary program
+induction, unrestricted memory growth, or general continual learning. Evidence
+is archived at
+`session_records/control_flow_runtime_autonomous_route_growth_promoted_2026-08-12/`.
