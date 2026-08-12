@@ -1129,6 +1129,43 @@ PYTHONPATH=src uv run python -m experiments.brainworkshop_canonical.external_tem
   --report-out /tmp/brainworkshop-content-counterfactual-growth.json
 ```
 
+## Sequential open query/address growth (promoted bounded rung)
+
+`external_temporal_open_query_growth.py` removes the two-route ceiling from
+the current canonical temporal experiment. After one source capability is
+acquired and frozen, four new opaque query/address routes are learned
+sequentially for depths `5`, `6`, `7`, and `8`. Each new route is trained only
+from fresh paired scalar probes; after every addition the complete prior
+prefix is evaluated again without replay.
+
+The variable-capacity `ExternalTemporalAddressIndex` grows from one to five
+learned routes. Across seeds `17`, `18`, and `19`, every stage retained all
+earlier routes at `1.0000`, every new route reached `1.0000`, and all five
+20%-related keys retrieved their correct opaque positions at `1.0000`.
+Unknown-key miss, shuffled-feedback rejection, exact reload, checksum
+corruption rejection, clear, frozen controller/event encoder/promoted file,
+and zero-replay gates all pass (`16/16` per seed).
+
+Each seed accounts for `169,600` unique verifier bits, `358,400`
+counterfactual-arm bits, `17,088` unique logical lifetimes, `36,864`
+counterfactual logical lifetimes, `1,024` optimizer updates, `264` route-memory
+updates, five content-memory writes, and zero replay. This promotes repeated
+replay-free growth of an external query/address bank and prefix retention; it
+does not establish unrestricted capacity, learned compression under pressure,
+arbitrary new computation, or general continual learning. Evidence is
+archived in
+`session_records/brainworkshop_external_temporal_open_query_growth_promoted_2026-08-12/`.
+
+Run it with:
+
+```bash
+PYTHONPATH=src uv run python -m experiments.brainworkshop_canonical.external_temporal_open_query_growth \
+  --source-updates 128 --source-evaluation-lifetimes 4 \
+  --source-route-lifetimes 8 --target-route-updates 8 --batch-size 16 \
+  --data-steps 14 --retention-lifetimes 4 --seed 17 \
+  --report-out /tmp/brainworkshop-open-query-growth.json
+```
+
 ## Related-key temporal content retrieval (historical v1; current v2 rejected)
 
 `external_temporal_content_retrieval_growth.py` composes that address

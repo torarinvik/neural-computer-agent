@@ -523,6 +523,42 @@ def test_external_temporal_content_counterfactual_growth_smoke_keeps_index_exter
     assert report["accounting"]["replayed_examples"] == 0
 
 
+def test_external_temporal_open_query_growth_smoke_grows_external_index(
+    tmp_path,
+) -> None:
+    from experiments.brainworkshop_canonical.external_temporal_open_query_growth import (
+        run,
+    )
+
+    report = run(
+        argparse.Namespace(
+            report_out=tmp_path / "temporal-open-query-growth.json",
+            seed=17,
+            source_updates=1,
+            source_evaluation_lifetimes=1,
+            source_route_lifetimes=1,
+            target_route_updates=1,
+            batch_size=2,
+            data_steps=10,
+            retention_lifetimes=1,
+            learning_rate=3e-3,
+            entropy_weight=0.01,
+        )
+    )
+
+    assert report["schema"] == (
+        "neural-computer.brainworkshop-external-temporal-open-query-growth.v1"
+    )
+    assert report["status"] == "rejected"
+    assert report["gates"]["route_count_grew_without_replay"]
+    assert report["gates"]["unknown_key_misses"]
+    assert report["gates"]["index_reload_preserves_all_routes"]
+    assert report["gates"]["index_corruption_rejected"]
+    assert report["gates"]["frozen_controller"]
+    assert report["gates"]["frozen_event_encoder"]
+    assert report["gates"]["zero_replayed_examples"]
+
+
 def test_external_temporal_content_retrieval_growth_smoke_preserves_memory_contract(
     tmp_path,
 ) -> None:
