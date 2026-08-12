@@ -10636,3 +10636,28 @@ mechanism. It does not establish arbitrary residual-slot routing, unrestricted
 external growth, arbitrary new computation, or general continual learning.
 Evidence and accounting are archived in
 `session_records/brainworkshop_external_temporal_regime_policy_online_adaptation_promoted_2026-08-12/`.
+
+## Opaque binding-routed residual slots (2026-08-12)
+
+The geometry-only regime policy is intentionally invariant to joint orthogonal
+rotations, but that also means it cannot route two distinct capabilities whose
+current/incoming relational geometry collides. `GatedResidualRegimePolicyBank`
+adds a separate opaque binding-context contract. External state supplies a
+learned context key; cosine routing selects an independent residual slot, and
+the frozen detector remains the fallback. The bank does not interpret the key
+or receive a task label.
+
+Across seeds `17` and `18`, slot A was learned first and slot B second from 72
+fresh scalar utilities each. Slot B was unchanged during slot-A learning and
+slot A was unchanged during slot-B learning. After both phases, partial-shift
+replacement was `0.9688/0.8828` for A and `0.9375/0.8516` for B; stable keep
+and disjoint replacement remained at least `0.9766` and `1.0000` respectively.
+The controller, event encoder, and base detector remained frozen with zero
+replay.
+
+This promotes isolated opaque binding routing, not autonomous binding
+discovery, unrestricted slot growth, arbitrary skill composition, or general
+continual learning. The 96-update overadaptation rejection is retained as
+evidence that slot allocation needs verifier-gated stopping and consolidation.
+Evidence and accounting are archived in
+`session_records/brainworkshop_external_temporal_regime_policy_binding_slots_promoted_2026-08-12/`.

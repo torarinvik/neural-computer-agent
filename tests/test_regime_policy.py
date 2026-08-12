@@ -4,6 +4,7 @@ import torch
 
 from neural_computer import (
     GatedResidualRegimeChangePolicy,
+    GatedResidualRegimePolicyBank,
     OpaqueRegimeChangePolicy,
     RegimeChangePlan,
 )
@@ -124,4 +125,58 @@ def test_gated_residual_keeps_base_frozen_and_starts_as_base_fallback() -> None:
     assert any(
         bool(torch.any(parameter.detach() != 0.0))
         for parameter in policy.residual.parameters()
+    )
+
+
+def test_residual_policy_bank_routes_opaque_bindings_and_isolates_slots() -> None:
+    base = OpaqueRegimeChangePolicy(
+        value_width=8,
+        hidden=16,
+        max_spectral_bins=4,
+    ).eval()
+    bank = GatedResidualRegimePolicyBank(base, context_width=4)
+    key_a = torch.tensor([1.0, 0.0, 0.0, 0.0])
+    key_b = torch.tensor([0.0, 1.0, 0.0, 0.0])
+    assert bank.add_slot(key_a) == 0
+    assert bank.add_slot(key_b) == 1
+    contexts = torch.stack((key_a, key_b))
+    assert torch.equal(bank.route_slot(contexts), torch.tensor([0, 1]))
+
+    current, current_occupied, incoming, incoming_occupied = _banks()
+    slot_one_before = {
+        name: value.detach().clone()
+        for name, value in bank.residual_slots[1].state_dict().items()
+    }
+    base_before = {
+        name: value.detach().clone() for name, value in base.state_dict().items()
+    }
+    plan = bank.propose(
+        current,
+        current_occupied,
+        incoming,
+        incoming_occupied,
+        key_a.unsqueeze(0),
+        explore=True,
+        generator=torch.Generator().manual_seed(32),
+    )
+    optimizer = torch.optim.Adam(bank.trainable_parameters(0), lr=0.01)
+    bank.adaptation_step(
+        current,
+        current_occupied,
+        incoming,
+        incoming_occupied,
+        key_a.unsqueeze(0),
+        0,
+        plan,
+        1.0,
+        optimizer=optimizer,
+    )
+
+    assert all(
+        torch.equal(value, bank.residual_slots[1].state_dict()[name])
+        for name, value in slot_one_before.items()
+    )
+    assert all(
+        torch.equal(value, base.state_dict()[name])
+        for name, value in base_before.items()
     )

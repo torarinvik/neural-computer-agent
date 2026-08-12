@@ -1192,3 +1192,19 @@ and `0.8906` while retaining `1.0000` stable keep and disjoint replacement.
 The rejected naive single-policy update is retained as a negative control: it
 learned the new shift but erased stable behavior. Evidence is archived at
 `session_records/brainworkshop_external_temporal_regime_policy_online_adaptation_promoted_2026-08-12/`.
+
+## Opaque binding-routed residual slots (2026-08-12)
+
+`external_temporal_regime_policy_binding_slots.py` pressure-tests the
+geometry collision exposed by the residual experiment. Two opaque context
+keys route the same relational bank geometry to independent residual slots.
+Slot A is learned first and slot B second; each slot is updated only from its
+fresh scalar utilities. The test verifies that the other slot and the frozen
+base do not change, then checks stable and disjoint retention for both keys.
+
+Seeds 17 and 18 passed all gates. Partial replacement reached at least
+`0.8828` for both bindings while stable keep and disjoint replacement stayed
+above `0.9766` and `1.0000`. The 96-update overadaptation calibration is
+archived as a rejection because stable retention collapsed on one seed. Evidence
+is archived at
+`session_records/brainworkshop_external_temporal_regime_policy_binding_slots_promoted_2026-08-12/`.

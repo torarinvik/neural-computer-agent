@@ -14,10 +14,14 @@ from dataclasses import dataclass
 
 import torch
 from torch import nn
+from torch.nn import functional as F
 
 REGIME_CHANGE_POLICY_SCHEMA = "neural-computer.opaque-regime-change-policy.v1"
 GATED_RESIDUAL_REGIME_POLICY_SCHEMA = (
     "neural-computer.gated-residual-regime-change-policy.v1"
+)
+GATED_RESIDUAL_REGIME_POLICY_BANK_SCHEMA = (
+    "neural-computer.gated-residual-regime-policy-bank.v1"
 )
 
 
@@ -490,10 +494,273 @@ class GatedResidualRegimeChangePolicy(nn.Module):
         return float(loss.detach())
 
 
+class GatedResidualRegimePolicyBank(nn.Module):
+    """Route isolated residuals with an opaque external binding context.
+
+    Geometry-only regime summaries cannot distinguish two bindings that share
+    the same relational structure.  This bank therefore accepts a learned,
+    opaque context key from external state.  Keys select independent residual
+    slots; the frozen base remains the fallback.  The bank does not interpret
+    keys, assign semantic fields, or receive task labels.
+    """
+
+    schema = GATED_RESIDUAL_REGIME_POLICY_BANK_SCHEMA
+
+    def __init__(
+        self,
+        base: OpaqueRegimeChangePolicy,
+        *,
+        context_width: int,
+        override_margin: float = 0.0,
+        route_threshold: float = 0.75,
+    ) -> None:
+        super().__init__()
+        if not isinstance(base, OpaqueRegimeChangePolicy):
+            raise TypeError("residual policy bank base is invalid")
+        if context_width < 1:
+            raise ValueError("residual policy bank context width is invalid")
+        if not math.isfinite(override_margin) or override_margin < 0.0:
+            raise ValueError("residual policy bank override margin is invalid")
+        if not math.isfinite(route_threshold) or not -1.0 <= route_threshold <= 1.0:
+            raise ValueError("residual policy bank route threshold is invalid")
+        self.base = base
+        for parameter in self.base.parameters():
+            parameter.requires_grad_(False)
+        self.context_width = int(context_width)
+        self.override_margin = float(override_margin)
+        self.route_threshold = float(route_threshold)
+        self.residual_slots = nn.ModuleList()
+        self.slot_keys = nn.ParameterList()
+
+    @property
+    def slot_count(self) -> int:
+        return len(self.residual_slots)
+
+    def configuration(self) -> dict[str, int | float | str]:
+        return {
+            "schema": self.schema,
+            "base_schema": self.base.schema,
+            "value_width": self.base.value_width,
+            "context_width": self.context_width,
+            "slot_count": self.slot_count,
+            "residual": "independent_zero_initialized_linear_slots_v1",
+            "routing": "opaque_binding_cosine_key_v1",
+            "override": "base_fallback_margin_gate_v1",
+            "override_margin": self.override_margin,
+            "route_threshold": self.route_threshold,
+            "frozen_base": True,
+            "updates": "single_scalar_verifier_utility_without_replay_v1",
+        }
+
+    def _validate_context(self, context: torch.Tensor) -> None:
+        if context.ndim != 2 or context.shape[1] != self.context_width:
+            raise ValueError(
+                "residual policy bank context must have shape "
+                f"[batch, {self.context_width}]"
+            )
+        if not bool(torch.isfinite(context).all()):
+            raise ValueError("residual policy bank context must be finite")
+        if not bool(context.square().sum(dim=-1).gt(1e-12).all()):
+            raise ValueError("residual policy bank context cannot be zero")
+
+    @torch.no_grad()
+    def add_slot(self, context_key: torch.Tensor) -> int:
+        """Append an isolated residual bound to one opaque context key."""
+
+        if context_key.ndim != 1 or context_key.shape[0] != self.context_width:
+            raise ValueError("residual policy bank slot key has the wrong shape")
+        self._validate_context(context_key.unsqueeze(0))
+        reference = next(self.base.parameters())
+        residual = nn.Linear(
+            self.base.feature_width + self.context_width,
+            2,
+        ).to(device=reference.device, dtype=reference.dtype)
+        nn.init.zeros_(residual.weight)
+        nn.init.zeros_(residual.bias)
+        key = F.normalize(context_key.detach(), dim=0).to(reference)
+        self.residual_slots.append(residual)
+        self.slot_keys.append(nn.Parameter(key, requires_grad=False))
+        return self.slot_count - 1
+
+    def trainable_parameters(self, slot_index: int):
+        if not 0 <= slot_index < self.slot_count:
+            raise IndexError("residual policy bank slot is out of range")
+        return self.residual_slots[slot_index].parameters()
+
+    def route_scores(self, context: torch.Tensor) -> torch.Tensor:
+        self._validate_context(context)
+        if not self.slot_count:
+            raise RuntimeError("residual policy bank has no slots")
+        normalized = F.normalize(context, dim=-1)
+        keys = torch.stack(tuple(self.slot_keys), dim=0).to(context)
+        return normalized @ keys.transpose(0, 1)
+
+    def route_slot(self, context: torch.Tensor) -> torch.Tensor:
+        return self.route_scores(context).argmax(dim=-1)
+
+    def _logits(
+        self,
+        current_values: torch.Tensor,
+        current_occupied: torch.Tensor,
+        incoming_values: torch.Tensor,
+        incoming_occupied: torch.Tensor,
+        context: torch.Tensor,
+        slot_index: int,
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        if not 0 <= slot_index < self.slot_count:
+            raise IndexError("residual policy bank slot is out of range")
+        self._validate_context(context)
+        if context.shape[0] != current_values.shape[0]:
+            raise ValueError("residual policy bank context batch does not match banks")
+        with torch.no_grad():
+            base_logits = self.base(
+                current_values,
+                current_occupied,
+                incoming_values,
+                incoming_occupied,
+            ).logits
+        features = self.base._features(
+            current_values,
+            current_occupied,
+            incoming_values,
+            incoming_occupied,
+        )
+        residual_input = torch.cat((features, context), dim=-1)
+        residual_logits = self.residual_slots[slot_index](residual_input)
+        return base_logits, residual_logits, base_logits + residual_logits
+
+    def forward(
+        self,
+        current_values: torch.Tensor,
+        current_occupied: torch.Tensor,
+        incoming_values: torch.Tensor,
+        incoming_occupied: torch.Tensor,
+        context: torch.Tensor,
+        *,
+        slot_index: int | None = None,
+    ) -> RegimeChangePolicyOutput:
+        selected = int(self.route_slot(context)[0]) if slot_index is None else slot_index
+        _base, _residual, combined = self._logits(
+            current_values,
+            current_occupied,
+            incoming_values,
+            incoming_occupied,
+            context,
+            selected,
+        )
+        return RegimeChangePolicyOutput(logits=combined)
+
+    @torch.no_grad()
+    def propose(
+        self,
+        current_values: torch.Tensor,
+        current_occupied: torch.Tensor,
+        incoming_values: torch.Tensor,
+        incoming_occupied: torch.Tensor,
+        context: torch.Tensor,
+        *,
+        explore: bool = False,
+        temperature: float = 1.0,
+        generator: torch.Generator | None = None,
+    ) -> RegimeChangePlan | tuple[RegimeChangePlan, ...]:
+        if not isinstance(explore, bool):
+            raise TypeError("residual policy bank explore flag must be boolean")
+        if temperature <= 0.0 or not math.isfinite(temperature):
+            raise ValueError("residual policy bank temperature is invalid")
+        self._validate_context(context)
+        route_scores = self.route_scores(context)
+        plans: list[RegimeChangePlan] = []
+        for batch_index in range(current_values.shape[0]):
+            slot_index = int(route_scores[batch_index].argmax())
+            base_logits, residual_logits, combined = self._logits(
+                current_values[batch_index : batch_index + 1],
+                current_occupied[batch_index : batch_index + 1],
+                incoming_values[batch_index : batch_index + 1],
+                incoming_occupied[batch_index : batch_index + 1],
+                context[batch_index : batch_index + 1],
+                slot_index,
+            )
+            if explore:
+                logits = combined
+            else:
+                base_index = base_logits.argmax(dim=-1)
+                residual_index = residual_logits.argmax(dim=-1)
+                base_score = base_logits.gather(-1, base_index[:, None]).squeeze(-1)
+                residual_score = residual_logits.gather(
+                    -1, residual_index[:, None]
+                ).squeeze(-1)
+                use_residual = (
+                    route_scores[batch_index, slot_index]
+                    >= self.route_threshold
+                ) & (residual_score > self.override_margin) & (
+                    residual_score >= base_score + self.override_margin
+                )
+                logits = torch.where(
+                    use_residual.view(1, 1), residual_logits, base_logits
+                )
+            row = logits[0]
+            if explore:
+                probabilities = torch.softmax(row / temperature, dim=-1)
+                index = int(torch.multinomial(probabilities, 1, generator=generator))
+            else:
+                index = int(row.argmax())
+            plans.append(
+                RegimeChangePlan(
+                    replace=index == 1,
+                    score=row[index].detach().clone(),
+                )
+            )
+        return plans[0] if len(plans) == 1 else tuple(plans)
+
+    def adaptation_step(
+        self,
+        current_values: torch.Tensor,
+        current_occupied: torch.Tensor,
+        incoming_values: torch.Tensor,
+        incoming_occupied: torch.Tensor,
+        context: torch.Tensor,
+        slot_index: int,
+        plan: RegimeChangePlan,
+        verifier_utility: float,
+        *,
+        optimizer: torch.optim.Optimizer | None = None,
+    ) -> float:
+        self.base._validate_bank(current_values, current_occupied)
+        self.base._validate_bank(incoming_values, incoming_occupied)
+        self._validate_context(context)
+        if current_values.shape[0] != 1 or incoming_values.shape[0] != 1:
+            raise ValueError("residual policy bank adaptation needs one bank pair")
+        if not isinstance(plan, RegimeChangePlan):
+            raise TypeError("residual policy bank plan is invalid")
+        if not math.isfinite(verifier_utility) or not 0.0 <= verifier_utility <= 1.0:
+            raise ValueError("residual policy bank utility must lie in [0, 1]")
+        _base, _residual, logits = self._logits(
+            current_values,
+            current_occupied,
+            incoming_values,
+            incoming_occupied,
+            context,
+            slot_index,
+        )
+        index = int(plan.replace)
+        loss = -(verifier_utility - 0.5) * torch.log_softmax(logits[0], dim=-1)[index]
+        selected_optimizer = optimizer
+        if selected_optimizer is None:
+            selected_optimizer = torch.optim.SGD(
+                self.trainable_parameters(slot_index), lr=self.base.learning_rate
+            )
+        selected_optimizer.zero_grad()
+        loss.backward()
+        selected_optimizer.step()
+        return float(loss.detach())
+
+
 __all__ = [
+    "GATED_RESIDUAL_REGIME_POLICY_BANK_SCHEMA",
     "GATED_RESIDUAL_REGIME_POLICY_SCHEMA",
     "REGIME_CHANGE_POLICY_SCHEMA",
     "GatedResidualRegimeChangePolicy",
+    "GatedResidualRegimePolicyBank",
     "OpaqueRegimeChangePolicy",
     "RegimeChangePlan",
     "RegimeChangePolicyOutput",

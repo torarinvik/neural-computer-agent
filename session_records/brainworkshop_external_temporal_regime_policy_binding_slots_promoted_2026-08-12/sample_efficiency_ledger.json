@@ -1,0 +1,39 @@
+{
+  "experiment_id": "brainworkshop-external-temporal-regime-policy-binding-slots-promoted-2026-08-12",
+  "status": "promoted_binding_slots",
+  "seeds": [17, 18],
+  "rung": "canonical two-seed sequential opaque-binding residual-slot acquisition",
+  "architecture": "opaque_regime_change_policy_v1_plus_gated_residual_regime_policy_bank_v1",
+  "claim_boundary": "Two independently bound residual slots acquire the same colliding geometry without cross-slot parameter interference while the base and controller remain frozen. This is a narrow routing boundary, not autonomous binding discovery or general continual learning.",
+  "accounting": {
+    "pretraining_scalar_updates_per_seed": 1000,
+    "online_scalar_updates_per_seed": 144,
+    "total_optimizer_updates_per_seed": 1144,
+    "replayed_examples_per_seed": 0,
+    "controller_updates_per_seed": 0,
+    "unique_verifier_bits_per_seed": 1144,
+    "unique_logical_lifetimes_per_seed": 1144,
+    "stable_bits_to_threshold": "1000 base updates plus 72 fresh scalar utilities for each of two opaque bindings; both slots acquired and retained on both seeds",
+    "retention_on_mastered_primitives": "slot A retained after slot B growth; stable keep and disjoint replace retained for both bindings",
+    "transfer_ratio_against_geometry_only_base": "base partial replacement was 0.0078/0.0156; after two binding slots it was 0.9688/0.9375 for A and 0.8516/0.8828 for B",
+    "wall_time_seconds": {
+      "seed_17": 1.4901837089564651,
+      "seed_18": 1.487789083039388
+    }
+  },
+  "controls": [
+    "same relational bank geometry across bindings",
+    "opaque cosine binding-key routing",
+    "distinct slot selection",
+    "slot B unchanged during slot A learning",
+    "slot A unchanged during slot B learning",
+    "frozen base detector",
+    "stable keep retention",
+    "disjoint replace retention",
+    "frozen controller",
+    "frozen event encoder",
+    "zero replay"
+  ],
+  "negative_control": "96 updates per slot caused stable retention collapse on seed 17 despite perfect partial replacement, demonstrating that residual growth needs a verifier-gated stopping/consolidation policy.",
+  "next_bottleneck": "Learn when to allocate, stop, consolidate, compress, or evict residual slots without task labels, while routing arbitrary non-periodic bindings over long streams."
+}

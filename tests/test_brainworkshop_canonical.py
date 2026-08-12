@@ -818,6 +818,36 @@ def test_external_temporal_regime_policy_learns_partial_overlap_without_forgetti
     assert report["gates"]["zero_replayed_examples"]
 
 
+def test_external_temporal_regime_policy_routes_isolated_binding_slots(
+    tmp_path,
+) -> None:
+    from experiments.brainworkshop_canonical.external_temporal_regime_policy_binding_slots import (
+        run,
+    )
+
+    report = run(
+        argparse.Namespace(
+            report_out=tmp_path / "temporal-regime-binding-slots.json",
+            seed=17,
+            policy_updates=1_000,
+            slot_updates=72,
+        )
+    )
+
+    assert report["schema"] == (
+        "neural-computer.brainworkshop-external-temporal-regime-policy-"
+        "binding-slots.v1"
+    )
+    assert report["gates"]["routes_select_distinct_slots"]
+    assert report["gates"]["phase_a_learns_binding_a"]
+    assert report["gates"]["phase_a_does_not_change_slot_b"]
+    assert report["gates"]["phase_b_learns_binding_b"]
+    assert report["gates"]["binding_a_retained_after_slot_b_growth"]
+    assert report["gates"]["phase_b_does_not_change_slot_a"]
+    assert report["gates"]["base_frozen"]
+    assert report["gates"]["zero_replayed_examples"]
+
+
 def test_binary_switch_family_has_a_valid_chance_baseline() -> None:
     verifier = CrossFamilyVerifier(
         family="switch_binary",

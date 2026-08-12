@@ -1,0 +1,89 @@
+{
+  "schema": "neural-computer.brainworkshop-external-temporal-regime-policy-binding-slots.v1",
+  "claim_boundary": "Two independently bound residual slots learn the same colliding geometry without cross-slot parameter interference while the base and controller remain frozen; not arbitrary skill routing or general continual learning.",
+  "seed": 17,
+  "architecture": {
+    "base": "opaque_regime_change_policy_v1",
+    "bank": "gated_residual_regime_policy_bank_v1",
+    "context": "opaque_binding_cosine_key_v1",
+    "context_width": 8,
+    "slot_count": 2,
+    "forbidden_features": "task_labels_regime_ids_semantic_slot_names_v1",
+    "controller": "frozen_canonical_amodal_controller",
+    "event_encoder": "frozen_learned_event_encoder"
+  },
+  "pretraining": {
+    "optimizer_updates": 1000,
+    "unique_scalar_utilities": 1000,
+    "first_window_utility": 0.72,
+    "last_window_utility": 1.0
+  },
+  "phase_a_training": {
+    "optimizer_updates": 96,
+    "unique_scalar_utilities": 96,
+    "mean_utility": 0.5729166666666666
+  },
+  "phase_b_training": {
+    "optimizer_updates": 96,
+    "unique_scalar_utilities": 96,
+    "mean_utility": 0.6458333333333334
+  },
+  "phase_a": {
+    "binding_a": {
+      "partial_replace": 0.9921875,
+      "stable_keep": 0.328125,
+      "disjoint_replace": 1.0
+    },
+    "binding_b": {
+      "partial_replace": 0.0390625,
+      "stable_keep": 1.0,
+      "disjoint_replace": 1.0
+    }
+  },
+  "phase_b": {
+    "binding_a": {
+      "partial_replace": 1.0,
+      "stable_keep": 0.3125,
+      "disjoint_replace": 1.0
+    },
+    "binding_b": {
+      "partial_replace": 1.0,
+      "stable_keep": 0.765625,
+      "disjoint_replace": 1.0
+    }
+  },
+  "base_geometry_only_control": {
+    "stable_keep": 1.0,
+    "partial_replace": 0.0078125,
+    "disjoint_replace": 1.0
+  },
+  "gates": {
+    "two_slots_bound": true,
+    "routes_select_distinct_slots": true,
+    "phase_a_learns_binding_a": true,
+    "phase_a_leaves_binding_b_base": true,
+    "phase_a_does_not_change_slot_b": true,
+    "phase_b_learns_binding_b": true,
+    "binding_a_retained_after_slot_b_growth": true,
+    "phase_b_does_not_change_slot_a": true,
+    "binding_a_stable_retained": false,
+    "binding_b_stable_retained": false,
+    "binding_a_disjoint_retained": true,
+    "binding_b_disjoint_retained": true,
+    "base_frozen": true,
+    "controller_frozen": true,
+    "event_encoder_frozen": true,
+    "zero_replayed_examples": true
+  },
+  "accounting": {
+    "pretraining_scalar_updates": 1000,
+    "online_scalar_updates": 192,
+    "total_optimizer_updates": 1192,
+    "unique_verifier_bits": 1192,
+    "unique_logical_lifetimes": 1192,
+    "replayed_examples": 0,
+    "controller_updates": 0,
+    "latency_seconds": 1.5287612079409882
+  },
+  "status": "rejected"
+}
