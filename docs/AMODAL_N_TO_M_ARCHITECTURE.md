@@ -11084,11 +11084,13 @@ external temporal file -> prior learned event tokens /
 ```
 
 `ExternalTemporalHistoryEventBridge` performs the relative-history read before
-appending the current tick. It concatenates current and requested prior
-payloads on the event axis, preserves separate presence masks, and fails
-closed when the v1 payload-only history ABI would discard source/timing
-metadata. `AmodalControllerRuntime.step_streams_with_external_history()` also
-rejects queries larger than the controller's event-window capacity before any
+appending the current tick. It places requested prior payloads before the
+current payload on the event axis, preserves separate presence masks, and lets
+the runtime process the prior prefix transiently while persisting only current
+tokens in the controller event window. It fails closed when the v1
+payload-only history ABI would discard source/timing metadata.
+`AmodalControllerRuntime.step_streams_with_external_history()` also rejects
+queries larger than the controller's processing-window capacity before any
 append, so external storage can grow without silently changing the controller
 contract.
 

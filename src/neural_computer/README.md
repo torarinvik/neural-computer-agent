@@ -1886,10 +1886,13 @@ scale/reversal audit is archived at
 replaceable temporal store to the production `INPUT -> PROCESS -> OUTPUT`
 boundary. On each tick the bridge reads caller-selected relative offsets
 before appending the current learned event tokens. Current and historical
-tokens remain separate on the event axis, and missing records remain explicit
+tokens remain separate on the event axis, with history preceding the current
+token so the controller's latest-event semantics remain correct. Historical
+tokens are transient processing context; only current tokens enter the
+controller's persistent event window. Missing records remain explicit
 `present=False` tokens rather than fabricated evidence. The runtime rejects a
-query that exceeds the controller's bounded event-window capacity before
-mutating external memory.
+query that exceeds the controller's bounded processing window before mutating
+external memory.
 
 This is an integration and causality contract, not a general continual-
 learning result. The v1 store persists learned payloads and derives historical

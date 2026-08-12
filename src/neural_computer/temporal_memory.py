@@ -33,7 +33,7 @@ EXTERNAL_TEMPORAL_OFFSET_SELECTOR_SCHEMA = (
     "neural-computer.external-temporal-offset-selector.v1"
 )
 EXTERNAL_TEMPORAL_HISTORY_EVENT_BRIDGE_SCHEMA = (
-    "neural-computer.external-temporal-history-event-bridge.v1"
+    "neural-computer.external-temporal-history-event-bridge.v2"
 )
 
 
@@ -554,10 +554,10 @@ class ExternalTemporalHistoryEventBridge(nn.Module):
     """Causally augment learned events with externally stored history.
 
     The bridge reads the requested prior records *before* appending the
-    current collection.  It returns current tokens followed by separately
-    bindable historical tokens and explicit presence masks for missing
-    history.  The controller still owns all processing; this object only
-    adapts a replaceable external history store into the canonical event bus.
+    current collection. It returns separately bindable historical tokens
+    followed by current tokens, with explicit presence masks for missing
+    history. The runtime can process the historical prefix transiently while
+    persisting only the current suffix in the controller state.
 
     The v1 history store contains learned payload tensors only.  To avoid
     silently discarding transport structure, collections carrying source
@@ -577,10 +577,11 @@ class ExternalTemporalHistoryEventBridge(nn.Module):
         return {
             "schema": self.schema,
             "event_width": self.event_width,
-            "ordering": "current_tokens_then_prior_relative_tokens_v1",
+            "ordering": "prior_relative_tokens_then_current_tokens_v2",
             "causality": "read_before_append_v1",
             "missing_history": "explicit_present_mask_v1",
             "metadata": "payload_only_with_derived_presence_confidence_v1",
+            "controller_persistence": "current_tokens_only_v1",
         }
 
     @torch.no_grad()
@@ -625,9 +626,9 @@ class ExternalTemporalHistoryEventBridge(nn.Module):
         read_present = read.present.to(device=collection.payload.device)
         read_confidence = read_present.to(dtype=collection.confidence.dtype)
         events = AmodalEventCollection(
-            payload=torch.cat((collection.payload, read_values), dim=1),
-            present=torch.cat((collection.present, read_present), dim=1),
-            confidence=torch.cat((collection.confidence, read_confidence), dim=1),
+            payload=torch.cat((read_values, collection.payload), dim=1),
+            present=torch.cat((read_present, collection.present), dim=1),
+            confidence=torch.cat((read_confidence, collection.confidence), dim=1),
         ).validate(width=self.event_width)
 
         appends: list[ExternalTemporalHistoryAppendReceipt] = []

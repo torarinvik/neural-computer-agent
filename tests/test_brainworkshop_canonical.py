@@ -425,7 +425,7 @@ def test_external_temporal_query_address_growth_smoke_freezes_readout_on_growth(
         "neural-computer.brainworkshop-external-temporal-query-address-growth.v1"
     )
     assert report["architecture"]["history_transport"] == (
-        "canonical_runtime_external_history_event_bridge_v1"
+        "canonical_runtime_external_history_event_bridge_v2"
     )
     assert report["architecture"]["history_causality"] == (
         "read_before_current_append"
@@ -465,7 +465,7 @@ def test_external_temporal_content_retrieval_growth_smoke_preserves_memory_contr
         "neural-computer.brainworkshop-external-temporal-content-retrieval-growth.v1"
     )
     assert report["architecture"]["history_transport"] == (
-        "canonical_runtime_external_history_event_bridge_v1"
+        "canonical_runtime_external_history_event_bridge_v2"
     )
     assert report["architecture"]["history_causality"] == (
         "read_before_current_append"

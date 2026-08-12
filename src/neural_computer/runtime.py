@@ -761,6 +761,7 @@ class AmodalControllerRuntime(nn.Module):
         state: ControllerState,
         feedback: ControllerFeedback,
         *,
+        persistent_events: AmodalEventCollection | Sequence[AmodalEvent] | None = None,
         elapsed: torch.Tensor | float = 1.0,
         disable_workspace: bool = False,
         memory_scope: torch.Tensor | None = None,
@@ -775,6 +776,7 @@ class AmodalControllerRuntime(nn.Module):
             state,
             feedback,
             self.memory,
+            persistent_events=persistent_events,
             elapsed=elapsed,
             disable_workspace=disable_workspace,
             memory_scope=memory_scope,
@@ -953,10 +955,11 @@ class AmodalControllerRuntime(nn.Module):
         """Run one cycle with causal, externally stored learned history.
 
         The current encoded streams and explicitly requested prior history
-        tokens remain separate event tokens at the controller boundary.  The
-        history read occurs before the current tick is appended, and the
-        method rejects a query that would overflow the controller's bounded
-        event window instead of silently losing older tokens.
+        tokens remain separate event tokens at the controller boundary. The
+        history read occurs before the current tick is appended. Historical
+        tokens are transient processing context; only current tokens enter the
+        controller's persistent event window. The method rejects a query that
+        would overflow the processing window instead of silently losing tokens.
         """
         if not isinstance(history, ExternalTemporalHistoryMemory):
             raise TypeError("external history must use the temporal history ABI")
@@ -989,6 +992,7 @@ class AmodalControllerRuntime(nn.Module):
             augmented.events,
             state,
             feedback,
+            persistent_events=events,
             elapsed=elapsed,
             disable_workspace=disable_workspace,
             memory_scope=memory_scope,

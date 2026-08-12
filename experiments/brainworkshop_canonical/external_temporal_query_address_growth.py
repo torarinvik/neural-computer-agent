@@ -244,7 +244,7 @@ def _episode(
                 )
             )
         del controller_output
-        event = bridge.events.payload[:, 0].detach()
+        event = bridge.events.payload[:, -1].detach()
         if verifier.position == 1:
             context = event[0].clone()
             if forced_offset is None:
@@ -258,8 +258,8 @@ def _episode(
                 if not 1 <= forced_offset <= MAX_OFFSET:
                     raise ValueError("forced temporal offset is outside the domain")
                 selected_offset = forced_offset
-        retrieved = bridge.events.payload[:, 1]
-        present = bridge.events.present[:, 1].to(event.dtype).unsqueeze(-1)
+        retrieved = bridge.events.payload[:, 0]
+        present = bridge.events.present[:, 0].to(event.dtype).unsqueeze(-1)
         logits = file.readout(torch.cat((event, retrieved, present), dim=-1))
         probabilities = logits.softmax(dim=-1)
         if train:
@@ -359,7 +359,7 @@ def _global_source_episode(
                 )
             )
         del controller_output
-        event = bridge.events.payload[:, 0].detach()
+        event = bridge.events.payload[:, -1].detach()
         if verifier.position == 1:
             context = event[0].clone()
         if verifier.position == 1:
@@ -385,8 +385,8 @@ def _global_source_episode(
         entropy = selected_entropy
         log_probabilities.append(log_probability)
         entropies.append(entropy)
-        retrieved = bridge.events.payload[:, 1]
-        present = bridge.events.present[:, 1].to(event.dtype).unsqueeze(-1)
+        retrieved = bridge.events.payload[:, 0]
+        present = bridge.events.present[:, 0].to(event.dtype).unsqueeze(-1)
         logits = file.readout(torch.cat((event, retrieved, present), dim=-1))
         probabilities = logits.softmax(dim=-1)
         if train:
@@ -840,9 +840,10 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "event_encoder": "frozen_learned_event_encoder",
             "readout": "external_temporal_capability_file_frozen_before_target",
             "history_transport": (
-                "canonical_runtime_external_history_event_bridge_v1"
+                "canonical_runtime_external_history_event_bridge_v2"
             ),
             "history_causality": "read_before_current_append",
+            "history_persistence": "current_tokens_only_transient_prior_context",
             "bridge_offset_semantics": (
                 "logical_lag_minus_one_for_pre_append_relative_read"
             ),

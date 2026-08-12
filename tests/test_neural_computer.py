@@ -995,15 +995,15 @@ def test_runtime_history_bridge_reads_before_append_and_keeps_tokens_separate() 
     )
     assert first_result.read.present.tolist() == [[False, False], [False, False]]
     assert first_result.events.present.tolist() == [
-        [True, False, False],
-        [True, False, False],
+        [False, False, True],
+        [False, False, True],
     ]
     assert memory.record_count == 2
 
     second = torch.tensor(
         [[0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0]]
     )
-    _output, _state, second_result = runtime.step_streams_with_external_history(
+    _output, state, second_result = runtime.step_streams_with_external_history(
         {"stream": second},
         state,
         feedback,
@@ -1012,9 +1012,12 @@ def test_runtime_history_bridge_reads_before_append_and_keeps_tokens_separate() 
         history_scope=scope,
     )
     assert second_result.read.present.tolist() == [[True, False], [True, False]]
-    assert torch.equal(second_result.events.payload[0, 1], first[0])
-    assert torch.equal(second_result.events.payload[1, 1], first[1])
+    assert torch.equal(second_result.events.payload[0, 0], first[0])
+    assert torch.equal(second_result.events.payload[1, 0], first[1])
+    assert torch.equal(second_result.events.payload[0, -1], second[0])
+    assert torch.equal(second_result.events.payload[1, -1], second[1])
     assert second_result.appends[0].positions.tolist() == [1, 1]
+    assert state.event_window.present.tolist() == [[True, True, False], [True, True, False]]
 
     quiet = ExternalTemporalHistoryEventBridge(4).augment(
         AmodalEventCollection.empty(2, 4),

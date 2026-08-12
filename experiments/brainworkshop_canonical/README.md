@@ -903,9 +903,10 @@ Evidence is archived in
 The production runtime now exposes
 `AmodalControllerRuntime.step_streams_with_external_history()`. It reads
 caller-selected relative offsets from `ExternalTemporalHistoryMemory` before
-appending the current learned event tokens, then passes current and historical
-tokens together through the ordinary amodal event bus. The bridge preserves
-per-token presence masks, keeps history out of the controller's fixed state,
+appending the current learned event tokens, then passes historical and current
+tokens together through the ordinary amodal event bus. Historical tokens are
+transient processing context; only current tokens enter the controller's fixed
+event window. The bridge preserves per-token presence masks,
 and rejects both unpreserved timing/source metadata and event-window overflow
 instead of silently dropping information.
 
@@ -998,7 +999,7 @@ This promotes canonical transport integration plus bounded query-conditioned
 external addressing. It still does not establish learned unrestricted search,
 compression, arbitrary new computation, or general continual learning. Evidence
 is archived in
-`session_records/brainworkshop_external_temporal_query_address_bridge_promoted_2026-08-12/`.
+`session_records/brainworkshop_external_temporal_query_address_bridge_v2_promoted_2026-08-12/`.
 
 ## Related-key temporal content retrieval (2026-08-12)
 
@@ -1032,7 +1033,7 @@ checksum-corruption, frozen-capability, frozen-core, and zero-replay gates at
 the stable bridge-integrated query-address rung. This remains bounded related-
 key retrieval, not learned compression, capacity management, arbitrary new
 computation, or general continual learning. Evidence is archived in
-`session_records/brainworkshop_external_temporal_content_retrieval_bridge_promoted_2026-08-12/`.
+`session_records/brainworkshop_external_temporal_content_retrieval_bridge_v2_promoted_2026-08-12/`.
 
 ## Verified external temporal-memory compaction (2026-08-12)
 

@@ -841,6 +841,7 @@ class AmodalCognitiveController(nn.Module):
         feedback: ControllerFeedback,
         memory: MemoryBackend | None = None,
         *,
+        persistent_events: AmodalEventCollection | Sequence[AmodalEvent] | torch.Tensor | None = None,
         elapsed: torch.Tensor | float = 1.0,
         disable_workspace: bool = False,
         memory_scope: torch.Tensor | None = None,
@@ -852,7 +853,14 @@ class AmodalCognitiveController(nn.Module):
         if memory is not None and not isinstance(memory, MemoryBackend):
             raise TypeError("memory must implement the MemoryBackend contract")
         collection = self._collection(events)
+        persistent_collection = (
+            collection
+            if persistent_events is None
+            else self._collection(persistent_events)
+        )
         batch = collection.payload.shape[0]
+        if persistent_collection.payload.shape[0] != batch:
+            raise ValueError("persistent event batch does not match events")
         feedback.validate(batch=batch, action_width=self.feedback_width)
         reward = feedback.reward.reshape(batch, 1).to(collection.payload.dtype)
         propensity = feedback.propensity.reshape(batch, 1).to(collection.payload.dtype)
@@ -865,6 +873,15 @@ class AmodalCognitiveController(nn.Module):
             elapsed_tensor = elapsed_tensor.expand(batch)
         window = self._append_event_window(
             state.event_window, collection, elapsed=elapsed_tensor
+        )
+        persistent_window = (
+            window
+            if persistent_events is None
+            else self._append_event_window(
+                state.event_window,
+                persistent_collection,
+                elapsed=elapsed_tensor,
+            )
         )
         feedback_vector = torch.cat([action, reward, propensity, has_feedback], dim=-1)
         feedback_embedding = self.feedback_encoder(feedback_vector)
@@ -1177,7 +1194,7 @@ class AmodalCognitiveController(nn.Module):
             workspace=workspace,
             latest_event=event,
             workspace_usage=usage,
-            event_window=window,
+            event_window=persistent_window,
             source_trust=source_trust,
             growth_registers=growth_registers,
         )

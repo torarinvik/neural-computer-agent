@@ -419,9 +419,10 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "event_encoder": "frozen_learned_event_encoder",
             "capability": "external_temporal_capability_file_frozen_after_target",
             "history_transport": (
-                "canonical_runtime_external_history_event_bridge_v1"
+                "canonical_runtime_external_history_event_bridge_v2"
             ),
             "history_causality": "read_before_current_append",
+            "history_persistence": "current_tokens_only_transient_prior_context",
             "bridge_offset_semantics": (
                 "logical_lag_minus_one_for_pre_append_relative_read"
             ),

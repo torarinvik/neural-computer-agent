@@ -1,0 +1,31 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment_id": "brainworkshop-external-temporal-query-address-bridge-v2-2026-08-12",
+  "status": "promoted_temporal_query_address_growth",
+  "source": "in_repository_run",
+  "seeds": [17, 18],
+  "unique_verifier_bits_per_seed": [158208, 158208],
+  "control_verifier_bits_per_seed": [73728, 73728],
+  "unique_logical_lifetimes_per_seed": [16640, 16640],
+  "optimizer_updates_per_seed": [256, 256],
+  "route_memory_updates_per_seed": [264, 264],
+  "replayed_examples_per_seed": [0, 0],
+  "source_min_retained_accuracy": [1.0, 0.921875],
+  "target_min_retained_accuracy": [1.0, 0.90625],
+  "controls": {
+    "bridge_schema_v2": true,
+    "read_before_current_append": true,
+    "prior_tokens_transient": true,
+    "current_tokens_only_persistent": true,
+    "same_rendered_cue": true,
+    "unknown_query_rejection": true,
+    "wrong_offset_negative": true,
+    "missing_history_negative": true,
+    "shuffled_outcome_negative": true,
+    "exact_route_reload": true,
+    "frozen_controller": true,
+    "frozen_event_encoder": true,
+    "zero_replay": true
+  },
+  "claim_boundary": "Promoted bounded query-conditioned external temporal addressing with transient prior context and current-only controller persistence; not unrestricted search, compression, arbitrary new computation, or general continual learning."
+}
