@@ -1,0 +1,541 @@
+{
+  "schema": "neural-computer.brainworkshop-external-temporal-shared-artifact-consolidation.v1",
+  "claim_boundary": "Learned opaque selection and verifier-gated shared-view consolidation of distinct temporal capabilities; not arbitrary semantic compression, unrestricted growth, arbitrary new computation, or general continual learning.",
+  "seed": 17,
+  "architecture": {
+    "artifact_backend": "executable_artifact_memory_v2",
+    "policy": "opaque_consolidation_policy_v1",
+    "composition": "one_shared_basis_two_route_specific_residual_views_v1",
+    "route_count": 4,
+    "physical_rows_before": 4,
+    "physical_rows_after": 3,
+    "source_alias": "nearby_learned_key_with_independent_route_view",
+    "policy_control": "reward_shuffled_on_address_scrubbed_candidate_views_v1",
+    "forbidden_features": "query_depth_route_id_semantic_names_task_ids_replayed_streams"
+  },
+  "routes": [
+    {
+      "route_id": 0,
+      "query_symbol": 0,
+      "depth": 4,
+      "position": 3,
+      "key_digest": "23ee6824925ec6e559389c8c6c8635c92b5dd359b20ed24788645277ac2144b9"
+    },
+    {
+      "route_id": 1,
+      "query_symbol": 5,
+      "depth": 5,
+      "position": 4,
+      "key_digest": "4852233ff663f58f5754e45f2fccfe5f49e75adf973cce89fafa1cc1bad2214e"
+    },
+    {
+      "route_id": 2,
+      "query_symbol": 6,
+      "depth": 6,
+      "position": 5,
+      "key_digest": "67c8f3ae08db0d97058b00791e568681016cb7884315808503c6412d0b669809"
+    },
+    {
+      "route_id": 3,
+      "query_symbol": 7,
+      "depth": 7,
+      "position": 6,
+      "key_digest": "872f9904436f0f7d9378c8a312c104fc16ce7ed73e379b768a827bea339eb742"
+    }
+  ],
+  "permutation_records": [
+    {
+      "permutation": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "learned_pair": [
+        0,
+        1
+      ],
+      "learned_hit": true,
+      "shuffled_hit": false,
+      "untrained_hit": true,
+      "address_scrubbed": true
+    },
+    {
+      "permutation": [
+        0,
+        1,
+        3,
+        2
+      ],
+      "learned_pair": [
+        0,
+        1
+      ],
+      "learned_hit": true,
+      "shuffled_hit": false,
+      "untrained_hit": true,
+      "address_scrubbed": true
+    },
+    {
+      "permutation": [
+        0,
+        2,
+        1,
+        3
+      ],
+      "learned_pair": [
+        0,
+        2
+      ],
+      "learned_hit": true,
+      "shuffled_hit": false,
+      "untrained_hit": false,
+      "address_scrubbed": true
+    },
+    {
+      "permutation": [
+        0,
+        2,
+        3,
+        1
+      ],
+      "learned_pair": [
+        0,
+        3
+      ],
+      "learned_hit": true,
+      "shuffled_hit": false,
+      "untrained_hit": false,
+      "address_scrubbed": true
+    },
+    {
+      "permutation": [
+        0,
+        3,
+        1,
+        2
+      ],
+      "learned_pair": [
+        0,
+        2
+      ],
+      "learned_hit": true,
+      "shuffled_hit": false,
+      "untrained_hit": false,
+      "address_scrubbed": true
+    },
+    {
+      "permutation": [
+        0,
+        3,
+        2,
+        1
+      ],
+      "learned_pair": [
+        0,
+        3
+      ],
+      "learned_hit": true,
+      "shuffled_hit": false,
+      "untrained_hit": false,
+      "address_scrubbed": true
+    },
+    {
+      "permutation": [
+        1,
+        0,
+        2,
+        3
+      ],
+      "learned_pair": [
+        0,
+        1
+      ],
+      "learned_hit": true,
+      "shuffled_hit": false,
+      "untrained_hit": true,
+      "address_scrubbed": true
+    },
+    {
+      "permutation": [
+        1,
+        0,
+        3,
+        2
+      ],
+      "learned_pair": [
+        0,
+        1
+      ],
+      "learned_hit": true,
+      "shuffled_hit": false,
+      "untrained_hit": true,
+      "address_scrubbed": true
+    },
+    {
+      "permutation": [
+        1,
+        2,
+        0,
+        3
+      ],
+      "learned_pair": [
+        0,
+        2
+      ],
+      "learned_hit": true,
+      "shuffled_hit": false,
+      "untrained_hit": false,
+      "address_scrubbed": true
+    },
+    {
+      "permutation": [
+        1,
+        2,
+        3,
+        0
+      ],
+      "learned_pair": [
+        0,
+        3
+      ],
+      "learned_hit": true,
+      "shuffled_hit": false,
+      "untrained_hit": false,
+      "address_scrubbed": true
+    },
+    {
+      "permutation": [
+        1,
+        3,
+        0,
+        2
+      ],
+      "learned_pair": [
+        0,
+        2
+      ],
+      "learned_hit": true,
+      "shuffled_hit": false,
+      "untrained_hit": false,
+      "address_scrubbed": true
+    },
+    {
+      "permutation": [
+        1,
+        3,
+        2,
+        0
+      ],
+      "learned_pair": [
+        0,
+        3
+      ],
+      "learned_hit": true,
+      "shuffled_hit": false,
+      "untrained_hit": false,
+      "address_scrubbed": true
+    },
+    {
+      "permutation": [
+        2,
+        0,
+        1,
+        3
+      ],
+      "learned_pair": [
+        1,
+        2
+      ],
+      "learned_hit": true,
+      "shuffled_hit": false,
+      "untrained_hit": false,
+      "address_scrubbed": true
+    },
+    {
+      "permutation": [
+        2,
+        0,
+        3,
+        1
+      ],
+      "learned_pair": [
+        1,
+        3
+      ],
+      "learned_hit": true,
+      "shuffled_hit": false,
+      "untrained_hit": false,
+      "address_scrubbed": true
+    },
+    {
+      "permutation": [
+        2,
+        1,
+        0,
+        3
+      ],
+      "learned_pair": [
+        1,
+        2
+      ],
+      "learned_hit": true,
+      "shuffled_hit": false,
+      "untrained_hit": false,
+      "address_scrubbed": true
+    },
+    {
+      "permutation": [
+        2,
+        1,
+        3,
+        0
+      ],
+      "learned_pair": [
+        1,
+        3
+      ],
+      "learned_hit": true,
+      "shuffled_hit": false,
+      "untrained_hit": false,
+      "address_scrubbed": true
+    },
+    {
+      "permutation": [
+        2,
+        3,
+        0,
+        1
+      ],
+      "learned_pair": [
+        2,
+        3
+      ],
+      "learned_hit": true,
+      "shuffled_hit": false,
+      "untrained_hit": false,
+      "address_scrubbed": true
+    },
+    {
+      "permutation": [
+        2,
+        3,
+        1,
+        0
+      ],
+      "learned_pair": [
+        2,
+        3
+      ],
+      "learned_hit": true,
+      "shuffled_hit": false,
+      "untrained_hit": false,
+      "address_scrubbed": true
+    },
+    {
+      "permutation": [
+        3,
+        0,
+        1,
+        2
+      ],
+      "learned_pair": [
+        1,
+        2
+      ],
+      "learned_hit": true,
+      "shuffled_hit": false,
+      "untrained_hit": false,
+      "address_scrubbed": true
+    },
+    {
+      "permutation": [
+        3,
+        0,
+        2,
+        1
+      ],
+      "learned_pair": [
+        1,
+        3
+      ],
+      "learned_hit": true,
+      "shuffled_hit": false,
+      "untrained_hit": false,
+      "address_scrubbed": true
+    },
+    {
+      "permutation": [
+        3,
+        1,
+        0,
+        2
+      ],
+      "learned_pair": [
+        1,
+        2
+      ],
+      "learned_hit": true,
+      "shuffled_hit": false,
+      "untrained_hit": false,
+      "address_scrubbed": true
+    },
+    {
+      "permutation": [
+        3,
+        1,
+        2,
+        0
+      ],
+      "learned_pair": [
+        1,
+        3
+      ],
+      "learned_hit": true,
+      "shuffled_hit": false,
+      "untrained_hit": false,
+      "address_scrubbed": true
+    },
+    {
+      "permutation": [
+        3,
+        2,
+        0,
+        1
+      ],
+      "learned_pair": [
+        2,
+        3
+      ],
+      "learned_hit": true,
+      "shuffled_hit": false,
+      "untrained_hit": false,
+      "address_scrubbed": true
+    },
+    {
+      "permutation": [
+        3,
+        2,
+        1,
+        0
+      ],
+      "learned_pair": [
+        2,
+        3
+      ],
+      "learned_hit": true,
+      "shuffled_hit": false,
+      "untrained_hit": false,
+      "address_scrubbed": true
+    }
+  ],
+  "forward": {
+    "order": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "proposal": [
+      0,
+      1
+    ],
+    "selected_correctly": true,
+    "rows_before": 4,
+    "rows_after": 3,
+    "bytes_before": 10212,
+    "bytes_after": 8275,
+    "accepted": true,
+    "receipt": {
+      "accepted": true,
+      "source_indices": [
+        0,
+        1
+      ],
+      "rows_before": 4,
+      "rows_after": 3,
+      "rows_saved": 1,
+      "reason": "behavior verifier passed"
+    },
+    "rejected_unchanged": true,
+    "reload_ok": true,
+    "corruption_rejected": true,
+    "retained_routes": true
+  },
+  "reversed": {
+    "order": [
+      3,
+      2,
+      1,
+      0
+    ],
+    "proposal": [
+      2,
+      3
+    ],
+    "selected_correctly": true,
+    "rows_before": 4,
+    "rows_after": 3,
+    "bytes_before": 10212,
+    "bytes_after": 8275,
+    "accepted": true,
+    "receipt": {
+      "accepted": true,
+      "source_indices": [
+        2,
+        3
+      ],
+      "rows_before": 4,
+      "rows_after": 3,
+      "rows_saved": 1,
+      "reason": "behavior verifier passed"
+    },
+    "rejected_unchanged": true,
+    "reload_ok": true,
+    "corruption_rejected": true,
+    "retained_routes": true
+  },
+  "policy_accuracy": {
+    "learned_shared_pair_rate": 1.0,
+    "shuffled_shared_pair_rate": 0.0,
+    "untrained_shared_pair_rate": 0.16666666666666666
+  },
+  "gates": {
+    "learned_selects_shared_compositional_pair": true,
+    "learned_beats_shuffled_control": true,
+    "learned_beats_untrained_control": true,
+    "candidate_permutation_invariant": true,
+    "forward_verifier_accepts": true,
+    "reversed_verifier_accepts": true,
+    "forward_retains_distinct_routes": true,
+    "reversed_retains_distinct_routes": true,
+    "forward_rows_reduced": true,
+    "reversed_rows_reduced": true,
+    "forward_bytes_reduced": true,
+    "reversed_bytes_reduced": true,
+    "rejected_transaction_non_mutating": true,
+    "reload_preserves_forward_routes": true,
+    "reload_preserves_reversed_routes": true,
+    "corruption_rejected": true,
+    "frozen_controller": true,
+    "frozen_event_encoder": true,
+    "frozen_promoted_file": true,
+    "zero_replayed_examples": true
+  },
+  "accounting": {
+    "unique_temporal_verifier_bits": 4352,
+    "counterfactual_temporal_verifier_bits": 24576,
+    "unique_verifier_bits": 28928,
+    "policy_verifier_bits": 1344000,
+    "shuffled_policy_verifier_bits": 1344000,
+    "shared_view_retention_verifier_bits": 24,
+    "unique_logical_lifetimes": 48024,
+    "optimizer_updates": 3000,
+    "physical_rows_before": 4,
+    "physical_rows_after": 3,
+    "replayed_examples": 0,
+    "latency_seconds": 98.71265608305112,
+    "stable_bits_to_threshold": 28928
+  },
+  "status": "promoted_temporal_shared_artifact_consolidation"
+}

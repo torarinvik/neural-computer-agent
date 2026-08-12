@@ -1282,6 +1282,48 @@ PYTHONPATH=src uv run python -m experiments.brainworkshop_canonical.external_tem
   --report-out /tmp/brainworkshop-temporal-artifact-alias.json
 ```
 
+## Learned temporal shared-artifact consolidation (promoted bounded rung)
+
+`external_temporal_shared_artifact_consolidation.py` extends alias
+consolidation to two distinct temporal routes that share an opaque artifact
+basis but require separate residual and address views. A generic
+`OpaqueConsolidationPolicy` selects the compositional pair from opaque
+candidate tensors; an independent verifier authorizes a copy-on-write rewrite
+from four physical rows to three.
+
+The policy controls use address-scrubbed candidate views. This removes an
+address-geometry shortcut found in the first audit, where a reward-shuffled
+policy could select the target pair despite not learning the shared artifact
+structure. The deployed transactional streams still use the learned route
+keys. Across seeds `17`, `18`, and `19`, learned pair selection is `1.0000`
+across all 24 physical permutations; address-scrubbed reward-shuffled rates
+are `0.0000`, `0.6667`, and `0.1667`, and untrained rates are `0.1667`.
+Forward and reversed rewrites retain both distinct routes and the nearby
+source alias, reduce serialized bytes from `10,212` to `8,275`, preserve
+reload behavior, reject corruption, leave rejected transactions unchanged,
+and keep the controller, event encoder, and promoted file frozen with zero
+replay.
+
+Each seed accounts for `4,352` temporal route-verifier bits, `24,576`
+counterfactual temporal-verifier bits, `28,928` combined unique temporal
+bits, `1,344,000` policy bits, `24` shared-view retention bits, `48,024`
+policy logical lifetimes, and `3,000` optimizer updates. This promotes narrow
+learned shared-view external consolidation, not arbitrary semantic
+compression, unrestricted memory growth, arbitrary new computation, or
+general continual learning. Evidence and complete raw reports are archived
+in `session_records/brainworkshop_external_temporal_shared_artifact_consolidation_promoted_2026-08-12/`.
+
+Run it with:
+
+```bash
+PYTHONPATH=src uv run python -m experiments.brainworkshop_canonical.external_temporal_shared_artifact_consolidation \
+  --source-updates 128 --source-evaluation-lifetimes 4 \
+  --source-route-lifetimes 8 --target-route-updates 8 \
+  --policy-updates 3000 --policy-batch-size 16 --batch-size 16 \
+  --data-steps 14 --retention-lifetimes 4 --seed 17 \
+  --report-out /tmp/brainworkshop-temporal-shared-artifact.json
+```
+
 ## Related-key temporal content retrieval (historical v1; current v2 rejected)
 
 `external_temporal_content_retrieval_growth.py` composes that address

@@ -670,6 +670,49 @@ def test_external_temporal_artifact_alias_consolidation_smoke_fails_closed(
     assert report["gates"]["zero_replayed_examples"]
 
 
+def test_external_temporal_shared_artifact_consolidation_smoke_preserves_views(
+    tmp_path,
+) -> None:
+    from experiments.brainworkshop_canonical.external_temporal_shared_artifact_consolidation import (
+        run,
+    )
+
+    report = run(
+        argparse.Namespace(
+            report_out=tmp_path / "temporal-shared-artifact-consolidation.json",
+            seed=17,
+            source_updates=1,
+            source_evaluation_lifetimes=1,
+            source_route_lifetimes=1,
+            target_route_updates=1,
+            policy_updates=10,
+            policy_batch_size=2,
+            batch_size=2,
+            data_steps=10,
+            retention_lifetimes=1,
+            learning_rate=3e-3,
+            entropy_weight=0.01,
+        )
+    )
+
+    assert report["schema"] == (
+        "neural-computer.brainworkshop-external-temporal-"
+        "shared-artifact-consolidation.v1"
+    )
+    assert report["status"] == "promoted_temporal_shared_artifact_consolidation"
+    assert report["gates"]["learned_selects_shared_compositional_pair"]
+    assert report["gates"]["forward_retains_distinct_routes"]
+    assert report["gates"]["reversed_retains_distinct_routes"]
+    assert report["gates"]["forward_bytes_reduced"]
+    assert report["gates"]["reversed_bytes_reduced"]
+    assert report["gates"]["rejected_transaction_non_mutating"]
+    assert report["gates"]["reload_preserves_forward_routes"]
+    assert report["gates"]["corruption_rejected"]
+    assert report["gates"]["frozen_controller"]
+    assert report["gates"]["frozen_event_encoder"]
+    assert report["gates"]["zero_replayed_examples"]
+
+
 def test_external_temporal_content_retrieval_growth_smoke_preserves_memory_contract(
     tmp_path,
 ) -> None:

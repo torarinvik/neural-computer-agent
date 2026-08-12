@@ -11220,3 +11220,33 @@ qualify arbitrary semantic compression, unrestricted memory growth, arbitrary
 new computation, or general continual learning. Evidence and accounting are
 archived in
 `session_records/brainworkshop_external_temporal_artifact_alias_consolidation_promoted_2026-08-12/`.
+
+### Learned temporal shared-artifact consolidation
+
+The next memory-side rung composes two distinct temporal capabilities that
+share an opaque artifact basis but retain independent residual and address
+views. `external_temporal_shared_artifact_consolidation.py` exposes only
+learned keys, opaque artifact summaries, strength, and age to the generic
+`OpaqueConsolidationPolicy`; route names, temporal depths, semantic labels,
+and verifier answers remain outside the deployed policy. An independent
+verifier authorizes a copy-on-write replacement of four physical rows with a
+three-row artifact containing both route views and a nearby source alias.
+
+The first audit exposed a control confound: learned temporal address geometry
+was sufficient for a reward-shuffled policy to select the target pair. The
+promotion therefore evaluates policy controls on address-scrubbed candidate
+views while leaving the deployment transaction on the learned route keys.
+Across seeds `17`, `18`, and `19`, learned shared-pair selection is `1.0000`
+across all 24 physical permutations; address-scrubbed reward-shuffled rates
+are `0.0000`, `0.6667`, and `0.1667`, and untrained rates are `0.1667`.
+Forward and reversed physical orders preserve both route behaviors, save one
+row and reduce serialized artifact bytes from `10,212` to `8,275`; rejected
+transactions are non-mutating, reload and corruption controls pass, and the
+controller, event encoder, and promoted capability file remain frozen with
+zero replay.
+
+This promotes narrow learned shared-view external consolidation for distinct
+temporal capabilities. It does not qualify arbitrary semantic compression,
+unrestricted memory growth, arbitrary new computation, or general continual
+learning. Evidence and accounting are archived in
+`session_records/brainworkshop_external_temporal_shared_artifact_consolidation_promoted_2026-08-12/`.
