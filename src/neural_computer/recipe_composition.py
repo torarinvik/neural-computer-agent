@@ -34,6 +34,7 @@ RECIPE_COMPOSITION_SEARCH_SCHEMA = "neural-computer.recipe-composition-search.v1
 RECIPE_COMPOSITION_COMPACTION_SCHEMA = (
     "neural-computer.recipe-composition-compaction.v1"
 )
+RECIPE_COMPOSITION_TELEMETRY_WIDTH = 8
 RECIPE_COMPOSITION_MODES = ("append", "prepend")
 
 
@@ -411,6 +412,81 @@ class ExternalRecipeCompositionMemory:
             right_composite=self.provenance(right_slot) is not None,
         ).validate()
 
+    def _provenance_closure_slots(
+        self,
+        slot: int,
+        *,
+        visiting: frozenset[int] = frozenset(),
+    ) -> frozenset[int]:
+        if not 0 <= slot < self.file_count:
+            raise ValueError("composition memory slot is out of range")
+        if slot in visiting:
+            raise ValueError("composition provenance contains a cycle")
+        factors = self.provenance(slot)
+        if factors is None:
+            return frozenset((slot,))
+        left_slot = self._slot_for_digest(factors.left_digest, before=slot)
+        right_slot = self._slot_for_digest(factors.right_digest, before=slot)
+        next_visiting = visiting | {slot}
+        return frozenset((slot,)).union(
+            self._provenance_closure_slots(left_slot, visiting=next_visiting),
+            self._provenance_closure_slots(right_slot, visiting=next_visiting),
+        )
+
+    def candidate_telemetry(
+        self,
+        slots: Sequence[int],
+    ) -> torch.Tensor:
+        """Return permutation-safe generic features for external victim choice.
+
+        Rows contain no physical slot index, digest, operation, or verifier
+        target. Columns are log-depth, log-program-length, protection flag,
+        log-reference count, log-provenance-closure size, composite flag,
+        unreferenced-root flag, and log-bank size. The result is a replaceable
+        policy input, not an eviction decision; protection and verification
+        remain authoritative at compaction time.
+        """
+
+        candidates = tuple(int(slot) for slot in slots)
+        if not candidates or len(set(candidates)) != len(candidates):
+            raise ValueError("recipe telemetry needs distinct nonempty slots")
+        if any(not 0 <= slot < self.file_count for slot in candidates):
+            raise ValueError("recipe telemetry slot is outside memory")
+        reference_counts: dict[str, int] = {}
+        for factors in self._provenance:
+            if factors is None:
+                continue
+            reference_counts[factors.left_digest] = (
+                reference_counts.get(factors.left_digest, 0) + 1
+            )
+            reference_counts[factors.right_digest] = (
+                reference_counts.get(factors.right_digest, 0) + 1
+            )
+        rows: list[list[float]] = []
+        bank_size = math.log1p(self.file_count)
+        for slot in candidates:
+            program = self.program(slot)
+            depth = self.composition_depth(slot)
+            references = reference_counts.get(program.digest(), 0)
+            closure_size = len(self._provenance_closure_slots(slot))
+            composite = self.provenance(slot) is not None
+            rows.append(
+                [
+                    math.log1p(depth),
+                    math.log1p(program.program_length),
+                    float(self.is_file_protected(slot)),
+                    math.log1p(references),
+                    math.log1p(closure_size),
+                    float(composite),
+                    float(references == 0),
+                    bank_size,
+                ]
+            )
+        telemetry = torch.tensor(rows, dtype=torch.float32)
+        if telemetry.shape != (len(candidates), RECIPE_COMPOSITION_TELEMETRY_WIDTH):
+            raise RuntimeError("recipe telemetry width is inconsistent")
+        return telemetry
+
     def _validate_provenance_slot(
         self,
         slot: int,
@@ -478,12 +554,7 @@ class ExternalRecipeCompositionMemory:
         pending = list(retained)
         while pending:
             slot = pending.pop()
-            factors = self.provenance(slot)
-            if factors is None:
-                continue
-            left_slot = self._slot_for_digest(factors.left_digest, before=slot)
-            right_slot = self._slot_for_digest(factors.right_digest, before=slot)
-            for source_slot in (left_slot, right_slot):
+            for source_slot in self._provenance_closure_slots(slot):
                 if source_slot not in retained:
                     retained.add(source_slot)
                     pending.append(source_slot)
@@ -1291,6 +1362,7 @@ __all__ = [
     "RECIPE_COMPOSITION_PROPOSAL_SCHEMA",
     "RECIPE_COMPOSITION_SEARCH_SCHEMA",
     "RECIPE_COMPOSITION_STRUCTURE_SCHEMA",
+    "RECIPE_COMPOSITION_TELEMETRY_WIDTH",
     "ExternalRecipeCompositionMemory",
     "OpaqueContextRecipeCompositionMemory",
     "OutcomeOnlyRecipeCompositionSearch",

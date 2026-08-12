@@ -11027,3 +11027,11 @@ updates. This is a bounded storage-integrity result. Learned victim choice,
 semantic compression, unrestricted archive growth, and general continual
 learning remain open. Evidence is archived at
 `session_records/recipe_recursive_compaction_promoted_2026-08-12/`.
+
+The next learned-maintenance probe connected the replaceable external eviction
+scorer to this same recipe-file seam. It achieved perfect depth-five transfer
+across four seeds from scalar compaction outcomes, with the controller frozen
+and no replay, but its reward-shuffled null was unstable on one seed. The
+result is archived as rejected diagnostic evidence in
+`session_records/recipe_learned_eviction_rejected_2026-08-12/`; learned victim
+choice is not yet a promoted architectural capability.

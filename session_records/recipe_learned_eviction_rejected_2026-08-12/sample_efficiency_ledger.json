@@ -1,0 +1,27 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment_id": "recipe-learned-eviction-rejected-2026-08-12",
+  "status": "rejected_unstable_reward_shuffled_null",
+  "source": "in_repository_run",
+  "seeds": [73001, 73003, 73007, 73009],
+  "unique_verifier_bits_per_seed": [1048704, 1048576, 1048704, 1048576],
+  "unique_logical_lifetimes_per_seed": [2048, 2048, 2048, 2048],
+  "optimizer_updates_per_seed": [512, 512, 512, 512],
+  "replayed_examples": 0,
+  "controller_optimizer_updates": 0,
+  "stable_bits_to_threshold": {
+    "trained_depth5_transfer": [163840, 163840, 163840, 163840]
+  },
+  "retention_on_mastered_primitives": [1.0, 1.0, 1.0, 1.0],
+  "transfer_ratio_against_fresh": [1.446328, 1.446328, 1.52381, 1.514793],
+  "controls": {
+    "candidate_order_permutation": true,
+    "reward_shuffled": true,
+    "feature_corruption": true,
+    "policy_reload_exact": true,
+    "zero_replay": true,
+    "zero_controller_updates": true,
+    "reward_shuffled_null_stable": false
+  },
+  "claim_boundary": "Diagnostic bounded external victim-choice learning only; no promotion of learned eviction economics, semantic compression, unrestricted growth, or general continual learning."
+}

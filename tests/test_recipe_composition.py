@@ -8,6 +8,7 @@ import pytest
 import torch
 
 from neural_computer import (
+    RECIPE_COMPOSITION_TELEMETRY_WIDTH,
     ExternalRecipeCompositionMemory,
     OpaqueContextRecipeCompositionMemory,
     RecipeInstruction,
@@ -162,6 +163,39 @@ def test_compaction_keeps_provenance_closure_and_is_transactional() -> None:
     assert all(
         compacted.execute(2, state) == target.execute(state) for state in STATES
     )
+
+
+def test_recipe_candidate_telemetry_is_permutation_safe_and_structural() -> None:
+    memory = ExternalRecipeCompositionMemory(SLOT_VALUES)
+    left = memory.add_program(_fragment_a())
+    right = memory.add_program(_fragment_b())
+    memory.protect_file(left)
+    memory.protect_file(right)
+    target = _target()
+    candidate = next(
+        item
+        for item in memory.composition_candidates(max_program_length=2)
+        if item.program.digest() == target.digest()
+    )
+    receipt = memory.admit_verified_composition(
+        candidate,
+        _outcomes(candidate.program, target),
+        threshold=1.0,
+        min_observations=len(STATES),
+        min_stable_observations=len(STATES),
+    )
+    assert receipt.accepted and receipt.slot == 2
+    decoy = memory.add_program(_instruction_program("dec", 0, 2))
+
+    ordered = memory.candidate_telemetry((left, right, 2, decoy))
+    permuted = memory.candidate_telemetry((decoy, 2, left, right))
+    for slot in (left, right, 2, decoy):
+        first = (left, right, 2, decoy).index(slot)
+        second = (decoy, 2, left, right).index(slot)
+        assert torch.equal(ordered[first], permuted[second])
+    assert ordered.shape == (4, RECIPE_COMPOSITION_TELEMETRY_WIDTH)
+    decoy_position = (left, right, 2, decoy).index(decoy)
+    assert float(ordered[2, 0]) > float(ordered[decoy_position, 0])
 
 
 def test_composition_policy_reuses_source_factors_without_candidate_rows() -> None:

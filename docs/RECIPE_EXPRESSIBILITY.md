@@ -332,3 +332,26 @@ zero-replay controls. This promotes safe bounded storage compaction, not
 learned eviction economics, semantic compression, unrestricted growth, or
 general continual learning. Evidence is archived in
 `session_records/recipe_recursive_compaction_promoted_2026-08-12/`.
+
+## Learned recipe victim choice — rejected promotion (2026-08-12)
+
+The generic `ExternalCapabilityEvictionPolicy` was connected to real
+provenance-closed recipe compaction. Its input was limited to permutation-safe
+structural telemetry: recursive depth, program length, protection, provenance
+reference count, closure size, composite/root shape, and bank size. It learned
+from one scalar compaction-verifier utility per fresh episode while the recipe
+memory, verifier, interpreter, and controller remained frozen.
+
+Across four seeds, depths two through four trained to `1.0000` transfer
+accuracy on unseen depth-five files, versus a fresh mean of `0.6748`. The
+candidate order was permuted, policy reload was exact, replay was zero, and
+controller updates were zero. This is useful evidence that the external
+storage seam can host learned maintenance state.
+
+The promotion was rejected because the reward-shuffled null was not stable:
+three seeds failed to transfer, but one also reached `1.0000` by drifting toward
+a static candidate class. The aggregate null mean was `0.25`, but it does not
+support a clean per-seed causal claim. The candidate-role distribution and null
+control must be strengthened before learned eviction is promoted. Evidence is
+archived at
+`session_records/recipe_learned_eviction_rejected_2026-08-12/`.
