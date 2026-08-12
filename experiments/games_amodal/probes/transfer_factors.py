@@ -67,6 +67,14 @@ parser.add_argument("--eval-rows", type=int, default=96)
 parser.add_argument("--pool", type=int, default=1500)
 parser.add_argument("--eval-worlds", type=int, default=48)
 parser.add_argument("--combo-pool", type=int, default=1500)
+parser.add_argument("--ranking-from", default="",
+                    help="use ANOTHER run's generality ranking to choose "
+                         "the top-k arms. The within-run ranking is fitted "
+                         "on the same readers the arms are then judged "
+                         "beside; a ranking imported from a different seed "
+                         "has never seen this run at all, so it is the "
+                         "out-of-sample test of whether the ranking "
+                         "carries anything.")
 parser.add_argument("--json", default="")
 args = parser.parse_args()
 
@@ -148,6 +156,20 @@ from experiments.games_amodal.probes.battery import (        # noqa: E402
     REGISTRY as DOMAINS, names as domain_names)
 
 NAMES = domain_names()
+
+# ---------------------------------------------------------------- SPLIT
+# Every fourth domain is HELD OUT: no curriculum may train on it, and it
+# is the only thing the ROI arms are scored on.
+#
+# Without this the comparison is rigged. An `all_domains` arm trains on
+# every evaluation domain, so it is scored IN distribution while a
+# 3-domain arm is scored out of distribution on 110 of 113 targets -- and
+# the gap that produces is not transfer, it is the absence of a test set.
+# The generality ranking is likewise computed on ELIGIBLE targets only,
+# because a ranking fitted on the targets it will be judged against has
+# seen the answer.
+HELD_OUT = [n for i, n in enumerate(NAMES) if i % 4 == 3]
+ELIGIBLE = [n for n in NAMES if n not in HELD_OUT]
 
 
 def stable(name: str) -> int:
@@ -294,10 +316,11 @@ report["transfer_matrix"] = matrix
 # ------------------------------------------------- generality ranking
 generality = {}
 for source in NAMES:
-    values = [matrix[source][t] for t in NAMES
+    values = [matrix[source][t] for t in ELIGIBLE
               if t != source and matrix[source][t] is not None]
     generality[source] = round(sum(values) / len(values), 4) if values else None
 report["generality_excluding_self"] = generality
+report["split"] = {"held_out": HELD_OUT, "eligible": ELIGIBLE}
 
 # ------------------------------------------------------ factor analysis
 usable = [t for t in NAMES
@@ -328,20 +351,62 @@ report["factor_analysis"] = {
 # =====================================================================
 # the ROI test: is the ranking worth anything, or only descriptive?
 # =====================================================================
-ranked = sorted([n for n in NAMES if generality[n] is not None],
-                key=lambda n: generality[n], reverse=True)
+ranking_source = generality
+if args.ranking_from:
+    with open(args.ranking_from) as handle:
+        imported = json.load(handle)["generality_excluding_self"]
+    ranking_source = {n: imported.get(n) for n in NAMES}
+report["ranking_from"] = args.ranking_from or "self"
+ranked = sorted([n for n in ELIGIBLE if ranking_source.get(n) is not None],
+                key=lambda n: ranking_source[n], reverse=True)
 rng = torch.Generator().manual_seed(args.seed + 5)
-random_three = [ranked[int(torch.randint(0, len(ranked), (1,),
-                                         generator=rng))] for _ in range(3)]
+
+
+def sample_group(k):
+    order = torch.randperm(len(ELIGIBLE), generator=rng)[:k]
+    return [ELIGIBLE[int(i)] for i in order]
+
+
+# Choosing for DIVERSITY rather than for generality. Each source's row of
+# the transfer matrix is its profile -- what it teaches, target by
+# target. Cluster the profiles and take one domain per cluster, so the
+# group spans the space of things-that-can-be-taught instead of stacking
+# several domains that teach the same thing well.
+def spread_group(k):
+    rows = {NAMES[r]: M[r] for r in range(len(NAMES))
+            if NAMES[r] in ELIGIBLE}
+    chosen = [ranked[0]]
+    while len(chosen) < k:
+        best, best_distance = None, -1.0
+        for name in ELIGIBLE:
+            if name in chosen or name not in rows:
+                continue
+            nearest = min(float((rows[name] - rows[c]).pow(2).sum())
+                          for c in chosen)
+            if nearest > best_distance:
+                best, best_distance = name, nearest
+        if best is None:
+            break
+        chosen.append(best)
+    return chosen
+
+
 arms = {
     "top3": ranked[:3],
     "bottom3": ranked[-3:],
-    "random3": random_three,
-    "all_domains": NAMES,
+    "random3": sample_group(3),
+    "top10": ranked[:10],
+    "random10": sample_group(10),
+    "spread10": spread_group(10),
+    "top25": ranked[:25],
+    "random25": sample_group(25),
+    "spread25": spread_group(25),
+    "random50": sample_group(50),
+    "all_eligible": ELIGIBLE,
     # the curriculum the project has actually been using, as a baseline
-    # for whether the ranking buys anything over "train on the real
+    # for whether any of this buys anything over "train on the real
     # domains you care about"
-    "real_domains_only": [n for n in NAMES
+    "real_domains_only": [n for n in ELIGIBLE
                           if n.startswith("grid_") or n == "rule_families"],
 }
 roi = {}
@@ -349,12 +414,73 @@ for label, group in arms.items():
     pool = build_pool(group, args.combo_pool, args.seed * 37 + len(label))
     reader = train_reader(pool, args.seed + 77 + len(label))
     scores = {t: evaluate(reader, t)["transfer"] for t in NAMES}
-    values_ = [v for v in scores.values() if v is not None]
-    roi[label] = {"domains": group,
-                  "mean_transfer_all_targets": round(
-                      sum(values_) / len(values_), 4),
+    held = [scores[t] for t in HELD_OUT if scores[t] is not None]
+    seen = [scores[t] for t in ELIGIBLE if scores[t] is not None]
+    roi[label] = {"domains": group, "size": len(group),
+                  # the number that counts: domains no arm trained on
+                  "held_out_transfer": round(sum(held) / len(held), 4),
+                  "eligible_transfer": round(sum(seen) / len(seen), 4),
                   "per_target": scores}
 report["roi_test"] = roi
+
+# =====================================================================
+# ATTACKS ON THE RANKING ITSELF
+#
+# The ROI test above shows top-k beating random-k. That is consistent
+# with the ranking carrying real information and ALSO consistent with
+# two duller stories, so both get an arm.
+#
+#   SHUFFLED RANKING -- take the same ranking, permute it, and pick the
+#     "top" three from the permuted order. If that scores like the real
+#     top-3, the ranking is decoration and any three domains would do.
+#   REDUNDANT TOP -- pick three domains that are individually strong but
+#     have nearly IDENTICAL transfer profiles. If generality were all
+#     that mattered these should match top-3; if the factor structure is
+#     real they should lose to it, because they cover one factor three
+#     times.
+#   ANTI-SPREAD -- the three domains whose profiles are closest together
+#     regardless of strength, as the floor of the same idea.
+# =====================================================================
+attack_rng = torch.Generator().manual_seed(args.seed + 31337)
+shuffled = [ranked[int(i)] for i in
+            torch.randperm(len(ranked), generator=attack_rng)]
+
+rows_by_name = {NAMES[r]: M[r] for r in range(len(NAMES))}
+
+
+def closest_trio(candidates):
+    best, best_distance = None, None
+    for i in range(len(candidates)):
+        for j in range(i + 1, len(candidates)):
+            for k in range(j + 1, len(candidates)):
+                a_, b_, c_ = (candidates[i], candidates[j], candidates[k])
+                if not all(n in rows_by_name for n in (a_, b_, c_)):
+                    continue
+                distance = (float((rows_by_name[a_] - rows_by_name[b_])
+                                  .pow(2).sum())
+                            + float((rows_by_name[a_] - rows_by_name[c_])
+                                    .pow(2).sum())
+                            + float((rows_by_name[b_] - rows_by_name[c_])
+                                    .pow(2).sum()))
+                if best_distance is None or distance < best_distance:
+                    best, best_distance = [a_, b_, c_], distance
+    return best
+
+
+attack_arms = {
+    "shuffled_ranking_top3": shuffled[:3],
+    "redundant_top3": closest_trio(ranked[:12]) or ranked[:3],
+    "anti_spread3": closest_trio(ranked) or ranked[:3],
+}
+attacks = {}
+for label, group in attack_arms.items():
+    pool = build_pool(group, args.combo_pool, args.seed * 41 + len(label))
+    reader = train_reader(pool, args.seed + 91 + len(label))
+    scores = {t: evaluate(reader, t)["transfer"] for t in NAMES}
+    held = [scores[t] for t in HELD_OUT if scores[t] is not None]
+    attacks[label] = {"domains": group,
+                      "held_out_transfer": round(sum(held) / len(held), 4)}
+report["attacks_on_ranking"] = attacks
 
 print(json.dumps({k: v for k, v in report.items()
                   if k not in ("cells",)}, indent=2))
