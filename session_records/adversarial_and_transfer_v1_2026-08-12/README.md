@@ -88,3 +88,45 @@ Reproduce (single-threaded; `torch.set_num_threads(1)` is pinned):
     ... --ranking-from <another seed's json>
     # different quarter held out:
     ... --split-offset 0|1|2
+
+## F211 -- the balanced grid (3 seeds x 4 held-out quarters = 12 cells)
+
+`grid-s<seed>-q<quarter>.json.gz`. F210 used quarter 3 only.
+
+    curriculum            n     MEAN      sd
+    all_eligible         85  +0.3613   0.100
+    random50             50  +0.3541   0.062
+    spread10             10  +0.3268   0.196
+    random25             25  +0.2998   0.095
+    spread25             25  +0.2980   0.118
+    top25                25  +0.2363   0.160
+    real_domains_only     4  +0.2029   0.124
+    top10                10  +0.2017   0.210
+    top3                  3  +0.1802   0.210
+    random10             10  +0.1695   0.149
+    random3               3  +0.1298   0.121
+    bottom3               3  +0.0441   0.186
+
+    paired over 12 cells
+    spread10  - random10           +0.1574 +- 0.0365  t=+4.31  12/12
+    all_elig  - real_domains_only  +0.1584 +- 0.0368  t=+4.30  10/12
+    all_elig  - top3               +0.1811 +- 0.0559  t=+3.24  11/12
+    spread10  - top10              +0.1252 +- 0.0415  t=+3.02  11/12
+    all_elig  - random25           +0.0615 +- 0.0269  t=+2.28  10/12
+    all_elig  - spread10           +0.0345 +- 0.0480  t=+0.72   8/12
+    top3      - random3            +0.0504 +- 0.0672  t=+0.75   6/12  REFUTED
+    top10     - random10           +0.0322 +- 0.0452  t=+0.71   6/12  REFUTED
+
+    adversarial curricula, 12 cells
+    redundant_top3        +0.0972
+    shuffled_ranking_top3 +0.0380
+    anti_spread3          -0.0049
+
+    anchor attack, 9 cells (q3 predates the arm)
+    spread10 +0.2553 | random anchor +0.1822 | random10 +0.1561 | top10 +0.1357
+    spread10 - random anchor  t=+1.10 5/9   -- not separable
+    random anchor - top10     t=+1.12 6/9   -- not separable
+
+F210's two headline claims swap: generality-based selection is refuted
+(coin flip over quarters), and diversity-based selection -- which I had
+withdrawn as under-powered -- is confirmed at 12/12.
