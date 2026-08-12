@@ -244,3 +244,27 @@ under
 This promotes bounded factorized transfer and local reversal routing. It does
 not yet establish reusable multi-step sub-sequence composition, unrestricted
 memory growth, or general continual learning.
+
+## Verifier-gated multi-step external composition
+
+`ExternalRecipeCompositionMemory` is the next external CPU/files boundary.
+It composes two existing immutable recipe files, checks that the candidate
+program is exactly the stated ordered concatenation, and commits it only after
+a stable verifier prefix passes. Each admitted composite retains immutable
+left/right digest and order provenance. The controller and generic recipe
+interpreter remain frozen; an optional composition policy receives only
+opaque factor descriptors and aggregate scalar quality.
+
+The four-seed audit uses mixed per-family moduli `(2, 8)` and an order-sensitive
+conditional increment. Depth-two and depth-three compositions both reach
+`1.0000` on held-out states, all sources retain `1.0000`, reversed programs
+score `0.0000`, empty evidence cannot mutate memory, and shuffled verifier
+feedback does not admit a file. Reloaded memory and policy checksums are exact;
+replay and controller optimizer updates are zero.
+
+This promotes bounded verifier-gated external composition, not learned
+unrestricted program induction. The optional proposal policy's warm/fresh
+sample-efficiency diagnostic is `[1.0, 3.0, 1.0, 1.0]` in proposal-count
+ratios across seeds, so it remains a follow-up rather than a promoted
+transfer claim. Evidence is archived under
+`session_records/recipe_composition_growth_promoted_2026-08-12/`.

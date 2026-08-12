@@ -10939,3 +10939,29 @@ updates were zero. Evidence and the ledger are archived in
 This promotes bounded factorized proposal transfer and local reversal
 routing. It is not yet reusable multi-step sub-sequence composition,
 unrestricted memory growth, or general continual learning.
+
+## Verifier-gated external recipe composition (2026-08-12)
+
+The external recipe seam now composes already-admitted files without changing
+the controller or interpreter. `ExternalRecipeCompositionMemory` performs
+copy-on-write composition, records immutable source digests and order, and
+admits a new file only after a caller-supplied stable verifier prefix passes.
+Its optional `OpaqueContextRecipeCompositionMemory` stores aggregate scalar
+factor credit outside the controller; raw verifier rows are not persisted.
+Equivalent ordered programs use canonical append provenance so proposal
+identity does not depend on source-slot enumeration order.
+
+The four-seed mixed-domain audit composed three protected one-step files into
+held-out depth-two and depth-three programs. Both depths reached `1.0000`,
+source retention stayed at `1.0000`, reversed-order controls scored `0.0000`,
+and persistence, provenance, missing-evidence, shuffled-verifier, zero-replay,
+and zero-controller-update gates passed. Arithmetic remains explicit per
+family: the two-valued slot uses `m=2` and the eight-valued slot uses `m=8`.
+
+This promotes bounded replay-free verifier-gated external file growth through
+depth-three serial composition. The optional warm proposal policy was no
+slower than fresh on three seeds and slower on one, so its sample-efficiency
+transfer is not promoted. This does not establish arbitrary program
+induction, unrestricted memory growth, or general continual learning.
+Evidence and accounting are archived at
+`session_records/recipe_composition_growth_promoted_2026-08-12/`.
