@@ -12486,3 +12486,49 @@ vs second2's 1.38 -> 1.61). The optimism ledger now spans goals,
 schedules, guards and encoders -- adaptive racing with common random
 numbers is promoted to the next infrastructure milestone after this
 capability lands.
+
+## F236 — THE BAIT TAX BECOMES A BAIT BONUS: ENTITY-VALUED BINDING
+## ACCEPTED (2026-08-13, entity_binding.py + deceptive2, 6 seeds.
+## Scope: fixed on the DEV mechanism set)
+
+The deceptive2 confirming run (three plane-1 items, two baits --
+random targeting is finally costly, restoring the shuffled control's
+power) meets every registered criterion:
+
+  learned - shuffled   +0.243 (t=+2.07)  >= the registered +0.10:
+                       the learned VALUES are causally credited.
+  learned vs true      +1.600 vs +1.627: 97% of the privileged
+                       binding ceiling, ranking 0.942 held.
+  THE TAX FLIPS        baseline -0.229 -> learned +0.082 (4/6
+                       positive): the F232 acceptance criterion met.
+                       The deployable system now earns MORE with
+                       baits present than without, as the privileged
+                       arm proved possible.
+  selection            valued_learned won the race in 3/6 seeds with
+                       the clean canonical goal REACH((0,1)->(6,7)),
+                       evaluating at +1.79..+1.99 -- the best
+                       deceptive2 scores recorded.
+  shuffled control     properly punished (-0.161 tax): the 3-item
+                       world gives the causal control its teeth, as
+                       registered in F235's caveat.
+  regressions          none: resource1 +0.586, controls intact,
+                       sealed trio untouched.
+
+**The capability, in full:** persistent entity identity (cell-
+occupancy correspondence + spawn-time relational memory) feeds a
+generic per-object value V_w(o) = w . phi(o) fit as a reward-class
+separator from the system's own contacts; the value-directed tracker
+occupies slots 6/7; one canonical REACH goal spends it. World-specific
+content: w. Generic machinery: everything else. Nothing names food,
+bait, or hazards.
+
+**The DEV mechanism benchmark now stands fully resolved:** delayed
+PASSED as-was (F230); resource1 FIXED by SEQUENCE (F231, +0.128 ->
++0.586); deceptive FIXED by VALUE-BIND + entity identity (F234-F236,
+tax -> bonus on deceptive2). Each capability entered through a
+pre-registered witness, was measured against a privileged ceiling,
+and carries its causal control. The typed controller layer is
+ATOM / SUM / SEQUENCE / VALUE-BIND; guards measured and declined.
+Next per the roadmap: adaptive racing (the optimism ledger now spans
+four candidate spaces), then freeze architecture-v1 and unseal
+blink / oneway / lever for their one-shot run.
