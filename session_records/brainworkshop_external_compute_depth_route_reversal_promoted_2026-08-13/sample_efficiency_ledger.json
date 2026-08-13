@@ -1,0 +1,22 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "brainworkshop_external_compute_depth_route_reversal_promoted_2026-08-13",
+  "status": "promoted_bounded_depth_route_reversal",
+  "seeds": [17, 18],
+  "unique_verifier_bits_per_seed": 250880,
+  "shuffled_control_verifier_bits_per_seed": 81920,
+  "unique_logical_lifetimes_per_seed": 25088,
+  "optimizer_updates_per_seed": 512,
+  "route_memory_updates_per_seed": 272,
+  "replayed_examples": 0,
+  "stable_bits_to_threshold_per_seed": 245760,
+  "retention_on_mastered_primitive": "nback16 retained at 1.0000 on both seeds",
+  "transfer_ratio_against_fresh_learner": "not measured; this promotion isolates route replacement and retention",
+  "claim_boundary": "This is bounded external-file route reversal, not general continual learning.",
+  "notes": [
+    "The controller and event frontend are frozen after source acquisition.",
+    "The route memory receives learned event keys and scalar terminal outcomes only.",
+    "The old and replacement files remain immutable during route learning.",
+    "The shuffled-outcome route control fails target mastery and does not select the target file."
+  ]
+}

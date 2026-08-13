@@ -12075,3 +12075,29 @@ control failed to acquire n-back-32 and degraded the old n-back-16 skill,
 demonstrating that isolated external files are doing the retention work.
 Evidence and accounting are archived at
 `session_records/brainworkshop_append_only_nback32_depth_promoted_2026-08-13/`.
+
+## Outcome-only depth-file route reversal (2026-08-13)
+
+The append-only depth result now has a route-level continuation. A frozen
+controller and event frontend support an opaque n-back-16 file and a fresh
+opaque n-back-32 file over the same 32-slot indexed-history ABI. A persistent
+route memory selects files from learned event-tensor keys and terminal scalar
+episode outcomes. When the task behind the source cue changes, both files are
+probed and four patient failures demote the stale route in favor of the new
+file; the old file remains directly executable.
+
+Across seeds `17` and `18`, source n-back-16 direct accuracy was `1.0000`,
+target n-back-32 direct accuracy was `0.9344`, routed target accuracy was
+`0.9375`, and changed-same-cue accuracy was `0.9297`. Old-file retention was
+`1.0000`. An unknown cue fell back to the oldest file at `0.6125`, while a
+batch-shuffled outcome control remained at `0.6312` and failed to select or
+master the replacement. Route reload was exact, both files and the frozen
+controller/frontend were byte-identical during routing, and replay was zero.
+
+This promotes bounded outcome-only file selection and same-cue replacement,
+not open-ended allocation, file lifecycle management, learned compression,
+arbitrary program induction, or general continual learning. The next pressure
+test is a growing bank with automatic allocation/protection and eviction or
+compaction decisions, without hand-selected slots or a fixed two-file setup.
+Evidence and accounting are archived at
+`session_records/brainworkshop_external_compute_depth_route_reversal_promoted_2026-08-13/`.

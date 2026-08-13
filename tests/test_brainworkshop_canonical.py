@@ -47,6 +47,9 @@ from experiments.brainworkshop_canonical.external_compute_route_bank import (
 from experiments.brainworkshop_canonical.external_compute_route_reversal import (
     run as run_external_compute_route_reversal,
 )
+from experiments.brainworkshop_canonical.external_compute_depth_route_reversal import (
+    run as run_external_compute_depth_route_reversal,
+)
 from experiments.brainworkshop_canonical.goal_conditioned_planning import (
     run_goal_conditioned_planning_audit,
 )
@@ -435,6 +438,34 @@ def test_external_compute_route_reversal_smoke_preserves_file_boundaries(
     assert report["gates"]["zero_replayed_examples"]
     assert report["transition"][-1]["slot_0_fraction"] == 0.5
     assert report["transition"][-1]["slot_1_fraction"] == 0.5
+
+
+def test_external_compute_depth_route_reversal_smoke_preserves_depth_files(
+    tmp_path,
+) -> None:
+    report = run_external_compute_depth_route_reversal(
+        argparse.Namespace(
+            report_out=tmp_path / "external-compute-depth-route-reversal.json",
+            seed=17,
+            source_updates=2,
+            target_updates=2,
+            route_updates=2,
+            transition_batches=1,
+            route_calibration_lifetimes=1,
+            retention_lifetimes=1,
+            learning_rate=3e-3,
+            entropy_weight=0.01,
+        )
+    )
+
+    assert report["schema"] == (
+        "neural-computer.brainworkshop-external-compute-depth-route-reversal.v1"
+    )
+    assert report["gates"]["source_file_unchanged_during_routing"]
+    assert report["gates"]["target_file_unchanged_during_routing"]
+    assert report["gates"]["frozen_controller"]
+    assert report["gates"]["frozen_event_encoder"]
+    assert report["accounting"]["replayed_examples"] == 0
 
 
 def test_external_compute_open_growth_smoke_rejects_unmastered_source_cleanly(
