@@ -161,6 +161,12 @@ class FamilyConfig:
     # merely the elegant one. `rule0`/`rule1` name the edible side per cue.
     rule0: int = -1  # -1 = derive from `inverted` (arity-2 compatibility)
     rule1: int = -1  # -1 = derive from `inverted2`
+    pursue: int = 0  # F227 distinct-roles component: hazards on the
+    # NEGATIVE plane that render identically to `avoid` hazards but step
+    # toward the avatar's current cell every step (larger-gap axis
+    # first, ties to rows). Contact is -1 and fatal, like a hazard. In a
+    # world with both, which plane-2 object matters is decided by
+    # DYNAMICS, not appearance -- invisible to any single-frame encoder.
     recentre_every: int = 0  # F21 motor bridge: k>0 re-deals forage items
     # every k steps at `spawn_radius` of the avatar's CURRENT position —
     # the avatar is never moved, so the agent itself must close the
@@ -207,6 +213,7 @@ class FamilyConfig:
                 ("forage", self.forage),
                 ("choice", self.choice),
                 ("dual", self.dual),
+                ("pursue", self.pursue),
             )
             if level
         )
@@ -245,6 +252,7 @@ class FamilyConfig:
             self.forage,
             self.choice,
             self.dual,
+            self.pursue,
         )
         if min(levels) < 0:
             raise ValueError("component levels cannot be negative")
@@ -304,6 +312,7 @@ class FamilyVerifier:
         self._food: list[list[tuple[int, int]]] = []
         self._fallers: list[list[tuple[int, int]]] = []
         self._hazards: list[list[tuple[int, int, int]]] = []
+        self._pursuers: list[list[tuple[int, int]]] = []
         self._walls: list[set[tuple[int, int]]] = []
         self._goal: list[tuple[int, int] | None] = []
         self._forage_a: list[list[tuple[int, int]]] = []
@@ -350,6 +359,7 @@ class FamilyVerifier:
         self._food = []
         self._fallers = []
         self._hazards = []
+        self._pursuers = []
         self._walls = []
         self._goal = []
         self._forage_a = []
@@ -386,6 +396,12 @@ class FamilyVerifier:
                 occupied.add(cell)
                 hazards.append((cell[0], cell[1], 1 if self._rand(2) else -1))
             self._hazards.append(hazards)
+            pursuers = []
+            for _ in range(config.pursue):
+                cell = self._free_cell(row, occupied)
+                occupied.add(cell)
+                pursuers.append(cell)
+            self._pursuers.append(pursuers)
             if config.navigate:
                 goal = self._free_cell(row, occupied)
                 occupied.add(goal)
@@ -502,6 +518,8 @@ class FamilyVerifier:
                 grid[row, 1, goal[0], goal[1]] = 1.0
             for hazard in self._hazards[row]:
                 grid[row, 2, hazard[0], hazard[1]] = 1.0
+            for cell in self._pursuers[row]:
+                grid[row, 2, cell[0], cell[1]] = 1.0
             for cell in self._walls[row]:
                 grid[row, 2, cell[0], cell[1]] = 1.0
             for cell in self._forage_a[row]:
@@ -614,6 +632,27 @@ class FamilyVerifier:
                     set(good) | set(bad) | self._walls[row] | {target}
                 )
                 bad.append(self._forage_cell(row, occupied))
+
+            if self._pursuers[row]:
+                next_pursuers = []
+                caught = False
+                for cell in self._pursuers[row]:
+                    gap_r = target[0] - cell[0]
+                    gap_c = target[1] - cell[1]
+                    if gap_r == 0 and gap_c == 0:
+                        moved = cell
+                    elif abs(gap_r) >= abs(gap_c) and gap_r != 0:
+                        moved = (cell[0] + (1 if gap_r > 0 else -1), cell[1])
+                    else:
+                        moved = (cell[0], cell[1] + (1 if gap_c > 0 else -1))
+                    if moved == target:
+                        caught = True
+                    next_pursuers.append(moved)
+                self._pursuers[row] = next_pursuers
+                if caught:
+                    reward[row] -= 1.0
+                    self._alive[row] = False
+                    continue
 
             if self._step_index % self.config.faller_period:
                 # Between advances the fallers hold position: the agent

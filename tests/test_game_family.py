@@ -494,3 +494,35 @@ def test_faller_spread_keeps_the_policy_and_only_shortens_the_distance() -> None
     assert max(gaps) > 1
     with pytest.raises(ValueError, match="faller spread"):
         FamilyConfig(intercept=1, faller_spread=-1).validate()
+
+
+def test_pursuer_steps_toward_avatar_and_kills_on_contact() -> None:
+    """F227: pursuers close the larger-gap axis first and are fatal."""
+
+    verifier = FamilyVerifier(FamilyConfig(pursue=1), batch_size=1, seed=51)
+    verifier.reset(seed=51)
+    verifier._pursuers[0] = [(0, 0)]
+    verifier._avatar[0] = (4, 1)
+    verifier._walls[0] = set()
+    verifier.step(torch.tensor([2]))  # avatar moves down to (5, 1)
+    assert verifier._pursuers[0][0] == (1, 0)  # row gap larger: row first
+    verifier._pursuers[0] = [(5, 3)]
+    verifier._avatar[0] = (5, 5)
+    outcome = verifier.step(torch.tensor([3]))  # avatar steps to (5, 4)
+    assert float(outcome.reward[0]) <= -1.0  # pursuer moved onto it
+    assert not bool(outcome.alive[0])
+
+
+def test_pursuer_renders_identically_to_a_hazard() -> None:
+    """The roles world premise: appearance cannot separate the roles."""
+
+    verifier = FamilyVerifier(
+        FamilyConfig(pursue=1, avoid=1), batch_size=1, seed=53
+    )
+    verifier.reset(seed=53)
+    grid = verifier.observation()
+    hazard = verifier._hazards[0][0]
+    pursuer = verifier._pursuers[0][0]
+    assert float(grid[0, 2, hazard[0], hazard[1]]) == 1.0
+    assert float(grid[0, 2, pursuer[0], pursuer[1]]) == 1.0
+    assert float(grid[0, 2].sum()) == 2.0
