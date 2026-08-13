@@ -32,22 +32,32 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     family = getattr(args, "family", FAMILY)
     cue_symbol = getattr(args, "cue_symbol", CUE_SYMBOL)
     history_age_slot_count = getattr(args, "history_age_slot_count", None)
+    history_relation_width = getattr(args, "history_relation_width", None)
     if family == "nback5":
         depth_shift_family = "nback4"
     elif family == "nback8":
         depth_shift_family = "nback5"
     elif family == "nback16":
         depth_shift_family = "nback8"
+    elif family == "nback32":
+        depth_shift_family = "nback16"
     else:
-        raise ValueError("depth probe family must be nback5, nback8, or nback16")
+        raise ValueError(
+            "depth probe family must be nback5, nback8, nback16, or nback32"
+        )
     event_read_mode = getattr(args, "event_read_mode", "flattened_window")
     if event_read_mode not in (
         "flattened_window",
         "history_attention",
         "history_indexed",
+        "history_relation_indexed",
     ):
         raise ValueError("unsupported depth-probe event read mode")
-    history_reader = event_read_mode in ("history_attention", "history_indexed")
+    history_reader = event_read_mode in (
+        "history_attention",
+        "history_indexed",
+        "history_relation_indexed",
+    )
     if history_reader:
         if args.event_window_size != 0:
             raise ValueError("variable history depth probes require event_window_size=0")
@@ -73,6 +83,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         event_window_size=args.event_window_size,
         basis_event_read_mode=event_read_mode,
         basis_history_age_slot_count=history_age_slot_count,
+        basis_history_relation_width=history_relation_width,
         external_history_query_count=args.query_count,
     )
     controller_before = _digest(system.agent.controller)
@@ -165,6 +176,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         event_window_size=args.event_window_size,
         basis_event_read_mode=event_read_mode,
         basis_history_age_slot_count=history_age_slot_count,
+        basis_history_relation_width=history_relation_width,
         external_history_query_count=args.query_count,
     )
     shuffled_modules = _common_modules(shuffled_system) + _slot_modules(
@@ -237,7 +249,14 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "architecture": {
             "family": family,
             "event_read_mode": event_read_mode,
-            "history_age_slot_count": history_age_slot_count if history_reader else None,
+            "history_age_slot_count": (
+                history_age_slot_count if history_reader else None
+            ),
+            "history_relation_width": (
+                history_relation_width
+                if event_read_mode == "history_relation_indexed"
+                else None
+            ),
             "event_window_size": args.event_window_size,
             "query_count": args.query_count,
             "query_count_semantics": "q_minus_one_previous_records_plus_current_event",
@@ -291,7 +310,7 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=17)
     parser.add_argument(
         "--family",
-        choices=("nback5", "nback8", "nback16"),
+        choices=("nback5", "nback8", "nback16", "nback32"),
         default=FAMILY,
     )
     parser.add_argument("--cue-symbol", type=int, default=CUE_SYMBOL)
@@ -303,9 +322,15 @@ def main() -> None:
     parser.add_argument("--event-window-size", type=int, default=6)
     parser.add_argument("--query-count", type=int, default=6)
     parser.add_argument("--history-age-slot-count", type=int, default=None)
+    parser.add_argument("--history-relation-width", type=int, default=None)
     parser.add_argument(
         "--event-read-mode",
-        choices=("flattened_window", "history_attention", "history_indexed"),
+        choices=(
+            "flattened_window",
+            "history_attention",
+            "history_indexed",
+            "history_relation_indexed",
+        ),
         default="flattened_window",
     )
     parser.add_argument("--learning-rate", type=float, default=3e-3)

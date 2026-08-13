@@ -87,8 +87,13 @@ def _basis(
     event_read_mode: str = "flattened_window",
     history_query_mode: str = "instruction_only",
     history_age_slot_count: int | None = None,
+    history_relation_width: int | None = None,
 ) -> ExternalRegisterComputeBasis:
-    if event_read_mode in ("history_attention", "history_indexed"):
+    if event_read_mode in (
+        "history_attention",
+        "history_indexed",
+        "history_relation_indexed",
+    ):
         if event_window_size:
             raise ValueError("history attention cannot use a fixed event window")
         event_width = EVENT_WIDTH
@@ -106,6 +111,7 @@ def _basis(
         event_read_mode=event_read_mode,
         history_query_mode=history_query_mode,
         history_age_slot_count=history_age_slot_count,
+        history_relation_width=history_relation_width,
         register_input_mode=(
             "event_window_only"
         ),
@@ -121,6 +127,7 @@ def _build(
     basis_event_read_mode: str = "flattened_window",
     basis_history_query_mode: str = "instruction_only",
     basis_history_age_slot_count: int | None = None,
+    basis_history_relation_width: int | None = None,
     external_history_query_count: int | None = None,
     external_history_query_counts: tuple[int, ...] | None = None,
 ) -> ComputeGrowthSystem:
@@ -130,7 +137,11 @@ def _build(
         raise ValueError("external compute slot count must be positive")
     if basis_hidden < 1:
         raise ValueError("external compute basis hidden width must be positive")
-    if basis_event_read_mode in ("history_attention", "history_indexed"):
+    if basis_event_read_mode in (
+        "history_attention",
+        "history_indexed",
+        "history_relation_indexed",
+    ):
         if event_window_size:
             raise ValueError("history attention cannot use a fixed event window")
     elif event_window_size < 1:
@@ -140,7 +151,12 @@ def _build(
             raise ValueError("external history query count must be non-negative")
         if (
             external_history_query_count == 0
-            and basis_event_read_mode not in ("history_attention", "history_indexed")
+            and basis_event_read_mode
+            not in (
+                "history_attention",
+                "history_indexed",
+                "history_relation_indexed",
+            )
         ):
             raise ValueError(
                 "zero external history query count is only valid for history attention"
@@ -179,6 +195,7 @@ def _build(
                 event_read_mode=basis_event_read_mode,
                 history_query_mode=basis_history_query_mode,
                 history_age_slot_count=basis_history_age_slot_count,
+                history_relation_width=basis_history_relation_width,
             )
             for _ in range(slot_count)
         ),
@@ -187,6 +204,7 @@ def _build(
         basis_event_read_mode=basis_event_read_mode,
         basis_history_query_mode=basis_history_query_mode,
         basis_history_age_slot_count=basis_history_age_slot_count,
+        basis_history_relation_width=basis_history_relation_width,
         basis_register_input_mode=(
             "event_window_only"
         ),
@@ -403,7 +421,11 @@ def _episode(
             history_query_count_for_read = (
                 query_count
                 if machine.basis_event_read_mode
-                in ("history_attention", "history_indexed")
+                in (
+                    "history_attention",
+                    "history_indexed",
+                    "history_relation_indexed",
+                )
                 else max(0, query_count - 1)
             )
             offsets = torch.arange(
@@ -426,6 +448,7 @@ def _episode(
             if machine.basis_event_read_mode in (
                 "history_attention",
                 "history_indexed",
+                "history_relation_indexed",
             ):
                 history_values = history_read.values
                 if corrupt_external_history:

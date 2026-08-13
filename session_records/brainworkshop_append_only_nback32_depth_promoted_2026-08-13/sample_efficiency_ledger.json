@@ -1,0 +1,20 @@
+{
+  "experiment_id": "brainworkshop-append-only-nback32-depth-promoted-2026-08-13",
+  "status": "promoted_bounded_append_only_external_computation",
+  "seeds": [17, 18],
+  "unique_verifier_bits": {
+    "source_and_target_per_seed": 163840,
+    "shuffled_outcome_control_per_seed": 81920
+  },
+  "unique_logical_lifetimes_per_seed": 16384,
+  "optimizer_updates": {
+    "source": 256,
+    "target": 256,
+    "shuffled_outcome_control": 256
+  },
+  "replayed_examples": 0,
+  "stable_bits_to_threshold": "held-out four-lifetime prefix remained >=0.80 at the promoted checkpoint; per-lifetime rows are in report summaries",
+  "retention_on_mastered_primitive": "nback16 retained at 1.0000 and 0.9992 means",
+  "transfer_ratio_against_fresh_learner": "not measured in this promotion; fresh-target comparison remains next work",
+  "claim_boundary": "This is bounded append-only external capability growth, not general continual learning."
+}

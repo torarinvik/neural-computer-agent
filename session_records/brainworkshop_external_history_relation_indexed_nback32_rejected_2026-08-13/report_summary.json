@@ -1,0 +1,13 @@
+{
+  "schema": "neural-computer.brainworkshop-external-history-relation-indexed-nback32.v1-summary",
+  "status": "rejected_no_gain_over_flat_indexed_reader",
+  "seed": 17,
+  "event_read_mode": "history_relation_indexed",
+  "history_age_slot_count": 32,
+  "history_relation_width": 8,
+  "updates": 64,
+  "batch_size": 16,
+  "fresh_accuracy": [0.78125, 0.78125],
+  "training_tail": [0.625, 0.6375, 0.6875, 0.6625, 0.6625],
+  "claim_boundary": "Rejected relation-aware reader; no learned n-back32 gain and no claim of general continual learning."
+}

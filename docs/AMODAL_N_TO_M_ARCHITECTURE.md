@@ -12046,3 +12046,32 @@ age addressing. It still does not establish unrestricted history growth,
 learned compression, arbitrary program induction, or general continual
 learning. Evidence and accounting are archived at
 `session_records/brainworkshop_external_history_indexed_nback16_depth_promoted_2026-08-13/`.
+
+## Append-only external n-back-32 growth with source retention (2026-08-13)
+
+The next depth rung tested whether a mastered external computation can remain
+immutable while a new, deeper computation is learned in a fresh file. The
+controller and learned event frontend were frozen throughout. A first indexed
+external file learned n-back-16; that file was then frozen while a second file
+learned n-back-32 over a 32-slot relative-age history ABI. No old examples were
+replayed and no shared controller or frontend parameters were updated during
+the extension.
+
+Across seeds `17` and `18`, n-back-32 reached `1.0000` on all four held-out
+lifetimes in the new file, while n-back-16 retention remained `1.0000` and
+`0.9992`. Missing-history, corrupted-history, action-shuffled, and
+shuffled-outcome-training controls all failed the `0.80` mastery gate. The
+source-file digest, controller digest, and event-frontend digest remained
+unchanged. A post-training reward-shuffle diagnostic stayed near mastery and
+is explicitly not used as a causal negative because this reader consumes event
+history rather than scalar reward; the valid fresh-file shuffled-outcome
+training control remained near `0.25`.
+
+This promotes bounded append-only external computation growth and replay-free
+retention of a tested prior skill. It does not establish general continual
+learning, automatic file allocation/routing, learned compression, unrestricted
+memory growth, or arbitrary program induction. The same-slot curriculum
+control failed to acquire n-back-32 and degraded the old n-back-16 skill,
+demonstrating that isolated external files are doing the retention work.
+Evidence and accounting are archived at
+`session_records/brainworkshop_append_only_nback32_depth_promoted_2026-08-13/`.
