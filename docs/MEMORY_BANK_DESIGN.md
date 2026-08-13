@@ -12651,3 +12651,42 @@ exists precisely to prevent that order; it would have saved two of
 the three rounds. The tools deposited (death attribution, per-plane
 valued binding, state-conditioned value) remain in the kit with their
 evidence, priced honestly as products of a mis-ordered investigation.
+
+## F240 — THE FOUNDING LOOP GOES MECHANICAL: SOLVE -> PROMOTE ->
+## TRANSFER WITH NO HUMAN LINK (2026-08-14, library_promotion.py,
+## 6 seeds. Scope: DEV vocabulary)
+
+F238's warm library was hand-curated -- the last human link inside
+the founding loop. This probe removed it: phase A cold-solves the
+five DEV originals and PROMOTES each winner (encoder kind + goal
+form) into a bank library mechanically, deduped, uncurated; phase B
+warm-acquires the five F238 novel worlds racing only that machine-
+built library.
+
+  transfer     machine = 95.7% of the hand library (paired -0.032,
+               t=-1.26, ns) and 91.2% of cold discovery
+  cost         phase B ~1,000 episodes/world vs ~155,000 cold
+               (~150x); phase A experience amortized over every
+               future world
+  self-promotion  the SEQUENCE form promoted itself from resource1's
+               cold solve in 6/6 seeds; a VALUE-BIND form in 3/6
+               (the F235 selection margin, visible again). Promoted
+               goals carry junk decoration my curation had trimmed --
+               and transfer barely notices: form-level transfer is
+               robust to decoration.
+
+The founding objective now runs END TO END with no human choice
+inside the loop: experience worlds -> winners promote to the bank ->
+novel worlds acquire from the bank at two orders of magnitude lower
+cost. Honest boundary, restated: the COMBINATORS (schedule,
+valued-tracker) are still human-written machinery that the loop
+selects among; mechanical invention of new combinators is the next
+rung and remains open.
+
+**Standing state after F225-F240.** Everything named is closed or
+bounded: width, depth, objective (laws); selection (robust + raced +
+priced); the DEV benchmark (all witnesses fixed); the compounds
+(ceiling-bound); the founding curve (90x at parameter level in F219,
+~150x at mechanism level here, now mechanical). Open, by choice:
+the SEALED one-shot (user's explicit word), the second substrate,
+and combinator invention.
