@@ -12152,3 +12152,72 @@ held-out mechanisms.
 through the slot encoding, so state-layer sufficiency for a deployable
 evaluator is not yet certified; the evaluator probe itself will test
 it (its features see only encoded states).
+
+## F229 — THE DEPTH FRONTIER CLOSES: LEARNED PROXIES AT DEPTH 1 ARE
+## THE MEASURED OPTIMUM AMONG DEPLOYABLE PLANNERS ON THIS FAMILY
+## (2026-08-13, evaluator_planning.py + horizon_ceiling.py +
+## evaluator_shaped.py, 6 seeds. Scope: fixed on this family)
+
+Three probes ran the F228 verdict to ground.
+
+**The evaluator works as diagnosed.** A generic ridge evaluator over
+encoded-transition features (slot-group distances, contacts, death
+flag; ~40 features, no game semantics) fits the system's own
+experienced rewards at held-out R^2 0.87-1.00 on every world, and
+makes depth pay RELATIVE TO ITSELF: eval_d2 - eval_d1 = +0.335
+(t=+2.68, positive per-seed mean 6/6) on the event worlds — the first
+deployable configuration in the project where lookahead beats its own
+depth-1 form. F228's mechanism is confirmed: utility visibility is
+what makes depth cashable.
+
+**But sparse utility alone is dominated** (eval vs proxy: -0.70,
+t=-8.9): beyond its two-step event radius the evaluator has no
+gradient, while the state-cost proxies guide at any distance. And the
+potential-based synthesis — score = rhat_1 + max_b [rhat_2 - 0.05 *
+c(s2)], lambda registered in advance — LOSES TOO: shaped_d2 - cost_d1
+= -0.31 (t=-4.36, 5/48 positive), with even shaped_d1 slightly below
+the pure proxy (-0.057, t=-2.09; rhat noise corrupts a clean signal).
+Composition error is the assassin: bank state agreement at two steps
+is ~0.5 on the pursue worlds (F228 rank fidelity), and the potential
+is measured against a stale reference.
+
+**The ceiling measurement reframes everything.** Exhaustive
+true-return search on the real simulator at depths 1-4:
+  - collect2: even depth-4 TRUTH reaches only +0.63 vs the deployable
+    proxy's +2.57. Beyond its horizon, truth-bounded search has zero
+    gradient and sits still; dense shaping guides at any range. THE
+    PROXY EXCEEDS EVERY FEASIBLE MYOPIC-TRUTH BOUND.
+  - Real headroom exists but is small and localized: pursue1_avoid2
+    +0.33 (t=+9.6), pursue1_collect1 +0.30 (t=+6.4), pursue1_avoid1
+    +0.19 (t=+5.5) above the proxy at depth 4; intercept2's ceiling
+    still climbing at d4 (-0.04, proxy +0.15 still ahead).
+
+    LEARNED DENSE PROXIES ENCODE BEYOND-HORIZON STRUCTURE THAT NO
+    FEASIBLE SHALLOW SEARCH — EVEN ON TRUE DYNAMICS AND TRUE REWARD —
+    CAN MATCH. Depth is not a free upgrade over shaping; it is a
+    different technology whose deployable form requires long-horizon
+    value learning, not two-step argmax.
+
+**Verdict closing the F225-F229 arc.** The chain of localizations —
+width (F225) -> selection (F226) -> planner depth (F227) -> objective
+(F228) -> value machinery (F229) — terminates in a stable
+configuration: robust-selected proxy goals executed greedily at
+depth 1 are the measured optimum among all deployable planners tested
+on this family, within +0.02-0.33 of privileged depth-4 truth on 7 of
+8 worlds. What was fixable got fixed along the way (intercept2 via
+F226's robust selection; junk goals; the co-scaling law). The
+remaining prize on this family is small; per the localization
+roadmap, THE BOTTLENECK MOVES TO WORLD DIVERSITY: the sealed
+mechanism benchmark (one capability per held-out family, uninspected
+during architecture decisions) and the second substrate are the next
+program. The evaluator and the privileged arms remain in the
+instrument kit.
+
+**Registered-prediction ledger for this arc:** F226 v1 (1,2,4
+refuted; 3,5 held), v2 (6 partially refuted; 7,8 held), v3 (1
+refuted, 2 confirmed, 3 refuted), v4 (5 confirmed, 6,7 refuted);
+F227 (1,3 held; 2 refuted; depth risk clause fired); F228 readings
+resolved to objective inadequacy; F229 (1 confirmed relative-to-self,
+2 refuted, shaped 1-2 refuted, 3 parity confirmed at depth 1). Eleven
+refutations, each of which moved the localization one layer down —
+the discipline working exactly as intended.
