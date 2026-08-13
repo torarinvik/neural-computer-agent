@@ -11903,3 +11903,107 @@ open is a world family that NEEDS width — worlds where the second
 object is strategically distinct — which is the open-ended generator
 front, now with a concrete specification for what its worlds must
 contain.
+
+## F226 — THE GOAL-SEARCH BOTTLENECK WAS SELECTION QUALITY, NOT WIDTH
+## AND NOT TERM SHAPE; ROBUST SELECTION FIXES THE STANDING intercept2
+## NEGATIVE (2026-08-13, second_object.py + goal_atoms.py, 6 seeds)
+
+F225 ended pointing at the open-ended generator front: build worlds
+where the second object is strategically distinct, then width should
+pay. This finding ran that program to its end through four registered
+rounds, and each round's refutation localized the true bottleneck one
+level deeper. The final answer is none of the hypothesized ones.
+
+**v1 — density does not need width.** Worlds built from existing
+family knobs only (avoid3, avoid2+collect1, avoid3+collect1, all
+8x8), where fleeing the nearest hazard can walk into the second. One
+plant, one bank; two goal arms differing ONLY in which slots the goal
+may name (six = 0-5, eight = all). Registered: eight-six t>=+2 on the
+dense trio. Measured: t=+0.74, 1/18 positive, avoid3 arms
+bit-identical; the built-in controls held exactly (avoid1 ties
+bit-for-bit). Max-distance-to-nearest already sits within 0.09 of the
+zero ceiling — density adds threat, not information the planner can
+spend.
+
+**v2 — urgency localizes an apparent expressivity wall.** Slots 6/7's
+reduction became per-world selectable (F224 planning selection) from
+{second-nearest, lowest-set-cell} x {plane 1, plane 2}, and
+intercept1/intercept2 joined the worlds. intercept2 is the family's
+standing negative (F222): the faller about to land — missing it is
+death — is often not the Manhattan-nearest one. Registered: the eight
+arm picks low1 and flips intercept2. Measured: 1/3 seeds did exactly
+that (+0.31), but through a CONTORTED goal — avatar ROW matched to
+the lowest faller's COLUMN — because the pair language only offers
+2-coordinate coupled terms. Diagnosis at this point: the term shape
+is the wall.
+
+**v3 — atoms cash intercept2 but leak elsewhere.** Goal terms became
+coordinate atoms (state_slot, ref_slot, sign), built by greedy forward
+selection to depth 4 (a strict expressivity superset of pairs with a
+SMALLER single-term space, 128 vs up to 1680). Measured on 6 seeds:
+intercept2 improved +0.30 over pairs with a convergent, interpretable
+catch policy — |avatar_col - faller_col| minimized, |avatar_row -
+faller_row| MAXIMIZED, i.e. wait at the bottom under the column — and
+the six-slot arm sufficed (width null again). But avoid1/avoid3
+regressed (t=-2.31/-2.08): near-saturated worlds give ~zero selection
+signal to every atom, and argmax over ties picks junk like
+(0,0,+1). The regression's shape named the real variable: SELECTION
+QUALITY.
+
+**v4 — the decisive round: upgrade selection for BOTH languages.**
+Scores became min() over two disjoint selection streams (a goal that
+only looks good on one stream is fitting the stream, not the world —
+the F223 lesson turned into a mechanism), with 48x12 rollouts instead
+of 32x10. Registered: atoms keep their intercept2 edge (the wall is
+expressivity, not budget). REFUTED, and the refutation is the finding:
+
+  - The pair language, robustly selected, found intercept2 on its own:
+    -0.87 -> +0.20 best-arm mean (+0.375 paired vs its own v2 runs,
+    t=+1.99; vs random t=+20.8; 4/6 seeds positive). Its goal is the
+    same catch policy, written as mixed pairs ([[1,2],[3,0]] couples
+    avatar_col->faller_col with faller_row->avatar_row). The
+    "inexpressible" policy was expressible all along; selection noise
+    had hidden it.
+  - The upgrade helps the pairs language EVERYWHERE: +0.093 pooled
+    over 8 worlds x 6 seeds (t=+2.61), zero regressions, junk goals
+    gone (avoid1 goals collapse to the clean flee atom/pair).
+  - At matched selection budgets, atoms LOSE to pairs overall
+    (-0.064, t=-2.65, driven by intercept1 at t=-6.70): the coupled
+    pair structure is a useful PRIOR — object positions move as
+    coordinated wholes — and greedy atomic freedom spends its budget
+    re-learning what the pair grammar states for free.
+  - Width, final: eight-six pooled is +0.46 sigma (atoms) and -0.79
+    sigma (pairs). Three world constructions, two goal languages, two
+    selection budgets: nothing in this family needs the second
+    tracker. The F225 null is now a law of the family, not a gap in
+    the search.
+
+    SELECTION NOISE MASQUERADES AS EXPRESSIVITY LIMITS. Before
+    concluding a language cannot say something, buy the search enough
+    evidence to hear it said. (The goal-search sibling of the
+    row-vs-slot lesson, which has now appeared five times.)
+
+**What was actually fixed.** intercept2 — negative since F222 across
+every stack — is break-even to positive under the unchanged pair
+language + robust selection. The whole-family selection upgrade is
+free capability: no new language, no new slots, no new perception,
+just two streams and a min(). Both probes' full histories, including
+the wrong intermediate conclusions, are in the session record.
+
+**Instruments.** (1) Bit-identical arm ties on worlds where the
+contested slots are ABSENT — a zero-cost no-effect control that
+caught nothing only because nothing was wrong. (2) Paired same-seed
+comparison against archived runs of the SAME protocol at the old
+budget, so the upgrade's effect is a within-seed difference. (3) The
+selection-vs-evaluation split (F223) reported per world; v1's
+avoid2_collect1 showed the tell (+0.010 selection, -0.010 evaluation)
+and the min-of-two-streams mechanism was built from it.
+
+**Open.** The open-ended generator front remains, with its spec
+sharpened by elimination: worlds that reward width must make TWO
+objects simultaneously goal-relevant with distinct ROLES (not merely
+distinct positions or urgencies — both collapse to nearest-tracking
+under a competent planner). The oracle arm on intercept worlds still
+loses to the bank under bank-selected goals (F223 selection pressure,
+now at +1.0 magnitude), which remains the right place to look for a
+principled fix to rollout-selected objectives.
