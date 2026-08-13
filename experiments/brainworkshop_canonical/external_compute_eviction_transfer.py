@@ -79,6 +79,9 @@ STABILITY_WINDOW = 3
 BEHAVIORAL_ARTIFACT_SIGNATURE_SCHEMA = (
     "neural-computer.external-compute-behavioral-artifact-signature.v1"
 )
+BEHAVIORAL_ARTIFACT_SIGNATURE_V2_SCHEMA = (
+    "neural-computer.external-compute-behavioral-artifact-signature.v2"
+)
 BEHAVIOR_PROBE_SEQUENCES = (
     (0, 1),
     (2, 3),
@@ -90,6 +93,17 @@ BEHAVIOR_PROBE_SEQUENCES = (
     (1, 7),
 )
 BEHAVIORAL_SIGNATURE_PROJECTION_SEED = 20260813
+BEHAVIOR_PROBE_SEQUENCES_V2 = (
+    (0, 1, 2, 3),
+    (2, 4, 6, 8),
+    (4, 7, 10, 0),
+    (6, 9, 12, 2),
+    (8, 11, 1, 4),
+    (10, 0, 3, 6),
+    (12, 2, 5, 8),
+    (1, 5, 9, 7),
+)
+BEHAVIORAL_SIGNATURE_V2_PROJECTION_SEED = 20260814
 
 
 def _make_policy(kind: str):
@@ -185,6 +199,152 @@ def _behavioral_artifact_feature_bank(
     finally:
         _restore_snapshot(system, 0, original)
     return trace_by_handle
+
+
+def _controller_probe_segments(
+    system: ComputeGrowthSystem,
+    probe_symbols: torch.Tensor,
+) -> tuple[
+    tuple[tuple[torch.Tensor, IntentEvent], ...],
+    tuple[tuple[torch.Tensor, IntentEvent], ...],
+]:
+    """Produce continuous and reset-segment standardized controller traces."""
+
+    if probe_symbols.ndim != 2 or probe_symbols.shape[1] < 2:
+        raise ValueError("v2 behavioral probes need at least two timesteps")
+    batch_size = probe_symbols.shape[0]
+    split = probe_symbols.shape[1] // 2
+    if split < 1 or split == probe_symbols.shape[1]:
+        raise ValueError("v2 behavioral probes need a non-empty split")
+
+    def collect(
+        symbols: torch.Tensor,
+    ) -> tuple[tuple[torch.Tensor, IntentEvent], ...]:
+        state = system.agent.initial_state(batch_size, device="cpu")
+        feedback = system.agent.initial_feedback(batch_size, device="cpu")
+        result: list[tuple[torch.Tensor, IntentEvent]] = []
+        for timestep in range(symbols.shape[1]):
+            collection = system.agent.runtime.encode_streams(
+                {"stimulus": symbols[:, timestep]}
+            )
+            controller_output, state = system.agent.runtime.step_events(
+                collection,
+                state,
+                feedback,
+            )
+            result.append((collection.payload[:, 0].detach(), controller_output.intention))
+        return tuple(result)
+
+    continuous = collect(probe_symbols)
+    reset_segments = collect(probe_symbols[:, :split]) + collect(
+        probe_symbols[:, split:]
+    )
+    return continuous, reset_segments
+
+
+@torch.no_grad()
+def _behavioral_artifact_feature_bank_v2(
+    system: ComputeGrowthSystem,
+    snapshots: Mapping[str, _FileSnapshot],
+) -> dict[str, torch.Tensor]:
+    """Describe files using continuous and reset-segment behavior traces.
+
+    v1 used two-step traces.  v2 intentionally adds a temporal intervention:
+    the same fixed learned event sequences are executed once continuously and
+    once as two reset segments.  The policy still sees only the resulting
+    fixed-width trace; reset boundaries, symbols, verifier outcomes, family
+    names, and correct actions are not inputs to the policy.
+    """
+
+    if not snapshots:
+        raise ValueError("behavioral signature bank cannot be empty")
+    probe_symbols = torch.tensor(BEHAVIOR_PROBE_SEQUENCES_V2, dtype=torch.long)
+    continuous, reset_segments = _controller_probe_segments(system, probe_symbols)
+    original = _snapshot(system, 0)
+    trace_by_handle: dict[str, torch.Tensor] = {}
+    projection: torch.Tensor | None = None
+    try:
+        for handle, snapshot in snapshots.items():
+            _restore_snapshot(system, 0, snapshot)
+            traces: list[torch.Tensor] = []
+            for mode_index, mode in enumerate((continuous, reset_segments)):
+                register_state = system.machine.initial_state(
+                    probe_symbols.shape[0], device="cpu"
+                )
+                reset_at = (
+                    probe_symbols.shape[1] // 2 if mode_index == 1 else None
+                )
+                action = torch.zeros(probe_symbols.shape[0], ACTION_COUNT)
+                outcome = torch.zeros(probe_symbols.shape[0])
+                mode_trace: list[torch.Tensor] = []
+                for step, (event, intention) in enumerate(mode):
+                    executed, register_state = system.machine.read_execute_register(
+                        event=event,
+                        action=action,
+                        outcome=outcome,
+                        intention=intention,
+                        state=register_state,
+                        instructions=(system.instructions[0],),
+                        basis_slots=(0,),
+                    )
+                    readout_intention = system.readouts[0](executed)
+                    logits = system.decoders[0](IntentEvent(readout_intention))
+                    mode_trace.append(
+                        torch.cat((executed, readout_intention, logits), dim=-1)
+                    )
+                    if reset_at is not None and step + 1 == reset_at:
+                        register_state = system.machine.initial_state(
+                            probe_symbols.shape[0], device="cpu"
+                        )
+                traces.append(torch.cat(mode_trace, dim=-1))
+            flat = torch.cat(traces, dim=-1).reshape(-1).to(torch.float32)
+            if projection is None:
+                generator = torch.Generator(device="cpu").manual_seed(
+                    BEHAVIORAL_SIGNATURE_V2_PROJECTION_SEED
+                )
+                projection = torch.randn(
+                    flat.numel(),
+                    POLICY_CANDIDATE_WIDTH,
+                    generator=generator,
+                )
+            elif flat.numel() != projection.shape[0]:
+                raise RuntimeError("v2 behavioral signature trace width changed")
+            trace_by_handle[handle] = F.normalize(flat @ projection, dim=0).cpu()
+    finally:
+        _restore_snapshot(system, 0, original)
+    return trace_by_handle
+
+
+def _candidate_signature_config(candidate_signature: str) -> dict[str, object]:
+    if candidate_signature == "behavioral":
+        return {
+            "schema": BEHAVIORAL_ARTIFACT_SIGNATURE_SCHEMA,
+            "source": "frozen_standardized_event_and_intention_probe_v1",
+            "probe_sequences": len(BEHAVIOR_PROBE_SEQUENCES),
+            "sequence_length": len(BEHAVIOR_PROBE_SEQUENCES[0]),
+            "trace": "register_readout_intention_decoder_logits_v1",
+            "projection_width": POLICY_CANDIDATE_WIDTH,
+            "raw_weight_coordinates": False,
+            "probe_symbol_count": ENCODER_SYMBOL_COUNT,
+        }
+    if candidate_signature == "behavioral_v2":
+        return {
+            "schema": BEHAVIORAL_ARTIFACT_SIGNATURE_V2_SCHEMA,
+            "source": "frozen_standardized_event_and_intention_probe_v2",
+            "probe_sequences": len(BEHAVIOR_PROBE_SEQUENCES_V2),
+            "sequence_length": len(BEHAVIOR_PROBE_SEQUENCES_V2[0]),
+            "trace": "continuous_and_reset_register_readout_intention_decoder_logits_v2",
+            "projection_width": POLICY_CANDIDATE_WIDTH,
+            "raw_weight_coordinates": False,
+            "probe_symbol_count": ENCODER_SYMBOL_COUNT,
+            "reset_segments": 2,
+        }
+    return {
+        "schema": "raw-parameter-coordinate-descriptor",
+        "source": "sampled_artifact_state_coordinates",
+        "projection_width": POLICY_CANDIDATE_WIDTH,
+        "raw_weight_coordinates": True,
+    }
 
 
 def _permute_probe(
@@ -606,7 +766,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     safety_gate = bool(getattr(args, "safety_gate", False))
     permute_candidates = bool(getattr(args, "permute_candidates", False))
     candidate_signature = getattr(args, "candidate_signature", "raw")
-    if candidate_signature not in {"raw", "behavioral"}:
+    if candidate_signature not in {"raw", "behavioral", "behavioral_v2"}:
         raise ValueError(f"unknown candidate signature: {candidate_signature}")
 
     try:
@@ -670,11 +830,12 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     )
     verifier_bits += related_bits
     logical_lifetimes += related_lifetimes
-    behavioral_features = (
-        _behavioral_artifact_feature_bank(system, snapshots)
-        if candidate_signature == "behavioral"
-        else None
-    )
+    if candidate_signature == "behavioral":
+        behavioral_features = _behavioral_artifact_feature_bank(system, snapshots)
+    elif candidate_signature == "behavioral_v2":
+        behavioral_features = _behavioral_artifact_feature_bank_v2(system, snapshots)
+    else:
+        behavioral_features = None
     controller_before = _digest(system.agent.controller)
     encoder_before = _digest(system.agent.runtime.encoders["stimulus"])
 
@@ -900,16 +1061,9 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "candidate_signature": candidate_signature,
             "utility_gap_gate": UTILITY_GAP_GATE,
             "fresh_baseline": "same architecture and updates, zero inherited state",
-            "candidate_signature_config": {
-                "schema": BEHAVIORAL_ARTIFACT_SIGNATURE_SCHEMA,
-                "source": "frozen_standardized_event_and_intention_probe_v1",
-                "probe_sequences": len(BEHAVIOR_PROBE_SEQUENCES),
-                "sequence_length": len(BEHAVIOR_PROBE_SEQUENCES[0]),
-                "trace": "register_readout_intention_decoder_logits_v1",
-                "projection_width": POLICY_CANDIDATE_WIDTH,
-                "raw_weight_coordinates": False,
-                "probe_symbol_count": ENCODER_SYMBOL_COUNT,
-            },
+            "candidate_signature_config": _candidate_signature_config(
+                candidate_signature
+            ),
         },
         "direct_source": direct,
         "direct_transfer": transfer_direct,
@@ -997,7 +1151,7 @@ def main() -> None:
     parser.add_argument("--permute-candidates", action="store_true")
     parser.add_argument(
         "--candidate-signature",
-        choices=("raw", "behavioral"),
+        choices=("raw", "behavioral", "behavioral_v2"),
         default="raw",
     )
     args = parser.parse_args()

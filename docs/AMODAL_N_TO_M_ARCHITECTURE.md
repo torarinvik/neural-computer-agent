@@ -12257,3 +12257,31 @@ stability controls, while retaining the verifier safety gate so inherited
 maintenance cannot harm a new family before demonstrating non-inferiority.
 Evidence and accounting are archived at
 `session_records/brainworkshop_external_compute_eviction_transfer_behavioral_2026-08-13/`.
+
+## Temporal behavioral-signature transfer rejection (2026-08-13)
+
+The behavioral signature was extended from two-step traces to eight fixed
+four-step sequences. Every opaque external-compute artifact was run through
+the same standardized learned event tensors and frozen controller intentions
+both continuously and as two reset segments. The eviction policy received
+only a fixed-width projection of register, readout-intention, and decoder-logit
+traces. Candidate rows were permuted, and the inherited route adapter was
+behind the verifier safety gate.
+
+The real-file mechanistic screen passed: one learned file reached fresh
+accuracy `1.0000`, and its v2 signature was finite, normalized, fixed-width,
+and safely restored. The matched transfer audit still rejected the mechanism:
+seed `17` inherited `0/8` selections versus fresh `8/8`, while seed `18`
+inherited `0/8` versus fresh `2/8` (`0.7500` fresh overall). Both seeds
+retained direct mastery and held-out retention at `1.0000`; the controller and
+event frontend remained frozen, no safety probe was harmful, candidate order
+was permuted, and replay was zero.
+
+This isolates the current blocker more sharply. A richer functional signature
+is not enough: the inherited policy still does not learn a transferable
+utility model across artifact families. The next mechanism must separate
+behavioral usefulness from eviction safety, train or calibrate utility with a
+leave-one-family-out objective, and expose uncertainty so a fresh learner can
+beat or veto inherited priors. More descriptor width alone is not justified.
+Evidence and accounting are archived at
+`session_records/brainworkshop_external_compute_eviction_transfer_behavioral_v2_2026-08-13/`.

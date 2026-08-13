@@ -1,0 +1,62 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "brainworkshop_external_compute_eviction_transfer_behavioral_v2_2026-08-13",
+  "status": "rejected",
+  "claim_boundary": "A richer continuous/reset behavioral artifact signature did not produce reliable inherited eviction transfer on held-out n-back-2.",
+  "mechanistic_screen": {
+    "updates": 128,
+    "fresh_min_accuracy": 1.0,
+    "feature_shape": [32],
+    "feature_norm": 1.0,
+    "finite": true,
+    "latency_seconds": 18.661
+  },
+  "runs": [
+    {
+      "seed": 17,
+      "unique_verifier_bits": 1197344,
+      "unique_logical_lifetimes": 96192,
+      "optimizer_updates": 1792,
+      "policy_updates": 392,
+      "replayed_examples": 0,
+      "inherited_transfer_accuracy": 0.0,
+      "fresh_transfer_accuracy": 1.0,
+      "transfer_ratio_against_fresh_learner": 0.0,
+      "latency_seconds": 334.4398027919233,
+      "report": "seed17.json"
+    },
+    {
+      "seed": 18,
+      "unique_verifier_bits": 1197344,
+      "unique_logical_lifetimes": 96192,
+      "optimizer_updates": 1792,
+      "policy_updates": 386,
+      "replayed_examples": 0,
+      "inherited_transfer_accuracy": 0.0,
+      "fresh_transfer_accuracy": 0.75,
+      "transfer_ratio_against_fresh_learner": 0.0,
+      "latency_seconds": 550.7832727079513,
+      "report": "seed18.json"
+    }
+  ],
+  "controls": {
+    "candidate_signature": "behavioral_v2",
+    "candidate_order_permuted": true,
+    "safety_gate": true,
+    "raw_weight_coordinates": false,
+    "source_cohort_mastered": true,
+    "held_out_transfer_mastered": true,
+    "held_out_retention_mastery": true,
+    "frozen_controller": true,
+    "frozen_event_encoder": true,
+    "inherited_safety_gate_no_harm": true,
+    "zero_replayed_examples": true,
+    "active_files_match_snapshots": true,
+    "reliable_two_seed_transfer": false
+  },
+  "notes": [
+    "Temporal probe richness alone did not repair inherited utility transfer.",
+    "The remaining bottleneck is utility learning and calibration across held-out artifact families, not raw signature width.",
+    "The per-family arithmetic modulus correction remains a separate required execution-domain invariant."
+  ]
+}
