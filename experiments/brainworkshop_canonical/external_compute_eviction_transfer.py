@@ -16,9 +16,9 @@ from __future__ import annotations
 
 import argparse
 import json
+from collections.abc import Mapping
 from pathlib import Path
 from time import perf_counter
-from typing import Mapping
 
 import torch
 
@@ -26,14 +26,16 @@ from neural_computer import (
     EpisodicBindingArtifactIndex,
     ExternalCapabilityEvictionPolicy,
     GatedResidualCapabilityEvictionPolicyBank,
+    PermutationInvariantCapabilityEvictionPolicy,
+    VerifierGatedCapabilityEvictionPolicyBank,
     paired_counterfactual_ranking_loss,
 )
 
 from .external_compute_artifact_cache_pressure import (
-    _FileSnapshot,
     _active_digests,
     _append_compute_file,
     _discard_newest_compute_file,
+    _FileSnapshot,
     _restore_snapshot,
     _route_key,
     _snapshot,
@@ -49,8 +51,8 @@ from .external_compute_growth import (
 )
 from .external_compute_learned_eviction_scale import (
     ACTIVE_CACHE_SLOTS,
-    MATCHING_THRESHOLD,
     MASTERY_THRESHOLD,
+    MATCHING_THRESHOLD,
     POLICY_CANDIDATE_WIDTH,
     POLICY_CONTEXT_WIDTH,
     POLICY_HIDDEN,
@@ -59,17 +61,56 @@ from .external_compute_learned_eviction_scale import (
     _adapt_policy,
     _eligible_slots,
     _policy_scores,
+    _PolicyProbe,
     _probe_active,
     _select_victim,
 )
 from .external_compute_route_bank import _family_steps
-
 
 SCHEMA = "neural-computer.brainworkshop-external-compute-eviction-transfer.v1"
 TRANSFER_FAMILY = "nback2"
 TRANSFER_CUE = 9
 UTILITY_GAP_GATE = 0.15
 STABILITY_WINDOW = 3
+
+
+def _make_policy(kind: str):
+    if kind == "pointwise":
+        policy_class = ExternalCapabilityEvictionPolicy
+    elif kind == "set_relative":
+        policy_class = PermutationInvariantCapabilityEvictionPolicy
+    else:
+        raise ValueError(f"unknown eviction policy kind: {kind}")
+    return policy_class(
+        context_width=POLICY_CONTEXT_WIDTH,
+        candidate_width=POLICY_CANDIDATE_WIDTH,
+        hidden=POLICY_HIDDEN,
+    )
+
+
+def _permute_probe(
+    probe: _PolicyProbe,
+    permutation: torch.Tensor,
+) -> tuple[_PolicyProbe, tuple[int, ...]]:
+    """Reorder candidate rows while keeping verifier outcomes attached."""
+
+    if permutation.ndim != 1 or permutation.shape[0] != ACTIVE_CACHE_SLOTS:
+        raise ValueError("candidate permutation has the wrong shape")
+    order = tuple(int(index) for index in permutation.tolist())
+    if set(order) != set(range(ACTIVE_CACHE_SLOTS)):
+        raise ValueError("candidate permutation is not a bijection")
+    return (
+        _PolicyProbe(
+            context=probe.context,
+            features=probe.features.index_select(0, permutation),
+            outcomes={
+                new_index: probe.outcomes[old_index]
+                for new_index, old_index in enumerate(order)
+            },
+            unique_verifier_bits=probe.unique_verifier_bits,
+        ),
+        order,
+    )
 
 
 def _acquire_source_cohort(
@@ -304,14 +345,19 @@ def _policy_update(
     )
     gap = abs(float(advantage.item()))
     updated = gap >= UTILITY_GAP_GATE
-    if updated:
+    if updated and loss.requires_grad:
         optimizer.zero_grad(set_to_none=True)
         loss.backward()
         trainable = [
             parameter for parameter in policy.parameters() if parameter.grad is not None
         ]
-        torch.nn.utils.clip_grad_norm_(trainable, max_norm=1.0)
-        optimizer.step()
+        if trainable:
+            torch.nn.utils.clip_grad_norm_(trainable, max_norm=1.0)
+            optimizer.step()
+        else:
+            updated = False
+    elif updated:
+        updated = False
     return {
         "chosen_slot": chosen,
         "oracle_slot": oracle,
@@ -334,6 +380,7 @@ def _transfer_curve(
     fresh_optimizer: torch.optim.Optimizer,
     *,
     args: argparse.Namespace,
+    permute_candidates: bool,
 ) -> tuple[list[dict[str, object]], int, int, int]:
     """Give both policies the same fresh held-out-family probes."""
 
@@ -343,7 +390,7 @@ def _transfer_curve(
     policy_updates = 0
     logical_lifetimes = 0
     for update in range(args.transfer_updates):
-        probe = _probe_active(
+        raw_probe = _probe_active(
             system,
             index,
             snapshots,
@@ -353,19 +400,72 @@ def _transfer_curve(
             seed=args.seed + 1_000_000 + update * 10_007,
             retention_lifetimes=1,
         )
+        if permute_candidates:
+            permutation = torch.randperm(
+                ACTIVE_CACHE_SLOTS,
+                generator=torch.Generator().manual_seed(
+                    args.seed + 3_000_000 + update
+                ),
+            )
+            probe, candidate_order = _permute_probe(raw_probe, permutation)
+        else:
+            probe = raw_probe
+            candidate_order = tuple(range(ACTIVE_CACHE_SLOTS))
+        policy_eligible = tuple(
+            position
+            for position, physical_slot in enumerate(candidate_order)
+            if physical_slot in eligible
+        )
         bits += probe.unique_verifier_bits
         logical_lifetimes += args.batch_size * ACTIVE_CACHE_SLOTS
         inherited_row = _policy_update(
-            inherited, inherited_optimizer, probe, eligible=eligible
+            inherited, inherited_optimizer, probe, eligible=policy_eligible
         )
-        fresh_row = _policy_update(fresh, fresh_optimizer, probe, eligible=eligible)
+        safety_row: dict[str, float | int | bool] | None = None
+        if isinstance(inherited, VerifierGatedCapabilityEvictionPolicyBank):
+            safety_row = inherited.observe_verifier_probe(
+                probe.context.unsqueeze(0),
+                probe.features.unsqueeze(0),
+                torch.tensor(
+                    [
+                        1.0 - probe.outcomes[slot]
+                        for slot in range(ACTIVE_CACHE_SLOTS)
+                    ],
+                    dtype=torch.float32,
+                ),
+                0,
+                eligible=policy_eligible,
+            )
+            if (
+                bool(safety_row["safe"])
+                and int(safety_row["probe_count"])
+                >= inherited.minimum_probe_observations
+                and not bool(inherited.slot_trusted[0])
+            ):
+                inherited.promote_slot(0)
+        fresh_row = _policy_update(
+            fresh,
+            fresh_optimizer,
+            probe,
+            eligible=policy_eligible,
+        )
+        for row in (inherited_row, fresh_row):
+            row["chosen_slot"] = candidate_order[int(row["chosen_slot"])]
+            row["oracle_slot"] = candidate_order[int(row["oracle_slot"])]
+        if safety_row is not None:
+            safety_row["base_index"] = candidate_order[int(safety_row["base_index"])]
+            safety_row["combined_index"] = candidate_order[
+                int(safety_row["combined_index"])
+            ]
         policy_updates += int(inherited_row["policy_updated"])
         policy_updates += int(fresh_row["policy_updated"])
         rows.append(
             {
                 "update": update + 1,
+                "candidate_order": candidate_order,
                 "inherited": inherited_row,
                 "fresh": fresh_row,
+                **({"safety_gate": safety_row} if safety_row is not None else {}),
             }
         )
     for row in rows:
@@ -400,6 +500,10 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         raise ValueError("transfer budgets must be positive")
     if args.batch_size != 32:
         raise ValueError("the calibrated transfer harness requires batch size 32")
+    policy_kind = getattr(args, "policy_kind", "pointwise")
+    residual_gain = float(getattr(args, "residual_gain", 32.0))
+    safety_gate = bool(getattr(args, "safety_gate", False))
+    permute_candidates = bool(getattr(args, "permute_candidates", False))
 
     try:
         (
@@ -465,11 +569,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     controller_before = _digest(system.agent.controller)
     encoder_before = _digest(system.agent.runtime.encoders["stimulus"])
 
-    base_policy = ExternalCapabilityEvictionPolicy(
-        context_width=POLICY_CONTEXT_WIDTH,
-        candidate_width=POLICY_CANDIDATE_WIDTH,
-        hidden=POLICY_HIDDEN,
-    )
+    base_policy = _make_policy(policy_kind)
     base_optimizer = torch.optim.Adam(
         base_policy.parameters(), lr=args.policy_learning_rate
     )
@@ -510,13 +610,26 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                 }
             )
 
-    residual_policy = GatedResidualCapabilityEvictionPolicyBank(
+    residual_policy_class = (
+        VerifierGatedCapabilityEvictionPolicyBank
+        if safety_gate
+        else GatedResidualCapabilityEvictionPolicyBank
+    )
+    residual_policy = residual_policy_class(
         base_policy,
         context_width=POLICY_CONTEXT_WIDTH,
         candidate_width=POLICY_CANDIDATE_WIDTH,
         max_slots=1,
         route_threshold=0.75,
-        residual_gain=32.0,
+        residual_gain=residual_gain,
+        **(
+            {
+                "minimum_probe_observations": 4,
+                "noninferiority_margin": 0.0,
+            }
+            if safety_gate
+            else {}
+        ),
     )
     residual_slot = residual_policy.add_slot(_route_key(system, TRANSFER_CUE))
     residual_policy.activate_slot(residual_slot)
@@ -524,11 +637,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         residual_policy.trainable_parameters(residual_slot),
         lr=args.policy_learning_rate,
     )
-    fresh = ExternalCapabilityEvictionPolicy(
-        context_width=POLICY_CONTEXT_WIDTH,
-        candidate_width=POLICY_CANDIDATE_WIDTH,
-        hidden=POLICY_HIDDEN,
-    )
+    fresh = _make_policy(policy_kind)
     fresh_optimizer = torch.optim.Adam(
         fresh.parameters(), lr=args.policy_learning_rate
     )
@@ -542,6 +651,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         residual_optimizer,
         fresh_optimizer,
         args=args,
+        permute_candidates=permute_candidates,
     )
     policy_bits += curve_bits
     policy_updates += curve_updates
@@ -642,6 +752,15 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "frozen_controller": controller_before == controller_after,
         "frozen_event_encoder": encoder_before == encoder_after,
         "zero_replayed_examples": True,
+        "inherited_safety_gate_no_harm": (
+            all(
+                bool(row["safety_gate"]["safe"])
+                for row in transfer_curve
+                if "safety_gate" in row
+            )
+            if safety_gate
+            else True
+        ),
     }
     report = {
         "schema": SCHEMA,
@@ -660,8 +779,12 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "held_out_cue": TRANSFER_CUE,
             "active_cache_slots": ACTIVE_CACHE_SLOTS,
             "policy": "external_capability_eviction_policy_v1",
+            "policy_kind": policy_kind,
             "transfer_protocol": "shared_fresh_verifier_outcomes_v1",
             "transfer_policy": "frozen_base_plus_opaque_context_residual_v1",
+            "residual_gain": residual_gain,
+            "safety_gate": safety_gate,
+            "candidate_order_permuted": permute_candidates,
             "utility_gap_gate": UTILITY_GAP_GATE,
             "fresh_baseline": "same architecture and updates, zero inherited state",
         },
@@ -673,6 +796,14 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "slot_count": residual_policy.slot_count,
             "active_slots": int(residual_policy.slot_active.sum().item()),
             "frozen_base": True,
+            "trusted_slots": int(
+                residual_policy.trusted_slot_count
+                if isinstance(
+                    residual_policy,
+                    VerifierGatedCapabilityEvictionPolicyBank,
+                )
+                else 0
+            ),
         },
         "transfer_curve": transfer_curve,
         "reactivation": {
@@ -733,6 +864,14 @@ def main() -> None:
     parser.add_argument("--retention-lifetimes", type=int, default=2)
     parser.add_argument("--learning-rate", type=float, default=0.003)
     parser.add_argument("--policy-learning-rate", type=float, default=0.01)
+    parser.add_argument(
+        "--policy-kind",
+        choices=("pointwise", "set_relative"),
+        default="pointwise",
+    )
+    parser.add_argument("--residual-gain", type=float, default=32.0)
+    parser.add_argument("--safety-gate", action="store_true")
+    parser.add_argument("--permute-candidates", action="store_true")
     args = parser.parse_args()
     print(json.dumps(run(args), indent=2))
 

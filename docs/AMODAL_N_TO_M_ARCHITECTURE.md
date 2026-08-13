@@ -12194,3 +12194,29 @@ permutation-invariant, leave-one-family-out candidate/context representation
 with a safety-gated route adapter that cannot let inherited weights harm a new
 family. Evidence is archived at
 `session_records/brainworkshop_external_compute_eviction_transfer_rejected_2026-08-13/`.
+
+The first representation follow-up replaced pointwise raw-descriptor features
+with normalized within-bank candidate relations and preserved exact row
+permutation equivariance. It nevertheless reproduced `0.0000` inherited
+transfer on seeds `17` and `18`, versus `1.0000` for the matched fresh policy.
+Thus permutation invariance is a necessary boundary property but not the
+transfer solution. The remaining bottleneck is a behaviorally grounded,
+leave-one-family-out signature plus an independent verifier safety gate that
+keeps the inherited route from acting until it demonstrates non-inferiority.
+
+The first safety-gated route audit kept the residual behind the frozen
+fallback for four probes, promoted it after four consecutive non-inferiority
+observations, and recorded no harmful probe across eight transfer updates.
+That is a narrow safety improvement, not a transfer gain: inherited accuracy
+remained `0.0000` versus `1.0000` for the fresh learner. The gate now prevents
+an unqualified residual from worsening its fallback, while the unresolved
+bottleneck is still learning a behaviorally reusable signature. Evidence is
+archived in
+`session_records/brainworkshop_external_compute_eviction_transfer_rejected_2026-08-13/`.
+
+The candidate-order control was replicated across both seeds by permuting
+opaque candidate rows and their verifier outcomes together on every transfer
+update. Inherited transfer remained `0.0000`; the matched fresh baselines were
+`1.0000` and `0.7500`. This removes the fixed physical-slot tie as an
+explanation for the rejection. The unresolved failure is therefore reuse of
+learned maintenance knowledge across the held-out family, not row ordering.

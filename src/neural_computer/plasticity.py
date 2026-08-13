@@ -51,6 +51,12 @@ EXTERNAL_OUTCOME_PROGRAM_CELL_BANK_SCHEMA = (
 EXTERNAL_CAPABILITY_EVICTION_RESIDUAL_BANK_SCHEMA = (
     "neural-computer.external-capability-eviction-residual-bank.v1"
 )
+PERMUTATION_INVARIANT_CAPABILITY_EVICTION_POLICY_SCHEMA = (
+    "neural-computer.permutation-invariant-capability-eviction-policy.v1"
+)
+VERIFIER_GATED_CAPABILITY_EVICTION_POLICY_BANK_SCHEMA = (
+    "neural-computer.verifier-gated-capability-eviction-policy-bank.v1"
+)
 
 
 @dataclass(frozen=True)
@@ -3001,6 +3007,104 @@ class ExternalCapabilityEvictionPolicy(nn.Module):
         return self(flat).reshape(candidates.shape[:2])
 
 
+class PermutationInvariantCapabilityEvictionPolicy(
+    ExternalCapabilityEvictionPolicy
+):
+    """Score candidates from set-relative opaque structure.
+
+    The pointwise policy can memorize absolute descriptor coordinates from its
+    source artifact cohort.  This replaceable scorer instead normalizes each
+    candidate against the presented bank and scores only the resulting
+    candidate-relative structure plus a normalized learned context.  Scores
+    are permutation-equivariant: reordering candidates reorders scores and
+    cannot change any candidate's score.
+    """
+
+    schema = PERMUTATION_INVARIANT_CAPABILITY_EVICTION_POLICY_SCHEMA
+
+    def __init__(
+        self,
+        *,
+        context_width: int,
+        candidate_width: int,
+        hidden: int = 32,
+    ) -> None:
+        super().__init__(
+            context_width=context_width,
+            candidate_width=candidate_width,
+            hidden=hidden,
+        )
+        self.feature_width = self.context_width + 2 * self.candidate_width + 2
+        self.network = nn.Sequential(
+            nn.Linear(self.feature_width, self.hidden),
+            nn.GELU(),
+            nn.Linear(self.hidden, 1),
+        )
+        nn.init.zeros_(self.network[-1].weight)
+        nn.init.zeros_(self.network[-1].bias)
+
+    def configuration(self) -> dict[str, int | str]:
+        return {
+            "schema": self.schema,
+            "context_width": self.context_width,
+            "candidate_width": self.candidate_width,
+            "hidden": self.hidden,
+            "feature_width": self.feature_width,
+            "features": "normalized_within_bank_candidate_relations_v1",
+            "row_behavior": "permutation_equivariant_v1",
+        }
+
+    def _relative_features(
+        self,
+        context: torch.Tensor,
+        candidates: torch.Tensor,
+    ) -> torch.Tensor:
+        if context.ndim != 2 or context.shape[1] != self.context_width:
+            raise ValueError("context has the wrong width")
+        if candidates.ndim != 3 or candidates.shape[2] != self.candidate_width:
+            raise ValueError("candidates have the wrong width")
+        if context.shape[0] != candidates.shape[0]:
+            raise ValueError("context and candidates have different batch sizes")
+        if not bool(torch.isfinite(context).all()) or not bool(
+            torch.isfinite(candidates).all()
+        ):
+            raise ValueError("capability eviction features must be finite")
+        candidate_mean = candidates.mean(dim=1, keepdim=True)
+        centered = candidates - candidate_mean
+        bank_scale = centered.square().mean(dim=1, keepdim=True).sqrt()
+        normalized_centered = centered / bank_scale.clamp_min(1e-6)
+        candidate_rms = candidates.square().mean(dim=-1, keepdim=True).sqrt()
+        mean_rms = candidate_mean.square().mean(dim=-1, keepdim=True).sqrt()
+        cosine_to_mean = (
+            (candidates * candidate_mean).sum(dim=-1, keepdim=True)
+            / (candidates.square().sum(dim=-1, keepdim=True).sqrt()
+               * candidate_mean.square().sum(dim=-1, keepdim=True).sqrt())
+            .clamp_min(1e-6)
+        )
+        normalized_context = F.normalize(context, dim=-1)
+        context_rows = normalized_context[:, None, :].expand(
+            -1, candidates.shape[1], -1
+        )
+        return torch.cat(
+            (
+                context_rows,
+                centered,
+                normalized_centered,
+                candidate_rms / mean_rms.clamp_min(1e-6),
+                cosine_to_mean,
+            ),
+            dim=-1,
+        )
+
+    def score_candidates(
+        self,
+        context: torch.Tensor,
+        candidates: torch.Tensor,
+    ) -> torch.Tensor:
+        features = self._relative_features(context, candidates)
+        return self.network(features).squeeze(-1)
+
+
 class GatedResidualCapabilityEvictionPolicyBank(nn.Module):
     """Route nonstationary maintenance policies through isolated residuals.
 
@@ -3229,6 +3333,241 @@ class GatedResidualCapabilityEvictionPolicyBank(nn.Module):
         loss.backward()
         selected_optimizer.step()
         return float(loss.detach())
+
+
+class VerifierGatedCapabilityEvictionPolicyBank(
+    GatedResidualCapabilityEvictionPolicyBank
+):
+    """Keep an adapting eviction residual behind a verifier safety gate.
+
+    A residual may learn from fresh scalar outcomes while its frozen base and
+    controller remain unchanged.  Until ``minimum_probe_observations``
+    candidate-level probes show that the residual's proposal is no worse than
+    the frozen fallback, scoring returns the fallback unchanged.  A later
+    harmful probe revokes trust immediately.  The gate is deliberately
+    external to the scorer: it consumes verifier utilities, never task labels
+    or semantic candidate fields.
+    """
+
+    schema = VERIFIER_GATED_CAPABILITY_EVICTION_POLICY_BANK_SCHEMA
+
+    def __init__(
+        self,
+        base: ExternalCapabilityEvictionPolicy,
+        *,
+        context_width: int,
+        candidate_width: int,
+        max_slots: int | None = None,
+        route_threshold: float = 0.75,
+        residual_gain: float = 1.0,
+        minimum_probe_observations: int = 4,
+        noninferiority_margin: float = 0.0,
+    ) -> None:
+        super().__init__(
+            base,
+            context_width=context_width,
+            candidate_width=candidate_width,
+            max_slots=max_slots,
+            route_threshold=route_threshold,
+            residual_gain=residual_gain,
+        )
+        if (
+            not isinstance(minimum_probe_observations, int)
+            or isinstance(minimum_probe_observations, bool)
+            or minimum_probe_observations < 1
+        ):
+            raise ValueError("minimum verifier probes must be positive")
+        if not math.isfinite(noninferiority_margin) or noninferiority_margin < 0.0:
+            raise ValueError("noninferiority margin must be finite and non-negative")
+        self.minimum_probe_observations = minimum_probe_observations
+        self.noninferiority_margin = float(noninferiority_margin)
+        self.register_buffer("slot_trusted", torch.empty(0, dtype=torch.bool))
+        self.register_buffer("slot_probe_count", torch.empty(0, dtype=torch.long))
+        self.register_buffer("slot_harm_count", torch.empty(0, dtype=torch.long))
+        self.register_buffer(
+            "slot_min_delta", torch.empty(0, dtype=torch.float32)
+        )
+
+    @property
+    def trusted_slot_count(self) -> int:
+        return int(self.slot_trusted.sum().item())
+
+    def configuration(self) -> dict[str, int | float | str]:
+        configuration = super().configuration()
+        configuration.update(
+            {
+                "schema": self.schema,
+                "minimum_probe_observations": self.minimum_probe_observations,
+                "noninferiority_margin": self.noninferiority_margin,
+                "trusted_slots": self.trusted_slot_count,
+                "probationary_slots": int(
+                    (self.slot_active & ~self.slot_trusted).sum().item()
+                ),
+                "safety_gate": "candidate_utility_noninferiority_v1",
+            }
+        )
+        return configuration
+
+    @torch.no_grad()
+    def add_slot(self, context_key: torch.Tensor) -> int:
+        slot_index = super().add_slot(context_key)
+        device = self.slot_active.device
+        self.slot_trusted = torch.cat(
+            (self.slot_trusted, torch.zeros(1, dtype=torch.bool, device=device))
+        )
+        self.slot_probe_count = torch.cat(
+            (self.slot_probe_count, torch.zeros(1, dtype=torch.long, device=device))
+        )
+        self.slot_harm_count = torch.cat(
+            (self.slot_harm_count, torch.zeros(1, dtype=torch.long, device=device))
+        )
+        self.slot_min_delta = torch.cat(
+            (
+                self.slot_min_delta,
+                torch.full((1,), float("inf"), dtype=torch.float32, device=device),
+            )
+        )
+        return slot_index
+
+    def _combined_slot_scores(
+        self,
+        context: torch.Tensor,
+        candidates: torch.Tensor,
+        slot_index: int,
+    ) -> torch.Tensor:
+        base_scores = self.base.score_candidates(context, candidates)
+        prior_scores = self._normalized_prior(base_scores)
+        repeated_context = context[:, None, :].expand(
+            -1, candidates.shape[1], -1
+        )
+        features = torch.cat((repeated_context, candidates), dim=-1)
+        residual_scores = self.residual_slots[slot_index](features).squeeze(-1)
+        return prior_scores + self.residual_gain * residual_scores
+
+    def score_candidates(
+        self,
+        context: torch.Tensor,
+        candidates: torch.Tensor,
+    ) -> torch.Tensor:
+        self._validate_context(context)
+        self._validate_candidates(candidates)
+        if context.shape[0] != candidates.shape[0]:
+            raise ValueError("eviction residual bank batch sizes do not match")
+        base_scores = self.base.score_candidates(context, candidates)
+        if not self.slot_count:
+            return base_scores
+        routes = self.route_scores(context)
+        selected = routes.argmax(dim=-1)
+        residual_scores = []
+        for slot_index in range(self.slot_count):
+            residual_scores.append(
+                self._combined_slot_scores(
+                    context,
+                    candidates,
+                    slot_index,
+                )
+            )
+        stacked = torch.stack(residual_scores, dim=1)
+        batch_indices = torch.arange(context.shape[0], device=context.device)
+        chosen_residual = stacked[batch_indices, selected]
+        active = self.slot_active[selected].to(context.device)
+        trusted = self.slot_trusted[selected].to(context.device)
+        routed = routes[batch_indices, selected] >= self.route_threshold
+        return torch.where(
+            (active & trusted & routed).unsqueeze(-1),
+            chosen_residual,
+            base_scores,
+        )
+
+    @torch.no_grad()
+    def promote_slot(self, slot_index: int) -> None:
+        if not 0 <= slot_index < self.slot_count:
+            raise IndexError("eviction residual bank slot is out of range")
+        if not bool(self.slot_active[slot_index]):
+            raise RuntimeError("eviction residual bank slot is inactive")
+        if int(self.slot_probe_count[slot_index]) < self.minimum_probe_observations:
+            raise RuntimeError("eviction residual bank slot lacks verifier evidence")
+        if bool(self.slot_harm_count[slot_index]):
+            raise RuntimeError("eviction residual bank slot failed verifier safety")
+        self.slot_trusted[slot_index] = True
+
+    @torch.no_grad()
+    def revoke_slot(self, slot_index: int) -> None:
+        if not 0 <= slot_index < self.slot_count:
+            raise IndexError("eviction residual bank slot is out of range")
+        self.slot_trusted[slot_index] = False
+        self.slot_probe_count[slot_index] = 0
+
+    @torch.no_grad()
+    def observe_verifier_probe(
+        self,
+        context: torch.Tensor,
+        candidates: torch.Tensor,
+        candidate_utilities: torch.Tensor,
+        slot_index: int,
+        *,
+        eligible: tuple[int, ...] | None = None,
+    ) -> dict[str, float | int | bool]:
+        """Update probation from independent utilities for every candidate."""
+
+        self._validate_context(context)
+        self._validate_candidates(candidates)
+        if context.shape[0] != 1:
+            raise ValueError("verifier probe needs one context")
+        if not 0 <= slot_index < self.slot_count:
+            raise IndexError("eviction residual bank slot is out of range")
+        if candidate_utilities.ndim != 1 or candidate_utilities.shape[0] != candidates.shape[1]:
+            raise ValueError("candidate utilities have the wrong shape")
+        if not bool(torch.isfinite(candidate_utilities).all()) or bool(
+            torch.any((candidate_utilities < 0.0) | (candidate_utilities > 1.0))
+        ):
+            raise ValueError("candidate utilities must lie in [0, 1]")
+        rows = tuple(range(candidates.shape[1])) if eligible is None else eligible
+        if len(rows) < 1 or any(not 0 <= row < candidates.shape[1] for row in rows):
+            raise ValueError("verifier probe eligible rows are invalid")
+        if len(set(rows)) != len(rows):
+            raise ValueError("verifier probe eligible rows must be unique")
+        route = self.route_scores(context)[0, slot_index]
+        if float(route) < self.route_threshold:
+            raise ValueError("verifier probe context does not route to its slot")
+
+        base_scores = self.base.score_candidates(context, candidates)[0]
+        combined_scores = self._combined_slot_scores(
+            context,
+            candidates,
+            slot_index,
+        )[0]
+        base_row = base_scores[list(rows)]
+        combined_row = combined_scores[list(rows)]
+        base_position = int(base_row.argmax())
+        combined_position = int(combined_row.argmax())
+        base_index = rows[base_position]
+        combined_index = rows[combined_position]
+        base_utility = float(candidate_utilities[base_index])
+        combined_utility = float(candidate_utilities[combined_index])
+        delta = combined_utility - base_utility
+        safe = delta >= -self.noninferiority_margin
+        if safe:
+            self.slot_probe_count[slot_index] += 1
+        else:
+            self.slot_harm_count[slot_index] += 1
+            self.slot_probe_count[slot_index] = 0
+            self.slot_trusted[slot_index] = False
+        self.slot_min_delta[slot_index] = torch.minimum(
+            self.slot_min_delta[slot_index],
+            torch.tensor(delta, dtype=self.slot_min_delta.dtype, device=self.slot_min_delta.device),
+        )
+        return {
+            "base_index": base_index,
+            "combined_index": combined_index,
+            "base_utility": base_utility,
+            "combined_utility": combined_utility,
+            "utility_delta": delta,
+            "safe": safe,
+            "trusted": bool(self.slot_trusted[slot_index]),
+            "probe_count": int(self.slot_probe_count[slot_index]),
+            "harm_count": int(self.slot_harm_count[slot_index]),
+        }
 
 
 def _validate_inputs(

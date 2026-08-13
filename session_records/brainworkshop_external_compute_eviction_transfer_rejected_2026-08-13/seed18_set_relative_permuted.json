@@ -1,0 +1,800 @@
+{
+  "schema": "neural-computer.brainworkshop-external-compute-eviction-transfer.v1",
+  "claim_boundary": "Matched fresh-policy transfer measurement for outcome-trained external eviction on a held-out n-back-2 family; not unrestricted memory growth, semantic compression, arbitrary program induction, or general continual learning.",
+  "seed": 18,
+  "architecture": {
+    "source_schedule": [
+      {
+        "family": "symbol_parity",
+        "cue": 7
+      },
+      {
+        "family": "triplet_parity",
+        "cue": 8
+      },
+      {
+        "family": "parity2",
+        "cue": 10
+      },
+      {
+        "family": "switch_binary",
+        "cue": 11
+      },
+      {
+        "family": "symbol_parity_odd",
+        "cue": 5
+      },
+      {
+        "family": "nback3",
+        "cue": 4
+      }
+    ],
+    "held_out_family": "nback2",
+    "held_out_cue": 9,
+    "active_cache_slots": 3,
+    "policy": "external_capability_eviction_policy_v1",
+    "policy_kind": "set_relative",
+    "transfer_protocol": "shared_fresh_verifier_outcomes_v1",
+    "transfer_policy": "frozen_base_plus_opaque_context_residual_v1",
+    "residual_gain": 4.0,
+    "safety_gate": false,
+    "candidate_order_permuted": true,
+    "utility_gap_gate": 0.15,
+    "fresh_baseline": "same architecture and updates, zero inherited state"
+  },
+  "direct_source": [
+    [
+      {
+        "lifetime": 1,
+        "accuracy": 1.0,
+        "unique_verifier_bits": 448,
+        "replayed_examples": 0
+      },
+      {
+        "lifetime": 2,
+        "accuracy": 1.0,
+        "unique_verifier_bits": 448,
+        "replayed_examples": 0
+      }
+    ],
+    [
+      {
+        "lifetime": 1,
+        "accuracy": 1.0,
+        "unique_verifier_bits": 352,
+        "replayed_examples": 0
+      },
+      {
+        "lifetime": 2,
+        "accuracy": 1.0,
+        "unique_verifier_bits": 352,
+        "replayed_examples": 0
+      }
+    ],
+    [
+      {
+        "lifetime": 1,
+        "accuracy": 1.0,
+        "unique_verifier_bits": 384,
+        "replayed_examples": 0
+      },
+      {
+        "lifetime": 2,
+        "accuracy": 1.0,
+        "unique_verifier_bits": 384,
+        "replayed_examples": 0
+      }
+    ],
+    [
+      {
+        "lifetime": 1,
+        "accuracy": 1.0,
+        "unique_verifier_bits": 416,
+        "replayed_examples": 0
+      },
+      {
+        "lifetime": 2,
+        "accuracy": 1.0,
+        "unique_verifier_bits": 416,
+        "replayed_examples": 0
+      }
+    ],
+    [
+      {
+        "lifetime": 1,
+        "accuracy": 1.0,
+        "unique_verifier_bits": 448,
+        "replayed_examples": 0
+      },
+      {
+        "lifetime": 2,
+        "accuracy": 1.0,
+        "unique_verifier_bits": 448,
+        "replayed_examples": 0
+      }
+    ],
+    [
+      {
+        "lifetime": 1,
+        "accuracy": 1.0,
+        "unique_verifier_bits": 352,
+        "replayed_examples": 0
+      },
+      {
+        "lifetime": 2,
+        "accuracy": 1.0,
+        "unique_verifier_bits": 352,
+        "replayed_examples": 0
+      }
+    ]
+  ],
+  "direct_transfer": [
+    {
+      "lifetime": 1,
+      "accuracy": 1.0,
+      "unique_verifier_bits": 384,
+      "replayed_examples": 0
+    },
+    {
+      "lifetime": 2,
+      "accuracy": 1.0,
+      "unique_verifier_bits": 384,
+      "replayed_examples": 0
+    }
+  ],
+  "related_source_setup": {
+    "binding_id": 5,
+    "destination_slot": 2,
+    "receipt": {
+      "accepted": true,
+      "binding_id": 5,
+      "slot": 2,
+      "artifact_handle": "8c83f0132bd5d7d9e4ac4e91cf4c6519080f8fd0c28790df907f8b99f9aa3a6a",
+      "source_version": 33,
+      "destination_version": 34,
+      "reason": "held-out retention probe passed",
+      "schema": "neural-computer.episodic-artifact-activation.v1"
+    },
+    "retention_probe": [
+      {
+        "lifetime": 1,
+        "accuracy": 1.0,
+        "unique_verifier_bits": 352,
+        "replayed_examples": 0
+      }
+    ]
+  },
+  "source_calibration": [
+    {
+      "round": 1,
+      "family": "symbol_parity",
+      "chosen_slot": 1,
+      "oracle_slot": 2,
+      "selection_correct": 0,
+      "scores": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "round": 2,
+      "family": "triplet_parity",
+      "chosen_slot": 2,
+      "oracle_slot": 2,
+      "selection_correct": 1,
+      "scores": [
+        0.2784707844257355,
+        -0.6366865634918213,
+        0.542207658290863
+      ]
+    },
+    {
+      "round": 3,
+      "family": "parity2",
+      "chosen_slot": 2,
+      "oracle_slot": 2,
+      "selection_correct": 1,
+      "scores": [
+        0.23706433176994324,
+        -0.5934354066848755,
+        0.48262089490890503
+      ]
+    },
+    {
+      "round": 4,
+      "family": "switch_binary",
+      "chosen_slot": 2,
+      "oracle_slot": 2,
+      "selection_correct": 1,
+      "scores": [
+        0.22677084803581238,
+        -0.5933660268783569,
+        0.4682639241218567
+      ]
+    },
+    {
+      "round": 5,
+      "family": "symbol_parity_odd",
+      "chosen_slot": 2,
+      "oracle_slot": 1,
+      "selection_correct": 0,
+      "scores": [
+        0.2407023310661316,
+        -0.597417414188385,
+        0.4792308211326599
+      ]
+    },
+    {
+      "round": 6,
+      "family": "nback3",
+      "chosen_slot": 2,
+      "oracle_slot": 1,
+      "selection_correct": 0,
+      "scores": [
+        0.4200555086135864,
+        -0.24100634455680847,
+        0.17487357556819916
+      ]
+    },
+    {
+      "round": 7,
+      "family": "symbol_parity",
+      "chosen_slot": 2,
+      "oracle_slot": 1,
+      "selection_correct": 0,
+      "scores": [
+        0.4576401710510254,
+        -0.27348145842552185,
+        0.2072935253381729
+      ]
+    },
+    {
+      "round": 8,
+      "family": "triplet_parity",
+      "chosen_slot": 2,
+      "oracle_slot": 2,
+      "selection_correct": 1,
+      "scores": [
+        0.7519791126251221,
+        -0.3035891056060791,
+        0.35836559534072876
+      ]
+    },
+    {
+      "round": 9,
+      "family": "parity2",
+      "chosen_slot": 2,
+      "oracle_slot": 1,
+      "selection_correct": 0,
+      "scores": [
+        0.566518247127533,
+        -0.19845345616340637,
+        0.19005294144153595
+      ]
+    },
+    {
+      "round": 10,
+      "family": "switch_binary",
+      "chosen_slot": 2,
+      "oracle_slot": 1,
+      "selection_correct": 0,
+      "scores": [
+        0.6219574809074402,
+        -0.24318985641002655,
+        0.24084095656871796
+      ]
+    },
+    {
+      "round": 11,
+      "family": "symbol_parity_odd",
+      "chosen_slot": 2,
+      "oracle_slot": 2,
+      "selection_correct": 1,
+      "scores": [
+        0.6081492900848389,
+        -0.2236819565296173,
+        0.22397853434085846
+      ]
+    },
+    {
+      "round": 12,
+      "family": "nback3",
+      "chosen_slot": 2,
+      "oracle_slot": 1,
+      "selection_correct": 0,
+      "scores": [
+        0.7000151872634888,
+        -0.07121270895004272,
+        0.034066006541252136
+      ]
+    },
+    {
+      "round": 13,
+      "family": "symbol_parity",
+      "chosen_slot": 2,
+      "oracle_slot": 1,
+      "selection_correct": 0,
+      "scores": [
+        0.8301519155502319,
+        -0.1184706911444664,
+        0.11340012401342392
+      ]
+    },
+    {
+      "round": 14,
+      "family": "triplet_parity",
+      "chosen_slot": 2,
+      "oracle_slot": 2,
+      "selection_correct": 1,
+      "scores": [
+        1.5588293075561523,
+        -0.30431100726127625,
+        0.6932199001312256
+      ]
+    },
+    {
+      "round": 15,
+      "family": "parity2",
+      "chosen_slot": 2,
+      "oracle_slot": 1,
+      "selection_correct": 0,
+      "scores": [
+        1.0489983558654785,
+        -0.10751709342002869,
+        0.19605828821659088
+      ]
+    },
+    {
+      "round": 16,
+      "family": "switch_binary",
+      "chosen_slot": 2,
+      "oracle_slot": 1,
+      "selection_correct": 0,
+      "scores": [
+        1.2339905500411987,
+        -0.18863101303577423,
+        0.3627661168575287
+      ]
+    },
+    {
+      "round": 17,
+      "family": "symbol_parity_odd",
+      "chosen_slot": 2,
+      "oracle_slot": 1,
+      "selection_correct": 0,
+      "scores": [
+        1.163888692855835,
+        -0.14865246415138245,
+        0.29154592752456665
+      ]
+    },
+    {
+      "round": 18,
+      "family": "nback3",
+      "chosen_slot": 2,
+      "oracle_slot": 1,
+      "selection_correct": 0,
+      "scores": [
+        1.0900965929031372,
+        -0.02140643075108528,
+        -0.015225134789943695
+      ]
+    },
+    {
+      "round": 19,
+      "family": "symbol_parity",
+      "chosen_slot": 2,
+      "oracle_slot": 1,
+      "selection_correct": 0,
+      "scores": [
+        1.43769109249115,
+        -0.10670094937086105,
+        0.2137472778558731
+      ]
+    },
+    {
+      "round": 20,
+      "family": "triplet_parity",
+      "chosen_slot": 2,
+      "oracle_slot": 2,
+      "selection_correct": 1,
+      "scores": [
+        2.7640857696533203,
+        -0.67524254322052,
+        1.951772689819336
+      ]
+    },
+    {
+      "round": 21,
+      "family": "parity2",
+      "chosen_slot": 2,
+      "oracle_slot": 2,
+      "selection_correct": 1,
+      "scores": [
+        1.5414619445800781,
+        -0.17803645133972168,
+        0.5102442502975464
+      ]
+    },
+    {
+      "round": 22,
+      "family": "switch_binary",
+      "chosen_slot": 2,
+      "oracle_slot": 2,
+      "selection_correct": 1,
+      "scores": [
+        2.005122661590576,
+        -0.3766775131225586,
+        1.0243253707885742
+      ]
+    },
+    {
+      "round": 23,
+      "family": "symbol_parity_odd",
+      "chosen_slot": 2,
+      "oracle_slot": 1,
+      "selection_correct": 0,
+      "scores": [
+        1.797249436378479,
+        -0.2708493769168854,
+        0.7717577219009399
+      ]
+    },
+    {
+      "round": 24,
+      "family": "nback3",
+      "chosen_slot": 1,
+      "oracle_slot": 1,
+      "selection_correct": 1,
+      "scores": [
+        1.2542657852172852,
+        0.003307080827653408,
+        -0.07756254076957703
+      ]
+    }
+  ],
+  "residual": {
+    "slot_count": 1,
+    "active_slots": 1,
+    "frozen_base": true,
+    "trusted_slots": 0
+  },
+  "transfer_curve": [
+    {
+      "update": 1,
+      "candidate_order": [
+        0,
+        1,
+        2
+      ],
+      "inherited": {
+        "chosen_slot": 2,
+        "oracle_slot": 1,
+        "selection_correct": 0,
+        "policy_updated": 0,
+        "utility_gap": 0.11979162693023682,
+        "loss": 0.7337015271186829,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "fresh": {
+        "chosen_slot": 1,
+        "oracle_slot": 1,
+        "selection_correct": 1,
+        "policy_updated": 0,
+        "utility_gap": 0.11979162693023682,
+        "loss": 0.6931471824645996,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "inherited_cumulative_accuracy": 0.0,
+      "fresh_cumulative_accuracy": 1.0
+    },
+    {
+      "update": 2,
+      "candidate_order": [
+        2,
+        0,
+        1
+      ],
+      "inherited": {
+        "chosen_slot": 2,
+        "oracle_slot": 1,
+        "selection_correct": 0,
+        "policy_updated": 0,
+        "utility_gap": -0.125,
+        "loss": 0.7355006337165833,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "fresh": {
+        "chosen_slot": 2,
+        "oracle_slot": 1,
+        "selection_correct": 0,
+        "policy_updated": 0,
+        "utility_gap": -0.125,
+        "loss": 0.6931471824645996,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "inherited_cumulative_accuracy": 0.0,
+      "fresh_cumulative_accuracy": 0.5
+    },
+    {
+      "update": 3,
+      "candidate_order": [
+        0,
+        1,
+        2
+      ],
+      "inherited": {
+        "chosen_slot": 2,
+        "oracle_slot": 1,
+        "selection_correct": 0,
+        "policy_updated": 0,
+        "utility_gap": 0.13541662693023682,
+        "loss": 0.7391077280044556,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "fresh": {
+        "chosen_slot": 1,
+        "oracle_slot": 1,
+        "selection_correct": 1,
+        "policy_updated": 0,
+        "utility_gap": 0.13541662693023682,
+        "loss": 0.6931471824645996,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "inherited_cumulative_accuracy": 0.0,
+      "fresh_cumulative_accuracy": 0.6666666666666666
+    },
+    {
+      "update": 4,
+      "candidate_order": [
+        0,
+        2,
+        1
+      ],
+      "inherited": {
+        "chosen_slot": 2,
+        "oracle_slot": 1,
+        "selection_correct": 0,
+        "policy_updated": 0,
+        "utility_gap": -0.12500005960464478,
+        "loss": 0.7355006337165833,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "fresh": {
+        "chosen_slot": 2,
+        "oracle_slot": 1,
+        "selection_correct": 0,
+        "policy_updated": 0,
+        "utility_gap": -0.12500005960464478,
+        "loss": 0.6931471824645996,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "inherited_cumulative_accuracy": 0.0,
+      "fresh_cumulative_accuracy": 0.5
+    },
+    {
+      "update": 5,
+      "candidate_order": [
+        1,
+        0,
+        2
+      ],
+      "inherited": {
+        "chosen_slot": 2,
+        "oracle_slot": 1,
+        "selection_correct": 0,
+        "policy_updated": 1,
+        "utility_gap": 0.1588541865348816,
+        "loss": 0.7472673058509827,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "fresh": {
+        "chosen_slot": 1,
+        "oracle_slot": 1,
+        "selection_correct": 1,
+        "policy_updated": 1,
+        "utility_gap": 0.1588541865348816,
+        "loss": 0.6931471824645996,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "inherited_cumulative_accuracy": 0.0,
+      "fresh_cumulative_accuracy": 0.6
+    },
+    {
+      "update": 6,
+      "candidate_order": [
+        1,
+        0,
+        2
+      ],
+      "inherited": {
+        "chosen_slot": 2,
+        "oracle_slot": 1,
+        "selection_correct": 0,
+        "policy_updated": 0,
+        "utility_gap": 0.07812494039535522,
+        "loss": 0.7100845575332642,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "fresh": {
+        "chosen_slot": 1,
+        "oracle_slot": 1,
+        "selection_correct": 1,
+        "policy_updated": 0,
+        "utility_gap": 0.07812494039535522,
+        "loss": 0.6902670860290527,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "inherited_cumulative_accuracy": 0.0,
+      "fresh_cumulative_accuracy": 0.6666666666666666
+    },
+    {
+      "update": 7,
+      "candidate_order": [
+        0,
+        1,
+        2
+      ],
+      "inherited": {
+        "chosen_slot": 2,
+        "oracle_slot": 1,
+        "selection_correct": 0,
+        "policy_updated": 0,
+        "utility_gap": 0.10416668653488159,
+        "loss": 0.7157930731773376,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "fresh": {
+        "chosen_slot": 1,
+        "oracle_slot": 1,
+        "selection_correct": 1,
+        "policy_updated": 0,
+        "utility_gap": 0.10416668653488159,
+        "loss": 0.6893088817596436,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "inherited_cumulative_accuracy": 0.0,
+      "fresh_cumulative_accuracy": 0.7142857142857143
+    },
+    {
+      "update": 8,
+      "candidate_order": [
+        2,
+        1,
+        0
+      ],
+      "inherited": {
+        "chosen_slot": 2,
+        "oracle_slot": 1,
+        "selection_correct": 0,
+        "policy_updated": 0,
+        "utility_gap": -0.1354166865348816,
+        "loss": 0.7226846218109131,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "fresh": {
+        "chosen_slot": 1,
+        "oracle_slot": 1,
+        "selection_correct": 1,
+        "policy_updated": 0,
+        "utility_gap": -0.1354166865348816,
+        "loss": 0.6881603002548218,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "inherited_cumulative_accuracy": 0.0,
+      "fresh_cumulative_accuracy": 0.75
+    }
+  ],
+  "reactivation": {
+    "transfer_binding_id": 6,
+    "selected_slot": 2,
+    "oracle_slot": 1,
+    "selected_correctly": 0,
+    "scores": [
+      1.380095362663269,
+      -0.8117764592170715,
+      -0.3817899227142334
+    ],
+    "activation": {
+      "accepted": true,
+      "binding_id": 6,
+      "slot": 2,
+      "artifact_handle": "9de559ef6c529442e2c3e305e8367ac17e5d07bd21482bde48c2f63af849ee34",
+      "source_version": 34,
+      "destination_version": 35,
+      "reason": "held-out retention probe passed",
+      "schema": "neural-computer.episodic-artifact-activation.v1"
+    },
+    "retention_probe": [
+      {
+        "lifetime": 1,
+        "accuracy": 1.0,
+        "unique_verifier_bits": 384,
+        "replayed_examples": 0
+      },
+      {
+        "lifetime": 2,
+        "accuracy": 1.0,
+        "unique_verifier_bits": 384,
+        "replayed_examples": 0
+      }
+    ],
+    "post_activation": [
+      {
+        "lifetime": 1,
+        "accuracy": 1.0,
+        "unique_verifier_bits": 384,
+        "replayed_examples": 0
+      },
+      {
+        "lifetime": 2,
+        "accuracy": 1.0,
+        "unique_verifier_bits": 384,
+        "replayed_examples": 0
+      }
+    ]
+  },
+  "archive": {
+    "record_count": 7,
+    "active_binding_ids": [
+      0,
+      1,
+      6
+    ],
+    "transfer_artifact_digest": "9de559ef6c529442e2c3e305e8367ac17e5d07bd21482bde48c2f63af849ee34"
+  },
+  "gates": {
+    "source_cohort_mastered": true,
+    "related_source_installed": true,
+    "held_out_transfer_mastered": true,
+    "source_calibration_present": true,
+    "inherited_beats_fresh_early": false,
+    "inherited_reaches_stable_window": false,
+    "fresh_baseline_measured": true,
+    "inherited_reactivation_accepted": true,
+    "held_out_retention_mastery": true,
+    "active_cache_capacity_bounded": true,
+    "protected_source_retained": true,
+    "active_files_match_snapshots_before": true,
+    "active_files_match_snapshots_after": true,
+    "selected_transfer_victim": false,
+    "frozen_controller": true,
+    "frozen_event_encoder": true,
+    "zero_replayed_examples": true,
+    "inherited_safety_gate_no_harm": true
+  },
+  "accounting": {
+    "unique_verifier_bits": 851744,
+    "policy_verifier_bits": 124416,
+    "optimizer_updates": 1792,
+    "policy_updates": 98,
+    "replayed_examples": 0,
+    "unique_logical_lifetimes": 68544,
+    "inherited_early_correct": 0,
+    "fresh_early_correct": 2,
+    "inherited_transfer_accuracy": 0.0,
+    "fresh_transfer_accuracy": 0.75,
+    "stable_bits_to_threshold": null,
+    "retention_threshold": 0.8,
+    "transfer_ratio_against_fresh_learner": 0.0,
+    "latency_seconds": 231.2164547080174
+  },
+  "status": "rejected"
+}

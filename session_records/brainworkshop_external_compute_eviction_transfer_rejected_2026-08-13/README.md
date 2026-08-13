@@ -32,6 +32,31 @@ should improve permutation-invariant context/candidate representations and
 use a safety-gated route adapter that cannot harm a new family before it earns
 verifier evidence.
 
+The first set-relative representation follow-up was also replicated at the
+same calibrated rung. It preserved exact candidate-row permutation behavior,
+but both seeds still produced `0.0000` inherited transfer versus `1.0000`
+fresh transfer. This rejects set-relative normalization alone as the missing
+transfer mechanism; the next adapter must use behaviorally grounded evidence
+and a verifier safety gate, not merely a more invariant view of raw weights.
+
 The detailed scale-stable follow-up reports are
 `seed17_scale_stable_residual.json` and
-`seed18_scale_stable_residual.json`.
+`seed18_scale_stable_residual.json`. The set-relative reports are
+`seed17_set_relative_residual.json` and
+`seed18_set_relative_residual.json`.
+
+The verifier-gated variant on seed `17` kept the residual behind the frozen
+fallback for its first four probes, promoted it only after four consecutive
+non-inferiority observations, and recorded no harmful probe across all eight
+transfer updates. This is a narrow safety result: inherited transfer remained
+`0.0000` versus `1.0000` fresh transfer, so the gate prevents additional harm
+but does not create reusable eviction knowledge. It is archived as
+`seed17_set_relative_safety_gated.json`.
+
+The candidate-order control was then replicated across both seeds. Feature
+rows and their verifier outcomes were permuted together on every transfer
+update; inherited transfer remained `0.0000` on both seeds, while the fresh
+baseline measured `1.0000` and `0.7500`. This removes the fixed physical-slot
+tie as an explanation for the negative result. The control reports are
+`seed17_set_relative_permuted.json` and
+`seed18_set_relative_permuted.json`.

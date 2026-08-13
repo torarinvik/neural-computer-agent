@@ -21,6 +21,8 @@ from neural_computer import (
     GatedResidualCapabilityEvictionPolicyBank,
     MemoryEvictionObservation,
     MemoryWriteObservation,
+    PermutationInvariantCapabilityEvictionPolicy,
+    VerifierGatedCapabilityEvictionPolicyBank,
 )
 
 
@@ -740,6 +742,24 @@ def test_external_capability_eviction_policy_ranks_variable_opaque_bank() -> Non
     )
 
 
+def test_permutation_invariant_capability_eviction_policy_is_set_relative() -> None:
+    policy = PermutationInvariantCapabilityEvictionPolicy(
+        context_width=4,
+        candidate_width=6,
+        hidden=8,
+    ).eval()
+    context = torch.randn(2, 4)
+    candidates = torch.randn(2, 5, 6)
+    permutation = torch.tensor([3, 0, 4, 1, 2])
+    original = policy.score_candidates(context, candidates)
+    permuted = policy.score_candidates(context, candidates[:, permutation])
+
+    assert torch.allclose(permuted, original[:, permutation])
+    assert policy.configuration()["row_behavior"] == (
+        "permutation_equivariant_v1"
+    )
+
+
 def test_external_capability_eviction_policy_learns_from_scalar_pairwise_signal() -> None:
     policy = ExternalCapabilityEvictionPolicy(
         context_width=2,
@@ -814,3 +834,81 @@ def test_gated_residual_eviction_bank_isolates_and_activates_maintenance_slots()
     bank.freeze_slot(0)
     with pytest.raises(RuntimeError, match="frozen"):
         bank.trainable_parameters(0)
+
+
+def test_verifier_gated_eviction_bank_fails_closed_and_promotes_noninferior_slot() -> None:
+    base = ExternalCapabilityEvictionPolicy(
+        context_width=2,
+        candidate_width=2,
+        hidden=8,
+    )
+    bank = VerifierGatedCapabilityEvictionPolicyBank(
+        base,
+        context_width=2,
+        candidate_width=2,
+        max_slots=1,
+        minimum_probe_observations=2,
+    )
+    key = torch.tensor([1.0, 0.0])
+    slot = bank.add_slot(key)
+    bank.activate_slot(slot)
+    context = key.unsqueeze(0)
+    candidates = torch.tensor([[[1.0, 0.0], [0.0, 1.0]]])
+    with torch.no_grad():
+        bank.residual_slots[slot].weight[:, 2:].copy_(
+            torch.tensor([[-1.0, 1.0]])
+        )
+    fallback = base.score_candidates(context, candidates)
+    assert torch.allclose(bank.score_candidates(context, candidates), fallback)
+
+    harmful = bank.observe_verifier_probe(
+        context,
+        candidates,
+        torch.tensor([1.0, 0.0]),
+        slot,
+    )
+    assert harmful["safe"] is False
+    with pytest.raises(RuntimeError, match="lacks verifier evidence"):
+        bank.promote_slot(slot)
+    assert torch.allclose(bank.score_candidates(context, candidates), fallback)
+
+    safe_bank = VerifierGatedCapabilityEvictionPolicyBank(
+        ExternalCapabilityEvictionPolicy(
+            context_width=2,
+            candidate_width=2,
+            hidden=8,
+        ),
+        context_width=2,
+        candidate_width=2,
+        max_slots=1,
+        minimum_probe_observations=2,
+    )
+    safe_slot = safe_bank.add_slot(key)
+    safe_bank.activate_slot(safe_slot)
+    for _ in range(2):
+        safe = safe_bank.observe_verifier_probe(
+            context,
+            candidates,
+            torch.tensor([1.0, 1.0]),
+            safe_slot,
+        )
+        assert safe["safe"] is True
+    safe_bank.promote_slot(safe_slot)
+    assert bool(safe_bank.slot_trusted[safe_slot])
+    assert safe_bank.configuration()["trusted_slots"] == 1
+    with torch.no_grad():
+        safe_bank.residual_slots[safe_slot].weight[:, 2:].copy_(
+            torch.tensor([[-1.0, 1.0]])
+        )
+    revoked = safe_bank.observe_verifier_probe(
+        context,
+        candidates,
+        torch.tensor([1.0, 0.0]),
+        safe_slot,
+    )
+    assert revoked["safe"] is False
+    assert revoked["trusted"] is False
+    assert torch.allclose(
+        safe_bank.score_candidates(context, candidates),
+        safe_bank.base.score_candidates(context, candidates),
+    )

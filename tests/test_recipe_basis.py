@@ -171,6 +171,13 @@ def test_global_modulus_failure_is_distinct_from_four_valued_swap() -> None:
         ) / len(states)
         assert matches == 0.5
 
+    for slot in (2, 3):
+        matches = sum(
+            legacy_global_increment(state, slot) == family_increment(state, slot)
+            for state in states
+        ) / len(states)
+        assert matches == 0.75
+
     swap = RecipeInstruction("swap", 2, 3)
     assert all(
         swap.apply(state, values=values)
