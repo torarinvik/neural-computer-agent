@@ -12131,3 +12131,32 @@ files without a fixed schedule.
 
 Evidence and accounting are archived at
 `session_records/brainworkshop_external_compute_artifact_cache_pressure_promoted_2026-08-13/`.
+
+## Learned eviction utility for a six-file external archive (2026-08-13)
+
+The bounded hot/cold lifecycle now has an outcome-trained eviction policy. Six
+independently mastered opaque external compute files share a three-slot hot
+cache; the other files remain checksummed artifacts in the cold archive. The
+policy receives only the incoming learned event tensor and fixed-width opaque
+artifact descriptors. It learns disposability from paired fresh verifier
+outcomes, while stable-prefix protection remains an independent verifier gate.
+
+Across seeds `17` and `18`, direct mastery of all six files and cold-route
+mastery were `1.0000`. With the calibrated low-plasticity route update budget,
+eviction calibration was `36/48` and `45/48`, compared with shuffled-utility
+controls of `15/48` and `3/48`; route-side selection was `9/11` and `8/13` in
+the confidence-gated replication. The controller and event frontend stayed
+frozen, archive and policy reload were exact, corruption was rejected, and
+replay was zero. Weak fresh utility differences were deliberately prevented
+from rewriting the policy, which is the first tested external-policy defense
+against its own catastrophic interference.
+
+This promotes outcome-only learned eviction utility for a six-file archive
+behind a bounded hot cache. It does not establish unrestricted memory growth,
+learned compression, semantic conflict resolution, arbitrary program
+induction, or general continual learning. The next pressure test is learned
+archive compaction and utility transfer to genuinely new artifact families,
+with a fresh-learner transfer baseline.
+
+Evidence and accounting are archived at
+`session_records/brainworkshop_external_compute_learned_eviction_scale_promoted_2026-08-13/`.

@@ -1,0 +1,25 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "brainworkshop_external_compute_learned_eviction_scale_promoted_2026-08-13",
+  "status": "promoted_external_compute_learned_eviction_scale",
+  "seeds": [17, 18],
+  "unique_verifier_bits_per_seed": [1127296, 1134464],
+  "shuffled_control_verifier_bits_per_seed": [460800, 460800],
+  "unique_logical_lifetimes_per_seed": [89792, 90304],
+  "shuffled_control_logical_lifetimes_per_seed": [36864, 36864],
+  "optimizer_updates_per_seed": 1536,
+  "policy_updates_per_seed": [406, 410],
+  "replayed_examples": 0,
+  "stable_bits_to_threshold_per_seed": [1127296, 1134464],
+  "latency_seconds_per_seed": [357.12211129197385, 362.10642058297526],
+  "retention_on_mastered_primitive": "protected source external file retained at 1.0000 on both seeds",
+  "transfer_ratio_against_fresh_learner": "not measured in this lifecycle rung",
+  "claim_boundary": "Outcome-only learned eviction utility for a six-file external archive behind a bounded hot cache; not general continual learning.",
+  "notes": [
+    "The physical hot cache remained fixed at three executable slots while six files were archived.",
+    "The policy consumed learned event tensors and opaque artifact descriptors only.",
+    "Route-side updates were confidence-gated at absolute paired utility gap 0.15 and capped at two updates per route.",
+    "All cold reactivations passed fresh held-out retention probes at 1.0000.",
+    "The corrected recipe modulus boundary remains separately recorded: legacy global-m8 match rates [0.5, 0.5, 1.0, 1.0, 1.0, 1.0], explicit per-slot rates all 1.0."
+  ]
+}
