@@ -1,0 +1,633 @@
+"""Memory-sized outcome learning for opaque intention candidates.
+
+The original outcome generator used one external state row per controller
+batch row.  That is useful for a one-cell proof, but it cannot represent a
+growing memory when the controller batch is one.  This module separates those
+dimensions: one controller context queries every external generator cell, and
+the caller later credits the exact selected cell from the planner's candidate
+provenance.
+
+The proposal stores its score gradients, so delayed feedback remains attached
+to the proposal that caused it even if another cell learns before the outcome
+arrives.  No raw modality data, task labels, unattempted-action labels, or
+controller parameters enter this boundary.
+"""
+
+from __future__ import annotations
+
+import math
+from collections.abc import Mapping
+from dataclasses import dataclass, replace
+
+import torch
+
+from .intention import (
+    ExternalOutcomeIntentionGenerator,
+    ExternalOutcomeIntentionGeneratorState,
+)
+
+EXTERNAL_OUTCOME_INTENTION_MEMORY_SCHEMA = (
+    "neural-computer.external-outcome-intention-memory.v1"
+)
+EXTERNAL_INTENTION_MEMORY_PROPOSAL_SCHEMA = (
+    "neural-computer.external-intention-memory-proposal.v1"
+)
+
+
+def _finite(value: torch.Tensor, name: str) -> None:
+    if not isinstance(value, torch.Tensor) or not bool(torch.isfinite(value).all()):
+        raise ValueError(f"{name} must be a finite tensor")
+
+
+@dataclass(frozen=True)
+class ExternalIntentionMemoryProposal:
+    """One provisional candidate per external cell and controller row."""
+
+    intentions: torch.Tensor
+    means: torch.Tensor
+    features: torch.Tensor
+    hidden: torch.Tensor
+    noise: torch.Tensor
+    log_propensities: torch.Tensor
+    input_weight_gradients: torch.Tensor
+    input_bias_gradients: torch.Tensor
+    output_weight_gradients: torch.Tensor
+    output_bias_gradients: torch.Tensor
+    context_residual_weight_gradients: torch.Tensor
+    cell_indices: tuple[int, ...]
+    noise_scale: float
+    schema: str = EXTERNAL_INTENTION_MEMORY_PROPOSAL_SCHEMA
+
+    def validate(
+        self,
+        *,
+        context_width: int,
+        intention_width: int,
+        hidden_width: int,
+        batch: int | None = None,
+        cell_count: int | None = None,
+        candidate_count: int | None = None,
+        feature_width: int | None = None,
+    ) -> ExternalIntentionMemoryProposal:
+        if self.schema != EXTERNAL_INTENTION_MEMORY_PROPOSAL_SCHEMA:
+            raise ValueError("unsupported intention-memory proposal schema")
+        if not math.isfinite(float(self.noise_scale)) or self.noise_scale <= 0.0:
+            raise ValueError("intention-memory proposal noise scale is invalid")
+        if self.intentions.ndim != 3:
+            raise ValueError("intention-memory candidates must be [batch,cells,width]")
+        proposal_batch, proposal_cells, proposal_width = self.intentions.shape
+        if proposal_width != intention_width:
+            raise ValueError("intention-memory candidate width is wrong")
+        if batch is not None and proposal_batch != batch:
+            raise ValueError("intention-memory proposal batch differs")
+        if candidate_count is not None and proposal_cells != candidate_count:
+            raise ValueError("intention-memory proposal candidate count differs")
+        if not self.cell_indices or len(self.cell_indices) != proposal_cells:
+            raise ValueError("intention-memory proposal cell indices are invalid")
+        if tuple(self.cell_indices) != tuple(sorted(set(self.cell_indices))):
+            raise ValueError("intention-memory proposal cell indices are not ordered")
+        if cell_count is not None and (
+            self.cell_indices[0] < 0 or self.cell_indices[-1] >= cell_count
+        ):
+            raise ValueError("intention-memory proposal cell index is out of range")
+        expected_feature_width = context_width + 1 if feature_width is None else feature_width
+        if expected_feature_width < context_width + 1:
+            raise ValueError("intention-memory feature width is invalid")
+        expected = {
+            "means": (proposal_batch, proposal_cells, intention_width),
+            "features": (proposal_batch, expected_feature_width),
+            "hidden": (proposal_batch, proposal_cells, hidden_width),
+            "noise": (proposal_batch, proposal_cells, intention_width),
+            "log_propensities": (proposal_batch, proposal_cells),
+            "input_weight_gradients": (
+                proposal_batch,
+                proposal_cells,
+                hidden_width,
+                expected_feature_width,
+            ),
+            "input_bias_gradients": (proposal_batch, proposal_cells, hidden_width),
+            "output_weight_gradients": (
+                proposal_batch,
+                proposal_cells,
+                intention_width,
+                hidden_width,
+            ),
+            "output_bias_gradients": (
+                proposal_batch,
+                proposal_cells,
+                intention_width,
+            ),
+            "context_residual_weight_gradients": (
+                proposal_batch,
+                proposal_cells,
+                intention_width,
+                context_width + 1,
+            ),
+        }
+        for name, value in (
+            ("means", self.means),
+            ("features", self.features),
+            ("hidden", self.hidden),
+            ("noise", self.noise),
+            ("log_propensities", self.log_propensities),
+            ("input_weight_gradients", self.input_weight_gradients),
+            ("input_bias_gradients", self.input_bias_gradients),
+            ("output_weight_gradients", self.output_weight_gradients),
+            ("output_bias_gradients", self.output_bias_gradients),
+            (
+                "context_residual_weight_gradients",
+                self.context_residual_weight_gradients,
+            ),
+        ):
+            if value.shape != expected[name]:
+                raise ValueError(f"intention-memory {name} has the wrong shape")
+            _finite(value, f"intention-memory {name}")
+        return self
+
+
+class ExternalOutcomeIntentionMemory:
+    """Query and update an external generator with independent cell capacity."""
+
+    schema = EXTERNAL_OUTCOME_INTENTION_MEMORY_SCHEMA
+
+    def __init__(self, generator: ExternalOutcomeIntentionGenerator) -> None:
+        if not isinstance(generator, ExternalOutcomeIntentionGenerator):
+            raise TypeError("intention memory requires an external outcome generator")
+        self.generator = generator
+
+    @property
+    def context_width(self) -> int:
+        return self.generator.context_width
+
+    @property
+    def intention_width(self) -> int:
+        return self.generator.intention_width
+
+    @property
+    def hidden_width(self) -> int:
+        return self.generator.hidden_width
+
+    @property
+    def feature_width(self) -> int:
+        return self.generator.feature_width
+
+    def configuration(self) -> dict[str, object]:
+        return {
+            "schema": self.schema,
+            "generator": self.generator.configuration(),
+            "capacity": "independent_external_cells_runtime_variable_v1",
+            "proposal": "sparse_opaque_candidate_subset_with_physical_cell_ids_v1",
+            "credit": "delayed_proposal_specific_gaussian_score_gradients_v1",
+            "controller": "frozen_opaque_context_only_v1",
+            "persistence": "generator_tensor_payload_v1",
+        }
+
+    def initial_state(
+        self,
+        cell_count: int = 1,
+        *,
+        device: torch.device | str = "cpu",
+        dtype: torch.dtype = torch.float32,
+    ) -> ExternalOutcomeIntentionGeneratorState:
+        return self.generator.initial_state(cell_count, device=device, dtype=dtype)
+
+    def _validate_context(
+        self,
+        context: torch.Tensor,
+        state: ExternalOutcomeIntentionGeneratorState,
+    ) -> None:
+        if context.ndim != 2 or context.shape[1] != self.context_width:
+            raise ValueError("intention-memory context has the wrong shape")
+        if context.device != state.input_weights.device:
+            raise ValueError("intention-memory context is on the wrong device")
+        _finite(context, "intention-memory context")
+
+    def _validate_selection(
+        self,
+        selected_cells: torch.Tensor,
+        *,
+        batch: int,
+        cell_count: int,
+        device: torch.device,
+    ) -> torch.Tensor:
+        if selected_cells.shape != (batch,) or selected_cells.dtype not in (
+            torch.int32,
+            torch.int64,
+        ):
+            raise ValueError("intention-memory selected cells must be integer [batch]")
+        if selected_cells.device != device:
+            raise ValueError("intention-memory selected cells are on the wrong device")
+        if bool((selected_cells < -1).any()) or bool(
+            (selected_cells >= cell_count).any()
+        ):
+            raise ValueError("intention-memory selected cell is out of range")
+        return selected_cells.to(dtype=torch.long)
+
+    def _validate_presence(
+        self,
+        present: torch.Tensor,
+        *,
+        batch: int,
+        device: torch.device,
+    ) -> None:
+        if present.shape != (batch,) or present.dtype != torch.bool:
+            raise ValueError("intention-memory presence must be boolean [batch]")
+        if present.device != device:
+            raise ValueError("intention-memory presence is on the wrong device")
+
+    def propose(
+        self,
+        state: ExternalOutcomeIntentionGeneratorState,
+        context: torch.Tensor,
+        *,
+        cell_indices: torch.Tensor | list[int] | tuple[int, ...] | None = None,
+        generator: torch.Generator | None = None,
+        context_mask: torch.Tensor | None = None,
+    ) -> ExternalIntentionMemoryProposal:
+        """Sample selected external cells for every controller context.
+
+        When ``cell_indices`` is omitted, every cell is materialized for
+        backward-compatible full-memory reads.  A sparse ordered set of
+        physical cell IDs materializes only those cells while retaining their
+        external IDs in the proposal for delayed feedback.
+        """
+
+        state.validate(
+            context_width=self.context_width,
+            intention_width=self.intention_width,
+            hidden_width=self.hidden_width,
+            feature_width=self.feature_width,
+        )
+        self._validate_context(context, state)
+        batch = context.shape[0]
+        cells = state.baseline.shape[0]
+        if cell_indices is None:
+            selected_indices = tuple(range(cells))
+        elif isinstance(cell_indices, torch.Tensor):
+            if cell_indices.ndim != 1 or cell_indices.dtype not in (
+                torch.int32,
+                torch.int64,
+            ):
+                raise ValueError("intention-memory cell indices must be integer [cells]")
+            selected_indices = tuple(
+                int(index)
+                for index in cell_indices.detach().to(device="cpu", dtype=torch.long).tolist()
+            )
+        else:
+            selected_indices = tuple(int(index) for index in cell_indices)
+        if not selected_indices or tuple(selected_indices) != tuple(
+            sorted(set(selected_indices))
+        ):
+            raise ValueError("intention-memory cell indices must be ordered and unique")
+        if selected_indices[0] < 0 or selected_indices[-1] >= cells:
+            raise ValueError("intention-memory cell index is out of range")
+        index_tensor = torch.tensor(
+            selected_indices,
+            device=context.device,
+            dtype=torch.long,
+        )
+        input_weights = state.input_weights.index_select(0, index_tensor)
+        input_bias = state.input_bias.index_select(0, index_tensor)
+        output_weights = state.output_weights.index_select(0, index_tensor)
+        output_bias = state.output_bias.index_select(0, index_tensor)
+        candidate_cells = len(selected_indices)
+        features, _, _ = self.generator.context_features(
+            context,
+            context_mask,
+            batch_size=batch,
+        )
+        content_features = self.generator.content_features(features)
+        hidden = torch.tanh(
+            torch.einsum("bf,chf->bch", content_features, input_weights)
+            + input_bias.unsqueeze(0)
+        )
+        means = torch.einsum("bch,coh->bco", hidden, output_weights)
+        means = means + output_bias.unsqueeze(0)
+        residual_features = self.generator.residual_features(features)
+        if self.generator.factorized_context_residual:
+            means = means + torch.einsum(
+                "bf,cof->bco",
+                residual_features,
+                state.context_residual_weights.index_select(0, index_tensor),
+            )
+        noise = torch.randn(
+            means.shape,
+            device=means.device,
+            dtype=means.dtype,
+            generator=generator,
+        )
+        scale = torch.as_tensor(
+            self.generator.noise_scale,
+            device=means.device,
+            dtype=means.dtype,
+        )
+        intentions = means + scale * noise
+        log_propensities = -0.5 * torch.sum(
+            noise.square() + math.log(2.0 * math.pi * self.generator.noise_scale**2),
+            dim=-1,
+        )
+        score = noise / scale
+        output_weight_gradients = torch.einsum("bco,bch->bcoh", score, hidden)
+        output_bias_gradients = score
+        hidden_score = torch.einsum(
+            "bco,coh->bch", score, output_weights
+        ) * (1.0 - hidden.square())
+        input_weight_gradients = torch.einsum(
+            "bch,bf->bchf", hidden_score, content_features
+        )
+        context_residual_weight_gradients = torch.einsum(
+            "bco,bf->bcof", score, residual_features
+        )
+        if not self.generator.factorized_context_residual:
+            context_residual_weight_gradients.zero_()
+        input_bias_gradients = hidden_score
+        proposal = ExternalIntentionMemoryProposal(
+            intentions=intentions,
+            means=means,
+            features=features,
+            hidden=hidden,
+            noise=noise,
+            log_propensities=log_propensities,
+            input_weight_gradients=input_weight_gradients,
+            input_bias_gradients=input_bias_gradients,
+            output_weight_gradients=output_weight_gradients,
+            output_bias_gradients=output_bias_gradients,
+            context_residual_weight_gradients=context_residual_weight_gradients,
+            cell_indices=selected_indices,
+            noise_scale=self.generator.noise_scale,
+        )
+        return proposal.validate(
+            context_width=self.context_width,
+            intention_width=self.intention_width,
+            hidden_width=self.hidden_width,
+            batch=batch,
+            cell_count=cells,
+            candidate_count=candidate_cells,
+            feature_width=self.feature_width,
+        )
+
+    def record_decision(
+        self,
+        state: ExternalOutcomeIntentionGeneratorState,
+        proposal: ExternalIntentionMemoryProposal,
+        selected_cells: torch.Tensor,
+        *,
+        present: torch.Tensor | None = None,
+    ) -> ExternalOutcomeIntentionGeneratorState:
+        """Record which opaque cell was actually attempted."""
+
+        self._validate_state_and_proposal(state, proposal)
+        batch = proposal.intentions.shape[0]
+        device = state.baseline.device
+        selected = self._validate_selection(
+            selected_cells,
+            batch=batch,
+            cell_count=state.baseline.shape[0],
+            device=device,
+        )
+        if present is None:
+            present = torch.ones(batch, dtype=torch.bool, device=device)
+        self._validate_presence(present, batch=batch, device=device)
+        active = present & (selected >= 0)
+        self._proposal_positions(state, proposal, selected, active)
+        counts = torch.zeros_like(state.decisions)
+        if bool(active.any()):
+            counts.index_add_(0, selected[active], torch.ones_like(selected[active]))
+        next_state = replace(state, decisions=state.decisions + counts)
+        next_state.validate(
+            context_width=self.context_width,
+            intention_width=self.intention_width,
+            hidden_width=self.hidden_width,
+            feature_width=self.feature_width,
+        )
+        return next_state
+
+    def _proposal_positions(
+        self,
+        state: ExternalOutcomeIntentionGeneratorState,
+        proposal: ExternalIntentionMemoryProposal,
+        selected_cells: torch.Tensor,
+        active: torch.Tensor,
+    ) -> torch.Tensor:
+        """Map physical cell IDs to columns in a sparse proposal."""
+
+        proposal_indices = torch.tensor(
+            proposal.cell_indices,
+            device=selected_cells.device,
+            dtype=torch.long,
+        )
+        lookup = torch.full(
+            (state.baseline.shape[0],),
+            -1,
+            device=selected_cells.device,
+            dtype=torch.long,
+        )
+        lookup[proposal_indices] = torch.arange(
+            proposal_indices.shape[0],
+            device=selected_cells.device,
+            dtype=torch.long,
+        )
+        safe_selected = selected_cells.clamp_min(0)
+        positions = lookup[safe_selected]
+        if bool(active.any()) and bool((positions[active] < 0).any()):
+            raise ValueError("selected intention cell is absent from the proposal")
+        return positions
+
+    def apply_feedback(
+        self,
+        state: ExternalOutcomeIntentionGeneratorState,
+        proposal: ExternalIntentionMemoryProposal,
+        selected_cells: torch.Tensor,
+        outcome: torch.Tensor,
+        *,
+        present: torch.Tensor | None = None,
+        terminal: torch.Tensor | None = None,
+    ) -> ExternalOutcomeIntentionGeneratorState:
+        """Apply delayed scalar outcome credit to only the selected cells."""
+
+        self._validate_state_and_proposal(state, proposal)
+        batch = proposal.intentions.shape[0]
+        device = state.baseline.device
+        if outcome.shape != (batch,) or outcome.device != device:
+            raise ValueError("intention-memory outcomes must be [batch] on the state device")
+        _finite(outcome, "intention-memory outcome")
+        if bool(((outcome < 0.0) | (outcome > 1.0)).any()):
+            raise ValueError("intention-memory outcomes must lie in [0, 1]")
+        selected = self._validate_selection(
+            selected_cells,
+            batch=batch,
+            cell_count=state.baseline.shape[0],
+            device=device,
+        )
+        if present is None:
+            present = torch.ones(batch, dtype=torch.bool, device=device)
+        self._validate_presence(present, batch=batch, device=device)
+        if terminal is not None:
+            self._validate_presence(terminal, batch=batch, device=device)
+        active = present & (selected >= 0)
+        safe_selected = selected.clamp_min(0)
+        proposal_positions = self._proposal_positions(
+            state,
+            proposal,
+            selected,
+            active,
+        )
+        safe_positions = proposal_positions.clamp_min(0)
+        mutable = active & ~state.protected[safe_selected]
+        centered = outcome - state.baseline[safe_selected]
+        update_scale = (
+            self.generator.initial_learning_rate
+            * centered
+            * mutable.to(dtype=state.baseline.dtype)
+        )
+
+        def aggregate(gradients: torch.Tensor) -> torch.Tensor:
+            selected_gradients = gradients[
+                torch.arange(batch, device=device), safe_positions
+            ]
+            contribution = selected_gradients * update_scale.reshape(
+                batch, *([1] * (selected_gradients.ndim - 1))
+            )
+            result = torch.zeros(
+                (state.baseline.shape[0], *selected_gradients.shape[1:]),
+                device=device,
+                dtype=selected_gradients.dtype,
+            )
+            if bool(active.any()):
+                result.index_add_(0, safe_selected[active], contribution[active])
+            return result
+
+        next_input_weights = state.input_weights + aggregate(
+            proposal.input_weight_gradients
+        )
+        next_input_bias = state.input_bias + aggregate(proposal.input_bias_gradients)
+        next_output_weights = state.output_weights + aggregate(
+            proposal.output_weight_gradients
+        )
+        next_output_bias = state.output_bias + aggregate(proposal.output_bias_gradients)
+        next_context_residual_weights = state.context_residual_weights + aggregate(
+            proposal.context_residual_weight_gradients
+        )
+        baseline_delta = torch.zeros_like(state.baseline)
+        if bool(mutable.any()):
+            baseline_delta.index_add_(
+                0,
+                safe_selected[mutable],
+                self.generator.initial_baseline_rate * centered[mutable],
+            )
+        feedback_counts = torch.zeros_like(state.feedbacks)
+        if bool(active.any()):
+            feedback_counts.index_add_(
+                0, safe_selected[active], torch.ones_like(safe_selected[active])
+            )
+        next_state = replace(
+            state,
+            input_weights=next_input_weights,
+            input_bias=next_input_bias,
+            output_weights=next_output_weights,
+            output_bias=next_output_bias,
+            context_residual_weights=next_context_residual_weights,
+            baseline=(state.baseline + baseline_delta).clamp(0.0, 1.0),
+            feedbacks=state.feedbacks + feedback_counts,
+        )
+        next_state.validate(
+            context_width=self.context_width,
+            intention_width=self.intention_width,
+            hidden_width=self.hidden_width,
+            feature_width=self.feature_width,
+        )
+        return next_state
+
+    def _validate_state_and_proposal(
+        self,
+        state: ExternalOutcomeIntentionGeneratorState,
+        proposal: ExternalIntentionMemoryProposal,
+    ) -> None:
+        state.validate(
+            context_width=self.context_width,
+            intention_width=self.intention_width,
+            hidden_width=self.hidden_width,
+            feature_width=self.feature_width,
+        )
+        proposal.validate(
+            context_width=self.context_width,
+            intention_width=self.intention_width,
+            hidden_width=self.hidden_width,
+            cell_count=state.baseline.shape[0],
+            feature_width=self.feature_width,
+        )
+        if proposal.intentions.device != state.baseline.device:
+            raise ValueError("intention-memory proposal is on the wrong device")
+
+    def mean(
+        self,
+        state: ExternalOutcomeIntentionGeneratorState,
+        context: torch.Tensor,
+        *,
+        context_mask: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        """Read deterministic means for every external cell."""
+
+        self._validate_state_and_context(state, context)
+        features, _, _ = self.generator.context_features(
+            context,
+            context_mask,
+            batch_size=context.shape[0],
+        )
+        content_features = self.generator.content_features(features)
+        hidden = torch.tanh(
+            torch.einsum("bf,chf->bch", content_features, state.input_weights)
+            + state.input_bias.unsqueeze(0)
+        )
+        means = torch.einsum("bch,coh->bco", hidden, state.output_weights)
+        means = means + state.output_bias.unsqueeze(0)
+        if self.generator.factorized_context_residual:
+            means = means + torch.einsum(
+                "bf,cof->bco",
+                self.generator.residual_features(features),
+                state.context_residual_weights,
+            )
+        return means
+
+    def _validate_state_and_context(
+        self,
+        state: ExternalOutcomeIntentionGeneratorState,
+        context: torch.Tensor,
+    ) -> None:
+        state.validate(
+            context_width=self.context_width,
+            intention_width=self.intention_width,
+            hidden_width=self.hidden_width,
+            feature_width=self.feature_width,
+        )
+        self._validate_context(context, state)
+
+    def begin_episode(
+        self, state: ExternalOutcomeIntentionGeneratorState
+    ) -> ExternalOutcomeIntentionGeneratorState:
+        return self.generator.begin_episode(state)
+
+    def append_cell(
+        self,
+        state: ExternalOutcomeIntentionGeneratorState,
+        *,
+        source_cell: int | None = None,
+    ) -> tuple[ExternalOutcomeIntentionGeneratorState, int]:
+        return self.generator.append_cell(state, source_cell=source_cell)
+
+    def protect(
+        self,
+        state: ExternalOutcomeIntentionGeneratorState,
+        cell_indices: torch.Tensor | list[int] | tuple[int, ...],
+    ) -> ExternalOutcomeIntentionGeneratorState:
+        return self.generator.protect(state, cell_indices)
+
+    def state_payload(
+        self, state: ExternalOutcomeIntentionGeneratorState
+    ) -> dict[str, object]:
+        return self.generator.state_payload(state)
+
+    def state_from_payload(
+        self, payload: Mapping[str, object]
+    ) -> ExternalOutcomeIntentionGeneratorState:
+        return self.generator.state_from_payload(payload)

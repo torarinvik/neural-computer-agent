@@ -1,0 +1,461 @@
+{
+  "schema": "neural-computer.recipe-control-flow-induction.v1",
+  "claim_boundary": "bounded outcome-only structural synthesis of one generic loop in a finite control-flow basis with protected source retention; not unrestricted program induction, unbounded execution, or general continual learning",
+  "seeds": [
+    17,
+    18,
+    19,
+    20
+  ],
+  "reports": [
+    {
+      "seed": 17,
+      "reverse_inputs": false,
+      "schema": "neural-computer.recipe-control-flow-induction.v1",
+      "architecture": {
+        "counter_count": 2,
+        "program_length": 4,
+        "bounded_candidate_count": 13824,
+        "learner_inputs": "opaque_candidate_and_scalar_verifier_outcomes",
+        "forbidden_features": "target_program_and_task_names"
+      },
+      "search": {
+        "status": "expressible",
+        "checked_candidates": 261,
+        "stable_bits_to_threshold": 2088,
+        "wall_seconds": 0.052158541046082973,
+        "latency_seconds_per_candidate": 0.0001998411534332681
+      },
+      "budget_control": {
+        "status": "budget_exhausted",
+        "checked_candidates": 10,
+        "wall_seconds": 0.01281312492210418,
+        "latency_seconds_per_candidate": 0.001281312492210418
+      },
+      "target_digest": "6bcdf58d74ee020a21e2ea58efe557c6b41ebe14ab79e7912d81fe0c79cd1c93",
+      "candidate_digest": "9e7b93871909121bc3c40d7e8204a31cf6e4bfb379dcffd4c7d7cbe360df5baa",
+      "heldout_accuracy": 1.0,
+      "source_retention": 1.0,
+      "restored_accuracy": 1.0,
+      "gates": {
+        "finite_search_expressible": true,
+        "target_admitted": true,
+        "target_heldout_mastery": true,
+        "source_protected": true,
+        "source_retention": true,
+        "reload_exact": true,
+        "reload_target_mastery": true,
+        "missing_evidence_no_write": true,
+        "shuffled_feedback_rejected": true,
+        "corruption_rejected": true,
+        "budget_exhaustion_is_not_inexpressible": true,
+        "zero_replayed_examples": true,
+        "zero_optimizer_updates": true
+      },
+      "accounting": {
+        "unique_verifier_bits": 2088,
+        "unique_logical_lifetimes": 261,
+        "optimizer_updates": 0,
+        "replayed_examples": 0,
+        "wall_seconds": 0.052158541046082973,
+        "latency_seconds_per_candidate": 0.0001998411534332681,
+        "stable_bits_to_threshold": 2088,
+        "transfer_ratio_against_fresh_learner": null
+      },
+      "promoted": true
+    },
+    {
+      "seed": 17,
+      "reverse_inputs": true,
+      "schema": "neural-computer.recipe-control-flow-induction.v1",
+      "architecture": {
+        "counter_count": 2,
+        "program_length": 4,
+        "bounded_candidate_count": 13824,
+        "learner_inputs": "opaque_candidate_and_scalar_verifier_outcomes",
+        "forbidden_features": "target_program_and_task_names"
+      },
+      "search": {
+        "status": "expressible",
+        "checked_candidates": 261,
+        "stable_bits_to_threshold": 2088,
+        "wall_seconds": 0.028159874957054853,
+        "latency_seconds_per_candidate": 0.00010789224121476956
+      },
+      "budget_control": {
+        "status": "budget_exhausted",
+        "checked_candidates": 10,
+        "wall_seconds": 0.012999750091694295,
+        "latency_seconds_per_candidate": 0.0012999750091694296
+      },
+      "target_digest": "6bcdf58d74ee020a21e2ea58efe557c6b41ebe14ab79e7912d81fe0c79cd1c93",
+      "candidate_digest": "9e7b93871909121bc3c40d7e8204a31cf6e4bfb379dcffd4c7d7cbe360df5baa",
+      "heldout_accuracy": 1.0,
+      "source_retention": 1.0,
+      "restored_accuracy": 1.0,
+      "gates": {
+        "finite_search_expressible": true,
+        "target_admitted": true,
+        "target_heldout_mastery": true,
+        "source_protected": true,
+        "source_retention": true,
+        "reload_exact": true,
+        "reload_target_mastery": true,
+        "missing_evidence_no_write": true,
+        "shuffled_feedback_rejected": true,
+        "corruption_rejected": true,
+        "budget_exhaustion_is_not_inexpressible": true,
+        "zero_replayed_examples": true,
+        "zero_optimizer_updates": true
+      },
+      "accounting": {
+        "unique_verifier_bits": 2088,
+        "unique_logical_lifetimes": 261,
+        "optimizer_updates": 0,
+        "replayed_examples": 0,
+        "wall_seconds": 0.028159874957054853,
+        "latency_seconds_per_candidate": 0.00010789224121476956,
+        "stable_bits_to_threshold": 2088,
+        "transfer_ratio_against_fresh_learner": null
+      },
+      "promoted": true
+    },
+    {
+      "seed": 18,
+      "reverse_inputs": false,
+      "schema": "neural-computer.recipe-control-flow-induction.v1",
+      "architecture": {
+        "counter_count": 2,
+        "program_length": 4,
+        "bounded_candidate_count": 13824,
+        "learner_inputs": "opaque_candidate_and_scalar_verifier_outcomes",
+        "forbidden_features": "target_program_and_task_names"
+      },
+      "search": {
+        "status": "expressible",
+        "checked_candidates": 746,
+        "stable_bits_to_threshold": 5968,
+        "wall_seconds": 0.0771546249743551,
+        "latency_seconds_per_candidate": 0.00010342443026052963
+      },
+      "budget_control": {
+        "status": "budget_exhausted",
+        "checked_candidates": 10,
+        "wall_seconds": 0.011567083070985973,
+        "latency_seconds_per_candidate": 0.0011567083070985972
+      },
+      "target_digest": "6bcdf58d74ee020a21e2ea58efe557c6b41ebe14ab79e7912d81fe0c79cd1c93",
+      "candidate_digest": "12334563f79f78a3b9edc5315cad04933ae00314be93501bdee8b4be6f2029f5",
+      "heldout_accuracy": 1.0,
+      "source_retention": 1.0,
+      "restored_accuracy": 1.0,
+      "gates": {
+        "finite_search_expressible": true,
+        "target_admitted": true,
+        "target_heldout_mastery": true,
+        "source_protected": true,
+        "source_retention": true,
+        "reload_exact": true,
+        "reload_target_mastery": true,
+        "missing_evidence_no_write": true,
+        "shuffled_feedback_rejected": true,
+        "corruption_rejected": true,
+        "budget_exhaustion_is_not_inexpressible": true,
+        "zero_replayed_examples": true,
+        "zero_optimizer_updates": true
+      },
+      "accounting": {
+        "unique_verifier_bits": 5968,
+        "unique_logical_lifetimes": 746,
+        "optimizer_updates": 0,
+        "replayed_examples": 0,
+        "wall_seconds": 0.0771546249743551,
+        "latency_seconds_per_candidate": 0.00010342443026052963,
+        "stable_bits_to_threshold": 5968,
+        "transfer_ratio_against_fresh_learner": null
+      },
+      "promoted": true
+    },
+    {
+      "seed": 18,
+      "reverse_inputs": true,
+      "schema": "neural-computer.recipe-control-flow-induction.v1",
+      "architecture": {
+        "counter_count": 2,
+        "program_length": 4,
+        "bounded_candidate_count": 13824,
+        "learner_inputs": "opaque_candidate_and_scalar_verifier_outcomes",
+        "forbidden_features": "target_program_and_task_names"
+      },
+      "search": {
+        "status": "expressible",
+        "checked_candidates": 746,
+        "stable_bits_to_threshold": 5968,
+        "wall_seconds": 0.05703000002540648,
+        "latency_seconds_per_candidate": 7.644772121368161e-05
+      },
+      "budget_control": {
+        "status": "budget_exhausted",
+        "checked_candidates": 10,
+        "wall_seconds": 0.013440666953101754,
+        "latency_seconds_per_candidate": 0.0013440666953101754
+      },
+      "target_digest": "6bcdf58d74ee020a21e2ea58efe557c6b41ebe14ab79e7912d81fe0c79cd1c93",
+      "candidate_digest": "12334563f79f78a3b9edc5315cad04933ae00314be93501bdee8b4be6f2029f5",
+      "heldout_accuracy": 1.0,
+      "source_retention": 1.0,
+      "restored_accuracy": 1.0,
+      "gates": {
+        "finite_search_expressible": true,
+        "target_admitted": true,
+        "target_heldout_mastery": true,
+        "source_protected": true,
+        "source_retention": true,
+        "reload_exact": true,
+        "reload_target_mastery": true,
+        "missing_evidence_no_write": true,
+        "shuffled_feedback_rejected": true,
+        "corruption_rejected": true,
+        "budget_exhaustion_is_not_inexpressible": true,
+        "zero_replayed_examples": true,
+        "zero_optimizer_updates": true
+      },
+      "accounting": {
+        "unique_verifier_bits": 5968,
+        "unique_logical_lifetimes": 746,
+        "optimizer_updates": 0,
+        "replayed_examples": 0,
+        "wall_seconds": 0.05703000002540648,
+        "latency_seconds_per_candidate": 7.644772121368161e-05,
+        "stable_bits_to_threshold": 5968,
+        "transfer_ratio_against_fresh_learner": null
+      },
+      "promoted": true
+    },
+    {
+      "seed": 19,
+      "reverse_inputs": false,
+      "schema": "neural-computer.recipe-control-flow-induction.v1",
+      "architecture": {
+        "counter_count": 2,
+        "program_length": 4,
+        "bounded_candidate_count": 13824,
+        "learner_inputs": "opaque_candidate_and_scalar_verifier_outcomes",
+        "forbidden_features": "target_program_and_task_names"
+      },
+      "search": {
+        "status": "expressible",
+        "checked_candidates": 1462,
+        "stable_bits_to_threshold": 11696,
+        "wall_seconds": 0.11973745794966817,
+        "latency_seconds_per_candidate": 8.189976603944471e-05
+      },
+      "budget_control": {
+        "status": "budget_exhausted",
+        "checked_candidates": 10,
+        "wall_seconds": 0.011907833977602422,
+        "latency_seconds_per_candidate": 0.0011907833977602422
+      },
+      "target_digest": "6bcdf58d74ee020a21e2ea58efe557c6b41ebe14ab79e7912d81fe0c79cd1c93",
+      "candidate_digest": "9e7b93871909121bc3c40d7e8204a31cf6e4bfb379dcffd4c7d7cbe360df5baa",
+      "heldout_accuracy": 1.0,
+      "source_retention": 1.0,
+      "restored_accuracy": 1.0,
+      "gates": {
+        "finite_search_expressible": true,
+        "target_admitted": true,
+        "target_heldout_mastery": true,
+        "source_protected": true,
+        "source_retention": true,
+        "reload_exact": true,
+        "reload_target_mastery": true,
+        "missing_evidence_no_write": true,
+        "shuffled_feedback_rejected": true,
+        "corruption_rejected": true,
+        "budget_exhaustion_is_not_inexpressible": true,
+        "zero_replayed_examples": true,
+        "zero_optimizer_updates": true
+      },
+      "accounting": {
+        "unique_verifier_bits": 11696,
+        "unique_logical_lifetimes": 1462,
+        "optimizer_updates": 0,
+        "replayed_examples": 0,
+        "wall_seconds": 0.11973745794966817,
+        "latency_seconds_per_candidate": 8.189976603944471e-05,
+        "stable_bits_to_threshold": 11696,
+        "transfer_ratio_against_fresh_learner": null
+      },
+      "promoted": true
+    },
+    {
+      "seed": 19,
+      "reverse_inputs": true,
+      "schema": "neural-computer.recipe-control-flow-induction.v1",
+      "architecture": {
+        "counter_count": 2,
+        "program_length": 4,
+        "bounded_candidate_count": 13824,
+        "learner_inputs": "opaque_candidate_and_scalar_verifier_outcomes",
+        "forbidden_features": "target_program_and_task_names"
+      },
+      "search": {
+        "status": "expressible",
+        "checked_candidates": 1462,
+        "stable_bits_to_threshold": 11696,
+        "wall_seconds": 0.0990647500148043,
+        "latency_seconds_per_candidate": 6.775974693215069e-05
+      },
+      "budget_control": {
+        "status": "budget_exhausted",
+        "checked_candidates": 10,
+        "wall_seconds": 0.029397708014585078,
+        "latency_seconds_per_candidate": 0.0029397708014585076
+      },
+      "target_digest": "6bcdf58d74ee020a21e2ea58efe557c6b41ebe14ab79e7912d81fe0c79cd1c93",
+      "candidate_digest": "9e7b93871909121bc3c40d7e8204a31cf6e4bfb379dcffd4c7d7cbe360df5baa",
+      "heldout_accuracy": 1.0,
+      "source_retention": 1.0,
+      "restored_accuracy": 1.0,
+      "gates": {
+        "finite_search_expressible": true,
+        "target_admitted": true,
+        "target_heldout_mastery": true,
+        "source_protected": true,
+        "source_retention": true,
+        "reload_exact": true,
+        "reload_target_mastery": true,
+        "missing_evidence_no_write": true,
+        "shuffled_feedback_rejected": true,
+        "corruption_rejected": true,
+        "budget_exhaustion_is_not_inexpressible": true,
+        "zero_replayed_examples": true,
+        "zero_optimizer_updates": true
+      },
+      "accounting": {
+        "unique_verifier_bits": 11696,
+        "unique_logical_lifetimes": 1462,
+        "optimizer_updates": 0,
+        "replayed_examples": 0,
+        "wall_seconds": 0.0990647500148043,
+        "latency_seconds_per_candidate": 6.775974693215069e-05,
+        "stable_bits_to_threshold": 11696,
+        "transfer_ratio_against_fresh_learner": null
+      },
+      "promoted": true
+    },
+    {
+      "seed": 20,
+      "reverse_inputs": false,
+      "schema": "neural-computer.recipe-control-flow-induction.v1",
+      "architecture": {
+        "counter_count": 2,
+        "program_length": 4,
+        "bounded_candidate_count": 13824,
+        "learner_inputs": "opaque_candidate_and_scalar_verifier_outcomes",
+        "forbidden_features": "target_program_and_task_names"
+      },
+      "search": {
+        "status": "expressible",
+        "checked_candidates": 1886,
+        "stable_bits_to_threshold": 15088,
+        "wall_seconds": 0.1264301249757409,
+        "latency_seconds_per_candidate": 6.70361214081341e-05
+      },
+      "budget_control": {
+        "status": "budget_exhausted",
+        "checked_candidates": 10,
+        "wall_seconds": 0.01213537494186312,
+        "latency_seconds_per_candidate": 0.0012135374941863119
+      },
+      "target_digest": "6bcdf58d74ee020a21e2ea58efe557c6b41ebe14ab79e7912d81fe0c79cd1c93",
+      "candidate_digest": "2b3dd3a9d15a374c0155ac3088da46b41a44cbb71686e4531d6a968970a406de",
+      "heldout_accuracy": 1.0,
+      "source_retention": 1.0,
+      "restored_accuracy": 1.0,
+      "gates": {
+        "finite_search_expressible": true,
+        "target_admitted": true,
+        "target_heldout_mastery": true,
+        "source_protected": true,
+        "source_retention": true,
+        "reload_exact": true,
+        "reload_target_mastery": true,
+        "missing_evidence_no_write": true,
+        "shuffled_feedback_rejected": true,
+        "corruption_rejected": true,
+        "budget_exhaustion_is_not_inexpressible": true,
+        "zero_replayed_examples": true,
+        "zero_optimizer_updates": true
+      },
+      "accounting": {
+        "unique_verifier_bits": 15088,
+        "unique_logical_lifetimes": 1886,
+        "optimizer_updates": 0,
+        "replayed_examples": 0,
+        "wall_seconds": 0.1264301249757409,
+        "latency_seconds_per_candidate": 6.70361214081341e-05,
+        "stable_bits_to_threshold": 15088,
+        "transfer_ratio_against_fresh_learner": null
+      },
+      "promoted": true
+    },
+    {
+      "seed": 20,
+      "reverse_inputs": true,
+      "schema": "neural-computer.recipe-control-flow-induction.v1",
+      "architecture": {
+        "counter_count": 2,
+        "program_length": 4,
+        "bounded_candidate_count": 13824,
+        "learner_inputs": "opaque_candidate_and_scalar_verifier_outcomes",
+        "forbidden_features": "target_program_and_task_names"
+      },
+      "search": {
+        "status": "expressible",
+        "checked_candidates": 1886,
+        "stable_bits_to_threshold": 15088,
+        "wall_seconds": 0.13670166698284447,
+        "latency_seconds_per_candidate": 7.248232607786027e-05
+      },
+      "budget_control": {
+        "status": "budget_exhausted",
+        "checked_candidates": 10,
+        "wall_seconds": 0.029398249927908182,
+        "latency_seconds_per_candidate": 0.002939824992790818
+      },
+      "target_digest": "6bcdf58d74ee020a21e2ea58efe557c6b41ebe14ab79e7912d81fe0c79cd1c93",
+      "candidate_digest": "2b3dd3a9d15a374c0155ac3088da46b41a44cbb71686e4531d6a968970a406de",
+      "heldout_accuracy": 1.0,
+      "source_retention": 1.0,
+      "restored_accuracy": 1.0,
+      "gates": {
+        "finite_search_expressible": true,
+        "target_admitted": true,
+        "target_heldout_mastery": true,
+        "source_protected": true,
+        "source_retention": true,
+        "reload_exact": true,
+        "reload_target_mastery": true,
+        "missing_evidence_no_write": true,
+        "shuffled_feedback_rejected": true,
+        "corruption_rejected": true,
+        "budget_exhaustion_is_not_inexpressible": true,
+        "zero_replayed_examples": true,
+        "zero_optimizer_updates": true
+      },
+      "accounting": {
+        "unique_verifier_bits": 15088,
+        "unique_logical_lifetimes": 1886,
+        "optimizer_updates": 0,
+        "replayed_examples": 0,
+        "wall_seconds": 0.13670166698284447,
+        "latency_seconds_per_candidate": 7.248232607786027e-05,
+        "stable_bits_to_threshold": 15088,
+        "transfer_ratio_against_fresh_learner": null
+      },
+      "promoted": true
+    }
+  ],
+  "promoted": true
+}

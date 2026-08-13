@@ -1,0 +1,52 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "brainworkshop_external_compute_eviction_transfer_behavioral_2026-08-13",
+  "status": "rejected",
+  "claim_boundary": "Behaviorally grounded artifact signatures were tested for inherited eviction transfer on held-out n-back-2; no reliable reusable gain over a fresh policy was established.",
+  "runs": [
+    {
+      "seed": 17,
+      "unique_verifier_bits": 1197344,
+      "unique_logical_lifetimes": 96192,
+      "optimizer_updates": 1792,
+      "policy_updates": 392,
+      "replayed_examples": 0,
+      "inherited_transfer_accuracy": 0.0,
+      "fresh_transfer_accuracy": 1.0,
+      "transfer_ratio_against_fresh_learner": 0.0,
+      "latency_seconds": 406.2245703339577,
+      "report": "seed17.json"
+    },
+    {
+      "seed": 18,
+      "unique_verifier_bits": 1197344,
+      "unique_logical_lifetimes": 96192,
+      "optimizer_updates": 1792,
+      "policy_updates": 386,
+      "replayed_examples": 0,
+      "inherited_transfer_accuracy": 1.0,
+      "fresh_transfer_accuracy": 1.0,
+      "transfer_ratio_against_fresh_learner": 1.0,
+      "latency_seconds": 407.51514433301054,
+      "report": "seed18.json"
+    }
+  ],
+  "controls": {
+    "candidate_signature": "behavioral",
+    "raw_weight_coordinates": false,
+    "source_cohort_mastered": true,
+    "held_out_transfer_mastered": true,
+    "held_out_retention_mastery": true,
+    "frozen_controller": true,
+    "frozen_event_encoder": true,
+    "zero_replayed_examples": true,
+    "active_files_match_snapshots": true,
+    "inherited_beats_fresh_early": false,
+    "reliable_two_seed_transfer": false
+  },
+  "notes": [
+    "The behavioral signature is fixed-width and restores the probed physical slot exactly.",
+    "Seed variance is decisive: one seed fails completely and the other ties fresh, so the result is not promotable.",
+    "The per-family arithmetic modulus correction is independent and remains required by the recipe execution ABI."
+  ]
+}

@@ -13,6 +13,8 @@ from torch import nn
 _QUANTIZATION_SCALE_SUFFIX = ".__scale__"
 _QUANTIZATION_SHAPE_SUFFIX = ".__shape__"
 _INT4_CODEC = "int4"
+_INT8_ROW_CODEC = "int8_row"
+_FLOAT16_STATS_CODEC = "float16_stats"
 
 
 def _digest_state(
@@ -146,8 +148,10 @@ def compress_growth_artifact(
     """Create a smaller caller-owned tensor representation of an artifact.
 
     This is a replaceable storage codec, not a learned reasoning branch.
-    Float16/bfloat16 entries are cast directly; int8 entries use a symmetric
-    per-tensor scale; and ``"int4"`` entries use packed nibbles with
+    Float16/bfloat16 entries are cast directly; ``"float16_stats"`` is a
+    caller-owned alias for float16 storage; int8 entries use a symmetric
+    per-tensor scale; ``"int8_row"`` entries use independent symmetric scales
+    along the leading dimension; and ``"int4"`` entries use packed nibbles with
     per-output-row scales. Non-floating entries are copied unchanged. Names
     in ``preserve_names`` remain lossless float tensors, while
     ``dtype_overrides`` lets a caller choose a codec for selected tensors or
@@ -155,9 +159,17 @@ def compress_growth_artifact(
     without changing the controller boundary. The returned mapping must be
     behavior-verified after decompression before promotion.
     """
-    if dtype not in (torch.float16, torch.bfloat16, torch.int8, _INT4_CODEC):
+    if dtype not in (
+        torch.float16,
+        torch.bfloat16,
+        torch.int8,
+        _INT8_ROW_CODEC,
+        _FLOAT16_STATS_CODEC,
+        _INT4_CODEC,
+    ):
         raise ValueError(
-            "growth compression dtype must be float16, bfloat16, int8, or int4"
+            "growth compression dtype must be float16, bfloat16, int8, "
+            "int8_row, float16_stats, or int4"
         )
     preserve = tuple(preserve_names)
     if any(not isinstance(name, str) or not name for name in preserve):
@@ -167,14 +179,22 @@ def compress_growth_artifact(
     if not isinstance(artifact, Mapping) or not artifact:
         raise ValueError("growth artifact must be a nonempty tensor mapping")
     overrides = dict(dtype_overrides or {})
-    valid_dtypes = (torch.float16, torch.bfloat16, torch.int8, _INT4_CODEC)
+    valid_dtypes = (
+        torch.float16,
+        torch.bfloat16,
+        torch.int8,
+        _INT8_ROW_CODEC,
+        _FLOAT16_STATS_CODEC,
+        _INT4_CODEC,
+    )
     if any(name not in artifact for name in overrides):
         raise ValueError("dtype_overrides must refer to artifact entries")
     if any(name in preserve for name in overrides):
         raise ValueError("preserved entries cannot also have dtype overrides")
     if any(dtype not in valid_dtypes for dtype in overrides.values()):
         raise ValueError(
-            "growth dtype overrides must be float16, bfloat16, int8, or int4"
+            "growth dtype overrides must be float16, bfloat16, int8, "
+            "int8_row, float16_stats, or int4"
         )
     compressed: dict[str, torch.Tensor] = {}
     for name, value in artifact.items():
@@ -188,7 +208,9 @@ def compress_growth_artifact(
             compressed[name] = value.detach().cpu().clone()
             continue
         entry_dtype = overrides.get(name, dtype)
-        if entry_dtype in (torch.int8, _INT4_CODEC) and value.is_floating_point():
+        if entry_dtype == _FLOAT16_STATS_CODEC:
+            entry_dtype = torch.float16
+        if entry_dtype in (torch.int8, _INT8_ROW_CODEC, _INT4_CODEC) and value.is_floating_point():
             if name.endswith(
                 (_QUANTIZATION_SCALE_SUFFIX, _QUANTIZATION_SHAPE_SUFFIX)
             ):
@@ -217,14 +239,28 @@ def compress_growth_artifact(
                     work.shape, dtype=torch.int64
                 )
             else:
-                maximum = work.abs().max()
+                if entry_dtype == _INT8_ROW_CODEC and work.ndim > 1:
+                    maximum = work.abs().amax(
+                        dim=tuple(range(1, work.ndim)),
+                        keepdim=True,
+                    )
+                else:
+                    maximum = work.abs().max()
                 scale = maximum / 127.0
-                if not bool(torch.isfinite(scale)) or float(scale) == 0.0:
-                    scale = torch.ones((), dtype=torch.float32)
+                scale = torch.where(
+                    (scale == 0) | ~torch.isfinite(scale),
+                    torch.ones_like(scale),
+                    scale,
+                )
                 compressed[name] = torch.clamp(
                     torch.round(work / scale), -127, 127
                 ).to(torch.int8)
-                compressed[name + _QUANTIZATION_SCALE_SUFFIX] = scale.reshape(1)
+                if entry_dtype == _INT8_ROW_CODEC:
+                    compressed[name + _QUANTIZATION_SCALE_SUFFIX] = (
+                        scale.reshape(-1) if work.ndim == 1 else scale
+                    )
+                else:
+                    compressed[name + _QUANTIZATION_SCALE_SUFFIX] = scale.reshape(1)
         else:
             compressed[name] = (
                 value.to(dtype=entry_dtype)
@@ -288,7 +324,11 @@ def decompress_growth_artifact(
             scale = scales[name]
             if value.dtype != torch.int8:
                 raise ValueError(f"quantized entry {name!r} must be int8")
-            if scale.shape != (1,) or not scale.is_floating_point():
+            expected_row_scale_shape = value.shape[:1] + (1,) * max(
+                value.ndim - 1,
+                0,
+            )
+            if scale.shape not in {(1,), expected_row_scale_shape} or not scale.is_floating_point():
                 raise ValueError(f"quantization scale for {name!r} is invalid")
             if not bool(torch.isfinite(scale).all()) or bool((scale <= 0).any()):
                 raise ValueError(f"quantization scale for {name!r} is invalid")

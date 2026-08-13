@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 from dataclasses import dataclass
 
 import torch
@@ -18,6 +19,10 @@ from neural_computer import (
     EpisodicContextEncoder,
     EpisodicContextOutput,
     EpisodicIntentAdapter,
+    ExternalIntentionObservationReceipt,
+    ExternalIntentionProposal,
+    ExternalIntentionRepertoire,
+    ExternalWorkingMemoryCell,
     KeypressDecoder,
     KeypressEncoder,
     OnlineEpisodicRelationReader,
@@ -29,7 +34,8 @@ from neural_computer import (
 
 from .environment import BrainWorkshopEventEncoder, NBackVerifier
 
-ROUTE_STATE_SCHEMA = "neural-computer.brainworkshop-route-state.v1"
+ROUTE_STATE_SCHEMA = "neural-computer.brainworkshop-route-state.v2"
+INTENTION_STATE_SCHEMA = "neural-computer.brainworkshop-intention-state.v1"
 
 
 @dataclass(frozen=True)
@@ -40,6 +46,8 @@ class CanonicalRollout:
     actions: torch.Tensor
     rewards: torch.Tensor
     eligible: torch.Tensor
+    feedback_rewards: torch.Tensor
+    feedback_present: torch.Tensor
     propensities: torch.Tensor
     context: torch.Tensor
     episode_scores: torch.Tensor
@@ -54,6 +62,17 @@ class CanonicalRollout:
     @property
     def replayed_examples(self) -> int:
         return 0
+
+    @property
+    def observed_feedback_accuracy(self) -> torch.Tensor:
+        """Return accuracy over outcomes actually delivered to the learner."""
+
+        count = self.feedback_present.sum(dim=1)
+        correct = (
+            self.feedback_rewards
+            * self.feedback_present.to(self.feedback_rewards.dtype)
+        ).sum(dim=1)
+        return correct / count.clamp_min(1)
 
 
 class RelationCapabilityExtension(nn.Module):
@@ -74,24 +93,37 @@ class RelationCapabilityExtension(nn.Module):
         adaptive_reader: bool,
         decoder_name: str,
         seed: int,
+        working_memory_cell: ExternalWorkingMemoryCell | None = None,
     ) -> None:
         super().__init__()
         if memory_capacity < 1:
             raise ValueError("extension memory capacity must be positive")
         with torch.random.fork_rng():
             torch.manual_seed(seed)
-            reader_type = (
-                AdaptiveOnlineEpisodicRelationReader
-                if adaptive_reader
-                else OnlineEpisodicRelationReader
-            )
-            self.reader = reader_type(
-                event_width,
-                action_width,
-                memory_capacity=memory_capacity,
-                context_width=event_width,
-                hidden=max(16, event_width),
-            )
+            if working_memory_cell is None:
+                reader_type = (
+                    AdaptiveOnlineEpisodicRelationReader
+                    if adaptive_reader
+                    else OnlineEpisodicRelationReader
+                )
+                self.reader = reader_type(
+                    event_width,
+                    action_width,
+                    memory_capacity=memory_capacity,
+                    context_width=event_width,
+                    hidden=max(16, event_width),
+                )
+            else:
+                if (
+                    working_memory_cell.event_width != event_width
+                    or working_memory_cell.action_width != action_width
+                    or working_memory_cell.memory_capacity != memory_capacity
+                    or working_memory_cell.context_width != event_width
+                ):
+                    raise ValueError(
+                        "working-memory cell dimensions do not match extension"
+                    )
+                self.reader = working_memory_cell
             self.intent_adapter = EpisodicIntentAdapter(
                 event_width,
                 intention_width,
@@ -127,6 +159,8 @@ class CanonicalBrainWorkshopAgent(nn.Module):
         retention_config: RetentionPolicyConfig | None = None,
         reader_kind: str = "context",
         seed: int = 0,
+        intention_repertoire: ExternalIntentionRepertoire | None = None,
+        working_memory_cell: ExternalWorkingMemoryCell | None = None,
     ) -> None:
         super().__init__()
         if n_back < 1:
@@ -181,13 +215,40 @@ class CanonicalBrainWorkshopAgent(nn.Module):
         )
         self.n_back = int(n_back)
         self.reader_kind = reader_kind
-        self.relation_reader = OnlineEpisodicRelationReader(
-            event_width,
-            NBackVerifier.action_count,
-            memory_capacity=max(2, n_back + 1),
-            context_width=event_width,
-            hidden=max(16, event_width),
+        if intention_repertoire is not None and (
+            intention_repertoire.width != intention_width
+        ):
+            raise ValueError("intention repertoire width does not match the agent")
+        # This object is deliberately not an nn.Module child.  It is external,
+        # caller-owned state that can grow, persist, and be replaced without
+        # changing the controller checkpoint or its gradients.
+        self.intention_repertoire = (
+            intention_repertoire
+            if intention_repertoire is not None
+            else ExternalIntentionRepertoire(intention_width)
         )
+        if working_memory_cell is not None:
+            if reader_kind != "relation":
+                raise ValueError(
+                    "an external working-memory cell requires relation reader mode"
+                )
+            if (
+                working_memory_cell.event_width != event_width
+                or working_memory_cell.action_width != NBackVerifier.action_count
+                or working_memory_cell.context_width != event_width
+            ):
+                raise ValueError(
+                    "working-memory cell dimensions do not match the canonical agent"
+                )
+            self.relation_reader = working_memory_cell
+        else:
+            self.relation_reader = OnlineEpisodicRelationReader(
+                event_width,
+                NBackVerifier.action_count,
+                memory_capacity=max(2, n_back + 1),
+                context_width=event_width,
+                hidden=max(16, event_width),
+            )
         self.extensions = nn.ModuleList()
         self.route_evidence = PersistentOpaqueRouteEvidence()
         self.route_evidence.append_slot()
@@ -207,6 +268,14 @@ class CanonicalBrainWorkshopAgent(nn.Module):
             if self.reader_kind == "context"
             else self.relation_reader
         )
+
+    @property
+    def working_memory_cell(self) -> ExternalWorkingMemoryCell | None:
+        """Return the versioned causal cell when one owns relation state."""
+
+        if isinstance(self.relation_reader, ExternalWorkingMemoryCell):
+            return self.relation_reader
+        return None
 
     @property
     def keypress_decoder(self) -> KeypressDecoder:
@@ -239,6 +308,37 @@ class CanonicalBrainWorkshopAgent(nn.Module):
             self.extensions[slot - 1].capability_key.detach(), dim=0
         )
 
+    @staticmethod
+    def _module_digest(module: nn.Module) -> str:
+        """Hash a learned module without serializing its weights into state."""
+
+        digest = hashlib.sha256()
+        for name, value in sorted(module.state_dict().items()):
+            tensor = value.detach().cpu().contiguous()
+            digest.update(name.encode())
+            digest.update(str(tensor.dtype).encode("ascii"))
+            digest.update(repr(tuple(tensor.shape)).encode("ascii"))
+            digest.update(tensor.numpy().tobytes())
+        return digest.hexdigest()
+
+    def _event_representation_contract(self) -> dict[str, object]:
+        """Describe the encoder version required by context-keyed routes."""
+
+        if "stimulus" not in self.runtime.encoders:
+            raise ValueError("canonical runtime has no stimulus event encoder")
+        encoder = self.runtime.encoders["stimulus"]
+        configuration_method = getattr(encoder, "configuration", None)
+        if not callable(configuration_method):
+            raise TypeError("stimulus encoder does not expose a versioned configuration")
+        configuration = configuration_method()
+        if not isinstance(configuration, dict):
+            raise TypeError("stimulus encoder configuration must be a dictionary")
+        return {
+            "schema": "neural-computer.learned-event-representation-contract.v1",
+            "encoder_configuration": configuration,
+            "encoder_state_digest": self._module_digest(encoder),
+        }
+
     def extension_decoder(self, slot: int) -> KeypressDecoder:
         """Return the output-bus decoder owned by an appended slot."""
 
@@ -257,6 +357,7 @@ class CanonicalBrainWorkshopAgent(nn.Module):
         memory_capacity: int,
         seed: int,
         adaptive_reader: bool = False,
+        working_memory_cell: ExternalWorkingMemoryCell | None = None,
     ) -> int:
         """Append one relation capability without changing the core width."""
 
@@ -270,6 +371,7 @@ class CanonicalBrainWorkshopAgent(nn.Module):
             adaptive_reader=adaptive_reader,
             decoder_name=decoder_name,
             seed=seed,
+            working_memory_cell=working_memory_cell,
         )
         decoder = KeypressDecoder(
             self.controller.intention_width,
@@ -303,6 +405,7 @@ class CanonicalBrainWorkshopAgent(nn.Module):
         *,
         memory_capacity: int,
         seed: int,
+        working_memory_cell: ExternalWorkingMemoryCell | None = None,
     ) -> int:
         """Append a generic bounded-window capability without task metadata."""
 
@@ -312,6 +415,7 @@ class CanonicalBrainWorkshopAgent(nn.Module):
             memory_capacity=memory_capacity,
             seed=seed,
             adaptive_reader=True,
+            working_memory_cell=working_memory_cell,
         )
 
     def expand_adaptive_relation_capability(
@@ -334,12 +438,26 @@ class CanonicalBrainWorkshopAgent(nn.Module):
         if slot < 1 or slot > len(self.extensions):
             raise IndexError("adaptive capability slot is outside the bank")
         extension = self.extensions[slot - 1]
-        if not isinstance(extension.reader, AdaptiveOnlineEpisodicRelationReader):
+        if not isinstance(
+            extension.reader,
+            (AdaptiveOnlineEpisodicRelationReader, ExternalWorkingMemoryCell),
+        ):
             raise TypeError("only adaptive relation capabilities can grow")
         if reset_failed_reader:
             replacement_seed = (
                 int(torch.initial_seed()) if reset_seed is None else int(reset_seed)
             )
+            working_memory_cell = None
+            if isinstance(extension.reader, ExternalWorkingMemoryCell):
+                with torch.random.fork_rng():
+                    torch.manual_seed(replacement_seed)
+                    working_memory_cell = ExternalWorkingMemoryCell(
+                        self.controller.width,
+                        NBackVerifier.action_count,
+                        memory_capacity=memory_capacity,
+                        context_width=self.controller.width,
+                        hidden=extension.reader.hidden,
+                    )
             replacement = RelationCapabilityExtension(
                 event_width=self.controller.width,
                 intention_width=self.controller.intention_width,
@@ -348,6 +466,7 @@ class CanonicalBrainWorkshopAgent(nn.Module):
                 adaptive_reader=True,
                 decoder_name=extension.decoder_name,
                 seed=replacement_seed,
+                working_memory_cell=working_memory_cell,
             )
             self.extensions[slot - 1] = replacement
             with torch.random.fork_rng():
@@ -360,10 +479,13 @@ class CanonicalBrainWorkshopAgent(nn.Module):
                     )
                 )
             return
-        extension.reader = extension.reader.expand_capacity(
-            memory_capacity,
-            preserve_weights=True,
-        )
+        if isinstance(extension.reader, ExternalWorkingMemoryCell):
+            extension.reader = extension.reader.grow(memory_capacity)
+        else:
+            extension.reader = extension.reader.expand_capacity(
+                memory_capacity,
+                preserve_weights=True,
+            )
         extension.memory_capacity = memory_capacity
 
     def replace_unprotected_adaptive_relation_capability(
@@ -385,7 +507,10 @@ class CanonicalBrainWorkshopAgent(nn.Module):
         if slot < 1 or slot > len(self.extensions):
             raise IndexError("adaptive capability slot is outside the bank")
         extension = self.extensions[slot - 1]
-        if not isinstance(extension.reader, AdaptiveOnlineEpisodicRelationReader):
+        if not isinstance(
+            extension.reader,
+            (AdaptiveOnlineEpisodicRelationReader, ExternalWorkingMemoryCell),
+        ):
             raise TypeError("only adaptive relation capabilities can be replaced")
         if memory_capacity < 1:
             raise ValueError("replacement memory capacity must be positive")
@@ -415,11 +540,12 @@ class CanonicalBrainWorkshopAgent(nn.Module):
         }
 
     def route_state_payload(self) -> dict[str, object]:
-        """Return independently reloadable external route state."""
+        """Return external route state plus its learned-key compatibility ABI."""
 
         return {
             "schema": ROUTE_STATE_SCHEMA,
             "slot_count": len(self.extensions) + 1,
+            "event_representation": self._event_representation_contract(),
             "route_evidence": self.route_evidence.payload(),
             "context_route_evidence": self.context_route_evidence.payload(),
         }
@@ -429,6 +555,10 @@ class CanonicalBrainWorkshopAgent(nn.Module):
 
         if payload.get("schema") != ROUTE_STATE_SCHEMA:
             raise ValueError("route-state schema is incompatible")
+        if payload.get("event_representation") != self._event_representation_contract():
+            raise ValueError(
+                "route-state learned event representation is incompatible"
+            )
         slot_count = payload.get("slot_count")
         if slot_count != len(self.extensions) + 1:
             raise ValueError("route-state slot count does not match the agent")
@@ -450,6 +580,61 @@ class CanonicalBrainWorkshopAgent(nn.Module):
             raise ValueError("context route-state width does not match the agent")
         self.route_evidence = route_evidence
         self.context_route_evidence = context_route_evidence
+
+    def intention_state_payload(self) -> dict[str, object]:
+        """Return independently reloadable opaque intention-memory state."""
+
+        return {
+            "schema": INTENTION_STATE_SCHEMA,
+            "repertoire": self.intention_repertoire.payload(),
+        }
+
+    def load_intention_state_payload(self, payload: dict[str, object]) -> None:
+        """Restore intention memory without touching neural weights."""
+
+        if payload.get("schema") != INTENTION_STATE_SCHEMA:
+            raise ValueError("intention-state schema is incompatible")
+        repertoire_payload = payload.get("repertoire")
+        if not isinstance(repertoire_payload, dict):
+            raise TypeError("intention-state repertoire must be a dictionary")
+        repertoire = ExternalIntentionRepertoire.from_payload(repertoire_payload)
+        if repertoire.width != self.controller.intention_width:
+            raise ValueError("intention-state width does not match the agent")
+        self.intention_repertoire = repertoire
+
+    def observe_intention(
+        self,
+        intention: torch.Tensor,
+        *,
+        utility: torch.Tensor | float | None = None,
+        propensity: torch.Tensor | float | None = None,
+        timestamp: torch.Tensor | int | None = None,
+        outcome_mask: torch.Tensor | bool | None = None,
+    ) -> ExternalIntentionObservationReceipt:
+        """Write opaque output experience to external memory only."""
+
+        return self.intention_repertoire.observe(
+            intention,
+            utility=utility,
+            propensity=propensity,
+            timestamp=timestamp,
+            outcome_mask=outcome_mask,
+        )
+
+    def propose_intentions(
+        self,
+        seed_intention: torch.Tensor | None = None,
+        *,
+        include_seed: bool = False,
+        max_candidates: int | None = None,
+    ) -> ExternalIntentionProposal:
+        """Retrieve runtime-sized opaque candidates from external memory."""
+
+        return self.intention_repertoire.propose(
+            seed_intention,
+            include_seed=include_seed,
+            max_candidates=max_candidates,
+        )
 
     def initial_state(self, batch_size: int, *, device: torch.device | str) -> object:
         return self.controller.initial_state(batch_size, device=device)
@@ -481,6 +666,9 @@ class CanonicalBrainWorkshopAgent(nn.Module):
         persistent_route: bool = False,
         context_route: bool = False,
         record_context_route: bool = False,
+        context_route_failure_patience: int = 1,
+        record_intention_memory: bool = False,
+        feedback_observation_mask: torch.Tensor | None = None,
     ) -> CanonicalRollout:
         """Run one online episode without replay or optimizer updates.
 
@@ -491,14 +679,43 @@ class CanonicalBrainWorkshopAgent(nn.Module):
         ``forced_slot`` is reserved for an external candidate-specific
         retention audit. The deployed learner leaves it unset and uses only
         outcome-driven routing.
+
+        ``context_route_failure_patience`` is an external route-policy knob:
+        fallback requires that many consecutive eligible failures for the
+        current context candidate. It does not change controller computation.
+
+        ``feedback_observation_mask`` is an optional audit-only delivery mask
+        with shape ``[batch, verifier.steps]``.  It models missing verifier
+        evidence without changing the verifier's private score.  Undelivered
+        outcomes are represented to every external reader as
+        ``present=False`` and cannot advance outcome-driven routing or update
+        outcome memories.
         """
 
         if not 0.0 <= exploration_probability < 1.0:
             raise ValueError("slot exploration probability must lie in [0, 1)")
+        if context_route_failure_patience < 1:
+            raise ValueError("context-route failure patience must be positive")
         if learned_route and len(self.extensions) == 0:
             raise ValueError("learned routing needs at least one appended slot")
+        if not isinstance(record_intention_memory, bool):
+            raise TypeError("intention-memory recording flag must be boolean")
         if sum((learned_route, persistent_route, context_route)) > 1:
             raise ValueError("route policies are mutually exclusive")
+        if feedback_observation_mask is not None:
+            if feedback_observation_mask.ndim != 2 or feedback_observation_mask.shape != (
+                verifier.batch_size,
+                verifier.steps,
+            ):
+                raise ValueError(
+                    "feedback_observation_mask must have shape "
+                    "[batch, verifier.steps]"
+                )
+            if feedback_observation_mask.dtype != torch.bool:
+                raise TypeError("feedback_observation_mask must be boolean")
+            feedback_observation_mask = feedback_observation_mask.to(
+                device=verifier.device
+            )
 
         verifier.reset()
         state = self.initial_state(verifier.batch_size, device=verifier.device)
@@ -533,6 +750,7 @@ class CanonicalBrainWorkshopAgent(nn.Module):
         context_route_order: torch.Tensor | None = None
         route_context: torch.Tensor | None = None
         route_cursor = torch.zeros_like(selected_slot)
+        context_failure_streak = torch.zeros_like(selected_slot)
         if persistent_route:
             route_order = torch.tensor(
                 self.route_evidence.preferred_order(slot_count=len(readers)),
@@ -546,6 +764,8 @@ class CanonicalBrainWorkshopAgent(nn.Module):
         action_trace: list[torch.Tensor] = []
         reward_trace: list[torch.Tensor] = []
         eligible_trace: list[torch.Tensor] = []
+        feedback_reward_trace: list[torch.Tensor] = []
+        feedback_present_trace: list[torch.Tensor] = []
         propensity_trace: list[torch.Tensor] = []
         selected_slot_trace: list[torch.Tensor] = []
 
@@ -572,6 +792,7 @@ class CanonicalBrainWorkshopAgent(nn.Module):
                     0 if forced_slot is None else forced_slot,
                 )
                 route_cursor.zero_()
+                context_failure_streak.zero_()
                 if persistent_route and route_order is not None:
                     selected_slot.fill_(int(route_order[0]))
             route_exploration = torch.zeros(
@@ -654,6 +875,7 @@ class CanonicalBrainWorkshopAgent(nn.Module):
                     action=previous_actions,
                     outcome=feedback.reward,
                     state=reader_states[index],
+                    present=feedback.has_feedback > 0.0,
                 )
                 contexts.append(
                     context_output.context
@@ -769,30 +991,63 @@ class CanonicalBrainWorkshopAgent(nn.Module):
                 ),
             ).squeeze(1)
             scored = verifier.score(decision.key_index)
+            score_index = verifier.position - 1
+            if feedback_observation_mask is None:
+                observed_present = scored.eligible
+            else:
+                observed_present = scored.eligible & feedback_observation_mask[:, score_index]
+            observed_reward = torch.where(
+                observed_present,
+                scored.reward,
+                torch.zeros_like(scored.reward),
+            )
+            if record_intention_memory:
+                self.observe_intention(
+                    output.intention.payload.detach(),
+                    utility=observed_reward.detach(),
+                    propensity=propensity.detach(),
+                    timestamp=score_index,
+                    outcome_mask=observed_present.detach(),
+                )
             event_trace.append(collection.payload[:, 0])
             action_trace.append(decision.key_index)
             reward_trace.append(scored.reward)
             eligible_trace.append(scored.eligible)
+            feedback_reward_trace.append(observed_reward)
+            feedback_present_trace.append(observed_present)
             propensity_trace.append(propensity)
             selected_slot_trace.append(selected_slot)
             feedback = ControllerFeedback(
                 action=self.keypress_encoder(decision.key_index),
-                reward=scored.reward,
+                reward=observed_reward,
                 propensity=propensity,
-                has_feedback=scored.eligible.to(scored.reward.dtype),
+                has_feedback=observed_present.to(scored.reward.dtype),
             )
             previous_actions = torch.nn.functional.one_hot(
                 decision.key_index,
                 num_classes=NBackVerifier.action_count,
             ).to(collection.payload.dtype)
             if forced_slot is None and len(readers) > 1:
-                failed = scored.eligible & (scored.reward < 0.5)
+                failed = observed_present & (observed_reward < 0.5)
                 if context_route and context_route_order is not None:
                     can_advance = route_cursor < len(readers) - 1
+                    context_failure_streak = torch.where(
+                        failed,
+                        context_failure_streak + 1,
+                        torch.zeros_like(context_failure_streak),
+                    )
+                    advance = can_advance & (
+                        context_failure_streak >= context_route_failure_patience
+                    )
                     route_cursor = torch.where(
-                        failed & can_advance,
+                        advance,
                         route_cursor + 1,
                         route_cursor,
+                    )
+                    context_failure_streak = torch.where(
+                        advance,
+                        torch.zeros_like(context_failure_streak),
+                        context_failure_streak,
                     )
                     selected_slot = context_route_order.gather(
                         1, route_cursor[:, None]
@@ -817,6 +1072,8 @@ class CanonicalBrainWorkshopAgent(nn.Module):
         actions = torch.stack(action_trace, dim=1)
         rewards = torch.stack(reward_trace, dim=1)
         eligible = torch.stack(eligible_trace, dim=1)
+        feedback_rewards = torch.stack(feedback_reward_trace, dim=1)
+        feedback_present = torch.stack(feedback_present_trace, dim=1)
         propensities = torch.stack(propensity_trace, dim=1)
         selected_slots = torch.stack(selected_slot_trace, dim=1)
         episode_scores = (
@@ -831,8 +1088,15 @@ class CanonicalBrainWorkshopAgent(nn.Module):
                         self.capability_address_for(slot), score
                     )
         if persistent_route:
+            observed_count = feedback_present.sum(dim=1)
+            observed_scores = (
+                (feedback_rewards * feedback_present.to(feedback_rewards.dtype)).sum(dim=1)
+                / observed_count.clamp_min(1)
+            )
             for slot in range(len(readers)):
-                for score in episode_scores[final_slots == slot]:
+                for score in observed_scores[
+                    (final_slots == slot) & (observed_count > 0)
+                ]:
                     self.route_evidence.observe(slot, score)
         if context_route and record_context_route and route_context is not None:
             context_rows: list[torch.Tensor] = []
@@ -840,11 +1104,11 @@ class CanonicalBrainWorkshopAgent(nn.Module):
             outcome_rows: list[torch.Tensor] = []
             for row in range(rewards.shape[0]):
                 for slot in range(len(readers)):
-                    attempted = (selected_slots[row] == slot) & eligible[row]
+                    attempted = (selected_slots[row] == slot) & feedback_present[row]
                     if bool(attempted.any()):
                         context_rows.append(route_context[row])
                         slot_rows.append(slot)
-                        outcome_rows.append(rewards[row][attempted].mean())
+                        outcome_rows.append(feedback_rewards[row][attempted].mean())
             if context_rows:
                 self.context_route_evidence.observe_batch(
                     torch.stack(context_rows),
@@ -860,6 +1124,8 @@ class CanonicalBrainWorkshopAgent(nn.Module):
             actions=actions,
             rewards=rewards,
             eligible=eligible,
+            feedback_rewards=feedback_rewards,
+            feedback_present=feedback_present,
             propensities=propensities,
             context=context,
             episode_scores=episode_scores,

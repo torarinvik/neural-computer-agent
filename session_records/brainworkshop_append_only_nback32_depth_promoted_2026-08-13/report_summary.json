@@ -1,0 +1,33 @@
+{
+  "schema": "neural-computer.brainworkshop-external-compute-append-only-depth-growth.v1-summary",
+  "status": "promoted_bounded_append_only_external_computation",
+  "seeds": [17, 18],
+  "source_family": "nback16",
+  "target_family": "nback32",
+  "history_contract": "variable_external_history_indexed_v1",
+  "history_age_slot_count": 32,
+  "query_count": 32,
+  "updates_per_learned_file": 256,
+  "batch_size": 32,
+  "retention_lifetimes": 4,
+  "source_after_source_mean": [1.0, 0.9992187470197678],
+  "target_mean": [1.0, 1.0],
+  "source_retention_mean": [1.0, 0.9992187470197678],
+  "controls_maximum": {
+    "missing_history": [0.65625, 0.78125],
+    "corrupted_history": [0.6625000238418579, 0.6343749761581421],
+    "action_shuffled": [0.5218750238418579, 0.5],
+    "reward_shuffled_training": [0.2593750059604645, 0.2593750059604645]
+  },
+  "accounting_per_seed": {
+    "unique_verifier_bits_learned_files": 163840,
+    "unique_verifier_bits_shuffled_control": 81920,
+    "unique_logical_lifetimes": 16384,
+    "optimizer_updates_learned_files": 512,
+    "replayed_examples": 0,
+    "controller_frozen": true,
+    "event_frontend_frozen": true,
+    "source_file_immutable_during_extension": true
+  },
+  "claim_boundary": "Bounded append-only external computation growth with frozen old-file retention; not general continual learning, unrestricted memory growth, learned compression, or arbitrary program induction."
+}

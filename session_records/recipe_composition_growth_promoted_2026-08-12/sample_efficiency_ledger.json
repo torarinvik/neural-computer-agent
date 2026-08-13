@@ -1,0 +1,32 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment_id": "recipe-composition-growth-promoted-2026-08-12",
+  "status": "promoted_bounded_external_composition",
+  "source": "in_repository_run",
+  "seeds": [17, 18, 19, 20],
+  "unique_verifier_bits_per_seed": [312, 304, 368, 400],
+  "unique_logical_lifetimes_per_seed": [69, 68, 76, 80],
+  "optimizer_updates": 0,
+  "replayed_examples": 0,
+  "stable_bits_to_threshold": {
+    "atomic_sources": [1, 1, 1, 1],
+    "depth2": [1, 1, 1, 1],
+    "depth3": [1, 1, 1, 1],
+    "shuffled_control": null
+  },
+  "retention_on_mastered_files": [1.0, 1.0, 1.0, 1.0],
+  "depth3_warm_to_fresh_proposal_ratio": [1.0, 3.0, 1.0, 1.0],
+  "latency_seconds": [0.011182083981111646, 0.006741457851603627, 0.010191041976213455, 0.011300666024908423],
+  "controls": {
+    "four_seeds": true,
+    "mixed_per_family_moduli": true,
+    "reversed_order": true,
+    "missing_evidence": true,
+    "shuffled_verifier": true,
+    "protected_retention": true,
+    "reload_and_checksum": true,
+    "zero_replay": true,
+    "zero_controller_updates": true
+  },
+  "claim_boundary": "Promoted narrow external-memory composition only; proposal-policy warm transfer remains diagnostic and general continual learning remains unproven."
+}

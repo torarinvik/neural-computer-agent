@@ -80,7 +80,9 @@ class AmodalEventCollection:
     confidence: torch.Tensor
     source_key: torch.Tensor | None = None
     timestamp: torch.Tensor | None = None
+    timestamp_present: torch.Tensor | None = None
     duration: torch.Tensor | None = None
+    duration_present: torch.Tensor | None = None
     schema: str = EVENT_SCHEMA
 
     @classmethod
@@ -145,7 +147,27 @@ class AmodalEventCollection:
             confidence=confidence,
             source_key=source_key,
             timestamp=None if timestamp is None else timestamp.squeeze(-1),
+            timestamp_present=(
+                None
+                if timestamp is None
+                else torch.ones(
+                    batch,
+                    len(events),
+                    dtype=torch.bool,
+                    device=payload.device,
+                )
+            ),
             duration=None if duration is None else duration.squeeze(-1),
+            duration_present=(
+                None
+                if duration is None
+                else torch.ones(
+                    batch,
+                    len(events),
+                    dtype=torch.bool,
+                    device=payload.device,
+                )
+            ),
         ).validate(width=event_width)
 
     @classmethod
@@ -187,6 +209,17 @@ class AmodalEventCollection:
         ):
             if value is not None and value.shape != (batch, events):
                 raise ValueError(f"{name} must have shape [batch, events]")
+        for name, value, field in (
+            ("timestamp_present", self.timestamp_present, self.timestamp),
+            ("duration_present", self.duration_present, self.duration),
+        ):
+            if value is not None:
+                if field is None:
+                    raise ValueError(f"{name} cannot be supplied without its metadata")
+                if value.shape != (batch, events) or value.dtype != torch.bool:
+                    raise ValueError(f"{name} must be boolean [batch, events]")
+            elif field is not None:
+                raise ValueError(f"{name} is required when its metadata is supplied")
         if self.source_key is not None and (
             self.source_key.ndim != 3 or self.source_key.shape[:2] != (batch, events)
         ):

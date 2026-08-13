@@ -10,6 +10,7 @@ from neural_computer import (
     OpaqueCandidateGrowthRouter,
     OpaqueViewRouteExtension,
     PersistentOpaqueContextRouteEvidence,
+    PersistentOpaqueDepthEvidence,
     PersistentOpaqueRouteEvidence,
     attempted_outcome_loss,
     failure_gated_candidate_scores,
@@ -215,6 +216,24 @@ def test_persistent_route_evidence_can_reset_a_reused_slot() -> None:
     assert evidence.preferred_order() == (0, 1)
 
 
+def test_persistent_route_evidence_can_recover_a_previously_bad_slot() -> None:
+    evidence = PersistentOpaqueRouteEvidence(
+        min_mastery_observations=2,
+        reversal_patience=2,
+    )
+    evidence.append_slot()
+    evidence.append_slot()
+    evidence.observe(1, 0.0)
+    evidence.observe(1, 0.0)
+    assert evidence.status().protected == (False, False)
+
+    evidence.observe(1, 1.0)
+    evidence.observe(1, 1.0)
+
+    assert evidence.status().protected == (False, True)
+    assert evidence.preferred_order() == (1, 0)
+
+
 def test_persistent_route_evidence_round_trips_without_semantic_fields() -> None:
     evidence = PersistentOpaqueRouteEvidence(prior_strength=2.0)
     evidence.append_slot()
@@ -224,6 +243,69 @@ def test_persistent_route_evidence_round_trips_without_semantic_fields() -> None
     assert restored.payload() == evidence.payload()
     assert "task" not in restored.payload()
     assert "label" not in restored.payload()
+
+
+def test_persistent_depth_evidence_selects_only_stable_outcome_supported_depths() -> None:
+    evidence = PersistentOpaqueDepthEvidence((1, 2, 3), min_mastery_observations=2)
+    assert evidence.append_file() == 0
+    assert evidence.preferred_query_count(0) is None
+    assert evidence.next_probe_query_count(0) == 1
+
+    evidence.observe(0, 1, 0.0)
+    evidence.observe(0, 1, 0.0)
+    assert evidence.preferred_query_count(0) is None
+    assert evidence.next_probe_query_count(0) == 2
+
+    evidence.observe(0, 2, 1.0)
+    evidence.observe(0, 2, 1.0)
+    assert evidence.preferred_query_count(0) == 2
+    assert evidence.next_probe_query_count(0) == 2
+
+    restored = PersistentOpaqueDepthEvidence.from_payload(evidence.payload())
+    assert restored.payload() == evidence.payload()
+    assert "task" not in restored.payload()
+    assert "label" not in restored.payload()
+
+
+def test_persistent_depth_evidence_fails_closed_after_unmastered_candidates() -> None:
+    evidence = PersistentOpaqueDepthEvidence((1, 2), min_mastery_observations=2)
+    evidence.append_file()
+    for query_count in (1, 2):
+        evidence.observe(0, query_count, 0.0)
+        evidence.observe(0, query_count, 0.0)
+
+    assert evidence.preferred_query_count(0) is None
+    assert evidence.next_probe_query_count(0) is None
+
+
+def test_persistent_depth_evidence_replaces_a_reversed_depth_without_replay() -> None:
+    evidence = PersistentOpaqueDepthEvidence(
+        (1, 2, 3),
+        min_mastery_observations=2,
+        reversal_threshold=0.65,
+        reversal_patience=2,
+    )
+    evidence.append_file()
+    evidence.observe(0, 1, 1.0)
+    evidence.observe(0, 1, 1.0)
+    assert evidence.preferred_query_count(0) == 1
+
+    evidence.observe(0, 1, 0.0)
+    evidence.observe(0, 1, 0.0)
+    assert evidence.preferred_query_count(0) is None
+    assert evidence.next_probe_query_count(0) == 2
+
+    evidence.observe(0, 2, 1.0)
+    evidence.observe(0, 2, 1.0)
+    assert evidence.preferred_query_count(0) == 2
+    assert evidence.statuses()[0].reversal_count[0] == 1
+
+
+def test_persistent_depth_evidence_requires_sorted_unique_positive_candidates() -> None:
+    with pytest.raises(ValueError, match="sorted and unique"):
+        PersistentOpaqueDepthEvidence((2, 1, 2))
+    with pytest.raises(ValueError, match="positive"):
+        PersistentOpaqueDepthEvidence((0, 1))
 
 
 def test_context_route_evidence_conditions_preference_on_opaque_learned_key() -> None:
@@ -239,6 +321,111 @@ def test_context_route_evidence_conditions_preference_on_opaque_learned_key() ->
     assert table.preferred_order(cue_a) == (1, 0)
     assert table.preferred_order(cue_b) == (0, 1)
     assert table.preferred_slots(torch.stack((cue_a, cue_b))).tolist() == [1, 0]
+
+
+def test_context_route_behavior_probabilities_prioritize_untried_slots() -> None:
+    table = PersistentOpaqueContextRouteEvidence(
+        width=4,
+        min_mastery_observations=2,
+    )
+    for _ in range(4):
+        table.append_slot()
+    cue = torch.tensor([1.0, 0.0, 0.0, 0.0])
+    for _ in range(8):
+        table.observe(cue, 0, 1.0)
+
+    probabilities = table.behavior_probabilities(
+        torch.stack((cue, torch.tensor([0.0, 1.0, 0.0, 0.0]))),
+        exploration=1.0,
+    )
+
+    assert torch.allclose(probabilities.sum(dim=-1), torch.ones(2))
+    assert probabilities[0, 1] > probabilities[0, 0]
+    assert probabilities[0, 2] == probabilities[0, 3]
+    assert torch.allclose(probabilities[1], torch.full((4,), 0.25))
+
+
+def test_context_route_balanced_strategy_covers_unmastered_slots_before_exploit() -> None:
+    table = PersistentOpaqueContextRouteEvidence(
+        width=4,
+        min_mastery_observations=2,
+    )
+    for _ in range(4):
+        table.append_slot()
+    cue = torch.tensor([1.0, 0.0, 0.0, 0.0])
+    table.observe(cue, 0, 0.0)
+    table.observe(cue, 1, 0.0)
+
+    probabilities = table.behavior_probabilities(
+        cue.unsqueeze(0),
+        exploration=0.1,
+        strategy="balanced",
+    )
+
+    assert probabilities[0].tolist() == [0.0, 0.0, 0.5, 0.5]
+
+
+def test_context_route_rejects_unknown_exploration_strategy() -> None:
+    table = PersistentOpaqueContextRouteEvidence(width=2)
+    table.append_slot()
+    with pytest.raises(ValueError, match="strategy"):
+        table.behavior_probabilities(
+            torch.ones(1, 2),
+            strategy="unknown",
+        )
+
+
+def test_context_route_behavior_probabilities_reject_invalid_exploration() -> None:
+    table = PersistentOpaqueContextRouteEvidence(width=2)
+    table.append_slot()
+    with pytest.raises(ValueError, match="exploration"):
+        table.behavior_probabilities(torch.ones(1, 2), exploration=1.1)
+
+
+def test_context_route_evidence_can_generalize_a_protected_prior_without_aliasing() -> None:
+    table = PersistentOpaqueContextRouteEvidence(
+        width=4,
+        matching_tolerance=1e-5,
+        generalization_tolerance=0.1,
+        min_mastery_observations=2,
+    )
+    table.append_slot()
+    table.append_slot()
+    source = torch.tensor([1.0, 0.0, 0.0, 0.0])
+    related = torch.tensor([1.0, 0.05, 0.0, 0.0])
+    unrelated = torch.tensor([0.0, 1.0, 0.0, 0.0])
+
+    for _ in range(2):
+        table.observe(source, 1, 1.0)
+
+    assert table.preferred_order(related) == (1, 0)
+    assert table.preferred_order(unrelated) == (0, 1)
+    assert not table.has_context(related)
+
+    table.observe(related, 0, 1.0)
+    assert table.context_count == 2
+    assert table.preferred_order(source) == (1, 0)
+    assert table.preferred_order(related) == (1, 0)
+    table.observe(related, 0, 0.0)
+    assert table.preferred_order(related) == (0, 1)
+
+    restored = PersistentOpaqueContextRouteEvidence.from_payload(table.payload())
+    assert restored.preferred_order(related) == (0, 1)
+    assert restored.preferred_order(source) == (1, 0)
+    assert restored.configuration()["generalization_tolerance"] == 0.1
+
+
+def test_context_route_evidence_persists_query_space_identity() -> None:
+    table = PersistentOpaqueContextRouteEvidence(
+        width=3,
+        query_space_id="route-query-v2",
+    )
+    table.append_slot()
+
+    restored = PersistentOpaqueContextRouteEvidence.from_payload(table.payload())
+
+    assert restored.query_space_id == "route-query-v2"
+    assert restored.payload() == table.payload()
 
 
 def test_context_route_evidence_reset_clears_protection_for_reused_slot() -> None:
@@ -270,6 +457,17 @@ def test_context_route_evidence_round_trips_opaque_rows() -> None:
     assert restored.preferred_order(context) == (1, 0)
     assert "task" not in restored.payload()
     assert "label" not in restored.payload()
+
+
+def test_context_route_evidence_rejects_checksum_corruption() -> None:
+    table = PersistentOpaqueContextRouteEvidence(width=3)
+    table.append_slot()
+    table.observe(torch.tensor([1.0, 0.0, 0.0]), 0, 1.0)
+    payload = table.payload()
+    payload["version"] = int(payload["version"]) + 1
+
+    with pytest.raises(ValueError, match="checksum"):
+        PersistentOpaqueContextRouteEvidence.from_payload(payload)
 
 
 def test_route_evidence_retires_a_stale_mapping_after_patient_failures() -> None:

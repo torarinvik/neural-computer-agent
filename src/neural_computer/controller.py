@@ -25,6 +25,7 @@ from .policies import EventReliabilityPolicy
 
 EXECUTION_STATES = ("wait", "think", "commit")
 EXECUTION_TRANSPORT_FEATURES = 3
+CONTROLLER_STATE_SCHEMA = "neural-computer.controller-state.v1"
 
 
 @dataclass(frozen=True)
@@ -65,10 +66,113 @@ class ControllerState:
             ),
         )
 
+    def payload(self) -> dict[str, object]:
+        """Return a tensor-only checkpoint for resumable working memory."""
+
+        return {
+            "schema": CONTROLLER_STATE_SCHEMA,
+            "hidden": self.hidden.detach().cpu().clone(),
+            "workspace": self.workspace.detach().cpu().clone(),
+            "latest_event": self.latest_event.detach().cpu().clone(),
+            "workspace_usage": self.workspace_usage.detach().cpu().clone(),
+            "event_window": {
+                "payload": self.event_window.payload.detach().cpu().clone(),
+                "present": self.event_window.present.detach().cpu().clone(),
+                "confidence": self.event_window.confidence.detach().cpu().clone(),
+                "timestamp": self.event_window.timestamp.detach().cpu().clone(),
+                "timestamp_present": self.event_window.timestamp_present.detach().cpu().clone(),
+                "duration": self.event_window.duration.detach().cpu().clone(),
+                "age": self.event_window.age.detach().cpu().clone(),
+                "source_key": (
+                    None
+                    if self.event_window.source_key is None
+                    else self.event_window.source_key.detach().cpu().clone()
+                ),
+            },
+            "source_trust": self.source_trust.detach().cpu().clone(),
+            "growth_registers": (
+                None
+                if self.growth_registers is None
+                else tuple(value.detach().cpu().clone() for value in self.growth_registers)
+            ),
+        }
+
+    @classmethod
+    def from_payload(cls, payload: dict[str, object]) -> ControllerState:
+        """Restore a controller state without loading controller parameters."""
+
+        if not isinstance(payload, dict):
+            raise TypeError("controller state payload must be a dictionary")
+        if payload.get("schema") != CONTROLLER_STATE_SCHEMA:
+            raise ValueError("unsupported controller state schema")
+        tensor_names = (
+            "hidden",
+            "workspace",
+            "latest_event",
+            "workspace_usage",
+            "source_trust",
+        )
+        if any(not isinstance(payload.get(name), torch.Tensor) for name in tensor_names):
+            raise TypeError("controller state payload is missing tensors")
+        event_payload = payload.get("event_window")
+        if not isinstance(event_payload, dict):
+            raise TypeError("controller state event window payload is missing")
+        event_names = (
+            "payload",
+            "present",
+            "confidence",
+            "timestamp",
+            "timestamp_present",
+            "duration",
+            "age",
+        )
+        if any(
+            not isinstance(event_payload.get(name), torch.Tensor)
+            for name in event_names
+        ):
+            raise TypeError("controller state event window payload is missing tensors")
+        source_key = event_payload.get("source_key")
+        if source_key is not None and not isinstance(source_key, torch.Tensor):
+            raise TypeError("controller state source key must be a tensor or null")
+        event_window = EventTokenWindow(
+            payload=event_payload["payload"],
+            present=event_payload["present"],
+            confidence=event_payload["confidence"],
+            timestamp=event_payload["timestamp"],
+            timestamp_present=event_payload["timestamp_present"],
+            duration=event_payload["duration"],
+            age=event_payload["age"],
+            source_key=source_key,
+        )
+        source_key_width = 0 if source_key is None else int(source_key.shape[-1])
+        event_window.validate(
+            width=int(event_window.payload.shape[-1]),
+            source_key_width=source_key_width,
+        )
+        growth_payload = payload.get("growth_registers")
+        if growth_payload is None:
+            growth_registers = None
+        elif isinstance(growth_payload, (tuple, list)) and all(
+            isinstance(value, torch.Tensor) for value in growth_payload
+        ):
+            growth_registers = tuple(growth_payload)
+        else:
+            raise TypeError("controller growth registers must be tensors or null")
+        return cls(
+            hidden=payload["hidden"],
+            workspace=payload["workspace"],
+            latest_event=payload["latest_event"],
+            workspace_usage=payload["workspace_usage"],
+            event_window=event_window,
+            source_trust=payload["source_trust"],
+            growth_registers=growth_registers,
+        )
+
 
 @dataclass(frozen=True)
 class ControllerOutput:
     intention: IntentEvent
+    state_representation: torch.Tensor
     memory_key: torch.Tensor
     memory_value: torch.Tensor
     memory_write_strength: torch.Tensor
@@ -497,7 +601,14 @@ class AmodalCognitiveController(nn.Module):
                 new_timestamp_present = torch.zeros_like(new_indices, dtype=torch.bool)
             else:
                 new_timestamp = collection.timestamp[row, new_indices]
-                new_timestamp_present = torch.ones_like(new_indices, dtype=torch.bool)
+                if collection.timestamp_present is None:
+                    new_timestamp_present = torch.ones_like(
+                        new_indices, dtype=torch.bool
+                    )
+                else:
+                    new_timestamp_present = collection.timestamp_present[
+                        row, new_indices
+                    ]
             timestamp = torch.cat(
                 [previous.timestamp[row, old_indices], new_timestamp]
             )[-self.event_window_capacity :]
@@ -737,6 +848,7 @@ class AmodalCognitiveController(nn.Module):
         feedback: ControllerFeedback,
         memory: MemoryBackend | None = None,
         *,
+        persistent_events: AmodalEventCollection | Sequence[AmodalEvent] | torch.Tensor | None = None,
         elapsed: torch.Tensor | float = 1.0,
         disable_workspace: bool = False,
         memory_scope: torch.Tensor | None = None,
@@ -748,7 +860,14 @@ class AmodalCognitiveController(nn.Module):
         if memory is not None and not isinstance(memory, MemoryBackend):
             raise TypeError("memory must implement the MemoryBackend contract")
         collection = self._collection(events)
+        persistent_collection = (
+            collection
+            if persistent_events is None
+            else self._collection(persistent_events)
+        )
         batch = collection.payload.shape[0]
+        if persistent_collection.payload.shape[0] != batch:
+            raise ValueError("persistent event batch does not match events")
         feedback.validate(batch=batch, action_width=self.feedback_width)
         reward = feedback.reward.reshape(batch, 1).to(collection.payload.dtype)
         propensity = feedback.propensity.reshape(batch, 1).to(collection.payload.dtype)
@@ -761,6 +880,15 @@ class AmodalCognitiveController(nn.Module):
             elapsed_tensor = elapsed_tensor.expand(batch)
         window = self._append_event_window(
             state.event_window, collection, elapsed=elapsed_tensor
+        )
+        persistent_window = (
+            window
+            if persistent_events is None
+            else self._append_event_window(
+                state.event_window,
+                persistent_collection,
+                elapsed=elapsed_tensor,
+            )
         )
         feedback_vector = torch.cat([action, reward, propensity, has_feedback], dim=-1)
         feedback_embedding = self.feedback_encoder(feedback_vector)
@@ -1021,6 +1149,7 @@ class AmodalCognitiveController(nn.Module):
             memory_value = memory_value + self.memory_value_feedback(feedback_embedding)
         output = ControllerOutput(
             intention=intent_event,
+            state_representation=combined,
             memory_key=memory_query_key,
             memory_value=memory_value,
             memory_write_strength=memory_write_strength,
@@ -1049,6 +1178,7 @@ class AmodalCognitiveController(nn.Module):
         )
         output = ControllerOutput(
             intention=output.intention,
+            state_representation=output.state_representation,
             memory_key=output.memory_key,
             memory_value=output.memory_value,
             memory_write_strength=output.memory_write_strength,
@@ -1071,7 +1201,7 @@ class AmodalCognitiveController(nn.Module):
             workspace=workspace,
             latest_event=event,
             workspace_usage=usage,
-            event_window=window,
+            event_window=persistent_window,
             source_trust=source_trust,
             growth_registers=growth_registers,
         )

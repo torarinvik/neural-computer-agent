@@ -1,0 +1,61 @@
+{
+  "schema": "neural-computer.brainworkshop-external-compute-artifact-cache-pressure.v1-summary",
+  "status": "promoted_external_compute_artifact_cache_pressure",
+  "seeds": [17, 18],
+  "files": [
+    {"family": "symbol_parity", "cue": 7},
+    {"family": "triplet_parity", "cue": 8},
+    {"family": "parity2", "cue": 10},
+    {"family": "switch_binary", "cue": 11}
+  ],
+  "active_cache_slots": 2,
+  "archive_contract": "episodic_binding_artifact_index_v1",
+  "artifact_contract": "external_register_compute_basis_artifact_v1_plus_opaque_decoder_state",
+  "route_query": "learned_event_tensor_key",
+  "victim_policy": "unprotected_reliability_recency_telemetry_v1",
+  "metrics_by_seed": {
+    "17": {
+      "direct_file_accuracy_means": [1.0, 1.0, 1.0, 1.0],
+      "minimum_reactivation_accuracy": 1.0,
+      "successful_reactivations": 7,
+      "successful_replacements": 7,
+      "source_retention": 1.0,
+      "unknown_key_lookup": false,
+      "unknown_key_changed_cache": false,
+      "shuffled_control_maximum": 0.46875,
+      "unique_verifier_bits": 425472,
+      "control_verifier_bits": 90112,
+      "unique_logical_lifetimes": 33632,
+      "optimizer_updates": 1024,
+      "replayed_examples": 0
+    },
+    "18": {
+      "direct_file_accuracy_means": [1.0, 1.0, 1.0, 1.0],
+      "minimum_reactivation_accuracy": 1.0,
+      "successful_reactivations": 7,
+      "successful_replacements": 7,
+      "source_retention": 1.0,
+      "unknown_key_lookup": false,
+      "unknown_key_changed_cache": false,
+      "shuffled_control_maximum": 0.5625,
+      "unique_verifier_bits": 425472,
+      "control_verifier_bits": 90112,
+      "unique_logical_lifetimes": 33632,
+      "optimizer_updates": 1024,
+      "replayed_examples": 0
+    }
+  },
+  "gates": {
+    "all_seed_17": true,
+    "all_seed_18": true,
+    "archive_reload_exact": true,
+    "archive_corruption_rejected": true,
+    "artifact_corruption_rejected": true,
+    "protected_source_retained": true,
+    "controller_frozen": true,
+    "event_frontend_frozen": true,
+    "immutable_artifacts": true,
+    "zero_replay": true
+  },
+  "claim_boundary": "Bounded outcome-only hot-cache lifecycle for external compute artifacts; not unrestricted memory growth, learned compression, learned eviction utility, arbitrary program induction, or general continual learning."
+}

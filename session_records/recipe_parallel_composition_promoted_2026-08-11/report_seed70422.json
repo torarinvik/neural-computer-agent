@@ -1,0 +1,28 @@
+{
+  "schema": "neural-computer.recipe-expressibility-audit.v1",
+  "source": "in_repository_run",
+  "seed": 70422,
+  "updates": 2500,
+  "batch_size": 64,
+  "threshold": 0.9,
+  "arms": {
+    "atomic": {
+      "base_unseen_length_2": [0.7373046875, 0.767578125, 0.841796875, 0.978515625, 0.9736328125],
+      "base_unseen_double_length_4": [0.5703125, 0.6328125, 0.671875, 0.93359375, 0.94921875],
+      "parallel_target": [0.0, 0.0, 0.0, 0.0, 0.0],
+      "stable_updates": {"base_unseen_length_2": 2000, "base_unseen_double_length_4": 2000, "parallel_target": null},
+      "wall_time_seconds": 81.86660912493244,
+      "unique_program_steps": 320000,
+      "replayed_examples": 0
+    },
+    "parallel": {
+      "base_unseen_length_2": [0.5263671875, 0.7900390625, 0.974609375, 0.9736328125, 0.978515625],
+      "base_unseen_double_length_4": [0.2822265625, 0.626953125, 0.947265625, 0.9326171875, 0.9521484375],
+      "parallel_target": [0.98046875, 0.9208984375, 0.962890625, 0.94140625, 0.94921875],
+      "stable_updates": {"base_unseen_length_2": 1500, "base_unseen_double_length_4": 1500, "parallel_target": 500},
+      "wall_time_seconds": 81.18409183400217,
+      "unique_program_steps": 320000,
+      "replayed_examples": 0
+    }
+  }
+}

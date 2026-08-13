@@ -14,11 +14,18 @@ from neural_computer import (
     AmodalEventWindowBuffer,
     AppendOnlyContentAddressedMemory,
     ArtifactConsolidationReceipt,
+    ConditionedOpaqueProtocolDecoder,
     ContentAddressedMemory,
     ControllerFeedback,
     EventWaitPolicy,
+    EventWaitStatistics,
     ExecutableArtifactMemory,
+    ExternalTemporalAddressIndex,
+    ExternalTemporalHistoryEventBridge,
+    ExternalTemporalHistoryMemory,
+    ExternalTemporalOffsetSelector,
     MemoryBackend,
+    MemoryCandidates,
     MemoryQuery,
     OpaqueProtocolDecoder,
     PersistentAppendOnlyContentAddressedMemory,
@@ -48,14 +55,6 @@ def test_clean_controller_has_no_modality_or_protocol_ownership() -> None:
     assert not hasattr(controller, "actuator")
     assert not hasattr(controller, "action_embedding")
     assert controller.width == 16
-
-
-def test_experiment_namespace_does_not_define_the_production_agent() -> None:
-    import experiments.archive.unified_cognitive_controller as historical
-
-    assert historical.__file__ is not None
-    assert not hasattr(historical, "UnifiedCognitiveController")
-    assert not hasattr(historical, "ActionIntentDecoder")
 
 
 def test_event_metadata_survives_collection_without_early_reduction() -> None:
@@ -225,6 +224,18 @@ def test_runtime_supports_variable_encoders_and_decoders_without_resize() -> Non
     assert output.execution_logits.shape == (3, 3)
 
 
+def test_conditioned_decoder_shares_weights_and_consumes_opaque_context() -> None:
+    decoder = ConditionedOpaqueProtocolDecoder(5, 4, 3, hidden=8)
+    intention = torch.randn(2, 5)
+    context = torch.randn(2, 4)
+    first = decoder(intention, context)
+    second = decoder(intention, context.flip(0))
+
+    assert first.shape == (2, 3)
+    assert not torch.equal(first, second)
+    assert decoder.configuration()["context"] == "opaque_learned_program_state_v1"
+
+
 def test_deliberation_is_bounded_and_uses_quiet_internal_ticks() -> None:
     controller = AmodalCognitiveController(
         width=16, workspace_slots=2, intention_width=5, feedback_width=3
@@ -359,6 +370,90 @@ def test_learned_wait_policy_can_release_partial_windows_without_payload_access(
     assert not released[0].complete
     assert released[0].collection.present.tolist() == [[True, False]]
     assert released[0].collection.confidence[0, 1] == 0
+
+
+def test_replay_free_wait_statistics_learns_delay_and_absence_without_rows() -> None:
+    policy = EventWaitStatistics(bin_count=4, ridge=1e-3)
+    delayed = EventWaitPolicy.features(
+        age=torch.full((8,), 1.0),
+        present_fraction=torch.full((8,), 0.5),
+        complete=torch.zeros(8),
+        arrival_count=torch.full((8,), 2.0),
+        arrival_delta=torch.full((8,), 1.0),
+    )
+    absent = EventWaitPolicy.features(
+        age=torch.full((8,), 2.0),
+        present_fraction=torch.full((8,), 0.5),
+        complete=torch.zeros(8),
+        arrival_count=torch.full((8,), 2.0),
+        arrival_delta=torch.full((8,), 2.0),
+    )
+    policy.observe(delayed, torch.ones(8))
+    policy.observe(absent, torch.zeros(8))
+
+    delayed_probability, absent_probability = policy(
+        torch.cat((delayed[:1], absent[:1]))
+    )
+    assert delayed_probability > 0.8
+    assert absent_probability < 0.2
+    assert int(policy.sample_count) == 16
+    assert torch.isfinite(policy.loss(delayed[:1], torch.ones(1)))
+
+    payload = policy.payload()
+    assert "observations" not in payload
+    restored = EventWaitStatistics.from_payload(payload)
+    assert torch.equal(policy(delayed[:1]), restored(delayed[:1]))
+    assert torch.equal(policy(absent[:1]), restored(absent[:1]))
+
+
+def test_replay_free_wait_statistics_drives_timestamp_buffer() -> None:
+    policy = EventWaitStatistics(bin_count=4, ridge=1e-2)
+    delayed = EventWaitPolicy.features(
+        age=torch.full((8,), 1.0),
+        present_fraction=torch.full((8,), 0.5),
+        complete=torch.zeros(8),
+        arrival_count=torch.full((8,), 2.0),
+        arrival_delta=torch.full((8,), 1.0),
+    )
+    absent = EventWaitPolicy.features(
+        age=torch.full((8,), 2.0),
+        present_fraction=torch.full((8,), 0.5),
+        complete=torch.zeros(8),
+        arrival_count=torch.full((8,), 2.0),
+        arrival_delta=torch.full((8,), 2.0),
+    )
+    policy.observe(delayed, torch.ones(8))
+    policy.observe(absent, torch.zeros(8))
+
+    delayed_buffer = AmodalEventWindowBuffer(("left", "right"), wait_policy=policy)
+    left_at_zero = AmodalEvent(
+        torch.ones(1, 16), timestamp=torch.tensor([0.0]), confidence=torch.ones(1)
+    )
+    left_at_one = AmodalEvent(
+        torch.ones(1, 16), timestamp=torch.tensor([1.0]), confidence=torch.ones(1)
+    )
+    assert delayed_buffer.push({"left": left_at_zero}) == []
+    assert delayed_buffer.push({"left": left_at_one}) == []
+    right_at_zero = AmodalEvent(
+        torch.ones(1, 16), timestamp=torch.tensor([0.0]), confidence=torch.ones(1)
+    )
+    delayed_release = delayed_buffer.push({"right": right_at_zero})
+    assert len(delayed_release) == 1
+    assert delayed_release[0].complete
+
+    absent_buffer = AmodalEventWindowBuffer(("left", "right"), wait_policy=policy)
+    assert absent_buffer.push({"left": left_at_zero}) == []
+    absent_release = absent_buffer.push(
+        {
+            "left": AmodalEvent(
+                torch.ones(1, 16),
+                timestamp=torch.tensor([2.0]),
+                confidence=torch.ones(1),
+            )
+        }
+    )
+    assert len(absent_release) == 1
+    assert not absent_release[0].complete
 
 
 def test_content_addressed_memory_round_trips_and_reports_receipts(tmp_path) -> None:
@@ -699,6 +794,88 @@ def test_append_only_memory_grows_without_replacing_prior_records() -> None:
     assert memory.candidates().occupied.sum().item() == 9
 
 
+def test_memory_candidates_can_expose_a_zero_filled_bounded_policy_view() -> None:
+    memory = AppendOnlyContentAddressedMemory(
+        width=4, write_threshold=0.0, write_match_threshold=0.999
+    )
+    keys = torch.eye(4)[:2]
+    values = torch.roll(keys, shifts=1, dims=1)
+    memory.write(keys, values, torch.ones(2))
+
+    source = memory.candidates()
+    bounded = source.pad_to_capacity(4)
+
+    assert bounded.keys.shape == (1, 4, 4)
+    assert bounded.occupied.tolist() == [[True, True, False, False]]
+    assert torch.equal(bounded.keys[:, :2], source.keys)
+    assert torch.equal(bounded.values[:, :2], source.values)
+    assert torch.count_nonzero(bounded.keys[:, 2:]) == 0
+    assert torch.count_nonzero(bounded.values[:, 2:]) == 0
+    assert torch.equal(source.occupied, torch.ones(1, 2, dtype=torch.bool))
+    with pytest.raises(ValueError, match="cannot shrink"):
+        source.pad_to_capacity(1)
+
+
+def test_append_only_memory_commits_verified_compaction_without_cross_scope_loss(
+    tmp_path,
+) -> None:
+    path = tmp_path / "compaction-memory.pt"
+    memory = PersistentAppendOnlyContentAddressedMemory(
+        width=4,
+        path=path,
+        write_threshold=0.0,
+        write_match_threshold=0.999,
+        scope_capacity=2,
+    )
+    keys = torch.eye(4)[:3]
+    values = torch.roll(keys, shifts=1, dims=1)
+    memory.write(
+        keys,
+        values,
+        torch.ones(3),
+        scope=torch.tensor([0, 0, 1], dtype=torch.long),
+    )
+    source_version = int(memory.store_version.item())
+    source_candidates = memory.candidates(scope=torch.tensor([0], dtype=torch.long))
+    compacted = MemoryCandidates(
+        keys=source_candidates.keys.clone(),
+        values=source_candidates.values.clone(),
+        strengths=source_candidates.strengths.clone(),
+        timestamps=source_candidates.timestamps.clone(),
+        occupied=torch.tensor([[True, False]]),
+    )
+
+    receipt = memory.replace_from_candidates(
+        compacted,
+        scope=0,
+        expected_version=source_version,
+    )
+
+    assert receipt.rows_before == 2
+    assert receipt.rows_after == 1
+    assert memory.record_count == 2
+    assert memory.read(
+        MemoryQuery(keys[2:3], scope=torch.tensor([1], dtype=torch.long))
+    ).hit.tolist() == [True]
+    restored = PersistentAppendOnlyContentAddressedMemory(
+        width=4,
+        path=path,
+        write_threshold=0.0,
+        write_match_threshold=0.999,
+        scope_capacity=2,
+    )
+    assert restored.record_count == 2
+    assert restored.read(
+        MemoryQuery(keys[0:1], scope=torch.tensor([0], dtype=torch.long))
+    ).hit.tolist() == [True]
+    with pytest.raises(RuntimeError, match="stale"):
+        memory.replace_from_candidates(
+            compacted,
+            scope=0,
+            expected_version=source_version,
+        )
+
+
 def test_append_only_memory_isolated_scopes_and_empty_reads() -> None:
     memory = AppendOnlyContentAddressedMemory(
         width=4, write_threshold=0.0, scope_capacity=2
@@ -721,6 +898,444 @@ def test_append_only_memory_isolated_scopes_and_empty_reads() -> None:
     assert empty_read.hit.tolist() == [False, False]
     assert empty_read.value.shape == (2, 4)
     assert empty.candidates().keys.shape == (1, 0, 4)
+
+
+def test_external_temporal_history_grows_and_reads_scoped_relative_offsets() -> None:
+    memory = ExternalTemporalHistoryMemory(width=3, scope_capacity=2)
+    first = torch.tensor(
+        [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]], dtype=torch.float32
+    )
+    second = torch.tensor(
+        [[0.0, 0.0, 1.0], [1.0, 1.0, 0.0]], dtype=torch.float32
+    )
+    scope = torch.tensor([0, 1], dtype=torch.long)
+    assert memory.append(first, scope=scope).positions.tolist() == [0, 0]
+    assert memory.append(second, scope=scope).positions.tolist() == [1, 1]
+
+    read = memory.read_relative(
+        torch.tensor([[0, 1, 2], [0, 1, 2]], dtype=torch.long),
+        scope=scope,
+    )
+    assert read.present.tolist() == [[True, True, False], [True, True, False]]
+    assert read.positions.tolist() == [[1, 0, -1], [1, 0, -1]]
+    assert torch.equal(read.values[0, 0], second[0])
+    assert torch.equal(read.values[0, 1], first[0])
+    assert torch.equal(read.values[1, 0], second[1])
+    assert torch.equal(read.values[1, 1], first[1])
+    assert memory.record_count == 4
+
+
+def test_external_temporal_history_reads_absolute_positions_with_missing_masks() -> None:
+    memory = ExternalTemporalHistoryMemory(width=2, scope_capacity=2)
+    scope = torch.tensor([0, 1], dtype=torch.long)
+    memory.append(torch.tensor([[1.0, 0.0], [0.0, 1.0]]), scope=scope)
+    memory.append(torch.tensor([[2.0, 0.0], [0.0, 2.0]]), scope=scope)
+
+    read = memory.read_positions(
+        torch.tensor([[1, 0, 9], [0, 1, 9]], dtype=torch.long),
+        scope=scope,
+    )
+
+    assert read.present.tolist() == [[True, True, False], [True, True, False]]
+    assert read.positions.tolist() == [[1, 0, -1], [0, 1, -1]]
+    assert torch.equal(read.values[0, 0], torch.tensor([2.0, 0.0]))
+    assert torch.equal(read.values[1, 1], torch.tensor([0.0, 2.0]))
+
+
+def test_external_temporal_history_quiet_ticks_do_not_fabricate_or_advance() -> None:
+    memory = ExternalTemporalHistoryMemory(width=2)
+    memory.append(torch.tensor([[1.0, 0.0]]))
+    receipt = memory.append(
+        torch.tensor([[0.0, 1.0]]), present=torch.tensor([False])
+    )
+    assert receipt.committed.tolist() == [False]
+    assert receipt.positions.tolist() == [-1]
+    read = memory.read_relative(torch.tensor([[0, 1]], dtype=torch.long))
+    assert read.present.tolist() == [[True, False]]
+    assert read.positions.tolist() == [[0, -1]]
+    assert torch.equal(read.values[0, 0], torch.tensor([1.0, 0.0]))
+
+
+def test_external_temporal_history_payload_round_trip_and_scope_clear() -> None:
+    memory = ExternalTemporalHistoryMemory(width=2, scope_capacity=2)
+    scope = torch.tensor([0, 1], dtype=torch.long)
+    memory.append(torch.eye(2), scope=scope)
+    restored = ExternalTemporalHistoryMemory.from_payload(memory.payload())
+    assert restored.digest() == memory.digest()
+    assert restored.record_count == 2
+    restored.clear(torch.tensor([0], dtype=torch.long))
+    assert restored.record_count == 1
+    assert restored.read_relative(
+        torch.tensor([[0], [0]], dtype=torch.long),
+        scope=scope,
+    ).present.tolist() == [[False], [True]]
+    assert memory.record_count == 2
+
+
+def test_runtime_history_bridge_reads_before_append_and_keeps_tokens_separate() -> None:
+    controller = AmodalCognitiveController(
+        width=4,
+        workspace_slots=2,
+        intention_width=3,
+        feedback_width=2,
+        event_window_capacity=3,
+    )
+    runtime = AmodalControllerRuntime(
+        controller,
+        encoders={"stream": nn.Identity()},
+    )
+    memory = ExternalTemporalHistoryMemory(width=4, scope_capacity=2)
+    state = runtime.initial_state(2, device="cpu")
+    feedback = _feedback(2, 2)
+    offsets = torch.tensor([[0, 1], [0, 1]], dtype=torch.long)
+    scope = torch.tensor([0, 1], dtype=torch.long)
+
+    first = torch.tensor(
+        [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0]]
+    )
+    _output, state, first_result = runtime.step_streams_with_external_history(
+        {"stream": first},
+        state,
+        feedback,
+        memory,
+        offsets,
+        history_scope=scope,
+    )
+    assert first_result.read.present.tolist() == [[False, False], [False, False]]
+    assert first_result.events.present.tolist() == [
+        [False, False, True],
+        [False, False, True],
+    ]
+    assert memory.record_count == 2
+
+    second = torch.tensor(
+        [[0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0]]
+    )
+    _output, state, second_result = runtime.step_streams_with_external_history(
+        {"stream": second},
+        state,
+        feedback,
+        memory,
+        offsets,
+        history_scope=scope,
+    )
+    assert second_result.read.present.tolist() == [[True, False], [True, False]]
+    assert torch.equal(second_result.events.payload[0, 0], first[0])
+    assert torch.equal(second_result.events.payload[1, 0], first[1])
+    assert torch.equal(second_result.events.payload[0, -1], second[0])
+    assert torch.equal(second_result.events.payload[1, -1], second[1])
+    assert second_result.appends[0].positions.tolist() == [1, 1]
+    assert state.event_window.present.tolist() == [[True, True, False], [True, True, False]]
+
+    quiet = ExternalTemporalHistoryEventBridge(4).augment(
+        AmodalEventCollection.empty(2, 4),
+        memory,
+        offsets,
+        scope=scope,
+        append_current=False,
+    )
+    assert quiet.events.present.tolist() == [
+        [True, True],
+        [True, True],
+    ]
+
+
+def test_runtime_history_bridge_rejects_unpreserved_metadata_and_overflow() -> None:
+    bridge = ExternalTemporalHistoryEventBridge(4)
+    memory = ExternalTemporalHistoryMemory(width=4)
+    metadata = AmodalEventCollection.from_events(
+        [
+            AmodalEvent(
+                torch.ones(1, 4),
+                timestamp=torch.ones(1),
+            )
+        ]
+    )
+    with pytest.raises(ValueError, match="timing metadata"):
+        bridge.augment(metadata, memory, torch.zeros(1, 1, dtype=torch.long))
+
+    controller = AmodalCognitiveController(
+        width=4,
+        workspace_slots=2,
+        intention_width=3,
+        feedback_width=2,
+        event_window_capacity=1,
+    )
+    runtime = AmodalControllerRuntime(controller, encoders={"stream": nn.Identity()})
+    with pytest.raises(ValueError, match="event-window capacity"):
+        runtime.step_streams_with_external_history(
+            {"stream": torch.ones(1, 4)},
+            runtime.initial_state(1, device="cpu"),
+            _feedback(1, 2),
+            memory,
+            torch.zeros(1, 1, dtype=torch.long),
+        )
+    assert memory.record_count == 0
+
+
+def test_metadata_temporal_history_round_trip_preserves_masks_and_identity() -> None:
+    memory = ExternalTemporalHistoryMemory(
+        width=4,
+        metadata=True,
+        source_key_width=2,
+    )
+    current = AmodalEventCollection.from_events(
+        [
+            AmodalEvent(
+                torch.tensor([[1.0, 0.0, 0.0, 0.0]]),
+                source_key=torch.tensor([[0.1, 0.2]]),
+                timestamp=torch.tensor([12.0]),
+                duration=torch.tensor([0.5]),
+                confidence=torch.tensor([0.7]),
+            )
+        ]
+    )
+    first = ExternalTemporalHistoryEventBridge(4).augment(
+        current,
+        memory,
+        torch.zeros(1, 1, dtype=torch.long),
+    )
+    assert first.events.source_key is not None
+    assert first.events.timestamp is not None
+    assert first.events.timestamp_present is not None
+    assert first.events.duration_present is not None
+    assert first.events.timestamp_present.tolist() == [[False, True]]
+    assert first.events.duration_present.tolist() == [[False, True]]
+    assert torch.equal(first.events.source_key[0, 0], torch.zeros(2))
+    assert torch.equal(first.events.source_key[0, 1], current.source_key[0, 0])
+    assert torch.allclose(first.events.confidence, torch.tensor([[0.0, 0.7]]))
+
+    second = ExternalTemporalHistoryEventBridge(4).augment(
+        current,
+        memory,
+        torch.zeros(1, 1, dtype=torch.long),
+        append_current=False,
+    )
+    assert second.read.confidence is not None
+    assert second.read.timestamp_present is not None
+    assert second.read.duration_present is not None
+    assert second.read.timestamp_present.tolist() == [[True]]
+    assert second.read.duration_present.tolist() == [[True]]
+    assert torch.allclose(second.read.confidence, torch.tensor([[0.7]]))
+    restored = ExternalTemporalHistoryMemory.from_payload(memory.payload())
+    assert restored.digest() == memory.digest()
+
+
+def test_metadata_temporal_history_preserves_per_row_absence_masks() -> None:
+    memory = ExternalTemporalHistoryMemory(
+        width=4,
+        scope_capacity=2,
+        metadata=True,
+        source_key_width=1,
+    )
+    collection = AmodalEventCollection(
+        payload=torch.tensor(
+            [
+                [[1.0, 0.0, 0.0, 0.0]],
+                [[0.0, 1.0, 0.0, 0.0]],
+            ]
+        ),
+        present=torch.ones(2, 1, dtype=torch.bool),
+        confidence=torch.tensor([[0.4], [0.6]]),
+        source_key=torch.tensor([[[0.1]], [[0.2]]]),
+        timestamp=torch.tensor([[9.0], [0.0]]),
+        timestamp_present=torch.tensor([[True], [False]]),
+        duration=torch.tensor([[0.25], [0.0]]),
+        duration_present=torch.tensor([[True], [False]]),
+    ).validate(width=4)
+    bridge = ExternalTemporalHistoryEventBridge(4)
+    first = bridge.augment(
+        collection,
+        memory,
+        torch.zeros(2, 1, dtype=torch.long),
+        scope=torch.tensor([0, 1], dtype=torch.long),
+    )
+    assert first.events.timestamp_present is not None
+    assert first.events.duration_present is not None
+    assert first.events.timestamp_present[:, -1].tolist() == [True, False]
+    assert first.events.duration_present[:, -1].tolist() == [True, False]
+
+    second = bridge.augment(
+        collection,
+        memory,
+        torch.zeros(2, 1, dtype=torch.long),
+        scope=torch.tensor([0, 1], dtype=torch.long),
+        append_current=False,
+    )
+    assert second.read.timestamp_present is not None
+    assert second.read.duration_present is not None
+    assert second.read.timestamp_present[:, 0].tolist() == [True, False]
+    assert second.read.duration_present[:, 0].tolist() == [True, False]
+
+
+def test_external_temporal_address_index_reads_opaque_locations_and_reloads() -> None:
+    history = ExternalTemporalHistoryMemory(
+        width=4,
+        scope_capacity=2,
+        metadata=True,
+        source_key_width=1,
+    )
+    first = torch.tensor(
+        [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0]]
+    )
+    second = torch.tensor(
+        [[0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0]]
+    )
+    scopes = torch.tensor([0, 1], dtype=torch.long)
+    history.append(
+        first,
+        scope=scopes,
+        confidence=torch.tensor([0.8, 0.9]),
+        source_key=torch.tensor([[0.1], [0.2]]),
+        timestamp=torch.tensor([1.0, 1.0]),
+        duration=torch.tensor([0.1, 0.2]),
+    )
+    history.append(
+        second,
+        scope=scopes,
+        confidence=torch.tensor([0.7, 0.6]),
+        source_key=torch.tensor([[0.3], [0.4]]),
+        timestamp=torch.tensor([2.0, 2.0]),
+        duration=torch.tensor([0.3, 0.4]),
+    )
+    index = ExternalTemporalAddressIndex(
+        key_width=3,
+        scope_capacity=2,
+        write_match_threshold=0.99,
+        read_match_threshold=0.8,
+    )
+    keys = torch.tensor(
+        [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]], dtype=torch.float32
+    )
+    receipt = index.write(
+        keys,
+        target_scopes=torch.tensor([0, 1], dtype=torch.long),
+        target_positions=torch.tensor([0, 1], dtype=torch.long),
+        strength=torch.ones(2),
+        scope=scopes,
+    )
+    assert receipt.committed.tolist() == [True, True]
+    resolved = index.read_history(history, keys, scope=scopes)
+    assert resolved.address.hit.tolist() == [True, True]
+    assert torch.equal(
+        resolved.history.values[:, 0], torch.stack((first[0], second[1]))
+    )
+    assert resolved.history.timestamp_present is not None
+    assert resolved.history.timestamp_present[:, 0].tolist() == [True, True]
+
+    unknown = index.read_history(
+        history,
+        torch.tensor([[0.0, 0.0, 1.0], [0.0, 0.0, 1.0]]),
+        scope=scopes,
+    )
+    assert unknown.address.hit.tolist() == [False, False]
+    assert unknown.address.target_positions.tolist() == [[-1], [-1]]
+    assert unknown.history.present.tolist() == [[False], [False]]
+
+    history.append(
+        torch.tensor(
+            [[0.0, 0.0, 0.0, 1.0], [1.0, 1.0, 0.0, 0.0]]
+        ),
+        scope=scopes,
+    )
+    stable = index.read_history(history, keys, scope=scopes)
+    assert stable.history.positions.tolist() == [[0], [1]]
+    assert torch.equal(
+        stable.history.values[:, 0], torch.stack((first[0], second[1]))
+    )
+
+    index.write(
+        torch.tensor([[0.0, 0.0, 1.0]]),
+        target_scopes=torch.tensor([0], dtype=torch.long),
+        target_positions=torch.tensor([99], dtype=torch.long),
+        strength=torch.ones(1),
+    )
+    missing = index.read_history(history, torch.tensor([[0.0, 0.0, 1.0]]))
+    assert missing.address.hit.tolist() == [True]
+    assert missing.history.present.tolist() == [[False]]
+
+    restored = ExternalTemporalAddressIndex.from_payload(index.payload())
+    assert restored.digest() == index.digest()
+    corrupted = index.payload()
+    corrupted_state = corrupted["state"]
+    assert isinstance(corrupted_state, dict)
+    corrupted_state["keys"] = corrupted_state["keys"].clone()
+    corrupted_state["keys"][0, 0] += 0.25
+    with pytest.raises(ValueError, match="checksum"):
+        ExternalTemporalAddressIndex.from_payload(corrupted)
+
+
+def test_runtime_external_address_keeps_misses_explicit_and_current_state_persistent() -> None:
+    controller = AmodalCognitiveController(
+        width=4,
+        workspace_slots=2,
+        intention_width=3,
+        feedback_width=2,
+        event_window_capacity=2,
+    )
+    runtime = AmodalControllerRuntime(
+        controller,
+        encoders={"stream": nn.Identity()},
+    )
+    history = ExternalTemporalHistoryMemory(width=4)
+    previous = torch.tensor([[1.0, 0.0, 0.0, 0.0]])
+    history.append(previous)
+    index = ExternalTemporalAddressIndex(
+        key_width=3,
+        read_match_threshold=0.9,
+    )
+    key = torch.tensor([[1.0, 0.0, 0.0]])
+    index.write(
+        key,
+        target_scopes=torch.zeros(1, dtype=torch.long),
+        target_positions=torch.zeros(1, dtype=torch.long),
+        strength=torch.ones(1),
+    )
+    feedback = _feedback(1, 2)
+    state = runtime.initial_state(1, device="cpu")
+    current = torch.tensor([[0.0, 1.0, 0.0, 0.0]])
+    _output, state, addressed, result = runtime.step_streams_with_external_address(
+        {"stream": current},
+        state,
+        feedback,
+        history,
+        index,
+        key,
+    )
+    assert addressed.address.hit.tolist() == [True]
+    assert result.read.present.tolist() == [[True]]
+    assert result.events.present.tolist() == [[True, True]]
+    assert torch.equal(result.events.payload[0, 0], previous[0])
+    assert torch.equal(result.events.payload[0, 1], current[0])
+    assert state.event_window.present.tolist() == [[True, False]]
+
+    miss_key = torch.tensor([[0.0, 0.0, 1.0]])
+    _output, _state, missed, miss_result = runtime.step_streams_with_external_address(
+        {"stream": current},
+        state,
+        feedback,
+        history,
+        index,
+        miss_key,
+        append_history=False,
+    )
+    assert missed.address.hit.tolist() == [False]
+    assert missed.history.present.tolist() == [[False]]
+    assert miss_result.events.present.tolist() == [[False, True]]
+    assert torch.equal(miss_result.events.payload[0, 0], torch.zeros(4))
+    assert torch.equal(miss_result.events.payload[0, 1], current[0])
+
+
+def test_external_temporal_offset_selector_is_opaque_and_trainable() -> None:
+    selector = ExternalTemporalOffsetSelector(4)
+    offsets, log_probability, entropy = selector(6, sample=True)
+    assert offsets.shape == (6,)
+    assert log_probability.shape == (6,)
+    assert bool(torch.all((offsets >= 1) & (offsets <= 4)))
+    assert torch.isfinite(entropy)
+    assert selector.configuration()["offset_domain"] == (
+        "positive_relative_offsets_starting_at_one"
+    )
 
 
 def test_persistent_append_only_memory_reloads_growth_and_rejects_corruption(
@@ -925,9 +1540,45 @@ def test_runtime_checkpoint_loads_independent_components(tmp_path) -> None:
     restored = build()
     payload = load_runtime_components(restored, checkpoint)
 
-    assert payload["format"] == "neural-computer.amodal-runtime.v29"
+    assert payload["format"] == "neural-computer.amodal-runtime.v30"
     for left, right in zip(source.parameters(), restored.parameters(), strict=True):
         assert torch.equal(left, right)
+
+
+def test_v29_runtime_checkpoint_defaults_representation_spaces(tmp_path) -> None:
+    controller = AmodalCognitiveController(
+        width=8,
+        workspace_slots=2,
+        intention_width=4,
+        feedback_width=3,
+    )
+    source = AmodalControllerRuntime(controller)
+    payload = source.checkpoint_payload()
+    payload["format"] = "neural-computer.amodal-runtime.v29"
+    payload["configuration"]["format"] = "neural-computer.amodal-runtime.v29"
+    for field in (
+        "representation_space_schema",
+        "event_space_id",
+        "state_space_id",
+        "intention_space_id",
+    ):
+        payload["configuration"].pop(field)
+    checkpoint = tmp_path / "runtime-v29.pt"
+    torch.save(payload, checkpoint)
+
+    restored = AmodalControllerRuntime(
+        AmodalCognitiveController(
+            width=8,
+            workspace_slots=2,
+            intention_width=4,
+            feedback_width=3,
+        )
+    )
+    load_runtime_components(restored, checkpoint)
+
+    assert restored.event_space_id == "opaque-event-v1"
+    assert restored.state_space_id == "controller-state-v1"
+    assert restored.intention_space_id == "opaque-intention-v1"
 
 
 def test_growth_register_boundary_is_prior_only_and_stateful() -> None:

@@ -25,6 +25,7 @@ from .addressing import (
 )
 from .episodic import EpisodicContextEncoder, EpisodicIntentAdapter
 from .interface import IntentEvent
+from .plasticity import ExternalFastWeightPlasticity, ExternalFastWeightState
 
 EXTERNAL_CAPABILITY_SCHEMA = "neural-computer.external-capability.v1"
 EXTERNAL_CAPABILITY_PIPELINE_SCHEMA = "neural-computer.external-capability-pipeline.v1"
@@ -67,6 +68,9 @@ EXTERNAL_CAPABILITY_PAGE_LOCAL_LEARNED_COMPUTE_SCREEN_SCHEMA = (
 EXTERNAL_CAPABILITY_SLOT_BINDING_SCHEMA = (
     "neural-computer.external-capability-slot-binding.v1"
 )
+EXTERNAL_CAPABILITY_FAST_WEIGHT_SCHEMA = (
+    "neural-computer.external-capability-fast-weight.v1"
+)
 
 
 @dataclass(frozen=True)
@@ -76,6 +80,16 @@ class ComputeReuseDecision:
     action: Literal["reuse", "grow"]
     compute_slot_index: int | None
     candidate_scores: tuple[tuple[int, float], ...]
+    reason: str
+
+
+@dataclass(frozen=True)
+class EfficientComputeReuseDecision:
+    """Admission decision that also accounts for stable sample cost."""
+
+    action: Literal["reuse", "grow"]
+    compute_slot_index: int | None
+    candidate_scores: tuple[tuple[int, float, int | None], ...]
     reason: str
 
 
@@ -144,6 +158,73 @@ def select_reusable_compute_slot(
             if scores
             else "no_compute_candidates"
         ),
+    )
+
+
+def select_reusable_compute_slot_by_efficiency(
+    candidate_outcomes: Mapping[int, Sequence[float]],
+    candidate_stable_bits: Mapping[int, int | None],
+    *,
+    fresh_stable_bits: int | None,
+    threshold: float,
+) -> EfficientComputeReuseDecision:
+    """Reuse only when fresh probes pass and stable cost is not worse than fresh.
+
+    Stable cost is measured only after a matched fresh control has itself
+    reached a stable threshold. If either side lacks a stable prefix, the
+    policy grows rather than making an efficiency claim from incomplete
+    evidence. Candidate identities remain opaque physical-slot indices.
+    """
+
+    if not 0.0 <= threshold <= 1.0:
+        raise ValueError("compute admission threshold must lie in [0, 1]")
+    if fresh_stable_bits is not None and fresh_stable_bits < 1:
+        raise ValueError("fresh stable bits must be positive when present")
+    if set(candidate_outcomes) != set(candidate_stable_bits):
+        raise ValueError("candidate outcomes and stable bits must have equal keys")
+    scores: list[tuple[int, float, int | None]] = []
+    for slot_index, outcomes in sorted(candidate_outcomes.items()):
+        if slot_index < 0:
+            raise ValueError("compute candidate indices must be nonnegative")
+        values = tuple(float(value) for value in outcomes)
+        if not values or not all(math.isfinite(value) for value in values):
+            raise ValueError("compute candidates need finite fresh outcomes")
+        stable_bits = candidate_stable_bits[slot_index]
+        if stable_bits is not None and stable_bits < 1:
+            raise ValueError("candidate stable bits must be positive when present")
+        scores.append((slot_index, min(values), stable_bits))
+    eligible = [
+        item
+        for item in scores
+        if item[1] >= threshold
+        and fresh_stable_bits is not None
+        and item[2] is not None
+        and item[2] <= fresh_stable_bits
+    ]
+    if eligible:
+        selected_index, selected_score, selected_bits = min(
+            eligible,
+            key=lambda item: (item[2], -item[1], item[0]),
+        )
+        return EfficientComputeReuseDecision(
+            action="reuse",
+            compute_slot_index=selected_index,
+            candidate_scores=tuple(scores),
+            reason=(
+                f"fresh_probe_and_efficiency_floor_passed:"
+                f"{selected_score:.6f}:{selected_bits}"
+            ),
+        )
+    reason = "no_candidate_passed_fresh_probe_and_efficiency_floor"
+    if fresh_stable_bits is None:
+        reason = "fresh_control_has_no_stable_prefix"
+    elif not scores:
+        reason = "no_compute_candidates"
+    return EfficientComputeReuseDecision(
+        action="grow",
+        compute_slot_index=None,
+        candidate_scores=tuple(scores),
+        reason=reason,
     )
 
 
@@ -1516,6 +1597,137 @@ class ExternalCapabilityProgram(nn.Module):
         )
         adapted = self.intent_adapter(intention, context.context)
         return adapted, ExternalCapabilityState(next_context)
+
+
+class ExternalFastWeightCapabilityProgram(nn.Module):
+    """Connect external fast weights to the opaque intention bus.
+
+    The frozen controller supplies learned event and intention tensors.  A
+    memory-side query encoder addresses one external fast-weight state, and a
+    successful opaque action is the only value eligible for writing.  The
+    retrieved action representation is transformed into an intention residual
+    by an independently replaceable adapter.  No task ID, correct action, or
+    raw modality format crosses this boundary.
+    """
+
+    def __init__(
+        self,
+        event_width: int,
+        action_width: int,
+        intention_width: int,
+        *,
+        key_width: int = 32,
+        query_hidden: int = 64,
+        fast_weight_hidden: int = 32,
+    ) -> None:
+        super().__init__()
+        if min(
+            event_width,
+            action_width,
+            intention_width,
+            key_width,
+            query_hidden,
+            fast_weight_hidden,
+        ) < 1:
+            raise ValueError("fast-weight capability dimensions must be positive")
+        self.event_width = int(event_width)
+        self.action_width = int(action_width)
+        self.intention_width = int(intention_width)
+        self.key_width = int(key_width)
+        self.query_hidden = int(query_hidden)
+        self.fast_weight_hidden = int(fast_weight_hidden)
+        self.query_encoder = nn.Sequential(
+            nn.Linear(event_width + intention_width, query_hidden),
+            nn.GELU(),
+            nn.Linear(query_hidden, key_width),
+        )
+        self.fast_weight = ExternalFastWeightPlasticity(
+            key_width,
+            action_width,
+            hidden=fast_weight_hidden,
+        )
+        self.intent_adapter = nn.Linear(action_width, intention_width)
+        nn.init.zeros_(self.intent_adapter.weight)
+        nn.init.zeros_(self.intent_adapter.bias)
+
+    def configuration(self) -> dict[str, int | str]:
+        return {
+            "schema": EXTERNAL_CAPABILITY_FAST_WEIGHT_SCHEMA,
+            "event_width": self.event_width,
+            "action_width": self.action_width,
+            "intention_width": self.intention_width,
+            "key_width": self.key_width,
+            "query_hidden": self.query_hidden,
+            "fast_weight_hidden": self.fast_weight_hidden,
+            "state": "external_fast_weight_per_capability_v1",
+            "query": "learned_event_plus_intention_opaque_query_v1",
+            "write": "positive_outcome_gated_opaque_action_v1",
+            "output": "retrieved_action_to_intention_residual_v1",
+        }
+
+    def initial_state(
+        self,
+        batch_size: int,
+        *,
+        device: torch.device | str,
+        dtype: torch.dtype = torch.float32,
+    ) -> ExternalFastWeightState:
+        return self.fast_weight.initial_state(
+            batch_size,
+            device=device,
+            dtype=dtype,
+        )
+
+    def _query(
+        self,
+        event: torch.Tensor,
+        intention: IntentEvent,
+    ) -> torch.Tensor:
+        intention.validate(width=self.intention_width)
+        if event.ndim != 2 or event.shape[1] != self.event_width:
+            raise ValueError("event has the wrong shape for fast-weight capability")
+        if event.shape[0] != intention.payload.shape[0]:
+            raise ValueError("event and intention batches do not match")
+        if not bool(torch.isfinite(event).all()):
+            raise ValueError("event must contain only finite values")
+        return self.query_encoder(torch.cat((event, intention.payload), dim=-1))
+
+    def step(
+        self,
+        *,
+        event: torch.Tensor,
+        action: torch.Tensor,
+        outcome: torch.Tensor,
+        intention: IntentEvent,
+        state: ExternalFastWeightState,
+        present: torch.Tensor | None = None,
+    ) -> tuple[IntentEvent, ExternalFastWeightState]:
+        """Read old external state, then commit only verified action evidence."""
+
+        if action.ndim != 2 or action.shape != (
+            event.shape[0],
+            self.action_width,
+        ):
+            raise ValueError("action has the wrong shape for fast-weight capability")
+        if outcome.ndim != 1 or outcome.shape[0] != event.shape[0]:
+            raise ValueError("outcome has the wrong shape for fast-weight capability")
+        query = self._query(event, intention)
+        memory_value = self.fast_weight.read(state, query)
+        residual = self.intent_adapter(memory_value)
+        adapted = IntentEvent(
+            payload=intention.payload + residual,
+            timestamp=intention.timestamp,
+            confidence=intention.confidence,
+            target_key=intention.target_key,
+        ).validate(width=self.intention_width)
+        next_state = self.fast_weight.update(
+            state,
+            query,
+            action,
+            outcome,
+            present=present,
+        )
+        return adapted, next_state
 
 
 class ExternalCapabilitySharedResidualBank(nn.Module):

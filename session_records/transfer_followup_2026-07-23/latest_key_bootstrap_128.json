@@ -1,6 +1,0 @@
-{
-  "schema": "latest-key-bootstrap-v1",
-  "steps": 1000,
-  "train_accuracy": 0.9765625,
-  "test_accuracy": 0.8671875
-}

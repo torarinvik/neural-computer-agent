@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import os
 import tempfile
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
@@ -15,6 +15,11 @@ import torch
 from torch import nn
 
 from .interface import MEMORY_SCHEMA
+from .representation import (
+    DEFAULT_MEMORY_KEY_SPACE_ID,
+    DEFAULT_MEMORY_VALUE_SPACE_ID,
+    validate_representation_space_id,
+)
 from .retention import CapabilityRetentionLedger
 
 MEMORY_BACKEND_FORMAT = "neural-computer.memory-backend.v1"
@@ -22,6 +27,8 @@ APPEND_ONLY_MEMORY_BACKEND_FORMAT = "neural-computer.append-only-memory-backend.
 LEGACY_MEMORY_SNAPSHOT_FORMAT = "neural-computer.memory-snapshot.v1"
 MEMORY_SNAPSHOT_FORMAT = "neural-computer.memory-snapshot.v2"
 APPEND_ONLY_MEMORY_SNAPSHOT_FORMAT = "neural-computer.append-only-memory-snapshot.v1"
+MEMORY_MIGRATION_SCHEMA = "neural-computer.memory-representation-migration.v1"
+MEMORY_COMPACTION_SCHEMA = "neural-computer.memory-compaction-receipt.v1"
 # Writes reject collisions more strictly than reads reject near-misses. Keeping
 # these contracts separate prevents a noisy query from hallucinating the
 # nearest occupied row while preserving exact content-addressed writes.
@@ -107,6 +114,26 @@ class MemoryWriteReceipt:
 
 
 @dataclass(frozen=True)
+class MemoryCompactionReceipt:
+    """Auditable copy-on-write replacement of one append-only scope."""
+
+    scope: int
+    rows_before: int
+    rows_after: int
+    version: int
+    schema: str = MEMORY_COMPACTION_SCHEMA
+
+    def validate(self) -> MemoryCompactionReceipt:
+        if self.schema != MEMORY_COMPACTION_SCHEMA:
+            raise ValueError("unsupported memory compaction receipt schema")
+        if self.scope < 0 or min(self.rows_before, self.rows_after) < 0:
+            raise ValueError("memory compaction row counts are invalid")
+        if self.version < 0:
+            raise ValueError("memory compaction version cannot be negative")
+        return self
+
+
+@dataclass(frozen=True)
 class MemoryCandidates:
     """Opaque physical-row candidates exposed to replaceable memory policies."""
 
@@ -137,6 +164,122 @@ class MemoryCandidates:
                 raise ValueError("memory candidates must contain finite values")
         if bool(torch.any(self.strengths < 0) or torch.any(self.strengths > 1)):
             raise ValueError("memory candidate strengths must lie in [0, 1]")
+        return self
+
+    def pad_to_capacity(self, capacity: int) -> MemoryCandidates:
+        """Return a fixed-capacity view without changing the source snapshot.
+
+        Variable-capacity stores can expose their current rows to a bounded
+        memory-side policy without leaking storage-specific resizing into the
+        policy ABI.  Padding is always unoccupied and zero-filled; callers
+        must still verify and commit any resulting rewrite through the owning
+        memory backend.
+        """
+
+        current_capacity = self.keys.shape[1]
+        if (
+            not isinstance(capacity, int)
+            or isinstance(capacity, bool)
+            or capacity < current_capacity
+        ):
+            raise ValueError("candidate view capacity cannot shrink")
+        self.validate(
+            width=self.keys.shape[-1],
+            capacity=current_capacity,
+            batch=self.keys.shape[0],
+        )
+        if capacity == current_capacity:
+            return self
+        padding = capacity - current_capacity
+        keys = torch.cat(
+            [self.keys, self.keys.new_zeros((self.keys.shape[0], padding, self.keys.shape[2]))],
+            dim=1,
+        )
+        values = torch.cat(
+            [self.values, self.values.new_zeros((self.values.shape[0], padding, self.values.shape[2]))],
+            dim=1,
+        )
+        strengths = torch.cat(
+            [self.strengths, self.strengths.new_zeros((self.strengths.shape[0], padding))],
+            dim=1,
+        )
+        timestamps = torch.cat(
+            [self.timestamps, self.timestamps.new_zeros((self.timestamps.shape[0], padding))],
+            dim=1,
+        )
+        occupied = torch.cat(
+            [
+                self.occupied,
+                torch.zeros(
+                    self.occupied.shape[0],
+                    padding,
+                    dtype=torch.bool,
+                    device=self.occupied.device,
+                ),
+            ],
+            dim=1,
+        )
+        return MemoryCandidates(
+            keys=keys,
+            values=values,
+            strengths=strengths,
+            timestamps=timestamps,
+            occupied=occupied,
+            schema=self.schema,
+        ).validate(
+            width=self.keys.shape[-1],
+            capacity=capacity,
+            batch=self.keys.shape[0],
+        )
+
+
+@dataclass(frozen=True)
+class MemoryMigrationExample:
+    """One paired query across source and replacement memory spaces."""
+
+    source_query: MemoryQuery
+    target_query: MemoryQuery
+
+
+@dataclass(frozen=True)
+class MemoryMigrationReceipt:
+    """Verifier-gated copy-on-write memory representation migration."""
+
+    accepted: bool
+    source_key_space_id: str
+    target_key_space_id: str
+    source_value_space_id: str
+    target_value_space_id: str
+    address_count: int
+    protected_count: int
+    query_count: int
+    max_value_difference: float
+    source_digest: str
+    target_digest: str
+    reason: str
+    schema: str = MEMORY_MIGRATION_SCHEMA
+
+    def validate(self) -> MemoryMigrationReceipt:
+        if self.schema != MEMORY_MIGRATION_SCHEMA:
+            raise ValueError("unsupported memory migration schema")
+        if min(self.address_count, self.protected_count, self.query_count) < 1:
+            raise ValueError("memory migration evidence counts are invalid")
+        if self.max_value_difference < 0.0 or (
+            self.accepted
+            and not torch.isfinite(torch.tensor(self.max_value_difference))
+        ):
+            raise ValueError("memory migration value difference is invalid")
+        for name, value in (
+            ("source_key_space_id", self.source_key_space_id),
+            ("target_key_space_id", self.target_key_space_id),
+            ("source_value_space_id", self.source_value_space_id),
+            ("target_value_space_id", self.target_value_space_id),
+            ("source_digest", self.source_digest),
+            ("target_digest", self.target_digest),
+            ("reason", self.reason),
+        ):
+            if not isinstance(value, str) or not value:
+                raise ValueError(f"memory migration {name} is missing")
         return self
 
 
@@ -218,6 +361,8 @@ class ContentAddressedMemory(MemoryBackend):
         write_match_threshold: float = 0.95,
         scope_capacity: int = 1,
         retention_ledger: CapabilityRetentionLedger | None = None,
+        key_space_id: str = DEFAULT_MEMORY_KEY_SPACE_ID,
+        value_space_id: str = DEFAULT_MEMORY_VALUE_SPACE_ID,
     ) -> None:
         super().__init__(width)
         if not isinstance(scope_capacity, int) or min(width, capacity, scope_capacity) < 1:
@@ -235,7 +380,15 @@ class ContentAddressedMemory(MemoryBackend):
         self.scope_capacity = scope_capacity
         if retention_ledger is not None and retention_ledger.width != width:
             raise ValueError("retention ledger width must match memory")
+        key_space_id = validate_representation_space_id(
+            key_space_id, name="memory key_space_id"
+        )
+        value_space_id = validate_representation_space_id(
+            value_space_id, name="memory value_space_id"
+        )
         self.retention = retention_ledger or CapabilityRetentionLedger(width)
+        self.key_space_id = key_space_id
+        self.value_space_id = value_space_id
         self._transaction_depth = 0
         self._pending_writes: dict[
             tuple[int, int], tuple[torch.Tensor, torch.Tensor, torch.Tensor]
@@ -457,6 +610,168 @@ class ContentAddressedMemory(MemoryBackend):
             timestamps=torch.stack(timestamps),
             occupied=torch.stack(occupied),
         ).validate(width=self.width, capacity=self.capacity, batch=batch)
+
+    def migrate_representation_verified(
+        self,
+        candidate: ContentAddressedMemory,
+        address_pairs: Sequence[tuple[torch.Tensor, torch.Tensor]],
+        query_pairs: Sequence[MemoryMigrationExample],
+        *,
+        prediction_tolerance: float = 1e-6,
+        value_alignment: Callable[[torch.Tensor], torch.Tensor] | None = None,
+        retention_probe: Callable[[ContentAddressedMemory], bool] | None = None,
+    ) -> MemoryMigrationReceipt:
+        """Approve a copy-on-write memory replacement across key/value spaces.
+
+        ``address_pairs`` are opaque source/target key correspondences, not
+        semantic labels. Every occupied source row must be paired exactly once
+        and every protected source row must already be protected at its target
+        key. ``query_pairs`` verify retrieval behavior on held-out queries. A
+        caller may supply a learned value-space alignment, but it is evaluated
+        as an external candidate and never changes either memory during this
+        probe.
+        """
+
+        if not isinstance(candidate, ContentAddressedMemory):
+            raise TypeError("memory migration candidate is invalid")
+        if prediction_tolerance < 0.0 or not torch.isfinite(
+            torch.tensor(prediction_tolerance)
+        ):
+            raise ValueError("memory migration tolerance is invalid")
+        if not address_pairs or not query_pairs:
+            raise ValueError("memory migration needs address and query evidence")
+        if (
+            self.width != candidate.width
+            or self.capacity != candidate.capacity
+            or self.scope_capacity != candidate.scope_capacity
+            or self.write_threshold != candidate.write_threshold
+            or self.query_temperature != candidate.query_temperature
+            or self.write_match_threshold != candidate.write_match_threshold
+        ):
+            raise ValueError("memory migration structural configuration differs")
+        if (
+            self.key_space_id == candidate.key_space_id
+            and self.value_space_id == candidate.value_space_id
+        ):
+            raise ValueError("memory migration does not replace a representation space")
+        source_candidates = self.candidates()
+        target_candidates = candidate.candidates()
+        source_occupied = source_candidates.occupied[0]
+        target_occupied = target_candidates.occupied[0]
+        if int(source_occupied.sum()) != len(address_pairs):
+            raise ValueError("memory migration does not map every source address")
+        if int(target_occupied.sum()) != len(address_pairs):
+            raise ValueError("memory migration does not map every target address")
+
+        def normalized_digest(key: torch.Tensor) -> str:
+            normalized = torch.nn.functional.normalize(
+                key.reshape(1, -1).to(dtype=torch.float32), dim=-1
+            )[0]
+            return hashlib.sha256(normalized.cpu().contiguous().numpy().tobytes()).hexdigest()
+
+        source_keys: set[str] = set()
+        target_keys: set[str] = set()
+        protected_count = 0
+        for source_key, target_key in address_pairs:
+            if source_key.ndim != 1 or target_key.ndim != 1:
+                raise ValueError("memory migration address keys must be one-dimensional")
+            if source_key.shape[0] != self.width or target_key.shape[0] != self.width:
+                raise ValueError("memory migration address keys have the wrong width")
+            source_digest = normalized_digest(source_key)
+            target_digest = normalized_digest(target_key)
+            if source_digest in source_keys or target_digest in target_keys:
+                raise ValueError("memory migration address mapping is not one-to-one")
+            source_keys.add(source_digest)
+            target_keys.add(target_digest)
+
+            source_scores = torch.nn.functional.normalize(
+                source_candidates.keys[0], dim=-1
+            ) @ torch.nn.functional.normalize(source_key.reshape(1, -1), dim=-1)[0]
+            target_scores = torch.nn.functional.normalize(
+                target_candidates.keys[0], dim=-1
+            ) @ torch.nn.functional.normalize(target_key.reshape(1, -1), dim=-1)[0]
+            source_index = int(source_scores.argmax())
+            target_index = int(target_scores.argmax())
+            if (
+                not bool(source_occupied[source_index])
+                or float(source_scores[source_index]) < self.write_match_threshold
+                or not bool(target_occupied[target_index])
+                or float(target_scores[target_index]) < candidate.write_match_threshold
+            ):
+                raise ValueError("memory migration address pair is not stored")
+            if self.retention.is_protected(source_key):
+                protected_count += 1
+                if not candidate.retention.is_protected(target_key):
+                    raise ValueError("protected memory evidence was not transferred")
+
+        if protected_count < 1:
+            raise ValueError("memory migration requires protected retention evidence")
+        max_difference = 0.0
+        for pair in query_pairs:
+            source_query = pair.source_query.validate(width=self.width)
+            target_query = pair.target_query.validate(width=self.width)
+            with torch.no_grad():
+                source_read = self.read(source_query)
+                target_read = candidate.read(target_query)
+                aligned_target = (
+                    target_read.value
+                    if value_alignment is None
+                    else value_alignment(target_read.value)
+                )
+            if aligned_target.shape != source_read.value.shape:
+                raise ValueError("memory value alignment returned the wrong shape")
+            if not bool(torch.equal(source_read.hit, target_read.hit)):
+                return MemoryMigrationReceipt(
+                    accepted=False,
+                    source_key_space_id=self.key_space_id,
+                    target_key_space_id=candidate.key_space_id,
+                    source_value_space_id=self.value_space_id,
+                    target_value_space_id=candidate.value_space_id,
+                    address_count=len(address_pairs),
+                    protected_count=protected_count,
+                    query_count=len(query_pairs),
+                    max_value_difference=float("inf"),
+                    source_digest=self._migration_digest(),
+                    target_digest=candidate._migration_digest(),
+                    reason="held-out memory hit behavior changed",
+                ).validate()
+            max_difference = max(
+                max_difference,
+                float((source_read.value - aligned_target).square().mean()),
+            )
+        if max_difference > prediction_tolerance:
+            accepted = False
+            reason = "held-out memory values changed"
+        else:
+            if retention_probe is not None and not callable(retention_probe):
+                raise TypeError("memory migration retention probe is invalid")
+            accepted = retention_probe is None or bool(retention_probe(candidate))
+            reason = (
+                "candidate passed address, retention, and held-out query checks"
+                if accepted
+                else "candidate retention probe failed"
+            )
+        return MemoryMigrationReceipt(
+            accepted=accepted,
+            source_key_space_id=self.key_space_id,
+            target_key_space_id=candidate.key_space_id,
+            source_value_space_id=self.value_space_id,
+            target_value_space_id=candidate.value_space_id,
+            address_count=len(address_pairs),
+            protected_count=protected_count,
+            query_count=len(query_pairs),
+            max_value_difference=max_difference,
+            source_digest=self._migration_digest(),
+            target_digest=candidate._migration_digest(),
+            reason=reason,
+        ).validate()
+
+    def _migration_digest(self) -> str:
+        digest = hashlib.sha256()
+        digest.update(repr(self.configuration()).encode("utf-8"))
+        digest.update(self._state_checksum(self.state_dict()).encode("utf-8"))
+        digest.update(repr(self.retention.payload()).encode("utf-8"))
+        return digest.hexdigest()
 
     def observe_retention(
         self, key: torch.Tensor, outcome: float | torch.Tensor
@@ -730,6 +1045,17 @@ class ContentAddressedMemory(MemoryBackend):
                 read_legacy_scope_configuration,
             )
         )
+        # v1/v2 snapshots predate explicit key/value representation spaces.
+        # Accept their historical configuration while assigning the runtime
+        # defaults supplied by this constructor.
+        accepted_configurations = accepted_configurations + tuple(
+            {
+                key: value
+                for key, value in configuration.items()
+                if key not in {"key_space_id", "value_space_id"}
+            }
+            for configuration in accepted_configurations
+        )
         if snapshot_configuration not in accepted_configurations:
             raise ValueError("memory snapshot configuration does not match store")
         state = payload.get("state_dict")
@@ -748,6 +1074,8 @@ class ContentAddressedMemory(MemoryBackend):
             "format": self.format,
             "schema": self.schema,
             "width": self.width,
+            "key_space_id": self.key_space_id,
+            "value_space_id": self.value_space_id,
             "capacity": self.capacity,
             "write_threshold": self.write_threshold,
             "query_temperature": self.query_temperature,
@@ -1125,6 +1453,97 @@ class AppendOnlyContentAddressedMemory(MemoryBackend):
             occupied=torch.stack(occupied_rows),
         ).validate(width=self.width, capacity=capacity, batch=batch)
 
+    @torch.no_grad()
+    def replace_from_candidates(
+        self,
+        candidates: MemoryCandidates,
+        *,
+        scope: int | torch.Tensor | None = None,
+        expected_version: int | None = None,
+    ) -> MemoryCompactionReceipt:
+        """Commit a caller-verified compacted snapshot for one scope.
+
+        The memory does not decide whether a rewrite is behavior-preserving.
+        A replaceable policy and an independent verifier must validate the
+        candidate first. ``expected_version`` then prevents a stale verifier
+        from overwriting a newer append-only state. Rows in other scopes are
+        copied byte-for-byte and remain outside the compaction candidate.
+        """
+
+        if not isinstance(candidates, MemoryCandidates):
+            raise TypeError("memory compaction candidates are invalid")
+        candidates.validate(
+            width=self.width,
+            capacity=candidates.keys.shape[1],
+            batch=1,
+        )
+        if scope is None:
+            scope_id = 0
+        elif isinstance(scope, torch.Tensor):
+            if scope.numel() != 1 or scope.dtype != torch.long:
+                raise ValueError("memory compaction scope must be one int64 value")
+            scope_id = int(scope.reshape(()).item())
+        elif isinstance(scope, int) and not isinstance(scope, bool):
+            scope_id = int(scope)
+        else:
+            raise TypeError("memory compaction scope must be an int or int64 tensor")
+        if not 0 <= scope_id < self.scope_capacity:
+            raise ValueError("memory compaction scope is outside the configured range")
+        if expected_version is not None:
+            if not isinstance(expected_version, int) or isinstance(expected_version, bool):
+                raise TypeError("expected memory version must be an integer")
+            if expected_version != int(self.store_version.item()):
+                raise RuntimeError("memory compaction candidate is stale")
+
+        source_indices = self._record_indices(scope_id)
+        candidate_indices = torch.nonzero(
+            candidates.occupied[0], as_tuple=False
+        ).reshape(-1)
+        other_indices = torch.nonzero(
+            self.occupied & (self.scopes != scope_id), as_tuple=False
+        ).reshape(-1)
+        candidate_keys = candidates.keys[0, candidate_indices].to(self.keys)
+        candidate_values = candidates.values[0, candidate_indices].to(self.values)
+        candidate_strengths = candidates.strengths[0, candidate_indices].to(
+            self.strengths
+        )
+        candidate_timestamps = candidates.timestamps[0, candidate_indices].to(
+            self.timestamps
+        )
+        candidate_scopes = torch.full(
+            (candidate_indices.numel(),),
+            scope_id,
+            dtype=torch.long,
+            device=self.scopes.device,
+        )
+        self._buffers["keys"] = torch.cat(
+            [self.keys[other_indices].detach().clone(), candidate_keys.detach()]
+        )
+        self._buffers["values"] = torch.cat(
+            [self.values[other_indices].detach().clone(), candidate_values.detach()]
+        )
+        self._buffers["strengths"] = torch.cat(
+            [self.strengths[other_indices].detach().clone(), candidate_strengths.detach()]
+        )
+        self._buffers["timestamps"] = torch.cat(
+            [self.timestamps[other_indices].detach().clone(), candidate_timestamps.detach()]
+        )
+        self._buffers["scopes"] = torch.cat(
+            [self.scopes[other_indices].detach().clone(), candidate_scopes]
+        )
+        self._buffers["occupied"] = torch.ones(
+            self.keys.shape[0], dtype=torch.bool, device=self.keys.device
+        )
+        self._pending_writes.clear()
+        self.store_version.add_(1)
+        self.validate_state()
+        return MemoryCompactionReceipt(
+            scope=scope_id,
+            rows_before=int(source_indices.numel()),
+            rows_after=int(candidate_indices.numel()),
+            version=int(self.store_version.item()),
+        ).validate()
+
     def _append_record(
         self,
         key: torch.Tensor,
@@ -1390,6 +1809,31 @@ class PersistentAppendOnlyContentAddressedMemory(AppendOnlyContentAddressedMemor
                 self.load_state_dict(previous)
                 self._pending_writes = previous_pending
                 raise
+        return receipt
+
+    @torch.no_grad()
+    def replace_from_candidates(
+        self,
+        candidates: MemoryCandidates,
+        *,
+        scope: int | torch.Tensor | None = None,
+        expected_version: int | None = None,
+    ) -> MemoryCompactionReceipt:
+        previous = {
+            name: value.detach().clone() for name, value in self.state_dict().items()
+        }
+        previous_pending = dict(self._pending_writes)
+        receipt = super().replace_from_candidates(
+            candidates,
+            scope=scope,
+            expected_version=expected_version,
+        )
+        try:
+            self.snapshot(self.path)
+        except Exception:
+            self.load_state_dict(previous)
+            self._pending_writes = previous_pending
+            raise
         return receipt
 
     @torch.no_grad()

@@ -1,0 +1,28 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment_id": "control-flow-runtime-acquired-program-2026-08-12",
+  "status": "promoted_bounded_outcome_only_program_acquisition_and_canonical_execution",
+  "source": "in_repository_run",
+  "seeds": [17, 18, 19],
+  "verifier_arms": 6,
+  "unique_verifier_bits_per_arm": [736, 736, 800, 800, 1608, 1608],
+  "unique_logical_lifetimes_per_arm": [148, 148, 156, 156, 257, 257],
+  "optimizer_updates_per_arm": 0,
+  "replayed_examples_per_arm": 0,
+  "stable_bits_to_threshold": null,
+  "latency_seconds_per_arm": [0.191, 0.136, 0.141, 0.149, 0.178, 0.180],
+  "controls": {
+    "heldout_program_mastery": true,
+    "canonical_route_and_execution_mastery": true,
+    "matched_fresh_control": true,
+    "reward_shuffled_null": true,
+    "forward_and_reversed_file_order": true,
+    "protected_external_files": true,
+    "frozen_controller": true,
+    "exact_evidence_reload": true,
+    "checksum_corruption_rejected": true,
+    "zero_replay": true,
+    "zero_controller_optimizer_updates": true
+  },
+  "claim_boundary": "Promoted bounded outcome-only structural acquisition and canonical external-file execution; not arbitrary program induction, unrestricted memory growth, or general continual learning."
+}

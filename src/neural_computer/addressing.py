@@ -9,12 +9,31 @@ to the frozen controller.
 
 from __future__ import annotations
 
+import hashlib
+import json
+import math
 from collections.abc import Iterable
 from dataclasses import dataclass
 
 import torch
 from torch import nn
 from torch.nn import functional as F
+
+from .representation import (
+    DEFAULT_ROUTE_QUERY_SPACE_ID,
+    validate_representation_space_id,
+)
+
+
+def _payload_digest(payload: dict[str, object]) -> str:
+    """Hash a JSON-compatible opaque-memory payload without its digest."""
+
+    encoded = json.dumps(
+        payload,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
 
 
 @dataclass(frozen=True)
@@ -28,6 +47,7 @@ class PersistentRouteEvidenceStatus:
     protected: tuple[bool, ...]
     reversal_streak: tuple[int, ...]
     reversal_count: tuple[int, ...]
+    recovery_streak: tuple[int, ...]
     preferred_slot: int | None
     last_slot: int | None
     last_outcome: float | None
@@ -76,6 +96,7 @@ class PersistentOpaqueRouteEvidence:
         self._protected: list[bool] = []
         self._reversal_streak: list[int] = []
         self._reversal_count: list[int] = []
+        self._recovery_streak: list[int] = []
         self._preferred_slot: int | None = None
         self._last_slot: int | None = None
         self._last_outcome: float | None = None
@@ -94,6 +115,7 @@ class PersistentOpaqueRouteEvidence:
         self._protected.append(False)
         self._reversal_streak.append(0)
         self._reversal_count.append(0)
+        self._recovery_streak.append(0)
         self._version += 1
         return len(self._attempts) - 1
 
@@ -107,6 +129,7 @@ class PersistentOpaqueRouteEvidence:
         self._protected[slot] = False
         self._reversal_streak[slot] = 0
         self._reversal_count[slot] = 0
+        self._recovery_streak[slot] = 0
         if self._preferred_slot == slot:
             self._preferred_slot = None
         if self._last_slot == slot:
@@ -133,6 +156,10 @@ class PersistentOpaqueRouteEvidence:
         was_protected = self._protected[slot]
         self._attempts[slot] += 1
         self._successes[slot] += value
+        if value >= self.mastery_threshold:
+            self._recovery_streak[slot] += 1
+        else:
+            self._recovery_streak[slot] = 0
         reversed_slot = False
         if was_protected:
             if value <= self.reversal_threshold:
@@ -147,9 +174,21 @@ class PersistentOpaqueRouteEvidence:
                 self._attempts[slot] = 0
                 self._successes[slot] = 0.0
                 self._stable_prefix_minimum[slot] = 1.0
+                self._recovery_streak[slot] = 0
                 if self._preferred_slot == slot:
                     self._preferred_slot = None
-        if not reversed_slot and not self._protected[slot] and self._attempts[slot] >= self.min_mastery_observations:
+        if (
+            not reversed_slot
+            and not self._protected[slot]
+            and self._recovery_streak[slot] >= self.min_mastery_observations
+        ):
+            self._stable_prefix_minimum[slot] = 1.0
+            self._protected[slot] = True
+        elif (
+            not reversed_slot
+            and not self._protected[slot]
+            and self._attempts[slot] >= self.min_mastery_observations
+        ):
             prefix_mean = self._successes[slot] / self._attempts[slot]
             self._stable_prefix_minimum[slot] = min(
                 self._stable_prefix_minimum[slot], prefix_mean
@@ -197,6 +236,7 @@ class PersistentOpaqueRouteEvidence:
             protected=tuple(self._protected),
             reversal_streak=tuple(self._reversal_streak),
             reversal_count=tuple(self._reversal_count),
+            recovery_streak=tuple(self._recovery_streak),
             preferred_slot=self._preferred_slot,
             last_slot=self._last_slot,
             last_outcome=self._last_outcome,
@@ -207,7 +247,7 @@ class PersistentOpaqueRouteEvidence:
         """Serialize the opaque evidence state without semantic metadata."""
 
         status = self.status()
-        return {
+        payload: dict[str, object] = {
             "schema": self.schema,
             "prior_strength": self.prior_strength,
             "mastery_threshold": self.mastery_threshold,
@@ -220,27 +260,44 @@ class PersistentOpaqueRouteEvidence:
             "protected": list(status.protected),
             "reversal_streak": list(status.reversal_streak),
             "reversal_count": list(status.reversal_count),
+            "recovery_streak": list(status.recovery_streak),
             "preferred_slot": status.preferred_slot,
             "last_slot": status.last_slot,
             "last_outcome": status.last_outcome,
             "version": status.version,
         }
+        payload["sha256"] = _payload_digest(payload)
+        return payload
+
+    def digest(self) -> str:
+        """Return the checksum of the external evidence state."""
+
+        return str(self.payload()["sha256"])
 
     @classmethod
     def from_payload(cls, payload: dict[str, object]) -> PersistentOpaqueRouteEvidence:
         """Restore a validated external route-evidence snapshot."""
 
-        if payload.get("schema") != cls.schema:
+        unsigned = dict(payload)
+        expected_digest = unsigned.pop("sha256", None)
+        if expected_digest is not None and (
+            not isinstance(expected_digest, str)
+            or expected_digest != _payload_digest(unsigned)
+        ):
+            raise ValueError("route-evidence checksum mismatch")
+        if unsigned.get("schema") != cls.schema:
             raise ValueError("route-evidence schema is incompatible")
         ledger = cls(
-            prior_strength=float(payload["prior_strength"]),
-            mastery_threshold=float(payload["mastery_threshold"]),
-            min_mastery_observations=int(payload.get("min_mastery_observations", 8)),
-            reversal_threshold=float(payload.get("reversal_threshold", 0.5)),
-            reversal_patience=int(payload.get("reversal_patience", 4)),
+            prior_strength=float(unsigned["prior_strength"]),
+            mastery_threshold=float(unsigned["mastery_threshold"]),
+            min_mastery_observations=int(
+                unsigned.get("min_mastery_observations", 8)
+            ),
+            reversal_threshold=float(unsigned.get("reversal_threshold", 0.5)),
+            reversal_patience=int(unsigned.get("reversal_patience", 4)),
         )
-        attempts = payload["attempts"]
-        successes = payload["successes"]
+        attempts = unsigned["attempts"]
+        successes = unsigned["successes"]
         if not isinstance(attempts, list) or not isinstance(successes, list):
             raise TypeError("route-evidence rows must be lists")
         if len(attempts) != len(successes):
@@ -252,10 +309,11 @@ class PersistentOpaqueRouteEvidence:
                 raise ValueError("route-evidence successes are invalid")
             ledger._attempts.append(attempt)
             ledger._successes.append(float(success))
-        prefix = payload.get("stable_prefix_minimum")
-        protected = payload.get("protected")
-        reversal_streak = payload.get("reversal_streak")
-        reversal_count = payload.get("reversal_count")
+        prefix = unsigned.get("stable_prefix_minimum")
+        protected = unsigned.get("protected")
+        reversal_streak = unsigned.get("reversal_streak")
+        reversal_count = unsigned.get("reversal_count")
+        recovery_streak = unsigned.get("recovery_streak")
         if prefix is None:
             prefix = [
                 1.0
@@ -273,17 +331,31 @@ class PersistentOpaqueRouteEvidence:
             reversal_streak = [0 for _ in ledger._attempts]
         if reversal_count is None:
             reversal_count = [0 for _ in ledger._attempts]
+        if recovery_streak is None:
+            recovery_streak = [0 for _ in ledger._attempts]
         if not isinstance(prefix, list) or not isinstance(protected, list):
             raise TypeError("route-evidence gate rows must be lists")
         if not isinstance(reversal_streak, list) or not isinstance(reversal_count, list):
             raise TypeError("route-evidence reversal rows must be lists")
+        if not isinstance(recovery_streak, list):
+            raise TypeError("route-evidence recovery rows must be a list")
         if any(
             len(rows) != len(ledger._attempts)
-            for rows in (prefix, protected, reversal_streak, reversal_count)
+            for rows in (
+                prefix,
+                protected,
+                reversal_streak,
+                reversal_count,
+                recovery_streak,
+            )
         ):
             raise ValueError("route-evidence gate rows have different lengths")
-        for minimum, is_protected, streak, count in zip(
-            prefix, protected, reversal_streak, reversal_count
+        for minimum, is_protected, streak, count, recovery in zip(
+            prefix,
+            protected,
+            reversal_streak,
+            reversal_count,
+            recovery_streak,
         ):
             if not isinstance(minimum, (int, float)) or not 0.0 <= float(minimum) <= 1.0:
                 raise ValueError("route-evidence stable prefixes are invalid")
@@ -293,28 +365,227 @@ class PersistentOpaqueRouteEvidence:
                 raise ValueError("route-evidence reversal streaks are invalid")
             if not isinstance(count, int) or count < 0:
                 raise ValueError("route-evidence reversal counts are invalid")
+            if not isinstance(recovery, int) or recovery < 0:
+                raise ValueError("route-evidence recovery streaks are invalid")
             ledger._stable_prefix_minimum.append(float(minimum))
             ledger._protected.append(is_protected)
             ledger._reversal_streak.append(streak)
             ledger._reversal_count.append(count)
-        preferred = payload.get("preferred_slot")
+            ledger._recovery_streak.append(recovery)
+        preferred = unsigned.get("preferred_slot")
         if preferred is not None:
             ledger._validate_slot(int(preferred))
             ledger._preferred_slot = int(preferred)
-        last_slot = payload.get("last_slot")
+        last_slot = unsigned.get("last_slot")
         if last_slot is not None:
             ledger._validate_slot(int(last_slot))
             ledger._last_slot = int(last_slot)
-        last_outcome = payload.get("last_outcome")
+        last_outcome = unsigned.get("last_outcome")
         if last_outcome is not None:
             value = float(last_outcome)
             if not 0.0 <= value <= 1.0:
                 raise ValueError("route-evidence last outcome is invalid")
             ledger._last_outcome = value
-        ledger._version = int(payload.get("version", 0))
+        ledger._version = int(unsigned.get("version", 0))
         if ledger._version < 0:
             raise ValueError("route-evidence version must be non-negative")
         return ledger
+
+
+class PersistentOpaqueDepthEvidence:
+    """Choose an external history depth from outcome-only evidence.
+
+    Each append-only file owns an independent route-evidence ledger whose
+    opaque slots are candidate query depths.  The policy exposes no preferred
+    depth until one candidate passes the stable-prefix mastery gate.  Before
+    that point, ``next_probe_query_count`` returns each untried candidate in
+    ascending order and then fails closed with ``None``.  The policy is
+    memory-side mutable state and has no trainable path into the controller.
+    """
+
+    schema = "neural-computer.persistent-opaque-depth-evidence.v1"
+
+    def __init__(
+        self,
+        query_counts: Iterable[int],
+        *,
+        prior_strength: float = 1.0,
+        mastery_threshold: float = 0.8,
+        min_mastery_observations: int = 8,
+        reversal_threshold: float = 0.5,
+        reversal_patience: int = 4,
+    ) -> None:
+        counts = tuple(int(query_count) for query_count in query_counts)
+        if not counts or any(query_count < 1 for query_count in counts):
+            raise ValueError("depth-evidence query counts must be positive")
+        if counts != tuple(sorted(set(counts))):
+            raise ValueError("depth-evidence query counts must be sorted and unique")
+        self.query_counts = counts
+        self.prior_strength = float(prior_strength)
+        self.mastery_threshold = float(mastery_threshold)
+        self.min_mastery_observations = int(min_mastery_observations)
+        self.reversal_threshold = float(reversal_threshold)
+        self.reversal_patience = int(reversal_patience)
+        self._ledgers: list[PersistentOpaqueRouteEvidence] = []
+        self._version = 0
+
+        # Reuse the route ledger's fail-closed parameter validation.
+        PersistentOpaqueRouteEvidence(
+            prior_strength=self.prior_strength,
+            mastery_threshold=self.mastery_threshold,
+            min_mastery_observations=self.min_mastery_observations,
+            reversal_threshold=self.reversal_threshold,
+            reversal_patience=self.reversal_patience,
+        )
+
+    @property
+    def file_count(self) -> int:
+        return len(self._ledgers)
+
+    def _validate_file(self, file_slot: int) -> None:
+        if not isinstance(file_slot, int) or not 0 <= file_slot < self.file_count:
+            raise IndexError("depth-evidence file slot is outside the bank")
+
+    def _validate_query_count(self, query_count: int) -> int:
+        if query_count not in self.query_counts:
+            raise ValueError("depth-evidence query count is outside the candidate set")
+        return self.query_counts.index(query_count)
+
+    def _ledger(self, file_slot: int) -> PersistentOpaqueRouteEvidence:
+        self._validate_file(file_slot)
+        return self._ledgers[file_slot]
+
+    def _new_ledger(self) -> PersistentOpaqueRouteEvidence:
+        ledger = PersistentOpaqueRouteEvidence(
+            prior_strength=self.prior_strength,
+            mastery_threshold=self.mastery_threshold,
+            min_mastery_observations=self.min_mastery_observations,
+            reversal_threshold=self.reversal_threshold,
+            reversal_patience=self.reversal_patience,
+        )
+        for _ in self.query_counts:
+            ledger.append_slot()
+        return ledger
+
+    def append_file(self) -> int:
+        """Append one file with an independent depth ledger."""
+
+        self._ledgers.append(self._new_ledger())
+        self._version += 1
+        return self.file_count - 1
+
+    def preferred_query_count(self, file_slot: int) -> int | None:
+        """Return a depth only after it passes the stable mastery gate."""
+
+        preferred = self._ledger(file_slot).status().preferred_slot
+        return None if preferred is None else self.query_counts[preferred]
+
+    def probe_order(self, file_slot: int) -> tuple[int, ...]:
+        """Return the persistent-first candidate order for one file."""
+
+        order = self._ledger(file_slot).preferred_order()
+        return tuple(self.query_counts[index] for index in order)
+
+    def next_probe_query_count(self, file_slot: int) -> int | None:
+        """Return the next untried depth, skipping reversed candidates.
+
+        A candidate that has been demoted by patient failures is not retried
+        immediately.  This prevents a stale preferred depth from trapping the
+        policy in a reversal loop; the policy instead probes a fresh candidate
+        and fails closed if no non-reversed candidate remains.
+        """
+
+        ledger = self._ledger(file_slot)
+        status = ledger.status()
+        if status.preferred_slot is not None:
+            return self.query_counts[status.preferred_slot]
+        order = ledger.preferred_order()
+        for index in order:
+            if status.reversal_count[index] == 0 and status.attempts[index] == 0:
+                return self.query_counts[index]
+        return None
+
+    def observe(
+        self,
+        file_slot: int,
+        query_count: int,
+        outcome: float | torch.Tensor,
+    ) -> None:
+        """Record one attempted depth and its deterministic scalar outcome."""
+
+        ledger = self._ledger(file_slot)
+        ledger.observe(self._validate_query_count(query_count), outcome)
+        self._version += 1
+
+    def statuses(self) -> tuple[PersistentRouteEvidenceStatus, ...]:
+        """Return immutable audit views for every file's depth ledger."""
+
+        return tuple(ledger.status() for ledger in self._ledgers)
+
+    def configuration(self) -> dict[str, object]:
+        return {
+            "schema": self.schema,
+            "query_counts": self.query_counts,
+            "prior_strength": self.prior_strength,
+            "mastery_threshold": self.mastery_threshold,
+            "min_mastery_observations": self.min_mastery_observations,
+            "reversal_threshold": self.reversal_threshold,
+            "reversal_patience": self.reversal_patience,
+            "file_count": self.file_count,
+            "state": "checksummed_outcome_only_depth_evidence_v1",
+        }
+
+    def payload(self) -> dict[str, object]:
+        payload: dict[str, object] = {
+            **self.configuration(),
+            "query_counts": list(self.query_counts),
+            "ledgers": [ledger.payload() for ledger in self._ledgers],
+            "version": self._version,
+        }
+        payload["sha256"] = _payload_digest(payload)
+        return payload
+
+    def digest(self) -> str:
+        """Return the checksum of this external depth policy."""
+
+        return str(self.payload()["sha256"])
+
+    @classmethod
+    def from_payload(cls, payload: dict[str, object]) -> PersistentOpaqueDepthEvidence:
+        """Restore a validated outcome-only depth policy snapshot."""
+
+        unsigned = dict(payload)
+        expected_digest = unsigned.pop("sha256", None)
+        if expected_digest is not None and (
+            not isinstance(expected_digest, str)
+            or expected_digest != _payload_digest(unsigned)
+        ):
+            raise ValueError("depth-evidence checksum mismatch")
+        if unsigned.get("schema") != cls.schema:
+            raise ValueError("depth-evidence schema is incompatible")
+        query_counts = unsigned.get("query_counts")
+        ledgers = unsigned.get("ledgers")
+        if not isinstance(query_counts, list) or not isinstance(ledgers, list):
+            raise TypeError("depth-evidence payload rows must be lists")
+        restored = cls(
+            query_counts,
+            prior_strength=float(unsigned["prior_strength"]),
+            mastery_threshold=float(unsigned["mastery_threshold"]),
+            min_mastery_observations=int(unsigned["min_mastery_observations"]),
+            reversal_threshold=float(unsigned["reversal_threshold"]),
+            reversal_patience=int(unsigned["reversal_patience"]),
+        )
+        restored._ledgers = [
+            PersistentOpaqueRouteEvidence.from_payload(ledger)
+            for ledger in ledgers
+        ]
+        for ledger in restored._ledgers:
+            if ledger.slot_count != len(restored.query_counts):
+                raise ValueError("depth-evidence ledger width does not match")
+        restored._version = int(unsigned.get("version", 0))
+        if restored._version < 0:
+            raise ValueError("depth-evidence version must be non-negative")
+        return restored
 
 
 @dataclass
@@ -330,7 +601,10 @@ class PersistentOpaqueContextRouteEvidence:
     task identifier.  The table stores the key and one independent
     :class:`PersistentOpaqueRouteEvidence` ledger per matched context.  A
     candidate becomes preferred only through that ledger's stable-prefix gate;
-    unknown contexts fall back to append order.  The table is intentionally a
+    unknown contexts fall back to append order.  An opt-in generalization
+    tolerance lets a protected nearest context provide a prior for a related
+    key; observing that related key still creates an independent row, so the
+    source memory cannot be overwritten.  The table is intentionally a
     replaceable memory-side policy and has no trainable path into the
     controller.
     """
@@ -342,6 +616,8 @@ class PersistentOpaqueContextRouteEvidence:
         width: int,
         *,
         matching_tolerance: float = 1e-4,
+        generalization_tolerance: float = 0.0,
+        query_space_id: str = DEFAULT_ROUTE_QUERY_SPACE_ID,
         prior_strength: float = 1.0,
         mastery_threshold: float = 0.8,
         min_mastery_observations: int = 8,
@@ -352,8 +628,20 @@ class PersistentOpaqueContextRouteEvidence:
             raise ValueError("context-route width must be positive")
         if matching_tolerance < 0.0:
             raise ValueError("context-route matching tolerance must be non-negative")
+        if (
+            generalization_tolerance < 0.0
+            or not math.isfinite(generalization_tolerance)
+        ):
+            raise ValueError(
+                "context-route generalization tolerance must be finite and non-negative"
+            )
         self.width = int(width)
         self.matching_tolerance = float(matching_tolerance)
+        self.generalization_tolerance = float(generalization_tolerance)
+        self.query_space_id = validate_representation_space_id(
+            query_space_id,
+            name="context-route query_space_id",
+        )
         self.prior_strength = float(prior_strength)
         self.mastery_threshold = float(mastery_threshold)
         self.min_mastery_observations = int(min_mastery_observations)
@@ -370,6 +658,23 @@ class PersistentOpaqueContextRouteEvidence:
     @property
     def context_count(self) -> int:
         return len(self._records)
+
+    def configuration(self) -> dict[str, int | float | str]:
+        """Return static ABI metadata without embedding mutable evidence."""
+
+        return {
+            "schema": self.schema,
+            "width": self.width,
+            "matching_tolerance": self.matching_tolerance,
+            "generalization_tolerance": self.generalization_tolerance,
+            "query_space_id": self.query_space_id,
+            "prior_strength": self.prior_strength,
+            "mastery_threshold": self.mastery_threshold,
+            "min_mastery_observations": self.min_mastery_observations,
+            "reversal_threshold": self.reversal_threshold,
+            "reversal_patience": self.reversal_patience,
+            "state": "checksummed_opaque_context_route_evidence_v1",
+        }
 
     def append_slot(self) -> int:
         """Append one opaque route slot to every learned context row."""
@@ -401,16 +706,24 @@ class PersistentOpaqueContextRouteEvidence:
             context.detach().to(device="cpu", dtype=torch.float32), dim=0
         ).contiguous()
 
-    def _find_record(self, context: torch.Tensor, *, create: bool) -> _ContextRouteRecord | None:
+    def _nearest_record(
+        self, context: torch.Tensor
+    ) -> tuple[_ContextRouteRecord | None, float]:
         key = self._validate_context(context)
-        if self._records:
-            keys = torch.tensor(
-                [record.key for record in self._records], dtype=key.dtype
-            )
-            distances = torch.linalg.vector_norm(keys - key, dim=1)
-            nearest = int(distances.argmin())
-            if float(distances[nearest]) <= self.matching_tolerance:
-                return self._records[nearest]
+        if not self._records:
+            return None, math.inf
+        keys = torch.tensor([record.key for record in self._records], dtype=key.dtype)
+        distances = torch.linalg.vector_norm(keys - key, dim=1)
+        nearest = int(distances.argmin())
+        return self._records[nearest], float(distances[nearest])
+
+    def _find_record(
+        self, context: torch.Tensor, *, create: bool
+    ) -> _ContextRouteRecord | None:
+        key = self._validate_context(context)
+        record, distance = self._nearest_record(context)
+        if record is not None and distance <= self.matching_tolerance:
+            return record
         if not create:
             return None
         evidence = PersistentOpaqueRouteEvidence(
@@ -429,12 +742,54 @@ class PersistentOpaqueContextRouteEvidence:
         self._version += 1
         return record
 
+    def _nearest_preferred_record(
+        self,
+        context: torch.Tensor,
+        *,
+        exclude: _ContextRouteRecord | None = None,
+    ) -> tuple[_ContextRouteRecord | None, float]:
+        key = self._validate_context(context)
+        candidates = [
+            record
+            for record in self._records
+            if record is not exclude
+            and record.evidence.status().preferred_slot is not None
+        ]
+        if not candidates:
+            return None, math.inf
+        keys = torch.tensor([record.key for record in candidates], dtype=key.dtype)
+        distances = torch.linalg.vector_norm(keys - key, dim=1)
+        nearest = int(distances.argmin())
+        return candidates[nearest], float(distances[nearest])
+
     def preferred_order(self, context: torch.Tensor) -> tuple[int, ...]:
-        """Return the learned order for a context, or append order if unseen."""
+        """Return a safe exact/nearby learned order or append order."""
 
         if self.slot_count < 1:
             raise ValueError("context-route bank has no slots")
         record = self._find_record(context, create=False)
+        if self.generalization_tolerance > self.matching_tolerance:
+            allow_prior = record is None
+            if record is not None:
+                status = record.evidence.status()
+                allow_prior = (
+                    status.preferred_slot is None
+                    and (
+                        status.last_outcome is None
+                        or status.last_outcome > self.reversal_threshold
+                    )
+                )
+            nearest, distance = self._nearest_preferred_record(
+                context,
+                exclude=record,
+            )
+            if (
+                allow_prior
+                and
+                nearest is not None
+                and distance <= self.generalization_tolerance
+            ):
+                record = nearest
         if record is None:
             return tuple(range(self.slot_count))
         return record.evidence.preferred_order(slot_count=self.slot_count)
@@ -456,6 +811,84 @@ class PersistentOpaqueContextRouteEvidence:
             dtype=torch.long,
             device=contexts.device,
         )
+
+    def behavior_probabilities(
+        self,
+        contexts: torch.Tensor,
+        *,
+        exploration: float = 0.0,
+        strategy: str = "stochastic",
+    ) -> torch.Tensor:
+        """Return exact exploitation/novelty probabilities for opaque routes.
+
+        The exploitation mass follows the context's protected preferred slot.
+        Exploration is weighted by ``1 / (1 + attempts)`` for each slot in that
+        context's external ledger, so a newly appended file remains discoverable
+        as the bank grows instead of receiving only ``epsilon / N`` forever.
+        Unknown contexts have zero attempts for every slot and therefore explore
+        uniformly.  This method returns behavior probabilities only; it does not
+        mutate or create context rows.
+        """
+
+        if not isinstance(contexts, torch.Tensor) or contexts.ndim != 2:
+            raise ValueError("context-route contexts must have shape [batch, width]")
+        if contexts.shape[1] != self.width:
+            raise ValueError(f"context-route contexts must have shape [batch, {self.width}]")
+        if contexts.shape[0] < 1:
+            raise ValueError("context-route contexts cannot be empty")
+        if not 0.0 <= exploration <= 1.0 or not math.isfinite(float(exploration)):
+            raise ValueError("context-route exploration must lie in [0, 1]")
+        if strategy not in {"stochastic", "balanced"}:
+            raise ValueError("context-route exploration strategy is unsupported")
+        if self.slot_count < 1:
+            raise ValueError("context-route bank has no slots")
+
+        rows: list[torch.Tensor] = []
+        for context in contexts:
+            record = self._find_record(context, create=False)
+            if record is None:
+                attempts = torch.zeros(
+                    self.slot_count,
+                    dtype=torch.float32,
+                    device=contexts.device,
+                )
+                preferred = 0
+            else:
+                status = record.evidence.status()
+                attempts = torch.tensor(
+                    status.attempts,
+                    dtype=torch.float32,
+                    device=contexts.device,
+                )
+                preferred = record.evidence.preferred_order(
+                    slot_count=self.slot_count
+                )[0]
+                if strategy == "balanced" and status.preferred_slot is None:
+                    least_attempts = attempts.amin()
+                    least_attempted = attempts == least_attempts
+                    rows.append(
+                        least_attempted.to(dtype=torch.float32)
+                        / least_attempted.sum().clamp_min(1.0)
+                    )
+                    continue
+            if strategy == "balanced" and record is None:
+                least_attempts = attempts.amin()
+                least_attempted = attempts == least_attempts
+                rows.append(
+                    least_attempted.to(dtype=torch.float32)
+                    / least_attempted.sum().clamp_min(1.0)
+                )
+                continue
+            novelty = torch.reciprocal(1.0 + attempts)
+            novelty = novelty / novelty.sum().clamp_min(1e-8)
+            exploitation = torch.zeros(
+                self.slot_count,
+                dtype=novelty.dtype,
+                device=contexts.device,
+            )
+            exploitation[preferred] = 1.0
+            rows.append((1.0 - exploration) * exploitation + exploration * novelty)
+        return torch.stack(rows, dim=0)
 
     def protected_slots(self) -> tuple[bool, ...]:
         """Return whether any learned context protects each physical slot."""
@@ -538,10 +971,12 @@ class PersistentOpaqueContextRouteEvidence:
     def payload(self) -> dict[str, object]:
         """Serialize context keys and opaque scalar route evidence."""
 
-        return {
+        payload: dict[str, object] = {
             "schema": self.schema,
             "width": self.width,
             "matching_tolerance": self.matching_tolerance,
+            "generalization_tolerance": self.generalization_tolerance,
+            "query_space_id": self.query_space_id,
             "prior_strength": self.prior_strength,
             "mastery_threshold": self.mastery_threshold,
             "min_mastery_observations": self.min_mastery_observations,
@@ -554,24 +989,44 @@ class PersistentOpaqueContextRouteEvidence:
                 for record in self._records
             ],
         }
+        payload["sha256"] = _payload_digest(payload)
+        return payload
+
+    def digest(self) -> str:
+        """Return the checksum of the context-conditioned evidence state."""
+
+        return str(self.payload()["sha256"])
 
     @classmethod
     def from_payload(cls, payload: dict[str, object]) -> PersistentOpaqueContextRouteEvidence:
         """Restore a validated context-conditioned route table."""
 
-        if payload.get("schema") != cls.schema:
+        unsigned = dict(payload)
+        expected_digest = unsigned.pop("sha256", None)
+        if expected_digest is not None and (
+            not isinstance(expected_digest, str)
+            or expected_digest != _payload_digest(unsigned)
+        ):
+            raise ValueError("context-route checksum mismatch")
+        if unsigned.get("schema") != cls.schema:
             raise ValueError("context-route schema is incompatible")
         table = cls(
-            int(payload["width"]),
-            matching_tolerance=float(payload["matching_tolerance"]),
-            prior_strength=float(payload["prior_strength"]),
-            mastery_threshold=float(payload["mastery_threshold"]),
-            min_mastery_observations=int(payload["min_mastery_observations"]),
-            reversal_threshold=float(payload.get("reversal_threshold", 0.5)),
-            reversal_patience=int(payload.get("reversal_patience", 4)),
+            int(unsigned["width"]),
+            matching_tolerance=float(unsigned["matching_tolerance"]),
+            generalization_tolerance=float(
+                unsigned.get("generalization_tolerance", 0.0)
+            ),
+            query_space_id=str(
+                unsigned.get("query_space_id", DEFAULT_ROUTE_QUERY_SPACE_ID)
+            ),
+            prior_strength=float(unsigned["prior_strength"]),
+            mastery_threshold=float(unsigned["mastery_threshold"]),
+            min_mastery_observations=int(unsigned["min_mastery_observations"]),
+            reversal_threshold=float(unsigned.get("reversal_threshold", 0.5)),
+            reversal_patience=int(unsigned.get("reversal_patience", 4)),
         )
-        slot_count = payload["slot_count"]
-        contexts = payload["contexts"]
+        slot_count = unsigned["slot_count"]
+        contexts = unsigned["contexts"]
         if not isinstance(slot_count, int) or slot_count < 0:
             raise ValueError("context-route slot count is invalid")
         if not isinstance(contexts, list):
@@ -585,7 +1040,21 @@ class PersistentOpaqueContextRouteEvidence:
             evidence_payload = item.get("evidence")
             if not isinstance(key, list) or not isinstance(evidence_payload, dict):
                 raise TypeError("context-route row has invalid fields")
-            key_tensor = table._validate_context(torch.tensor(key, dtype=torch.float32))
+            key_tensor = torch.tensor(key, dtype=torch.float32)
+            if key_tensor.ndim != 1 or key_tensor.shape[0] != table.width:
+                raise ValueError("context-route serialized key has the wrong shape")
+            if not bool(torch.isfinite(key_tensor).all()):
+                raise ValueError("context-route serialized key is not finite")
+            norm = torch.linalg.vector_norm(key_tensor)
+            if float(norm) <= 1e-8:
+                raise ValueError("context-route serialized key cannot be zero")
+            # Payloads emitted by this class already contain normalized
+            # float32 keys. Preserve those exact values so a save/load cycle
+            # is byte-stable; normalize only legacy or externally authored
+            # rows that are materially off the expected unit sphere.
+            if not torch.isclose(norm, torch.ones_like(norm), atol=1e-5, rtol=1e-5):
+                key_tensor = F.normalize(key_tensor, dim=0)
+            key_tensor = key_tensor.contiguous()
             evidence = PersistentOpaqueRouteEvidence.from_payload(evidence_payload)
             if evidence.slot_count != table.slot_count:
                 raise ValueError("context-route evidence has the wrong slot count")
@@ -595,7 +1064,7 @@ class PersistentOpaqueContextRouteEvidence:
                     evidence=evidence,
                 )
             )
-        version = payload.get("version", 0)
+        version = unsigned.get("version", 0)
         if not isinstance(version, int) or version < 0:
             raise ValueError("context-route version is invalid")
         table._version = version
@@ -763,6 +1232,17 @@ class OpaqueCandidateGrowthRouter(nn.Module):
             dim=-1,
         )
         return self.score(pair).squeeze(-1)
+
+    def configuration(self) -> dict[str, object]:
+        """Return the replaceable scorer contract for external persistence."""
+
+        return {
+            "schema": self.schema,
+            "width": self.width,
+            "hidden": self.hidden,
+            "behavior": "permutation_equivariant_pair_score_v1",
+            "initialization": "zero_impact_final_score_v1",
+        }
 
 
 class OpaqueViewRouteExtension(nn.Module):

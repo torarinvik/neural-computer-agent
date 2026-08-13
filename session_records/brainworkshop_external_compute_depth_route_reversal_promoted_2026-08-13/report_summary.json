@@ -1,0 +1,64 @@
+{
+  "schema": "neural-computer.brainworkshop-external-compute-depth-route-reversal.v1-summary",
+  "status": "promoted_bounded_depth_route_reversal",
+  "seeds": [17, 18],
+  "source_family": "nback16",
+  "target_family": "nback32",
+  "history_contract": "variable_external_history_indexed_v1",
+  "history_age_slot_count": 32,
+  "query_count": 32,
+  "route_query": "learned_event_tensor_key",
+  "route_feedback": "terminal_scalar_episode_accuracy",
+  "updates": {
+    "source": 256,
+    "target": 256,
+    "route": 256,
+    "transition_batches": 8,
+    "route_calibration_lifetimes": 8,
+    "retention_lifetimes": 2,
+    "batch_size": 32
+  },
+  "metrics_by_seed": {
+    "17": {
+      "source_direct": 1.0,
+      "target_direct": 0.934375,
+      "target_routed": 0.9375,
+      "changed_same_cue": 0.9296875,
+      "old_file_retention": 1.0,
+      "unknown_cue": 0.6125,
+      "shuffled_route_target": 0.63125,
+      "unique_verifier_bits": 250880,
+      "shuffled_control_verifier_bits": 81920,
+      "unique_logical_lifetimes": 25088,
+      "optimizer_updates": 512,
+      "route_memory_updates": 272,
+      "replayed_examples": 0
+    },
+    "18": {
+      "source_direct": 1.0,
+      "target_direct": 0.934375,
+      "target_routed": 0.9375,
+      "changed_same_cue": 0.9296875,
+      "old_file_retention": 1.0,
+      "unknown_cue": 0.6125,
+      "shuffled_route_target": 0.63125,
+      "unique_verifier_bits": 250880,
+      "shuffled_control_verifier_bits": 81920,
+      "unique_logical_lifetimes": 25088,
+      "optimizer_updates": 512,
+      "route_memory_updates": 272,
+      "replayed_examples": 0
+    }
+  },
+  "gates": {
+    "all_17": true,
+    "all_18": true,
+    "controller_frozen": true,
+    "event_frontend_frozen": true,
+    "source_file_immutable_during_routing": true,
+    "target_file_immutable_during_routing": true,
+    "route_reload_exact": true,
+    "zero_replay": true
+  },
+  "claim_boundary": "Bounded outcome-only indexed-history route reversal with retained old computation; not general continual learning, unrestricted memory growth, learned compression, or arbitrary program induction."
+}

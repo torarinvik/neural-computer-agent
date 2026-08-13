@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import argparse
+
 import pytest
 import torch
 
@@ -9,8 +11,85 @@ from experiments.brainworkshop_canonical import (
     NBackVerifier,
     train_reward_only,
 )
+from experiments.brainworkshop_canonical.cross_family_rule_growth import (
+    CrossFamilyVerifier,
+)
+from experiments.brainworkshop_canonical.cross_family_rule_growth import (
+    run as run_cross_family_rule_growth,
+)
+from experiments.brainworkshop_canonical.environment import NBackVerifierStep
+from experiments.brainworkshop_canonical.external_compute_artifact_cache_pressure import (
+    _snapshot as snapshot_external_compute,
+)
+from experiments.brainworkshop_canonical.external_compute_artifact_cache_pressure import (
+    run as run_external_compute_artifact_cache_pressure,
+)
+from experiments.brainworkshop_canonical.external_compute_depth_probe import (
+    run as run_external_compute_depth_probe,
+)
+from experiments.brainworkshop_canonical.external_compute_depth_route_reversal import (
+    run as run_external_compute_depth_route_reversal,
+)
+from experiments.brainworkshop_canonical.external_compute_depth_selection import (
+    CANDIDATE_QUERY_COUNTS,
+)
+from experiments.brainworkshop_canonical.external_compute_depth_selection import (
+    run as run_external_compute_depth_selection,
+)
+from experiments.brainworkshop_canonical.external_compute_eviction_transfer import (
+    _behavioral_artifact_feature_bank,
+    _behavioral_artifact_feature_bank_v2,
+)
+from experiments.brainworkshop_canonical.external_compute_eviction_transfer import (
+    run as run_external_compute_eviction_transfer,
+)
+from experiments.brainworkshop_canonical.external_compute_growth import (
+    _build as build_external_compute,
+)
+from experiments.brainworkshop_canonical.external_compute_growth import (
+    _episode as episode_external_compute,
+)
+from experiments.brainworkshop_canonical.external_compute_growth import (
+    run as run_external_compute_growth,
+)
+from experiments.brainworkshop_canonical.external_compute_learned_eviction_scale import (
+    run as run_external_compute_learned_eviction_scale,
+)
+from experiments.brainworkshop_canonical.external_compute_open_growth import (
+    run as run_external_compute_open_growth,
+)
+from experiments.brainworkshop_canonical.external_compute_route import (
+    run as run_external_compute_route,
+)
+from experiments.brainworkshop_canonical.external_compute_route_bank import (
+    _family_steps,
+    _parse_query_counts,
+)
+from experiments.brainworkshop_canonical.external_compute_route_bank import (
+    run as run_external_compute_route_bank,
+)
+from experiments.brainworkshop_canonical.external_compute_route_reversal import (
+    run as run_external_compute_route_reversal,
+)
+from experiments.brainworkshop_canonical.goal_conditioned_planning import (
+    run_goal_conditioned_planning_audit,
+)
+from experiments.brainworkshop_canonical.goal_fragment_staging import (
+    run_goal_fragment_staging_audit,
+)
+from experiments.brainworkshop_canonical.nonstationary_goal_conditioned_planning import (
+    run_nonstationary_goal_conditioned_planning_audit,
+)
+from experiments.brainworkshop_canonical.replay_free_transition_acquisition import (
+    _route_rollout,
+    run_nonstationary_transition_retention_audit,
+    run_online_transition_discovery_audit,
+    run_replay_free_transition_acquisition_audit,
+)
 from neural_computer import (
     AdaptiveOnlineEpisodicRelationReader,
+    ExternalTransitionRollout,
+    ExternalWorkingMemoryCell,
     RetentionPolicyConfig,
 )
 
@@ -62,6 +141,76 @@ def test_nback_targets_are_balanced_and_time_shuffle_preserves_balance() -> None
         assert torch.equal(observed, torch.full((3,), 2.0))
 
 
+def test_cross_family_verifier_generates_generic_deeper_nback_targets() -> None:
+    for family, depth in (
+        ("nback2", 2),
+        ("nback3", 3),
+        ("nback4", 4),
+        ("nback5", 5),
+        ("nback8", 8),
+    ):
+        verifier = CrossFamilyVerifier(
+            family=family,
+            batch_size=5,
+            steps=depth + 4,
+            cue_symbol=4,
+            seed=17,
+        )
+        verifier.reset()
+        observations = [verifier.observation()]
+        scores = []
+        while not verifier.done:
+            action = torch.zeros(5, dtype=torch.long)
+            scores.append(verifier.score(action))
+            if not verifier.done:
+                observations.append(verifier.observation())
+
+        symbols = torch.stack(observations[1:], dim=1)
+        eligible = torch.stack([step.eligible for step in scores], dim=1)
+        rewards = torch.stack([step.reward for step in scores], dim=1)
+        expected = symbols[:, depth:] == symbols[:, :-depth]
+        assert torch.equal(
+            eligible[:, depth + 1 :],
+            torch.ones_like(eligible[:, depth + 1 :], dtype=torch.bool),
+        )
+        # Action zero is the negative answer, so its reward is the inverse
+        # of the private equality target.
+        assert torch.equal(rewards[:, depth + 1 :] > 0.5, ~expected)
+
+
+def test_heldout_rule_growth_smoke_preserves_external_boundary(tmp_path) -> None:
+    from experiments.brainworkshop_canonical.heldout_rule_growth import run
+
+    report = run(
+        argparse.Namespace(
+            report_out=tmp_path / "heldout-rule-growth.json",
+            seed=17,
+            source_updates=1,
+            target_updates=1,
+            batch_size=2,
+            steps=6,
+            calibration_lifetimes=1,
+            discovery_lifetimes=1,
+            retention_lifetimes=1,
+            learning_rate=1e-2,
+        )
+    )
+
+    assert report["schema"] == (
+        "neural-computer.brainworkshop-heldout-rule-growth.v1"
+    )
+    assert report["claim_boundary"].endswith(
+        "bounded rule growth, not general continual learning."
+    )
+    gates = report["gates"]
+    assert gates["controller_unchanged"]
+    assert gates["encoder_unchanged"]
+    assert gates["route_reload_exact"]
+    assert gates["incompatible_route_representation_rejected"]
+    assert report["accounting"]["replayed_examples"] == 0
+    assert report["accounting"]["optimizer_updates"] == 4
+
+
 def test_event_encoder_is_a_learned_frontend() -> None:
     encoder = BrainWorkshopEventEncoder(symbol_count=4, event_width=6)
     encoded = encoder(torch.tensor([0, 3], dtype=torch.long))
@@ -69,6 +218,451 @@ def test_event_encoder_is_a_learned_frontend() -> None:
     assert encoder.configuration()["schema"] == (
         "neural-computer.brainworkshop-event-encoder.v1"
     )
+
+
+def test_external_compute_growth_smoke_keeps_the_frozen_core_boundary(tmp_path) -> None:
+    report = run_external_compute_growth(
+        argparse.Namespace(
+            report_out=tmp_path / "external-compute-growth.json",
+            seed=17,
+            source_updates=2,
+            target_updates=2,
+            fresh_updates=2,
+            batch_size=2,
+            steps=6,
+            retention_lifetimes=1,
+            learning_rate=1e-2,
+        )
+    )
+
+    assert report["schema"] == (
+        "neural-computer.brainworkshop-external-compute-growth.v1"
+    )
+    assert report["gates"]["source_file_unchanged"]
+    assert report["gates"]["frozen_controller"]
+    assert report["gates"]["frozen_event_encoder"]
+    assert report["accounting"]["replayed_examples"] == 0
+    assert report["accounting"]["optimizer_updates"] == 4
+
+
+def test_bounded_external_history_reads_previous_records_plus_current_event() -> None:
+    system = build_external_compute(
+        17,
+        slot_count=1,
+        event_window_size=4,
+        basis_event_read_mode="flattened_window",
+        external_history_query_count=4,
+    )
+
+    _loss, accuracy, bits = episode_external_compute(
+        system,
+        family="nback2",
+        slot=0,
+        cue_symbol=9,
+        batch_size=2,
+        steps=4,
+        seed=29,
+        train=False,
+        history_query_count=4,
+    )
+
+    assert system.external_history_query_count == 4
+    assert system.machine.event_window_size == 4
+    assert torch.isfinite(accuracy)
+    assert bits == 4
+
+
+def test_bounded_external_history_supports_per_file_query_depths() -> None:
+    system = build_external_compute(
+        17,
+        slot_count=2,
+        event_window_size=5,
+        basis_event_read_mode="flattened_window",
+        external_history_query_counts=(4, 5),
+    )
+
+    shallow = episode_external_compute(
+        system,
+        family="symbol_parity",
+        slot=0,
+        cue_symbol=7,
+        batch_size=2,
+        steps=6,
+        seed=29,
+        train=False,
+        history_query_count=4,
+    )
+    deep = episode_external_compute(
+        system,
+        family="nback4",
+        slot=1,
+        cue_symbol=12,
+        batch_size=2,
+        steps=8,
+        seed=31,
+        train=False,
+        history_query_count=5,
+    )
+
+    assert system.external_history_query_counts == (4, 5)
+    assert system.machine.event_window_size == 5
+    assert all(torch.isfinite(value) for value in (shallow[0], shallow[1], deep[0], deep[1]))
+
+
+def test_external_compute_depth_selection_smoke_is_outcome_only_and_fail_closed(
+    tmp_path,
+) -> None:
+    report = run_external_compute_depth_selection(
+        argparse.Namespace(
+            report_out=tmp_path / "external-compute-depth-selection.json",
+            seed=17,
+            updates=2,
+            batch_size=2,
+            steps=6,
+            probe_lifetimes=2,
+            retention_lifetimes=1,
+            learning_rate=1e-2,
+        )
+    )
+
+    assert report["schema"] == (
+        "neural-computer.brainworkshop-external-compute-depth-selection.v1"
+    )
+    assert report["gates"]["policy_reload_exact"]
+    assert report["gates"]["controller_unchanged"]
+    assert report["gates"]["event_encoder_unchanged"]
+    assert report["gates"]["shuffled_control_fails_closed"]
+    assert report["accounting"]["calibration_optimizer_updates"] == 0
+    assert report["accounting"]["replayed_examples"] == 0
+    assert CANDIDATE_QUERY_COUNTS == (1, 2, 3, 4, 5, 6)
+
+
+def test_external_compute_depth_probe_smoke_keeps_deeper_window_external(
+    tmp_path,
+) -> None:
+    report = run_external_compute_depth_probe(
+        argparse.Namespace(
+            report_out=tmp_path / "external-compute-depth-probe.json",
+            seed=17,
+            updates=2,
+            batch_size=2,
+            steps=8,
+            retention_lifetimes=1,
+            event_window_size=6,
+            query_count=6,
+            learning_rate=1e-2,
+            entropy_weight=0.01,
+        )
+    )
+
+    assert report["schema"] == (
+        "neural-computer.brainworkshop-external-compute-depth-probe.v3"
+    )
+    assert report["architecture"]["query_count"] == 6
+    assert report["gates"]["frozen_controller"]
+    assert report["gates"]["frozen_event_encoder"]
+    assert report["accounting"]["replayed_examples"] == 0
+
+
+def test_external_compute_route_smoke_uses_content_addressed_outcome_evidence(
+    tmp_path,
+) -> None:
+    report = run_external_compute_route(
+        argparse.Namespace(
+            report_out=tmp_path / "external-compute-route.json",
+            seed=17,
+            source_updates=2,
+            target_updates=2,
+            route_updates=4,
+            route_calibration_lifetimes=8,
+            batch_size=32,
+            retention_lifetimes=1,
+            learning_rate=1e-2,
+        )
+    )
+
+    assert report["schema"] == (
+        "neural-computer.brainworkshop-external-compute-route.v2"
+    )
+    assert report["gates"]["protected_source_context_unchanged"]
+    assert report["gates"]["route_reload_exact"]
+    assert report["gates"]["frozen_controller"]
+    assert report["gates"]["frozen_event_encoder"]
+    assert report["accounting"]["replayed_examples"] == 0
+
+
+def test_external_compute_route_bank_smoke_preserves_append_only_file_boundaries(
+    tmp_path,
+) -> None:
+    report = run_external_compute_route_bank(
+        argparse.Namespace(
+            report_out=tmp_path / "external-compute-route-bank.json",
+            seed=17,
+            slot_count=4,
+            file_updates=1,
+            route_updates=1,
+            route_calibration_lifetimes=8,
+            batch_size=32,
+            retention_lifetimes=1,
+            learning_rate=1e-2,
+            basis_hidden=32,
+            final_family="switch_binary",
+        )
+    )
+
+    assert report["schema"] == (
+        "neural-computer.brainworkshop-external-compute-route-bank.v1"
+    )
+    assert report["gates"]["prior_files_unchanged_after_growth"]
+    assert report["gates"]["frozen_controller"]
+    assert report["gates"]["frozen_event_encoder"]
+    assert report["accounting"]["replayed_examples"] == 0
+
+
+def test_external_compute_route_reversal_smoke_preserves_file_boundaries(
+    tmp_path,
+) -> None:
+    report = run_external_compute_route_reversal(
+        argparse.Namespace(
+            report_out=tmp_path / "external-compute-route-reversal.json",
+            seed=17,
+            source_updates=2,
+            target_updates=2,
+            route_updates=4,
+            calibration_lifetimes=8,
+            transition_batches=8,
+            batch_size=32,
+            retention_lifetimes=1,
+            learning_rate=1e-2,
+            reversal_threshold=0.65,
+            reversal_patience=4,
+        )
+    )
+
+    assert report["schema"] == (
+        "neural-computer.brainworkshop-external-compute-route-reversal.v1"
+    )
+    assert report["gates"]["old_file_unchanged"]
+    assert report["gates"]["replacement_file_unchanged_during_reversal"]
+    assert report["gates"]["frozen_controller"]
+    assert report["gates"]["frozen_event_encoder"]
+    assert report["gates"]["zero_replayed_examples"]
+    assert report["transition"][-1]["slot_0_fraction"] == 0.5
+    assert report["transition"][-1]["slot_1_fraction"] == 0.5
+
+
+def test_external_compute_depth_route_reversal_smoke_preserves_depth_files(
+    tmp_path,
+) -> None:
+    report = run_external_compute_depth_route_reversal(
+        argparse.Namespace(
+            report_out=tmp_path / "external-compute-depth-route-reversal.json",
+            seed=17,
+            source_updates=2,
+            target_updates=2,
+            route_updates=2,
+            transition_batches=1,
+            route_calibration_lifetimes=1,
+            retention_lifetimes=1,
+            learning_rate=3e-3,
+            entropy_weight=0.01,
+        )
+    )
+
+    assert report["schema"] == (
+        "neural-computer.brainworkshop-external-compute-depth-route-reversal.v1"
+    )
+    assert report["gates"]["source_file_unchanged_during_routing"]
+    assert report["gates"]["target_file_unchanged_during_routing"]
+    assert report["gates"]["frozen_controller"]
+    assert report["gates"]["frozen_event_encoder"]
+    assert report["accounting"]["replayed_examples"] == 0
+
+
+def test_external_compute_artifact_cache_pressure_smoke_fails_closed_before_mastery(
+    tmp_path,
+) -> None:
+    report = run_external_compute_artifact_cache_pressure(
+        argparse.Namespace(
+            report_out=tmp_path / "external-compute-artifact-cache-pressure.json",
+            seed=17,
+            target_file_count=4,
+            file_updates=2,
+            route_revisits=1,
+            batch_size=32,
+            retention_lifetimes=1,
+            learning_rate=3e-3,
+        )
+    )
+
+    assert report["schema"] == (
+        "neural-computer.brainworkshop-external-compute-artifact-cache-pressure.v1"
+    )
+    assert report["status"] == "rejected"
+    assert report["gates"]["source_not_promoted"]
+    assert report["gates"]["frozen_controller"]
+    assert report["gates"]["frozen_event_encoder"]
+    assert report["accounting"]["replayed_examples"] == 0
+
+
+def test_external_compute_learned_eviction_scale_smoke_fails_closed_before_mastery(
+    tmp_path,
+) -> None:
+    report = run_external_compute_learned_eviction_scale(
+        argparse.Namespace(
+            report_out=tmp_path / "external-compute-learned-eviction-scale.json",
+            seed=17,
+            target_file_count=6,
+            file_updates=2,
+            policy_calibration_rounds=2,
+            policy_updates_per_round=2,
+            policy_updates_per_route=2,
+            route_revisits=1,
+            batch_size=32,
+            retention_lifetimes=1,
+            learning_rate=3e-3,
+            policy_learning_rate=1e-2,
+        )
+    )
+
+    assert report["schema"] == (
+        "neural-computer.brainworkshop-external-compute-learned-eviction-scale.v1"
+    )
+    assert report["status"] == "rejected"
+    assert not report["gates"]["all_six_files_admitted"]
+    assert report["gates"]["frozen_controller"]
+    assert report["gates"]["frozen_event_encoder"]
+    assert report["accounting"]["replayed_examples"] == 0
+
+
+def test_external_compute_eviction_transfer_smoke_fails_closed_before_mastery(
+    tmp_path,
+) -> None:
+    report = run_external_compute_eviction_transfer(
+        argparse.Namespace(
+            report_out=tmp_path / "external-compute-eviction-transfer.json",
+            seed=17,
+            file_updates=2,
+            policy_calibration_rounds=2,
+            policy_updates_per_round=2,
+            transfer_updates=2,
+            batch_size=32,
+            retention_lifetimes=1,
+            learning_rate=3e-3,
+            policy_learning_rate=1e-2,
+        )
+    )
+
+    assert report["schema"] == (
+        "neural-computer.brainworkshop-external-compute-eviction-transfer.v1"
+    )
+    assert report["status"] == "rejected"
+    assert not report["gates"]["source_cohort_mastered"]
+    assert report["accounting"]["replayed_examples"] == 0
+
+
+def test_external_compute_behavioral_signature_is_fixed_width_and_restores_slot() -> None:
+    system = build_external_compute(17, slot_count=3)
+    snapshots = {
+        f"slot-{slot}": snapshot_external_compute(system, slot)
+        for slot in range(3)
+    }
+    original_digest = snapshots["slot-0"].digest
+
+    features = _behavioral_artifact_feature_bank(system, snapshots)
+
+    assert set(features) == set(snapshots)
+    assert all(feature.shape == (32,) for feature in features.values())
+    assert all(feature.isfinite().all() for feature in features.values())
+    assert snapshot_external_compute(system, 0).digest == original_digest
+    assert len({tuple(feature.tolist()) for feature in features.values()}) == 3
+
+
+def test_external_compute_behavioral_signature_v2_is_temporally_probeable() -> None:
+    system = build_external_compute(17, slot_count=3)
+    snapshots = {
+        f"slot-{slot}": snapshot_external_compute(system, slot)
+        for slot in range(3)
+    }
+    original_digest = snapshots["slot-0"].digest
+
+    features = _behavioral_artifact_feature_bank_v2(system, snapshots)
+
+    assert set(features) == set(snapshots)
+    assert all(feature.shape == (32,) for feature in features.values())
+    assert all(feature.isfinite().all() for feature in features.values())
+    assert snapshot_external_compute(system, 0).digest == original_digest
+    assert len({tuple(feature.tolist()) for feature in features.values()}) == 3
+
+
+def test_external_compute_open_growth_smoke_rejects_unmastered_source_cleanly(
+    tmp_path,
+) -> None:
+    report = run_external_compute_open_growth(
+        argparse.Namespace(
+            report_out=tmp_path / "external-compute-open-growth.json",
+            seed=17,
+            target_file_count=2,
+            candidate_budget=2,
+            file_updates=2,
+            route_updates=4,
+            route_calibration_lifetimes=8,
+            transition_batches=4,
+            batch_size=32,
+            retention_lifetimes=1,
+            learning_rate=1e-2,
+            reversal_threshold=0.65,
+            reversal_patience=4,
+        )
+    )
+
+    assert report["schema"] == (
+        "neural-computer.brainworkshop-external-compute-open-growth.v1"
+    )
+    assert report["status"] == "rejected"
+    assert report["architecture"]["accepted_file_count"] == 0
+    assert report["gates"]["rejected_candidate_not_promoted"]
+    assert report["gates"]["frozen_controller"]
+    assert report["gates"]["frozen_event_encoder"]
+    assert report["gates"]["zero_replayed_examples"]
+
+
+def test_binary_switch_family_has_a_valid_chance_baseline() -> None:
+    verifier = CrossFamilyVerifier(
+        family="switch_binary",
+        batch_size=2048,
+        steps=14,
+        cue_symbol=11,
+        seed=17,
+    )
+    verifier.reset()
+    while not verifier.done:
+        verifier.score(torch.zeros(2048, dtype=torch.long))
+
+    assert abs(float(verifier._targets.float().mean()) - 0.5) < 0.04
+
+
+def test_odd_symbol_parity_family_is_balanced_and_distinct() -> None:
+    even = CrossFamilyVerifier(
+        family="symbol_parity",
+        batch_size=2048,
+        steps=14,
+        cue_symbol=10,
+        seed=17,
+    )
+    odd = CrossFamilyVerifier(
+        family="symbol_parity_odd",
+        batch_size=2048,
+        steps=14,
+        cue_symbol=10,
+        seed=17,
+    )
+    even.reset()
+    odd.reset()
+
+    assert torch.equal(even._symbols, odd._symbols)
+    assert torch.equal(even._targets, ~odd._targets)
+    assert abs(float(odd._targets.float().mean()) - 0.5) < 0.04
 
 
 def test_canonical_rollout_uses_keypress_and_retention_boundaries() -> None:
@@ -118,6 +712,331 @@ def test_reward_only_pilot_freezes_shared_controller_and_replays_nothing() -> No
     assert len(agent.retention.payload()["records"]) == 0
 
 
+def test_goal_fragment_staging_uses_real_verifier_bits_without_controller_updates() -> None:
+    report = run_goal_fragment_staging_audit(
+        seed=17,
+        updates=2,
+        batch_size=3,
+        steps=4,
+        staging_lifetimes=2,
+    )
+
+    assert report.status == "staging_boundary_only"
+    assert report.unique_verifier_bits == 12
+    assert report.unique_logical_lifetimes == 6
+    assert report.optimizer_updates == 2
+    assert report.replayed_examples == 0
+    assert report.controller_unchanged
+    assert not report.missing_evidence_accepted
+    assert not report.fresh_candidate_accepted
+    assert not report.inverted_outcome_accepted
+    assert not report.reversal_accepted
+
+
+def test_admitted_goal_fragment_changes_frozen_core_downstream_planning() -> None:
+    report = run_goal_conditioned_planning_audit(seed=93)
+
+    assert report.status == "goal_conditioned_external_planning_boundary"
+    assert report.controller_unchanged
+    assert report.replay_free_bank
+    assert report.goal_fragment_admitted
+    assert report.goal_fragment_used
+    assert report.trained_planner_improved_over_fresh
+    assert report.goal_horizon == 2
+    assert report.trained_terminal_error < report.fresh_terminal_error
+    assert report.transition_rows_consumed_once == 18
+    assert report.unique_verifier_bits == 16
+    assert report.optimizer_updates == 0
+    assert report.replayed_examples == 0
+    assert report.missing_evidence_rejected
+    assert report.corrupted_goal_rejected
+
+
+def test_nonstationary_goal_planning_retains_source_and_beats_fresh_target() -> None:
+    report = run_nonstationary_goal_conditioned_planning_audit(seed=93)
+
+    assert report.status == "nonstationary_goal_conditioned_external_planning_boundary"
+    assert report.controller_unchanged
+    assert report.replay_free_bank
+    assert report.source_slot_byte_stable
+    assert report.target_goal_fragment_admitted
+    assert report.target_goal_fragment_used
+    assert report.target_planner_improved_over_fresh
+    assert report.source_error_after_target == report.source_error_before_target
+    assert report.trained_target_terminal_error < report.fresh_target_terminal_error
+    assert report.goal_horizon == 2
+    assert report.transition_rows_consumed_once == 36
+    assert report.unique_verifier_bits == 28
+    assert report.optimizer_updates == 0
+    assert report.replayed_examples == 0
+    assert report.missing_evidence_rejected
+
+
+def test_rendered_transition_acquisition_improves_heldout_error_without_replay() -> None:
+    report = run_replay_free_transition_acquisition_audit(
+        seed=91,
+        steps=5,
+        training_lifetimes=2,
+    )
+
+    assert report.status == "rendered_replay_free_transition_boundary"
+    assert report.controller_unchanged
+    assert report.replay_free_bank
+    assert report.model_improved_on_heldout_rollout
+    assert report.replayed_examples == 0
+    assert report.optimizer_updates == 0
+    assert report.transition_rows_consumed_once == 10
+    assert report.external_sample_count == 10
+    assert report.fresh_sample_count == 0
+
+
+def test_nonstationary_transition_learning_retains_source_slot_without_replay() -> None:
+    report = run_nonstationary_transition_retention_audit(
+        seed=92,
+        steps=5,
+        source_training_lifetimes=1,
+        target_training_lifetimes=1,
+    )
+
+    assert report.status == "nonstationary_replay_free_transition_boundary"
+    assert report.controller_unchanged
+    assert report.replay_free_bank
+    assert report.source_slot_byte_stable
+    assert report.target_model_improved_on_heldout
+    assert report.source_heldout_error_after_target == (
+        report.source_heldout_error_before_target
+    )
+    assert report.replayed_examples == 0
+    assert report.external_slot_count == 2
+
+
+def test_online_transition_discovery_grows_target_slot_without_replay() -> None:
+    report = run_online_transition_discovery_audit(seed=93)
+
+    assert report.status == "online_replay_free_transition_discovery_boundary"
+    assert report.controller_unchanged
+    assert report.replay_free_bank
+    assert report.source_slot_byte_stable
+    assert report.target_context_discovered
+    assert report.target_route_recovered
+    assert report.target_model_improved_on_heldout
+    assert report.target_promotion_accepted
+    assert report.source_heldout_error_after_target == (
+        report.source_heldout_error_before_target
+    )
+    assert report.replayed_examples == 0
+    assert report.transition_rows_consumed_once == 24
+    assert report.external_slot_count == 2
+    assert report.target_discovery_status == "staged"
+    assert report.target_continuation_status == "staged"
+    assert report.target_heldout_status == "continuation"
+
+
+def test_recency_window_transition_discovery_is_an_explicit_transfer_mode() -> None:
+    report = run_online_transition_discovery_audit(
+        seed=91,
+        window_statistics="recency_weighted_and_latest_v1",
+        window_gain=0.05,
+        recency_decay=0.75,
+        goal_conditioned=True,
+        prior_selection_transfer_cost=0.0,
+        prior_selection_fresh_cost=1.0,
+        prior_selection_cost_weight=0.2,
+    )
+
+    assert report.status == "online_replay_free_transition_discovery_boundary"
+    assert report.window_statistics == "recency_weighted_and_latest_v1"
+    assert report.window_gain == 0.05
+    assert report.recency_decay == 0.75
+    assert report.target_route_recovered
+    assert report.target_model_improved_on_heldout
+    assert report.goal_conditioned
+    assert report.target_goal_fragment_admitted
+    assert report.target_goal_fragment_used
+    assert report.target_goal_planner_improved_over_fresh
+    assert report.target_goal_horizon == 2
+    assert report.target_goal_missing_evidence_rejected
+    assert report.trained_target_goal_error < report.fresh_target_goal_error
+    assert report.prior_selection_cost_aware
+    assert report.replayed_examples == 0
+
+
+def test_streaming_gradient_external_memory_is_accounted_separately() -> None:
+    report = run_online_transition_discovery_audit(
+        seed=91,
+        window_statistics="recency_weighted_and_latest_v1",
+        window_gain=0.05,
+        external_memory_update_mode="streaming_gradient",
+    )
+
+    assert report.external_memory_update_mode == "streaming_gradient"
+    assert report.external_memory_optimizer_updates == 2
+    assert report.controller_unchanged
+    assert report.replayed_examples == 0
+
+
+def test_active_discovery_probe_improves_the_external_evidence_boundary() -> None:
+    report = run_online_transition_discovery_audit(
+        seed=91,
+        window_statistics="recency_weighted_and_latest_v1",
+        window_gain=0.05,
+        goal_conditioned=True,
+        prior_selection_fresh_cost=1.0,
+        prior_selection_cost_weight=0.2,
+        discovery_probe_mode="active",
+    )
+
+    assert report.status == "online_replay_free_transition_discovery_boundary"
+    assert report.discovery_probe_mode == "active"
+    assert report.discovery_probe_rows == 6
+    assert report.controller_unchanged
+    assert report.source_slot_byte_stable
+    assert report.replayed_examples == 0
+    assert report.external_memory_optimizer_updates == 0
+
+
+def test_interleaved_active_discovery_preserves_the_external_boundary() -> None:
+    report = run_online_transition_discovery_audit(
+        seed=91,
+        window_statistics="recency_weighted_and_latest_v1",
+        window_gain=0.05,
+        discovery_probe_mode="active_interleaved",
+    )
+
+    assert report.status == "online_replay_free_transition_discovery_boundary"
+    assert report.discovery_probe_mode == "active_interleaved"
+    assert report.discovery_probe_rows == 6
+    assert report.controller_unchanged
+    assert report.source_slot_byte_stable
+    assert report.replayed_examples == 0
+
+
+def test_active_discovery_reports_a_changed_target_regime() -> None:
+    report = run_online_transition_discovery_audit(
+        seed=91,
+        window_statistics="recency_weighted_and_latest_v1",
+        window_gain=0.05,
+        goal_conditioned=True,
+        prior_selection_fresh_cost=1.0,
+        prior_selection_cost_weight=0.2,
+        discovery_probe_mode="active",
+        target_n_back=4,
+        target_cue_symbol=5,
+    )
+
+    assert report.target_n_back == 4
+    assert report.target_cue_symbol == 5
+    assert report.discovery_probe_mode == "active"
+    assert report.routing_match_tolerance == 0.01
+    assert report.source_slot_byte_stable
+    assert report.controller_unchanged
+    assert report.replayed_examples == 0
+
+
+def test_active_discovery_retains_an_overlapping_provisional_candidate() -> None:
+    report = run_online_transition_discovery_audit(
+        seed=84,
+        window_statistics="masked_mean_and_max_v1",
+        window_gain=0.05,
+        goal_conditioned=True,
+        prior_selection_fresh_cost=1.0,
+        prior_selection_cost_weight=0.2,
+        discovery_probe_mode="active",
+        routing_match_tolerance=0.02,
+        target_n_back=5,
+        target_cue_symbol=6,
+    )
+
+    assert report.status == "online_replay_free_transition_discovery_boundary"
+    assert report.target_promotion_accepted
+    assert report.target_model_improved_on_heldout
+    assert report.controller_unchanged
+    assert report.replayed_examples == 0
+
+
+def test_online_transition_discovery_can_learn_external_selection_cost() -> None:
+    report = run_online_transition_discovery_audit(
+        seed=91,
+        window_statistics="recency_weighted_and_latest_v1",
+        window_gain=0.05,
+        goal_conditioned=True,
+        learned_prior_selection_cost=True,
+    )
+
+    assert report.status == "online_replay_free_transition_discovery_boundary"
+    assert report.prior_selection_cost_ledger_used
+    assert report.prior_selection_cost_observed
+    assert report.prior_selection_cost_aware
+
+    promoted = run_online_transition_discovery_audit(
+        seed=92,
+        window_statistics="recency_weighted_and_latest_v1",
+        window_gain=0.05,
+        goal_conditioned=True,
+        learned_prior_selection_cost=True,
+    )
+    assert promoted.status == "online_replay_free_transition_discovery_boundary"
+    assert promoted.goal_conditioned
+    assert promoted.target_goal_horizon == 2
+    assert promoted.prior_selection_cost_ledger_used
+    assert promoted.prior_selection_cost_observed
+
+    rejected = run_online_transition_discovery_audit(
+        seed=93,
+        window_statistics="recency_weighted_and_latest_v1",
+        window_gain=0.05,
+        goal_conditioned=True,
+        learned_prior_selection_cost=True,
+    )
+    assert rejected.status.endswith("_failed")
+    assert rejected.goal_conditioned
+    assert rejected.target_goal_horizon == 2
+    assert rejected.prior_selection_cost_ledger_used
+    assert not rejected.prior_selection_cost_observed
+
+    adaptive = run_online_transition_discovery_audit(
+        seed=91,
+        window_statistics="recency_weighted_and_latest_v1",
+        window_gain=0.05,
+        goal_conditioned=True,
+        adaptive_address=True,
+    )
+    assert adaptive.adaptive_address
+    assert adaptive.status == "online_replay_free_transition_discovery_boundary"
+
+
+def test_transition_discovery_firewall_skips_committed_slot_updates() -> None:
+    class RouterProbe:
+        def __init__(self) -> None:
+            self.statuses = iter(("matched", "staged"))
+            self.adapted: list[str] = []
+
+        def observe(self, _observation: object) -> object:
+            return type("Result", (), {"status": next(self.statuses)})()
+
+        def adaptation_step(
+            self,
+            result: object,
+            _optimizer: object,
+            *,
+            replay_evidence: bool,
+        ) -> float:
+            assert replay_evidence is False
+            self.adapted.append(result.status)
+            return 0.0
+
+    rollout = ExternalTransitionRollout(
+        initial_state=torch.zeros(2),
+        intentions=torch.zeros(2, 1),
+        expected_states=torch.zeros(2, 2),
+    )
+    router = RouterProbe()
+    result = _route_rollout(router, rollout, adapt=True, adapt_committed=False)
+
+    assert result.status == "staged"
+    assert router.adapted == ["staged"]
+
+
 def test_relation_reader_can_replace_gru_context_in_canonical_runner() -> None:
     agent = CanonicalBrainWorkshopAgent(
         n_back=2,
@@ -130,6 +1049,36 @@ def test_relation_reader_can_replace_gru_context_in_canonical_runner() -> None:
     rollout = agent.rollout(NBackVerifier(batch_size=2, n_back=2, steps=4, seed=29))
     assert rollout.context.shape == (2, 8)
     assert agent.reader_kind == "relation"
+
+
+def test_canonical_runner_can_use_versioned_external_working_memory_cell() -> None:
+    cell = ExternalWorkingMemoryCell(
+        event_width=8,
+        action_width=2,
+        memory_capacity=4,
+        context_width=8,
+        hidden=16,
+    )
+    agent = CanonicalBrainWorkshopAgent(
+        n_back=2,
+        event_width=8,
+        intention_width=4,
+        feedback_width=4,
+        reader_kind="relation",
+        working_memory_cell=cell,
+        seed=17,
+    )
+
+    rollout = agent.rollout(
+        NBackVerifier(batch_size=2, n_back=2, steps=5, seed=29),
+        record_retention=False,
+    )
+
+    assert agent.working_memory_cell is cell
+    assert rollout.context.shape == (2, 8)
+    assert cell.configuration()["read_order"] == (
+        "read_old_state_then_append_current_row_v1"
+    )
 
 
 def test_appended_slot_uses_shared_bus_and_exact_mixture_propensity() -> None:
@@ -200,6 +1149,41 @@ def test_adaptive_slot_can_grow_its_external_window() -> None:
     assert agent.extensions[slot - 1].reader.memory_capacity == 6
     for name, value in agent.controller.state_dict().items():
         assert torch.equal(value, controller_before[name])
+
+
+def test_appended_capability_can_use_and_grow_versioned_working_memory_cell() -> None:
+    cell = ExternalWorkingMemoryCell(
+        event_width=8,
+        action_width=2,
+        memory_capacity=4,
+        context_width=8,
+        hidden=16,
+    )
+    agent = CanonicalBrainWorkshopAgent(
+        n_back=2,
+        event_width=8,
+        intention_width=4,
+        feedback_width=4,
+        reader_kind="relation",
+        seed=17,
+    )
+    slot = agent.add_adaptive_relation_capability(
+        memory_capacity=4,
+        seed=23,
+        working_memory_cell=cell,
+    )
+
+    agent.expand_adaptive_relation_capability(slot, memory_capacity=5)
+
+    extension = agent.extensions[slot - 1]
+    assert isinstance(extension.reader, ExternalWorkingMemoryCell)
+    assert extension.reader.memory_capacity == 5
+    rollout = agent.rollout(
+        NBackVerifier(batch_size=2, n_back=3, steps=6, seed=29),
+        forced_slot=slot,
+        record_retention=False,
+    )
+    assert torch.equal(rollout.selected_slots, torch.ones_like(rollout.selected_slots))
 
 
 def test_failed_adaptive_growth_resets_only_the_unmastered_external_slot() -> None:
@@ -357,6 +1341,72 @@ def test_context_route_uses_a_learned_event_cue_and_keeps_core_opaque() -> None:
         assert torch.equal(value, controller_before[name])
 
 
+def test_context_route_failure_patience_prevents_single_noise_demotion() -> None:
+    class FixedOutcomeVerifier:
+        action_count = 2
+        batch_size = 1
+        device = torch.device("cpu")
+        steps = 4
+
+        def __init__(self) -> None:
+            self._position = 0
+
+        @property
+        def position(self) -> int:
+            return self._position
+
+        @property
+        def done(self) -> bool:
+            return self._position >= self.steps
+
+        def reset(self) -> None:
+            self._position = 0
+
+        def observation(self) -> torch.Tensor:
+            return torch.tensor([4 if self._position == 0 else 0])
+
+        def score(self, action: torch.Tensor) -> NBackVerifierStep:
+            del action
+            eligible = torch.tensor([self._position > 0])
+            reward = torch.tensor(
+                [0.0 if self._position in (1, 2) else 1.0]
+            )
+            self._position += 1
+            return NBackVerifierStep(reward=reward, eligible=eligible)
+
+    agent = CanonicalBrainWorkshopAgent(
+        symbol_count=7,
+        n_back=2,
+        event_width=8,
+        intention_width=4,
+        feedback_width=4,
+        reader_kind="relation",
+        seed=17,
+    )
+    slot = agent.add_relation_capability(n_back=3, seed=23)
+    cue_event = agent.runtime.encoders["stimulus"](torch.tensor([4]))[0]
+    for _ in range(agent.context_route_evidence.min_mastery_observations):
+        agent.context_route_evidence.observe(cue_event, slot, 1.0)
+
+    impatient = agent.rollout(
+        FixedOutcomeVerifier(),
+        sample=False,
+        record_retention=False,
+        context_route=True,
+        context_route_failure_patience=1,
+    )
+    patient = agent.rollout(
+        FixedOutcomeVerifier(),
+        sample=False,
+        record_retention=False,
+        context_route=True,
+        context_route_failure_patience=2,
+    )
+
+    assert impatient.selected_slots[0].tolist() == [slot, slot, 0, 0]
+    assert patient.selected_slots[0].tolist() == [slot, slot, slot, 0]
+
+
 def test_route_state_round_trips_without_loading_controller_weights() -> None:
     agent = CanonicalBrainWorkshopAgent(
         symbol_count=7,
@@ -412,3 +1462,179 @@ def test_route_state_round_trips_without_loading_controller_weights() -> None:
     )
     for name, value in restored.controller.state_dict().items():
         assert torch.equal(value, controller_before[name])
+
+
+def test_route_state_rejects_incompatible_learned_event_representation() -> None:
+    agent = CanonicalBrainWorkshopAgent(
+        symbol_count=7,
+        n_back=2,
+        event_width=8,
+        intention_width=4,
+        feedback_width=4,
+        reader_kind="relation",
+        seed=17,
+    )
+    agent.add_relation_capability(n_back=3, seed=23)
+    payload = agent.route_state_payload()
+
+    restored = CanonicalBrainWorkshopAgent(
+        symbol_count=7,
+        n_back=2,
+        event_width=8,
+        intention_width=4,
+        feedback_width=4,
+        reader_kind="relation",
+        seed=18,
+    )
+    restored.add_relation_capability(n_back=3, seed=23)
+
+    with pytest.raises(ValueError, match="learned event representation"):
+        restored.load_route_state_payload(payload)
+
+
+def test_canonical_intention_memory_is_external_and_reloadable() -> None:
+    agent = CanonicalBrainWorkshopAgent(
+        n_back=2,
+        event_width=8,
+        intention_width=4,
+        feedback_width=4,
+        seed=17,
+    )
+    before = {
+        name: value.detach().clone()
+        for name, value in agent.controller.state_dict().items()
+    }
+    agent.observe_intention(
+        torch.tensor([[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0]]),
+        utility=torch.tensor([1.0, 0.0]),
+        propensity=torch.ones(2),
+        outcome_mask=torch.tensor([True, False]),
+    )
+    payload = agent.intention_state_payload()
+
+    restored = CanonicalBrainWorkshopAgent(
+        n_back=2,
+        event_width=8,
+        intention_width=4,
+        feedback_width=4,
+        seed=17,
+    )
+    restored.load_intention_state_payload(payload)
+
+    assert (
+        restored.intention_state_payload()["repertoire"]["sha256"]
+        == payload["repertoire"]["sha256"]
+    )
+    assert restored.intention_repertoire.record_count == 2
+    assert restored.propose_intentions(include_seed=False).source_indices == (0, 1)
+    assert "intention_repertoire" not in dict(agent.named_parameters())
+    for name, value in agent.controller.state_dict().items():
+        assert torch.equal(value, before[name])
+
+
+def test_rollout_can_record_only_present_verifier_outcomes_externally() -> None:
+    agent = CanonicalBrainWorkshopAgent(
+        n_back=2,
+        event_width=8,
+        intention_width=4,
+        feedback_width=4,
+        seed=17,
+    )
+    rollout = agent.rollout(
+        NBackVerifier(batch_size=2, n_back=2, steps=4, seed=29),
+        sample=False,
+        record_intention_memory=True,
+    )
+
+    statistics = agent.intention_repertoire.statistics()
+    assert int(statistics["attempts"].sum()) == rollout.actions.numel()
+    assert int(statistics["outcome_counts"].sum()) == int(rollout.eligible.sum())
+    assert int(statistics["outcome_counts"].sum()) < int(
+        statistics["attempts"].sum()
+    )
+
+
+def test_rollout_preserves_missing_feedback_as_absence_in_external_memory() -> None:
+    class RecordingCell(ExternalWorkingMemoryCell):
+        def __init__(self) -> None:
+            super().__init__(
+                event_width=8,
+                action_width=2,
+                memory_capacity=3,
+                context_width=8,
+                hidden=16,
+            )
+            self.present_log: list[torch.Tensor | None] = []
+
+        def step(self, event, action, outcome, state, present=None):
+            self.present_log.append(
+                None if present is None else present.detach().clone()
+            )
+            return super().step(event, action, outcome, state, present)
+
+    cell = RecordingCell()
+    agent = CanonicalBrainWorkshopAgent(
+        n_back=2,
+        event_width=8,
+        intention_width=4,
+        feedback_width=4,
+        reader_kind="relation",
+        working_memory_cell=cell,
+        seed=17,
+    )
+    observed = torch.ones(2, 5, dtype=torch.bool)
+    observed[:, 2] = False
+    rollout = agent.rollout(
+        NBackVerifier(batch_size=2, n_back=2, steps=5, seed=29),
+        sample=False,
+        feedback_observation_mask=observed,
+    )
+
+    assert int(rollout.eligible.sum()) == 6
+    assert int(rollout.feedback_present.sum()) == 4
+    assert len(cell.present_log) == 5
+    assert all(value is not None for value in cell.present_log)
+    assert not bool(cell.present_log[3].any())
+    assert bool(cell.present_log[4].all())
+
+
+def test_cross_family_growth_smoke_keeps_route_and_core_boundaries(tmp_path) -> None:
+    report = run_cross_family_rule_growth(
+        argparse.Namespace(
+            report_out=tmp_path / "cross-family-smoke.json",
+            seed=17,
+            source_updates=1,
+            target_updates=1,
+            batch_size=2,
+            steps=6,
+            calibration_lifetimes=1,
+            discovery_lifetimes=1,
+            retention_lifetimes=1,
+            learning_rate=1e-2,
+            target_family="triplet_parity",
+            training_cue=7,
+            heldout_cue=8,
+            shuffled_cue=9,
+            target_warmup_family="parity2",
+            target_warmup_updates=1,
+        )
+    )
+
+    assert report["schema"] == (
+        "neural-computer.brainworkshop-cross-family-rule-growth.v1"
+    )
+    assert report["gates"]["controller_unchanged"] is True
+    assert report["gates"]["encoder_unchanged"] is True
+    assert report["gates"]["route_reload_exact"] is True
+    assert report["gates"]["incompatible_route_representation_rejected"] is True
+    assert report["gates"]["zero_replayed_examples"] is True
+    assert report["training_rule"]["family"] == "triplet_parity"
+    assert report["target_warmup"]["family"] == "parity2"
+    assert report["accounting"]["optimizer_updates"] == 5
+
+
+def test_external_compute_route_bank_accepts_generic_depth_profile() -> None:
+    assert _parse_query_counts("4,4,4,4,6", slot_count=5) == (4, 4, 4, 4, 6)
+    assert _family_steps("nback5") == 15
+    with pytest.raises(ValueError, match="history query profile"):
+        _parse_query_counts("4,6", slot_count=5)

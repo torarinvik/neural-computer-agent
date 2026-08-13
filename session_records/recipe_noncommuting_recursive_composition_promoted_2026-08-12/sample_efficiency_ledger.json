@@ -1,0 +1,36 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment_id": "recipe-noncommuting-recursive-composition-promoted-2026-08-12",
+  "status": "promoted_bounded_noncommuting_recursive_external_composition",
+  "source": "in_repository_run",
+  "variant": "noncommuting_chain",
+  "policy_profile": "orientation_invariant",
+  "seeds": [17, 18, 19, 20],
+  "unique_verifier_bits_per_seed": [2208, 2944, 2528, 2464],
+  "unique_logical_lifetimes_per_seed": [317, 340, 327, 325],
+  "optimizer_updates": 0,
+  "replayed_examples": 0,
+  "stable_bits_to_threshold": {
+    "atomic_sources": [1, 1, 1, 1],
+    "depth2": [1, 1, 1, 1],
+    "depth3": [1, 1, 1, 1],
+    "depth4_warm": [1, 1, 1, 1],
+    "shuffled_control": null
+  },
+  "retention_on_mastered_files": [1.0, 1.0, 1.0, 1.0],
+  "depth4_warm_to_fresh_proposal_ratio": [0.875, 0.8421052632, 3.0, 1.1111111111],
+  "latency_seconds": [0.0789503331, 0.1126070418, 0.0860893340, 0.0815494990],
+  "controls": {
+    "four_seeds": true,
+    "mixed_per_family_moduli": true,
+    "noncommuting_dependency_chain": true,
+    "reversed_programs": true,
+    "missing_evidence": true,
+    "shuffled_verifier": true,
+    "protected_retention": true,
+    "reload_and_checksum": true,
+    "zero_replay": true,
+    "zero_controller_updates": true
+  },
+  "claim_boundary": "Promoted narrow noncommuting recursive external-memory composition only; warm proposal transfer remains diagnostic and general continual learning remains unproven."
+}

@@ -1,8 +1,0 @@
-{
-  "normal_accuracy": 1.0,
-  "reversed_accuracy": 1.0,
-  "flip_rate": 1.0,
-  "stale_label_accuracy": 0.0,
-  "zero_strength_is_exact_noop": true,
-  "schema": "fixed-pairwise-transfer-audit-v1"
-}

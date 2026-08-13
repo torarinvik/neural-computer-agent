@@ -1,9 +1,0 @@
-{
-  "schema": "span9-address-fixed-content-control-v1",
-  "parent": "temporary addressed scale-1 parent with fixed write-content scalar 0.5",
-  "span9_accuracy": 0.8880208134651184,
-  "blank_accuracy": 0.5002170205116274,
-  "reset_accuracy": 0.5021701455116272,
-  "reverse_flip": 0.4652777910232544,
-  "conclusion": "Fixed generic per-slot write offsets improve transfer modestly, but the result requires a retention audit before any promotion claim."
-}
