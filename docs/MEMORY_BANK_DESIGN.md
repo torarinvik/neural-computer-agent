@@ -11637,3 +11637,55 @@ identical training budgets. It does NOT test a change in SLOT COUNT —
 the observation still has three planes and six slots — and it reuses
 the same world mechanics; a new mechanics family remains the harder
 generality test.
+
+## F221 — TWIN WORLDS: FROM BYTE-IDENTICAL PIXELS, OPPOSITE GOALS,
+## BOTH CORRECT
+
+F220 named "a new mechanics family" as the untested boundary. The
+codebase already held one no probe had ever touched: forage — two item
+types, one +1 and one -1 — and choice, with `inverted` twins in which
+THE SAME RENDERING means the opposite thing. Asserted at startup, every
+seed: at equal seeds the twin worlds are byte-identical in observation
+and transition; only reward differs. Appearance carries zero
+information about what to want.
+
+Three seeds, three twin pairs, mechanics never seen by the plant, the
+searches, or any prior probe:
+
+| world | random | OWN goal | transplanted | own goals (all seeds) |
+| --- | ---: | ---: | ---: | --- |
+| forage1 normal | +0.016 | **+1.667** | -1.578 | (0,1)->(2,3) approach |
+| forage1 inverted | -0.016 | **+1.578** | -1.667 | (0,1)->(4,5) approach |
+| forage2 normal | +0.000 | **+2.307** | -2.161 | (0,1)->(2,3) |
+| forage2 inverted | +0.000 | **+2.161** | -2.307 | (0,1)->(4,5) |
+| choice1 normal | -0.068 | **+0.859** | -1.667 | equivalent forms, per seed |
+| choice1 inverted | +0.068 | **+1.667** | -0.859 | |
+
+    own - random       : +1.7066 +- 0.1608  t=+10.61  18/18
+    own - transplanted : +3.4132 +- 0.2524  t=+13.52  18/18
+    transplanted - rand: -1.7066 +- 0.1608  t=-10.61   0/18
+
+**The discovered goals are exactly opposite item planes on every seed**
+— (0,1)->(2,3) on the normal forage worlds, (0,1)->(4,5) on their
+inverted twins — chosen deterministically from reward through worlds
+whose pixels are indistinguishable. And the transplant arm is the
+control that makes it unambiguous: the twin's goal, correct there and
+byte-compatible here, sends the agent confidently foraging the poison,
+symmetric to the decimal (+1.7066 / -1.7066 — the anti-symmetry is
+itself a consistency check, since the twins differ only by the reward
+sign on contact events).
+
+**On mechanics no component had ever seen**, the unmodified stack —
+plant trained on random programs, per-slot program search, signed
+per-world goal search — scores +1.7 to +2.3 against a random baseline
+of ~0. Nothing was retrained, retuned, or told what foraging is.
+
+**The honest anomaly, recorded rather than smoothed.** On choice1 the
+BANK arm beats its own oracle by a wide margin (+0.859 vs +0.005,
++1.667 vs -0.276). By F203's principle this cannot mean the model
+outperforms reality; it means goals selected by bank-planning search
+are tuned to the bank's dynamics, and the oracle executing the same
+proxy exactly walks into the -1 item more often. The proxy-mismatch
+family (F203 intercept, F216 flee-nearest, now choice) keeps growing,
+and a goal language expressing "reach A while not reaching B" is the
+common missing piece.
