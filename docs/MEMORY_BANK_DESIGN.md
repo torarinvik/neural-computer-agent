@@ -12402,3 +12402,47 @@ without losing resource1 or the controls, evaluated by the GPT-advised
 localization factorial (privileged/learned values x privileged/current
 binding + shuffled-value control), with pairwise ranking and
 target-regret metrics, not evaluator R^2.
+
+## F234 — VALUED BINDING: SUFFICIENT WITH TRUE VALUES, CAPPED WITHOUT
+## IDENTITY; THE WITNESS DESCENDS TO PERSISTENT ENTITY TRACKING
+## (2026-08-13, valued_binding.py + target_aliasing.py, 6 seeds.
+## Scope: DEV mechanism set)
+
+The GPT-advised localization factorial for the bait tax, run with a
+value-directed tracker (slots 6/7 = argmax-value plane-1 item, value
+= w . phi(o), phi generic relational; canonical REACH goal, no race
+needed for the valued arms):
+
+  none (baseline race)   tax -0.357
+  true labels (PRIV.)    tax -0.096   arm effect +0.222, t=+2.54:
+                         BINDING THROUGH A TRACKER SLOT IS SUFFICIENT
+                         once values are known -- 73% of the tax
+                         recovered by pointing at the right item.
+  learned w (deployable) ranking accuracy 0.842 -- EXACTLY the
+                         audit's identity-free cap (L3) -- and below
+                         what the race demands: the valued goal lost
+                         selection to the composite, so the arm fell
+                         back to the baseline winner (+0.054).
+  shuffled w (control)   IDENTICAL to learned -- both valued encoders
+                         lost the race, so no lottery credit; the
+                         causal control certifies the learned cell as
+                         "insufficient", not "noise-helped".
+
+resource1 held at +0.586 in every arm; collect2 and avoid1_collect1
+unchanged. Together with F233's audit the story is complete:
+
+    The bait witness resolves to PERSISTENT ENTITY IDENTITY. Binding
+    works (privileged arm); identity-free value features rank at
+    0.84 and fail selection; spawn-history features rank at 0.93.
+    The next perception-layer primitive is entity tracking --
+    correspondence of object tokens across frames, with per-entity
+    accumulated contact history. It enters only through this witness,
+    with the F234 factorial as its acceptance harness (the learned
+    cell must climb from +0.05 toward the true arm's +0.22).
+
+This closes today's arc at a natural boundary: the typed-controller
+layer gained SEQUENCE (F231, resource1 fixed) and VALUE-BIND (F234,
+mechanism proven, awaiting identity-grade features); ATOM and SUM
+stand; IF/guards measured and declined (F233). The perception layer's
+next element is named and witnessed before a line of it exists --
+the localization discipline working exactly as intended.
