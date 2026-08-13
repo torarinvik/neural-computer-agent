@@ -11802,3 +11802,59 @@ INTERPRETATION of bank>oracle as model quality, which contaminated
 F203, F216, F221 and F222's anomaly notes. Those notes are hereby
 corrected. The unbiased goal path (reward-derived) exists where honest
 model comparison is needed, with its capability limits mapped.
+
+## F224 — PERCEPTION IS NO LONGER HAND-WRITTEN: SLOT_STATE SUBSUMED BY
+## A GENERATED SPACE, SELECTED BY PLANNING, SOMETIMES BEATEN BY ITS OWN
+## SIBLINGS
+
+`slot_state` was the last hand-written domain knowledge. F213's
+prediction-side criterion failed twice; F214 proved prediction and
+planning quality diverge. The fix that worked has two parts, each
+localised by a failed intermediate.
+
+**Part 1: select encoders by PLANNING reward** (per-encoder bank,
+per-encoder reward-chosen goal, selection stream separate from
+evaluation). With a per-plane vocabulary this reached parity on
+single-object worlds (-0.019, t=-0.83) and lost exactly where several
+objects exist (-0.4288, t=-4.04) — both registered predictions
+confirmed, and the residue PRECISELY localised: the incumbent's one
+inexpressible trick is the relational "nearest object to a reference",
+a cross-plane relation per-plane reductions cannot spell.
+
+**Part 2: one generic relational operator.** `nearest(channel, ref)` —
+the position within a channel of the set cell minimising distance to a
+reference feature-pair, the reference itself a SEARCHED parameter. It
+mentions no avatar and no object; anchoring on channel 0 happens to
+reproduce slot_state, and anchors 1 and 2 are siblings no human would
+have written. Three seeds, six worlds, full protocol:
+
+| world | random | handwritten | VOCAB | anchors chosen per seed |
+| --- | ---: | ---: | ---: | --- |
+| collect1 | +0.104 | +1.708 | **+1.958** | anchor1, anchor0, anchor1 |
+| collect2 | +0.276 | +2.521 | **+2.688** | anchor1, anchor0, anchor0 |
+| intercept1 | -0.870 | -0.375 | -0.375 | anchor0 x3 |
+| avoid2 | -0.229 | -0.047 | -0.073 | anchor0, anchor0, anchor2 |
+| navigate1 | +0.161 | +0.938 | **+1.031** | anchor1, anchor0, anchor1 |
+| forage2 | +0.000 | +2.307 | +2.245 | anchor1, anchor0, anchor0 |
+
+    vocab - handwritten, ALL:          +0.0703 +- 0.0535  t=+1.31
+    vocab - handwritten, multi-object: +0.0260 +- 0.0629  t=+0.41
+      (was -0.4288, t=-4.04 without the relational operator)
+    vocab - random:                    +1.3385 +- 0.2151  t=+6.22  18/18
+
+**The hand-written encoder is no longer load-bearing.** Removing
+slot_state and letting per-world planning selection choose from the
+generated space loses nothing (t=+1.31 in the vocabulary's favour) —
+and on three worlds the selection finds ANCHOR-ON-THE-OBJECT-PLANE
+encoders that beat the human choice (+0.25 on collect1, +0.17 on
+collect2, +0.09 on navigate1): representing the avatar relative to the
+food instead of the food relative to the avatar, a framing no probe
+here ever wrote down.
+
+**What remains honest about this.** The vocabulary's OPERATORS
+(reductions, one relational argmin) are still human-designed, as is the
+candidate-generation rule; what is no longer human is the domain
+binding — which channel is "the agent", which relation matters, per
+world. The claim is subsumption and selection, not creation ex nihilo.
+And the operator set is small because the worlds are; richer substrates
+will demand richer operator sets, chosen the same way.
