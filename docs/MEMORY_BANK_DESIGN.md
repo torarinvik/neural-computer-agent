@@ -11740,3 +11740,65 @@ term (selection noise, means shift by -0.01 to -0.09); a stricter
 keep-single-unless-better-by-margin rule would remove this. All
 protocol as F214/F216: selection on its own episode stream, evaluation
 on fresh full-budget episodes.
+
+## F223 — THE MODEL-PROXY GAP DISSOLVES: BANK-BEATS-ORACLE WAS GOAL
+## SELECTION BIAS, AND F203's PRINCIPLE GAINS A CLAUSE
+
+The deepest recurring anomaly in the record — the bank outscoring the
+oracle on intercept (F203), avoid (F216), choice (F221, F222) — was
+read four times as "the proxy objective is mismatched." Two probes
+resolve it completely.
+
+**First, reward-derived goals (no rollout selection) show sane
+ordering.** A sparse linear reward model on domain-general contact
+features — closed-form ridge on the world's own random transitions,
+zero rollouts — yields goals whose weights ARE the objective. Under
+these fitted goals, oracle >= bank returns (+0.1286 overall, +0.099 on
+choice): no violation anywhere. And the fitted weights pass the twin
+test exactly — every term flips sign between byte-identical worlds
+(forage2: -0.986/+0.985 vs +0.986/-0.985; choice1 likewise), a
+zero-rollout confirmation of F221. Capability is mixed and recorded:
+collect matches search at zero cost, forage comes close, choice
+collapses under feature collinearity (the dense-event trial world fires
+many correlated contact features at once), and intercept confirms the
+registered prediction that lead pursuit is not expressible as contact
+weights. Two evidence bugs were caught by diagnostics before they
+became findings: single-step-from-reset evidence contains no contact
+events at all, and the after-avatar row filter dropped all 55 hazard
+contacts in a 3,072-step check because contact REMOVES the avatar —
+the row-filter lesson's fourth appearance, fixed by letting the world's
+own bank predict the blanked rows.
+
+**Second, the four-cell experiment: choose the goal by bank rollouts or
+by oracle rollouts, evaluate under both.** Registered prediction: the
+ordering follows the SELECTOR. It does, exactly:
+
+| world | B-sel/B-ex | B-sel/O-ex | O-sel/B-ex | O-sel/O-ex |
+| --- | ---: | ---: | ---: | ---: |
+| choice1 | +0.859 | +0.005 | +0.391 | +0.052 |
+| choice1_inv | +1.979 | -0.193 | -0.479 | +0.495 |
+| intercept1 | +0.661 | -0.062 | -0.073 | +0.083 |
+| forage2 | +2.266 | +2.375 | +2.307 | +2.583 |
+
+    bank-selected:   bank - oracle = +0.9102 +- 0.3718  t=+2.45
+    oracle-selected: oracle - bank = +0.2669 +- 0.1856  t=+1.44
+    each executor does best under its own selector
+
+**The refined principle.** A model cannot beat the reality it models ON
+A FIXED OBJECTIVE. When the objective itself is chosen by maximising
+model rollouts, the model "beats" reality by exactly the selection
+bias, and the gap measures the OPTIMISER'S PRESSURE, not the model's
+error. Four findings' worth of "the proxy is mismatched" reduce to
+this one sentence. F203's oracle-ceiling instrument remains valid for
+fixed objectives and is now known to be INVALID for selected ones —
+which is itself a new instrument: a bank-minus-oracle gap under a
+selected objective measures selection pressure, and its disappearance
+under fitted objectives certifies the selection-free path.
+
+**What is actually resolved.** Bank-selected goals are legitimate for
+DEPLOYMENT — the bank is the deployed model, and choosing goals that
+work under it is optimisation, not error. What was wrong was the
+INTERPRETATION of bank>oracle as model quality, which contaminated
+F203, F216, F221 and F222's anomaly notes. Those notes are hereby
+corrected. The unbiased goal path (reward-derived) exists where honest
+model comparison is needed, with its capability limits mapped.
