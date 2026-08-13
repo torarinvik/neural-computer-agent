@@ -11858,3 +11858,48 @@ binding — which channel is "the agent", which relation matters, per
 world. The claim is subsumption and selection, not creation ex nihilo.
 And the operator set is small because the worlds are; richer substrates
 will demand richer operator sets, chosen the same way.
+
+## F225 — SLOT COUNT TRANSFERS MECHANICALLY, AND WIDTH COSTS UNLESS THE
+## GOAL LANGUAGE CO-SCALES: THE CO-SCALING LAW
+
+F220 left slot count as the amodality claim's untested half. The full
+F216 protocol was run at SLOTS=8 — the two new slots fed by
+kth_nearest, the generic sibling of F224's relational operator, with
+the extra tracker's plane chosen per world by planning selection.
+
+**Prediction 1 (plant gates at the unchanged budget): PASSES exactly.
+1.0000 / 1.0000 / 1.0000** at 40k updates with eight slots. Together
+with F220, both structural axes of the interface — value range and
+slot count — now transfer with constants and generic operators only.
+
+**Prediction 2 (multi-object worlds improve): REFUTED, twice over.**
+With single-term goals, eight slots are WORSE than six (-0.1777,
+t=-3.00 overall; -0.2943, t=-2.98 multi-object), and the tell is that
+goals name the new slots 1/24 times: width the goal language cannot
+reference is pure selection noise. The causal test then confirms the
+diagnosis: F222's composite search at eight slots recovers to 6-slot
+parity (+0.0319, t=+0.37 against the archived reference; composite
+minus single at eight slots = +0.2096, t=+3.39).
+
+    THE CO-SCALING LAW: interface width must co-scale with
+    goal-language width, or the extra width is a cost, not a capacity.
+
+**And the deeper boundary: the second tracker is never used at all** —
+0/24 goals reference slots 6/7 even under composite search, and
+multi-object worlds stay -0.19 (t=-2.12) below their 6-slot numbers.
+On THIS world family the six-slot interface was never
+information-starved: avoid2 already sits at 92-95% of its zero ceiling
+(F220), and the second-nearest tracker has chaotic slot semantics
+(identity switches whenever the nearest object is consumed or passed)
+that make its dynamics hard to bank and its goals unattractive to
+selection. Wider is not better; wider is only better when something in
+the world needs the width, and nothing here does.
+
+**What this closes and what it opens.** The mechanical gate for richer
+substrates is open: plant, searches, goal machinery and perception
+selection all run at a new slot count without retuning. The design law
+for using that freedom is measured, not guessed. What remains genuinely
+open is a world family that NEEDS width — worlds where the second
+object is strategically distinct — which is the open-ended generator
+front, now with a concrete specification for what its worlds must
+contain.
