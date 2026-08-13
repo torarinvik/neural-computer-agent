@@ -12446,3 +12446,43 @@ mechanism proven, awaiting identity-grade features); ATOM and SUM
 stand; IF/guards measured and declined (F233). The perception layer's
 next element is named and witnessed before a line of it exists --
 the localization discipline working exactly as intended.
+
+## F235 — ENTITY TRACKING DELIVERS THE RANKING; THE TAX HALVES; THE
+## SHUFFLED CONTROL EXPOSES ITS OWN WEAKNESS ON 2-ITEM WORLDS
+## (2026-08-13, entity_binding.py, 6 seeds. Scope: DEV mechanism set;
+## causal attribution PENDING the deceptive2 confirming run)
+
+The witnessed perception primitive -- persistent entity identity via
+cell-occupancy correspondence with spawn-time relational memory --
+plus a reward-CLASS value fit (1{r >= 0.5}, 10x128x12 contact
+experience) against the F234 acceptance harness:
+
+  ranking accuracy   0.842 (no identity) -> 0.906 (identity, raw
+                     reward) -> 0.943 (identity, class target;
+                     per-seed 0.91-0.97) -- the audit's L4 level,
+                     reached exactly as predicted.
+  first deployable selection win: seed 31337's learned arm chose the
+                     valued tracker with the clean canonical goal
+                     REACH((0,1)->(6,7)) and evaluated at +1.547.
+  bait tax           none -0.357 -> learned arm -0.181: HALVED.
+  resource1          +0.586 in every arm; controls intact.
+
+**Honest attribution caveat, and the discovered control weakness.**
+The shuffled-w arm scored the same as learned (+0.002 apart): on a
+2-item world, coin-flip targeting is NOT a null -- both items pay
+something, so ANY single-target binding beats the composite baseline
+(+0.136), and the value-accuracy component (true - shuffled = +0.086)
+is only partially separable at n=6 where the valued encoders win
+selection in 1-2 seeds. The family provides the fix: deceptive2
+(three items, two baits) makes random targeting costly; the
+confirming run is in flight. Registered for it: learned > shuffled
+by >= +0.10 on deceptive2, ranking holds >= 0.93, and the tax
+improvement persists.
+
+**Second discovered instance of encoder-level selection optimism**
+(with F234's): the baseline arm's clear/approach encoders win
+selection then collapse on evaluation (69316: sel 1.55 -> eval 1.44
+vs second2's 1.38 -> 1.61). The optimism ledger now spans goals,
+schedules, guards and encoders -- adaptive racing with common random
+numbers is promoted to the next infrastructure milestone after this
+capability lands.
