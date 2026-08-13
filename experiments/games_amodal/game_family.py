@@ -161,6 +161,29 @@ class FamilyConfig:
     # merely the elegant one. `rule0`/`rule1` name the edible side per cue.
     rule0: int = -1  # -1 = derive from `inverted` (arity-2 compatibility)
     rule1: int = -1  # -1 = derive from `inverted2`
+    delayed: int = 0  # F230 mechanism (DEV): k>0 places one switch on
+    # the negative plane; touching it pays +1 exactly k steps LATER,
+    # wherever the avatar then is, and the switch respawns. The causing
+    # action and the payment are separated by k steps: delayed credit.
+    resource: int = 0  # F230 mechanism (DEV): n harmless resource items
+    # on the negative plane. Food pays +1 only while holding a collected
+    # resource (one is consumed per meal); eating unfueled pays 0 and
+    # the food still respawns elsewhere. Multi-stage subgoals.
+    deceptive: int = 0  # F230 mechanism (DEV): n bait items on the
+    # POSITIVE plane, spawned adjacent to hazards and rendered exactly
+    # like food. Bait pays +0.2; real food pays +1. The value difference
+    # is invisible to appearance -- only experienced reward reveals it,
+    # and the nearest item is usually the trap. Requires avoid>0.
+    blink: int = 0  # F230 mechanism (SEALED): with avoid>0, hazards are
+    # rendered only on even steps; on odd steps their plane is blank.
+    # Acting safely requires remembering what is no longer visible.
+    oneway: int = 0  # F230 mechanism (SEALED): n food items that NEVER
+    # respawn. Consumption is irreversible and the episode's total is
+    # bounded; order and commitment matter.
+    lever: int = 0  # F230 mechanism (SEALED): with avoid>0, one lever
+    # cell on the positive plane; touching it toggles hazard motion
+    # frozen/unfrozen. Touching the lever changes the DYNAMICS, not the
+    # state: causal intervention.
     pursue: int = 0  # F227 distinct-roles component: hazards on the
     # NEGATIVE plane that render identically to `avoid` hazards but step
     # toward the avatar's current cell every step (larger-gap axis
@@ -214,6 +237,12 @@ class FamilyConfig:
                 ("choice", self.choice),
                 ("dual", self.dual),
                 ("pursue", self.pursue),
+                ("delayed", self.delayed),
+                ("resource", self.resource),
+                ("deceptive", self.deceptive),
+                ("blink", self.blink),
+                ("oneway", self.oneway),
+                ("lever", self.lever),
             )
             if level
         )
@@ -253,6 +282,9 @@ class FamilyConfig:
             self.choice,
             self.dual,
             self.pursue,
+            self.resource,
+            self.deceptive,
+            self.oneway,
         )
         if min(levels) < 0:
             raise ValueError("component levels cannot be negative")
@@ -264,6 +296,16 @@ class FamilyConfig:
             raise ValueError("dual arity must be 2 or 3")
         if self.dual and max(self.rule0, self.rule1) >= self.arity:
             raise ValueError("a dual rule names a side that is not dealt")
+        if self.delayed < 0:
+            raise ValueError("delay cannot be negative")
+        if self.blink < 0 or self.lever < 0:
+            raise ValueError("mechanism levels cannot be negative")
+        if self.deceptive and not self.avoid:
+            raise ValueError("deceptive bait needs hazards to sit beside")
+        if self.blink and not self.avoid:
+            raise ValueError("blink hides hazards; it needs avoid")
+        if self.lever and not self.avoid:
+            raise ValueError("the lever freezes hazards; it needs avoid")
         if self.view not in ("", "roll", "crop"):
             raise ValueError(f"unknown screen view: {self.view!r}")
         if self.spawn_radius < 0:
@@ -313,6 +355,14 @@ class FamilyVerifier:
         self._fallers: list[list[tuple[int, int]]] = []
         self._hazards: list[list[tuple[int, int, int]]] = []
         self._pursuers: list[list[tuple[int, int]]] = []
+        self._switches: list[tuple[int, int] | None] = []
+        self._pending: list[list[int]] = []
+        self._resources: list[list[tuple[int, int]]] = []
+        self._holding: list[int] = []
+        self._bait: list[list[tuple[int, int]]] = []
+        self._oneway_food: list[list[tuple[int, int]]] = []
+        self._lever: list[tuple[int, int] | None] = []
+        self._frozen: list[bool] = []
         self._walls: list[set[tuple[int, int]]] = []
         self._goal: list[tuple[int, int] | None] = []
         self._forage_a: list[list[tuple[int, int]]] = []
@@ -351,6 +401,23 @@ class FamilyVerifier:
             return self._free_cell(row, occupied)
         return candidates[self._rand(len(candidates))]
 
+    def _bait_cell(self, row, occupied, hazards):
+        """A free cell within Chebyshev 1 of a random hazard."""
+        if not hazards:
+            return self._free_cell(row, occupied)
+        h = hazards[self._rand(len(hazards))]
+        options = [
+            (h[0] + dr, h[1] + dc)
+            for dr in (-1, 0, 1) for dc in (-1, 0, 1)
+            if (dr or dc)
+            and 0 <= h[0] + dr < self.height
+            and 0 <= h[1] + dc < self.width
+            and (h[0] + dr, h[1] + dc) not in occupied
+        ]
+        if not options:
+            return self._free_cell(row, occupied)
+        return options[self._rand(len(options))]
+
     def reset(self, *, seed: int | None = None) -> None:
         if seed is not None:
             self._generator.manual_seed(int(seed))
@@ -360,6 +427,14 @@ class FamilyVerifier:
         self._fallers = []
         self._hazards = []
         self._pursuers = []
+        self._switches = []
+        self._pending = []
+        self._resources = []
+        self._holding = []
+        self._bait = []
+        self._oneway_food = []
+        self._lever = []
+        self._frozen = []
         self._walls = []
         self._goal = []
         self._forage_a = []
@@ -402,6 +477,39 @@ class FamilyVerifier:
                 occupied.add(cell)
                 pursuers.append(cell)
             self._pursuers.append(pursuers)
+            if config.delayed:
+                cell = self._free_cell(row, occupied)
+                occupied.add(cell)
+                self._switches.append(cell)
+            else:
+                self._switches.append(None)
+            self._pending.append([])
+            resources = []
+            for _ in range(config.resource):
+                cell = self._free_cell(row, occupied)
+                occupied.add(cell)
+                resources.append(cell)
+            self._resources.append(resources)
+            self._holding.append(0)
+            bait = []
+            for _ in range(config.deceptive):
+                cell = self._bait_cell(row, occupied, hazards)
+                occupied.add(cell)
+                bait.append(cell)
+            self._bait.append(bait)
+            oneway = []
+            for _ in range(config.oneway):
+                cell = self._free_cell(row, occupied)
+                occupied.add(cell)
+                oneway.append(cell)
+            self._oneway_food.append(oneway)
+            if config.lever:
+                cell = self._free_cell(row, occupied)
+                occupied.add(cell)
+                self._lever.append(cell)
+            else:
+                self._lever.append(None)
+            self._frozen.append(False)
             if config.navigate:
                 goal = self._free_cell(row, occupied)
                 occupied.add(goal)
@@ -516,10 +624,23 @@ class FamilyVerifier:
             goal = self._goal[row]
             if goal is not None:
                 grid[row, 1, goal[0], goal[1]] = 1.0
-            for hazard in self._hazards[row]:
-                grid[row, 2, hazard[0], hazard[1]] = 1.0
+            if not (self.config.blink and self._step_index % 2 == 1):
+                for hazard in self._hazards[row]:
+                    grid[row, 2, hazard[0], hazard[1]] = 1.0
             for cell in self._pursuers[row]:
                 grid[row, 2, cell[0], cell[1]] = 1.0
+            switch = self._switches[row]
+            if switch is not None:
+                grid[row, 2, switch[0], switch[1]] = 1.0
+            for cell in self._resources[row]:
+                grid[row, 2, cell[0], cell[1]] = 1.0
+            for cell in self._bait[row]:
+                grid[row, 1, cell[0], cell[1]] = 1.0
+            for cell in self._oneway_food[row]:
+                grid[row, 1, cell[0], cell[1]] = 1.0
+            lever = self._lever[row]
+            if lever is not None:
+                grid[row, 1, lever[0], lever[1]] = 1.0
             for cell in self._walls[row]:
                 grid[row, 2, cell[0], cell[1]] = 1.0
             for cell in self._forage_a[row]:
@@ -565,7 +686,12 @@ class FamilyVerifier:
                     reward[row] -= 1.0
                     self._alive[row] = False
                     continue
-                reward[row] += 1.0
+                if self.config.resource:
+                    if self._holding[row] > 0:
+                        self._holding[row] -= 1
+                        reward[row] += 1.0
+                else:
+                    reward[row] += 1.0
                 occupied = set(self._food[row]) | self._walls[row] | {target}
                 self._food[row].append(self._free_cell(row, occupied))
 
@@ -633,6 +759,39 @@ class FamilyVerifier:
                 )
                 bad.append(self._forage_cell(row, occupied))
 
+            if self.config.delayed:
+                timers = [t - 1 for t in self._pending[row]]
+                reward[row] += 1.0 * sum(1 for t in timers if t <= 0)
+                self._pending[row] = [t for t in timers if t > 0]
+                switch = self._switches[row]
+                if switch is not None and target == switch:
+                    self._pending[row].append(self.config.delayed)
+                    occupied = set(self._walls[row]) | {target}
+                    self._switches[row] = self._free_cell(row, occupied)
+
+            if target in self._resources[row]:
+                self._resources[row].remove(target)
+                self._holding[row] += 1
+                occupied = (set(self._resources[row]) | self._walls[row]
+                            | {target})
+                self._resources[row].append(self._free_cell(row, occupied))
+
+            if target in self._bait[row]:
+                self._bait[row].remove(target)
+                reward[row] += 0.2
+                occupied = (set(self._bait[row]) | self._walls[row]
+                            | {target})
+                self._bait[row].append(
+                    self._bait_cell(row, occupied, self._hazards[row]))
+
+            if target in self._oneway_food[row]:
+                self._oneway_food[row].remove(target)
+                reward[row] += 1.0  # no respawn: irreversible consumption
+
+            lever = self._lever[row]
+            if lever is not None and target == lever:
+                self._frozen[row] = not self._frozen[row]
+
             if self._pursuers[row]:
                 next_pursuers = []
                 caught = False
@@ -662,6 +821,11 @@ class FamilyVerifier:
                 next_hazards = []
                 hit = False
                 for hazard in self._hazards[row]:
+                    if self._frozen[row]:
+                        if (hazard[0], hazard[1]) == target:
+                            hit = True
+                        next_hazards.append(hazard)
+                        continue
                     position = (hazard[0], hazard[1] + hazard[2])
                     direction = hazard[2]
                     if position[1] < 0 or position[1] >= self.width:
@@ -697,6 +861,11 @@ class FamilyVerifier:
             next_hazards = []
             hit = False
             for hazard in self._hazards[row]:
+                if self._frozen[row]:
+                    if (hazard[0], hazard[1]) == target:
+                        hit = True
+                    next_hazards.append(hazard)
+                    continue
                 position = (hazard[0], hazard[1] + hazard[2])
                 direction = hazard[2]
                 if position[1] < 0 or position[1] >= self.width:
