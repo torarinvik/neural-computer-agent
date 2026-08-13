@@ -12565,3 +12565,45 @@ With this, the roadmap items "resolve value binding" (F236) and
 "install racing" (F237) are done. The next milestone is the
 IRREVERSIBLE one: freeze architecture-v1 and run the sealed trio
 (blink, oneway, lever) exactly once. That decision is the user's.
+
+## F238 — THE FOUNDING CURVE AT MECHANISM LEVEL: 90x CHEAPER AT 95%
+## COMPETENCE (2026-08-13, transfer_matrix.py, 6 seeds. Scope: DEV
+## vocabulary, five novel mechanism combinations)
+
+The founding objective -- experience makes novel tasks cheaper --
+re-measured one level above F219, with all costs charged (race
+episodes AND value-fit episodes, both arms):
+
+  warm (8-form incumbent library from the DEV originals) vs cold
+  (full adaptive race over four encoders + valued canonical set):
+
+    pooled return     warm = 95.1% of cold (-0.037, t=-1.84)
+    pooled cost       warm = 1.1% of cold episodes  (~90x cheaper)
+    resource2         100% at 1.3% cost
+    deceptive2_collect2  99% at 1.3% cost
+    delayed5           97% at 0.3% cost
+    resource1_avoid1    the real gap: warm +0.01 vs cold +0.10 -- the
+                       library has no schedule-with-avoid-term form;
+                       a named, cheap library extension.
+    resource1_deceptive1  BOTH arms weak (+0.16 / +0.21): prediction
+                       2 REFUTED -- the schedule-of-valued-legs
+                       composition never won; the double compound is
+                       a genuinely open frontier, not a transfer
+                       failure.
+
+The registered founding claim (>= 95% at <= 25% cost) is met with an
+order of magnitude to spare on cost. What transfers is CAPABILITY
+STRUCTURE: the library's eight forms -- approach, avoid, composite,
+the resource schedule, the valued REACH forms -- cover four of five
+novel worlds at near-parity for ~2,000 episodes where discovery burns
+~180,000. F219's amortization was content-level (programs, goals);
+this is form-level: the shape of the solution transfers even when
+every coefficient is refit.
+
+Honest limits, named: (1) composition of two transferred forms did
+not self-assemble on the double compound -- the next controller
+question; (2) the library was hand-assembled from recorded winners --
+per the meta-language milestone (GPT), promotion of winners into the
+library should itself become bank machinery; (3) scope stays
+DEV-vocabulary until the sealed run, which awaits the user's explicit
+word.
