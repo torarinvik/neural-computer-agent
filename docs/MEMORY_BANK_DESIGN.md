@@ -12607,3 +12607,47 @@ per the meta-language milestone (GPT), promotion of winners into the
 library should itself become bank machinery; (3) scope stays
 DEV-vocabulary until the sealed run, which awaits the user's explicit
 word.
+
+## F239 — THE COMPOUND "FRONTIER" IS CEILING-BOUND, AND SEQUENCE
+## BEATS PRIVILEGED DEPTH-4 TRUTH SIXTY-FOLD (2026-08-14,
+## compound_binding.py x3 + compound_ceiling.py, 6 seeds. Scope: DEV
+## vocabulary compounds at 12-step episodes)
+
+Three registered machinery rounds attacked F238's double compound
+(resource1_deceptive1, both arms ~+0.2), each refuted, each
+depositing a tool:
+  1. PER-PLANE VALUED TRACKERS with DEATH ATTRIBUTION (a moving
+     threat kills without being stepped on; label the nearest plane-2
+     entity when a row dies): plane-2 ranking 0.89-0.94. The valued
+     schedule still lost selection.
+  2. AGENT CONTACT-HISTORY feature (fueled flag): row-constant, so it
+     cannot change argmax targeting -- design flaw caught at smoke.
+  3. STATE-CONDITIONED VALUE (stratify the plane-1 fit by the fueled
+     bit): fits clean, still no selection win on the compounds.
+
+Then the measurement the ladder says should have come FIRST:
+privileged exhaustive true-return search, depths 1-4:
+
+    resource1             d1-d4:  0.003 .. 0.010   (deployable +0.586)
+    resource1_avoid1      d1-d4:  0.005 .. 0.023   (deployable +0.034)
+    resource1_deceptive1  d1-d4:  0.066 .. 0.207   (deployable +0.16-0.21)
+
+Two conclusions. First, THE COMPOUND WORLDS ARE CEILING-BOUND at this
+horizon: the deployable stack sits at or above every feasible
+privileged bound; the +0.4 registered targets described headroom that
+does not exist. The F238 frontier item dissolves -- resolved, not
+conquered. Second, the instrument reading of the day:
+
+    THE ACQUIRED SEQUENCE CAPABILITY BEATS PRIVILEGED DEPTH-4
+    EXHAUSTIVE SEARCH 60-FOLD ON resource1 (+0.586 vs +0.010).
+    Fuel-then-eat pays nothing inside any shallow horizon; only
+    structured control spans it. The strongest statement yet of the
+    F229 law: learned structure, not search depth, is where this
+    architecture's competence lives.
+
+Method note, recorded as a lesson against myself: three machinery
+rounds ran before the ceiling was measured. The localization ladder
+exists precisely to prevent that order; it would have saved two of
+the three rounds. The tools deposited (death attribution, per-plane
+valued binding, state-conditioned value) remain in the kit with their
+evidence, priced honestly as products of a mis-ordered investigation.
