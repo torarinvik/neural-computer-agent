@@ -3362,6 +3362,7 @@ class VerifierGatedCapabilityEvictionPolicyBank(
         residual_gain: float = 1.0,
         minimum_probe_observations: int = 4,
         noninferiority_margin: float = 0.0,
+        probationary_fallback: str = "base",
     ) -> None:
         super().__init__(
             base,
@@ -3379,8 +3380,11 @@ class VerifierGatedCapabilityEvictionPolicyBank(
             raise ValueError("minimum verifier probes must be positive")
         if not math.isfinite(noninferiority_margin) or noninferiority_margin < 0.0:
             raise ValueError("noninferiority margin must be finite and non-negative")
+        if probationary_fallback not in {"base", "neutral"}:
+            raise ValueError("probationary fallback must be 'base' or 'neutral'")
         self.minimum_probe_observations = minimum_probe_observations
         self.noninferiority_margin = float(noninferiority_margin)
+        self.probationary_fallback = probationary_fallback
         self.register_buffer("slot_trusted", torch.empty(0, dtype=torch.bool))
         self.register_buffer("slot_probe_count", torch.empty(0, dtype=torch.long))
         self.register_buffer("slot_harm_count", torch.empty(0, dtype=torch.long))
@@ -3404,6 +3408,7 @@ class VerifierGatedCapabilityEvictionPolicyBank(
                     (self.slot_active & ~self.slot_trusted).sum().item()
                 ),
                 "safety_gate": "candidate_utility_noninferiority_v1",
+                "probationary_fallback": self.probationary_fallback,
             }
         )
         return configuration
@@ -3436,13 +3441,49 @@ class VerifierGatedCapabilityEvictionPolicyBank(
         slot_index: int,
     ) -> torch.Tensor:
         base_scores = self.base.score_candidates(context, candidates)
-        prior_scores = self._normalized_prior(base_scores)
+        prior_scores = (
+            self._normalized_prior(base_scores)
+            if self.probationary_fallback == "base"
+            else torch.zeros_like(base_scores)
+        )
         repeated_context = context[:, None, :].expand(
             -1, candidates.shape[1], -1
         )
         features = torch.cat((repeated_context, candidates), dim=-1)
         residual_scores = self.residual_slots[slot_index](features).squeeze(-1)
         return prior_scores + self.residual_gain * residual_scores
+
+    def probationary_training_scores(
+        self,
+        context: torch.Tensor,
+        candidates: torch.Tensor,
+    ) -> torch.Tensor:
+        """Return trainable route-local scores before probationary promotion.
+
+        Deployment still uses :meth:`score_candidates`, which applies the
+        configured probationary fallback until verifier evidence promotes the
+        route.  An external learner may use this separate path to update the
+        route-local residual from fresh scalar outcomes without allowing those
+        unverified scores to control an action.
+        """
+
+        self._validate_context(context)
+        self._validate_candidates(candidates)
+        if context.shape[0] != candidates.shape[0]:
+            raise ValueError("eviction residual bank batch sizes do not match")
+        if not self.slot_count:
+            return self.base.score_candidates(context, candidates)
+        routes = self.route_scores(context)
+        selected = routes.argmax(dim=-1)
+        stacked = torch.stack(
+            tuple(
+                self._combined_slot_scores(context, candidates, slot_index)
+                for slot_index in range(self.slot_count)
+            ),
+            dim=1,
+        )
+        batch_indices = torch.arange(context.shape[0], device=context.device)
+        return stacked[batch_indices, selected]
 
     def score_candidates(
         self,
@@ -3473,9 +3514,20 @@ class VerifierGatedCapabilityEvictionPolicyBank(
         active = self.slot_active[selected].to(context.device)
         trusted = self.slot_trusted[selected].to(context.device)
         routed = routes[batch_indices, selected] >= self.route_threshold
-        return torch.where(
-            (active & trusted & routed).unsqueeze(-1),
+        probationary = (
+            self._normalized_prior(base_scores)
+            if self.probationary_fallback == "base"
+            else torch.zeros_like(base_scores)
+        )
+        routed_active = (active & routed).unsqueeze(-1)
+        deployed_scores = torch.where(
+            trusted.unsqueeze(-1),
             chosen_residual,
+            probationary,
+        )
+        return torch.where(
+            routed_active,
+            deployed_scores,
             base_scores,
         )
 
@@ -3531,13 +3583,15 @@ class VerifierGatedCapabilityEvictionPolicyBank(
         if float(route) < self.route_threshold:
             raise ValueError("verifier probe context does not route to its slot")
 
-        base_scores = self.base.score_candidates(context, candidates)[0]
+        fallback_scores = self.base.score_candidates(context, candidates)[0]
+        if self.probationary_fallback == "neutral":
+            fallback_scores = torch.zeros_like(fallback_scores)
         combined_scores = self._combined_slot_scores(
             context,
             candidates,
             slot_index,
         )[0]
-        base_row = base_scores[list(rows)]
+        base_row = fallback_scores[list(rows)]
         combined_row = combined_scores[list(rows)]
         base_position = int(base_row.argmax())
         combined_position = int(combined_row.argmax())

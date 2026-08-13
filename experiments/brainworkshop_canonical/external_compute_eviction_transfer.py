@@ -591,6 +591,12 @@ def _policy_update(
         dtype=torch.float32,
     )
     scores = _policy_scores(policy, probe.context, probe.features)
+    training_scores = scores
+    if isinstance(policy, VerifierGatedCapabilityEvictionPolicyBank):
+        training_scores = policy.probationary_training_scores(
+            probe.context.unsqueeze(0),
+            probe.features.unsqueeze(0),
+        ).squeeze(0)
     masked = scores.clone()
     for slot in range(ACTIVE_CACHE_SLOTS):
         if slot not in eligible:
@@ -598,7 +604,7 @@ def _policy_update(
     chosen = int(masked.argmax())
     oracle = max(eligible, key=lambda slot: 1.0 - probe.outcomes[slot])
     loss, advantage = paired_counterfactual_ranking_loss(
-        scores.unsqueeze(0),
+        training_scores.unsqueeze(0),
         torch.tensor([pair], dtype=torch.long),
         utility,
     )
@@ -765,6 +771,11 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     residual_gain = float(getattr(args, "residual_gain", 32.0))
     safety_gate = bool(getattr(args, "safety_gate", False))
     permute_candidates = bool(getattr(args, "permute_candidates", False))
+    probationary_fallback = getattr(args, "probationary_fallback", "base")
+    if probationary_fallback not in {"base", "neutral"}:
+        raise ValueError(
+            f"unknown probationary fallback: {probationary_fallback}"
+        )
     candidate_signature = getattr(args, "candidate_signature", "raw")
     if candidate_signature not in {"raw", "behavioral", "behavioral_v2"}:
         raise ValueError(f"unknown candidate signature: {candidate_signature}")
@@ -897,6 +908,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             {
                 "minimum_probe_observations": 4,
                 "noninferiority_margin": 0.0,
+                "probationary_fallback": probationary_fallback,
             }
             if safety_gate
             else {}
@@ -1058,6 +1070,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "residual_gain": residual_gain,
             "safety_gate": safety_gate,
             "candidate_order_permuted": permute_candidates,
+            "probationary_fallback": probationary_fallback,
             "candidate_signature": candidate_signature,
             "utility_gap_gate": UTILITY_GAP_GATE,
             "fresh_baseline": "same architecture and updates, zero inherited state",
@@ -1149,6 +1162,11 @@ def main() -> None:
     parser.add_argument("--residual-gain", type=float, default=32.0)
     parser.add_argument("--safety-gate", action="store_true")
     parser.add_argument("--permute-candidates", action="store_true")
+    parser.add_argument(
+        "--probationary-fallback",
+        choices=("base", "neutral"),
+        default="base",
+    )
     parser.add_argument(
         "--candidate-signature",
         choices=("raw", "behavioral", "behavioral_v2"),

@@ -1,9 +1,0 @@
-{
-  "schema": "skill-artifact-bank-v1",
-  "width": 64,
-  "capacity": 2,
-  "paths": [
-    "real-skill.pt",
-    "decoy-skill.pt"
-  ]
-}

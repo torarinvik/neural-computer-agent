@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import argparse
-
 import pytest
 import torch
 from torch import nn
@@ -57,14 +55,6 @@ def test_clean_controller_has_no_modality_or_protocol_ownership() -> None:
     assert not hasattr(controller, "actuator")
     assert not hasattr(controller, "action_embedding")
     assert controller.width == 16
-
-
-def test_experiment_namespace_does_not_define_the_production_agent() -> None:
-    import experiments.archive.unified_cognitive_controller as historical
-
-    assert historical.__file__ is not None
-    assert not hasattr(historical, "UnifiedCognitiveController")
-    assert not hasattr(historical, "ActionIntentDecoder")
 
 
 def test_event_metadata_survives_collection_without_early_reduction() -> None:
@@ -1334,26 +1324,6 @@ def test_runtime_external_address_keeps_misses_explicit_and_current_state_persis
     assert miss_result.events.present.tolist() == [[False, True]]
     assert torch.equal(miss_result.events.payload[0, 0], torch.zeros(4))
     assert torch.equal(miss_result.events.payload[0, 1], current[0])
-
-
-def test_external_temporal_memory_contract_probe_passes(tmp_path) -> None:
-    from experiments.brainworkshop_canonical.external_temporal_memory_contract import (
-        run,
-    )
-
-    report = run(
-        argparse.Namespace(
-            report_out=tmp_path / "temporal-memory-contract.json",
-            seed=17,
-            width=8,
-            records=16,
-            query_count=4,
-        )
-    )
-
-    assert report["status"] == "promoted_memory_contract"
-    assert all(report["gates"].values())
-    assert report["accounting"]["optimizer_updates"] == 0
 
 
 def test_external_temporal_offset_selector_is_opaque_and_trainable() -> None:

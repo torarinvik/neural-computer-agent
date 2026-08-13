@@ -2764,14 +2764,6 @@ class ExternalRegisterComputeBasis(nn.Module):
                         ),
                         current_event.unsqueeze(1),
                     )
-                    sequence_mask = (
-                        torch.arange(
-                            compact_sequence.shape[1],
-                            device=register.device,
-                        )
-                        .unsqueeze(0)
-                        <= history_length[:, None]
-                    )
                     sequence_states, _ = self.history_recurrent(compact_sequence)
                     compact_history_states = sequence_states[:, :-1]
                     ranked_history_states = compact_history_states.gather(

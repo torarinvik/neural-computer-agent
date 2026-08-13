@@ -250,7 +250,6 @@ class ControlFlowSpliceSearch:
         for parent_slot in range(self.memory.file_count):
             parent = self.memory.program(parent_slot)
             for fragment_slot in range(self.memory.file_count):
-                fragment = self.memory.program(fragment_slot)
                 for position in range(len(parent.instructions)):
                     try:
                         program = self.memory.splice(

@@ -912,3 +912,34 @@ def test_verifier_gated_eviction_bank_fails_closed_and_promotes_noninferior_slot
         safe_bank.score_candidates(context, candidates),
         safe_bank.base.score_candidates(context, candidates),
     )
+
+
+def test_verifier_gated_eviction_bank_supports_neutral_probationary_fallback() -> None:
+    bank = VerifierGatedCapabilityEvictionPolicyBank(
+        ExternalCapabilityEvictionPolicy(
+            context_width=2,
+            candidate_width=2,
+            hidden=8,
+        ),
+        context_width=2,
+        candidate_width=2,
+        max_slots=1,
+        minimum_probe_observations=2,
+        probationary_fallback="neutral",
+    )
+    key = torch.tensor([1.0, 0.0])
+    slot = bank.add_slot(key)
+    bank.activate_slot(slot)
+    context = key.unsqueeze(0)
+    candidates = torch.tensor([[[1.0, 0.0], [0.0, 1.0]]])
+
+    with torch.no_grad():
+        bank.base.network[-1].bias.fill_(0.5)
+    assert torch.equal(
+        bank.score_candidates(context, candidates),
+        torch.zeros(1, 2),
+    )
+    training_scores = bank.probationary_training_scores(context, candidates)
+    assert training_scores.requires_grad
+    configuration = bank.configuration()
+    assert configuration["probationary_fallback"] == "neutral"

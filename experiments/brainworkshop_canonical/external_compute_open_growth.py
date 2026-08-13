@@ -323,9 +323,11 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         raise ValueError("the calibrated open-growth harness requires batch size 32")
     if args.learning_rate <= 0.0:
         raise ValueError("learning rate must be positive")
-    if effective_event_window_size < 1:
-        if basis_event_read_mode != "history_attention":
-            raise ValueError("event window size must be positive")
+    if (
+        effective_event_window_size < 1
+        and basis_event_read_mode != "history_attention"
+    ):
+        raise ValueError("event window size must be positive")
     if history_query_count is not None and history_query_count < 0:
         raise ValueError("history query count cannot be negative")
     if basis_event_read_mode == "history_attention" and effective_event_window_size:

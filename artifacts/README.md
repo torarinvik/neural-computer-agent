@@ -1,18 +1,13 @@
 # Artifact policy
 
-`checkpoints/` contains only the current, causally validated milestone models.
-They are intentionally small enough to accompany the Git repository.
+`checkpoints/` is reserved for causally validated milestone models. The cleanup
+left it empty because none of the old checkpoint files belongs to the retained
+architecture frontier.
 
-`manifests/curated_checkpoints.sha256` verifies the included checkpoints.
-`manifests/hf_checkpoints.sha256` verifies the same files after they are
-packaged under the Hub repository's `checkpoints/` directory.
+`manifests/curated_checkpoints.sha256` verifies any included checkpoints. It
+contains no checksum entries while the curated checkpoint set is empty.
 
-`manifests/historical_artifacts.sha256` records the hashes and original paths
-of older checkpoints, compressed session bundles, and compiled Elisa binaries
-that remain in the original `elisa-screenwatch` workspace. Those historical
-files total several gigabytes and are excluded from normal clones.
-
-The historical manifest preserves provenance; it is not a download mechanism.
-When an older artifact becomes scientifically load-bearing, copy it into
-`checkpoints/`, document why it is needed, refresh the curated checksum file,
-and force-add it to Git.
+When a new artifact becomes scientifically load-bearing, place it in
+`checkpoints/`, document the causal evidence that promotes it, and refresh the
+curated checksum file. Generated caches and disposable checkpoints stay out of
+Git.

@@ -23,6 +23,7 @@ from time import perf_counter
 from neural_computer import PersistentOpaqueDepthEvidence
 
 from .external_compute_growth import (
+    ComputeGrowthSystem,
     _build,
     _common_modules,
     _digest,
@@ -30,7 +31,6 @@ from .external_compute_growth import (
     _set_requires_grad,
     _slot_modules,
     _train_stage,
-    ComputeGrowthSystem,
 )
 from .external_compute_route_bank import _family_steps
 

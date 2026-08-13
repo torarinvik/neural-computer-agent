@@ -19,10 +19,10 @@ from __future__ import annotations
 
 import argparse
 import json
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from time import perf_counter
-from typing import Mapping
 
 import torch
 
@@ -47,7 +47,6 @@ from .external_compute_open_growth import (
     _discard_newest_compute_file,
 )
 from .external_compute_route_bank import _all_modules, _family_steps
-
 
 SCHEMA = "neural-computer.brainworkshop-external-compute-artifact-cache-pressure.v1"
 SOURCE_FAMILY = "symbol_parity"
