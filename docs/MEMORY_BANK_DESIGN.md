@@ -12063,3 +12063,92 @@ localized down the ladder (privileged state -> current state -> goal
 grammar -> bank dynamics -> selection -> amortization) before any
 component changes; conclusions carry scope labels; important claims
 report per-seed and per-world statistics, not only pooled t.
+
+## F228 — THE OBJECTIVE, NOT THE MODEL AND NOT THE HORIZON: STATE-COST
+## GOALS ARE DEPTH-1 PROXIES, AND DEPTH-2 OPTIMIZATION GOODHARTS THEM
+## (2026-08-13, plan_depth_factorial.py + rank_fidelity.py +
+## truereturn_arm.py, 6 seeds. Scope: fixed on this family)
+
+The full crossed design the localization discipline demanded:
+selection depth x execution depth x bank/oracle dynamics x
+leaf/cumulative scoring, plus per-state ranking-fidelity metrics over
+all 16 two-action sequences, plus a privileged true-return arm
+(oracle dynamics scored by the simulator's own rewards — a diagnostic
+ceiling, never deployable). Every cell pairs per (seed, world); key
+contrasts are quoted with per-seed means to respect clustering.
+
+**The three readings that decide it:**
+  1. TRUE-RETURN LOOKAHEAD HELPS: true_d2 - true_d1 = +0.143
+     (t=+3.78, positive per-seed mean in 6/6 seeds; intercept2
+     -1.20 -> -0.64, collect2 +0.47 -> +0.76). The family genuinely
+     rewards this horizon.
+  2. STATE-COST LOOKAHEAD FAILS UNDER BOTH DYNAMICS: exec-d2leaf -
+     exec-d1 = -0.70 (t=-4.40) with bank programs and -0.52 (t=-3.66)
+     with TRUE dynamics. Failing with true dynamics exonerates model
+     compounding as the primary cause.
+  3. DEPTH-2 SELECTION DOES NOT RESCUE: goals selected under depth-2
+     scoring still lose -0.65 vs the depth-1 baseline (and are worse
+     executed at depth 1 too, -0.48): the pair grammar contains no
+     goal that works as a two-step objective.
+
+Per GPT's registered reading table: true-return oracle improves while
+leaf-cost oracle does not -> THE GOAL REPRESENTATION IS INADEQUATE.
+
+**Mechanism.** collect2 collapses +2.57 -> +0.44 under leaf scoring
+because consumption events are invisible to state-defined costs: after
+eating, the food respawns and the leaf distance looks the same, so the
+planner gains nothing from having eaten. The distance goals that
+selection discovers are DENSE ANTICIPATORY PROXIES whose validity was
+established under one-step hill-climbing; optimizing them two steps
+deep is optimizing the proxy outside its validated regime.
+
+    STATE-COST GOALS ARE PROXIES, NOT VALUES. A proxy objective
+    validated at depth k is not thereby validated at depth k+1;
+    deeper optimization of a shaped proxy is a Goodhart move.
+
+The reverse lesson also landed: on intercept2, GREEDY TRUE REWARD is
+worse than the deployable proxy (true_d1 = -1.20 vs bank_d1 = +0.15).
+Sparse truth loses to dense proxy at short horizon; truth beats proxy
+at longer horizon. The discovered goals ARE valuable shaping — at
+exactly the depth they were selected for.
+
+**Ranking fidelity** (per state, all 16 sequences, tie rows excluded):
+even where the bank predicts near-perfectly (intercept2: state
+agreement 0.85, cost correlation 0.82), the cost-best first action
+matches the true-return-best only 0.55 of the time with regret 0.74 —
+objective failure, independent of the model. Two more instruments:
+bank-predicted states rank actions BETTER than oracle-encoded next
+states under the same goals (avoid3: 0.81 vs 0.48) — the F223
+goal-executor co-adaptation, now quantified per state; and the avoid
+worlds are decisive (two-step action choice changes true return) in
+only 0.04-0.07 of states, which explains every depth null there.
+
+**Recorded architectural boundary, witness attached.** The planner
+predicts state transitions and optimizes state-defined goals; it
+cannot predict utility attached to transitions. The factorial is the
+necessity witness (this family): true-utility lookahead pays where
+every searched state-cost fails. The promoted next front is a GENERIC
+learned transition-utility evaluator — (state, action, next-state) ->
+predicted utility — fit from the system's own experienced rewards
+(F223's reward-goal machinery is a proto-evaluator), stored in the
+bank beside programs and goals, never inside the plant. The
+true-return arm's numbers are its acceptance ceiling.
+
+**Candidate primitives noted with witness conditions (user proposals,
+not yet justified):** (1) INPUT/OUTPUT instructions turning programs
+from transition models into sensorimotor controllers — witness: a
+sealed partial-observability or long-macro family where fixed-rate
+encode-plan-act provably fails; the user's refinement: the experienced
+REWARD should arrive as a parameter of INPUT (the world hands back
+observation+reward as one package), letting recipes condition on
+"did the last step pay" — the controller-style counterpart of the
+planner-style evaluator, sharing the F228 witness; (2) instruction-set search — first
+mine per_slot_search residuals for dynamics the current ISA cannot
+express (each miss is a witness), then race generated candidate ops
+with selection-optimism accounting; the winning ISA must validate on
+held-out mechanisms.
+
+**Caveat.** The true-return arm plans on the raw simulator, not
+through the slot encoding, so state-layer sufficiency for a deployable
+evaluator is not yet certified; the evaluator probe itself will test
+it (its features see only encoded states).
