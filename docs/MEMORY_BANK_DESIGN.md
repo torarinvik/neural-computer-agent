@@ -12361,3 +12361,44 @@ the next minimal grammar element; its acceptance test is the bait tax
 turning into a bait bonus, with the guard reading "when the hazard is
 far from the item, engage; otherwise target the clear item / keep
 distance".
+
+## F233 — GUARDS REFUTED STRICTLY; THE TARGET-ALIASING AUDIT NAMES
+## VALUED BINDING (2026-08-13, fast_schedule.py guard rounds +
+## target_aliasing.py, 6 seeds. Scope: DEV mechanism set)
+
+**Guards, judged by the pre-registered strict rule.** Guarded goals
+(condition = thresholded distance between slot groups; branches from
+top-8 singles, then with the CANONICAL branches forced in per the
+F231 solo-merit lesson) were raced ~1000-3300 per world. On the
+control worlds they help (+0.06..+0.09) -- the machinery works where
+conditions matter. On deceptive1 they never help and the canonical
+round made the tax WORSE (-0.43 vs -0.29 baseline; the two guard
+winners collapsed on evaluation to +0.66/+1.29 -- selection-optimism
+casualties from the larger space). Per the registered rule: STOP
+EXPANDING THE GUARD LANGUAGE. Conditional control is not the missing
+capability.
+
+**The target-aliasing audit says why, quantitatively.** Over ~2600
+contact events across 6 seeds, pairwise bait-vs-food ranking accuracy
+by feature level:
+  L1 current target token (nearest-rank)   0.500 exactly -- ZERO
+     value information; every goal, guard, schedule and composite the
+     stack can write is blind to which item is which.
+  L2 hazard distance at contact (clear1's feature)  0.71-0.78 --
+     explains the clear-encoder failure: the hazard patrols away from
+     the bait it guards.
+  L3 hazard-ROW distance (static relational)        0.82-0.86.
+  L4 distance at the item's SPAWN (persistent identity, privileged)
+     0.92-0.95.
+
+The capability, named precisely: VALUED TARGET BINDING --
+V_w(s, o) = w . phi(s, o) over candidate objects, o* = argmax V,
+goal = REACH(o*), with w world-specific bank content fit from the
+system's own contact experience and phi a generic relational token.
+Identity-free phi caps at ~0.84 ranking (L3); the last ten points
+want persistent identity (L4). The acceptance criterion stands: the
+-0.3 tax must become the privileged arm's positive bait differential
+without losing resource1 or the controls, evaluated by the GPT-advised
+localization factorial (privileged/learned values x privileged/current
+binding + shuffled-value control), with pairwise ranking and
+target-regret metrics, not evaluator R^2.

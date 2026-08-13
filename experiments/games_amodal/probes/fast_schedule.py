@@ -36,7 +36,7 @@ import torch
 
 from experiments.games_amodal.fast_family import FastFamilyVerifier
 from experiments.games_amodal.fast_stack import (
-    score_goals, score_schedules)
+    score_goals, score_guards, score_schedules)
 from experiments.games_amodal.game_family import FamilyConfig, FamilyVerifier
 
 parser = argparse.ArgumentParser()
@@ -374,8 +374,11 @@ def play(config, mode, bank, seed, goal, executor, episodes, steps):
     phase cyclically whenever the active goal's cost at the CURRENT
     reference is <= 0 (arrival)."""
     schedule = None
+    guard = None
     if goal is not None and goal and goal[0] == "schedule":
         schedule = goal[1]
+    elif goal is not None and goal and goal[0] == "guard":
+        guard = goal[1:]  # (condition, goal_A, goal_B)
     v = FamilyVerifier(config, batch_size=episodes, seed=seed)
     v.reset(seed=seed)
     g = torch.Generator().manual_seed(seed + 4242)
@@ -392,6 +395,11 @@ def play(config, mode, bank, seed, goal, executor, episodes, steps):
             reference = enc(prev, obs)
             reference = torch.where(reference < VALUES, reference,
                                     torch.zeros_like(reference))
+            if guard is not None:
+                (c0, c1), (d0, d1), theta = guard[0]
+                gap = ((reference[:, c0] - reference[:, d0]).abs()
+                       + (reference[:, c1] - reference[:, d1]).abs())
+                take_a = gap >= theta
             if schedule is not None:
                 for p in range(len(schedule)):
                     here = goal_cost(reference, reference, schedule[p])
@@ -433,7 +441,14 @@ def play(config, mode, bank, seed, goal, executor, episodes, steps):
                     program = bank.get(act)
                     state = (reference if program is None
                              else executor(program, reference))
-                if schedule is None:
+                if guard is not None:
+                    cost = torch.zeros(episodes)
+                    for branch, sub in ((True, guard[1]), (False, guard[2])):
+                        rows = take_a if branch else ~take_a
+                        if bool(rows.any()):
+                            cost[rows] = goal_cost(
+                                state[rows], reference[rows], sub)
+                elif schedule is None:
                     cost = goal_cost(state, reference, goal)
                 else:
                     cost = torch.zeros(episodes)
@@ -526,6 +541,30 @@ def choose_by_race(config, bank, label):
             j = int(sched_scores.argmax())
             best_goal = ("schedule", list(schedules[j]))
             best_score = float(sched_scores.max())
+    # F233: guarded goals -- condition over slot-group distances
+    groups = [g for g in ((0, 1), (2, 3), (4, 5), (6, 7))
+              if set(g) <= usable]
+    conditions = [(ga, gb, th)
+                  for i, ga in enumerate(groups)
+                  for gb in groups[i + 1:]
+                  for th in (2, 3, 4)]
+    top8 = [singles[i] for i in
+            single_scores.argsort(descending=True)[:8].tolist()]
+    # F233 v2: solo merit hides contextual branches (the F231 lesson),
+    # so the canonical branch goals are forced into every guard race.
+    canonical = [(((0, 1), pb, sign),)
+                 for pb in ((2, 3), (4, 5), (6, 7))
+                 for sign in (1, -1)
+                 if set(pb) <= usable]
+    branches = list({g for g in map(tuple, top8 + canonical)})
+    guard_cands = [(c, ga, gb) for c in conditions
+                   for ga in branches for gb in branches if ga != gb]
+    if guard_cands:
+        guard_scores = race(guard_cands, score_guards)
+        if float(guard_scores.max()) > best_score:
+            j = int(guard_scores.argmax())
+            best_goal = ("guard",) + guard_cands[j]
+            best_score = float(guard_scores.max())
     return best_goal, best_score
 
 
@@ -563,6 +602,11 @@ for name, config in WORLDS:
         shown = ["schedule"] + [
             [[list(t[0]), list(t[1]), t[2]] for t in phase_goal]
             for phase_goal in goal[1]]
+    elif goal and goal[0] == "guard":
+        cond = goal[1]
+        shown = ["guard", [list(cond[0]), list(cond[1]), cond[2]],
+                 [[list(t[0]), list(t[1]), t[2]] for t in goal[2]],
+                 [[list(t[0]), list(t[1]), t[2]] for t in goal[3]]]
     else:
         shown = [[list(t[0]), list(t[1]), t[2]] for t in goal]
     row = {"encoder": label, "goal": shown,
@@ -572,7 +616,9 @@ for name, config in WORLDS:
            "random": play(config, "random", None, args.seed * 977, None,
                           None, args.episodes, args.steps)}
     results[name] = row
-    kind = "SCHED" if goal and goal[0] == "schedule" else "single"
+    kind = ("SCHED" if goal and goal[0] == "schedule"
+            else "GUARD" if goal and goal[0] == "guard"
+            else "single" if len(goal) == 1 else "comp")
     print(f"  {name:<16} random {row['random']:+.3f}  bank "
           f"{row['bank']:+.3f}  [{kind}/{label}] {shown}", flush=True)
 

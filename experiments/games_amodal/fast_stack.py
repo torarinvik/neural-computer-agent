@@ -294,3 +294,64 @@ def score_schedules(verifier_factory, schedules, bank, executor, enc,
         total += v.step(action).reward
         prev = obs
     return total.view(n, episodes).mean(dim=1)
+
+
+def score_guards(verifier_factory, guards, bank, executor, enc,
+                 episodes, steps, seed, device="cpu"):
+    """Mean return per guarded goal, one batch for all.
+
+    A guard is (condition, goal_A, goal_B) with condition
+    ((c0, c1), (d0, d1), theta): plan with goal_A on rows where
+    |ref[c0]-ref[d0]| + |ref[c1]-ref[d1]| >= theta, else goal_B."""
+    n = len(guards)
+    flat_goals = []
+    for cond, goal_a, goal_b in guards:
+        flat_goals.append(goal_a)
+        flat_goals.append(goal_b)
+    A0, A1, B0, B1, SIGN, MASK = pack_goals(flat_goals, device)
+    C = torch.tensor([[c[0][0], c[0][1], c[1][0], c[1][1], c[2]]
+                      for c, _, _ in guards], dtype=torch.long,
+                     device=device)
+    v = verifier_factory(n * episodes)
+    v.reset(seed=seed)
+    total = torch.zeros(n * episodes, device=device)
+    prev = v.observation()
+    block = torch.arange(n, device=device).repeat_interleave(episodes)
+
+    def cost_for(state, reference, idx):
+        a0, a1 = A0[idx], A1[idx]
+        b0, b1 = B0[idx], B1[idx]
+        reach = ((state.gather(1, a0) - reference.gather(1, b0)).abs()
+                 + (state.gather(1, a1) - reference.gather(1, b1)).abs()
+                 ).float()
+        return (SIGN[idx] * MASK[idx] * reach).sum(dim=1)
+
+    for _ in range(steps):
+        obs = v.observation()
+        reference = enc(prev, obs)
+        reference = torch.where(reference < VALUES, reference,
+                                torch.zeros_like(reference))
+        cond = C[block]
+        gap = ((reference.gather(1, cond[:, 0:1]).squeeze(1)
+                - reference.gather(1, cond[:, 2:3]).squeeze(1)).abs()
+               + (reference.gather(1, cond[:, 1:2]).squeeze(1)
+                  - reference.gather(1, cond[:, 3:4]).squeeze(1)).abs())
+        branch = (gap >= cond[:, 4]).long()          # 1 -> goal_A? no:
+        idx = block * 2 + (1 - branch)               # A when true
+        best, action = None, torch.zeros(n * episodes, dtype=torch.long,
+                                         device=device)
+        for act in range(4):
+            program = bank.get(act)
+            state = (reference if program is None
+                     else executor(program, reference))
+            cost = cost_for(state, reference, idx)
+            if best is None:
+                best = cost.clone()
+            else:
+                take = cost < best
+                best = torch.where(take, cost, best)
+                action = torch.where(
+                    take, torch.full_like(action, act), action)
+        total += v.step(action).reward
+        prev = obs
+    return total.view(n, episodes).mean(dim=1)
