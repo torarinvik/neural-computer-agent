@@ -1,0 +1,1347 @@
+{
+  "schema": "neural-computer.brainworkshop-external-compute-eviction-transfer.v1",
+  "claim_boundary": "Matched fresh-policy transfer measurement for outcome-trained external eviction on a held-out n-back-2 family; not unrestricted memory growth, semantic compression, arbitrary program induction, or general continual learning.",
+  "seed": 17,
+  "architecture": {
+    "source_schedule": [
+      {
+        "family": "symbol_parity",
+        "cue": 7
+      },
+      {
+        "family": "triplet_parity",
+        "cue": 8
+      },
+      {
+        "family": "parity2",
+        "cue": 10
+      },
+      {
+        "family": "switch_binary",
+        "cue": 11
+      },
+      {
+        "family": "symbol_parity_odd",
+        "cue": 5
+      },
+      {
+        "family": "nback3",
+        "cue": 4
+      }
+    ],
+    "held_out_family": "nback2",
+    "held_out_cue": 9,
+    "active_cache_slots": 3,
+    "policy": "external_capability_eviction_policy_v1",
+    "transfer_protocol": "shared_fresh_verifier_outcomes_v1",
+    "utility_gap_gate": 0.15,
+    "fresh_baseline": "same architecture and updates, zero inherited state"
+  },
+  "direct_source": [
+    [
+      {
+        "lifetime": 1,
+        "accuracy": 1.0,
+        "unique_verifier_bits": 448,
+        "replayed_examples": 0
+      },
+      {
+        "lifetime": 2,
+        "accuracy": 1.0,
+        "unique_verifier_bits": 448,
+        "replayed_examples": 0
+      }
+    ],
+    [
+      {
+        "lifetime": 1,
+        "accuracy": 1.0,
+        "unique_verifier_bits": 352,
+        "replayed_examples": 0
+      },
+      {
+        "lifetime": 2,
+        "accuracy": 1.0,
+        "unique_verifier_bits": 352,
+        "replayed_examples": 0
+      }
+    ],
+    [
+      {
+        "lifetime": 1,
+        "accuracy": 1.0,
+        "unique_verifier_bits": 384,
+        "replayed_examples": 0
+      },
+      {
+        "lifetime": 2,
+        "accuracy": 1.0,
+        "unique_verifier_bits": 384,
+        "replayed_examples": 0
+      }
+    ],
+    [
+      {
+        "lifetime": 1,
+        "accuracy": 1.0,
+        "unique_verifier_bits": 416,
+        "replayed_examples": 0
+      },
+      {
+        "lifetime": 2,
+        "accuracy": 1.0,
+        "unique_verifier_bits": 416,
+        "replayed_examples": 0
+      }
+    ],
+    [
+      {
+        "lifetime": 1,
+        "accuracy": 1.0,
+        "unique_verifier_bits": 448,
+        "replayed_examples": 0
+      },
+      {
+        "lifetime": 2,
+        "accuracy": 1.0,
+        "unique_verifier_bits": 448,
+        "replayed_examples": 0
+      }
+    ],
+    [
+      {
+        "lifetime": 1,
+        "accuracy": 1.0,
+        "unique_verifier_bits": 352,
+        "replayed_examples": 0
+      },
+      {
+        "lifetime": 2,
+        "accuracy": 1.0,
+        "unique_verifier_bits": 352,
+        "replayed_examples": 0
+      }
+    ]
+  ],
+  "direct_transfer": [
+    {
+      "lifetime": 1,
+      "accuracy": 1.0,
+      "unique_verifier_bits": 384,
+      "replayed_examples": 0
+    },
+    {
+      "lifetime": 2,
+      "accuracy": 1.0,
+      "unique_verifier_bits": 384,
+      "replayed_examples": 0
+    }
+  ],
+  "related_source_setup": {
+    "binding_id": 5,
+    "destination_slot": 2,
+    "receipt": {
+      "accepted": true,
+      "binding_id": 5,
+      "slot": 2,
+      "artifact_handle": "a8674800c7de2ba4907a75608b0a52b8d3d8726c98c75f41580d2fba3f91d9b0",
+      "source_version": 33,
+      "destination_version": 34,
+      "reason": "held-out retention probe passed",
+      "schema": "neural-computer.episodic-artifact-activation.v1"
+    },
+    "retention_probe": [
+      {
+        "lifetime": 1,
+        "accuracy": 1.0,
+        "unique_verifier_bits": 352,
+        "replayed_examples": 0
+      }
+    ]
+  },
+  "source_calibration": [
+    {
+      "round": 1,
+      "family": "symbol_parity",
+      "chosen_slot": 1,
+      "oracle_slot": 2,
+      "selection_correct": 0,
+      "scores": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "round": 2,
+      "family": "triplet_parity",
+      "chosen_slot": 2,
+      "oracle_slot": 2,
+      "selection_correct": 1,
+      "scores": [
+        -0.0401793047785759,
+        -0.09696550667285919,
+        0.09614545106887817
+      ]
+    },
+    {
+      "round": 3,
+      "family": "parity2",
+      "chosen_slot": 2,
+      "oracle_slot": 1,
+      "selection_correct": 0,
+      "scores": [
+        -0.07718463987112045,
+        -0.1400410532951355,
+        0.05838175490498543
+      ]
+    },
+    {
+      "round": 4,
+      "family": "switch_binary",
+      "chosen_slot": 2,
+      "oracle_slot": 1,
+      "selection_correct": 0,
+      "scores": [
+        -0.049612224102020264,
+        -0.08600109815597534,
+        0.039622712880373
+      ]
+    },
+    {
+      "round": 5,
+      "family": "symbol_parity_odd",
+      "chosen_slot": 2,
+      "oracle_slot": 1,
+      "selection_correct": 0,
+      "scores": [
+        -0.054026275873184204,
+        -0.11369941383600235,
+        0.06973612308502197
+      ]
+    },
+    {
+      "round": 6,
+      "family": "nback3",
+      "chosen_slot": 2,
+      "oracle_slot": 1,
+      "selection_correct": 0,
+      "scores": [
+        0.007371710613369942,
+        -0.0009488798677921295,
+        0.027754109352827072
+      ]
+    },
+    {
+      "round": 7,
+      "family": "symbol_parity",
+      "chosen_slot": 2,
+      "oracle_slot": 1,
+      "selection_correct": 0,
+      "scores": [
+        -0.11912614852190018,
+        -0.14943724870681763,
+        -0.0014395788311958313
+      ]
+    },
+    {
+      "round": 8,
+      "family": "triplet_parity",
+      "chosen_slot": 2,
+      "oracle_slot": 2,
+      "selection_correct": 1,
+      "scores": [
+        -0.13160252571105957,
+        -0.22700235247612,
+        0.18256551027297974
+      ]
+    },
+    {
+      "round": 9,
+      "family": "parity2",
+      "chosen_slot": 2,
+      "oracle_slot": 2,
+      "selection_correct": 1,
+      "scores": [
+        -0.12219475209712982,
+        -0.178760826587677,
+        0.09706977009773254
+      ]
+    },
+    {
+      "round": 10,
+      "family": "switch_binary",
+      "chosen_slot": 2,
+      "oracle_slot": 1,
+      "selection_correct": 0,
+      "scores": [
+        -0.013542110100388527,
+        -0.02834269404411316,
+        0.04592979699373245
+      ]
+    },
+    {
+      "round": 11,
+      "family": "symbol_parity_odd",
+      "chosen_slot": 2,
+      "oracle_slot": 1,
+      "selection_correct": 0,
+      "scores": [
+        -0.15682250261306763,
+        -0.23776909708976746,
+        0.11899268627166748
+      ]
+    },
+    {
+      "round": 12,
+      "family": "nback3",
+      "chosen_slot": 1,
+      "oracle_slot": 1,
+      "selection_correct": 1,
+      "scores": [
+        0.03818139061331749,
+        0.06653416901826859,
+        -0.040028396993875504
+      ]
+    },
+    {
+      "round": 13,
+      "family": "symbol_parity",
+      "chosen_slot": 2,
+      "oracle_slot": 2,
+      "selection_correct": 1,
+      "scores": [
+        -0.3734086751937866,
+        -0.5165706872940063,
+        0.13422644138336182
+      ]
+    },
+    {
+      "round": 14,
+      "family": "triplet_parity",
+      "chosen_slot": 2,
+      "oracle_slot": 2,
+      "selection_correct": 1,
+      "scores": [
+        -0.5178269147872925,
+        -1.0255376100540161,
+        0.8457860946655273
+      ]
+    },
+    {
+      "round": 15,
+      "family": "parity2",
+      "chosen_slot": 2,
+      "oracle_slot": 2,
+      "selection_correct": 1,
+      "scores": [
+        -0.3666617274284363,
+        -0.6329711675643921,
+        0.457283616065979
+      ]
+    },
+    {
+      "round": 16,
+      "family": "switch_binary",
+      "chosen_slot": 2,
+      "oracle_slot": 1,
+      "selection_correct": 0,
+      "scores": [
+        0.021780533716082573,
+        0.005314424633979797,
+        0.028762472793459892
+      ]
+    },
+    {
+      "round": 17,
+      "family": "symbol_parity_odd",
+      "chosen_slot": 2,
+      "oracle_slot": 1,
+      "selection_correct": 0,
+      "scores": [
+        -0.5805019736289978,
+        -1.0184712409973145,
+        0.6568570733070374
+      ]
+    },
+    {
+      "round": 18,
+      "family": "nback3",
+      "chosen_slot": 1,
+      "oracle_slot": 1,
+      "selection_correct": 1,
+      "scores": [
+        0.09807799756526947,
+        0.18613675236701965,
+        -0.14219781756401062
+      ]
+    },
+    {
+      "round": 19,
+      "family": "symbol_parity",
+      "chosen_slot": 2,
+      "oracle_slot": 2,
+      "selection_correct": 1,
+      "scores": [
+        -1.11551833152771,
+        -1.8180798292160034,
+        0.8667978644371033
+      ]
+    },
+    {
+      "round": 20,
+      "family": "triplet_parity",
+      "chosen_slot": 2,
+      "oracle_slot": 2,
+      "selection_correct": 1,
+      "scores": [
+        -1.3377745151519775,
+        -2.805908679962158,
+        2.355100631713867
+      ]
+    },
+    {
+      "round": 21,
+      "family": "parity2",
+      "chosen_slot": 2,
+      "oracle_slot": 2,
+      "selection_correct": 1,
+      "scores": [
+        -0.8977423906326294,
+        -1.7718918323516846,
+        1.44061279296875
+      ]
+    },
+    {
+      "round": 22,
+      "family": "switch_binary",
+      "chosen_slot": 1,
+      "oracle_slot": 2,
+      "selection_correct": 0,
+      "scores": [
+        0.06168705224990845,
+        0.008885994553565979,
+        -0.00869569182395935
+      ]
+    },
+    {
+      "round": 23,
+      "family": "symbol_parity_odd",
+      "chosen_slot": 2,
+      "oracle_slot": 1,
+      "selection_correct": 0,
+      "scores": [
+        -1.4679173231124878,
+        -2.8202738761901855,
+        2.0657782554626465
+      ]
+    },
+    {
+      "round": 24,
+      "family": "nback3",
+      "chosen_slot": 1,
+      "oracle_slot": 1,
+      "selection_correct": 1,
+      "scores": [
+        0.19534960389137268,
+        0.3682222068309784,
+        -0.307334840297699
+      ]
+    }
+  ],
+  "transfer_curve": [
+    {
+      "update": 1,
+      "inherited": {
+        "chosen_slot": 2,
+        "oracle_slot": 1,
+        "selection_correct": 0,
+        "policy_updated": 1,
+        "utility_gap": 0.1875,
+        "loss": 1.2057108879089355,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "fresh": {
+        "chosen_slot": 1,
+        "oracle_slot": 1,
+        "selection_correct": 1,
+        "policy_updated": 1,
+        "utility_gap": 0.1875,
+        "loss": 0.6931471824645996,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "inherited_cumulative_accuracy": 0.0,
+      "fresh_cumulative_accuracy": 1.0
+    },
+    {
+      "update": 2,
+      "inherited": {
+        "chosen_slot": 2,
+        "oracle_slot": 1,
+        "selection_correct": 0,
+        "policy_updated": 1,
+        "utility_gap": 0.19531255960464478,
+        "loss": 1.2116236686706543,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "fresh": {
+        "chosen_slot": 1,
+        "oracle_slot": 1,
+        "selection_correct": 1,
+        "policy_updated": 1,
+        "utility_gap": 0.19531255960464478,
+        "loss": 0.6919368505477905,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "inherited_cumulative_accuracy": 0.0,
+      "fresh_cumulative_accuracy": 1.0
+    },
+    {
+      "update": 3,
+      "inherited": {
+        "chosen_slot": 2,
+        "oracle_slot": 1,
+        "selection_correct": 0,
+        "policy_updated": 1,
+        "utility_gap": 0.16145837306976318,
+        "loss": 1.063894510269165,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "fresh": {
+        "chosen_slot": 1,
+        "oracle_slot": 1,
+        "selection_correct": 1,
+        "policy_updated": 1,
+        "utility_gap": 0.16145837306976318,
+        "loss": 0.6894704699516296,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "inherited_cumulative_accuracy": 0.0,
+      "fresh_cumulative_accuracy": 1.0
+    },
+    {
+      "update": 4,
+      "inherited": {
+        "chosen_slot": 2,
+        "oracle_slot": 1,
+        "selection_correct": 0,
+        "policy_updated": 0,
+        "utility_gap": 0.09114587306976318,
+        "loss": 0.8588588833808899,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "fresh": {
+        "chosen_slot": 1,
+        "oracle_slot": 1,
+        "selection_correct": 1,
+        "policy_updated": 0,
+        "utility_gap": 0.09114587306976318,
+        "loss": 0.6881759166717529,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "inherited_cumulative_accuracy": 0.0,
+      "fresh_cumulative_accuracy": 1.0
+    },
+    {
+      "update": 5,
+      "inherited": {
+        "chosen_slot": 2,
+        "oracle_slot": 1,
+        "selection_correct": 0,
+        "policy_updated": 0,
+        "utility_gap": 0.125,
+        "loss": 0.9263426661491394,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "fresh": {
+        "chosen_slot": 1,
+        "oracle_slot": 1,
+        "selection_correct": 1,
+        "policy_updated": 0,
+        "utility_gap": 0.125,
+        "loss": 0.6863358020782471,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "inherited_cumulative_accuracy": 0.0,
+      "fresh_cumulative_accuracy": 1.0
+    },
+    {
+      "update": 6,
+      "inherited": {
+        "chosen_slot": 2,
+        "oracle_slot": 1,
+        "selection_correct": 0,
+        "policy_updated": 1,
+        "utility_gap": 0.1614583134651184,
+        "loss": 1.00251042842865,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "fresh": {
+        "chosen_slot": 1,
+        "oracle_slot": 1,
+        "selection_correct": 1,
+        "policy_updated": 1,
+        "utility_gap": 0.1614583134651184,
+        "loss": 0.6843579411506653,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "inherited_cumulative_accuracy": 0.0,
+      "fresh_cumulative_accuracy": 1.0
+    },
+    {
+      "update": 7,
+      "inherited": {
+        "chosen_slot": 2,
+        "oracle_slot": 1,
+        "selection_correct": 0,
+        "policy_updated": 0,
+        "utility_gap": 0.11197918653488159,
+        "loss": 0.8553334474563599,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "fresh": {
+        "chosen_slot": 1,
+        "oracle_slot": 1,
+        "selection_correct": 1,
+        "policy_updated": 0,
+        "utility_gap": 0.11197918653488159,
+        "loss": 0.6814265847206116,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "inherited_cumulative_accuracy": 0.0,
+      "fresh_cumulative_accuracy": 1.0
+    },
+    {
+      "update": 8,
+      "inherited": {
+        "chosen_slot": 2,
+        "oracle_slot": 1,
+        "selection_correct": 0,
+        "policy_updated": 0,
+        "utility_gap": 0.09375,
+        "loss": 0.8273950815200806,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "fresh": {
+        "chosen_slot": 1,
+        "oracle_slot": 1,
+        "selection_correct": 1,
+        "policy_updated": 0,
+        "utility_gap": 0.09375,
+        "loss": 0.6833251118659973,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "inherited_cumulative_accuracy": 0.0,
+      "fresh_cumulative_accuracy": 1.0
+    },
+    {
+      "update": 9,
+      "inherited": {
+        "chosen_slot": 2,
+        "oracle_slot": 1,
+        "selection_correct": 0,
+        "policy_updated": 0,
+        "utility_gap": 0.14843744039535522,
+        "loss": 0.9129737019538879,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "fresh": {
+        "chosen_slot": 1,
+        "oracle_slot": 1,
+        "selection_correct": 1,
+        "policy_updated": 0,
+        "utility_gap": 0.14843744039535522,
+        "loss": 0.6776406168937683,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "inherited_cumulative_accuracy": 0.0,
+      "fresh_cumulative_accuracy": 1.0
+    },
+    {
+      "update": 10,
+      "inherited": {
+        "chosen_slot": 2,
+        "oracle_slot": 1,
+        "selection_correct": 0,
+        "policy_updated": 0,
+        "utility_gap": 0.12239581346511841,
+        "loss": 0.8715630769729614,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "fresh": {
+        "chosen_slot": 1,
+        "oracle_slot": 1,
+        "selection_correct": 1,
+        "policy_updated": 0,
+        "utility_gap": 0.12239581346511841,
+        "loss": 0.6803433895111084,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "inherited_cumulative_accuracy": 0.0,
+      "fresh_cumulative_accuracy": 1.0
+    },
+    {
+      "update": 11,
+      "inherited": {
+        "chosen_slot": 2,
+        "oracle_slot": 1,
+        "selection_correct": 0,
+        "policy_updated": 0,
+        "utility_gap": 0.04947918653488159,
+        "loss": 0.7620221376419067,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "fresh": {
+        "chosen_slot": 1,
+        "oracle_slot": 1,
+        "selection_correct": 1,
+        "policy_updated": 0,
+        "utility_gap": 0.04947918653488159,
+        "loss": 0.6879511475563049,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "inherited_cumulative_accuracy": 0.0,
+      "fresh_cumulative_accuracy": 1.0
+    },
+    {
+      "update": 12,
+      "inherited": {
+        "chosen_slot": 2,
+        "oracle_slot": 1,
+        "selection_correct": 0,
+        "policy_updated": 0,
+        "utility_gap": 0.11197912693023682,
+        "loss": 0.8553333282470703,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "fresh": {
+        "chosen_slot": 1,
+        "oracle_slot": 1,
+        "selection_correct": 1,
+        "policy_updated": 0,
+        "utility_gap": 0.11197912693023682,
+        "loss": 0.6814266443252563,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "inherited_cumulative_accuracy": 0.0,
+      "fresh_cumulative_accuracy": 1.0
+    },
+    {
+      "update": 13,
+      "inherited": {
+        "chosen_slot": 2,
+        "oracle_slot": 1,
+        "selection_correct": 0,
+        "policy_updated": 0,
+        "utility_gap": 0.125,
+        "loss": 0.8756505250930786,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "fresh": {
+        "chosen_slot": 1,
+        "oracle_slot": 1,
+        "selection_correct": 1,
+        "policy_updated": 0,
+        "utility_gap": 0.125,
+        "loss": 0.6800727844238281,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "inherited_cumulative_accuracy": 0.0,
+      "fresh_cumulative_accuracy": 1.0
+    },
+    {
+      "update": 14,
+      "inherited": {
+        "chosen_slot": 2,
+        "oracle_slot": 1,
+        "selection_correct": 0,
+        "policy_updated": 0,
+        "utility_gap": 0.052083373069763184,
+        "loss": 0.7657699584960938,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "fresh": {
+        "chosen_slot": 1,
+        "oracle_slot": 1,
+        "selection_correct": 1,
+        "policy_updated": 0,
+        "utility_gap": 0.052083373069763184,
+        "loss": 0.6876784563064575,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "inherited_cumulative_accuracy": 0.0,
+      "fresh_cumulative_accuracy": 1.0
+    },
+    {
+      "update": 15,
+      "inherited": {
+        "chosen_slot": 2,
+        "oracle_slot": 1,
+        "selection_correct": 0,
+        "policy_updated": 0,
+        "utility_gap": 0.140625,
+        "loss": 0.9004257321357727,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "fresh": {
+        "chosen_slot": 1,
+        "oracle_slot": 1,
+        "selection_correct": 1,
+        "policy_updated": 0,
+        "utility_gap": 0.140625,
+        "loss": 0.6784506440162659,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "inherited_cumulative_accuracy": 0.0,
+      "fresh_cumulative_accuracy": 1.0
+    },
+    {
+      "update": 16,
+      "inherited": {
+        "chosen_slot": 2,
+        "oracle_slot": 1,
+        "selection_correct": 0,
+        "policy_updated": 0,
+        "utility_gap": 0.125,
+        "loss": 0.8756505250930786,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "fresh": {
+        "chosen_slot": 1,
+        "oracle_slot": 1,
+        "selection_correct": 1,
+        "policy_updated": 0,
+        "utility_gap": 0.125,
+        "loss": 0.6800727844238281,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "inherited_cumulative_accuracy": 0.0,
+      "fresh_cumulative_accuracy": 1.0
+    },
+    {
+      "update": 17,
+      "inherited": {
+        "chosen_slot": 2,
+        "oracle_slot": 1,
+        "selection_correct": 0,
+        "policy_updated": 0,
+        "utility_gap": 0.13802087306976318,
+        "loss": 0.8962668180465698,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "fresh": {
+        "chosen_slot": 1,
+        "oracle_slot": 1,
+        "selection_correct": 1,
+        "policy_updated": 0,
+        "utility_gap": 0.13802087306976318,
+        "loss": 0.6787207722663879,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "inherited_cumulative_accuracy": 0.0,
+      "fresh_cumulative_accuracy": 1.0
+    },
+    {
+      "update": 18,
+      "inherited": {
+        "chosen_slot": 2,
+        "oracle_slot": 1,
+        "selection_correct": 0,
+        "policy_updated": 0,
+        "utility_gap": 0.1354166865348816,
+        "loss": 0.8921196460723877,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "fresh": {
+        "chosen_slot": 1,
+        "oracle_slot": 1,
+        "selection_correct": 1,
+        "policy_updated": 0,
+        "utility_gap": 0.1354166865348816,
+        "loss": 0.6789910197257996,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "inherited_cumulative_accuracy": 0.0,
+      "fresh_cumulative_accuracy": 1.0
+    },
+    {
+      "update": 19,
+      "inherited": {
+        "chosen_slot": 2,
+        "oracle_slot": 1,
+        "selection_correct": 0,
+        "policy_updated": 0,
+        "utility_gap": 0.09895837306976318,
+        "loss": 0.8353171348571777,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "fresh": {
+        "chosen_slot": 1,
+        "oracle_slot": 1,
+        "selection_correct": 1,
+        "policy_updated": 0,
+        "utility_gap": 0.09895837306976318,
+        "loss": 0.6827822923660278,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "inherited_cumulative_accuracy": 0.0,
+      "fresh_cumulative_accuracy": 1.0
+    },
+    {
+      "update": 20,
+      "inherited": {
+        "chosen_slot": 2,
+        "oracle_slot": 1,
+        "selection_correct": 0,
+        "policy_updated": 1,
+        "utility_gap": 0.15625,
+        "loss": 0.9256283640861511,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "fresh": {
+        "chosen_slot": 1,
+        "oracle_slot": 1,
+        "selection_correct": 1,
+        "policy_updated": 1,
+        "utility_gap": 0.15625,
+        "loss": 0.6768311858177185,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "inherited_cumulative_accuracy": 0.0,
+      "fresh_cumulative_accuracy": 1.0
+    },
+    {
+      "update": 21,
+      "inherited": {
+        "chosen_slot": 2,
+        "oracle_slot": 1,
+        "selection_correct": 0,
+        "policy_updated": 0,
+        "utility_gap": 0.1354166865348816,
+        "loss": 0.8369258642196655,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "fresh": {
+        "chosen_slot": 1,
+        "oracle_slot": 1,
+        "selection_correct": 1,
+        "policy_updated": 0,
+        "utility_gap": 0.1354166865348816,
+        "loss": 0.6692403554916382,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "inherited_cumulative_accuracy": 0.0,
+      "fresh_cumulative_accuracy": 1.0
+    },
+    {
+      "update": 22,
+      "inherited": {
+        "chosen_slot": 2,
+        "oracle_slot": 1,
+        "selection_correct": 0,
+        "policy_updated": 1,
+        "utility_gap": 0.1692708134651184,
+        "loss": 0.8756743669509888,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "fresh": {
+        "chosen_slot": 1,
+        "oracle_slot": 1,
+        "selection_correct": 1,
+        "policy_updated": 1,
+        "utility_gap": 0.1692708134651184,
+        "loss": 0.6633550524711609,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "inherited_cumulative_accuracy": 0.0,
+      "fresh_cumulative_accuracy": 1.0
+    },
+    {
+      "update": 23,
+      "inherited": {
+        "chosen_slot": 2,
+        "oracle_slot": 1,
+        "selection_correct": 0,
+        "policy_updated": 0,
+        "utility_gap": 0.14843744039535522,
+        "loss": 0.7957512736320496,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "fresh": {
+        "chosen_slot": 1,
+        "oracle_slot": 1,
+        "selection_correct": 1,
+        "policy_updated": 0,
+        "utility_gap": 0.14843744039535522,
+        "loss": 0.6528434157371521,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "inherited_cumulative_accuracy": 0.0,
+      "fresh_cumulative_accuracy": 1.0
+    },
+    {
+      "update": 24,
+      "inherited": {
+        "chosen_slot": 2,
+        "oracle_slot": 1,
+        "selection_correct": 0,
+        "policy_updated": 1,
+        "utility_gap": 0.17968755960464478,
+        "loss": 0.8185645341873169,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "fresh": {
+        "chosen_slot": 1,
+        "oracle_slot": 1,
+        "selection_correct": 1,
+        "policy_updated": 1,
+        "utility_gap": 0.17968755960464478,
+        "loss": 0.6445738673210144,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "inherited_cumulative_accuracy": 0.0,
+      "fresh_cumulative_accuracy": 1.0
+    },
+    {
+      "update": 25,
+      "inherited": {
+        "chosen_slot": 2,
+        "oracle_slot": 1,
+        "selection_correct": 0,
+        "policy_updated": 0,
+        "utility_gap": 0.1458333134651184,
+        "loss": 0.747477114200592,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "fresh": {
+        "chosen_slot": 1,
+        "oracle_slot": 1,
+        "selection_correct": 1,
+        "policy_updated": 0,
+        "utility_gap": 0.1458333134651184,
+        "loss": 0.6360616683959961,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "inherited_cumulative_accuracy": 0.0,
+      "fresh_cumulative_accuracy": 1.0
+    },
+    {
+      "update": 26,
+      "inherited": {
+        "chosen_slot": 2,
+        "oracle_slot": 1,
+        "selection_correct": 0,
+        "policy_updated": 1,
+        "utility_gap": 0.15885412693023682,
+        "loss": 0.7524639964103699,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "fresh": {
+        "chosen_slot": 1,
+        "oracle_slot": 1,
+        "selection_correct": 1,
+        "policy_updated": 1,
+        "utility_gap": 0.15885412693023682,
+        "loss": 0.6311326622962952,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "inherited_cumulative_accuracy": 0.0,
+      "fresh_cumulative_accuracy": 1.0
+    },
+    {
+      "update": 27,
+      "inherited": {
+        "chosen_slot": 2,
+        "oracle_slot": 1,
+        "selection_correct": 0,
+        "policy_updated": 0,
+        "utility_gap": 0.14322912693023682,
+        "loss": 0.7112317681312561,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "fresh": {
+        "chosen_slot": 1,
+        "oracle_slot": 1,
+        "selection_correct": 1,
+        "policy_updated": 0,
+        "utility_gap": 0.14322912693023682,
+        "loss": 0.616055965423584,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "inherited_cumulative_accuracy": 0.0,
+      "fresh_cumulative_accuracy": 1.0
+    },
+    {
+      "update": 28,
+      "inherited": {
+        "chosen_slot": 2,
+        "oracle_slot": 1,
+        "selection_correct": 0,
+        "policy_updated": 0,
+        "utility_gap": 0.08854162693023682,
+        "loss": 0.7042888402938843,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "fresh": {
+        "chosen_slot": 1,
+        "oracle_slot": 1,
+        "selection_correct": 1,
+        "policy_updated": 0,
+        "utility_gap": 0.08854162693023682,
+        "loss": 0.6447312235832214,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "inherited_cumulative_accuracy": 0.0,
+      "fresh_cumulative_accuracy": 1.0
+    },
+    {
+      "update": 29,
+      "inherited": {
+        "chosen_slot": 2,
+        "oracle_slot": 1,
+        "selection_correct": 0,
+        "policy_updated": 0,
+        "utility_gap": 0.13802087306976318,
+        "loss": 0.7105685472488403,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "fresh": {
+        "chosen_slot": 1,
+        "oracle_slot": 1,
+        "selection_correct": 1,
+        "policy_updated": 0,
+        "utility_gap": 0.13802087306976318,
+        "loss": 0.6187465786933899,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "inherited_cumulative_accuracy": 0.0,
+      "fresh_cumulative_accuracy": 1.0
+    },
+    {
+      "update": 30,
+      "inherited": {
+        "chosen_slot": 2,
+        "oracle_slot": 1,
+        "selection_correct": 0,
+        "policy_updated": 1,
+        "utility_gap": 0.15104162693023682,
+        "loss": 0.712227463722229,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "fresh": {
+        "chosen_slot": 1,
+        "oracle_slot": 1,
+        "selection_correct": 1,
+        "policy_updated": 1,
+        "utility_gap": 0.15104162693023682,
+        "loss": 0.612035870552063,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "inherited_cumulative_accuracy": 0.0,
+      "fresh_cumulative_accuracy": 1.0
+    },
+    {
+      "update": 31,
+      "inherited": {
+        "chosen_slot": 1,
+        "oracle_slot": 1,
+        "selection_correct": 1,
+        "policy_updated": 0,
+        "utility_gap": 0.07552081346511841,
+        "loss": 0.6893599629402161,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "fresh": {
+        "chosen_slot": 1,
+        "oracle_slot": 1,
+        "selection_correct": 1,
+        "policy_updated": 0,
+        "utility_gap": 0.07552081346511841,
+        "loss": 0.6380906701087952,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "inherited_cumulative_accuracy": 0.03225806451612903,
+      "fresh_cumulative_accuracy": 1.0
+    },
+    {
+      "update": 32,
+      "inherited": {
+        "chosen_slot": 1,
+        "oracle_slot": 1,
+        "selection_correct": 1,
+        "policy_updated": 0,
+        "utility_gap": 0.07291668653488159,
+        "loss": 0.6894903182983398,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "fresh": {
+        "chosen_slot": 1,
+        "oracle_slot": 1,
+        "selection_correct": 1,
+        "policy_updated": 0,
+        "utility_gap": 0.07291668653488159,
+        "loss": 0.6399357914924622,
+        "unique_verifier_bits": 1152,
+        "replayed_examples": 0
+      },
+      "inherited_cumulative_accuracy": 0.0625,
+      "fresh_cumulative_accuracy": 1.0
+    }
+  ],
+  "reactivation": {
+    "transfer_binding_id": 6,
+    "selected_slot": 1,
+    "oracle_slot": 1,
+    "selected_correctly": 1,
+    "scores": [
+      -0.039215125143527985,
+      0.0521947480738163,
+      -0.04829208925366402
+    ],
+    "activation": {
+      "accepted": true,
+      "binding_id": 6,
+      "slot": 1,
+      "artifact_handle": "4010c79a7a0f67d5e234beecc9bcbfaa608b9aac3b59a5c02018be186153bca2",
+      "source_version": 34,
+      "destination_version": 35,
+      "reason": "held-out retention probe passed",
+      "schema": "neural-computer.episodic-artifact-activation.v1"
+    },
+    "retention_probe": [
+      {
+        "lifetime": 1,
+        "accuracy": 1.0,
+        "unique_verifier_bits": 384,
+        "replayed_examples": 0
+      },
+      {
+        "lifetime": 2,
+        "accuracy": 1.0,
+        "unique_verifier_bits": 384,
+        "replayed_examples": 0
+      }
+    ],
+    "post_activation": [
+      {
+        "lifetime": 1,
+        "accuracy": 1.0,
+        "unique_verifier_bits": 384,
+        "replayed_examples": 0
+      },
+      {
+        "lifetime": 2,
+        "accuracy": 1.0,
+        "unique_verifier_bits": 384,
+        "replayed_examples": 0
+      }
+    ]
+  },
+  "archive": {
+    "record_count": 7,
+    "active_binding_ids": [
+      0,
+      6,
+      5
+    ],
+    "transfer_artifact_digest": "4010c79a7a0f67d5e234beecc9bcbfaa608b9aac3b59a5c02018be186153bca2"
+  },
+  "gates": {
+    "source_cohort_mastered": true,
+    "related_source_installed": true,
+    "held_out_transfer_mastered": true,
+    "source_calibration_present": true,
+    "inherited_beats_fresh_early": false,
+    "inherited_reaches_stable_window": true,
+    "fresh_baseline_measured": true,
+    "inherited_reactivation_accepted": true,
+    "held_out_retention_mastery": true,
+    "active_cache_capacity_bounded": true,
+    "protected_source_retained": true,
+    "active_files_match_snapshots_before": true,
+    "active_files_match_snapshots_after": true,
+    "selected_transfer_victim": true,
+    "frozen_controller": true,
+    "frozen_event_encoder": true,
+    "zero_replayed_examples": true
+  },
+  "accounting": {
+    "unique_verifier_bits": 879392,
+    "policy_verifier_bits": 152064,
+    "optimizer_updates": 1792,
+    "policy_updates": 114,
+    "replayed_examples": 0,
+    "inherited_early_correct": 0,
+    "fresh_early_correct": 4,
+    "inherited_transfer_accuracy": 0.0625,
+    "fresh_transfer_accuracy": 1.0,
+    "stable_bits_to_threshold": null,
+    "retention_threshold": 0.8,
+    "transfer_ratio_against_fresh_learner": 0.0,
+    "latency_seconds": 224.97357208293397
+  },
+  "status": "rejected"
+}

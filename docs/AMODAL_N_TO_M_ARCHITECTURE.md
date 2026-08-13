@@ -12160,3 +12160,37 @@ with a fresh-learner transfer baseline.
 
 Evidence and accounting are archived at
 `session_records/brainworkshop_external_compute_learned_eviction_scale_promoted_2026-08-13/`.
+
+## Held-out eviction transfer rejection (2026-08-13)
+
+The next audit tested whether the learned eviction policy was reusable on a
+genuinely held-out external family rather than only on the six-file source
+cohort. A mastered n-back-2 file was added cold, the related n-back-3 source
+was reactivated through an independent verifier probe, and a route-isolated
+residual was trained from fresh scalar outcomes. The controller, event
+frontend, source artifacts, and executable file weights remained frozen, and
+the inherited and fresh policies received the same verifier probes with zero
+replayed examples.
+
+The first residual implementation incorrectly replaced the base score instead
+of adding a residual to it; that implementation tied the fresh baseline at
+`1.0000` and was not promoted. The corrected frozen-base-plus-additive-
+residual implementation preserved the inherited base, but exposed the actual
+transfer failure: on both seeds `17` and `18`, inherited transfer accuracy was
+`0.0000` versus `1.0000` for the matched fresh policy. Source and held-out
+files still reached direct mastery, target reactivation and retention remained
+`1.0000`, controller/frontend digests stayed unchanged, and replay was zero.
+
+This rejects inherited eviction-policy weights as reusable continual-learning
+knowledge. The current policy overfits the source artifact/context distribution
+and its raw opaque candidate descriptors; an isolated residual alone does not
+repair that mismatch within the tested budget. The external archive and
+verifier-gated lifecycle remain useful retention mechanisms, but they do not
+yet provide transferable learned maintenance. A follow-up scale-stable
+residual adapter improved seed `17` to `0.7500` held-out transfer accuracy
+(`0.5000` early transfer ratio), but seed `18` remained at `0.0000`; the
+two-seed result is still rejected. The next high-value pressure test is a
+permutation-invariant, leave-one-family-out candidate/context representation
+with a safety-gated route adapter that cannot let inherited weights harm a new
+family. Evidence is archived at
+`session_records/brainworkshop_external_compute_eviction_transfer_rejected_2026-08-13/`.

@@ -3007,8 +3007,10 @@ class GatedResidualCapabilityEvictionPolicyBank(nn.Module):
     The base eviction scorer is frozen.  Each opaque external binding can
     acquire one zero-initialized candidate scorer, train from fresh scalar
     verifier utilities, and be activated only after independent promotion.
-    Unknown bindings fall back to the base scorer; activated bindings do not
-    alter one another.  The bank never interprets context keys or candidate
+    Unknown bindings fall back to the base scorer; an activated binding adds
+    only its isolated residual to that scorer, preserving the inherited
+    capability while the new route adapts.  Activated bindings do not alter
+    one another.  The bank never interprets context keys or candidate
     semantics.
     """
 
@@ -3022,6 +3024,7 @@ class GatedResidualCapabilityEvictionPolicyBank(nn.Module):
         candidate_width: int,
         max_slots: int | None = None,
         route_threshold: float = 0.75,
+        residual_gain: float = 1.0,
     ) -> None:
         super().__init__()
         if not isinstance(base, ExternalCapabilityEvictionPolicy):
@@ -3036,6 +3039,8 @@ class GatedResidualCapabilityEvictionPolicyBank(nn.Module):
             raise ValueError("eviction residual bank max slots is invalid")
         if not math.isfinite(route_threshold) or not -1.0 <= route_threshold <= 1.0:
             raise ValueError("eviction residual bank route threshold is invalid")
+        if not math.isfinite(residual_gain) or residual_gain <= 0.0:
+            raise ValueError("eviction residual bank gain is invalid")
         self.base = base
         for parameter in self.base.parameters():
             parameter.requires_grad_(False)
@@ -3043,6 +3048,7 @@ class GatedResidualCapabilityEvictionPolicyBank(nn.Module):
         self.candidate_width = int(candidate_width)
         self.max_slots = max_slots
         self.route_threshold = float(route_threshold)
+        self.residual_gain = float(residual_gain)
         self.residual_slots = nn.ModuleList()
         self.slot_keys = nn.ParameterList()
         self.register_buffer("slot_active", torch.empty(0, dtype=torch.bool))
@@ -3060,6 +3066,7 @@ class GatedResidualCapabilityEvictionPolicyBank(nn.Module):
             "candidate_width": self.candidate_width,
             "slot_count": self.slot_count,
             "max_slots": self.max_slots if self.max_slots is not None else 0,
+            "residual_gain": self.residual_gain,
             "active_slots": int(self.slot_active.sum().item()),
             "frozen_slots": int(self.slot_frozen.sum().item()),
             "routing": "opaque_binding_cosine_key_v1",
@@ -3128,6 +3135,14 @@ class GatedResidualCapabilityEvictionPolicyBank(nn.Module):
             raise RuntimeError("eviction residual bank slot is frozen")
         return self.residual_slots[slot_index].parameters()
 
+    @staticmethod
+    def _normalized_prior(scores: torch.Tensor) -> torch.Tensor:
+        """Keep the frozen prior's ordering without leaking its logit scale."""
+
+        centered = scores - scores.mean(dim=-1, keepdim=True)
+        scale = centered.square().mean(dim=-1, keepdim=True).clamp_min(1e-6).sqrt()
+        return centered / scale
+
     def route_scores(self, context: torch.Tensor) -> torch.Tensor:
         self._validate_context(context)
         if not self.slot_count:
@@ -3145,6 +3160,7 @@ class GatedResidualCapabilityEvictionPolicyBank(nn.Module):
         if context.shape[0] != candidates.shape[0]:
             raise ValueError("eviction residual bank batch sizes do not match")
         base_scores = self.base.score_candidates(context, candidates)
+        prior_scores = self._normalized_prior(base_scores)
         if not self.slot_count:
             return base_scores
         routes = self.route_scores(context)
@@ -3161,7 +3177,11 @@ class GatedResidualCapabilityEvictionPolicyBank(nn.Module):
         chosen_residual = stacked[batch_indices, selected]
         active = self.slot_active[selected].to(context.device)
         routed = routes[batch_indices, selected] >= self.route_threshold
-        return torch.where((active & routed).unsqueeze(-1), chosen_residual, base_scores)
+        return torch.where(
+            (active & routed).unsqueeze(-1),
+            prior_scores + self.residual_gain * chosen_residual,
+            base_scores,
+        )
 
     def adaptation_step(
         self,
@@ -3192,7 +3212,11 @@ class GatedResidualCapabilityEvictionPolicyBank(nn.Module):
             -1, candidates.shape[1], -1
         )
         features = torch.cat((repeated_context, candidates), dim=-1)
-        scores = self.residual_slots[slot_index](features).squeeze(-1)[0]
+        base_scores = self._normalized_prior(
+            self.base.score_candidates(context, candidates).detach()
+        )
+        residual_scores = self.residual_slots[slot_index](features).squeeze(-1)
+        scores = (base_scores + self.residual_gain * residual_scores)[0]
         loss = -(verifier_utility - 0.5) * torch.log_softmax(
             scores / temperature, dim=-1
         )[selected_index]

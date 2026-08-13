@@ -70,14 +70,7 @@ def _adapt_slot(
         target = reliability_target
         if regime == 1:
             target = int(candidates[0, :, CONTEXT_WIDTH + 1].argmin())
-        features = torch.cat(
-            (
-                context[:, None, :].expand(-1, candidates.shape[1], -1),
-                candidates,
-            ),
-            dim=-1,
-        )
-        scores = bank.residual_slots[slot_index](features).squeeze(-1)[0]
+        scores = bank.score_candidates(context, candidates)[0]
         probabilities = torch.softmax(scores / MAINTENANCE_TEMPERATURE, dim=-1)
         selected = int(torch.multinomial(probabilities, 1, generator=explorer))
         utility = float(selected == target)
@@ -145,9 +138,11 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         candidate_width=CANDIDATE_WIDTH,
         max_slots=2,
         route_threshold=0.75,
+        residual_gain=4.0,
     )
     reliability_slot = bank.add_slot(key_reliability)
     age_slot = bank.add_slot(key_age)
+    bank.activate_slot(reliability_slot)
     reliability_training = _adapt_slot(
         bank,
         slot_index=reliability_slot,
@@ -156,7 +151,6 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         seed=args.seed,
         updates=args.slot_updates,
     )
-    bank.activate_slot(reliability_slot)
     bank.freeze_slot(reliability_slot)
     reliability_before_age = {
         name: value.detach().clone()
@@ -178,6 +172,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             reverse=True,
         ),
     }
+    bank.activate_slot(age_slot)
     age_training = _adapt_slot(
         bank,
         slot_index=age_slot,
@@ -186,7 +181,6 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         seed=args.seed + 1_000,
         updates=args.slot_updates,
     )
-    bank.activate_slot(age_slot)
     bank.freeze_slot(age_slot)
     age_after = {
         "forward": _evaluate_slot(

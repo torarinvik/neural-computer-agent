@@ -796,12 +796,20 @@ def test_gated_residual_eviction_bank_isolates_and_activates_maintenance_slots()
         )
     bank.activate_slot(0)
     selected_after = bank.score_candidates(context, candidates)
+    expected_after = bank._normalized_prior(
+        base.score_candidates(context, candidates)
+    )
+    residual = bank.residual_slots[0](
+        torch.cat((context[:, None, :].expand(-1, 3, -1), candidates), dim=-1)
+    ).squeeze(-1)
+    expected_after = expected_after + residual
 
     assert torch.allclose(
         bank.route_scores(torch.stack((key_a, key_b))),
         torch.eye(2),
     )
     assert torch.equal(selected_before, base.score_candidates(context, candidates))
+    assert torch.allclose(selected_after, expected_after)
     assert not torch.equal(selected_after, selected_before)
     bank.freeze_slot(0)
     with pytest.raises(RuntimeError, match="frozen"):

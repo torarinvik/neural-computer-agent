@@ -36,6 +36,9 @@ from experiments.brainworkshop_canonical.external_compute_depth_selection import
 from experiments.brainworkshop_canonical.external_compute_depth_selection import (
     run as run_external_compute_depth_selection,
 )
+from experiments.brainworkshop_canonical.external_compute_eviction_transfer import (
+    run as run_external_compute_eviction_transfer,
+)
 from experiments.brainworkshop_canonical.external_compute_growth import (
     _build as build_external_compute,
 )
@@ -535,6 +538,32 @@ def test_external_compute_learned_eviction_scale_smoke_fails_closed_before_maste
     assert not report["gates"]["all_six_files_admitted"]
     assert report["gates"]["frozen_controller"]
     assert report["gates"]["frozen_event_encoder"]
+    assert report["accounting"]["replayed_examples"] == 0
+
+
+def test_external_compute_eviction_transfer_smoke_fails_closed_before_mastery(
+    tmp_path,
+) -> None:
+    report = run_external_compute_eviction_transfer(
+        argparse.Namespace(
+            report_out=tmp_path / "external-compute-eviction-transfer.json",
+            seed=17,
+            file_updates=2,
+            policy_calibration_rounds=2,
+            policy_updates_per_round=2,
+            transfer_updates=2,
+            batch_size=32,
+            retention_lifetimes=1,
+            learning_rate=3e-3,
+            policy_learning_rate=1e-2,
+        )
+    )
+
+    assert report["schema"] == (
+        "neural-computer.brainworkshop-external-compute-eviction-transfer.v1"
+    )
+    assert report["status"] == "rejected"
+    assert not report["gates"]["source_cohort_mastered"]
     assert report["accounting"]["replayed_examples"] == 0
 
 
