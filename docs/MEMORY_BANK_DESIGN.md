@@ -12221,3 +12221,44 @@ resolved to objective inadequacy; F229 (1 confirmed relative-to-self,
 2 refuted, shaped 1-2 refuted, 3 parity confirmed at depth 1). Eleven
 refutations, each of which moved the localization one layer down —
 the discipline working exactly as intended.
+
+## F230 — THE MECHANISM BENCHMARK EXISTS, AND ITS FIRST WITNESS IS
+## SEQUENCING (2026-08-13, mechanism_baseline.py, 6 seeds. Scope:
+## localized to the DEV mechanism set)
+
+Six mechanism components now live in the family verifier, each
+demanding one capability, split DEV / SEALED. The SEALED trio (blink =
+partial observability, oneway = irreversibility, lever = causal
+intervention) is implemented and unit-tested but appears in no probe;
+the seal holds until an explicit unseal decision. The DEV trio met the
+frozen F226 stack (pair goals, robust selection, depth-1), with
+registered pass/fail predictions:
+
+  delayed3   PASS, as predicted: +1.25 over random (t=+12.9), and the
+             discovered goal is simply "approach the switch" -- 6/6
+             seeds. Delayed credit WITHIN the rollout horizon is
+             already covered by rollout-scored goal selection.
+  resource1  HARD FAIL, as predicted: +0.11 vs the ~+1.5 single-food
+             reference (bank-random t=+5.2 but an order of magnitude
+             below par). Goals are incoherent across seeds; a sum of
+             distance terms cannot sequence "resource first, then
+             food".  ===> NECESSITY WITNESS: MULTI-STAGE SUBGOALS.
+  deceptive1 DEGRADES, as predicted, but does not fail: -0.29 vs its
+             bait-free control (t=-1.98, marginal), while still +1.24
+             over random. The stack pays a persistent bait tax it
+             cannot see.  ===> weak witness: reward-attributed
+             perception (per-item value on one plane).
+  collect2   anchor reproduces its archived +2.57 exactly.
+
+The founding objective now has its next concrete target: a mechanism
+the current architecture provably cannot express (sequencing), with a
+quantified gap (+0.11 vs +1.5) and a control set around it. Candidate
+fixes, to be witnessed in order of least new machinery: (a) goal
+SCHEDULES -- two pair-goals with a learned switching condition (the
+condition "holding > 0" is not observable on screen; the resource
+count is private, so switching must key on an OBSERVABLE proxy such
+as "just touched a resource cell", which the temporal encoder can
+see); (b) the user's INPUT/OUTPUT program instructions, which would
+let a recipe carry phase internally. Option (a) stays inside the
+frozen grammar (two existing goals plus one bit of state) and is the
+disciplined first try.
