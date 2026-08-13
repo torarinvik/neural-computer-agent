@@ -12319,3 +12319,45 @@ the first time on a mechanism rather than a parameter.
 Remaining on the DEV set: deceptive1's bait tax (-0.29, value
 perception) stands; resource1's rough ceiling (~+1.2 at these leg
 lengths) is not yet reached (+0.59). The sealed trio stays sealed.
+
+## F232 — THE BAIT TAX LOCALIZED: NOT EXPRESSIBILITY, NOT PERCEPTION;
+## CONDITIONAL ENGAGEMENT IS THE MISSING CAPABILITY (2026-08-13,
+## fast_schedule.py rounds 2-3 + deceptive_ceiling.py, 6 seeds.
+## Scope: DEV mechanism set)
+
+Three registered rounds, three clean narrowings of F230's weak
+witness (deceptive1's -0.29 vs its bait-free control):
+
+  1. COMPOSITE RACE (~240 sum-pairs of top singles, now essentially
+     free on the fast stack -- control drift collapsed to
+     -0.003..-0.010): composites chosen 6/6 on deceptive1 and the tax
+     did not move (-0.276 vs -0.295). Sums cannot decouple "which
+     plane-1 item" from "nearest plane-1 item".
+  2. RELATIONAL PERCEPTION (hazard-clear nearest of plane 1 at
+     thresholds 2 and 3, F224-family reduction, raced as encoder
+     candidates): available in every race, occasionally chosen
+     elsewhere, and the tax did not move (-0.280). Naming only safe
+     items is not the answer, because...
+  3. ...THE PRIVILEGED DIFFERENTIAL SAYS BAIT IS A BONUS: exhaustive
+     true-return search earns MORE on deceptive1 than on its control
+     (+0.07 at d1 rising to +0.17 at d4, 6/6 seeds at d2-d4). A
+     competent agent harvests the +0.2 stream when the patrolling
+     hazard is elsewhere. The deployable stack pays -0.28 instead:
+     the full incompetence gap is ~0.45, and it is a gap of
+     CONDITIONAL ENGAGEMENT -- act on the bait exactly when it is
+     safe -- which nothing in the stack can say: goals are
+     unconditional, schedules switch on COMPLETION, not on state
+     predicates.
+
+(Instrument note: the privileged d1-d4 ABSOLUTE returns (+0.32..+0.49)
+sit far below the deployable proxy stack (+1.24-1.27) -- the F229
+shallow-truth-vs-dense-proxy pattern again; only the within-planner
+bait DIFFERENTIAL is evidential here.)
+
+The witness now names its capability precisely: GUARDED GOALS --
+goal = (condition, goal_A, goal_B) with the condition a thresholded
+distance between two slot pairs, raced like everything else. This is
+the next minimal grammar element; its acceptance test is the bait tax
+turning into a bait bonus, with the guard reading "when the hazard is
+far from the item, engage; otherwise target the clear item / keep
+distance".

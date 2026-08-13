@@ -265,8 +265,59 @@ def make_enc(kind):
     return encoder
 
 
+def _clear_nearest_slow(plane_t, plane_h, ar, ac, thresh):
+    mask_t = plane_t > 0
+    d_h = torch.full_like(plane_t, 999.0)
+    hz = plane_h > 0
+    rows_ix = ROWS_IX.unsqueeze(0).float()
+    cols_ix = COLS_IX.unsqueeze(0).float()
+    for i in range(plane_t.shape[0]):
+        cells = hz[i].nonzero()
+        if cells.numel():
+            d = ((rows_ix[0].unsqueeze(-1) - cells[:, 0].float()).abs()
+                 + (cols_ix[0].unsqueeze(-1) - cells[:, 1].float()).abs())
+            d_h[i] = d.min(dim=-1).values
+    ok = mask_t & (d_h >= thresh)
+    d_av = ((ROWS_IX.unsqueeze(0) - ar.view(-1, 1, 1)).abs()
+            + (COLS_IX.unsqueeze(0) - ac.view(-1, 1, 1)).abs())
+    d_av = torch.where(ok, d_av, torch.full_like(d_av, 999))
+    flat = d_av.reshape(d_av.shape[0], -1)
+    best = flat.argmin(dim=1)
+    found = ok.reshape(ok.shape[0], -1).any(dim=1) & (ar < VALUES)
+    row = torch.where(found, best // WIDTH, torch.full_like(best, ABSENT))
+    col = torch.where(found, best % WIDTH, torch.full_like(best, ABSENT))
+    return row, col
+
+
+def make_clear_enc(thresh):
+    def encoder(prev_screen, screen):
+        frames = screen.view(-1, PLANES, HEIGHT, WIDTH)
+        out = torch.full((frames.shape[0], SLOTS), ABSENT,
+                         dtype=torch.long)
+        avatar = frames[:, 0].reshape(frames.shape[0], -1)
+        present = avatar.max(dim=1).values > 0
+        flat = avatar.argmax(dim=1)
+        ar = torch.where(present, flat // WIDTH,
+                         torch.full_like(flat, ABSENT))
+        ac = torch.where(present, flat % WIDTH,
+                         torch.full_like(flat, ABSENT))
+        out[:, 0], out[:, 1] = ar, ac
+        for plane, base in ((1, 2), (2, 4)):
+            row, col = _kth_nearest(frames[:, plane],
+                                    ar.clamp(max=VALUES - 1),
+                                    ac.clamp(max=VALUES - 1), 0)
+            out[:, base], out[:, base + 1] = row, col
+        row, col = _clear_nearest_slow(frames[:, 1], frames[:, 2],
+                                       ar, ac, thresh)
+        out[:, 6], out[:, 7] = row, col
+        return out
+    return encoder
+
+
 ENC_CANDIDATES = {"second2": make_enc("second"),
-                  "approach2": make_enc("approach")}
+                  "approach2": make_enc("approach"),
+                  "clear1_2": make_clear_enc(2),
+                  "clear1_3": make_clear_enc(3)}
 enc = ENC_CANDIDATES["second2"]           # rebound per world below
 
 
@@ -458,6 +509,17 @@ def choose_by_race(config, bank, label):
     single_scores = race(singles, score_goals)
     best_i = int(single_scores.argmax())
     best_goal, best_score = singles[best_i], float(single_scores.max())
+    # F232: race sum-composites of the top-16 singles as well -- the
+    # bait tax may be expressible as approach-food + avoid-hazard
+    order = single_scores.argsort(descending=True)[:16].tolist()
+    composites = [(singles[i][0], singles[j][0])
+                  for i in order for j in order if i != j]
+    if composites:
+        comp_scores = race(composites, score_goals)
+        if float(comp_scores.max()) > best_score:
+            k = int(comp_scores.argmax())
+            best_goal = composites[k]
+            best_score = float(comp_scores.max())
     if schedules:
         sched_scores = race(schedules, score_schedules)
         if float(sched_scores.max()) > best_score:

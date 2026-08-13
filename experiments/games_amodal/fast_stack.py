@@ -84,6 +84,34 @@ def _approaching(prev_plane, curr_plane, avatar_r, avatar_c):
     return row, col
 
 
+def _clear_nearest(plane_target, plane_threat, avatar_r, avatar_c,
+                   thresh):
+    """Nearest target-plane cell whose Manhattan distance to EVERY
+    threat-plane cell is >= thresh (relational value filter)."""
+    device = plane_target.device
+    rows_ix, cols_ix = _grids(device)
+    flat_r = rows_ix.reshape(-1)
+    flat_c = cols_ix.reshape(-1)
+    targets = (plane_target > 0).reshape(plane_target.shape[0], -1)
+    threats = (plane_threat > 0).reshape(plane_threat.shape[0], -1)
+    pair = ((flat_r.view(-1, 1) - flat_r.view(1, -1)).abs()
+            + (flat_c.view(-1, 1) - flat_c.view(1, -1)).abs())
+    d_threat = torch.where(threats.unsqueeze(1), pair.unsqueeze(0),
+                           torch.full_like(pair, 999).unsqueeze(0))
+    min_threat = d_threat.min(dim=2).values          # [B, 64]
+    ok = targets & (min_threat >= thresh)         & (avatar_r < VALUES).view(-1, 1)
+    d_av = ((flat_r.unsqueeze(0) - avatar_r.view(-1, 1)).abs()
+            + (flat_c.unsqueeze(0) - avatar_c.view(-1, 1)).abs())
+    scored = torch.where(ok, d_av, torch.full_like(d_av, 999))
+    best = scored.argmin(dim=1)
+    found = ok.any(dim=1)
+    row = torch.where(found, best // WIDTH,
+                      torch.full_like(best, ABSENT))
+    col = torch.where(found, best % WIDTH,
+                      torch.full_like(best, ABSENT))
+    return row, col
+
+
 def make_enc(kind):
     def encoder(prev_screen, screen):
         frames = screen.view(-1, PLANES, HEIGHT, WIDTH)
@@ -107,15 +135,20 @@ def make_enc(kind):
             row, col = _kth_nearest(frames[:, 2],
                                     ar.clamp(max=VALUES - 1),
                                     ac.clamp(max=VALUES - 1), 1)
-        else:
+        elif kind == "approach":
             row, col = _approaching(prior[:, 2], frames[:, 2], ar, ac)
+        else:  # clear-N: hazard-clear nearest of plane 1
+            row, col = _clear_nearest(frames[:, 1], frames[:, 2],
+                                      ar, ac, int(kind[-1]))
         out[:, 6], out[:, 7] = row, col
         return out
     return encoder
 
 
 ENC_CANDIDATES = {"second2": make_enc("second"),
-                  "approach2": make_enc("approach")}
+                  "approach2": make_enc("approach"),
+                  "clear1_2": make_enc("clear_2"),
+                  "clear1_3": make_enc("clear_3")}
 
 
 def pack_goals(goals, device):
