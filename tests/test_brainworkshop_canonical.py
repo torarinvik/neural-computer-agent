@@ -21,17 +21,29 @@ from experiments.brainworkshop_canonical.environment import NBackVerifierStep
 from experiments.brainworkshop_canonical.episodic_artifact_reactivation import (
     run as run_episodic_artifact_reactivation,
 )
-from experiments.brainworkshop_canonical.external_compute_growth import (
-    _build as build_external_compute,
-    _episode as episode_external_compute,
-    run as run_external_compute_growth,
-)
-from experiments.brainworkshop_canonical.external_compute_depth_selection import (
-    CANDIDATE_QUERY_COUNTS,
-    run as run_external_compute_depth_selection,
+from experiments.brainworkshop_canonical.external_compute_artifact_cache_pressure import (
+    run as run_external_compute_artifact_cache_pressure,
 )
 from experiments.brainworkshop_canonical.external_compute_depth_probe import (
     run as run_external_compute_depth_probe,
+)
+from experiments.brainworkshop_canonical.external_compute_depth_route_reversal import (
+    run as run_external_compute_depth_route_reversal,
+)
+from experiments.brainworkshop_canonical.external_compute_depth_selection import (
+    CANDIDATE_QUERY_COUNTS,
+)
+from experiments.brainworkshop_canonical.external_compute_depth_selection import (
+    run as run_external_compute_depth_selection,
+)
+from experiments.brainworkshop_canonical.external_compute_growth import (
+    _build as build_external_compute,
+)
+from experiments.brainworkshop_canonical.external_compute_growth import (
+    _episode as episode_external_compute,
+)
+from experiments.brainworkshop_canonical.external_compute_growth import (
+    run as run_external_compute_growth,
 )
 from experiments.brainworkshop_canonical.external_compute_open_growth import (
     run as run_external_compute_open_growth,
@@ -42,13 +54,12 @@ from experiments.brainworkshop_canonical.external_compute_route import (
 from experiments.brainworkshop_canonical.external_compute_route_bank import (
     _family_steps,
     _parse_query_counts,
+)
+from experiments.brainworkshop_canonical.external_compute_route_bank import (
     run as run_external_compute_route_bank,
 )
 from experiments.brainworkshop_canonical.external_compute_route_reversal import (
     run as run_external_compute_route_reversal,
-)
-from experiments.brainworkshop_canonical.external_compute_depth_route_reversal import (
-    run as run_external_compute_depth_route_reversal,
 )
 from experiments.brainworkshop_canonical.goal_conditioned_planning import (
     run_goal_conditioned_planning_audit,
@@ -463,6 +474,32 @@ def test_external_compute_depth_route_reversal_smoke_preserves_depth_files(
     )
     assert report["gates"]["source_file_unchanged_during_routing"]
     assert report["gates"]["target_file_unchanged_during_routing"]
+    assert report["gates"]["frozen_controller"]
+    assert report["gates"]["frozen_event_encoder"]
+    assert report["accounting"]["replayed_examples"] == 0
+
+
+def test_external_compute_artifact_cache_pressure_smoke_fails_closed_before_mastery(
+    tmp_path,
+) -> None:
+    report = run_external_compute_artifact_cache_pressure(
+        argparse.Namespace(
+            report_out=tmp_path / "external-compute-artifact-cache-pressure.json",
+            seed=17,
+            target_file_count=4,
+            file_updates=2,
+            route_revisits=1,
+            batch_size=32,
+            retention_lifetimes=1,
+            learning_rate=3e-3,
+        )
+    )
+
+    assert report["schema"] == (
+        "neural-computer.brainworkshop-external-compute-artifact-cache-pressure.v1"
+    )
+    assert report["status"] == "rejected"
+    assert report["gates"]["source_not_promoted"]
     assert report["gates"]["frozen_controller"]
     assert report["gates"]["frozen_event_encoder"]
     assert report["accounting"]["replayed_examples"] == 0

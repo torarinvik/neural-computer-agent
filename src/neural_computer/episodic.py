@@ -973,13 +973,44 @@ class EpisodicBindingArchive:
         ):
             if not isinstance(context, list) or not isinstance(signature, list):
                 raise TypeError("episodic binding archive keys must be lists")
-            context_tensor = archive._normalize_key(
-                torch.tensor(context),
+            # Payload keys were already normalized when they were registered.
+            # Preserve those exact float32 values on reload so a JSON
+            # checkpoint is byte-stable.  Normalize only legacy or externally
+            # authored rows that are materially off the unit sphere; blindly
+            # normalizing every row introduces a second rounding step and
+            # changes the archive checksum for learned keys.
+            def restore_key(
+                values: list[object],
+                *,
+                width: int,
+                name: str,
+            ) -> torch.Tensor:
+                tensor = torch.tensor(values, dtype=torch.float32)
+                if tensor.ndim != 1 or tensor.shape[0] != width:
+                    raise ValueError(f"{name} has the wrong shape")
+                if not bool(torch.isfinite(tensor).all()):
+                    raise ValueError(f"{name} contains non-finite values")
+                norm = torch.linalg.vector_norm(tensor)
+                if float(norm) <= 1e-8:
+                    raise ValueError(f"{name} cannot be zero")
+                if not bool(
+                    torch.isclose(
+                        norm,
+                        torch.ones_like(norm),
+                        atol=1e-5,
+                        rtol=1e-5,
+                    )
+                ):
+                    tensor = F.normalize(tensor, dim=0)
+                return tensor
+
+            context_tensor = restore_key(
+                context,
                 width=archive.context_width,
                 name="episodic binding archive context",
             )
-            signature_tensor = archive._normalize_key(
-                torch.tensor(signature),
+            signature_tensor = restore_key(
+                signature,
                 width=archive.signature_width,
                 name="episodic binding archive signature",
             )

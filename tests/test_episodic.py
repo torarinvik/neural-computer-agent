@@ -166,6 +166,20 @@ def test_episodic_binding_archive_compact_snapshot_round_trip_and_corruption() -
             restored.load_snapshot(path)
 
 
+def test_episodic_binding_archive_json_round_trip_preserves_learned_keys() -> None:
+    archive = EpisodicBindingArchive(
+        context_width=5,
+        signature_width=5,
+        active_slots=2,
+    )
+    key = torch.tensor([0.17, -0.31, 0.44, 0.52, -0.63])
+    archive.register(key, key)
+
+    restored = EpisodicBindingArchive.from_payload(archive.payload())
+
+    assert restored.payload() == archive.payload()
+
+
 def test_episodic_binding_artifact_index_reactivates_opaque_file_handles() -> None:
     index = EpisodicBindingArtifactIndex.create(
         context_width=3,

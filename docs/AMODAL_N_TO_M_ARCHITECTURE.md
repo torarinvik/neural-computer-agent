@@ -12101,3 +12101,33 @@ test is a growing bank with automatic allocation/protection and eviction or
 compaction decisions, without hand-selected slots or a fixed two-file setup.
 Evidence and accounting are archived at
 `session_records/brainworkshop_external_compute_depth_route_reversal_promoted_2026-08-13/`.
+
+## External compute artifact archive under hot-cache pressure (2026-08-13)
+
+The external-compute boundary now has a lifecycle path for a bounded active
+cache. Four independently trained opaque files are acquired through the same
+frozen controller, event frontend, and generic register interpreter. Portable
+`ExternalRegisterComputeBasisArtifact` files are retained in a growable cold
+archive coordinated by `EpisodicBindingArtifactIndex`; only two files are
+resident in the executable hot cache at once. A learned event-tensor key
+looks up a cold file, and an outcome-only reliability/recency policy chooses
+an unprotected resident for verifier-gated reactivation.
+
+Across seeds `17` and `18`, all four files reached `1.0000` direct mastery and
+all cold-file reactivations reached `1.0000` on the held-out probes. Each run
+performed seven successful cache replacements, retained the protected source
+file, rejected an unknown key without changing the cache, rejected archive and
+artifact checksum corruption, preserved exact archive reload, and kept the
+controller/frontend and archived file digests unchanged. The shuffled-outcome
+control remained below mastery (`0.4688` and `0.5625`), and replay was zero.
+
+This promotes a bounded external-compute hot/cold lifecycle seam: automatic
+artifact allocation, protection, eviction, and reactivation. It does not yet
+establish unbounded storage, learned compression, learned eviction utility,
+semantic conflict resolution, arbitrary program induction, or general
+continual learning. The next pressure test should learn a reusable eviction
+utility from fresh verifier outcomes and then scale the archive beyond four
+files without a fixed schedule.
+
+Evidence and accounting are archived at
+`session_records/brainworkshop_external_compute_artifact_cache_pressure_promoted_2026-08-13/`.

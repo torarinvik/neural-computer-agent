@@ -1,0 +1,21 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "brainworkshop_external_compute_artifact_cache_pressure_promoted_2026-08-13",
+  "status": "promoted_external_compute_artifact_cache_pressure",
+  "seeds": [17, 18],
+  "unique_verifier_bits_per_seed": 425472,
+  "control_verifier_bits_per_seed": 90112,
+  "unique_logical_lifetimes_per_seed": 33632,
+  "optimizer_updates_per_seed": 1024,
+  "replayed_examples": 0,
+  "stable_bits_to_threshold_per_seed": 425472,
+  "retention_on_mastered_primitive": "protected source external file retained at 1.0000 on both seeds",
+  "transfer_ratio_against_fresh_learner": "not measured in this lifecycle rung",
+  "claim_boundary": "Bounded external-compute hot/cold lifecycle management, not general continual learning.",
+  "notes": [
+    "The physical hot cache remained fixed at two executable slots while four files were archived.",
+    "Cold files were reactivated only after fresh held-out verifier probes passed.",
+    "The victim policy consumed only generic reliability and recency telemetry and protected stable-prefix files.",
+    "The shuffled-outcome control remained below the 0.80 mastery threshold on both seeds."
+  ]
+}
