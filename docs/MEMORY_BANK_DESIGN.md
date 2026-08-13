@@ -12007,3 +12007,59 @@ under a competent planner). The oracle arm on intercept worlds still
 loses to the bank under bank-selected goals (F223 selection pressure,
 now at +1.0 magnitude), which remains the right place to look for a
 principled fix to rollout-selected objectives.
+
+## F227 — DISTINCT ROLES DO NOT PAY AT DEPTH 1; THE WIDTH NULL IS A
+## PLANNER PROPERTY, AND NAIVE DEPTH-2 EXECUTION LOSES OUTRIGHT
+## (2026-08-13, pursuit.py + plan_depth.py, 6 seeds. Scope: fixed on
+## this family)
+
+F226 left one construction standing that could still make width pay:
+two objects whose difference is ROLE, not position or urgency. The new
+`pursue` family component provides it generically — a plane-2 object
+that renders identically to a bouncing hazard and differs only by
+stepping toward the avatar every turn (larger-gap axis first, fatal on
+contact; verifier tests pin both properties). No single-frame encoder
+can tell the two objects apart. The probe added one generic temporal
+reduction to the candidate set: `approaching(plane)` — one-step
+optical flow (newly-occupied cells matched to nearest newly-vacated
+origin), keeping the nearest cell whose move reduced its distance to
+the avatar. A looming detector, plane-agnostic and game-agnostic.
+
+**Roles refuted too.** On pursue1_avoid1 / pursue1_avoid2 the six-slot
+arm reaches -0.20 / -0.34 from a random baseline of -0.97 by fleeing
+the NEAREST plane-2 object; the eight-slot arm with the looming
+tracker ties it exactly (paired t=-0.15, 3/12 positive). The controls
+held: pursue1 alone is solved by flee-nearest (-0.06 from -0.97), the
+avoid2 anchor reproduced its archived numbers. Registered prediction 2
+(first width payoff, t>=+2) is dead. With density (F226 v1), urgency
+(F226 v2), term shape (F226 v3/v4) and now roles eliminated, the
+surviving explanation is the PLANNER: depth-1 greedy can only spend
+"where is the nearest thing now"; role information — the bouncer will
+bounce away, the pursuer will not — is only cashable by lookahead.
+
+**And naive lookahead makes things worse.** plan_depth.py held
+everything fixed (goals selected at depth 1 by the F226 protocol) and
+executed the same goal, bank and encoder at depth 2 by composing the
+bank's one-step programs over action pairs, scored cumulatively
+c(s1) + min_b c(s2). Depth 2 lost everywhere: pursue worlds -0.051
+(t=-3.30), intercept2 -0.22, collect2 -0.18, ALL pooled t=-3.05
+(pooled (seed,world) cells share plants within seed — per-seed means
+are negative in 6/6 seeds, so the sign survives clustering). The
+registered risk clause fired, not the registered hope.
+
+Four explanations are confounded in that number — cumulative
+aggregation punishing temporarily-worse intermediate states, one-step
+model error compounding under composition, goals co-adapted to
+depth 1, or a family that simply does not reward lookahead at this
+horizon — and the running plan_depth_factorial.py probe crosses
+selection depth x execution depth x bank/oracle dynamics x aggregation
+to separate them. Its cells and registered readings are in the probe
+docstring; results go to the next entry.
+
+**Method note (standing, user-endorsed).** From this finding onward:
+the core (ISA, slot substrate, pair goal grammar, perception
+vocabulary, plant) is FROZEN pending necessity witnesses; failures are
+localized down the ladder (privileged state -> current state -> goal
+grammar -> bank dynamics -> selection -> amortization) before any
+component changes; conclusions carry scope labels; important claims
+report per-seed and per-world statistics, not only pooled t.
