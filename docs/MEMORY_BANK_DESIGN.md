@@ -11689,3 +11689,54 @@ proxy exactly walks into the -1 item more often. The proxy-mismatch
 family (F203 intercept, F216 flee-nearest, now choice) keeps growing,
 and a goal language expressing "reach A while not reaching B" is the
 common missing piece.
+
+## F222 — COMPOSITE GOALS TURN INTERCEPT POSITIVE FOR THE FIRST TIME,
+## BY INVENTING LEAD-PURSUIT — AND FAIL AT EXACTLY WHAT I PREDICTED
+## THEY WOULD FIX
+
+The bank-beats-oracle signature (F203, F216, F221) pointed at composite
+wanting as the missing goal form. One constructor added: a goal may be a
+SUM of up to two signed distance terms, searched greedily — all singles
+as in F216 (~360 rollouts), then pairs among the top four (+16). Both
+registered predictions about where it would matter were WRONG, in
+opposite directions.
+
+| world | random | single | COMPOSITE | oracle(comp) | 2-term picked |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| intercept1 | -0.870 | -0.375 | **+0.661** | -0.062 | 3/3 |
+| intercept2 | -1.656 | -1.078 | **-0.583** | -1.026 | 2/3 |
+| choice1 | -0.068 | +0.859 | +0.859 | +0.005 | 0/3 |
+| choice1_inv | +0.068 | +1.667 | +1.979 | -0.193 | 1/3 |
+| collect/avoid/forage | — | — | ~unchanged | — | noise |
+
+    composite - single, intercept: +0.7656 +- 0.1977  t=+3.87  5/6
+    composite - single, choice   : +0.1562, t=+1.00 (ns)
+    oracle - bank, choice, comp  : -1.5130, t=-2.39 (violation PERSISTS)
+
+**Prediction "intercept changes little": refuted — it is the headline.**
+intercept1 goes positive on every seed (+0.703, +0.469, +0.812), the
+first positive intercept return in the project's history; every arm
+including the oracle had been negative there since F203. And the
+mechanism is legible in the goals themselves: the term (1,2)->(3,0)
+recurs in five of six intercept solutions — align the avatar's COLUMN
+with the object's column while aligning the object's ROW with the
+avatar's row. That is lead pursuit — be where it is falling, not where
+it is — expressed in slot indices by a search that has no concept of
+falling. Paired with a plain approach term, the two-term sum is a
+predictive objective the single-term language could not spell.
+
+**Prediction "choice gets fixed": refuted.** Composite does not help
+choice (t=+1.00), and the bank-beats-oracle violation persists there
+AND on intercept (bank +0.661 vs oracle -0.062). Composition widened
+what the language can express; it did not close the model-proxy gap.
+Whatever the choice mechanic needs — plausibly a CONDITIONAL term, or
+the contact semantics of F203's own consumption bug — two summed
+distances is not it. The proxy-mismatch family stays open, now with
+better coordinates on what it is not.
+
+**Costs and honesty.** The composite search adds ~16 rollouts (4%).
+On collect and forage the greedy step sometimes picks a harmless second
+term (selection noise, means shift by -0.01 to -0.09); a stricter
+keep-single-unless-better-by-margin rule would remove this. All
+protocol as F214/F216: selection on its own episode stream, evaluation
+on fresh full-budget episodes.
