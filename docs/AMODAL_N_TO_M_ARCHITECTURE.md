@@ -12220,3 +12220,40 @@ update. Inherited transfer remained `0.0000`; the matched fresh baselines were
 `1.0000` and `0.7500`. This removes the fixed physical-slot tie as an
 explanation for the rejection. The unresolved failure is therefore reuse of
 learned maintenance knowledge across the held-out family, not row ordering.
+
+## Behavioral artifact-signature transfer rejection (2026-08-13)
+
+The next representation follow-up replaced sampled raw parameter coordinates
+with a fixed behavioral signature. Each opaque external-compute artifact was
+loaded into an isolated physical slot and run on the same eight two-symbol
+probe sequences. The probe supplied only standardized learned event tensors,
+frozen controller intentions, and neutral opaque action/outcome context to the
+shared interpreter. It recorded register, readout-intention, and decoder-logit
+traces and projected them to the policy's fixed 32-wide candidate input. No
+verifier labels, family IDs, correct actions, or raw weight coordinates were
+passed to the eviction policy.
+
+Across seeds `17` and `18`, all six source files and the held-out n-back-2
+file reached direct mastery `1.0000`; held-out retention stayed `1.0000`, the
+controller and event frontend stayed frozen, artifact round trips were exact,
+and replay was zero. Seed `17` nevertheless produced inherited transfer
+accuracy `0.0000` versus `1.0000` for the fresh policy. Seed `18` produced
+`1.0000` for both inherited and fresh policies. This two-seed result is
+rejected: the behavioral signature removes a real ABI weakness but does not
+yet yield reliable transferable eviction knowledge.
+
+The corrected interpretation of the recipe pressure test remains important:
+the two-valued toggle is expressible as `INC(0, m=2); INC(1, m=2)`. The actual
+structural hole is the legacy global `VALUES=8` arithmetic modulus. Applying
+`INC` to a value-`1` slot in a two-valued family produces `2` instead of `0`,
+while the explicit per-family modulus is exact. The behavioral-signature
+result and this arithmetic-domain correction are separate findings: one
+concerns transferable capability identity, the other execution
+expressiveness.
+
+The next high-value probe should be richer and leave-one-family-out: multiple
+sequence lengths, reset/continuation traces, and equivalent-artifact
+stability controls, while retaining the verifier safety gate so inherited
+maintenance cannot harm a new family before demonstrating non-inferiority.
+Evidence and accounting are archived at
+`session_records/brainworkshop_external_compute_eviction_transfer_behavioral_2026-08-13/`.

@@ -17,10 +17,10 @@ from __future__ import annotations
 
 import argparse
 import json
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from time import perf_counter
-from typing import Mapping
 
 import torch
 from torch.nn import functional as F
@@ -33,10 +33,10 @@ from neural_computer import (
 )
 
 from .external_compute_artifact_cache_pressure import (
-    _FileSnapshot,
     _active_digests,
     _append_compute_file,
     _discard_newest_compute_file,
+    _FileSnapshot,
     _restore_snapshot,
     _route_key,
     _snapshot,
@@ -47,14 +47,10 @@ from .external_compute_growth import (
     EVENT_WIDTH,
     ComputeGrowthSystem,
     _build,
-    _common_modules,
     _digest,
     _evaluate,
-    _set_requires_grad,
-    _slot_modules,
 )
-from .external_compute_route_bank import _all_modules, _family_steps
-
+from .external_compute_route_bank import _family_steps
 
 SCHEMA = "neural-computer.brainworkshop-external-compute-learned-eviction-scale.v1"
 SCHEDULE = (
@@ -103,6 +99,8 @@ def _artifact_feature(snapshot: _FileSnapshot) -> torch.Tensor:
 def _active_features(
     index: EpisodicBindingArtifactIndex,
     snapshots: Mapping[str, _FileSnapshot],
+    *,
+    feature_bank: Mapping[str, torch.Tensor] | None = None,
 ) -> torch.Tensor:
     rows: list[torch.Tensor] = []
     for binding_id in index.active_binding_ids:
@@ -111,7 +109,15 @@ def _active_features(
         handle = index.artifact_handle(binding_id)
         if handle is None or handle not in snapshots:
             raise RuntimeError("active file has no opaque feature descriptor")
-        rows.append(_artifact_feature(snapshots[handle]))
+        if feature_bank is None:
+            rows.append(_artifact_feature(snapshots[handle]))
+        else:
+            feature = feature_bank.get(handle)
+            if feature is None:
+                raise RuntimeError("active file has no behavioral feature")
+            if feature.shape != (POLICY_CANDIDATE_WIDTH,):
+                raise ValueError("behavioral feature has the wrong shape")
+            rows.append(feature.detach().clone())
     return torch.stack(rows)
 
 
@@ -140,9 +146,10 @@ def _probe_active(
     batch_size: int,
     seed: int,
     retention_lifetimes: int,
+    feature_bank: Mapping[str, torch.Tensor] | None = None,
 ) -> _PolicyProbe:
     context = _route_key(system, cue_symbol)
-    features = _active_features(index, snapshots)
+    features = _active_features(index, snapshots, feature_bank=feature_bank)
     outcomes: dict[int, float] = {}
     bits = 0
     for slot, binding_id in enumerate(index.active_binding_ids):
@@ -189,6 +196,7 @@ def _adapt_policy(
     retention_lifetimes: int,
     shuffle_utility: bool = False,
     minimum_utility_gap: float = 0.0,
+    feature_bank: Mapping[str, torch.Tensor] | None = None,
 ) -> tuple[list[dict[str, float | int]], _PolicyProbe | None]:
     history: list[dict[str, float | int]] = []
     last_probe: _PolicyProbe | None = None
@@ -205,6 +213,7 @@ def _adapt_policy(
             batch_size=batch_size,
             seed=seed + update * 10_007,
             retention_lifetimes=retention_lifetimes,
+            feature_bank=feature_bank,
         )
         last_probe = probe
         pair = (eligible[update % len(eligible)], eligible[(update + 1) % len(eligible)])

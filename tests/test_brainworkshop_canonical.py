@@ -22,6 +22,9 @@ from experiments.brainworkshop_canonical.episodic_artifact_reactivation import (
     run as run_episodic_artifact_reactivation,
 )
 from experiments.brainworkshop_canonical.external_compute_artifact_cache_pressure import (
+    _snapshot as snapshot_external_compute,
+)
+from experiments.brainworkshop_canonical.external_compute_artifact_cache_pressure import (
     run as run_external_compute_artifact_cache_pressure,
 )
 from experiments.brainworkshop_canonical.external_compute_depth_probe import (
@@ -35,6 +38,9 @@ from experiments.brainworkshop_canonical.external_compute_depth_selection import
 )
 from experiments.brainworkshop_canonical.external_compute_depth_selection import (
     run as run_external_compute_depth_selection,
+)
+from experiments.brainworkshop_canonical.external_compute_eviction_transfer import (
+    _behavioral_artifact_feature_bank,
 )
 from experiments.brainworkshop_canonical.external_compute_eviction_transfer import (
     run as run_external_compute_eviction_transfer,
@@ -565,6 +571,23 @@ def test_external_compute_eviction_transfer_smoke_fails_closed_before_mastery(
     assert report["status"] == "rejected"
     assert not report["gates"]["source_cohort_mastered"]
     assert report["accounting"]["replayed_examples"] == 0
+
+
+def test_external_compute_behavioral_signature_is_fixed_width_and_restores_slot() -> None:
+    system = build_external_compute(17, slot_count=3)
+    snapshots = {
+        f"slot-{slot}": snapshot_external_compute(system, slot)
+        for slot in range(3)
+    }
+    original_digest = snapshots["slot-0"].digest
+
+    features = _behavioral_artifact_feature_bank(system, snapshots)
+
+    assert set(features) == set(snapshots)
+    assert all(feature.shape == (32,) for feature in features.values())
+    assert all(feature.isfinite().all() for feature in features.values())
+    assert snapshot_external_compute(system, 0).digest == original_digest
+    assert len({tuple(feature.tolist()) for feature in features.values()}) == 3
 
 
 def test_external_compute_open_growth_smoke_rejects_unmastered_source_cleanly(
