@@ -310,7 +310,7 @@ class FastFamilyVerifier:
                 fresh = self._bait_cells()
                 idx = hit.float().argmax(dim=1)
                 bait = self.bait.clone()
-                bait[got, idx[got]] = fresh
+                bait[got, idx[got]] = fresh[got]
                 self.bait = bait
 
         # pursuers

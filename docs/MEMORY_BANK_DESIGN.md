@@ -12262,3 +12262,60 @@ see); (b) the user's INPUT/OUTPUT program instructions, which would
 let a recipe carry phase internally. Option (a) stays inside the
 frozen grammar (two existing goals plus one bit of state) and is the
 disciplined first try.
+
+## F231 — SEQUENCING ACQUIRED: GOAL SCHEDULES + FULL-SPACE RACING +
+## CONSUMPTION-AWARE COMPLETION FIX THE resource1 WITNESS
+## (2026-08-13, mechanism_schedule.py -> fast_schedule.py, 6 seeds.
+## Scope: fixed on the DEV mechanism set)
+
+F230's hard witness -- resource1 at +0.11 vs ~+1.5, because a sum of
+distance terms cannot sequence -- fell in three registered steps, each
+refutation naming the next mechanism:
+
+**Step 1 (mechanism works, basis wrong).** Schedules -- an ordered
+pair of ordinary pair-goals advancing cyclically on completion -- were
+raced from the top-4 SOLO singles. Chosen 6/6 on resource1, zero
+regression elsewhere (controls bit-identical), but the gain was only
++0.065: on resource1 both clean legs score ~0 ALONE, so solo ranking
+never surfaces them. A SEQUENCING BASIS CANNOT BE SELECTED BY SOLO
+MERIT.
+
+**Step 2 (race the space; completion is unobservable).** The new fast
+stack (vectorized verifier + batched scoring, 12-13x, see the perf
+commit) made racing the full schedule space affordable (~870
+avatar-anchored phase pairs, minutes per seed instead of hours). The
+clean resource->food schedule was IN the race and LOST: completion
+was tested as distance==0, but A CONSUMABLE TARGET VANISHES AT THE
+MOMENT OF ARRIVAL -- eaten and respawned within the same step, its
+observed distance never reads zero, so the clean schedule's phase
+never advanced. Junk mixed-pair schedules won because their chimera
+references CAN reach zero without consumption.
+
+**Step 3 (the fix).** Completion = arrived OR consumed: the phase
+advances when its cost reaches zero, or when the phase's target slots
+JUMP discontinuously while the cost was within reach -- the
+consumption signature, computed from encoded slots only, no game
+semantics. Result: resource1 +0.128 -> +0.586 (+0.458, t=+5.73, 6/6
+seeds positive), and the winner in ALL SIX SEEDS is the clean
+schedule [approach nearest plane-2] -> [approach nearest plane-1],
+cycling. Registered targets met (>= +0.5, 4.6x > 3x baseline).
+
+**Costs, honestly measured.** The full race prices its lottery
+tickets: controls drift -0.05..-0.09 (none significant, 0-2/6
+positive) and selection exceeds evaluation by +0.02..+0.15 per world
+-- the F223 optimism, now REPORTED PER RUN as a first-class metric.
+This is the standing motivation for adaptive racing with common
+random numbers (roadmap), not a reason to shrink the space.
+
+**What was added, and what was not.** No new goal grammar, no new
+perception, no new ISA: a schedule is two existing goals plus one
+phase bit, and the completion test reads existing slots. The frozen
+core survives its first mechanism benchmark round with one new
+COMPOSITION RULE (temporal), acquired because a benchmark world
+demanded it -- the founding-objective loop (new world -> witnessed
+gap -> minimal capability -> measured recovery) closed end-to-end for
+the first time on a mechanism rather than a parameter.
+
+Remaining on the DEV set: deceptive1's bait tax (-0.29, value
+perception) stands; resource1's rough ceiling (~+1.2 at these leg
+lengths) is not yet reached (+0.59). The sealed trio stays sealed.

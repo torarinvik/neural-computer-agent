@@ -178,3 +178,86 @@ def score_goals(verifier_factory, goals, bank, executor, enc,
         total += v.step(action).reward
         prev = obs
     return total.view(n, episodes).mean(dim=1)
+
+
+def pack_schedules(schedules, device):
+    """Pad [(phase0_goal, phase1_goal), ...] into flat phase tensors:
+    row-goal index = schedule_index * 2 + phase."""
+    flat = []
+    for p0, p1 in schedules:
+        flat.append(p0)
+        flat.append(p1)
+    return pack_goals(flat, device)
+
+
+def score_schedules(verifier_factory, schedules, bank, executor, enc,
+                    episodes, steps, seed, device="cpu"):
+    """Mean return per 2-phase cyclic schedule, one batch for all.
+
+    Phase semantics mirror the probe stack: a row advances its phase
+    when the ACTIVE phase goal's cost at the current reference is <= 0
+    (arrival), cyclically."""
+    n = len(schedules)
+    A0, A1, B0, B1, SIGN, MASK = pack_schedules(schedules, device)
+    v = verifier_factory(n * episodes)
+    v.reset(seed=seed)
+    total = torch.zeros(n * episodes, device=device)
+    prev = v.observation()
+    block = torch.arange(n, device=device).repeat_interleave(episodes)
+    phase = torch.zeros(n * episodes, dtype=torch.long, device=device)
+
+    def cost_for(state, reference, phase_now):
+        idx = block * 2 + phase_now
+        a0, a1 = A0[idx], A1[idx]
+        b0, b1 = B0[idx], B1[idx]
+        reach = ((state.gather(1, a0) - reference.gather(1, b0)).abs()
+                 + (state.gather(1, a1) - reference.gather(1, b1)).abs()
+                 ).float()
+        return (SIGN[idx] * MASK[idx] * reach).sum(dim=1)
+
+    prev_ref = None
+    prev_cost = torch.full((n * episodes,), 1e9, device=device)
+    for _ in range(steps):
+        obs = v.observation()
+        reference = enc(prev, obs)
+        reference = torch.where(reference < VALUES, reference,
+                                torch.zeros_like(reference))
+        here = cost_for(reference, reference, phase)
+        # completion = arrived, OR consumed: the phase's target slots
+        # jumped discontinuously while we stood within reach. A target
+        # eaten on contact respawns elsewhere in the same step, so its
+        # distance never reads 0 -- the jump is the arrival signature.
+        if prev_ref is None:
+            consumed = torch.zeros_like(here, dtype=torch.bool)
+        else:
+            idx = block * 2 + phase
+            b0, b1 = B0[idx], B1[idx]
+            jump = ((reference.gather(1, b0)
+                     - prev_ref.gather(1, b0)).abs().float()
+                    + (reference.gather(1, b1)
+                       - prev_ref.gather(1, b1)).abs().float())
+            jump = (jump * MASK[idx]).amax(dim=1)
+            consumed = (prev_cost <= 1.0) & (jump > 1.0)
+        done = (here <= 0) | consumed
+        phase = torch.where(done, (phase + 1) % 2, phase)
+        prev_ref = reference
+        prev_cost = torch.where(done,
+                                torch.full_like(here, 1e9),
+                                cost_for(reference, reference, phase))
+        best, action = None, torch.zeros(n * episodes, dtype=torch.long,
+                                         device=device)
+        for act in range(4):
+            program = bank.get(act)
+            state = (reference if program is None
+                     else executor(program, reference))
+            cost = cost_for(state, reference, phase)
+            if best is None:
+                best = cost.clone()
+            else:
+                take = cost < best
+                best = torch.where(take, cost, best)
+                action = torch.where(
+                    take, torch.full_like(action, act), action)
+        total += v.step(action).reward
+        prev = obs
+    return total.view(n, episodes).mean(dim=1)
