@@ -355,3 +355,50 @@ def score_guards(verifier_factory, guards, bank, executor, enc,
         total += v.step(action).reward
         prev = obs
     return total.view(n, episodes).mean(dim=1)
+
+
+def tile_verifier(v, n):
+    """Replicate a freshly-reset verifier's state n times along the
+    batch axis: every candidate block then faces IDENTICAL initial
+    worlds (common random numbers). Post-divergence respawn draws
+    still interleave through the shared generator, so CRN is exact
+    for initial states and deterministic dynamics, approximate after
+    the first divergent respawn."""
+    for name in ("avatar", "food", "hazards", "pursuers", "resources",
+                 "holding", "switch", "pending", "bait", "fallers",
+                 "alive"):
+        t = getattr(v, name, None)
+        if t is None or not torch.is_tensor(t):
+            continue
+        reps = [n] + [1] * (t.dim() - 1)
+        setattr(v, name, t.repeat(*reps))
+    v.batch_size *= n
+    return v
+
+
+def race(items, scorer, stages, keep_fraction=0.25, min_keep=4):
+    """Adaptive candidate racing: staged CRN budgets, elimination of
+    dominated candidates, pooled-mean winner.
+
+    scorer(sub_items, episodes, seed) -> tensor of mean returns.
+    stages: [(episodes, seed), ...] increasing budgets.
+    Returns (winner_item, pooled_score, episodes_spent)."""
+    alive = list(range(len(items)))
+    pooled = torch.zeros(len(items))
+    weight = torch.zeros(len(items))
+    spent = 0
+    for episodes, seed in stages:
+        scores = scorer([items[i] for i in alive], episodes, seed)
+        spent += episodes * len(alive)
+        for k, i in enumerate(alive):
+            pooled[i] += float(scores[k]) * episodes
+            weight[i] += episodes
+        means = pooled[alive] / weight[alive]
+        keep = max(min_keep, int(len(alive) * keep_fraction))
+        order = means.argsort(descending=True)[:keep]
+        alive = [alive[int(i)] for i in order]
+        if len(alive) <= min_keep:
+            continue
+    means = pooled / weight.clamp(min=1)
+    best = max(alive, key=lambda i: float(means[i]))
+    return items[best], float(means[best]), spent

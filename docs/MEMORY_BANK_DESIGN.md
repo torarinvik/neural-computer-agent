@@ -12532,3 +12532,36 @@ ATOM / SUM / SEQUENCE / VALUE-BIND; guards measured and declined.
 Next per the roadmap: adaptive racing (the optimism ledger now spans
 four candidate spaces), then freeze architecture-v1 and unseal
 blink / oneway / lever for their one-shot run.
+
+## F237 — ADAPTIVE RACING: PARITY AT LOWER COST, AND THE OPTIMISM
+## DECOMPOSITION (2026-08-13, raced_battery.py, 6 seeds. Scope: DEV
+## battery at production budgets)
+
+Adaptive candidate racing (fast_stack.race + tile_verifier: common-
+random-number stages 16 -> 48 -> 96 episodes, top-fraction
+elimination, pooled-mean winner) versus the flat min-of-two-streams
+protocol, identical candidate spaces, 6 worlds x 6 seeds:
+
+  evaluation   raced - flat = +0.001 (t=+0.09): parity, registered
+               no-regression criterion met; the hoped-for encoder-
+               collapse fixes did NOT materialize as gains.
+  cost         0.86x episodes (elimination beats uniform allocation,
+               modestly, at these candidate counts).
+  optimism     UNCHANGED (~+0.2 both arms) -- prediction 3 refuted,
+               and the refutation carries the insight:
+
+    AT PRODUCTION BUDGETS THE RESIDUAL SELECTION-EVALUATION GAP IS
+    INTER-STREAM WORLD VARIANCE, NOT CANDIDATE-COUNT BIAS. The
+    min-of-two-streams rule (F226) had already removed most of the
+    fixable bias -- which is why F226 worked -- and no selector can
+    remove variance between different world draws. The smoke-scale
+    contrast (optimism 0.3 -> 0.1 under racing) shows racing's value
+    regime: SMALL budgets or LARGE candidate spaces. It is installed
+    as infrastructure for the next 10x growth in candidate spaces
+    (entity-valued and beyond), with CRN and optimism logging as
+    standing instruments.
+
+With this, the roadmap items "resolve value binding" (F236) and
+"install racing" (F237) are done. The next milestone is the
+IRREVERSIBLE one: freeze architecture-v1 and run the sealed trio
+(blink, oneway, lever) exactly once. That decision is the user's.
