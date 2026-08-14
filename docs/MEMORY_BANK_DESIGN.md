@@ -13456,3 +13456,46 @@ edge reward <= -0.4 (death), (b) after a positive contact event
 it cannot be re-collected down-branch. Generic, reward-scale
 anchored, priced by the head the stack already has.
 Scope: Localized (GEN-DEV trio + control).
+
+## F260 — EVENT SEMANTICS REFUSED: THE FIFTH REFUTATION CLOSES THE
+## RESIDUAL'S FENCE; THE TRANSFER STACK STANDS AS THE DEPLOYABLE
+## FRONTIER (2026-08-14, event_tree.py, 6 seeds. Scope: GEN-DEV
+## trio + control. CYCLE-TERMINAL SYNTHESIS)
+
+Death-pruning and consumption-parking in the tree: P1 0/6 on every
+trio world (ev_d4 -0.78/-0.60/-0.75 vs transfer -0.75/-0.55/-0.66);
+ablations show neither rule contributes; consumption-parking HURTS
+the control (+1.02 -> +0.82); shufev collapses (the head still
+binds). The registered mechanism -- double-counting and unpruned
+death -- either does not dominate at depth 4, or its correction
+through imprecise rolls costs more than it saves.
+
+TERMINAL STATUS OF THIS RESIDUAL: five distinct, registered,
+mechanism-level attacks on the learned-roll gap have now been
+refuted on the same worlds under the same protocol --
+
+  F248  richer per-slot instructions (TOWARD/AWAY)
+  F254  per-entity rule binding (chase/flee/fall/frozen)
+  F258  untyped entity-transition memory
+  F259  type-keyed transition memory
+  F260  event semantics in the tree (prune + consume)
+
+-- while the F256 TRANSFER STACK (typed value heads learned on six
+single-mechanism worlds, pooled in world-independent coordinates,
+deployed with zero target reward data over plain bank rolls) has
+not been beaten by any of them: -0.747 / -0.549 / -0.656 on the
+certified trio, past the goal-grammar deploy on all three. The
+residual to the privileged ceilings (-0.39/-0.27/-0.13) is real,
+sized, and fenced: it belongs to capabilities this ladder cannot
+reach with feasible per-world experience -- candidate routes,
+honestly priced for the next cycle, are (a) orders-more reward-free
+experience (the F255 sample-complexity axis), (b) a stochastic
+learned simulator sampled at plan time instead of deterministic
+composition (a substantial build with its own freeze case), and
+(c) the SEALED sets, untouched, user-gated.
+
+The cycle's standing breakthroughs: F247/F253's VALUE-PLAN
+capability class (control +1.40, 3.4x the privileged depth-4
+ceiling, fully learned), and F256's founding-thesis demonstration
+-- transfer from simple worlds as the ONLY working route into
+compound tasks that cannot be learned from their own experience.
