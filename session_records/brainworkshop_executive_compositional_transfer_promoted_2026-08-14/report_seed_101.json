@@ -20,14 +20,42 @@
   "target_rule_private_to_verifier": 2,
   "durable_bank": {
     "path": "session_records/brainworkshop_executive_compositional_transfer_promoted_2026-08-14/AgentBrain_replication.bank",
-    "program_count": 2,
+    "program_count": 4,
     "source_slot": 0,
     "target_slot": 1,
+    "prelude_slot": 2,
+    "composed_source_slot": 3,
     "source_artifact_digest": "8486f8908269a10eaf691f69671c54b333592587065c787b526230016fefd115",
     "target_artifact_digest": "1bbd08dbf3f34191d2b83f284c9b9da8a6df077079ffa3ad784769c07dfd7f30",
-    "bank_digest": "86b6f066b977564af9918497a52e4e189023716dfd2fa885b6b9de73e314a510",
+    "composed_source_artifact_digest": "5c7ee814dfbab9522591f44a18f2b25a3e9503edbf75fee05a4771fd1039ebae",
+    "bank_digest": "9a8695a3e7d5927e39a4c81c7a23f7259e44522146be98ec5454fe9d868ad6ae",
     "source_reload_score": 1.0,
-    "target_reload_score": 1.0
+    "target_reload_score": 1.0,
+    "composed_source_reload_score": 1.0,
+    "composition_provenance": [
+      {
+        "admission": {
+          "accepted": true,
+          "candidate_digest": "5c7ee814dfbab9522591f44a18f2b25a3e9503edbf75fee05a4771fd1039ebae",
+          "observations": 2,
+          "reason": "verified executive artifact committed",
+          "schema": "neural-computer.external-program-admission.v1",
+          "slot": 3,
+          "stable_bits_to_threshold": 1,
+          "stable_prefix_minimum": 1.0
+        },
+        "child_digest": "5c7ee814dfbab9522591f44a18f2b25a3e9503edbf75fee05a4771fd1039ebae",
+        "parent_digests": [
+          "6c9731298c5b5f222e0a8bfe7eed067ce882c86d68e8d26457f48b72cb4b9e0f",
+          "8486f8908269a10eaf691f69671c54b333592587065c787b526230016fefd115"
+        ],
+        "parent_slots": [
+          2,
+          0
+        ],
+        "schema": "neural-computer.executive-composition.v1"
+      }
+    ]
   },
   "rows": [
     {
@@ -208,9 +236,12 @@
     "source_artifact_verified": true,
     "source_retained_after_target_search": true,
     "durable_source_and_target_admitted": true,
+    "durable_composed_source_admitted": true,
     "bank_reload_digest_exact": true,
     "bank_reload_source_mastery": true,
     "bank_reload_target_mastery": true,
+    "bank_reload_composed_source_mastery": true,
+    "composition_provenance_persisted": true,
     "all_warm_admitted": true,
     "all_fresh_admitted": true,
     "same_solution": true,
@@ -229,10 +260,10 @@
       "warm_target_search": 14336,
       "fresh_target_search": 39936,
       "source_retention": 576,
-      "bank_reload": 544,
+      "bank_reload": 832,
       "controls": 4096
     },
-    "unique_logical_lifetimes": 7488,
+    "unique_logical_lifetimes": 7520,
     "optimizer_updates": 0,
     "replayed_examples": 0,
     "stable_bits_to_threshold": {
@@ -240,9 +271,9 @@
       "fresh_target_search": 39936
     },
     "tick_latency_ms": {
-      "p50": 0.45000005047768354,
-      "p99": 0.5101032357197257
+      "p50": 0.4558545188046992,
+      "p99": 0.587635328993201
     },
-    "wall_seconds": 1.2351345410570502
+    "wall_seconds": 1.281445375061594
   }
 }

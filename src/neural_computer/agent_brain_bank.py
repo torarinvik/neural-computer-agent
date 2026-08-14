@@ -19,12 +19,18 @@ import hashlib
 import json
 import os
 import tempfile
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any, Literal
 
 import torch
 
-from .executive_bank import ExternalExecutiveProgramBank
+from .executive_bank import (
+    EXECUTIVE_COMPOSITION_SCHEMA,
+    ExternalExecutiveProgramArtifact,
+    ExternalExecutiveProgramBank,
+    compose_executive_artifacts,
+)
 from .program import (
     ExternalProgramAdmissionReceipt,
     ExternalProgramArtifact,
@@ -217,6 +223,7 @@ class ExternalAgentBrainBank:
         self._executive_bank = ExternalExecutiveProgramBank(
             controller_digest=self.controller_digest, capacity=capacity
         )
+        self._composition_provenance: list[dict[str, object]] = []
         self._version = 0
 
     @property
@@ -246,6 +253,10 @@ class ExternalAgentBrainBank:
     @property
     def skill_count(self) -> int:
         return self.program_count
+
+    @property
+    def composition_provenance(self) -> tuple[dict[str, object], ...]:
+        return tuple(dict(record) for record in self._composition_provenance)
 
     def configuration(self) -> dict[str, object]:
         return {
@@ -294,7 +305,7 @@ class ExternalAgentBrainBank:
 
     def admit_executive(
         self,
-        artifact: Any,
+        artifact: ExternalExecutiveProgramArtifact,
         outcomes: torch.Tensor | list[float] | tuple[float, ...],
         *,
         threshold: float = 0.8,
@@ -323,7 +334,7 @@ class ExternalAgentBrainBank:
 
     def admit(
         self,
-        artifact: Any,
+        artifact: ExternalExecutiveProgramArtifact,
         outcomes: torch.Tensor | list[float] | tuple[float, ...],
         **kwargs: Any,
     ) -> ExternalProgramAdmissionReceipt:
@@ -372,6 +383,49 @@ class ExternalAgentBrainBank:
             self._temporal_bank = None
         return receipt
 
+    def compose_executive(
+        self,
+        parent_slots: Sequence[int],
+        outcomes: torch.Tensor | list[float] | tuple[float, ...],
+        *,
+        threshold: float = 0.8,
+        min_observations: int = 1,
+        min_stable_observations: int = 1,
+    ) -> ExternalProgramAdmissionReceipt:
+        """Compose admitted executive slots, then gate the child by outcomes."""
+
+        normalized = tuple(parent_slots)
+        if len(normalized) < 2:
+            raise ValueError("executive composition needs at least two parent slots")
+        if any(
+            not isinstance(slot, int)
+            or isinstance(slot, bool)
+            or not 0 <= slot < self.executive_program_count
+            for slot in normalized
+        ):
+            raise IndexError("executive composition parent slot is outside the bank")
+        parents = tuple(self._executive_bank.artifact(slot) for slot in normalized)
+        child = compose_executive_artifacts(parents)
+        receipt = self.admit_executive(
+            child,
+            outcomes,
+            threshold=threshold,
+            min_observations=min_observations,
+            min_stable_observations=min_stable_observations,
+        )
+        if receipt.accepted:
+            self._composition_provenance.append(
+                {
+                    "schema": EXECUTIVE_COMPOSITION_SCHEMA,
+                    "child_digest": child.digest(),
+                    "parent_slots": list(normalized),
+                    "parent_digests": [parent.digest() for parent in parents],
+                    "admission": receipt.payload(),
+                }
+            )
+            self._version += 1
+        return receipt
+
     def import_temporal_bank(self, bank: ExternalTemporalProgramBank) -> None:
         """Copy a validated legacy temporal family into this heterogeneous bank."""
 
@@ -412,7 +466,7 @@ class ExternalAgentBrainBank:
         )
 
     def _content_payload(self) -> dict[str, object]:
-        return {
+        content: dict[str, object] = {
             "schema": self.schema,
             "configuration": self.configuration(),
             "version": self.version,
@@ -424,6 +478,11 @@ class ExternalAgentBrainBank:
             "executive_bank": self._executive_bank.payload(),
             "manifest": self.manifest(),
         }
+        if self._composition_provenance:
+            content["composition_provenance"] = [
+                dict(record) for record in self._composition_provenance
+            ]
+        return content
 
     def digest(self) -> str:
         return hashlib.sha256(
@@ -476,12 +535,14 @@ class ExternalAgentBrainBank:
         executive_payload = payload.get("executive_bank")
         version = payload.get("version")
         manifest = payload.get("manifest")
+        provenance = payload.get("composition_provenance", [])
         if (
             not isinstance(configuration, dict)
             or not isinstance(executive_payload, dict)
             or not isinstance(manifest, list)
             or not isinstance(version, int)
             or version < 0
+            or not isinstance(provenance, list)
         ):
             raise TypeError("AgentBrain bank payload is malformed")
         result = cls(
@@ -502,11 +563,53 @@ class ExternalAgentBrainBank:
         if result.program_count > result.capacity:
             raise ValueError("AgentBrain bank exceeds capacity")
         result._version = version
+        if not all(isinstance(record, dict) for record in provenance):
+            raise TypeError("AgentBrain composition provenance is malformed")
+        result._composition_provenance = [dict(record) for record in provenance]
+        result._validate_composition_provenance()
         if manifest != result.manifest():
             raise ValueError("AgentBrain bank manifest mismatch")
         if payload.get("sha256") != result.digest():
             raise ValueError("AgentBrain bank checksum mismatch")
         return result
+
+    def _validate_composition_provenance(self) -> None:
+        executable_digests = {
+            self._executive_bank.artifact(slot).digest()
+            for slot in range(self.executive_program_count)
+        }
+        for record in self._composition_provenance:
+            if record.get("schema") != EXECUTIVE_COMPOSITION_SCHEMA:
+                raise ValueError("unsupported AgentBrain composition provenance schema")
+            child_digest = record.get("child_digest")
+            parent_slots = record.get("parent_slots")
+            parent_digests = record.get("parent_digests")
+            admission = record.get("admission")
+            if (
+                not isinstance(child_digest, str)
+                or child_digest not in executable_digests
+                or not isinstance(parent_slots, list)
+                or len(parent_slots) < 2
+                or not all(
+                    isinstance(slot, int)
+                    and not isinstance(slot, bool)
+                    and 0 <= slot < self.executive_program_count
+                    for slot in parent_slots
+                )
+                or not isinstance(parent_digests, list)
+                or len(parent_digests) != len(parent_slots)
+                or not all(
+                    isinstance(digest, str) and digest in executable_digests
+                    for digest in parent_digests
+                )
+                or not isinstance(admission, dict)
+            ):
+                raise ValueError("AgentBrain composition provenance is invalid")
+            expected_parent_digests = [
+                self._executive_bank.artifact(slot).digest() for slot in parent_slots
+            ]
+            if parent_digests != expected_parent_digests:
+                raise ValueError("AgentBrain composition parent digest binding is invalid")
 
     def save_bank(self, path: Path) -> None:
         path = Path(path)

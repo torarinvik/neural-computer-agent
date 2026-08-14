@@ -13,11 +13,15 @@ from neural_computer import (
     TEMPORAL_ADDRESS_EXECUTION_SCHEMA,
     TEMPORAL_ADDRESS_INTERPRETER_SCHEMA,
     TEMPORAL_ADDRESS_OUTPUT_SCHEMA,
+    ExecutiveInstruction,
     ExternalAgentBrainBank,
+    ExternalExecutiveProgram,
+    ExternalExecutiveProgramArtifact,
     ExternalExecutiveProgramBank,
     ExternalProgramArtifact,
     ExternalTemporalProgramBank,
     build_temporal_equality_executive_artifact,
+    compose_executive_artifacts,
 )
 
 
@@ -32,6 +36,89 @@ def _temporal_artifact(values: tuple[float, ...]) -> ExternalProgramArtifact:
         execution_schema=TEMPORAL_ADDRESS_EXECUTION_SCHEMA,
         output_schema=TEMPORAL_ADDRESS_OUTPUT_SCHEMA,
     )
+
+
+def _finite_executive_artifact(variant: int = 0) -> ExternalExecutiveProgramArtifact:
+    wait = ExecutiveInstruction("wait", next_target=(2 if variant else None))
+    return ExternalExecutiveProgramArtifact(
+        program=ExternalExecutiveProgram(
+            1,
+            (
+                ExecutiveInstruction("receive", destination=0),
+                wait,
+                ExecutiveInstruction("halt"),
+            ),
+        ),
+        operator_specs=(),
+        intention_width=1,
+    ).validate()
+
+
+def test_executive_composition_rebases_slots_and_terminal_handoff() -> None:
+    first = _finite_executive_artifact()
+    second = _finite_executive_artifact(1)
+
+    composed = compose_executive_artifacts((first, second))
+
+    assert composed.program.slot_count == 2
+    assert len(composed.program.instructions) == 5
+    assert composed.program.instructions[2].destination == 1
+    assert composed.program.instructions[-1].op == "halt"
+    assert composed.program.instructions[-1].source is None
+
+
+def test_bank_composes_admitted_slots_with_provenance_and_reload(
+    tmp_path: Path,
+) -> None:
+    controller_digest = _digest(33)
+    bank = ExternalAgentBrainBank(controller_digest=controller_digest, capacity=4)
+    first = _finite_executive_artifact()
+    second = _finite_executive_artifact(1)
+    bank.admit_executive(first, [1.0])
+    bank.admit_executive(second, [1.0])
+
+    receipt = bank.compose_executive((0, 1), [1.0])
+    path = tmp_path / "AgentBrain.bank"
+    bank.save_bank(path)
+    restored = ExternalAgentBrainBank.load_bank(path)
+
+    assert receipt.accepted and receipt.slot == 2
+    assert bank.program_count == 3
+    assert len(bank.composition_provenance) == 1
+    provenance = bank.composition_provenance[0]
+    assert provenance["parent_slots"] == [0, 1]
+    assert provenance["child_digest"] == bank.artifact(AGENT_BRAIN_EXECUTIVE_KIND, 2).digest()
+    assert restored.digest() == bank.digest()
+    assert restored.composition_provenance == bank.composition_provenance
+    restored.executable(2, controller_digest=controller_digest)
+
+
+def test_rejected_executive_composition_does_not_change_the_bank() -> None:
+    bank = ExternalAgentBrainBank(controller_digest=_digest(34), capacity=4)
+    bank.admit_executive(_finite_executive_artifact(), [1.0])
+    bank.admit_executive(_finite_executive_artifact(1), [1.0])
+    before = bank.digest()
+
+    rejected = bank.compose_executive((0, 1), [0.0], threshold=0.9)
+
+    assert not rejected.accepted
+    assert bank.program_count == 2
+    assert bank.digest() == before
+    assert not bank.composition_provenance
+
+
+def test_composition_provenance_cannot_rebind_parent_digests() -> None:
+    bank = ExternalAgentBrainBank(controller_digest=_digest(35), capacity=4)
+    bank.admit_executive(_finite_executive_artifact(), [1.0])
+    bank.admit_executive(_finite_executive_artifact(1), [1.0])
+    bank.compose_executive((0, 1), [1.0])
+    payload = bank.payload()
+    payload["composition_provenance"][0]["parent_digests"][0] = bank.artifact(
+        AGENT_BRAIN_EXECUTIVE_KIND, 1
+    ).digest()
+
+    with pytest.raises(ValueError, match="parent digest binding"):
+        ExternalAgentBrainBank.from_payload(payload)
 
 
 def test_mixed_agent_brain_round_trip_preserves_both_skill_families(

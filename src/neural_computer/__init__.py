@@ -251,6 +251,7 @@ from .executive import (
     TypedWorkspaceValue,
 )
 from .executive_bank import (
+    EXECUTIVE_COMPOSITION_SCHEMA,
     EXECUTIVE_OPERATOR_SPEC_SCHEMA,
     EXECUTIVE_PROGRAM_ARTIFACT_SCHEMA,
     EXTERNAL_EXECUTIVE_PROGRAM_BANK_SCHEMA,
@@ -258,6 +259,7 @@ from .executive_bank import (
     ExternalExecutiveProgramArtifact,
     ExternalExecutiveProgramBank,
     build_temporal_equality_executive_artifact,
+    compose_executive_artifacts,
 )
 from .executive_memory import (
     EXTERNAL_VALUE_DELAY_INTERFACE,
@@ -1012,6 +1014,7 @@ __all__ = [
     "EVIDENCE_BINARY_INTENTION_INTERFACE",
     "EVIDENCE_BOUND_OUTCOME_SCHEMA",
     "EXECUTION_STATES",
+    "EXECUTIVE_COMPOSITION_SCHEMA",
     "EXECUTIVE_OPERATOR_SCHEMA",
     "EXECUTIVE_OPERATOR_SPEC_SCHEMA",
     "EXECUTIVE_OPERATOR_STATE_SCHEMA",
@@ -1737,6 +1740,7 @@ __all__ = [
     "attempted_outcome_loss",
     "build_temporal_equality_executive_artifact",
     "compose_control_flow_programs",
+    "compose_executive_artifacts",
     "compose_growth_artifacts",
     "compress_growth_artifact",
     "control_flow_instruction_bank",

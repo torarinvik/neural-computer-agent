@@ -232,6 +232,12 @@ digest. Legacy torch banks are imported explicitly and retain their opaque
 route evidence. This remains a bounded diagnostic because the candidate
 library is externally generated.
 
+The promoted run also composes a verified receive-only fragment with the
+verified 1-back temporal loop, admits the child through the same stable-prefix
+verifier gate, persists parent slots and digests, and reloads the composed child
+at 1.0 source mastery. Composition is structural and controller-frozen; it is
+not yet unrestricted autonomous program induction.
+
 `external_compute_append_only_depth_growth.py` is the current bounded working-
 memory result. A frozen source file masters n-back-16, then a fresh external
 file learns n-back-32 while the source, controller, and event frontend remain

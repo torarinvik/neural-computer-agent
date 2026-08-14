@@ -33,6 +33,7 @@ from neural_computer.executive import (
     TypedWorkspaceValue,
 )
 from neural_computer.executive_bank import (
+    ExternalExecutiveProgramArtifact,
     build_temporal_equality_executive_artifact,
 )
 from neural_computer.executive_memory import ExternalValueDelayOperator
@@ -162,6 +163,22 @@ def _program(delay_handle: int, relation_handle: int) -> ExternalExecutiveProgra
             ExecutiveInstruction("wait", next_target=0),
             ExecutiveInstruction("halt"),
         ),
+    ).validate()
+
+
+def _executive_prelude_artifact(intention_width: int) -> ExternalExecutiveProgramArtifact:
+    """A generic receive-only fragment used to audit durable composition."""
+
+    return ExternalExecutiveProgramArtifact(
+        program=ExternalExecutiveProgram(
+            1,
+            (
+                ExecutiveInstruction("receive", destination=0),
+                ExecutiveInstruction("halt"),
+            ),
+        ),
+        operator_specs=(),
+        intention_width=intention_width,
     ).validate()
 
 
@@ -521,6 +538,20 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         min_observations=2,
         min_stable_observations=2,
     )
+    durable_prelude_receipt = durable_bank.admit_executive(
+        _executive_prelude_artifact(intention_width=2),
+        [1.0, 1.0],
+        threshold=0.9,
+        min_observations=2,
+        min_stable_observations=2,
+    )
+    composed_source_receipt = durable_bank.compose_executive(
+        (durable_prelude_receipt.slot or 0, durable_source_receipt.slot or 0),
+        source_outcomes,
+        threshold=0.9,
+        min_observations=2,
+        min_stable_observations=2,
+    )
     bank_out = getattr(args, "bank_out", None)
     if bank_out is not None:
         durable_bank.save_bank(bank_out)
@@ -555,8 +586,22 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             controller_digest=controller_digest,
         ),
     )
+    reloaded_composed_source_score, composed_source_reload_bits, composed_source_reload_latencies = _evaluate_candidate(
+        source_artifact,
+        target_n_back=1,
+        batch_size=args.batch_size,
+        steps=args.steps,
+        seed=args.seed + 990_000,
+        event_width=args.event_width,
+        encoder_state=encoder_state,
+        executive_override=reloaded_bank.executable(
+            composed_source_receipt.slot or 0,
+            controller_digest=controller_digest,
+        ),
+    )
     all_tick_latencies.extend(source_reload_latencies)
     all_tick_latencies.extend(target_reload_latencies)
+    all_tick_latencies.extend(composed_source_reload_latencies)
     warm_bits = sum(int(row["warm_bits_to_admission"]) for row in rows)
     fresh_bits = sum(int(row["fresh_bits_to_admission"]) for row in rows)
     gates = {
@@ -565,9 +610,18 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "durable_source_and_target_admitted": (
             durable_source_receipt.accepted and durable_target_receipt.accepted
         ),
+        "durable_composed_source_admitted": (
+            durable_prelude_receipt.accepted and composed_source_receipt.accepted
+        ),
         "bank_reload_digest_exact": reloaded_bank.digest() == durable_bank.digest(),
         "bank_reload_source_mastery": reloaded_source_score >= 0.9,
         "bank_reload_target_mastery": reloaded_target_score >= 0.9,
+        "bank_reload_composed_source_mastery": reloaded_composed_source_score >= 0.9,
+        "composition_provenance_persisted": (
+            len(reloaded_bank.composition_provenance) == 1
+            and reloaded_bank.composition_provenance[0]["child_digest"]
+            == reloaded_bank.artifact("executive_program", composed_source_receipt.slot or 0).digest()
+        ),
         "all_warm_admitted": all(bool(row["warm_admitted"]) for row in rows),
         "all_fresh_admitted": all(bool(row["fresh_admitted"]) for row in rows),
         "same_solution": all(bool(row["same_admitted_artifact"]) for row in rows),
@@ -605,11 +659,18 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "program_count": reloaded_bank.program_count,
             "source_slot": durable_source_receipt.slot,
             "target_slot": durable_target_receipt.slot,
+            "prelude_slot": durable_prelude_receipt.slot,
+            "composed_source_slot": composed_source_receipt.slot,
             "source_artifact_digest": durable_source.digest(),
             "target_artifact_digest": durable_target.digest(),
+            "composed_source_artifact_digest": reloaded_bank.artifact(
+                "executive_program", composed_source_receipt.slot or 0
+            ).digest(),
             "bank_digest": reloaded_bank.digest(),
             "source_reload_score": reloaded_source_score,
             "target_reload_score": reloaded_target_score,
+            "composed_source_reload_score": reloaded_composed_source_score,
+            "composition_provenance": list(reloaded_bank.composition_provenance),
         },
         "rows": rows,
         "aggregate": {
@@ -633,7 +694,9 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                 "warm_target_search": warm_bits,
                 "fresh_target_search": fresh_bits,
                 "source_retention": source_retention_bits,
-                "bank_reload": source_reload_bits + target_reload_bits,
+                "bank_reload": source_reload_bits
+                + target_reload_bits
+                + composed_source_reload_bits,
                 "controls": sum(
                     control.unique_verifier_bits
                     for control in (irrelevant, shuffled, action_shuffled, missing_history)
@@ -646,6 +709,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             )
             + args.batch_size * 4
             + args.batch_size * 2
+            + args.batch_size
             + sum(
                 control.unique_lifetimes
                 for control in (irrelevant, shuffled, action_shuffled, missing_history)

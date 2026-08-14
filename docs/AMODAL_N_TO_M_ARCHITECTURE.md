@@ -271,6 +271,11 @@ ambiguous multi-stream reads fail closed. The canonical `ExternalAgentBrainBank`
 now stores this executive family beside the older temporal-address family in
 one versioned JSON `.bank`; legacy torch banks require an explicit validated
 migration, and their opaque route evidence is preserved rather than flattened.
+The same bank can now compose an admitted receive-only fragment with an
+admitted persistent temporal loop, record the parent slots and content
+digests, and re-run the composed child after reload with perfect source
+mastery. The composition gate is verifier-only and does not update the frozen
+controller.
 
 The retained Brain Workshop evidence qualifies bounded append-only external
 working-memory computation through n-back-32 with frozen source retention and

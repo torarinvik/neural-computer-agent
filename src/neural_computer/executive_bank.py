@@ -6,6 +6,7 @@ import hashlib
 import json
 import os
 import tempfile
+from collections.abc import Sequence
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, Literal
@@ -33,6 +34,7 @@ from .temporal_program import AGENT_BANK_EXTENSION
 
 EXECUTIVE_OPERATOR_SPEC_SCHEMA = "neural-computer.executive-operator-spec.v1"
 EXECUTIVE_PROGRAM_ARTIFACT_SCHEMA = "neural-computer.executive-program-artifact.v1"
+EXECUTIVE_COMPOSITION_SCHEMA = "neural-computer.executive-composition.v1"
 EXTERNAL_EXECUTIVE_PROGRAM_BANK_SCHEMA = (
     "neural-computer.external-executive-program-bank.v1"
 )
@@ -284,6 +286,126 @@ class ExternalExecutiveProgramArtifact:
         return artifact
 
 
+def compose_executive_artifacts(
+    artifacts: Sequence[ExternalExecutiveProgramArtifact],
+) -> ExternalExecutiveProgramArtifact:
+    """Compose existing executable files into one sequential artifact.
+
+    Each component keeps its own workspace namespace and operator namespace.
+    The component terminal ``HALT`` is removed for every non-final component,
+    and all branch/WAIT/EMIT targets that pointed at that terminal transfer to
+    the next component.  This permits a finite prelude to hand off to a
+    persistent game-loop skill while preserving stateful operator isolation.
+    No task identity or verifier-private label enters the resulting artifact.
+    """
+
+    if not artifacts:
+        raise ValueError("executive composition needs at least one artifact")
+    validated = tuple(artifact.validate() for artifact in artifacts)
+    if any(artifact.schema != EXECUTIVE_PROGRAM_ARTIFACT_SCHEMA for artifact in validated):
+        raise ValueError("executive composition artifacts use incompatible schemas")
+    intention_width = validated[0].intention_width
+    if any(artifact.intention_width != intention_width for artifact in validated):
+        raise ValueError("executive composition needs a common intention width")
+    body_lengths = tuple(len(artifact.program.instructions) - 1 for artifact in validated)
+    if any(length < 1 for length in body_lengths):
+        raise ValueError("executive composition components need a non-terminal body")
+
+    program_offsets: list[int] = []
+    slot_offsets: list[int] = []
+    handle_offsets: list[int] = []
+    body_offset = 0
+    slot_offset = 0
+    handle_offset = 0
+    for artifact, body_length in zip(validated, body_lengths, strict=True):
+        program_offsets.append(body_offset)
+        slot_offsets.append(slot_offset)
+        handle_offsets.append(handle_offset)
+        body_offset += body_length
+        slot_offset += artifact.program.slot_count
+        maximum_handle = max(
+            (spec.handle for spec in artifact.operator_specs), default=-1
+        )
+        handle_offset += maximum_handle + 1
+
+    instructions: list[ExecutiveInstruction] = []
+    composed_specs: list[ExternalExecutiveOperatorSpec] = []
+    for index, (artifact, program_offset, slots, handles) in enumerate(
+        zip(validated, program_offsets, slot_offsets, handle_offsets, strict=True)
+    ):
+        terminal = len(artifact.program.instructions) - 1
+        next_component = (
+            program_offsets[index + 1]
+            if index + 1 < len(validated)
+            else body_offset
+        )
+
+        def relocate_target(
+            target: int,
+            *,
+            terminal: int = terminal,
+            next_component: int = next_component,
+            program_offset: int = program_offset,
+            is_non_final: bool = index + 1 < len(validated),
+        ) -> int:
+            if target == terminal and is_non_final:
+                return next_component
+            return program_offset + target
+
+        for instruction in artifact.program.instructions[:-1]:
+            instructions.append(
+                ExecutiveInstruction(
+                    op=instruction.op,
+                    source=(None if instruction.source is None else instruction.source + slots),
+                    destination=(
+                        None
+                        if instruction.destination is None
+                        else instruction.destination + slots
+                    ),
+                    operator_handle=(
+                        None
+                        if instruction.operator_handle is None
+                        else instruction.operator_handle + handles
+                    ),
+                    arguments=tuple(argument + slots for argument in instruction.arguments),
+                    true_target=(
+                        None
+                        if instruction.true_target is None
+                        else relocate_target(instruction.true_target)
+                    ),
+                    false_target=(
+                        None
+                        if instruction.false_target is None
+                        else relocate_target(instruction.false_target)
+                    ),
+                    unknown_target=(
+                        None
+                        if instruction.unknown_target is None
+                        else relocate_target(instruction.unknown_target)
+                    ),
+                    next_target=(
+                        None
+                        if instruction.next_target is None
+                        else relocate_target(instruction.next_target)
+                    ),
+                )
+            )
+        composed_specs.extend(
+            replace(spec, handle=spec.handle + handles)
+            for spec in artifact.operator_specs
+        )
+    instructions.append(ExecutiveInstruction("halt"))
+    return ExternalExecutiveProgramArtifact(
+        program=ExternalExecutiveProgram(
+            slot_count=slot_offset,
+            instructions=tuple(instructions),
+            schema=EXECUTIVE_PROGRAM_SCHEMA,
+        ),
+        operator_specs=tuple(sorted(composed_specs, key=lambda spec: spec.handle)),
+        intention_width=intention_width,
+    ).validate()
+
+
 class ExternalExecutiveProgramBank:
     """Append-only verified executive artifacts in a resumable `.bank` file."""
 
@@ -531,6 +653,7 @@ def build_temporal_equality_executive_artifact(
 
 
 __all__ = [
+    "EXECUTIVE_COMPOSITION_SCHEMA",
     "EXECUTIVE_OPERATOR_SPEC_SCHEMA",
     "EXECUTIVE_PROGRAM_ARTIFACT_SCHEMA",
     "EXTERNAL_EXECUTIVE_PROGRAM_BANK_SCHEMA",
@@ -538,4 +661,5 @@ __all__ = [
     "ExternalExecutiveProgramArtifact",
     "ExternalExecutiveProgramBank",
     "build_temporal_equality_executive_artifact",
+    "compose_executive_artifacts",
 ]

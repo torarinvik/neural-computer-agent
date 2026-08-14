@@ -28,6 +28,12 @@ on source and target behavior. The canonical container can also preserve a
 legacy temporal-address family; importing an old torch bank is explicit and
 validated rather than implicit.
 
+The same run admits a generic receive-only fragment, composes it with the
+verified 1-back temporal loop, records both parent slots and content digests,
+and reloads the composed child at 1.0 source mastery. The child is admitted by
+the same stable-prefix verifier gate, so the composition is a durable learned
+skill rather than an unverified runtime macro.
+
 This proves bounded reusable program structure, smallest-failed-binding search,
 and durable restart-safe heterogeneous execution. It does not yet prove
 controller-generated candidate libraries, unbounded instruction induction, or
@@ -35,7 +41,7 @@ physical Brain Workshop transfer.
 
 Report checksums:
 
-- `report_seed_17.json`: `80e9188e90559f7d8494fca90a93b47417bbede9987439b1b01deee2edec40bb`
-- `report_seed_101.json`: `b3fb9c0476935c8758770b4cbc050c1f1f2506e428af408a77f5821d221afa73`
-- `AgentBrain.bank`: `efd5a4973adc7595ed130420d22e5c3969fde1e99c12fdde4160cf7fb51ee89d`
-- `AgentBrain_replication.bank`: `b53668a07773e58c7b51a20a062dc5e303ffe3b00406fc3c07b8a61496376f50`
+- `report_seed_17.json`: `2888c97ad9980c0b9aeeb329b0c670ab3fcbe3b4359fed14080c3c3fa191712a`
+- `report_seed_101.json`: `dc0f2b5deba45fbac926ba1c7d535d1e2f7642a7a2ea4935a65e64314fe05c51`
+- `AgentBrain.bank`: `6b6d0c574123c4afbd3827f7a88a2855c064d9d1df7292545c5c8a2031b357b3`
+- `AgentBrain_replication.bank`: `eb4cec9b071d5cc8ff971279d1bdd8dc189aa6db4fec01cb4b68127145a63b5f`
