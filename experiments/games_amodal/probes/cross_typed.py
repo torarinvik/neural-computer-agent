@@ -645,7 +645,17 @@ for name, config in TRAIN_WORLDS:
     lib_S.append(S); lib_ret.append(ret)
 w_tr, _w_tv = fit_typed(torch.cat(lib_X), torch.cat(lib_y),
                         torch.cat(lib_S), torch.cat(lib_ret))
-print("grid head fit", flush=True)
+# F265 follow-up: sparsified head -- mask the substrate-entangled
+# coordinates (action one-hots, boundary events) and refit, so the
+# transferable event x signature coordinates are identified alone
+MASK = torch.ones(R_FEATS)
+MASK[-4:] = 0.0                              # action one-hots
+for g_ix in range(3):
+    off = 1 + g_ix * EVENTS * PSI_DIM
+    MASK[off + 3 * PSI_DIM: off + 4 * PSI_DIM] = 0.0   # boundary
+Xa = torch.cat(lib_X) * MASK
+w_sp = ridge(Xa, torch.cat(lib_y), args.ridge_lam) * MASK
+print("grid heads fit (full + sparse)", flush=True)
 
 GRAPH_WORLDS = [
     ("gcollect1", GraphConfig(collect=1)),
@@ -662,6 +672,8 @@ for name, config in GRAPH_WORLDS:
                                args.seed * 977)
     row["typed_zero"] = play_graph(config, "typed", w_tr,
                                    args.seed * 977)
+    row["typed_sparse"] = play_graph(config, "typed", w_sp,
+                                     args.seed * 977)
     Xg, yg = collect_graph(config, args.seed * 61)
     w_g = ridge(Xg, yg, args.ridge_lam)
     row["typed_graphfit"] = play_graph(config, "typed", w_g,
