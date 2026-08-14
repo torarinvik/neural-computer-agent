@@ -12768,3 +12768,29 @@ the stack crosses substrates (F241), and experience crosses WITH it
 where the role vocabulary covers, at two orders of magnitude of
 saved search (F242) -- with the failure modes named and their guards
 specified before any further scaling.
+
+## F243 — GUARDED TRANSFER: NEVER WORSE THAN DISCOVERY, 700x CHEAPER
+## WHERE EXPERIENCE APPLIES (2026-08-14, guarded_transfer.py, 6 seeds.
+## Scope: grid -> graph)
+
+F242's specified guard, implemented and verified: re-grounded imports
+are scored against the RANDOM-POLICY baseline on the selection
+streams; the best import is adopted only if it clears the baseline,
+otherwise the full local race runs -- discovery cost paid exactly
+where transfer fails.
+
+  gcollect2          guard trips 6/6 -> fallback -> IDENTICAL to cold
+                     (+3.779, sd 0). The F242 below-random harm is
+                     gone (prediction 1 exact).
+  gcollect1 / _avoid1  imports adopted 5/6 (seed 1234's empty library
+                     falls back by construction); 97-98% of cold at
+                     ~100 episodes where adopted.
+  pooled             99% of cold (-0.056, t=-0.99, ns) at 0.60x cold
+                     average cost -- the average carries the honest
+                     price of the worlds that must rediscover.
+
+The cross-substrate transfer principle in final form: WITH THE GUARD,
+WARM ACQUISITION IS NEVER WORSE THAN COLD DISCOVERY, AND TWO ORDERS
+OF MAGNITUDE CHEAPER WHERE EXPERIENCE APPLIES. Remaining refinements
+are economic, not safety: cheaper guards (racing's early stages),
+role-diverse promotion so fewer libraries abstract empty.
