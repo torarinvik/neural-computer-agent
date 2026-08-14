@@ -174,6 +174,14 @@ encoder is still a replaceable learned-event adapter. The lifetime aggregate is
 important—per-action route updates can promote a wrong skill from a lucky
 partial streak.
 
+The route now also survives a nonstationary rule change. After a checksummed
+bank reload, changing the private verifier from 1-back to 2-back behind the
+same visible cue produced two failing slot-0 lifetimes, then three consecutive
+slot-1 lifetimes at `1.0000`. The old slot remained perfect when forced on
+1-back, and a cue-shuffled control fell to `0.3750`. This qualifies bounded
+same-cue route reversal and immutable-skill retention; it does not yet provide
+autonomous program induction or physical desktop deployment.
+
 Curated evidence is under `session_records/`. Historical experiments, obsolete
 checkpoints, and superseded session dumps were removed from the working tree;
 they remain recoverable from Git history.

@@ -325,6 +325,14 @@ autonomous context encoder. Per-action outcome transport remains available, but
 it is not used as the default route mastery signal because partial lucky
 streaks can otherwise promote the wrong slot.
 
+The route policy has also passed a bounded nonstationary audit. After an exact
+`.bank` reload, the private verifier rule changed from 1-back to 2-back behind
+the same learned cue. Two failing lifetimes demoted slot 0; the policy avoided
+that recently reversed slot, probed slot 1, and retained it across three perfect
+lifetimes. Forced slot-0 retention remained perfect, and a cue-shuffled control
+fell below threshold. This is causal route reversal and immutable-skill
+retention, not autonomous program induction or a semantic rule switch.
+
 The physical Position 1-Back rung qualifies the narrower live-I/O claim: public
 display capture, spatial onset segmentation, ordinary keypress output, exact
 receipt matching, checkpoint/resume, and immediate evidence-bound updates work

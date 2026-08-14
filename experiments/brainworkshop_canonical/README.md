@@ -55,6 +55,19 @@ PYTHONPATH=src .venv/bin/python \
   --report-out /tmp/live-executive-route.json
 ```
 
+`live_executive_route_reversal.py` is the nonstationary follow-up. It reloads
+the checksummed bank, changes the private verifier rule behind the same visible
+cue, demotes the failing route after two aggregate lifetimes, and keeps the
+successful replacement until its stable-prefix gate is met. The old skill is
+then forced directly to verify retention, while a cue-shuffled control checks
+that the learned route is not a generic slot preference.
+
+```bash
+PYTHONPATH=src .venv/bin/python \
+  -m experiments.brainworkshop_canonical.live_executive_route_reversal \
+  --report-out /tmp/live-executive-route-reversal.json
+```
+
 ## Rendered vision and audio rung
 
 `rendered_environment.py` is a clean-room device surface. Its learner-visible

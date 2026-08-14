@@ -1,0 +1,33 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment_id": "brainworkshop-live-executive-route-reversal-promoted-2026-08-14",
+  "status": "promoted_live_nonstationary_route_reversal",
+  "source": "in_repository_run",
+  "unique_verifier_bits": {
+    "calibration": 27,
+    "reversal": 40,
+    "forced_slot_0_retention": 27,
+    "cue_shuffled_control": 8
+  },
+  "unique_logical_lifetimes": 12,
+  "optimizer_updates": 0,
+  "replayed_examples": 0,
+  "stable_bits_to_threshold": {
+    "reversal_slot_1": 24,
+    "forced_slot_0_retention": 27
+  },
+  "retention_on_mastered_primitives": "forced delay-1 slot remains 1.0000 after same-cue reversal",
+  "transfer_ratio_against_fresh_learner": null,
+  "route_updates": 9,
+  "controls": {
+    "controller_frozen": true,
+    "decoder_frozen": true,
+    "executive_programs_frozen": true,
+    "zero_replay": true,
+    "bank_reload_exact_before_reversal": true,
+    "bank_reload_exact_after_reversal": true,
+    "same_cue_failure_then_probe": true,
+    "cue_shuffled_control_fails": true
+  },
+  "claim_boundary": "bounded same-cue live route reversal with immutable skill retention and checksummed bank reload; not autonomous program induction or physical desktop deployment"
+}
