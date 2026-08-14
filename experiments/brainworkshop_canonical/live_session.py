@@ -57,6 +57,7 @@ class BrainWorkshopLiveDevice:
         self.batch_size = verifier.batch_size
         self.event_width = encoder.event_width
         self._observation_pending = True
+        self._pending_events: AmodalEventCollection | None = None
         self._outcomes: list[LiveOutcomeEvent] = []
         self._emitted_actions = 0
         self.verifier.reset()
@@ -77,18 +78,19 @@ class BrainWorkshopLiveDevice:
         outcomes = tuple(self._outcomes)
         self._outcomes.clear()
         if self._observation_pending and not self.verifier.done:
-            symbol = self.verifier.observation()
-            with torch.no_grad():
-                payload = self.encoder(symbol)
-            event = AmodalEvent(
-                payload=payload,
-                timestamp=torch.full((self.batch_size,), now),
-                confidence=torch.ones(self.batch_size),
-            )
-            events = AmodalEventCollection.from_events(
-                (event,), width=self.event_width
-            )
-            self._observation_pending = False
+            if self._pending_events is None:
+                symbol = self.verifier.observation()
+                with torch.no_grad():
+                    payload = self.encoder(symbol)
+                event = AmodalEvent(
+                    payload=payload,
+                    timestamp=torch.full((self.batch_size,), now),
+                    confidence=torch.ones(self.batch_size),
+                )
+                self._pending_events = AmodalEventCollection.from_events(
+                    (event,), width=self.event_width
+                )
+            events = self._pending_events
         else:
             events = AmodalEventCollection.empty(
                 self.batch_size,
@@ -97,7 +99,7 @@ class BrainWorkshopLiveDevice:
         return LiveInputBatch(events=events, outcomes=outcomes, observed_at=now)
 
     def emit(self, action: torch.Tensor, receipt: LiveActionReceipt) -> None:
-        if self._observation_pending or self.verifier.done:
+        if self._pending_events is None or self.verifier.done:
             raise RuntimeError("Brain Workshop received an action without a stimulus")
         if action.shape != (self.batch_size,) or action.dtype != torch.long:
             raise ValueError("Brain Workshop keypress must be an int64 batch vector")
@@ -117,6 +119,7 @@ class BrainWorkshopLiveDevice:
             )
         )
         self._emitted_actions += self.batch_size
+        self._pending_events = None
         self._observation_pending = not self.verifier.done
 
 

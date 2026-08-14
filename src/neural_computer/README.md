@@ -46,7 +46,9 @@ import experiment code.
 - `keypress.py`: one replaceable opaque protocol boundary.
 - `live.py`: variable-port `INPUT`, queued reward adapters, monotonic cognitive
   ticks, authenticated action receipts, exact-once outcome resolution, device
-  dispatch, and latency accounting.
+  dispatch, latency accounting, and `ExternalExecutiveLiveMachine`, which runs
+  a reloaded external skill through the sealed executive into a replaceable
+  intention decoder.
 - `human_io.py`: public-screen capture, evidence-bound outcomes, visible pulse
   segmentation, allow-listed macOS windows, and replaceable key transport.
 - `credit.py`, `plasticity.py`, `promotion.py`: trainer-only outcome credit,
@@ -80,3 +82,10 @@ separate lifecycle work rather than hidden interpreter behavior.
 The sealed fast path is an internal runtime optimization only: leases are bound
 to their creating executive, reject structural corruption at each tick, cannot
 be serialized, and do not replace the defensive public restoration path.
+
+`ExternalExecutiveLiveMachine` is the explicit bridge from a verified external
+program artifact to `CognitiveTickRuntime`. It does not train the executive or
+decoder (the decoder is frozen by default), and it routes delayed outcomes
+through the ordinary receipt/observer boundary. A synchronous device may retain
+an input event while the program is in `WAIT`; the input is not discarded or
+silently replaced with a fabricated zero event.

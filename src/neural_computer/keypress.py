@@ -29,6 +29,12 @@ class KeypressDecision:
     logits: torch.Tensor
     propensity: torch.Tensor
 
+    @property
+    def action(self) -> torch.Tensor:
+        """Expose the generic live-decoder action ABI."""
+
+        return self.key_index
+
     def validate(self, *, key_count: int, batch: int | None = None) -> KeypressDecision:
         if self.logits.ndim != 2 or self.logits.shape[1] != key_count:
             raise ValueError("keypress logits have the wrong shape")

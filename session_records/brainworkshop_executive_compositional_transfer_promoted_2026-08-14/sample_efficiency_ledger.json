@@ -45,6 +45,29 @@
     "sealed_fast_tick_seconds": 2.148341,
     "runtime_reduction_percent": 48.4123
   },
+  "live_bank_execution": {
+    "unique_verifier_bits": {
+      "1_back": 59,
+      "2_back": 58
+    },
+    "unique_logical_lifetimes": 2,
+    "optimizer_updates": 0,
+    "replayed_examples": 0,
+    "controller_updates": 0,
+    "executive_program_updates": 0,
+    "accuracy": {
+      "1_back": 1.0,
+      "2_back": 1.0
+    },
+    "machine_latency_ms_p50": {
+      "1_back": 0.851750,
+      "2_back": 0.830333
+    },
+    "machine_latency_ms_p99": {
+      "1_back": 2.639666,
+      "2_back": 1.625875
+    }
+  },
   "controls": {
     "same_admitted_artifact_all_arms": true,
     "warm_strictly_faster_all_32_seeds": true,
@@ -62,5 +85,5 @@
     "frozen_controller_and_operators": true,
     "zero_replay": true
   },
-  "claim_boundary": "Promoted bounded structural transfer from a verified temporal-relation fragment to smallest-failed-delay-binding search plus staged fresh-rollout verifier-gated parent-pair composition of admitted executive fragments with reachable handoff and restart-safe heterogeneous AgentBrain.bank execution; not unrestricted program induction or physical deployment."
+  "claim_boundary": "Promoted bounded structural transfer from a verified temporal-relation fragment to smallest-failed-delay-binding search plus staged fresh-rollout verifier-gated parent-pair composition of admitted executive fragments with reachable handoff and restart-safe heterogeneous AgentBrain.bank execution; also bounded bank-backed live 1-back/2-back execution with frozen controller; not unrestricted program induction, autonomous skill selection, or physical desktop deployment."
 }

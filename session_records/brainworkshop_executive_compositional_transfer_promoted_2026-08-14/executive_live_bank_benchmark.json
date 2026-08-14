@@ -1,0 +1,40 @@
+{
+  "schema": "neural-computer.executive-live-bank-benchmark.v1",
+  "date": "2026-08-14",
+  "configuration": {
+    "steps": 60,
+    "event_width": 8,
+    "batch_size": 1,
+    "device": "cpu",
+    "sample": false,
+    "replicates": 3,
+    "source": "admit -> save AgentBrain.bank -> reload -> live execution",
+    "controller_updates": 0,
+    "executive_program_updates": 0
+  },
+  "results": {
+    "1": {
+      "accuracy": 1.0,
+      "actions": 60,
+      "unique_verifier_bits": 59,
+      "ticks": 62,
+      "executive_ticks": 62,
+      "machine_seconds_p50": 0.000851750,
+      "machine_seconds_p99": 0.002639666,
+      "total_seconds_p50": 0.001155958,
+      "total_seconds_p99": 0.003053625
+    },
+    "2": {
+      "accuracy": 1.0,
+      "actions": 60,
+      "unique_verifier_bits": 58,
+      "ticks": 63,
+      "executive_ticks": 63,
+      "machine_seconds_p50": 0.000830333,
+      "machine_seconds_p99": 0.001625875,
+      "total_seconds_p50": 0.001106250,
+      "total_seconds_p99": 0.002037542
+    }
+  },
+  "claim_boundary": "bank-backed live execution and causal action routing with frozen controller; not autonomous skill selection or skill learning"
+}

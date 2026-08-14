@@ -150,6 +150,15 @@ and zero replay; only the external reward-route ledger changed. This validates
 admission, persistence, retrieval, and frozen execution for one program. It
 does not yet validate discrimination among multiple programs.
 
+The external-executive path now closes the remaining transport gap: an admitted
+`AgentBrain.bank` artifact can be saved, reloaded, and attached to the live tick
+runtime through a sealed, frozen executive machine and a replaceable decoder.
+The bounded diagnostic executes the same generic temporal-equality skill at
+1-back and 2-back with `1.0000` accuracy over 60-step lifetimes, while keeping
+controller and executive-program updates at zero. This proves durable
+bank-backed live execution and WAIT-safe input pacing; autonomous skill
+selection and skill learning remain the next bottlenecks.
+
 Curated evidence is under `session_records/`. Historical experiments, obsolete
 checkpoints, and superseded session dumps were removed from the working tree;
 they remain recoverable from Git history.

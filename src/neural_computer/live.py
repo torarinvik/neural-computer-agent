@@ -19,6 +19,7 @@ from typing import Protocol
 
 import torch
 
+from .executive import ExternalAmodalExecutive, TrustedExternalExecutiveState
 from .interface import AmodalEventCollection, IntentEvent
 
 LIVE_ACTION_RECEIPT_SCHEMA = "neural-computer.live-action-receipt.v1"
@@ -26,6 +27,7 @@ LIVE_INPUT_INSTRUCTION_SCHEMA = "neural-computer.live-input-instruction.v1"
 LIVE_OUTCOME_EVENT_SCHEMA = "neural-computer.live-outcome-event.v1"
 LIVE_TICK_SCHEMA = "neural-computer.live-tick.v1"
 QUEUED_OUTCOME_INPUT_SCHEMA = "neural-computer.queued-outcome-input.v1"
+LIVE_EXECUTIVE_MACHINE_SCHEMA = "neural-computer.live-executive-machine.v1"
 
 
 def _validate_time(value: float, name: str) -> None:
@@ -479,6 +481,251 @@ class LiveCognitiveMachine(Protocol):
         now: float,
         elapsed: float,
     ) -> Sequence[LiveActionProposal]: ...
+
+
+class LiveIntentionDecoder(Protocol):
+    """Replaceable output adapter for an external executive intention."""
+
+    intention_width: int
+
+    def decide(
+        self, intention: IntentEvent, *, sample: bool = True
+    ) -> LiveDecoderDecision: ...
+
+
+class LiveDecoderDecision(Protocol):
+    """Minimal action/propensity result shared by all output decoders."""
+
+    action: torch.Tensor
+    propensity: torch.Tensor
+
+
+@dataclass(frozen=True)
+class ExternalExecutiveLiveCredit:
+    """Opaque receipt-local identity for routing delayed outcomes."""
+
+    program_digest: str
+    operator_registry_digest: str
+    executive_tick: int
+    executed_instructions: int
+    schema: str = LIVE_EXECUTIVE_MACHINE_SCHEMA
+
+    def validate(self) -> ExternalExecutiveLiveCredit:
+        if self.schema != LIVE_EXECUTIVE_MACHINE_SCHEMA:
+            raise ValueError("unsupported live executive credit schema")
+        for name, value in (
+            ("program_digest", self.program_digest),
+            ("operator_registry_digest", self.operator_registry_digest),
+        ):
+            if not isinstance(value, str) or len(value) != 64:
+                raise ValueError(f"live executive {name} must be a SHA-256 digest")
+            try:
+                int(value, 16)
+            except ValueError as error:
+                raise ValueError(
+                    f"live executive {name} must be a SHA-256 digest"
+                ) from error
+        if (
+            not isinstance(self.executive_tick, int)
+            or isinstance(self.executive_tick, bool)
+            or not isinstance(self.executed_instructions, int)
+            or isinstance(self.executed_instructions, bool)
+            or self.executive_tick < 1
+            or self.executed_instructions < 0
+        ):
+            raise ValueError("live executive credit counters are invalid")
+        return self
+
+
+class ExternalExecutiveLiveMachine:
+    """Run one admitted external skill inside the live causal tick boundary.
+
+    The executive and its state are deliberately separate from the decoder.
+    The executive is frozen program logic; the decoder is the replaceable
+    intention-to-device adapter. Resolved outcomes are passed through the
+    normal runtime to observers, while this machine never trains or exposes
+    them to the controller.
+    """
+
+    schema = LIVE_EXECUTIVE_MACHINE_SCHEMA
+
+    def __init__(
+        self,
+        executive: ExternalAmodalExecutive,
+        decoder: LiveIntentionDecoder,
+        *,
+        batch_size: int,
+        output_key: str,
+        device: torch.device | str = "cpu",
+        dtype: torch.dtype = torch.float32,
+        sample: bool = True,
+        model_version: int = 0,
+        skill_digest: str | None = None,
+        freeze_decoder: bool = True,
+    ) -> None:
+        if not isinstance(executive, ExternalAmodalExecutive):
+            raise TypeError("live executive machine needs an external executive")
+        if not callable(getattr(decoder, "decide", None)):
+            raise TypeError("live executive machine decoder must implement decide")
+        decoder_width = getattr(decoder, "intention_width", None)
+        if decoder_width != executive.intention_width:
+            raise ValueError("live executive decoder intention width is incompatible")
+        if (
+            not isinstance(batch_size, int)
+            or isinstance(batch_size, bool)
+            or batch_size < 1
+            or not isinstance(output_key, str)
+            or not output_key
+        ):
+            raise ValueError("live executive machine dimensions and output are invalid")
+        if (
+            not isinstance(model_version, int)
+            or isinstance(model_version, bool)
+            or model_version < 0
+        ):
+            raise ValueError("live executive model version cannot be negative")
+        resolved_skill_digest = (
+            executive.program.digest() if skill_digest is None else skill_digest
+        )
+        if (
+            not isinstance(resolved_skill_digest, str)
+            or len(resolved_skill_digest) != 64
+        ):
+            raise ValueError("live executive skill digest must be a SHA-256 digest")
+        try:
+            int(resolved_skill_digest, 16)
+        except ValueError as error:
+            raise ValueError(
+                "live executive skill digest must be a SHA-256 digest"
+            ) from error
+        self.executive = executive
+        self.decoder = decoder
+        self.batch_size = int(batch_size)
+        self.output_key = output_key
+        self.sample = bool(sample)
+        self.model_version = int(model_version)
+        self.freeze_decoder = bool(freeze_decoder)
+        if self.freeze_decoder:
+            eval_method = getattr(decoder, "eval", None)
+            if callable(eval_method):
+                eval_method()
+            parameters_method = getattr(decoder, "parameters", None)
+            if callable(parameters_method):
+                for parameter in parameters_method():
+                    parameter.requires_grad_(False)
+        self._device = torch.device(device)
+        self._dtype = dtype
+        self._skill_digest = resolved_skill_digest
+        self._state: TrustedExternalExecutiveState = executive.initial_sealed_state(
+            self.batch_size, device=self._device, dtype=self._dtype
+        )
+        self._executive_ticks = 0
+
+    @classmethod
+    def from_artifact(
+        cls,
+        artifact,
+        decoder: LiveIntentionDecoder,
+        *,
+        batch_size: int,
+        output_key: str,
+        device: torch.device | str = "cpu",
+        dtype: torch.dtype = torch.float32,
+        sample: bool = True,
+        model_version: int = 0,
+        max_instructions_per_tick: int = 128,
+        skill_digest: str | None = None,
+        freeze_decoder: bool = True,
+    ) -> ExternalExecutiveLiveMachine:
+        """Instantiate a live machine from a validated bank artifact."""
+
+        instantiate = getattr(artifact, "instantiate", None)
+        digest = getattr(artifact, "digest", None)
+        validate = getattr(artifact, "validate", None)
+        if not callable(instantiate) or not callable(digest) or not callable(validate):
+            raise TypeError("live executive artifact must be executable")
+        validate()
+        executive = instantiate(
+            max_instructions_per_tick=max_instructions_per_tick
+        )
+        return cls(
+            executive,
+            decoder,
+            batch_size=batch_size,
+            output_key=output_key,
+            device=device,
+            dtype=dtype,
+            sample=sample,
+            model_version=model_version,
+            skill_digest=(digest() if skill_digest is None else skill_digest),
+            freeze_decoder=freeze_decoder,
+        )
+
+    @property
+    def executive_state(self) -> TrustedExternalExecutiveState:
+        """Return the live-only state lease; it cannot be serialized."""
+
+        return self._state
+
+    @property
+    def executive_ticks(self) -> int:
+        return self._executive_ticks
+
+    def reset(
+        self,
+        *,
+        device: torch.device | str | None = None,
+        dtype: torch.dtype | None = None,
+    ) -> None:
+        """Start a clean skill lifetime without changing program or decoder weights."""
+
+        self._state = self.executive.initial_sealed_state(
+            self.batch_size,
+            device=self._device if device is None else device,
+            dtype=self._dtype if dtype is None else dtype,
+        )
+        self._executive_ticks = 0
+
+    def tick(
+        self,
+        events: AmodalEventCollection,
+        outcomes: Sequence[ResolvedLiveOutcome],
+        *,
+        now: float,
+        elapsed: float,
+    ) -> tuple[LiveActionProposal, ...]:
+        del outcomes, now, elapsed
+        output, self._state = self.executive.tick_fast(events, self._state)
+        self._executive_ticks += 1
+        if output.intention is None:
+            return ()
+        with torch.no_grad():
+            decision = self.decoder.decide(
+                output.intention,
+                sample=self.sample,
+            )
+        action = getattr(decision, "action", None)
+        propensity = getattr(decision, "propensity", None)
+        if not isinstance(action, torch.Tensor) or not isinstance(propensity, torch.Tensor):
+            raise TypeError(
+                "live executive decoder must return action and propensity tensors"
+            )
+        credit = ExternalExecutiveLiveCredit(
+            program_digest=self._skill_digest,
+            operator_registry_digest=output.operator_registry_digest,
+            executive_tick=self._executive_ticks,
+            executed_instructions=output.executed_instructions,
+        ).validate()
+        return (
+            LiveActionProposal(
+                intention=output.intention,
+                action=action.detach(),
+                propensity=propensity.detach(),
+                output_key=self.output_key,
+                model_version=self.model_version,
+                credit_state=credit,
+            ).validate(batch_size=self.batch_size),
+        )
 
 
 class CognitiveTickRuntime:

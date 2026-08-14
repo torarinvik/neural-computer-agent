@@ -66,6 +66,7 @@ class RenderedBrainWorkshopLiveDevice:
             else torch.Generator().manual_seed(randomized_outcome_seed)
         )
         self._observation_pending = True
+        self._pending_events: AmodalEventCollection | None = None
         self._outcomes: list[LiveOutcomeEvent] = []
 
     @property
@@ -80,26 +81,31 @@ class RenderedBrainWorkshopLiveDevice:
         outcomes = tuple(self._outcomes)
         self._outcomes.clear()
         if self._observation_pending and not self.verifier.done:
-            observation = self.verifier.observation()
-            observation = RenderedBrainWorkshopObservation(
-                vision=(
-                    None if "vision" in self.drop_streams else observation.vision
-                ),
-                audio=None if "audio" in self.drop_streams else observation.audio,
-            )
-            with torch.no_grad():
-                events = self.encoders.encode(
-                    observation,
-                    now=now,
-                    reverse_order=self.reverse_event_order,
+            if self._pending_events is None:
+                observation = self.verifier.observation()
+                observation = RenderedBrainWorkshopObservation(
+                    vision=(
+                        None
+                        if "vision" in self.drop_streams
+                        else observation.vision
+                    ),
+                    audio=(
+                        None if "audio" in self.drop_streams else observation.audio
+                    ),
                 )
-            self._observation_pending = False
+                with torch.no_grad():
+                    self._pending_events = self.encoders.encode(
+                        observation,
+                        now=now,
+                        reverse_order=self.reverse_event_order,
+                    )
+            events = self._pending_events
         else:
             events = AmodalEventCollection.empty(1, self.event_width)
         return LiveInputBatch(events, outcomes, now)
 
     def emit(self, action: torch.Tensor, receipt: LiveActionReceipt) -> None:
-        if self._observation_pending or self.verifier.done:
+        if self._pending_events is None or self.verifier.done:
             raise RuntimeError("rendered Brain Workshop action has no stimulus")
         executed = action
         if self.action_permutation is not None:
@@ -128,6 +134,7 @@ class RenderedBrainWorkshopLiveDevice:
                 confidence=torch.ones(1),
             )
         )
+        self._pending_events = None
         self._observation_pending = not self.verifier.done
 
 

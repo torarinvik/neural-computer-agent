@@ -59,6 +59,14 @@ ticks fell from 4.164 seconds to 2.148 seconds, a 48.4% reduction. The lease is
 owner-bound and non-serializable; normal external state restoration still uses
 the defensive path, and operator outputs remain validated.
 
+The reloaded artifact was then attached to `CognitiveTickRuntime` through the
+new external-executive live adapter. On 60-step frozen-controller lifetimes it
+reached 1.0000 on both 1-back and 2-back, with 59 and 58 eligible verifier bits,
+zero controller/program updates, and no dropped observations while the
+executive waited for history. Across three replicates, machine p50 was 0.85 ms /
+0.83 ms and p99 was 2.64 ms / 1.63 ms. This is bank-backed live execution and
+causal pacing, not autonomous skill selection or learning.
+
 This proves bounded reusable program structure, smallest-failed-binding search,
 and durable restart-safe heterogeneous execution. It does not yet prove
 controller-generated candidate libraries, unbounded instruction induction, or
@@ -70,5 +78,6 @@ Report checksums:
 - `report_seed_101.json`: `e2ba69aba92e15e63c8cac5ab91f3f6467871a6f557cd56b6bb0bfccbcd392e9`
 - `executive_tick_cache_benchmark.json`: `4f987a409ee536fd7ea15a4dd7274348467064dc859409aa7d3fe2a580fe6aff`
 - `executive_sealed_fast_path_benchmark.json`: `764acc1354b48b90b7c8e1bc59bbd2dc63e73f7a0ef16b7587f11ca0df63a526`
+- `executive_live_bank_benchmark.json`: `574ae9714ecabcd193a54b6361ac903a1da1e2a3af671fe9f1e7c9732d7ff70f`
 - `AgentBrain.bank`: `6b6d0c574123c4afbd3827f7a88a2855c064d9d1df7292545c5c8a2031b357b3`
 - `AgentBrain_replication.bank`: `eb4cec9b071d5cc8ff971279d1bdd8dc189aa6db4fec01cb4b68127145a63b5f`

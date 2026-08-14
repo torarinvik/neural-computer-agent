@@ -300,6 +300,17 @@ desktop mastery, autonomous general program induction, cross-mechanism
 maintenance-policy transfer, unrestricted memory growth, or a complete
 interactive executive ISA.
 
+An admitted executive artifact can now be saved and reloaded through the
+canonical `AgentBrain.bank`, then run inside `CognitiveTickRuntime` through an
+`ExternalExecutiveLiveMachine`. In a bounded frozen-controller diagnostic, the
+same generic temporal-equality artifact reached 1.0000 accuracy on 60-step
+1-back and 2-back lifetimes after reload, with 59 and 58 unique eligible
+verifier bits respectively and zero controller or executive-program updates.
+Across three replicates, machine p50 was 0.85 ms / 0.83 ms and p99 was
+2.64 ms / 1.63 ms. This qualifies durable bank-backed live execution and
+WAIT-safe causal pacing; it does not qualify autonomous skill selection or
+learning the skill itself.
+
 The physical Position 1-Back rung qualifies the narrower live-I/O claim: public
 display capture, spatial onset segmentation, ordinary keypress output, exact
 receipt matching, checkpoint/resume, and immediate evidence-bound updates work
