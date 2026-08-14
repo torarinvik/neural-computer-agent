@@ -13628,3 +13628,33 @@ CROSS-SUBSTRATE TYPED VALUE TRANSFER. The typed head's coordinates
 by DISTANCE alone, not by grid geometry; on the graph substrate the
 same weights should price BFS-metric events with zero graph reward
 data. Amodal value knowledge, the founding thesis one level up.
+
+## F265 — AMODAL VALUE TRANSFER: DEMONSTRATED IN INSTANCES, NOT YET
+## RELIABLE -- THE COORDINATES EXIST, THE FIT DOESN'T PIN THEM
+## (2026-08-14, cross_typed.py, 6 seeds. Scope: grid -> graph)
+
+The typed head fit on six GRID worlds (true-transition fit),
+applied to GRAPH worlds (BFS metric, substrate-calibrated contact
+kernel, avatar dynamics from the edge percept, zero graph data).
+
+  THE EXISTENCE PROOF: seed 4242's grid head runs gcollect1 at
+  +8.14 and gcollect2 at +10.58 -- AT OR ABOVE the native
+  graph-fit ceiling and the BFS goal baseline, with zero graph
+  experience. Value knowledge learned on a 2D grid, expressed in
+  event x signature coordinates, drives near-optimal behavior on a
+  nominal digraph. The abstraction is genuinely amodal.
+  THE RELIABILITY GAP: other seeds land near random (typed_zero
+  means +3.5 / +0.6 / +4.9 with sd ~3): P1 4/6, 1/6, 4/6; P2
+  refuted. typed_graphfit reaches the ceiling everywhere (the head
+  CLASS is sufficient on graph); the shuffled control is itself
+  bimodal (a lucky permutation transfers -- consistent with the
+  transferable signal living in a few coordinates).
+
+Localization: the failure is FIT IDENTIFIABILITY, not
+representation -- the grid fit spreads reward mass across
+correlated features (action one-hots, boundary, entangled events),
+and whether the graph-relevant coordinates (contact x plane-psi)
+get the right sign/scale varies by seed. Pre-registered next: a
+SPARSIFIED event head (drop action/boundary terms, or L1) fit on
+the same grid worlds; prediction -- typed_zero variance collapses
+and P1 passes 6/6. Scope: Localized (grid -> graph pair).
