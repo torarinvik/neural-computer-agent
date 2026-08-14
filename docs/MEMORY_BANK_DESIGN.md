@@ -12871,3 +12871,40 @@ gated by the random baseline, raced fallback):
 Next-cycle discipline for the found witnesses, pre-registered: the
 F239 ladder runs FIRST -- privileged ceilings before any machinery,
 so a low-ceiling world cannot masquerade as a capability gap again.
+
+## F246 — CEILINGS FIRST: THREE FOUND WITNESSES SURVIVE WITH SIZES;
+## ONE IS A PURE HORIZON WITNESS (2026-08-14, witness_ceilings.py,
+## 6 seeds. Scope: GEN-DEV found witnesses)
+
+The pre-registered discipline, executed in the right order this time:
+privileged true-return ceilings (d1-d4) on the five F245 found
+witnesses BEFORE any machinery.
+
+  collect1_intercept1_pursue1_resource1   deploy -0.86, ceiling(d4)
+                                          -0.39  -> GAP +0.47
+  delayed3_intercept1_pursue1_resource2   deploy -0.70, d4 -0.27
+                                          -> GAP +0.43
+  delayed3_intercept2_pursue1_resource1   deploy -0.84, d4 -0.13
+                                          -> GAP +0.71, and the
+                                          ceiling climbs monotonically
+                                          with depth: skill exists to
+                                          be had.
+  avoid3_collect3_delayed5_resource1      GAP +0.20 (modest, real)
+  avoid2_delayed3                         GAP +0.22, with the
+                                          instrument reading of the
+                                          batch: the ceiling JUMPS at
+                                          exactly d4 (+0.07 -> +0.25)
+                                          because the delayed-3
+                                          payment enters the search
+                                          horizon precisely there. A
+                                          PURE HORIZON WITNESS -- the
+                                          first world shown to reward
+                                          depth as such, found by
+                                          sampling.
+
+The surviving research targets, honestly sized: the intercept x
+pursue x resource interaction (juggle catch-positioning, flight, and
+fueling -- no current form covers three simultaneous constraint
+types) at ~+0.5, and the horizon witness at ~+0.2. Both found, both
+ceiling-certified, both awaiting next-cycle capability work under the
+standing disciplines.
