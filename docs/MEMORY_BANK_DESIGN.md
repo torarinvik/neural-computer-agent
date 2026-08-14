@@ -13273,3 +13273,47 @@ waiting for. Pre-registered next: the tracked-state aliasing audit
 (F233's instrument, aimed at the core): per-step aliasing loss of
 true depth-2 action values bucketed by tracked-state key, vs a
 full-state key control and the control world. Scope: Localized.
+
+## F255 — THE CORE IS EXONERATED: 8 SLOTS CARRY THE DECISION; THE
+## TRIO STALL IS SAMPLE COMPLEXITY, NOT STATE -- AND THE ANSWER IT
+## POINTS AT IS THE FOUNDING THESIS (2026-08-14, aliasing_capacity.py
+## v2, 6 seeds. Scope: GEN-DEV trio + control)
+
+The distillation audit: one nonparametric regressor (k-NN over true
+depth-2 Q, 12,288 samples under the privileged policy + exploration),
+fit twice -- on the tracked 8-slot state vs on privileged full
+features (every entity, holding, pending) -- both played as
+policies. (v1, exact-key bucketing, was stillborn: 8-slot keys never
+collide at feasible batches; logged.)
+
+  P1 EXONERATION BRANCH FIRES 6/6, 6/6, 5/6: capacity gap
+     +0.02 / -0.01 / +0.06 -- the frozen core's state view loses
+     NOTHING against full privileged state at matched machinery.
+     The freeze discipline's bet on the 8-slot core survives its
+     hardest audit.
+  P2 CONFIRMED: control world gap -0.00, and both kNNs equal the
+     privileged anchor (+0.40 vs +0.41).
+  P3 FAILS ON THE TRIO IN THE INFORMATIVE DIRECTION: knn_full
+     itself stalls at -0.86/-0.87/-0.94 vs anchors -0.62/-0.53/
+     -0.41 -- the SAME -0.85 wall as every learned integration
+     (F250-F254), now reproduced WITH privileged state and
+     nonparametric machinery.
+
+Synthesis of the six-probe arc: the trio's decision function
+(single-cell life/death margins among 4-5 interacting entities) is
+NOT LEARNABLE FROM ~10^4 SAMPLES by any smooth regressor fielded --
+the privileged planner only "knows" it by querying the simulator at
+decision time. The stall was never state, instruction set, reward
+representation, or depth; it is SAMPLE COMPLEXITY of the compound
+function. Where the function is smooth (control), the stack already
+beats privileged ceilings threefold.
+
+The re-scoping points at the founding objective itself: if the
+compound function cannot be learned from compound experience, learn
+each mechanism's TYPED VALUE on simple worlds where it is learnable,
+and TRANSFER the type->value bindings -- which are expressed in
+world-independent signature coordinates -- to the compound world.
+Pre-registered next (typed_transfer): heads fit on single-mechanism
+worlds, pooled, deployed on the trio; warm-vs-cold at equal target
+data. Scope: Localized (GEN-DEV trio + control); the exoneration is
+Fixed on this family.
