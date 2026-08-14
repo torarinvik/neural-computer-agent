@@ -12976,3 +12976,45 @@ only then admit it to the ISA with the usual controls.
 Scope: Fixed on this family (control-world capability); Localized
 (witness failure to the bank-dynamics layer). The horizon layer is
 BUILT and no longer the bottleneck; the ladder moves to dynamics.
+
+## F248 — RESIDUAL MINING: THE TOWARD-OP WITNESS REFUSED; THE
+## DYNAMICS RESIDUAL IS CROSS-AXIS COUPLING + RANK-SWITCHING, NOT A
+## MISSING SINGLE-SLOT INSTRUCTION (2026-08-14, dynamics_residual.py,
+## 6 seeds. Scope: GEN-DEV witnesses + control)
+
+The F228 pre-registered gate for instruction-set work, executed:
+per-slot programs fit on 32 vs 256 examples under the base ISA, and
+under the ISA extended with TOWARD/AWAY (s' = s +/- sign(s_j - s)),
+scored by held-out exact-match per slot.
+
+  P1 REFUTED     ext256 == base256 to three decimals on every trio
+                 world (movers 0.654/0.593/0.619 both ways). The
+                 candidate op buys NOTHING.
+  P2 CONFIRMED   base256 - base32 < +0.01: not sample starvation.
+  P3 CONFIRMED   control world unchanged (+0.016).
+  P4 CONFIRMED   avatar slots 1.00 everywhere; the residual is
+                 concentrated in mover slots (0.53-0.73 on the trio;
+                 0.29-0.36 on avoid2_delayed3's column slots).
+
+By the standing rule -- no primitive without a witness -- TOWARD is
+NOT admitted. The refutation localizes the dynamics failure PAST the
+op vocabulary to two structural facts the mining exposed:
+
+  (a) CROSS-AXIS COUPLING. The pursuer steps on whichever axis has
+      the LARGER gap (game_family step rule). Slot 4's next value is
+      a joint function of slots 4,5,0,1 -- inexpressible under ANY
+      per-slot op set, however rich. The per-slot FACTORIZATION,
+      not the instruction list, is the binding limit.
+  (b) RANK-SWITCHING. Nearest/second-nearest slots swap identity
+      when movers cross -- the same perception dynamic that F244
+      showed acting as a free phase rotator on the control side
+      here corrupts the transition data as label noise.
+
+Next (pre-registered): a 2x2 factorial separating the two factors --
+{per-slot fit, joint PAIR fit over a generic relational motion
+vocabulary (chase/flee = one L1 step toward/from a target group,
+larger-gap-axis-first; frozen; random-step)} x {nearest-rank
+encoding, identity-stable tracking (the F235 EntityTable, already
+built)}. Prediction: only pair-fit x identity-stable approaches
+0.9 held-out on mover groups; each factor alone stays partial.
+Scope: Localized (GEN-DEV witness worlds).
