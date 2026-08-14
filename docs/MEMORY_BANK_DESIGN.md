@@ -13564,3 +13564,39 @@ The research frontier accordingly returns to BREADTH, where the
 transfer stack demonstrably wins: deploying F256's mechanism-typed
 transfer across the full generated space under the F243 guard, and
 richer simple-world curricula as the library of record grows.
+
+## F263 — THE COMPLEMENTARITY LAW: GOAL-GRAMMAR OWNS DENSE
+## COLLECTION, TRANSFER OWNS LETHAL MECHANISMS; THE GUARDED UNION
+## IS THE NEW DEPLOYABLE BASELINE (2026-08-14, transfer_survey.py,
+## 3 seeds x 20 GEN-DEV worlds. Scope: generated grid space)
+
+The F256 stack deployed across the full generated space, raced per
+world against the goal-grammar library under the F243 guard.
+
+  P1 REFUTED at the headline: transfer beats goal-grammar by
+     >= +0.10 on 1/20 worlds at mean level -- but that world is the
+     result: INTERCEPT2 -0.66 -> -0.07 (random -1.66), +0.59 over
+     the deploy, a near-solve of a world the goal-grammar stack
+     always failed. Typed value transfer owns pure lethal-mechanism
+     worlds; the goal grammar owns dense collection (avoid1_collect1
+     +1.69 vs +1.07 -- distance-cost goals exploit food fields
+     better than event pricing).
+  P2 CONFIRMED EXACTLY: guarded >= goal-grammar on all 20 worlds;
+     survey mean +0.333 -> +0.382.
+  P3 PARTIAL: witness-world mean +0.053 (< the +0.10 registered);
+     the certified trio itself improves (-0.76->-0.68, -0.62->-0.51,
+     -0.56->-0.48), diluted by the two non-trio witnesses where
+     transfer is null.
+
+THE COMPLEMENTARITY LAW, and the deployment consequence: the
+guarded union of {goal-grammar forms, mechanism-typed transfer}
+is the new baseline for the family -- never worse anywhere, better
+exactly where the certified hard worlds live. The two stacks
+partition the mechanism space along the same line every finding
+since F250 has drawn: smooth dense-reward structure (grammar,
+distance costs) vs sparse lethal events (typed values, transfer).
+
+Cycle close (F262-F263): the trio residual is closed within the
+frozen core (six refutations + scale, F262); the frontier work at
+breadth begins from the guarded union. Sealed sets: untouched,
+user-gated, as always.
