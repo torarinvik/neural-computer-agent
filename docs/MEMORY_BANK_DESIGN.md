@@ -13372,3 +13372,40 @@ route through it. Remaining headroom on the trio (transfer -0.66..
 richer simple-world curricula (signature coverage), transfer-aware
 racing under the F243 guard, and the sealed sets -- still untouched,
 still awaiting the word.
+
+## F257 — THE POST-TRANSFER RESIDUAL DECOMPOSES BY MECHANISM COUNT:
+## THE TRANSFERRED HEAD IS CEILING-CAPABLE WHERE DYNAMICS ARE TRUE;
+## CURRICULUM AND DATA-POLICY LEVERS ARE NULL (2026-08-14,
+## transfer_decomp.py, 6 seeds. Scope: GEN-DEV trio + control)
+
+Four registered levers on the F256 residual, one probe.
+
+  P1 SPLITS BY WORLD. Single-interceptor worlds: privileged
+     dynamics + the TRANSFERRED head reaches -0.576 / -0.289 vs
+     transfer's -0.747 / -0.549 (4/6, 5/6) -- and on
+     delayed3_i1_p1_r2 that is AT the depth-4 ceiling (-0.27): the
+     transferred value knowledge is CEILING-CAPABLE; rolling
+     fidelity is the entire residual there. Double-interceptor
+     world: the inversion -- learned-dynamics depth-4 BEATS true-
+     dynamics depth-2 (0/6): with three movers, horizon outweighs
+     fidelity.
+  P2 REFUTED: the pairwise-enriched curriculum adds ~+0.01. The
+     six-singles library already covers the signatures.
+  P3 NEITHER BRANCH: good-policy compound rows are neutral on the
+     trio (the F256 poisoning was about what random-policy data
+     teaches, not what any target data does), and set a near-record
+     +1.34 on the control.
+  Controls: shufrich collapses everywhere.
+
+The frontier is now purely the DYNAMICS x DEPTH interface, with a
+measured prize: fixing mover rolls is worth +0.17 / +0.26 on the
+single-interceptor worlds. The bank cannot pay it -- per-slot
+symbolic programs are expressiveness-bounded on movers (F248). But
+entity transitions ((entity, avatar) -> next entity) are a
+low-dimensional function learnable from REWARD-FREE experience --
+exactly the data F255 certified as available at feasible budgets --
+and an instance-based transition memory is external memory, not
+weights. Pre-registered next: k-NN entity-transition rolls (avatar
+via bank program, entities via transition memory, transferred typed
+head, model-consistent), against the F257 anchors.
+Scope: Localized (GEN-DEV trio + control).
