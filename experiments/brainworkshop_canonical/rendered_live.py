@@ -805,6 +805,278 @@ class PretrainedControllerProgramMachine(SourcePreservingTemporalMachine):
         self.assert_controller_frozen()
 
 
+class RecursiveTemporalProgramMachine(PretrainedControllerProgramMachine):
+    """Execute a reusable relative-step primitive recursively.
+
+    One program row is one opaque relative-history step. Repeating the row
+    composes the same learned operation: a primitive concentrated on offset
+    one retrieves one-back at depth one and two-back at depth two. The frozen
+    relation/controller weights are identical to the legacy executor; only the
+    independently versioned external interpreter changes.
+    """
+
+    learning_target = "external_recursive_temporal_program"
+
+    def __init__(self, *args, **kwargs) -> None:
+        self.composition_depth = 1
+        super().__init__(*args, **kwargs)
+
+    def legacy_controller_digest(self) -> str:
+        return PretrainedControllerProgramMachine.controller_digest(self)
+
+    def controller_digest(self) -> str:
+        digest = hashlib.sha256()
+        digest.update(self.legacy_controller_digest().encode())
+        digest.update(b"neural-computer.recursive-relative-history-executor.v1")
+        return digest.hexdigest()
+
+    def program_digest(self) -> str:
+        digest = hashlib.sha256()
+        self._update_tensor_digest(
+            digest, self._PROGRAM_PARAMETER, self.relative_address_logits
+        )
+        digest.update(str(self.composition_depth).encode())
+        digest.update(b"neural-computer.relative-history-compose.v1")
+        return digest.hexdigest()
+
+    def admitted_program_artifact(self):
+        from neural_computer.program import ExternalProgramArtifact
+        from neural_computer.temporal_program import (
+            RECURSIVE_TEMPORAL_EXECUTION_SCHEMA,
+            RECURSIVE_TEMPORAL_INTERPRETER_SCHEMA,
+            TEMPORAL_ADDRESS_OUTPUT_SCHEMA,
+        )
+
+        self.assert_controller_frozen()
+        return ExternalProgramArtifact(
+            codes=self.relative_address_logits.detach()
+            .cpu()
+            .unsqueeze(0)
+            .repeat(self.composition_depth, 1),
+            interpreter_schema=RECURSIVE_TEMPORAL_INTERPRETER_SCHEMA,
+            execution_schema=RECURSIVE_TEMPORAL_EXECUTION_SCHEMA,
+            output_schema=TEMPORAL_ADDRESS_OUTPUT_SCHEMA,
+        )
+
+    def load_legacy_primitive_artifact(
+        self,
+        artifact,
+        *,
+        controller_digest: str,
+    ) -> None:
+        """Behavior-preservingly lift one verified legacy row to depth one."""
+
+        from neural_computer.program import ExternalProgramArtifact
+        from neural_computer.temporal_program import (
+            TEMPORAL_ADDRESS_EXECUTION_SCHEMA,
+            TEMPORAL_ADDRESS_INTERPRETER_SCHEMA,
+            TEMPORAL_ADDRESS_OUTPUT_SCHEMA,
+        )
+
+        if not isinstance(artifact, ExternalProgramArtifact):
+            raise TypeError("legacy temporal primitive must be an external artifact")
+        if controller_digest != self.legacy_controller_digest():
+            raise ValueError("legacy primitive targets another frozen controller")
+        artifact.validate_for(
+            instruction_width=self.max_history,
+            interpreter_schema=TEMPORAL_ADDRESS_INTERPRETER_SCHEMA,
+            execution_schema=TEMPORAL_ADDRESS_EXECUTION_SCHEMA,
+            output_schema=TEMPORAL_ADDRESS_OUTPUT_SCHEMA,
+        )
+        if artifact.program_length != 1:
+            raise ValueError("legacy temporal primitive must contain one row")
+        with torch.no_grad():
+            self.relative_address_logits.copy_(
+                artifact.codes[0].to(self.relative_address_logits)
+            )
+        self.composition_depth = 1
+        self.learning_enabled = False
+        self.sample = False
+        self.assert_controller_frozen()
+
+    def load_recursive_program_artifact(
+        self,
+        artifact,
+        *,
+        controller_digest: str,
+    ) -> None:
+        from neural_computer.program import ExternalProgramArtifact
+        from neural_computer.temporal_program import (
+            RECURSIVE_TEMPORAL_EXECUTION_SCHEMA,
+            RECURSIVE_TEMPORAL_INTERPRETER_SCHEMA,
+            TEMPORAL_ADDRESS_OUTPUT_SCHEMA,
+        )
+
+        if not isinstance(artifact, ExternalProgramArtifact):
+            raise TypeError("recursive temporal program must be an external artifact")
+        if controller_digest != self._frozen_controller_digest:
+            raise ValueError("recursive program targets another frozen controller")
+        artifact.validate_for(
+            instruction_width=self.max_history,
+            interpreter_schema=RECURSIVE_TEMPORAL_INTERPRETER_SCHEMA,
+            execution_schema=RECURSIVE_TEMPORAL_EXECUTION_SCHEMA,
+            output_schema=TEMPORAL_ADDRESS_OUTPUT_SCHEMA,
+        )
+        if artifact.program_length > self.max_history:
+            raise ValueError("recursive temporal program exceeds history capacity")
+        reference = artifact.codes[0].expand_as(artifact.codes)
+        if not torch.equal(artifact.codes, reference):
+            raise ValueError("recursive program rows must reuse one primitive")
+        with torch.no_grad():
+            self.relative_address_logits.copy_(
+                artifact.codes[0].to(self.relative_address_logits)
+            )
+        self.composition_depth = artifact.program_length
+        self.learning_enabled = False
+        self.sample = False
+        self.assert_controller_frozen()
+
+    def _recursive_probabilities(
+        self, source: _SourceTemporalCredit
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        primitive = self.relative_address_logits.softmax(dim=0)
+        zero = primitive.new_zeros(())
+        distribution = torch.stack((primitive.new_ones(()), *([zero] * self.max_history)))
+        for _step in range(self.composition_depth):
+            values = [zero]
+            for total in range(1, self.max_history + 1):
+                terms = [
+                    distribution[total - offset] * primitive[offset - 1]
+                    for offset in range(1, total + 1)
+                ]
+                values.append(torch.stack(terms).sum())
+            distribution = torch.stack(values)
+        effective = distribution[1:].unsqueeze(0).expand(
+            source.history_present.shape[0], -1
+        )
+        valid = source.history_present & (effective > 0.0)
+        masked = effective * valid.to(effective.dtype)
+        total = masked.sum(dim=1, keepdim=True)
+        probabilities = torch.where(
+            total > 0.0,
+            masked / total.clamp_min(torch.finfo(masked.dtype).tiny),
+            torch.full_like(masked, 1.0 / self.max_history),
+        )
+        return probabilities, valid
+
+    def _prepare_credit(
+        self, credit: _MultistreamCreditState
+    ) -> _MultistreamCreditState:
+        prepared: list[_SourceTemporalCredit] = []
+        with torch.no_grad():
+            for source in credit.sources:
+                probabilities, _valid = self._recursive_probabilities(source)
+                address = (
+                    torch.multinomial(probabilities, 1).squeeze(1)
+                    if self.sample
+                    else probabilities.argmax(dim=1)
+                )
+                propensity = probabilities.gather(1, address[:, None]).squeeze(1)
+                prepared.append(
+                    _SourceTemporalCredit(
+                        source_key=source.source_key,
+                        current=source.current,
+                        history=source.history,
+                        history_present=source.history_present,
+                        address_index=address,
+                        address_propensity=propensity,
+                    )
+                )
+        return _MultistreamCreditState(tuple(prepared))
+
+    def _learn(self, outcomes: tuple[ResolvedLiveOutcome, ...]) -> None:
+        self.assert_controller_frozen()
+        losses: list[torch.Tensor] = []
+        for resolved in outcomes:
+            present = resolved.event.present
+            self.unique_outcome_bits += int(present.sum().item())
+            if not bool(present.any()):
+                continue
+            credit = resolved.proposal.credit_state
+            if not isinstance(credit, _MultistreamCreditState):
+                raise TypeError("recursive proposal has incompatible credit state")
+            reward = resolved.event.reward
+            informed_losses: list[torch.Tensor] = []
+            for source in credit.sources:
+                if source.address_index is None:
+                    raise TypeError("recursive proposal lacks temporal-address credit")
+                probabilities, valid = self._recursive_probabilities(source)
+                log_probabilities = probabilities.clamp_min(
+                    torch.finfo(probabilities.dtype).tiny
+                ).log()
+                selected = log_probabilities.gather(
+                    1, source.address_index[:, None]
+                ).squeeze(1)
+                selected_mask = torch.nn.functional.one_hot(
+                    source.address_index,
+                    num_classes=self.max_history,
+                ).to(torch.bool)
+                other = torch.logsumexp(
+                    log_probabilities.masked_fill(selected_mask | ~valid, -torch.inf),
+                    dim=1,
+                )
+                informed = valid.sum(dim=1) > 1
+                if bool((present & informed).any()):
+                    categorical = -(reward * selected + (1.0 - reward) * other)
+                    informed_losses.append(categorical[present & informed].mean())
+            losses.append(
+                torch.stack(informed_losses).mean()
+                if informed_losses
+                else self.relative_address_logits.sum() * 0.0
+            )
+        if not losses or not self.learning_enabled:
+            return
+        loss = torch.stack(losses).mean()
+        self.optimizer.zero_grad(set_to_none=True)
+        loss.backward()
+        torch.nn.utils.clip_grad_norm_((self.relative_address_logits,), max_norm=1.0)
+        self.optimizer.step()
+        self.program_file_updates += 1
+        self.model_version += 1
+        self.last_loss = float(loss.detach())
+        self.assert_controller_frozen()
+
+    def external_program_payload(self) -> dict[str, object]:
+        self.assert_controller_frozen()
+        return {
+            "learning_target": self.learning_target,
+            "controller_digest": self._frozen_controller_digest,
+            "program_file_updates": self.program_file_updates,
+            "program_digest": self.program_digest(),
+            "composition_depth": self.composition_depth,
+            "relative_address_logits": self.relative_address_logits.detach().clone(),
+            "optimizer_state": self.optimizer.state_dict(),
+        }
+
+    def load_external_program_payload(self, payload: dict[str, object]) -> None:
+        if payload.get("learning_target") != self.learning_target:
+            raise ValueError("checkpoint is not a recursive temporal program")
+        if payload.get("controller_digest") != self._frozen_controller_digest:
+            raise ValueError("recursive program targets another controller")
+        updates = payload.get("program_file_updates")
+        depth = payload.get("composition_depth")
+        logits = payload.get("relative_address_logits")
+        optimizer_state = payload.get("optimizer_state")
+        if (
+            not isinstance(updates, int)
+            or updates < 0
+            or not isinstance(depth, int)
+            or not 1 <= depth <= self.max_history
+            or not isinstance(logits, torch.Tensor)
+            or logits.shape != self.relative_address_logits.shape
+            or not isinstance(optimizer_state, dict)
+        ):
+            raise ValueError("recursive temporal checkpoint is malformed")
+        with torch.no_grad():
+            self.relative_address_logits.copy_(logits)
+        self.optimizer.load_state_dict(optimizer_state)
+        self.program_file_updates = updates
+        self.composition_depth = depth
+        if payload.get("program_digest") != self.program_digest():
+            raise ValueError("recursive temporal checkpoint digest mismatch")
+        self.assert_controller_frozen()
+
+
 @dataclass(frozen=True)
 class RenderedLiveLifetime:
     actions: torch.Tensor

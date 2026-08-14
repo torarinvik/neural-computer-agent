@@ -145,8 +145,37 @@ def retrieve_physical_program(
     return selection
 
 
+def retrieve_instruction_program(
+    machine: PretrainedControllerProgramMachine,
+    bank: ExternalTemporalProgramBank,
+    context: torch.Tensor,
+    *,
+    exploration: float = 0.0,
+    sample: bool = False,
+) -> TemporalProgramSelection:
+    """Select by one public instruction event and freeze execution."""
+
+    if not isinstance(context, torch.Tensor):
+        raise TypeError("instruction context must be a learned event tensor")
+    selection = bank.select(
+        context,
+        exploration=exploration,
+        sample=sample,
+    )
+    loader = getattr(machine, "load_recursive_program_artifact", None)
+    if loader is None:
+        machine.load_admitted_program_artifact(
+            selection.artifact,
+            controller_digest=bank.controller_digest,
+        )
+    else:
+        loader(selection.artifact, controller_digest=bank.controller_digest)
+    return selection
+
+
 __all__ = [
     "admit_physical_training_program",
     "learned_event_context",
+    "retrieve_instruction_program",
     "retrieve_physical_program",
 ]

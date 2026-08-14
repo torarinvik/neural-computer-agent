@@ -15,6 +15,7 @@ from .rendered_environment import (
 )
 from .rendered_live import (
     PretrainedControllerProgramMachine,
+    RecursiveTemporalProgramMachine,
     SourcePreservingTemporalMachine,
     run_rendered_live_lifetime,
 )
@@ -281,6 +282,48 @@ def build_pretrained_controller_program_machine(
     )
     if machine.controller_digest() != payload.get("controller_digest"):
         raise ValueError("temporal controller artifact digest mismatch")
+    return machine
+
+
+def build_recursive_temporal_program_machine(
+    payload: dict[str, object],
+    *,
+    learning_rate: float = 3e-3,
+    sample: bool = False,
+) -> RecursiveTemporalProgramMachine:
+    """Reuse a verified controller artifact behind the recursive interpreter."""
+
+    validated = build_pretrained_controller_program_machine(
+        payload,
+        learning_rate=learning_rate,
+        sample=sample,
+        inherit_program_prior=False,
+    )
+    controller_state = payload["controller_state"]
+    program_prior = payload["program_prior"]
+    hidden = payload["hidden"]
+    if (
+        not isinstance(controller_state, dict)
+        or not isinstance(program_prior, torch.Tensor)
+        or not isinstance(hidden, int)
+    ):
+        raise TypeError("controller artifact cannot build a recursive machine")
+    machine = RecursiveTemporalProgramMachine(
+        validated.event_width,
+        source_key_width=validated.source_key_width,
+        max_history=validated.max_history,
+        max_sources=validated.max_sources,
+        action_count=validated.action_count,
+        intention_width=validated.intention_width,
+        hidden=hidden,
+        learning_rate=learning_rate,
+        sample=sample,
+        controller_state=controller_state,
+        program_prior=program_prior,
+        initialize_program_from_prior=False,
+    )
+    if machine.legacy_controller_digest() != payload.get("controller_digest"):
+        raise ValueError("recursive machine changed the legacy controller weights")
     return machine
 
 

@@ -3,6 +3,7 @@
 from .controller_pretraining import (
     TemporalControllerPretrainingReport,
     build_pretrained_controller_program_machine,
+    build_recursive_temporal_program_machine,
     load_temporal_controller_artifact,
     pretrain_previous_event_controller,
     save_temporal_controller_artifact,
@@ -27,6 +28,7 @@ from .physical_live import (
 from .physical_program_bank import (
     admit_physical_training_program,
     learned_event_context,
+    retrieve_instruction_program,
     retrieve_physical_program,
 )
 from .physical_train import (
@@ -51,6 +53,7 @@ from .rendered_environment import (
 from .rendered_live import (
     FrozenControllerProgramMachine,
     PretrainedControllerProgramMachine,
+    RecursiveTemporalProgramMachine,
     RenderedBrainWorkshopLiveDevice,
     RenderedLiveLifetime,
     SourcePreservingTemporalMachine,
@@ -83,6 +86,7 @@ __all__ = [
     "PhysicalTrainingCampaign",
     "PhysicalTrainingSession",
     "PretrainedControllerProgramMachine",
+    "RecursiveTemporalProgramMachine",
     "RenderedAudioEncoder",
     "RenderedBrainWorkshopConfig",
     "RenderedBrainWorkshopEncoders",
@@ -99,6 +103,7 @@ __all__ = [
     "audit_retention",
     "build_physical_brainworkshop_runtime",
     "build_pretrained_controller_program_machine",
+    "build_recursive_temporal_program_machine",
     "compile_macos_capture_helper",
     "compile_macos_keypress_helper",
     "evaluate_policy",
@@ -109,6 +114,7 @@ __all__ = [
     "pretrain_previous_event_controller",
     "render_audio",
     "render_position",
+    "retrieve_instruction_program",
     "retrieve_physical_program",
     "run_live_lifetime",
     "run_physical_brainworkshop_lifetime",

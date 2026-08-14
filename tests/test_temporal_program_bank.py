@@ -9,6 +9,7 @@ import torch
 from experiments.brainworkshop_canonical.physical_program_bank import (
     admit_physical_training_program,
     learned_event_context,
+    retrieve_instruction_program,
     retrieve_physical_program,
 )
 from experiments.brainworkshop_canonical.physical_train import (
@@ -17,15 +18,20 @@ from experiments.brainworkshop_canonical.physical_train import (
 )
 from experiments.brainworkshop_canonical.rendered_live import (
     PretrainedControllerProgramMachine,
+    RecursiveTemporalProgramMachine,
     SourcePreservingTemporalMachine,
 )
 from neural_computer import (
     DEFAULT_AGENT_BANK_FILENAME,
+    RECURSIVE_TEMPORAL_EXECUTION_SCHEMA,
+    RECURSIVE_TEMPORAL_INTERPRETER_SCHEMA,
     TEMPORAL_ADDRESS_EXECUTION_SCHEMA,
     TEMPORAL_ADDRESS_INTERPRETER_SCHEMA,
     TEMPORAL_ADDRESS_OUTPUT_SCHEMA,
     ExternalProgramArtifact,
     ExternalTemporalProgramBank,
+    compose_recursive_temporal_program,
+    recursive_temporal_primitive,
 )
 
 
@@ -60,6 +66,40 @@ def test_rejected_provisional_program_leaves_live_bank_unchanged() -> None:
     assert receipt.slot is None
     assert bank.program_count == 0
     assert bank.digest() == before
+
+
+def test_verified_previous_primitive_composes_and_round_trips(tmp_path: Path) -> None:
+    legacy = _artifact((8.0, -8.0, -8.0, -8.0))
+    primitive = recursive_temporal_primitive(legacy)
+    composed = compose_recursive_temporal_program(primitive, 2)
+    assert primitive.program_length == 1
+    assert composed.program_length == 2
+    assert torch.equal(composed.codes[0], composed.codes[1])
+
+    bank = ExternalTemporalProgramBank(
+        4,
+        4,
+        controller_digest=_digest(19),
+        min_mastery_observations=3,
+        interpreter_schema=RECURSIVE_TEMPORAL_INTERPRETER_SCHEMA,
+        execution_schema=RECURSIVE_TEMPORAL_EXECUTION_SCHEMA,
+    )
+    receipt = bank.admit(
+        composed,
+        torch.tensor([1.0, 0.0, 0.0, 0.0]),
+        [1.0, 1.0, 1.0],
+        min_observations=3,
+        min_stable_observations=3,
+    )
+    path = tmp_path / DEFAULT_AGENT_BANK_FILENAME
+    bank.save_bank(path)
+    restored = ExternalTemporalProgramBank.load_bank(path)
+
+    assert receipt.accepted
+    assert restored.configuration()["execution_schema"] == (
+        RECURSIVE_TEMPORAL_EXECUTION_SCHEMA
+    )
+    assert restored.artifact(0).digest() == composed.digest()
 
 
 def test_learned_event_context_accepts_live_tensor_rows() -> None:
@@ -355,3 +395,151 @@ def test_physical_campaign_handoff_admits_and_retrieves_from_saved_events(
         machine.relative_address_logits.detach(), torch.tensor([7.0, -4.0, -4.0])
     )
     assert not machine.learning_enabled
+    assert not machine.sample
+
+
+def _recursive_artifact(values: tuple[float, ...], length: int) -> ExternalProgramArtifact:
+    row = torch.tensor([values], dtype=torch.float32)
+    return ExternalProgramArtifact(
+        codes=row.repeat(length, 1),
+        interpreter_schema=RECURSIVE_TEMPORAL_INTERPRETER_SCHEMA,
+        execution_schema=RECURSIVE_TEMPORAL_EXECUTION_SCHEMA,
+        output_schema=TEMPORAL_ADDRESS_OUTPUT_SCHEMA,
+    )
+
+
+def test_instruction_context_retrieves_composed_depth_without_task_id() -> None:
+    torch.manual_seed(13)
+    source = SourcePreservingTemporalMachine(
+        8,
+        source_key_width=3,
+        max_history=4,
+        max_sources=1,
+        action_count=2,
+        intention_width=8,
+        hidden=8,
+    )
+    controller_state = {
+        name: value.detach().clone()
+        for name, value in source.named_parameters()
+        if name != "relative_address_logits"
+    }
+    machine = RecursiveTemporalProgramMachine(
+        8,
+        source_key_width=3,
+        max_history=4,
+        max_sources=1,
+        action_count=2,
+        intention_width=8,
+        hidden=8,
+        controller_state=controller_state,
+        program_prior=torch.zeros(4),
+        sample=False,
+    )
+    one_back = torch.nn.functional.normalize(
+        torch.tensor([1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), dim=0
+    )
+    two_back = torch.nn.functional.normalize(
+        torch.tensor([0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), dim=0
+    )
+    shuffled = torch.nn.functional.normalize(
+        torch.tensor([0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0]), dim=0
+    )
+    bank = ExternalTemporalProgramBank(
+        8,
+        4,
+        controller_digest=machine.controller_digest(),
+        generalization_tolerance=0.15,
+        min_mastery_observations=3,
+        interpreter_schema=RECURSIVE_TEMPORAL_INTERPRETER_SCHEMA,
+        execution_schema=RECURSIVE_TEMPORAL_EXECUTION_SCHEMA,
+    )
+    first = bank.admit(
+        _recursive_artifact((8.0, -8.0, -8.0, -8.0), 1),
+        one_back,
+        [1.0, 1.0, 1.0],
+        min_observations=3,
+        min_stable_observations=3,
+    )
+    second = bank.admit(
+        _recursive_artifact((8.0, -8.0, -8.0, -8.0), 2),
+        two_back,
+        [1.0, 1.0, 1.0],
+        min_observations=3,
+        min_stable_observations=3,
+    )
+
+    selected_one = retrieve_instruction_program(machine, bank, one_back)
+    depth_one = machine.composition_depth
+    selected_two = retrieve_instruction_program(machine, bank, two_back)
+    depth_two = machine.composition_depth
+    selected_shuffled = retrieve_instruction_program(machine, bank, shuffled)
+
+    assert first.accepted and first.slot == 0
+    assert second.accepted and second.slot == 1
+    assert selected_one.slot == 0 and depth_one == 1
+    assert selected_two.slot == 1 and depth_two == 2
+    assert selected_one.propensity == 1.0
+    assert selected_two.propensity == 1.0
+    assert not bank.router.has_context(shuffled)
+    assert selected_shuffled.propensity == pytest.approx(0.5)
+    assert not hasattr(bank, "n_back")
+    assert not hasattr(bank, "task_id")
+
+
+def test_same_program_binds_a_new_instruction_context_without_a_new_file() -> None:
+    bank = ExternalTemporalProgramBank(
+        4,
+        4,
+        controller_digest=_digest(23),
+        generalization_tolerance=0.0,
+        min_mastery_observations=3,
+        interpreter_schema=RECURSIVE_TEMPORAL_INTERPRETER_SCHEMA,
+        execution_schema=RECURSIVE_TEMPORAL_EXECUTION_SCHEMA,
+    )
+    two_cell_one = torch.nn.functional.normalize(torch.tensor([1.0, 0.0, 0.0, 0.0]), dim=0)
+    two_cell_two = torch.nn.functional.normalize(torch.tensor([0.0, 1.0, 0.0, 0.0]), dim=0)
+    three_cell_two = torch.nn.functional.normalize(torch.tensor([0.0, 0.0, 1.0, 0.0]), dim=0)
+    unseen_three_back = torch.nn.functional.normalize(
+        torch.tensor([0.0, 0.0, 0.0, 1.0]), dim=0
+    )
+    primitive = _recursive_artifact((8.0, -8.0, -8.0, -8.0), 1)
+    composed = _recursive_artifact((8.0, -8.0, -8.0, -8.0), 2)
+    bank.admit(
+        primitive,
+        two_cell_one,
+        [1.0, 1.0, 1.0],
+        min_observations=3,
+        min_stable_observations=3,
+    )
+    first = bank.admit(
+        composed,
+        two_cell_two,
+        [1.0, 1.0, 1.0],
+        min_observations=3,
+        min_stable_observations=3,
+    )
+    digest_before = bank.digest()
+    unknown = bank.select(three_cell_two)
+    assert not bank.router.has_context(three_cell_two)
+    rebound = bank.admit(
+        composed,
+        three_cell_two,
+        [1.0, 1.0, 1.0],
+        min_observations=3,
+        min_stable_observations=3,
+    )
+    heldout = bank.select(three_cell_two)
+    retained = bank.select(two_cell_two)
+    unseen = bank.select(unseen_three_back)
+
+    assert first.accepted and first.slot == 1
+    assert unknown.propensity == pytest.approx(0.5)
+    assert rebound.accepted and rebound.slot == 1
+    assert rebound.reason.startswith("verified experience attached")
+    assert bank.program_count == 2
+    assert heldout.slot == 1 and heldout.propensity == 1.0
+    assert retained.slot == 1 and retained.propensity == 1.0
+    assert not bank.router.has_context(unseen_three_back)
+    assert unseen.propensity == pytest.approx(0.5)
+    assert bank.digest() != digest_before

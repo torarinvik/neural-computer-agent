@@ -6,6 +6,7 @@ import torch
 
 from experiments.brainworkshop_canonical import (
     build_pretrained_controller_program_machine,
+    build_recursive_temporal_program_machine,
     load_temporal_controller_artifact,
     pretrain_previous_event_controller,
     save_temporal_controller_artifact,
@@ -49,3 +50,8 @@ def test_temporal_controller_artifact_round_trip(tmp_path: Path) -> None:
         inherited.inherited_program_prior,
     )
     assert inherited.controller_digest() == machine.controller_digest()
+
+    recursive = build_recursive_temporal_program_machine(loaded)
+    assert recursive.legacy_controller_digest() == machine.controller_digest()
+    assert recursive.controller_digest() != machine.controller_digest()
+    assert recursive.composition_depth == 1

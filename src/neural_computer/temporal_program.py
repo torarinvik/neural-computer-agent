@@ -42,6 +42,12 @@ TEMPORAL_ADDRESS_EXECUTION_SCHEMA = (
     "neural-computer.relative-history-select.v1"
 )
 TEMPORAL_ADDRESS_OUTPUT_SCHEMA = "neural-computer.amodal-intention.v1"
+RECURSIVE_TEMPORAL_INTERPRETER_SCHEMA = (
+    "neural-computer.recursive-temporal-controller.v1"
+)
+RECURSIVE_TEMPORAL_EXECUTION_SCHEMA = (
+    "neural-computer.relative-history-compose.v1"
+)
 
 
 def _validate_digest(value: str, *, name: str) -> str:
@@ -87,6 +93,57 @@ class TemporalProgramSelection:
     context: torch.Tensor
     artifact: ExternalProgramArtifact
     bank_version: int
+
+
+def recursive_temporal_primitive(
+    artifact: ExternalProgramArtifact,
+) -> ExternalProgramArtifact:
+    """Lift one legacy relative-address row into the recursive interpreter.
+
+    At depth one the new interpreter is behaviorally identical to the legacy
+    relative-history selector. The caller must still verify the resulting
+    candidate before bank admission; this function assigns no semantic label.
+    """
+
+    artifact.validate_for(
+        instruction_width=artifact.instruction_width,
+        interpreter_schema=TEMPORAL_ADDRESS_INTERPRETER_SCHEMA,
+        execution_schema=TEMPORAL_ADDRESS_EXECUTION_SCHEMA,
+        output_schema=TEMPORAL_ADDRESS_OUTPUT_SCHEMA,
+    )
+    if artifact.program_length != 1:
+        raise ValueError("a recursive temporal primitive needs one legacy row")
+    return ExternalProgramArtifact(
+        codes=artifact.snapshot(),
+        interpreter_schema=RECURSIVE_TEMPORAL_INTERPRETER_SCHEMA,
+        execution_schema=RECURSIVE_TEMPORAL_EXECUTION_SCHEMA,
+        output_schema=TEMPORAL_ADDRESS_OUTPUT_SCHEMA,
+    )
+
+
+def compose_recursive_temporal_program(
+    primitive: ExternalProgramArtifact, repetitions: int
+) -> ExternalProgramArtifact:
+    """Compose one verified relative-step primitive with itself in sequence."""
+
+    if not isinstance(repetitions, int) or repetitions < 1:
+        raise ValueError("recursive temporal repetitions must be positive")
+    primitive.validate_for(
+        instruction_width=primitive.instruction_width,
+        interpreter_schema=RECURSIVE_TEMPORAL_INTERPRETER_SCHEMA,
+        execution_schema=RECURSIVE_TEMPORAL_EXECUTION_SCHEMA,
+        output_schema=TEMPORAL_ADDRESS_OUTPUT_SCHEMA,
+    )
+    if primitive.program_length != 1:
+        raise ValueError("recursive composition requires one primitive row")
+    if repetitions > primitive.instruction_width:
+        raise ValueError("recursive temporal depth exceeds fixed history capacity")
+    return ExternalProgramArtifact(
+        codes=primitive.snapshot().repeat(repetitions, 1),
+        interpreter_schema=RECURSIVE_TEMPORAL_INTERPRETER_SCHEMA,
+        execution_schema=RECURSIVE_TEMPORAL_EXECUTION_SCHEMA,
+        output_schema=TEMPORAL_ADDRESS_OUTPUT_SCHEMA,
+    )
 
 
 class TemporalProgramOutcomeObserver:
@@ -153,6 +210,9 @@ class ExternalTemporalProgramBank:
         generalization_tolerance: float = 0.0,
         mastery_threshold: float = 0.8,
         min_mastery_observations: int = 8,
+        interpreter_schema: str = TEMPORAL_ADDRESS_INTERPRETER_SCHEMA,
+        execution_schema: str = TEMPORAL_ADDRESS_EXECUTION_SCHEMA,
+        output_schema: str = TEMPORAL_ADDRESS_OUTPUT_SCHEMA,
     ) -> None:
         if min(context_width, instruction_width, capacity) < 1:
             raise ValueError("temporal program bank dimensions must be positive")
@@ -162,6 +222,14 @@ class ExternalTemporalProgramBank:
         self.controller_digest = _validate_digest(
             controller_digest, name="controller_digest"
         )
+        if not all(
+            isinstance(value, str) and value
+            for value in (interpreter_schema, execution_schema, output_schema)
+        ):
+            raise ValueError("temporal program interfaces must be non-empty")
+        self.interpreter_schema = interpreter_schema
+        self.execution_schema = execution_schema
+        self.output_schema = output_schema
         self.router = PersistentOpaqueContextRouteEvidence(
             self.context_width,
             matching_tolerance=matching_tolerance,
@@ -188,9 +256,9 @@ class ExternalTemporalProgramBank:
             "instruction_width": self.instruction_width,
             "capacity": self.capacity,
             "controller_digest": self.controller_digest,
-            "interpreter_schema": TEMPORAL_ADDRESS_INTERPRETER_SCHEMA,
-            "execution_schema": TEMPORAL_ADDRESS_EXECUTION_SCHEMA,
-            "output_schema": TEMPORAL_ADDRESS_OUTPUT_SCHEMA,
+            "interpreter_schema": self.interpreter_schema,
+            "execution_schema": self.execution_schema,
+            "output_schema": self.output_schema,
             "routing": "opaque_context_plus_attempted_scalar_outcome_v1",
             "storage": "append_only_verified_instruction_tensors_v1",
         }
@@ -212,12 +280,20 @@ class ExternalTemporalProgramBank:
     def _validate_artifact(self, artifact: ExternalProgramArtifact) -> None:
         artifact.validate_for(
             instruction_width=self.instruction_width,
-            interpreter_schema=TEMPORAL_ADDRESS_INTERPRETER_SCHEMA,
-            execution_schema=TEMPORAL_ADDRESS_EXECUTION_SCHEMA,
-            output_schema=TEMPORAL_ADDRESS_OUTPUT_SCHEMA,
+            interpreter_schema=self.interpreter_schema,
+            execution_schema=self.execution_schema,
+            output_schema=self.output_schema,
         )
-        if artifact.program_length != 1:
+        if (
+            self.execution_schema == TEMPORAL_ADDRESS_EXECUTION_SCHEMA
+            and artifact.program_length != 1
+        ):
             raise ValueError("temporal address programs must contain one address row")
+        if (
+            self.execution_schema == RECURSIVE_TEMPORAL_EXECUTION_SCHEMA
+            and artifact.program_length > self.instruction_width
+        ):
+            raise ValueError("recursive temporal program exceeds history capacity")
 
     def artifact(self, slot: int) -> ExternalProgramArtifact:
         if not isinstance(slot, int) or not 0 <= slot < self.program_count:
@@ -402,6 +478,9 @@ class ExternalTemporalProgramBank:
             generalization_tolerance=float(router_payload["generalization_tolerance"]),
             mastery_threshold=float(router_payload["mastery_threshold"]),
             min_mastery_observations=int(router_payload["min_mastery_observations"]),
+            interpreter_schema=str(configuration["interpreter_schema"]),
+            execution_schema=str(configuration["execution_schema"]),
+            output_schema=str(configuration["output_schema"]),
         )
         if bank.configuration() != configuration:
             raise ValueError("external temporal program bank configuration mismatch")
@@ -483,10 +562,14 @@ __all__ = [
     "AGENT_BANK_EXTENSION",
     "DEFAULT_AGENT_BANK_FILENAME",
     "EXTERNAL_TEMPORAL_PROGRAM_BANK_SCHEMA",
+    "RECURSIVE_TEMPORAL_EXECUTION_SCHEMA",
+    "RECURSIVE_TEMPORAL_INTERPRETER_SCHEMA",
     "TEMPORAL_ADDRESS_EXECUTION_SCHEMA",
     "TEMPORAL_ADDRESS_INTERPRETER_SCHEMA",
     "TEMPORAL_ADDRESS_OUTPUT_SCHEMA",
     "ExternalTemporalProgramBank",
     "TemporalProgramOutcomeObserver",
     "TemporalProgramSelection",
+    "compose_recursive_temporal_program",
+    "recursive_temporal_primitive",
 ]

@@ -251,6 +251,140 @@ exposes only its microphone, not a clean system-audio loopback. Until that
 device is present, a screen-only run must be labeled Position N-Back rather
 than dual.
 
+### Neural Workshop live curriculum
+
+`neural_workshop_live.py` replaces slow macOS capture and key injection with
+Neural Workshop's headless public boundary. It still feeds rendered RGBA pixels
+through a frozen visual adapter, maps opaque decoder actions to the public
+position port, authenticates every visible scalar against the environment's
+immutable frame archive and receipt ledger, and drains correct-rejection
+silence as absent evidence. Signed public scalars remain in the audit report;
+only the learner input maps `[-1, +1]` to Bernoulli credit `[0, 1]`.
+
+The resumable curriculum fixes Position 1-Back and the visible 3x3 board while
+changing only active cells `2 -> 3 -> 4 -> 6 -> 8`. Promotion requires three
+consecutive 60-trial sessions at or above the threshold, a minimum evidence
+count, and a frozen deterministic retention session. Each admitted program is
+written to `AgentBrain.bank`; later rungs continue from the preceding external
+program while a matched fresh-program control measures transfer.
+
+```bash
+PYTHONPATH=src .venv/bin/python \
+  -m experiments.brainworkshop_canonical.neural_workshop_curriculum_pilot \
+  --neural-workshop /absolute/path/to/neural-workshop \
+  --output-dir /tmp/neural-workshop-position1back \
+  --trials 60 --cells 2 3 4 6 8
+```
+
+Use `--resume` to continue an incomplete evidence gate. Generated reports,
+checkpoints, and banks belong in the output directory, not in Git unless a run
+is deliberately curated with a manifest checksum.
+
+`neural_workshop_nback_transfer_pilot.py` holds the rendered interface fixed,
+loads the final 1-back program, and compares inherited versus uniform-fresh
+2-back acquisition on identical seeds. Its discarded interventions preserve
+both sides of every audit boundary: reports distinguish proposed from executed
+actions and authenticated verifier rewards from learner-visible rewards.
+Passive, random-action, fixed reversal, temporal-memory corruption,
+reward-shuffled, missing-evidence, and action-shuffled arms cannot alter the
+primary program or bank.
+
+```bash
+PYTHONPATH=src .venv/bin/python \
+  -m experiments.brainworkshop_canonical.neural_workshop_nback_transfer_pilot \
+  --neural-workshop /absolute/path/to/neural-workshop \
+  --source-checkpoint /absolute/path/to/1back/checkpoint.pt \
+  --source-bank /absolute/path/to/1back/AgentBrain.bank \
+  --output-dir /tmp/neural-workshop-position2back
+```
+
+The first seed-51017 run learned and retained two-cell Position 2-Back, and all
+causal controls failed. It also exposed negative transfer: the inherited
+one-step address rewrote itself to the two-step slot, but stable mastery used
+127 authenticated bits versus 94 for a uniform-fresh task file. Keep the
+frozen controller and external-program mechanism, but do not claim that the
+current address-file inheritance improves learning across memory depth.
+
+`neural_workshop_recursive_transfer_pilot.py` addresses that failure with a
+separately versioned recursive temporal interpreter. A migrated depth-one
+artifact preserves the verified legacy behavior. Repeating its immutable row
+means sequential function composition: the interpreter convolves relative
+offsets, so a one-step `PREVIOUS` primitive composed twice resolves two-back.
+Candidate depth is external program structure and never enters the controller
+or event tensor. A bounded frontier tries progressively deeper compositions
+and selects only from authenticated scalar outcomes.
+
+```bash
+PYTHONPATH=src .venv/bin/python \
+  -m experiments.brainworkshop_canonical.neural_workshop_recursive_transfer_pilot \
+  --neural-workshop /absolute/path/to/neural-workshop \
+  --source-bank /absolute/path/to/1back/AgentBrain.bank --source-slot 4 \
+  --output-dir /tmp/neural-workshop-recursive-position2back
+```
+
+In the seed-71017 live run, the migrated primitive retained 1-back at 100% for
+three sessions. Depth one scored 0.326 on held-out 2-back; `PREVIOUS ∘
+PREVIOUS` scored 0.969 without updates and retained at 0.971/0.971. Wrong-depth,
+over-composed, memory-corrupted, and reversed controls scored 0.325, 0.475,
+0.000, and 0.000. The recursive bank admitted both the primitive and verified
+composition. Search used 78 verifier bits to find depth two; including the
+failed depth-one candidate and stable retention costs 147 bits.
+
+`neural_workshop_instruction_route_pilot.py` attacks that selection cost. A
+second frozen encoder reads only the public header band; those events address
+the program bank and never enter the one-source temporal comparator. After the
+verified depth-one and composed files are bound to their visible headers,
+held-out sessions retrieve the slot from the first public frame. `n_back`
+remains verifier-private. Play-field context, a shuffled header, and the
+wrong program are retained as controls.
+
+```bash
+PYTHONPATH=src .venv/bin/python \
+  -m experiments.brainworkshop_canonical.neural_workshop_instruction_route_pilot \
+  --neural-workshop /absolute/path/to/neural-workshop \
+  --source-bank /absolute/path/to/recursive/AgentBrain.bank \
+  --output-dir /tmp/neural-workshop-instruction-route
+```
+
+In the seed-81017 live run, the visible 1-back and 2-back headers were
+distance `0.105` apart and identical across seeds. Verification retained the
+source programs at `1.000/1.000/1.000` and `0.968/0.973/0.971`. Held-out
+retrieval then selected the matching slot with propensity `1.0` on every
+session: 1-back scored `1.000/1.000/1.000`, composed 2-back scored
+`1.000/0.971/1.000`. Search used `0` verifier bits. Play-field context and a
+shuffled header were unknown (`propensity 0.5`) and scored `0.195` and
+`0.422`. The wrong program scored `0.326`. Controller, program, and replay
+updates remained zero. This is a bounded routing result: the header crop is
+frontend parameterization, not autonomous cue discovery.
+
+The same encoder cannot safely generalize that route to a new cell count.
+A 3-cell 2-back header and a 2-cell 3-back header both sit about `0.043`
+from the trained 2-cell 2-back header, so nearest-neighbor would treat an
+unseen depth as a cell-count nuisance. Exact match stays fail-closed.
+`neural_workshop_instruction_header_transfer_pilot.py` rebinds the same
+immutable files to the new public header and checks that 3-back remains
+unknown.
+
+```bash
+PYTHONPATH=src .venv/bin/python \
+  -m experiments.brainworkshop_canonical.neural_workshop_instruction_header_transfer_pilot \
+  --neural-workshop /absolute/path/to/neural-workshop \
+  --source-bank /absolute/path/to/instruction-route/AgentBrain.bank \
+  --output-dir /tmp/neural-workshop-instruction-header-transfer
+```
+
+In the seed-91017 run, the 2-cell 1-back versus 2-back header distance was
+`0.105`. The 3-cell 2-back shift and the 2-cell 3-back shift were both
+`0.043`, and nearest-neighbor would have sent unseen 3-back to the 2-back
+file. Exact match stayed unknown (`propensity 0.5`). Zero-shot 3-cell 2-back
+therefore ran the 1-back fallback and scored `0.286`; 3-back scored `0.239`.
+Zero-shot 3-cell 1-back scored `1.000` only because append order already
+points at slot 0. Rebinding the same two files to the 3-cell headers, then
+retrieving, scored `1.000/1.000/1.000` and `0.950/0.960/1.000`. The original
+2-cell 2-back route retained `1.000/1.000/1.000`. After the rebind, 3-back
+was still unknown (`0.262`). Search bits stayed `0`; no new program file was
+created; controller, program, and replay updates stayed zero.
+
 ## Promoted frontier
 
 `executive_compositional_transfer.py` is the first positive bits-to-threshold
