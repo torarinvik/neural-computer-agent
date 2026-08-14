@@ -13409,3 +13409,25 @@ weights. Pre-registered next: k-NN entity-transition rolls (avatar
 via bank program, entities via transition memory, transferred typed
 head, model-consistent), against the F257 anchors.
 Scope: Localized (GEN-DEV trio + control).
+
+## F258 — UNTYPED TRANSITION MEMORY REFUSED: THE THIRD DEATH BY
+## GROUP-SLOT MIXTURE (2026-08-14, memory_dynamics.py, 6 seeds.
+## Scope: GEN-DEV trio + control)
+
+The transition-table rolls (modal delta keyed by entity cell x
+post-action avatar cell, marginal fallback) LOSE to the bank rolls
+everywhere: P1 0/6 on both single-interceptor worlds, memtr -0.86/
+-0.77/-0.99 vs transfer -0.75/-0.55/-0.66; control degrades too.
+Shufmem collapses (the head still binds).
+
+Diagnosis, and it is a law of this stack by now: THE TABLE POOLS
+TRANSITIONS PER SLOT-GROUP, AND GROUP CONTENTS ARE HETEROGENEOUS
+ACROSS ROWS -- nearest-plane-2 is a chasing pursuer in one row and
+a frozen resource in another, so the modal delta is a mixture.
+Three dynamics fixes have now died on this exact rock: richer
+per-slot ops (F248), per-row rule binding (F254, via tracker-noise-
+polluted evidence), and untyped instance memory (this finding). The
+typed REWARD head survived because it conditions on the entity
+signature psi. Pre-registered next: the same conditioning for
+dynamics -- transition table keyed by (signature bucket, entity
+cell, avatar cell), type-pure entries. Scope: Localized.
