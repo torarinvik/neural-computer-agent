@@ -1,0 +1,17 @@
+{
+  "schema": "neural-computer.executive-sealed-fast-path-benchmark.v1",
+  "date": "2026-08-14",
+  "configuration": {
+    "batch_size": 32,
+    "event_width": 8,
+    "delay": 1,
+    "warmup_ticks": 100,
+    "measured_ticks": 3000,
+    "device": "cpu",
+    "comparison": "same process, same artifact and event batch"
+  },
+  "defensive_tick_seconds": 4.164449,
+  "sealed_fast_tick_seconds": 2.148341,
+  "runtime_reduction_percent": 48.4123,
+  "safety_boundary": "owner-bound non-serializable lease; normal tick remains fully defensive; operator outputs remain validated"
+}

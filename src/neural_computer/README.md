@@ -19,6 +19,9 @@ import experiment code.
   `WAIT` / `EMIT` / `HALT` interpreter. Every `CALL` uses explicit,
   interface-versioned, transactionally replaced operator state; state is never
   hidden inside a shared operator object.
+  The public `tick()` path remains fully defensive. Live internal execution may
+  use an owner-bound, non-serializable sealed state lease that keeps the same
+  event and operator-result validation while avoiding repeated full state scans.
 - `executive_memory.py`: generic stateful executive operators, beginning with
   an opaque positive-relative value delay. Missing temporal history remains
   absent rather than becoming zero evidence.
@@ -74,3 +77,6 @@ types or divergent batched branches fail closed. The v1 interpreter has one
 shared instruction pointer; physical/live execution is batch one. Autonomous
 program proposal, durable admission, and controller-selected execution remain
 separate lifecycle work rather than hidden interpreter behavior.
+The sealed fast path is an internal runtime optimization only: leases are bound
+to their creating executive, reject structural corruption at each tick, cannot
+be serialized, and do not replace the defensive public restoration path.

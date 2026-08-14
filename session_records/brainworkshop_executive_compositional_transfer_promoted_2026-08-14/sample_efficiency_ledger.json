@@ -38,6 +38,13 @@
     "mean_optimized_seconds": 2.7548695,
     "mean_runtime_reduction_percent": 16.4825
   },
+  "sealed_fast_path_benchmark": {
+    "batch_size": 32,
+    "measured_ticks": 3000,
+    "defensive_tick_seconds": 4.164449,
+    "sealed_fast_tick_seconds": 2.148341,
+    "runtime_reduction_percent": 48.4123
+  },
   "controls": {
     "same_admitted_artifact_all_arms": true,
     "warm_strictly_faster_all_32_seeds": true,

@@ -244,6 +244,12 @@ and mismatch intentions; erasing only temporal presence removes the decision,
 and a second executive sharing the same frozen operator objects starts with
 clean history. `WAIT` and `EMIT` can yield directly to a validated next target,
 which closes the persistent game-loop cycle without consuming an input tick.
+For throughput, the interpreter also exposes an internal owner-bound sealed
+state lease. It performs the full tensor/state validation once, then retains
+cheap structural checks and validates every event collection and operator
+result on subsequent ticks. The lease is deliberately non-serializable and
+cannot cross executive instances; the public `tick()` path remains defensive
+for restored or externally supplied state.
 This establishes the executable and causal mechanics of stateful composition,
 not controller-driven program construction, autonomous `.bank` admission, or
 physical deployment of the new interpreter. The v1 program counter is

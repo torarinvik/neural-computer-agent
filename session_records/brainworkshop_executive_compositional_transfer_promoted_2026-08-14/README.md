@@ -53,6 +53,12 @@ from 3.299 seconds to 2.755 seconds, a 16.5% reduction. This measures immutable
 metadata caching only; the separate staged-verifier result measures experience
 efficiency.
 
+The sealed internal executor path was then benchmarked against defensive
+`tick()` in the same process on the same batch. After 100 warmup ticks, 3,000
+ticks fell from 4.164 seconds to 2.148 seconds, a 48.4% reduction. The lease is
+owner-bound and non-serializable; normal external state restoration still uses
+the defensive path, and operator outputs remain validated.
+
 This proves bounded reusable program structure, smallest-failed-binding search,
 and durable restart-safe heterogeneous execution. It does not yet prove
 controller-generated candidate libraries, unbounded instruction induction, or
@@ -63,5 +69,6 @@ Report checksums:
 - `report_seed_17.json`: `143a4516f879dcc83fc6973c3c15512e52afe70ffa9223295e24de287038dce8`
 - `report_seed_101.json`: `e2ba69aba92e15e63c8cac5ab91f3f6467871a6f557cd56b6bb0bfccbcd392e9`
 - `executive_tick_cache_benchmark.json`: `4f987a409ee536fd7ea15a4dd7274348467064dc859409aa7d3fe2a580fe6aff`
+- `executive_sealed_fast_path_benchmark.json`: `764acc1354b48b90b7c8e1bc59bbd2dc63e73f7a0ef16b7587f11ca0df63a526`
 - `AgentBrain.bank`: `6b6d0c574123c4afbd3827f7a88a2855c064d9d1df7292545c5c8a2031b357b3`
 - `AgentBrain_replication.bank`: `eb4cec9b071d5cc8ff971279d1bdd8dc189aa6db4fec01cb4b68127145a63b5f`

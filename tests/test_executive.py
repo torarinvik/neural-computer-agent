@@ -1,3 +1,4 @@
+import pickle
 from dataclasses import replace
 
 import pytest
@@ -10,6 +11,7 @@ from neural_computer.executive import (
     ExternalExecutiveOperatorRegistry,
     ExternalExecutiveOperatorState,
     ExternalExecutiveProgram,
+    TrustedExternalExecutiveState,
     TypedWorkspaceValue,
 )
 from neural_computer.executive_memory import ExternalValueDelayOperator
@@ -215,6 +217,57 @@ def test_typed_executive_waits_on_missing_input_then_emits_on_later_tick() -> No
     assert state.ticks == 4
     assert torch.equal(intention_operator.weights, frozen_weights)
 
+
+def test_sealed_fast_path_matches_defensive_tick_and_rejects_foreign_leases() -> None:
+    def build() -> ExternalAmodalExecutive:
+        return ExternalAmodalExecutive(
+            _program(),
+            ExternalExecutiveOperatorRegistry((_EventEvidence(), _EvidenceIntention())),
+            intention_width=2,
+        )
+
+    defensive = build()
+    fast = build()
+    defensive_state = defensive.initial_state(1, device="cpu")
+    fast_state = fast.initial_sealed_state(1, device="cpu")
+    inputs = (_collection(None), _collection(0.8), _collection(None), _collection(-0.6))
+
+    for events in inputs:
+        defensive_output, defensive_state = defensive.tick(events, defensive_state)
+        fast_output, fast_state = fast.tick_fast(events, fast_state)
+        assert fast_output.status == defensive_output.status
+        assert fast_output.executed_instructions == defensive_output.executed_instructions
+        assert fast_output.intention is None or defensive_output.intention is not None
+        if fast_output.intention is not None:
+            assert defensive_output.intention is not None
+            assert torch.equal(
+                fast_output.intention.payload, defensive_output.intention.payload
+            )
+        assert fast_state.state.instruction_pointer == defensive_state.instruction_pointer
+        assert fast_state.state.ticks == defensive_state.ticks
+
+    with pytest.raises(TypeError, match="sealed state lease"):
+        fast.tick_fast(_collection(None), defensive_state)  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="belongs to another executive"):
+        build().tick_fast(_collection(None), fast_state)
+    forged = TrustedExternalExecutiveState(fast_state.state, object())
+    with pytest.raises(ValueError, match="belongs to another executive"):
+        fast.tick_fast(_collection(None), forged)
+    corrupted = TrustedExternalExecutiveState(
+        replace(
+            fast_state.state,
+            instruction_pointer=len(fast.program.instructions),
+        ),
+        fast_state.owner_token,
+    )
+    with pytest.raises(ValueError, match="instruction pointer"):
+        fast.tick_fast(_collection(None), corrupted)
+    with pytest.raises(ValueError, match="handles are incompatible"):
+        fast.seal_state(
+            replace(fast.initial_state(1, device="cpu"), operator_states=())
+        )
+    with pytest.raises(TypeError, match="cannot be serialized"):
+        pickle.dumps(fast_state)
 
 def test_executive_call_types_and_empty_reads_fail_closed() -> None:
     wrong_type = ExternalExecutiveProgram(

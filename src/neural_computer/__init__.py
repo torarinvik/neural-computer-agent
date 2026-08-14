@@ -252,6 +252,7 @@ from .executive import (
     ExternalExecutiveProgram,
     ExternalExecutiveState,
     ExternalExecutiveTick,
+    TrustedExternalExecutiveState,
     TypedWorkspaceValue,
 )
 from .executive_bank import (
@@ -1740,6 +1741,7 @@ __all__ = [
     "StagedCapabilityReceipt",
     "TemporalProgramOutcomeObserver",
     "TemporalProgramSelection",
+    "TrustedExternalExecutiveState",
     "TypedWorkspaceValue",
     "VerifierGatedCapabilityEvictionPolicyBank",
     "VisibleColorOutcomeReader",

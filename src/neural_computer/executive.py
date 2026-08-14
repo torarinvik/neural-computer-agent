@@ -19,7 +19,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from functools import cached_property
-from typing import Literal
+from typing import Literal, NoReturn
 
 import torch
 
@@ -477,9 +477,10 @@ class ExternalExecutiveOperatorRegistry:
             if operator.handle in self._operators:
                 raise ValueError("external executive operator handles must be unique")
             self._operators[operator.handle] = operator
+        self._handles = tuple(sorted(self._operators))
         payload = [
             self._operators[handle].configuration()
-            for handle in sorted(self._operators)
+            for handle in self._handles
         ]
         self._digest = hashlib.sha256(
             json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
@@ -499,7 +500,8 @@ class ExternalExecutiveOperatorRegistry:
         dtype: torch.dtype,
     ) -> tuple[tuple[int, ExternalExecutiveOperatorState], ...]:
         states = []
-        for handle, operator in sorted(self._operators.items()):
+        for handle in self._handles:
+            operator = self._operators[handle]
             state = operator.initial_state(
                 batch_size, device=device, dtype=dtype
             ).detached_clone()
@@ -513,7 +515,7 @@ class ExternalExecutiveOperatorRegistry:
         *,
         batch_size: int,
     ) -> None:
-        if tuple(handle for handle, _ in states) != tuple(sorted(self._operators)):
+        if tuple(handle for handle, _ in states) != self._handles:
             raise ValueError("external executive operator state handles are incompatible")
         for handle, state in states:
             self.operator(handle).validate_state(state, batch_size=batch_size)
@@ -526,16 +528,31 @@ class ExternalExecutiveOperatorRegistry:
         *,
         batch_size: int,
     ) -> tuple[TypedWorkspaceValue, ExternalExecutiveOperatorState]:
+        return self._call(
+            handle, arguments, state, batch_size=batch_size, trusted=False
+        )
+
+    def _call(
+        self,
+        handle: int,
+        arguments: tuple[TypedWorkspaceValue, ...],
+        state: ExternalExecutiveOperatorState,
+        *,
+        batch_size: int,
+        trusted: bool,
+    ) -> tuple[TypedWorkspaceValue, ExternalExecutiveOperatorState]:
         operator = self.operator(handle)
         if len(arguments) != len(operator.input_kinds):
             raise ValueError("external executive CALL argument count is incompatible")
         for argument, expected_kind in zip(
             arguments, operator.input_kinds, strict=True
         ):
-            argument.validate(batch_size=batch_size)
+            if not trusted:
+                argument.validate(batch_size=batch_size)
             if argument.kind != expected_kind:
                 raise TypeError("external executive CALL argument kind is incompatible")
-        operator.validate_state(state, batch_size=batch_size)
+        if not trusted:
+            operator.validate_state(state, batch_size=batch_size)
         result, next_state = operator.execute_with_state(
             tuple(value.detached_clone() for value in arguments),
             state.detached_clone(),
@@ -552,6 +569,10 @@ class ExternalExecutiveOperatorRegistry:
 
     def digest(self) -> str:
         return self._digest
+
+    @property
+    def handles(self) -> tuple[int, ...]:
+        return self._handles
 
 
 @dataclass(frozen=True)
@@ -602,6 +623,19 @@ class ExternalExecutiveState:
 
 
 @dataclass(frozen=True)
+class TrustedExternalExecutiveState:
+    """Non-serializable state lease owned by one executive instance."""
+
+    state: ExternalExecutiveState
+    owner_token: object
+
+    def __reduce__(self) -> NoReturn:
+        """Prevent a live execution lease from crossing a persistence boundary."""
+
+        raise TypeError("trusted external executive state leases cannot be serialized")
+
+
+@dataclass(frozen=True)
 class ExternalExecutiveTick:
     intention: IntentEvent | None
     status: ExecutiveStatus
@@ -630,6 +664,7 @@ class ExternalAmodalExecutive:
         self.operators = operators
         self.intention_width = int(intention_width)
         self.max_instructions_per_tick = int(max_instructions_per_tick)
+        self._trusted_state_token = object()
 
     def initial_state(
         self,
@@ -654,28 +689,110 @@ class ExternalAmodalExecutive:
             operator_registry_digest=self.operators.digest(),
         ).validate(slot_count=self.program.slot_count)
 
-    @staticmethod
-    def _write_slot(
-        workspace: tuple[TypedWorkspaceValue, ...],
-        destination: int,
-        value: TypedWorkspaceValue,
-    ) -> tuple[TypedWorkspaceValue, ...]:
-        mutable = list(workspace)
-        mutable[destination] = value.detached_clone()
-        return tuple(mutable)
+    def seal_state(
+        self, state: ExternalExecutiveState
+    ) -> TrustedExternalExecutiveState:
+        """Validate state once and create an owner-bound fast-path lease."""
 
-    def tick(
-        self,
-        events: AmodalEventCollection,
-        state: ExternalExecutiveState,
-    ) -> tuple[ExternalExecutiveTick, ExternalExecutiveState]:
-        events.validate()
         state.validate(slot_count=self.program.slot_count)
         if state.operator_registry_digest != self.operators.digest():
             raise ValueError("external executive state operator registry is incompatible")
         self.operators.validate_states(
             state.operator_states, batch_size=state.batch_size
         )
+        return TrustedExternalExecutiveState(state, self._trusted_state_token)
+
+    def initial_sealed_state(
+        self,
+        batch_size: int,
+        *,
+        device: torch.device | str,
+        dtype: torch.dtype = torch.float32,
+    ) -> TrustedExternalExecutiveState:
+        return self.seal_state(self.initial_state(batch_size, device=device, dtype=dtype))
+
+    @staticmethod
+    def _write_slot(
+        workspace: tuple[TypedWorkspaceValue, ...],
+        destination: int,
+        value: TypedWorkspaceValue,
+        *,
+        clone: bool = True,
+    ) -> tuple[TypedWorkspaceValue, ...]:
+        mutable = list(workspace)
+        mutable[destination] = value.detached_clone() if clone else value
+        return tuple(mutable)
+
+    def _validate_trusted_state_shape(
+        self, state: ExternalExecutiveState
+    ) -> ExternalExecutiveState:
+        """Check cheap structural invariants without scanning tensor contents.
+
+        ``seal_state`` performs the full finite-value validation. The live
+        lease only needs these scalar/container checks at each tick to remain
+        fail-closed if a caller presents a forged or corrupted lease.
+        """
+
+        if state.schema != EXECUTIVE_STATE_SCHEMA:
+            raise ValueError("unsupported external executive state schema")
+        if state.batch_size < 1 or len(state.workspace) != self.program.slot_count:
+            raise ValueError("external executive trusted state dimensions are invalid")
+        if not 0 <= state.instruction_pointer < len(self.program.instructions):
+            raise ValueError("external executive trusted instruction pointer is invalid")
+        if state.ticks < 0 or state.executed_instructions < 0:
+            raise ValueError("external executive trusted counters cannot be negative")
+        if state.status not in {
+            "ready",
+            "waiting",
+            "emitted",
+            "halted",
+            "step_budget_exhausted",
+        }:
+            raise ValueError("external executive trusted state status is invalid")
+        if state.operator_registry_digest != self.operators.digest():
+            raise ValueError("external executive trusted operator registry is incompatible")
+        if tuple(handle for handle, _ in state.operator_states) != self.operators.handles:
+            raise ValueError("external executive trusted operator states are incompatible")
+        return state
+
+    def tick(
+        self,
+        events: AmodalEventCollection,
+        state: ExternalExecutiveState,
+    ) -> tuple[ExternalExecutiveTick, ExternalExecutiveState]:
+        return self._tick(events, state, trusted=False)
+
+    def tick_fast(
+        self,
+        events: AmodalEventCollection,
+        state: TrustedExternalExecutiveState,
+    ) -> tuple[ExternalExecutiveTick, TrustedExternalExecutiveState]:
+        """Run a validated owner-bound state without repeated state checks."""
+
+        if not isinstance(state, TrustedExternalExecutiveState):
+            raise TypeError("external executive fast path needs a sealed state lease")
+        if state.owner_token is not self._trusted_state_token:
+            raise ValueError("external executive state lease belongs to another executive")
+        current_state = self._validate_trusted_state_shape(state.state)
+        output, next_state = self._tick(events, current_state, trusted=True)
+        self._validate_trusted_state_shape(next_state)
+        return output, TrustedExternalExecutiveState(next_state, self._trusted_state_token)
+
+    def _tick(
+        self,
+        events: AmodalEventCollection,
+        state: ExternalExecutiveState,
+        *,
+        trusted: bool,
+    ) -> tuple[ExternalExecutiveTick, ExternalExecutiveState]:
+        events.validate()
+        if not trusted:
+            state.validate(slot_count=self.program.slot_count)
+            if state.operator_registry_digest != self.operators.digest():
+                raise ValueError("external executive state operator registry is incompatible")
+            self.operators.validate_states(
+                state.operator_states, batch_size=state.batch_size
+            )
         if events.payload.shape[0] != state.batch_size:
             raise ValueError("external executive input batch does not match state")
         if state.status == "halted":
@@ -708,6 +825,7 @@ class ExternalAmodalExecutive:
                     workspace,
                     instruction.destination,
                     TypedWorkspaceValue.from_events(events),
+                    clone=not trusted,
                 )
                 pointer += 1
             elif instruction.op == "read":
@@ -717,7 +835,7 @@ class ExternalAmodalExecutive:
                     raise RuntimeError(
                         "external executive READ encountered an empty slot"
                     )
-                accumulator = value.detached_clone()
+                accumulator = value if trusted else value.detached_clone()
                 pointer += 1
             elif instruction.op == "write":
                 assert instruction.destination is not None
@@ -726,7 +844,7 @@ class ExternalAmodalExecutive:
                         "external executive WRITE has an empty accumulator"
                     )
                 workspace = self._write_slot(
-                    workspace, instruction.destination, accumulator
+                    workspace, instruction.destination, accumulator, clone=not trusted
                 )
                 pointer += 1
             elif instruction.op == "copy":
@@ -739,7 +857,9 @@ class ExternalAmodalExecutive:
                     raise RuntimeError(
                         "external executive COPY encountered an empty slot"
                     )
-                workspace = self._write_slot(workspace, instruction.destination, value)
+                workspace = self._write_slot(
+                    workspace, instruction.destination, value, clone=not trusted
+                )
                 pointer += 1
             elif instruction.op == "call":
                 assert instruction.operator_handle is not None
@@ -747,15 +867,18 @@ class ExternalAmodalExecutive:
                 # Resolve first so an unknown program handle fails with the
                 # stable registry error rather than leaking an internal KeyError.
                 self.operators.operator(instruction.operator_handle)
-                result, next_operator_state = self.operators.call(
+                result, next_operator_state = self.operators._call(
                     instruction.operator_handle,
                     tuple(workspace[index] for index in instruction.arguments),
                     operator_states[instruction.operator_handle],
                     batch_size=state.batch_size,
+                    trusted=trusted,
                 )
                 operator_states[instruction.operator_handle] = next_operator_state
-                workspace = self._write_slot(workspace, instruction.destination, result)
-                accumulator = result.detached_clone()
+                workspace = self._write_slot(
+                    workspace, instruction.destination, result, clone=not trusted
+                )
+                accumulator = result if trusted else result.detached_clone()
                 pointer += 1
             elif instruction.op == "branch":
                 assert instruction.source is not None
@@ -835,7 +958,9 @@ class ExternalAmodalExecutive:
             operator_registry_digest=state.operator_registry_digest,
             ticks=state.ticks + 1,
             executed_instructions=state.executed_instructions + executed,
-        ).validate(slot_count=self.program.slot_count)
+        )
+        if not trusted:
+            next_state.validate(slot_count=self.program.slot_count)
         output = ExternalExecutiveTick(
             intention,
             status,
@@ -859,5 +984,6 @@ __all__ = [
     "ExternalExecutiveProgram",
     "ExternalExecutiveState",
     "ExternalExecutiveTick",
+    "TrustedExternalExecutiveState",
     "TypedWorkspaceValue",
 ]
