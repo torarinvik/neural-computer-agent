@@ -13658,3 +13658,29 @@ get the right sign/scale varies by seed. Pre-registered next: a
 SPARSIFIED event head (drop action/boundary terms, or L1) fit on
 the same grid worlds; prediction -- typed_zero variance collapses
 and P1 passes 6/6. Scope: Localized (grid -> graph pair).
+
+## F266 — THE SPARSE MASK IS NOT THE IDENTIFIABILITY LEVER; AMODAL
+## TRANSFER STANDS AS AN EXISTENCE PROOF WITH AN OPEN RELIABILITY
+## PROBLEM (2026-08-14, cross_typed.py sparse arm, 6 seeds. Scope:
+## grid -> graph. CYCLE-TERMINAL)
+
+Masking the substrate-entangled coordinates (action one-hots,
+boundary events) and refitting: variance halves (sd 2.9 -> 0.9) but
+the MEAN DROPS (+3.51 -> +2.07 on gcollect1; P1 3/6, 1/6, 3/6).
+The masked columns carried part of the transferable signal; the
+reliability problem is deeper than column selection -- most likely
+it needs event-value supervision that separates entity classes
+explicitly (the F235 class-target route) rather than pooled reward
+regression. Pre-registered for the next cycle, not attempted here.
+
+Cycle synthesis (F264-F266): the raced hybrid set a new best on the
+hardest certified witness (-0.568) and joined the guarded union;
+F265 delivered the cycle's landmark -- THE FIRST ZERO-SHOT
+CROSS-SUBSTRATE VALUE TRANSFER IN THE PROJECT'S HISTORY (a
+grid-fit typed head running graph worlds at the native ceiling,
++8.14/+10.58, zero graph data), establishing that the event x
+signature coordinates are genuinely amodal; F266 localized what
+remains between existence and reliability. Standing frontier:
+guarded-union baseline at breadth; amodal-transfer reliability
+(class-target supervision) as the top ungated research problem;
+sealed sets awaiting the word.
