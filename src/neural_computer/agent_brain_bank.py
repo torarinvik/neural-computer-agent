@@ -27,6 +27,7 @@ from typing import Any, Literal
 
 import torch
 
+from .addressing import PersistentOpaqueContextRouteEvidence
 from .executive_bank import (
     EXECUTIVE_COMPOSITION_SCHEMA,
     ExternalExecutiveProgramArtifact,
@@ -346,6 +347,7 @@ class ExternalAgentBrainBank:
         self._executive_bank = ExternalExecutiveProgramBank(
             controller_digest=self.controller_digest, capacity=capacity
         )
+        self._executive_route: PersistentOpaqueContextRouteEvidence | None = None
         self._composition_provenance: list[dict[str, object]] = []
         self._version = 0
 
@@ -360,6 +362,64 @@ class ExternalAgentBrainBank:
     @property
     def executive_bank(self) -> ExternalExecutiveProgramBank:
         return self._executive_bank
+
+    @property
+    def executive_route(self) -> PersistentOpaqueContextRouteEvidence | None:
+        """Return opaque executive-slot evidence, when routing is enabled."""
+
+        return self._executive_route
+
+    def executive_route_evidence(
+        self,
+        context_width: int,
+        *,
+        matching_tolerance: float = 1e-4,
+        generalization_tolerance: float = 0.0,
+        prior_strength: float = 1.0,
+        mastery_threshold: float = 0.8,
+        min_mastery_observations: int = 8,
+        reversal_threshold: float = 0.5,
+        reversal_patience: int = 4,
+    ) -> PersistentOpaqueContextRouteEvidence:
+        """Create or retrieve persistent opaque route evidence for executive slots."""
+
+        if self._executive_route is None:
+            self._executive_route = PersistentOpaqueContextRouteEvidence(
+                context_width,
+                matching_tolerance=matching_tolerance,
+                generalization_tolerance=generalization_tolerance,
+                prior_strength=prior_strength,
+                mastery_threshold=mastery_threshold,
+                min_mastery_observations=min_mastery_observations,
+                reversal_threshold=reversal_threshold,
+                reversal_patience=reversal_patience,
+            )
+            self._version += 1
+        elif self._executive_route.width != context_width:
+            raise ValueError("executive route context width is incompatible")
+        while self._executive_route.slot_count < self.executive_program_count:
+            self._executive_route.append_slot()
+        if self._executive_route.slot_count > self.executive_program_count:
+            raise ValueError("executive route has more slots than the executive bank")
+        return self._executive_route
+
+    def observe_executive_route(
+        self,
+        context: torch.Tensor,
+        slot: int,
+        outcome: float | torch.Tensor,
+    ) -> None:
+        """Record one attempted executive skill against its learned context."""
+
+        route = self._executive_route
+        if route is None:
+            raise RuntimeError("executive route evidence has not been initialized")
+        if not isinstance(slot, int) or isinstance(slot, bool):
+            raise TypeError("executive route slot must be an integer")
+        if not 0 <= slot < self.executive_program_count:
+            raise IndexError("executive route slot is outside the executive bank")
+        route.observe(context, slot, outcome)
+        self._version += 1
 
     @property
     def temporal_program_count(self) -> int:
@@ -452,6 +512,9 @@ class ExternalAgentBrainBank:
             min_stable_observations=min_stable_observations,
         )
         if receipt.accepted:
+            if self._executive_route is not None:
+                while self._executive_route.slot_count < self.executive_program_count:
+                    self._executive_route.append_slot()
             self._version += 1
         return receipt
 
@@ -612,6 +675,8 @@ class ExternalAgentBrainBank:
             "executive_bank": self._executive_bank.payload(),
             "manifest": self.manifest(),
         }
+        if self._executive_route is not None:
+            content["executive_route"] = self._executive_route.payload()
         if self._composition_provenance:
             content["composition_provenance"] = copy.deepcopy(
                 self._composition_provenance
@@ -670,6 +735,7 @@ class ExternalAgentBrainBank:
         version = payload.get("version")
         manifest = payload.get("manifest")
         provenance = payload.get("composition_provenance", [])
+        executive_route_payload = payload.get("executive_route")
         if (
             not isinstance(configuration, dict)
             or not isinstance(executive_payload, dict)
@@ -677,6 +743,10 @@ class ExternalAgentBrainBank:
             or not isinstance(version, int)
             or version < 0
             or not isinstance(provenance, list)
+            or (
+                executive_route_payload is not None
+                and not isinstance(executive_route_payload, dict)
+            )
         ):
             raise TypeError("AgentBrain bank payload is malformed")
         result = cls(
@@ -694,6 +764,12 @@ class ExternalAgentBrainBank:
         result._executive_bank = ExternalExecutiveProgramBank.from_payload(executive_payload)
         if result._executive_bank.controller_digest != result.controller_digest:
             raise ValueError("AgentBrain executive controller digest is incompatible")
+        if executive_route_payload is not None:
+            result._executive_route = PersistentOpaqueContextRouteEvidence.from_payload(
+                executive_route_payload
+            )
+            if result._executive_route.slot_count != result.executive_program_count:
+                raise ValueError("AgentBrain executive route slot count is incompatible")
         if result.program_count > result.capacity:
             raise ValueError("AgentBrain bank exceeds capacity")
         result._version = version

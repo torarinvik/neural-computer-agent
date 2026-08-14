@@ -338,6 +338,41 @@ def test_mixed_agent_brain_round_trip_preserves_both_skill_families(
     restored.executable(0, controller_digest=controller_digest)
 
 
+def test_executive_route_evidence_round_trip_and_context_specific_preferences(
+    tmp_path: Path,
+) -> None:
+    controller_digest = _digest(44)
+    bank = ExternalAgentBrainBank(controller_digest=controller_digest, capacity=4)
+    bank.admit_executive(
+        build_temporal_equality_executive_artifact(event_width=3, delay=1),
+        [1.0],
+    )
+    bank.admit_executive(
+        build_temporal_equality_executive_artifact(event_width=3, delay=2),
+        [1.0],
+    )
+    context_a = torch.tensor([1.0, 0.0, 0.0])
+    context_b = torch.tensor([0.0, 1.0, 0.0])
+    route = bank.executive_route_evidence(
+        3,
+        min_mastery_observations=2,
+    )
+    for _ in range(2):
+        bank.observe_executive_route(context_a, 1, 1.0)
+        bank.observe_executive_route(context_b, 0, 1.0)
+
+    assert route.preferred_slots(torch.stack((context_a, context_b))).tolist() == [1, 0]
+    path = tmp_path / "AgentBrain.bank"
+    bank.save_bank(path)
+    restored = ExternalAgentBrainBank.load_bank(path)
+
+    assert restored.executive_route is not None
+    assert restored.executive_route.preferred_slots(
+        torch.stack((context_a, context_b))
+    ).tolist() == [1, 0]
+    assert restored.digest() == bank.digest()
+
+
 def test_legacy_temporal_bank_requires_explicit_migration(tmp_path: Path) -> None:
     controller_digest = _digest(9)
     legacy = ExternalTemporalProgramBank(4, 3, controller_digest=controller_digest)
