@@ -13727,3 +13727,37 @@ of same-substrate random experience shown so far -- with zero
 target reward data. Next candidates: the typed-class head as the
 transfer library's canonical value form (breadth integration), and
 the reliability fix folded back into the grid-side trio stack.
+
+## F268 — THE CLASS HEAD REFUSED AT HOME: TRANSFER WANTS FEWER
+## COORDINATES THAN CONTROL (2026-08-14, class_grid.py, 6 seeds.
+## Scope: trio + intercept2 + dense pair)
+
+The F267 five-coefficient class head, raced against the pooled
+event head inside the F264 hybrid rule on the home substrate.
+
+  P1 REFUTED 0/6 everywhere: class_h1 loses to pooled_h1 on every
+     trio world (-0.84/-0.79/-1.15 vs -0.79/-0.66/-0.92) and
+     collapses on intercept2 (-1.30 vs -0.23) -- the kernel-only
+     score discards the event conjunctions (contact x teleport =
+     catch vs miss, wrap timing) that home control runs on.
+  P2 CONFIRMED: the race rejects the class head (picks pooled
+     30/36 cells); hybrid_raced matches the F264 frontier within
+     noise everywhere. Dense worlds unharmed (P4).
+
+THE DIVISION-OF-LABOR LAW, closing the F265-F268 arc: the SAME
+value knowledge wants two projections -- a rich, event-structured
+head for control on the home substrate (pooled regression, F256/
+F264), and a minimal, event-supervised binding for transport
+across substrates (class targets, F267). Five coefficients cross
+substrates at ceiling precisely BECAUSE they carry nothing
+substrate-entangled; the same austerity is a handicap at home.
+The library's canonical value form is therefore a PAIR: pooled
+head for native racing, class binding for cross-substrate seeding
+(re-enriched by native experience after landing -- the F242
+re-grounding principle, now at the value level).
+
+Standing frontier after F226-F268, forty-three findings: guarded-
+union baseline at breadth (goal-grammar + pooled-hybrid, F263/
+F264); reliable cross-substrate value seeding (F267); trio
+residual closed within the frozen core (F262); sealed sets
+untouched, user-gated.
