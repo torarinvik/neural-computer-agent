@@ -13761,3 +13761,33 @@ union baseline at breadth (goal-grammar + pooled-hybrid, F263/
 F264); reliable cross-substrate value seeding (F267); trio
 residual closed within the frozen core (F262); sealed sets
 untouched, user-gated.
+
+## F269 — SEEDED ACCELERATION REFUTED FOR LACK OF HEADROOM: THE
+## GRAPH'S NATIVE LEARNING IS TRIVIALLY FAST (2026-08-14,
+## seeded_learning.py, 6 seeds. Scope: gavoid1_collect1)
+
+The acceleration form of the founding sentence, cross-substrate:
+fit the native pooled head on data collected under the class-seeded
+policy vs the random policy, at budgets 2/6/18 rollout steps.
+
+  REFUTED, and the reason is scoped precisely: cold_n2 already
+  scores +3.77 -- 95% of the native ceiling (+3.98) from TWO steps
+  of random experience. The graph reward function (co-location
+  events on 8 nodes) is so learnable that no seeding can measurably
+  accelerate it (P1 2/6; gaps +0.01..+0.07). Zero-shot seeding
+  (+2.87) remains valuable BEFORE any native data exists; past two
+  steps, native fitting wins on its own.
+
+Lesson for the acceleration program: the founding sentence's
+"faster to learn" clause needs a target whose native learning is
+SLOW -- the grid trio (where F255 certified sample-complexity
+walls) is the natural candidate, but its wall is exactly what
+transfer already addresses (F256). On substrates where learning is
+cheap, transfer's value is the zero-shot seed, not the curriculum.
+Scope: Localized (graph pair).
+
+Cycle close (F268-F269): the division-of-labor law (transfer wants
+fewer coordinates than control; the canonical value form is a
+pooled/class pair) and the headroom scoping of acceleration.
+Standing frontier unchanged: guarded-union baseline at breadth,
+reliable cross-substrate seeding, sealed sets user-gated.
