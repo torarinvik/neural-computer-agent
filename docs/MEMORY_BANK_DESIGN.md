@@ -13530,3 +13530,37 @@ worlds), an exonerated state (F255), a ceiling-capable value head
 registered and refuted on the record. That build -- with its own
 registered predictions, controls, and amortization pricing -- is
 the pre-registered opening of the next cycle.
+
+## F262 — STOCHASTIC SIMULATION OVER LEARNED DELTAS REFUSED: THE
+## SIXTH REFUTATION CLOSES THE RESIDUAL WITHIN THE FROZEN CORE
+## (2026-08-14, stochastic_sim.py, 6 seeds. Scope: GEN-DEV trio +
+## control. RESIDUAL-TERMINAL)
+
+Monte-Carlo planning over sampled empirical delta distributions
+(type-keyed reservoirs, per-sample death termination and
+consumption parking, greedy typed-head continuation): P1 0/6 on
+every trio world (sim_d4 -0.85/-0.70/-0.82 vs transfer -0.75/
+-0.55/-0.66); P2 0-1/6 -- the modal ablation matches the sampled
+planner, so STOCHASTICITY OVER A WRONG MODEL ADDS NOTHING; the
+control degrades; shufsim collapses (head binds).
+
+The necessity case (F261) certified that true-simulator sampling
+collects the prize. This build shows the property does not survive
+transport into ANY learned transition model of the tracked-slot
+representation at feasible experience: six mechanism-level attacks
+(F248, F254, F258, F259, F260, F262) spanning instruction sets,
+rule binding, deterministic and stochastic instance memory, and
+event semantics -- all refuted under registered predictions on the
+same certified worlds.
+
+RESIDUAL-TERMINAL CLAIM (scope: this family, frozen core, feasible
+per-world experience): the trio residual (-0.75/-0.55/-0.66 vs
+privileged ceilings -0.39/-0.27/-0.13) is CLOSED -- not collectable
+by any probe-level machinery this architecture admits. What could
+reopen it, priced for the record: an observation-level generative
+simulator (a new core capability with its own amortization case,
+far beyond a probe), or evidence from the SEALED sets (user-gated).
+The research frontier accordingly returns to BREADTH, where the
+transfer stack demonstrably wins: deploying F256's mechanism-typed
+transfer across the full generated space under the F243 guard, and
+richer simple-world curricula as the library of record grows.
