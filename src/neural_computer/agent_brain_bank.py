@@ -19,7 +19,8 @@ import hashlib
 import json
 import os
 import tempfile
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
 
@@ -44,8 +45,72 @@ EXTERNAL_AGENT_BRAIN_BANK_SCHEMA = "neural-computer.external-agent-brain-bank.v1
 AGENT_BRAIN_BANK_ENTRY_SCHEMA = "neural-computer.agent-brain-bank-entry.v1"
 AGENT_BRAIN_EXECUTIVE_KIND = "executive_program"
 AGENT_BRAIN_TEMPORAL_KIND = "temporal_program_bank"
+EXECUTIVE_COMPOSITION_SEARCH_SCHEMA = (
+    "neural-computer.executive-composition-search.v1"
+)
 
 BrainEntryKind = Literal["executive_program", "temporal_program_bank"]
+
+
+@dataclass(frozen=True)
+class ExecutiveCompositionSearchResult:
+    """Opaque accounting for one verifier-gated parent-pair search."""
+
+    accepted: bool
+    parent_slots: tuple[int, int] | None
+    receipt: ExternalProgramAdmissionReceipt | None
+    candidate_count: int
+    attempted_parent_slots: tuple[tuple[int, int], ...]
+    attempted_child_digests: tuple[str, ...]
+    unique_verifier_bits: int
+    unique_logical_lifetimes: int
+    stable_bits_to_threshold: int | None
+    bank_digest_before: str
+    bank_digest_after: str
+    reason: str
+    schema: str = EXECUTIVE_COMPOSITION_SEARCH_SCHEMA
+
+    def validate(self) -> ExecutiveCompositionSearchResult:
+        if self.schema != EXECUTIVE_COMPOSITION_SEARCH_SCHEMA:
+            raise ValueError("unsupported executive composition search schema")
+        if self.candidate_count < 0 or len(self.attempted_parent_slots) > self.candidate_count:
+            raise ValueError("executive composition search candidate accounting is invalid")
+        if len(self.attempted_parent_slots) != len(self.attempted_child_digests):
+            raise ValueError("executive composition search attempt records are misaligned")
+        if self.unique_verifier_bits < 0 or self.unique_logical_lifetimes < 0:
+            raise ValueError("executive composition search accounting cannot be negative")
+        if self.stable_bits_to_threshold is not None and not (
+            1 <= self.stable_bits_to_threshold <= self.unique_verifier_bits
+        ):
+            raise ValueError("executive composition search stable prefix is invalid")
+        for digest in (self.bank_digest_before, self.bank_digest_after):
+            _validate_digest(digest, name="executive composition search bank digest")
+        if self.accepted:
+            if self.parent_slots is None or self.receipt is None or not self.receipt.accepted:
+                raise ValueError("accepted executive composition search needs a receipt")
+        elif self.parent_slots is not None or self.receipt is not None:
+            raise ValueError("rejected executive composition search cannot have a receipt")
+        if not self.reason:
+            raise ValueError("executive composition search reason is required")
+        return self
+
+    def payload(self) -> dict[str, object]:
+        self.validate()
+        return {
+            "schema": self.schema,
+            "accepted": self.accepted,
+            "parent_slots": None if self.parent_slots is None else list(self.parent_slots),
+            "receipt": None if self.receipt is None else self.receipt.payload(),
+            "candidate_count": self.candidate_count,
+            "attempted_parent_slots": [list(pair) for pair in self.attempted_parent_slots],
+            "attempted_child_digests": list(self.attempted_child_digests),
+            "unique_verifier_bits": self.unique_verifier_bits,
+            "unique_logical_lifetimes": self.unique_logical_lifetimes,
+            "stable_bits_to_threshold": self.stable_bits_to_threshold,
+            "bank_digest_before": self.bank_digest_before,
+            "bank_digest_after": self.bank_digest_after,
+            "reason": self.reason,
+        }
 
 _DTYPES: dict[str, torch.dtype] = {
     name: getattr(torch, name)
@@ -383,6 +448,26 @@ class ExternalAgentBrainBank:
             self._temporal_bank = None
         return receipt
 
+    def composed_executive_artifact(
+        self,
+        parent_slots: Sequence[int],
+    ) -> ExternalExecutiveProgramArtifact:
+        """Materialize a child from existing slots without changing the bank."""
+
+        normalized = tuple(parent_slots)
+        if len(normalized) < 2:
+            raise ValueError("executive composition needs at least two parent slots")
+        if any(
+            not isinstance(slot, int)
+            or isinstance(slot, bool)
+            or not 0 <= slot < self.executive_program_count
+            for slot in normalized
+        ):
+            raise IndexError("executive composition parent slot is outside the bank")
+        return compose_executive_artifacts(
+            tuple(self._executive_bank.artifact(slot) for slot in normalized)
+        )
+
     def compose_executive(
         self,
         parent_slots: Sequence[int],
@@ -395,17 +480,8 @@ class ExternalAgentBrainBank:
         """Compose admitted executive slots, then gate the child by outcomes."""
 
         normalized = tuple(parent_slots)
-        if len(normalized) < 2:
-            raise ValueError("executive composition needs at least two parent slots")
-        if any(
-            not isinstance(slot, int)
-            or isinstance(slot, bool)
-            or not 0 <= slot < self.executive_program_count
-            for slot in normalized
-        ):
-            raise IndexError("executive composition parent slot is outside the bank")
+        child = self.composed_executive_artifact(normalized)
         parents = tuple(self._executive_bank.artifact(slot) for slot in normalized)
-        child = compose_executive_artifacts(parents)
         receipt = self.admit_executive(
             child,
             outcomes,
@@ -667,10 +743,120 @@ class ExternalAgentBrainBank:
         return result
 
 
+class ExternalExecutiveCompositionSearch:
+    """Search opaque ordered parent pairs and append the first verified child."""
+
+    schema = EXECUTIVE_COMPOSITION_SEARCH_SCHEMA
+
+    def __init__(self, bank: ExternalAgentBrainBank, *, seed: int = 0) -> None:
+        if not isinstance(bank, ExternalAgentBrainBank):
+            raise TypeError("executive composition search needs an AgentBrain bank")
+        if not isinstance(seed, int) or isinstance(seed, bool):
+            raise TypeError("executive composition search seed must be an integer")
+        self.bank = bank
+        self.seed = seed
+
+    def candidate_parent_slots(self, *, max_candidates: int | None = None) -> tuple[tuple[int, int], ...]:
+        """Return deterministic ordered pairs using only content-addressed order."""
+
+        if max_candidates is not None and (
+            not isinstance(max_candidates, int)
+            or isinstance(max_candidates, bool)
+            or max_candidates < 1
+        ):
+            raise ValueError("composition search max_candidates must be positive")
+        pairs: list[tuple[str, tuple[int, int]]] = []
+        for first in range(self.bank.executive_program_count):
+            for second in range(self.bank.executive_program_count):
+                if first == second:
+                    continue
+                child = self.bank.composed_executive_artifact((first, second))
+                key = hashlib.sha256(
+                    f"{self.seed}:{first}:{second}:{child.digest()}".encode()
+                ).hexdigest()
+                pairs.append((key, (first, second)))
+        pairs.sort(key=lambda item: item[0])
+        ordered = tuple(pair for _, pair in pairs)
+        return ordered if max_candidates is None else ordered[:max_candidates]
+
+    def search(
+        self,
+        evaluate: Callable[
+            [tuple[int, int], ExternalExecutiveProgramArtifact],
+            Sequence[float] | torch.Tensor,
+        ],
+        *,
+        threshold: float = 0.8,
+        min_observations: int = 1,
+        min_stable_observations: int = 1,
+        max_candidates: int | None = None,
+    ) -> ExecutiveCompositionSearchResult:
+        """Evaluate candidates through scalar outcomes and append one stable child."""
+
+        if not callable(evaluate):
+            raise TypeError("executive composition search evaluator must be callable")
+        before = self.bank.digest()
+        candidates = self.candidate_parent_slots(max_candidates=max_candidates)
+        attempted_slots: list[tuple[int, int]] = []
+        attempted_digests: list[str] = []
+        unique_bits = 0
+        unique_lifetimes = 0
+        for parent_slots in candidates:
+            child = self.bank.composed_executive_artifact(parent_slots)
+            raw_outcomes = evaluate(parent_slots, child)
+            raw_values = torch.as_tensor(raw_outcomes, dtype=torch.float64)
+            if raw_values.ndim > 1:
+                raise ValueError("composition search evaluator must return scalar outcomes")
+            values = raw_values.reshape(-1)
+            attempted_slots.append(parent_slots)
+            attempted_digests.append(child.digest())
+            unique_bits += int(values.numel())
+            unique_lifetimes += int(values.numel())
+            receipt = self.bank.compose_executive(
+                parent_slots,
+                values,
+                threshold=threshold,
+                min_observations=min_observations,
+                min_stable_observations=min_stable_observations,
+            )
+            if receipt.accepted:
+                return ExecutiveCompositionSearchResult(
+                    accepted=True,
+                    parent_slots=parent_slots,
+                    receipt=receipt,
+                    candidate_count=len(candidates),
+                    attempted_parent_slots=tuple(attempted_slots),
+                    attempted_child_digests=tuple(attempted_digests),
+                    unique_verifier_bits=unique_bits,
+                    unique_logical_lifetimes=unique_lifetimes,
+                    stable_bits_to_threshold=receipt.stable_bits_to_threshold,
+                    bank_digest_before=before,
+                    bank_digest_after=self.bank.digest(),
+                    reason="first stable composition admitted",
+                ).validate()
+        return ExecutiveCompositionSearchResult(
+            accepted=False,
+            parent_slots=None,
+            receipt=None,
+            candidate_count=len(candidates),
+            attempted_parent_slots=tuple(attempted_slots),
+            attempted_child_digests=tuple(attempted_digests),
+            unique_verifier_bits=unique_bits,
+            unique_logical_lifetimes=unique_lifetimes,
+            stable_bits_to_threshold=None,
+            bank_digest_before=before,
+            bank_digest_after=self.bank.digest(),
+            reason="no composition candidate cleared the stable-prefix verifier gate",
+        ).validate()
+
+
 __all__ = [
     "AGENT_BRAIN_BANK_ENTRY_SCHEMA",
     "AGENT_BRAIN_EXECUTIVE_KIND",
     "AGENT_BRAIN_TEMPORAL_KIND",
+    "EXECUTIVE_COMPOSITION_SEARCH_SCHEMA",
     "EXTERNAL_AGENT_BRAIN_BANK_SCHEMA",
+    "ExecutiveCompositionSearchResult",
     "ExternalAgentBrainBank",
+    "ExternalExecutiveCompositionSearch",
 ]

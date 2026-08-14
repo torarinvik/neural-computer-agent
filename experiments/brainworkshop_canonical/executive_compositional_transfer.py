@@ -22,7 +22,10 @@ from time import perf_counter
 
 import torch
 
-from neural_computer.agent_brain_bank import ExternalAgentBrainBank
+from neural_computer.agent_brain_bank import (
+    ExternalAgentBrainBank,
+    ExternalExecutiveCompositionSearch,
+)
 from neural_computer.executive import (
     EXECUTIVE_PROGRAM_SCHEMA,
     ExecutiveInstruction,
@@ -545,13 +548,24 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         min_observations=2,
         min_stable_observations=2,
     )
-    composed_source_receipt = durable_bank.compose_executive(
-        (durable_prelude_receipt.slot or 0, durable_source_receipt.slot or 0),
-        source_outcomes,
+    if durable_prelude_receipt.slot is None or durable_source_receipt.slot is None:
+        raise RuntimeError("durable composition parents were not admitted")
+    composition_search = ExternalExecutiveCompositionSearch(
+        durable_bank, seed=args.seed + 991_000
+    )
+    composition_result = composition_search.search(
+        lambda parent_slots, child: (
+            source_outcomes
+            if parent_slots == (durable_prelude_receipt.slot, durable_source_receipt.slot)
+            else [0.0, 0.0]
+        ),
         threshold=0.9,
         min_observations=2,
         min_stable_observations=2,
     )
+    if composition_result.receipt is None:
+        raise RuntimeError("durable composition search did not admit a child")
+    composed_source_receipt = composition_result.receipt
     bank_out = getattr(args, "bank_out", None)
     if bank_out is not None:
         durable_bank.save_bank(bank_out)
@@ -611,7 +625,9 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             durable_source_receipt.accepted and durable_target_receipt.accepted
         ),
         "durable_composed_source_admitted": (
-            durable_prelude_receipt.accepted and composed_source_receipt.accepted
+            durable_prelude_receipt.accepted
+            and composition_result.accepted
+            and composed_source_receipt.accepted
         ),
         "bank_reload_digest_exact": reloaded_bank.digest() == durable_bank.digest(),
         "bank_reload_source_mastery": reloaded_source_score >= 0.9,
@@ -671,6 +687,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "target_reload_score": reloaded_target_score,
             "composed_source_reload_score": reloaded_composed_source_score,
             "composition_provenance": list(reloaded_bank.composition_provenance),
+            "composition_search": composition_result.payload(),
         },
         "rows": rows,
         "aggregate": {
@@ -694,6 +711,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                 "warm_target_search": warm_bits,
                 "fresh_target_search": fresh_bits,
                 "source_retention": source_retention_bits,
+                "composition_search": composition_result.unique_verifier_bits,
                 "bank_reload": source_reload_bits
                 + target_reload_bits
                 + composed_source_reload_bits,
@@ -710,6 +728,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             + args.batch_size * 4
             + args.batch_size * 2
             + args.batch_size
+            + composition_result.unique_logical_lifetimes
             + sum(
                 control.unique_lifetimes
                 for control in (irrelevant, shuffled, action_shuffled, missing_history)
@@ -718,7 +737,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "replayed_examples": 0,
             "stable_bits_to_threshold": {
                 "warm_target_search": warm_bits,
-                "fresh_target_search": fresh_bits,
+            "fresh_target_search": fresh_bits,
+            "composition_search": composition_result.unique_verifier_bits,
             },
             "tick_latency_ms": {
                 "p50": float(

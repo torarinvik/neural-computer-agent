@@ -275,7 +275,10 @@ The same bank can now compose an admitted receive-only fragment with an
 admitted persistent temporal loop, record the parent slots and content
 digests, and re-run the composed child after reload with perfect source
 mastery. The composition gate is verifier-only and does not update the frozen
-controller.
+controller. Parent selection is now also memory-side: an opaque deterministic
+ordered-pair search evaluates candidates only through scalar verifier outcomes,
+appends the first stable child, and records its bits-to-threshold and lifetime
+accounting.
 
 The retained Brain Workshop evidence qualifies bounded append-only external
 working-memory computation through n-back-32 with frozen source retention and

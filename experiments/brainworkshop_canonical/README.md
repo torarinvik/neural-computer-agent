@@ -236,7 +236,10 @@ The promoted run also composes a verified receive-only fragment with the
 verified 1-back temporal loop, admits the child through the same stable-prefix
 verifier gate, persists parent slots and digests, and reloads the composed child
 at 1.0 source mastery. Composition is structural and controller-frozen; it is
-not yet unrestricted autonomous program induction.
+not yet unrestricted autonomous program induction. Parent selection is now an
+opaque deterministic ordered-pair search: candidates are evaluated only by
+scalar verifier outcomes, and the first stable child is appended with explicit
+bits-to-threshold and lifetime accounting.
 
 `external_compute_append_only_depth_growth.py` is the current bounded working-
 memory result. A frozen source file masters n-back-16, then a fresh external

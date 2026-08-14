@@ -55,7 +55,41 @@
         ],
         "schema": "neural-computer.executive-composition.v1"
       }
-    ]
+    ],
+    "composition_search": {
+      "schema": "neural-computer.executive-composition-search.v1",
+      "accepted": true,
+      "parent_slots": [
+        2,
+        0
+      ],
+      "receipt": {
+        "schema": "neural-computer.external-program-admission.v1",
+        "accepted": true,
+        "candidate_digest": "5c7ee814dfbab9522591f44a18f2b25a3e9503edbf75fee05a4771fd1039ebae",
+        "slot": 3,
+        "observations": 2,
+        "stable_bits_to_threshold": 1,
+        "stable_prefix_minimum": 1.0,
+        "reason": "verified executive artifact committed"
+      },
+      "candidate_count": 6,
+      "attempted_parent_slots": [
+        [
+          2,
+          0
+        ]
+      ],
+      "attempted_child_digests": [
+        "5c7ee814dfbab9522591f44a18f2b25a3e9503edbf75fee05a4771fd1039ebae"
+      ],
+      "unique_verifier_bits": 2,
+      "unique_logical_lifetimes": 2,
+      "stable_bits_to_threshold": 1,
+      "bank_digest_before": "f1fbc6d4ffc04b313531fb34ad53d69b43a754c39647f3a913b14d78399c9c39",
+      "bank_digest_after": "56ed7770b42248f1447712aaba322233bcef10d093393a4c97fdf7b12d99e70f",
+      "reason": "first stable composition admitted"
+    }
   },
   "rows": [
     {
@@ -260,20 +294,22 @@
       "warm_target_search": 15872,
       "fresh_target_search": 45056,
       "source_retention": 576,
+      "composition_search": 2,
       "bank_reload": 832,
       "controls": 4096
     },
-    "unique_logical_lifetimes": 8352,
+    "unique_logical_lifetimes": 8354,
     "optimizer_updates": 0,
     "replayed_examples": 0,
     "stable_bits_to_threshold": {
       "warm_target_search": 15872,
-      "fresh_target_search": 45056
+      "fresh_target_search": 45056,
+      "composition_search": 2
     },
     "tick_latency_ms": {
-      "p50": 0.462584022898227,
-      "p99": 0.6522419897373756
+      "p50": 0.450999999884516,
+      "p99": 0.5066892202012241
     },
-    "wall_seconds": 1.4600287500070408
+    "wall_seconds": 1.3829717499902472
   }
 }

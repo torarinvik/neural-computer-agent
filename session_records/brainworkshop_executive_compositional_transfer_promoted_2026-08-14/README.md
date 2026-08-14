@@ -34,6 +34,12 @@ and reloads the composed child at 1.0 source mastery. The child is admitted by
 the same stable-prefix verifier gate, so the composition is a durable learned
 skill rather than an unverified runtime macro.
 
+Parent selection is now itself memory-side and opaque. The deterministic search
+enumerates ordered parent pairs by content-addressed priority, exposes each
+candidate only to scalar verifier outcomes, and appends the first stable child.
+The reports record attempted pairs, unique verifier bits, logical lifetimes,
+and the exact bank digest before and after search.
+
 This proves bounded reusable program structure, smallest-failed-binding search,
 and durable restart-safe heterogeneous execution. It does not yet prove
 controller-generated candidate libraries, unbounded instruction induction, or
@@ -41,7 +47,7 @@ physical Brain Workshop transfer.
 
 Report checksums:
 
-- `report_seed_17.json`: `2888c97ad9980c0b9aeeb329b0c670ab3fcbe3b4359fed14080c3c3fa191712a`
-- `report_seed_101.json`: `dc0f2b5deba45fbac926ba1c7d535d1e2f7642a7a2ea4935a65e64314fe05c51`
+- `report_seed_17.json`: `08e721865612e42f8271f4dd355ed73a840bd595f461fe4fbdcceb3d2c504a28`
+- `report_seed_101.json`: `55ed6684ea30c551b618ce3507806dc681ed3fc7b6118cc6bb289c3a011619cc`
 - `AgentBrain.bank`: `6b6d0c574123c4afbd3827f7a88a2855c064d9d1df7292545c5c8a2031b357b3`
 - `AgentBrain_replication.bank`: `eb4cec9b071d5cc8ff971279d1bdd8dc189aa6db4fec01cb4b68127145a63b5f`

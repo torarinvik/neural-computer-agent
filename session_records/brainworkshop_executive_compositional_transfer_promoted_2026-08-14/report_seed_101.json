@@ -55,7 +55,66 @@
         ],
         "schema": "neural-computer.executive-composition.v1"
       }
-    ]
+    ],
+    "composition_search": {
+      "schema": "neural-computer.executive-composition-search.v1",
+      "accepted": true,
+      "parent_slots": [
+        2,
+        0
+      ],
+      "receipt": {
+        "schema": "neural-computer.external-program-admission.v1",
+        "accepted": true,
+        "candidate_digest": "5c7ee814dfbab9522591f44a18f2b25a3e9503edbf75fee05a4771fd1039ebae",
+        "slot": 3,
+        "observations": 2,
+        "stable_bits_to_threshold": 1,
+        "stable_prefix_minimum": 1.0,
+        "reason": "verified executive artifact committed"
+      },
+      "candidate_count": 6,
+      "attempted_parent_slots": [
+        [
+          0,
+          2
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          2,
+          1
+        ],
+        [
+          1,
+          2
+        ],
+        [
+          1,
+          0
+        ],
+        [
+          2,
+          0
+        ]
+      ],
+      "attempted_child_digests": [
+        "7bcf96aae1398d14f389609bac5c34b4520e4ebaec12736a85d51ecb7ca07fdb",
+        "0ad96cdf56f65d72e3b17af539ea85f813b34176b4c40e8e98f5e58c9ca6a569",
+        "3760d9ea15cb848505651f2f7a3719a2be59a9ba486a0775dc5c7b63235b34ab",
+        "f6da29f6aa90e25b9f2e140f78440f032f61c2e7ddd778bcb1cd7775d1742ee2",
+        "f61e2806818e8ed00a67439552af8f0aa47d6c9a46b333b25c9c04f1a1d3a75a",
+        "5c7ee814dfbab9522591f44a18f2b25a3e9503edbf75fee05a4771fd1039ebae"
+      ],
+      "unique_verifier_bits": 12,
+      "unique_logical_lifetimes": 12,
+      "stable_bits_to_threshold": 1,
+      "bank_digest_before": "1c06227aa71367478c20dcc1fe951270f5d7f8847e5a4a82709396fbbb3b6c63",
+      "bank_digest_after": "9a8695a3e7d5927e39a4c81c7a23f7259e44522146be98ec5454fe9d868ad6ae",
+      "reason": "first stable composition admitted"
+    }
   },
   "rows": [
     {
@@ -260,20 +319,22 @@
       "warm_target_search": 14336,
       "fresh_target_search": 39936,
       "source_retention": 576,
+      "composition_search": 12,
       "bank_reload": 832,
       "controls": 4096
     },
-    "unique_logical_lifetimes": 7520,
+    "unique_logical_lifetimes": 7532,
     "optimizer_updates": 0,
     "replayed_examples": 0,
     "stable_bits_to_threshold": {
       "warm_target_search": 14336,
-      "fresh_target_search": 39936
+      "fresh_target_search": 39936,
+      "composition_search": 12
     },
     "tick_latency_ms": {
-      "p50": 0.4558545188046992,
-      "p99": 0.587635328993201
+      "p50": 0.4630624898709357,
+      "p99": 0.6597850180696688
     },
-    "wall_seconds": 1.281445375061594
+    "wall_seconds": 1.3447815419640392
   }
 }

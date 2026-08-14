@@ -15,6 +15,7 @@ from neural_computer import (
     TEMPORAL_ADDRESS_OUTPUT_SCHEMA,
     ExecutiveInstruction,
     ExternalAgentBrainBank,
+    ExternalExecutiveCompositionSearch,
     ExternalExecutiveProgram,
     ExternalExecutiveProgramArtifact,
     ExternalExecutiveProgramBank,
@@ -39,7 +40,8 @@ def _temporal_artifact(values: tuple[float, ...]) -> ExternalProgramArtifact:
 
 
 def _finite_executive_artifact(variant: int = 0) -> ExternalExecutiveProgramArtifact:
-    wait = ExecutiveInstruction("wait", next_target=(2 if variant else None))
+    wait_target = None if variant == 0 else 2 if variant == 1 else 1
+    wait = ExecutiveInstruction("wait", next_target=wait_target)
     return ExternalExecutiveProgramArtifact(
         program=ExternalExecutiveProgram(
             1,
@@ -119,6 +121,65 @@ def test_composition_provenance_cannot_rebind_parent_digests() -> None:
 
     with pytest.raises(ValueError, match="parent digest binding"):
         ExternalAgentBrainBank.from_payload(payload)
+
+
+def test_opaque_composition_search_appends_first_stable_child() -> None:
+    bank = ExternalAgentBrainBank(controller_digest=_digest(36), capacity=6)
+    for variant in range(3):
+        bank.admit_executive(_finite_executive_artifact(variant), [1.0])
+    search = ExternalExecutiveCompositionSearch(bank, seed=19)
+    candidates = search.candidate_parent_slots()
+    target = candidates[1]
+    evaluated: list[tuple[int, int]] = []
+
+    def evaluate(parent_slots: tuple[int, int], child: ExternalExecutiveProgramArtifact):
+        assert child.digest()
+        evaluated.append(parent_slots)
+        return [1.0, 1.0] if parent_slots == target else [0.0, 0.0]
+
+    result = search.search(
+        evaluate,
+        threshold=0.9,
+        min_observations=2,
+        min_stable_observations=2,
+    )
+
+    assert result.accepted
+    assert result.parent_slots == target
+    assert result.receipt is not None and result.receipt.accepted
+    assert result.candidate_count == 6
+    assert tuple(evaluated) == (candidates[0], candidates[1])
+    assert result.unique_verifier_bits == 4
+    assert result.unique_logical_lifetimes == 4
+    assert result.bank_digest_after == bank.digest()
+    assert bank.program_count == 4
+    assert result.payload()["attempted_parent_slots"] == [list(candidates[0]), list(candidates[1])]
+
+
+def test_rejected_composition_search_is_memory_side_noop() -> None:
+    bank = ExternalAgentBrainBank(controller_digest=_digest(37), capacity=6)
+    for variant in range(3):
+        bank.admit_executive(_finite_executive_artifact(variant), [1.0])
+    before = bank.digest()
+    search = ExternalExecutiveCompositionSearch(bank, seed=23)
+
+    result = search.search(
+        lambda parent_slots, child: [0.0, 0.0],
+        threshold=0.9,
+        min_observations=2,
+        min_stable_observations=2,
+    )
+
+    assert not result.accepted
+    assert result.parent_slots is None and result.receipt is None
+    assert result.candidate_count == 6
+    assert result.unique_verifier_bits == 12
+    assert result.bank_digest_before == before == result.bank_digest_after
+    assert bank.program_count == 3
+
+    with pytest.raises(ValueError, match="scalar outcomes"):
+        search.search(lambda parent_slots, child: [[1.0, 1.0]])
+    assert bank.digest() == before
 
 
 def test_mixed_agent_brain_round_trip_preserves_both_skill_families(
