@@ -13431,3 +13431,28 @@ typed REWARD head survived because it conditions on the entity
 signature psi. Pre-registered next: the same conditioning for
 dynamics -- transition table keyed by (signature bucket, entity
 cell, avatar cell), type-pure entries. Scope: Localized.
+
+## F259 — TYPE-KEYED TRANSITION MEMORY ALSO REFUSED; THE FOURTH
+## REFUTATION RE-READS F257: THE TRUE-DYNAMICS ADVANTAGE IS EVENTS,
+## NOT POSITIONS (2026-08-14, typed_memory.py, 6 seeds. Scope:
+## GEN-DEV trio + control)
+
+Signature-bucket keying (type-pure table entries) changed nothing:
+P1 0/6 on every trio world, table rolls still lose to bank rolls.
+Four dynamics fixes have now been refuted on the same worlds
+(per-slot ops F248, per-entity rule binding F254, untyped memory
+F258, typed memory F259). One-step positional fidelity is NOT the
+deployable lever.
+
+Re-reading F257's truedyn advantage with all four refutations in
+hand: shadow simulations differ from every learned roll not mainly
+in WHERE entities go but in WHAT HAPPENS -- eaten food disappears,
+death terminates the branch. Learned rolls never consume and never
+die, so the tree DOUBLE-COUNTS the same food at every depth and
+suicidal branches keep accruing leaf value. Pre-registered next:
+EVENT SEMANTICS IN THE TREE -- (a) prune any branch whose predicted
+edge reward <= -0.4 (death), (b) after a positive contact event
+(> +0.2), mark the contacted group consumed in the child state so
+it cannot be re-collected down-branch. Generic, reward-scale
+anchored, priced by the head the stack already has.
+Scope: Localized (GEN-DEV trio + control).
