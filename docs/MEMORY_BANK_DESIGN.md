@@ -13600,3 +13600,31 @@ Cycle close (F262-F263): the trio residual is closed within the
 frozen core (six refutations + scale, F262); the frontier work at
 breadth begins from the guarded union. Sealed sets: untouched,
 user-gated, as always.
+
+## F264 — THE HYBRID ACTION RULE: RACED COMPOSITION SETS A NEW BEST
+## ON THE HARDEST WITNESS; P1 REFUSED AT THRESHOLD (2026-08-14,
+## hybrid_controller.py, 6 seeds. Scope: trio + intercept2 + dense
+## pair)
+
+argmin goal_cost - lambda * typed_reward, (goal, lambda) raced per
+world with pure endpoints available.
+
+  P1 REFUTED at +0.10: per-seed 0/6, 0/6, 2/6. At the mean the
+     composition still delivers: delayed3_intercept2 -0.568 vs
+     -0.656 for either pure stack -- THE NEW BEST DEPLOYABLE SCORE
+     on the hardest certified witness -- and the race picks the
+     hybrid form (lam=0.5) on 17/18 trio seed-cells.
+  P2 mostly holds (3-5/6 within -0.05): single-stream selection
+     optimism visible; two-stream racing would tighten it.
+  P3 CONFIRMED: dense worlds unharmed (+1.542 vs +1.557; +1.365 vs
+     +1.378) -- the race falls back toward pure goal-grammar.
+  P4 CONFIRMED: intercept2 keeps the transfer win (-0.156).
+
+The hybrid enters the guarded union as a raced form. Standing
+deployable frontier on the trio: -0.755 / -0.536 / -0.568.
+Next (pre-registered): the ungated breakthrough candidate --
+CROSS-SUBSTRATE TYPED VALUE TRANSFER. The typed head's coordinates
+(contact/teleport events x motion/approach signatures) are defined
+by DISTANCE alone, not by grid geometry; on the graph substrate the
+same weights should price BFS-metric events with zero graph reward
+data. Amodal value knowledge, the founding thesis one level up.
