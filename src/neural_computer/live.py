@@ -19,12 +19,14 @@ from typing import Protocol
 
 import torch
 
+from .agent_brain_bank import ExternalAgentBrainBank
 from .executive import ExternalAmodalExecutive, TrustedExternalExecutiveState
 from .executive_route import (
     ExternalExecutiveSkillRouter,
     ExternalExecutiveSkillSelection,
 )
 from .interface import AmodalEventCollection, IntentEvent
+from .program import ExternalProgramAdmissionReceipt
 
 LIVE_ACTION_RECEIPT_SCHEMA = "neural-computer.live-action-receipt.v1"
 LIVE_INPUT_INSTRUCTION_SCHEMA = "neural-computer.live-input-instruction.v1"
@@ -34,6 +36,9 @@ QUEUED_OUTCOME_INPUT_SCHEMA = "neural-computer.queued-outcome-input.v1"
 LIVE_EXECUTIVE_MACHINE_SCHEMA = "neural-computer.live-executive-machine.v1"
 LIVE_EXECUTIVE_ROUTER_MACHINE_SCHEMA = (
     "neural-computer.live-executive-router-machine.v1"
+)
+LIVE_EXECUTIVE_ADMISSION_MACHINE_SCHEMA = (
+    "neural-computer.live-executive-admission-machine.v1"
 )
 
 
@@ -1110,3 +1115,190 @@ class CognitiveTickRuntime:
                 )
             ),
         )
+
+
+class ExternalExecutiveCandidateLiveMachine:
+    """Evaluate one frozen executive candidate through the live tick boundary.
+
+    The candidate is supplied by an outer search or proposal mechanism and is
+    *not* visible to the controller.  This wrapper only accumulates the scalar
+    verifier outcomes attached to this candidate's own action receipts.  At
+    episode boundaries it applies the common stable-prefix admission gate and
+    appends the immutable artifact to ``AgentBrain.bank`` only after the gate
+    accepts it.  A rejected candidate leaves the bank byte-for-byte unchanged.
+
+    This is deliberately a verifier-gated staging primitive, not autonomous
+    program synthesis: candidate proposal remains an explicit upstream
+    concern, while admission is causal, replay-free, and reusable by any live
+    frontend that emits the normal receipt/outcome protocol.
+    """
+
+    schema = LIVE_EXECUTIVE_ADMISSION_MACHINE_SCHEMA
+
+    def __init__(
+        self,
+        artifact,
+        bank: ExternalAgentBrainBank,
+        decoder: LiveIntentionDecoder,
+        *,
+        batch_size: int,
+        output_key: str,
+        threshold: float = 0.8,
+        min_observations: int = 3,
+        min_stable_observations: int = 2,
+        device: torch.device | str = "cpu",
+        dtype: torch.dtype = torch.float32,
+        sample: bool = True,
+        model_version: int = 0,
+        max_instructions_per_tick: int = 128,
+    ) -> None:
+        if not isinstance(bank, ExternalAgentBrainBank):
+            raise TypeError("live executive admission needs an AgentBrain bank")
+        for method_name in ("digest", "validate", "instantiate"):
+            if not callable(getattr(artifact, method_name, None)):
+                raise TypeError(
+                    "live executive admission candidate must be executable"
+                )
+        artifact.validate()
+        if not 0.0 <= threshold <= 1.0:
+            raise ValueError("live executive admission threshold must lie in [0, 1]")
+        for name, value in (
+            ("min_observations", min_observations),
+            ("min_stable_observations", min_stable_observations),
+        ):
+            if not isinstance(value, int) or isinstance(value, bool) or value < 1:
+                raise ValueError(f"live executive admission {name} must be positive")
+        self.candidate_digest = artifact.digest()
+        self._artifact = artifact
+        self.bank = bank
+        self.threshold = float(threshold)
+        self.min_observations = int(min_observations)
+        self.min_stable_observations = int(min_stable_observations)
+        self._machine = ExternalExecutiveLiveMachine.from_artifact(
+            artifact,
+            decoder,
+            batch_size=batch_size,
+            output_key=output_key,
+            device=device,
+            dtype=dtype,
+            sample=sample,
+            model_version=model_version,
+            max_instructions_per_tick=max_instructions_per_tick,
+            skill_digest=self.candidate_digest,
+        )
+        self._episode_rewards: list[float] = []
+        self._lifetime_outcomes: list[float] = []
+        self._unique_verifier_bits = 0
+        self._unique_logical_lifetimes = 0
+        self._admission_receipt: ExternalProgramAdmissionReceipt | None = None
+        self._bank_digest_before = bank.digest()
+        self._bank_digest_after = self._bank_digest_before
+
+    @property
+    def executive(self) -> ExternalAmodalExecutive:
+        return self._machine.executive
+
+    @property
+    def decoder(self) -> LiveIntentionDecoder:
+        return self._machine.decoder
+
+    @property
+    def executive_state(self) -> TrustedExternalExecutiveState:
+        return self._machine.executive_state
+
+    @property
+    def executive_ticks(self) -> int:
+        return self._machine.executive_ticks
+
+    @property
+    def lifetime_outcomes(self) -> tuple[float, ...]:
+        return tuple(self._lifetime_outcomes)
+
+    @property
+    def unique_verifier_bits(self) -> int:
+        return self._unique_verifier_bits
+
+    @property
+    def unique_logical_lifetimes(self) -> int:
+        return self._unique_logical_lifetimes
+
+    @property
+    def replayed_examples(self) -> int:
+        return 0
+
+    @property
+    def admission_receipt(self) -> ExternalProgramAdmissionReceipt | None:
+        return self._admission_receipt
+
+    @property
+    def admitted(self) -> bool:
+        return bool(
+            self._admission_receipt is not None
+            and self._admission_receipt.accepted
+        )
+
+    @property
+    def bank_digest_before(self) -> str:
+        return self._bank_digest_before
+
+    @property
+    def bank_digest_after(self) -> str:
+        return self._bank_digest_after
+
+    def _observe_outcomes(self, outcomes: Sequence[ResolvedLiveOutcome]) -> None:
+        for resolved in outcomes:
+            credit = resolved.proposal.credit_state
+            if not isinstance(credit, ExternalExecutiveLiveCredit):
+                continue
+            if credit.program_digest != self.candidate_digest:
+                continue
+            event = resolved.event
+            if event.present.shape != (self._machine.batch_size,):
+                raise ValueError("live executive candidate outcome batch is invalid")
+            rewards = event.reward.detach().reshape(-1)
+            present = event.present.detach().reshape(-1)
+            for reward in rewards[present].tolist():
+                self._episode_rewards.append(float(reward))
+                self._unique_verifier_bits += 1
+
+    def finish_episode(self) -> float | None:
+        """Record one lifetime and try the stable verifier admission gate."""
+
+        if not self._episode_rewards:
+            return None
+        outcome = sum(self._episode_rewards) / len(self._episode_rewards)
+        self._episode_rewards.clear()
+        self._lifetime_outcomes.append(outcome)
+        self._unique_logical_lifetimes += 1
+        if not self.admitted:
+            self._admission_receipt = self.bank.admit_executive(
+                self._artifact,
+                self._lifetime_outcomes,
+                threshold=self.threshold,
+                min_observations=self.min_observations,
+                min_stable_observations=self.min_stable_observations,
+            )
+            self._bank_digest_after = self.bank.digest()
+        return outcome
+
+    def reset(
+        self,
+        *,
+        device: torch.device | str | None = None,
+        dtype: torch.dtype | None = None,
+    ) -> None:
+        """Close any active lifetime, then reset only the frozen execution state."""
+
+        self.finish_episode()
+        self._machine.reset(device=device, dtype=dtype)
+
+    def tick(
+        self,
+        events: AmodalEventCollection,
+        outcomes: Sequence[ResolvedLiveOutcome],
+        *,
+        now: float,
+        elapsed: float,
+    ) -> tuple[LiveActionProposal, ...]:
+        self._observe_outcomes(outcomes)
+        return self._machine.tick(events, (), now=now, elapsed=elapsed)
