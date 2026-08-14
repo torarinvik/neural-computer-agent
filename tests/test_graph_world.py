@@ -1,8 +1,7 @@
 import torch
 
 from experiments.games_amodal.graph_perception import ABSENT, encode
-from experiments.games_amodal.graph_world import (
-    GraphConfig, GraphVerifier, NODES)
+from experiments.games_amodal.graph_world import GraphConfig, GraphVerifier
 
 
 def test_collect_rewards_and_respawns() -> None:
