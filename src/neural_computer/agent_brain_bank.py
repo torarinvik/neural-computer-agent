@@ -15,6 +15,7 @@ loader never executes an arbitrary pickle merely because a file has the
 from __future__ import annotations
 
 import base64
+import copy
 import hashlib
 import json
 import os
@@ -31,6 +32,7 @@ from .executive_bank import (
     ExternalExecutiveProgramArtifact,
     ExternalExecutiveProgramBank,
     compose_executive_artifacts,
+    executive_artifact_can_handoff,
 )
 from .program import (
     ExternalProgramAdmissionReceipt,
@@ -46,10 +48,37 @@ AGENT_BRAIN_BANK_ENTRY_SCHEMA = "neural-computer.agent-brain-bank-entry.v1"
 AGENT_BRAIN_EXECUTIVE_KIND = "executive_program"
 AGENT_BRAIN_TEMPORAL_KIND = "temporal_program_bank"
 EXECUTIVE_COMPOSITION_SEARCH_SCHEMA = (
-    "neural-computer.executive-composition-search.v1"
+    "neural-computer.executive-composition-search.v2"
 )
 
 BrainEntryKind = Literal["executive_program", "temporal_program_bank"]
+
+
+@dataclass(frozen=True)
+class ExecutiveCompositionEvaluation:
+    """Fresh verifier evidence and explicit accounting for one candidate."""
+
+    outcomes: tuple[float, ...]
+    unique_verifier_bits: int
+    unique_logical_lifetimes: int
+    replayed_examples: int = 0
+
+    def validate(self) -> ExecutiveCompositionEvaluation:
+        values = torch.as_tensor(self.outcomes, dtype=torch.float64)
+        if values.ndim != 1 or values.numel() < 1 or not bool(torch.isfinite(values).all()):
+            raise ValueError("composition evaluation outcomes must be finite scalars")
+        if not bool(((0.0 <= values) & (values <= 1.0)).all()):
+            raise ValueError("composition evaluation outcomes must lie in [0, 1]")
+        for name, value in (
+            ("unique_verifier_bits", self.unique_verifier_bits),
+            ("unique_logical_lifetimes", self.unique_logical_lifetimes),
+            ("replayed_examples", self.replayed_examples),
+        ):
+            if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+                raise ValueError(f"composition evaluation {name} must be nonnegative")
+        if self.unique_verifier_bits < len(self.outcomes):
+            raise ValueError("composition evaluation cannot contain more outcomes than bits")
+        return self
 
 
 @dataclass(frozen=True)
@@ -64,6 +93,7 @@ class ExecutiveCompositionSearchResult:
     attempted_child_digests: tuple[str, ...]
     unique_verifier_bits: int
     unique_logical_lifetimes: int
+    replayed_examples: int
     stable_bits_to_threshold: int | None
     bank_digest_before: str
     bank_digest_after: str
@@ -77,7 +107,11 @@ class ExecutiveCompositionSearchResult:
             raise ValueError("executive composition search candidate accounting is invalid")
         if len(self.attempted_parent_slots) != len(self.attempted_child_digests):
             raise ValueError("executive composition search attempt records are misaligned")
-        if self.unique_verifier_bits < 0 or self.unique_logical_lifetimes < 0:
+        if (
+            self.unique_verifier_bits < 0
+            or self.unique_logical_lifetimes < 0
+            or self.replayed_examples < 0
+        ):
             raise ValueError("executive composition search accounting cannot be negative")
         if self.stable_bits_to_threshold is not None and not (
             1 <= self.stable_bits_to_threshold <= self.unique_verifier_bits
@@ -106,6 +140,7 @@ class ExecutiveCompositionSearchResult:
             "attempted_child_digests": list(self.attempted_child_digests),
             "unique_verifier_bits": self.unique_verifier_bits,
             "unique_logical_lifetimes": self.unique_logical_lifetimes,
+            "replayed_examples": self.replayed_examples,
             "stable_bits_to_threshold": self.stable_bits_to_threshold,
             "bank_digest_before": self.bank_digest_before,
             "bank_digest_after": self.bank_digest_after,
@@ -321,7 +356,7 @@ class ExternalAgentBrainBank:
 
     @property
     def composition_provenance(self) -> tuple[dict[str, object], ...]:
-        return tuple(dict(record) for record in self._composition_provenance)
+        return tuple(copy.deepcopy(record) for record in self._composition_provenance)
 
     def configuration(self) -> dict[str, object]:
         return {
@@ -555,9 +590,9 @@ class ExternalAgentBrainBank:
             "manifest": self.manifest(),
         }
         if self._composition_provenance:
-            content["composition_provenance"] = [
-                dict(record) for record in self._composition_provenance
-            ]
+            content["composition_provenance"] = copy.deepcopy(
+                self._composition_provenance
+            )
         return content
 
     def digest(self) -> str:
@@ -641,7 +676,7 @@ class ExternalAgentBrainBank:
         result._version = version
         if not all(isinstance(record, dict) for record in provenance):
             raise TypeError("AgentBrain composition provenance is malformed")
-        result._composition_provenance = [dict(record) for record in provenance]
+        result._composition_provenance = copy.deepcopy(provenance)
         result._validate_composition_provenance()
         if manifest != result.manifest():
             raise ValueError("AgentBrain bank manifest mismatch")
@@ -686,6 +721,34 @@ class ExternalAgentBrainBank:
             ]
             if parent_digests != expected_parent_digests:
                 raise ValueError("AgentBrain composition parent digest binding is invalid")
+            expected_child = self.composed_executive_artifact(parent_slots)
+            if child_digest != expected_child.digest():
+                raise ValueError("AgentBrain composition child derivation is invalid")
+            try:
+                admission_receipt = ExternalProgramAdmissionReceipt(
+                    accepted=admission.get("accepted"),
+                    candidate_digest=admission.get("candidate_digest"),
+                    slot=admission.get("slot"),
+                    observations=admission.get("observations"),
+                    stable_bits_to_threshold=admission.get("stable_bits_to_threshold"),
+                    stable_prefix_minimum=admission.get("stable_prefix_minimum"),
+                    reason=admission.get("reason"),
+                    schema=admission.get("schema"),
+                ).validate()
+            except (TypeError, ValueError) as error:
+                raise ValueError(
+                    "AgentBrain composition admission receipt is invalid"
+                ) from error
+            if (
+                admission_receipt.accepted is not True
+                or admission_receipt.candidate_digest != child_digest
+                or not isinstance(admission_receipt.slot, int)
+                or isinstance(admission_receipt.slot, bool)
+                or not 0 <= admission_receipt.slot < self.executive_program_count
+                or self._executive_bank.artifact(admission_receipt.slot).digest()
+                != child_digest
+            ):
+                raise ValueError("AgentBrain composition admission binding is invalid")
 
     def save_bank(self, path: Path) -> None:
         path = Path(path)
@@ -767,12 +830,19 @@ class ExternalExecutiveCompositionSearch:
             raise ValueError("composition search max_candidates must be positive")
         pairs: list[tuple[str, tuple[int, int]]] = []
         for first in range(self.bank.executive_program_count):
+            first_artifact = self.bank.executive_bank.artifact(first)
+            if not executive_artifact_can_handoff(first_artifact):
+                continue
             for second in range(self.bank.executive_program_count):
                 if first == second:
                     continue
+                parent_digests = (
+                    first_artifact.digest(),
+                    self.bank.executive_bank.artifact(second).digest(),
+                )
                 child = self.bank.composed_executive_artifact((first, second))
                 key = hashlib.sha256(
-                    f"{self.seed}:{first}:{second}:{child.digest()}".encode()
+                    f"{self.seed}:{parent_digests[0]}:{parent_digests[1]}:{child.digest()}".encode()
                 ).hexdigest()
                 pairs.append((key, (first, second)))
         pairs.sort(key=lambda item: item[0])
@@ -783,7 +853,7 @@ class ExternalExecutiveCompositionSearch:
         self,
         evaluate: Callable[
             [tuple[int, int], ExternalExecutiveProgramArtifact],
-            Sequence[float] | torch.Tensor,
+            ExecutiveCompositionEvaluation,
         ],
         *,
         threshold: float = 0.8,
@@ -801,17 +871,21 @@ class ExternalExecutiveCompositionSearch:
         attempted_digests: list[str] = []
         unique_bits = 0
         unique_lifetimes = 0
+        replayed_examples = 0
         for parent_slots in candidates:
             child = self.bank.composed_executive_artifact(parent_slots)
-            raw_outcomes = evaluate(parent_slots, child)
-            raw_values = torch.as_tensor(raw_outcomes, dtype=torch.float64)
-            if raw_values.ndim > 1:
-                raise ValueError("composition search evaluator must return scalar outcomes")
-            values = raw_values.reshape(-1)
+            evaluation = evaluate(parent_slots, child)
+            if not isinstance(evaluation, ExecutiveCompositionEvaluation):
+                raise TypeError(
+                    "composition search evaluator must return explicit evaluation accounting"
+                )
+            evaluation.validate()
+            values = torch.as_tensor(evaluation.outcomes, dtype=torch.float64)
             attempted_slots.append(parent_slots)
             attempted_digests.append(child.digest())
-            unique_bits += int(values.numel())
-            unique_lifetimes += int(values.numel())
+            unique_bits += evaluation.unique_verifier_bits
+            unique_lifetimes += evaluation.unique_logical_lifetimes
+            replayed_examples += evaluation.replayed_examples
             receipt = self.bank.compose_executive(
                 parent_slots,
                 values,
@@ -829,7 +903,8 @@ class ExternalExecutiveCompositionSearch:
                     attempted_child_digests=tuple(attempted_digests),
                     unique_verifier_bits=unique_bits,
                     unique_logical_lifetimes=unique_lifetimes,
-                    stable_bits_to_threshold=receipt.stable_bits_to_threshold,
+                    replayed_examples=replayed_examples,
+                    stable_bits_to_threshold=unique_bits,
                     bank_digest_before=before,
                     bank_digest_after=self.bank.digest(),
                     reason="first stable composition admitted",
@@ -843,6 +918,7 @@ class ExternalExecutiveCompositionSearch:
             attempted_child_digests=tuple(attempted_digests),
             unique_verifier_bits=unique_bits,
             unique_logical_lifetimes=unique_lifetimes,
+            replayed_examples=replayed_examples,
             stable_bits_to_threshold=None,
             bank_digest_before=before,
             bank_digest_after=self.bank.digest(),
@@ -856,6 +932,7 @@ __all__ = [
     "AGENT_BRAIN_TEMPORAL_KIND",
     "EXECUTIVE_COMPOSITION_SEARCH_SCHEMA",
     "EXTERNAL_AGENT_BRAIN_BANK_SCHEMA",
+    "ExecutiveCompositionEvaluation",
     "ExecutiveCompositionSearchResult",
     "ExternalAgentBrainBank",
     "ExternalExecutiveCompositionSearch",

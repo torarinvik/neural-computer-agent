@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 
@@ -13,6 +14,7 @@ from neural_computer import (
     TEMPORAL_ADDRESS_EXECUTION_SCHEMA,
     TEMPORAL_ADDRESS_INTERPRETER_SCHEMA,
     TEMPORAL_ADDRESS_OUTPUT_SCHEMA,
+    ExecutiveCompositionEvaluation,
     ExecutiveInstruction,
     ExternalAgentBrainBank,
     ExternalExecutiveCompositionSearch,
@@ -69,6 +71,14 @@ def test_executive_composition_rebases_slots_and_terminal_handoff() -> None:
     assert composed.program.instructions[-1].source is None
 
 
+def test_executive_composition_rejects_unreachable_later_components() -> None:
+    looping = _finite_executive_artifact(2)
+    finite = _finite_executive_artifact()
+
+    with pytest.raises(ValueError, match="terminal handoff"):
+        compose_executive_artifacts((looping, finite))
+
+
 def test_bank_composes_admitted_slots_with_provenance_and_reload(
     tmp_path: Path,
 ) -> None:
@@ -123,6 +133,50 @@ def test_composition_provenance_cannot_rebind_parent_digests() -> None:
         ExternalAgentBrainBank.from_payload(payload)
 
 
+def test_composition_provenance_binds_child_derivation_and_admission() -> None:
+    bank = ExternalAgentBrainBank(controller_digest=_digest(351), capacity=4)
+    bank.admit_executive(_finite_executive_artifact(), [1.0])
+    bank.admit_executive(_finite_executive_artifact(1), [1.0])
+    bank.compose_executive((0, 1), [1.0])
+
+    wrong_child = bank.payload()
+    wrong_child["composition_provenance"][0]["child_digest"] = bank.artifact(
+        AGENT_BRAIN_EXECUTIVE_KIND, 0
+    ).digest()
+    content = {key: value for key, value in wrong_child.items() if key != "sha256"}
+    wrong_child["sha256"] = hashlib.sha256(
+        json.dumps(content, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
+    with pytest.raises(ValueError, match="child derivation"):
+        ExternalAgentBrainBank.from_payload(wrong_child)
+
+    wrong_admission = bank.payload()
+    wrong_admission["composition_provenance"][0]["admission"]["slot"] = 0
+    content = {key: value for key, value in wrong_admission.items() if key != "sha256"}
+    wrong_admission["sha256"] = hashlib.sha256(
+        json.dumps(content, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
+    with pytest.raises(ValueError, match="admission binding"):
+        ExternalAgentBrainBank.from_payload(wrong_admission)
+
+
+def test_composition_provenance_and_payload_are_isolated_snapshots() -> None:
+    bank = ExternalAgentBrainBank(controller_digest=_digest(352), capacity=4)
+    bank.admit_executive(_finite_executive_artifact(), [1.0])
+    bank.admit_executive(_finite_executive_artifact(1), [1.0])
+    bank.compose_executive((0, 1), [1.0])
+    before = bank.digest()
+
+    provenance = bank.composition_provenance
+    provenance[0]["parent_slots"][0] = 1
+    payload = bank.payload()
+    payload["composition_provenance"][0]["admission"]["slot"] = 0
+
+    assert bank.digest() == before
+    assert bank.composition_provenance[0]["parent_slots"] == [0, 1]
+    assert bank.composition_provenance[0]["admission"]["slot"] == 2
+
+
 def test_opaque_composition_search_appends_first_stable_child() -> None:
     bank = ExternalAgentBrainBank(controller_digest=_digest(36), capacity=6)
     for variant in range(3):
@@ -135,7 +189,11 @@ def test_opaque_composition_search_appends_first_stable_child() -> None:
     def evaluate(parent_slots: tuple[int, int], child: ExternalExecutiveProgramArtifact):
         assert child.digest()
         evaluated.append(parent_slots)
-        return [1.0, 1.0] if parent_slots == target else [0.0, 0.0]
+        return ExecutiveCompositionEvaluation(
+            outcomes=(1.0, 1.0) if parent_slots == target else (0.0, 0.0),
+            unique_verifier_bits=20,
+            unique_logical_lifetimes=2,
+        )
 
     result = search.search(
         evaluate,
@@ -147,10 +205,12 @@ def test_opaque_composition_search_appends_first_stable_child() -> None:
     assert result.accepted
     assert result.parent_slots == target
     assert result.receipt is not None and result.receipt.accepted
-    assert result.candidate_count == 6
+    assert result.candidate_count == 4
     assert tuple(evaluated) == (candidates[0], candidates[1])
-    assert result.unique_verifier_bits == 4
+    assert result.unique_verifier_bits == 40
     assert result.unique_logical_lifetimes == 4
+    assert result.replayed_examples == 0
+    assert result.stable_bits_to_threshold == 40
     assert result.bank_digest_after == bank.digest()
     assert bank.program_count == 4
     assert result.payload()["attempted_parent_slots"] == [list(candidates[0]), list(candidates[1])]
@@ -164,7 +224,11 @@ def test_rejected_composition_search_is_memory_side_noop() -> None:
     search = ExternalExecutiveCompositionSearch(bank, seed=23)
 
     result = search.search(
-        lambda parent_slots, child: [0.0, 0.0],
+        lambda parent_slots, child: ExecutiveCompositionEvaluation(
+            outcomes=(0.0, 0.0),
+            unique_verifier_bits=20,
+            unique_logical_lifetimes=2,
+        ),
         threshold=0.9,
         min_observations=2,
         min_stable_observations=2,
@@ -172,14 +236,37 @@ def test_rejected_composition_search_is_memory_side_noop() -> None:
 
     assert not result.accepted
     assert result.parent_slots is None and result.receipt is None
-    assert result.candidate_count == 6
-    assert result.unique_verifier_bits == 12
+    assert result.candidate_count == 4
+    assert result.unique_verifier_bits == 80
     assert result.bank_digest_before == before == result.bank_digest_after
     assert bank.program_count == 3
 
-    with pytest.raises(ValueError, match="scalar outcomes"):
+    with pytest.raises(TypeError, match="explicit evaluation accounting"):
         search.search(lambda parent_slots, child: [[1.0, 1.0]])
     assert bank.digest() == before
+
+
+def test_composition_search_order_is_invariant_to_bank_slot_order() -> None:
+    artifacts = tuple(_finite_executive_artifact(variant) for variant in range(3))
+    first = ExternalAgentBrainBank(controller_digest=_digest(38), capacity=6)
+    second = ExternalAgentBrainBank(controller_digest=_digest(38), capacity=6)
+    for artifact in artifacts:
+        first.admit_executive(artifact, [1.0])
+    for artifact in reversed(artifacts):
+        second.admit_executive(artifact, [1.0])
+
+    def ordered_parent_digests(bank: ExternalAgentBrainBank):
+        return tuple(
+            tuple(
+                bank.artifact(AGENT_BRAIN_EXECUTIVE_KIND, slot).digest()
+                for slot in pair
+            )
+            for pair in ExternalExecutiveCompositionSearch(
+                bank, seed=29
+            ).candidate_parent_slots()
+        )
+
+    assert ordered_parent_digests(first) == ordered_parent_digests(second)
 
 
 def test_mixed_agent_brain_round_trip_preserves_both_skill_families(

@@ -25,6 +25,7 @@ from .agent_brain_bank import (
     AGENT_BRAIN_TEMPORAL_KIND,
     EXECUTIVE_COMPOSITION_SEARCH_SCHEMA,
     EXTERNAL_AGENT_BRAIN_BANK_SCHEMA,
+    ExecutiveCompositionEvaluation,
     ExecutiveCompositionSearchResult,
     ExternalAgentBrainBank,
     ExternalExecutiveCompositionSearch,
@@ -263,6 +264,7 @@ from .executive_bank import (
     ExternalExecutiveProgramBank,
     build_temporal_equality_executive_artifact,
     compose_executive_artifacts,
+    executive_artifact_can_handoff,
 )
 from .executive_memory import (
     EXTERNAL_VALUE_DELAY_INTERFACE,
@@ -1395,6 +1397,7 @@ __all__ = [
     "EventWaitStatistics",
     "EvidenceBoundOutcome",
     "ExecutableArtifactMemory",
+    "ExecutiveCompositionEvaluation",
     "ExecutiveCompositionSearchResult",
     "ExecutiveInstruction",
     "ExpressibilityResult",
@@ -1760,6 +1763,7 @@ __all__ = [
     "evaluate_promotion",
     "evaluate_recipe_program_admission",
     "evaluate_retention_gate",
+    "executive_artifact_can_handoff",
     "factorized_counterfactual_policy_loss",
     "failure_gated_candidate_scores",
     "failure_gated_view_scores",

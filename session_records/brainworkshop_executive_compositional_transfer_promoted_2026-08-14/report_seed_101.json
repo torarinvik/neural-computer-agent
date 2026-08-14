@@ -24,6 +24,10 @@
     "source_slot": 0,
     "target_slot": 1,
     "prelude_slot": 2,
+    "prelude_verification_scores": [
+      1.0,
+      1.0
+    ],
     "composed_source_slot": 3,
     "source_artifact_digest": "8486f8908269a10eaf691f69671c54b333592587065c787b526230016fefd115",
     "target_artifact_digest": "1bbd08dbf3f34191d2b83f284c9b9da8a6df077079ffa3ad784769c07dfd7f30",
@@ -57,7 +61,7 @@
       }
     ],
     "composition_search": {
-      "schema": "neural-computer.executive-composition-search.v1",
+      "schema": "neural-computer.executive-composition-search.v2",
       "accepted": true,
       "parent_slots": [
         2,
@@ -73,27 +77,11 @@
         "stable_prefix_minimum": 1.0,
         "reason": "verified executive artifact committed"
       },
-      "candidate_count": 6,
+      "candidate_count": 2,
       "attempted_parent_slots": [
-        [
-          0,
-          2
-        ],
-        [
-          0,
-          1
-        ],
         [
           2,
           1
-        ],
-        [
-          1,
-          2
-        ],
-        [
-          1,
-          0
         ],
         [
           2,
@@ -101,16 +89,13 @@
         ]
       ],
       "attempted_child_digests": [
-        "7bcf96aae1398d14f389609bac5c34b4520e4ebaec12736a85d51ecb7ca07fdb",
-        "0ad96cdf56f65d72e3b17af539ea85f813b34176b4c40e8e98f5e58c9ca6a569",
         "3760d9ea15cb848505651f2f7a3719a2be59a9ba486a0775dc5c7b63235b34ab",
-        "f6da29f6aa90e25b9f2e140f78440f032f61c2e7ddd778bcb1cd7775d1742ee2",
-        "f61e2806818e8ed00a67439552af8f0aa47d6c9a46b333b25c9c04f1a1d3a75a",
         "5c7ee814dfbab9522591f44a18f2b25a3e9503edbf75fee05a4771fd1039ebae"
       ],
-      "unique_verifier_bits": 12,
-      "unique_logical_lifetimes": 12,
-      "stable_bits_to_threshold": 1,
+      "unique_verifier_bits": 1152,
+      "unique_logical_lifetimes": 128,
+      "replayed_examples": 0,
+      "stable_bits_to_threshold": 1152,
       "bank_digest_before": "1c06227aa71367478c20dcc1fe951270f5d7f8847e5a4a82709396fbbb3b6c63",
       "bank_digest_after": "9a8695a3e7d5927e39a4c81c7a23f7259e44522146be98ec5454fe9d868ad6ae",
       "reason": "first stable composition admitted"
@@ -295,7 +280,7 @@
     "source_artifact_verified": true,
     "source_retained_after_target_search": true,
     "durable_source_and_target_admitted": true,
-    "durable_composed_source_admitted": true,
+    "behaviorally_verified_composition_admitted": true,
     "bank_reload_digest_exact": true,
     "bank_reload_source_mastery": true,
     "bank_reload_target_mastery": true,
@@ -319,22 +304,23 @@
       "warm_target_search": 14336,
       "fresh_target_search": 39936,
       "source_retention": 576,
-      "composition_search": 12,
+      "prelude_verification": 2,
+      "composition_search": 1152,
       "bank_reload": 832,
       "controls": 4096
     },
-    "unique_logical_lifetimes": 7532,
+    "unique_logical_lifetimes": 7650,
     "optimizer_updates": 0,
     "replayed_examples": 0,
     "stable_bits_to_threshold": {
       "warm_target_search": 14336,
       "fresh_target_search": 39936,
-      "composition_search": 12
+      "composition_search": 1152
     },
     "tick_latency_ms": {
-      "p50": 0.4630624898709357,
-      "p99": 0.6597850180696688
+      "p50": 0.4458955372683704,
+      "p99": 0.5186243064235896
     },
-    "wall_seconds": 1.3447815419640392
+    "wall_seconds": 1.2614282499998808
   }
 }

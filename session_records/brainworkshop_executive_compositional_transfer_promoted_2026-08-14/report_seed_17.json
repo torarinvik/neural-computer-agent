@@ -24,6 +24,10 @@
     "source_slot": 0,
     "target_slot": 1,
     "prelude_slot": 2,
+    "prelude_verification_scores": [
+      1.0,
+      1.0
+    ],
     "composed_source_slot": 3,
     "source_artifact_digest": "8486f8908269a10eaf691f69671c54b333592587065c787b526230016fefd115",
     "target_artifact_digest": "1bbd08dbf3f34191d2b83f284c9b9da8a6df077079ffa3ad784769c07dfd7f30",
@@ -57,7 +61,7 @@
       }
     ],
     "composition_search": {
-      "schema": "neural-computer.executive-composition-search.v1",
+      "schema": "neural-computer.executive-composition-search.v2",
       "accepted": true,
       "parent_slots": [
         2,
@@ -73,19 +77,25 @@
         "stable_prefix_minimum": 1.0,
         "reason": "verified executive artifact committed"
       },
-      "candidate_count": 6,
+      "candidate_count": 2,
       "attempted_parent_slots": [
+        [
+          2,
+          1
+        ],
         [
           2,
           0
         ]
       ],
       "attempted_child_digests": [
+        "3760d9ea15cb848505651f2f7a3719a2be59a9ba486a0775dc5c7b63235b34ab",
         "5c7ee814dfbab9522591f44a18f2b25a3e9503edbf75fee05a4771fd1039ebae"
       ],
-      "unique_verifier_bits": 2,
-      "unique_logical_lifetimes": 2,
-      "stable_bits_to_threshold": 1,
+      "unique_verifier_bits": 1152,
+      "unique_logical_lifetimes": 128,
+      "replayed_examples": 0,
+      "stable_bits_to_threshold": 1152,
       "bank_digest_before": "f1fbc6d4ffc04b313531fb34ad53d69b43a754c39647f3a913b14d78399c9c39",
       "bank_digest_after": "56ed7770b42248f1447712aaba322233bcef10d093393a4c97fdf7b12d99e70f",
       "reason": "first stable composition admitted"
@@ -270,7 +280,7 @@
     "source_artifact_verified": true,
     "source_retained_after_target_search": true,
     "durable_source_and_target_admitted": true,
-    "durable_composed_source_admitted": true,
+    "behaviorally_verified_composition_admitted": true,
     "bank_reload_digest_exact": true,
     "bank_reload_source_mastery": true,
     "bank_reload_target_mastery": true,
@@ -294,22 +304,23 @@
       "warm_target_search": 15872,
       "fresh_target_search": 45056,
       "source_retention": 576,
-      "composition_search": 2,
+      "prelude_verification": 2,
+      "composition_search": 1152,
       "bank_reload": 832,
       "controls": 4096
     },
-    "unique_logical_lifetimes": 8354,
+    "unique_logical_lifetimes": 8482,
     "optimizer_updates": 0,
     "replayed_examples": 0,
     "stable_bits_to_threshold": {
       "warm_target_search": 15872,
       "fresh_target_search": 45056,
-      "composition_search": 2
+      "composition_search": 1152
     },
     "tick_latency_ms": {
-      "p50": 0.450999999884516,
-      "p99": 0.5066892202012241
+      "p50": 0.4525830736383796,
+      "p99": 0.5630358494818192
     },
-    "wall_seconds": 1.3829717499902472
+    "wall_seconds": 1.4376410419354215
   }
 }

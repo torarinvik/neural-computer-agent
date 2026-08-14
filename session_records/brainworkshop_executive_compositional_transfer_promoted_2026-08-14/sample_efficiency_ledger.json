@@ -10,24 +10,26 @@
     "warm_target_search": 30208,
     "fresh_target_search": 84992,
     "source_retention": 1152,
-    "composition_search": 14,
+    "prelude_verification": 4,
+    "composition_search": 2304,
     "bank_reload": 1664,
     "controls": 8192
   },
-  "unique_logical_lifetimes_all_arms": 15886,
+  "unique_logical_lifetimes_all_arms": 16132,
   "optimizer_updates": 0,
   "replayed_examples": 0,
   "stable_bits_to_threshold": {
     "warm_target_search": 30208,
-    "fresh_target_search": 84992
+    "fresh_target_search": 84992,
+    "composition_search": 2304
   },
   "retention_on_mastered_primitive": "1.0000 in all four post-target source lifetimes",
   "transfer_ratio_against_fresh_learner": 2.8135593220338984,
   "tick_latency_ms": {
-    "seed_17_block_p50": 0.450999999884516,
-    "seed_17_block_p99": 0.5066892202012241,
-    "seed_101_block_p50": 0.4630624898709357,
-    "seed_101_block_p99": 0.6597850180696688
+    "seed_17_block_p50": 0.4525830736383796,
+    "seed_17_block_p99": 0.5630358494818192,
+    "seed_101_block_p50": 0.4458955372683704,
+    "seed_101_block_p99": 0.5186243064235896
   },
   "controls": {
     "same_admitted_artifact_all_arms": true,
@@ -46,5 +48,5 @@
     "frozen_controller_and_operators": true,
     "zero_replay": true
   },
-  "claim_boundary": "Promoted bounded structural transfer from a verified temporal-relation fragment to smallest-failed-delay-binding search plus opaque verifier-gated parent-pair composition of admitted executive fragments with restart-safe heterogeneous AgentBrain.bank execution; not unrestricted program induction or physical deployment."
+  "claim_boundary": "Promoted bounded structural transfer from a verified temporal-relation fragment to smallest-failed-delay-binding search plus fresh-rollout verifier-gated parent-pair composition of admitted executive fragments with reachable handoff and restart-safe heterogeneous AgentBrain.bank execution; not unrestricted program induction or physical deployment."
 }

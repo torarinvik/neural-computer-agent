@@ -28,17 +28,21 @@ on source and target behavior. The canonical container can also preserve a
 legacy temporal-address family; importing an old torch bank is explicit and
 validated rather than implicit.
 
-The same run admits a generic receive-only fragment, composes it with the
+The same run freshly verifies a generic receive-only fragment, composes it with the
 verified 1-back temporal loop, records both parent slots and content digests,
 and reloads the composed child at 1.0 source mastery. The child is admitted by
-the same stable-prefix verifier gate, so the composition is a durable learned
-skill rather than an unverified runtime macro.
+the same stable-prefix verifier gate after fresh behavioral rollouts. This
+qualifies durable, behavior-preserving composition mechanics; it does not claim
+that this receive-only prelude adds a new capability.
 
 Parent selection is now itself memory-side and opaque. The deterministic search
-enumerates ordered parent pairs by content-addressed priority, exposes each
-candidate only to scalar verifier outcomes, and appends the first stable child.
-The reports record attempted pairs, unique verifier bits, logical lifetimes,
-and the exact bank digest before and after search.
+enumerates ordered parent pairs by slot-independent content-addressed priority,
+executes each candidate on two fresh verifier rollouts, and appends the first
+stable child. Non-final parents without a reachable terminal handoff are
+excluded so a persistent loop cannot make later components dead code. The
+reports record attempted pairs, unique verifier bits, logical lifetimes, replay,
+and the exact bank digest before and after search. Reload also recomposes the
+recorded parents and binds the resulting digest to the child and admission.
 
 This proves bounded reusable program structure, smallest-failed-binding search,
 and durable restart-safe heterogeneous execution. It does not yet prove
@@ -47,7 +51,7 @@ physical Brain Workshop transfer.
 
 Report checksums:
 
-- `report_seed_17.json`: `08e721865612e42f8271f4dd355ed73a840bd595f461fe4fbdcceb3d2c504a28`
-- `report_seed_101.json`: `55ed6684ea30c551b618ce3507806dc681ed3fc7b6118cc6bb289c3a011619cc`
+- `report_seed_17.json`: `4e09b0157c26d9d5d03ffb37ab4edf4862ab78bc5b6975510db76d9d1989fe20`
+- `report_seed_101.json`: `0da6926a1370fff45b182e6f6c0e1427f6ef7424a7842b7d3cc91a2c2a61b366`
 - `AgentBrain.bank`: `6b6d0c574123c4afbd3827f7a88a2855c064d9d1df7292545c5c8a2031b357b3`
 - `AgentBrain_replication.bank`: `eb4cec9b071d5cc8ff971279d1bdd8dc189aa6db4fec01cb4b68127145a63b5f`

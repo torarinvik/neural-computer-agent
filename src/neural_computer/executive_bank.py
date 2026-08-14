@@ -307,6 +307,12 @@ def compose_executive_artifacts(
     intention_width = validated[0].intention_width
     if any(artifact.intention_width != intention_width for artifact in validated):
         raise ValueError("executive composition needs a common intention width")
+    if any(
+        not executive_artifact_can_handoff(artifact) for artifact in validated[:-1]
+    ):
+        raise ValueError(
+            "every non-final executive composition component must reach its terminal handoff"
+        )
     body_lengths = tuple(len(artifact.program.instructions) - 1 for artifact in validated)
     if any(length < 1 for length in body_lengths):
         raise ValueError("executive composition components need a non-terminal body")
@@ -404,6 +410,42 @@ def compose_executive_artifacts(
         operator_specs=tuple(sorted(composed_specs, key=lambda spec: spec.handle)),
         intention_width=intention_width,
     ).validate()
+
+
+def executive_artifact_can_handoff(
+    artifact: ExternalExecutiveProgramArtifact,
+) -> bool:
+    """Return whether some control-flow path reaches the terminal HALT."""
+
+    program = artifact.validate().program
+    terminal = len(program.instructions) - 1
+    pending = [0]
+    reachable: set[int] = set()
+    while pending:
+        pointer = pending.pop()
+        if pointer in reachable:
+            continue
+        reachable.add(pointer)
+        if pointer == terminal:
+            return True
+        instruction = program.instructions[pointer]
+        if instruction.op == "branch":
+            pending.extend(
+                (
+                    int(instruction.true_target),
+                    int(instruction.false_target),
+                    int(instruction.unknown_target),
+                )
+            )
+        elif instruction.op in {"wait", "emit"}:
+            pending.append(
+                pointer + 1
+                if instruction.next_target is None
+                else instruction.next_target
+            )
+        elif instruction.op != "halt":
+            pending.append(pointer + 1)
+    return False
 
 
 class ExternalExecutiveProgramBank:
@@ -662,4 +704,5 @@ __all__ = [
     "ExternalExecutiveProgramBank",
     "build_temporal_equality_executive_artifact",
     "compose_executive_artifacts",
+    "executive_artifact_can_handoff",
 ]

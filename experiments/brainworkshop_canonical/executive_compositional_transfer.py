@@ -23,6 +23,7 @@ from time import perf_counter
 import torch
 
 from neural_computer.agent_brain_bank import (
+    ExecutiveCompositionEvaluation,
     ExternalAgentBrainBank,
     ExternalExecutiveCompositionSearch,
 )
@@ -183,6 +184,38 @@ def _executive_prelude_artifact(intention_width: int) -> ExternalExecutiveProgra
         operator_specs=(),
         intention_width=intention_width,
     ).validate()
+
+
+def _verify_finite_fragment(
+    artifact: ExternalExecutiveProgramArtifact,
+    *,
+    event_width: int,
+    seed: int,
+    trials: int = 2,
+) -> tuple[list[float], int, int, tuple[float, ...]]:
+    """Execute a finite fragment on fresh opaque events before admission."""
+
+    outcomes: list[float] = []
+    tick_latencies: list[float] = []
+    for offset in range(trials):
+        generator = torch.Generator().manual_seed(seed + offset)
+        payload = torch.randn(1, event_width, generator=generator)
+        events = AmodalEventCollection.from_events(
+            (AmodalEvent(payload=payload, confidence=torch.ones(1)),)
+        )
+        executive = artifact.instantiate()
+        state = executive.initial_state(1, device="cpu")
+        tick_started = perf_counter()
+        output, _ = executive.tick(events, state)
+        tick_latencies.append(perf_counter() - tick_started)
+        outcomes.append(
+            float(
+                output.status == "halted"
+                and output.intention is None
+                and output.executed_instructions == 2
+            )
+        )
+    return outcomes, trials, trials, tuple(tick_latencies)
 
 
 def _candidate(relation_index: int, delay: int) -> _Candidate:
@@ -541,9 +574,21 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         min_observations=2,
         min_stable_observations=2,
     )
+    durable_prelude = _executive_prelude_artifact(intention_width=2)
+    (
+        prelude_outcomes,
+        prelude_verifier_bits,
+        prelude_lifetimes,
+        prelude_tick_latencies,
+    ) = _verify_finite_fragment(
+        durable_prelude,
+        event_width=args.event_width,
+        seed=args.seed + 960_000,
+    )
+    all_tick_latencies.extend(prelude_tick_latencies)
     durable_prelude_receipt = durable_bank.admit_executive(
-        _executive_prelude_artifact(intention_width=2),
-        [1.0, 1.0],
+        durable_prelude,
+        prelude_outcomes,
         threshold=0.9,
         min_observations=2,
         min_stable_observations=2,
@@ -553,16 +598,51 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     composition_search = ExternalExecutiveCompositionSearch(
         durable_bank, seed=args.seed + 991_000
     )
+    composition_tick_latencies: list[float] = []
+
+    def evaluate_composition(
+        parent_slots: tuple[int, int],
+        child: ExternalExecutiveProgramArtifact,
+    ) -> ExecutiveCompositionEvaluation:
+        del parent_slots
+        outcomes: list[float] = []
+        unique_bits = 0
+        unique_lifetimes = 0
+        for confirmation in range(2):
+            rollout_seed = int(
+                hashlib.sha256(
+                    f"{args.seed + 992_000}:{child.digest()}:{confirmation}".encode()
+                ).hexdigest()[:16],
+                16,
+            )
+            accuracy, bits, latencies = _evaluate_candidate(
+                source_artifact,
+                target_n_back=1,
+                batch_size=args.batch_size,
+                steps=args.steps,
+                seed=rollout_seed,
+                event_width=args.event_width,
+                encoder_state=encoder_state,
+                executive_override=child.instantiate(),
+            )
+            outcomes.append(accuracy)
+            unique_bits += bits
+            unique_lifetimes += args.batch_size
+            composition_tick_latencies.extend(latencies)
+        return ExecutiveCompositionEvaluation(
+            outcomes=tuple(outcomes),
+            unique_verifier_bits=unique_bits,
+            unique_logical_lifetimes=unique_lifetimes,
+            replayed_examples=0,
+        )
+
     composition_result = composition_search.search(
-        lambda parent_slots, child: (
-            source_outcomes
-            if parent_slots == (durable_prelude_receipt.slot, durable_source_receipt.slot)
-            else [0.0, 0.0]
-        ),
+        evaluate_composition,
         threshold=0.9,
         min_observations=2,
         min_stable_observations=2,
     )
+    all_tick_latencies.extend(composition_tick_latencies)
     if composition_result.receipt is None:
         raise RuntimeError("durable composition search did not admit a child")
     composed_source_receipt = composition_result.receipt
@@ -624,7 +704,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "durable_source_and_target_admitted": (
             durable_source_receipt.accepted and durable_target_receipt.accepted
         ),
-        "durable_composed_source_admitted": (
+        "behaviorally_verified_composition_admitted": (
             durable_prelude_receipt.accepted
             and composition_result.accepted
             and composed_source_receipt.accepted
@@ -650,7 +730,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "shuffled_action_not_admitted": action_shuffled.admitted is None,
         "missing_history_not_admitted": missing_history.admitted is None,
         "zero_controller_updates": True,
-        "zero_replay": True,
+        "zero_replay": composition_result.replayed_examples == 0,
     }
     report = {
         "schema": EXECUTIVE_COMPOSITION_TRANSFER_SCHEMA,
@@ -676,6 +756,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "source_slot": durable_source_receipt.slot,
             "target_slot": durable_target_receipt.slot,
             "prelude_slot": durable_prelude_receipt.slot,
+            "prelude_verification_scores": prelude_outcomes,
             "composed_source_slot": composed_source_receipt.slot,
             "source_artifact_digest": durable_source.digest(),
             "target_artifact_digest": durable_target.digest(),
@@ -711,6 +792,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                 "warm_target_search": warm_bits,
                 "fresh_target_search": fresh_bits,
                 "source_retention": source_retention_bits,
+                "prelude_verification": prelude_verifier_bits,
                 "composition_search": composition_result.unique_verifier_bits,
                 "bank_reload": source_reload_bits
                 + target_reload_bits
@@ -728,17 +810,18 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             + args.batch_size * 4
             + args.batch_size * 2
             + args.batch_size
+            + prelude_lifetimes
             + composition_result.unique_logical_lifetimes
             + sum(
                 control.unique_lifetimes
                 for control in (irrelevant, shuffled, action_shuffled, missing_history)
             ),
             "optimizer_updates": 0,
-            "replayed_examples": 0,
+            "replayed_examples": composition_result.replayed_examples,
             "stable_bits_to_threshold": {
                 "warm_target_search": warm_bits,
-            "fresh_target_search": fresh_bits,
-            "composition_search": composition_result.unique_verifier_bits,
+                "fresh_target_search": fresh_bits,
+                "composition_search": composition_result.stable_bits_to_threshold,
             },
             "tick_latency_ms": {
                 "p50": float(

@@ -276,9 +276,12 @@ admitted persistent temporal loop, record the parent slots and content
 digests, and re-run the composed child after reload with perfect source
 mastery. The composition gate is verifier-only and does not update the frozen
 controller. Parent selection is now also memory-side: an opaque deterministic
-ordered-pair search evaluates candidates only through scalar verifier outcomes,
-appends the first stable child, and records its bits-to-threshold and lifetime
-accounting.
+ordered-pair search executes candidates on fresh verifier rollouts, appends the
+first stable child, and records its unique bits-to-threshold, lifetimes, and
+replay. A generic control-flow reachability gate rejects non-final parents that
+cannot hand off, preventing a persistent first loop from shadowing later
+components. Persisted provenance is rebound by recomposing the recorded parents
+and validating the admission receipt against the derived child.
 
 The retained Brain Workshop evidence qualifies bounded append-only external
 working-memory computation through n-back-32 with frozen source retention and
