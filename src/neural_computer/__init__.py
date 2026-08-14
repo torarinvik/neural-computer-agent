@@ -882,6 +882,8 @@ from .temporal_program import (
     TemporalProgramOutcomeObserver,
     TemporalProgramSelection,
     compose_recursive_temporal_program,
+    one_hot_temporal_address_artifact,
+    pad_recursive_temporal_program,
     recursive_temporal_primitive,
 )
 from .world_model import (
@@ -1817,6 +1819,8 @@ __all__ = [
     "iter_control_flow_programs",
     "load_growth_artifact",
     "load_runtime_components",
+    "one_hot_temporal_address_artifact",
+    "pad_recursive_temporal_program",
     "paired_counterfactual_advantage",
     "paired_counterfactual_policy_loss",
     "paired_counterfactual_ranking_loss",

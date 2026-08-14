@@ -1,0 +1,45 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment_id": "brainworkshop-sealed-frontier-probation-2026-08-14",
+  "status": "probation_mechanistic_frontier",
+  "source": "in_repository_run",
+  "seed_blocks": [[95017, 95017], [94017, 94017]],
+  "replication_count": 1,
+  "unique_verifier_bits": {
+    "primitive_discovery": 35,
+    "autonomous_2back": 32,
+    "grown_5back": 21,
+    "warm_audio_1back": 59,
+    "warm_audio_2back": 58,
+    "fresh_audio_1back": 59,
+    "founding_warm_3cell_3back": 20,
+    "founding_fresh_3cell_3back": 85,
+    "founding_warm_2cell_3back": 117,
+    "founding_fresh_2cell_3back": 119
+  },
+  "unique_logical_lifetimes_all_arms": 12,
+  "optimizer_updates": 0,
+  "replayed_examples": 0,
+  "stable_bits_to_threshold": {
+    "primitive_discovery": 35,
+    "autonomous_2back": 32,
+    "grown_5back": 21,
+    "founding_warm_3cell_3back": 20,
+    "founding_fresh_3cell_3back": 85
+  },
+  "retention_on_mastered_primitive": "1.000/1.000/0.943 on founding 1/2/3-back exact retrieve",
+  "transfer_ratio_against_fresh_learner": 4.25,
+  "transfer_ratio_note": "header variant of a verified depth; first-time depth invention was 117/119",
+  "controls": {
+    "capacity_miss_at_history_4": true,
+    "five_back_after_growth": true,
+    "audio_substrate_warm_1_and_2_back": true,
+    "no_gifted_previous_file": true,
+    "controller_program_replay_updates": 0
+  },
+  "unresolved": {
+    "dual_nback": "requires four-way decoder",
+    "promotion_holdout": "not consumed",
+    "first_time_depth_invention": "no sample-efficiency win versus fresh climb"
+  }
+}

@@ -424,8 +424,27 @@ PYTHONPATH=src .venv/bin/python \
   --output-dir /tmp/neural-workshop-autonomous-founding
 ```
 
-The frozen capacity remains `max_history=4`. Five-back is an architecture
-change, not another bank file.
+`neural_workshop_sealed_frontier_pilot.py` discovers the one-step address
+by outcome-only search, composes 2-back, misses 5-back at history 4, grows
+history to 8 without changing relation weights, verifies 5-back, and runs
+the same files on rendered audio. Dual N-Back still needs a four-way
+decoder. Evidence is probation in
+`session_records/brainworkshop_sealed_frontier_probation_2026-08-14/`.
+
+```bash
+PYTHONPATH=src .venv/bin/python \
+  -m experiments.brainworkshop_canonical.neural_workshop_sealed_frontier_pilot \
+  --neural-workshop /absolute/path/to/neural-workshop \
+  --output-dir /tmp/neural-workshop-sealed-frontier
+```
+
+In the seed-95017 run, offset 0 mastered live 1-back at `1.000` (35 bits)
+without a gifted primitive. Autonomous composition scored `1.000` on
+2-back. Five-back missed at history 4, then scored `0.952` after growth.
+The same primitive and two-step child scored `1.000` on rendered audio
+1-back and 2-back. Fresh audio also found offset 0 first, so 1-back search
+bits were tied; the transfer claim is execution on a new substrate, not a
+cheaper discovery.
 
 In the seed-94017-v2 run, a warm 1-back/2-back bank rebound 3-cell 2-back in
 one `try_existing` session at `1.000` (24 bits). New 2-cell 3-back still had
@@ -500,8 +519,7 @@ Evidence:
 
 ## Current bottleneck
 
-The live Position N-Back language is `PREVIOUS^n` plus fail-closed header
-routing, with `max_history=4`. Dual N-Back is still blocked on a clean audio
-loopback. A second substrate has not been run. Isolated threshold crossings
-are not mastery; the founding comparison is warm versus a matched fresh
-learner on a held-out public line.
+The live language is a discovered one-step address, `PREVIOUS^n` composition,
+header routing, and a versioned history grow. Dual N-Back still needs a
+four-way decoder. First-time depth invention is not cheaper than a fresh
+climb. These live Neural Workshop results remain one-seed probation.

@@ -15,6 +15,8 @@ from neural_computer import (
     ExternalProgramArtifact,
     ExternalTemporalProgramBank,
     compose_recursive_temporal_program,
+    one_hot_temporal_address_artifact,
+    pad_recursive_temporal_program,
     recursive_temporal_primitive,
 )
 
@@ -95,3 +97,15 @@ def test_unknown_header_tries_nearer_shorter_file_then_composes() -> None:
     assert after_both.kind == "compose" and after_both.proposed_depth == 3
     assert after_both.artifact is not None
     assert after_both.artifact.program_length == 3
+
+
+def test_one_hot_address_pads_and_composes_past_original_capacity() -> None:
+    primitive = recursive_temporal_primitive(one_hot_temporal_address_artifact(0, 4))
+    padded = pad_recursive_temporal_program(primitive, 8)
+    five = compose_recursive_temporal_program(padded, 5)
+
+    assert primitive.instruction_width == 4
+    assert padded.instruction_width == 8
+    assert five.program_length == 5
+    assert torch.equal(five.codes[0, :4], primitive.codes[0])
+    assert torch.equal(pad_recursive_temporal_program(padded, 8).codes, padded.codes)

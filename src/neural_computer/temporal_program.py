@@ -48,6 +48,7 @@ RECURSIVE_TEMPORAL_INTERPRETER_SCHEMA = (
 RECURSIVE_TEMPORAL_EXECUTION_SCHEMA = (
     "neural-computer.relative-history-compose.v1"
 )
+UNUSED_TEMPORAL_ADDRESS_LOGIT = -12.0
 
 
 def _validate_digest(value: str, *, name: str) -> str:
@@ -140,6 +141,62 @@ def compose_recursive_temporal_program(
         raise ValueError("recursive temporal depth exceeds fixed history capacity")
     return ExternalProgramArtifact(
         codes=primitive.snapshot().repeat(repetitions, 1),
+        interpreter_schema=RECURSIVE_TEMPORAL_INTERPRETER_SCHEMA,
+        execution_schema=RECURSIVE_TEMPORAL_EXECUTION_SCHEMA,
+        output_schema=TEMPORAL_ADDRESS_OUTPUT_SCHEMA,
+    )
+
+
+def one_hot_temporal_address_artifact(
+    offset: int,
+    instruction_width: int,
+) -> ExternalProgramArtifact:
+    """One discrete relative-history candidate. It carries no task label."""
+
+    if not isinstance(offset, int) or not 0 <= offset < instruction_width:
+        raise ValueError("temporal address offset is outside history capacity")
+    codes = torch.full((1, instruction_width), UNUSED_TEMPORAL_ADDRESS_LOGIT)
+    codes[0, offset] = -UNUSED_TEMPORAL_ADDRESS_LOGIT
+    return ExternalProgramArtifact(
+        codes=codes,
+        interpreter_schema=TEMPORAL_ADDRESS_INTERPRETER_SCHEMA,
+        execution_schema=TEMPORAL_ADDRESS_EXECUTION_SCHEMA,
+        output_schema=TEMPORAL_ADDRESS_OUTPUT_SCHEMA,
+    )
+
+
+def pad_recursive_temporal_program(
+    artifact: ExternalProgramArtifact,
+    instruction_width: int,
+) -> ExternalProgramArtifact:
+    """Widen a verified recursive program without changing its rows."""
+
+    if not isinstance(instruction_width, int) or instruction_width < 1:
+        raise ValueError("padded instruction width must be positive")
+    artifact.validate_for(
+        instruction_width=artifact.instruction_width,
+        interpreter_schema=RECURSIVE_TEMPORAL_INTERPRETER_SCHEMA,
+        execution_schema=RECURSIVE_TEMPORAL_EXECUTION_SCHEMA,
+        output_schema=TEMPORAL_ADDRESS_OUTPUT_SCHEMA,
+    )
+    if artifact.instruction_width > instruction_width:
+        raise ValueError("cannot shrink a recursive temporal program")
+    if artifact.instruction_width == instruction_width:
+        return ExternalProgramArtifact(
+            codes=artifact.snapshot(),
+            interpreter_schema=artifact.interpreter_schema,
+            execution_schema=artifact.execution_schema,
+            output_schema=artifact.output_schema,
+        )
+    pad = torch.full(
+        (
+            artifact.program_length,
+            instruction_width - artifact.instruction_width,
+        ),
+        UNUSED_TEMPORAL_ADDRESS_LOGIT,
+    )
+    return ExternalProgramArtifact(
+        codes=torch.cat((artifact.snapshot(), pad), dim=1),
         interpreter_schema=RECURSIVE_TEMPORAL_INTERPRETER_SCHEMA,
         execution_schema=RECURSIVE_TEMPORAL_EXECUTION_SCHEMA,
         output_schema=TEMPORAL_ADDRESS_OUTPUT_SCHEMA,
@@ -593,5 +650,7 @@ __all__ = [
     "TemporalProgramOutcomeObserver",
     "TemporalProgramSelection",
     "compose_recursive_temporal_program",
+    "one_hot_temporal_address_artifact",
+    "pad_recursive_temporal_program",
     "recursive_temporal_primitive",
 ]

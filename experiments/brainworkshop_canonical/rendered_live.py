@@ -936,12 +936,16 @@ class RecursiveTemporalProgramMachine(PretrainedControllerProgramMachine):
             RECURSIVE_TEMPORAL_EXECUTION_SCHEMA,
             RECURSIVE_TEMPORAL_INTERPRETER_SCHEMA,
             TEMPORAL_ADDRESS_OUTPUT_SCHEMA,
+            pad_recursive_temporal_program,
         )
 
         if not isinstance(artifact, ExternalProgramArtifact):
             raise TypeError("recursive temporal program must be an external artifact")
         if controller_digest != self._frozen_controller_digest:
             raise ValueError("recursive program targets another frozen controller")
+
+        if artifact.instruction_width < self.max_history:
+            artifact = pad_recursive_temporal_program(artifact, self.max_history)
         artifact.validate_for(
             instruction_width=self.max_history,
             interpreter_schema=RECURSIVE_TEMPORAL_INTERPRETER_SCHEMA,
@@ -1160,6 +1164,10 @@ def run_rendered_live_lifetime(
     machine.learning_enabled = learn
     machine.sample = sample
     machine.reset_history_each_tick = bool(reset_history_each_tick)
+    bind = getattr(machine, "bind_executable_sources", None)
+    remaining = [stream for stream in config.streams if stream not in drop_streams]
+    if bind is not None and remaining and machine.max_sources == 1:
+        bind((encoders.source_keys[remaining[0]].detach().reshape(1, -1),))
     runtime = CognitiveTickRuntime(
         device,
         machine,

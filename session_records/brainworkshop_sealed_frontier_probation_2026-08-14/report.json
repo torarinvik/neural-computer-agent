@@ -1,0 +1,83 @@
+{
+  "audio_transfer": {
+    "fresh_1back": {
+      "accuracy": 1.0,
+      "offset": 0,
+      "unique_verifier_bits": 59
+    },
+    "fresh_1back_search_bits": 59,
+    "optimizer_updates": 0,
+    "warm_1back_accuracy": 1.0,
+    "warm_1back_bits": 59,
+    "warm_2back_accuracy": 1.0,
+    "warm_2back_bits": 58
+  },
+  "autonomous_2back": {
+    "accuracy": 1.0,
+    "controller_frozen": true,
+    "depth": 2,
+    "kind": "compose",
+    "program_file_updates": 0,
+    "receipt": {
+      "accepted": true,
+      "candidate_digest": "3f80d28664f013c620b6236554f25a77e07f969829f7eb36952d5f9d2495fcbc",
+      "observations": 32,
+      "reason": "candidate verified and committed as an immutable external file",
+      "schema": "neural-computer.external-program-admission.v2",
+      "slot": 1,
+      "stable_bits_to_threshold": 1,
+      "stable_observations_to_threshold": 1,
+      "stable_prefix_minimum": 1.0,
+      "unique_verifier_bits": 32
+    },
+    "unique_verifier_bits": 32
+  },
+  "bank": "/tmp/neural-workshop-sealed-frontier-seed95017-v1/AgentBrain.bank",
+  "bank_program_count": 2,
+  "bank_sha256": "31fdfebe0d24a63da03ed0cd4ce9f7c222a4ec970af9f57aa20ca4a956ed171b",
+  "capacity_miss_5back": "recursive temporal depth exceeds fixed history capacity",
+  "controller_digest": "5bc91963d70a62198a01706ad4c269716c5cfc909530eca5bce06eb7c446ec0a",
+  "controller_frozen": true,
+  "discovered_primitive": {
+    "accuracy": 1.0,
+    "controller_frozen": true,
+    "offset": 0,
+    "program_file_updates": 0,
+    "receipt": {
+      "accepted": true,
+      "candidate_digest": "6358078cd7eb273addafb6f549decaf12e2cf5797d0eaec790bba6127b2b55d6",
+      "observations": 35,
+      "reason": "candidate verified and committed as an immutable external file",
+      "schema": "neural-computer.external-program-admission.v2",
+      "slot": 0,
+      "stable_bits_to_threshold": 1,
+      "stable_observations_to_threshold": 1,
+      "stable_prefix_minimum": 1.0,
+      "unique_verifier_bits": 35
+    },
+    "unique_verifier_bits": 35
+  },
+  "discovery": [
+    {
+      "accuracy": 1.0,
+      "controller_frozen": true,
+      "offset": 0,
+      "program_file_updates": 0,
+      "unique_verifier_bits": 35
+    }
+  ],
+  "grown_5back": {
+    "accuracy": 0.9523809523809523,
+    "controller_frozen": true,
+    "program_file_updates": 0,
+    "unique_verifier_bits": 21
+  },
+  "grown_controller_digest": "864724f97cc3485c33846b34aea5c4542f5c1fa17c188f87af49e2355845b8bc",
+  "grown_history": 8,
+  "max_history": 4,
+  "optimizer_updates": 0,
+  "program_file_updates": 0,
+  "replayed_examples": 0,
+  "schema": "neural-computer.neural-workshop-sealed-frontier.v1",
+  "wall_seconds": 23.464224499999546
+}

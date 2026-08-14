@@ -1,0 +1,272 @@
+{
+  "bank": "/tmp/neural-workshop-autonomous-founding-seed94017-v2/AgentBrain.bank",
+  "bank_program_count": 3,
+  "bank_sha256": "0bedb39fb7abd7f8b48d41b69668cd802f6afccc604259ffe9408972ff743ad8",
+  "controller_digest": "5bc91963d70a62198a01706ad4c269716c5cfc909530eca5bce06eb7c446ec0a",
+  "controller_frozen": true,
+  "founding": {
+    "depth_fresh_bits": 119,
+    "depth_fresh_over_warm": 1.017094017094017,
+    "depth_target": "2-cell 3-back",
+    "depth_warm_bits": 117,
+    "header_fresh_bits": 85,
+    "header_fresh_over_warm": 4.25,
+    "header_target": "3-cell 3-back",
+    "header_warm_bits": 20
+  },
+  "fresh_2cell_3back": {
+    "active_cells": 2,
+    "admission": {
+      "accepted": true,
+      "candidate_digest": "19441dbdf2090c042c9f1874fb2aee10ace440d6f445a6e758a4bd16a4f04d06",
+      "observations": 32,
+      "reason": "candidate verified and committed as an immutable external file",
+      "schema": "neural-computer.external-program-admission.v2",
+      "slot": 0,
+      "stable_bits_to_threshold": 2,
+      "stable_observations_to_threshold": 2,
+      "stable_prefix_minimum": 1.0,
+      "unique_verifier_bits": 32
+    },
+    "attempts": [
+      {
+        "accuracy": 0.3181818181818182,
+        "controller_frozen": true,
+        "kind": "compose",
+        "known": false,
+        "program_file_updates": 0,
+        "proposed_depth": 1,
+        "slot": null,
+        "unique_verifier_bits": 44
+      },
+      {
+        "accuracy": 0.32558139534883723,
+        "controller_frozen": true,
+        "kind": "compose",
+        "known": false,
+        "program_file_updates": 0,
+        "proposed_depth": 2,
+        "slot": null,
+        "unique_verifier_bits": 43
+      },
+      {
+        "accuracy": 0.96875,
+        "controller_frozen": true,
+        "kind": "compose",
+        "known": false,
+        "program_file_updates": 0,
+        "proposed_depth": 3,
+        "slot": null,
+        "unique_verifier_bits": 32
+      }
+    ],
+    "n_back": 3,
+    "resolved_depth": 3,
+    "resolved_kind": "compose",
+    "search_unique_verifier_bits": 119
+  },
+  "fresh_3cell_3back": {
+    "active_cells": 3,
+    "admission": {
+      "accepted": true,
+      "candidate_digest": "19441dbdf2090c042c9f1874fb2aee10ace440d6f445a6e758a4bd16a4f04d06",
+      "observations": 24,
+      "reason": "candidate verified and committed as an immutable external file",
+      "schema": "neural-computer.external-program-admission.v2",
+      "slot": 0,
+      "stable_bits_to_threshold": 2,
+      "stable_observations_to_threshold": 2,
+      "stable_prefix_minimum": 1.0,
+      "unique_verifier_bits": 24
+    },
+    "attempts": [
+      {
+        "accuracy": 0.16129032258064516,
+        "controller_frozen": true,
+        "kind": "compose",
+        "known": false,
+        "program_file_updates": 0,
+        "proposed_depth": 1,
+        "slot": null,
+        "unique_verifier_bits": 31
+      },
+      {
+        "accuracy": 0.2,
+        "controller_frozen": true,
+        "kind": "compose",
+        "known": false,
+        "program_file_updates": 0,
+        "proposed_depth": 2,
+        "slot": null,
+        "unique_verifier_bits": 30
+      },
+      {
+        "accuracy": 0.9583333333333334,
+        "controller_frozen": true,
+        "kind": "compose",
+        "known": false,
+        "program_file_updates": 0,
+        "proposed_depth": 3,
+        "slot": null,
+        "unique_verifier_bits": 24
+      }
+    ],
+    "n_back": 3,
+    "resolved_depth": 3,
+    "resolved_kind": "compose",
+    "search_unique_verifier_bits": 85
+  },
+  "max_history": 4,
+  "optimizer_updates": 0,
+  "program_file_updates": 0,
+  "replayed_examples": 0,
+  "schema": "neural-computer.neural-workshop-autonomous-founding.v1",
+  "source_bank": "/tmp/neural-workshop-instruction-route-seed81017-v1/AgentBrain.bank",
+  "source_bank_sha256": "fb43f74caafa314a31951c56e8412179d91721499c275af98f8d9824ea0ee633",
+  "source_retention": [
+    {
+      "accuracy": 1.0,
+      "active_cells": 2,
+      "controller_frozen": true,
+      "kind": "exact",
+      "known": true,
+      "n_back": 1,
+      "program_file_updates": 0,
+      "unique_verifier_bits": 37
+    },
+    {
+      "accuracy": 1.0,
+      "active_cells": 2,
+      "controller_frozen": true,
+      "kind": "exact",
+      "known": true,
+      "n_back": 2,
+      "program_file_updates": 0,
+      "unique_verifier_bits": 32
+    },
+    {
+      "accuracy": 0.9428571428571428,
+      "active_cells": 2,
+      "controller_frozen": true,
+      "kind": "exact",
+      "known": true,
+      "n_back": 3,
+      "program_file_updates": 0,
+      "unique_verifier_bits": 35
+    }
+  ],
+  "wall_seconds": 80.47061820805538,
+  "warm_2cell_3back": {
+    "active_cells": 2,
+    "admission": {
+      "accepted": true,
+      "candidate_digest": "19441dbdf2090c042c9f1874fb2aee10ace440d6f445a6e758a4bd16a4f04d06",
+      "observations": 32,
+      "reason": "candidate verified and committed as an immutable external file",
+      "schema": "neural-computer.external-program-admission.v2",
+      "slot": 2,
+      "stable_bits_to_threshold": 2,
+      "stable_observations_to_threshold": 2,
+      "stable_prefix_minimum": 1.0,
+      "unique_verifier_bits": 32
+    },
+    "attempts": [
+      {
+        "accuracy": 0.3111111111111111,
+        "controller_frozen": true,
+        "kind": "try_existing",
+        "known": false,
+        "program_file_updates": 0,
+        "proposed_depth": 2,
+        "slot": 1,
+        "unique_verifier_bits": 45
+      },
+      {
+        "accuracy": 0.375,
+        "controller_frozen": true,
+        "kind": "try_existing",
+        "known": false,
+        "program_file_updates": 0,
+        "proposed_depth": 1,
+        "slot": 0,
+        "unique_verifier_bits": 40
+      },
+      {
+        "accuracy": 0.96875,
+        "controller_frozen": true,
+        "kind": "compose",
+        "known": false,
+        "program_file_updates": 0,
+        "proposed_depth": 3,
+        "slot": null,
+        "unique_verifier_bits": 32
+      }
+    ],
+    "n_back": 3,
+    "resolved_depth": 3,
+    "resolved_kind": "compose",
+    "search_unique_verifier_bits": 117
+  },
+  "warm_3cell_2back": {
+    "active_cells": 3,
+    "admission": {
+      "accepted": true,
+      "candidate_digest": "417d2481ce43d9840aa4a63d60873478e93e79e116f07d2ec01c62135ddc2679",
+      "observations": 24,
+      "reason": "verified experience attached to an identical external file",
+      "schema": "neural-computer.external-program-admission.v2",
+      "slot": 1,
+      "stable_bits_to_threshold": 1,
+      "stable_observations_to_threshold": 1,
+      "stable_prefix_minimum": 1.0,
+      "unique_verifier_bits": 24
+    },
+    "attempts": [
+      {
+        "accuracy": 1.0,
+        "controller_frozen": true,
+        "kind": "try_existing",
+        "known": false,
+        "program_file_updates": 0,
+        "proposed_depth": 2,
+        "slot": 1,
+        "unique_verifier_bits": 24
+      }
+    ],
+    "n_back": 2,
+    "resolved_depth": 2,
+    "resolved_kind": "try_existing",
+    "search_unique_verifier_bits": 24
+  },
+  "warm_3cell_3back": {
+    "active_cells": 3,
+    "admission": {
+      "accepted": true,
+      "candidate_digest": "19441dbdf2090c042c9f1874fb2aee10ace440d6f445a6e758a4bd16a4f04d06",
+      "observations": 20,
+      "reason": "verified experience attached to an identical external file",
+      "schema": "neural-computer.external-program-admission.v2",
+      "slot": 2,
+      "stable_bits_to_threshold": 3,
+      "stable_observations_to_threshold": 3,
+      "stable_prefix_minimum": 1.0,
+      "unique_verifier_bits": 20
+    },
+    "attempts": [
+      {
+        "accuracy": 0.9,
+        "controller_frozen": true,
+        "kind": "invariant",
+        "known": true,
+        "program_file_updates": 0,
+        "proposed_depth": 3,
+        "slot": 2,
+        "unique_verifier_bits": 20
+      }
+    ],
+    "n_back": 3,
+    "resolved_depth": 3,
+    "resolved_kind": "invariant",
+    "search_unique_verifier_bits": 20
+  }
+}
