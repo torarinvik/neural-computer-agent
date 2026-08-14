@@ -13862,3 +13862,38 @@ transfers (F256 across worlds, F267/F270 across substrates), HOW
 to move toward it derives from the substrate's own metric (this
 finding), and HOW MUCH to risk stays native (F268/F271) -- exactly
 the modularity the founding constraint demanded.
+
+## F272 — RISK RE-GROUNDING: ONE NATIVE SCALAR BUYS SPECIALIST
+## PARITY ON TWO FOREIGN SUBSTRATES (2026-08-14, risk_reground.py,
+## 6 seeds. Scope: ring + graph)
+
+Transferred values (five grid coefficients) x the substrate's own
+distance gradient x ONE natively-raced risk scalar beta.
+
+  pure collect (both substrates): nav_raced = gg EXACTLY, per seed
+                (+3.349 = +3.349 ring; +8.115 = +8.115 graph) --
+                the hand-written approach specialist, derived.
+  ring hazard   nav_raced +2.260 vs gg +2.328 (parity 4/6 within
+                -0.15); beta lifts the default cautious form by
+                +0.466.
+  graph hazard  nav_raced +3.539 vs gg +3.708 (2/6 beat it
+                outright); beta lift +0.224.
+  P1/P2 REFUTED at their +0.10 thresholds (0/6, 2/6): the
+  transferred controller MATCHES the specialists, it does not beat
+  them. P3 CONFIRMED 6/6 both substrates. P4 CONFIRMED: raced beta
+  is small (ring 0.21, graph 0.29 mean) -- these hazards are
+  genuinely cheap to brush past, exactly as F271's refutation
+  implied. Shuffled-value controls lose by +0.89 to +4.64.
+
+  Honest cost note: the beta race spends ~4.6k native steps on a
+  selection stream. On substrates where native fitting is cheap
+  (F269: 95% of ceiling in 192 samples) that is no saving; the
+  method's value is that it needs no new machinery and applies
+  where native fitting is expensive.
+
+THE SPECIALIST-FREE RESULT: across two substrates and four worlds,
+performance previously requiring a hand-written, per-substrate
+navigation form is now obtained from {five transferred numbers} +
+{the substrate's distance function} + {one raced scalar} -- 20/24
+seed-cells at specialist parity or better, with per-seed identity
+on the pure-collect worlds.
