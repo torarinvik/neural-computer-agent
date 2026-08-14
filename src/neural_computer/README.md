@@ -16,7 +16,7 @@ import experiment code.
   operators, programs, and composition.
 - `executive.py`: persistent typed workspace and the minimal external
   `RECEIVE` / `READ` / `WRITE` / `COPY` / `CALL` / three-way `BRANCH` /
-  `WAIT` / `EMIT` / `HALT` interpreter. Every `CALL` uses explicit,
+  `WAIT` / `EMIT` / internal `HANDOFF` / `HALT` interpreter. Every `CALL` uses explicit,
   interface-versioned, transactionally replaced operator state; state is never
   hidden inside a shared operator object.
   The public `tick()` path remains fully defensive. Live internal execution may
@@ -52,7 +52,9 @@ import experiment code.
   ticks, authenticated action receipts, exact-once outcome resolution, device
   dispatch, latency accounting, and `ExternalExecutiveLiveMachine`, which runs
   a reloaded external skill through the sealed executive into a replaceable
-  intention decoder.
+  intention decoder. `ExternalExecutiveCandidateLiveMachine` can stage a child
+  derived from existing bank slots and admit it only after receipt-linked live
+  verifier outcomes clear the stable gate.
 - `human_io.py`: public-screen capture, evidence-bound outcomes, visible pulse
   segmentation, allow-listed macOS windows, and replaceable key transport.
 - `credit.py`, `plasticity.py`, `promotion.py`: trainer-only outcome credit,

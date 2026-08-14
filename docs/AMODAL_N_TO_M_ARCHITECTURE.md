@@ -244,6 +244,9 @@ and mismatch intentions; erasing only temporal presence removes the decision,
 and a second executive sharing the same frozen operator objects starts with
 clean history. `WAIT` and `EMIT` can yield directly to a validated next target,
 which closes the persistent game-loop cycle without consuming an input tick.
+The internal `HANDOFF` instruction advances across a composed component in the
+same tick without emitting an intention; it is used only by the explicit
+`final_emit_only` composition policy.
 For throughput, the interpreter also exposes an internal owner-bound sealed
 state lease. It performs the full tensor/state validation once, then retains
 cheap structural checks and validates every event collection and operator
@@ -339,6 +342,20 @@ previously unseen perturbed learned-event keys selected the correct frozen
 skill and scored 1.0000 on 51 eligible verifier bits; each variant became an
 independent row only after its first outcome. This is bounded representation-
 radius generalization, not a hand-written semantic map.
+
+The next live rung now grows a skill from the bank itself. A deterministic
+parent-slot proposal derived a finite learned-event prelude and an admitted
+delay-2 loop into a child artifact. Explicit compatible-operator sharing carries
+stateful interfaces across the boundary, while `final_emit_only` rewrites
+intermediate `EMIT` instructions to internal `HANDOFF`s so the same learned
+event cannot create an extra external action. The child scored 1.0000 on 24
+fresh verifier bits across three live lifetimes, entered slot 2 with parent
+digests and composition policy persisted, and retained 1.0000 after exact bank
+reload. A matched delay-1 parent composition scored 0.50, 0.375, and 0.50 and
+was rejected without changing its bank. Controller, decoder, program, and
+replay updates were zero. This promotes bounded bank-fed composition and event
+continuity, not autonomous open-ended program synthesis or physical desktop
+deployment.
 
 The physical Position 1-Back rung qualifies the narrower live-I/O claim: public
 display capture, spatial onset segmentation, ordinary keypress output, exact
