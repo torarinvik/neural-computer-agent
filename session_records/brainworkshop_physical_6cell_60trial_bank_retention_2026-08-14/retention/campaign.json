@@ -1,0 +1,33 @@
+{
+  "accuracy": 0.9649122807017544,
+  "completed_sessions": 3,
+  "configured_live_seconds": 192.15859687596094,
+  "controller_and_program_immutable": true,
+  "controller_digest": "59c9ef2b235104e4f0d6bc143ba195fb57a907da9f29b1d5750c39fa22f7687c",
+  "controller_optimizer_updates": 0,
+  "deadline_misses": 6,
+  "emitted_actions": 171,
+  "final_bank_digest": "19737b6ab2555ffc1a71c48224db380931dc4f88249c41e6781bd16eba2e04ba",
+  "final_bank_sha256": "a39782306cd50d21e9d1708c3e7cfd76d73ed70452a2438e6946379213d75517",
+  "input_events": 180,
+  "mastery_threshold": 0.8,
+  "minimum_stable_observations": 8,
+  "positive_verifier_bits": 55,
+  "program_artifact_digests": [
+    "90e20193a50fdfa22b75fe722e6a9e131d9ba05d7f7e7d0aedbce9fc1f3c5749"
+  ],
+  "program_count": 1,
+  "program_optimizer_updates": 0,
+  "replayed_examples": 0,
+  "requested_sessions": 3,
+  "retention_gate_passed": true,
+  "router_observations": 57,
+  "schema": "neural-computer.brainworkshop-physical-bank-curriculum.v1",
+  "source_bank_sha256": "45c1bbb1431fef3094c761beab52042768760062ba300af8a5913e2bd0b6e94b",
+  "stable_bits_to_threshold": 5,
+  "tick_seconds_p50_max": 0.04529091599397361,
+  "tick_seconds_p99_max": 0.06481083296239376,
+  "unique_logical_lifetimes": 3,
+  "unique_verifier_bits": 57,
+  "wall_seconds": 194.48696791706607
+}

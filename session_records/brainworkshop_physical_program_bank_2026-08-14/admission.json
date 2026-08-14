@@ -1,0 +1,10 @@
+{
+  "accepted": true,
+  "candidate_digest": "90e20193a50fdfa22b75fe722e6a9e131d9ba05d7f7e7d0aedbce9fc1f3c5749",
+  "observations": 6,
+  "reason": "candidate verified and committed as an immutable external file",
+  "schema": "neural-computer.external-program-admission.v1",
+  "slot": 0,
+  "stable_bits_to_threshold": 3,
+  "stable_prefix_minimum": 1.0
+}

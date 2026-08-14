@@ -18,6 +18,11 @@ import experiment code.
 - `world_model.py`, `online_transition.py`, `factored_transition.py`: factual
   transition learning and model-based execution.
 - `keypress.py`: one replaceable opaque protocol boundary.
+- `live.py`: variable-port `INPUT`, queued reward adapters, monotonic cognitive
+  ticks, authenticated action receipts, exact-once outcome resolution, device
+  dispatch, and latency accounting.
+- `human_io.py`: public-screen capture, evidence-bound outcomes, visible pulse
+  segmentation, allow-listed macOS windows, and replaceable key transport.
 - `credit.py`, `plasticity.py`, `promotion.py`: trainer-only outcome credit,
   protected updates, and evidence gates.
 
@@ -32,3 +37,9 @@ task-specific content belongs in external artifacts. Reward is received as a
 trusted input event; it is not an opcode. Boolean logic is a library-level
 operator, while the kernel is responsible for typed I/O, workspace access,
 program calls, and control flow.
+
+`LiveInputInstruction` preserves a fixed event ABI while accepting a variable
+number of sensory and verifier devices. `QueuedOutcomeInputDevice` lets an
+environment provide reward with an emitted action receipt and scalar evidence;
+`TemporalProgramOutcomeObserver` routes that input to the selected external
+program slot without mutating its instruction tensor.

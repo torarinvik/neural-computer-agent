@@ -54,6 +54,28 @@ Reward is not a cognitive opcode. A trusted verifier adapter emits a causally
 attributed outcome event through the same input boundary. Missing reward,
 observed zero reward, and negative reward are distinct states.
 
+`LiveInputInstruction` makes that boundary runtime-variable. Any number of
+sensory or verifier adapters may be attached behind the same fixed-width input
+ABI; learned event streams are concatenated without averaging, while attributed
+outcomes remain exact-once transport records. `QueuedOutcomeInputDevice` is the
+minimal reward adapter: an environment submits the agent's own action receipt,
+a scalar outcome, presence/confidence, and observation time. It supplies no
+task ID, program ID, correct action, or labels for actions that were not tried.
+External program learners and route ledgers can subscribe to these resolved
+outcome inputs during the same tick.
+
+Interaction runs as a monotonic cognitive tick:
+
+```text
+RECEIVE learned events -> resolve causal outcomes -> bounded online update
+                       -> controller/program step -> EMIT intention
+```
+
+The same causal loop supports an accelerated virtual clock during research and
+a real clock for screen, audio, keyboard, pointer, and text devices. Raw FPS,
+learned-event rate, cognitive ticks, optimizer updates, and actions are
+accounted separately.
+
 Boolean operations may be installed as verified library macros, but are not
 the foundational ISA. The kernel controls information flow, time, memory, and
 program execution; learned domain transformations live in the growing external
@@ -81,10 +103,52 @@ This is a strong bounded working-memory result, not general continual learning.
 The next scientific target is faster acquisition and reusable computation,
 measured against a matched fresh learner—not merely final n-back accuracy.
 
+The first live rendered rung now consumes clean-room RGB frames and audio
+waveforms on the same batch-one tick runtime. Vision and audio remain separately
+bound through opaque source keys and per-source temporal histories. A seed-17
+diagnostic reached stable 0.80 accuracy after 230 vision outcomes, 115 audio
+outcomes, and 920 outcomes for exact dual-stream actions, with zero replay.
+These are mechanistic signals, not mastery claims.
+
+The physical human-parity rung captures the public Brain Workshop window at
+12 Hz, segments spatial position-stimulus onsets, emits ordinary keypresses,
+and learns only from explicit feedback colors a human sees. A controller
+pretrained across variable visual frontends is frozen during task acquisition;
+only a fresh uniform external temporal-address program updates. In the promoted
+2-cell Position 1-Back run, 86 unique public outcomes produced 86 program
+updates, 0 controller updates, and 0 replay. The first full rolling-44 window
+scored `0.8864`, every later window remained above `0.80`, and the final window
+was `1.0000`. Rendered causal controls passed across 32 seeds, and the matched
+fresh end-to-end learner required 2.32x as many median verifier bits among
+successful runs. Dual mode remains gated on a human-available audio capture
+path.
+
 The most recent eviction-transfer audit is also important negative evidence:
 artifact storage, integrity, and lifecycle work, but the learned maintenance
 policy did not transfer reliably to a held-out compute family. The blueprint is
 retained; inherited maintenance weights are not promoted.
+
+Verified temporal-address programs now have a real external-bank lifecycle.
+A provisional program is learned outside the live bank, evaluated from ordered
+public lifetime scores, and admitted only after a stable verifier prefix. The
+durable entry is an immutable instruction tensor bound to the frozen controller
+digest; optimizer state is not executable memory. Selection is learned in a
+separate memory-side ledger from opaque event contexts, attempted program slots,
+and scalar outcomes. The bank records exact selection propensities, rejects
+tampered files, and leaves its digest unchanged after failed admission. This is
+working infrastructure, not yet evidence that the physical agent can
+discriminate several Brain Workshop rules: that requires a public visible rule
+cue to be encoded as an ordinary learned event and a multi-program control.
+
+The first physical lifecycle replication is now curated. A fresh uniform
+two-cell Position 1-Back program earned admission after six lifetimes and 37
+public outcomes. Four subsequent sessions started from a fresh controller
+instance, withheld actions for three live sensory events, retrieved slot 0 from
+the bank, and then executed the immutable program. Retrieval produced 13/15
+positive public outcomes with zero controller updates, zero program updates,
+and zero replay; only the external reward-route ledger changed. This validates
+admission, persistence, retrieval, and frozen execution for one program. It
+does not yet validate discrimination among multiple programs.
 
 Curated evidence is under `session_records/`. Historical experiments, obsolete
 checkpoints, and superseded session dumps were removed from the working tree;

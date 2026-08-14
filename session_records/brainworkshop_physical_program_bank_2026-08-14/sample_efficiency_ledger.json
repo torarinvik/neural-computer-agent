@@ -1,0 +1,57 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "brainworkshop_physical_program_bank_2026-08-14",
+  "status": "promoted_bounded_single_program_lifecycle",
+  "claim_boundary": "One physical two-cell Position 1-Back program is learned provisionally, admitted by stable public outcomes, retrieved from learned event evidence, and executed immutably; multi-program discrimination is not claimed.",
+  "acquisition": {
+    "unique_verifier_bits": 37,
+    "unique_logical_lifetimes": 6,
+    "controller_optimizer_updates": 0,
+    "external_program_optimizer_updates": 37,
+    "router_observations": 0,
+    "replayed_examples": 0,
+    "wall_seconds": 84.32697379111778,
+    "stable_bits_to_threshold": 25,
+    "threshold": "cumulative public accuracy >= 0.80 at every later raw-outcome prefix",
+    "stable_lifetimes_to_admission": 3,
+    "admission_suffix_lifetimes": 4
+  },
+  "retrieval": {
+    "unique_verifier_bits": 15,
+    "unique_logical_lifetimes": 4,
+    "controller_optimizer_updates": 0,
+    "external_program_optimizer_updates": 0,
+    "router_observations": 15,
+    "replayed_examples": 0,
+    "configured_wall_seconds": 56.0,
+    "instrumented_lifetime_wall_seconds": 14.04623745905701,
+    "tick_seconds_p50": 0.04439383395947516,
+    "tick_seconds_p99": 0.11855474999174476,
+    "positive_outcomes": 13,
+    "accuracy": 0.8666666666666667,
+    "retention_on_mastered_primitive": "same immutable artifact digest in all four retrieval lifetimes; cumulative measured accuracy remained >= 0.80"
+  },
+  "controls": {
+    "three_cell_curriculum_jump_rejected_before_bank_write": true,
+    "fresh_uniform_two_cell_program": true,
+    "stable_admission_gate": true,
+    "controller_digest_unchanged": true,
+    "program_artifact_digest_unchanged_during_retrieval": true,
+    "public_pixels_only": true,
+    "ordinary_key_output": true,
+    "zero_replay": true,
+    "corruption_rejection_unit_control": true,
+    "context_shuffled_unit_control": true
+  },
+  "reward_input_instruction_validation": {
+    "unique_verifier_bits": 5,
+    "router_observations": 5,
+    "controller_optimizer_updates": 0,
+    "external_program_optimizer_updates": 0,
+    "replayed_examples": 0,
+    "wall_seconds": 14.051831500022672,
+    "tick_seconds_p50": 0.045218124985694885,
+    "tick_seconds_p99": 0.12748358398675919
+  },
+  "transfer_ratio_against_fresh_learner": "not re-estimated: this promotes a lifecycle mechanism, not a new capability-transfer claim; the underlying frozen-controller acquisition comparison remains in the prior promoted record"
+}

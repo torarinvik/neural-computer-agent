@@ -1,0 +1,47 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "brainworkshop_physical_6cell_60trial_bank_retention_2026-08-14",
+  "status": "promoted_bounded_six_cell_retention_and_route_learning",
+  "claim_boundary": "One previously admitted Position 1-Back temporal program remains useful across six public grid cells in sixty-trial lifetimes while only opaque route evidence learns; this is not a newly acquired program or higher-n-back mastery.",
+  "probation": {
+    "unique_verifier_bits": 18,
+    "unique_logical_lifetimes": 1,
+    "controller_optimizer_updates": 0,
+    "external_program_optimizer_updates": 0,
+    "router_observations": 18,
+    "promoted_route_observations": 0,
+    "replayed_examples": 0,
+    "positive_verifier_bits": 18,
+    "accuracy": 1.0
+  },
+  "retention": {
+    "unique_verifier_bits": 57,
+    "positive_verifier_bits": 55,
+    "unique_logical_lifetimes": 3,
+    "controller_optimizer_updates": 0,
+    "external_program_optimizer_updates": 0,
+    "router_observations": 57,
+    "replayed_examples": 0,
+    "wall_seconds": 194.48696791706607,
+    "configured_live_seconds": 192.15859687596094,
+    "accuracy": 0.9649122807017544,
+    "stable_bits_to_threshold": 5,
+    "threshold": "cumulative public accuracy >= 0.80 at every later raw-outcome prefix with at least eight later observations",
+    "tick_seconds_p50_max": 0.04529091599397361,
+    "tick_seconds_p99_max": 0.06481083296239376,
+    "deadline_misses": 6,
+    "retention_on_mastered_primitive": "same controller and immutable temporal program digests across all three sixty-trial lifetimes"
+  },
+  "controls": {
+    "one_difficulty_axis_changed": true,
+    "probation_route_updates_not_inherited": true,
+    "transactional_bank_promotion": true,
+    "public_pixels_only": true,
+    "ordinary_key_output": true,
+    "reward_as_live_input": true,
+    "controller_digest_unchanged": true,
+    "program_artifact_digest_unchanged": true,
+    "zero_replay": true
+  },
+  "transfer_ratio_against_fresh_learner": "not re-estimated: this rung tests retention/generalization of an admitted program, not fresh acquisition"
+}
