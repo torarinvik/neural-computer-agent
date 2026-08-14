@@ -13018,3 +13018,54 @@ encoding, identity-stable tracking (the F235 EntityTable, already
 built)}. Prediction: only pair-fit x identity-stable approaches
 0.9 held-out on mover groups; each factor alone stays partial.
 Scope: Localized (GEN-DEV witness worlds).
+
+## F249 — PAIR-DYNAMICS FACTORIAL: IDENTITY-STABLE TRACKING IS THE
+## DYNAMICS FIX; THE PAIR VOCABULARY ADDS NOTHING UNDER IT; AND A
+## MODULUS-OVERFIT TIE-BREAK LURKS IN THE DEPLOYED BANK FIT
+## (2026-08-14, pair_dynamics.py, 6 seeds. Scope: GEN-DEV trio)
+
+The pre-registered 2x2 from F248: {per-slot base-ISA fit vs joint
+PAIR fit over generic relational motions (frozen / fall / chase /
+flee, larger-gap-axis-first)} x {nearest-rank encoding vs identity-
+stable continuity tracking}. Held-out exact-match on mover groups:
+
+  delayed3_intercept1_pursue1_resource2   rank 0.378 -> track 0.850
+  delayed3_intercept2_pursue1_resource1   rank 0.392 -> track 0.722
+  collect1_intercept1_pursue1_resource1   rank 0.448 (track cell
+                                          starved by the all-present
+                                          filter; see limitation)
+
+  P1 CONFIRMED (via the track factor): +0.33..+0.47 over slot x
+     rank -- far past the +0.15 registered threshold.
+  P2 REFUTED, in an informative direction: pair == slot under
+     tracking TO FOUR DECIMALS on mover groups. Identity stability
+     alone converts the residual; the cross-axis vocabulary is NOT
+     needed once labels stop switching identity. F248's factor (b),
+     not (a), was the binding one. No new primitive is admitted --
+     the second candidate witness in a row to refuse.
+  P4 avatar 1.000 in the slot cells everywhere.
+
+Two discoveries beyond the design:
+
+  MODULUS-OVERFIT TIE-BREAK. On the tracked faller group the slot
+  fit scored 0.990 train / 0.152 held-out: per_slot_search breaks
+  score ties by FIRST HIT, which prefers small moduli; early-rollout
+  rows are small, so INC mod5 ties INC mod8 on train and wraps
+  wrongly later. The DEPLOYED bank (32 early transitions) carries
+  the same fragility. Fix (conservative tie-break: prefer larger
+  modulus / NOOP on ties) goes into the next integration.
+
+  INTERCEPT IS FATAL. A faller reaching bottom un-caught KILLS the
+  row (game_family step rule) -- the trio worlds demand
+  catch-positioning under death pressure on two fronts plus fuel
+  gating, confirming F246's reading of the interaction witness.
+
+Limitation, recorded: the probe's all-slots-present filter starved
+worlds with structurally empty planes (avoid2_delayed3, control) --
+carried by the trio cells; the integration probe uses the deployed
+used-mask rule instead.
+
+Next: F250 integration -- VALUE-PLAN over identity-tracked slots
+with the tie-break-fixed bank. The horizon machinery (F247) plus
+faithful dynamics (this finding) is the direct shot at the ~+0.5
+certified trio gap. Scope: Localized (GEN-DEV trio).
