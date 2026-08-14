@@ -12728,3 +12728,43 @@ modal component -- now has its first direct cross-substrate
 confirmation. Next rungs: mechanism transfer ACROSS substrates (does
 the grid-promoted library warm-start graph worlds?), richer graph
 mechanisms, and the sealed one-shot (still awaiting the word).
+
+## F242 — CROSS-SUBSTRATE TRANSFER: 700x WHERE ROLES COVER, HARMFUL
+## WHERE THEY DO NOT (2026-08-14, cross_substrate.py, 6 seeds. Scope:
+## grid -> graph, first cross-substrate founding measurement)
+
+The founding objective measured ACROSS substrates: the F240
+grid-promoted libraries, mechanically abstracted into ROLES (subset
+match against each substrate's declared role table, schedules to SEQ
+of leg roles, zero curation) and re-grounded in the graph slot
+dictionary, warm-start the F241 graph worlds.
+
+  gcollect1          warm 6.13 vs cold 6.28 (98%) at 96 vs ~67,000
+                     episodes -- ~700x cheaper.
+  gcollect1_avoid1   warm 3.16 vs cold 3.21 (98%), same cost ratio.
+  gcollect2          warm +1.41 -- BELOW random (+3.21) and far below
+                     cold (+3.79). Registered prediction 2 ("transfer
+                     fixes gcollect2") REFUTED in the strongest way:
+                     TRANSFER CAN MISLEAD. The dense two-food world
+                     rewarded whatever local adaptation the cold race
+                     found; the imported REACH form actively hurt.
+  coverage           5/6 seeds' libraries abstracted to usable
+                     candidates; seed 1234's winners were valued
+                     forms with NO graph counterpart (the graph
+                     perception has no valued tracker) -> empty
+                     transfer. Role vocabularies must span both
+                     substrates' perceptions, or promotion must keep
+                     a plainer fallback per world.
+
+Two standing rules fall out, both cheap: (1) TRANSFER NEEDS A GUARD
+-- adopt an imported form only if it beats a local baseline (random
+policy, or one cheap raced single); the gcollect2 failure would have
+been caught by either. (2) PROMOTION SHOULD KEEP ROLE DIVERSITY --
+one plain reach/avoid entry per source world alongside whatever
+exotic form won, so no library abstracts to nothing.
+
+With F241/F242 the amodality program has its first full round trip:
+the stack crosses substrates (F241), and experience crosses WITH it
+where the role vocabulary covers, at two orders of magnitude of
+saved search (F242) -- with the failure modes named and their guards
+specified before any further scaling.
