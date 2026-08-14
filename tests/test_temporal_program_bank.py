@@ -75,6 +75,9 @@ def test_verified_previous_primitive_composes_and_round_trips(tmp_path: Path) ->
     assert primitive.program_length == 1
     assert composed.program_length == 2
     assert torch.equal(composed.codes[0], composed.codes[1])
+    three = compose_recursive_temporal_program(primitive, 3)
+    assert three.program_length == 3
+    assert torch.equal(three.codes[0], three.codes[2])
 
     bank = ExternalTemporalProgramBank(
         4,

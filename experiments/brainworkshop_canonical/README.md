@@ -385,6 +385,28 @@ retrieving, scored `1.000/1.000/1.000` and `0.950/0.960/1.000`. The original
 was still unknown (`0.262`). Search bits stayed `0`; no new program file was
 created; controller, program, and replay updates stayed zero.
 
+`neural_workshop_instruction_depth_growth_pilot.py` adds the missing depth
+instead of stretching the 2-back route. It composes the same `PREVIOUS`
+primitive a third time, verifies the child on live 3-back, and binds that
+file to the public 3-back header. Four-back remains an unknown context.
+
+```bash
+PYTHONPATH=src .venv/bin/python \
+  -m experiments.brainworkshop_canonical.neural_workshop_instruction_depth_growth_pilot \
+  --neural-workshop /absolute/path/to/neural-workshop \
+  --source-bank /absolute/path/to/instruction-route/AgentBrain.bank \
+  --output-dir /tmp/neural-workshop-instruction-depth3
+```
+
+In the seed-93017 run, a 3-back header was unknown to the 2-program bank and
+fell back to slot 0 at `0.388`. `PREVIOUS ∘ PREVIOUS ∘ PREVIOUS` then verified
+at `0.968/0.971/1.000` with zero updates and entered slot 2. Held-out
+retrieval selected that slot with propensity `1.0` and scored
+`0.931/0.958/0.971`. Depth one and two retained `1.000` across three sessions
+each. Wrong depth scored `0.375`, over-composition `0.304`, memory corruption
+`0.000`, and an unseen 4-back header stayed unknown at `0.356`. Search bits
+were `0`. The bank now holds three immutable files.
+
 ## Promoted frontier
 
 `executive_compositional_transfer.py` is the first positive bits-to-threshold

@@ -322,6 +322,62 @@ def test_recursive_previous_composition_resolves_two_back_without_new_weights() 
     assert machine.program_digest() == program_before
 
 
+def test_recursive_previous_composition_resolves_three_back_without_new_weights() -> None:
+    torch.manual_seed(42)
+    source = SourcePreservingTemporalMachine(
+        8,
+        source_key_width=3,
+        max_history=4,
+        max_sources=1,
+        action_count=2,
+        intention_width=8,
+        hidden=8,
+    )
+    machine = RecursiveTemporalProgramMachine(
+        8,
+        source_key_width=3,
+        max_history=4,
+        max_sources=1,
+        action_count=2,
+        intention_width=8,
+        hidden=8,
+        sample=False,
+        controller_state={
+            name: value.detach().clone()
+            for name, value in source.named_parameters()
+            if name != "relative_address_logits"
+        },
+        program_prior=torch.zeros(4),
+    )
+    legacy = ExternalProgramArtifact(
+        codes=torch.tensor([[12.0, -12.0, -12.0, -12.0]]),
+        interpreter_schema=TEMPORAL_ADDRESS_INTERPRETER_SCHEMA,
+        execution_schema=TEMPORAL_ADDRESS_EXECUTION_SCHEMA,
+        output_schema=TEMPORAL_ADDRESS_OUTPUT_SCHEMA,
+    )
+    primitive = recursive_temporal_primitive(legacy)
+    composed = compose_recursive_temporal_program(primitive, 3)
+    machine.load_recursive_program_artifact(
+        composed, controller_digest=machine.controller_digest()
+    )
+    controller_before = machine.controller_digest()
+
+    selected = []
+    for index in range(5):
+        event = AmodalEvent(
+            payload=torch.full((1, 8), float(index)),
+            source_key=torch.ones(1, 3),
+        )
+        collection = AmodalEventCollection.from_events((event,), width=8)
+        proposal = machine.tick(collection, (), now=float(index), elapsed=1.0)[0]
+        selected.append(int(proposal.credit_state.sources[0].address_index.item()))
+
+    assert composed.program_length == 3
+    assert selected[3:] == [2, 2]
+    assert machine.composition_depth == 3
+    assert machine.controller_digest() == controller_before
+
+
 def test_negative_feedback_updates_a_saturated_policy_without_clamp_dead_zone() -> None:
     torch.manual_seed(43)
     machine = SourcePreservingTemporalMachine(
