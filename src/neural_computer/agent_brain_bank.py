@@ -572,8 +572,16 @@ class ExternalAgentBrainBank:
     def composed_executive_artifact(
         self,
         parent_slots: Sequence[int],
+        *,
+        share_compatible_operators: bool = False,
+        final_emit_only: bool = False,
     ) -> ExternalExecutiveProgramArtifact:
         """Materialize a child from existing slots without changing the bank."""
+
+        if not isinstance(share_compatible_operators, bool):
+            raise TypeError("executive composition operator sharing must be boolean")
+        if not isinstance(final_emit_only, bool):
+            raise TypeError("executive composition final emit policy must be boolean")
 
         normalized = tuple(parent_slots)
         if len(normalized) < 2:
@@ -586,7 +594,9 @@ class ExternalAgentBrainBank:
         ):
             raise IndexError("executive composition parent slot is outside the bank")
         return compose_executive_artifacts(
-            tuple(self._executive_bank.artifact(slot) for slot in normalized)
+            tuple(self._executive_bank.artifact(slot) for slot in normalized),
+            share_compatible_operators=share_compatible_operators,
+            final_emit_only=final_emit_only,
         )
 
     def compose_executive(
@@ -597,11 +607,22 @@ class ExternalAgentBrainBank:
         threshold: float = 0.8,
         min_observations: int = 1,
         min_stable_observations: int = 1,
+        share_compatible_operators: bool = False,
+        final_emit_only: bool = False,
     ) -> ExternalProgramAdmissionReceipt:
         """Compose admitted executive slots, then gate the child by outcomes."""
 
+        if not isinstance(share_compatible_operators, bool):
+            raise TypeError("executive composition operator sharing must be boolean")
+        if not isinstance(final_emit_only, bool):
+            raise TypeError("executive composition final emit policy must be boolean")
+
         normalized = tuple(parent_slots)
-        child = self.composed_executive_artifact(normalized)
+        child = self.composed_executive_artifact(
+            normalized,
+            share_compatible_operators=share_compatible_operators,
+            final_emit_only=final_emit_only,
+        )
         parents = tuple(self._executive_bank.artifact(slot) for slot in normalized)
         receipt = self.admit_executive(
             child,
@@ -611,15 +632,18 @@ class ExternalAgentBrainBank:
             min_stable_observations=min_stable_observations,
         )
         if receipt.accepted:
-            self._composition_provenance.append(
-                {
-                    "schema": EXECUTIVE_COMPOSITION_SCHEMA,
-                    "child_digest": child.digest(),
-                    "parent_slots": list(normalized),
-                    "parent_digests": [parent.digest() for parent in parents],
-                    "admission": receipt.payload(),
-                }
-            )
+            provenance = {
+                "schema": EXECUTIVE_COMPOSITION_SCHEMA,
+                "child_digest": child.digest(),
+                "parent_slots": list(normalized),
+                "parent_digests": [parent.digest() for parent in parents],
+                "admission": receipt.payload(),
+            }
+            if share_compatible_operators:
+                provenance["share_compatible_operators"] = True
+            if final_emit_only:
+                provenance["final_emit_only"] = True
+            self._composition_provenance.append(provenance)
             self._version += 1
         return receipt
 
@@ -795,6 +819,10 @@ class ExternalAgentBrainBank:
             parent_slots = record.get("parent_slots")
             parent_digests = record.get("parent_digests")
             admission = record.get("admission")
+            share_compatible_operators = record.get(
+                "share_compatible_operators", False
+            )
+            final_emit_only = record.get("final_emit_only", False)
             if (
                 not isinstance(child_digest, str)
                 or child_digest not in executable_digests
@@ -813,6 +841,8 @@ class ExternalAgentBrainBank:
                     for digest in parent_digests
                 )
                 or not isinstance(admission, dict)
+                or not isinstance(share_compatible_operators, bool)
+                or not isinstance(final_emit_only, bool)
             ):
                 raise ValueError("AgentBrain composition provenance is invalid")
             expected_parent_digests = [
@@ -820,7 +850,11 @@ class ExternalAgentBrainBank:
             ]
             if parent_digests != expected_parent_digests:
                 raise ValueError("AgentBrain composition parent digest binding is invalid")
-            expected_child = self.composed_executive_artifact(parent_slots)
+            expected_child = self.composed_executive_artifact(
+                parent_slots,
+                share_compatible_operators=share_compatible_operators,
+                final_emit_only=final_emit_only,
+            )
             if child_digest != expected_child.digest():
                 raise ValueError("AgentBrain composition child derivation is invalid")
             try:

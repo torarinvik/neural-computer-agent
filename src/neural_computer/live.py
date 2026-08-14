@@ -1142,6 +1142,8 @@ class ExternalExecutiveCandidateLiveMachine:
         decoder: LiveIntentionDecoder,
         *,
         parent_slots: Sequence[int] | None = None,
+        share_compatible_operators: bool = False,
+        final_emit_only: bool = False,
         batch_size: int,
         output_key: str,
         threshold: float = 0.8,
@@ -1155,6 +1157,10 @@ class ExternalExecutiveCandidateLiveMachine:
     ) -> None:
         if not isinstance(bank, ExternalAgentBrainBank):
             raise TypeError("live executive admission needs an AgentBrain bank")
+        if not isinstance(share_compatible_operators, bool):
+            raise TypeError("live executive operator sharing must be boolean")
+        if not isinstance(final_emit_only, bool):
+            raise TypeError("live executive final emit policy must be boolean")
         for method_name in ("digest", "validate", "instantiate"):
             if not callable(getattr(artifact, method_name, None)):
                 raise TypeError(
@@ -1171,6 +1177,8 @@ class ExternalExecutiveCandidateLiveMachine:
                 raise ValueError(f"live executive admission {name} must be positive")
         self.candidate_digest = artifact.digest()
         self._artifact = artifact
+        self._share_compatible_operators = share_compatible_operators
+        self._final_emit_only = final_emit_only
         if parent_slots is None:
             self._parent_slots: tuple[int, ...] | None = None
         else:
@@ -1182,7 +1190,11 @@ class ExternalExecutiveCandidateLiveMachine:
                 for slot in normalized_parent_slots
             ):
                 raise ValueError("live executive composition parent slots are invalid")
-            derived = bank.composed_executive_artifact(normalized_parent_slots)
+            derived = bank.composed_executive_artifact(
+                normalized_parent_slots,
+                share_compatible_operators=share_compatible_operators,
+                final_emit_only=final_emit_only,
+            )
             if derived.digest() != self.candidate_digest:
                 raise ValueError(
                     "live executive composition candidate does not match its parents"
@@ -1227,7 +1239,15 @@ class ExternalExecutiveCandidateLiveMachine:
         bytes or task labels are supplied by the controller.
         """
 
-        artifact = bank.composed_executive_artifact(parent_slots)
+        share_compatible_operators = kwargs.get(
+            "share_compatible_operators", False
+        )
+        final_emit_only = kwargs.get("final_emit_only", False)
+        artifact = bank.composed_executive_artifact(
+            parent_slots,
+            share_compatible_operators=share_compatible_operators,
+            final_emit_only=final_emit_only,
+        )
         return cls(
             artifact,
             bank,
@@ -1291,6 +1311,14 @@ class ExternalExecutiveCandidateLiveMachine:
     def parent_slots(self) -> tuple[int, ...] | None:
         return self._parent_slots
 
+    @property
+    def share_compatible_operators(self) -> bool:
+        return self._share_compatible_operators
+
+    @property
+    def final_emit_only(self) -> bool:
+        return self._final_emit_only
+
     def _observe_outcomes(self, outcomes: Sequence[ResolvedLiveOutcome]) -> None:
         for resolved in outcomes:
             credit = resolved.proposal.credit_state
@@ -1332,6 +1360,8 @@ class ExternalExecutiveCandidateLiveMachine:
                     threshold=self.threshold,
                     min_observations=self.min_observations,
                     min_stable_observations=self.min_stable_observations,
+                    share_compatible_operators=self._share_compatible_operators,
+                    final_emit_only=self._final_emit_only,
                 )
             self._bank_digest_after = self.bank.digest()
         return outcome

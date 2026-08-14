@@ -293,19 +293,33 @@ class ExternalExecutiveProgramArtifact:
 
 def compose_executive_artifacts(
     artifacts: Sequence[ExternalExecutiveProgramArtifact],
+    *,
+    share_compatible_operators: bool = False,
+    final_emit_only: bool = False,
 ) -> ExternalExecutiveProgramArtifact:
     """Compose existing executable files into one sequential artifact.
 
-    Each component keeps its own workspace namespace and operator namespace.
+    Each component keeps its own workspace namespace. By default it also keeps
+    its own operator namespace; ``share_compatible_operators=True`` instead
+    gives components with identical allow-listed operator specifications one
+    explicit state namespace, which lets a temporal prelude hand history to a
+    later component.
     The component terminal ``HALT`` is removed for every non-final component,
     and all branch/WAIT/EMIT targets that pointed at that terminal transfer to
     the next component.  This permits a finite prelude to hand off to a
     persistent game-loop skill while preserving stateful operator isolation.
+    With ``final_emit_only=True``, an intermediate EMIT becomes an internal
+    HANDOFF, so a prelude can process the same learned event without producing
+    an extra external action.
     No task identity or verifier-private label enters the resulting artifact.
     """
 
     if not artifacts:
         raise ValueError("executive composition needs at least one artifact")
+    if not isinstance(share_compatible_operators, bool):
+        raise TypeError("executive composition operator sharing must be boolean")
+    if not isinstance(final_emit_only, bool):
+        raise TypeError("executive composition final emit policy must be boolean")
     validated = tuple(artifact.validate() for artifact in artifacts)
     if any(artifact.schema != EXECUTIVE_PROGRAM_ARTIFACT_SCHEMA for artifact in validated):
         raise ValueError("executive composition artifacts use incompatible schemas")
@@ -325,23 +339,40 @@ def compose_executive_artifacts(
     program_offsets: list[int] = []
     slot_offsets: list[int] = []
     handle_offsets: list[int] = []
+    handle_maps: list[dict[int, int]] = []
     body_offset = 0
     slot_offset = 0
     handle_offset = 0
+    shared_handles: dict[tuple[object, ...], int] = {}
     for artifact, body_length in zip(validated, body_lengths, strict=True):
         program_offsets.append(body_offset)
         slot_offsets.append(slot_offset)
         handle_offsets.append(handle_offset)
         body_offset += body_length
         slot_offset += artifact.program.slot_count
-        maximum_handle = max(
-            (spec.handle for spec in artifact.operator_specs), default=-1
-        )
-        handle_offset += maximum_handle + 1
+        current_map: dict[int, int] = {}
+        for spec in artifact.operator_specs:
+            if share_compatible_operators:
+                key = (spec.kind, spec.width, spec.delay, spec.schema)
+                global_handle = shared_handles.get(key)
+                if global_handle is None:
+                    global_handle = handle_offset
+                    shared_handles[key] = global_handle
+                    handle_offset += 1
+            else:
+                global_handle = handle_offset + spec.handle
+            current_map[spec.handle] = global_handle
+        handle_maps.append(current_map)
+        if not share_compatible_operators:
+            maximum_handle = max(
+                (spec.handle for spec in artifact.operator_specs), default=-1
+            )
+            handle_offset += maximum_handle + 1
 
     instructions: list[ExecutiveInstruction] = []
     composed_specs: list[ExternalExecutiveOperatorSpec] = []
-    for index, (artifact, program_offset, slots, handles) in enumerate(
+    emitted_shared_keys: set[tuple[object, ...]] = set()
+    for index, (artifact, program_offset, slots, _handles) in enumerate(
         zip(validated, program_offsets, slot_offsets, handle_offsets, strict=True)
     ):
         terminal = len(artifact.program.instructions) - 1
@@ -364,34 +395,48 @@ def compose_executive_artifacts(
             return program_offset + target
 
         for instruction in artifact.program.instructions[:-1]:
+            intermediate_handoff = (
+                final_emit_only
+                and index + 1 < len(validated)
+                and instruction.op == "emit"
+            )
+            operation = "handoff" if intermediate_handoff else instruction.op
             instructions.append(
                 ExecutiveInstruction(
-                    op=instruction.op,
-                    source=(None if instruction.source is None else instruction.source + slots),
+                    op=operation,
+                    source=(
+                        None
+                        if intermediate_handoff or instruction.source is None
+                        else instruction.source + slots
+                    ),
                     destination=(
                         None
-                        if instruction.destination is None
+                        if intermediate_handoff or instruction.destination is None
                         else instruction.destination + slots
                     ),
                     operator_handle=(
                         None
-                        if instruction.operator_handle is None
-                        else instruction.operator_handle + handles
+                        if intermediate_handoff or instruction.operator_handle is None
+                        else handle_maps[index][instruction.operator_handle]
                     ),
-                    arguments=tuple(argument + slots for argument in instruction.arguments),
+                    arguments=(
+                        ()
+                        if intermediate_handoff
+                        else tuple(argument + slots for argument in instruction.arguments)
+                    ),
                     true_target=(
                         None
-                        if instruction.true_target is None
+                        if intermediate_handoff or instruction.true_target is None
                         else relocate_target(instruction.true_target)
                     ),
                     false_target=(
                         None
-                        if instruction.false_target is None
+                        if intermediate_handoff or instruction.false_target is None
                         else relocate_target(instruction.false_target)
                     ),
                     unknown_target=(
                         None
-                        if instruction.unknown_target is None
+                        if intermediate_handoff or instruction.unknown_target is None
                         else relocate_target(instruction.unknown_target)
                     ),
                     next_target=(
@@ -401,10 +446,13 @@ def compose_executive_artifacts(
                     ),
                 )
             )
-        composed_specs.extend(
-            replace(spec, handle=spec.handle + handles)
-            for spec in artifact.operator_specs
-        )
+        for spec in artifact.operator_specs:
+            if share_compatible_operators:
+                key = (spec.kind, spec.width, spec.delay, spec.schema)
+                if key in emitted_shared_keys:
+                    continue
+                emitted_shared_keys.add(key)
+            composed_specs.append(replace(spec, handle=handle_maps[index][spec.handle]))
     instructions.append(ExecutiveInstruction("halt"))
     return ExternalExecutiveProgramArtifact(
         program=ExternalExecutiveProgram(

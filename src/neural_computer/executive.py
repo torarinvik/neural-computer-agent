@@ -42,6 +42,7 @@ ExecutiveOp = Literal[
     "branch",
     "wait",
     "emit",
+    "handoff",
     "halt",
 ]
 ExecutiveStatus = Literal[
@@ -299,6 +300,7 @@ class ExecutiveInstruction:
             "branch",
             "wait",
             "emit",
+            "handoff",
             "halt",
         }:
             raise ValueError("external executive instruction has an unknown operation")
@@ -345,8 +347,8 @@ class ExecutiveInstruction:
         elif self.op == "emit" and self.source is None:
             raise ValueError("EMIT needs an intention source")
         if self.next_target is not None:
-            if self.op not in {"wait", "emit"}:
-                raise ValueError("only WAIT and EMIT may set a next target")
+            if self.op not in {"wait", "emit", "handoff"}:
+                raise ValueError("only WAIT, EMIT, and HANDOFF may set a next target")
             if (
                 not isinstance(self.next_target, int)
                 or isinstance(self.next_target, bool)
@@ -942,6 +944,12 @@ class ExternalAmodalExecutive:
                 )
                 status = "emitted"
                 break
+            elif instruction.op == "handoff":
+                pointer = (
+                    pointer + 1
+                    if instruction.next_target is None
+                    else instruction.next_target
+                )
             else:
                 status = "halted"
                 break

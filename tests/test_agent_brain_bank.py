@@ -18,6 +18,7 @@ from neural_computer import (
     ExecutiveInstruction,
     ExternalAgentBrainBank,
     ExternalExecutiveCompositionSearch,
+    ExternalExecutiveOperatorSpec,
     ExternalExecutiveProgram,
     ExternalExecutiveProgramArtifact,
     ExternalExecutiveProgramBank,
@@ -77,6 +78,42 @@ def test_executive_composition_rejects_unreachable_later_components() -> None:
 
     with pytest.raises(ValueError, match="terminal handoff"):
         compose_executive_artifacts((looping, finite))
+
+
+def test_executive_composition_can_share_compatible_operator_state_explicitly() -> None:
+    def finite_with_value_operator(handle: int) -> ExternalExecutiveProgramArtifact:
+        return ExternalExecutiveProgramArtifact(
+            program=ExternalExecutiveProgram(
+                2,
+                (
+                    ExecutiveInstruction("receive", destination=0),
+                    ExecutiveInstruction(
+                        "call", destination=1, operator_handle=handle, arguments=(0,)
+                    ),
+                    ExecutiveInstruction("wait"),
+                    ExecutiveInstruction("halt"),
+                ),
+            ),
+            operator_specs=(
+                ExternalExecutiveOperatorSpec(
+                    handle, "singleton_event_value", width=3
+                ),
+            ),
+            intention_width=1,
+        ).validate()
+
+    first = finite_with_value_operator(4)
+    second = finite_with_value_operator(9)
+    isolated = compose_executive_artifacts((first, second))
+    shared = compose_executive_artifacts(
+        (first, second), share_compatible_operators=True
+    )
+
+    assert len(isolated.operator_specs) == 2
+    assert len(shared.operator_specs) == 1
+    assert isolated.digest() != shared.digest()
+    assert shared.program.instructions[1].operator_handle == 0
+    assert shared.program.instructions[4].operator_handle == 0
 
 
 def test_bank_composes_admitted_slots_with_provenance_and_reload(

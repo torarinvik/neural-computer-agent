@@ -175,7 +175,7 @@ def test_live_candidate_rejection_does_not_mutate_bank() -> None:
     assert machine.bank_digest_after == before
 
 
-def test_live_bank_derived_composition_records_parent_provenance() -> None:
+def test_live_bank_derived_composition_records_parent_provenance(tmp_path) -> None:
     encoder = BrainWorkshopEventEncoder(symbol_count=4, event_width=8)
     for parameter in encoder.parameters():
         parameter.requires_grad_(False)
@@ -192,12 +192,18 @@ def test_live_bank_derived_composition_records_parent_provenance() -> None:
         batch_size=1,
         output_key="keypress",
         sample=False,
+        share_compatible_operators=True,
+        final_emit_only=True,
         threshold=0.8,
         min_observations=3,
         min_stable_observations=2,
     )
     assert machine.parent_slots == (0, 1)
-    assert machine.candidate_digest == bank.composed_executive_artifact((0, 1)).digest()
+    assert machine.share_compatible_operators
+    assert machine.final_emit_only
+    assert machine.candidate_digest == bank.composed_executive_artifact(
+        (0, 1), share_compatible_operators=True, final_emit_only=True
+    ).digest()
     assert machine.bank_digest_before == before
 
     outcomes = [
@@ -211,7 +217,7 @@ def test_live_bank_derived_composition_records_parent_provenance() -> None:
         for seed in (73, 75, 76)
     ]
 
-    assert outcomes == [1.0, 1.0, 0.875]
+    assert outcomes == [1.0, 1.0, 1.0]
     assert machine.admitted
     assert machine.admission_receipt is not None
     assert machine.admission_receipt.slot == 2
@@ -221,3 +227,11 @@ def test_live_bank_derived_composition_records_parent_provenance() -> None:
     assert provenance["parent_slots"] == [0, 1]
     assert provenance["child_digest"] == machine.candidate_digest
     assert provenance["admission"] == machine.admission_receipt.payload()
+    assert provenance["share_compatible_operators"] is True
+    assert provenance["final_emit_only"] is True
+    path = tmp_path / "AgentBrain.bank"
+    bank.save_bank(path)
+    restored = ExternalAgentBrainBank.load_bank(path)
+    assert restored.digest() == bank.digest()
+    assert restored.composition_provenance == bank.composition_provenance
+    assert restored.artifact("executive_program", 2).digest() == machine.candidate_digest
