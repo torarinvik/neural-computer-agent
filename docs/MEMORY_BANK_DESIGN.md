@@ -13232,3 +13232,44 @@ same fix, moved to the dynamics layer:
   prediction reaches ~0.9 where pooled fits stalled at 0.72-0.85.
 
 Scope: Localized (GEN-DEV witnesses + control).
+
+## F254 — PER-ENTITY RULE BINDING REFUSED: THE TRACKER'S OWN NOISE
+## BOUNDS EVERY DYNAMICS FIX; CONTROL RECORD +1.40; THE CAPACITY
+## HYPOTHESIS IS ALL THAT REMAINS (2026-08-14, value_plan_bound.py,
+## 6 seeds. Scope: GEN-DEV witnesses + control)
+
+The typed-dynamics completion: each tracked entity binds its own
+motion rule (frozen/fall/chase/flee) by its own observed history;
+avatar via plant-executed bank program; mc_soft typed head fit on
+bound-rolled children. Registered P1-P4.
+
+  P2 REFUTED   bound one-step mover exact-match 0.58-0.77 -- not
+               0.9, and BELOW the bank on two trio worlds (0.64 vs
+               0.83, 0.58 vs 0.76). The binding evidence and the
+               ground truth are both produced by the tracker, whose
+               re-acquisitions and identity breaks pollute each.
+  P1 REFUTED   0/6 seeds everywhere; the hardest world degrades
+               (bound arms -1.18..-1.31).
+  P3 REFUTED   shufbind == bound: the bindings carried no usable
+               information, consistent with P2.
+  P4 CONFIRMED, with a record: bound_it_d4 = +1.40 on the control
+               (3.4x the privileged d4 ceiling) -- the fifth
+               consecutive integration to raise the control record
+               while the trio refuses to move.
+
+Five integrations (F250-F254) share one signature: every layer
+improves in isolation (tracking, typed rewards, model consistency,
+rule binding), the composition stalls at deploy parity ~-0.85, and
+privileged arms keep certifying reachable skill at -0.16..-0.46.
+One hypothesis remains untested, the one the freeze discipline
+reserves for last: THE FROZEN 8-SLOT STATE IS CAPACITY-INSUFFICIENT
+for these worlds. collect1_intercept1_pursue1_resource1 carries
+four non-avatar entities plus a hidden holding bit; the tracked
+state holds three entities and no holding. If states identical in
+the tracked-8 view demand different optimal actions at material
+frequency, the trio gap re-scopes from machinery defect to CORE
+CAPACITY CEILING -- the necessity witness slot expansion has been
+waiting for. Pre-registered next: the tracked-state aliasing audit
+(F233's instrument, aimed at the core): per-step aliasing loss of
+true depth-2 action values bucketed by tracked-state key, vs a
+full-state key control and the control world. Scope: Localized.
