@@ -864,13 +864,34 @@ class PersistentOpaqueContextRouteEvidence:
                     slot_count=self.slot_count
                 )[0]
                 if strategy == "balanced" and status.preferred_slot is None:
-                    least_attempts = attempts.amin()
-                    least_attempted = attempts == least_attempts
-                    rows.append(
-                        least_attempted.to(dtype=torch.float32)
-                        / least_attempted.sum().clamp_min(1.0)
-                    )
-                    continue
+                    recent_slot = status.last_slot
+                    recent_outcome = status.last_outcome
+                    if (
+                        recent_slot is not None
+                        and recent_outcome is not None
+                        and recent_outcome >= record.evidence.mastery_threshold
+                    ):
+                        # Keep testing a promising replacement until its
+                        # stable-prefix gate protects it. Otherwise a single
+                        # successful probe can be discarded by a tie-break.
+                        preferred = recent_slot
+                    else:
+                        least_attempts = attempts.amin()
+                        least_attempted = attempts == least_attempts
+                        if (
+                            recent_slot is not None
+                            and recent_outcome is not None
+                            and recent_outcome <= record.evidence.reversal_threshold
+                        ):
+                            alternatives = least_attempted.clone()
+                            alternatives[recent_slot] = False
+                            if bool(alternatives.any()):
+                                least_attempted = alternatives
+                        rows.append(
+                            least_attempted.to(dtype=torch.float32)
+                            / least_attempted.sum().clamp_min(1.0)
+                        )
+                        continue
             if strategy == "balanced" and record is None:
                 least_attempts = attempts.amin()
                 least_attempted = attempts == least_attempts

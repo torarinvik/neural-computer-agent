@@ -365,6 +365,34 @@ def test_context_route_balanced_strategy_covers_unmastered_slots_before_exploit(
     assert probabilities[0].tolist() == [0.0, 0.0, 0.5, 0.5]
 
 
+def test_context_route_balanced_policy_avoids_reversal_and_retries_successful_probe() -> None:
+    table = PersistentOpaqueContextRouteEvidence(
+        width=2,
+        mastery_threshold=0.8,
+        min_mastery_observations=2,
+        reversal_threshold=0.8,
+        reversal_patience=2,
+    )
+    table.append_slot()
+    table.append_slot()
+    cue = torch.tensor([1.0, 0.0])
+    for _ in range(2):
+        table.observe(cue, 0, 1.0)
+    for _ in range(2):
+        table.observe(cue, 0, 0.5)
+
+    after_reversal = table.behavior_probabilities(
+        cue.unsqueeze(0), exploration=0.2, strategy="balanced"
+    )[0]
+    assert after_reversal.tolist() == [0.0, 1.0]
+
+    table.observe(cue, 1, 1.0)
+    while_probe = table.behavior_probabilities(
+        cue.unsqueeze(0), exploration=0.2, strategy="balanced"
+    )[0]
+    assert while_probe[1] > while_probe[0]
+
+
 def test_context_route_rejects_unknown_exploration_strategy() -> None:
     table = PersistentOpaqueContextRouteEvidence(width=2)
     table.append_slot()
