@@ -13791,3 +13791,38 @@ fewer coordinates than control; the canonical value form is a
 pooled/class pair) and the headroom scoping of acceleration.
 Standing frontier unchanged: guarded-union baseline at breadth,
 reliable cross-substrate seeding, sealed sets user-gated.
+
+## F270 — THE THIRD SUBSTRATE: AMODAL VALUE KNOWLEDGE IS A PATTERN
+## (2026-08-14, ring_transfer.py, 6 seeds. Scope: grid -> ring;
+## with F267, grid -> {graph, ring})
+
+A 12-cell ring world (cyclic metric, left/right actions, food +1
+respawning, fatal hazard walker), built for this probe. The SAME
+grid-fit five-coefficient class binding, kernel calibrated to the
+ring's step metric, zero ring data:
+
+  rcollect1          class_zeroshot +2.570 = native_ceiling +2.570
+                     -- IDENTICAL PER SEED, 6/6: the transferred
+                     weights induce exactly the policy ring-native
+                     event supervision would teach this head class.
+                     (P1 6/6.)
+  ravoid1_collect1   +1.245 vs native +1.464: 85% of the native
+                     gain, sd 0.07 (P1 5/6).
+  P3 3/6 -- the 5-element permutation control's known weakness
+     (F267 caveat); class >= random + 0.5 on 12/12 seed-cells.
+  gg_ring (+3.35) exceeds the class head class on the ring: the
+  contact kernel is myopic beyond d=2 -- the head-CLASS ceiling is
+  what transfer is measured against, and it meets it exactly.
+
+WITH F267: the class binding now crosses THREE substrates -- 2D
+Manhattan grid, nominal 8-node digraph under BFS, 12-cell cyclic
+ring -- at the native-fit ceiling of its head class, zero target
+data, 23/24 seed-cells at >= 70% native gain. Value knowledge
+expressed as {event in the substrate's own metric} x {behavior
+signature} is SUBSTRATE-GENERAL: five numbers, learned once on one
+geometry, meaning the same thing on every geometry tested. The
+founding constraint ("not domain specific in any way") now has its
+strongest positive witness: the same knowledge object survives
+three unrelated geometries without modification.
+
+Scope: Cross-substrate (grid -> graph, grid -> ring).
