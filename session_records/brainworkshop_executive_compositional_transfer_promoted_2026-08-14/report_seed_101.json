@@ -1,0 +1,248 @@
+{
+  "schema": "neural-computer.brainworkshop-executive-composition-transfer.v1",
+  "claim_boundary": "A verified generic temporal-equality skeleton narrows autonomous held-out program search to one failed relative-delay binding and reduces unique verifier bits versus a matched empty-bank Cartesian search.",
+  "source_artifact": {
+    "relation_fragment": "opaque:0",
+    "delay_binding": 1,
+    "digest": "32505a3114d0cb617ccf4f37ba54338291f8197248bb2ebd90e58683baa28e88",
+    "verification_scores": [
+      1.0,
+      1.0
+    ],
+    "verification_unique_bits": 576,
+    "admitted": true,
+    "retention_scores": [
+      1.0,
+      1.0
+    ],
+    "retention_unique_bits": 576
+  },
+  "target_rule_private_to_verifier": 2,
+  "durable_bank": {
+    "path": "session_records/brainworkshop_executive_compositional_transfer_promoted_2026-08-14/AgentBrain_replication.bank",
+    "program_count": 2,
+    "source_slot": 0,
+    "target_slot": 1,
+    "source_artifact_digest": "8486f8908269a10eaf691f69671c54b333592587065c787b526230016fefd115",
+    "target_artifact_digest": "1bbd08dbf3f34191d2b83f284c9b9da8a6df077079ffa3ad784769c07dfd7f30",
+    "bank_digest": "dc6e2b9cf70a58f8974581faaade073c530ea92dbc56ec58108f4f27d1d4e810",
+    "source_reload_score": 1.0,
+    "target_reload_score": 1.0
+  },
+  "rows": [
+    {
+      "seed": 101,
+      "warm_bits_to_admission": 512,
+      "fresh_bits_to_admission": 1024,
+      "warm_lifetimes_to_admission": 64,
+      "fresh_lifetimes_to_admission": 128,
+      "warm_admitted": true,
+      "fresh_admitted": true,
+      "same_admitted_artifact": true
+    },
+    {
+      "seed": 102,
+      "warm_bits_to_admission": 1024,
+      "fresh_bits_to_admission": 2048,
+      "warm_lifetimes_to_admission": 128,
+      "fresh_lifetimes_to_admission": 256,
+      "warm_admitted": true,
+      "fresh_admitted": true,
+      "same_admitted_artifact": true
+    },
+    {
+      "seed": 103,
+      "warm_bits_to_admission": 768,
+      "fresh_bits_to_admission": 3072,
+      "warm_lifetimes_to_admission": 96,
+      "fresh_lifetimes_to_admission": 384,
+      "warm_admitted": true,
+      "fresh_admitted": true,
+      "same_admitted_artifact": true
+    },
+    {
+      "seed": 104,
+      "warm_bits_to_admission": 1280,
+      "fresh_bits_to_admission": 4352,
+      "warm_lifetimes_to_admission": 160,
+      "fresh_lifetimes_to_admission": 544,
+      "warm_admitted": true,
+      "fresh_admitted": true,
+      "same_admitted_artifact": true
+    },
+    {
+      "seed": 105,
+      "warm_bits_to_admission": 1280,
+      "fresh_bits_to_admission": 2816,
+      "warm_lifetimes_to_admission": 160,
+      "fresh_lifetimes_to_admission": 352,
+      "warm_admitted": true,
+      "fresh_admitted": true,
+      "same_admitted_artifact": true
+    },
+    {
+      "seed": 106,
+      "warm_bits_to_admission": 1024,
+      "fresh_bits_to_admission": 3840,
+      "warm_lifetimes_to_admission": 128,
+      "fresh_lifetimes_to_admission": 480,
+      "warm_admitted": true,
+      "fresh_admitted": true,
+      "same_admitted_artifact": true
+    },
+    {
+      "seed": 107,
+      "warm_bits_to_admission": 1024,
+      "fresh_bits_to_admission": 1792,
+      "warm_lifetimes_to_admission": 128,
+      "fresh_lifetimes_to_admission": 224,
+      "warm_admitted": true,
+      "fresh_admitted": true,
+      "same_admitted_artifact": true
+    },
+    {
+      "seed": 108,
+      "warm_bits_to_admission": 512,
+      "fresh_bits_to_admission": 768,
+      "warm_lifetimes_to_admission": 64,
+      "fresh_lifetimes_to_admission": 96,
+      "warm_admitted": true,
+      "fresh_admitted": true,
+      "same_admitted_artifact": true
+    },
+    {
+      "seed": 109,
+      "warm_bits_to_admission": 768,
+      "fresh_bits_to_admission": 3840,
+      "warm_lifetimes_to_admission": 96,
+      "fresh_lifetimes_to_admission": 480,
+      "warm_admitted": true,
+      "fresh_admitted": true,
+      "same_admitted_artifact": true
+    },
+    {
+      "seed": 110,
+      "warm_bits_to_admission": 512,
+      "fresh_bits_to_admission": 1536,
+      "warm_lifetimes_to_admission": 64,
+      "fresh_lifetimes_to_admission": 192,
+      "warm_admitted": true,
+      "fresh_admitted": true,
+      "same_admitted_artifact": true
+    },
+    {
+      "seed": 111,
+      "warm_bits_to_admission": 1024,
+      "fresh_bits_to_admission": 1536,
+      "warm_lifetimes_to_admission": 128,
+      "fresh_lifetimes_to_admission": 192,
+      "warm_admitted": true,
+      "fresh_admitted": true,
+      "same_admitted_artifact": true
+    },
+    {
+      "seed": 112,
+      "warm_bits_to_admission": 1280,
+      "fresh_bits_to_admission": 4352,
+      "warm_lifetimes_to_admission": 160,
+      "fresh_lifetimes_to_admission": 544,
+      "warm_admitted": true,
+      "fresh_admitted": true,
+      "same_admitted_artifact": true
+    },
+    {
+      "seed": 113,
+      "warm_bits_to_admission": 1024,
+      "fresh_bits_to_admission": 3072,
+      "warm_lifetimes_to_admission": 128,
+      "fresh_lifetimes_to_admission": 384,
+      "warm_admitted": true,
+      "fresh_admitted": true,
+      "same_admitted_artifact": true
+    },
+    {
+      "seed": 114,
+      "warm_bits_to_admission": 1024,
+      "fresh_bits_to_admission": 2304,
+      "warm_lifetimes_to_admission": 128,
+      "fresh_lifetimes_to_admission": 288,
+      "warm_admitted": true,
+      "fresh_admitted": true,
+      "same_admitted_artifact": true
+    },
+    {
+      "seed": 115,
+      "warm_bits_to_admission": 768,
+      "fresh_bits_to_admission": 1536,
+      "warm_lifetimes_to_admission": 96,
+      "fresh_lifetimes_to_admission": 192,
+      "warm_admitted": true,
+      "fresh_admitted": true,
+      "same_admitted_artifact": true
+    },
+    {
+      "seed": 116,
+      "warm_bits_to_admission": 512,
+      "fresh_bits_to_admission": 2048,
+      "warm_lifetimes_to_admission": 64,
+      "fresh_lifetimes_to_admission": 256,
+      "warm_admitted": true,
+      "fresh_admitted": true,
+      "same_admitted_artifact": true
+    }
+  ],
+  "aggregate": {
+    "warm_unique_verifier_bits": 14336,
+    "fresh_unique_verifier_bits": 39936,
+    "transfer_ratio_fresh_over_warm": 2.7857142857142856,
+    "warm_candidate_count": 4,
+    "fresh_candidate_count": 16
+  },
+  "controls": {
+    "irrelevant_bank_admitted": false,
+    "destroyed_reward_admitted": false,
+    "shuffled_action_admitted": false,
+    "missing_history_admitted": false
+  },
+  "gates": {
+    "source_artifact_verified": true,
+    "source_retained_after_target_search": true,
+    "durable_source_and_target_admitted": true,
+    "bank_reload_digest_exact": true,
+    "bank_reload_source_mastery": true,
+    "bank_reload_target_mastery": true,
+    "all_warm_admitted": true,
+    "all_fresh_admitted": true,
+    "same_solution": true,
+    "warm_strictly_faster_every_seed": true,
+    "irrelevant_bank_not_admitted": true,
+    "destroyed_reward_not_admitted": true,
+    "shuffled_action_not_admitted": true,
+    "missing_history_not_admitted": true,
+    "zero_controller_updates": true,
+    "zero_replay": true
+  },
+  "promoted": true,
+  "accounting": {
+    "unique_verifier_bits": {
+      "source_verification": 576,
+      "warm_target_search": 14336,
+      "fresh_target_search": 39936,
+      "source_retention": 576,
+      "bank_reload": 544,
+      "controls": 4096
+    },
+    "unique_logical_lifetimes": 7488,
+    "optimizer_updates": 0,
+    "replayed_examples": 0,
+    "stable_bits_to_threshold": {
+      "warm_target_search": 14336,
+      "fresh_target_search": 39936
+    },
+    "tick_latency_ms": {
+      "p50": 0.4409999819472432,
+      "p99": 0.49145125551149255
+    },
+    "wall_seconds": 1.2097137500531971
+  }
+}

@@ -306,6 +306,36 @@ def evaluate_external_program_admission(
 
     if not isinstance(artifact, ExternalProgramArtifact):
         raise TypeError("program admission requires an external program artifact")
+    return evaluate_program_digest_admission(
+        artifact.digest(),
+        outcomes,
+        threshold=threshold,
+        min_observations=min_observations,
+        min_stable_observations=min_stable_observations,
+    )
+
+
+def evaluate_program_digest_admission(
+    candidate_digest: str,
+    outcomes: torch.Tensor | list[float] | tuple[float, ...],
+    *,
+    threshold: float = 0.8,
+    min_observations: int = 1,
+    min_stable_observations: int = 1,
+) -> ExternalProgramAdmissionReceipt:
+    """Apply the common verifier gate to any versioned external program.
+
+    The executable artifact type owns its integrity digest. This gate sees
+    only that digest and ordered scalar outcomes, so new independently
+    versioned interpreters do not need to masquerade as tensor programs.
+    """
+
+    if not isinstance(candidate_digest, str) or len(candidate_digest) != 64:
+        raise ValueError("program admission candidate digest is malformed")
+    try:
+        int(candidate_digest, 16)
+    except ValueError as error:
+        raise ValueError("program admission candidate digest is malformed") from error
     if not 0.0 <= threshold <= 1.0:
         raise ValueError("program admission threshold must lie in [0, 1]")
     if min_observations < 1:
@@ -318,7 +348,7 @@ def evaluate_external_program_admission(
     if values.numel() == 0:
         return ExternalProgramAdmissionReceipt(
             accepted=False,
-            candidate_digest=artifact.digest(),
+            candidate_digest=candidate_digest,
             slot=None,
             observations=0,
             stable_bits_to_threshold=None,
@@ -332,7 +362,7 @@ def evaluate_external_program_admission(
     if values.numel() < min_observations:
         return ExternalProgramAdmissionReceipt(
             accepted=False,
-            candidate_digest=artifact.digest(),
+            candidate_digest=candidate_digest,
             slot=None,
             observations=int(values.numel()),
             stable_bits_to_threshold=None,
@@ -350,7 +380,7 @@ def evaluate_external_program_admission(
     if stable_prefix is None:
         return ExternalProgramAdmissionReceipt(
             accepted=False,
-            candidate_digest=artifact.digest(),
+            candidate_digest=candidate_digest,
             slot=None,
             observations=int(values.numel()),
             stable_bits_to_threshold=None,
@@ -359,7 +389,7 @@ def evaluate_external_program_admission(
         ).validate()
     return ExternalProgramAdmissionReceipt(
         accepted=True,
-        candidate_digest=artifact.digest(),
+        candidate_digest=candidate_digest,
         slot=None,
         observations=int(values.numel()),
         stable_bits_to_threshold=stable_prefix,
@@ -376,4 +406,5 @@ __all__ = [
     "ExternalProgramArtifact",
     "ExternalProgramMemoryTransactionReceipt",
     "evaluate_external_program_admission",
+    "evaluate_program_digest_admission",
 ]

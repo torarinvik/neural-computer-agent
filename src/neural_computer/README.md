@@ -14,6 +14,19 @@ import experiment code.
   integrity, persistence, protection, admission, eviction, and replacement.
 - `program.py`, `recipe_*`, `control_flow*`, `register.py`: verified external
   operators, programs, and composition.
+- `executive.py`: persistent typed workspace and the minimal external
+  `RECEIVE` / `READ` / `WRITE` / `COPY` / `CALL` / three-way `BRANCH` /
+  `WAIT` / `EMIT` / `HALT` interpreter. Every `CALL` uses explicit,
+  interface-versioned, transactionally replaced operator state; state is never
+  hidden inside a shared operator object.
+- `executive_memory.py`: generic stateful executive operators, beginning with
+  an opaque positive-relative value delay. Missing temporal history remains
+  absent rather than becoming zero evidence.
+- `executive_operators.py`: allow-listed generic singleton-event, equality,
+  and binary-intention operators for persisted programs.
+- `executive_bank.py`: self-contained instruction/operator artifacts and
+  append-only, checksum-protected `.bank` admission and reload. Operator
+  manifests select only built-in constructors and cannot import arbitrary code.
 - `episodic.py`: working-memory and episodic external computation.
 - `world_model.py`, `online_transition.py`, `factored_transition.py`: factual
   transition learning and model-based execution.
@@ -43,3 +56,11 @@ number of sensory and verifier devices. `QueuedOutcomeInputDevice` lets an
 environment provide reward with an emitted action receipt and scalar evidence;
 `TemporalProgramOutcomeObserver` routes that input to the selected external
 program slot without mutating its instruction tensor.
+
+`ExternalAmodalExecutive` is deliberately outside the neural controller. Its
+operator handles carry independently versioned interfaces, quiet input remains
+absent, workspace writes are detached copy-on-write values, and incompatible
+types or divergent batched branches fail closed. The v1 interpreter has one
+shared instruction pointer; physical/live execution is batch one. Autonomous
+program proposal, durable admission, and controller-selected execution remain
+separate lifecycle work rather than hidden interpreter behavior.

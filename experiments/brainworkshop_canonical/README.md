@@ -211,6 +211,25 @@ than dual.
 
 ## Promoted frontier
 
+`executive_compositional_transfer.py` is the first positive bits-to-threshold
+transfer result for the new persistent executive. A verified one-step
+temporal-equality skeleton narrows a held-out 2-back search to the smallest
+failed binding: relative delay. Across seed blocks 17-32 and 101-116, warm and
+fresh learners admitted the same executable solution on all 32 seeds, but warm
+search used 30,208 target verifier bits versus 84,992 fresh bits, a 2.8136
+fresh/warm transfer ratio. Warm was strictly faster in every seed. Irrelevant
+inheritance, destroyed reward, shuffled actions, and missing history admitted
+nothing; source retention was perfect with zero optimizer updates and replay.
+Evidence is in
+`session_records/brainworkshop_executive_compositional_transfer_promoted_2026-08-14/`.
+
+The source and target are also admitted into restart-safe `AgentBrain*.bank`
+files with complete allow-listed operator manifests. Freshly reconstructed
+operators retain 1.0 source and target behavior after reload. This remains a
+bounded diagnostic because the candidate library is externally generated and
+legacy temporal-address banks have not yet been migrated into the executive
+bank format.
+
 `external_compute_append_only_depth_growth.py` is the current bounded working-
 memory result. A frozen source file masters n-back-16, then a fresh external
 file learns n-back-32 while the source, controller, and event frontend remain

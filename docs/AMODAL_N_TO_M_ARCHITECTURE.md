@@ -230,6 +230,46 @@ when transfer is claimed. Required accounting and controls are defined in
 
 ## Current boundary
 
+The first typed executive vertical slice is implemented as an independently
+versioned external interpreter. It preserves complete learned event
+collections in a typed slot, persists workspace and instruction position
+across ticks, calls opaque versioned operator handles, distinguishes missing
+evidence from false evidence, and emits only standardized intentions. Invalid
+types, empty reads, unknown handles, divergent batched control flow, and step
+budget exhaustion fail closed. Operator state is now explicit, independently
+versioned, per-executive, and transactionally replaced only after both result
+and next-state validation. A generic relative-delay operator demonstrates a
+four-tick 2-back relation: two missing-history waits followed by correct match
+and mismatch intentions; erasing only temporal presence removes the decision,
+and a second executive sharing the same frozen operator objects starts with
+clean history. `WAIT` and `EMIT` can yield directly to a validated next target,
+which closes the persistent game-loop cycle without consuming an input tick.
+This establishes the executable and causal mechanics of stateful composition,
+not controller-driven program construction, autonomous `.bank` admission, or
+physical deployment of the new interpreter. The v1 program counter is
+batch-uniform because the live target is batch one.
+
+The first positive executive-composition transfer is now promoted at a bounded
+diagnostic scale. A verified one-step temporal-equality program contributed its
+generic relation fragment to a held-out 2-back search, leaving only four opaque
+relative-delay bindings to probe. A matched empty-bank learner searched the
+same bindings crossed with four generic relation fragments. Across two
+disjoint 16-seed blocks, both arms admitted the identical executable artifact
+on every seed, while warm search used 30,208 target verifier bits versus
+84,992 fresh bits: a 2.8136 transfer ratio, with a strict warm advantage on all
+32 seeds. Source retention remained perfect; irrelevant inheritance,
+destroyed reward, shuffled actions, and missing history admitted nothing.
+Controller/operator updates and replay were zero. This establishes reusable
+program structure and smallest-failed-binding relearning, not autonomous
+controller-generated candidate libraries or physical transfer. The source and
+target are now admitted together into a checksummed `.bank`; each artifact
+contains the complete instruction stream and an allow-listed operator manifest.
+Reload reconstructs fresh production operators, preserves artifact/bank
+digests, and retains perfect source and target behavior. Arbitrary operator
+imports, file corruption, controller-digest mismatch, rejected candidates, and
+ambiguous multi-stream reads fail closed. This executive bank is not yet a
+heterogeneous migration container for the older temporal-address bank format.
+
 The retained Brain Workshop evidence qualifies bounded append-only external
 working-memory computation through n-back-32 with frozen source retention and
 zero replay. The live diagnostic additionally establishes immediate batch-one
