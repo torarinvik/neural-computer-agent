@@ -27,6 +27,11 @@ import experiment code.
 - `executive_bank.py`: self-contained instruction/operator artifacts and
   append-only, checksum-protected `.bank` admission and reload. Operator
   manifests select only built-in constructors and cannot import arbitrary code.
+- `agent_brain_bank.py`: the canonical heterogeneous `AgentBrain.bank`
+  container. It combines executive artifacts with legacy temporal route banks,
+  preserves each family's ABI and evidence, encodes tensors without pickle in
+  the new JSON format, and requires explicit validated migration for old torch
+  banks.
 - `episodic.py`: working-memory and episodic external computation.
 - `world_model.py`, `online_transition.py`, `factored_transition.py`: factual
   transition learning and model-based execution.

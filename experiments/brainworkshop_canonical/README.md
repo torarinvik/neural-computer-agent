@@ -225,10 +225,12 @@ Evidence is in
 
 The source and target are also admitted into restart-safe `AgentBrain*.bank`
 files with complete allow-listed operator manifests. Freshly reconstructed
-operators retain 1.0 source and target behavior after reload. This remains a
-bounded diagnostic because the candidate library is externally generated and
-legacy temporal-address banks have not yet been migrated into the executive
-bank format.
+operators retain 1.0 source and target behavior after reload. The canonical
+`ExternalAgentBrainBank` now makes this a heterogeneous container: executive
+skills and legacy temporal-address route banks can coexist under one controller
+digest. Legacy torch banks are imported explicitly and retain their opaque
+route evidence. This remains a bounded diagnostic because the candidate
+library is externally generated.
 
 `external_compute_append_only_depth_growth.py` is the current bounded working-
 memory result. A frozen source file masters n-back-16, then a fresh external

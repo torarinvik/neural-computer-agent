@@ -25,7 +25,7 @@
     "target_slot": 1,
     "source_artifact_digest": "8486f8908269a10eaf691f69671c54b333592587065c787b526230016fefd115",
     "target_artifact_digest": "1bbd08dbf3f34191d2b83f284c9b9da8a6df077079ffa3ad784769c07dfd7f30",
-    "bank_digest": "873f18a2fcc6e308baf26e46bff65e12e050df8e4aa7462c41a222bd4e8f74c8",
+    "bank_digest": "4a7a9d9dd5e928d444d53977b545e50ddb4fd894b2d3ee0435b821fd239ce3c1",
     "source_reload_score": 1.0,
     "target_reload_score": 1.0
   },
@@ -240,9 +240,9 @@
       "fresh_target_search": 45056
     },
     "tick_latency_ms": {
-      "p50": 0.45385444536805153,
-      "p99": 0.5463603173848236
+      "p50": 0.448083970695734,
+      "p99": 0.5062699550762768
     },
-    "wall_seconds": 1.415269042016007
+    "wall_seconds": 1.3692500829929486
   }
 }

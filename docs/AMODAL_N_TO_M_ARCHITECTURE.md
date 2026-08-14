@@ -267,8 +267,10 @@ contains the complete instruction stream and an allow-listed operator manifest.
 Reload reconstructs fresh production operators, preserves artifact/bank
 digests, and retains perfect source and target behavior. Arbitrary operator
 imports, file corruption, controller-digest mismatch, rejected candidates, and
-ambiguous multi-stream reads fail closed. This executive bank is not yet a
-heterogeneous migration container for the older temporal-address bank format.
+ambiguous multi-stream reads fail closed. The canonical `ExternalAgentBrainBank`
+now stores this executive family beside the older temporal-address family in
+one versioned JSON `.bank`; legacy torch banks require an explicit validated
+migration, and their opaque route evidence is preserved rather than flattened.
 
 The retained Brain Workshop evidence qualifies bounded append-only external
 working-memory computation through n-back-32 with frozen source retention and

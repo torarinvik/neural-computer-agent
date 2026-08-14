@@ -22,6 +22,7 @@ from time import perf_counter
 
 import torch
 
+from neural_computer.agent_brain_bank import ExternalAgentBrainBank
 from neural_computer.executive import (
     EXECUTIVE_PROGRAM_SCHEMA,
     ExecutiveInstruction,
@@ -32,7 +33,6 @@ from neural_computer.executive import (
     TypedWorkspaceValue,
 )
 from neural_computer.executive_bank import (
-    ExternalExecutiveProgramBank,
     build_temporal_equality_executive_artifact,
 )
 from neural_computer.executive_memory import ExternalValueDelayOperator
@@ -498,7 +498,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         controller_digest_builder.update(name.encode())
         controller_digest_builder.update(tensor.numpy().tobytes())
     controller_digest = controller_digest_builder.hexdigest()
-    durable_bank = ExternalExecutiveProgramBank(
+    durable_bank = ExternalAgentBrainBank(
         controller_digest=controller_digest, capacity=4
     )
     durable_source = build_temporal_equality_executive_artifact(
@@ -507,14 +507,14 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     durable_target = build_temporal_equality_executive_artifact(
         event_width=args.event_width, delay=admitted_target.delay
     )
-    durable_source_receipt = durable_bank.admit(
+    durable_source_receipt = durable_bank.admit_executive(
         durable_source,
         source_outcomes,
         threshold=0.9,
         min_observations=2,
         min_stable_observations=2,
     )
-    durable_target_receipt = durable_bank.admit(
+    durable_target_receipt = durable_bank.admit_executive(
         durable_target,
         list(admitted_target_outcomes),
         threshold=0.9,
@@ -524,9 +524,9 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     bank_out = getattr(args, "bank_out", None)
     if bank_out is not None:
         durable_bank.save_bank(bank_out)
-        reloaded_bank = ExternalExecutiveProgramBank.load_bank(bank_out)
+        reloaded_bank = ExternalAgentBrainBank.load_bank(bank_out)
     else:
-        reloaded_bank = ExternalExecutiveProgramBank.from_payload(
+        reloaded_bank = ExternalAgentBrainBank.from_payload(
             durable_bank.payload()
         )
     reloaded_source_score, source_reload_bits, source_reload_latencies = _evaluate_candidate(

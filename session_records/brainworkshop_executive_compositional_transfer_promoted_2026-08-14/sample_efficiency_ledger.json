@@ -23,10 +23,10 @@
   "retention_on_mastered_primitive": "1.0000 in all four post-target source lifetimes",
   "transfer_ratio_against_fresh_learner": 2.8135593220338984,
   "tick_latency_ms": {
-    "seed_17_block_p50": 0.45385444536805153,
-    "seed_17_block_p99": 0.5463603173848236,
-    "seed_101_block_p50": 0.4409999819472432,
-    "seed_101_block_p99": 0.49145125551149255
+    "seed_17_block_p50": 0.448083970695734,
+    "seed_17_block_p99": 0.5062699550762768,
+    "seed_101_block_p50": 0.45000005047768354,
+    "seed_101_block_p99": 0.5101032357197257
   },
   "controls": {
     "same_admitted_artifact_all_arms": true,
@@ -41,5 +41,5 @@
     "frozen_controller_and_operators": true,
     "zero_replay": true
   },
-  "claim_boundary": "Promoted bounded structural transfer from a verified temporal-relation fragment to smallest-failed-delay-binding search with restart-safe executive .bank execution; not unrestricted program induction or legacy-bank migration."
+  "claim_boundary": "Promoted bounded structural transfer from a verified temporal-relation fragment to smallest-failed-delay-binding search with restart-safe heterogeneous AgentBrain.bank execution; not unrestricted program induction or physical deployment."
 }

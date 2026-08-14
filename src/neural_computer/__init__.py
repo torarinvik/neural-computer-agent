@@ -19,6 +19,13 @@ from .addressing import (
     failure_gated_view_scores,
     selector_distillation_loss,
 )
+from .agent_brain_bank import (
+    AGENT_BRAIN_BANK_ENTRY_SCHEMA,
+    AGENT_BRAIN_EXECUTIVE_KIND,
+    AGENT_BRAIN_TEMPORAL_KIND,
+    EXTERNAL_AGENT_BRAIN_BANK_SCHEMA,
+    ExternalAgentBrainBank,
+)
 from .artifact_memory import (
     ARTIFACT_MEMORY_SCHEMA,
     ArtifactBinding,
@@ -949,6 +956,9 @@ from .world_model import (
 __all__ = [
     "ADMISSION_ACTIONS",
     "AGENT_BANK_EXTENSION",
+    "AGENT_BRAIN_BANK_ENTRY_SCHEMA",
+    "AGENT_BRAIN_EXECUTIVE_KIND",
+    "AGENT_BRAIN_TEMPORAL_KIND",
     "APPEND_ONLY_MEMORY_BACKEND_FORMAT",
     "APPEND_ONLY_MEMORY_SNAPSHOT_FORMAT",
     "ARTIFACT_MEMORY_SCHEMA",
@@ -1008,6 +1018,7 @@ __all__ = [
     "EXECUTIVE_PROGRAM_ARTIFACT_SCHEMA",
     "EXECUTIVE_PROGRAM_SCHEMA",
     "EXECUTIVE_STATE_SCHEMA",
+    "EXTERNAL_AGENT_BRAIN_BANK_SCHEMA",
     "EXTERNAL_BOUND_TRANSITION_MODEL_SCHEMA",
     "EXTERNAL_CAPABILITY_APPEND_ONLY_LEARNED_COMPUTE_SCREEN_SCHEMA",
     "EXTERNAL_CAPABILITY_COMPOSITION_SCHEMA",
@@ -1380,6 +1391,7 @@ __all__ = [
     "ExecutiveInstruction",
     "ExpressibilityResult",
     "ExternalAffineTransitionStatistics",
+    "ExternalAgentBrainBank",
     "ExternalAmodalExecutive",
     "ExternalBoundTransitionModel",
     "ExternalCapabilityComposition",
