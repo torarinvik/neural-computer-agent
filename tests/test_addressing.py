@@ -393,6 +393,35 @@ def test_context_route_balanced_policy_avoids_reversal_and_retries_successful_pr
     assert while_probe[1] > while_probe[0]
 
 
+def test_context_route_generalization_is_used_by_behavior_probabilities() -> None:
+    table = PersistentOpaqueContextRouteEvidence(
+        width=3,
+        generalization_tolerance=0.3,
+        min_mastery_observations=2,
+    )
+    table.append_slot()
+    table.append_slot()
+    cue_a = torch.tensor([1.0, 0.0, 0.0])
+    cue_b = torch.tensor([0.0, 1.0, 0.0])
+    for _ in range(2):
+        table.observe(cue_a, 0, 1.0)
+        table.observe(cue_b, 1, 1.0)
+    variant_a = torch.nn.functional.normalize(
+        cue_a + 0.1 * torch.tensor([0.0, 0.0, 1.0]), dim=0
+    )
+    variant_b = torch.nn.functional.normalize(
+        cue_b + 0.1 * torch.tensor([0.0, 0.0, 1.0]), dim=0
+    )
+
+    probabilities = table.behavior_probabilities(
+        torch.stack((variant_a, variant_b)),
+        strategy="balanced",
+    )
+    assert probabilities.argmax(dim=-1).tolist() == [0, 1]
+    assert not table.has_context(variant_a)
+    assert not table.has_context(variant_b)
+
+
 def test_context_route_rejects_unknown_exploration_strategy() -> None:
     table = PersistentOpaqueContextRouteEvidence(width=2)
     table.append_slot()

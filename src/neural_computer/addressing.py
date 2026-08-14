@@ -846,6 +846,32 @@ class PersistentOpaqueContextRouteEvidence:
         rows: list[torch.Tensor] = []
         for context in contexts:
             record = self._find_record(context, create=False)
+            if self.generalization_tolerance > self.matching_tolerance:
+                allow_prior = record is None
+                if record is not None:
+                    status = record.evidence.status()
+                    allow_prior = (
+                        status.preferred_slot is None
+                        and (
+                            status.last_outcome is None
+                            or status.last_outcome > record.evidence.reversal_threshold
+                        )
+                    )
+                nearest, distance = self._nearest_preferred_record(
+                    context,
+                    exclude=record,
+                )
+                if (
+                    allow_prior
+                    and nearest is not None
+                    and distance <= self.generalization_tolerance
+                ):
+                    # Use the nearest protected context for behavior
+                    # probabilities, just as preferred_order does. Outcome
+                    # observation still creates an independent exact row for
+                    # the held-out key, so generalization cannot overwrite the
+                    # source route evidence.
+                    record = nearest
             if record is None:
                 attempts = torch.zeros(
                     self.slot_count,
