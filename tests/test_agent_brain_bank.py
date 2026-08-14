@@ -186,13 +186,18 @@ def test_opaque_composition_search_appends_first_stable_child() -> None:
     target = candidates[1]
     evaluated: list[tuple[int, int]] = []
 
-    def evaluate(parent_slots: tuple[int, int], child: ExternalExecutiveProgramArtifact):
+    def evaluate(
+        parent_slots: tuple[int, int],
+        child: ExternalExecutiveProgramArtifact,
+        stage: int,
+    ):
         assert child.digest()
-        evaluated.append(parent_slots)
+        if stage == 0:
+            evaluated.append(parent_slots)
         return ExecutiveCompositionEvaluation(
-            outcomes=(1.0, 1.0) if parent_slots == target else (0.0, 0.0),
-            unique_verifier_bits=20,
-            unique_logical_lifetimes=2,
+            outcomes=(1.0,) if parent_slots == target else (0.0,),
+            unique_verifier_bits=10,
+            unique_logical_lifetimes=1,
         )
 
     result = search.search(
@@ -200,6 +205,7 @@ def test_opaque_composition_search_appends_first_stable_child() -> None:
         threshold=0.9,
         min_observations=2,
         min_stable_observations=2,
+        screening_threshold=0.9,
     )
 
     assert result.accepted
@@ -207,13 +213,14 @@ def test_opaque_composition_search_appends_first_stable_child() -> None:
     assert result.receipt is not None and result.receipt.accepted
     assert result.candidate_count == 4
     assert tuple(evaluated) == (candidates[0], candidates[1])
-    assert result.unique_verifier_bits == 40
-    assert result.unique_logical_lifetimes == 4
+    assert result.unique_verifier_bits == 30
+    assert result.unique_logical_lifetimes == 3
     assert result.replayed_examples == 0
-    assert result.stable_bits_to_threshold == 40
+    assert result.stable_bits_to_threshold == 30
     assert result.bank_digest_after == bank.digest()
     assert bank.program_count == 4
     assert result.payload()["attempted_parent_slots"] == [list(candidates[0]), list(candidates[1])]
+    assert result.payload()["attempted_evaluation_stages"] == [1, 2]
 
 
 def test_rejected_composition_search_is_memory_side_noop() -> None:
@@ -224,25 +231,36 @@ def test_rejected_composition_search_is_memory_side_noop() -> None:
     search = ExternalExecutiveCompositionSearch(bank, seed=23)
 
     result = search.search(
-        lambda parent_slots, child: ExecutiveCompositionEvaluation(
-            outcomes=(0.0, 0.0),
-            unique_verifier_bits=20,
-            unique_logical_lifetimes=2,
+        lambda parent_slots, child, stage: ExecutiveCompositionEvaluation(
+            outcomes=(0.0,),
+            unique_verifier_bits=10,
+            unique_logical_lifetimes=1,
         ),
         threshold=0.9,
         min_observations=2,
         min_stable_observations=2,
+        screening_threshold=0.9,
     )
 
     assert not result.accepted
     assert result.parent_slots is None and result.receipt is None
     assert result.candidate_count == 4
-    assert result.unique_verifier_bits == 80
+    assert result.unique_verifier_bits == 40
     assert result.bank_digest_before == before == result.bank_digest_after
     assert bank.program_count == 3
 
     with pytest.raises(TypeError, match="explicit evaluation accounting"):
-        search.search(lambda parent_slots, child: [[1.0, 1.0]])
+        search.search(lambda parent_slots, child, stage: [[1.0, 1.0]])
+    with pytest.raises(ValueError, match="screening threshold"):
+        search.search(
+            lambda parent_slots, child, stage: ExecutiveCompositionEvaluation(
+                outcomes=(1.0,),
+                unique_verifier_bits=1,
+                unique_logical_lifetimes=1,
+            ),
+            threshold=0.8,
+            screening_threshold=0.9,
+        )
     assert bank.digest() == before
 
 

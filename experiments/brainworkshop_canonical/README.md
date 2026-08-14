@@ -236,11 +236,12 @@ The promoted run also composes a freshly verified receive-only fragment with the
 verified 1-back temporal loop, admits the child through the same stable-prefix
 verifier gate, persists parent slots and digests, and reloads the composed child
 at 1.0 source mastery. Non-final parents must have a reachable terminal handoff,
-so a persistent loop cannot shadow later components. Composition is structural and controller-frozen; it is
-not yet unrestricted autonomous program induction. Parent selection is now an
-opaque deterministic ordered-pair search: every candidate is executed on two
-fresh verifier rollouts, and the first stable child is appended with explicit
-unique-bit, lifetime, and replay accounting.
+so a persistent loop cannot shadow later components. Composition is structural
+and controller-frozen; it is not yet unrestricted autonomous program induction.
+Parent selection is now an opaque deterministic ordered-pair search with staged
+fresh verification. A clearly sub-threshold first rollout rejects immediately;
+a promising candidate receives a fresh confirmation. The first stable child is
+appended with explicit unique-bit, lifetime, stage, and replay accounting.
 
 `external_compute_append_only_depth_growth.py` is the current bounded working-
 memory result. A frozen source file masters n-back-16, then a fresh external

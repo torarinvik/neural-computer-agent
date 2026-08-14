@@ -48,7 +48,7 @@ AGENT_BRAIN_BANK_ENTRY_SCHEMA = "neural-computer.agent-brain-bank-entry.v1"
 AGENT_BRAIN_EXECUTIVE_KIND = "executive_program"
 AGENT_BRAIN_TEMPORAL_KIND = "temporal_program_bank"
 EXECUTIVE_COMPOSITION_SEARCH_SCHEMA = (
-    "neural-computer.executive-composition-search.v2"
+    "neural-computer.executive-composition-search.v3"
 )
 
 BrainEntryKind = Literal["executive_program", "temporal_program_bank"]
@@ -91,10 +91,15 @@ class ExecutiveCompositionSearchResult:
     candidate_count: int
     attempted_parent_slots: tuple[tuple[int, int], ...]
     attempted_child_digests: tuple[str, ...]
+    attempted_evaluation_stages: tuple[int, ...]
     unique_verifier_bits: int
     unique_logical_lifetimes: int
     replayed_examples: int
     stable_bits_to_threshold: int | None
+    admission_threshold: float
+    screening_threshold: float | None
+    min_observations: int
+    min_stable_observations: int
     bank_digest_before: str
     bank_digest_after: str
     reason: str
@@ -108,6 +113,11 @@ class ExecutiveCompositionSearchResult:
         if len(self.attempted_parent_slots) != len(self.attempted_child_digests):
             raise ValueError("executive composition search attempt records are misaligned")
         if (
+            len(self.attempted_parent_slots) != len(self.attempted_evaluation_stages)
+            or any(stages < 1 for stages in self.attempted_evaluation_stages)
+        ):
+            raise ValueError("executive composition search stage records are invalid")
+        if (
             self.unique_verifier_bits < 0
             or self.unique_logical_lifetimes < 0
             or self.replayed_examples < 0
@@ -117,6 +127,14 @@ class ExecutiveCompositionSearchResult:
             1 <= self.stable_bits_to_threshold <= self.unique_verifier_bits
         ):
             raise ValueError("executive composition search stable prefix is invalid")
+        if not 0.0 <= self.admission_threshold <= 1.0:
+            raise ValueError("executive composition admission threshold is invalid")
+        if self.screening_threshold is not None and not (
+            0.0 <= self.screening_threshold <= self.admission_threshold
+        ):
+            raise ValueError("executive composition screening threshold is invalid")
+        if self.min_observations < 1 or self.min_stable_observations < 1:
+            raise ValueError("executive composition observation gates are invalid")
         for digest in (self.bank_digest_before, self.bank_digest_after):
             _validate_digest(digest, name="executive composition search bank digest")
         if self.accepted:
@@ -138,10 +156,15 @@ class ExecutiveCompositionSearchResult:
             "candidate_count": self.candidate_count,
             "attempted_parent_slots": [list(pair) for pair in self.attempted_parent_slots],
             "attempted_child_digests": list(self.attempted_child_digests),
+            "attempted_evaluation_stages": list(self.attempted_evaluation_stages),
             "unique_verifier_bits": self.unique_verifier_bits,
             "unique_logical_lifetimes": self.unique_logical_lifetimes,
             "replayed_examples": self.replayed_examples,
             "stable_bits_to_threshold": self.stable_bits_to_threshold,
+            "admission_threshold": self.admission_threshold,
+            "screening_threshold": self.screening_threshold,
+            "min_observations": self.min_observations,
+            "min_stable_observations": self.min_stable_observations,
             "bank_digest_before": self.bank_digest_before,
             "bank_digest_after": self.bank_digest_after,
             "reason": self.reason,
@@ -852,40 +875,70 @@ class ExternalExecutiveCompositionSearch:
     def search(
         self,
         evaluate: Callable[
-            [tuple[int, int], ExternalExecutiveProgramArtifact],
+            [tuple[int, int], ExternalExecutiveProgramArtifact, int],
             ExecutiveCompositionEvaluation,
         ],
         *,
         threshold: float = 0.8,
         min_observations: int = 1,
         min_stable_observations: int = 1,
+        screening_threshold: float | None = None,
         max_candidates: int | None = None,
     ) -> ExecutiveCompositionSearchResult:
         """Evaluate candidates through scalar outcomes and append one stable child."""
 
         if not callable(evaluate):
             raise TypeError("executive composition search evaluator must be callable")
+        if screening_threshold is not None and not (
+            0.0 <= screening_threshold <= threshold
+        ):
+            raise ValueError(
+                "composition screening threshold must lie in [0, admission threshold]"
+            )
         before = self.bank.digest()
         candidates = self.candidate_parent_slots(max_candidates=max_candidates)
         attempted_slots: list[tuple[int, int]] = []
         attempted_digests: list[str] = []
+        attempted_stages: list[int] = []
         unique_bits = 0
         unique_lifetimes = 0
         replayed_examples = 0
         for parent_slots in candidates:
             child = self.bank.composed_executive_artifact(parent_slots)
-            evaluation = evaluate(parent_slots, child)
-            if not isinstance(evaluation, ExecutiveCompositionEvaluation):
-                raise TypeError(
-                    "composition search evaluator must return explicit evaluation accounting"
+            outcomes: list[float] = []
+            stages = 0
+            required_outcomes = max(min_observations, min_stable_observations)
+            screened_out = False
+            while len(outcomes) < required_outcomes:
+                if stages >= required_outcomes:
+                    break
+                evaluation = evaluate(parent_slots, child, stages)
+                if not isinstance(evaluation, ExecutiveCompositionEvaluation):
+                    raise TypeError(
+                        "composition search evaluator must return explicit evaluation accounting"
+                    )
+                evaluation.validate()
+                stage_values = torch.as_tensor(
+                    evaluation.outcomes, dtype=torch.float64
                 )
-            evaluation.validate()
-            values = torch.as_tensor(evaluation.outcomes, dtype=torch.float64)
+                outcomes.extend(float(value) for value in stage_values.tolist())
+                unique_bits += evaluation.unique_verifier_bits
+                unique_lifetimes += evaluation.unique_logical_lifetimes
+                replayed_examples += evaluation.replayed_examples
+                stages += 1
+                if (
+                    stages == 1
+                    and screening_threshold is not None
+                    and bool(torch.all(stage_values < screening_threshold))
+                ):
+                    screened_out = True
+                    break
             attempted_slots.append(parent_slots)
             attempted_digests.append(child.digest())
-            unique_bits += evaluation.unique_verifier_bits
-            unique_lifetimes += evaluation.unique_logical_lifetimes
-            replayed_examples += evaluation.replayed_examples
+            attempted_stages.append(stages)
+            if screened_out:
+                continue
+            values = torch.as_tensor(outcomes, dtype=torch.float64)
             receipt = self.bank.compose_executive(
                 parent_slots,
                 values,
@@ -901,10 +954,15 @@ class ExternalExecutiveCompositionSearch:
                     candidate_count=len(candidates),
                     attempted_parent_slots=tuple(attempted_slots),
                     attempted_child_digests=tuple(attempted_digests),
+                    attempted_evaluation_stages=tuple(attempted_stages),
                     unique_verifier_bits=unique_bits,
                     unique_logical_lifetimes=unique_lifetimes,
                     replayed_examples=replayed_examples,
                     stable_bits_to_threshold=unique_bits,
+                    admission_threshold=threshold,
+                    screening_threshold=screening_threshold,
+                    min_observations=min_observations,
+                    min_stable_observations=min_stable_observations,
                     bank_digest_before=before,
                     bank_digest_after=self.bank.digest(),
                     reason="first stable composition admitted",
@@ -916,10 +974,15 @@ class ExternalExecutiveCompositionSearch:
             candidate_count=len(candidates),
             attempted_parent_slots=tuple(attempted_slots),
             attempted_child_digests=tuple(attempted_digests),
+            attempted_evaluation_stages=tuple(attempted_stages),
             unique_verifier_bits=unique_bits,
             unique_logical_lifetimes=unique_lifetimes,
             replayed_examples=replayed_examples,
             stable_bits_to_threshold=None,
+            admission_threshold=threshold,
+            screening_threshold=screening_threshold,
+            min_observations=min_observations,
+            min_stable_observations=min_stable_observations,
             bank_digest_before=before,
             bank_digest_after=self.bank.digest(),
             reason="no composition candidate cleared the stable-prefix verifier gate",

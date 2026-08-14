@@ -603,36 +603,30 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     def evaluate_composition(
         parent_slots: tuple[int, int],
         child: ExternalExecutiveProgramArtifact,
+        stage: int,
     ) -> ExecutiveCompositionEvaluation:
         del parent_slots
-        outcomes: list[float] = []
-        unique_bits = 0
-        unique_lifetimes = 0
-        for confirmation in range(2):
-            rollout_seed = int(
-                hashlib.sha256(
-                    f"{args.seed + 992_000}:{child.digest()}:{confirmation}".encode()
-                ).hexdigest()[:16],
-                16,
-            )
-            accuracy, bits, latencies = _evaluate_candidate(
-                source_artifact,
-                target_n_back=1,
-                batch_size=args.batch_size,
-                steps=args.steps,
-                seed=rollout_seed,
-                event_width=args.event_width,
-                encoder_state=encoder_state,
-                executive_override=child.instantiate(),
-            )
-            outcomes.append(accuracy)
-            unique_bits += bits
-            unique_lifetimes += args.batch_size
-            composition_tick_latencies.extend(latencies)
+        rollout_seed = int(
+            hashlib.sha256(
+                f"{args.seed + 992_000}:{child.digest()}:{stage}".encode()
+            ).hexdigest()[:16],
+            16,
+        )
+        accuracy, bits, latencies = _evaluate_candidate(
+            source_artifact,
+            target_n_back=1,
+            batch_size=args.batch_size,
+            steps=args.steps,
+            seed=rollout_seed,
+            event_width=args.event_width,
+            encoder_state=encoder_state,
+            executive_override=child.instantiate(),
+        )
+        composition_tick_latencies.extend(latencies)
         return ExecutiveCompositionEvaluation(
-            outcomes=tuple(outcomes),
-            unique_verifier_bits=unique_bits,
-            unique_logical_lifetimes=unique_lifetimes,
+            outcomes=(accuracy,),
+            unique_verifier_bits=bits,
+            unique_logical_lifetimes=args.batch_size,
             replayed_examples=0,
         )
 
@@ -641,6 +635,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         threshold=0.9,
         min_observations=2,
         min_stable_observations=2,
+        screening_threshold=0.8,
     )
     all_tick_latencies.extend(composition_tick_latencies)
     if composition_result.receipt is None:

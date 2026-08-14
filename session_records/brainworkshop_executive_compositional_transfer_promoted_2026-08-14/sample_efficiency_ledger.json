@@ -11,25 +11,32 @@
     "fresh_target_search": 84992,
     "source_retention": 1152,
     "prelude_verification": 4,
-    "composition_search": 2304,
+    "composition_search": 1728,
     "bank_reload": 1664,
     "controls": 8192
   },
-  "unique_logical_lifetimes_all_arms": 16132,
+  "unique_logical_lifetimes_all_arms": 16068,
   "optimizer_updates": 0,
   "replayed_examples": 0,
   "stable_bits_to_threshold": {
     "warm_target_search": 30208,
     "fresh_target_search": 84992,
-    "composition_search": 2304
+    "composition_search": 1728
   },
   "retention_on_mastered_primitive": "1.0000 in all four post-target source lifetimes",
   "transfer_ratio_against_fresh_learner": 2.8135593220338984,
   "tick_latency_ms": {
-    "seed_17_block_p50": 0.4525830736383796,
-    "seed_17_block_p99": 0.5630358494818192,
-    "seed_101_block_p50": 0.4458955372683704,
-    "seed_101_block_p99": 0.5186243064235896
+    "seed_17_block_p50": 1.0024579823948443,
+    "seed_17_block_p99": 2.1563980774953984,
+    "seed_101_block_p50": 1.0801245225593448,
+    "seed_101_block_p99": 2.3959595267660925
+  },
+  "isolated_interpreter_benchmark": {
+    "batch_size": 32,
+    "measured_ticks": 3000,
+    "mean_baseline_seconds": 3.298552,
+    "mean_optimized_seconds": 2.7548695,
+    "mean_runtime_reduction_percent": 16.4825
   },
   "controls": {
     "same_admitted_artifact_all_arms": true,
@@ -48,5 +55,5 @@
     "frozen_controller_and_operators": true,
     "zero_replay": true
   },
-  "claim_boundary": "Promoted bounded structural transfer from a verified temporal-relation fragment to smallest-failed-delay-binding search plus fresh-rollout verifier-gated parent-pair composition of admitted executive fragments with reachable handoff and restart-safe heterogeneous AgentBrain.bank execution; not unrestricted program induction or physical deployment."
+  "claim_boundary": "Promoted bounded structural transfer from a verified temporal-relation fragment to smallest-failed-delay-binding search plus staged fresh-rollout verifier-gated parent-pair composition of admitted executive fragments with reachable handoff and restart-safe heterogeneous AgentBrain.bank execution; not unrestricted program induction or physical deployment."
 }

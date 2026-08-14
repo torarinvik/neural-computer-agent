@@ -8,6 +8,7 @@ import os
 import tempfile
 from collections.abc import Sequence
 from dataclasses import dataclass, replace
+from functools import cached_property, lru_cache
 from pathlib import Path
 from typing import Any, Literal
 
@@ -230,13 +231,17 @@ class ExternalExecutiveProgramArtifact:
             "intention_width": self.intention_width,
         }
 
-    def digest(self) -> str:
+    @cached_property
+    def _cached_digest(self) -> str:
         self.validate()
         return hashlib.sha256(
             json.dumps(
                 self._content_payload(), sort_keys=True, separators=(",", ":")
             ).encode()
         ).hexdigest()
+
+    def digest(self) -> str:
+        return self._cached_digest
 
     def payload(self) -> dict[str, object]:
         return {**self._content_payload(), "sha256": self.digest()}
@@ -412,6 +417,7 @@ def compose_executive_artifacts(
     ).validate()
 
 
+@lru_cache(maxsize=4096)
 def executive_artifact_can_handoff(
     artifact: ExternalExecutiveProgramArtifact,
 ) -> bool:

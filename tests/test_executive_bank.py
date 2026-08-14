@@ -8,6 +8,7 @@ from neural_computer.executive_bank import (
     ExternalExecutiveOperatorSpec,
     ExternalExecutiveProgramArtifact,
     ExternalExecutiveProgramBank,
+    executive_artifact_can_handoff,
 )
 from neural_computer.interface import AmodalEvent, AmodalEventCollection
 
@@ -56,6 +57,26 @@ def _rollout(bank: ExternalExecutiveProgramBank, slot: int) -> list[torch.Tensor
         output, state = executive.tick(_events(value), state)
         outputs.append(None if output.intention is None else output.intention.payload)
     return outputs
+
+
+def test_immutable_executive_metadata_is_cached() -> None:
+    artifact = _artifact(99)
+    registry = artifact.registry()
+    before = executive_artifact_can_handoff.cache_info()
+
+    program_digest = artifact.program.digest()
+    artifact_digest = artifact.digest()
+    registry_digest = registry.digest()
+    assert not executive_artifact_can_handoff(artifact)
+    after_miss = executive_artifact_can_handoff.cache_info()
+    assert not executive_artifact_can_handoff(artifact)
+    after_hit = executive_artifact_can_handoff.cache_info()
+
+    assert artifact.program.digest() is program_digest
+    assert artifact.digest() is artifact_digest
+    assert registry.digest() is registry_digest
+    assert after_miss.misses == before.misses + 1
+    assert after_hit.hits == after_miss.hits + 1
 
 
 def test_verified_executive_skills_round_trip_and_execute_identically(

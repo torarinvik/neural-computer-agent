@@ -278,7 +278,9 @@ mastery. The composition gate is verifier-only and does not update the frozen
 controller. Parent selection is now also memory-side: an opaque deterministic
 ordered-pair search executes candidates on fresh verifier rollouts, appends the
 first stable child, and records its unique bits-to-threshold, lifetimes, and
-replay. A generic control-flow reachability gate rejects non-final parents that
+replay. Evaluation is staged: clearly sub-threshold first rollouts reject
+immediately, while promising candidates receive fresh confirmation. A generic
+control-flow reachability gate rejects non-final parents that
 cannot hand off, preventing a persistent first loop from shadowing later
 components. Persisted provenance is rebound by recomposing the recorded parents
 and validating the admission receipt against the derived child.

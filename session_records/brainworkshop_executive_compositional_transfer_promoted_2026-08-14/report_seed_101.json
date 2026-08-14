@@ -61,7 +61,7 @@
       }
     ],
     "composition_search": {
-      "schema": "neural-computer.executive-composition-search.v2",
+      "schema": "neural-computer.executive-composition-search.v3",
       "accepted": true,
       "parent_slots": [
         2,
@@ -92,10 +92,18 @@
         "3760d9ea15cb848505651f2f7a3719a2be59a9ba486a0775dc5c7b63235b34ab",
         "5c7ee814dfbab9522591f44a18f2b25a3e9503edbf75fee05a4771fd1039ebae"
       ],
-      "unique_verifier_bits": 1152,
-      "unique_logical_lifetimes": 128,
+      "attempted_evaluation_stages": [
+        1,
+        2
+      ],
+      "unique_verifier_bits": 864,
+      "unique_logical_lifetimes": 96,
       "replayed_examples": 0,
-      "stable_bits_to_threshold": 1152,
+      "stable_bits_to_threshold": 864,
+      "admission_threshold": 0.9,
+      "screening_threshold": 0.8,
+      "min_observations": 2,
+      "min_stable_observations": 2,
       "bank_digest_before": "1c06227aa71367478c20dcc1fe951270f5d7f8847e5a4a82709396fbbb3b6c63",
       "bank_digest_after": "9a8695a3e7d5927e39a4c81c7a23f7259e44522146be98ec5454fe9d868ad6ae",
       "reason": "first stable composition admitted"
@@ -305,22 +313,22 @@
       "fresh_target_search": 39936,
       "source_retention": 576,
       "prelude_verification": 2,
-      "composition_search": 1152,
+      "composition_search": 864,
       "bank_reload": 832,
       "controls": 4096
     },
-    "unique_logical_lifetimes": 7650,
+    "unique_logical_lifetimes": 7618,
     "optimizer_updates": 0,
     "replayed_examples": 0,
     "stable_bits_to_threshold": {
       "warm_target_search": 14336,
       "fresh_target_search": 39936,
-      "composition_search": 1152
+      "composition_search": 864
     },
     "tick_latency_ms": {
-      "p50": 0.4458955372683704,
-      "p99": 0.5186243064235896
+      "p50": 1.0801245225593448,
+      "p99": 2.3959595267660925
     },
-    "wall_seconds": 1.2614282499998808
+    "wall_seconds": 3.537413457990624
   }
 }

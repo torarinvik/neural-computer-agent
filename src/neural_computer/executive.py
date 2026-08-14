@@ -18,6 +18,7 @@ import json
 from abc import ABC, abstractmethod
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from functools import cached_property
 from typing import Literal
 
 import torch
@@ -374,7 +375,8 @@ class ExternalExecutiveProgram:
             raise ValueError("external executive programs must end with HALT")
         return self
 
-    def digest(self) -> str:
+    @cached_property
+    def _cached_digest(self) -> str:
         payload = {
             "schema": self.schema,
             "slot_count": self.slot_count,
@@ -383,6 +385,9 @@ class ExternalExecutiveProgram:
         return hashlib.sha256(
             json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
         ).hexdigest()
+
+    def digest(self) -> str:
+        return self._cached_digest
 
 
 class ExternalExecutiveOperator(ABC):
@@ -472,6 +477,13 @@ class ExternalExecutiveOperatorRegistry:
             if operator.handle in self._operators:
                 raise ValueError("external executive operator handles must be unique")
             self._operators[operator.handle] = operator
+        payload = [
+            self._operators[handle].configuration()
+            for handle in sorted(self._operators)
+        ]
+        self._digest = hashlib.sha256(
+            json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest()
 
     def operator(self, handle: int) -> ExternalExecutiveOperator:
         try:
@@ -539,13 +551,7 @@ class ExternalExecutiveOperatorRegistry:
         return result.detached_clone(), next_state.detached_clone()
 
     def digest(self) -> str:
-        payload = [
-            self._operators[handle].configuration()
-            for handle in sorted(self._operators)
-        ]
-        return hashlib.sha256(
-            json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
-        ).hexdigest()
+        return self._digest
 
 
 @dataclass(frozen=True)

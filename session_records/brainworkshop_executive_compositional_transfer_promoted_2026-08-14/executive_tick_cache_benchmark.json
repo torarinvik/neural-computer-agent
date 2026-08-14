@@ -1,0 +1,32 @@
+{
+  "schema": "neural-computer.executive-tick-cache-benchmark.v1",
+  "date": "2026-08-14",
+  "baseline_commit": "3c2f2758",
+  "configuration": {
+    "batch_size": 32,
+    "event_width": 8,
+    "delay": 1,
+    "warmup_ticks": 100,
+    "measured_ticks": 3000,
+    "device": "cpu",
+    "comparison_order": [
+      "baseline",
+      "optimized",
+      "optimized",
+      "baseline"
+    ]
+  },
+  "baseline_seconds": [
+    3.418027,
+    3.179077
+  ],
+  "optimized_seconds": [
+    2.914644,
+    2.595095
+  ],
+  "mean_baseline_seconds": 3.298552,
+  "mean_optimized_seconds": 2.7548695,
+  "mean_runtime_reduction_percent": 16.4825,
+  "mechanism": "cache immutable program, operator-registry, artifact, and terminal-handoff metadata",
+  "scope": "isolated interpreter throughput; not verifier sample efficiency"
+}
