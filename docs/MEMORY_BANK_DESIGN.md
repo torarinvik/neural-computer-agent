@@ -13069,3 +13069,39 @@ Next: F250 integration -- VALUE-PLAN over identity-tracked slots
 with the tie-break-fixed bank. The horizon machinery (F247) plus
 faithful dynamics (this finding) is the direct shot at the ~+0.5
 certified trio gap. Scope: Localized (GEN-DEV trio).
+
+## F250 — TRACKED VALUE-PLAN REACHES DEPLOY PARITY ON THE TRIO, NOT
+## PAST IT; CONTROLS CLEAN; THE SUBTRACTION NOW POINTS AT THE
+## REWARD HEAD VS DYNAMICS SPLIT (2026-08-14, value_plan_tracked.py,
+## 6 seeds. Scope: GEN-DEV witnesses + control)
+
+The integration: VALUE-PLAN (F247) over identity-tracked slots
+(F249) with the tie-break-fixed bank fit, plant executing every
+planned transition. Registered P1-P4 in the docstring.
+
+  P1 REFUTED    best tracked arms -0.88 / -0.76 / -0.85 vs deploy
+                -0.86 / -0.70 / -0.84: parity with the goal-grammar
+                deploy, far from the d4 ceilings (-0.39/-0.27/-0.13).
+  P2 PARTIAL    tracking beats rank 5/6 seeds only on the hardest
+                world (delayed3_intercept2, where rank planning is
+                WORSE than random, -1.14); 3/6 elsewhere.
+  P3 CONFIRMED  shuffled heads collapse to random everywhere.
+  P4 CONFIRMED  control world keeps the F247 capability: policy-
+                iterated tracked d4 = +1.27 (~3x the privileged d4
+                ceiling), depth-monotone.
+
+Reading, with the F247 localization arm as the anchor: privileged
+dynamics + TRUE immediate reward + the SAME learned value head
+scored -0.34..-0.46 on the trio -- at or above the pure d2 ceiling.
+The learned stack at -0.85 therefore loses its ~+0.45 somewhere in
+{learned dynamics (0.72-0.85 one-step exact-match, compounding at
+depth), learned reward head (linear over TYPE-ALIASED tracked
+groups: a contact that is death in one row is a harmless switch
+touch in another)}. These two are separable by one cheap privileged
+cell: plan over true dynamics but score edges with the LEARNED
+reward head. Collapse there indicts the reward binding (and hands
+the problem to the F235 valued-binding machinery, already built);
+survival indicts dynamics fidelity. That diagnostic runs next,
+BEFORE any further machinery -- the F239 lesson, applied.
+
+Scope: Localized (GEN-DEV trio + control).
