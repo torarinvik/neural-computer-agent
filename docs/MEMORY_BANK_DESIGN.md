@@ -13317,3 +13317,58 @@ Pre-registered next (typed_transfer): heads fit on single-mechanism
 worlds, pooled, deployed on the trio; warm-vs-cold at equal target
 data. Scope: Localized (GEN-DEV trio + control); the exoneration is
 Fixed on this family.
+
+## F256 — THE FOUNDING THESIS BREAKS THE WALL: TYPED VALUE TRANSFER
+## FROM SIMPLE WORLDS BEATS DEPLOY ON ALL THREE CERTIFIED WITNESSES
+## WITH ZERO TARGET REWARD DATA (2026-08-14, typed_transfer.py,
+## 6 seeds. Scope: GEN-DEV trio + control)
+
+The F255 prescription, executed: mc_soft typed-head rows fit on six
+single-mechanism worlds (collect1, avoid1_collect1, pursue1,
+intercept1, collect1_resource1, delayed3), POOLED in the head's
+world-independent coordinates (event x entity-signature), deployed
+on the trio with target-fit banks (dynamics from reward-free
+experience only).
+
+                              deploy   cold(-fit on   TRANSFER
+                                       compound)      (zero target
+                                                      reward data)
+  collect1_i1_p1_r1           -0.86      -0.91          -0.747
+  delayed3_i1_p1_r2           -0.70      -0.83          -0.549
+  delayed3_i2_p1_r1           -0.84      -1.11          -0.656
+
+  P2 CONFIRMED 6/6 SEEDS ON EVERY TRIO WORLD, far past its
+     registered threshold: transfer beats cold by +0.16..+0.45.
+     THE FIRST LEARNED, NON-PRIVILEGED STACK TO BEAT THE
+     GOAL-GRAMMAR DEPLOY ON THE CERTIFIED WITNESSES -- closing
+     25-35% of the ceiling-certified gap in one step.
+  P1 AT THE MEAN, CONFIRMED (+0.13/+0.15/+0.20 warm over cold);
+     per-seed threshold counts 3/6, 2/6, 3/6 -- and the reason is
+     the finding's sharpest edge: WARM < TRANSFER. Adding
+     compound-world rows DILUTES the transferred head. F255 said
+     compound experience cannot teach this function; F256 adds:
+     it actively poisons a head that already knows it.
+  P3 shufwarm collapses (control: +1.14 -> +0.37); P4 no harm on
+     the control (warm +1.14 vs cold +1.17).
+
+The founding objective -- "produce a program such that given task A
+makes novel task B faster to learn than chance or starting from
+scratch" -- is here demonstrated in its STRONGEST form on worlds
+nobody designed (F245 sampled witnesses, F246 ceiling-certified):
+scratch FAILS (six integrations, F250-F255, all at deploy parity;
+the function is unlearnable from compound data at feasible budgets),
+and mechanism-typed transfer WORKS, with zero reward experience on
+the target. The transferable object is the typed value binding --
+entity-signature -> value -- learned where each mechanism is simple,
+composed by pooling, carried by world-independent coordinates.
+
+Cycle synthesis (F247-F256): horizon built (planner, control record
++1.40 = 3.4x the privileged d4 ceiling); dynamics identity-
+stabilized; rewards typed; training model-consistent; core
+EXONERATED at 8 slots; the compound stall re-scoped to sample
+complexity; and the founding mechanism shown to be the working
+route through it. Remaining headroom on the trio (transfer -0.66..
+-0.75 vs ceilings -0.13..-0.39) is pre-registered future work:
+richer simple-world curricula (signature coverage), transfer-aware
+racing under the F243 guard, and the sealed sets -- still untouched,
+still awaiting the word.
