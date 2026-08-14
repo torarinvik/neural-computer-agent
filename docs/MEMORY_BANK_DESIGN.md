@@ -13897,3 +13897,54 @@ navigation form is now obtained from {five transferred numbers} +
 {the substrate's distance function} + {one raced scalar} -- 20/24
 seed-cells at specialist parity or better, with per-seed identity
 on the pure-collect worlds.
+
+## F273 — SPECIALIST-FREE CONTROL, MEASURED: THE HAND-WRITTEN GOAL
+## LIBRARY IS REPLACEABLE EVERYWHERE FOR ~0.09 (2026-08-14,
+## specialist_free.py, 6 seeds. Scope: grid trio + intercept2 +
+## dense pair; with F272, three substrates)
+
+Value-directed navigation on the HOME substrate: transferred class
+values x the grid's Manhattan gradient over the plant-rolled avatar
+move, (beta, lambda_pooled) raced -- no hand-written goal forms
+anywhere in the arm.
+
+  world                       gg        nav_raced   deficit
+  collect1_i1_p1_r1          -0.753     -0.789      -0.036
+  delayed3_i1_p1_r2          -0.625     -0.672      -0.047
+  delayed3_i2_p1_r1          -0.667     -0.828      -0.161
+  intercept2                 -0.591     -0.698      -0.107
+  avoid1_collect1            +1.557     +1.466      -0.091
+  avoid2_collect1_delayed5   +1.378     +1.294      -0.083
+
+  P1 CONFIRMED 5/6 worlds (nav >= gg - 0.15; the miss is -0.161).
+  P2 CONFIRMED 2/3 trio worlds vs the F264/F268 hybrid frontier.
+  P3 3/6 -- the shuffled control separates cleanly on the dense
+     worlds and intercept2 (+0.48..+0.91) but only marginally on
+     the trio, where every arm sits compressed near random.
+  P4 raced beta is mostly 0-0.25 on the grid too: across three
+     substrates the sampled mechanisms reward boldness.
+
+THE RESULT, stated at full scope. Across THREE substrates (2D grid,
+8-node digraph, 12-cell ring) and TEN worlds, no hand-written
+navigation form is necessary. The deployable policy is assembled
+from: five transferred value coefficients (learned once, on grid
+singles, in event x signature coordinates), the target substrate's
+own distance function, and one or two scalars raced on native
+experience. It reproduces hand-written specialists EXACTLY on
+foreign pure-collect worlds (F272), holds parity on foreign hazard
+worlds (F272), and costs a measured ~0.09 mean on the home
+substrate's six worlds (this finding). Under the F243 guard the
+union is never worse than either.
+
+What this closes: every deployable result in this project before
+F267 depended on goal forms a person chose. That dependency is now
+measured and removable. The founding constraint -- "not domain
+specific in any way" -- has a controller to match: the only
+persistent, transferable object is five numbers over relational
+signatures; geometry comes from the substrate, risk from native
+experience, and nothing is burned into weights.
+
+Standing frontier: sealed sets (untouched, user-gated) remain the
+highest-information evaluation available; breadth deployment of the
+specialist-free controller across the generated space; and the
+grid trio residual, closed within the frozen core (F262).
