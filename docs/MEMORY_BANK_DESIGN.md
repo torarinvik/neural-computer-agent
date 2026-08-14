@@ -12794,3 +12794,43 @@ WARM ACQUISITION IS NEVER WORSE THAN COLD DISCOVERY, AND TWO ORDERS
 OF MAGNITUDE CHEAPER WHERE EXPERIENCE APPLIES. Remaining refinements
 are economic, not safety: cheaper guards (racing's early stages),
 role-diverse promotion so fewer libraries abstract empty.
+
+## F244 — COMBINATOR CLOSURE BUILT; ITS WITNESS REFUSED TO EXIST:
+## CYCLIC 2-PHASE + RANK-SWITCHING IS AN IMPLICIT PHASE ROTATOR
+## (2026-08-14, combinator_closure.py, 6 seeds. Scope: DEV vocabulary)
+
+The route to mechanical combinator invention: close the schedule
+grammar under NESTING (a leg may itself be a schedule, flattened
+mechanically), so SEQ3 and beyond live in the closure, findable by
+racing compositions. Built, tested, raced against a constructed
+witness (chain3 = collect1 + resource1 + delayed3, three reward
+streams).
+
+REFUTED, with a discovery inside: seq3 forms never beat seq2:p2->food
+-- gain 0.000, sd 0, every seed. The 2-phase cycle already weaves all
+three streams, because CONSUMPTION-DRIVEN TRACKER SWITCHING acts as
+an implicit phase rotator: touch the nearest plane-2 entity, it
+respawns, the nearest-rank tracker flips to the OTHER plane-2 entity,
+and the cycle alternates coverage without naming three phases.
+
+    THE GRAMMAR'S EFFECTIVE COVERAGE EXCEEDS ITS SYNTAX. Perception
+    dynamics (rank switching under consumption) supply control
+    structure that would otherwise need explicit combinators. A
+    combinator's necessity witness must defeat not the written
+    grammar but its CLOSURE UNDER PERCEPTION DYNAMICS -- a much
+    higher bar, which chain3 failed to clear.
+
+The nesting closure stays in the codebase (harmless, raced at ~zero
+cost). Status of the invention program: machinery ready, witness
+outstanding. Constructing harder witnesses inside the DEV vocabulary
+risks manufacturing them; the honest sources of genuine witnesses are
+the SEALED set (untouched, user-gated) or a future open-ended
+generator with its own sealed split.
+
+**Terminal status of this goal chain (F226-F244, nineteen findings):**
+no witnessed, fixable defect remains in the non-sealed space. Every
+capability the DEV worlds demanded exists, self-promotes, transfers
+across substrates under guard, and sits at or above every feasible
+privileged bound measured. What remains is gated (sealed one-shot),
+economic (cheaper guards, role diversity), or awaits witnesses that
+only genuinely novel worlds can provide.
