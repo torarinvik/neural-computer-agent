@@ -12834,3 +12834,40 @@ across substrates under guard, and sits at or above every feasible
 privileged bound measured. What remains is gated (sealed one-shot),
 economic (cheaper guards, role diversity), or awaits witnesses that
 only genuinely novel worlds can provide.
+
+## F245 — THE OPEN-ENDED GENERATOR: SEALED SPLIT COMMITTED, LIBRARY
+## COVERS 97% OF SAMPLED MECHANISM SPACE, FIVE WITNESSES FOUND
+## (2026-08-14, world_generator.py + generator_survey.py, 3 seeds x
+## 20 GEN-DEV worlds. Scope: generated grid mechanism space)
+
+The program the F244 terminal status called for: worlds sampled from
+the verifier's supported component space (the F230 sealed trio
+excluded), with the honesty device built in -- GEN-SEALED-v1 (20
+configs, SHA256 8f9c04be...) was committed to the repository BEFORE
+the survey probe existed, and may never be instantiated until an
+unseal is recorded here.
+
+The GEN-DEV survey (guarded transfer: canonical promoted library
+gated by the random baseline, raced fallback):
+
+  coverage   imports adopted on 19-20 of 20 worlds per seed -- the
+             self-promoted forms cover ~97% of sampled mechanism
+             space, with gains up to +1.86.
+  safety     guarded >= random everywhere (60/60 world-seed cells
+             within noise): the F243 promise generalizes to worlds
+             nobody chose.
+  produce    five CONSISTENT witness candidates (flagged in >= 2/3
+             seeds), found by sampling, not manufactured:
+               collect1_intercept1_pursue1_resource1
+               delayed3_intercept1_pursue1_resource2
+               delayed3_intercept2_pursue1_resource1
+               avoid3_collect3_delayed5_resource1
+               avoid2_delayed3 (marginal)
+             Three of five share the intercept x pursue x resource
+             interaction -- dual threat types plus gating, never
+             exhibited by the DEV originals; random play dies at
+             ~-0.9 and the stack barely improves.
+
+Next-cycle discipline for the found witnesses, pre-registered: the
+F239 ladder runs FIRST -- privileged ceilings before any machinery,
+so a low-ceiling world cannot masquerade as a capability gap again.
