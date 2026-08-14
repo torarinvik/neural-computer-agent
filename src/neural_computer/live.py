@@ -1141,6 +1141,7 @@ class ExternalExecutiveCandidateLiveMachine:
         bank: ExternalAgentBrainBank,
         decoder: LiveIntentionDecoder,
         *,
+        parent_slots: Sequence[int] | None = None,
         batch_size: int,
         output_key: str,
         threshold: float = 0.8,
@@ -1170,6 +1171,23 @@ class ExternalExecutiveCandidateLiveMachine:
                 raise ValueError(f"live executive admission {name} must be positive")
         self.candidate_digest = artifact.digest()
         self._artifact = artifact
+        if parent_slots is None:
+            self._parent_slots: tuple[int, ...] | None = None
+        else:
+            normalized_parent_slots = tuple(parent_slots)
+            if len(normalized_parent_slots) < 2 or any(
+                not isinstance(slot, int)
+                or isinstance(slot, bool)
+                or not 0 <= slot < bank.executive_program_count
+                for slot in normalized_parent_slots
+            ):
+                raise ValueError("live executive composition parent slots are invalid")
+            derived = bank.composed_executive_artifact(normalized_parent_slots)
+            if derived.digest() != self.candidate_digest:
+                raise ValueError(
+                    "live executive composition candidate does not match its parents"
+                )
+            self._parent_slots = normalized_parent_slots
         self.bank = bank
         self.threshold = float(threshold)
         self.min_observations = int(min_observations)
@@ -1193,6 +1211,30 @@ class ExternalExecutiveCandidateLiveMachine:
         self._admission_receipt: ExternalProgramAdmissionReceipt | None = None
         self._bank_digest_before = bank.digest()
         self._bank_digest_after = self._bank_digest_before
+
+    @classmethod
+    def from_parent_slots(
+        cls,
+        bank: ExternalAgentBrainBank,
+        parent_slots: Sequence[int],
+        decoder: LiveIntentionDecoder,
+        **kwargs,
+    ) -> ExternalExecutiveCandidateLiveMachine:
+        """Stage the deterministic child derived from existing bank slots.
+
+        The parent slots and child digest are checked before any live input is
+        consumed.  This is the bank-backed proposal path: no candidate program
+        bytes or task labels are supplied by the controller.
+        """
+
+        artifact = bank.composed_executive_artifact(parent_slots)
+        return cls(
+            artifact,
+            bank,
+            decoder,
+            parent_slots=parent_slots,
+            **kwargs,
+        )
 
     @property
     def executive(self) -> ExternalAmodalExecutive:
@@ -1245,6 +1287,10 @@ class ExternalExecutiveCandidateLiveMachine:
     def bank_digest_after(self) -> str:
         return self._bank_digest_after
 
+    @property
+    def parent_slots(self) -> tuple[int, ...] | None:
+        return self._parent_slots
+
     def _observe_outcomes(self, outcomes: Sequence[ResolvedLiveOutcome]) -> None:
         for resolved in outcomes:
             credit = resolved.proposal.credit_state
@@ -1271,13 +1317,22 @@ class ExternalExecutiveCandidateLiveMachine:
         self._lifetime_outcomes.append(outcome)
         self._unique_logical_lifetimes += 1
         if not self.admitted:
-            self._admission_receipt = self.bank.admit_executive(
-                self._artifact,
-                self._lifetime_outcomes,
-                threshold=self.threshold,
-                min_observations=self.min_observations,
-                min_stable_observations=self.min_stable_observations,
-            )
+            if self._parent_slots is None:
+                self._admission_receipt = self.bank.admit_executive(
+                    self._artifact,
+                    self._lifetime_outcomes,
+                    threshold=self.threshold,
+                    min_observations=self.min_observations,
+                    min_stable_observations=self.min_stable_observations,
+                )
+            else:
+                self._admission_receipt = self.bank.compose_executive(
+                    self._parent_slots,
+                    self._lifetime_outcomes,
+                    threshold=self.threshold,
+                    min_observations=self.min_observations,
+                    min_stable_observations=self.min_stable_observations,
+                )
             self._bank_digest_after = self.bank.digest()
         return outcome
 

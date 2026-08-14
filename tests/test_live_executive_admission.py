@@ -9,9 +9,13 @@ from experiments.brainworkshop_canonical import (
 )
 from neural_computer import (
     CognitiveTickRuntime,
+    ExecutiveInstruction,
     ExternalAgentBrainBank,
     ExternalExecutiveCandidateLiveMachine,
     ExternalExecutiveLiveCredit,
+    ExternalExecutiveOperatorSpec,
+    ExternalExecutiveProgram,
+    ExternalExecutiveProgramArtifact,
     KeypressDecoder,
     build_temporal_equality_executive_artifact,
 )
@@ -25,6 +29,28 @@ def _decoder() -> KeypressDecoder:
     return decoder
 
 
+def _finite_event_prelude(event_width: int = 8) -> ExternalExecutiveProgramArtifact:
+    """A finite bank skill that emits one warm-up intention, then hands off."""
+
+    specs = (
+        ExternalExecutiveOperatorSpec(1, "singleton_event_value", width=event_width),
+        ExternalExecutiveOperatorSpec(2, "value_equality_evidence"),
+        ExternalExecutiveOperatorSpec(3, "evidence_binary_intention"),
+    )
+    program = ExternalExecutiveProgram(
+        4,
+        (
+            ExecutiveInstruction("receive", destination=0),
+            ExecutiveInstruction("call", destination=1, operator_handle=1, arguments=(0,)),
+            ExecutiveInstruction("call", destination=2, operator_handle=2, arguments=(1, 1)),
+            ExecutiveInstruction("call", destination=3, operator_handle=3, arguments=(2,)),
+            ExecutiveInstruction("emit", source=3),
+            ExecutiveInstruction("halt"),
+        ),
+    )
+    return ExternalExecutiveProgramArtifact(program, specs, 2).validate()
+
+
 def _run_episode(
     machine: ExternalExecutiveCandidateLiveMachine,
     encoder: BrainWorkshopEventEncoder,
@@ -32,6 +58,7 @@ def _run_episode(
     n_back: int,
     seed: int,
     steps: int = 10,
+    require_perfect: bool = True,
 ) -> tuple[float, list[float]]:
     machine.reset()
     device = BrainWorkshopLiveDevice(
@@ -60,7 +87,11 @@ def _run_episode(
         isinstance(item.proposal.credit_state, ExternalExecutiveLiveCredit)
         for item in eligible
     )
-    return outcome, [float(item.event.reward.item()) for item in eligible]
+    rewards = [float(item.event.reward.item()) for item in eligible]
+    assert rewards
+    if require_perfect:
+        assert all(reward == 1.0 for reward in rewards)
+    return outcome, rewards
 
 
 def test_live_candidate_is_admitted_only_after_stable_lifetimes_and_reload(tmp_path) -> None:
@@ -84,9 +115,8 @@ def test_live_candidate_is_admitted_only_after_stable_lifetimes_and_reload(tmp_p
 
     outcomes = []
     for seed in (71, 72, 73):
-        outcome, rewards = _run_episode(machine, encoder, n_back=2, seed=seed)
+        outcome, _rewards = _run_episode(machine, encoder, n_back=2, seed=seed)
         outcomes.append(outcome)
-        assert rewards and all(reward == 1.0 for reward in rewards)
         if len(outcomes) < 3:
             assert machine.admission_receipt is not None
             assert not machine.admission_receipt.accepted
@@ -129,7 +159,7 @@ def test_live_candidate_rejection_does_not_mutate_bank() -> None:
     )
 
     outcomes = [
-        _run_episode(machine, encoder, n_back=2, seed=seed)[0]
+        _run_episode(machine, encoder, n_back=2, seed=seed, require_perfect=False)[0]
         for seed in (81, 82, 83)
     ]
 
@@ -143,3 +173,51 @@ def test_live_candidate_rejection_does_not_mutate_bank() -> None:
     assert bank.program_count == 0
     assert bank.digest() == before
     assert machine.bank_digest_after == before
+
+
+def test_live_bank_derived_composition_records_parent_provenance() -> None:
+    encoder = BrainWorkshopEventEncoder(symbol_count=4, event_width=8)
+    for parameter in encoder.parameters():
+        parameter.requires_grad_(False)
+    bank = ExternalAgentBrainBank(controller_digest="0" * 64, capacity=4)
+    prelude = _finite_event_prelude()
+    temporal = build_temporal_equality_executive_artifact(event_width=8, delay=2)
+    assert bank.admit_executive(prelude, [1.0]).accepted
+    assert bank.admit_executive(temporal, [1.0]).accepted
+    before = bank.digest()
+    machine = ExternalExecutiveCandidateLiveMachine.from_parent_slots(
+        bank,
+        (0, 1),
+        _decoder(),
+        batch_size=1,
+        output_key="keypress",
+        sample=False,
+        threshold=0.8,
+        min_observations=3,
+        min_stable_observations=2,
+    )
+    assert machine.parent_slots == (0, 1)
+    assert machine.candidate_digest == bank.composed_executive_artifact((0, 1)).digest()
+    assert machine.bank_digest_before == before
+
+    outcomes = [
+        _run_episode(
+            machine,
+            encoder,
+            n_back=2,
+            seed=seed,
+            require_perfect=False,
+        )[0]
+        for seed in (73, 75, 76)
+    ]
+
+    assert outcomes == [1.0, 1.0, 0.875]
+    assert machine.admitted
+    assert machine.admission_receipt is not None
+    assert machine.admission_receipt.slot == 2
+    assert bank.program_count == 3
+    assert len(bank.composition_provenance) == 1
+    provenance = bank.composition_provenance[0]
+    assert provenance["parent_slots"] == [0, 1]
+    assert provenance["child_digest"] == machine.candidate_digest
+    assert provenance["admission"] == machine.admission_receipt.payload()
