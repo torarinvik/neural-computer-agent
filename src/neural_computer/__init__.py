@@ -279,6 +279,11 @@ from .executive_operators import (
     ExternalSingletonEventValueOperator,
     ExternalValueEqualityEvidenceOperator,
 )
+from .executive_route import (
+    EXTERNAL_EXECUTIVE_SKILL_ROUTER_SCHEMA,
+    ExternalExecutiveSkillRouter,
+    ExternalExecutiveSkillSelection,
+)
 from .factored_transition import (
     EXTERNAL_FACTORED_TRANSITION_EXACT_RESIDUAL_MODE,
     EXTERNAL_FACTORED_TRANSITION_LEARNED_RESIDUAL_MODE,
@@ -1065,6 +1070,7 @@ __all__ = [
     "EXTERNAL_ENTRY_PROPOSAL_SCHEMA",
     "EXTERNAL_ENTRY_REPERTOIRE_SCHEMA",
     "EXTERNAL_EXECUTIVE_PROGRAM_BANK_SCHEMA",
+    "EXTERNAL_EXECUTIVE_SKILL_ROUTER_SCHEMA",
     "EXTERNAL_FACTORED_TRANSITION_EXACT_RESIDUAL_MODE",
     "EXTERNAL_FACTORED_TRANSITION_LEARNED_RESIDUAL_MODE",
     "EXTERNAL_FACTORED_TRANSITION_MODEL_SCHEMA",
@@ -1452,6 +1458,8 @@ __all__ = [
     "ExternalExecutiveProgram",
     "ExternalExecutiveProgramArtifact",
     "ExternalExecutiveProgramBank",
+    "ExternalExecutiveSkillRouter",
+    "ExternalExecutiveSkillSelection",
     "ExternalExecutiveState",
     "ExternalExecutiveTick",
     "ExternalFactoredTransitionModel",
