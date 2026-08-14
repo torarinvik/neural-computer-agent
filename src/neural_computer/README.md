@@ -100,4 +100,7 @@ route key at episode start; no task ID or semantic rule field crosses the
 boundary. Action-level outcomes remain ordinary resolved live events, while the
 default route ledger commits one mean verifier outcome per lifetime through
 `finish_episode()`. `per_outcome` feedback is available when an environment's
-verifier contract explicitly calls for it.
+verifier contract explicitly calls for it. For aggregate feedback, the default
+reversal threshold is the configured mastery threshold, so a partially correct
+skill cannot remain protected merely because it beats chance; environments may
+still provide an explicit stricter or looser reversal threshold.

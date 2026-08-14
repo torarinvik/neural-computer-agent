@@ -89,7 +89,7 @@ class ExternalExecutiveSkillRouter:
         prior_strength: float = 1.0,
         mastery_threshold: float = 0.8,
         min_mastery_observations: int = 8,
-        reversal_threshold: float = 0.5,
+        reversal_threshold: float | None = None,
         reversal_patience: int = 4,
     ) -> None:
         from .agent_brain_bank import ExternalAgentBrainBank
@@ -100,6 +100,9 @@ class ExternalExecutiveSkillRouter:
             raise ValueError("executive skill router context width must be positive")
         self.bank = bank
         self.context_width = context_width
+        resolved_reversal_threshold = (
+            mastery_threshold if reversal_threshold is None else reversal_threshold
+        )
         self.evidence = bank.executive_route_evidence(
             context_width,
             matching_tolerance=matching_tolerance,
@@ -107,7 +110,7 @@ class ExternalExecutiveSkillRouter:
             prior_strength=prior_strength,
             mastery_threshold=mastery_threshold,
             min_mastery_observations=min_mastery_observations,
-            reversal_threshold=reversal_threshold,
+            reversal_threshold=resolved_reversal_threshold,
             reversal_patience=reversal_patience,
         )
         self.unique_outcome_bits = 0

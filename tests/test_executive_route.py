@@ -57,3 +57,33 @@ def test_executive_skill_router_rejects_stale_artifact_feedback() -> None:
     )
     with pytest.raises(ValueError, match="no longer matches"):
         router.observe(tampered, 1.0)
+
+
+def test_executive_router_uses_mastery_threshold_for_default_reversal() -> None:
+    bank = ExternalAgentBrainBank(controller_digest="2" * 64, capacity=2)
+    bank.admit_executive(
+        build_temporal_equality_executive_artifact(event_width=3, delay=1),
+        [1.0],
+    )
+    bank.admit_executive(
+        build_temporal_equality_executive_artifact(event_width=3, delay=2),
+        [1.0],
+    )
+    router = ExternalExecutiveSkillRouter(
+        bank,
+        context_width=3,
+        mastery_threshold=0.8,
+        min_mastery_observations=2,
+        reversal_patience=2,
+    )
+    context = torch.tensor([1.0, 0.0, 0.0])
+    for _ in range(2):
+        bank.observe_executive_route(context, 0, 1.0)
+    assert router.evidence.reversal_threshold == pytest.approx(0.8)
+    selection = router.select(context)
+    assert selection.slot == 0
+    router.observe(selection, 0.6)
+    router.observe(selection, 0.6)
+    status = router.evidence._find_record(context, create=False).evidence.status()
+    assert status.reversal_count[0] == 1
+    assert not status.protected[0]
