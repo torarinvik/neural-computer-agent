@@ -12908,3 +12908,71 @@ fueling -- no current form covers three simultaneous constraint
 types) at ~+0.5, and the horizon witness at ~+0.2. Both found, both
 ceiling-certified, both awaiting next-cycle capability work under the
 standing disciplines.
+
+## F247 — VALUE-PLAN: DEPLOYABLE HORIZON BUILT; IT TRIPLES THE
+## PRIVILEGED DEPTH-4 CEILING WHERE DYNAMICS ARE MODELABLE, AND ITS
+## WITNESS FAILURE LOCALIZES TO THE BANK-DYNAMICS LAYER
+## (2026-08-14, value_plan.py, 6 seeds. Scope: GEN-DEV witnesses +
+## solved control)
+
+F246 sized the certified gaps and localized them to HORIZON: the
+deployable stack has always been depth-1 greedy while the skill
+lives at depth 2-4. This probe built the F229-deferred capability:
+depth-d exhaustive search over COMPOSED BANK PROGRAMS (every
+transition executed by the plant -- recipes, not weights), scored by
+a per-action linear reward head plus an H-step linear value head,
+both ridge-fit on the world's own random-rollout returns over the
+generic relational basis (slots, group distances, contact
+indicators). No privileged access in any deployable arm. Registered
+predictions P1-P4 in the probe docstring before any run.
+
+THE CAPABILITY IS REAL (control world, avoid1_collect1):
+
+  random -0.01 | vplan d1 +0.58 -> d2 +0.71 -> d3 +0.81 -> d4 +0.95
+  | +policy-iteration +1.30 | shuffled-weights control -0.09
+  | privileged TRUE-RETURN depth-4 ceiling (F246): +0.41
+
+  Depth monotone 6/6 seeds; the shuffled control collapses to random
+  (P3 CONFIRMED: the value binding, not the tree, carries the gain);
+  and the deployable planner TRIPLES the privileged depth-4 truth.
+  This is the F229 law completing itself: shallow truth is myopic
+  when food sits beyond the horizon, but a fitted value head at the
+  leaves extends the effective horizon past ANY tree depth. A
+  depth-limited privileged ceiling is a floor for a value-guided
+  planner, not a bound.
+
+THE WITNESSES REFUTE P1/P2 -- AND LOCALIZE THE NEXT LAYER:
+
+  trio worlds        vplan(all depths) ~ random (-0.88..-0.93 vs
+                     -0.93..-1.04); on delayed3_intercept2 depth
+                     actively HURTS (d4 -1.25 < random -1.04):
+                     model error compounds with depth.
+  truedyn arm        privileged dynamics + true immediate reward +
+                     the SAME learned value head: -0.34..-0.46 on
+                     the trio -- better than the pure privileged d2
+                     ceiling, near the d4 ceiling on two of three.
+  avoid2_delayed3    vplan d4-d1 +0.057 (< +0.10 registered);
+                     truedyn_d2 +0.09 ~ the d1-d3 ceiling.
+
+  The subtraction is exact: value head GOOD (truedyn recovers most
+  of the gap with it), search GOOD (control world), learned
+  DYNAMICS BAD on multi-mover worlds. The bank programs, fit
+  per-slot on 32 random transitions, cannot roll interceptor/
+  pursuer motion, and the planner then confidently walks into
+  threats it mispredicts.
+
+WHY THE DYNAMICS FAIL -- A CANDIDATE ISA WITNESS: pursuers and
+interceptors move TOWARD the avatar: slot 4 steps by sign(s0 - s4).
+The ISA's only condition is s_j != 0 (CINC/CDEC); relative-motion
+conditionals are INEXPRESSIBLE, so per_slot_search fits a constant-
+ish op and the residual is systematic, not sampling noise. This is
+precisely the F228 pre-registered witness condition for instruction-
+set work ("first mine per_slot_search residuals for inexpressible
+dynamics"). Next probe: residual mining -- measure per-slot program
+fit accuracy on mover slots across worlds, test whether a TOWARD
+op (step slot s one unit toward slot j) closes the residual, and
+only then admit it to the ISA with the usual controls.
+
+Scope: Fixed on this family (control-world capability); Localized
+(witness failure to the bank-dynamics layer). The horizon layer is
+BUILT and no longer the bottleneck; the ladder moves to dynamics.
