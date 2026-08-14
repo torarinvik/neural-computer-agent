@@ -13826,3 +13826,39 @@ strongest positive witness: the same knowledge object survives
 three unrelated geometries without modification.
 
 Scope: Cross-substrate (grid -> graph, grid -> ring).
+
+## F271 — VALUE-DIRECTED NAVIGATION: THE HAND-WRITTEN POLICY IS
+## DERIVED, PER SEED, FROM FIVE TRANSFERRED NUMBERS; RISK
+## CALIBRATION STAYS NATIVE (2026-08-14, valued_nav.py, 6 seeds.
+## Scope: ring; composition defined for any metric substrate)
+
+score(action) = sum_g v_hat(psi_g) * (d_now - d_after), negative
+terms proximity-weighted (threat is contact-local -- F233's guard
+insight, value-directed; set during design smoke, before the
+measurement run).
+
+  P1 CONFIRMED 6/6 WITH PER-SEED IDENTITY: valued_nav = gg_ring
+     EXACTLY (+3.349 = +3.349 on every seed) on rcollect1. The
+     approach-food form -- previously hand-wired in every
+     goal-grammar library -- is now DERIVED: transferred values
+     pick the target, the substrate's metric supplies the gradient,
+     zero target data, zero wiring. With F267/F270 this completes
+     the substrate-general controller: five numbers + a distance
+     function = the correct navigation policy on the third
+     substrate, exactly.
+  P2 REFUTED 0/6: on ravoid1_collect1 the cautious composition
+     (+1.794) loses to reckless hand-written approach (+2.328) --
+     on THIS world the hazard's realized danger is cheaper than
+     the detours. How much to fear a threat is a NATIVE quantity
+     (world statistics), consistent with F268's division of labor:
+     values and navigation transfer; risk calibration re-grounds.
+     Navigation still lifts the transfer stack itself: +1.794 vs
+     the kernel head's +1.245.
+  P3 holds in the known weak form (shuffled collapses or inverts,
+     4/6).
+
+The transfer story, now complete across its arc: WHAT is valuable
+transfers (F256 across worlds, F267/F270 across substrates), HOW
+to move toward it derives from the substrate's own metric (this
+finding), and HOW MUCH to risk stays native (F268/F271) -- exactly
+the modularity the founding constraint demanded.
