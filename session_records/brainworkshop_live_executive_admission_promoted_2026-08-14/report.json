@@ -1,0 +1,175 @@
+{
+  "bank_digest_after_promotion": "757656d46e2edc2fd08c48f5acd8dff21c4a788891e5efcd0ea57f9d3f975f33",
+  "bank_digest_after_reload": "757656d46e2edc2fd08c48f5acd8dff21c4a788891e5efcd0ea57f9d3f975f33",
+  "bank_reload_exact": true,
+  "candidate_proposal": "externally supplied artifact; no autonomous synthesis claimed",
+  "controller_boundary": "frozen controller receives learned event tensors only",
+  "decoder_boundary": "frozen intention decoder emits opaque keypress actions",
+  "optimizer_updates_total": 0,
+  "promotion": {
+    "admission_receipt": {
+      "accepted": true,
+      "candidate_digest": "1bbd08dbf3f34191d2b83f284c9b9da8a6df077079ffa3ad784769c07dfd7f30",
+      "observations": 3,
+      "reason": "verified executive artifact committed",
+      "schema": "neural-computer.external-program-admission.v1",
+      "slot": 0,
+      "stable_bits_to_threshold": 1,
+      "stable_prefix_minimum": 1.0
+    },
+    "admitted": true,
+    "bank_digest_after": "757656d46e2edc2fd08c48f5acd8dff21c4a788891e5efcd0ea57f9d3f975f33",
+    "bank_digest_before": "aff8c124f65e055fff02009522412794476310b0775d165b656eee619708b1e4",
+    "bank_program_count": 1,
+    "candidate_delay": 2,
+    "candidate_digest": "1bbd08dbf3f34191d2b83f284c9b9da8a6df077079ffa3ad784769c07dfd7f30",
+    "controller_frozen": true,
+    "decoder_frozen": true,
+    "episodes": [
+      {
+        "eligible_accuracy": 1.0,
+        "eligible_verifier_bits": 8,
+        "episode_outcome": 1.0,
+        "machine_seconds_p50": 0.00039962492883205414,
+        "machine_seconds_p99": 0.000528041971847415,
+        "seed": 71,
+        "ticks": 13,
+        "total_seconds_p50": 0.00039962492883205414,
+        "total_seconds_p99": 0.000528041971847415,
+        "wall_seconds": 0.005212792078964412
+      },
+      {
+        "eligible_accuracy": 1.0,
+        "eligible_verifier_bits": 8,
+        "episode_outcome": 1.0,
+        "machine_seconds_p50": 0.00039179204031825066,
+        "machine_seconds_p99": 0.00041312503162771463,
+        "seed": 72,
+        "ticks": 13,
+        "total_seconds_p50": 0.00039179204031825066,
+        "total_seconds_p99": 0.00041312503162771463,
+        "wall_seconds": 0.004727834020741284
+      },
+      {
+        "eligible_accuracy": 1.0,
+        "eligible_verifier_bits": 8,
+        "episode_outcome": 1.0,
+        "machine_seconds_p50": 0.00039083301089704037,
+        "machine_seconds_p99": 0.000406416947953403,
+        "seed": 73,
+        "ticks": 13,
+        "total_seconds_p50": 0.00039083301089704037,
+        "total_seconds_p99": 0.000406416947953403,
+        "wall_seconds": 0.0048192080575972795
+      }
+    ],
+    "lifetime_outcomes": [
+      1.0,
+      1.0,
+      1.0
+    ],
+    "optimizer_updates": 0,
+    "program_frozen": true,
+    "replayed_examples": 0,
+    "unique_logical_lifetimes": 3,
+    "unique_verifier_bits": 24,
+    "verifier_n_back_private": 2
+  },
+  "rejection": {
+    "admission_receipt": {
+      "accepted": false,
+      "candidate_digest": "8486f8908269a10eaf691f69671c54b333592587065c787b526230016fefd115",
+      "observations": 3,
+      "reason": "candidate did not clear a stable verifier prefix",
+      "schema": "neural-computer.external-program-admission.v1",
+      "slot": null,
+      "stable_bits_to_threshold": null,
+      "stable_prefix_minimum": 0.375
+    },
+    "admitted": false,
+    "bank_digest_after": "aff8c124f65e055fff02009522412794476310b0775d165b656eee619708b1e4",
+    "bank_digest_before": "aff8c124f65e055fff02009522412794476310b0775d165b656eee619708b1e4",
+    "bank_program_count": 0,
+    "candidate_delay": 1,
+    "candidate_digest": "8486f8908269a10eaf691f69671c54b333592587065c787b526230016fefd115",
+    "controller_frozen": true,
+    "decoder_frozen": true,
+    "episodes": [
+      {
+        "eligible_accuracy": 0.5,
+        "eligible_verifier_bits": 8,
+        "episode_outcome": 0.5,
+        "machine_seconds_p50": 0.00039070809725672007,
+        "machine_seconds_p99": 0.00040424999315291643,
+        "seed": 81,
+        "ticks": 12,
+        "total_seconds_p50": 0.00039070809725672007,
+        "total_seconds_p99": 0.00040424999315291643,
+        "wall_seconds": 0.004457292030565441
+      },
+      {
+        "eligible_accuracy": 0.375,
+        "eligible_verifier_bits": 8,
+        "episode_outcome": 0.375,
+        "machine_seconds_p50": 0.0003905829507857561,
+        "machine_seconds_p99": 0.0005535000236704946,
+        "seed": 82,
+        "ticks": 12,
+        "total_seconds_p50": 0.0003905829507857561,
+        "total_seconds_p99": 0.0005535000236704946,
+        "wall_seconds": 0.004803083022125065
+      },
+      {
+        "eligible_accuracy": 0.5,
+        "eligible_verifier_bits": 8,
+        "episode_outcome": 0.5,
+        "machine_seconds_p50": 0.0003924579359591007,
+        "machine_seconds_p99": 0.00040662498213350773,
+        "seed": 83,
+        "ticks": 12,
+        "total_seconds_p50": 0.0003924579359591007,
+        "total_seconds_p99": 0.00040662498213350773,
+        "wall_seconds": 0.004465666017495096
+      }
+    ],
+    "lifetime_outcomes": [
+      0.5,
+      0.375,
+      0.5
+    ],
+    "optimizer_updates": 0,
+    "program_frozen": true,
+    "replayed_examples": 0,
+    "unique_logical_lifetimes": 3,
+    "unique_verifier_bits": 24,
+    "verifier_n_back_private": 2
+  },
+  "replayed_examples_total": 0,
+  "retention_after_bank_reload": {
+    "artifact_digest": "1bbd08dbf3f34191d2b83f284c9b9da8a6df077079ffa3ad784769c07dfd7f30",
+    "controller_frozen": true,
+    "decoder_frozen": true,
+    "episode": {
+      "eligible_accuracy": 1.0,
+      "eligible_verifier_bits": 8,
+      "episode_outcome": null,
+      "machine_seconds_p50": 0.0003861660370603204,
+      "machine_seconds_p99": 0.00041345797944813967,
+      "seed": 101,
+      "ticks": 13,
+      "total_seconds_p50": 0.0003861660370603204,
+      "total_seconds_p99": 0.00041345797944813967,
+      "wall_seconds": 0.00465954199898988
+    },
+    "optimizer_updates": 0,
+    "program_frozen": true,
+    "replayed_examples": 0,
+    "unique_logical_lifetimes": 1,
+    "unique_verifier_bits": 8
+  },
+  "schema": "neural-computer.brainworkshop-live-executive-admission.v1",
+  "unique_logical_lifetimes_total": 7,
+  "unique_verifier_bits_total": 56,
+  "verifier_boundary": "private n-back verifier returns only receipt-linked scalar outcomes",
+  "wall_seconds": 0.03785666706971824
+}

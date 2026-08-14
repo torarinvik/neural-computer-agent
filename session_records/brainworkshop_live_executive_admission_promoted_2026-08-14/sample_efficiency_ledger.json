@@ -1,0 +1,52 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment_id": "brainworkshop-live-executive-admission-promoted-2026-08-14",
+  "status": "promoted_live_verifier_gated_candidate_admission",
+  "source": "in_repository_run",
+  "unique_verifier_bits": {
+    "promotion": 24,
+    "rejection_control": 24,
+    "reload_retention": 8,
+    "total": 56
+  },
+  "unique_logical_lifetimes": {
+    "promotion": 3,
+    "rejection_control": 3,
+    "reload_retention": 1,
+    "total": 7
+  },
+  "optimizer_updates": 0,
+  "replayed_examples": 0,
+  "wall_seconds": 0.03785666706971824,
+  "latency_seconds": {
+    "promotion_p50_max": 0.00039962492883205414,
+    "promotion_p99_max": 0.000528041971847415,
+    "rejection_p50_max": 0.0003924579359591007,
+    "rejection_p99_max": 0.0005535000236704946,
+    "reload_retention_p50": 0.0003861660370603204,
+    "reload_retention_p99": 0.00041345797944813967
+  },
+  "stable_bits_to_threshold": {
+    "promotion": 24,
+    "rejection_control": null
+  },
+  "stable_observation_prefix_from_admission_receipt": {
+    "promotion": 1,
+    "rejection_control": null
+  },
+  "retention_on_mastered_primitives": {
+    "reloaded_delay_2_accuracy": 1.0,
+    "bank_reload_exact": true
+  },
+  "transfer_ratio_against_fresh_learner": null,
+  "controls": {
+    "controller_frozen": true,
+    "decoder_frozen": true,
+    "executive_programs_frozen": true,
+    "zero_replay": true,
+    "wrong_candidate_rejected": true,
+    "rejected_bank_digest_unchanged": true,
+    "promoted_bank_reload_exact": true
+  },
+  "claim_boundary": "bounded live verifier-gated admission and durable retention of an externally proposed executive; not autonomous program synthesis or semantic task discovery"
+}
