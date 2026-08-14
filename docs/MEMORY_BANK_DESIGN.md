@@ -13147,3 +13147,43 @@ interaction history), class-target value fits with death
 attribution, and an event-structured edge head
 r_hat(s,a) = sum_g contact_g(s') * (w . psi_g).
 That build is next. Scope: Localized (GEN-DEV trio + control).
+
+## F252 — THE TYPED EVENT HEAD WORKS; ITS COMPOSITION WITH LEARNED
+## DYNAMICS FAILS: EVENT PRECISION x MODEL ERROR = POISON
+## (2026-08-14, value_plan_typed.py, 6 seeds. Scope: GEN-DEV
+## witnesses + control)
+
+The F251 response, built: per-tracked-entity type signatures
+(plane, motion energy, approach fraction), events (contact,
+teleport, their conjunction, boundary) with death attribution, one
+ridge from events x signatures to step reward; F247's planner scores
+edges with it. Registered P1-P4.
+
+  THE HEAD IS VALIDATED IN ISOLATION. Over TRUE dynamics the typed
+  head vs F251's linear head: control -0.07 -> +1.28 (vs true-
+  reward ceiling +1.50); trio -0.97/-0.91/-0.92 -> -0.62/-0.48/
+  -0.89 -- roughly half the convicted gap on two of three worlds
+  recovered by REPRESENTATION alone. Reward binding as a head is
+  the right abstraction (P2 partial: outside the 0.15 band but
+  directionally decisive).
+
+  THE COMPOSITION IS REFUTED. P1 0/6 seeds on every trio world:
+  under bank dynamics the typed head does not beat the linear
+  baseline. P3's refutation is the mechanism: SHUFFLED WEIGHTS BEAT
+  THE FITTED HEAD on the lethal worlds (-0.81/-0.86 vs -0.94/-1.10)
+  while collapsing properly on the control. A hard contact
+  predicate (d <= 1) composed with one-cell dynamics error flips
+  event predictions; executing precisely-wrong advice is worse than
+  noise. The linear head had been failing GRACEFULLY -- distance-
+  smooth, error-tolerant; the event head fails BRITTLY.
+
+Localization after three integrations: horizon BUILT (F247),
+dynamics identity-stabilized (F249/F250), reward binding BUILT and
+validated (this finding) -- each layer works alone; the surviving
+defect is the INTERFACE between reward events and imperfect learned
+dynamics. Pre-registered next: MODEL-CONSISTENT head training (fit
+the typed head on BANK-ROLLED children, so the head reads reward
+through the model's own biases -- fully deployable, no privilege)
+x graded contact kernel (tolerance to +-1 model error), as a 2x2
+against this finding's pure-typed arm. Scope: Localized (GEN-DEV
+witnesses + control).
