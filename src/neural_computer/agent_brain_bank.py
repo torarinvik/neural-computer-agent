@@ -30,6 +30,7 @@ import torch
 from .addressing import PersistentOpaqueContextRouteEvidence
 from .executive_bank import (
     EXECUTIVE_COMPOSITION_SCHEMA,
+    LEGACY_EXECUTIVE_COMPOSITION_SCHEMA,
     ExternalExecutiveProgramArtifact,
     ExternalExecutiveProgramBank,
     compose_executive_artifacts,
@@ -311,8 +312,19 @@ def _capacity_rejection(
     outcomes: torch.Tensor | list[float] | tuple[float, ...],
     *,
     reason: str,
+    verifier_bit_counts: Sequence[int] | None = None,
 ) -> ExternalProgramAdmissionReceipt:
     values = torch.as_tensor(outcomes, dtype=torch.float64).reshape(-1)
+    bit_counts = (
+        (1,) * int(values.numel())
+        if verifier_bit_counts is None
+        else tuple(verifier_bit_counts)
+    )
+    if len(bit_counts) != int(values.numel()) or any(
+        not isinstance(count, int) or isinstance(count, bool) or count < 1
+        for count in bit_counts
+    ):
+        raise ValueError("capacity rejection verifier-bit counts are invalid")
     return ExternalProgramAdmissionReceipt(
         accepted=False,
         candidate_digest=candidate_digest,
@@ -321,6 +333,8 @@ def _capacity_rejection(
         stable_bits_to_threshold=None,
         stable_prefix_minimum=None,
         reason=reason,
+        unique_verifier_bits=sum(bit_counts),
+        stable_observations_to_threshold=None,
     ).validate()
 
 
@@ -494,6 +508,7 @@ class ExternalAgentBrainBank:
         threshold: float = 0.8,
         min_observations: int = 1,
         min_stable_observations: int = 1,
+        verifier_bit_counts: Sequence[int] | None = None,
     ) -> ExternalProgramAdmissionReceipt:
         if not hasattr(artifact, "digest") or not hasattr(artifact, "validate"):
             raise TypeError("AgentBrain executive admission needs an executable artifact")
@@ -503,6 +518,7 @@ class ExternalAgentBrainBank:
                 digest,
                 outcomes,
                 reason="verified executive artifact could not enter a full AgentBrain bank",
+                verifier_bit_counts=verifier_bit_counts,
             )
         receipt = self._executive_bank.admit(
             artifact,
@@ -510,6 +526,7 @@ class ExternalAgentBrainBank:
             threshold=threshold,
             min_observations=min_observations,
             min_stable_observations=min_stable_observations,
+            verifier_bit_counts=verifier_bit_counts,
         )
         if receipt.accepted:
             if self._executive_route is not None:
@@ -609,6 +626,7 @@ class ExternalAgentBrainBank:
         min_stable_observations: int = 1,
         share_compatible_operators: bool = False,
         final_emit_only: bool = False,
+        verifier_bit_counts: Sequence[int] | None = None,
     ) -> ExternalProgramAdmissionReceipt:
         """Compose admitted executive slots, then gate the child by outcomes."""
 
@@ -630,6 +648,7 @@ class ExternalAgentBrainBank:
             threshold=threshold,
             min_observations=min_observations,
             min_stable_observations=min_stable_observations,
+            verifier_bit_counts=verifier_bit_counts,
         )
         if receipt.accepted:
             provenance = {
@@ -808,12 +827,17 @@ class ExternalAgentBrainBank:
         return result
 
     def _validate_composition_provenance(self) -> None:
-        executable_digests = {
-            self._executive_bank.artifact(slot).digest()
+        artifacts = tuple(
+            self._executive_bank.artifact(slot)
             for slot in range(self.executive_program_count)
-        }
+        )
+        executable_artifacts = {artifact.digest(): artifact for artifact in artifacts}
+        executable_digests = set(executable_artifacts)
         for record in self._composition_provenance:
-            if record.get("schema") != EXECUTIVE_COMPOSITION_SCHEMA:
+            if record.get("schema") not in {
+                LEGACY_EXECUTIVE_COMPOSITION_SCHEMA,
+                EXECUTIVE_COMPOSITION_SCHEMA,
+            }:
                 raise ValueError("unsupported AgentBrain composition provenance schema")
             child_digest = record.get("child_digest")
             parent_slots = record.get("parent_slots")
@@ -850,10 +874,12 @@ class ExternalAgentBrainBank:
             ]
             if parent_digests != expected_parent_digests:
                 raise ValueError("AgentBrain composition parent digest binding is invalid")
-            expected_child = self.composed_executive_artifact(
-                parent_slots,
+            stored_child = executable_artifacts[child_digest]
+            expected_child = compose_executive_artifacts(
+                tuple(self._executive_bank.artifact(slot) for slot in parent_slots),
                 share_compatible_operators=share_compatible_operators,
                 final_emit_only=final_emit_only,
+                _program_schema=stored_child.program.schema,
             )
             if child_digest != expected_child.digest():
                 raise ValueError("AgentBrain composition child derivation is invalid")
@@ -866,6 +892,10 @@ class ExternalAgentBrainBank:
                     stable_bits_to_threshold=admission.get("stable_bits_to_threshold"),
                     stable_prefix_minimum=admission.get("stable_prefix_minimum"),
                     reason=admission.get("reason"),
+                    unique_verifier_bits=admission.get("unique_verifier_bits"),
+                    stable_observations_to_threshold=admission.get(
+                        "stable_observations_to_threshold"
+                    ),
                     schema=admission.get("schema"),
                 ).validate()
             except (TypeError, ValueError) as error:

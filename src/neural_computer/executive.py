@@ -25,7 +25,8 @@ import torch
 
 from .interface import AmodalEventCollection, IntentEvent
 
-EXECUTIVE_PROGRAM_SCHEMA = "neural-computer.external-executive-program.v1"
+LEGACY_EXECUTIVE_PROGRAM_SCHEMA = "neural-computer.external-executive-program.v1"
+EXECUTIVE_PROGRAM_SCHEMA = "neural-computer.external-executive-program.v2"
 EXECUTIVE_STATE_SCHEMA = "neural-computer.external-executive-state.v1"
 EXECUTIVE_OPERATOR_SCHEMA = "neural-computer.external-executive-operator.v1"
 EXECUTIVE_OPERATOR_STATE_SCHEMA = (
@@ -364,7 +365,10 @@ class ExternalExecutiveProgram:
     schema: str = EXECUTIVE_PROGRAM_SCHEMA
 
     def validate(self) -> ExternalExecutiveProgram:
-        if self.schema != EXECUTIVE_PROGRAM_SCHEMA:
+        if self.schema not in {
+            LEGACY_EXECUTIVE_PROGRAM_SCHEMA,
+            EXECUTIVE_PROGRAM_SCHEMA,
+        }:
             raise ValueError("unsupported external executive program schema")
         if self.slot_count < 1 or not self.instructions:
             raise ValueError("external executive program dimensions must be positive")
@@ -984,6 +988,7 @@ __all__ = [
     "EXECUTIVE_OPERATOR_STATE_SCHEMA",
     "EXECUTIVE_PROGRAM_SCHEMA",
     "EXECUTIVE_STATE_SCHEMA",
+    "LEGACY_EXECUTIVE_PROGRAM_SCHEMA",
     "ExecutiveInstruction",
     "ExternalAmodalExecutive",
     "ExternalExecutiveOperator",

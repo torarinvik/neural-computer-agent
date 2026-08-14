@@ -8,6 +8,7 @@ from neural_computer import (
     ExternalProgramAdmissionReceipt,
     ExternalProgramArtifact,
     ExternalSequenceProgramMemory,
+    evaluate_program_digest_admission,
 )
 
 
@@ -18,6 +19,21 @@ def _artifact() -> ExternalProgramArtifact:
         execution_schema="neural-computer.external-register-read-execute.v1",
         output_schema="neural-computer.external-register-canonical-readout.v1",
     )
+
+
+def test_admission_distinguishes_aggregate_observations_from_verifier_bits() -> None:
+    receipt = evaluate_program_digest_admission(
+        "7" * 64,
+        (1.0, 1.0, 1.0),
+        min_observations=3,
+        min_stable_observations=2,
+        verifier_bit_counts=(8, 8, 8),
+    )
+
+    assert receipt.observations == 3
+    assert receipt.stable_observations_to_threshold == 1
+    assert receipt.unique_verifier_bits == 24
+    assert receipt.stable_bits_to_threshold == 8
 
 
 def test_external_program_artifact_round_trips_with_stable_digest() -> None:

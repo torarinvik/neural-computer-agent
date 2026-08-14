@@ -794,6 +794,10 @@ class ExternalSequenceProgramMemory(nn.Module):
             stable_bits_to_threshold=receipt.stable_bits_to_threshold,
             stable_prefix_minimum=receipt.stable_prefix_minimum,
             reason="candidate verified and committed as an external file",
+            unique_verifier_bits=receipt.unique_verifier_bits,
+            stable_observations_to_threshold=(
+                receipt.stable_observations_to_threshold
+            ),
         ).validate()
 
     @staticmethod

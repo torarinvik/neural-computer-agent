@@ -33,6 +33,20 @@ def _digest(seed: int = 7) -> str:
     return f"{seed:064x}"
 
 
+def test_promoted_v1_composition_bank_remains_loadable() -> None:
+    path = (
+        Path(__file__).parents[1]
+        / "session_records"
+        / "brainworkshop_executive_compositional_transfer_promoted_2026-08-14"
+        / "AgentBrain.bank"
+    )
+
+    restored = ExternalAgentBrainBank.load_bank(path)
+
+    assert restored.program_count == 4
+    assert restored.composition_provenance[0]["schema"].endswith(".v1")
+
+
 def _temporal_artifact(values: tuple[float, ...]) -> ExternalProgramArtifact:
     return ExternalProgramArtifact(
         codes=torch.tensor([values], dtype=torch.float32),

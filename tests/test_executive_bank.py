@@ -3,7 +3,12 @@ from pathlib import Path
 import pytest
 import torch
 
-from neural_computer.executive import ExecutiveInstruction, ExternalExecutiveProgram
+from neural_computer.executive import (
+    EXECUTIVE_PROGRAM_SCHEMA,
+    LEGACY_EXECUTIVE_PROGRAM_SCHEMA,
+    ExecutiveInstruction,
+    ExternalExecutiveProgram,
+)
 from neural_computer.executive_bank import (
     ExternalExecutiveOperatorSpec,
     ExternalExecutiveProgramArtifact,
@@ -77,6 +82,51 @@ def test_immutable_executive_metadata_is_cached() -> None:
     assert registry.digest() is registry_digest
     assert after_miss.misses == before.misses + 1
     assert after_hit.hits == after_miss.hits + 1
+
+
+def test_handoff_reachability_follows_the_runtime_jump_target() -> None:
+    looping = ExternalExecutiveProgramArtifact(
+        program=ExternalExecutiveProgram(
+            1,
+            (
+                ExecutiveInstruction("handoff", next_target=0),
+                ExecutiveInstruction("halt"),
+            ),
+        ),
+        operator_specs=(),
+        intention_width=1,
+    ).validate()
+    falling_through = ExternalExecutiveProgramArtifact(
+        program=ExternalExecutiveProgram(
+            1,
+            (ExecutiveInstruction("handoff"), ExecutiveInstruction("halt")),
+        ),
+        operator_specs=(),
+        intention_width=1,
+    ).validate()
+
+    assert not executive_artifact_can_handoff(looping)
+    assert executive_artifact_can_handoff(falling_through)
+
+
+def test_legacy_program_schema_round_trips_while_new_programs_use_v2() -> None:
+    current = _artifact(1)
+    legacy = ExternalExecutiveProgramArtifact(
+        program=ExternalExecutiveProgram(
+            current.program.slot_count,
+            current.program.instructions,
+            schema=LEGACY_EXECUTIVE_PROGRAM_SCHEMA,
+        ),
+        operator_specs=current.operator_specs,
+        intention_width=current.intention_width,
+    ).validate()
+
+    restored = ExternalExecutiveProgramArtifact.from_payload(legacy.payload())
+
+    assert current.program.schema == EXECUTIVE_PROGRAM_SCHEMA
+    assert EXECUTIVE_PROGRAM_SCHEMA.endswith(".v2")
+    assert restored.program.schema == LEGACY_EXECUTIVE_PROGRAM_SCHEMA
+    assert restored.digest() == legacy.digest()
 
 
 def test_verified_executive_skills_round_trip_and_execute_identically(

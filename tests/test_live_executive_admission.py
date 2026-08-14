@@ -125,7 +125,10 @@ def test_live_candidate_is_admitted_only_after_stable_lifetimes_and_reload(tmp_p
     assert outcomes == [1.0, 1.0, 1.0]
     assert machine.admitted
     assert machine.admission_receipt is not None
-    assert machine.admission_receipt.stable_bits_to_threshold == 1
+    assert machine.admission_receipt.stable_observations_to_threshold == 1
+    assert machine.admission_receipt.stable_bits_to_threshold == 8
+    assert machine.admission_receipt.unique_verifier_bits == 24
+    assert machine.lifetime_verifier_bits == (8, 8, 8)
     assert machine.unique_verifier_bits == 24
     assert machine.unique_logical_lifetimes == 3
     assert machine.replayed_examples == 0

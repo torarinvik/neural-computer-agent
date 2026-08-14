@@ -1218,6 +1218,7 @@ class ExternalExecutiveCandidateLiveMachine:
         )
         self._episode_rewards: list[float] = []
         self._lifetime_outcomes: list[float] = []
+        self._lifetime_verifier_bits: list[int] = []
         self._unique_verifier_bits = 0
         self._unique_logical_lifetimes = 0
         self._admission_receipt: ExternalProgramAdmissionReceipt | None = None
@@ -1281,6 +1282,10 @@ class ExternalExecutiveCandidateLiveMachine:
         return self._unique_verifier_bits
 
     @property
+    def lifetime_verifier_bits(self) -> tuple[int, ...]:
+        return tuple(self._lifetime_verifier_bits)
+
+    @property
     def unique_logical_lifetimes(self) -> int:
         return self._unique_logical_lifetimes
 
@@ -1340,9 +1345,11 @@ class ExternalExecutiveCandidateLiveMachine:
 
         if not self._episode_rewards:
             return None
-        outcome = sum(self._episode_rewards) / len(self._episode_rewards)
+        verifier_bits = len(self._episode_rewards)
+        outcome = sum(self._episode_rewards) / verifier_bits
         self._episode_rewards.clear()
         self._lifetime_outcomes.append(outcome)
+        self._lifetime_verifier_bits.append(verifier_bits)
         self._unique_logical_lifetimes += 1
         if not self.admitted:
             if self._parent_slots is None:
@@ -1352,6 +1359,7 @@ class ExternalExecutiveCandidateLiveMachine:
                     threshold=self.threshold,
                     min_observations=self.min_observations,
                     min_stable_observations=self.min_stable_observations,
+                    verifier_bit_counts=self._lifetime_verifier_bits,
                 )
             else:
                 self._admission_receipt = self.bank.compose_executive(
@@ -1362,6 +1370,7 @@ class ExternalExecutiveCandidateLiveMachine:
                     min_stable_observations=self.min_stable_observations,
                     share_compatible_operators=self._share_compatible_operators,
                     final_emit_only=self._final_emit_only,
+                    verifier_bit_counts=self._lifetime_verifier_bits,
                 )
             self._bank_digest_after = self.bank.digest()
         return outcome

@@ -28,4 +28,3 @@ PYTHONPATH=src .venv/bin/python \
   -m experiments.brainworkshop_canonical.live_executive_admission \
   --report-out /tmp/live-executive-admission.json
 ```
-

@@ -9,15 +9,17 @@ versioned interfaces required to validate a compatible runtime.
 from __future__ import annotations
 
 import hashlib
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
 
 import torch
 
 EXTERNAL_PROGRAM_ARTIFACT_SCHEMA = "neural-computer.external-program-artifact.v1"
-EXTERNAL_PROGRAM_ADMISSION_SCHEMA = (
+LEGACY_EXTERNAL_PROGRAM_ADMISSION_SCHEMA = (
     "neural-computer.external-program-admission.v1"
 )
+EXTERNAL_PROGRAM_ADMISSION_SCHEMA = "neural-computer.external-program-admission.v2"
 EXTERNAL_PROGRAM_MEMORY_TRANSACTION_SCHEMA = (
     "neural-computer.external-program-memory-transaction.v1"
 )
@@ -178,10 +180,15 @@ class ExternalProgramAdmissionReceipt:
     stable_bits_to_threshold: int | None
     stable_prefix_minimum: float | None
     reason: str
+    unique_verifier_bits: int | None = None
+    stable_observations_to_threshold: int | None = None
     schema: str = EXTERNAL_PROGRAM_ADMISSION_SCHEMA
 
     def validate(self) -> ExternalProgramAdmissionReceipt:
-        if self.schema != EXTERNAL_PROGRAM_ADMISSION_SCHEMA:
+        if self.schema not in {
+            LEGACY_EXTERNAL_PROGRAM_ADMISSION_SCHEMA,
+            EXTERNAL_PROGRAM_ADMISSION_SCHEMA,
+        }:
             raise ValueError("unsupported external program admission schema")
         if len(self.candidate_digest) != 64:
             raise ValueError("program admission candidate digest is malformed")
@@ -189,15 +196,47 @@ class ExternalProgramAdmissionReceipt:
             int(self.candidate_digest, 16)
         except ValueError as error:
             raise ValueError("program admission candidate digest is malformed") from error
-        if self.observations < 0:
+        if (
+            not isinstance(self.observations, int)
+            or isinstance(self.observations, bool)
+            or self.observations < 0
+        ):
             raise ValueError("program admission observations cannot be negative")
         if self.slot is not None and self.slot < 0:
             raise ValueError("program admission slot cannot be negative")
-        if self.stable_bits_to_threshold is not None and (
-            self.stable_bits_to_threshold < 1
-            or self.stable_bits_to_threshold > self.observations
+        if self.schema == LEGACY_EXTERNAL_PROGRAM_ADMISSION_SCHEMA:
+            if (
+                self.unique_verifier_bits is not None
+                or self.stable_observations_to_threshold is not None
+            ):
+                raise ValueError("legacy program admission cannot contain v2 accounting")
+            unique_verifier_bits = self.observations
+            stable_observations = self.stable_bits_to_threshold
+        else:
+            if (
+                not isinstance(self.unique_verifier_bits, int)
+                or isinstance(self.unique_verifier_bits, bool)
+                or self.unique_verifier_bits < self.observations
+            ):
+                raise ValueError("program admission verifier-bit accounting is invalid")
+            unique_verifier_bits = self.unique_verifier_bits
+            stable_observations = self.stable_observations_to_threshold
+        if stable_observations is not None and (
+            not isinstance(stable_observations, int)
+            or isinstance(stable_observations, bool)
+            or stable_observations < 1
+            or stable_observations > self.observations
         ):
-            raise ValueError("program admission stable prefix is invalid")
+            raise ValueError("program admission stable observation prefix is invalid")
+        if self.stable_bits_to_threshold is not None and (
+            not isinstance(self.stable_bits_to_threshold, int)
+            or isinstance(self.stable_bits_to_threshold, bool)
+            or self.stable_bits_to_threshold < 1
+            or self.stable_bits_to_threshold > unique_verifier_bits
+        ):
+            raise ValueError("program admission stable bit prefix is invalid")
+        if (stable_observations is None) != (self.stable_bits_to_threshold is None):
+            raise ValueError("program admission stable prefixes must be recorded together")
         if self.stable_prefix_minimum is not None and not (
             0.0 <= self.stable_prefix_minimum <= 1.0
         ):
@@ -209,7 +248,7 @@ class ExternalProgramAdmissionReceipt:
     def payload(self) -> dict[str, Any]:
         """Return a portable audit record without candidate tensor contents."""
 
-        return {
+        payload = {
             "schema": self.schema,
             "accepted": self.accepted,
             "candidate_digest": self.candidate_digest,
@@ -219,6 +258,12 @@ class ExternalProgramAdmissionReceipt:
             "stable_prefix_minimum": self.stable_prefix_minimum,
             "reason": self.reason,
         }
+        if self.schema == EXTERNAL_PROGRAM_ADMISSION_SCHEMA:
+            payload["unique_verifier_bits"] = self.unique_verifier_bits
+            payload["stable_observations_to_threshold"] = (
+                self.stable_observations_to_threshold
+            )
+        return payload
 
 
 @dataclass(frozen=True)
@@ -322,6 +367,7 @@ def evaluate_program_digest_admission(
     threshold: float = 0.8,
     min_observations: int = 1,
     min_stable_observations: int = 1,
+    verifier_bit_counts: Sequence[int] | None = None,
 ) -> ExternalProgramAdmissionReceipt:
     """Apply the common verifier gate to any versioned external program.
 
@@ -345,6 +391,18 @@ def evaluate_program_digest_admission(
             "program admission needs positive minimum stable observations"
         )
     values = torch.as_tensor(outcomes, dtype=torch.float64).reshape(-1)
+    if verifier_bit_counts is None:
+        bit_counts = (1,) * int(values.numel())
+    else:
+        bit_counts = tuple(verifier_bit_counts)
+        if len(bit_counts) != int(values.numel()) or any(
+            not isinstance(count, int) or isinstance(count, bool) or count < 1
+            for count in bit_counts
+        ):
+            raise ValueError(
+                "program admission verifier-bit counts must be positive and align with outcomes"
+            )
+    unique_verifier_bits = sum(bit_counts)
     if values.numel() == 0:
         return ExternalProgramAdmissionReceipt(
             accepted=False,
@@ -354,6 +412,8 @@ def evaluate_program_digest_admission(
             stable_bits_to_threshold=None,
             stable_prefix_minimum=None,
             reason="no verifier outcomes were supplied",
+            unique_verifier_bits=0,
+            stable_observations_to_threshold=None,
         ).validate()
     if not bool(torch.isfinite(values).all()) or bool(
         torch.any((values < 0.0) | (values > 1.0))
@@ -368,6 +428,8 @@ def evaluate_program_digest_admission(
             stable_bits_to_threshold=None,
             stable_prefix_minimum=float(values.min().item()),
             reason="candidate has not reached the minimum verifier observations",
+            unique_verifier_bits=unique_verifier_bits,
+            stable_observations_to_threshold=None,
         ).validate()
     stable_prefix: int | None = None
     for index in range(values.numel()):
@@ -386,15 +448,19 @@ def evaluate_program_digest_admission(
             stable_bits_to_threshold=None,
             stable_prefix_minimum=float(values.min().item()),
             reason="candidate did not clear a stable verifier prefix",
+            unique_verifier_bits=unique_verifier_bits,
+            stable_observations_to_threshold=None,
         ).validate()
     return ExternalProgramAdmissionReceipt(
         accepted=True,
         candidate_digest=candidate_digest,
         slot=None,
         observations=int(values.numel()),
-        stable_bits_to_threshold=stable_prefix,
+        stable_bits_to_threshold=sum(bit_counts[:stable_prefix]),
         stable_prefix_minimum=float(values[stable_prefix - 1 :].min().item()),
         reason="candidate cleared the stable verifier prefix",
+        unique_verifier_bits=unique_verifier_bits,
+        stable_observations_to_threshold=stable_prefix,
     ).validate()
 
 
@@ -402,6 +468,7 @@ __all__ = [
     "EXTERNAL_PROGRAM_ADMISSION_SCHEMA",
     "EXTERNAL_PROGRAM_ARTIFACT_SCHEMA",
     "EXTERNAL_PROGRAM_MEMORY_TRANSACTION_SCHEMA",
+    "LEGACY_EXTERNAL_PROGRAM_ADMISSION_SCHEMA",
     "ExternalProgramAdmissionReceipt",
     "ExternalProgramArtifact",
     "ExternalProgramMemoryTransactionReceipt",

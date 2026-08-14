@@ -385,7 +385,7 @@ def test_critic_baseline_is_state_dependent_and_training_only() -> None:
     assert values.shape == (4,)
     # A state-dependent baseline must actually vary with the state, or it
     # is just the scalar baseline it was meant to improve on.
-    assert float(values.std()) > 0.0
+    assert float(values.std().detach()) > 0.0
     agent = _agent()
     config = FamilyConfig(choice=1, name="x")
     with_critic = rollout_family(
@@ -427,10 +427,8 @@ def test_fisher_temperature_raises_entropy_and_is_off_by_default() -> None:
             sample=True, gamma=0.9, temperature=temperature,
         )
         mask = summary["mask"]
-        return float(
-            (-summary["log_propensity"] * mask).sum()
-            / mask.sum().clamp_min(1.0)
-        )
+        value = (-summary["log_propensity"] * mask).sum() / mask.sum().clamp_min(1.0)
+        return float(value.detach())
 
     assert decoder.key_count > 1
     plain = entropy(1.0)

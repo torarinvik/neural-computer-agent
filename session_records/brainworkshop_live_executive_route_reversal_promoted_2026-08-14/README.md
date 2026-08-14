@@ -32,4 +32,3 @@ PYTHONPATH=src .venv/bin/python \
 This promotes bounded same-cue nonstationary routing, immutable skill
 retention, and restart-safe route evidence. It does not claim autonomous
 program induction or physical desktop deployment.
-

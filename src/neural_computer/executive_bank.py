@@ -16,6 +16,7 @@ import torch
 
 from .executive import (
     EXECUTIVE_PROGRAM_SCHEMA,
+    LEGACY_EXECUTIVE_PROGRAM_SCHEMA,
     ExecutiveInstruction,
     ExternalAmodalExecutive,
     ExternalExecutiveOperatorRegistry,
@@ -35,7 +36,8 @@ from .temporal_program import AGENT_BANK_EXTENSION
 
 EXECUTIVE_OPERATOR_SPEC_SCHEMA = "neural-computer.executive-operator-spec.v1"
 EXECUTIVE_PROGRAM_ARTIFACT_SCHEMA = "neural-computer.executive-program-artifact.v1"
-EXECUTIVE_COMPOSITION_SCHEMA = "neural-computer.executive-composition.v1"
+LEGACY_EXECUTIVE_COMPOSITION_SCHEMA = "neural-computer.executive-composition.v1"
+EXECUTIVE_COMPOSITION_SCHEMA = "neural-computer.executive-composition.v2"
 EXTERNAL_EXECUTIVE_PROGRAM_BANK_SCHEMA = (
     "neural-computer.external-executive-program-bank.v1"
 )
@@ -185,7 +187,10 @@ class ExternalExecutiveProgramArtifact:
         if self.schema != EXECUTIVE_PROGRAM_ARTIFACT_SCHEMA:
             raise ValueError("unsupported executive program artifact schema")
         self.program.validate()
-        if self.program.schema != EXECUTIVE_PROGRAM_SCHEMA or self.intention_width < 1:
+        if self.program.schema not in {
+            LEGACY_EXECUTIVE_PROGRAM_SCHEMA,
+            EXECUTIVE_PROGRAM_SCHEMA,
+        } or self.intention_width < 1:
             raise ValueError("executive program artifact dimensions are invalid")
         handles = tuple(spec.handle for spec in self.operator_specs)
         if handles != tuple(sorted(handles)) or len(handles) != len(set(handles)):
@@ -296,6 +301,7 @@ def compose_executive_artifacts(
     *,
     share_compatible_operators: bool = False,
     final_emit_only: bool = False,
+    _program_schema: str = EXECUTIVE_PROGRAM_SCHEMA,
 ) -> ExternalExecutiveProgramArtifact:
     """Compose existing executable files into one sequential artifact.
 
@@ -320,6 +326,11 @@ def compose_executive_artifacts(
         raise TypeError("executive composition operator sharing must be boolean")
     if not isinstance(final_emit_only, bool):
         raise TypeError("executive composition final emit policy must be boolean")
+    if _program_schema not in {
+        LEGACY_EXECUTIVE_PROGRAM_SCHEMA,
+        EXECUTIVE_PROGRAM_SCHEMA,
+    }:
+        raise ValueError("executive composition output schema is unsupported")
     validated = tuple(artifact.validate() for artifact in artifacts)
     if any(artifact.schema != EXECUTIVE_PROGRAM_ARTIFACT_SCHEMA for artifact in validated):
         raise ValueError("executive composition artifacts use incompatible schemas")
@@ -458,7 +469,7 @@ def compose_executive_artifacts(
         program=ExternalExecutiveProgram(
             slot_count=slot_offset,
             instructions=tuple(instructions),
-            schema=EXECUTIVE_PROGRAM_SCHEMA,
+            schema=_program_schema,
         ),
         operator_specs=tuple(sorted(composed_specs, key=lambda spec: spec.handle)),
         intention_width=intention_width,
@@ -491,7 +502,7 @@ def executive_artifact_can_handoff(
                     int(instruction.unknown_target),
                 )
             )
-        elif instruction.op in {"wait", "emit"}:
+        elif instruction.op in {"wait", "emit", "handoff"}:
             pending.append(
                 pointer + 1
                 if instruction.next_target is None
@@ -554,6 +565,7 @@ class ExternalExecutiveProgramBank:
         threshold: float = 0.8,
         min_observations: int = 1,
         min_stable_observations: int = 1,
+        verifier_bit_counts: Sequence[int] | None = None,
     ) -> ExternalProgramAdmissionReceipt:
         artifact.validate()
         receipt = evaluate_program_digest_admission(
@@ -562,6 +574,7 @@ class ExternalExecutiveProgramBank:
             threshold=threshold,
             min_observations=min_observations,
             min_stable_observations=min_stable_observations,
+            verifier_bit_counts=verifier_bit_counts,
         )
         if not receipt.accepted:
             return receipt
@@ -753,6 +766,7 @@ __all__ = [
     "EXECUTIVE_OPERATOR_SPEC_SCHEMA",
     "EXECUTIVE_PROGRAM_ARTIFACT_SCHEMA",
     "EXTERNAL_EXECUTIVE_PROGRAM_BANK_SCHEMA",
+    "LEGACY_EXECUTIVE_COMPOSITION_SCHEMA",
     "ExternalExecutiveOperatorSpec",
     "ExternalExecutiveProgramArtifact",
     "ExternalExecutiveProgramBank",
