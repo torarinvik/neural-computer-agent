@@ -85,6 +85,14 @@ state-transition algebra.
 Reward is an authenticated input event, not a reward-specific cognitive
 instruction and not a freely queryable oracle.
 
+`INPUT` is a variable-port executive instruction. Sensory frontends and trusted
+verifier adapters implement the same polling ABI and may be attached or removed
+at runtime without resizing the controller. Polling concatenates simultaneous
+learned events as separate source-bindable records and drains attributed
+outcomes exactly once. The minimal verifier port accepts only the agent's own
+action receipt, a deterministic scalar, presence/confidence, and observation
+time. Port handles are transport metadata and never become controller features.
+
 The causal interaction contract is:
 
 1. the controller emits an intention;
@@ -94,10 +102,56 @@ The causal interaction contract is:
    receipt or to an explicitly unknown causal window;
 5. `RECEIVE` consumes each event according to queue semantics.
 
+Resolved outcomes are offered in the same tick to registered external learners,
+including a provisional program learner or the route ledger for the program
+that was actually selected. Observers receive only the attempted receipt and
+its scalar result; they cannot inspect unattempted programs or infer a task ID.
+
 An empty queue means "not observed yet." It does not mean zero reward. Outcome
 events carry an opaque payload, trusted source key, timestamp/delay, presence,
 confidence, and causal receipt key. Programs and decoders cannot write to the
 trusted verifier queue.
+
+## Live cognitive tick
+
+The deployed runtime is an event-driven cognitive game loop, not an
+episode-returning trainer. One monotonic tick executes:
+
+```text
+RECEIVE -> resolve outcomes -> bounded online update -> think -> EMIT
+```
+
+Input sampling rate, learned-event rate, controller tick rate, optimizer update
+rate, and action rate are measured separately. A frontend may sample a screen
+at high frequency while emitting no event for unchanged frames. Conversely, a
+single tick may preserve several simultaneous source-keyed events. An empty
+event collection is a valid quiet tick and never fabricates sensory evidence.
+
+Each emitted action is recorded with its exact propensity, timestamp, output
+device key, and model version. The runtime retains the private credit state
+needed to resolve delayed evidence, but the public receipt contains only
+learner-visible action metadata. Outcome delivery is exact-once. Unknown,
+duplicate, or temporally impossible receipt keys fail closed.
+
+For a human-parity physical device, a scalar outcome must also carry the digest
+of every public frame used to derive it. The physical Brain Workshop adapter
+accepts only explicit visible feedback colors over a complete trial window.
+Under default Brain Workshop scoring, green is positive, red/blue is negative,
+and a neutral true-negative is absent rather than rewarded. Hidden correctness,
+session files, source hooks, and synthetic per-trial rewards are prohibited.
+Missing public evidence remains absent rather than becoming a fabricated zero.
+
+"Live" constrains causal order rather than wall-clock pacing. The same tick
+implementation may run against an accelerated virtual clock for research or a
+real monotonic clock for physical screen/audio/keyboard interaction. Each
+logical learner still consumes one causal stream and updates only from newly
+received evidence.
+
+Simultaneous live sources are retained as distinct event records and distinct
+temporal histories. A generic shared reader may condition on opaque source keys
+before composing results, but it may not merge raw event tensors or add a
+modality-specific reasoning branch. Device enumeration order is not a semantic
+binding and must not change behavior.
 
 ## Instruction-set policy
 
@@ -135,6 +189,15 @@ experience, repaired only where checks fail, and admitted transactionally.
 Unverified programs remain quarantined. Protection, eviction, compaction, and
 replacement are verifier-gated and copy-on-write.
 
+Temporal-address files use the same lifecycle explicitly. Candidate optimizer
+state remains provisional and outside executable memory. Stable public
+per-lifetime outcomes gate admission of the learned instruction tensor, which
+is bound to the compatible frozen-controller digest. An external memory-side
+router then selects immutable files from learned event vectors and updates only
+from the attempted slot and its scalar outcome. Unknown contexts remain
+exploratory; neither admission nor retrieval accepts a semantic task/rule ID.
+The bank and each artifact are checksummed and fail closed on corruption.
+
 Parallel transactional state updates are preferred when outputs depend only on
 the pre-state. Sequential execution is used when a real data dependency or
 persistent phase requires it. Search cost must be reported by family because
@@ -169,6 +232,37 @@ when transfer is claimed. Required accounting and controls are defined in
 
 The retained Brain Workshop evidence qualifies bounded append-only external
 working-memory computation through n-back-32 with frozen source retention and
-zero replay. It does not yet qualify autonomous general program induction,
-cross-mechanism maintenance-policy transfer, unrestricted memory growth, or a
-complete interactive executive ISA.
+zero replay. The live diagnostic additionally establishes immediate batch-one
+acquisition from clean-room RGB and waveform devices, including exact
+source-preserving dual-stream behavior. It does not yet qualify physical
+desktop mastery, autonomous general program induction, cross-mechanism
+maintenance-policy transfer, unrestricted memory growth, or a complete
+interactive executive ISA.
+
+The physical Position 1-Back rung qualifies the narrower live-I/O claim: public
+display capture, spatial onset segmentation, ordinary keypress output, exact
+receipt matching, checkpoint/resume, and immediate evidence-bound updates work
+together in the real GUI. Controller relation, source-conditioning, and
+intention-decoding weights are pretrained across variable frontend projections
+and frozen for task acquisition. A fresh task file starts with a uniform
+categorical temporal address and updates only from public verifier outcomes.
+The promoted 2-cell campaign produced 86 external-program updates from 86
+unique public outcomes, 0 controller updates, and 0 replay. It reached a stable
+rolling-44 threshold at bit 44 and finished at `1.0000` over the final 44
+outcomes. Normal learning passed 32/32 rendered seeds while frozen,
+reward-shuffled, action-reversed, and missing-history controls passed 0/32.
+This establishes bounded two-cell Position 1-Back acquisition and retention,
+not larger grids, general program induction, or dual-stream operation; system
+audio parity is still missing.
+
+The production bank boundary and its physical-campaign handoff are implemented,
+including stable admission, duplicate reuse, opaque reward routing, frozen
+activation, persistence, and corruption rejection. A fresh six-lifetime
+two-cell campaign then admitted one immutable program from 37 public outcomes.
+Four independent read-only sessions selected it after three newly captured
+learned stimulus events and produced 13/15 positive outcomes. Controller and
+program updates were zero; the external route ledger alone received 15 scalar
+observations. This promotes the bounded single-program lifecycle, not general
+program induction. Distinguishing multiple rules additionally requires a
+human-visible rule cue encoded through the normal frontend rather than a hidden
+rule identifier.

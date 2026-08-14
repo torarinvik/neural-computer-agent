@@ -1,0 +1,29 @@
+{
+  "schema": "neural-computer.brainworkshop-physical-training-summary.v1",
+  "seed": 23,
+  "position_cells": 2,
+  "sessions": 10,
+  "session_accuracy": [
+    0.3333333333333333,
+    0.5555555555555556,
+    0.7,
+    0.6363636363636364,
+    0.45454545454545453,
+    0.3333333333333333,
+    0.3333333333333333,
+    0.6666666666666666,
+    0.45454545454545453,
+    0.45454545454545453
+  ],
+  "session_public_outcomes": [9, 9, 10, 11, 11, 9, 9, 9, 11, 11],
+  "cumulative_program_file_updates": [9, 18, 28, 39, 50, 59, 68, 77, 88, 99],
+  "unique_public_outcomes": 99,
+  "optimizer_updates": 0,
+  "program_file_updates": 99,
+  "controller_frozen": true,
+  "replayed_examples": 0,
+  "cumulative_accuracy": 0.494949494949495,
+  "final_rolling_32_accuracy": 0.5,
+  "wall_seconds": 160.38727754179854,
+  "promotion": false
+}

@@ -1,0 +1,57 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "brainworkshop_physical_blank_program_promoted_2026-08-14",
+  "status": "promoted_bounded_physical_blank_program_acquisition",
+  "claim_boundary": "A frozen pretrained controller rapidly acquires a blank external temporal-address program from public two-cell Position 1-Back experience; this is not dual n-back or general program induction.",
+  "controller_pretraining": {
+    "seed": 1001,
+    "frontend_families": 160,
+    "unique_logical_lifetimes": 480,
+    "unique_verifier_bits": 11040,
+    "optimizer_updates": 11040,
+    "replayed_examples": 0,
+    "wall_seconds": 9.421626541996375,
+    "heldout_frontends": 32,
+    "heldout_min_accuracy": 1.0
+  },
+  "physical_task_acquisition": {
+    "seed": 17,
+    "unique_verifier_bits": 86,
+    "unique_logical_lifetimes": 14,
+    "controller_optimizer_updates": 0,
+    "external_program_optimizer_updates": 86,
+    "replayed_examples": 0,
+    "wall_seconds": 196.72794854303356,
+    "tick_seconds_p50": 0.045254125026986,
+    "tick_seconds_p99": 0.11693983303848654,
+    "stable_bits_to_threshold": 44,
+    "threshold": "rolling 44 public outcomes >= 0.80 at every later measured prefix",
+    "retention_on_mastered_primitive": "final six Brain Workshop lifetimes scored 100 and the final rolling-44 public accuracy was 1.0",
+    "transfer_ratio_against_fresh_learner": "44/102 = 0.4314 as many verifier bits, or 2.32x fewer; success coverage 32/32 versus 22/32 rendered seeds"
+  },
+  "rendered_controls_32_seeds": {
+    "pretrained_controller_blank_program": {"stable_successes": 32, "last_three_lifetime_mean_accuracy": 0.998, "median_stable_bits": 44},
+    "matched_fresh_end_to_end_best": {"stable_successes": 22, "last_three_lifetime_mean_accuracy": 0.804, "median_stable_bits": 102},
+    "blank_program_frozen": {"stable_successes": 0, "last_three_lifetime_mean_accuracy": 0.466},
+    "reward_shuffled": {"stable_successes": 0, "last_three_lifetime_mean_accuracy": 0.509},
+    "action_reversed": {"stable_successes": 0, "last_three_lifetime_mean_accuracy": 0.272},
+    "missing_history": {"stable_successes": 0, "last_three_lifetime_mean_accuracy": 0.0}
+  },
+  "controls": {
+    "fresh_uniform_program": true,
+    "inherited_program_prior_excluded_from_learning_claim": true,
+    "controller_digest_unchanged": true,
+    "public_pixels_only": true,
+    "ordinary_key_output": true,
+    "ordinary_position_nback_scoring": true,
+    "one_program_update_per_unique_public_outcome": true,
+    "zero_controller_optimizer_updates": true,
+    "zero_replayed_examples": true,
+    "matched_fresh_learner": true,
+    "action_reversed": true,
+    "reward_shuffled": true,
+    "missing_history": true,
+    "retention": true,
+    "mastery": true
+  }
+}

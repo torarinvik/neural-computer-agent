@@ -1,6 +1,61 @@
 """Canonical Brain Workshop pressure tests for the production runtime."""
 
+from .controller_pretraining import (
+    TemporalControllerPretrainingReport,
+    build_pretrained_controller_program_machine,
+    load_temporal_controller_artifact,
+    pretrain_previous_event_controller,
+    save_temporal_controller_artifact,
+    save_temporal_controller_report,
+)
 from .environment import BrainWorkshopEventEncoder, NBackVerifier, NBackVerifierStep
+from .live_session import (
+    BrainWorkshopLiveDevice,
+    LiveBrainWorkshopLifetime,
+    OnlineTemporalCapabilityMachine,
+    run_live_lifetime,
+)
+from .physical_live import (
+    PhysicalBrainWorkshopConfig,
+    PhysicalBrainWorkshopReport,
+    build_physical_brainworkshop_runtime,
+    compile_macos_capture_helper,
+    compile_macos_keypress_helper,
+    run_physical_brainworkshop_lifetime,
+    save_physical_report,
+)
+from .physical_program_bank import (
+    admit_physical_training_program,
+    learned_event_context,
+    retrieve_physical_program,
+)
+from .physical_train import (
+    PhysicalTrainingCampaign,
+    PhysicalTrainingSession,
+    load_physical_training_checkpoint,
+    run_physical_training_campaign,
+    save_physical_training_checkpoint,
+    save_physical_training_report,
+)
+from .rendered_environment import (
+    RenderedAudioEncoder,
+    RenderedBrainWorkshopConfig,
+    RenderedBrainWorkshopEncoders,
+    RenderedBrainWorkshopObservation,
+    RenderedBrainWorkshopStep,
+    RenderedBrainWorkshopVerifier,
+    RenderedVisionEncoder,
+    render_audio,
+    render_position,
+)
+from .rendered_live import (
+    FrozenControllerProgramMachine,
+    PretrainedControllerProgramMachine,
+    RenderedBrainWorkshopLiveDevice,
+    RenderedLiveLifetime,
+    SourcePreservingTemporalMachine,
+    run_rendered_live_lifetime,
+)
 from .runner import CanonicalBrainWorkshopAgent, CanonicalRollout
 from .trainer import (
     RewardOnlyUpdate,
@@ -15,14 +70,55 @@ from .trainer import (
 
 __all__ = [
     "BrainWorkshopEventEncoder",
+    "BrainWorkshopLiveDevice",
     "CanonicalBrainWorkshopAgent",
     "CanonicalRollout",
+    "FrozenControllerProgramMachine",
+    "LiveBrainWorkshopLifetime",
     "NBackVerifier",
     "NBackVerifierStep",
+    "OnlineTemporalCapabilityMachine",
+    "PhysicalBrainWorkshopConfig",
+    "PhysicalBrainWorkshopReport",
+    "PhysicalTrainingCampaign",
+    "PhysicalTrainingSession",
+    "PretrainedControllerProgramMachine",
+    "RenderedAudioEncoder",
+    "RenderedBrainWorkshopConfig",
+    "RenderedBrainWorkshopEncoders",
+    "RenderedBrainWorkshopLiveDevice",
+    "RenderedBrainWorkshopObservation",
+    "RenderedBrainWorkshopStep",
+    "RenderedBrainWorkshopVerifier",
+    "RenderedLiveLifetime",
+    "RenderedVisionEncoder",
     "RewardOnlyUpdate",
+    "SourcePreservingTemporalMachine",
+    "TemporalControllerPretrainingReport",
+    "admit_physical_training_program",
     "audit_retention",
+    "build_physical_brainworkshop_runtime",
+    "build_pretrained_controller_program_machine",
+    "compile_macos_capture_helper",
+    "compile_macos_keypress_helper",
     "evaluate_policy",
     "freeze_shared_path",
+    "learned_event_context",
+    "load_physical_training_checkpoint",
+    "load_temporal_controller_artifact",
+    "pretrain_previous_event_controller",
+    "render_audio",
+    "render_position",
+    "retrieve_physical_program",
+    "run_live_lifetime",
+    "run_physical_brainworkshop_lifetime",
+    "run_physical_training_campaign",
+    "run_rendered_live_lifetime",
+    "save_physical_report",
+    "save_physical_training_checkpoint",
+    "save_physical_training_report",
+    "save_temporal_controller_artifact",
+    "save_temporal_controller_report",
     "train_adaptive_relation_capability",
     "train_existing_adaptive_relation_capability",
     "train_isolated_relation_capability",

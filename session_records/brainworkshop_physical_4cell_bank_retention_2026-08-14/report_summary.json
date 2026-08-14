@@ -1,0 +1,42 @@
+{
+  "schema": "neural-computer.brainworkshop-physical-four-cell-promotion.v1",
+  "status": "promoted_bounded_four_cell_retention_and_route_learning",
+  "source_position_cells": 3,
+  "target_position_cells": 4,
+  "n_back": 1,
+  "probations": {
+    "logical_lifetimes": 6,
+    "unique_verifier_bits": 20,
+    "positive_verifier_bits": 19,
+    "accuracy": 0.95,
+    "independent_frontend_seeds": [17, 1017],
+    "route_updates_inherited_between_replications": false,
+    "promoted": false
+  },
+  "retention": {
+    "unique_logical_lifetimes": 12,
+    "unique_verifier_bits": 32,
+    "positive_verifier_bits": 28,
+    "accuracy": 0.875,
+    "stable_bits_to_threshold": 5,
+    "configured_live_seconds": 168.78967262571678,
+    "wall_seconds": 177.9011664999416,
+    "controller_optimizer_updates": 0,
+    "program_optimizer_updates": 0,
+    "router_observations": 32,
+    "replayed_examples": 0,
+    "input_events": 144,
+    "emitted_actions": 108,
+    "deadline_misses": 55,
+    "tick_seconds_p50_max": 0.05743929208256304,
+    "tick_seconds_p99_max": 0.17858083406463265,
+    "retention_gate_passed": true
+  },
+  "controller_digest": "59c9ef2b235104e4f0d6bc143ba195fb57a907da9f29b1d5750c39fa22f7687c",
+  "program_artifact_digest": "90e20193a50fdfa22b75fe722e6a9e131d9ba05d7f7e7d0aedbce9fc1f3c5749",
+  "source_bank_sha256": "7f7fc4f44bf5fcb8a0fe5025cd7b7e069031df01cd24be83be061a920b4da3cc",
+  "promoted_bank_sha256": "dfea16b4c182b1dc138e3a6ec1cd74af48af7a2a0512ebaf97940fc4138344c8",
+  "program_count": 1,
+  "promotion": true,
+  "next_gate": "sub-minute five-cell probation"
+}

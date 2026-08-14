@@ -1,0 +1,35 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "brainworkshop_physical_3cell_bank_retention_2026-08-14",
+  "status": "promoted_bounded_three_cell_retention_and_route_learning",
+  "claim_boundary": "One previously admitted Position 1-Back temporal program remains useful across three public grid cells while only opaque route evidence learns; this is not a newly acquired program or higher-n-back mastery.",
+  "retention": {
+    "unique_verifier_bits": 40,
+    "positive_verifier_bits": 34,
+    "unique_logical_lifetimes": 12,
+    "controller_optimizer_updates": 0,
+    "external_program_optimizer_updates": 0,
+    "router_observations": 40,
+    "replayed_examples": 0,
+    "wall_seconds": 178.15726870798972,
+    "configured_live_seconds": 168.67377183469944,
+    "accuracy": 0.85,
+    "stable_bits_to_threshold": 1,
+    "threshold": "cumulative public accuracy >= 0.80 at every later raw-outcome prefix with at least eight later observations",
+    "tick_seconds_p50_max": 0.04923958296421915,
+    "tick_seconds_p99_max": 0.16954133298713714,
+    "deadline_misses": 37,
+    "retention_on_mastered_primitive": "same controller and immutable temporal program digests across all twelve lifetimes; the three-cell stream includes the two previously mastered visible cells"
+  },
+  "controls": {
+    "one_difficulty_axis_changed": true,
+    "replicated_subminute_signal_preceded_promotion_run": true,
+    "public_pixels_only": true,
+    "ordinary_key_output": true,
+    "reward_as_live_input": true,
+    "controller_digest_unchanged": true,
+    "program_artifact_digest_unchanged": true,
+    "zero_replay": true
+  },
+  "transfer_ratio_against_fresh_learner": "not re-estimated: this rung tests retention/generalization of an admitted program, not fresh acquisition"
+}

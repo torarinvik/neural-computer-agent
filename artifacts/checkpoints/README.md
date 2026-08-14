@@ -1,5 +1,59 @@
 # Curated checkpoints
 
+## Physical temporal-program controller and Position 1-Back program
+
+`temporal_controller_previous_event_seed1001.pt` is the frozen controller
+artifact pretrained across 160 fresh projected visual frontend families. Its
+32 held-out frontend controls all scored 1.0. The artifact's learned address
+prior is retained only for an explicit inherited-transfer control; deployed
+task files initialize uniformly.
+
+`brainworkshop_position1back_2cell_program_seed17.pt` is the resumable external
+program checkpoint from the promoted 14-lifetime physical campaign. It began
+with a uniform four-address program, updated only that program from 86 public
+verifier outcomes, retained a byte-identical controller, and finished at 1.0
+over the final rolling 44 outcomes. Evidence and limits are in
+`session_records/brainworkshop_physical_blank_program_promoted_2026-08-14/`.
+
+`brainworkshop_position1back_2cell_program_bank_seed17.pt` is the first durable
+outcome-routed bank artifact. A fresh six-lifetime physical acquisition began
+with a uniform address file, used 37 public outcomes and 37 program updates,
+and admitted immutable slot 0 only after the final four lifetime scores were
+all 1.0. Four later GUI sessions retrieved that artifact after three no-action
+sensory warm-up events. They scored 13/15 public outcomes while controller and
+program updates remained zero; only the external route ledger accumulated 15
+observations. The bank fails closed through an adjacent file checksum and
+internal artifact/router digests. Evidence and limits are in
+`session_records/brainworkshop_physical_program_bank_2026-08-14/`.
+
+`AgentBrain.bank` is the canonical resumable name for that verified brain.
+The primary file contains immutable admitted temporal programs, their frozen
+controller binding, admission records, and opaque learned-event routing/reward
+evidence. `AgentBrain.bank.sha256` is adjacent integrity metadata. Loading the
+bank can add separately verified programs and route evidence without mutating
+the instruction tensors of already admitted skills. Version 1 is specifically
+a temporal-program memory bank; provisional program optimizer checkpoints stay
+outside it until admission succeeds.
+
+The canonical bank was subsequently resumed for a twelve-lifetime, three-cell
+read-only retention rung. It accumulated 40 additional reward-attributed route
+observations and no optimizer updates or replay. The immutable program digest
+remained unchanged. A replicated four-cell probation then justified another
+twelve-lifetime retention rung, which added 32 route observations at 28/32
+public outcomes. A later five-cell rung introduced 60-trial lifetimes: an
+isolated 15/15 probation justified a fresh three-lifetime promotion run, which
+added 56 verified route observations at 56/56 outcomes. The same ladder then
+advanced to six cells: an isolated 18/18 probation justified a fresh
+three-lifetime run that added 57 route observations at 55/57 outcomes. The
+current file SHA-256 is
+`a39782306cd50d21e9d1708c3e7cfd76d73ed70452a2438e6946379213d75517`.
+Evidence is in
+`session_records/brainworkshop_physical_3cell_bank_retention_2026-08-14/` and
+`session_records/brainworkshop_physical_4cell_bank_retention_2026-08-14/`, and
+`session_records/brainworkshop_physical_5cell_60trial_bank_retention_2026-08-14/`,
+and
+`session_records/brainworkshop_physical_6cell_60trial_bank_retention_2026-08-14/`.
+
 ## Frozen-core raw token alignment
 
 `amodal_token_aligned_frontend_seed996001.pt` and

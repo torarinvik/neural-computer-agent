@@ -1,0 +1,49 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "brainworkshop_physical_live_learning_rejected_2026-08-14",
+  "status": "architecture_invalid_checkpoint_rejected_io_mechanism_retained",
+  "claim_boundary": "Physical human-parity I/O and evidence-bound updating worked, but the task updated controller weights and therefore cannot support the frozen-controller acquisition claim.",
+  "runs": [
+    {
+      "seed": 17,
+      "task": "Brain Workshop 5.0 Position 1-Back",
+      "trial_seconds": 1.0,
+      "trials_per_lifetime": 12,
+      "tick_hz": 12.0,
+      "unique_verifier_bits": 55,
+      "unique_logical_lifetimes": 10,
+      "optimizer_updates": 55,
+      "program_file_updates": 0,
+      "controller_frozen": false,
+      "replayed_examples": 0,
+      "emitted_actions": 120,
+      "deadline_misses": 24,
+      "total_ticks": 1700,
+      "wall_seconds": 160.43674149992876,
+      "mean_wall_seconds_per_tick": 0.09437455382348751,
+      "positive_verifier_bits": 4,
+      "cumulative_accuracy": 0.07272727272727272,
+      "final_rolling_window_bits": 32,
+      "final_rolling_accuracy": 0.09375,
+      "stable_bits_to_threshold": null,
+      "retention_on_mastered_primitives": "not measured; no primitive reached mastery",
+      "transfer_ratio_against_fresh_learner": "not measured; checkpoint rejected before transfer"
+    }
+  ],
+  "controls": {
+    "fresh_initial_weights": true,
+    "public_pixels_only": true,
+    "ordinary_key_output": true,
+    "one_update_per_unique_public_outcome": true,
+    "task_updates_external_program_only": false,
+    "controller_frozen": false,
+    "zero_replayed_examples": true,
+    "twelve_of_twelve_onsets_in_live_calibration": true,
+    "public_score_matches_application_diagnostic": true,
+    "neutral_true_negatives_ignored_under_default_scoring": true,
+    "matched_fresh_learning_curve": false,
+    "retention": false,
+    "transfer": false,
+    "mastery": false
+  }
+}

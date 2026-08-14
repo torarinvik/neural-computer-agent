@@ -1,0 +1,31 @@
+{
+  "accuracy": 1.0,
+  "bank_digest_after": "3db6bafe47474a80e2e81b9ee6362718a2c401d159e726abb7ab0e24cbe8cb2b",
+  "bank_digest_before": "769c8e205d9713f8120fc9cbe5dc003f48fe8b8dd55a4a87987956fb802a7cb6",
+  "controller_digest": "59c9ef2b235104e4f0d6bc143ba195fb57a907da9f29b1d5750c39fa22f7687c",
+  "controller_optimizer_updates": 0,
+  "deadline_misses": 10,
+  "elapsed_seconds": 14.085562083986588,
+  "emitted_actions": 9,
+  "input_events": 12,
+  "positive_public_outcomes": 2,
+  "program_artifact_digest": "90e20193a50fdfa22b75fe722e6a9e131d9ba05d7f7e7d0aedbce9fc1f3c5749",
+  "program_optimizer_updates": 0,
+  "replayed_examples": 0,
+  "rewards": [
+    1.0,
+    1.0
+  ],
+  "route_known_after": true,
+  "route_known_before": false,
+  "router_observations": 2,
+  "schema": "neural-computer.brainworkshop-physical-bank-transfer.v1",
+  "selected_at_event": 3,
+  "selection_propensity": 1.0,
+  "selection_slot": 0,
+  "session": 12,
+  "tick_seconds_p50": 0.05743929208256304,
+  "tick_seconds_p99": 0.17858083406463265,
+  "unique_public_outcomes": 2,
+  "warmup_events": 3
+}

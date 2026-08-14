@@ -1,0 +1,48 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "brainworkshop_physical_4cell_bank_retention_2026-08-14",
+  "status": "promoted_bounded_four_cell_retention_and_route_learning",
+  "claim_boundary": "One previously admitted Position 1-Back temporal program remains useful across four public grid cells while only opaque route evidence learns; this is not a newly acquired program or higher-n-back mastery.",
+  "probations": {
+    "unique_verifier_bits": 20,
+    "unique_logical_lifetimes": 6,
+    "controller_optimizer_updates": 0,
+    "external_program_optimizer_updates": 0,
+    "router_observations": 20,
+    "replayed_examples": 0,
+    "positive_verifier_bits": 19,
+    "accuracy": 0.95,
+    "promoted_route_observations": 0
+  },
+  "retention": {
+    "unique_verifier_bits": 32,
+    "positive_verifier_bits": 28,
+    "unique_logical_lifetimes": 12,
+    "controller_optimizer_updates": 0,
+    "external_program_optimizer_updates": 0,
+    "router_observations": 32,
+    "replayed_examples": 0,
+    "wall_seconds": 177.9011664999416,
+    "configured_live_seconds": 168.78967262571678,
+    "accuracy": 0.875,
+    "stable_bits_to_threshold": 5,
+    "threshold": "cumulative public accuracy >= 0.80 at every later raw-outcome prefix with at least eight later observations",
+    "tick_seconds_p50_max": 0.05743929208256304,
+    "tick_seconds_p99_max": 0.17858083406463265,
+    "deadline_misses": 55,
+    "retention_on_mastered_primitive": "same controller and immutable temporal program digests across all twelve lifetimes; the four-cell stream includes the previously exercised visible-cell curriculum"
+  },
+  "controls": {
+    "one_difficulty_axis_changed": true,
+    "independent_subminute_replication": true,
+    "probation_route_updates_not_inherited": true,
+    "transactional_bank_promotion": true,
+    "public_pixels_only": true,
+    "ordinary_key_output": true,
+    "reward_as_live_input": true,
+    "controller_digest_unchanged": true,
+    "program_artifact_digest_unchanged": true,
+    "zero_replay": true
+  },
+  "transfer_ratio_against_fresh_learner": "not re-estimated: this rung tests retention/generalization of an admitted program, not fresh acquisition"
+}

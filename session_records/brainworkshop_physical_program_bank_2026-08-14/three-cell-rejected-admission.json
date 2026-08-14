@@ -1,0 +1,10 @@
+{
+  "accepted": false,
+  "candidate_digest": "440681b2f4df06f925313a72d3c9014c80bc97f201b26ebc7e99f3c2bbd79d25",
+  "observations": 3,
+  "reason": "candidate did not clear a stable verifier prefix",
+  "schema": "neural-computer.external-program-admission.v1",
+  "slot": null,
+  "stable_bits_to_threshold": null,
+  "stable_prefix_minimum": 0.3333333333333333
+}
