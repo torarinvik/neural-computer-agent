@@ -1,0 +1,186 @@
+{
+  "digest": "8f9c04beef753f7e11a3aca29affcfe9d01fa7974c56e4ab18d0e3302af05c16",
+  "configs": [
+    {
+      "collect": 2,
+      "avoid": 0,
+      "pursue": 0,
+      "intercept": 1,
+      "delayed": 3,
+      "resource": 1,
+      "deceptive": 0
+    },
+    {
+      "collect": 1,
+      "avoid": 0,
+      "pursue": 0,
+      "intercept": 1,
+      "delayed": 2,
+      "resource": 2,
+      "deceptive": 0
+    },
+    {
+      "collect": 0,
+      "avoid": 2,
+      "pursue": 1,
+      "intercept": 2,
+      "delayed": 0,
+      "resource": 1,
+      "deceptive": 0
+    },
+    {
+      "collect": 3,
+      "avoid": 2,
+      "pursue": 0,
+      "intercept": 0,
+      "delayed": 2,
+      "resource": 0,
+      "deceptive": 2
+    },
+    {
+      "collect": 0,
+      "avoid": 1,
+      "pursue": 0,
+      "intercept": 0,
+      "delayed": 5,
+      "resource": 1,
+      "deceptive": 1
+    },
+    {
+      "collect": 0,
+      "avoid": 2,
+      "pursue": 0,
+      "intercept": 2,
+      "delayed": 0,
+      "resource": 1,
+      "deceptive": 2
+    },
+    {
+      "collect": 3,
+      "avoid": 1,
+      "pursue": 1,
+      "intercept": 0,
+      "delayed": 0,
+      "resource": 0,
+      "deceptive": 0
+    },
+    {
+      "collect": 0,
+      "avoid": 1,
+      "pursue": 0,
+      "intercept": 0,
+      "delayed": 5,
+      "resource": 1,
+      "deceptive": 2
+    },
+    {
+      "collect": 0,
+      "avoid": 1,
+      "pursue": 0,
+      "intercept": 0,
+      "delayed": 4,
+      "resource": 0,
+      "deceptive": 0
+    },
+    {
+      "collect": 3,
+      "avoid": 3,
+      "pursue": 1,
+      "intercept": 0,
+      "delayed": 0,
+      "resource": 1,
+      "deceptive": 0
+    },
+    {
+      "collect": 3,
+      "avoid": 1,
+      "pursue": 0,
+      "intercept": 1,
+      "delayed": 3,
+      "resource": 0,
+      "deceptive": 0
+    },
+    {
+      "collect": 2,
+      "avoid": 3,
+      "pursue": 0,
+      "intercept": 2,
+      "delayed": 2,
+      "resource": 0,
+      "deceptive": 0
+    },
+    {
+      "collect": 0,
+      "avoid": 2,
+      "pursue": 0,
+      "intercept": 1,
+      "delayed": 0,
+      "resource": 1,
+      "deceptive": 0
+    },
+    {
+      "collect": 3,
+      "avoid": 0,
+      "pursue": 0,
+      "intercept": 1,
+      "delayed": 5,
+      "resource": 0,
+      "deceptive": 0
+    },
+    {
+      "collect": 0,
+      "avoid": 2,
+      "pursue": 0,
+      "intercept": 1,
+      "delayed": 4,
+      "resource": 0,
+      "deceptive": 1
+    },
+    {
+      "collect": 3,
+      "avoid": 0,
+      "pursue": 0,
+      "intercept": 0,
+      "delayed": 0,
+      "resource": 0,
+      "deceptive": 0
+    },
+    {
+      "collect": 0,
+      "avoid": 1,
+      "pursue": 0,
+      "intercept": 2,
+      "delayed": 0,
+      "resource": 0,
+      "deceptive": 0
+    },
+    {
+      "collect": 0,
+      "avoid": 1,
+      "pursue": 0,
+      "intercept": 2,
+      "delayed": 2,
+      "resource": 0,
+      "deceptive": 0
+    },
+    {
+      "collect": 2,
+      "avoid": 1,
+      "pursue": 0,
+      "intercept": 0,
+      "delayed": 4,
+      "resource": 0,
+      "deceptive": 2
+    },
+    {
+      "collect": 3,
+      "avoid": 1,
+      "pursue": 0,
+      "intercept": 0,
+      "delayed": 0,
+      "resource": 1,
+      "deceptive": 0
+    }
+  ],
+  "rule": "Never instantiate these configs in any probe until an unseal decision is recorded in docs/MEMORY_BANK_DESIGN.md."
+}

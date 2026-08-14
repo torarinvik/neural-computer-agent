@@ -11903,3 +11903,2048 @@ open is a world family that NEEDS width — worlds where the second
 object is strategically distinct — which is the open-ended generator
 front, now with a concrete specification for what its worlds must
 contain.
+
+## F226 — THE GOAL-SEARCH BOTTLENECK WAS SELECTION QUALITY, NOT WIDTH
+## AND NOT TERM SHAPE; ROBUST SELECTION FIXES THE STANDING intercept2
+## NEGATIVE (2026-08-13, second_object.py + goal_atoms.py, 6 seeds)
+
+F225 ended pointing at the open-ended generator front: build worlds
+where the second object is strategically distinct, then width should
+pay. This finding ran that program to its end through four registered
+rounds, and each round's refutation localized the true bottleneck one
+level deeper. The final answer is none of the hypothesized ones.
+
+**v1 — density does not need width.** Worlds built from existing
+family knobs only (avoid3, avoid2+collect1, avoid3+collect1, all
+8x8), where fleeing the nearest hazard can walk into the second. One
+plant, one bank; two goal arms differing ONLY in which slots the goal
+may name (six = 0-5, eight = all). Registered: eight-six t>=+2 on the
+dense trio. Measured: t=+0.74, 1/18 positive, avoid3 arms
+bit-identical; the built-in controls held exactly (avoid1 ties
+bit-for-bit). Max-distance-to-nearest already sits within 0.09 of the
+zero ceiling — density adds threat, not information the planner can
+spend.
+
+**v2 — urgency localizes an apparent expressivity wall.** Slots 6/7's
+reduction became per-world selectable (F224 planning selection) from
+{second-nearest, lowest-set-cell} x {plane 1, plane 2}, and
+intercept1/intercept2 joined the worlds. intercept2 is the family's
+standing negative (F222): the faller about to land — missing it is
+death — is often not the Manhattan-nearest one. Registered: the eight
+arm picks low1 and flips intercept2. Measured: 1/3 seeds did exactly
+that (+0.31), but through a CONTORTED goal — avatar ROW matched to
+the lowest faller's COLUMN — because the pair language only offers
+2-coordinate coupled terms. Diagnosis at this point: the term shape
+is the wall.
+
+**v3 — atoms cash intercept2 but leak elsewhere.** Goal terms became
+coordinate atoms (state_slot, ref_slot, sign), built by greedy forward
+selection to depth 4 (a strict expressivity superset of pairs with a
+SMALLER single-term space, 128 vs up to 1680). Measured on 6 seeds:
+intercept2 improved +0.30 over pairs with a convergent, interpretable
+catch policy — |avatar_col - faller_col| minimized, |avatar_row -
+faller_row| MAXIMIZED, i.e. wait at the bottom under the column — and
+the six-slot arm sufficed (width null again). But avoid1/avoid3
+regressed (t=-2.31/-2.08): near-saturated worlds give ~zero selection
+signal to every atom, and argmax over ties picks junk like
+(0,0,+1). The regression's shape named the real variable: SELECTION
+QUALITY.
+
+**v4 — the decisive round: upgrade selection for BOTH languages.**
+Scores became min() over two disjoint selection streams (a goal that
+only looks good on one stream is fitting the stream, not the world —
+the F223 lesson turned into a mechanism), with 48x12 rollouts instead
+of 32x10. Registered: atoms keep their intercept2 edge (the wall is
+expressivity, not budget). REFUTED, and the refutation is the finding:
+
+  - The pair language, robustly selected, found intercept2 on its own:
+    -0.87 -> +0.20 best-arm mean (+0.375 paired vs its own v2 runs,
+    t=+1.99; vs random t=+20.8; 4/6 seeds positive). Its goal is the
+    same catch policy, written as mixed pairs ([[1,2],[3,0]] couples
+    avatar_col->faller_col with faller_row->avatar_row). The
+    "inexpressible" policy was expressible all along; selection noise
+    had hidden it.
+  - The upgrade helps the pairs language EVERYWHERE: +0.093 pooled
+    over 8 worlds x 6 seeds (t=+2.61), zero regressions, junk goals
+    gone (avoid1 goals collapse to the clean flee atom/pair).
+  - At matched selection budgets, atoms LOSE to pairs overall
+    (-0.064, t=-2.65, driven by intercept1 at t=-6.70): the coupled
+    pair structure is a useful PRIOR — object positions move as
+    coordinated wholes — and greedy atomic freedom spends its budget
+    re-learning what the pair grammar states for free.
+  - Width, final: eight-six pooled is +0.46 sigma (atoms) and -0.79
+    sigma (pairs). Three world constructions, two goal languages, two
+    selection budgets: nothing in this family needs the second
+    tracker. The F225 null is now a law of the family, not a gap in
+    the search.
+
+    SELECTION NOISE MASQUERADES AS EXPRESSIVITY LIMITS. Before
+    concluding a language cannot say something, buy the search enough
+    evidence to hear it said. (The goal-search sibling of the
+    row-vs-slot lesson, which has now appeared five times.)
+
+**What was actually fixed.** intercept2 — negative since F222 across
+every stack — is break-even to positive under the unchanged pair
+language + robust selection. The whole-family selection upgrade is
+free capability: no new language, no new slots, no new perception,
+just two streams and a min(). Both probes' full histories, including
+the wrong intermediate conclusions, are in the session record.
+
+**Instruments.** (1) Bit-identical arm ties on worlds where the
+contested slots are ABSENT — a zero-cost no-effect control that
+caught nothing only because nothing was wrong. (2) Paired same-seed
+comparison against archived runs of the SAME protocol at the old
+budget, so the upgrade's effect is a within-seed difference. (3) The
+selection-vs-evaluation split (F223) reported per world; v1's
+avoid2_collect1 showed the tell (+0.010 selection, -0.010 evaluation)
+and the min-of-two-streams mechanism was built from it.
+
+**Open.** The open-ended generator front remains, with its spec
+sharpened by elimination: worlds that reward width must make TWO
+objects simultaneously goal-relevant with distinct ROLES (not merely
+distinct positions or urgencies — both collapse to nearest-tracking
+under a competent planner). The oracle arm on intercept worlds still
+loses to the bank under bank-selected goals (F223 selection pressure,
+now at +1.0 magnitude), which remains the right place to look for a
+principled fix to rollout-selected objectives.
+
+## F227 — DISTINCT ROLES DO NOT PAY AT DEPTH 1; THE WIDTH NULL IS A
+## PLANNER PROPERTY, AND NAIVE DEPTH-2 EXECUTION LOSES OUTRIGHT
+## (2026-08-13, pursuit.py + plan_depth.py, 6 seeds. Scope: fixed on
+## this family)
+
+F226 left one construction standing that could still make width pay:
+two objects whose difference is ROLE, not position or urgency. The new
+`pursue` family component provides it generically — a plane-2 object
+that renders identically to a bouncing hazard and differs only by
+stepping toward the avatar every turn (larger-gap axis first, fatal on
+contact; verifier tests pin both properties). No single-frame encoder
+can tell the two objects apart. The probe added one generic temporal
+reduction to the candidate set: `approaching(plane)` — one-step
+optical flow (newly-occupied cells matched to nearest newly-vacated
+origin), keeping the nearest cell whose move reduced its distance to
+the avatar. A looming detector, plane-agnostic and game-agnostic.
+
+**Roles refuted too.** On pursue1_avoid1 / pursue1_avoid2 the six-slot
+arm reaches -0.20 / -0.34 from a random baseline of -0.97 by fleeing
+the NEAREST plane-2 object; the eight-slot arm with the looming
+tracker ties it exactly (paired t=-0.15, 3/12 positive). The controls
+held: pursue1 alone is solved by flee-nearest (-0.06 from -0.97), the
+avoid2 anchor reproduced its archived numbers. Registered prediction 2
+(first width payoff, t>=+2) is dead. With density (F226 v1), urgency
+(F226 v2), term shape (F226 v3/v4) and now roles eliminated, the
+surviving explanation is the PLANNER: depth-1 greedy can only spend
+"where is the nearest thing now"; role information — the bouncer will
+bounce away, the pursuer will not — is only cashable by lookahead.
+
+**And naive lookahead makes things worse.** plan_depth.py held
+everything fixed (goals selected at depth 1 by the F226 protocol) and
+executed the same goal, bank and encoder at depth 2 by composing the
+bank's one-step programs over action pairs, scored cumulatively
+c(s1) + min_b c(s2). Depth 2 lost everywhere: pursue worlds -0.051
+(t=-3.30), intercept2 -0.22, collect2 -0.18, ALL pooled t=-3.05
+(pooled (seed,world) cells share plants within seed — per-seed means
+are negative in 6/6 seeds, so the sign survives clustering). The
+registered risk clause fired, not the registered hope.
+
+Four explanations are confounded in that number — cumulative
+aggregation punishing temporarily-worse intermediate states, one-step
+model error compounding under composition, goals co-adapted to
+depth 1, or a family that simply does not reward lookahead at this
+horizon — and the running plan_depth_factorial.py probe crosses
+selection depth x execution depth x bank/oracle dynamics x aggregation
+to separate them. Its cells and registered readings are in the probe
+docstring; results go to the next entry.
+
+**Method note (standing, user-endorsed).** From this finding onward:
+the core (ISA, slot substrate, pair goal grammar, perception
+vocabulary, plant) is FROZEN pending necessity witnesses; failures are
+localized down the ladder (privileged state -> current state -> goal
+grammar -> bank dynamics -> selection -> amortization) before any
+component changes; conclusions carry scope labels; important claims
+report per-seed and per-world statistics, not only pooled t.
+
+## F228 — THE OBJECTIVE, NOT THE MODEL AND NOT THE HORIZON: STATE-COST
+## GOALS ARE DEPTH-1 PROXIES, AND DEPTH-2 OPTIMIZATION GOODHARTS THEM
+## (2026-08-13, plan_depth_factorial.py + rank_fidelity.py +
+## truereturn_arm.py, 6 seeds. Scope: fixed on this family)
+
+The full crossed design the localization discipline demanded:
+selection depth x execution depth x bank/oracle dynamics x
+leaf/cumulative scoring, plus per-state ranking-fidelity metrics over
+all 16 two-action sequences, plus a privileged true-return arm
+(oracle dynamics scored by the simulator's own rewards — a diagnostic
+ceiling, never deployable). Every cell pairs per (seed, world); key
+contrasts are quoted with per-seed means to respect clustering.
+
+**The three readings that decide it:**
+  1. TRUE-RETURN LOOKAHEAD HELPS: true_d2 - true_d1 = +0.143
+     (t=+3.78, positive per-seed mean in 6/6 seeds; intercept2
+     -1.20 -> -0.64, collect2 +0.47 -> +0.76). The family genuinely
+     rewards this horizon.
+  2. STATE-COST LOOKAHEAD FAILS UNDER BOTH DYNAMICS: exec-d2leaf -
+     exec-d1 = -0.70 (t=-4.40) with bank programs and -0.52 (t=-3.66)
+     with TRUE dynamics. Failing with true dynamics exonerates model
+     compounding as the primary cause.
+  3. DEPTH-2 SELECTION DOES NOT RESCUE: goals selected under depth-2
+     scoring still lose -0.65 vs the depth-1 baseline (and are worse
+     executed at depth 1 too, -0.48): the pair grammar contains no
+     goal that works as a two-step objective.
+
+Per GPT's registered reading table: true-return oracle improves while
+leaf-cost oracle does not -> THE GOAL REPRESENTATION IS INADEQUATE.
+
+**Mechanism.** collect2 collapses +2.57 -> +0.44 under leaf scoring
+because consumption events are invisible to state-defined costs: after
+eating, the food respawns and the leaf distance looks the same, so the
+planner gains nothing from having eaten. The distance goals that
+selection discovers are DENSE ANTICIPATORY PROXIES whose validity was
+established under one-step hill-climbing; optimizing them two steps
+deep is optimizing the proxy outside its validated regime.
+
+    STATE-COST GOALS ARE PROXIES, NOT VALUES. A proxy objective
+    validated at depth k is not thereby validated at depth k+1;
+    deeper optimization of a shaped proxy is a Goodhart move.
+
+The reverse lesson also landed: on intercept2, GREEDY TRUE REWARD is
+worse than the deployable proxy (true_d1 = -1.20 vs bank_d1 = +0.15).
+Sparse truth loses to dense proxy at short horizon; truth beats proxy
+at longer horizon. The discovered goals ARE valuable shaping — at
+exactly the depth they were selected for.
+
+**Ranking fidelity** (per state, all 16 sequences, tie rows excluded):
+even where the bank predicts near-perfectly (intercept2: state
+agreement 0.85, cost correlation 0.82), the cost-best first action
+matches the true-return-best only 0.55 of the time with regret 0.74 —
+objective failure, independent of the model. Two more instruments:
+bank-predicted states rank actions BETTER than oracle-encoded next
+states under the same goals (avoid3: 0.81 vs 0.48) — the F223
+goal-executor co-adaptation, now quantified per state; and the avoid
+worlds are decisive (two-step action choice changes true return) in
+only 0.04-0.07 of states, which explains every depth null there.
+
+**Recorded architectural boundary, witness attached.** The planner
+predicts state transitions and optimizes state-defined goals; it
+cannot predict utility attached to transitions. The factorial is the
+necessity witness (this family): true-utility lookahead pays where
+every searched state-cost fails. The promoted next front is a GENERIC
+learned transition-utility evaluator — (state, action, next-state) ->
+predicted utility — fit from the system's own experienced rewards
+(F223's reward-goal machinery is a proto-evaluator), stored in the
+bank beside programs and goals, never inside the plant. The
+true-return arm's numbers are its acceptance ceiling.
+
+**Candidate primitives noted with witness conditions (user proposals,
+not yet justified):** (1) INPUT/OUTPUT instructions turning programs
+from transition models into sensorimotor controllers — witness: a
+sealed partial-observability or long-macro family where fixed-rate
+encode-plan-act provably fails; the user's refinement: the experienced
+REWARD should arrive as a parameter of INPUT (the world hands back
+observation+reward as one package), letting recipes condition on
+"did the last step pay" — the controller-style counterpart of the
+planner-style evaluator, sharing the F228 witness; (2) instruction-set search — first
+mine per_slot_search residuals for dynamics the current ISA cannot
+express (each miss is a witness), then race generated candidate ops
+with selection-optimism accounting; the winning ISA must validate on
+held-out mechanisms.
+
+**Caveat.** The true-return arm plans on the raw simulator, not
+through the slot encoding, so state-layer sufficiency for a deployable
+evaluator is not yet certified; the evaluator probe itself will test
+it (its features see only encoded states).
+
+## F229 — THE DEPTH FRONTIER CLOSES: LEARNED PROXIES AT DEPTH 1 ARE
+## THE MEASURED OPTIMUM AMONG DEPLOYABLE PLANNERS ON THIS FAMILY
+## (2026-08-13, evaluator_planning.py + horizon_ceiling.py +
+## evaluator_shaped.py, 6 seeds. Scope: fixed on this family)
+
+Three probes ran the F228 verdict to ground.
+
+**The evaluator works as diagnosed.** A generic ridge evaluator over
+encoded-transition features (slot-group distances, contacts, death
+flag; ~40 features, no game semantics) fits the system's own
+experienced rewards at held-out R^2 0.87-1.00 on every world, and
+makes depth pay RELATIVE TO ITSELF: eval_d2 - eval_d1 = +0.335
+(t=+2.68, positive per-seed mean 6/6) on the event worlds — the first
+deployable configuration in the project where lookahead beats its own
+depth-1 form. F228's mechanism is confirmed: utility visibility is
+what makes depth cashable.
+
+**But sparse utility alone is dominated** (eval vs proxy: -0.70,
+t=-8.9): beyond its two-step event radius the evaluator has no
+gradient, while the state-cost proxies guide at any distance. And the
+potential-based synthesis — score = rhat_1 + max_b [rhat_2 - 0.05 *
+c(s2)], lambda registered in advance — LOSES TOO: shaped_d2 - cost_d1
+= -0.31 (t=-4.36, 5/48 positive), with even shaped_d1 slightly below
+the pure proxy (-0.057, t=-2.09; rhat noise corrupts a clean signal).
+Composition error is the assassin: bank state agreement at two steps
+is ~0.5 on the pursue worlds (F228 rank fidelity), and the potential
+is measured against a stale reference.
+
+**The ceiling measurement reframes everything.** Exhaustive
+true-return search on the real simulator at depths 1-4:
+  - collect2: even depth-4 TRUTH reaches only +0.63 vs the deployable
+    proxy's +2.57. Beyond its horizon, truth-bounded search has zero
+    gradient and sits still; dense shaping guides at any range. THE
+    PROXY EXCEEDS EVERY FEASIBLE MYOPIC-TRUTH BOUND.
+  - Real headroom exists but is small and localized: pursue1_avoid2
+    +0.33 (t=+9.6), pursue1_collect1 +0.30 (t=+6.4), pursue1_avoid1
+    +0.19 (t=+5.5) above the proxy at depth 4; intercept2's ceiling
+    still climbing at d4 (-0.04, proxy +0.15 still ahead).
+
+    LEARNED DENSE PROXIES ENCODE BEYOND-HORIZON STRUCTURE THAT NO
+    FEASIBLE SHALLOW SEARCH — EVEN ON TRUE DYNAMICS AND TRUE REWARD —
+    CAN MATCH. Depth is not a free upgrade over shaping; it is a
+    different technology whose deployable form requires long-horizon
+    value learning, not two-step argmax.
+
+**Verdict closing the F225-F229 arc.** The chain of localizations —
+width (F225) -> selection (F226) -> planner depth (F227) -> objective
+(F228) -> value machinery (F229) — terminates in a stable
+configuration: robust-selected proxy goals executed greedily at
+depth 1 are the measured optimum among all deployable planners tested
+on this family, within +0.02-0.33 of privileged depth-4 truth on 7 of
+8 worlds. What was fixable got fixed along the way (intercept2 via
+F226's robust selection; junk goals; the co-scaling law). The
+remaining prize on this family is small; per the localization
+roadmap, THE BOTTLENECK MOVES TO WORLD DIVERSITY: the sealed
+mechanism benchmark (one capability per held-out family, uninspected
+during architecture decisions) and the second substrate are the next
+program. The evaluator and the privileged arms remain in the
+instrument kit.
+
+**Registered-prediction ledger for this arc:** F226 v1 (1,2,4
+refuted; 3,5 held), v2 (6 partially refuted; 7,8 held), v3 (1
+refuted, 2 confirmed, 3 refuted), v4 (5 confirmed, 6,7 refuted);
+F227 (1,3 held; 2 refuted; depth risk clause fired); F228 readings
+resolved to objective inadequacy; F229 (1 confirmed relative-to-self,
+2 refuted, shaped 1-2 refuted, 3 parity confirmed at depth 1). Eleven
+refutations, each of which moved the localization one layer down —
+the discipline working exactly as intended.
+
+## F230 — THE MECHANISM BENCHMARK EXISTS, AND ITS FIRST WITNESS IS
+## SEQUENCING (2026-08-13, mechanism_baseline.py, 6 seeds. Scope:
+## localized to the DEV mechanism set)
+
+Six mechanism components now live in the family verifier, each
+demanding one capability, split DEV / SEALED. The SEALED trio (blink =
+partial observability, oneway = irreversibility, lever = causal
+intervention) is implemented and unit-tested but appears in no probe;
+the seal holds until an explicit unseal decision. The DEV trio met the
+frozen F226 stack (pair goals, robust selection, depth-1), with
+registered pass/fail predictions:
+
+  delayed3   PASS, as predicted: +1.25 over random (t=+12.9), and the
+             discovered goal is simply "approach the switch" -- 6/6
+             seeds. Delayed credit WITHIN the rollout horizon is
+             already covered by rollout-scored goal selection.
+  resource1  HARD FAIL, as predicted: +0.11 vs the ~+1.5 single-food
+             reference (bank-random t=+5.2 but an order of magnitude
+             below par). Goals are incoherent across seeds; a sum of
+             distance terms cannot sequence "resource first, then
+             food".  ===> NECESSITY WITNESS: MULTI-STAGE SUBGOALS.
+  deceptive1 DEGRADES, as predicted, but does not fail: -0.29 vs its
+             bait-free control (t=-1.98, marginal), while still +1.24
+             over random. The stack pays a persistent bait tax it
+             cannot see.  ===> weak witness: reward-attributed
+             perception (per-item value on one plane).
+  collect2   anchor reproduces its archived +2.57 exactly.
+
+The founding objective now has its next concrete target: a mechanism
+the current architecture provably cannot express (sequencing), with a
+quantified gap (+0.11 vs +1.5) and a control set around it. Candidate
+fixes, to be witnessed in order of least new machinery: (a) goal
+SCHEDULES -- two pair-goals with a learned switching condition (the
+condition "holding > 0" is not observable on screen; the resource
+count is private, so switching must key on an OBSERVABLE proxy such
+as "just touched a resource cell", which the temporal encoder can
+see); (b) the user's INPUT/OUTPUT program instructions, which would
+let a recipe carry phase internally. Option (a) stays inside the
+frozen grammar (two existing goals plus one bit of state) and is the
+disciplined first try.
+
+## F231 — SEQUENCING ACQUIRED: GOAL SCHEDULES + FULL-SPACE RACING +
+## CONSUMPTION-AWARE COMPLETION FIX THE resource1 WITNESS
+## (2026-08-13, mechanism_schedule.py -> fast_schedule.py, 6 seeds.
+## Scope: fixed on the DEV mechanism set)
+
+F230's hard witness -- resource1 at +0.11 vs ~+1.5, because a sum of
+distance terms cannot sequence -- fell in three registered steps, each
+refutation naming the next mechanism:
+
+**Step 1 (mechanism works, basis wrong).** Schedules -- an ordered
+pair of ordinary pair-goals advancing cyclically on completion -- were
+raced from the top-4 SOLO singles. Chosen 6/6 on resource1, zero
+regression elsewhere (controls bit-identical), but the gain was only
++0.065: on resource1 both clean legs score ~0 ALONE, so solo ranking
+never surfaces them. A SEQUENCING BASIS CANNOT BE SELECTED BY SOLO
+MERIT.
+
+**Step 2 (race the space; completion is unobservable).** The new fast
+stack (vectorized verifier + batched scoring, 12-13x, see the perf
+commit) made racing the full schedule space affordable (~870
+avatar-anchored phase pairs, minutes per seed instead of hours). The
+clean resource->food schedule was IN the race and LOST: completion
+was tested as distance==0, but A CONSUMABLE TARGET VANISHES AT THE
+MOMENT OF ARRIVAL -- eaten and respawned within the same step, its
+observed distance never reads zero, so the clean schedule's phase
+never advanced. Junk mixed-pair schedules won because their chimera
+references CAN reach zero without consumption.
+
+**Step 3 (the fix).** Completion = arrived OR consumed: the phase
+advances when its cost reaches zero, or when the phase's target slots
+JUMP discontinuously while the cost was within reach -- the
+consumption signature, computed from encoded slots only, no game
+semantics. Result: resource1 +0.128 -> +0.586 (+0.458, t=+5.73, 6/6
+seeds positive), and the winner in ALL SIX SEEDS is the clean
+schedule [approach nearest plane-2] -> [approach nearest plane-1],
+cycling. Registered targets met (>= +0.5, 4.6x > 3x baseline).
+
+**Costs, honestly measured.** The full race prices its lottery
+tickets: controls drift -0.05..-0.09 (none significant, 0-2/6
+positive) and selection exceeds evaluation by +0.02..+0.15 per world
+-- the F223 optimism, now REPORTED PER RUN as a first-class metric.
+This is the standing motivation for adaptive racing with common
+random numbers (roadmap), not a reason to shrink the space.
+
+**What was added, and what was not.** No new goal grammar, no new
+perception, no new ISA: a schedule is two existing goals plus one
+phase bit, and the completion test reads existing slots. The frozen
+core survives its first mechanism benchmark round with one new
+COMPOSITION RULE (temporal), acquired because a benchmark world
+demanded it -- the founding-objective loop (new world -> witnessed
+gap -> minimal capability -> measured recovery) closed end-to-end for
+the first time on a mechanism rather than a parameter.
+
+Remaining on the DEV set: deceptive1's bait tax (-0.29, value
+perception) stands; resource1's rough ceiling (~+1.2 at these leg
+lengths) is not yet reached (+0.59). The sealed trio stays sealed.
+
+## F232 — THE BAIT TAX LOCALIZED: NOT EXPRESSIBILITY, NOT PERCEPTION;
+## CONDITIONAL ENGAGEMENT IS THE MISSING CAPABILITY (2026-08-13,
+## fast_schedule.py rounds 2-3 + deceptive_ceiling.py, 6 seeds.
+## Scope: DEV mechanism set)
+
+Three registered rounds, three clean narrowings of F230's weak
+witness (deceptive1's -0.29 vs its bait-free control):
+
+  1. COMPOSITE RACE (~240 sum-pairs of top singles, now essentially
+     free on the fast stack -- control drift collapsed to
+     -0.003..-0.010): composites chosen 6/6 on deceptive1 and the tax
+     did not move (-0.276 vs -0.295). Sums cannot decouple "which
+     plane-1 item" from "nearest plane-1 item".
+  2. RELATIONAL PERCEPTION (hazard-clear nearest of plane 1 at
+     thresholds 2 and 3, F224-family reduction, raced as encoder
+     candidates): available in every race, occasionally chosen
+     elsewhere, and the tax did not move (-0.280). Naming only safe
+     items is not the answer, because...
+  3. ...THE PRIVILEGED DIFFERENTIAL SAYS BAIT IS A BONUS: exhaustive
+     true-return search earns MORE on deceptive1 than on its control
+     (+0.07 at d1 rising to +0.17 at d4, 6/6 seeds at d2-d4). A
+     competent agent harvests the +0.2 stream when the patrolling
+     hazard is elsewhere. The deployable stack pays -0.28 instead:
+     the full incompetence gap is ~0.45, and it is a gap of
+     CONDITIONAL ENGAGEMENT -- act on the bait exactly when it is
+     safe -- which nothing in the stack can say: goals are
+     unconditional, schedules switch on COMPLETION, not on state
+     predicates.
+
+(Instrument note: the privileged d1-d4 ABSOLUTE returns (+0.32..+0.49)
+sit far below the deployable proxy stack (+1.24-1.27) -- the F229
+shallow-truth-vs-dense-proxy pattern again; only the within-planner
+bait DIFFERENTIAL is evidential here.)
+
+The witness now names its capability precisely: GUARDED GOALS --
+goal = (condition, goal_A, goal_B) with the condition a thresholded
+distance between two slot pairs, raced like everything else. This is
+the next minimal grammar element; its acceptance test is the bait tax
+turning into a bait bonus, with the guard reading "when the hazard is
+far from the item, engage; otherwise target the clear item / keep
+distance".
+
+## F233 — GUARDS REFUTED STRICTLY; THE TARGET-ALIASING AUDIT NAMES
+## VALUED BINDING (2026-08-13, fast_schedule.py guard rounds +
+## target_aliasing.py, 6 seeds. Scope: DEV mechanism set)
+
+**Guards, judged by the pre-registered strict rule.** Guarded goals
+(condition = thresholded distance between slot groups; branches from
+top-8 singles, then with the CANONICAL branches forced in per the
+F231 solo-merit lesson) were raced ~1000-3300 per world. On the
+control worlds they help (+0.06..+0.09) -- the machinery works where
+conditions matter. On deceptive1 they never help and the canonical
+round made the tax WORSE (-0.43 vs -0.29 baseline; the two guard
+winners collapsed on evaluation to +0.66/+1.29 -- selection-optimism
+casualties from the larger space). Per the registered rule: STOP
+EXPANDING THE GUARD LANGUAGE. Conditional control is not the missing
+capability.
+
+**The target-aliasing audit says why, quantitatively.** Over ~2600
+contact events across 6 seeds, pairwise bait-vs-food ranking accuracy
+by feature level:
+  L1 current target token (nearest-rank)   0.500 exactly -- ZERO
+     value information; every goal, guard, schedule and composite the
+     stack can write is blind to which item is which.
+  L2 hazard distance at contact (clear1's feature)  0.71-0.78 --
+     explains the clear-encoder failure: the hazard patrols away from
+     the bait it guards.
+  L3 hazard-ROW distance (static relational)        0.82-0.86.
+  L4 distance at the item's SPAWN (persistent identity, privileged)
+     0.92-0.95.
+
+The capability, named precisely: VALUED TARGET BINDING --
+V_w(s, o) = w . phi(s, o) over candidate objects, o* = argmax V,
+goal = REACH(o*), with w world-specific bank content fit from the
+system's own contact experience and phi a generic relational token.
+Identity-free phi caps at ~0.84 ranking (L3); the last ten points
+want persistent identity (L4). The acceptance criterion stands: the
+-0.3 tax must become the privileged arm's positive bait differential
+without losing resource1 or the controls, evaluated by the GPT-advised
+localization factorial (privileged/learned values x privileged/current
+binding + shuffled-value control), with pairwise ranking and
+target-regret metrics, not evaluator R^2.
+
+## F234 — VALUED BINDING: SUFFICIENT WITH TRUE VALUES, CAPPED WITHOUT
+## IDENTITY; THE WITNESS DESCENDS TO PERSISTENT ENTITY TRACKING
+## (2026-08-13, valued_binding.py + target_aliasing.py, 6 seeds.
+## Scope: DEV mechanism set)
+
+The GPT-advised localization factorial for the bait tax, run with a
+value-directed tracker (slots 6/7 = argmax-value plane-1 item, value
+= w . phi(o), phi generic relational; canonical REACH goal, no race
+needed for the valued arms):
+
+  none (baseline race)   tax -0.357
+  true labels (PRIV.)    tax -0.096   arm effect +0.222, t=+2.54:
+                         BINDING THROUGH A TRACKER SLOT IS SUFFICIENT
+                         once values are known -- 73% of the tax
+                         recovered by pointing at the right item.
+  learned w (deployable) ranking accuracy 0.842 -- EXACTLY the
+                         audit's identity-free cap (L3) -- and below
+                         what the race demands: the valued goal lost
+                         selection to the composite, so the arm fell
+                         back to the baseline winner (+0.054).
+  shuffled w (control)   IDENTICAL to learned -- both valued encoders
+                         lost the race, so no lottery credit; the
+                         causal control certifies the learned cell as
+                         "insufficient", not "noise-helped".
+
+resource1 held at +0.586 in every arm; collect2 and avoid1_collect1
+unchanged. Together with F233's audit the story is complete:
+
+    The bait witness resolves to PERSISTENT ENTITY IDENTITY. Binding
+    works (privileged arm); identity-free value features rank at
+    0.84 and fail selection; spawn-history features rank at 0.93.
+    The next perception-layer primitive is entity tracking --
+    correspondence of object tokens across frames, with per-entity
+    accumulated contact history. It enters only through this witness,
+    with the F234 factorial as its acceptance harness (the learned
+    cell must climb from +0.05 toward the true arm's +0.22).
+
+This closes today's arc at a natural boundary: the typed-controller
+layer gained SEQUENCE (F231, resource1 fixed) and VALUE-BIND (F234,
+mechanism proven, awaiting identity-grade features); ATOM and SUM
+stand; IF/guards measured and declined (F233). The perception layer's
+next element is named and witnessed before a line of it exists --
+the localization discipline working exactly as intended.
+
+## F235 — ENTITY TRACKING DELIVERS THE RANKING; THE TAX HALVES; THE
+## SHUFFLED CONTROL EXPOSES ITS OWN WEAKNESS ON 2-ITEM WORLDS
+## (2026-08-13, entity_binding.py, 6 seeds. Scope: DEV mechanism set;
+## causal attribution PENDING the deceptive2 confirming run)
+
+The witnessed perception primitive -- persistent entity identity via
+cell-occupancy correspondence with spawn-time relational memory --
+plus a reward-CLASS value fit (1{r >= 0.5}, 10x128x12 contact
+experience) against the F234 acceptance harness:
+
+  ranking accuracy   0.842 (no identity) -> 0.906 (identity, raw
+                     reward) -> 0.943 (identity, class target;
+                     per-seed 0.91-0.97) -- the audit's L4 level,
+                     reached exactly as predicted.
+  first deployable selection win: seed 31337's learned arm chose the
+                     valued tracker with the clean canonical goal
+                     REACH((0,1)->(6,7)) and evaluated at +1.547.
+  bait tax           none -0.357 -> learned arm -0.181: HALVED.
+  resource1          +0.586 in every arm; controls intact.
+
+**Honest attribution caveat, and the discovered control weakness.**
+The shuffled-w arm scored the same as learned (+0.002 apart): on a
+2-item world, coin-flip targeting is NOT a null -- both items pay
+something, so ANY single-target binding beats the composite baseline
+(+0.136), and the value-accuracy component (true - shuffled = +0.086)
+is only partially separable at n=6 where the valued encoders win
+selection in 1-2 seeds. The family provides the fix: deceptive2
+(three items, two baits) makes random targeting costly; the
+confirming run is in flight. Registered for it: learned > shuffled
+by >= +0.10 on deceptive2, ranking holds >= 0.93, and the tax
+improvement persists.
+
+**Second discovered instance of encoder-level selection optimism**
+(with F234's): the baseline arm's clear/approach encoders win
+selection then collapse on evaluation (69316: sel 1.55 -> eval 1.44
+vs second2's 1.38 -> 1.61). The optimism ledger now spans goals,
+schedules, guards and encoders -- adaptive racing with common random
+numbers is promoted to the next infrastructure milestone after this
+capability lands.
+
+## F236 — THE BAIT TAX BECOMES A BAIT BONUS: ENTITY-VALUED BINDING
+## ACCEPTED (2026-08-13, entity_binding.py + deceptive2, 6 seeds.
+## Scope: fixed on the DEV mechanism set)
+
+The deceptive2 confirming run (three plane-1 items, two baits --
+random targeting is finally costly, restoring the shuffled control's
+power) meets every registered criterion:
+
+  learned - shuffled   +0.243 (t=+2.07)  >= the registered +0.10:
+                       the learned VALUES are causally credited.
+  learned vs true      +1.600 vs +1.627: 97% of the privileged
+                       binding ceiling, ranking 0.942 held.
+  THE TAX FLIPS        baseline -0.229 -> learned +0.082 (4/6
+                       positive): the F232 acceptance criterion met.
+                       The deployable system now earns MORE with
+                       baits present than without, as the privileged
+                       arm proved possible.
+  selection            valued_learned won the race in 3/6 seeds with
+                       the clean canonical goal REACH((0,1)->(6,7)),
+                       evaluating at +1.79..+1.99 -- the best
+                       deceptive2 scores recorded.
+  shuffled control     properly punished (-0.161 tax): the 3-item
+                       world gives the causal control its teeth, as
+                       registered in F235's caveat.
+  regressions          none: resource1 +0.586, controls intact,
+                       sealed trio untouched.
+
+**The capability, in full:** persistent entity identity (cell-
+occupancy correspondence + spawn-time relational memory) feeds a
+generic per-object value V_w(o) = w . phi(o) fit as a reward-class
+separator from the system's own contacts; the value-directed tracker
+occupies slots 6/7; one canonical REACH goal spends it. World-specific
+content: w. Generic machinery: everything else. Nothing names food,
+bait, or hazards.
+
+**The DEV mechanism benchmark now stands fully resolved:** delayed
+PASSED as-was (F230); resource1 FIXED by SEQUENCE (F231, +0.128 ->
++0.586); deceptive FIXED by VALUE-BIND + entity identity (F234-F236,
+tax -> bonus on deceptive2). Each capability entered through a
+pre-registered witness, was measured against a privileged ceiling,
+and carries its causal control. The typed controller layer is
+ATOM / SUM / SEQUENCE / VALUE-BIND; guards measured and declined.
+Next per the roadmap: adaptive racing (the optimism ledger now spans
+four candidate spaces), then freeze architecture-v1 and unseal
+blink / oneway / lever for their one-shot run.
+
+## F237 — ADAPTIVE RACING: PARITY AT LOWER COST, AND THE OPTIMISM
+## DECOMPOSITION (2026-08-13, raced_battery.py, 6 seeds. Scope: DEV
+## battery at production budgets)
+
+Adaptive candidate racing (fast_stack.race + tile_verifier: common-
+random-number stages 16 -> 48 -> 96 episodes, top-fraction
+elimination, pooled-mean winner) versus the flat min-of-two-streams
+protocol, identical candidate spaces, 6 worlds x 6 seeds:
+
+  evaluation   raced - flat = +0.001 (t=+0.09): parity, registered
+               no-regression criterion met; the hoped-for encoder-
+               collapse fixes did NOT materialize as gains.
+  cost         0.86x episodes (elimination beats uniform allocation,
+               modestly, at these candidate counts).
+  optimism     UNCHANGED (~+0.2 both arms) -- prediction 3 refuted,
+               and the refutation carries the insight:
+
+    AT PRODUCTION BUDGETS THE RESIDUAL SELECTION-EVALUATION GAP IS
+    INTER-STREAM WORLD VARIANCE, NOT CANDIDATE-COUNT BIAS. The
+    min-of-two-streams rule (F226) had already removed most of the
+    fixable bias -- which is why F226 worked -- and no selector can
+    remove variance between different world draws. The smoke-scale
+    contrast (optimism 0.3 -> 0.1 under racing) shows racing's value
+    regime: SMALL budgets or LARGE candidate spaces. It is installed
+    as infrastructure for the next 10x growth in candidate spaces
+    (entity-valued and beyond), with CRN and optimism logging as
+    standing instruments.
+
+With this, the roadmap items "resolve value binding" (F236) and
+"install racing" (F237) are done. The next milestone is the
+IRREVERSIBLE one: freeze architecture-v1 and run the sealed trio
+(blink, oneway, lever) exactly once. That decision is the user's.
+
+## F238 — THE FOUNDING CURVE AT MECHANISM LEVEL: 90x CHEAPER AT 95%
+## COMPETENCE (2026-08-13, transfer_matrix.py, 6 seeds. Scope: DEV
+## vocabulary, five novel mechanism combinations)
+
+The founding objective -- experience makes novel tasks cheaper --
+re-measured one level above F219, with all costs charged (race
+episodes AND value-fit episodes, both arms):
+
+  warm (8-form incumbent library from the DEV originals) vs cold
+  (full adaptive race over four encoders + valued canonical set):
+
+    pooled return     warm = 95.1% of cold (-0.037, t=-1.84)
+    pooled cost       warm = 1.1% of cold episodes  (~90x cheaper)
+    resource2         100% at 1.3% cost
+    deceptive2_collect2  99% at 1.3% cost
+    delayed5           97% at 0.3% cost
+    resource1_avoid1    the real gap: warm +0.01 vs cold +0.10 -- the
+                       library has no schedule-with-avoid-term form;
+                       a named, cheap library extension.
+    resource1_deceptive1  BOTH arms weak (+0.16 / +0.21): prediction
+                       2 REFUTED -- the schedule-of-valued-legs
+                       composition never won; the double compound is
+                       a genuinely open frontier, not a transfer
+                       failure.
+
+The registered founding claim (>= 95% at <= 25% cost) is met with an
+order of magnitude to spare on cost. What transfers is CAPABILITY
+STRUCTURE: the library's eight forms -- approach, avoid, composite,
+the resource schedule, the valued REACH forms -- cover four of five
+novel worlds at near-parity for ~2,000 episodes where discovery burns
+~180,000. F219's amortization was content-level (programs, goals);
+this is form-level: the shape of the solution transfers even when
+every coefficient is refit.
+
+Honest limits, named: (1) composition of two transferred forms did
+not self-assemble on the double compound -- the next controller
+question; (2) the library was hand-assembled from recorded winners --
+per the meta-language milestone (GPT), promotion of winners into the
+library should itself become bank machinery; (3) scope stays
+DEV-vocabulary until the sealed run, which awaits the user's explicit
+word.
+
+## F239 — THE COMPOUND "FRONTIER" IS CEILING-BOUND, AND SEQUENCE
+## BEATS PRIVILEGED DEPTH-4 TRUTH SIXTY-FOLD (2026-08-14,
+## compound_binding.py x3 + compound_ceiling.py, 6 seeds. Scope: DEV
+## vocabulary compounds at 12-step episodes)
+
+Three registered machinery rounds attacked F238's double compound
+(resource1_deceptive1, both arms ~+0.2), each refuted, each
+depositing a tool:
+  1. PER-PLANE VALUED TRACKERS with DEATH ATTRIBUTION (a moving
+     threat kills without being stepped on; label the nearest plane-2
+     entity when a row dies): plane-2 ranking 0.89-0.94. The valued
+     schedule still lost selection.
+  2. AGENT CONTACT-HISTORY feature (fueled flag): row-constant, so it
+     cannot change argmax targeting -- design flaw caught at smoke.
+  3. STATE-CONDITIONED VALUE (stratify the plane-1 fit by the fueled
+     bit): fits clean, still no selection win on the compounds.
+
+Then the measurement the ladder says should have come FIRST:
+privileged exhaustive true-return search, depths 1-4:
+
+    resource1             d1-d4:  0.003 .. 0.010   (deployable +0.586)
+    resource1_avoid1      d1-d4:  0.005 .. 0.023   (deployable +0.034)
+    resource1_deceptive1  d1-d4:  0.066 .. 0.207   (deployable +0.16-0.21)
+
+Two conclusions. First, THE COMPOUND WORLDS ARE CEILING-BOUND at this
+horizon: the deployable stack sits at or above every feasible
+privileged bound; the +0.4 registered targets described headroom that
+does not exist. The F238 frontier item dissolves -- resolved, not
+conquered. Second, the instrument reading of the day:
+
+    THE ACQUIRED SEQUENCE CAPABILITY BEATS PRIVILEGED DEPTH-4
+    EXHAUSTIVE SEARCH 60-FOLD ON resource1 (+0.586 vs +0.010).
+    Fuel-then-eat pays nothing inside any shallow horizon; only
+    structured control spans it. The strongest statement yet of the
+    F229 law: learned structure, not search depth, is where this
+    architecture's competence lives.
+
+Method note, recorded as a lesson against myself: three machinery
+rounds ran before the ceiling was measured. The localization ladder
+exists precisely to prevent that order; it would have saved two of
+the three rounds. The tools deposited (death attribution, per-plane
+valued binding, state-conditioned value) remain in the kit with their
+evidence, priced honestly as products of a mis-ordered investigation.
+
+## F240 — THE FOUNDING LOOP GOES MECHANICAL: SOLVE -> PROMOTE ->
+## TRANSFER WITH NO HUMAN LINK (2026-08-14, library_promotion.py,
+## 6 seeds. Scope: DEV vocabulary)
+
+F238's warm library was hand-curated -- the last human link inside
+the founding loop. This probe removed it: phase A cold-solves the
+five DEV originals and PROMOTES each winner (encoder kind + goal
+form) into a bank library mechanically, deduped, uncurated; phase B
+warm-acquires the five F238 novel worlds racing only that machine-
+built library.
+
+  transfer     machine = 95.7% of the hand library (paired -0.032,
+               t=-1.26, ns) and 91.2% of cold discovery
+  cost         phase B ~1,000 episodes/world vs ~155,000 cold
+               (~150x); phase A experience amortized over every
+               future world
+  self-promotion  the SEQUENCE form promoted itself from resource1's
+               cold solve in 6/6 seeds; a VALUE-BIND form in 3/6
+               (the F235 selection margin, visible again). Promoted
+               goals carry junk decoration my curation had trimmed --
+               and transfer barely notices: form-level transfer is
+               robust to decoration.
+
+The founding objective now runs END TO END with no human choice
+inside the loop: experience worlds -> winners promote to the bank ->
+novel worlds acquire from the bank at two orders of magnitude lower
+cost. Honest boundary, restated: the COMBINATORS (schedule,
+valued-tracker) are still human-written machinery that the loop
+selects among; mechanical invention of new combinators is the next
+rung and remains open.
+
+**Standing state after F225-F240.** Everything named is closed or
+bounded: width, depth, objective (laws); selection (robust + raced +
+priced); the DEV benchmark (all witnesses fixed); the compounds
+(ceiling-bound); the founding curve (90x at parameter level in F219,
+~150x at mechanism level here, now mechanical). Open, by choice:
+the SEALED one-shot (user's explicit word), the second substrate,
+and combinator invention.
+
+## F241 — THE STACK CROSSES SUBSTRATES: FIRST AMODALITY EVIDENCE
+## BEYOND THE GRID (2026-08-14, graph_world.py + substrate_transfer.py,
+## 6 seeds. Scope: cross-substrate, first non-grid world)
+
+Every prior finding lived on an 8x8 grid. This probe moved the FROZEN
+stack -- plant architecture and training, ISA, per-slot search, banks,
+pair goal grammar, robust selection, all byte-identical -- to a
+substrate with no geometry: a random 4-out digraph world (8 nodes,
+agent walks edges, food +1 with respawn, a hazard random-walker that
+kills on co-location). Only the perception vocabulary changed, to
+graph-generic reductions: BFS distance slots, ORIGIN (constant-zero)
+slots so "reach" is expressible in the unchanged pair grammar, and
+SHORTEST-PATH PORT INDICATORS.
+
+The port indicators are the design insight: graph actions are port
+indices whose meaning is per-row, so slot dynamics are conditional on
+relational context. The indicators place that conditionality exactly
+where the ISA's conditional ops can express it -- per_slot_search
+duly discovers programs of the CDEC(distance, j=indicator) shape
+(slot-0 truth-executed fit 0.63-0.85).
+
+  plant gate     1.0 across seeds -- trained on random programs,
+                 world-blind by construction (prediction 1 exact).
+  gcollect1      bank +6.04 vs random +1.54 (+4.50, t=+4.38, 6/6)
+  gcollect1_avoid1  bank +2.97 vs random +0.07 (+2.90, t=+5.75, 6/6)
+                 -- collects while dodging the walker.
+  gcollect2      +0.63 (t=+1.15): positive but weak; the goal race
+                 wanders among second-food slots. Noted, unresolved.
+
+The goals discovered are graph-native instances of the SAME forms the
+grid taught: reach-the-entity against an origin slot. The founding
+claim's hardest premise -- that the plant, ISA, banks, grammar and
+selection are substrate-independent, with perception as the only
+modal component -- now has its first direct cross-substrate
+confirmation. Next rungs: mechanism transfer ACROSS substrates (does
+the grid-promoted library warm-start graph worlds?), richer graph
+mechanisms, and the sealed one-shot (still awaiting the word).
+
+## F242 — CROSS-SUBSTRATE TRANSFER: 700x WHERE ROLES COVER, HARMFUL
+## WHERE THEY DO NOT (2026-08-14, cross_substrate.py, 6 seeds. Scope:
+## grid -> graph, first cross-substrate founding measurement)
+
+The founding objective measured ACROSS substrates: the F240
+grid-promoted libraries, mechanically abstracted into ROLES (subset
+match against each substrate's declared role table, schedules to SEQ
+of leg roles, zero curation) and re-grounded in the graph slot
+dictionary, warm-start the F241 graph worlds.
+
+  gcollect1          warm 6.13 vs cold 6.28 (98%) at 96 vs ~67,000
+                     episodes -- ~700x cheaper.
+  gcollect1_avoid1   warm 3.16 vs cold 3.21 (98%), same cost ratio.
+  gcollect2          warm +1.41 -- BELOW random (+3.21) and far below
+                     cold (+3.79). Registered prediction 2 ("transfer
+                     fixes gcollect2") REFUTED in the strongest way:
+                     TRANSFER CAN MISLEAD. The dense two-food world
+                     rewarded whatever local adaptation the cold race
+                     found; the imported REACH form actively hurt.
+  coverage           5/6 seeds' libraries abstracted to usable
+                     candidates; seed 1234's winners were valued
+                     forms with NO graph counterpart (the graph
+                     perception has no valued tracker) -> empty
+                     transfer. Role vocabularies must span both
+                     substrates' perceptions, or promotion must keep
+                     a plainer fallback per world.
+
+Two standing rules fall out, both cheap: (1) TRANSFER NEEDS A GUARD
+-- adopt an imported form only if it beats a local baseline (random
+policy, or one cheap raced single); the gcollect2 failure would have
+been caught by either. (2) PROMOTION SHOULD KEEP ROLE DIVERSITY --
+one plain reach/avoid entry per source world alongside whatever
+exotic form won, so no library abstracts to nothing.
+
+With F241/F242 the amodality program has its first full round trip:
+the stack crosses substrates (F241), and experience crosses WITH it
+where the role vocabulary covers, at two orders of magnitude of
+saved search (F242) -- with the failure modes named and their guards
+specified before any further scaling.
+
+## F243 — GUARDED TRANSFER: NEVER WORSE THAN DISCOVERY, 700x CHEAPER
+## WHERE EXPERIENCE APPLIES (2026-08-14, guarded_transfer.py, 6 seeds.
+## Scope: grid -> graph)
+
+F242's specified guard, implemented and verified: re-grounded imports
+are scored against the RANDOM-POLICY baseline on the selection
+streams; the best import is adopted only if it clears the baseline,
+otherwise the full local race runs -- discovery cost paid exactly
+where transfer fails.
+
+  gcollect2          guard trips 6/6 -> fallback -> IDENTICAL to cold
+                     (+3.779, sd 0). The F242 below-random harm is
+                     gone (prediction 1 exact).
+  gcollect1 / _avoid1  imports adopted 5/6 (seed 1234's empty library
+                     falls back by construction); 97-98% of cold at
+                     ~100 episodes where adopted.
+  pooled             99% of cold (-0.056, t=-0.99, ns) at 0.60x cold
+                     average cost -- the average carries the honest
+                     price of the worlds that must rediscover.
+
+The cross-substrate transfer principle in final form: WITH THE GUARD,
+WARM ACQUISITION IS NEVER WORSE THAN COLD DISCOVERY, AND TWO ORDERS
+OF MAGNITUDE CHEAPER WHERE EXPERIENCE APPLIES. Remaining refinements
+are economic, not safety: cheaper guards (racing's early stages),
+role-diverse promotion so fewer libraries abstract empty.
+
+## F244 — COMBINATOR CLOSURE BUILT; ITS WITNESS REFUSED TO EXIST:
+## CYCLIC 2-PHASE + RANK-SWITCHING IS AN IMPLICIT PHASE ROTATOR
+## (2026-08-14, combinator_closure.py, 6 seeds. Scope: DEV vocabulary)
+
+The route to mechanical combinator invention: close the schedule
+grammar under NESTING (a leg may itself be a schedule, flattened
+mechanically), so SEQ3 and beyond live in the closure, findable by
+racing compositions. Built, tested, raced against a constructed
+witness (chain3 = collect1 + resource1 + delayed3, three reward
+streams).
+
+REFUTED, with a discovery inside: seq3 forms never beat seq2:p2->food
+-- gain 0.000, sd 0, every seed. The 2-phase cycle already weaves all
+three streams, because CONSUMPTION-DRIVEN TRACKER SWITCHING acts as
+an implicit phase rotator: touch the nearest plane-2 entity, it
+respawns, the nearest-rank tracker flips to the OTHER plane-2 entity,
+and the cycle alternates coverage without naming three phases.
+
+    THE GRAMMAR'S EFFECTIVE COVERAGE EXCEEDS ITS SYNTAX. Perception
+    dynamics (rank switching under consumption) supply control
+    structure that would otherwise need explicit combinators. A
+    combinator's necessity witness must defeat not the written
+    grammar but its CLOSURE UNDER PERCEPTION DYNAMICS -- a much
+    higher bar, which chain3 failed to clear.
+
+The nesting closure stays in the codebase (harmless, raced at ~zero
+cost). Status of the invention program: machinery ready, witness
+outstanding. Constructing harder witnesses inside the DEV vocabulary
+risks manufacturing them; the honest sources of genuine witnesses are
+the SEALED set (untouched, user-gated) or a future open-ended
+generator with its own sealed split.
+
+**Terminal status of this goal chain (F226-F244, nineteen findings):**
+no witnessed, fixable defect remains in the non-sealed space. Every
+capability the DEV worlds demanded exists, self-promotes, transfers
+across substrates under guard, and sits at or above every feasible
+privileged bound measured. What remains is gated (sealed one-shot),
+economic (cheaper guards, role diversity), or awaits witnesses that
+only genuinely novel worlds can provide.
+
+## F245 — THE OPEN-ENDED GENERATOR: SEALED SPLIT COMMITTED, LIBRARY
+## COVERS 97% OF SAMPLED MECHANISM SPACE, FIVE WITNESSES FOUND
+## (2026-08-14, world_generator.py + generator_survey.py, 3 seeds x
+## 20 GEN-DEV worlds. Scope: generated grid mechanism space)
+
+The program the F244 terminal status called for: worlds sampled from
+the verifier's supported component space (the F230 sealed trio
+excluded), with the honesty device built in -- GEN-SEALED-v1 (20
+configs, SHA256 8f9c04be...) was committed to the repository BEFORE
+the survey probe existed, and may never be instantiated until an
+unseal is recorded here.
+
+The GEN-DEV survey (guarded transfer: canonical promoted library
+gated by the random baseline, raced fallback):
+
+  coverage   imports adopted on 19-20 of 20 worlds per seed -- the
+             self-promoted forms cover ~97% of sampled mechanism
+             space, with gains up to +1.86.
+  safety     guarded >= random everywhere (60/60 world-seed cells
+             within noise): the F243 promise generalizes to worlds
+             nobody chose.
+  produce    five CONSISTENT witness candidates (flagged in >= 2/3
+             seeds), found by sampling, not manufactured:
+               collect1_intercept1_pursue1_resource1
+               delayed3_intercept1_pursue1_resource2
+               delayed3_intercept2_pursue1_resource1
+               avoid3_collect3_delayed5_resource1
+               avoid2_delayed3 (marginal)
+             Three of five share the intercept x pursue x resource
+             interaction -- dual threat types plus gating, never
+             exhibited by the DEV originals; random play dies at
+             ~-0.9 and the stack barely improves.
+
+Next-cycle discipline for the found witnesses, pre-registered: the
+F239 ladder runs FIRST -- privileged ceilings before any machinery,
+so a low-ceiling world cannot masquerade as a capability gap again.
+
+## F246 — CEILINGS FIRST: THREE FOUND WITNESSES SURVIVE WITH SIZES;
+## ONE IS A PURE HORIZON WITNESS (2026-08-14, witness_ceilings.py,
+## 6 seeds. Scope: GEN-DEV found witnesses)
+
+The pre-registered discipline, executed in the right order this time:
+privileged true-return ceilings (d1-d4) on the five F245 found
+witnesses BEFORE any machinery.
+
+  collect1_intercept1_pursue1_resource1   deploy -0.86, ceiling(d4)
+                                          -0.39  -> GAP +0.47
+  delayed3_intercept1_pursue1_resource2   deploy -0.70, d4 -0.27
+                                          -> GAP +0.43
+  delayed3_intercept2_pursue1_resource1   deploy -0.84, d4 -0.13
+                                          -> GAP +0.71, and the
+                                          ceiling climbs monotonically
+                                          with depth: skill exists to
+                                          be had.
+  avoid3_collect3_delayed5_resource1      GAP +0.20 (modest, real)
+  avoid2_delayed3                         GAP +0.22, with the
+                                          instrument reading of the
+                                          batch: the ceiling JUMPS at
+                                          exactly d4 (+0.07 -> +0.25)
+                                          because the delayed-3
+                                          payment enters the search
+                                          horizon precisely there. A
+                                          PURE HORIZON WITNESS -- the
+                                          first world shown to reward
+                                          depth as such, found by
+                                          sampling.
+
+The surviving research targets, honestly sized: the intercept x
+pursue x resource interaction (juggle catch-positioning, flight, and
+fueling -- no current form covers three simultaneous constraint
+types) at ~+0.5, and the horizon witness at ~+0.2. Both found, both
+ceiling-certified, both awaiting next-cycle capability work under the
+standing disciplines.
+
+## F247 — VALUE-PLAN: DEPLOYABLE HORIZON BUILT; IT TRIPLES THE
+## PRIVILEGED DEPTH-4 CEILING WHERE DYNAMICS ARE MODELABLE, AND ITS
+## WITNESS FAILURE LOCALIZES TO THE BANK-DYNAMICS LAYER
+## (2026-08-14, value_plan.py, 6 seeds. Scope: GEN-DEV witnesses +
+## solved control)
+
+F246 sized the certified gaps and localized them to HORIZON: the
+deployable stack has always been depth-1 greedy while the skill
+lives at depth 2-4. This probe built the F229-deferred capability:
+depth-d exhaustive search over COMPOSED BANK PROGRAMS (every
+transition executed by the plant -- recipes, not weights), scored by
+a per-action linear reward head plus an H-step linear value head,
+both ridge-fit on the world's own random-rollout returns over the
+generic relational basis (slots, group distances, contact
+indicators). No privileged access in any deployable arm. Registered
+predictions P1-P4 in the probe docstring before any run.
+
+THE CAPABILITY IS REAL (control world, avoid1_collect1):
+
+  random -0.01 | vplan d1 +0.58 -> d2 +0.71 -> d3 +0.81 -> d4 +0.95
+  | +policy-iteration +1.30 | shuffled-weights control -0.09
+  | privileged TRUE-RETURN depth-4 ceiling (F246): +0.41
+
+  Depth monotone 6/6 seeds; the shuffled control collapses to random
+  (P3 CONFIRMED: the value binding, not the tree, carries the gain);
+  and the deployable planner TRIPLES the privileged depth-4 truth.
+  This is the F229 law completing itself: shallow truth is myopic
+  when food sits beyond the horizon, but a fitted value head at the
+  leaves extends the effective horizon past ANY tree depth. A
+  depth-limited privileged ceiling is a floor for a value-guided
+  planner, not a bound.
+
+THE WITNESSES REFUTE P1/P2 -- AND LOCALIZE THE NEXT LAYER:
+
+  trio worlds        vplan(all depths) ~ random (-0.88..-0.93 vs
+                     -0.93..-1.04); on delayed3_intercept2 depth
+                     actively HURTS (d4 -1.25 < random -1.04):
+                     model error compounds with depth.
+  truedyn arm        privileged dynamics + true immediate reward +
+                     the SAME learned value head: -0.34..-0.46 on
+                     the trio -- better than the pure privileged d2
+                     ceiling, near the d4 ceiling on two of three.
+  avoid2_delayed3    vplan d4-d1 +0.057 (< +0.10 registered);
+                     truedyn_d2 +0.09 ~ the d1-d3 ceiling.
+
+  The subtraction is exact: value head GOOD (truedyn recovers most
+  of the gap with it), search GOOD (control world), learned
+  DYNAMICS BAD on multi-mover worlds. The bank programs, fit
+  per-slot on 32 random transitions, cannot roll interceptor/
+  pursuer motion, and the planner then confidently walks into
+  threats it mispredicts.
+
+WHY THE DYNAMICS FAIL -- A CANDIDATE ISA WITNESS: pursuers and
+interceptors move TOWARD the avatar: slot 4 steps by sign(s0 - s4).
+The ISA's only condition is s_j != 0 (CINC/CDEC); relative-motion
+conditionals are INEXPRESSIBLE, so per_slot_search fits a constant-
+ish op and the residual is systematic, not sampling noise. This is
+precisely the F228 pre-registered witness condition for instruction-
+set work ("first mine per_slot_search residuals for inexpressible
+dynamics"). Next probe: residual mining -- measure per-slot program
+fit accuracy on mover slots across worlds, test whether a TOWARD
+op (step slot s one unit toward slot j) closes the residual, and
+only then admit it to the ISA with the usual controls.
+
+Scope: Fixed on this family (control-world capability); Localized
+(witness failure to the bank-dynamics layer). The horizon layer is
+BUILT and no longer the bottleneck; the ladder moves to dynamics.
+
+## F248 — RESIDUAL MINING: THE TOWARD-OP WITNESS REFUSED; THE
+## DYNAMICS RESIDUAL IS CROSS-AXIS COUPLING + RANK-SWITCHING, NOT A
+## MISSING SINGLE-SLOT INSTRUCTION (2026-08-14, dynamics_residual.py,
+## 6 seeds. Scope: GEN-DEV witnesses + control)
+
+The F228 pre-registered gate for instruction-set work, executed:
+per-slot programs fit on 32 vs 256 examples under the base ISA, and
+under the ISA extended with TOWARD/AWAY (s' = s +/- sign(s_j - s)),
+scored by held-out exact-match per slot.
+
+  P1 REFUTED     ext256 == base256 to three decimals on every trio
+                 world (movers 0.654/0.593/0.619 both ways). The
+                 candidate op buys NOTHING.
+  P2 CONFIRMED   base256 - base32 < +0.01: not sample starvation.
+  P3 CONFIRMED   control world unchanged (+0.016).
+  P4 CONFIRMED   avatar slots 1.00 everywhere; the residual is
+                 concentrated in mover slots (0.53-0.73 on the trio;
+                 0.29-0.36 on avoid2_delayed3's column slots).
+
+By the standing rule -- no primitive without a witness -- TOWARD is
+NOT admitted. The refutation localizes the dynamics failure PAST the
+op vocabulary to two structural facts the mining exposed:
+
+  (a) CROSS-AXIS COUPLING. The pursuer steps on whichever axis has
+      the LARGER gap (game_family step rule). Slot 4's next value is
+      a joint function of slots 4,5,0,1 -- inexpressible under ANY
+      per-slot op set, however rich. The per-slot FACTORIZATION,
+      not the instruction list, is the binding limit.
+  (b) RANK-SWITCHING. Nearest/second-nearest slots swap identity
+      when movers cross -- the same perception dynamic that F244
+      showed acting as a free phase rotator on the control side
+      here corrupts the transition data as label noise.
+
+Next (pre-registered): a 2x2 factorial separating the two factors --
+{per-slot fit, joint PAIR fit over a generic relational motion
+vocabulary (chase/flee = one L1 step toward/from a target group,
+larger-gap-axis-first; frozen; random-step)} x {nearest-rank
+encoding, identity-stable tracking (the F235 EntityTable, already
+built)}. Prediction: only pair-fit x identity-stable approaches
+0.9 held-out on mover groups; each factor alone stays partial.
+Scope: Localized (GEN-DEV witness worlds).
+
+## F249 — PAIR-DYNAMICS FACTORIAL: IDENTITY-STABLE TRACKING IS THE
+## DYNAMICS FIX; THE PAIR VOCABULARY ADDS NOTHING UNDER IT; AND A
+## MODULUS-OVERFIT TIE-BREAK LURKS IN THE DEPLOYED BANK FIT
+## (2026-08-14, pair_dynamics.py, 6 seeds. Scope: GEN-DEV trio)
+
+The pre-registered 2x2 from F248: {per-slot base-ISA fit vs joint
+PAIR fit over generic relational motions (frozen / fall / chase /
+flee, larger-gap-axis-first)} x {nearest-rank encoding vs identity-
+stable continuity tracking}. Held-out exact-match on mover groups:
+
+  delayed3_intercept1_pursue1_resource2   rank 0.378 -> track 0.850
+  delayed3_intercept2_pursue1_resource1   rank 0.392 -> track 0.722
+  collect1_intercept1_pursue1_resource1   rank 0.448 (track cell
+                                          starved by the all-present
+                                          filter; see limitation)
+
+  P1 CONFIRMED (via the track factor): +0.33..+0.47 over slot x
+     rank -- far past the +0.15 registered threshold.
+  P2 REFUTED, in an informative direction: pair == slot under
+     tracking TO FOUR DECIMALS on mover groups. Identity stability
+     alone converts the residual; the cross-axis vocabulary is NOT
+     needed once labels stop switching identity. F248's factor (b),
+     not (a), was the binding one. No new primitive is admitted --
+     the second candidate witness in a row to refuse.
+  P4 avatar 1.000 in the slot cells everywhere.
+
+Two discoveries beyond the design:
+
+  MODULUS-OVERFIT TIE-BREAK. On the tracked faller group the slot
+  fit scored 0.990 train / 0.152 held-out: per_slot_search breaks
+  score ties by FIRST HIT, which prefers small moduli; early-rollout
+  rows are small, so INC mod5 ties INC mod8 on train and wraps
+  wrongly later. The DEPLOYED bank (32 early transitions) carries
+  the same fragility. Fix (conservative tie-break: prefer larger
+  modulus / NOOP on ties) goes into the next integration.
+
+  INTERCEPT IS FATAL. A faller reaching bottom un-caught KILLS the
+  row (game_family step rule) -- the trio worlds demand
+  catch-positioning under death pressure on two fronts plus fuel
+  gating, confirming F246's reading of the interaction witness.
+
+Limitation, recorded: the probe's all-slots-present filter starved
+worlds with structurally empty planes (avoid2_delayed3, control) --
+carried by the trio cells; the integration probe uses the deployed
+used-mask rule instead.
+
+Next: F250 integration -- VALUE-PLAN over identity-tracked slots
+with the tie-break-fixed bank. The horizon machinery (F247) plus
+faithful dynamics (this finding) is the direct shot at the ~+0.5
+certified trio gap. Scope: Localized (GEN-DEV trio).
+
+## F250 — TRACKED VALUE-PLAN REACHES DEPLOY PARITY ON THE TRIO, NOT
+## PAST IT; CONTROLS CLEAN; THE SUBTRACTION NOW POINTS AT THE
+## REWARD HEAD VS DYNAMICS SPLIT (2026-08-14, value_plan_tracked.py,
+## 6 seeds. Scope: GEN-DEV witnesses + control)
+
+The integration: VALUE-PLAN (F247) over identity-tracked slots
+(F249) with the tie-break-fixed bank fit, plant executing every
+planned transition. Registered P1-P4 in the docstring.
+
+  P1 REFUTED    best tracked arms -0.88 / -0.76 / -0.85 vs deploy
+                -0.86 / -0.70 / -0.84: parity with the goal-grammar
+                deploy, far from the d4 ceilings (-0.39/-0.27/-0.13).
+  P2 PARTIAL    tracking beats rank 5/6 seeds only on the hardest
+                world (delayed3_intercept2, where rank planning is
+                WORSE than random, -1.14); 3/6 elsewhere.
+  P3 CONFIRMED  shuffled heads collapse to random everywhere.
+  P4 CONFIRMED  control world keeps the F247 capability: policy-
+                iterated tracked d4 = +1.27 (~3x the privileged d4
+                ceiling), depth-monotone.
+
+Reading, with the F247 localization arm as the anchor: privileged
+dynamics + TRUE immediate reward + the SAME learned value head
+scored -0.34..-0.46 on the trio -- at or above the pure d2 ceiling.
+The learned stack at -0.85 therefore loses its ~+0.45 somewhere in
+{learned dynamics (0.72-0.85 one-step exact-match, compounding at
+depth), learned reward head (linear over TYPE-ALIASED tracked
+groups: a contact that is death in one row is a harmless switch
+touch in another)}. These two are separable by one cheap privileged
+cell: plan over true dynamics but score edges with the LEARNED
+reward head. Collapse there indicts the reward binding (and hands
+the problem to the F235 valued-binding machinery, already built);
+survival indicts dynamics fidelity. That diagnostic runs next,
+BEFORE any further machinery -- the F239 lesson, applied.
+
+Scope: Localized (GEN-DEV trio + control).
+
+## F251 — THE SPLIT IS DECISIVE: THE REWARD HEAD, NOT DYNAMICS,
+## CARRIES F250'S RESIDUAL; AND CONSUMPTION JUMPS POISON PROXIMITY
+## VALUE OVER TRUE DYNAMICS (2026-08-14, reward_vs_dynamics.py,
+## 6 seeds. Scope: GEN-DEV trio + control)
+
+One privileged cell, nothing built: plan depth-2 over TRUE dynamics
+(deep-copied sims, cloned trackers) and swap ONLY the edge reward --
+true vs the learned linear head. Learned value head at the leaves in
+both arms.
+
+                        true reward      learned reward
+  collect1_i1_p1_r1        -0.380            -0.966
+  delayed3_i1_p1_r2        -0.159            -0.909
+  delayed3_i2_p1_r1        -0.245            -0.924
+  ctrl_avoid1_collect1     +1.497            -0.068
+
+P2's second branch fires 6/6 seeds on every world: THE REWARD
+BINDING IS INDICTED. With true edge rewards the same learned value
+head reaches -0.16..-0.38 on the trio (at or past the pure d2
+ceilings); with the learned head everything collapses to random.
+
+The control world adds the mechanism, unregistered but decisive:
+truedyn+learned-reward scores -0.07 where F250's FULLY-learned stack
+scored +0.92. Over true dynamics, eating teleports the food away, so
+a proximity-shaped V PUNISHES consumption at the leaf; the true +1
+edge reward compensates, the linear head cannot. Bank-rolled
+dynamics never exhibit the jump, which is why the learned stack
+works there -- the model's blindness to consumption was accidentally
+protective. F231 met this same jump on the control side (consumption
+-aware completion); it now reappears on the cost side.
+
+Both mechanisms convict one layer: REWARDS ARE TYPED CONTACT
+EVENTS -- +1 on this entity, death on that one, nothing on the
+switch -- and no linear functional over type-aliased group distances
+can express them. The response is the F235/F236 valued-binding
+machinery, re-targeted from goal selection to the planner's reward
+model: per-tracked-entity type features (plane, motion signature,
+interaction history), class-target value fits with death
+attribution, and an event-structured edge head
+r_hat(s,a) = sum_g contact_g(s') * (w . psi_g).
+That build is next. Scope: Localized (GEN-DEV trio + control).
+
+## F252 — THE TYPED EVENT HEAD WORKS; ITS COMPOSITION WITH LEARNED
+## DYNAMICS FAILS: EVENT PRECISION x MODEL ERROR = POISON
+## (2026-08-14, value_plan_typed.py, 6 seeds. Scope: GEN-DEV
+## witnesses + control)
+
+The F251 response, built: per-tracked-entity type signatures
+(plane, motion energy, approach fraction), events (contact,
+teleport, their conjunction, boundary) with death attribution, one
+ridge from events x signatures to step reward; F247's planner scores
+edges with it. Registered P1-P4.
+
+  THE HEAD IS VALIDATED IN ISOLATION. Over TRUE dynamics the typed
+  head vs F251's linear head: control -0.07 -> +1.28 (vs true-
+  reward ceiling +1.50); trio -0.97/-0.91/-0.92 -> -0.62/-0.48/
+  -0.89 -- roughly half the convicted gap on two of three worlds
+  recovered by REPRESENTATION alone. Reward binding as a head is
+  the right abstraction (P2 partial: outside the 0.15 band but
+  directionally decisive).
+
+  THE COMPOSITION IS REFUTED. P1 0/6 seeds on every trio world:
+  under bank dynamics the typed head does not beat the linear
+  baseline. P3's refutation is the mechanism: SHUFFLED WEIGHTS BEAT
+  THE FITTED HEAD on the lethal worlds (-0.81/-0.86 vs -0.94/-1.10)
+  while collapsing properly on the control. A hard contact
+  predicate (d <= 1) composed with one-cell dynamics error flips
+  event predictions; executing precisely-wrong advice is worse than
+  noise. The linear head had been failing GRACEFULLY -- distance-
+  smooth, error-tolerant; the event head fails BRITTLY.
+
+Localization after three integrations: horizon BUILT (F247),
+dynamics identity-stabilized (F249/F250), reward binding BUILT and
+validated (this finding) -- each layer works alone; the surviving
+defect is the INTERFACE between reward events and imperfect learned
+dynamics. Pre-registered next: MODEL-CONSISTENT head training (fit
+the typed head on BANK-ROLLED children, so the head reads reward
+through the model's own biases -- fully deployable, no privilege)
+x graded contact kernel (tolerance to +-1 model error), as a 2x2
+against this finding's pure-typed arm. Scope: Localized (GEN-DEV
+witnesses + control).
+
+## F253 — MODEL-CONSISTENCY IS THE ACTIVE FACTOR AND SETS A CONTROL
+## RECORD; THE TRIO ASYMPTOTES AT DEPLOY PARITY AGAIN -- THE COMMON
+## FACTOR IS MOVER DYNAMICS, AND F249 RE-READS AS A MIXTURE FAILURE
+## (2026-08-14, value_plan_consistent.py, 6 seeds. Scope: GEN-DEV
+## witnesses + control)
+
+The F252 response 2x2: {true-fit vs MODEL-CONSISTENT head training
+(fit on bank-rolled children)} x {hard vs graded contact}.
+
+  P2 ATTRIBUTION: MC is the active ingredient -- mc beats true-fit
+     on every world; soft alone does nothing; soft adds a little on
+     top of mc. Fitting the head in the representation the planner
+     hands it removes the F252 brittleness: the shuffled-beats-
+     fitted inversion disappears on the trio (P3 there confirmed;
+     on the control the shuffled arm keeps +0.29 via the intact V
+     head -- logged).
+  CONTROL RECORD: mc_soft_it_d4 = +1.32 (P4 confirmed) -- the best
+     fully-learned score yet, 3.2x the privileged depth-4 ceiling.
+  P1 REFUTED overall: best trio arms (mc_soft_it_d4)
+     -0.849 / -0.753 / -0.828 -- +0.10..+0.21 over the linear
+     planner baseline, but PARITY WITH THE GOAL-GRAMMAR DEPLOY
+     (-0.86/-0.70/-0.84) for the third integration in a row.
+
+The asymptote names the one component every learned path shares:
+ROLLING MOVERS THROUGH PER-SLOT PROGRAMS. And with F252's lesson in
+hand, F249's factorial re-reads: its pair vocabulary CONTAINED the
+pursuer's exact rule (CHASE, larger-gap-axis-first), yet pair==slot
+under tracking because ONE rule was fit PER GROUP, pooled across
+rows in which that group tracks different entity types -- the same
+mixture that poisoned the reward head before typing. The fix is the
+same fix, moved to the dynamics layer:
+
+  PER-ENTITY RULE BINDING (pre-registered next): each tracked
+  entity selects its own motion rule from the generic relational
+  vocabulary (frozen / fall / chase / flee / random-hold) by ITS
+  OWN observed history -- per row, per entity, no pooling. The
+  avatar keeps its bank program (per-slot fits are 1.00). The
+  planner rolls each row's entities by their bound rules; the
+  mc_soft typed head prices the resulting events. Prediction: the
+  original F250 target -- beat deploy by >= +0.15 on >= 2/3 trio
+  worlds -- plus a direct held-out check that bound-rule mover
+  prediction reaches ~0.9 where pooled fits stalled at 0.72-0.85.
+
+Scope: Localized (GEN-DEV witnesses + control).
+
+## F254 — PER-ENTITY RULE BINDING REFUSED: THE TRACKER'S OWN NOISE
+## BOUNDS EVERY DYNAMICS FIX; CONTROL RECORD +1.40; THE CAPACITY
+## HYPOTHESIS IS ALL THAT REMAINS (2026-08-14, value_plan_bound.py,
+## 6 seeds. Scope: GEN-DEV witnesses + control)
+
+The typed-dynamics completion: each tracked entity binds its own
+motion rule (frozen/fall/chase/flee) by its own observed history;
+avatar via plant-executed bank program; mc_soft typed head fit on
+bound-rolled children. Registered P1-P4.
+
+  P2 REFUTED   bound one-step mover exact-match 0.58-0.77 -- not
+               0.9, and BELOW the bank on two trio worlds (0.64 vs
+               0.83, 0.58 vs 0.76). The binding evidence and the
+               ground truth are both produced by the tracker, whose
+               re-acquisitions and identity breaks pollute each.
+  P1 REFUTED   0/6 seeds everywhere; the hardest world degrades
+               (bound arms -1.18..-1.31).
+  P3 REFUTED   shufbind == bound: the bindings carried no usable
+               information, consistent with P2.
+  P4 CONFIRMED, with a record: bound_it_d4 = +1.40 on the control
+               (3.4x the privileged d4 ceiling) -- the fifth
+               consecutive integration to raise the control record
+               while the trio refuses to move.
+
+Five integrations (F250-F254) share one signature: every layer
+improves in isolation (tracking, typed rewards, model consistency,
+rule binding), the composition stalls at deploy parity ~-0.85, and
+privileged arms keep certifying reachable skill at -0.16..-0.46.
+One hypothesis remains untested, the one the freeze discipline
+reserves for last: THE FROZEN 8-SLOT STATE IS CAPACITY-INSUFFICIENT
+for these worlds. collect1_intercept1_pursue1_resource1 carries
+four non-avatar entities plus a hidden holding bit; the tracked
+state holds three entities and no holding. If states identical in
+the tracked-8 view demand different optimal actions at material
+frequency, the trio gap re-scopes from machinery defect to CORE
+CAPACITY CEILING -- the necessity witness slot expansion has been
+waiting for. Pre-registered next: the tracked-state aliasing audit
+(F233's instrument, aimed at the core): per-step aliasing loss of
+true depth-2 action values bucketed by tracked-state key, vs a
+full-state key control and the control world. Scope: Localized.
+
+## F255 — THE CORE IS EXONERATED: 8 SLOTS CARRY THE DECISION; THE
+## TRIO STALL IS SAMPLE COMPLEXITY, NOT STATE -- AND THE ANSWER IT
+## POINTS AT IS THE FOUNDING THESIS (2026-08-14, aliasing_capacity.py
+## v2, 6 seeds. Scope: GEN-DEV trio + control)
+
+The distillation audit: one nonparametric regressor (k-NN over true
+depth-2 Q, 12,288 samples under the privileged policy + exploration),
+fit twice -- on the tracked 8-slot state vs on privileged full
+features (every entity, holding, pending) -- both played as
+policies. (v1, exact-key bucketing, was stillborn: 8-slot keys never
+collide at feasible batches; logged.)
+
+  P1 EXONERATION BRANCH FIRES 6/6, 6/6, 5/6: capacity gap
+     +0.02 / -0.01 / +0.06 -- the frozen core's state view loses
+     NOTHING against full privileged state at matched machinery.
+     The freeze discipline's bet on the 8-slot core survives its
+     hardest audit.
+  P2 CONFIRMED: control world gap -0.00, and both kNNs equal the
+     privileged anchor (+0.40 vs +0.41).
+  P3 FAILS ON THE TRIO IN THE INFORMATIVE DIRECTION: knn_full
+     itself stalls at -0.86/-0.87/-0.94 vs anchors -0.62/-0.53/
+     -0.41 -- the SAME -0.85 wall as every learned integration
+     (F250-F254), now reproduced WITH privileged state and
+     nonparametric machinery.
+
+Synthesis of the six-probe arc: the trio's decision function
+(single-cell life/death margins among 4-5 interacting entities) is
+NOT LEARNABLE FROM ~10^4 SAMPLES by any smooth regressor fielded --
+the privileged planner only "knows" it by querying the simulator at
+decision time. The stall was never state, instruction set, reward
+representation, or depth; it is SAMPLE COMPLEXITY of the compound
+function. Where the function is smooth (control), the stack already
+beats privileged ceilings threefold.
+
+The re-scoping points at the founding objective itself: if the
+compound function cannot be learned from compound experience, learn
+each mechanism's TYPED VALUE on simple worlds where it is learnable,
+and TRANSFER the type->value bindings -- which are expressed in
+world-independent signature coordinates -- to the compound world.
+Pre-registered next (typed_transfer): heads fit on single-mechanism
+worlds, pooled, deployed on the trio; warm-vs-cold at equal target
+data. Scope: Localized (GEN-DEV trio + control); the exoneration is
+Fixed on this family.
+
+## F256 — THE FOUNDING THESIS BREAKS THE WALL: TYPED VALUE TRANSFER
+## FROM SIMPLE WORLDS BEATS DEPLOY ON ALL THREE CERTIFIED WITNESSES
+## WITH ZERO TARGET REWARD DATA (2026-08-14, typed_transfer.py,
+## 6 seeds. Scope: GEN-DEV trio + control)
+
+The F255 prescription, executed: mc_soft typed-head rows fit on six
+single-mechanism worlds (collect1, avoid1_collect1, pursue1,
+intercept1, collect1_resource1, delayed3), POOLED in the head's
+world-independent coordinates (event x entity-signature), deployed
+on the trio with target-fit banks (dynamics from reward-free
+experience only).
+
+                              deploy   cold(-fit on   TRANSFER
+                                       compound)      (zero target
+                                                      reward data)
+  collect1_i1_p1_r1           -0.86      -0.91          -0.747
+  delayed3_i1_p1_r2           -0.70      -0.83          -0.549
+  delayed3_i2_p1_r1           -0.84      -1.11          -0.656
+
+  P2 CONFIRMED 6/6 SEEDS ON EVERY TRIO WORLD, far past its
+     registered threshold: transfer beats cold by +0.16..+0.45.
+     THE FIRST LEARNED, NON-PRIVILEGED STACK TO BEAT THE
+     GOAL-GRAMMAR DEPLOY ON THE CERTIFIED WITNESSES -- closing
+     25-35% of the ceiling-certified gap in one step.
+  P1 AT THE MEAN, CONFIRMED (+0.13/+0.15/+0.20 warm over cold);
+     per-seed threshold counts 3/6, 2/6, 3/6 -- and the reason is
+     the finding's sharpest edge: WARM < TRANSFER. Adding
+     compound-world rows DILUTES the transferred head. F255 said
+     compound experience cannot teach this function; F256 adds:
+     it actively poisons a head that already knows it.
+  P3 shufwarm collapses (control: +1.14 -> +0.37); P4 no harm on
+     the control (warm +1.14 vs cold +1.17).
+
+The founding objective -- "produce a program such that given task A
+makes novel task B faster to learn than chance or starting from
+scratch" -- is here demonstrated in its STRONGEST form on worlds
+nobody designed (F245 sampled witnesses, F246 ceiling-certified):
+scratch FAILS (six integrations, F250-F255, all at deploy parity;
+the function is unlearnable from compound data at feasible budgets),
+and mechanism-typed transfer WORKS, with zero reward experience on
+the target. The transferable object is the typed value binding --
+entity-signature -> value -- learned where each mechanism is simple,
+composed by pooling, carried by world-independent coordinates.
+
+Cycle synthesis (F247-F256): horizon built (planner, control record
++1.40 = 3.4x the privileged d4 ceiling); dynamics identity-
+stabilized; rewards typed; training model-consistent; core
+EXONERATED at 8 slots; the compound stall re-scoped to sample
+complexity; and the founding mechanism shown to be the working
+route through it. Remaining headroom on the trio (transfer -0.66..
+-0.75 vs ceilings -0.13..-0.39) is pre-registered future work:
+richer simple-world curricula (signature coverage), transfer-aware
+racing under the F243 guard, and the sealed sets -- still untouched,
+still awaiting the word.
+
+## F257 — THE POST-TRANSFER RESIDUAL DECOMPOSES BY MECHANISM COUNT:
+## THE TRANSFERRED HEAD IS CEILING-CAPABLE WHERE DYNAMICS ARE TRUE;
+## CURRICULUM AND DATA-POLICY LEVERS ARE NULL (2026-08-14,
+## transfer_decomp.py, 6 seeds. Scope: GEN-DEV trio + control)
+
+Four registered levers on the F256 residual, one probe.
+
+  P1 SPLITS BY WORLD. Single-interceptor worlds: privileged
+     dynamics + the TRANSFERRED head reaches -0.576 / -0.289 vs
+     transfer's -0.747 / -0.549 (4/6, 5/6) -- and on
+     delayed3_i1_p1_r2 that is AT the depth-4 ceiling (-0.27): the
+     transferred value knowledge is CEILING-CAPABLE; rolling
+     fidelity is the entire residual there. Double-interceptor
+     world: the inversion -- learned-dynamics depth-4 BEATS true-
+     dynamics depth-2 (0/6): with three movers, horizon outweighs
+     fidelity.
+  P2 REFUTED: the pairwise-enriched curriculum adds ~+0.01. The
+     six-singles library already covers the signatures.
+  P3 NEITHER BRANCH: good-policy compound rows are neutral on the
+     trio (the F256 poisoning was about what random-policy data
+     teaches, not what any target data does), and set a near-record
+     +1.34 on the control.
+  Controls: shufrich collapses everywhere.
+
+The frontier is now purely the DYNAMICS x DEPTH interface, with a
+measured prize: fixing mover rolls is worth +0.17 / +0.26 on the
+single-interceptor worlds. The bank cannot pay it -- per-slot
+symbolic programs are expressiveness-bounded on movers (F248). But
+entity transitions ((entity, avatar) -> next entity) are a
+low-dimensional function learnable from REWARD-FREE experience --
+exactly the data F255 certified as available at feasible budgets --
+and an instance-based transition memory is external memory, not
+weights. Pre-registered next: k-NN entity-transition rolls (avatar
+via bank program, entities via transition memory, transferred typed
+head, model-consistent), against the F257 anchors.
+Scope: Localized (GEN-DEV trio + control).
+
+## F258 — UNTYPED TRANSITION MEMORY REFUSED: THE THIRD DEATH BY
+## GROUP-SLOT MIXTURE (2026-08-14, memory_dynamics.py, 6 seeds.
+## Scope: GEN-DEV trio + control)
+
+The transition-table rolls (modal delta keyed by entity cell x
+post-action avatar cell, marginal fallback) LOSE to the bank rolls
+everywhere: P1 0/6 on both single-interceptor worlds, memtr -0.86/
+-0.77/-0.99 vs transfer -0.75/-0.55/-0.66; control degrades too.
+Shufmem collapses (the head still binds).
+
+Diagnosis, and it is a law of this stack by now: THE TABLE POOLS
+TRANSITIONS PER SLOT-GROUP, AND GROUP CONTENTS ARE HETEROGENEOUS
+ACROSS ROWS -- nearest-plane-2 is a chasing pursuer in one row and
+a frozen resource in another, so the modal delta is a mixture.
+Three dynamics fixes have now died on this exact rock: richer
+per-slot ops (F248), per-row rule binding (F254, via tracker-noise-
+polluted evidence), and untyped instance memory (this finding). The
+typed REWARD head survived because it conditions on the entity
+signature psi. Pre-registered next: the same conditioning for
+dynamics -- transition table keyed by (signature bucket, entity
+cell, avatar cell), type-pure entries. Scope: Localized.
+
+## F259 — TYPE-KEYED TRANSITION MEMORY ALSO REFUSED; THE FOURTH
+## REFUTATION RE-READS F257: THE TRUE-DYNAMICS ADVANTAGE IS EVENTS,
+## NOT POSITIONS (2026-08-14, typed_memory.py, 6 seeds. Scope:
+## GEN-DEV trio + control)
+
+Signature-bucket keying (type-pure table entries) changed nothing:
+P1 0/6 on every trio world, table rolls still lose to bank rolls.
+Four dynamics fixes have now been refuted on the same worlds
+(per-slot ops F248, per-entity rule binding F254, untyped memory
+F258, typed memory F259). One-step positional fidelity is NOT the
+deployable lever.
+
+Re-reading F257's truedyn advantage with all four refutations in
+hand: shadow simulations differ from every learned roll not mainly
+in WHERE entities go but in WHAT HAPPENS -- eaten food disappears,
+death terminates the branch. Learned rolls never consume and never
+die, so the tree DOUBLE-COUNTS the same food at every depth and
+suicidal branches keep accruing leaf value. Pre-registered next:
+EVENT SEMANTICS IN THE TREE -- (a) prune any branch whose predicted
+edge reward <= -0.4 (death), (b) after a positive contact event
+(> +0.2), mark the contacted group consumed in the child state so
+it cannot be re-collected down-branch. Generic, reward-scale
+anchored, priced by the head the stack already has.
+Scope: Localized (GEN-DEV trio + control).
+
+## F260 — EVENT SEMANTICS REFUSED: THE FIFTH REFUTATION CLOSES THE
+## RESIDUAL'S FENCE; THE TRANSFER STACK STANDS AS THE DEPLOYABLE
+## FRONTIER (2026-08-14, event_tree.py, 6 seeds. Scope: GEN-DEV
+## trio + control. CYCLE-TERMINAL SYNTHESIS)
+
+Death-pruning and consumption-parking in the tree: P1 0/6 on every
+trio world (ev_d4 -0.78/-0.60/-0.75 vs transfer -0.75/-0.55/-0.66);
+ablations show neither rule contributes; consumption-parking HURTS
+the control (+1.02 -> +0.82); shufev collapses (the head still
+binds). The registered mechanism -- double-counting and unpruned
+death -- either does not dominate at depth 4, or its correction
+through imprecise rolls costs more than it saves.
+
+TERMINAL STATUS OF THIS RESIDUAL: five distinct, registered,
+mechanism-level attacks on the learned-roll gap have now been
+refuted on the same worlds under the same protocol --
+
+  F248  richer per-slot instructions (TOWARD/AWAY)
+  F254  per-entity rule binding (chase/flee/fall/frozen)
+  F258  untyped entity-transition memory
+  F259  type-keyed transition memory
+  F260  event semantics in the tree (prune + consume)
+
+-- while the F256 TRANSFER STACK (typed value heads learned on six
+single-mechanism worlds, pooled in world-independent coordinates,
+deployed with zero target reward data over plain bank rolls) has
+not been beaten by any of them: -0.747 / -0.549 / -0.656 on the
+certified trio, past the goal-grammar deploy on all three. The
+residual to the privileged ceilings (-0.39/-0.27/-0.13) is real,
+sized, and fenced: it belongs to capabilities this ladder cannot
+reach with feasible per-world experience -- candidate routes,
+honestly priced for the next cycle, are (a) orders-more reward-free
+experience (the F255 sample-complexity axis), (b) a stochastic
+learned simulator sampled at plan time instead of deterministic
+composition (a substantial build with its own freeze case), and
+(c) the SEALED sets, untouched, user-gated.
+
+The cycle's standing breakthroughs: F247/F253's VALUE-PLAN
+capability class (control +1.40, 3.4x the privileged depth-4
+ceiling, fully learned), and F256's founding-thesis demonstration
+-- transfer from simple worlds as the ONLY working route into
+compound tasks that cannot be learned from their own experience.
+
+## F261 — THE SCALE ROUTE IS DEAD ON THE TRIO; THE NECESSITY CASE
+## FOR STOCHASTIC PLAN-TIME SIMULATION IS COMPLETE (2026-08-14,
+## scaling_curve.py, 6 seeds. Scope: GEN-DEV trio + control.
+## CYCLE-TERMINAL)
+
+The last cheap route, priced with F255's instrument at 1x/3x/9x
+privileged-Q data (6k/18k/55k samples):
+
+  collect1_i1_p1_r1     flat (+0.031 over 9x; dead branch 3/6)
+  delayed3_i1_p1_r2     flat (+0.021; dead branch 4/6)
+  delayed3_i2_p1_r1     shallow slope (+0.154/decade, live 4/6) --
+                        extrapolated price of the remaining 0.44:
+                        ~50M samples. Infeasible.
+  ctrl                  scales strongly (+0.26 -> +0.62, EXCEEDING
+                        the privileged anchor at 9x): instrument
+                        valid; the value-head law again.
+
+TERMINAL: every route into the trio residual is now measured.
+Five mechanism-level refutations (F248/F254/F258/F259/F260) fence
+the learned-roll gap; this finding closes data scale. The single
+surviving deployable route -- a STOCHASTIC LEARNED SIMULATOR
+SAMPLED AT PLAN TIME (events realized, not composed) -- is a core
+capability, and its freeze-case necessity witness is, for the first
+time under the localization discipline, COMPLETE: a certified prize
+(+0.3..+0.5 to privileged ceilings on sampled, ceiling-certified
+worlds), an exonerated state (F255), a ceiling-capable value head
+(F257), and the exhaustion of every cheaper alternative, each
+registered and refuted on the record. That build -- with its own
+registered predictions, controls, and amortization pricing -- is
+the pre-registered opening of the next cycle.
+
+## F262 — STOCHASTIC SIMULATION OVER LEARNED DELTAS REFUSED: THE
+## SIXTH REFUTATION CLOSES THE RESIDUAL WITHIN THE FROZEN CORE
+## (2026-08-14, stochastic_sim.py, 6 seeds. Scope: GEN-DEV trio +
+## control. RESIDUAL-TERMINAL)
+
+Monte-Carlo planning over sampled empirical delta distributions
+(type-keyed reservoirs, per-sample death termination and
+consumption parking, greedy typed-head continuation): P1 0/6 on
+every trio world (sim_d4 -0.85/-0.70/-0.82 vs transfer -0.75/
+-0.55/-0.66); P2 0-1/6 -- the modal ablation matches the sampled
+planner, so STOCHASTICITY OVER A WRONG MODEL ADDS NOTHING; the
+control degrades; shufsim collapses (head binds).
+
+The necessity case (F261) certified that true-simulator sampling
+collects the prize. This build shows the property does not survive
+transport into ANY learned transition model of the tracked-slot
+representation at feasible experience: six mechanism-level attacks
+(F248, F254, F258, F259, F260, F262) spanning instruction sets,
+rule binding, deterministic and stochastic instance memory, and
+event semantics -- all refuted under registered predictions on the
+same certified worlds.
+
+RESIDUAL-TERMINAL CLAIM (scope: this family, frozen core, feasible
+per-world experience): the trio residual (-0.75/-0.55/-0.66 vs
+privileged ceilings -0.39/-0.27/-0.13) is CLOSED -- not collectable
+by any probe-level machinery this architecture admits. What could
+reopen it, priced for the record: an observation-level generative
+simulator (a new core capability with its own amortization case,
+far beyond a probe), or evidence from the SEALED sets (user-gated).
+The research frontier accordingly returns to BREADTH, where the
+transfer stack demonstrably wins: deploying F256's mechanism-typed
+transfer across the full generated space under the F243 guard, and
+richer simple-world curricula as the library of record grows.
+
+## F263 — THE COMPLEMENTARITY LAW: GOAL-GRAMMAR OWNS DENSE
+## COLLECTION, TRANSFER OWNS LETHAL MECHANISMS; THE GUARDED UNION
+## IS THE NEW DEPLOYABLE BASELINE (2026-08-14, transfer_survey.py,
+## 3 seeds x 20 GEN-DEV worlds. Scope: generated grid space)
+
+The F256 stack deployed across the full generated space, raced per
+world against the goal-grammar library under the F243 guard.
+
+  P1 REFUTED at the headline: transfer beats goal-grammar by
+     >= +0.10 on 1/20 worlds at mean level -- but that world is the
+     result: INTERCEPT2 -0.66 -> -0.07 (random -1.66), +0.59 over
+     the deploy, a near-solve of a world the goal-grammar stack
+     always failed. Typed value transfer owns pure lethal-mechanism
+     worlds; the goal grammar owns dense collection (avoid1_collect1
+     +1.69 vs +1.07 -- distance-cost goals exploit food fields
+     better than event pricing).
+  P2 CONFIRMED EXACTLY: guarded >= goal-grammar on all 20 worlds;
+     survey mean +0.333 -> +0.382.
+  P3 PARTIAL: witness-world mean +0.053 (< the +0.10 registered);
+     the certified trio itself improves (-0.76->-0.68, -0.62->-0.51,
+     -0.56->-0.48), diluted by the two non-trio witnesses where
+     transfer is null.
+
+THE COMPLEMENTARITY LAW, and the deployment consequence: the
+guarded union of {goal-grammar forms, mechanism-typed transfer}
+is the new baseline for the family -- never worse anywhere, better
+exactly where the certified hard worlds live. The two stacks
+partition the mechanism space along the same line every finding
+since F250 has drawn: smooth dense-reward structure (grammar,
+distance costs) vs sparse lethal events (typed values, transfer).
+
+Cycle close (F262-F263): the trio residual is closed within the
+frozen core (six refutations + scale, F262); the frontier work at
+breadth begins from the guarded union. Sealed sets: untouched,
+user-gated, as always.
+
+## F264 — THE HYBRID ACTION RULE: RACED COMPOSITION SETS A NEW BEST
+## ON THE HARDEST WITNESS; P1 REFUSED AT THRESHOLD (2026-08-14,
+## hybrid_controller.py, 6 seeds. Scope: trio + intercept2 + dense
+## pair)
+
+argmin goal_cost - lambda * typed_reward, (goal, lambda) raced per
+world with pure endpoints available.
+
+  P1 REFUTED at +0.10: per-seed 0/6, 0/6, 2/6. At the mean the
+     composition still delivers: delayed3_intercept2 -0.568 vs
+     -0.656 for either pure stack -- THE NEW BEST DEPLOYABLE SCORE
+     on the hardest certified witness -- and the race picks the
+     hybrid form (lam=0.5) on 17/18 trio seed-cells.
+  P2 mostly holds (3-5/6 within -0.05): single-stream selection
+     optimism visible; two-stream racing would tighten it.
+  P3 CONFIRMED: dense worlds unharmed (+1.542 vs +1.557; +1.365 vs
+     +1.378) -- the race falls back toward pure goal-grammar.
+  P4 CONFIRMED: intercept2 keeps the transfer win (-0.156).
+
+The hybrid enters the guarded union as a raced form. Standing
+deployable frontier on the trio: -0.755 / -0.536 / -0.568.
+Next (pre-registered): the ungated breakthrough candidate --
+CROSS-SUBSTRATE TYPED VALUE TRANSFER. The typed head's coordinates
+(contact/teleport events x motion/approach signatures) are defined
+by DISTANCE alone, not by grid geometry; on the graph substrate the
+same weights should price BFS-metric events with zero graph reward
+data. Amodal value knowledge, the founding thesis one level up.
+
+## F265 — AMODAL VALUE TRANSFER: DEMONSTRATED IN INSTANCES, NOT YET
+## RELIABLE -- THE COORDINATES EXIST, THE FIT DOESN'T PIN THEM
+## (2026-08-14, cross_typed.py, 6 seeds. Scope: grid -> graph)
+
+The typed head fit on six GRID worlds (true-transition fit),
+applied to GRAPH worlds (BFS metric, substrate-calibrated contact
+kernel, avatar dynamics from the edge percept, zero graph data).
+
+  THE EXISTENCE PROOF: seed 4242's grid head runs gcollect1 at
+  +8.14 and gcollect2 at +10.58 -- AT OR ABOVE the native
+  graph-fit ceiling and the BFS goal baseline, with zero graph
+  experience. Value knowledge learned on a 2D grid, expressed in
+  event x signature coordinates, drives near-optimal behavior on a
+  nominal digraph. The abstraction is genuinely amodal.
+  THE RELIABILITY GAP: other seeds land near random (typed_zero
+  means +3.5 / +0.6 / +4.9 with sd ~3): P1 4/6, 1/6, 4/6; P2
+  refuted. typed_graphfit reaches the ceiling everywhere (the head
+  CLASS is sufficient on graph); the shuffled control is itself
+  bimodal (a lucky permutation transfers -- consistent with the
+  transferable signal living in a few coordinates).
+
+Localization: the failure is FIT IDENTIFIABILITY, not
+representation -- the grid fit spreads reward mass across
+correlated features (action one-hots, boundary, entangled events),
+and whether the graph-relevant coordinates (contact x plane-psi)
+get the right sign/scale varies by seed. Pre-registered next: a
+SPARSIFIED event head (drop action/boundary terms, or L1) fit on
+the same grid worlds; prediction -- typed_zero variance collapses
+and P1 passes 6/6. Scope: Localized (grid -> graph pair).
+
+## F266 — THE SPARSE MASK IS NOT THE IDENTIFIABILITY LEVER; AMODAL
+## TRANSFER STANDS AS AN EXISTENCE PROOF WITH AN OPEN RELIABILITY
+## PROBLEM (2026-08-14, cross_typed.py sparse arm, 6 seeds. Scope:
+## grid -> graph. CYCLE-TERMINAL)
+
+Masking the substrate-entangled coordinates (action one-hots,
+boundary events) and refitting: variance halves (sd 2.9 -> 0.9) but
+the MEAN DROPS (+3.51 -> +2.07 on gcollect1; P1 3/6, 1/6, 3/6).
+The masked columns carried part of the transferable signal; the
+reliability problem is deeper than column selection -- most likely
+it needs event-value supervision that separates entity classes
+explicitly (the F235 class-target route) rather than pooled reward
+regression. Pre-registered for the next cycle, not attempted here.
+
+Cycle synthesis (F264-F266): the raced hybrid set a new best on the
+hardest certified witness (-0.568) and joined the guarded union;
+F265 delivered the cycle's landmark -- THE FIRST ZERO-SHOT
+CROSS-SUBSTRATE VALUE TRANSFER IN THE PROJECT'S HISTORY (a
+grid-fit typed head running graph worlds at the native ceiling,
++8.14/+10.58, zero graph data), establishing that the event x
+signature coordinates are genuinely amodal; F266 localized what
+remains between existence and reliability. Standing frontier:
+guarded-union baseline at breadth; amodal-transfer reliability
+(class-target supervision) as the top ungated research problem;
+sealed sets awaiting the word.
+
+## F267 — RELIABLE AMODAL VALUE TRANSFER: CLASS-TARGET BINDING
+## SOLVES THE IDENTIFIABILITY PROBLEM -- FIVE COEFFICIENTS, NATIVE
+## CEILING, 6/6 SEEDS, ZERO TARGET-SUBSTRATE DATA (2026-08-14,
+## cross_typed.py class arm, 6 seeds. Scope: grid -> graph)
+
+The F266 re-localization, executed: instead of pooled reward
+regression over ~65 correlated features, bind value to entities
+from LABELED CONTACT EVENTS ONLY -- (psi signature, step reward)
+pairs at contacts, death-attributed within 2 -- and fit psi ->
+value by ridge: FIVE coefficients. The graph action rule scores
+each port by kernel(BFS distance) x v_hat(psi).
+
+  gcollect1          +8.104 sd 0.17  = the native ceiling (+8.109),
+                     6/6 seeds  [pooled head: +3.5 sd 2.9]
+  gcollect2          +10.273 sd 0.11 = the BFS goal baseline
+                     exactly, 6/6  [pooled: +4.9 sd 3.5]
+  gavoid1_collect1   +2.867 sd 0.49 vs random +0.07 (73% of the
+                     native gain)
+
+  P2 CONFIRMED (>= 0.7 x native gain: 6/6, 4/6, 6/6). P1's formal
+  misses (4/6, 6/6, 4/6) are entirely the shuffled-class control's
+  doing -- a 5-element permutation sometimes preserves order; the
+  robust statement is CLASS >= RANDOM + 0.5 ON 18/18 SEED-CELLS.
+  Variance collapse: sd 2.9 -> 0.17.
+
+THE MECHANISM, in final form: value knowledge becomes transferable
+when it is (a) expressed in substrate-generic coordinates (events
+in the substrate's own metric x behavior signatures) and (b)
+SUPERVISED AT THE EVENT LEVEL, so each coefficient means one thing.
+Credit-spread pooled regression learns the same policy on the home
+substrate but scrambles the coordinates that must survive the
+crossing -- identifiability, not representation, was the barrier
+(F265/F266). This completes the arc: F256 proved mechanism-typed
+transfer across WORLDS; F267 proves it across SUBSTRATES,
+reliably, with a head small enough to read by eye.
+
+Amodality status of the founding objective: task A (grid singles)
+now makes task B faster on a different substrate than ANY amount
+of same-substrate random experience shown so far -- with zero
+target reward data. Next candidates: the typed-class head as the
+transfer library's canonical value form (breadth integration), and
+the reliability fix folded back into the grid-side trio stack.
+
+## F268 — THE CLASS HEAD REFUSED AT HOME: TRANSFER WANTS FEWER
+## COORDINATES THAN CONTROL (2026-08-14, class_grid.py, 6 seeds.
+## Scope: trio + intercept2 + dense pair)
+
+The F267 five-coefficient class head, raced against the pooled
+event head inside the F264 hybrid rule on the home substrate.
+
+  P1 REFUTED 0/6 everywhere: class_h1 loses to pooled_h1 on every
+     trio world (-0.84/-0.79/-1.15 vs -0.79/-0.66/-0.92) and
+     collapses on intercept2 (-1.30 vs -0.23) -- the kernel-only
+     score discards the event conjunctions (contact x teleport =
+     catch vs miss, wrap timing) that home control runs on.
+  P2 CONFIRMED: the race rejects the class head (picks pooled
+     30/36 cells); hybrid_raced matches the F264 frontier within
+     noise everywhere. Dense worlds unharmed (P4).
+
+THE DIVISION-OF-LABOR LAW, closing the F265-F268 arc: the SAME
+value knowledge wants two projections -- a rich, event-structured
+head for control on the home substrate (pooled regression, F256/
+F264), and a minimal, event-supervised binding for transport
+across substrates (class targets, F267). Five coefficients cross
+substrates at ceiling precisely BECAUSE they carry nothing
+substrate-entangled; the same austerity is a handicap at home.
+The library's canonical value form is therefore a PAIR: pooled
+head for native racing, class binding for cross-substrate seeding
+(re-enriched by native experience after landing -- the F242
+re-grounding principle, now at the value level).
+
+Standing frontier after F226-F268, forty-three findings: guarded-
+union baseline at breadth (goal-grammar + pooled-hybrid, F263/
+F264); reliable cross-substrate value seeding (F267); trio
+residual closed within the frozen core (F262); sealed sets
+untouched, user-gated.
+
+## F269 — SEEDED ACCELERATION REFUTED FOR LACK OF HEADROOM: THE
+## GRAPH'S NATIVE LEARNING IS TRIVIALLY FAST (2026-08-14,
+## seeded_learning.py, 6 seeds. Scope: gavoid1_collect1)
+
+The acceleration form of the founding sentence, cross-substrate:
+fit the native pooled head on data collected under the class-seeded
+policy vs the random policy, at budgets 2/6/18 rollout steps.
+
+  REFUTED, and the reason is scoped precisely: cold_n2 already
+  scores +3.77 -- 95% of the native ceiling (+3.98) from TWO steps
+  of random experience. The graph reward function (co-location
+  events on 8 nodes) is so learnable that no seeding can measurably
+  accelerate it (P1 2/6; gaps +0.01..+0.07). Zero-shot seeding
+  (+2.87) remains valuable BEFORE any native data exists; past two
+  steps, native fitting wins on its own.
+
+Lesson for the acceleration program: the founding sentence's
+"faster to learn" clause needs a target whose native learning is
+SLOW -- the grid trio (where F255 certified sample-complexity
+walls) is the natural candidate, but its wall is exactly what
+transfer already addresses (F256). On substrates where learning is
+cheap, transfer's value is the zero-shot seed, not the curriculum.
+Scope: Localized (graph pair).
+
+Cycle close (F268-F269): the division-of-labor law (transfer wants
+fewer coordinates than control; the canonical value form is a
+pooled/class pair) and the headroom scoping of acceleration.
+Standing frontier unchanged: guarded-union baseline at breadth,
+reliable cross-substrate seeding, sealed sets user-gated.
+
+## F270 — THE THIRD SUBSTRATE: AMODAL VALUE KNOWLEDGE IS A PATTERN
+## (2026-08-14, ring_transfer.py, 6 seeds. Scope: grid -> ring;
+## with F267, grid -> {graph, ring})
+
+A 12-cell ring world (cyclic metric, left/right actions, food +1
+respawning, fatal hazard walker), built for this probe. The SAME
+grid-fit five-coefficient class binding, kernel calibrated to the
+ring's step metric, zero ring data:
+
+  rcollect1          class_zeroshot +2.570 = native_ceiling +2.570
+                     -- IDENTICAL PER SEED, 6/6: the transferred
+                     weights induce exactly the policy ring-native
+                     event supervision would teach this head class.
+                     (P1 6/6.)
+  ravoid1_collect1   +1.245 vs native +1.464: 85% of the native
+                     gain, sd 0.07 (P1 5/6).
+  P3 3/6 -- the 5-element permutation control's known weakness
+     (F267 caveat); class >= random + 0.5 on 12/12 seed-cells.
+  gg_ring (+3.35) exceeds the class head class on the ring: the
+  contact kernel is myopic beyond d=2 -- the head-CLASS ceiling is
+  what transfer is measured against, and it meets it exactly.
+
+WITH F267: the class binding now crosses THREE substrates -- 2D
+Manhattan grid, nominal 8-node digraph under BFS, 12-cell cyclic
+ring -- at the native-fit ceiling of its head class, zero target
+data, 23/24 seed-cells at >= 70% native gain. Value knowledge
+expressed as {event in the substrate's own metric} x {behavior
+signature} is SUBSTRATE-GENERAL: five numbers, learned once on one
+geometry, meaning the same thing on every geometry tested. The
+founding constraint ("not domain specific in any way") now has its
+strongest positive witness: the same knowledge object survives
+three unrelated geometries without modification.
+
+Scope: Cross-substrate (grid -> graph, grid -> ring).
+
+## F271 — VALUE-DIRECTED NAVIGATION: THE HAND-WRITTEN POLICY IS
+## DERIVED, PER SEED, FROM FIVE TRANSFERRED NUMBERS; RISK
+## CALIBRATION STAYS NATIVE (2026-08-14, valued_nav.py, 6 seeds.
+## Scope: ring; composition defined for any metric substrate)
+
+score(action) = sum_g v_hat(psi_g) * (d_now - d_after), negative
+terms proximity-weighted (threat is contact-local -- F233's guard
+insight, value-directed; set during design smoke, before the
+measurement run).
+
+  P1 CONFIRMED 6/6 WITH PER-SEED IDENTITY: valued_nav = gg_ring
+     EXACTLY (+3.349 = +3.349 on every seed) on rcollect1. The
+     approach-food form -- previously hand-wired in every
+     goal-grammar library -- is now DERIVED: transferred values
+     pick the target, the substrate's metric supplies the gradient,
+     zero target data, zero wiring. With F267/F270 this completes
+     the substrate-general controller: five numbers + a distance
+     function = the correct navigation policy on the third
+     substrate, exactly.
+  P2 REFUTED 0/6: on ravoid1_collect1 the cautious composition
+     (+1.794) loses to reckless hand-written approach (+2.328) --
+     on THIS world the hazard's realized danger is cheaper than
+     the detours. How much to fear a threat is a NATIVE quantity
+     (world statistics), consistent with F268's division of labor:
+     values and navigation transfer; risk calibration re-grounds.
+     Navigation still lifts the transfer stack itself: +1.794 vs
+     the kernel head's +1.245.
+  P3 holds in the known weak form (shuffled collapses or inverts,
+     4/6).
+
+The transfer story, now complete across its arc: WHAT is valuable
+transfers (F256 across worlds, F267/F270 across substrates), HOW
+to move toward it derives from the substrate's own metric (this
+finding), and HOW MUCH to risk stays native (F268/F271) -- exactly
+the modularity the founding constraint demanded.
+
+## F272 — RISK RE-GROUNDING: ONE NATIVE SCALAR BUYS SPECIALIST
+## PARITY ON TWO FOREIGN SUBSTRATES (2026-08-14, risk_reground.py,
+## 6 seeds. Scope: ring + graph)
+
+Transferred values (five grid coefficients) x the substrate's own
+distance gradient x ONE natively-raced risk scalar beta.
+
+  pure collect (both substrates): nav_raced = gg EXACTLY, per seed
+                (+3.349 = +3.349 ring; +8.115 = +8.115 graph) --
+                the hand-written approach specialist, derived.
+  ring hazard   nav_raced +2.260 vs gg +2.328 (parity 4/6 within
+                -0.15); beta lifts the default cautious form by
+                +0.466.
+  graph hazard  nav_raced +3.539 vs gg +3.708 (2/6 beat it
+                outright); beta lift +0.224.
+  P1/P2 REFUTED at their +0.10 thresholds (0/6, 2/6): the
+  transferred controller MATCHES the specialists, it does not beat
+  them. P3 CONFIRMED 6/6 both substrates. P4 CONFIRMED: raced beta
+  is small (ring 0.21, graph 0.29 mean) -- these hazards are
+  genuinely cheap to brush past, exactly as F271's refutation
+  implied. Shuffled-value controls lose by +0.89 to +4.64.
+
+  Honest cost note: the beta race spends ~4.6k native steps on a
+  selection stream. On substrates where native fitting is cheap
+  (F269: 95% of ceiling in 192 samples) that is no saving; the
+  method's value is that it needs no new machinery and applies
+  where native fitting is expensive.
+
+THE SPECIALIST-FREE RESULT: across two substrates and four worlds,
+performance previously requiring a hand-written, per-substrate
+navigation form is now obtained from {five transferred numbers} +
+{the substrate's distance function} + {one raced scalar} -- 20/24
+seed-cells at specialist parity or better, with per-seed identity
+on the pure-collect worlds.
+
+## F273 — SPECIALIST-FREE CONTROL, MEASURED: THE HAND-WRITTEN GOAL
+## LIBRARY IS REPLACEABLE EVERYWHERE FOR ~0.09 (2026-08-14,
+## specialist_free.py, 6 seeds. Scope: grid trio + intercept2 +
+## dense pair; with F272, three substrates)
+
+Value-directed navigation on the HOME substrate: transferred class
+values x the grid's Manhattan gradient over the plant-rolled avatar
+move, (beta, lambda_pooled) raced -- no hand-written goal forms
+anywhere in the arm.
+
+  world                       gg        nav_raced   deficit
+  collect1_i1_p1_r1          -0.753     -0.789      -0.036
+  delayed3_i1_p1_r2          -0.625     -0.672      -0.047
+  delayed3_i2_p1_r1          -0.667     -0.828      -0.161
+  intercept2                 -0.591     -0.698      -0.107
+  avoid1_collect1            +1.557     +1.466      -0.091
+  avoid2_collect1_delayed5   +1.378     +1.294      -0.083
+
+  P1 CONFIRMED 5/6 worlds (nav >= gg - 0.15; the miss is -0.161).
+  P2 CONFIRMED 2/3 trio worlds vs the F264/F268 hybrid frontier.
+  P3 3/6 -- the shuffled control separates cleanly on the dense
+     worlds and intercept2 (+0.48..+0.91) but only marginally on
+     the trio, where every arm sits compressed near random.
+  P4 raced beta is mostly 0-0.25 on the grid too: across three
+     substrates the sampled mechanisms reward boldness.
+
+THE RESULT, stated at full scope. Across THREE substrates (2D grid,
+8-node digraph, 12-cell ring) and TEN worlds, no hand-written
+navigation form is necessary. The deployable policy is assembled
+from: five transferred value coefficients (learned once, on grid
+singles, in event x signature coordinates), the target substrate's
+own distance function, and one or two scalars raced on native
+experience. It reproduces hand-written specialists EXACTLY on
+foreign pure-collect worlds (F272), holds parity on foreign hazard
+worlds (F272), and costs a measured ~0.09 mean on the home
+substrate's six worlds (this finding). Under the F243 guard the
+union is never worse than either.
+
+What this closes: every deployable result in this project before
+F267 depended on goal forms a person chose. That dependency is now
+measured and removable. The founding constraint -- "not domain
+specific in any way" -- has a controller to match: the only
+persistent, transferable object is five numbers over relational
+signatures; geometry comes from the substrate, risk from native
+experience, and nothing is burned into weights.
+
+Standing frontier: sealed sets (untouched, user-gated) remain the
+highest-information evaluation available; breadth deployment of the
+specialist-free controller across the generated space; and the
+grid trio residual, closed within the frozen core (F262).

@@ -494,3 +494,158 @@ def test_faller_spread_keeps_the_policy_and_only_shortens_the_distance() -> None
     assert max(gaps) > 1
     with pytest.raises(ValueError, match="faller spread"):
         FamilyConfig(intercept=1, faller_spread=-1).validate()
+
+
+def test_pursuer_steps_toward_avatar_and_kills_on_contact() -> None:
+    """F227: pursuers close the larger-gap axis first and are fatal."""
+
+    verifier = FamilyVerifier(FamilyConfig(pursue=1), batch_size=1, seed=51)
+    verifier.reset(seed=51)
+    verifier._pursuers[0] = [(0, 0)]
+    verifier._avatar[0] = (4, 1)
+    verifier._walls[0] = set()
+    verifier.step(torch.tensor([2]))  # avatar moves down to (5, 1)
+    assert verifier._pursuers[0][0] == (1, 0)  # row gap larger: row first
+    verifier._pursuers[0] = [(5, 3)]
+    verifier._avatar[0] = (5, 5)
+    outcome = verifier.step(torch.tensor([3]))  # avatar steps to (5, 4)
+    assert float(outcome.reward[0]) <= -1.0  # pursuer moved onto it
+    assert not bool(outcome.alive[0])
+
+
+def test_pursuer_renders_identically_to_a_hazard() -> None:
+    """The roles world premise: appearance cannot separate the roles."""
+
+    verifier = FamilyVerifier(
+        FamilyConfig(pursue=1, avoid=1), batch_size=1, seed=53
+    )
+    verifier.reset(seed=53)
+    grid = verifier.observation()
+    hazard = verifier._hazards[0][0]
+    pursuer = verifier._pursuers[0][0]
+    assert float(grid[0, 2, hazard[0], hazard[1]]) == 1.0
+    assert float(grid[0, 2, pursuer[0], pursuer[1]]) == 1.0
+    assert float(grid[0, 2].sum()) == 2.0
+
+
+def test_delayed_switch_pays_exactly_k_steps_later() -> None:
+    """F230 DEV mechanism: cause and payment separated by k steps."""
+
+    verifier = FamilyVerifier(FamilyConfig(delayed=3), batch_size=1, seed=61)
+    verifier.reset(seed=61)
+    switch = verifier._switches[0]
+    verifier._avatar[0] = (switch[0], switch[1] - 1) if switch[1] > 0 else (
+        switch[0], switch[1] + 1)
+    action = 1 if verifier._avatar[0][1] < switch[1] else 3
+    rewards = [float(verifier.step(torch.tensor([action])).reward[0])]
+    for _ in range(4):
+        rewards.append(float(verifier.step(torch.tensor([0])).reward[0]))
+    assert rewards[0] == 0.0  # touching the switch pays nothing now
+    assert rewards[3] == 1.0  # exactly k=3 steps later
+    assert sum(rewards) == 1.0
+    assert verifier._switches[0] != switch  # switch respawned
+
+
+def test_resource_gates_food_reward() -> None:
+    """F230 DEV mechanism: food pays only while holding a resource."""
+
+    verifier = FamilyVerifier(
+        FamilyConfig(collect=1, resource=1), batch_size=1, seed=63
+    )
+    verifier.reset(seed=63)
+    food = verifier._food[0][0]
+    verifier._avatar[0] = (food[0], food[1] - 1) if food[1] > 0 else (
+        food[0], food[1] + 1)
+    action = 1 if verifier._avatar[0][1] < food[1] else 3
+    reward = verifier.step(torch.tensor([action])).reward
+    assert float(reward[0]) == 0.0  # unfueled meal pays nothing
+    verifier._holding[0] = 1
+    food = verifier._food[0][0]
+    verifier._avatar[0] = (food[0], food[1] - 1) if food[1] > 0 else (
+        food[0], food[1] + 1)
+    action = 1 if verifier._avatar[0][1] < food[1] else 3
+    reward = verifier.step(torch.tensor([action])).reward
+    assert float(reward[0]) == 1.0
+    assert verifier._holding[0] == 0  # resource consumed
+
+
+def test_deceptive_bait_pays_less_and_sits_beside_hazards() -> None:
+    """F230 DEV mechanism: bait renders like food, pays 0.2, respawns
+    adjacent to a hazard."""
+
+    verifier = FamilyVerifier(
+        FamilyConfig(avoid=1, deceptive=1), batch_size=1, seed=65
+    )
+    verifier.reset(seed=65)
+    bait = verifier._bait[0][0]
+    hazard = verifier._hazards[0][0]
+    assert max(abs(bait[0] - hazard[0]), abs(bait[1] - hazard[1])) <= 1
+    grid = verifier.observation()
+    assert float(grid[0, 1, bait[0], bait[1]]) == 1.0  # positive plane
+    verifier._hazards[0] = [(7, 7, 1)]  # park the hazard away from the walk
+    verifier._avatar[0] = (bait[0], bait[1] - 1) if bait[1] > 0 else (
+        bait[0], bait[1] + 1)
+    action = 1 if verifier._avatar[0][1] < bait[1] else 3
+    reward = verifier.step(torch.tensor([action])).reward
+    assert float(reward[0]) == pytest.approx(0.2)
+
+
+def test_blink_hides_hazards_on_odd_steps() -> None:
+    """F230 SEALED mechanism: partial observability of hazards."""
+
+    verifier = FamilyVerifier(
+        FamilyConfig(avoid=2, blink=1), batch_size=1, seed=67
+    )
+    verifier.reset(seed=67)
+    assert float(verifier.observation()[0, 2].sum()) >= 2.0  # step 0: visible
+    verifier.step(torch.tensor([0]))
+    hidden = verifier.observation()  # step index now 1: hazards hidden
+    visible_cells = {(int(r), int(c)) for r, c in
+                     (hidden[0, 2] > 0).nonzero()}
+    hazard_cells = {(h[0], h[1]) for h in verifier._hazards[0]}
+    assert not (visible_cells & hazard_cells)
+
+
+def test_oneway_food_never_respawns() -> None:
+    """F230 SEALED mechanism: irreversible consumption."""
+
+    verifier = FamilyVerifier(FamilyConfig(oneway=2), batch_size=1, seed=71)
+    verifier.reset(seed=71)
+    item = verifier._oneway_food[0][0]
+    verifier._avatar[0] = (item[0], item[1] - 1) if item[1] > 0 else (
+        item[0], item[1] + 1)
+    action = 1 if verifier._avatar[0][1] < item[1] else 3
+    reward = verifier.step(torch.tensor([action])).reward
+    assert float(reward[0]) == 1.0
+    assert len(verifier._oneway_food[0]) == 1  # gone for good
+
+
+def test_lever_freezes_and_unfreezes_hazard_motion() -> None:
+    """F230 SEALED mechanism: causal intervention on the dynamics."""
+
+    verifier = FamilyVerifier(
+        FamilyConfig(avoid=1, lever=1), batch_size=1, seed=73
+    )
+    verifier.reset(seed=73)
+    lever = verifier._lever[0]
+    verifier._avatar[0] = (lever[0], lever[1] - 1) if lever[1] > 0 else (
+        lever[0], lever[1] + 1)
+    action = 1 if verifier._avatar[0][1] < lever[1] else 3
+    verifier.step(torch.tensor([action]))
+    assert verifier._frozen[0]
+    frozen_at = list(verifier._hazards[0])
+    verifier._avatar[0] = (0, 0)
+    verifier.step(torch.tensor([2]))
+    assert verifier._hazards[0] == frozen_at  # no motion while frozen
+    verifier._frozen[0] = False
+    verifier.step(torch.tensor([2]))
+    assert verifier._hazards[0] != frozen_at  # motion resumes
+
+
+def test_mechanisms_validate_their_dependencies() -> None:
+    with pytest.raises(ValueError, match="hazards"):
+        FamilyConfig(deceptive=1).validate()
+    with pytest.raises(ValueError, match="avoid"):
+        FamilyConfig(blink=1).validate()
+    with pytest.raises(ValueError, match="avoid"):
+        FamilyConfig(lever=1).validate()

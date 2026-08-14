@@ -1,0 +1,184 @@
+{
+  "configs": [
+    {
+      "collect": 1,
+      "avoid": 0,
+      "pursue": 1,
+      "intercept": 1,
+      "delayed": 0,
+      "resource": 1,
+      "deceptive": 0
+    },
+    {
+      "collect": 0,
+      "avoid": 2,
+      "pursue": 0,
+      "intercept": 0,
+      "delayed": 3,
+      "resource": 0,
+      "deceptive": 0
+    },
+    {
+      "collect": 0,
+      "avoid": 0,
+      "pursue": 1,
+      "intercept": 2,
+      "delayed": 3,
+      "resource": 1,
+      "deceptive": 0
+    },
+    {
+      "collect": 0,
+      "avoid": 0,
+      "pursue": 0,
+      "intercept": 2,
+      "delayed": 0,
+      "resource": 0,
+      "deceptive": 0
+    },
+    {
+      "collect": 0,
+      "avoid": 1,
+      "pursue": 0,
+      "intercept": 0,
+      "delayed": 2,
+      "resource": 1,
+      "deceptive": 1
+    },
+    {
+      "collect": 0,
+      "avoid": 1,
+      "pursue": 0,
+      "intercept": 0,
+      "delayed": 2,
+      "resource": 1,
+      "deceptive": 2
+    },
+    {
+      "collect": 2,
+      "avoid": 0,
+      "pursue": 1,
+      "intercept": 2,
+      "delayed": 4,
+      "resource": 0,
+      "deceptive": 0
+    },
+    {
+      "collect": 1,
+      "avoid": 3,
+      "pursue": 0,
+      "intercept": 2,
+      "delayed": 0,
+      "resource": 0,
+      "deceptive": 2
+    },
+    {
+      "collect": 2,
+      "avoid": 0,
+      "pursue": 0,
+      "intercept": 0,
+      "delayed": 0,
+      "resource": 1,
+      "deceptive": 0
+    },
+    {
+      "collect": 2,
+      "avoid": 3,
+      "pursue": 0,
+      "intercept": 2,
+      "delayed": 4,
+      "resource": 0,
+      "deceptive": 0
+    },
+    {
+      "collect": 2,
+      "avoid": 2,
+      "pursue": 0,
+      "intercept": 0,
+      "delayed": 4,
+      "resource": 0,
+      "deceptive": 1
+    },
+    {
+      "collect": 0,
+      "avoid": 2,
+      "pursue": 0,
+      "intercept": 0,
+      "delayed": 2,
+      "resource": 1,
+      "deceptive": 2
+    },
+    {
+      "collect": 1,
+      "avoid": 1,
+      "pursue": 0,
+      "intercept": 0,
+      "delayed": 0,
+      "resource": 0,
+      "deceptive": 0
+    },
+    {
+      "collect": 0,
+      "avoid": 0,
+      "pursue": 1,
+      "intercept": 1,
+      "delayed": 3,
+      "resource": 2,
+      "deceptive": 0
+    },
+    {
+      "collect": 3,
+      "avoid": 3,
+      "pursue": 0,
+      "intercept": 1,
+      "delayed": 2,
+      "resource": 0,
+      "deceptive": 0
+    },
+    {
+      "collect": 1,
+      "avoid": 2,
+      "pursue": 0,
+      "intercept": 0,
+      "delayed": 5,
+      "resource": 0,
+      "deceptive": 0
+    },
+    {
+      "collect": 0,
+      "avoid": 0,
+      "pursue": 1,
+      "intercept": 0,
+      "delayed": 5,
+      "resource": 0,
+      "deceptive": 0
+    },
+    {
+      "collect": 3,
+      "avoid": 3,
+      "pursue": 0,
+      "intercept": 0,
+      "delayed": 5,
+      "resource": 1,
+      "deceptive": 0
+    },
+    {
+      "collect": 3,
+      "avoid": 1,
+      "pursue": 0,
+      "intercept": 0,
+      "delayed": 4,
+      "resource": 0,
+      "deceptive": 1
+    },
+    {
+      "collect": 1,
+      "avoid": 1,
+      "pursue": 0,
+      "intercept": 0,
+      "delayed": 0,
+      "resource": 1,
+      "deceptive": 1
+    }
+  ]
+}
