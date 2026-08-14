@@ -311,6 +311,20 @@ Across three replicates, machine p50 was 0.85 ms / 0.83 ms and p99 was
 WAIT-safe causal pacing; it does not qualify autonomous skill selection or
 learning the skill itself.
 
+The next bounded live rung now routes between two such reloaded artifacts with
+`ExternalExecutiveRouterLiveMachine`. A replaceable context encoder consumes the
+first visible learned cue event, and the memory-side route ledger records one
+mean verifier outcome per completed lifetime by default. Sixteen alternating
+1-back/2-back training lifetimes (136 unique verifier bits) learned cue-specific
+slot preferences with zero controller, decoder, executive-program, or replay
+updates; three held-out lifetimes per route then scored 1.0000 on every 9-bit
+1-back and 8-bit 2-back lifetime.
+The evidence is intentionally bounded: the cue is public and ordinary, the
+skills are pre-verified bank artifacts, and the route adapter is not yet an
+autonomous context encoder. Per-action outcome transport remains available, but
+it is not used as the default route mastery signal because partial lucky
+streaks can otherwise promote the wrong slot.
+
 The physical Position 1-Back rung qualifies the narrower live-I/O claim: public
 display capture, spatial onset segmentation, ordinary keypress output, exact
 receipt matching, checkpoint/resume, and immediate evidence-bound updates work

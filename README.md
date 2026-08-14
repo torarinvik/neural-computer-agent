@@ -159,6 +159,21 @@ controller and executive-program updates at zero. This proves durable
 bank-backed live execution and WAIT-safe input pacing; autonomous skill
 selection and skill learning remain the next bottlenecks.
 
+The next bounded rung closes skill selection without unfreezing the controller:
+`ExternalExecutiveRouterLiveMachine` selects between two reloaded temporal
+equality artifacts from a visible mode cue encoded by the ordinary frozen event
+frontend. Across 16 alternating training lifetimes (136 unique verifier bits),
+the route ledger learns cue-specific preferred slots from one aggregate outcome
+per lifetime, then reaches `1.0000` on held-out 1-back and 2-back lifetimes
+(51 additional eligible bits across three lifetimes per route). Controller,
+decoder, and executive-program updates remain zero; route updates are 22 and
+replay is zero. This qualifies a
+bounded opaque multi-skill live route, not open-ended route discovery: the cue
+must be visible, the banked skills must already be verified, and the route
+encoder is still a replaceable learned-event adapter. The lifetime aggregate is
+important—per-action route updates can promote a wrong skill from a lucky
+partial streak.
+
 Curated evidence is under `session_records/`. Historical experiments, obsolete
 checkpoints, and superseded session dumps were removed from the working tree;
 they remain recoverable from Git history.

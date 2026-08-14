@@ -1,0 +1,29 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment_id": "brainworkshop-live-executive-route-promoted-2026-08-14",
+  "status": "promoted_bounded_live_opaque_route",
+  "source": "in_repository_run",
+  "unique_verifier_bits": {
+    "training": 136,
+    "held_out_evaluation": 51
+  },
+  "unique_logical_lifetimes": 22,
+  "optimizer_updates": 0,
+  "replayed_examples": 0,
+  "stable_bits_to_threshold": {
+    "held_out_1_back": 9,
+    "held_out_2_back": 8
+  },
+  "retention_on_mastered_primitives": "both admitted executive artifacts remain immutable and score 1.0000 on held-out lifetimes",
+  "transfer_ratio_against_fresh_learner": null,
+  "route_updates": 22,
+  "controls": {
+    "controller_frozen": true,
+    "decoder_frozen": true,
+    "executive_programs_frozen": true,
+    "zero_replay": true,
+    "cue_specific_preferred_slots": true,
+    "lifetime_aggregate_route_feedback": true
+  },
+  "claim_boundary": "bounded opaque multi-skill live routing from a visible learned cue; not open-ended route discovery, autonomous program induction, or physical desktop deployment"
+}

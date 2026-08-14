@@ -39,6 +39,22 @@ PYTHONPATH=src .venv/bin/python \
   --report-out /tmp/live-nback-pilot.json
 ```
 
+`live_executive_route.py` is the next frozen-controller rung. It admits two
+verified temporal-equality skills, exposes a public mode cue through the normal
+learned event encoder, and lets a memory-side router learn which immutable slot
+to run. The default 16-lifetime run uses 136 unique training verifier bits and
+then scores 1.0000 on three held-out 1-back and three held-out 2-back
+lifetimes. The controller,
+decoder, and executive programs remain frozen; route evidence is the only
+mutable state. Route mastery uses one aggregate outcome per lifetime by
+default, while action outcomes remain available to the ordinary runtime.
+
+```bash
+PYTHONPATH=src .venv/bin/python \
+  -m experiments.brainworkshop_canonical.live_executive_route \
+  --report-out /tmp/live-executive-route.json
+```
+
 ## Rendered vision and audio rung
 
 `rendered_environment.py` is a clean-room device surface. Its learner-visible
@@ -161,9 +177,11 @@ the two-cell learner reached lifetime scores `0.50, 0.67, 1.00, 1.00, 1.00,
 then used `physical_bank_transfer_pilot.py` to withhold actions for three live
 events, select the bank artifact, and execute it with frozen weights. Public
 feedback was 13/15, with 15 route observations, zero controller/program
-updates, and zero replay. Multi-program rule selection remains a separate test
-because the router must see a learned event derived from the public mode cue,
-never an `n_back` or task ID.
+updates, and zero replay. The production live router now provides a bounded
+multi-program rule-selection test under the same constraint: it sees a learned
+event derived from the public mode cue, never an `n_back` or task ID. Open-ended
+cue discovery, autonomous program admission, and larger physical GUI curricula
+remain separate tests.
 
 Run the read-only bank path with:
 

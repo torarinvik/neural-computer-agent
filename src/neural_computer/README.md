@@ -40,6 +40,10 @@ import experiment code.
   sequential handoff, verifier-gates composed children with staged fresh-bit
   accounting, caches immutable execution metadata, and recomputes
   parent-to-child provenance during reload.
+- `executive_route.py`: opaque context-to-slot selection over admitted
+  executive artifacts. Route evidence is persisted with the `.bank`, records
+  exact behavior propensities, and can use lifetime-aggregate outcomes so a
+  lucky action streak cannot promote the wrong skill.
 - `episodic.py`: working-memory and episodic external computation.
 - `world_model.py`, `online_transition.py`, `factored_transition.py`: factual
   transition learning and model-based execution.
@@ -89,3 +93,11 @@ decoder (the decoder is frozen by default), and it routes delayed outcomes
 through the ordinary receipt/observer boundary. A synchronous device may retain
 an input event while the program is in `WAIT`; the input is not discarded or
 silently replaced with a fabricated zero event.
+
+`ExternalExecutiveRouterLiveMachine` extends that bridge to a bank of frozen
+skills. A replaceable context encoder maps learned event tensors to an opaque
+route key at episode start; no task ID or semantic rule field crosses the
+boundary. Action-level outcomes remain ordinary resolved live events, while the
+default route ledger commits one mean verifier outcome per lifetime through
+`finish_episode()`. `per_outcome` feedback is available when an environment's
+verifier contract explicitly calls for it.

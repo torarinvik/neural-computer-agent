@@ -13,13 +13,17 @@ from __future__ import annotations
 
 import math
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from time import perf_counter
 from typing import Protocol
 
 import torch
 
 from .executive import ExternalAmodalExecutive, TrustedExternalExecutiveState
+from .executive_route import (
+    ExternalExecutiveSkillRouter,
+    ExternalExecutiveSkillSelection,
+)
 from .interface import AmodalEventCollection, IntentEvent
 
 LIVE_ACTION_RECEIPT_SCHEMA = "neural-computer.live-action-receipt.v1"
@@ -28,6 +32,9 @@ LIVE_OUTCOME_EVENT_SCHEMA = "neural-computer.live-outcome-event.v1"
 LIVE_TICK_SCHEMA = "neural-computer.live-tick.v1"
 QUEUED_OUTCOME_INPUT_SCHEMA = "neural-computer.queued-outcome-input.v1"
 LIVE_EXECUTIVE_MACHINE_SCHEMA = "neural-computer.live-executive-machine.v1"
+LIVE_EXECUTIVE_ROUTER_MACHINE_SCHEMA = (
+    "neural-computer.live-executive-router-machine.v1"
+)
 
 
 def _validate_time(value: float, name: str) -> None:
@@ -726,6 +733,233 @@ class ExternalExecutiveLiveMachine:
                 credit_state=credit,
             ).validate(batch_size=self.batch_size),
         )
+
+
+class LiveContextEncoder(Protocol):
+    """Replaceable learned-event to opaque route-context adapter."""
+
+    context_width: int
+
+    def encode(self, events: AmodalEventCollection) -> torch.Tensor: ...
+
+
+@dataclass(frozen=True)
+class ExternalExecutiveRouteCredit:
+    """Receipt-local route choice used for delayed memory-side feedback."""
+
+    selection: ExternalExecutiveSkillSelection
+    executive_credit: ExternalExecutiveLiveCredit
+    schema: str = LIVE_EXECUTIVE_ROUTER_MACHINE_SCHEMA
+
+    def validate(self) -> ExternalExecutiveRouteCredit:
+        if self.schema != LIVE_EXECUTIVE_ROUTER_MACHINE_SCHEMA:
+            raise ValueError("unsupported live executive route credit schema")
+        context = self.selection.context
+        if not isinstance(context, torch.Tensor) or context.ndim != 1:
+            raise TypeError("live executive route credit context is invalid")
+        self.selection.validate(context_width=int(context.shape[0]))
+        self.executive_credit.validate()
+        if self.executive_credit.program_digest != self.selection.artifact.digest():
+            raise ValueError("live executive route credit artifact digest is incompatible")
+        return self
+
+
+class ExternalExecutiveRouterLiveMachine:
+    """Select one verified executive skill per live episode and learn its route."""
+
+    schema = LIVE_EXECUTIVE_ROUTER_MACHINE_SCHEMA
+
+    def __init__(
+        self,
+        router: ExternalExecutiveSkillRouter,
+        decoder: LiveIntentionDecoder,
+        context_encoder: LiveContextEncoder,
+        *,
+        batch_size: int,
+        output_key: str,
+        device: torch.device | str = "cpu",
+        dtype: torch.dtype = torch.float32,
+        sample: bool = True,
+        exploration: float = 0.0,
+        sample_route: bool = False,
+        route_feedback_mode: str = "episode_mean",
+        model_version: int = 0,
+        max_instructions_per_tick: int = 128,
+    ) -> None:
+        if not isinstance(router, ExternalExecutiveSkillRouter):
+            raise TypeError("live executive router machine needs a skill router")
+        if not callable(getattr(context_encoder, "encode", None)):
+            raise TypeError("live executive router needs a context encoder")
+        context_width = getattr(context_encoder, "context_width", None)
+        if context_width != router.context_width:
+            raise ValueError("live executive route context width is incompatible")
+        if batch_size != 1:
+            raise ValueError("live executive route machine currently requires batch one")
+        if not 0.0 <= exploration <= 1.0:
+            raise ValueError("live executive route exploration must lie in [0, 1]")
+        if route_feedback_mode not in {"episode_mean", "per_outcome"}:
+            raise ValueError(
+                "live executive route feedback mode must be episode_mean or per_outcome"
+            )
+        self.router = router
+        self.decoder = decoder
+        self.context_encoder = context_encoder
+        self.batch_size = int(batch_size)
+        self.output_key = output_key
+        self.device = torch.device(device)
+        self.dtype = dtype
+        self.sample = bool(sample)
+        self.exploration = float(exploration)
+        self.sample_route = bool(sample_route)
+        self.route_feedback_mode = route_feedback_mode
+        self.model_version = int(model_version)
+        self.max_instructions_per_tick = int(max_instructions_per_tick)
+        self._machines: dict[int, ExternalExecutiveLiveMachine] = {}
+        self._active_selection: ExternalExecutiveSkillSelection | None = None
+        self._active_machine: ExternalExecutiveLiveMachine | None = None
+        self._episode_selection: ExternalExecutiveSkillSelection | None = None
+        self._episode_rewards: list[float] = []
+        self.route_updates = 0
+
+    @property
+    def selected_slot(self) -> int | None:
+        return None if self._active_selection is None else self._active_selection.slot
+
+    @property
+    def executive_ticks(self) -> int:
+        return sum(machine.executive_ticks for machine in self._machines.values())
+
+    def _context(self, events: AmodalEventCollection) -> torch.Tensor:
+        encoded = self.context_encoder.encode(events)
+        if not isinstance(encoded, torch.Tensor):
+            raise TypeError("live executive context encoder must return a tensor")
+        if encoded.ndim == 2:
+            if encoded.shape[0] != self.batch_size:
+                raise ValueError("live executive context batch is incompatible")
+            encoded = encoded[0]
+        if encoded.ndim != 1 or encoded.shape[0] != self.router.context_width:
+            raise ValueError("live executive context encoder returned the wrong shape")
+        return encoded
+
+    def _machine_for(
+        self, selection: ExternalExecutiveSkillSelection
+    ) -> ExternalExecutiveLiveMachine:
+        machine = self._machines.get(selection.slot)
+        if machine is None:
+            machine = ExternalExecutiveLiveMachine.from_artifact(
+                selection.artifact,
+                self.decoder,
+                batch_size=self.batch_size,
+                output_key=self.output_key,
+                device=self.device,
+                dtype=self.dtype,
+                sample=self.sample,
+                model_version=self.model_version,
+                max_instructions_per_tick=self.max_instructions_per_tick,
+                skill_digest=selection.artifact.digest(),
+            )
+            self._machines[selection.slot] = machine
+        return machine
+
+    def _observe_outcomes(
+        self, outcomes: Sequence[ResolvedLiveOutcome]
+    ) -> None:
+        for resolved in outcomes:
+            credit = resolved.proposal.credit_state
+            if not isinstance(credit, ExternalExecutiveRouteCredit):
+                continue
+            if resolved.event.present.shape != (self.batch_size,):
+                raise ValueError("live executive route outcomes have the wrong batch")
+            if not bool(resolved.event.present.item()):
+                continue
+            reward = float(resolved.event.reward.reshape(()).item())
+            if self.route_feedback_mode == "per_outcome":
+                self.router.observe(credit.selection, reward)
+                self.route_updates += 1
+            else:
+                if self._episode_selection is None:
+                    self._episode_selection = credit.selection
+                elif (
+                    self._episode_selection.slot != credit.selection.slot
+                    or self._episode_selection.artifact.digest()
+                    != credit.selection.artifact.digest()
+                ):
+                    raise RuntimeError("live executive route changed inside an episode")
+                self._episode_rewards.append(reward)
+
+    def finish_episode(self) -> float | None:
+        """Commit one aggregate selector outcome at an episode boundary.
+
+        Action receipts and verifier outcomes remain individual live events.
+        Only the memory-side route ledger uses this aggregate by default, which
+        prevents a lucky streak inside a failed lifetime from promoting a skill.
+        """
+
+        if self.route_feedback_mode == "per_outcome":
+            return None
+        if self._episode_selection is None or not self._episode_rewards:
+            self._episode_selection = None
+            self._episode_rewards.clear()
+            return None
+        outcome = sum(self._episode_rewards) / len(self._episode_rewards)
+        self.router.observe(self._episode_selection, outcome)
+        self.route_updates += 1
+        self._episode_selection = None
+        self._episode_rewards.clear()
+        return outcome
+
+    def reset(self) -> None:
+        """Start a new episode and clear all per-skill executive states."""
+
+        self.finish_episode()
+        self._active_selection = None
+        self._active_machine = None
+        for machine in self._machines.values():
+            machine.reset(device=self.device, dtype=self.dtype)
+
+    def tick(
+        self,
+        events: AmodalEventCollection,
+        outcomes: Sequence[ResolvedLiveOutcome],
+        *,
+        now: float,
+        elapsed: float,
+    ) -> tuple[LiveActionProposal, ...]:
+        self._observe_outcomes(outcomes)
+        if self._active_machine is None:
+            if events.payload.shape[1] == 0:
+                return ()
+            selection = self.router.select(
+                self._context(events),
+                exploration=self.exploration,
+                sample=self.sample_route,
+            )
+            self._active_selection = selection
+            self._active_machine = self._machine_for(selection)
+        assert self._active_selection is not None
+        assert self._active_machine is not None
+        proposals = self._active_machine.tick(
+            events,
+            (),
+            now=now,
+            elapsed=elapsed,
+        )
+        if proposals:
+            credit = proposals[0].credit_state
+            if not isinstance(credit, ExternalExecutiveLiveCredit):
+                raise TypeError("live executive proposal lost its executive credit")
+            route_credit = ExternalExecutiveRouteCredit(
+                selection=self._active_selection,
+                executive_credit=credit,
+            ).validate()
+            return tuple(
+                replace(proposal, credit_state=route_credit)
+                for proposal in proposals
+            )
+        if self._active_machine.executive_state.state.status == "halted":
+            self._active_selection = None
+            self._active_machine = None
+        return ()
 
 
 class CognitiveTickRuntime:
