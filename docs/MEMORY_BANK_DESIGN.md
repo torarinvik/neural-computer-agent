@@ -12690,3 +12690,41 @@ priced); the DEV benchmark (all witnesses fixed); the compounds
 ~150x at mechanism level here, now mechanical). Open, by choice:
 the SEALED one-shot (user's explicit word), the second substrate,
 and combinator invention.
+
+## F241 — THE STACK CROSSES SUBSTRATES: FIRST AMODALITY EVIDENCE
+## BEYOND THE GRID (2026-08-14, graph_world.py + substrate_transfer.py,
+## 6 seeds. Scope: cross-substrate, first non-grid world)
+
+Every prior finding lived on an 8x8 grid. This probe moved the FROZEN
+stack -- plant architecture and training, ISA, per-slot search, banks,
+pair goal grammar, robust selection, all byte-identical -- to a
+substrate with no geometry: a random 4-out digraph world (8 nodes,
+agent walks edges, food +1 with respawn, a hazard random-walker that
+kills on co-location). Only the perception vocabulary changed, to
+graph-generic reductions: BFS distance slots, ORIGIN (constant-zero)
+slots so "reach" is expressible in the unchanged pair grammar, and
+SHORTEST-PATH PORT INDICATORS.
+
+The port indicators are the design insight: graph actions are port
+indices whose meaning is per-row, so slot dynamics are conditional on
+relational context. The indicators place that conditionality exactly
+where the ISA's conditional ops can express it -- per_slot_search
+duly discovers programs of the CDEC(distance, j=indicator) shape
+(slot-0 truth-executed fit 0.63-0.85).
+
+  plant gate     1.0 across seeds -- trained on random programs,
+                 world-blind by construction (prediction 1 exact).
+  gcollect1      bank +6.04 vs random +1.54 (+4.50, t=+4.38, 6/6)
+  gcollect1_avoid1  bank +2.97 vs random +0.07 (+2.90, t=+5.75, 6/6)
+                 -- collects while dodging the walker.
+  gcollect2      +0.63 (t=+1.15): positive but weak; the goal race
+                 wanders among second-food slots. Noted, unresolved.
+
+The goals discovered are graph-native instances of the SAME forms the
+grid taught: reach-the-entity against an origin slot. The founding
+claim's hardest premise -- that the plant, ISA, banks, grammar and
+selection are substrate-independent, with perception as the only
+modal component -- now has its first direct cross-substrate
+confirmation. Next rungs: mechanism transfer ACROSS substrates (does
+the grid-promoted library warm-start graph worlds?), richer graph
+mechanisms, and the sealed one-shot (still awaiting the word).
