@@ -13499,3 +13499,34 @@ capability class (control +1.40, 3.4x the privileged depth-4
 ceiling, fully learned), and F256's founding-thesis demonstration
 -- transfer from simple worlds as the ONLY working route into
 compound tasks that cannot be learned from their own experience.
+
+## F261 — THE SCALE ROUTE IS DEAD ON THE TRIO; THE NECESSITY CASE
+## FOR STOCHASTIC PLAN-TIME SIMULATION IS COMPLETE (2026-08-14,
+## scaling_curve.py, 6 seeds. Scope: GEN-DEV trio + control.
+## CYCLE-TERMINAL)
+
+The last cheap route, priced with F255's instrument at 1x/3x/9x
+privileged-Q data (6k/18k/55k samples):
+
+  collect1_i1_p1_r1     flat (+0.031 over 9x; dead branch 3/6)
+  delayed3_i1_p1_r2     flat (+0.021; dead branch 4/6)
+  delayed3_i2_p1_r1     shallow slope (+0.154/decade, live 4/6) --
+                        extrapolated price of the remaining 0.44:
+                        ~50M samples. Infeasible.
+  ctrl                  scales strongly (+0.26 -> +0.62, EXCEEDING
+                        the privileged anchor at 9x): instrument
+                        valid; the value-head law again.
+
+TERMINAL: every route into the trio residual is now measured.
+Five mechanism-level refutations (F248/F254/F258/F259/F260) fence
+the learned-roll gap; this finding closes data scale. The single
+surviving deployable route -- a STOCHASTIC LEARNED SIMULATOR
+SAMPLED AT PLAN TIME (events realized, not composed) -- is a core
+capability, and its freeze-case necessity witness is, for the first
+time under the localization discipline, COMPLETE: a certified prize
+(+0.3..+0.5 to privileged ceilings on sampled, ceiling-certified
+worlds), an exonerated state (F255), a ceiling-capable value head
+(F257), and the exhaustion of every cheaper alternative, each
+registered and refuted on the record. That build -- with its own
+registered predictions, controls, and amortization pricing -- is
+the pre-registered opening of the next cycle.
