@@ -1,0 +1,55 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment_id": "brainworkshop-live-executive-composition-promoted-2026-08-14",
+  "status": "promoted_live_bank_fed_composition",
+  "source": "in_repository_run",
+  "unique_verifier_bits": {
+    "promotion": 24,
+    "rejection_control": 24,
+    "reload_retention": 8,
+    "total": 56
+  },
+  "unique_logical_lifetimes": {
+    "promotion": 3,
+    "rejection_control": 3,
+    "reload_retention": 1,
+    "total": 7
+  },
+  "optimizer_updates": 0,
+  "replayed_examples": 0,
+  "wall_seconds": 0.04570608399808407,
+  "latency_seconds": {
+    "promotion_p50_max": 0.0004068339476361871,
+    "promotion_p99_max": 0.0006623329827561975,
+    "rejection_p50_max": 0.00039195804856717587,
+    "rejection_p99_max": 0.0004222920397296548,
+    "reload_retention_p50": 0.00038179196417331696,
+    "reload_retention_p99": 0.00041387497913092375
+  },
+  "stable_bits_to_threshold": {
+    "promotion": 24,
+    "rejection_control": null
+  },
+  "stable_observation_prefix_from_admission_receipt": {
+    "promotion": 1,
+    "rejection_control": null
+  },
+  "retention_on_mastered_primitives": {
+    "composed_child_reload_accuracy": 1.0,
+    "bank_reload_exact": true,
+    "parent_provenance_rebound": true
+  },
+  "transfer_ratio_against_fresh_learner": null,
+  "controls": {
+    "controller_frozen": true,
+    "decoder_frozen": true,
+    "executive_programs_frozen": true,
+    "zero_replay": true,
+    "wrong_parent_composition_rejected": true,
+    "rejected_bank_digest_unchanged": true,
+    "compatible_operator_state_shared_explicitly": true,
+    "final_component_only_emits": true,
+    "promoted_bank_reload_exact": true
+  },
+  "claim_boundary": "bounded live composition from deterministic parent slots with explicit event continuity; not autonomous open-ended program synthesis or physical desktop deployment"
+}

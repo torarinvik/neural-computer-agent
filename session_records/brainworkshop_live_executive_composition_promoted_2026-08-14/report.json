@@ -1,0 +1,207 @@
+{
+  "bank_digest_after_promotion": "5f0e0fd79921f99b5ec3cf440f1d117f4731f7fff112f5f7e91e6c60c0b0355f",
+  "bank_digest_after_reload": "5f0e0fd79921f99b5ec3cf440f1d117f4731f7fff112f5f7e91e6c60c0b0355f",
+  "bank_reload_exact": true,
+  "candidate_bytes_supplied_externally": false,
+  "claim_boundary": "bounded bank-fed live composition with explicit event continuity; not autonomous open-ended program synthesis or physical desktop deployment",
+  "controller_boundary": "frozen controller receives learned event tensors only",
+  "optimizer_updates_total": 0,
+  "promotion": {
+    "admission_receipt": {
+      "accepted": true,
+      "candidate_digest": "846dbf624679b765bcbec97a9761805a979d1c8cc69789e7497794bfef336392",
+      "observations": 3,
+      "reason": "verified executive artifact committed",
+      "schema": "neural-computer.external-program-admission.v1",
+      "slot": 2,
+      "stable_bits_to_threshold": 1,
+      "stable_prefix_minimum": 1.0
+    },
+    "admitted": true,
+    "bank_digest_after": "5f0e0fd79921f99b5ec3cf440f1d117f4731f7fff112f5f7e91e6c60c0b0355f",
+    "bank_digest_before": "a4e7a6a5e9b42ee2f99c8539c5158c8da7c2691fc6ff10078b3c516bcaa94964",
+    "bank_program_count": 3,
+    "candidate_digest": "846dbf624679b765bcbec97a9761805a979d1c8cc69789e7497794bfef336392",
+    "composition_provenance": [
+      {
+        "admission": {
+          "accepted": true,
+          "candidate_digest": "846dbf624679b765bcbec97a9761805a979d1c8cc69789e7497794bfef336392",
+          "observations": 3,
+          "reason": "verified executive artifact committed",
+          "schema": "neural-computer.external-program-admission.v1",
+          "slot": 2,
+          "stable_bits_to_threshold": 1,
+          "stable_prefix_minimum": 1.0
+        },
+        "child_digest": "846dbf624679b765bcbec97a9761805a979d1c8cc69789e7497794bfef336392",
+        "final_emit_only": true,
+        "parent_digests": [
+          "3e4e6fed3046373ab5179a596dc5c8ba2667c4801f5fd6f6dcafd53af6729ad1",
+          "1bbd08dbf3f34191d2b83f284c9b9da8a6df077079ffa3ad784769c07dfd7f30"
+        ],
+        "parent_slots": [
+          0,
+          1
+        ],
+        "schema": "neural-computer.executive-composition.v1",
+        "share_compatible_operators": true
+      }
+    ],
+    "controller_frozen": true,
+    "decoder_frozen": true,
+    "episodes": [
+      {
+        "eligible_accuracy": 1.0,
+        "eligible_verifier_bits": 8,
+        "episode_outcome": 1.0,
+        "latency_p50_seconds": 0.0004068339476361871,
+        "latency_p99_seconds": 0.0006623329827561975,
+        "seed": 73,
+        "ticks": 13,
+        "wall_seconds": 0.0059556670021265745
+      },
+      {
+        "eligible_accuracy": 1.0,
+        "eligible_verifier_bits": 8,
+        "episode_outcome": 1.0,
+        "latency_p50_seconds": 0.00038883392699062824,
+        "latency_p99_seconds": 0.00040491705294698477,
+        "seed": 75,
+        "ticks": 13,
+        "wall_seconds": 0.005444500013254583
+      },
+      {
+        "eligible_accuracy": 1.0,
+        "eligible_verifier_bits": 8,
+        "episode_outcome": 1.0,
+        "latency_p50_seconds": 0.0003965419018641114,
+        "latency_p99_seconds": 0.0005172090604901314,
+        "seed": 76,
+        "ticks": 13,
+        "wall_seconds": 0.005711750010959804
+      }
+    ],
+    "executive_programs_frozen": true,
+    "final_component_only_emits": true,
+    "lifetime_outcomes": [
+      1.0,
+      1.0,
+      1.0
+    ],
+    "operator_state_shared": true,
+    "optimizer_updates": 0,
+    "parent_digests": [
+      "3e4e6fed3046373ab5179a596dc5c8ba2667c4801f5fd6f6dcafd53af6729ad1",
+      "1bbd08dbf3f34191d2b83f284c9b9da8a6df077079ffa3ad784769c07dfd7f30"
+    ],
+    "parent_slots": [
+      0,
+      1
+    ],
+    "replayed_examples": 0,
+    "target_n_back_private_to_verifier": 2,
+    "unique_logical_lifetimes": 3,
+    "unique_verifier_bits": 24
+  },
+  "proposal_source": "deterministic parent-slot composition from AgentBrain.bank",
+  "rejection": {
+    "admission_receipt": {
+      "accepted": false,
+      "candidate_digest": "a97654206731f79ac51d65c445236d1acf3f29ffc6157c314ea92ed1b0e82a0c",
+      "observations": 3,
+      "reason": "candidate did not clear a stable verifier prefix",
+      "schema": "neural-computer.external-program-admission.v1",
+      "slot": null,
+      "stable_bits_to_threshold": null,
+      "stable_prefix_minimum": 0.375
+    },
+    "admitted": false,
+    "bank_digest_after": "9281c8073006338a9696522eee3c78f713a4c4263ee407700ad6bec9b2e36270",
+    "bank_digest_before": "9281c8073006338a9696522eee3c78f713a4c4263ee407700ad6bec9b2e36270",
+    "bank_program_count": 2,
+    "candidate_digest": "a97654206731f79ac51d65c445236d1acf3f29ffc6157c314ea92ed1b0e82a0c",
+    "composition_provenance": [],
+    "controller_frozen": true,
+    "decoder_frozen": true,
+    "episodes": [
+      {
+        "eligible_accuracy": 0.5,
+        "eligible_verifier_bits": 8,
+        "episode_outcome": 0.5,
+        "latency_p50_seconds": 0.0003863750025629997,
+        "latency_p99_seconds": 0.0004222920397296548,
+        "seed": 81,
+        "ticks": 12,
+        "wall_seconds": 0.0050019159680232406
+      },
+      {
+        "eligible_accuracy": 0.375,
+        "eligible_verifier_bits": 8,
+        "episode_outcome": 0.375,
+        "latency_p50_seconds": 0.00039004196878522635,
+        "latency_p99_seconds": 0.00042225001379847527,
+        "seed": 82,
+        "ticks": 12,
+        "wall_seconds": 0.0050468750996515155
+      },
+      {
+        "eligible_accuracy": 0.5,
+        "eligible_verifier_bits": 8,
+        "episode_outcome": 0.5,
+        "latency_p50_seconds": 0.00039195804856717587,
+        "latency_p99_seconds": 0.00040029094088822603,
+        "seed": 83,
+        "ticks": 12,
+        "wall_seconds": 0.004984874976798892
+      }
+    ],
+    "executive_programs_frozen": true,
+    "final_component_only_emits": true,
+    "lifetime_outcomes": [
+      0.5,
+      0.375,
+      0.5
+    ],
+    "operator_state_shared": true,
+    "optimizer_updates": 0,
+    "parent_digests": [
+      "3e4e6fed3046373ab5179a596dc5c8ba2667c4801f5fd6f6dcafd53af6729ad1",
+      "8486f8908269a10eaf691f69671c54b333592587065c787b526230016fefd115"
+    ],
+    "parent_slots": [
+      0,
+      1
+    ],
+    "replayed_examples": 0,
+    "target_n_back_private_to_verifier": 2,
+    "unique_logical_lifetimes": 3,
+    "unique_verifier_bits": 24
+  },
+  "replayed_examples_total": 0,
+  "retention_after_bank_reload": {
+    "artifact_digest": "846dbf624679b765bcbec97a9761805a979d1c8cc69789e7497794bfef336392",
+    "controller_frozen": true,
+    "decoder_frozen": true,
+    "episode": {
+      "eligible_accuracy": 1.0,
+      "eligible_verifier_bits": 8,
+      "episode_outcome": null,
+      "latency_p50_seconds": 0.00038179196417331696,
+      "latency_p99_seconds": 0.00041387497913092375,
+      "seed": 83,
+      "ticks": 13,
+      "wall_seconds": 0.004686833010055125
+    },
+    "executive_programs_frozen": true,
+    "optimizer_updates": 0,
+    "replayed_examples": 0,
+    "unique_logical_lifetimes": 1,
+    "unique_verifier_bits": 8
+  },
+  "schema": "neural-computer.brainworkshop-live-executive-composition.v1",
+  "unique_logical_lifetimes_total": 7,
+  "unique_verifier_bits_total": 56,
+  "verifier_boundary": "private n-back verifier returns only receipt-linked scalar outcomes",
+  "wall_seconds": 0.04570608399808407
+}
