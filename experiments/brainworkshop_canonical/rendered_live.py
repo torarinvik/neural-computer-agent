@@ -216,6 +216,7 @@ class SourcePreservingTemporalMachine(nn.Module):
         self.decoder = KeypressDecoder(intention_width, action_count, hidden=hidden)
         self.optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate)
         self._histories: dict[tuple[float, ...], list[torch.Tensor]] = {}
+        self._bound_source_identities: set[tuple[float, ...]] | None = None
         self.model_version = 0
         self.optimizer_updates = 0
         self.unique_outcome_bits = 0
@@ -231,6 +232,25 @@ class SourcePreservingTemporalMachine(nn.Module):
     def reset_history(self) -> None:
         self._histories.clear()
         self._scheduled_proposal = None
+
+    def bind_executable_sources(
+        self, source_keys: tuple[torch.Tensor, ...] | None
+    ) -> None:
+        """Bind this program to a subset of bus sources.
+
+        Extra simultaneous events remain on the collection. They do not
+        resize the controller or enter this program's temporal history.
+        """
+
+        if source_keys is None:
+            self._bound_source_identities = None
+            return
+        identities = {self._identity(key) for key in source_keys}
+        if not identities:
+            raise ValueError("executable source binding cannot be empty")
+        if len(identities) > self.max_sources:
+            raise ValueError("executable source binding exceeds fixed source capacity")
+        self._bound_source_identities = identities
 
     def _history_tensors(
         self,
@@ -388,6 +408,11 @@ class SourcePreservingTemporalMachine(nn.Module):
             if identity in identities:
                 raise ValueError("a live tick cannot contain a source twice")
             identities.add(identity)
+            if (
+                self._bound_source_identities is not None
+                and identity not in self._bound_source_identities
+            ):
+                continue
             current = events.payload[:, index].detach()
             history, present = self._history_tensors(source_key, current)
             credits.append(
@@ -398,8 +423,14 @@ class SourcePreservingTemporalMachine(nn.Module):
                     history_present=present.clone(),
                 )
             )
-        if len(self._histories.keys() | identities) > self.max_sources:
-            raise ValueError("live source count exceeds fixed source capacity")
+        if not credits:
+            return tuple(proposals)
+        live_identities = {self._identity(item.source_key) for item in credits}
+        if self._bound_source_identities is None:
+            if len(self._histories.keys() | live_identities) > self.max_sources:
+                raise ValueError("live source count exceeds fixed source capacity")
+        elif live_identities - self._bound_source_identities:
+            raise RuntimeError("unbound source entered temporal execution")
         # Canonicalization is opaque and makes composition independent of the
         # device's event enumeration order.
         credits.sort(key=lambda item: self._identity(item.source_key))

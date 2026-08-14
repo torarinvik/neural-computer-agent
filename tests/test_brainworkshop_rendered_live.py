@@ -378,6 +378,78 @@ def test_recursive_previous_composition_resolves_three_back_without_new_weights(
     assert machine.controller_digest() == controller_before
 
 
+def test_bound_program_ignores_extra_bus_sources() -> None:
+    torch.manual_seed(44)
+    source = SourcePreservingTemporalMachine(
+        8,
+        source_key_width=3,
+        max_history=4,
+        max_sources=1,
+        action_count=2,
+        intention_width=8,
+        hidden=8,
+        sample=False,
+    )
+    machine = RecursiveTemporalProgramMachine(
+        8,
+        source_key_width=3,
+        max_history=4,
+        max_sources=1,
+        action_count=2,
+        intention_width=8,
+        hidden=8,
+        sample=False,
+        controller_state={
+            name: value.detach().clone()
+            for name, value in source.named_parameters()
+            if name != "relative_address_logits"
+        },
+        program_prior=torch.zeros(4),
+    )
+    play_key = torch.ones(1, 3)
+    header_key = torch.tensor([[0.2, -0.4, 0.9]])
+    machine.bind_executable_sources((play_key,))
+    play_only = []
+    both = []
+    for index in range(3):
+        play = AmodalEvent(
+            payload=torch.full((1, 8), float(index)),
+            source_key=play_key,
+        )
+        header = AmodalEvent(
+            payload=torch.full((1, 8), 50.0 + index),
+            source_key=header_key,
+        )
+        play_only.append(
+            machine.tick(
+                AmodalEventCollection.from_events((play,), width=8),
+                (),
+                now=float(index),
+                elapsed=1.0,
+            )[0].action.clone()
+        )
+    machine.reset_history()
+    for index in range(3):
+        play = AmodalEvent(
+            payload=torch.full((1, 8), float(index)),
+            source_key=play_key,
+        )
+        header = AmodalEvent(
+            payload=torch.full((1, 8), 50.0 + index),
+            source_key=header_key,
+        )
+        both.append(
+            machine.tick(
+                AmodalEventCollection.from_events((play, header), width=8),
+                (),
+                now=float(index),
+                elapsed=1.0,
+            )[0].action.clone()
+        )
+    assert all(torch.equal(left, right) for left, right in zip(play_only, both, strict=True))
+    assert len(machine._histories) == 1
+
+
 def test_negative_feedback_updates_a_saturated_policy_without_clamp_dead_zone() -> None:
     torch.manual_seed(43)
     machine = SourcePreservingTemporalMachine(

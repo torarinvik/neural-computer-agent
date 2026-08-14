@@ -305,6 +305,21 @@ class NeuralWorkshopInstructionEncoder(NeuralWorkshopRGBAEncoder):
         )
 
 
+def _event_at(collection: AmodalEventCollection, index: int) -> AmodalEvent:
+    if collection.source_key is None:
+        raise ValueError("merged Neural Workshop events require source keys")
+    timestamp = None
+    if collection.timestamp is not None:
+        stamp = collection.timestamp[:, index]
+        timestamp = stamp.reshape(collection.payload.shape[0])
+    return AmodalEvent(
+        payload=collection.payload[:, index],
+        source_key=collection.source_key[:, index],
+        timestamp=timestamp,
+        confidence=collection.confidence[:, index],
+    )
+
+
 def encode_instruction_context(
     observation: dict[str, Any],
     encoder: NeuralWorkshopInstructionEncoder,
@@ -467,12 +482,15 @@ class NeuralWorkshopLiveDevice:
         outcomes = tuple(self._outcomes)
         self._outcomes.clear()
         if self._event_pending:
-            events = self.encoder.encode(self._observation)
-            if self.instruction_encoder is not None:
-                # Header events address the program bank. They stay off the
-                # controller bus so the frozen one-source temporal comparator
-                # is not resized or polluted by a static instruction stream.
-                self.instruction_encoder.encode(self._observation)
+            play = self.encoder.encode(self._observation)
+            if self.instruction_encoder is None:
+                events = play
+            else:
+                header = self.instruction_encoder.encode(self._observation)
+                events = AmodalEventCollection.from_events(
+                    (_event_at(play, 0), _event_at(header, 0)),
+                    width=self.event_width,
+                )
             self._event_pending = False
         else:
             events = AmodalEventCollection.empty(1, self.event_width)
@@ -604,6 +622,9 @@ def run_neural_workshop_live_lifetime(
     machine.reset_history_each_tick = intervention.reset_history_each_tick
     encoder = NeuralWorkshopRGBAEncoder(config, seed=seed)
     instruction_encoder = NeuralWorkshopInstructionEncoder(config)
+    bind = getattr(machine, "bind_executable_sources", None)
+    if bind is not None:
+        bind((encoder.source_key.detach().reshape(1, -1),))
     device = NeuralWorkshopLiveDevice(
         environment,
         encoder,

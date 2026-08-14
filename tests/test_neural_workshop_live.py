@@ -353,7 +353,7 @@ def test_live_adapter_records_instruction_events_without_controller_input() -> N
         sample=False,
     )
 
-    assert len(report.event_payloads) == report.input_events
-    assert len(report.instruction_payloads) == len(report.event_payloads)
-    assert report.input_events == 2
+    assert len(report.event_payloads) == 2
+    assert len(report.instruction_payloads) == 2
+    assert report.input_events == 4
     assert machine.max_sources == 1

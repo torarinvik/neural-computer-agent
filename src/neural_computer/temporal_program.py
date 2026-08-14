@@ -409,6 +409,28 @@ class ExternalTemporalProgramBank:
             bank_version=self.version,
         )
 
+    def selection_for_slot(
+        self,
+        slot: int,
+        context: torch.Tensor,
+        *,
+        propensity: float = 1.0,
+    ) -> TemporalProgramSelection:
+        """Load one existing file without claiming an exact context match."""
+
+        key = self._validate_context(context)
+        artifact = self.artifact(slot)
+        self._validate_artifact(artifact)
+        if not 0.0 <= propensity <= 1.0:
+            raise ValueError("temporal program propensity must lie in [0, 1]")
+        return TemporalProgramSelection(
+            slot=slot,
+            propensity=float(propensity),
+            context=key,
+            artifact=artifact,
+            bank_version=self.version,
+        )
+
     def observe(
         self,
         selection: TemporalProgramSelection,

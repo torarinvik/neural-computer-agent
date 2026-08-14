@@ -799,6 +799,91 @@ class PersistentOpaqueContextRouteEvidence:
 
         return self._find_record(context, create=False) is not None
 
+    def preferred_keys_for_slot(self, slot: int) -> tuple[torch.Tensor, ...]:
+        """Return learned keys whose protected preferred file is ``slot``."""
+
+        if not isinstance(slot, int) or not 0 <= slot < self.slot_count:
+            raise IndexError("context-route slot is outside the bank")
+        keys: list[torch.Tensor] = []
+        for record in self._records:
+            if record.evidence.status().preferred_slot == slot:
+                keys.append(
+                    torch.tensor(record.key, dtype=torch.float32)
+                )
+        return tuple(keys)
+
+    def nuisance_basis(self) -> torch.Tensor | None:
+        """Span same-slot header differences as a reusable nuisance subspace.
+
+        A single pair is not a depth parser. Differences that survived
+        verification for the same file are treated as address nuisance, never
+        as a semantic field.
+        """
+
+        deltas: list[torch.Tensor] = []
+        for slot in range(self.slot_count):
+            keys = self.preferred_keys_for_slot(slot)
+            if len(keys) < 2:
+                continue
+            stacked = torch.stack(keys)
+            center = stacked.mean(dim=0)
+            for key in stacked:
+                delta = key - center
+                if float(torch.linalg.vector_norm(delta)) > self.matching_tolerance:
+                    deltas.append(delta)
+        if not deltas:
+            return None
+        matrix = torch.stack(deltas)
+        _left, values, right = torch.linalg.svd(matrix, full_matrices=False)
+        floor = max(self.matching_tolerance, 0.01 * float(values[0].item()))
+        keep = values > floor
+        if not bool(keep.any()):
+            return None
+        return right[keep].contiguous()
+
+    def invariant_preferred_slot(
+        self,
+        context: torch.Tensor,
+        *,
+        residual_tolerance: float = 0.02,
+    ) -> int | None:
+        """Claim one slot only when leftover residual is uniquely small.
+
+        Exact keys still win. Otherwise each preferred key is compared after
+        removing the same-slot nuisance span. Two slots matching, or a
+        leftover larger than ``residual_tolerance``, fail closed.
+        """
+
+        if residual_tolerance < 0.0:
+            raise ValueError("invariant residual tolerance must be non-negative")
+        if self.slot_count < 1:
+            return None
+        record = self._find_record(context, create=False)
+        if record is not None:
+            preferred = record.evidence.status().preferred_slot
+            if preferred is not None:
+                return preferred
+        key = self._validate_context(context)
+        basis = self.nuisance_basis()
+        hits: list[tuple[float, int]] = []
+        for slot in range(self.slot_count):
+            candidates = self.preferred_keys_for_slot(slot)
+            if not candidates:
+                continue
+            residuals: list[float] = []
+            for candidate in candidates:
+                delta = key - candidate
+                if basis is not None:
+                    coordinates = basis @ delta
+                    delta = delta - basis.T @ coordinates
+                residuals.append(float(torch.linalg.vector_norm(delta)))
+            leftover = min(residuals)
+            if leftover <= residual_tolerance:
+                hits.append((leftover, slot))
+        if len(hits) != 1:
+            return None
+        return hits[0][1]
+
     def preferred_slots(self, contexts: torch.Tensor) -> torch.Tensor:
         """Return one preferred opaque slot for each context row."""
 

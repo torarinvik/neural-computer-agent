@@ -407,6 +407,36 @@ each. Wrong depth scored `0.375`, over-composition `0.304`, memory corruption
 `0.000`, and an unseen 4-back header stayed unknown at `0.356`. Search bits
 were `0`. The bank now holds three immutable files.
 
+Instruction events now share the amodal bus with the play-field stream. The
+frozen comparator binds only the play-field source, so the header cannot
+pollute `PREVIOUS`. Same-slot header differences become a nuisance subspace:
+an exact miss can still retrieve if the leftover residual after removing
+those differences uniquely matches one file. Unknown headers then try
+existing files by distance and length, and only then compose one deeper
+step. `neural_workshop_autonomous_founding_pilot.py` measures that policy
+against a matched fresh climb.
+
+```bash
+PYTHONPATH=src .venv/bin/python \
+  -m experiments.brainworkshop_canonical.neural_workshop_autonomous_founding_pilot \
+  --neural-workshop /absolute/path/to/neural-workshop \
+  --source-bank /absolute/path/to/instruction-route/AgentBrain.bank \
+  --output-dir /tmp/neural-workshop-autonomous-founding
+```
+
+The frozen capacity remains `max_history=4`. Five-back is an architecture
+change, not another bank file.
+
+In the seed-94017-v2 run, a warm 1-back/2-back bank rebound 3-cell 2-back in
+one `try_existing` session at `1.000` (24 bits). New 2-cell 3-back still had
+to fail the two existing files and compose: 117 warm bits versus 119 fresh,
+a tie. After that compose, 3-cell 3-back retrieved by the same-slot
+invariant at `0.900` with 20 bits versus 85 fresh, a `4.25×` fresh/warm
+ratio. Source 1-back, 2-back, and 3-back then retrieved exactly and scored
+`1.000/1.000/0.943`. Controller, program, and replay updates stayed zero.
+First-time depth invention is not cheaper than a matched climb; header
+variants of a verified depth are.
+
 ## Promoted frontier
 
 `executive_compositional_transfer.py` is the first positive bits-to-threshold
@@ -470,11 +500,8 @@ Evidence:
 
 ## Current bottleneck
 
-The external compute/artifact lifecycle is reliable, but inherited eviction
-knowledge has not transferred to a held-out n-back family. The current active
-audit tests a neutral probationary fallback. Until it passes replicated fresh
-controls, the correct policy is to retain the architecture and reset inherited
-maintenance weights.
-
-The next n-back campaign must measure stable bits-to-threshold against a matched
-fresh learner. Raising final accuracy alone is not the objective.
+The live Position N-Back language is `PREVIOUS^n` plus fail-closed header
+routing, with `max_history=4`. Dual N-Back is still blocked on a clean audio
+loopback. A second substrate has not been run. Isolated threshold crossings
+are not mastery; the founding comparison is warm versus a matched fresh
+learner on a held-out public line.
