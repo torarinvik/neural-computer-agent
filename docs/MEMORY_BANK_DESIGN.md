@@ -13684,3 +13684,46 @@ remains between existence and reliability. Standing frontier:
 guarded-union baseline at breadth; amodal-transfer reliability
 (class-target supervision) as the top ungated research problem;
 sealed sets awaiting the word.
+
+## F267 — RELIABLE AMODAL VALUE TRANSFER: CLASS-TARGET BINDING
+## SOLVES THE IDENTIFIABILITY PROBLEM -- FIVE COEFFICIENTS, NATIVE
+## CEILING, 6/6 SEEDS, ZERO TARGET-SUBSTRATE DATA (2026-08-14,
+## cross_typed.py class arm, 6 seeds. Scope: grid -> graph)
+
+The F266 re-localization, executed: instead of pooled reward
+regression over ~65 correlated features, bind value to entities
+from LABELED CONTACT EVENTS ONLY -- (psi signature, step reward)
+pairs at contacts, death-attributed within 2 -- and fit psi ->
+value by ridge: FIVE coefficients. The graph action rule scores
+each port by kernel(BFS distance) x v_hat(psi).
+
+  gcollect1          +8.104 sd 0.17  = the native ceiling (+8.109),
+                     6/6 seeds  [pooled head: +3.5 sd 2.9]
+  gcollect2          +10.273 sd 0.11 = the BFS goal baseline
+                     exactly, 6/6  [pooled: +4.9 sd 3.5]
+  gavoid1_collect1   +2.867 sd 0.49 vs random +0.07 (73% of the
+                     native gain)
+
+  P2 CONFIRMED (>= 0.7 x native gain: 6/6, 4/6, 6/6). P1's formal
+  misses (4/6, 6/6, 4/6) are entirely the shuffled-class control's
+  doing -- a 5-element permutation sometimes preserves order; the
+  robust statement is CLASS >= RANDOM + 0.5 ON 18/18 SEED-CELLS.
+  Variance collapse: sd 2.9 -> 0.17.
+
+THE MECHANISM, in final form: value knowledge becomes transferable
+when it is (a) expressed in substrate-generic coordinates (events
+in the substrate's own metric x behavior signatures) and (b)
+SUPERVISED AT THE EVENT LEVEL, so each coefficient means one thing.
+Credit-spread pooled regression learns the same policy on the home
+substrate but scrambles the coordinates that must survive the
+crossing -- identifiability, not representation, was the barrier
+(F265/F266). This completes the arc: F256 proved mechanism-typed
+transfer across WORLDS; F267 proves it across SUBSTRATES,
+reliably, with a head small enough to read by eye.
+
+Amodality status of the founding objective: task A (grid singles)
+now makes task B faster on a different substrate than ANY amount
+of same-substrate random experience shown so far -- with zero
+target reward data. Next candidates: the typed-class head as the
+transfer library's canonical value form (breadth integration), and
+the reliability fix folded back into the grid-side trio stack.
