@@ -182,6 +182,13 @@ slot-1 lifetimes at `1.0000`. The old slot remained perfect when forced on
 same-cue route reversal and immutable-skill retention; it does not yet provide
 autonomous program induction or physical desktop deployment.
 
+The router now also generalizes across held-out learned-event contexts. After
+bank reload, six previously unseen cue perturbations selected the correct slot
+in alternating 1-back/2-back episodes and scored `1.0000` on all 51 eligible
+bits; exact variant rows were created only after their first outcome. This
+closes the former behavior-probability/generalization mismatch, but remains a
+bounded representation-radius result rather than semantic extrapolation.
+
 Curated evidence is under `session_records/`. Historical experiments, obsolete
 checkpoints, and superseded session dumps were removed from the working tree;
 they remain recoverable from Git history.

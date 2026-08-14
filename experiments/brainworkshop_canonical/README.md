@@ -68,6 +68,17 @@ PYTHONPATH=src .venv/bin/python \
   --report-out /tmp/live-executive-route-reversal.json
 ```
 
+`live_executive_route_generalization.py` tests the held-out-context path after
+reload. It calibrates two exact learned cue keys, then presents six unseen
+nearby event representations. The router must generalize through the nearest
+protected opaque context before recording each variant independently.
+
+```bash
+PYTHONPATH=src .venv/bin/python \
+  -m experiments.brainworkshop_canonical.live_executive_route_generalization \
+  --report-out /tmp/live-executive-route-generalization.json
+```
+
 ## Rendered vision and audio rung
 
 `rendered_environment.py` is a clean-room device surface. Its learner-visible

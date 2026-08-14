@@ -333,6 +333,13 @@ lifetimes. Forced slot-0 retention remained perfect, and a cue-shuffled control
 fell below threshold. This is causal route reversal and immutable-skill
 retention, not autonomous program induction or a semantic rule switch.
 
+The live route also now uses the same nearest-protected-context policy for
+behavior probabilities as for preferred-order queries. After reload, six
+previously unseen perturbed learned-event keys selected the correct frozen
+skill and scored 1.0000 on 51 eligible verifier bits; each variant became an
+independent row only after its first outcome. This is bounded representation-
+radius generalization, not a hand-written semantic map.
+
 The physical Position 1-Back rung qualifies the narrower live-I/O claim: public
 display capture, spatial onset segmentation, ordinary keypress output, exact
 receipt matching, checkpoint/resume, and immediate evidence-bound updates work

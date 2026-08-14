@@ -1,0 +1,30 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment_id": "brainworkshop-live-executive-route-generalization-promoted-2026-08-14",
+  "status": "promoted_live_held_out_context_generalization",
+  "source": "in_repository_run",
+  "unique_verifier_bits": {
+    "training": 136,
+    "held_out_variants": 51
+  },
+  "unique_logical_lifetimes": 22,
+  "optimizer_updates": 0,
+  "replayed_examples": 0,
+  "stable_bits_to_threshold": {
+    "held_out_variants": 51
+  },
+  "retention_on_mastered_primitives": "both pre-verified executive artifacts remain immutable and route correctly through all held-out variants",
+  "transfer_ratio_against_fresh_learner": null,
+  "route_updates": 22,
+  "controls": {
+    "controller_frozen": true,
+    "decoder_frozen": true,
+    "executive_programs_frozen": true,
+    "zero_replay": true,
+    "variant_contexts_unknown_before_selection": true,
+    "bank_reload_exact_before_variants": true,
+    "bank_reload_exact_after_variants": true,
+    "source_rows_not_overwritten": true
+  },
+  "claim_boundary": "bounded held-out learned-event context generalization with exact bank reload; not semantic extrapolation, autonomous program induction, or physical desktop deployment"
+}
