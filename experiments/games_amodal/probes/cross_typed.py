@@ -604,6 +604,29 @@ def play_graph(config, mode, w_r, seed):
                     range(PORTS),
                     key=lambda p: int(D[int(v.edges[b, ag[b], p]),
                                         int(no[b, 0])]))
+        elif mode == "class":
+            action = torch.zeros(E, dtype=torch.long)
+            best = torch.full((E,), -1e9)
+            for p in range(PORTS):
+                score = torch.zeros(E)
+                for b in range(E):
+                    if ag[b] < 0:
+                        continue
+                    D = tracker.D[b]
+                    ac_ = int(v.edges[b, ag[b], p])
+                    for g in range(2):
+                        if no[b, g] < 0:
+                            continue
+                        d = int(D[ac_, int(no[b, g])])
+                        k = max(0.0, (1.5 - d) / 1.5)
+                        if k > 0:
+                            score[b] += k * float(
+                                psi_now[b, g] @ w_r)
+                take = score > best
+                best = torch.where(take, score, best)
+                action = torch.where(
+                    take, torch.full((E,), p, dtype=torch.long),
+                    action)
         else:  # typed head: score each port by predicted events
             action = torch.zeros(E, dtype=torch.long)
             best = torch.full((E,), -1e9)
@@ -638,11 +661,35 @@ TRAIN_WORLDS = [
 
 report = {"seed": args.seed}
 lib_X, lib_y, lib_S, lib_ret = [], [], [], []
+ev_psi, ev_y = [], []
 for name, config in TRAIN_WORLDS:
     rollout = collect_experience(config, args.seed * 53)
     X, y, S, ret = build_head_data(*rollout, soft=True, bank=None)
     lib_X.append(X); lib_y.append(y)
     lib_S.append(S); lib_ret.append(ret)
+    # F267: class-target event pairs -- (psi_g, step reward) at
+    # contact events only; death rows attribute contact at
+    # parent-proximity <= 2
+    raw, psis, actions, rewards, alive = rollout
+    for t in range(len(actions)):
+        ok = alive[t]
+        if not bool(ok.any()):
+            continue
+        died = ok & ~alive[t + 1]
+        parent = clamp_state(raw[t])
+        child = clamp_state(raw[t + 1])
+        for g_ix, (_pl, base) in enumerate(TRACKED):
+            d_now = ((child[:, 0] - child[:, base]).abs()
+                     + (child[:, 1] - child[:, base + 1]).abs())
+            hit_prev = ((child[:, 0] == parent[:, base])
+                        & (child[:, 1] == parent[:, base + 1]))
+            contact = ok & ((d_now <= 1) | hit_prev)
+            d_par = ((parent[:, 0] - parent[:, base]).abs()
+                     + (parent[:, 1] - parent[:, base + 1]).abs())
+            contact = torch.where(died, ok & (d_par <= 2), contact)
+            if bool(contact.any()):
+                ev_psi.append(psis[t][contact, g_ix])
+                ev_y.append(rewards[t][contact])
 w_tr, _w_tv = fit_typed(torch.cat(lib_X), torch.cat(lib_y),
                         torch.cat(lib_S), torch.cat(lib_ret))
 # F265 follow-up: sparsified head -- mask the substrate-entangled
@@ -655,7 +702,10 @@ for g_ix in range(3):
     MASK[off + 3 * PSI_DIM: off + 4 * PSI_DIM] = 0.0   # boundary
 Xa = torch.cat(lib_X) * MASK
 w_sp = ridge(Xa, torch.cat(lib_y), args.ridge_lam) * MASK
-print("grid heads fit (full + sparse)", flush=True)
+# F267 class-target value binding: psi -> event value, 5 coeffs
+w_cl = ridge(torch.cat(ev_psi), torch.cat(ev_y), args.ridge_lam)
+print(f"grid heads fit; class events {sum(x.shape[0] for x in ev_psi)}",
+      flush=True)
 
 GRAPH_WORLDS = [
     ("gcollect1", GraphConfig(collect=1)),
@@ -674,6 +724,13 @@ for name, config in GRAPH_WORLDS:
                                    args.seed * 977)
     row["typed_sparse"] = play_graph(config, "typed", w_sp,
                                      args.seed * 977)
+    row["typed_class"] = play_graph(config, "class", w_cl,
+                                    args.seed * 977)
+    permc = torch.randperm(PSI_DIM,
+                           generator=torch.Generator().manual_seed(
+                               args.seed + 9090))
+    row["shuffled_class"] = play_graph(config, "class", w_cl[permc],
+                                       args.seed * 977)
     Xg, yg = collect_graph(config, args.seed * 61)
     w_g = ridge(Xg, yg, args.ridge_lam)
     row["typed_graphfit"] = play_graph(config, "typed", w_g,
