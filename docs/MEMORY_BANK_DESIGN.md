@@ -13105,3 +13105,45 @@ survival indicts dynamics fidelity. That diagnostic runs next,
 BEFORE any further machinery -- the F239 lesson, applied.
 
 Scope: Localized (GEN-DEV trio + control).
+
+## F251 — THE SPLIT IS DECISIVE: THE REWARD HEAD, NOT DYNAMICS,
+## CARRIES F250'S RESIDUAL; AND CONSUMPTION JUMPS POISON PROXIMITY
+## VALUE OVER TRUE DYNAMICS (2026-08-14, reward_vs_dynamics.py,
+## 6 seeds. Scope: GEN-DEV trio + control)
+
+One privileged cell, nothing built: plan depth-2 over TRUE dynamics
+(deep-copied sims, cloned trackers) and swap ONLY the edge reward --
+true vs the learned linear head. Learned value head at the leaves in
+both arms.
+
+                        true reward      learned reward
+  collect1_i1_p1_r1        -0.380            -0.966
+  delayed3_i1_p1_r2        -0.159            -0.909
+  delayed3_i2_p1_r1        -0.245            -0.924
+  ctrl_avoid1_collect1     +1.497            -0.068
+
+P2's second branch fires 6/6 seeds on every world: THE REWARD
+BINDING IS INDICTED. With true edge rewards the same learned value
+head reaches -0.16..-0.38 on the trio (at or past the pure d2
+ceilings); with the learned head everything collapses to random.
+
+The control world adds the mechanism, unregistered but decisive:
+truedyn+learned-reward scores -0.07 where F250's FULLY-learned stack
+scored +0.92. Over true dynamics, eating teleports the food away, so
+a proximity-shaped V PUNISHES consumption at the leaf; the true +1
+edge reward compensates, the linear head cannot. Bank-rolled
+dynamics never exhibit the jump, which is why the learned stack
+works there -- the model's blindness to consumption was accidentally
+protective. F231 met this same jump on the control side (consumption
+-aware completion); it now reappears on the cost side.
+
+Both mechanisms convict one layer: REWARDS ARE TYPED CONTACT
+EVENTS -- +1 on this entity, death on that one, nothing on the
+switch -- and no linear functional over type-aliased group distances
+can express them. The response is the F235/F236 valued-binding
+machinery, re-targeted from goal selection to the planner's reward
+model: per-tracked-entity type features (plane, motion signature,
+interaction history), class-target value fits with death
+attribution, and an event-structured edge head
+r_hat(s,a) = sum_g contact_g(s') * (w . psi_g).
+That build is next. Scope: Localized (GEN-DEV trio + control).
