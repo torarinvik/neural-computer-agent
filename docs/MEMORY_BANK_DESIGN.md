@@ -13187,3 +13187,48 @@ through the model's own biases -- fully deployable, no privilege)
 x graded contact kernel (tolerance to +-1 model error), as a 2x2
 against this finding's pure-typed arm. Scope: Localized (GEN-DEV
 witnesses + control).
+
+## F253 — MODEL-CONSISTENCY IS THE ACTIVE FACTOR AND SETS A CONTROL
+## RECORD; THE TRIO ASYMPTOTES AT DEPLOY PARITY AGAIN -- THE COMMON
+## FACTOR IS MOVER DYNAMICS, AND F249 RE-READS AS A MIXTURE FAILURE
+## (2026-08-14, value_plan_consistent.py, 6 seeds. Scope: GEN-DEV
+## witnesses + control)
+
+The F252 response 2x2: {true-fit vs MODEL-CONSISTENT head training
+(fit on bank-rolled children)} x {hard vs graded contact}.
+
+  P2 ATTRIBUTION: MC is the active ingredient -- mc beats true-fit
+     on every world; soft alone does nothing; soft adds a little on
+     top of mc. Fitting the head in the representation the planner
+     hands it removes the F252 brittleness: the shuffled-beats-
+     fitted inversion disappears on the trio (P3 there confirmed;
+     on the control the shuffled arm keeps +0.29 via the intact V
+     head -- logged).
+  CONTROL RECORD: mc_soft_it_d4 = +1.32 (P4 confirmed) -- the best
+     fully-learned score yet, 3.2x the privileged depth-4 ceiling.
+  P1 REFUTED overall: best trio arms (mc_soft_it_d4)
+     -0.849 / -0.753 / -0.828 -- +0.10..+0.21 over the linear
+     planner baseline, but PARITY WITH THE GOAL-GRAMMAR DEPLOY
+     (-0.86/-0.70/-0.84) for the third integration in a row.
+
+The asymptote names the one component every learned path shares:
+ROLLING MOVERS THROUGH PER-SLOT PROGRAMS. And with F252's lesson in
+hand, F249's factorial re-reads: its pair vocabulary CONTAINED the
+pursuer's exact rule (CHASE, larger-gap-axis-first), yet pair==slot
+under tracking because ONE rule was fit PER GROUP, pooled across
+rows in which that group tracks different entity types -- the same
+mixture that poisoned the reward head before typing. The fix is the
+same fix, moved to the dynamics layer:
+
+  PER-ENTITY RULE BINDING (pre-registered next): each tracked
+  entity selects its own motion rule from the generic relational
+  vocabulary (frozen / fall / chase / flee / random-hold) by ITS
+  OWN observed history -- per row, per entity, no pooling. The
+  avatar keeps its bank program (per-slot fits are 1.00). The
+  planner rolls each row's entities by their bound rules; the
+  mc_soft typed head prices the resulting events. Prediction: the
+  original F250 target -- beat deploy by >= +0.15 on >= 2/3 trio
+  worlds -- plus a direct held-out check that bound-rule mover
+  prediction reaches ~0.9 where pooled fits stalled at 0.72-0.85.
+
+Scope: Localized (GEN-DEV witnesses + control).
