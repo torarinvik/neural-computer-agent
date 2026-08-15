@@ -1,0 +1,20 @@
+=== episode length 16 ===
+cases: 32
+  verdict=class_inadequate  in_class=False count=1
+  verdict=identified        in_class=False count=1
+  verdict=identified        in_class=True  count=28
+  verdict=need_more_data    in_class=False count=2
+FALSE IDENTIFIED: 0 []
+escalated: ['majority-12', 'majority-23', 'majority-03']
+=== episode length 48 ===
+cases: 32
+  verdict=identified        in_class=True  count=28
+  verdict=need_more_data    in_class=False count=4
+FALSE IDENTIFIED: 0 []
+escalated: ['majority-01', 'majority-12', 'majority-23', 'majority-03']
+=== episode length 128 ===
+cases: 32
+  verdict=identified        in_class=True  count=28
+  verdict=need_more_data    in_class=False count=4
+FALSE IDENTIFIED: 0 []
+escalated: ['majority-01', 'majority-12', 'majority-23', 'majority-03']

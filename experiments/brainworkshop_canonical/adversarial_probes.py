@@ -115,14 +115,25 @@ def count_parity(symbol: int) -> Callable[[list[int]], list[int]]:
 def switching(
     before: Callable[[list[int]], list[int]],
     after: Callable[[list[int]], list[int]],
-    at: int,
 ) -> Callable[[list[int]], list[int]]:
-    """One rule, then another. Stationarity is an assumption, so test it."""
+    """One rule, then another, switching halfway through *each* episode.
+
+    The switch point is relative to the episode rather than absolute. A fixed
+    index of 224 was tried first and made this probe useless: episodes are
+    sixteen steps long, so the switch never happened and the probe was
+    silently just its first half. It was labelled out-of-class and the
+    competence verdict correctly called it identified, which looked like a
+    false positive and was a broken probe.
+    """
 
     def rule(symbols: list[int]) -> list[int]:
         head = before(symbols)
         tail = after(symbols)
-        return [head[index] if index < at else tail[index] for index in range(len(symbols))]
+        at = max(1, len(symbols) // 2)
+        return [
+            head[index] if index < at else tail[index]
+            for index in range(len(symbols))
+        ]
 
     return rule
 
@@ -160,9 +171,16 @@ def probes() -> tuple[Probe, ...]:
         Probe(
             "switching",
             4,
-            switching(count_parity(0), count_parity(1), 224),
+            switching(count_parity(0), count_parity(1)),
             False,
-            "rule changes partway; stationarity violated",
+            "rule changes halfway through every episode",
+        ),
+        Probe(
+            "threshold-6",
+            4,
+            count_threshold(0, 6),
+            True,
+            "finite-state but deeper than the episodes are long",
         ),
     )
 
