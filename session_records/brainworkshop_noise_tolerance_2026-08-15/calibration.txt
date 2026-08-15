@@ -1,0 +1,37 @@
+24 sampled Mealy rules; held-out accuracy against the CLEAN rule
+noise |  exact-recovery  mean-acc  min-acc  states-correct
+0.0   |  24/24          1.0000   1.0000   24/24
+0.02  |  24/24          1.0000   1.0000   24/24
+0.05  |  24/24          1.0000   1.0000   24/24
+0.1   |  24/24          1.0000   1.0000   24/24
+0.2   |  24/24          1.0000   1.0000   24/24
+0.3   |  22/24          0.9868   0.7271   23/24
+
+random labels: states=2 fit-err=0.4758 (chance is 0.5)
+
+A) search-seed robustness at 10% noise
+   search seed 0: 24/24 exact
+   search seed 1: 24/24 exact
+   search seed 2: 24/24 exact
+   search seed 3: 24/24 exact
+
+B) data budget at 10% noise (episodes x 48 steps)
+     7 episodes (  336 labels): 16/24 exact
+    14 episodes (  672 labels): 19/24 exact
+    28 episodes ( 1344 labels): 21/24 exact
+    56 episodes ( 2688 labels): 23/24 exact
+   112 episodes ( 5376 labels): 24/24 exact
+
+C) data-seed robustness at 10% noise
+   data seed 11: 24/24 exact
+   data seed 23: 24/24 exact
+   data seed 37: 23/24 exact
+
+ZERO noise, same evidence: exact search vs disagreement-minimising search
+states | exact-search           | local-search
+     1 | 4/4 exact (  0.0s)      | 4/4 exact (  1.2s)
+     2 | 4/4 exact (  0.0s)      | 4/4 exact (  3.9s)
+     3 | 4/4 exact (  0.0s)      | 4/4 exact (  3.9s)
+     4 | 4/4 exact (  3.5s)      | 4/4 exact (  9.4s)
+     5 | 4/4 exact (  7.2s)      | 4/4 exact ( 12.0s)
+     6 | 4/4 exact (  7.9s)      | 4/4 exact ( 18.7s)
