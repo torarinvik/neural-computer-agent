@@ -21,8 +21,11 @@ holes on the live Position N-Back line.
    bits. Seed 96017 scored `1.000` on Dual 1-Back and Dual 2-Back. A
    one-step program on 2-back scored `0.261`.
 
-A related one-seed founding comparison (header variants of a known depth)
-is archived beside this report as `founding_report.json`.
+Founding and Dual now have a second seed. After a nearest-file miss the
+router composes one step deeper instead of retrying shallower files.
+Seed 97017 first-time 3-back was 65 warm bits versus 127 fresh (`1.95×`).
+Header transfer remained cheaper than a climb (`3.46×`). Dual 2-Back
+replicated at `0.957`. This is still probation: two seeds, no holdout.
 
 ## Seed-95017 sealed frontier
 
@@ -43,14 +46,14 @@ relation weights were copied unchanged.
 ## Seed-94017-v2 founding (header transfer)
 
 Warm 3-cell 3-back retrieved by the same-slot invariant at 20 bits versus
-85 fresh bits (`4.25×`). First-time 2-cell 3-back was a tie (117 vs 119).
-Source 1/2/3-back retained `1.000/1.000/0.943`.
+85 fresh bits (`4.25×`) on seed 94017, and 28 versus 97 (`3.46×`) on seed
+97017. First-time 2-cell 3-back was a tie (117 vs 119) under the old try-all
+policy, then 65 versus 127 (`1.95×`) after skip-shallower on seed 97017.
 
 ## Why this is not promoted
 
-- one seed per campaign;
-- no external promotion population or holdout lease;
-- Dual N-Back on the physical Neural Workshop still needs two public ports;
-- first-time depth invention is not cheaper than a matched climb.
+- two seeds on Dual/founding, not a holdout population;
+- no external promotion lease;
+- Neural Workshop Dual audio is still absent from the public framebuffer.
 
 Retain the blueprint. Do not treat an isolated threshold as mastery.

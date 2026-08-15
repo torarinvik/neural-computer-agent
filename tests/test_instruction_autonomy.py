@@ -84,19 +84,77 @@ def test_unknown_header_tries_nearer_shorter_file_then_composes() -> None:
 
     order = existing_program_try_order(bank, query)
     first = decide_header_program(bank, query, primitive, max_history=4)
-    after_two = decide_header_program(
+    after_nearest = decide_header_program(
         bank, query, primitive, failed_slots=frozenset({1}), max_history=4
     )
-    after_both = decide_header_program(
-        bank, query, primitive, failed_slots=frozenset({0, 1}), max_history=4
+    after_compose_exists = decide_header_program(
+        bank,
+        query,
+        primitive,
+        failed_slots=frozenset({1}),
+        failed_depths=frozenset({3}),
+        max_history=4,
     )
 
     assert order[0] == 1
     assert first.kind == "try_existing" and first.slot == 1
-    assert after_two.kind == "try_existing" and after_two.slot == 0
-    assert after_both.kind == "compose" and after_both.proposed_depth == 3
-    assert after_both.artifact is not None
-    assert after_both.artifact.program_length == 3
+    assert after_nearest.kind == "compose" and after_nearest.proposed_depth == 3
+    assert after_nearest.artifact is not None
+    assert after_nearest.artifact.program_length == 3
+    assert after_compose_exists.kind == "compose"
+    assert after_compose_exists.proposed_depth == 4
+
+
+def test_after_nearest_failure_tries_existing_next_depth_before_compose() -> None:
+    bank = ExternalTemporalProgramBank(
+        4,
+        4,
+        controller_digest=_digest(7),
+        generalization_tolerance=0.0,
+        min_mastery_observations=3,
+        interpreter_schema=RECURSIVE_TEMPORAL_INTERPRETER_SCHEMA,
+        execution_schema=RECURSIVE_TEMPORAL_EXECUTION_SCHEMA,
+    )
+    primitive = recursive_temporal_primitive(_legacy((8.0, -8.0, -8.0, -8.0)))
+    two = compose_recursive_temporal_program(primitive, 2)
+    three = compose_recursive_temporal_program(primitive, 3)
+    near = torch.nn.functional.normalize(torch.tensor([0.0, 1.0, 0.0, 0.0]), dim=0)
+    far = torch.nn.functional.normalize(torch.tensor([1.0, 0.0, 0.0, 0.0]), dim=0)
+    query = torch.nn.functional.normalize(torch.tensor([0.05, 0.95, 0.0, 0.0]), dim=0)
+    bank.admit(primitive, far, [1.0, 1.0, 1.0], min_observations=3, min_stable_observations=3)
+    bank.admit(two, near, [1.0, 1.0, 1.0], min_observations=3, min_stable_observations=3)
+    bank.admit(three, far, [1.0, 1.0, 1.0], min_observations=3, min_stable_observations=3)
+
+    after_two = decide_header_program(
+        bank, query, primitive, failed_slots=frozenset({1}), max_history=4
+    )
+
+    assert after_two.kind == "try_existing"
+    assert after_two.slot == 2
+    assert after_two.proposed_depth == 3
+
+
+def test_empty_bank_climbs_one_composed_depth_per_failure() -> None:
+    bank = ExternalTemporalProgramBank(
+        4,
+        4,
+        controller_digest=_digest(11),
+        interpreter_schema=RECURSIVE_TEMPORAL_INTERPRETER_SCHEMA,
+        execution_schema=RECURSIVE_TEMPORAL_EXECUTION_SCHEMA,
+    )
+    primitive = recursive_temporal_primitive(_legacy((8.0, -8.0, -8.0, -8.0)))
+    query = torch.nn.functional.normalize(torch.tensor([0.0, 0.0, 1.0, 0.0]), dim=0)
+    first = decide_header_program(bank, query, primitive, max_history=4)
+    second = decide_header_program(
+        bank, query, primitive, failed_depths=frozenset({1}), max_history=4
+    )
+    third = decide_header_program(
+        bank, query, primitive, failed_depths=frozenset({1, 2}), max_history=4
+    )
+
+    assert first.kind == "compose" and first.proposed_depth == 1
+    assert second.kind == "compose" and second.proposed_depth == 2
+    assert third.kind == "compose" and third.proposed_depth == 3
 
 
 def test_one_hot_address_pads_and_composes_past_original_capacity() -> None:

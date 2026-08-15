@@ -1,9 +1,10 @@
 """Outcome-only header routing: retrieve, rebind, or compose one step.
 
 The controller never sees ``n_back``. An unknown public header first tries
-an exact or same-slot invariant match, then existing files ordered by
-header distance and program length, then ``PREVIOUS`` composed one step
-deeper than the deepest verified file. Capacity overflow fails closed.
+an exact or same-slot invariant match, then the nearest existing file. If
+that file fails, the next step is the existing program one step deeper, or
+a fresh composition of that depth. Shallower leftovers are not retried.
+Capacity overflow fails closed.
 """
 
 from __future__ import annotations
@@ -90,6 +91,7 @@ def decide_header_program(
 
     if max_history < 1:
         raise ValueError("header decisions need a positive history capacity")
+    depth = max(failed_depths, default=0) + 1
     if bank.program_count:
         if bank.router.has_context(context):
             selection = bank.select(context)
@@ -113,24 +115,38 @@ def decide_header_program(
                 artifact.program_length,
                 True,
             ).validate()
-        for slot in existing_program_try_order(bank, context):
-            if slot in failed_slots:
-                continue
-            artifact = bank.artifact(slot)
+        remaining = [
+            slot
+            for slot in existing_program_try_order(bank, context)
+            if slot not in failed_slots
+        ]
+        if remaining and not failed_slots and not failed_depths:
+            artifact = bank.artifact(remaining[0])
             return HeaderProgramDecision(
                 "try_existing",
                 artifact,
-                slot,
+                remaining[0],
                 artifact.program_length,
                 False,
             ).validate()
-    deepest = max(
-        (bank.artifact(index).program_length for index in range(bank.program_count)),
-        default=0,
-    )
-    depth = 1 if deepest < 1 else deepest + 1
-    while depth in failed_depths:
-        depth += 1
+        target_depth = max(
+            [bank.artifact(slot).program_length for slot in failed_slots]
+            + list(failed_depths),
+            default=0,
+        ) + 1
+        for slot in remaining:
+            if bank.artifact(slot).program_length == target_depth:
+                artifact = bank.artifact(slot)
+                return HeaderProgramDecision(
+                    "try_existing",
+                    artifact,
+                    slot,
+                    artifact.program_length,
+                    False,
+                ).validate()
+        depth = target_depth
+        while depth in failed_depths:
+            depth += 1
     if depth > max_history:
         return HeaderProgramDecision("capacity", None, None, depth, False).validate()
     child = compose_recursive_temporal_program(primitive, depth)

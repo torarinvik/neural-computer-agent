@@ -1,0 +1,34 @@
+{
+  "action_count": 4,
+  "controller_digest": "4eb2509133775196cff5b3d01d737fb57c03303fa20f67a98702f80bead846cd",
+  "decoder_key_count": 2,
+  "dual_1back": {
+    "accuracy": 1.0,
+    "composition_depth": 1,
+    "n_back": 1,
+    "optimizer_updates": 0,
+    "program_file_updates": 0,
+    "unique_verifier_bits": 47
+  },
+  "dual_2back": {
+    "accuracy": 0.95652174949646,
+    "composition_depth": 2,
+    "n_back": 2,
+    "optimizer_updates": 0,
+    "program_file_updates": 0,
+    "unique_verifier_bits": 46
+  },
+  "max_sources": 2,
+  "optimizer_updates": 0,
+  "replayed_examples": 0,
+  "schema": "neural-computer.rendered-dual-nback.v1",
+  "wall_seconds": 0.5955785840051249,
+  "wrong_depth_control": {
+    "accuracy": 0.239130437374115,
+    "composition_depth": 1,
+    "n_back": 2,
+    "optimizer_updates": 0,
+    "program_file_updates": 0,
+    "unique_verifier_bits": 46
+  }
+}

@@ -1,0 +1,262 @@
+{
+  "bank": "/tmp/neural-workshop-autonomous-founding-seed97017-v2/AgentBrain.bank",
+  "bank_program_count": 3,
+  "bank_sha256": "61c1e737241286e40aedc6749a5c6eb1721944bd037ee545a7c1ed886c537baf",
+  "controller_digest": "5bc91963d70a62198a01706ad4c269716c5cfc909530eca5bce06eb7c446ec0a",
+  "controller_frozen": true,
+  "founding": {
+    "depth_fresh_bits": 127,
+    "depth_fresh_over_warm": 1.9538461538461538,
+    "depth_target": "2-cell 3-back",
+    "depth_warm_bits": 65,
+    "header_fresh_bits": 97,
+    "header_fresh_over_warm": 3.4642857142857144,
+    "header_target": "3-cell 3-back",
+    "header_warm_bits": 28
+  },
+  "fresh_2cell_3back": {
+    "active_cells": 2,
+    "admission": {
+      "accepted": true,
+      "candidate_digest": "19441dbdf2090c042c9f1874fb2aee10ace440d6f445a6e758a4bd16a4f04d06",
+      "observations": 34,
+      "reason": "candidate verified and committed as an immutable external file",
+      "schema": "neural-computer.external-program-admission.v2",
+      "slot": 0,
+      "stable_bits_to_threshold": 3,
+      "stable_observations_to_threshold": 3,
+      "stable_prefix_minimum": 1.0,
+      "unique_verifier_bits": 34
+    },
+    "attempts": [
+      {
+        "accuracy": 0.34782608695652173,
+        "controller_frozen": true,
+        "kind": "compose",
+        "known": false,
+        "program_file_updates": 0,
+        "proposed_depth": 1,
+        "slot": null,
+        "unique_verifier_bits": 46
+      },
+      {
+        "accuracy": 0.23404255319148937,
+        "controller_frozen": true,
+        "kind": "compose",
+        "known": false,
+        "program_file_updates": 0,
+        "proposed_depth": 2,
+        "slot": null,
+        "unique_verifier_bits": 47
+      },
+      {
+        "accuracy": 0.9411764705882353,
+        "controller_frozen": true,
+        "kind": "compose",
+        "known": false,
+        "program_file_updates": 0,
+        "proposed_depth": 3,
+        "slot": null,
+        "unique_verifier_bits": 34
+      }
+    ],
+    "n_back": 3,
+    "resolved_depth": 3,
+    "resolved_kind": "compose",
+    "search_unique_verifier_bits": 127
+  },
+  "fresh_3cell_3back": {
+    "active_cells": 3,
+    "admission": {
+      "accepted": true,
+      "candidate_digest": "19441dbdf2090c042c9f1874fb2aee10ace440d6f445a6e758a4bd16a4f04d06",
+      "observations": 22,
+      "reason": "candidate verified and committed as an immutable external file",
+      "schema": "neural-computer.external-program-admission.v2",
+      "slot": 0,
+      "stable_bits_to_threshold": 2,
+      "stable_observations_to_threshold": 2,
+      "stable_prefix_minimum": 1.0,
+      "unique_verifier_bits": 22
+    },
+    "attempts": [
+      {
+        "accuracy": 0.21428571428571427,
+        "controller_frozen": true,
+        "kind": "compose",
+        "known": false,
+        "program_file_updates": 0,
+        "proposed_depth": 1,
+        "slot": null,
+        "unique_verifier_bits": 42
+      },
+      {
+        "accuracy": 0.15151515151515152,
+        "controller_frozen": true,
+        "kind": "compose",
+        "known": false,
+        "program_file_updates": 0,
+        "proposed_depth": 2,
+        "slot": null,
+        "unique_verifier_bits": 33
+      },
+      {
+        "accuracy": 0.9545454545454546,
+        "controller_frozen": true,
+        "kind": "compose",
+        "known": false,
+        "program_file_updates": 0,
+        "proposed_depth": 3,
+        "slot": null,
+        "unique_verifier_bits": 22
+      }
+    ],
+    "n_back": 3,
+    "resolved_depth": 3,
+    "resolved_kind": "compose",
+    "search_unique_verifier_bits": 97
+  },
+  "max_history": 4,
+  "optimizer_updates": 0,
+  "program_file_updates": 0,
+  "replayed_examples": 0,
+  "schema": "neural-computer.neural-workshop-autonomous-founding.v1",
+  "source_bank": "/tmp/neural-workshop-instruction-route-seed81017-v1/AgentBrain.bank",
+  "source_bank_sha256": "fb43f74caafa314a31951c56e8412179d91721499c275af98f8d9824ea0ee633",
+  "source_retention": [
+    {
+      "accuracy": 1.0,
+      "active_cells": 2,
+      "controller_frozen": true,
+      "kind": "exact",
+      "known": true,
+      "n_back": 1,
+      "program_file_updates": 0,
+      "unique_verifier_bits": 31
+    },
+    {
+      "accuracy": 0.967741935483871,
+      "active_cells": 2,
+      "controller_frozen": true,
+      "kind": "exact",
+      "known": true,
+      "n_back": 2,
+      "program_file_updates": 0,
+      "unique_verifier_bits": 31
+    },
+    {
+      "accuracy": 1.0,
+      "active_cells": 2,
+      "controller_frozen": true,
+      "kind": "exact",
+      "known": true,
+      "n_back": 3,
+      "program_file_updates": 0,
+      "unique_verifier_bits": 36
+    }
+  ],
+  "wall_seconds": 73.879492499982,
+  "warm_2cell_3back": {
+    "active_cells": 2,
+    "admission": {
+      "accepted": true,
+      "candidate_digest": "19441dbdf2090c042c9f1874fb2aee10ace440d6f445a6e758a4bd16a4f04d06",
+      "observations": 23,
+      "reason": "candidate verified and committed as an immutable external file",
+      "schema": "neural-computer.external-program-admission.v2",
+      "slot": 2,
+      "stable_bits_to_threshold": 1,
+      "stable_observations_to_threshold": 1,
+      "stable_prefix_minimum": 1.0,
+      "unique_verifier_bits": 23
+    },
+    "attempts": [
+      {
+        "accuracy": 0.40476190476190477,
+        "controller_frozen": true,
+        "kind": "try_existing",
+        "known": false,
+        "program_file_updates": 0,
+        "proposed_depth": 2,
+        "slot": 1,
+        "unique_verifier_bits": 42
+      },
+      {
+        "accuracy": 1.0,
+        "controller_frozen": true,
+        "kind": "compose",
+        "known": false,
+        "program_file_updates": 0,
+        "proposed_depth": 3,
+        "slot": null,
+        "unique_verifier_bits": 23
+      }
+    ],
+    "n_back": 3,
+    "resolved_depth": 3,
+    "resolved_kind": "compose",
+    "search_unique_verifier_bits": 65
+  },
+  "warm_3cell_2back": {
+    "active_cells": 3,
+    "admission": {
+      "accepted": true,
+      "candidate_digest": "417d2481ce43d9840aa4a63d60873478e93e79e116f07d2ec01c62135ddc2679",
+      "observations": 29,
+      "reason": "verified experience attached to an identical external file",
+      "schema": "neural-computer.external-program-admission.v2",
+      "slot": 1,
+      "stable_bits_to_threshold": 2,
+      "stable_observations_to_threshold": 2,
+      "stable_prefix_minimum": 1.0,
+      "unique_verifier_bits": 29
+    },
+    "attempts": [
+      {
+        "accuracy": 0.9655172413793104,
+        "controller_frozen": true,
+        "kind": "try_existing",
+        "known": false,
+        "program_file_updates": 0,
+        "proposed_depth": 2,
+        "slot": 1,
+        "unique_verifier_bits": 29
+      }
+    ],
+    "n_back": 2,
+    "resolved_depth": 2,
+    "resolved_kind": "try_existing",
+    "search_unique_verifier_bits": 29
+  },
+  "warm_3cell_3back": {
+    "active_cells": 3,
+    "admission": {
+      "accepted": true,
+      "candidate_digest": "19441dbdf2090c042c9f1874fb2aee10ace440d6f445a6e758a4bd16a4f04d06",
+      "observations": 28,
+      "reason": "verified experience attached to an identical external file",
+      "schema": "neural-computer.external-program-admission.v2",
+      "slot": 2,
+      "stable_bits_to_threshold": 3,
+      "stable_observations_to_threshold": 3,
+      "stable_prefix_minimum": 1.0,
+      "unique_verifier_bits": 28
+    },
+    "attempts": [
+      {
+        "accuracy": 0.9285714285714286,
+        "controller_frozen": true,
+        "kind": "invariant",
+        "known": true,
+        "program_file_updates": 0,
+        "proposed_depth": 3,
+        "slot": 2,
+        "unique_verifier_bits": 28
+      }
+    ],
+    "n_back": 3,
+    "resolved_depth": 3,
+    "resolved_kind": "invariant",
+    "search_unique_verifier_bits": 28
+  }
+}

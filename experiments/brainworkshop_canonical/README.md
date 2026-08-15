@@ -530,6 +530,8 @@ one match bit per source. Seed 96017 scored `1.000` on rendered Dual 1-Back
 and Dual 2-Back, with a wrong-depth control at `0.261`. No four-way head was
 trained.
 
-The remaining gaps are first-time depth invention (still a tie versus a
-fresh climb) and promotion (one seed, no holdout). Dual on physical Neural
-Workshop still needs two public action ports.
+On seed 97017 the skip-shallower policy made first-time 3-back 65 warm bits
+versus 127 fresh (`1.95×`). Header transfer replicated at `3.46×`. Dual
+2-Back replicated at `0.957`. Physical Neural Workshop Dual is still not a
+learner-visible audio stream: the public observation is pixels only.
+Promotion still needs a holdout population.
