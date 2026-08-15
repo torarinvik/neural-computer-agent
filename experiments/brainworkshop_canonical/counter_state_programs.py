@@ -122,6 +122,42 @@ def run_counter_program(
     }
 
 
+def predict_symbols(
+    program: ControlFlowProgram,
+    symbols,
+    *,
+    cluster_count: int,
+    initial_counters: tuple[int, ...],
+    step_budget: int = DEFAULT_STEP_BUDGET,
+) -> tuple[tuple[int, ...], tuple[str, ...]]:
+    """Run a program over a symbol stream with no environment attached.
+
+    `run_counter_program` needs a verifier because it scores. Recognition and
+    signatures need neither: they ask what a program *would* press given a
+    stream that is already in hand, which costs no episode and reads no
+    reward. Same ABI, same executor, no environment.
+    """
+
+    program.validate()
+    if len(initial_counters) != program.counter_count:
+        raise ValueError("initial counters do not match the program")
+    counters = list(initial_counters)
+    presses: list[int] = []
+    statuses: set[str] = set()
+    for symbol in symbols:
+        index = int(symbol)
+        if not 0 <= index < cluster_count:
+            raise ValueError("stream symbol is outside the program's alphabet")
+        counters[PRESS_COUNTER] = 0
+        for channel in range(cluster_count):
+            counters[1 + channel] = int(channel == index)
+        execution = program.execute(counters, max_steps=step_budget)
+        statuses.add(execution.status)
+        counters = list(execution.counters)
+        presses.append(1 if counters[PRESS_COUNTER] > 0 else 0)
+    return tuple(presses), tuple(sorted(statuses))
+
+
 def cluster_symbol_map(
     encoders: RenderedBrainWorkshopEncoders,
     clusters: torch.Tensor,

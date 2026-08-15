@@ -1,0 +1,123 @@
+{
+  "acquisition_ratio_mean": 0.487212643678161,
+  "acquisition_ratio_worst": 0.55,
+  "agent_bank_sha256": "07319eb13c9cac58bbbe94258548e64f13ba1b3512ca2a01fbdc675c49e2e7c9",
+  "agent_bank_unchanged": true,
+  "experiment_id": "brainworkshop-integrated-agent-2026-08-15",
+  "false_recognitions": 0,
+  "library_paths": [
+    "/Users/torarinvikbjarko/Documents/Coding Projects/Elisa Projects/neural-computer-agent/artifacts/checkpoints/induced_programs_seed3000017.library",
+    "/Users/torarinvikbjarko/Documents/Coding Projects/Elisa Projects/neural-computer-agent/artifacts/checkpoints/induced_programs_seed3500017.library",
+    "/Users/torarinvikbjarko/Documents/Coding Projects/Elisa Projects/neural-computer-agent/artifacts/checkpoints/induced_programs_seed4000017.library"
+  ],
+  "pool_size": 6,
+  "replicates": [
+    {
+      "acquisition_ratio": 0.4375,
+      "control": {
+        "solved": 24,
+        "solved_nontrivial": 24,
+        "total_acquisition_steps": 4096,
+        "total_verifier_steps": 31872
+      },
+      "growing": {
+        "admitted": 6,
+        "false_recognitions": 0,
+        "induced": 6,
+        "nontrivial_tasks": 24,
+        "recognised": 18,
+        "solved": 24,
+        "solved_nontrivial": 24,
+        "total_acquisition_steps": 1792,
+        "total_verifier_steps": 24192,
+        "trivial_tasks": 0
+      },
+      "library_digest": "a183d51360d9fd47b9d003763925d9a53ba229bbe1e1019b402c7e958ba4e7c4",
+      "library_path": "/Users/torarinvikbjarko/Documents/Coding Projects/Elisa Projects/neural-computer-agent/artifacts/checkpoints/induced_programs_seed3000017.library",
+      "library_sha256": "a81067300031b3c681c02dfedd17735fbd9f4d4c91332486f438f0bcb99a9a65",
+      "reward_shuffled": {
+        "admitted": 0,
+        "solved": 0,
+        "solved_nontrivial": 0
+      },
+      "seed": 3000017,
+      "stored_programs": 6,
+      "verifier_step_ratio": 0.7590361445783133
+    },
+    {
+      "acquisition_ratio": 0.55,
+      "control": {
+        "solved": 24,
+        "solved_nontrivial": 24,
+        "total_acquisition_steps": 3840,
+        "total_verifier_steps": 30720
+      },
+      "growing": {
+        "admitted": 8,
+        "false_recognitions": 0,
+        "induced": 8,
+        "nontrivial_tasks": 24,
+        "recognised": 16,
+        "solved": 24,
+        "solved_nontrivial": 24,
+        "total_acquisition_steps": 2112,
+        "total_verifier_steps": 25408,
+        "trivial_tasks": 0
+      },
+      "library_digest": "6252beeb2718f7a246d12467c2d6fa5e67f5585af72807ae038998dc32871e93",
+      "library_path": "/Users/torarinvikbjarko/Documents/Coding Projects/Elisa Projects/neural-computer-agent/artifacts/checkpoints/induced_programs_seed3500017.library",
+      "library_sha256": "b1d9f8e4bf20cf2de8bafe10e5f4f3e9637a8d4dfe9203bf0a8b7a678f0f3f3a",
+      "reward_shuffled": {
+        "admitted": 0,
+        "solved": 0,
+        "solved_nontrivial": 0
+      },
+      "seed": 3500017,
+      "stored_programs": 8,
+      "verifier_step_ratio": 0.8270833333333333
+    },
+    {
+      "acquisition_ratio": 0.47413793103448276,
+      "control": {
+        "solved": 24,
+        "solved_nontrivial": 24,
+        "total_acquisition_steps": 3712,
+        "total_verifier_steps": 27904
+      },
+      "growing": {
+        "admitted": 6,
+        "false_recognitions": 0,
+        "induced": 6,
+        "nontrivial_tasks": 24,
+        "recognised": 18,
+        "solved": 24,
+        "solved_nontrivial": 24,
+        "total_acquisition_steps": 1760,
+        "total_verifier_steps": 24160,
+        "trivial_tasks": 0
+      },
+      "library_digest": "007fc14d0f76575194ca33fa6d2028c7c148cc927ba1b1f82de53f9090d6ccae",
+      "library_path": "/Users/torarinvikbjarko/Documents/Coding Projects/Elisa Projects/neural-computer-agent/artifacts/checkpoints/induced_programs_seed4000017.library",
+      "library_sha256": "a9772f032c5c6c95d091c2bc1bc8d44fef3abe4099a8fec68983f1633cf46c93",
+      "reward_shuffled": {
+        "admitted": 0,
+        "solved": 0,
+        "solved_nontrivial": 0
+      },
+      "seed": 4000017,
+      "stored_programs": 6,
+      "verifier_step_ratio": 0.8658256880733946
+    }
+  ],
+  "reward_shuffled_solved": 0,
+  "schema": "neural-computer.integrated-agent-holdout.v1",
+  "seconds": 89.86756687506568,
+  "seed_block": "integrated_agent_holdout",
+  "seeds": [
+    3000017,
+    3500017,
+    4000017
+  ],
+  "stream_length": 24,
+  "total_programs_kept": 20
+}

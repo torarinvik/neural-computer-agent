@@ -24,7 +24,17 @@ BLOCKS: dict[str, tuple[int, ...]] = {
     "onset_lease_192": (128_017, 129_017, 130_017),
     "current_symbol_lease_discriminating": (131_017, 132_017, 133_017),
     "onset_lease_discriminating": (134_017, 135_017, 136_017),
+    # The integrated agent walks a stream of tasks and strides `seed` by
+    # TASK_SEED_STRIDE per task, so one replicate consumes a span three orders
+    # of magnitude wider than a lease does. Placed far above every earlier
+    # block, and far enough apart from each other, that no span can meet
+    # another whatever stream length is chosen.
+    "integrated_agent_holdout": (3_000_017, 3_500_017, 4_000_017),
 }
+
+# One replicate of the integrated agent consumes `stride * tasks` seeds plus
+# the probe offset, not the seven a lease replicate spans.
+INTEGRATED_SESSIONS_PER_REPLICATE = 250_000
 
 
 def block(name: str) -> tuple[int, ...]:
