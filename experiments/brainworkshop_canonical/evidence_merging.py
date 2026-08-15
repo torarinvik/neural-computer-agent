@@ -48,6 +48,10 @@ class _Tree:
     output: dict[tuple[int, int], int]
     nodes: int
     symbol_count: int
+    # How much the evidence contradicted itself, which callers can read
+    # instead of discovering it as an exception.
+    disagreements: int = 0
+    observations: int = 0
 
 
 def build_tree(traces) -> _Tree:
@@ -59,7 +63,8 @@ def build_tree(traces) -> _Tree:
     """
 
     child: dict[tuple[int, int], int] = {}
-    output: dict[tuple[int, int], int] = {}
+    ones: dict[tuple[int, int], int] = {}
+    totals: dict[tuple[int, int], int] = {}
     nodes = 1
     symbol_count = 0
     for trace in traces:
@@ -71,18 +76,31 @@ def build_tree(traces) -> _Tree:
                 child[key] = nodes
                 nodes += 1
             if trace.eligible[position]:
-                recorded = output.get(key)
-                if recorded is None:
-                    output[key] = trace.outputs[position]
-                elif recorded != trace.outputs[position]:
-                    raise ValueError(
-                        "the same prefix produced two different outputs; the "
-                        "target is not a deterministic function of history"
-                    )
+                # Count both outcomes rather than asserting one. A prefix seen
+                # twice with different labels used to raise here, which meant
+                # a single mis-scored reward crashed the learner instead of
+                # costing it a label -- measured at 2% noise on the parity
+                # probe. Majority wins and the disagreement is preserved for
+                # callers that want to know how clean the evidence was.
+                totals[key] = totals.get(key, 0) + 1
+                ones[key] = ones.get(key, 0) + int(trace.outputs[position])
             node = child[key]
     if not child:
         raise ValueError("an empty prefix tree cannot be merged")
-    return _Tree(child=child, output=output, nodes=nodes, symbol_count=symbol_count)
+    output = {
+        key: int(ones.get(key, 0) * 2 > seen) for key, seen in totals.items()
+    }
+    disagreements = sum(
+        min(ones.get(key, 0), seen - ones.get(key, 0)) for key, seen in totals.items()
+    )
+    return _Tree(
+        child=child,
+        output=output,
+        nodes=nodes,
+        symbol_count=symbol_count,
+        disagreements=disagreements,
+        observations=sum(totals.values()),
+    )
 
 
 @dataclass

@@ -1,5 +1,10 @@
 # One episode of feedback already determines half the benchmark (2026-08-15)
 
+> **Numbers refreshed after the `minimize` fix**
+> (`brainworkshop_adversarial_audit_2026-08-15/`): 11 of 18 identified, 10
+> exactly. The table below is the pre-fix run and the shape of the result is
+> unchanged.
+
 Status: **diagnostic**. Development seed 41, already consumed. An
 experimenter's inference procedure, run to establish what the evidence
 supports. Nothing is admitted, no inferred machine is given to the searcher,

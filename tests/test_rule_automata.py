@@ -61,6 +61,54 @@ def test_minimal_state_counts_place_the_existing_records_on_the_axis() -> None:
     assert known_rule("n_back", symbol_count=4, n_back=2).state_count == 16
 
 
+def test_minimisation_never_changes_behaviour() -> None:
+    """The regression that mattered: `minimize` used to return a different rule.
+
+    Merged blocks were numbered by signature order, which has no reason to put
+    the block containing the start state first, while `expected` always starts
+    at state 0. A symmetric two-state parity rule came back with its outputs
+    swapped -- the exact inverse of the machine that went in -- and a sweep of
+    random machines put the rate at 42.5%.
+    """
+
+    parity = RuleAutomaton(
+        symbol_count=4,
+        transitions=((1, 0, 0, 0), (0, 1, 1, 1)),
+        outputs=((1, 0, 0, 0), (0, 1, 1, 1)),
+    )
+    symbols = _stream(256, 4, 7)
+    assert minimize(parity).expected(symbols) == parity.expected(symbols)
+
+    generator = torch.Generator().manual_seed(3)
+    for states in (1, 2, 3, 4, 5):
+        for _ in range(60):
+            machine = RuleAutomaton(
+                symbol_count=4,
+                transitions=tuple(
+                    tuple(
+                        int(value)
+                        for value in torch.randint(0, states, (4,), generator=generator)
+                    )
+                    for _ in range(states)
+                ),
+                outputs=tuple(
+                    tuple(
+                        int(value)
+                        for value in torch.randint(0, 2, (4,), generator=generator)
+                    )
+                    for _ in range(states)
+                ),
+            )
+            stream = [
+                int(value)
+                for value in torch.randint(0, 4, (128,), generator=generator)
+            ]
+            reduced = minimize(machine)
+            assert reduced.expected(stream) == machine.expected(stream)
+            # And it is a fixed point, so digests are stable identities.
+            assert minimize(reduced).digest() == reduced.digest()
+
+
 def test_minimisation_merges_duplicates_and_drops_unreachable_states() -> None:
     # States 0 and 1 behave identically; state 2 is unreachable.
     redundant = RuleAutomaton(

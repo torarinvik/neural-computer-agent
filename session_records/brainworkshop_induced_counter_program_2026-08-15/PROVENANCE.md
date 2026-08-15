@@ -1,5 +1,10 @@
 # 18/18, and the constraint was the shape of the evidence (2026-08-15)
 
+> **Numbers refreshed after the `minimize` fix**
+> (`brainworkshop_adversarial_audit_2026-08-15/`): 28x16 now solves 18/18
+> rather than 15/18, and 112x16 solves 18/18 with every one exactly correct.
+> The segmentation finding is strengthened, not changed.
+
 Status: **diagnostic**. Development seed 41. Nothing admitted,
 `AgentBrain.bank` checksummed before and after every run.
 

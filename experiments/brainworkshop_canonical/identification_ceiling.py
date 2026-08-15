@@ -164,7 +164,10 @@ class _BudgetExhausted(Exception):
 
 
 def _consistent_machine(
-    traces: tuple[Trace, ...], states: int, node_budget: int
+    traces: tuple[Trace, ...],
+    states: int,
+    node_budget: int,
+    violation_budget: int = 0,
 ) -> RuleAutomaton | None:
     """Depth-first assignment of `states` states to every trace, or None.
 
@@ -186,6 +189,7 @@ def _consistent_machine(
     outputs: dict[tuple[int, int], int | None] = {}
     used = [1]
     visited = [0]
+    spent = [0]
 
     def walk(step: int, state: int) -> bool:
         if step == len(steps):
@@ -214,6 +218,15 @@ def _consistent_machine(
                 outputs[key] = None
                 return False
             if want is not None and recorded != want:
+                # A disagreement is a contradiction only when no budget is
+                # left for it. Spending one here is what lets a mis-scored
+                # reward cost a label rather than the whole hypothesis.
+                if spent[0] >= violation_budget:
+                    return False
+                spent[0] += 1
+                if walk(step + 1, following if following is not None else successor):
+                    return True
+                spent[0] -= 1
                 return False
             return walk(step + 1, following if following is not None else successor)
         options = list(range(used[0]))

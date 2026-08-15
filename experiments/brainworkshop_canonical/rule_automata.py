@@ -140,7 +140,17 @@ def minimize(automaton: RuleAutomaton) -> RuleAutomaton:
     representative: dict[int, int] = {}
     for state, group in enumerate(partition):
         representative.setdefault(group, state)
-    groups = sorted(representative)
+    # The block containing the start state must be numbered zero. Partition
+    # labels come from sorting signatures, which has no reason to put the
+    # start state first, and `expected` always begins at state 0 -- so
+    # numbering by label alone silently returns a machine with different
+    # behaviour. A symmetric two-state parity rule minimises to the same
+    # transition table with its outputs swapped, which is the inverse of the
+    # machine that went in.
+    start_group = partition[0]
+    groups = [start_group] + sorted(
+        group for group in representative if group != start_group
+    )
     order = {group: position for position, group in enumerate(groups)}
     merged_transitions = tuple(
         tuple(

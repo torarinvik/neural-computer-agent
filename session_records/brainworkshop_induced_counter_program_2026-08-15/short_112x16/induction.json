@@ -1,9 +1,9 @@
 {
   "bank_sha256": "07319eb13c9cac58bbbe94258548e64f13ba1b3512ca2a01fbdc675c49e2e7c9",
   "bank_unchanged": true,
-  "elapsed_seconds": 22.106420750031248,
+  "elapsed_seconds": 34.14419983304106,
   "episodes_spent": 2034,
-  "exactly_correct": 14,
+  "exactly_correct": 18,
   "experiment_id": "brainworkshop-induced-counter-program-2026-08-15",
   "feedback_steps": 32256,
   "learning_episodes": 112,
@@ -64,7 +64,7 @@
       "true_state_count": 1
     },
     {
-      "accuracy": 0.9977678571428571,
+      "accuracy": 1.0,
       "counters": 9,
       "episodes_spent": 113,
       "executor_statuses": "halted",
@@ -75,7 +75,7 @@
       "learning_episodes": 112,
       "learning_steps": 16,
       "reason": null,
-      "rule_digest": "40209939abcfb32261d7fd293f732aa27a4e1e4a329a4db3e62b80ecf851426e",
+      "rule_digest": "44f95a89b6e9693e5b85b3b3c725df2d84386daba94f56ba3b2372dde9d84a6a",
       "scored": 448,
       "solved": true,
       "true_state_count": 2
@@ -92,7 +92,7 @@
       "learning_episodes": 112,
       "learning_steps": 16,
       "reason": null,
-      "rule_digest": "e03e28ee60035a4bd2d304e1315be8ba046a97c1e0adf2abe7407ecc4373e022",
+      "rule_digest": "4f80d5f459cb00659efcd3cdabe5e2534509c97e503902f515c65c9dc290e031",
       "scored": 448,
       "solved": true,
       "true_state_count": 2
@@ -160,7 +160,7 @@
       "learning_episodes": 112,
       "learning_steps": 16,
       "reason": null,
-      "rule_digest": "28e7afca5b6daa93268d50a0c39ba8ed2d0ce04da655e82eb9f4ec21f1b8aee4",
+      "rule_digest": "2b5b7d0ec712b0dbe101f7563a5646b8f18eac85184f18bab07dd1e32c3774dc",
       "scored": 448,
       "solved": true,
       "true_state_count": 3
@@ -194,7 +194,7 @@
       "learning_episodes": 112,
       "learning_steps": 16,
       "reason": null,
-      "rule_digest": "60a9169e6cd046dc35dbfba08ebf4e00d41b4fe795c137c51cda12981f0d3a30",
+      "rule_digest": "8f9f28cf639a5aee9609ec9b0a5ac6e3999c85274a0af9bb9ff826e1f4605464",
       "scored": 448,
       "solved": true,
       "true_state_count": 4
@@ -211,13 +211,13 @@
       "learning_episodes": 112,
       "learning_steps": 16,
       "reason": null,
-      "rule_digest": "18def25b253b7f942ac9cfbe1f2f444a2affb39867ff817e80796e1525b7e491",
+      "rule_digest": "7d264e672de137940d7327a970df7a024afb04475e3ef5c9569b833eebcf3a69",
       "scored": 448,
       "solved": true,
       "true_state_count": 4
     },
     {
-      "accuracy": 0.9799107142857143,
+      "accuracy": 1.0,
       "counters": 15,
       "episodes_spent": 113,
       "executor_statuses": "halted",
@@ -245,7 +245,7 @@
       "learning_episodes": 112,
       "learning_steps": 16,
       "reason": null,
-      "rule_digest": "073e1cb64c6962213bfbbe94332d4f85d0c94920961d062f27959b570191558a",
+      "rule_digest": "a79707fd39b675aba28685a0d8172eadc902e9fc697794f85538d3a1e821dd36",
       "scored": 448,
       "solved": true,
       "true_state_count": 5
@@ -262,7 +262,7 @@
       "learning_episodes": 112,
       "learning_steps": 16,
       "reason": null,
-      "rule_digest": "a9c5fe7dc00e22f74518b8800f8f3abecc66a2bfca5b996c62823ec9f5412d15",
+      "rule_digest": "6052e806c4991fc9b683c647c7252612b4f224bda70180c1b6810a4794f8aeab",
       "scored": 448,
       "solved": true,
       "true_state_count": 5
@@ -279,13 +279,13 @@
       "learning_episodes": 112,
       "learning_steps": 16,
       "reason": null,
-      "rule_digest": "a9eeb64c26e8dbdebffcf4517765c9a47520f1212694282145c75152a7310aa2",
+      "rule_digest": "c44ed3ecc6ed62040a4bce68a38a91e926207260c6a1b4bf0cf44ba139a9d245",
       "scored": 448,
       "solved": true,
       "true_state_count": 6
     },
     {
-      "accuracy": 0.9977678571428571,
+      "accuracy": 1.0,
       "counters": 17,
       "episodes_spent": 113,
       "executor_statuses": "halted",
@@ -296,13 +296,13 @@
       "learning_episodes": 112,
       "learning_steps": 16,
       "reason": null,
-      "rule_digest": "35fce98103ee29bfd37886c5b921ad87915c9905ece349a8eca65579a1b253a8",
+      "rule_digest": "3919a24a1441f6448f17d184689dfcabc2bac493688e76724d4db1684d6f718d",
       "scored": 448,
       "solved": true,
       "true_state_count": 6
     },
     {
-      "accuracy": 0.9955357142857143,
+      "accuracy": 1.0,
       "counters": 17,
       "episodes_spent": 113,
       "executor_statuses": "halted",
@@ -313,7 +313,7 @@
       "learning_episodes": 112,
       "learning_steps": 16,
       "reason": null,
-      "rule_digest": "f64128d8ad78b611fe0ffce0c3f05b5a06f053db54913119e85103b4b44dcaea",
+      "rule_digest": "613a248a2155b056fc180ac7d07eb1e97342fb732e71b5f60d792f04530dd262",
       "scored": 448,
       "solved": true,
       "true_state_count": 6

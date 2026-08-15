@@ -1,5 +1,11 @@
 # The library composes, once the tasks have parts to share (2026-08-15)
 
+> **Superseded by `brainworkshop_adversarial_audit_2026-08-15/`.** A bug in
+> `rule_automata.minimize` was changing the behaviour of 42.5% of machines and
+> suppressed the numbers below. Post-fix the library arm reaches 18/18 at a
+> cost ratio of 0.141, robust across four primitive pools, and the
+> factorisation advantage recorded here is withdrawn.
+
 Status: **diagnostic**. Development seed 41, already consumed. Nothing is
 admitted and `AgentBrain.bank` is checksummed before and after.
 

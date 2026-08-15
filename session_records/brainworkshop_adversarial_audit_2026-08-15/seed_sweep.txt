@@ -1,0 +1,5 @@
+poolseed | products        | factored        | control
+    8000 | 18/18 r=0.141 | 18/18 r=0.283 | 16/18  bank_ok=True
+    8500 | 17/17 r=0.123 | 17/17 r=0.170 | 17/17  bank_ok=True
+    9000 | 18/18 r=0.097 | 18/18 r=0.208 | 13/18  bank_ok=True
+    9500 | 20/20 r=0.087 | 20/20 r=0.342 | 17/20  bank_ok=True
