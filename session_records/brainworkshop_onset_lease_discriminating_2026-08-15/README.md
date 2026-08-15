@@ -37,22 +37,34 @@ session of every seed**. A policy with a true rate of `0.78` produces one such
 perfect session with probability `6e-49`. That, not the `0.8` gate, is what
 makes this hard to explain as luck.
 
-## Where the floor is and is not enough
+## Separation, and one claim that stays weak
 
-At 447 eligible trials a `0.75` policy reaches `0.8` with probability
-`0.0066`, which clears the pre-registered 1% floor. That floor is stated
-against a `0.75` near miss, and it does not cover everything:
+Acceptance now requires the winner to be separated from its **strongest**
+rejected arm, not merely for the two to land on opposite sides of `0.8`. Per
+seed, the weakest held session against the best control:
 
-- the prototype-only control was observed at `0.779` on 135017. If its true
-  rate were `0.78`, it would cross `0.8` about **15.6%** of the time even at
-  this length;
-- pushing the floor out to a `0.78` near miss costs `2326` eligible trials,
-  roughly five times these episodes;
-- so this record's strength comes from the winner-control gap (`0.221` to
-  `0.271`) and the perfect holds, not from the control margins alone.
+| Seed | Best control | Its rate | Margin | P(that arm reproduces the winner's run) |
+| ---: | --- | ---: | ---: | ---: |
+| 134017 | zeros | 0.749 | 0.251 | 1.0e-56 |
+| 135017 | prototype only | 0.779 | 0.221 | 2.5e-49 |
+| 136017 | zeros | 0.749 | 0.251 | 1.0e-56 |
 
-Tightening the rule to gate on that gap, rather than on both sides crossing a
-fixed constant, is the open protocol question.
+This gate is what the 48-step campaign actually failed: its spurious AND at
+`0.812` against a `0.75` arm over 47 trials reproduces one time in five.
+
+**The weak claim.** "No single family clears `0.8`" is a statement about each
+control's *true* rate, and observing one under the gate does not establish it.
+On 135017 the prototype-only arm was seen at `0.779`, which is what a true
+`0.8` arm produces `14%` of the time, so that seed does not rule out a
+single-family solution at the gate. The other five control-seed pairs here do
+(`p <= 0.0054`). Every replicate records this as
+`control_below_threshold`; it is reported, not gated, because acceptance rests
+on necessity — the AND beats every rival by 0.22 or more with perfect holds —
+rather than on where an arbitrary constant falls.
+
+Closing that gap needs either a longer episode (ruling out a `0.78` arm at 1%
+costs `2326` trials, roughly five times these) or a task variant where the
+prototype-only base rate is further from the gate.
 
 ## Not claimed
 

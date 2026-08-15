@@ -9,10 +9,13 @@
     "frontend_bound": true,
     "frozen_holds": true,
     "invert_slot0_below_threshold": true,
-    "near_miss_pass_probability": 0.0065570672002290015,
+    "near_miss_pass_probability": 0.006557067200229723,
     "prototype_only_below_threshold": true,
     "retrieve_slot0_below_threshold": true,
     "reward_shuffled_below_threshold": true,
+    "separated_from_best_control": true,
+    "smallest_winner_control_margin": 0.2214764952659607,
+    "worst_separation_probability": 2.5030117878303496e-49,
     "zeros_below_threshold": true
   },
   "experiment_id": "brainworkshop-onset-lease-discriminating-2026-08-15",
@@ -58,8 +61,8 @@
     "open_program_induction": "grammar is still retrieve, compose, invert, and, invent"
   },
   "wall_seconds": {
-    "seed134017": 2.6324270829791203,
-    "seed135017": 2.637606958975084,
-    "seed136017": 2.6417300410103053
+    "seed134017": 2.76232854090631,
+    "seed135017": 2.669249208061956,
+    "seed136017": 2.612011333112605
   }
 }

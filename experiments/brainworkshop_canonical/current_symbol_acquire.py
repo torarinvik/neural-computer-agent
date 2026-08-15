@@ -22,7 +22,12 @@ from .controller_pretraining import (
     load_temporal_controller_artifact,
 )
 from .dual_promotion import CONTROLLER_SHA256, KNOWN_USED_SEEDS
-from .lease_discrimination import assert_discriminating, discrimination_report
+from .lease_discrimination import (
+    assert_discriminating,
+    control_below_threshold_report,
+    discrimination_report,
+    separation_report,
+)
 from .program_search import search_temporal_programs
 from .rendered_environment import (
     RenderedBrainWorkshopConfig,
@@ -218,6 +223,24 @@ def run_replicate(
         )
         delay = _summary("delay_slot0", delay_report)
     elapsed = time.perf_counter() - started
+    controls = {
+        "zeros": zeros.eligible_accuracy,
+        "action_reversed": reversed_actions.eligible_accuracy,
+        "reward_shuffled": shuffled.eligible_accuracy,
+        "cross_encoder": crossed.eligible_accuracy,
+    }
+    if delay is not None:
+        controls["delay_slot0"] = float(delay["accuracy"])
+    label = max(controls, key=lambda name: controls[name])
+    separation = separation_report(
+        hold.eligible_accuracy, controls[label], steps, control_label=label
+    )
+    below_threshold = {
+        name: control_below_threshold_report(
+            accuracy, steps, threshold=THRESHOLD, control_label=name
+        )
+        for name, accuracy in controls.items()
+    }
     hold_ok = hold.eligible_accuracy >= THRESHOLD
     zeros_ok = zeros.eligible_accuracy < THRESHOLD
     reverse_ok = reversed_actions.eligible_accuracy < THRESHOLD
@@ -226,6 +249,8 @@ def run_replicate(
     cross_ok = crossed.eligible_accuracy < THRESHOLD
     return {
         "schema": "neural-computer.current-symbol-acquire-replicate.v1",
+        "separation": separation,
+        "control_below_threshold": below_threshold,
         "experiment_id": EXPERIMENT_ID,
         "seed": seed,
         "hold_seed": hold_seed,
@@ -245,6 +270,7 @@ def run_replicate(
         "elapsed_seconds": elapsed,
         "accepted": bool(
             hold_ok
+            and bool(separation["separated"])
             and zeros_ok
             and reverse_ok
             and shuffle_ok
@@ -366,6 +392,16 @@ def run_campaign(
         "transfer_ratio_against_fresh_learner": None,
         "transfer_ratio_note": "zeros are the unmatched invent file, not a fresh delay learner",
         "controls": {
+            "separated_from_best_control": all(
+                bool(row["separation"]["separated"]) for row in replicates
+            ),
+            "worst_separation_probability": max(
+                float(row["separation"]["control_reproduces_winner_probability"])
+                for row in replicates
+            ),
+            "smallest_winner_control_margin": min(
+                float(row["separation"]["margin"]) for row in replicates
+            ),
             "discriminating_episode": bool(discrimination["discriminating"]),
             "near_miss_pass_probability": discrimination[
                 "near_miss_pass_probability"
@@ -570,6 +606,24 @@ def run_search_lease_replicate(
     delay = run_rendered_live_lifetime(
         delay_machine, encoders, config, seed=hold_seed, learn=False, sample=False
     )
+    controls = {
+        "zeros": zeros.eligible_accuracy,
+        "action_reversed": reversed_actions.eligible_accuracy,
+        "reward_shuffled": shuffled.eligible_accuracy,
+        "cross_encoder": crossed.eligible_accuracy,
+        "delay_slot0": delay.eligible_accuracy,
+    }
+    worst_hold = min((float(row["accuracy"]) for row in holds), default=0.0)
+    label = max(controls, key=lambda name: controls[name])
+    separation = separation_report(
+        worst_hold, controls[label], steps, control_label=label
+    )
+    below_threshold = {
+        name: control_below_threshold_report(
+            accuracy, steps, threshold=THRESHOLD, control_label=name
+        )
+        for name, accuracy in controls.items()
+    }
     stable = _stable_hold_bits(holds)
     winner = search["winner"]
     accepted = bool(
@@ -582,10 +636,13 @@ def run_search_lease_replicate(
         and shuffled.eligible_accuracy < THRESHOLD
         and crossed.eligible_accuracy < THRESHOLD
         and delay.eligible_accuracy < THRESHOLD
+        and bool(separation["separated"])
         and machine.controller_digest() == bank.controller_digest
     )
     return {
         "schema": "neural-computer.current-symbol-search-lease-replicate.v1",
+        "separation": separation,
+        "control_below_threshold": below_threshold,
         "experiment_id": SEARCH_LEASE_ID,
         "seed": seed,
         "steps": steps,
@@ -720,6 +777,16 @@ def run_search_lease(
         "transfer_ratio_against_fresh_learner": None,
         "transfer_ratio_note": "zeros and delay slot 0 are reject controls, not a Dual climb",
         "controls": {
+            "separated_from_best_control": all(
+                bool(row["separation"]["separated"]) for row in replicates
+            ),
+            "worst_separation_probability": max(
+                float(row["separation"]["control_reproduces_winner_probability"])
+                for row in replicates
+            ),
+            "smallest_winner_control_margin": min(
+                float(row["separation"]["margin"]) for row in replicates
+            ),
             "discriminating_episode": bool(discrimination["discriminating"]),
             "near_miss_pass_probability": discrimination[
                 "near_miss_pass_probability"

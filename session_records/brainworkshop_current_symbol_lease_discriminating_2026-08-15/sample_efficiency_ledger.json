@@ -7,8 +7,11 @@
     "delay_slot0_below_threshold": true,
     "discriminating_episode": true,
     "frontend_bound": true,
-    "near_miss_pass_probability": 0.0060976975207228615,
+    "near_miss_pass_probability": 0.006097697520723366,
     "reward_shuffled_below_threshold": true,
+    "separated_from_best_control": true,
+    "smallest_winner_control_margin": 0.2700892686843872,
+    "worst_separation_probability": 5.557090379187872e-62,
     "zeros_below_threshold": true
   },
   "experiment_id": "brainworkshop-current-symbol-search-lease-2026-08-15",
@@ -52,8 +55,8 @@
     "open_program_induction": "grammar is still retrieve, compose, invent"
   },
   "wall_seconds": {
-    "seed131017": 3.015430915984325,
-    "seed132017": 3.0142378750024363,
-    "seed133017": 2.999852165929042
+    "seed131017": 3.187633958994411,
+    "seed132017": 3.216599000035785,
+    "seed133017": 3.0799816669896245
   }
 }

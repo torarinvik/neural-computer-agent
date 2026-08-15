@@ -87,3 +87,39 @@ def test_the_tail_matches_exact_integer_arithmetic_and_survives_big_counts() -> 
 def test_a_closer_near_miss_costs_far_more_trials() -> None:
     assert required_eligible_trials(0.8, 0.75, 0.01) == 411
     assert required_eligible_trials(0.8, 0.78, 0.01) == 2326
+
+
+def test_separation_kills_the_near_miss_a_fixed_gate_let_through() -> None:
+    from experiments.brainworkshop_canonical.lease_discrimination import (
+        best_control,
+        separation_report,
+    )
+
+    # The spurious 48-step AND: it cleared 0.8, but a 0.75 arm reproduces it
+    # one time in five, so the winner was never distinguishable from a rival.
+    weak = separation_report(0.812, 0.75, 48, control_label="invert_slot0")
+    assert weak["separated"] is False
+    # The standing onset lease: a 0.779 arm does not score 447 of 447.
+    strong = separation_report(1.0, 0.779, 447, control_label="prototype_only")
+    assert strong["separated"] is True
+    assert float(strong["control_reproduces_winner_probability"]) < 1e-40
+    assert best_control({"a": 0.5, "b": 0.78})[0] == "b"
+
+
+def test_a_control_seen_under_the_gate_need_not_belong_under_it() -> None:
+    from experiments.brainworkshop_canonical.lease_discrimination import (
+        binomial_lower_tail,
+        control_below_threshold_report,
+    )
+
+    # 0.779 over 447 trials is what a true 0.8 arm gives 14% of the time.
+    weak = control_below_threshold_report(0.779, 447, threshold=0.8)
+    assert weak["ruled_out_at_threshold"] is False
+    assert float(weak["at_least_threshold_probability"]) == pytest.approx(
+        0.141, abs=0.005
+    )
+    clear = control_below_threshold_report(0.729, 447, threshold=0.8)
+    assert clear["ruled_out_at_threshold"] is True
+    # The tails are complementary around the observed count.
+    assert binomial_lower_tail(100, 0.5, 1.0) == pytest.approx(1.0)
+    assert binomial_lower_tail(100, 1.0, 0.5) == pytest.approx(0.0)

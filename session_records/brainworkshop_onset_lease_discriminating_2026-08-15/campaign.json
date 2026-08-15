@@ -8,13 +8,13 @@
     "alpha": 0.01,
     "discriminating": true,
     "eligible_trials": 447,
-    "near_miss_pass_probability": 0.0065570672002290015,
+    "near_miss_pass_probability": 0.006557067200229723,
     "near_miss_rate": 0.75,
     "required_eligible_trials": 411,
     "schema": "neural-computer.lease-discrimination.v1",
     "threshold": 0.8
   },
-  "elapsed_seconds": 7.929655292071402,
+  "elapsed_seconds": 8.057587792049162,
   "experiment_id": "brainworkshop-onset-lease-discriminating-2026-08-15",
   "frontend_digest": "1ce405a091b7b0bac7ee4e2c96d027b81188f70baa31db2601057222c0f74b5d",
   "frontend_shared": true,
@@ -103,6 +103,78 @@
         "replayed_examples": 0,
         "unique_verifier_bits": 447
       },
+      "control_below_threshold": {
+        "action_reversed": {
+          "alpha": 0.01,
+          "at_least_threshold_probability": 3.63419362147e-313,
+          "control_accuracy": 0.0,
+          "control_label": "action_reversed",
+          "eligible_trials": 447,
+          "ruled_out_at_threshold": true,
+          "schema": "neural-computer.control-below-threshold.v1",
+          "threshold": 0.8
+        },
+        "cross_encoder": {
+          "alpha": 0.01,
+          "at_least_threshold_probability": 0.005355322694921829,
+          "control_accuracy": 0.7494407296180725,
+          "control_label": "cross_encoder",
+          "eligible_trials": 447,
+          "ruled_out_at_threshold": true,
+          "schema": "neural-computer.control-below-threshold.v1",
+          "threshold": 0.8
+        },
+        "invert_slot0": {
+          "alpha": 0.01,
+          "at_least_threshold_probability": 0.005355322694921829,
+          "control_accuracy": 0.7494407296180725,
+          "control_label": "invert_slot0",
+          "eligible_trials": 447,
+          "ruled_out_at_threshold": true,
+          "schema": "neural-computer.control-below-threshold.v1",
+          "threshold": 0.8
+        },
+        "prototype_only": {
+          "alpha": 0.01,
+          "at_least_threshold_probability": 0.00019199085216948294,
+          "control_accuracy": 0.7293064594268799,
+          "control_label": "prototype_only",
+          "eligible_trials": 447,
+          "ruled_out_at_threshold": true,
+          "schema": "neural-computer.control-below-threshold.v1",
+          "threshold": 0.8
+        },
+        "retrieve_slot0": {
+          "alpha": 0.01,
+          "at_least_threshold_probability": 8.963741554647597e-138,
+          "control_accuracy": 0.2505592703819275,
+          "control_label": "retrieve_slot0",
+          "eligible_trials": 447,
+          "ruled_out_at_threshold": true,
+          "schema": "neural-computer.control-below-threshold.v1",
+          "threshold": 0.8
+        },
+        "reward_shuffled": {
+          "alpha": 0.01,
+          "at_least_threshold_probability": 2.9668433204331197e-46,
+          "control_accuracy": 0.4966442883014679,
+          "control_label": "reward_shuffled",
+          "eligible_trials": 447,
+          "ruled_out_at_threshold": true,
+          "schema": "neural-computer.control-below-threshold.v1",
+          "threshold": 0.8
+        },
+        "zeros": {
+          "alpha": 0.01,
+          "at_least_threshold_probability": 0.005355322694921829,
+          "control_accuracy": 0.7494407296180725,
+          "control_label": "zeros",
+          "eligible_trials": 447,
+          "ruled_out_at_threshold": true,
+          "schema": "neural-computer.control-below-threshold.v1",
+          "threshold": 0.8
+        }
+      },
       "controller_digest": "59c9ef2b235104e4f0d6bc143ba195fb57a907da9f29b1d5750c39fa22f7687c",
       "cross_encoder": {
         "accuracy": 0.7494407296180725,
@@ -112,8 +184,8 @@
         "replayed_examples": 0,
         "unique_verifier_bits": 447
       },
-      "cross_frontend_digest": "5a7b22868e9814c6fac4abb3b92fc46a724306082b034825a5d8d3c0662f6340",
-      "elapsed_seconds": 2.6324270829791203,
+      "cross_frontend_digest": "2116d3dcb686966ef323567c9ea99a809462e096fc1a8c54d88f69bada19dc10",
+      "elapsed_seconds": 2.76232854090631,
       "experiment_id": "brainworkshop-onset-lease-discriminating-2026-08-15",
       "frontend_digest": "1ce405a091b7b0bac7ee4e2c96d027b81188f70baa31db2601057222c0f74b5d",
       "frozen_holds": true,
@@ -419,6 +491,17 @@
         }
       },
       "seed": 134017,
+      "separation": {
+        "alpha": 0.01,
+        "control_accuracy": 0.7494407296180725,
+        "control_label": "zeros",
+        "control_reproduces_winner_probability": 1.0175821101544528e-56,
+        "eligible_trials": 447,
+        "margin": 0.2505592703819275,
+        "schema": "neural-computer.lease-separation.v1",
+        "separated": true,
+        "winner_accuracy": 1.0
+      },
       "sessions": 6,
       "stable_bits_to_threshold": 447,
       "steps": 448,
@@ -441,6 +524,78 @@
         "replayed_examples": 0,
         "unique_verifier_bits": 447
       },
+      "control_below_threshold": {
+        "action_reversed": {
+          "alpha": 0.01,
+          "at_least_threshold_probability": 3.63419362147e-313,
+          "control_accuracy": 0.0,
+          "control_label": "action_reversed",
+          "eligible_trials": 447,
+          "ruled_out_at_threshold": true,
+          "schema": "neural-computer.control-below-threshold.v1",
+          "threshold": 0.8
+        },
+        "cross_encoder": {
+          "alpha": 0.01,
+          "at_least_threshold_probability": 0.005355322694921829,
+          "control_accuracy": 0.7494407296180725,
+          "control_label": "cross_encoder",
+          "eligible_trials": 447,
+          "ruled_out_at_threshold": true,
+          "schema": "neural-computer.control-below-threshold.v1",
+          "threshold": 0.8
+        },
+        "invert_slot0": {
+          "alpha": 0.01,
+          "at_least_threshold_probability": 0.005355322694921829,
+          "control_accuracy": 0.7494407296180725,
+          "control_label": "invert_slot0",
+          "eligible_trials": 447,
+          "ruled_out_at_threshold": true,
+          "schema": "neural-computer.control-below-threshold.v1",
+          "threshold": 0.8
+        },
+        "prototype_only": {
+          "alpha": 0.01,
+          "at_least_threshold_probability": 0.14130324177959416,
+          "control_accuracy": 0.7785235047340393,
+          "control_label": "prototype_only",
+          "eligible_trials": 447,
+          "ruled_out_at_threshold": false,
+          "schema": "neural-computer.control-below-threshold.v1",
+          "threshold": 0.8
+        },
+        "retrieve_slot0": {
+          "alpha": 0.01,
+          "at_least_threshold_probability": 8.963741554647597e-138,
+          "control_accuracy": 0.2505592703819275,
+          "control_label": "retrieve_slot0",
+          "eligible_trials": 447,
+          "ruled_out_at_threshold": true,
+          "schema": "neural-computer.control-below-threshold.v1",
+          "threshold": 0.8
+        },
+        "reward_shuffled": {
+          "alpha": 0.01,
+          "at_least_threshold_probability": 4.817563472584877e-45,
+          "control_accuracy": 0.501118540763855,
+          "control_label": "reward_shuffled",
+          "eligible_trials": 447,
+          "ruled_out_at_threshold": true,
+          "schema": "neural-computer.control-below-threshold.v1",
+          "threshold": 0.8
+        },
+        "zeros": {
+          "alpha": 0.01,
+          "at_least_threshold_probability": 0.005355322694921829,
+          "control_accuracy": 0.7494407296180725,
+          "control_label": "zeros",
+          "eligible_trials": 447,
+          "ruled_out_at_threshold": true,
+          "schema": "neural-computer.control-below-threshold.v1",
+          "threshold": 0.8
+        }
+      },
       "controller_digest": "59c9ef2b235104e4f0d6bc143ba195fb57a907da9f29b1d5750c39fa22f7687c",
       "cross_encoder": {
         "accuracy": 0.7494407296180725,
@@ -450,8 +605,8 @@
         "replayed_examples": 0,
         "unique_verifier_bits": 447
       },
-      "cross_frontend_digest": "95a4f119636c8eb1c286e806b15b759bf4055af6664b018550dbd87a7e023e57",
-      "elapsed_seconds": 2.637606958975084,
+      "cross_frontend_digest": "c0f63dbf10d9092f7d23151ee02b791e4cfe83611d6949d765ad427e53392353",
+      "elapsed_seconds": 2.669249208061956,
       "experiment_id": "brainworkshop-onset-lease-discriminating-2026-08-15",
       "frontend_digest": "1ce405a091b7b0bac7ee4e2c96d027b81188f70baa31db2601057222c0f74b5d",
       "frozen_holds": true,
@@ -757,6 +912,17 @@
         }
       },
       "seed": 135017,
+      "separation": {
+        "alpha": 0.01,
+        "control_accuracy": 0.7785235047340393,
+        "control_label": "prototype_only",
+        "control_reproduces_winner_probability": 2.5030117878303496e-49,
+        "eligible_trials": 447,
+        "margin": 0.2214764952659607,
+        "schema": "neural-computer.lease-separation.v1",
+        "separated": true,
+        "winner_accuracy": 1.0
+      },
       "sessions": 6,
       "stable_bits_to_threshold": 447,
       "steps": 448,
@@ -779,6 +945,78 @@
         "replayed_examples": 0,
         "unique_verifier_bits": 447
       },
+      "control_below_threshold": {
+        "action_reversed": {
+          "alpha": 0.01,
+          "at_least_threshold_probability": 3.63419362147e-313,
+          "control_accuracy": 0.0,
+          "control_label": "action_reversed",
+          "eligible_trials": 447,
+          "ruled_out_at_threshold": true,
+          "schema": "neural-computer.control-below-threshold.v1",
+          "threshold": 0.8
+        },
+        "cross_encoder": {
+          "alpha": 0.01,
+          "at_least_threshold_probability": 0.005355322694921829,
+          "control_accuracy": 0.7494407296180725,
+          "control_label": "cross_encoder",
+          "eligible_trials": 447,
+          "ruled_out_at_threshold": true,
+          "schema": "neural-computer.control-below-threshold.v1",
+          "threshold": 0.8
+        },
+        "invert_slot0": {
+          "alpha": 0.01,
+          "at_least_threshold_probability": 0.005355322694921829,
+          "control_accuracy": 0.7494407296180725,
+          "control_label": "invert_slot0",
+          "eligible_trials": 447,
+          "ruled_out_at_threshold": true,
+          "schema": "neural-computer.control-below-threshold.v1",
+          "threshold": 0.8
+        },
+        "prototype_only": {
+          "alpha": 0.01,
+          "at_least_threshold_probability": 0.0027554169321882724,
+          "control_accuracy": 0.744966447353363,
+          "control_label": "prototype_only",
+          "eligible_trials": 447,
+          "ruled_out_at_threshold": true,
+          "schema": "neural-computer.control-below-threshold.v1",
+          "threshold": 0.8
+        },
+        "retrieve_slot0": {
+          "alpha": 0.01,
+          "at_least_threshold_probability": 8.963741554647597e-138,
+          "control_accuracy": 0.2505592703819275,
+          "control_label": "retrieve_slot0",
+          "eligible_trials": 447,
+          "ruled_out_at_threshold": true,
+          "schema": "neural-computer.control-below-threshold.v1",
+          "threshold": 0.8
+        },
+        "reward_shuffled": {
+          "alpha": 0.01,
+          "at_least_threshold_probability": 1.763228916426294e-47,
+          "control_accuracy": 0.4921700358390808,
+          "control_label": "reward_shuffled",
+          "eligible_trials": 447,
+          "ruled_out_at_threshold": true,
+          "schema": "neural-computer.control-below-threshold.v1",
+          "threshold": 0.8
+        },
+        "zeros": {
+          "alpha": 0.01,
+          "at_least_threshold_probability": 0.005355322694921829,
+          "control_accuracy": 0.7494407296180725,
+          "control_label": "zeros",
+          "eligible_trials": 447,
+          "ruled_out_at_threshold": true,
+          "schema": "neural-computer.control-below-threshold.v1",
+          "threshold": 0.8
+        }
+      },
       "controller_digest": "59c9ef2b235104e4f0d6bc143ba195fb57a907da9f29b1d5750c39fa22f7687c",
       "cross_encoder": {
         "accuracy": 0.7494407296180725,
@@ -788,8 +1026,8 @@
         "replayed_examples": 0,
         "unique_verifier_bits": 447
       },
-      "cross_frontend_digest": "c7e2fdc2617a9dece58d81fa6ebdc93f281e62aaf14011ba679fec274c0ca741",
-      "elapsed_seconds": 2.6417300410103053,
+      "cross_frontend_digest": "442842b73bf939b063ec9cc8ba8d2f594a753109a54debce1d74ead437d6ba27",
+      "elapsed_seconds": 2.612011333112605,
       "experiment_id": "brainworkshop-onset-lease-discriminating-2026-08-15",
       "frontend_digest": "1ce405a091b7b0bac7ee4e2c96d027b81188f70baa31db2601057222c0f74b5d",
       "frozen_holds": true,
@@ -1095,6 +1333,17 @@
         }
       },
       "seed": 136017,
+      "separation": {
+        "alpha": 0.01,
+        "control_accuracy": 0.7494407296180725,
+        "control_label": "zeros",
+        "control_reproduces_winner_probability": 1.0175821101544528e-56,
+        "eligible_trials": 447,
+        "margin": 0.2505592703819275,
+        "schema": "neural-computer.lease-separation.v1",
+        "separated": true,
+        "winner_accuracy": 1.0
+      },
       "sessions": 6,
       "stable_bits_to_threshold": 447,
       "steps": 448,
@@ -1115,6 +1364,41 @@
     136017
   ],
   "selection": "search_and_of_invert_and_acquired_prototype",
+  "separation": {
+    "seed134017": {
+      "alpha": 0.01,
+      "control_accuracy": 0.7494407296180725,
+      "control_label": "zeros",
+      "control_reproduces_winner_probability": 1.0175821101544528e-56,
+      "eligible_trials": 447,
+      "margin": 0.2505592703819275,
+      "schema": "neural-computer.lease-separation.v1",
+      "separated": true,
+      "winner_accuracy": 1.0
+    },
+    "seed135017": {
+      "alpha": 0.01,
+      "control_accuracy": 0.7785235047340393,
+      "control_label": "prototype_only",
+      "control_reproduces_winner_probability": 2.5030117878303496e-49,
+      "eligible_trials": 447,
+      "margin": 0.2214764952659607,
+      "schema": "neural-computer.lease-separation.v1",
+      "separated": true,
+      "winner_accuracy": 1.0
+    },
+    "seed136017": {
+      "alpha": 0.01,
+      "control_accuracy": 0.7494407296180725,
+      "control_label": "zeros",
+      "control_reproduces_winner_probability": 1.0175821101544528e-56,
+      "eligible_trials": 447,
+      "margin": 0.2505592703819275,
+      "schema": "neural-computer.lease-separation.v1",
+      "separated": true,
+      "winner_accuracy": 1.0
+    }
+  },
   "sessions": 6,
   "slot0_digest": "90e20193a50fdfa22b75fe722e6a9e131d9ba05d7f7e7d0aedbce9fc1f3c5749",
   "stable_bits_to_threshold": {
@@ -1134,5 +1418,6 @@
     "and",
     "and",
     "and"
-  ]
+  ],
+  "worst_separation_probability": 2.5030117878303496e-49
 }

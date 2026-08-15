@@ -47,7 +47,12 @@ from .current_symbol_acquire import (
     require_controller,
 )
 from .dual_promotion import KNOWN_USED_SEEDS
-from .lease_discrimination import assert_discriminating, discrimination_report
+from .lease_discrimination import (
+    assert_discriminating,
+    control_below_threshold_report,
+    discrimination_report,
+    separation_report,
+)
 from .program_search import search_temporal_programs
 from .rendered_environment import RenderedBrainWorkshopConfig
 from .rendered_live import run_rendered_live_lifetime
@@ -275,6 +280,33 @@ def run_onset_lease_replicate(
             if not row["executed"] and row["kind"] != "illegal_compose"
         ],
     }
+    # Compare the weakest held session against the strongest rejected arm,
+    # so the claim rests on the gap rather than on both sides of a constant.
+    controls = {
+        "zeros": zeros.eligible_accuracy,
+        "action_reversed": reversed_actions.eligible_accuracy,
+        "reward_shuffled": shuffled.eligible_accuracy,
+        "cross_encoder": crossed.eligible_accuracy,
+        "retrieve_slot0": retrieved.eligible_accuracy,
+        "invert_slot0": inverted.eligible_accuracy,
+        "prototype_only": prototype_only.eligible_accuracy,
+    }
+    worst_hold = min((float(row["accuracy"]) for row in holds), default=0.0)
+    label = max(controls, key=lambda name: controls[name])
+    separation = separation_report(
+        worst_hold,
+        controls[label],
+        steps - 1,
+        control_label=label,
+    )
+    # Reported, not gated: observing a control under the gate is weaker than
+    # showing it belongs under it.
+    below_threshold = {
+        name: control_below_threshold_report(
+            accuracy, steps - 1, threshold=THRESHOLD, control_label=name
+        )
+        for name, accuracy in controls.items()
+    }
     stable = _stable_hold_bits(holds)
     frozen_holds = all(
         int(row.get("program_file_updates", 0)) == 0 for row in holds[1:]
@@ -292,10 +324,13 @@ def run_onset_lease_replicate(
         and retrieved.eligible_accuracy < THRESHOLD
         and inverted.eligible_accuracy < THRESHOLD
         and prototype_only.eligible_accuracy < THRESHOLD
+        and bool(separation["separated"])
         and machine.controller_digest() == bank.controller_digest
     )
     return {
         "schema": "neural-computer.onset-search-lease-replicate.v1",
+        "separation": separation,
+        "control_below_threshold": below_threshold,
         "experiment_id": experiment_id,
         "seed": seed,
         "steps": steps,
@@ -413,6 +448,13 @@ def run_onset_lease(
         "grammar_coverage": {
             f"seed{row['seed']}": row["grammar_coverage"] for row in replicates
         },
+        "separation": {
+            f"seed{row['seed']}": row["separation"] for row in replicates
+        },
+        "worst_separation_probability": max(
+            float(row["separation"]["control_reproduces_winner_probability"])
+            for row in replicates
+        ),
         "seeds": list(seeds),
         "steps": steps,
         "sessions": sessions,
@@ -462,6 +504,13 @@ def run_onset_lease(
             "controls, not a fresh-learner climb"
         ),
         "controls": {
+            "separated_from_best_control": all(
+                bool(row["separation"]["separated"]) for row in replicates
+            ),
+            "worst_separation_probability": campaign["worst_separation_probability"],
+            "smallest_winner_control_margin": min(
+                float(row["separation"]["margin"]) for row in replicates
+            ),
             "discriminating_episode": bool(discrimination["discriminating"]),
             "near_miss_pass_probability": discrimination[
                 "near_miss_pass_probability"
