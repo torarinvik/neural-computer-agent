@@ -22,12 +22,14 @@ from .controller_pretraining import (
     load_temporal_controller_artifact,
 )
 from .dual_promotion import CONTROLLER_SHA256, KNOWN_USED_SEEDS
+from .lease_discrimination import assert_discriminating, discrimination_report
 from .program_search import search_temporal_programs
 from .rendered_environment import (
     RenderedBrainWorkshopConfig,
     RenderedBrainWorkshopEncoders,
 )
 from .rendered_live import run_rendered_live_lifetime
+from .seed_ledger import assert_unused_block, block
 
 EXPERIMENT_ID = "brainworkshop-current-symbol-bound-frontend-2026-08-15"
 DEVELOPMENT_SEEDS = (41,)
@@ -37,6 +39,13 @@ HOLDOUT_SEEDS = (119_017, 120_017, 121_017)
 BOUND_FRONTEND_SEEDS = frozenset(HOLDOUT_SEEDS)
 SEARCH_LEASE_ID = "brainworkshop-current-symbol-search-lease-2026-08-15"
 SEARCH_LEASE_SEEDS = (122_017, 123_017, 124_017)
+# The 122017-124017 record predates `and` in the grammar and sits below the
+# trial floor. This arm re-establishes the claim on a fresh block.
+DISCRIMINATING_LEASE_ID = (
+    "brainworkshop-current-symbol-lease-discriminating-2026-08-15"
+)
+DISCRIMINATING_BLOCK = "current_symbol_lease_discriminating"
+DISCRIMINATING_STEPS = 448
 LEASE_SESSIONS = 6
 DIAGNOSTIC_SEEDS = frozenset({17, 41, 43, 201, 203})
 FRONTEND_SEED = 1001
@@ -257,10 +266,17 @@ def run_campaign(
     steps: int = STEPS,
     frontend_path: Path | None = None,
     frontend_seed: int = FRONTEND_SEED,
+    enforce_discrimination: bool = True,
 ) -> dict[str, Any]:
     """Run the unused current-symbol population. Never writes the bank."""
 
     assert_unused_holdout_seeds(seeds)
+    # current-symbol scores every step, so eligible trials equal steps.
+    discrimination = (
+        assert_discriminating(steps, threshold=THRESHOLD)
+        if enforce_discrimination
+        else discrimination_report(steps, threshold=THRESHOLD)
+    )
     controller_sha = require_controller(controller_path)
     before = sha256_file(bank_path)
     bank = ExternalTemporalProgramBank.load_bank(bank_path)
@@ -287,9 +303,12 @@ def run_campaign(
     restored = ExternalTemporalProgramBank.load_bank(bank_path)
     if after != before or restored.artifact(0).digest() != slot0:
         raise RuntimeError("current-symbol campaign mutated AgentBrain.bank")
-    accepted = all(row["accepted"] for row in replicates)
+    accepted = all(row["accepted"] for row in replicates) and bool(
+        discrimination["discriminating"]
+    )
     campaign = {
         "schema": "neural-computer.current-symbol-acquire-campaign.v1",
+        "discrimination": discrimination,
         "experiment_id": EXPERIMENT_ID,
         "status": "replicated_not_admitted" if accepted else "rejected",
         "controller_sha256": controller_sha,
@@ -347,6 +366,10 @@ def run_campaign(
         "transfer_ratio_against_fresh_learner": None,
         "transfer_ratio_note": "zeros are the unmatched invent file, not a fresh delay learner",
         "controls": {
+            "discriminating_episode": bool(discrimination["discriminating"]),
+            "near_miss_pass_probability": discrimination[
+                "near_miss_pass_probability"
+            ],
             "zeros_below_threshold": all(
                 float(row["zeros"]["accuracy"]) < THRESHOLD for row in replicates
             ),
@@ -592,10 +615,20 @@ def run_search_lease(
     sessions: int = LEASE_SESSIONS,
     frontend_path: Path | None = None,
     frontend_seed: int = FRONTEND_SEED,
+    block_name: str | None = None,
+    enforce_discrimination: bool = True,
 ) -> dict[str, Any]:
     """Longer unused-seed search lease. Never writes the bank."""
 
-    assert_unused_search_lease_seeds(seeds)
+    if block_name is None:
+        assert_unused_search_lease_seeds(seeds)
+    else:
+        assert_unused_block(block_name, seeds, sessions=sessions)
+    discrimination = (
+        assert_discriminating(steps, threshold=THRESHOLD)
+        if enforce_discrimination
+        else discrimination_report(steps, threshold=THRESHOLD)
+    )
     controller_sha = require_controller(controller_path)
     before = sha256_file(bank_path)
     bank = ExternalTemporalProgramBank.load_bank(bank_path)
@@ -623,9 +656,12 @@ def run_search_lease(
     restored = ExternalTemporalProgramBank.load_bank(bank_path)
     if after != before or restored.artifact(0).digest() != slot0:
         raise RuntimeError("search lease mutated AgentBrain.bank")
-    accepted = all(row["accepted"] for row in replicates)
+    accepted = all(row["accepted"] for row in replicates) and bool(
+        discrimination["discriminating"]
+    )
     campaign = {
         "schema": "neural-computer.current-symbol-search-lease.v1",
+        "discrimination": discrimination,
         "experiment_id": SEARCH_LEASE_ID,
         "status": "replicated_not_admitted" if accepted else "rejected",
         "controller_sha256": controller_sha,
@@ -684,6 +720,10 @@ def run_search_lease(
         "transfer_ratio_against_fresh_learner": None,
         "transfer_ratio_note": "zeros and delay slot 0 are reject controls, not a Dual climb",
         "controls": {
+            "discriminating_episode": bool(discrimination["discriminating"]),
+            "near_miss_pass_probability": discrimination[
+                "near_miss_pass_probability"
+            ],
             "zeros_below_threshold": all(
                 float(row["zeros"]["accuracy"]) < THRESHOLD for row in replicates
             ),
@@ -760,9 +800,43 @@ def main() -> None:
         action="store_true",
         help="unused-seed search invent/acquire lease; does not write the bank",
     )
+    parser.add_argument(
+        "--discriminating-lease",
+        action="store_true",
+        help=(
+            "search lease on a fresh block at the eligible-trial floor; this "
+            "is the arm that stands under the current grammar"
+        ),
+    )
     parser.add_argument("--sessions", type=int, default=LEASE_SESSIONS)
     arguments = parser.parse_args()
-    if arguments.search_lease:
+    if arguments.discriminating_lease:
+        repository_records = Path(__file__).parents[2] / "session_records"
+        if arguments.output_dir == (
+            Path(__file__).parents[2]
+            / "session_records"
+            / "brainworkshop_current_symbol_bound_frontend_2026-08-15"
+        ):
+            arguments.output_dir = (
+                repository_records
+                / "brainworkshop_current_symbol_lease_discriminating_2026-08-15"
+            )
+        campaign = run_search_lease(
+            arguments.controller_artifact,
+            arguments.bank,
+            arguments.output_dir,
+            seeds=block(DISCRIMINATING_BLOCK),
+            steps=(
+                DISCRIMINATING_STEPS
+                if arguments.steps == STEPS
+                else arguments.steps
+            ),
+            sessions=arguments.sessions,
+            frontend_path=arguments.frontend,
+            frontend_seed=arguments.frontend_seed,
+            block_name=DISCRIMINATING_BLOCK,
+        )
+    elif arguments.search_lease:
         if arguments.output_dir == (
             Path(__file__).parents[2]
             / "session_records"
@@ -781,6 +855,7 @@ def main() -> None:
             sessions=arguments.sessions,
             frontend_path=arguments.frontend,
             frontend_seed=arguments.frontend_seed,
+            enforce_discrimination=False,
         )
     else:
         campaign = run_campaign(
@@ -790,6 +865,7 @@ def main() -> None:
             steps=arguments.steps,
             frontend_path=arguments.frontend,
             frontend_seed=arguments.frontend_seed,
+            enforce_discrimination=False,
         )
     print(json.dumps({
         "accepted": campaign["accepted"],

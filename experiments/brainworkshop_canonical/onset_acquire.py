@@ -47,9 +47,11 @@ from .current_symbol_acquire import (
     require_controller,
 )
 from .dual_promotion import KNOWN_USED_SEEDS
+from .lease_discrimination import assert_discriminating, discrimination_report
 from .program_search import search_temporal_programs
 from .rendered_environment import RenderedBrainWorkshopConfig
 from .rendered_live import run_rendered_live_lifetime
+from .seed_ledger import assert_unused_block, block
 
 EXPERIMENT_ID = "brainworkshop-onset-search-lease-2026-08-15"
 ONSET_LEASE_SEEDS = (125_017, 126_017, 127_017)
@@ -60,6 +62,11 @@ ONSET_LEASE_SEEDS = (125_017, 126_017, 127_017)
 LONG_LEASE_ID = "brainworkshop-onset-search-lease-long-2026-08-15"
 LONG_LEASE_SEEDS = (128_017, 129_017, 130_017)
 LONG_STEPS = 192
+# 191 eligible trials still let a 0.75 policy pass 5.9% of the time. The
+# standing arm runs at the 1% floor from `lease_discrimination`.
+DISCRIMINATING_LEASE_ID = "brainworkshop-onset-lease-discriminating-2026-08-15"
+DISCRIMINATING_BLOCK = "onset_lease_discriminating"
+DISCRIMINATING_STEPS = 448
 DUAL_HOLDOUT_SEEDS = frozenset({113_017, 114_017, 115_017})
 TARGET_SYMBOL = 0
 
@@ -326,11 +333,24 @@ def run_onset_lease(
     frontend_seed: int = FRONTEND_SEED,
     experiment_id: str = EXPERIMENT_ID,
     additional_used: frozenset[int] = frozenset(),
+    block_name: str | None = None,
+    enforce_discrimination: bool = True,
 ) -> dict[str, Any]:
     """Run the unused onset population. Never writes the bank."""
 
-    assert_unused_onset_seeds(
-        seeds, sessions=sessions, additional_used=additional_used
+    if block_name is None:
+        assert_unused_onset_seeds(
+            seeds, sessions=sessions, additional_used=additional_used
+        )
+    else:
+        assert_unused_block(
+            block_name, seeds, sessions=sessions, also_used=additional_used
+        )
+    # Onset scores every step after the first, so eligible trials are steps-1.
+    discrimination = (
+        assert_discriminating(steps - 1, threshold=THRESHOLD)
+        if enforce_discrimination
+        else discrimination_report(steps - 1, threshold=THRESHOLD)
     )
     controller_sha = require_controller(controller_path)
     before = sha256_file(bank_path)
@@ -365,7 +385,9 @@ def run_onset_lease(
         or restored.program_count != program_count
     ):
         raise RuntimeError("onset lease mutated AgentBrain.bank")
-    accepted = all(row["accepted"] for row in replicates)
+    accepted = all(row["accepted"] for row in replicates) and bool(
+        discrimination["discriminating"]
+    )
 
     def _below(name: str) -> bool:
         return all(float(row[name]["accuracy"]) < THRESHOLD for row in replicates)
@@ -373,6 +395,7 @@ def run_onset_lease(
     campaign = {
         "schema": "neural-computer.onset-search-lease.v1",
         "experiment_id": experiment_id,
+        "discrimination": discrimination,
         "status": "replicated_not_admitted" if accepted else "rejected",
         "controller_sha256": controller_sha,
         "bank_sha256": before,
@@ -439,6 +462,10 @@ def run_onset_lease(
             "controls, not a fresh-learner climb"
         ),
         "controls": {
+            "discriminating_episode": bool(discrimination["discriminating"]),
+            "near_miss_pass_probability": discrimination[
+                "near_miss_pass_probability"
+            ],
             "zeros_below_threshold": _below("zeros"),
             "action_reversed_below_threshold": _below("action_reversed"),
             "reward_shuffled_below_threshold": _below("reward_shuffled"),
@@ -487,6 +514,40 @@ def run_onset_lease(
 def main() -> None:
     parser = argparse.ArgumentParser()
     repository = Path(__file__).parents[2]
+    records = repository / "session_records"
+    # arm -> experiment id, seed block, steps, record directory
+    arms = {
+        "discriminating": (
+            DISCRIMINATING_LEASE_ID,
+            block(DISCRIMINATING_BLOCK),
+            DISCRIMINATING_STEPS,
+            records / "brainworkshop_onset_lease_discriminating_2026-08-15",
+            DISCRIMINATING_BLOCK,
+        ),
+        "historical-192": (
+            LONG_LEASE_ID,
+            LONG_LEASE_SEEDS,
+            LONG_STEPS,
+            records / "brainworkshop_onset_search_lease_long_2026-08-15",
+            "onset_lease_192",
+        ),
+        "historical-48": (
+            EXPERIMENT_ID,
+            ONSET_LEASE_SEEDS,
+            STEPS,
+            records / "brainworkshop_onset_search_lease_2026-08-15",
+            "onset_lease_48",
+        ),
+    }
+    parser.add_argument(
+        "--arm",
+        choices=tuple(arms),
+        default="discriminating",
+        help=(
+            "discriminating is the standing arm; the historical arms reproduce "
+            "recorded campaigns and are below the trial floor"
+        ),
+    )
     parser.add_argument(
         "--controller-artifact",
         type=Path,
@@ -500,15 +561,7 @@ def main() -> None:
         type=Path,
         default=repository / "artifacts/checkpoints/AgentBrain.bank",
     )
-    parser.add_argument(
-        "--output-dir",
-        type=Path,
-        default=(
-            repository
-            / "session_records"
-            / "brainworkshop_onset_search_lease_2026-08-15"
-        ),
-    )
+    parser.add_argument("--output-dir", type=Path, default=None)
     parser.add_argument(
         "--frontend",
         type=Path,
@@ -519,31 +572,13 @@ def main() -> None:
     parser.add_argument("--frontend-seed", type=int, default=FRONTEND_SEED)
     parser.add_argument("--steps", type=int, default=None)
     parser.add_argument("--sessions", type=int, default=LEASE_SESSIONS)
-    parser.add_argument(
-        "--long",
-        action="store_true",
-        help=(
-            "longer-episode arm on a fresh seed block; changes episode length "
-            "only, so the base-rate-bound single-family control is measured on "
-            "more eligible trials"
-        ),
-    )
     arguments = parser.parse_args()
-    default_output = (
-        repository / "session_records" / "brainworkshop_onset_search_lease_2026-08-15"
-    )
-    seeds = LONG_LEASE_SEEDS if arguments.long else ONSET_LEASE_SEEDS
-    experiment_id = LONG_LEASE_ID if arguments.long else EXPERIMENT_ID
-    additional_used = frozenset(ONSET_LEASE_SEEDS) if arguments.long else frozenset()
-    steps = arguments.steps
-    if steps is None:
-        steps = LONG_STEPS if arguments.long else STEPS
-    if arguments.long and arguments.output_dir == default_output:
-        arguments.output_dir = (
-            repository
-            / "session_records"
-            / "brainworkshop_onset_search_lease_long_2026-08-15"
-        )
+    experiment_id, seeds, steps, output_directory, block_name = arms[arguments.arm]
+    if arguments.steps is not None:
+        steps = arguments.steps
+    if arguments.output_dir is not None:
+        output_directory = arguments.output_dir
+    arguments.output_dir = output_directory
     campaign = run_onset_lease(
         arguments.controller_artifact,
         arguments.bank,
@@ -554,7 +589,10 @@ def main() -> None:
         frontend_path=arguments.frontend,
         frontend_seed=arguments.frontend_seed,
         experiment_id=experiment_id,
-        additional_used=additional_used,
+        block_name=block_name,
+        # Historical arms are below the trial floor by construction; they
+        # reproduce what was recorded rather than making a new claim.
+        enforce_discrimination=arguments.arm == "discriminating",
     )
     print(
         json.dumps(
