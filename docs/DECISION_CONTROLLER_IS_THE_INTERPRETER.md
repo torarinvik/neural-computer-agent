@@ -125,3 +125,25 @@ arm. It does three other things:
 3. It reorders the work. An interpreter makes programs longer and the search
    space larger. Building more of one before the proposer exists adds load to
    the component the curve just identified as the failure.
+
+### The searcher was fixed; the curve did not straighten
+
+`PROPOSERS.md` in the same record runs two better proposers on the identical
+curriculum. Collapsing observationally equivalent candidates takes the
+curriculum from 1432 verifier episodes to 390 and the cost ratio from 1.616 to
+1.032; recovering the target behaviour from per-step reward and ranking
+candidates offline takes it to **125 episodes, 11.5x**. All three arms solve
+the same seven rules, because both filters are lossless.
+
+The number an interpreter has to beat is therefore **125 episodes**, not 1432,
+and the honest reading of the rest is worse for the library rather than better.
+With blind enumeration gone, **zero composes, zero inverts of a learned file
+and zero gating ANDs over a learned file** remain, on all three arms. Every
+winner is still a `retrieve` of an exact behavioural duplicate or a fresh
+`invent`. The searcher was never what stood between this library and
+composition.
+
+What remains of the library's cost is now exactly one untestable proposal per
+admitted file: an `and:slot` whose prototype is acquired rather than given
+cannot be ruled out offline and must be trained against the verifier first.
+That is a property of the proposal grammar, not of the bank.

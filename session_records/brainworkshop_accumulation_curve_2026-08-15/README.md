@@ -1,5 +1,13 @@
 # The accumulation curve exists, and it bends the wrong way (2026-08-15)
 
+> **Extended by `PROPOSERS.md` in this directory.** Everything below is the
+> `enumerate` arm and stands as measured. Two later arms show its headline cost
+> is largely a property of the *searcher*: behavioural dedup takes 1432
+> episodes to 390, feedback ranking takes it to 125, and the 1.616 cost ratio
+> falls to 1.032 under dedup. The composition finding is unchanged under all
+> three. Per-arm records are in `enumerate/`, `dedup/` and `feedback/`;
+> `accumulation.json` here is the `enumerate` arm.
+
 Status: **diagnostic**. Development seed 41, already consumed. The curriculum
 grows a scratch copy of the library; `AgentBrain.bank` is checksummed before
 and after and was not written.

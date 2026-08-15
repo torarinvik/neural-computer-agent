@@ -59,6 +59,11 @@ from .bank_program import (
     invert_artifact,
     prototype_match_artifact,
 )
+from .behaviour_signature import (
+    behaviour_signature,
+    observe_stream,
+    partition_by_behaviour,
+)
 from .controller_pretraining import load_temporal_controller_artifact
 from .current_symbol_acquire import (
     FRONTEND_SEED,
@@ -66,6 +71,11 @@ from .current_symbol_acquire import (
     THRESHOLD,
     _machine,
     curated_frontend,
+)
+from .feedback_proposer import (
+    probe_target,
+    rank_by_agreement,
+    signatures_for,
 )
 from .lease_discrimination import control_below_threshold_report
 from .program_search import ProgramProposal, install_proposal, propose_from_bank
@@ -194,11 +204,26 @@ def _learn_one_rule(
     seed: int,
     steps: int,
     founding_program_count: int,
+    proposer: str = "enumerate",
+    compression_admission: bool = False,
 ) -> dict[str, Any]:
-    """Search against the current library; return cost, winner, and file."""
+    """Search against the current library; return cost, winner, and file.
+
+    `proposer` selects how candidates are ordered and filtered:
+
+    - `enumerate` is the original fixed-order walk, every executable proposal
+      paid for in turn. This is the arm the first curve measured.
+    - `dedup` keeps that order but skips any proposal that presses identically
+      to an earlier one on the episode it would be scored on. Lossless.
+    - `feedback` spends one episode recovering the target behaviour from its
+      own per-step rewards, ranks every candidate offline by agreement, and
+      pays only for the ones worth confirming.
+    """
 
     from .program_search import search_temporal_programs
 
+    if proposer not in ("enumerate", "dedup", "feedback"):
+        raise ValueError("proposer must be enumerate, dedup, or feedback")
     config = _config(rule, steps)
     bank = ExternalTemporalProgramBank.load_bank(bank_path)
     machine = _machine(payload, learn=False)
@@ -230,6 +255,75 @@ def _learn_one_rule(
     # One observation pass, before any verifier outcome is read.
     templates = observed_templates(encoders, config, seed=seed)
     proposals = propose_from_bank(bank, templates)
+    observation_passes = 1
+    equivalence = None
+    probe_payload: dict[str, Any] | None = None
+    ranking: tuple[tuple[int, float], ...] = ()
+    if proposer in ("dedup", "feedback"):
+        # Signatures for dedup are computed on the stream the winner will be
+        # scored on, which is what makes the collapse lossless rather than
+        # approximate. Reading the stimulus costs environment time; it reads
+        # no reward.
+        evaluation_stream = observe_stream(encoders, config, seed=seed + 1)
+        observation_passes += 1
+        equivalence = partition_by_behaviour(
+            proposals, machine, bank, evaluation_stream, install=install_proposal
+        )
+    probe_cost = 0
+    if proposer == "feedback":
+        # One episode, with whatever program happens to be installed first,
+        # inverted into the target it was being scored against.
+        install_proposal(machine, bank, proposals[equivalence.representatives[0]])
+        probe_lifetime = run_rendered_live_lifetime(
+            machine, encoders, config, seed=seed, learn=False, sample=False
+        )
+        probe_cost = 1
+        probe = probe_target(
+            probe_lifetime,
+            probe_label=proposals[equivalence.representatives[0]].label(),
+        )
+        probe_stream = observe_stream(encoders, config, seed=seed)
+        observation_passes += 1
+        rankable = tuple(
+            index
+            for index in equivalence.representatives
+            if index not in equivalence.trained
+        )
+        signatures = signatures_for(
+            [proposals[index] for index in rankable],
+            machine,
+            bank,
+            probe_stream,
+            install=install_proposal,
+        )
+        ranking = tuple(
+            (rankable[local], score)
+            for local, score in rank_by_agreement(signatures, probe)
+        )
+        probe_payload = probe.payload()
+        probe_payload["ranked_candidates"] = len(ranking)
+        probe_payload["best_probe_agreement"] = ranking[0][1] if ranking else None
+        # A candidate whose probe accuracy is statistically incompatible with
+        # a true rate at the gate cannot be worth an episode. This is the same
+        # test the leases use to refuse a near-miss, applied before spending
+        # rather than after, and it can discard a genuine winner only with
+        # probability alpha.
+        survivors = tuple(
+            (index, score)
+            for index, score in ranking
+            if not control_below_threshold_report(
+                score, probe.trials, threshold=THRESHOLD
+            )["ruled_out_at_threshold"]
+        )
+        probe_payload["ruled_out_before_spending"] = len(ranking) - len(survivors)
+        probe_payload["survivors"] = len(survivors)
+        # A proposal that trains before it is scored has no signature to rank
+        # or rule out. It cannot be discarded on evidence that predates its
+        # training, so it goes to the back of the queue and is tried only if
+        # nothing ranked gates first.
+        trained = tuple(equivalence.trained)
+        probe_payload["untestable_until_trained"] = len(trained)
+        ranking = survivors + tuple((index, None) for index in trained)
     search = search_temporal_programs(
         bank,
         machine,
@@ -239,9 +333,18 @@ def _learn_one_rule(
         acquire=acquire,
         encoders=encoders,
         templates=templates,
+        equivalence=equivalence,
+        # An empty ranking means the probe ruled every candidate out, which is
+        # a decision to spend nothing -- not an absent ranking. It must not
+        # fall back to walking the whole list.
+        order=(
+            tuple(index for index, _ in ranking)
+            if proposer == "feedback"
+            else None
+        ),
     )
     winner = search["winner"]
-    executed = int(search["executed"])
+    executed = int(search["executed"]) + probe_cost
     row: dict[str, Any] = {
         "rule_digest": rule.digest(),
         "state_count": rule.state_count,
@@ -250,6 +353,11 @@ def _learn_one_rule(
         "library_grown_by": bank.program_count - founding_program_count,
         "proposals_offered": len(proposals),
         "library_prefix": _library_prefix_length(proposals),
+        "proposer": proposer,
+        "observation_passes": observation_passes,
+        "distinct_behaviours": search["distinct_behaviours"],
+        "collapsed_as_equivalent": int(search["collapsed"]),
+        "probe": probe_payload,
         "programs_executed": executed,
         "verifier_steps_spent": executed * steps,
         "solved": winner is not None,
@@ -326,6 +434,24 @@ def _learn_one_rule(
     if artifact is None:
         return row
 
+    if compression_admission:
+        # DreamCoder's rule, in the only currency this family has: a file may
+        # enter the library when it does something no existing file already
+        # does. A behavioural duplicate lengthens the description of the
+        # corpus without shortening any solution in it, and the first curve
+        # measured what carrying such files costs.
+        duplicate = _behavioural_duplicate(
+            machine, bank, proposal, encoders, config, seed=seed + 1
+        )
+        row["compression_admission"] = True
+        if duplicate is not None:
+            row["admission_reason"] = (
+                f"{reason}: rejected, presses identically to slot {duplicate}"
+            )
+            row["rejected_as_duplicate"] = True
+            return row
+        row["rejected_as_duplicate"] = False
+
     events = observe_events(encoders, config, seed=seed)
     context = events.mean(dim=0).detach().cpu().reshape(-1)
     try:
@@ -362,6 +488,39 @@ def _learn_one_rule(
     return row
 
 
+def _behavioural_duplicate(
+    machine,
+    bank: ExternalTemporalProgramBank,
+    proposal: ProgramProposal,
+    encoders,
+    config: RenderedBrainWorkshopConfig,
+    *,
+    seed: int,
+) -> int | None:
+    """The slot a candidate would merely restate, if there is one.
+
+    Compares presses on one observation pass. Reads no reward, so a candidate
+    can be rejected as redundant without spending anything to find out.
+    """
+
+    stream = observe_stream(encoders, config, seed=seed)
+    install_proposal(machine, bank, proposal)
+    candidate = behaviour_signature(machine, stream)
+    for slot in range(bank.program_count):
+        try:
+            install_proposal(
+                machine, bank, ProgramProposal("retrieve", (slot,), bank.artifact(slot))
+            )
+        except (ValueError, RuntimeError):
+            # A slot this machine cannot host cannot be the file a candidate
+            # duplicates, so it simply does not compete.
+            continue
+        if behaviour_signature(machine, stream) == candidate:
+            return slot
+    install_proposal(machine, bank, proposal)
+    return None
+
+
 def _copy_bank(source: Path, destination: Path) -> None:
     """Copy a bank and the independent checksum it refuses to load without."""
 
@@ -380,6 +539,8 @@ def run_arm(
     grow: bool,
     seed: int,
     steps: int,
+    proposer: str = "enumerate",
+    compression_admission: bool = False,
 ) -> dict[str, Any]:
     """One curriculum pass. `grow=False` restores the library every rule."""
 
@@ -398,6 +559,8 @@ def run_arm(
                 seed=seed,
                 steps=steps,
                 founding_program_count=founding_count,
+                proposer=proposer,
+                compression_admission=compression_admission,
             )
         )
     if not grow:
@@ -408,6 +571,8 @@ def run_arm(
     final = ExternalTemporalProgramBank.load_bank(scratch)
     return {
         "grew_the_library": grow,
+        "proposer": proposer,
+        "compression_admission": compression_admission,
         "founding_program_count": founding_count,
         "final_program_count": final.program_count,
         "solved": sum(1 for row in rows if row["solved"]),
@@ -461,6 +626,8 @@ def run_accumulation_curve(
     symbol_count: int = SYMBOL_COUNT,
     steps: int = STEPS,
     seed: int = DEVELOPMENT_SEED,
+    proposer: str = "enumerate",
+    compression_admission: bool = False,
 ) -> dict[str, Any]:
     """Both arms, the curve between them, and a receipt that nothing moved."""
 
@@ -485,6 +652,8 @@ def run_accumulation_curve(
         grow=True,
         seed=seed,
         steps=steps,
+        proposer=proposer,
+        compression_admission=compression_admission,
     )
     control = run_arm(
         payload,
@@ -495,6 +664,8 @@ def run_accumulation_curve(
         grow=False,
         seed=seed,
         steps=steps,
+        proposer=proposer,
+        compression_admission=compression_admission,
     )
     after = sha256_file(bank_path)
     if after != before:
@@ -520,6 +691,8 @@ def run_accumulation_curve(
         "symbol_count": symbol_count,
         "threshold": THRESHOLD,
         "curriculum_length": len(rules),
+        "proposer": proposer,
+        "compression_admission": compression_admission,
         "growing": growing,
         "control": control,
         "curve": curve,
@@ -585,6 +758,17 @@ def main() -> None:
         default=repository / "artifacts/scratch/accumulation_curve",
     )
     parser.add_argument("--steps", type=int, default=STEPS)
+    parser.add_argument(
+        "--proposer",
+        choices=("enumerate", "dedup", "feedback"),
+        default="enumerate",
+        help="how candidates are ordered and filtered",
+    )
+    parser.add_argument(
+        "--compression-admission",
+        action="store_true",
+        help="admit a file only if no existing file already presses that way",
+    )
     arguments = parser.parse_args()
     report = run_accumulation_curve(
         arguments.controller_artifact,
@@ -593,6 +777,8 @@ def main() -> None:
         scratch_directory=arguments.scratch_dir,
         frontend_path=arguments.frontend,
         steps=arguments.steps,
+        proposer=arguments.proposer,
+        compression_admission=arguments.compression_admission,
     )
     print(
         json.dumps(

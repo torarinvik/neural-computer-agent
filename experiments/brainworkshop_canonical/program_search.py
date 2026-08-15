@@ -192,18 +192,57 @@ def search_temporal_programs(
     acquire: ProposalEvaluator | None = None,
     encoders=None,
     templates: tuple[tuple[tuple[int, ...], torch.Tensor], ...] = (),
+    equivalence=None,
+    order: tuple[int, ...] | None = None,
 ) -> dict[str, Any]:
     """Try existing files, then legal composes, then invent, until one gates.
 
     Rejected shallower files are not retried. Illegal pairs are counted
     and never executed. Invent may run an optional acquire lifetime
     before the frozen evaluation. That is still a closed grammar.
+
+    `equivalence` is an optional `behaviour_signature.EquivalenceClasses`
+    computed from an observation pass. When supplied, a proposal that presses
+    identically to an earlier one on the stream it would be scored on is
+    recorded and skipped rather than paid for a second time. Representatives
+    are the earliest member of each class, so the order a winner is found in
+    does not change and no recorded campaign moves.
     """
 
     proposals = propose_from_bank(bank, templates)
+    skipped: dict[int, int] = {}
+    if equivalence is not None:
+        for leader, group in zip(equivalence.representatives, equivalence.members):
+            for member in group:
+                if member != leader:
+                    skipped[member] = leader
+    # `order` overrides the fixed grammar walk with an externally computed
+    # ranking. Only ranked candidates are executed; anything the ranking left
+    # out is counted rather than silently dropped.
+    walk = (
+        tuple(enumerate(proposals))
+        if order is None
+        else tuple((index, proposals[index]) for index in order)
+    )
+    unranked = 0 if order is None else len(proposals) - len(order)
     attempts: list[dict[str, Any]] = []
     winner: dict[str, Any] | None = None
-    for proposal in proposals:
+    for index, proposal in walk:
+        if index in skipped:
+            attempts.append(
+                {
+                    "label": proposal.label(),
+                    "kind": proposal.kind,
+                    "slots": list(proposal.slots),
+                    "executed": False,
+                    "accepted": False,
+                    "reason": (
+                        "observationally equivalent to "
+                        f"{proposals[skipped[index]].label()}"
+                    ),
+                }
+            )
+            continue
         if proposal.kind == "illegal_compose":
             attempts.append(
                 {
@@ -276,6 +315,12 @@ def search_temporal_programs(
         "executed": sum(1 for row in attempts if row["executed"]),
         "illegal_compose": sum(1 for row in attempts if row["kind"] == "illegal_compose"),
         "winner": winner,
+        "collapsed": len(skipped),
+        "unranked": unranked,
+        "ranked": None if order is None else len(order),
+        "distinct_behaviours": (
+            None if equivalence is None else equivalence.distinct
+        ),
         "templates_offered": len(templates),
         "attempts": attempts,
         "controller_digest": machine.controller_digest(),
