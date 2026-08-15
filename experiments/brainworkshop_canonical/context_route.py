@@ -1,4 +1,4 @@
-"""Audit context-conditioned opaque routing on short Brain Workshop lifetimes.
+"""Audit context-conditioned opaque routing on short Neural Workshop lifetimes.
 
 The rendered cue is part of the learned event stream, not a task field passed
 to the controller.  The route table receives only the first learned event,

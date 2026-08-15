@@ -86,7 +86,7 @@ See [the normative architecture](docs/AMODAL_N_TO_M_ARCHITECTURE.md) and the
 
 ## Current empirical frontier
 
-The canonical Brain Workshop path demonstrates bounded append-only external
+The canonical Neural Workshop path demonstrates bounded append-only external
 working-memory growth:
 
 - a frozen controller and event frontend first support an external `nback16`
@@ -110,7 +110,7 @@ diagnostic reached stable 0.80 accuracy after 230 vision outcomes, 115 audio
 outcomes, and 920 outcomes for exact dual-stream actions, with zero replay.
 These are mechanistic signals, not mastery claims.
 
-The physical human-parity rung captures the public Brain Workshop window at
+The physical human-parity rung captures the public Neural Workshop window at
 12 Hz, segments spatial position-stimulus onsets, emits ordinary keypresses,
 and learns only from explicit feedback colors a human sees. A controller
 pretrained across variable visual frontends is frozen during task acquisition;
@@ -137,7 +137,7 @@ separate memory-side ledger from opaque event contexts, attempted program slots,
 and scalar outcomes. The bank records exact selection propensities, rejects
 tampered files, and leaves its digest unchanged after failed admission. This is
 working infrastructure, not yet evidence that the physical agent can
-discriminate several Brain Workshop rules: that requires a public visible rule
+discriminate several Neural Workshop rules: that requires a public visible rule
 cue to be encoded as an ordinary learned event and a multi-program control.
 
 The first physical lifecycle replication is now curated. A fresh uniform
@@ -198,7 +198,7 @@ they remain recoverable from Git history.
 | Path | Purpose |
 | --- | --- |
 | `src/neural_computer/` | Production amodal runtime, memory, interpreter, and lifecycle contracts |
-| `experiments/brainworkshop_canonical/` | Current n-back and working-memory frontier |
+| `experiments/brainworkshop_canonical/` | N-back frontier; Neural Workshop is the only gym |
 | `experiments/recipe_expressibility/` | Program composition and control-flow audits |
 | `tests/` | Production and retained frontier tests |
 | `session_records/` | Curated promoted evidence and decisive current rejections |

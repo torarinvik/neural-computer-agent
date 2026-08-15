@@ -1,4 +1,10 @@
-# Canonical Brain Workshop frontier
+# Canonical n-back frontier
+
+Neural Workshop is the only training gym. This directory name is historical.
+Do not check out or patch a separate Brain Workshop. Point `--neural-workshop`
+at the Neural Workshop repo. Cell count, trial count, n-back, game mode, and
+mute are constructor knobs on `NeuralWorkshopEnv`, not environment variables
+or a local patch.
 
 This directory is the retained n-back and working-memory research surface.
 
@@ -16,7 +22,7 @@ action label.
 
 ## Live acquisition rung
 
-`live_session.py` connects a batch-one Brain Workshop device to the production
+`live_session.py` connects a batch-one Neural Workshop device to the production
 cognitive tick runtime. Every stimulus is consumed once, every opaque action
 receives an authenticated causal receipt, and each present scalar outcome
 causes an optimizer update before the next action. Warm-up actions are closed
@@ -114,10 +120,15 @@ PYTHONPATH=src .venv/bin/python \
   --report-out /tmp/rendered-live-pilot.json
 ```
 
-## Physical human-parity rung
+## Optional physical I/O against Neural Workshop
 
-`physical_live.py` connects the same runtime to the public Brain Workshop 5
-interface. The learner receives only display-captured RGB pixels,
+These runners are not a second game. They capture Neural Workshop's own public
+window (`brainworkshop.py`, title contains "Neural Workshop") and inject
+ordinary keypresses. Training, curriculum, Dual acquisition, and promotion
+use the gym constructors below. Desktop capture is human-parity I/O only.
+
+`physical_live.py` connects the same runtime to that public window. The
+learner receives only display-captured RGB pixels,
 acts through the ordinary visible position-match key, and learns from the
 green/red/blue feedback rendered to a human. No source import, stats file,
 target flag, correct action, trial ID, or synthetic reward enters the runtime.
@@ -136,7 +147,7 @@ acquisition. Its evidence remains only as an I/O calibration record in
 `PretrainedControllerProgramMachine` enforces the intended ownership boundary.
 Its relation, source-conditioning, and intention-decoding weights come from a
 controller pretrained across independently projected visual frontend families.
-They are frozen during Brain Workshop. A fresh task file begins with a uniform
+They are frozen during the physical I/O campaign. A fresh task file begins with a uniform
 categorical temporal address, executes one logged address per decision, and is
 the only optimizer target. Copying the pretraining run's learned address is an
 explicit `--inherit-program-prior` transfer control and is excluded from task-
@@ -160,29 +171,21 @@ reward handoff. A disposable-bank physical validation received five reward
 inputs, scored 4/5, and changed only the external route ledger. Controller and
 program updates remained zero.
 
-For the first curriculum axis, `tools/brainworkshop_position_cells.patch`
-adds public `BRAINWORKSHOP_POSITION_CELLS`, `BRAINWORKSHOP_TRIALS`, and
-`BRAINWORKSHOP_MUTE_MUSIC` settings to upstream Brain Workshop.
-It preserves Position N-Back timing, input, and scoring while sampling from a
-center-out prefixes containing 2 through 8 visible grid cells. The mode label displays
-the active cell and trial counts. Cell count is an environment/frontend difficulty setting,
-not a controller input or semantic task ID. The mute setting disables background
-music only; task-relevant audio stimuli, sound effects, and scoring are unchanged.
-The trial override sets an exact public session length by disabling the usual
-n-back-dependent trial-count factor. The current live setting is 60 trials.
+Cell count is an environment/frontend difficulty setting, not a controller
+input. There is no local Brain Workshop patch in this repo.
 
-Apply the curriculum patch to an upstream checkout, then launch the 2-cell
-environment:
+Train Dual on the Neural Workshop gym (pixels + public PCM), not by
+screen-capturing a desktop window:
 
 ```bash
-git apply /absolute/path/to/tools/brainworkshop_position_cells.patch
-BRAINWORKSHOP_POSITION_CELLS=2 BRAINWORKSHOP_TRIALS=60 \
-  BRAINWORKSHOP_MUTE_MUSIC=1 \
-  python brainworkshop.py
+NW_HEADLESS=0 PYTHONPATH=src .venv/bin/python \
+  -m experiments.brainworkshop_canonical.neural_workshop_dual_acquisition_pilot \
+  --neural-workshop /absolute/path/to/neural-workshop \
+  --trials 20 --sessions 3 --visible
 ```
 
-Build and run the bounded frozen-controller campaign while the Position N-Back
-window is frontmost and on its ready screen:
+Optional I/O only: run the bounded frozen-controller campaign while Neural
+Workshop's Position N-Back window is frontmost and on its ready screen:
 
 ```bash
 PYTHONPATH=src .venv/bin/python \
@@ -242,25 +245,37 @@ The evidence is in
 `session_records/brainworkshop_physical_blank_program_promoted_2026-08-14/`.
 Read-only transfer from two to three visible cells then replicated for two
 12-trial sessions: all three event clusters appeared, all 24 decisions matched
-the visible sequence, and Brain Workshop scored 100 twice with unchanged
+the visible sequence, and Neural Workshop scored 100 twice with unchanged
 controller and program digests. This remains sub-minute probation pending a
 roughly three-minute three-cell retention run; see
 `session_records/brainworkshop_physical_3cell_transfer_probation_2026-08-14/`.
-Desktop Dual now has a ScreenCaptureKit window tap that publishes public
-PCM beside the RGB crop. Missing or silent Dual audio fails closed. A
-screen-only capture is still Position N-Back. Calibrate the tap with:
+Desktop Dual now has a ScreenCaptureKit window tap and a Dual lifetime
+runner. Missing or silent Dual audio fails closed. Mixed green+red or
+green+blue labels are packed exact-match zero. macOS must allow Screen
+Recording and Accessibility for this process. The Dual window must be
+frontmost.
 
 ```bash
+# Confirm the tap. Ready-screen silence is allowed; the stream must be active.
 PYTHONPATH=src .venv/bin/python \
   -m experiments.brainworkshop_canonical.physical_dual_live \
-  --seconds 8
+  --mode probe --seconds 8 --prepare-nback 1
+
+# Watch frozen Dual 1-back execute, then blank-file learn, then composed 2-back.
+PYTHONPATH=src .venv/bin/python \
+  -m experiments.brainworkshop_canonical.physical_dual_live \
+  --mode execute --n-back 1 --seconds 25 --start-session --prepare-nback 1
+
+PYTHONPATH=src .venv/bin/python \
+  -m experiments.brainworkshop_canonical.physical_dual_live \
+  --mode learn --n-back 1 --seconds 45 --sessions 1 --then-compose-2back
 ```
 
-The Brain Workshop Dual window must be frontmost. This is an I/O
-calibration, not a Dual mastery claim. Neural Workshop Dual remains the
-measured public-PCM path.
+A screen-only capture is still Position N-Back. These desktop Dual
+sessions are optional I/O, not a second trainer and not a holdout
+promotion. Measured Dual public-PCM training is the Neural Workshop gym.
 
-### Neural Workshop live curriculum
+## Neural Workshop live curriculum
 
 `neural_workshop_live.py` replaces slow macOS capture and key injection with
 Neural Workshop's headless public boundary. It still feeds rendered RGBA pixels
@@ -584,7 +599,9 @@ Evidence:
 
 Header transfer and first-time depth invention are now holdout-promoted on
 Neural Workshop. Dual I/O and Dual acquisition remain measured probation
-on two substrates. Desktop Dual has a ScreenCaptureKit PCM tap and a
-fail-closed two-port adapter, but no measured live Dual lifetime yet. The
-architecture still does not claim autonomous general program induction,
+on two substrates. Canonical Dual training is Neural Workshop, not desktop
+screen capture. The gym constructor owns n-back, cells, trials, and mute.
+There is no competing local Brain Workshop. Desktop ScreenCaptureKit remains
+an optional human-parity I/O path against Neural Workshop's public window.
+The architecture still does not claim autonomous general program induction,
 unrestricted memory growth, or a complete executive ISA.

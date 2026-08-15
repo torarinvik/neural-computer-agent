@@ -1,4 +1,4 @@
-"""Outcome-only training utilities for the canonical Brain Workshop pilot."""
+"""Outcome-only training utilities for the canonical Neural Workshop pilot."""
 
 from __future__ import annotations
 

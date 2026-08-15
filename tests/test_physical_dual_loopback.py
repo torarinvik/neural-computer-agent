@@ -8,6 +8,8 @@ import torch
 from experiments.brainworkshop_canonical.physical_dual_live import (
     SILENCE_RMS,
     DualPulseFrontend,
+    PhysicalDualBrainWorkshopConfig,
+    dual_feedback_reader,
     dual_key_chords,
 )
 from experiments.brainworkshop_canonical.physical_live import (
@@ -15,10 +17,12 @@ from experiments.brainworkshop_canonical.physical_live import (
 )
 from neural_computer import (
     CapturedScreenFrame,
+    LiveActionReceipt,
     NativeMacOSWindowAVCapture,
     NormalizedRegion,
     ProjectedScreenPulseFrontend,
     PublicWaveformEncoder,
+    discover_sck_window,
     encode_nca1_message,
     parse_nca1_message,
     pcm_rms,
@@ -179,6 +183,61 @@ def test_public_waveform_encoder_distinguishes_letter_envelopes() -> None:
     assert pcm_rms(_tone(800, period=4), sample_width=2) > SILENCE_RMS
 
 
+def _dual_feedback_frame(
+    now: float,
+    left: tuple[int, int, int] | None,
+    right: tuple[int, int, int] | None,
+) -> CapturedScreenFrame:
+    rgb = torch.full((3, 40, 60), 255, dtype=torch.uint8)
+    if left is not None:
+        rgb[:, 36:40, 4:18] = torch.tensor(left, dtype=torch.uint8)[:, None, None]
+    if right is not None:
+        rgb[:, 36:40, 42:56] = torch.tensor(right, dtype=torch.uint8)[:, None, None]
+    return CapturedScreenFrame.from_rgb(
+        rgb,
+        captured_at=now,
+        application="Public Test Window",
+        title="Visible task",
+        bounds=(10, 20, 60, 40),
+    )
+
+
+def _feedback_receipt() -> LiveActionReceipt:
+    return LiveActionReceipt(
+        receipt_id=1,
+        action=torch.tensor([3]),
+        propensity=torch.tensor([0.25]),
+        output_key="keyboard",
+        emitted_at=0.0,
+        model_version=0,
+    )
+
+
+def test_dual_feedback_mixed_labels_are_exact_match_zero() -> None:
+    reader = dual_feedback_reader(PhysicalDualBrainWorkshopConfig(capture_helper=Path(".")))
+    green = (64, 255, 64)
+    red = (255, 64, 64)
+    oops = (64, 64, 255)
+    reader.reset(_dual_feedback_frame(0.0, None, None))
+    mixed = reader.close(_feedback_receipt(), _dual_feedback_frame(0.1, green, red))
+    assert mixed.present.tolist() == [True]
+    assert mixed.reward.tolist() == [0.0]
+
+    reader.reset(_dual_feedback_frame(0.0, None, None))
+    missed = reader.close(_feedback_receipt(), _dual_feedback_frame(0.1, green, oops))
+    assert missed.present.tolist() == [True]
+    assert missed.reward.tolist() == [0.0]
+
+
+def test_dual_feedback_both_green_is_packed_correct() -> None:
+    reader = dual_feedback_reader(PhysicalDualBrainWorkshopConfig(capture_helper=Path(".")))
+    green = (64, 255, 64)
+    reader.reset(_dual_feedback_frame(0.0, None, None))
+    both = reader.close(_feedback_receipt(), _dual_feedback_frame(0.1, green, green))
+    assert both.present.tolist() == [True]
+    assert both.reward.tolist() == [1.0]
+
+
 def test_packed_dual_keys_are_position_then_sound() -> None:
     chords = dual_key_chords()
     assert chords[0] == ()
@@ -209,7 +268,7 @@ def test_av_capture_parses_a_mock_helper(tmp_path: Path) -> None:
         def state(self):
             from neural_computer.human_io import MacOSWindowState
 
-            return MacOSWindowState("Python", 1, "Brain Workshop", (0, 0, 2, 2), True)
+            return MacOSWindowState("Python", 1, "Neural Workshop", (0, 0, 2, 2), True)
 
         def lock_bounds(self, bounds):
             assert bounds == (0, 0, 2, 2)
@@ -222,6 +281,41 @@ def test_av_capture_parses_a_mock_helper(tmp_path: Path) -> None:
     assert frame.rgb.shape == (3, 2, 2)
     assert frame.audio_pcm == pcm
     assert frame.audio_stream_active is True
+
+
+def test_sck_query_picks_the_brain_workshop_title(tmp_path: Path) -> None:
+    payload = [
+        {
+            "pid": 11,
+            "title": "Terminal",
+            "application": "Terminal",
+            "x": 0,
+            "y": 0,
+            "width": 800,
+            "height": 600,
+        },
+        {
+            "pid": 22,
+            "title": "Neural Workshop 4.8.7",
+            "application": "python",
+            "x": 10,
+            "y": 20,
+            "width": 400,
+            "height": 300,
+        },
+    ]
+    helper = tmp_path / "fake_query"
+    helper.write_text(
+        "#!/usr/bin/env python3\n"
+        "import json,sys\n"
+        f"json.dump({payload!r}, sys.stdout)\n"
+        "sys.stdout.write('\\n')\n"
+    )
+    helper.chmod(0o755)
+    state = discover_sck_window(helper, title_contains="Neural Workshop")
+    assert state.process_id == 22
+    assert state.bounds == (10, 20, 400, 300)
+    assert "Neural Workshop" in state.title
 
 
 def test_screencapturekit_helper_compiles(tmp_path: Path) -> None:

@@ -31,7 +31,9 @@ from .neural_workshop_live import (
 NEURAL_WORKSHOP_DUAL_LIVE_SCHEMA = "neural-computer.neural-workshop-dual-live.v1"
 
 
-def _dual_config(machine, *, n_back: int, trials: int) -> NeuralWorkshopLiveConfig:
+def _dual_config(
+    machine, *, n_back: int, trials: int, visible: bool = False
+) -> NeuralWorkshopLiveConfig:
     return NeuralWorkshopLiveConfig(
         grid_size=3,
         active_cells=8,
@@ -41,6 +43,7 @@ def _dual_config(machine, *, n_back: int, trials: int) -> NeuralWorkshopLiveConf
         source_key_width=machine.source_key_width,
         game_mode=2,
         action_ports=2,
+        visible=visible,
     )
 
 
@@ -50,6 +53,7 @@ def run_neural_workshop_dual(
     *,
     trials: int = 60,
     seed: int = 98_017,
+    visible: bool = False,
 ) -> dict[str, object]:
     started = perf_counter()
     machine = build_recursive_temporal_program_machine(
@@ -67,7 +71,9 @@ def run_neural_workshop_dual(
         machine.load_recursive_program_artifact(
             artifact, controller_digest=machine.controller_digest()
         )
-        config = _dual_config(machine, n_back=n_back, trials=trials)
+        config = _dual_config(
+            machine, n_back=n_back, trials=trials, visible=visible
+        )
         environment, verifier = build_neural_workshop_environment(
             neural_workshop_directory, config, seed=seed + n_back + depth
         )
@@ -124,6 +130,11 @@ def main() -> None:
     parser.add_argument("--neural-workshop", type=Path, required=True)
     parser.add_argument("--trials", type=int, default=60)
     parser.add_argument("--seed", type=int, default=98_017)
+    parser.add_argument(
+        "--visible",
+        action="store_true",
+        help="show the Neural Workshop gym window (set NW_HEADLESS=0)",
+    )
     parser.add_argument("--report-out", type=Path, default=None)
     parser.add_argument(
         "--controller-artifact",
@@ -139,6 +150,7 @@ def main() -> None:
         arguments.neural_workshop,
         trials=arguments.trials,
         seed=arguments.seed,
+        visible=arguments.visible,
     )
     text = json.dumps(report, indent=2, sort_keys=True) + "\n"
     if arguments.report_out is None:

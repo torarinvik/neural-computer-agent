@@ -1,8 +1,9 @@
-"""Human-parity Dual N-Back on public pixels plus ScreenCaptureKit PCM.
+"""Optional Dual I/O: Neural Workshop pixels plus ScreenCaptureKit PCM.
 
 Position remains the visible play-field crop. Audio is the window's public
 waveform, not a letter ID. Missing or silent Dual audio fails closed. Packed
-actions use the two public keys: A for position and L for sound.
+actions use the two public keys: A for position and L for sound. Measured Dual
+training uses the Neural Workshop gym, not this desktop tap.
 """
 
 from __future__ import annotations
@@ -24,6 +25,7 @@ from neural_computer import (
     CognitiveTickRuntime,
     DiscreteKeyChordOutput,
     HumanParityLiveDevice,
+    LiveActionReceipt,
     MacOSApplicationWindow,
     MacOSVirtualKeyOutput,
     NativeMacOSWindowAVCapture,
@@ -31,7 +33,10 @@ from neural_computer import (
     ProjectedScreenPulseFrontend,
     PublicWaveformEncoder,
     VisibleColorOutcomeReader,
+    compose_recursive_temporal_program,
+    one_hot_temporal_address_artifact,
     pcm_rms,
+    recursive_temporal_primitive,
 )
 
 from .controller_pretraining import (
@@ -39,6 +44,7 @@ from .controller_pretraining import (
     load_temporal_controller_artifact,
 )
 from .physical_live import (
+    PhysicalBrainWorkshopReport,
     compile_macos_av_capture_helper,
     compile_macos_keypress_helper,
 )
@@ -47,13 +53,17 @@ from .rendered_live import SourcePreservingTemporalMachine
 PHYSICAL_DUAL_SCHEMA = "neural-computer.brainworkshop-physical-dual-live.v1"
 POSITION_KEY_CODE = 0
 SOUND_KEY_CODE = 37
+SPACE_KEY_CODE = 49
+MANUAL_KEY_CODE = 46
+NBACK_DOWN_KEY_CODE = 122
+NBACK_UP_KEY_CODE = 120
 SILENCE_RMS = 0.008
 
 
 @dataclass(frozen=True)
 class PhysicalDualBrainWorkshopConfig:
     application: str = "Python"
-    title_contains: str = "Brain Workshop"
+    title_contains: str = "Neural Workshop"
     event_width: int = 16
     source_key_width: int = 4
     image_size: int = 36
@@ -162,6 +172,53 @@ class DualPulseFrontend:
         return AmodalEventCollection.empty(1, self.event_width), False
 
 
+def prepare_dual_ready_screen(
+    window: MacOSApplicationWindow,
+    keypress_helper: Path,
+    *,
+    n_back: int,
+) -> None:
+    """Leave the title screen, enter manual mode, and set public n-back."""
+
+    if n_back < 1:
+        raise ValueError("ready-screen n-back must be positive")
+    output = MacOSVirtualKeyOutput(
+        window,
+        keypress_helper,
+        {
+            0: (SPACE_KEY_CODE,),
+            1: (MANUAL_KEY_CODE,),
+            2: (NBACK_DOWN_KEY_CODE,),
+            3: (NBACK_UP_KEY_CODE,),
+        },
+    )
+    try:
+        dummy = torch.tensor([0], dtype=torch.int64)
+
+        def press(action: int) -> None:
+            receipt = LiveActionReceipt(
+                receipt_id=action + 1,
+                action=torch.tensor([action]),
+                propensity=torch.tensor([1.0]),
+                output_key="keyboard",
+                emitted_at=time.monotonic(),
+                model_version=0,
+            )
+            output.emit(dummy.new_tensor([action]), receipt)
+            time.sleep(0.25)
+
+        press(0)
+        press(1)
+        # Default Dual n-back is 2. One F1 reaches 1-back; F2 climbs.
+        if n_back == 1:
+            press(2)
+        elif n_back > 2:
+            for _ in range(n_back - 2):
+                press(3)
+    finally:
+        output.close()
+
+
 def dual_key_chords() -> dict[int, tuple[int, ...]]:
     return {
         0: (),
@@ -190,6 +247,8 @@ def build_physical_dual_runtime(
         title_contains=config.title_contains,
         require_frontmost=True,
         state_refresh_seconds=1.0,
+        process_aliases=("python", "Python"),
+        query_helper=config.capture_helper,
     )
     vision = ProjectedScreenPulseFrontend(
         config.event_width,
@@ -220,16 +279,7 @@ def build_physical_dual_runtime(
     capture = NativeMacOSWindowAVCapture(
         window, config.capture_helper, require_audio=True
     )
-    outcome_reader = VisibleColorOutcomeReader(
-        region=config.feedback_region,
-        negative_colors=((255, 64, 64), (64, 64, 255)),
-        positive_colors=((0, 255, 0), (64, 255, 64)),
-        neutral_is_positive=False,
-        tolerance=config.feedback_tolerance,
-        minimum_pixels=config.feedback_minimum_pixels,
-        minimum_frames=config.feedback_minimum_frames,
-        archive_directory=config.evidence_directory,
-    )
+    outcome_reader = dual_feedback_reader(config)
     output = (
         MacOSVirtualKeyOutput(window, config.keypress_helper, dual_key_chords())
         if config.keypress_helper is not None
@@ -245,6 +295,160 @@ def build_physical_dual_runtime(
         max_tick_seconds=1.0 / config.tick_hz,
     )
     return runtime, window, capture
+
+
+def dual_feedback_reader(
+    config: PhysicalDualBrainWorkshopConfig,
+) -> VisibleColorOutcomeReader:
+    """Score Dual from the two public bottom labels.
+
+    Neural Workshop paints each modality independently: green correct, red
+    incorrect, blue missed-match. Any red or blue makes the packed trial
+    wrong. Green without a reject color is a fully correct packed trial,
+    including one explicit hit plus a correct rejection.
+    """
+
+    return VisibleColorOutcomeReader(
+        region=config.feedback_region,
+        negative_colors=((255, 64, 64), (64, 64, 255)),
+        positive_colors=((0, 255, 0), (64, 255, 64)),
+        neutral_is_positive=False,
+        tolerance=config.feedback_tolerance,
+        minimum_pixels=config.feedback_minimum_pixels,
+        minimum_frames=config.feedback_minimum_frames,
+        archive_directory=config.evidence_directory,
+    )
+
+
+def run_physical_dual_lifetime(
+    machine: SourcePreservingTemporalMachine,
+    config: PhysicalDualBrainWorkshopConfig,
+    *,
+    seconds: float,
+    seed: int = 17,
+    start_session: bool = False,
+) -> PhysicalBrainWorkshopReport:
+    """Run one bounded Dual lifetime against a frontmost Dual window."""
+
+    if seconds <= 0.0:
+        raise ValueError("physical Dual lifetime must be positive")
+    runtime, window, capture = build_physical_dual_runtime(
+        machine, config, seed=seed
+    )
+    try:
+        results = []
+        if start_session:
+            results.append(runtime.tick(time.monotonic()))
+            if config.keypress_helper is None:
+                window.press((" ",))
+            else:
+                starter = MacOSVirtualKeyOutput(
+                    window, config.keypress_helper, {0: (SPACE_KEY_CODE,)}
+                )
+                try:
+                    receipt = LiveActionReceipt(
+                        receipt_id=0,
+                        action=torch.tensor([0]),
+                        propensity=torch.tensor([1.0]),
+                        output_key="keyboard",
+                        emitted_at=time.monotonic(),
+                        model_version=0,
+                    )
+                    starter.emit(torch.tensor([0], dtype=torch.int64), receipt)
+                finally:
+                    starter.close()
+        started = time.monotonic()
+        period = 1.0 / config.tick_hz
+        next_tick = started
+        while True:
+            now = time.monotonic()
+            if now - started >= seconds:
+                break
+            if now < next_tick:
+                time.sleep(next_tick - now)
+                now = time.monotonic()
+            results.append(runtime.tick(now))
+            next_tick += period
+            next_tick = max(next_tick, now)
+    finally:
+        capture.close()
+        close_output = getattr(runtime.input_device.output, "close", None)
+        if close_output is not None:
+            close_output()
+    rewards: list[float] = []
+    evidence: list[tuple[str, ...]] = []
+    for result in results:
+        for resolved in result.resolved_outcomes:
+            if bool(resolved.event.present.item()):
+                rewards.append(float(resolved.event.reward.item()))
+                frame_evidence = getattr(resolved.event, "evidence", None)
+                if frame_evidence is None:
+                    raise RuntimeError(
+                        "physical Dual outcome escaped without public evidence"
+                    )
+                evidence.append(frame_evidence.frame_digests)
+    frontend = runtime.input_device.frontend
+    event_payloads = tuple(
+        tuple(float(value) for value in payload)
+        for payload in getattr(frontend, "emitted_payloads", ())
+    )
+    total_seconds = sorted(result.total_seconds for result in results)
+
+    def latency_percentile(fraction: float) -> float | None:
+        if not total_seconds:
+            return None
+        index = min(len(total_seconds) - 1, int(fraction * len(total_seconds)))
+        return total_seconds[index]
+
+    return PhysicalBrainWorkshopReport(
+        ticks=len(results),
+        input_events=sum(result.input_event_count for result in results),
+        unique_public_outcomes=sum(result.outcome_bit_count for result in results),
+        optimizer_updates=machine.optimizer_updates,
+        program_file_updates=getattr(machine, "program_file_updates", 0),
+        emitted_actions=sum(len(result.emitted_receipts) for result in results),
+        deadline_misses=sum(result.deadline_missed for result in results),
+        elapsed_seconds=time.monotonic() - started,
+        tick_hz=config.tick_hz,
+        action_delay_seconds=config.action_delay_seconds,
+        capture_backend="sck-av",
+        rewards=tuple(rewards),
+        actions=tuple(
+            int(receipt.action.item())
+            for result in results
+            for receipt in result.emitted_receipts
+        ),
+        propensities=tuple(
+            float(receipt.propensity.item())
+            for result in results
+            for receipt in result.emitted_receipts
+        ),
+        evidence_digests=tuple(evidence),
+        event_payloads=event_payloads,
+        evidence_archive=(
+            None
+            if config.evidence_directory is None
+            else str(config.evidence_directory)
+        ),
+        total_seconds_p50=latency_percentile(0.50),
+        total_seconds_p99=latency_percentile(0.99),
+    )
+
+
+def _load_composed_previous(
+    machine: SourcePreservingTemporalMachine, *, depth: int
+) -> None:
+    if depth < 1:
+        raise ValueError("Dual composition depth must be positive")
+    primitive = recursive_temporal_primitive(
+        one_hot_temporal_address_artifact(0, machine.max_history)
+    )
+    machine.load_recursive_program_artifact(
+        compose_recursive_temporal_program(primitive, depth),
+        controller_digest=machine.controller_digest(),
+    )
+    machine.learning_enabled = False
+    machine.sample = False
 
 
 def run_physical_dual_loopback_probe(
@@ -292,11 +496,81 @@ def run_physical_dual_loopback_probe(
     }
 
 
+def _build_dual_machine(
+    controller_artifact: Path,
+    *,
+    learn: bool,
+    learning_rate: float,
+) -> SourcePreservingTemporalMachine:
+    machine = build_recursive_temporal_program_machine(
+        load_temporal_controller_artifact(controller_artifact),
+        learning_rate=learning_rate,
+        sample=learn,
+        max_sources=2,
+        pack_source_actions=True,
+    )
+    machine.learning_enabled = bool(learn)
+    machine.sample = bool(learn)
+    return machine
+
+
+def _summarize_lifetime(
+    report: PhysicalBrainWorkshopReport,
+    machine: SourcePreservingTemporalMachine,
+    *,
+    label: str,
+    n_back: int,
+    depth: int,
+    learn: bool,
+) -> dict[str, Any]:
+    return {
+        "label": label,
+        "n_back": n_back,
+        "composition_depth": depth,
+        "learn": learn,
+        "ticks": report.ticks,
+        "input_events": report.input_events,
+        "unique_public_outcomes": report.unique_public_outcomes,
+        "accuracy": (
+            None
+            if not report.rewards
+            else sum(report.rewards) / len(report.rewards)
+        ),
+        "rewards": list(report.rewards),
+        "actions": list(report.actions),
+        "optimizer_updates": report.optimizer_updates,
+        "program_file_updates": report.program_file_updates,
+        "controller_frozen": True,
+        "deadline_misses": report.deadline_misses,
+        "elapsed_seconds": report.elapsed_seconds,
+        "total_seconds_p50": report.total_seconds_p50,
+        "total_seconds_p99": report.total_seconds_p99,
+        "vision_events": len(report.event_payloads),
+    }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     repository = Path(__file__).parents[2]
+    parser.add_argument(
+        "--mode",
+        choices=("probe", "execute", "learn"),
+        default="probe",
+    )
     parser.add_argument("--seconds", type=float, default=8.0)
+    parser.add_argument("--sessions", type=int, default=1)
+    parser.add_argument("--n-back", type=int, default=1)
+    parser.add_argument("--compose-depth", type=int, default=None)
+    parser.add_argument("--then-compose-2back", action="store_true")
+    parser.add_argument("--start-session", action="store_true")
+    parser.add_argument(
+        "--prepare-nback",
+        type=int,
+        default=None,
+        help="send Space, M, and F1/F2 so Dual starts at this public n-back",
+    )
     parser.add_argument("--tick-hz", type=float, default=6.0)
+    parser.add_argument("--program-learning-rate", type=float, default=0.3)
     parser.add_argument(
         "--capture-helper",
         type=Path,
@@ -318,29 +592,118 @@ def main() -> None:
     )
     arguments = parser.parse_args()
     helper = compile_macos_av_capture_helper(arguments.capture_helper)
-    compile_macos_keypress_helper(arguments.keypress_helper)
-    window = MacOSApplicationWindow(
-        "Python", title_contains="Brain Workshop", require_frontmost=True
-    )
-    capture = NativeMacOSWindowAVCapture(window, helper, require_audio=True)
-    ticks = max(2, math.ceil(arguments.seconds * arguments.tick_hz))
-    report = run_physical_dual_loopback_probe(
-        capture, ticks=ticks, tick_hz=arguments.tick_hz
-    )
-    report["controller_digest"] = build_recursive_temporal_program_machine(
-        load_temporal_controller_artifact(arguments.controller_artifact),
-        sample=False,
-        max_sources=2,
-        pack_source_actions=True,
-    ).controller_digest()
+    keys = compile_macos_keypress_helper(arguments.keypress_helper)
+    if arguments.prepare_nback is not None:
+        prepare_dual_ready_screen(
+            MacOSApplicationWindow(
+                "python",
+                title_contains="Neural Workshop",
+                require_frontmost=True,
+                process_aliases=("Python",),
+                query_helper=helper,
+            ),
+            keys,
+            n_back=arguments.prepare_nback,
+        )
+    if arguments.mode == "probe":
+        window = MacOSApplicationWindow(
+            "python",
+            title_contains="Neural Workshop",
+            require_frontmost=False,
+            process_aliases=("Python",),
+            query_helper=helper,
+        )
+        capture = NativeMacOSWindowAVCapture(window, helper, require_audio=True)
+        ticks = max(2, math.ceil(arguments.seconds * arguments.tick_hz))
+        report = run_physical_dual_loopback_probe(
+            capture, ticks=ticks, tick_hz=arguments.tick_hz
+        )
+        if not report["audio_stream_active"]:
+            text = json.dumps(report, indent=2, sort_keys=True) + "\n"
+            print(text, end="")
+            raise SystemExit(2)
+    else:
+        if arguments.n_back < 1 or arguments.sessions < 1:
+            raise ValueError("Dual live sessions and n-back must be positive")
+        config = PhysicalDualBrainWorkshopConfig(
+            tick_hz=arguments.tick_hz,
+            capture_helper=helper,
+            keypress_helper=keys,
+        )
+        learn = arguments.mode == "learn"
+        machine = _build_dual_machine(
+            arguments.controller_artifact,
+            learn=learn,
+            learning_rate=arguments.program_learning_rate,
+        )
+        depth = (
+            arguments.n_back
+            if arguments.compose_depth is None
+            else arguments.compose_depth
+        )
+        if not learn:
+            _load_composed_previous(machine, depth=depth)
+        arms = []
+        for session in range(arguments.sessions):
+            lifetime = run_physical_dual_lifetime(
+                machine,
+                config,
+                seconds=arguments.seconds,
+                seed=17 + session,
+                start_session=arguments.start_session and session == 0,
+            )
+            arms.append(
+                _summarize_lifetime(
+                    lifetime,
+                    machine,
+                    label=f"{arguments.mode}-n{arguments.n_back}-s{session + 1}",
+                    n_back=arguments.n_back,
+                    depth=1 if learn else depth,
+                    learn=learn,
+                )
+            )
+        if arguments.then_compose_2back:
+            if not learn:
+                raise ValueError("--then-compose-2back requires --mode learn")
+            composed = compose_recursive_temporal_program(
+                machine.admitted_program_artifact(), 2
+            )
+            machine.load_recursive_program_artifact(
+                composed, controller_digest=machine.controller_digest()
+            )
+            composed_lifetime = run_physical_dual_lifetime(
+                machine,
+                config,
+                seconds=arguments.seconds,
+                seed=117,
+                start_session=False,
+            )
+            arms.append(
+                _summarize_lifetime(
+                    composed_lifetime,
+                    machine,
+                    label="compose-2back",
+                    n_back=2,
+                    depth=2,
+                    learn=False,
+                )
+            )
+        report = {
+            "schema": PHYSICAL_DUAL_SCHEMA,
+            "mode": arguments.mode,
+            "n_back": arguments.n_back,
+            "controller_digest": machine.controller_digest(),
+            "program_digest": machine.program_digest(),
+            "optimizer_updates": machine.optimizer_updates,
+            "program_file_updates": getattr(machine, "program_file_updates", 0),
+            "arms": arms,
+        }
     text = json.dumps(report, indent=2, sort_keys=True) + "\n"
     if arguments.report_out is None:
         print(text, end="")
     else:
         arguments.report_out.parent.mkdir(parents=True, exist_ok=True)
         arguments.report_out.write_text(text)
-    if not report["audio_stream_active"]:
-        raise SystemExit(2)
 
 
 if __name__ == "__main__":

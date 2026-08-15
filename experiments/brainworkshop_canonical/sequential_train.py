@@ -1,4 +1,4 @@
-"""Acquire two Brain Workshop capabilities in isolated external slots.
+"""Acquire two Neural Workshop capabilities in isolated external slots.
 
 The first relation reader is trained on one n-back lifetime family.  A second
 reader, intention adapter, decoder, and opaque retention address are then

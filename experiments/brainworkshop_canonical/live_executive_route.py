@@ -1,4 +1,4 @@
-"""Route live Brain Workshop episodes across frozen external executive skills.
+"""Route live Neural Workshop episodes across frozen external executive skills.
 
 The mode cue is rendered into the same learned event tensor that reaches the
 executive.  The selector sees only that opaque event, bank slots, and scalar

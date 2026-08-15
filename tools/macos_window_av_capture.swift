@@ -1,3 +1,4 @@
+import AppKit
 import AVFoundation
 import CoreGraphics
 import CoreMedia
@@ -77,6 +78,9 @@ private final class WindowAVSession: NSObject, SCStreamOutput, SCStreamDelegate 
         try stream.addStreamOutput(self, type: .screen, sampleHandlerQueue: DispatchQueue(label: "nca.sck.video"))
         try stream.addStreamOutput(self, type: .audio, sampleHandlerQueue: DispatchQueue(label: "nca.sck.audio"))
         try await stream.startCapture()
+        lock.lock()
+        audioActive = true
+        lock.unlock()
         self.stream = stream
     }
 
@@ -273,6 +277,39 @@ private func chooseWindow(pid: pid_t) async throws -> SCWindow {
     return window
 }
 
+private func listWindows(pid: pid_t?) async throws {
+    let content = try await SCShareableContent.excludingDesktopWindows(
+        false,
+        onScreenWindowsOnly: true
+    )
+    var rows: [[String: Any]] = []
+    for window in content.windows {
+        guard window.isOnScreen,
+              window.frame.width >= 32,
+              window.frame.height >= 32 else { continue }
+        let application = window.owningApplication
+        let windowPid = application?.processID ?? 0
+        if let pid, windowPid != pid {
+            continue
+        }
+        rows.append(
+            [
+                "pid": Int(windowPid),
+                "title": window.title ?? "",
+                "application": application?.applicationName ?? "",
+                "bundle": application?.bundleIdentifier ?? "",
+                "x": window.frame.origin.x,
+                "y": window.frame.origin.y,
+                "width": window.frame.width,
+                "height": window.frame.height,
+            ]
+        )
+    }
+    let data = try JSONSerialization.data(withJSONObject: rows)
+    try FileHandle.standardOutput.write(contentsOf: data)
+    try FileHandle.standardOutput.write(contentsOf: Data([0x0A]))
+}
+
 private func writeSnapshot(_ snapshot: (rgb: Data, width: UInt32, height: UInt32, pcm: Data, audioActive: Bool)) throws {
     if snapshot.rgb.isEmpty || snapshot.width == 0 || snapshot.height == 0 {
         throw CaptureFailure.format
@@ -307,8 +344,16 @@ struct CaptureMain {
     static func main() async {
         do {
             let arguments = CommandLine.arguments
+            if arguments.count >= 2 && arguments[1] == "--query" {
+                let pid: pid_t? = arguments.count >= 3 ? Int32(arguments[2]) : nil
+                try await listWindows(pid: pid)
+                return
+            }
+            _ = NSApplication.shared
             guard arguments.count == 6, let pid = Int32(arguments[5]), pid > 0 else {
-                FileHandle.standardError.write(Data("usage: macos_window_av_capture x y width height pid\n".utf8))
+                FileHandle.standardError.write(
+                    Data("usage: macos_window_av_capture x y width height pid\n       macos_window_av_capture --query [pid]\n".utf8)
+                )
                 throw CaptureFailure.arguments
             }
             _ = arguments[1...4]

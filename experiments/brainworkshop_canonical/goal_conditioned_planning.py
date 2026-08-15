@@ -8,7 +8,7 @@ verification.  Model-based search must use that file to choose a next
 intention sequence, and a matched fresh factual bank provides the acquisition
 control.
 
-The result is deliberately narrower than Brain Workshop mastery or general
+The result is deliberately narrower than Neural Workshop mastery or general
 continual learning: it measures whether learned external facts plus an
 admitted destination compose into downstream planning without updating the
 controller or replaying experience.

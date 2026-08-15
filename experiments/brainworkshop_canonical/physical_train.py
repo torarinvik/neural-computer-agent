@@ -1,4 +1,4 @@
-"""Persistent human-parity physical Brain Workshop training campaigns."""
+"""Optional human-parity campaigns against Neural Workshop's public window."""
 
 from __future__ import annotations
 

@@ -267,7 +267,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "claim_boundary": (
             "Batch-one live acquisition from clean-room RGB and waveform inputs "
             "with source-preserving temporal memory and exact scalar joint reward; "
-            "not physical Brain Workshop control, transfer, or promotion."
+            "not physical Neural Workshop control, transfer, or promotion."
         ),
         "configuration": {
             "seed": args.seed,

@@ -1,4 +1,4 @@
-"""Fresh Brain Workshop pressure test for active factual disambiguation.
+"""Fresh Neural Workshop pressure test for active factual disambiguation.
 
 Two frozen-controller transition regimes are retained in external residual
 memory.  A fresh verifier lifetime is deliberately stopped at an ambiguous

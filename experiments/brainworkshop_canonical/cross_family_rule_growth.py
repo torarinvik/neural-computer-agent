@@ -1,6 +1,6 @@
 """Outcome-only growth across non-identical temporal rule families.
 
-The existing Brain Workshop ladder varies only n-back depth.  This audit keeps
+The existing Neural Workshop ladder varies only n-back depth.  This audit keeps
 the learned event and intention interfaces fixed while changing the verifier's
 private rule family: n-back equality, pair parity, adjacent switching, and a
 single-symbol parity rule.  The controller sees no family name or target bit.

@@ -134,9 +134,9 @@ learner-visible action metadata. Outcome delivery is exact-once. Unknown,
 duplicate, or temporally impossible receipt keys fail closed.
 
 For a human-parity physical device, a scalar outcome must also carry the digest
-of every public frame used to derive it. The physical Brain Workshop adapter
+of every public frame used to derive it. The physical Neural Workshop adapter
 accepts only explicit visible feedback colors over a complete trial window.
-Under default Brain Workshop scoring, green is positive, red/blue is negative,
+Under default Neural Workshop scoring, green is positive, red/blue is negative,
 and a neutral true-negative is absent rather than rewarded. Hidden correctness,
 session files, source hooks, and synthetic per-trial rewards are prohibited.
 Missing public evidence remains absent rather than becoming a fabricated zero.
@@ -294,7 +294,7 @@ cannot hand off, preventing a persistent first loop from shadowing later
 components. Persisted provenance is rebound by recomposing the recorded parents
 and validating the admission receipt against the derived child.
 
-The retained Brain Workshop evidence qualifies bounded append-only external
+The retained Neural Workshop evidence qualifies bounded append-only external
 working-memory computation through n-back-32 with frozen source retention and
 zero replay. The live diagnostic additionally establishes immediate batch-one
 acquisition from clean-room RGB and waveform devices, including exact
@@ -357,10 +357,11 @@ replay updates were zero. This promotes bounded bank-fed composition and event
 continuity, not autonomous open-ended program synthesis or physical desktop
 deployment.
 
-The physical Position 1-Back rung qualifies the narrower live-I/O claim: public
-display capture, spatial onset segmentation, ordinary keypress output, exact
-receipt matching, checkpoint/resume, and immediate evidence-bound updates work
-together in the real GUI. Controller relation, source-conditioning, and
+The physical Position 1-Back rung qualifies the narrower live-I/O claim
+against Neural Workshop's public window, not a second game:
+public display capture, spatial onset segmentation, ordinary keypress
+output, exact receipt matching, checkpoint/resume, and immediate
+evidence-bound updates work together in that GUI. Controller relation, source-conditioning, and
 intention-decoding weights are pretrained across variable frontend projections
 and frozen for task acquisition. A fresh task file starts with a uniform
 categorical temporal address and updates only from public verifier outcomes.

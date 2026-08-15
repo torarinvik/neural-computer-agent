@@ -1,7 +1,7 @@
 # Amodal game-playing rung
 
 This experiment package brings real game dynamics behind the same boundary the
-Brain Workshop rung uses:
+Neural Workshop rung uses:
 
 ```text
 game verifier (private state) -> rendered observation grid

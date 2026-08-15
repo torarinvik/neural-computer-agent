@@ -129,7 +129,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         ),
         "claim_boundary": (
             "Batch-one immediate outcome updates through the live tick runtime; "
-            "not pixel/audio Brain Workshop, autonomous routing, transfer, or "
+            "not pixel/audio Neural Workshop, autonomous routing, transfer, or "
             "a promoted working-memory capability."
         ),
         "configuration": {

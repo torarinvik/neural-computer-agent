@@ -1,4 +1,4 @@
-"""Run a short canonical Brain Workshop composition smoke test.
+"""Run a short canonical Neural Workshop composition smoke test.
 
 This command intentionally performs no optimizer update and makes no learning
 claim.  Its purpose is to verify that rendered symbol events, opaque keypress

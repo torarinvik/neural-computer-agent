@@ -288,7 +288,7 @@ class CanonicalBrainWorkshopAgent(nn.Module):
     def retention(self) -> CapabilityRetentionLedger:
         memory = self.runtime.memory
         if not isinstance(memory, ContentAddressedMemory):
-            raise TypeError("canonical Brain Workshop runtime needs content memory")
+            raise TypeError("canonical Neural Workshop runtime needs content memory")
         return memory.retention
 
     @property
@@ -387,7 +387,7 @@ class CanonicalBrainWorkshopAgent(nn.Module):
     def add_relation_capability(self, *, n_back: int, seed: int) -> int:
         """Append a benchmark-sized relation capability.
 
-        This compatibility path remains for the historical Brain Workshop
+        This compatibility path remains for the historical Neural Workshop
         ladder.  New growth experiments should use
         :meth:`add_adaptive_relation_capability`, which provisions only a
         bounded external event window and never receives an n-back value.

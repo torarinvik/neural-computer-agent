@@ -1,4 +1,4 @@
-"""Run or resume a bounded physical Position N-Back training campaign."""
+"""Optional physical Position N-Back campaign against Neural Workshop's window."""
 
 from __future__ import annotations
 
@@ -25,7 +25,7 @@ from .physical_train import run_physical_training_campaign
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--sessions", type=int, default=10)
-    # The public Brain Workshop launcher currently uses 60 one-second trials.
+    # Neural Workshop's public window currently uses 60 one-second trials.
     # Four seconds covers start/finish settling without adding another session.
     parser.add_argument("--seconds-per-session", type=float, default=64.0)
     parser.add_argument("--tick-hz", type=float, default=6.0)

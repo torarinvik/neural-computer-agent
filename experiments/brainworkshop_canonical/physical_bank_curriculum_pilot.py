@@ -1,4 +1,4 @@
-"""Run or resume a bounded, read-only Brain Workshop bank curriculum rung."""
+"""Optional read-only bank curriculum against Neural Workshop's public window."""
 
 from __future__ import annotations
 

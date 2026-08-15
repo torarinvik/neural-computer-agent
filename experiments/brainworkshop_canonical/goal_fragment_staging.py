@@ -1,4 +1,4 @@
-"""Pressure-test outcome-only goal-fragment staging on rendered Brain Workshop.
+"""Pressure-test outcome-only goal-fragment staging on rendered Neural Workshop.
 
 This audit deliberately stops at destination admission.  A cue is encoded into
 an opaque event tensor, fresh verifier lifetimes provide only scalar episode

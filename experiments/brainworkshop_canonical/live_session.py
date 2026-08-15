@@ -1,10 +1,10 @@
-"""Live, batch-one Brain Workshop transport and online acquisition probe.
+"""Live, batch-one Neural Workshop transport and online acquisition probe.
 
 This module exercises the production cognitive tick boundary with one causal
 experience at a time. It is intentionally a first-rung transport/acquisition
 probe: the temporal capability consumes one learned event stream and emits an
 opaque intention. It does not claim autonomous capability allocation,
-multistream composition, pixel-level Brain Workshop operation, or promotion of
+multistream composition, pixel-level Neural Workshop operation, or promotion of
 the full controller path.
 """
 
@@ -49,7 +49,7 @@ class BrainWorkshopLiveDevice:
         encoder: BrainWorkshopEventEncoder,
     ) -> None:
         if verifier.batch_size != 1:
-            raise ValueError("the first live Brain Workshop device is batch-one")
+            raise ValueError("the first live Neural Workshop device is batch-one")
         if encoder.symbol_count < verifier.observation_symbol_count:
             raise ValueError("event encoder vocabulary is too small for the verifier")
         self.verifier = verifier
@@ -100,9 +100,9 @@ class BrainWorkshopLiveDevice:
 
     def emit(self, action: torch.Tensor, receipt: LiveActionReceipt) -> None:
         if self._pending_events is None or self.verifier.done:
-            raise RuntimeError("Brain Workshop received an action without a stimulus")
+            raise RuntimeError("Neural Workshop received an action without a stimulus")
         if action.shape != (self.batch_size,) or action.dtype != torch.long:
-            raise ValueError("Brain Workshop keypress must be an int64 batch vector")
+            raise ValueError("Neural Workshop keypress must be an int64 batch vector")
         scored = self.verifier.score(action)
         present = scored.eligible
         self._outcomes.append(
@@ -332,7 +332,7 @@ class OnlineTemporalCapabilityMachine(nn.Module):
 
 @dataclass(frozen=True)
 class LiveBrainWorkshopLifetime:
-    """Accounting for one never-replayed causal Brain Workshop lifetime."""
+    """Accounting for one never-replayed causal Neural Workshop lifetime."""
 
     actions: torch.Tensor
     rewards: torch.Tensor
@@ -407,7 +407,7 @@ def run_live_lifetime(
             reward_rows.append(resolved.event.reward)
             present_rows.append(resolved.event.present)
         if len(results) > max_ticks:
-            raise RuntimeError("live Brain Workshop session failed to drain")
+            raise RuntimeError("live Neural Workshop session failed to drain")
         now += tick_seconds
     actions = torch.stack(action_rows, dim=1)
     rewards = torch.stack(reward_rows, dim=1)

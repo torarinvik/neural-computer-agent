@@ -1,7 +1,7 @@
 """Rendered replay-free acquisition of an external transition model.
 
 This is a pressure test for the CPU/files boundary, not a claim that the
-current random keypress decoder has mastered Brain Workshop.  The controller,
+current random keypress decoder has mastered Neural Workshop.  The controller,
 frontend, and decoder are frozen.  Fresh rendered verifier lifetimes produce
 opaque planner-state transitions; an affine external transition bank consumes
 each row once through sufficient statistics.  Recursive held-out error is

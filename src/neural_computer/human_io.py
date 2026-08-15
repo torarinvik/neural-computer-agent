@@ -14,7 +14,6 @@ import math
 import struct
 import subprocess
 import tempfile
-import time
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -600,6 +599,99 @@ class MacOSWindowState:
     frontmost: bool
 
 
+def frontmost_macos_process_id() -> int | None:
+    """Read the frontmost PID from LaunchServices. No Accessibility needed."""
+
+    try:
+        front = subprocess.run(
+            ["lsappinfo", "front"],
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+        information = subprocess.run(
+            ["lsappinfo", "info", "-only", "pid", front],
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout
+    except (OSError, subprocess.CalledProcessError):
+        return None
+    marker = '"pid"='
+    lines = [line.strip() for line in information.splitlines() if marker in line]
+    if len(lines) != 1:
+        return None
+    return int(lines[0].split(marker, 1)[1])
+
+
+def query_sck_windows(
+    executable: Path,
+    *,
+    process_id: int | None = None,
+) -> list[dict[str, object]]:
+    """List on-screen windows through the ScreenCaptureKit helper."""
+
+    if not executable.is_file():
+        raise ValueError("ScreenCaptureKit query helper does not exist")
+    command = [str(executable), "--query"]
+    if process_id is not None:
+        command.append(str(int(process_id)))
+    completed = subprocess.run(
+        command,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if completed.returncode != 0:
+        detail = (completed.stderr or completed.stdout or "no helper output").strip()
+        raise RuntimeError(
+            "ScreenCaptureKit window query failed: " + detail
+        )
+    payload = json.loads(completed.stdout or "[]")
+    if not isinstance(payload, list):
+        raise TypeError("ScreenCaptureKit query returned a non-list")
+    return [dict(item) for item in payload]
+
+
+def discover_sck_window(
+    executable: Path,
+    *,
+    title_contains: str,
+    process_id: int | None = None,
+) -> MacOSWindowState:
+    """Pick the largest on-screen window matching a public title."""
+
+    rows = query_sck_windows(executable, process_id=process_id)
+    needle = title_contains.casefold()
+    matches = [
+        row
+        for row in rows
+        if needle in str(row.get("title") or "").casefold()
+    ]
+    if not matches and process_id is None:
+        raise RuntimeError(
+            f"ScreenCaptureKit saw no on-screen window titled {title_contains!r}"
+        )
+    if not matches:
+        matches = list(rows)
+    if not matches:
+        raise RuntimeError("ScreenCaptureKit saw no on-screen window for the target")
+    chosen = max(
+        matches,
+        key=lambda row: float(row.get("width") or 0) * float(row.get("height") or 0),
+    )
+    pid = int(chosen["pid"])
+    width = max(1, int(float(chosen["width"])))
+    height = max(1, int(float(chosen["height"])))
+    return MacOSWindowState(
+        application=str(chosen.get("application") or "python"),
+        process_id=pid,
+        title=str(chosen.get("title") or title_contains),
+        bounds=(int(float(chosen["x"])), int(float(chosen["y"])), width, height),
+        frontmost=frontmost_macos_process_id() == pid,
+    )
+
+
 class MacOSApplicationWindow:
     """Capture and actuate one allow-listed macOS application window."""
 
@@ -610,6 +702,8 @@ class MacOSApplicationWindow:
         title_contains: str = "",
         require_frontmost: bool = True,
         state_refresh_seconds: float = 1.0,
+        process_aliases: tuple[str, ...] = (),
+        query_helper: Path | None = None,
     ) -> None:
         if not application:
             raise ValueError("macOS target application must be non-empty")
@@ -619,22 +713,35 @@ class MacOSApplicationWindow:
         self.title_contains = title_contains
         self.require_frontmost = bool(require_frontmost)
         self.state_refresh_seconds = float(state_refresh_seconds)
+        self.process_aliases = tuple(process_aliases)
+        self.query_helper = query_helper
         self._cached_state: MacOSWindowState | None = None
         self._state_checked_at = -math.inf
         self._locked_bounds: tuple[int, int, int, int] | None = None
 
-    def state(self) -> MacOSWindowState:
-        script = (
-            'var se=Application("System Events");'
-            f"var p=se.applicationProcesses.byName({json.dumps(self.application)});"
-            'if(!p.exists()) throw new Error("target application is not running");'
-            'var ws=p.windows(); if(!ws.length) throw new Error("target has no window");'
-            "var w=ws[0]; JSON.stringify({application:p.name(),title:w.name(),"
-            "pid:p.unixId(),position:w.position(),size:w.size(),"
-            "frontmost:p.frontmost()});"
-        )
-        completed: subprocess.CompletedProcess[str] | None = None
-        for attempt in range(3):
+    def _names(self) -> tuple[str, ...]:
+        names = [self.application, *self.process_aliases]
+        lowered = {name.casefold() for name in names}
+        if "python" in lowered:
+            names.extend(("Python", "python"))
+        seen: list[str] = []
+        for name in names:
+            if name and name not in seen:
+                seen.append(name)
+        return tuple(seen)
+
+    def _state_from_system_events(self) -> MacOSWindowState:
+        last_error = "target application is not running"
+        for name in self._names():
+            script = (
+                'var se=Application("System Events");'
+                f"var p=se.applicationProcesses.byName({json.dumps(name)});"
+                'if(!p.exists()) throw new Error("target application is not running");'
+                'var ws=p.windows(); if(!ws.length) throw new Error("target has no window");'
+                "var w=ws[0]; JSON.stringify({application:p.name(),title:w.name(),"
+                "pid:p.unixId(),position:w.position(),size:w.size(),"
+                "frontmost:p.frontmost()});"
+            )
             try:
                 completed = subprocess.run(
                     ["osascript", "-l", "JavaScript", "-e", script],
@@ -642,30 +749,65 @@ class MacOSApplicationWindow:
                     capture_output=True,
                     text=True,
                 )
-                break
-            except subprocess.CalledProcessError:
-                if attempt == 2:
-                    raise
-                time.sleep(0.02)
-        if completed is None:
-            raise RuntimeError("macOS target state query did not complete")
-        value = json.loads(completed.stdout)
-        position = tuple(int(item) for item in value["position"])
-        size = tuple(int(item) for item in value["size"])
-        state = MacOSWindowState(
-            application=str(value["application"]),
-            process_id=int(value["pid"]),
-            title=str(value["title"]),
-            bounds=(position[0], position[1], size[0], size[1]),
-            frontmost=bool(value["frontmost"]),
-        )
-        if state.application != self.application:
+            except subprocess.CalledProcessError as error:
+                last_error = (error.stderr or error.stdout or str(error)).strip()
+                continue
+            value = json.loads(completed.stdout)
+            position = tuple(int(item) for item in value["position"])
+            size = tuple(int(item) for item in value["size"])
+            return MacOSWindowState(
+                application=str(value["application"]),
+                process_id=int(value["pid"]),
+                title=str(value["title"]),
+                bounds=(position[0], position[1], size[0], size[1]),
+                frontmost=bool(value["frontmost"]),
+            )
+        raise RuntimeError(last_error)
+
+    def state(self) -> MacOSWindowState:
+        last_error: Exception | None = None
+        try:
+            state = self._state_from_system_events()
+        except RuntimeError as error:
+            last_error = error
+            state = None
+        if (
+            state is None
+            or (
+                self.title_contains
+                and self.title_contains.casefold() not in state.title.casefold()
+            )
+        ):
+            if self.query_helper is None:
+                if last_error is not None:
+                    raise RuntimeError(
+                        "could not read the target window through System Events "
+                        f"({last_error}). If this is pyglet Dual, pass the "
+                        "ScreenCaptureKit helper as query_helper."
+                    ) from last_error
+                raise RuntimeError("macOS target window title does not match allow-list")
+            state = discover_sck_window(
+                self.query_helper,
+                title_contains=self.title_contains or self.application,
+            )
+        if (
+            state.application.casefold() != self.application.casefold()
+            and state.application.casefold()
+            not in {name.casefold() for name in self._names()}
+            and self.query_helper is None
+        ):
             raise RuntimeError("macOS application identity changed")
-        if self.title_contains and self.title_contains not in state.title:
+        if self.title_contains and self.title_contains.casefold() not in state.title.casefold():
+            if last_error is not None:
+                raise RuntimeError(
+                    f"ScreenCaptureKit window {state.title!r} does not match "
+                    f"{self.title_contains!r}"
+                ) from last_error
             raise RuntimeError("macOS target window title does not match allow-list")
         if self.require_frontmost and not state.frontmost:
             raise RuntimeError(
-                "refusing I/O because target application is not frontmost"
+                "refusing I/O because target application is not frontmost; "
+                "click the Dual window and retry"
             )
         if min(state.bounds[2:]) < 1:
             raise RuntimeError("target application window has invalid bounds")
@@ -1179,13 +1321,19 @@ class NativeMacOSWindowAVCapture:
         self._process: subprocess.Popen[bytes] | None = None
         self._state: MacOSWindowState | None = None
 
-    @staticmethod
-    def _read_exact(stream, count: int) -> bytes:
+    def _read_exact(self, stream, count: int) -> bytes:
         chunks = bytearray()
         while len(chunks) < count:
             chunk = stream.read(count - len(chunks))
             if not chunk:
-                raise RuntimeError("native macOS AV capture stream ended early")
+                detail = ""
+                process = self._process
+                if process is not None and process.stderr is not None:
+                    detail = process.stderr.read().decode("utf-8", "replace").strip()
+                raise RuntimeError(
+                    "native macOS AV capture stream ended early"
+                    + (f": {detail}" if detail else "")
+                )
             chunks.extend(chunk)
         return bytes(chunks)
 

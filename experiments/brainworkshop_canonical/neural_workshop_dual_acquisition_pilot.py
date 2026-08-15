@@ -52,7 +52,9 @@ def _bits_to_threshold(
     return None
 
 
-def _dual_config(machine, *, n_back: int, trials: int) -> NeuralWorkshopLiveConfig:
+def _dual_config(
+    machine, *, n_back: int, trials: int, visible: bool = False
+) -> NeuralWorkshopLiveConfig:
     return NeuralWorkshopLiveConfig(
         grid_size=3,
         active_cells=8,
@@ -62,6 +64,7 @@ def _dual_config(machine, *, n_back: int, trials: int) -> NeuralWorkshopLiveConf
         source_key_width=machine.source_key_width,
         game_mode=2,
         action_ports=2,
+        visible=visible,
     )
 
 
@@ -85,8 +88,11 @@ def _run_session(
     learn: bool,
     sample: bool,
     intervention: NeuralWorkshopIntervention | None = None,
+    visible: bool = False,
 ):
-    config = _dual_config(machine, n_back=n_back, trials=trials)
+    config = _dual_config(
+        machine, n_back=n_back, trials=trials, visible=visible
+    )
     environment, verifier = build_neural_workshop_environment(
         neural_workshop_directory, config, seed=seed
     )
@@ -131,6 +137,7 @@ def run_neural_workshop_dual_acquisition(
     learning_rate: float = 0.3,
     threshold: float = 0.8,
     minimum_bits: int = 8,
+    visible: bool = False,
 ) -> dict[str, object]:
     started = perf_counter()
     warm = _new_machine(controller_payload, learning_rate=learning_rate)
@@ -144,6 +151,7 @@ def run_neural_workshop_dual_acquisition(
             seed=seed + index,
             learn=True,
             sample=True,
+            visible=visible,
         )
         row = {"session": index, **_summary(report)}
         dual_1back.append(row)
@@ -160,6 +168,7 @@ def run_neural_workshop_dual_acquisition(
             seed=seed + 100,
             learn=False,
             sample=False,
+            visible=visible,
         )
     )
     primitive = warm.admitted_program_artifact()
@@ -176,6 +185,7 @@ def run_neural_workshop_dual_acquisition(
             seed=seed + 200,
             learn=False,
             sample=False,
+            visible=visible,
         )
     )
     fresh = _new_machine(controller_payload, learning_rate=learning_rate)
@@ -190,6 +200,7 @@ def run_neural_workshop_dual_acquisition(
             seed=seed + 300 + index,
             learn=True,
             sample=True,
+            visible=visible,
         )
         row = {"session": index, **_summary(report)}
         fresh_2back.append(row)
@@ -207,6 +218,7 @@ def run_neural_workshop_dual_acquisition(
             learn=True,
             sample=True,
             intervention=NeuralWorkshopIntervention(reward="shuffled", seed=seed + 400),
+            visible=visible,
         )
     )
     reversed_actions = _summary(
@@ -219,6 +231,7 @@ def run_neural_workshop_dual_acquisition(
             learn=True,
             sample=True,
             intervention=NeuralWorkshopIntervention(action="reversed", seed=seed + 401),
+            visible=visible,
         )
     )
     missing_history = _summary(
@@ -233,6 +246,7 @@ def run_neural_workshop_dual_acquisition(
             intervention=NeuralWorkshopIntervention(
                 reset_history_each_tick=True, seed=seed + 402
             ),
+            visible=visible,
         )
     )
     warm_bits = _bits_to_threshold(
@@ -277,6 +291,11 @@ def main() -> None:
     parser.add_argument("--sessions", type=int, default=6)
     parser.add_argument("--seed", type=int, default=99_117)
     parser.add_argument("--program-learning-rate", type=float, default=0.3)
+    parser.add_argument(
+        "--visible",
+        action="store_true",
+        help="show the Neural Workshop gym window (set NW_HEADLESS=0)",
+    )
     parser.add_argument("--report-out", type=Path, default=None)
     parser.add_argument(
         "--controller-artifact",
@@ -294,6 +313,7 @@ def main() -> None:
         sessions=arguments.sessions,
         seed=arguments.seed,
         learning_rate=arguments.program_learning_rate,
+        visible=arguments.visible,
     )
     text = json.dumps(report, indent=2, sort_keys=True) + "\n"
     if arguments.report_out is None:

@@ -1,8 +1,9 @@
-"""Human-parity physical Brain Workshop composition for macOS.
+"""Optional human-parity I/O against Neural Workshop's public window.
 
 The learner sees captured window pixels only, emits ordinary keypresses, and
 receives scalar outcomes derived solely from the application's visible feedback
-colors.  The upstream GUI is never imported and no private game state is read.
+colors. The gym is never imported and no private game state is read. This is
+not a second game: the public window title contains "Neural Workshop".
 """
 
 from __future__ import annotations
@@ -36,7 +37,7 @@ class PhysicalBrainWorkshopConfig:
     """External public-interface calibration for Position N-Back."""
 
     application: str = "Python"
-    title_contains: str = "Brain Workshop"
+    title_contains: str = "Neural Workshop"
     event_width: int = 16
     source_key_width: int = 4
     image_size: int = 36
@@ -64,17 +65,17 @@ class PhysicalBrainWorkshopConfig:
     def validate(self) -> PhysicalBrainWorkshopConfig:
         if self.schema != PHYSICAL_BRAINWORKSHOP_SCHEMA:
             raise ValueError(
-                f"unsupported physical Brain Workshop schema: {self.schema}"
+                f"unsupported physical Neural Workshop schema: {self.schema}"
             )
         if min(self.event_width, self.source_key_width, self.image_size) < 1:
-            raise ValueError("physical Brain Workshop dimensions must be positive")
+            raise ValueError("physical Neural Workshop dimensions must be positive")
         if (
             self.tick_hz <= 0.0
             or self.action_delay_seconds < 0.0
             or self.screen_input_index < 0
             or self.backing_scale <= 0.0
         ):
-            raise ValueError("physical Brain Workshop capture settings are invalid")
+            raise ValueError("physical Neural Workshop capture settings are invalid")
         if self.capture_backend not in {"native", "screencapture", "ffmpeg"}:
             raise ValueError("unsupported physical screen capture backend")
         if self.capture_backend == "native" and self.capture_helper is None:
@@ -161,7 +162,7 @@ def build_physical_brainworkshop_runtime(
     outcome_reader = VisibleColorOutcomeReader(
         region=config.feedback_region,
         negative_colors=((255, 64, 64), (64, 64, 255)),
-        # Brain Workshop 5.0's macOS renderer presents correct feedback as
+        # Neural Workshop's macOS renderer presents correct feedback as
         # saturated green even though its configuration names the lighter
         # fallback color. Accept both public pixel values; this calibration is
         # confined to the replaceable screen adapter.
@@ -249,6 +250,8 @@ def compile_macos_av_capture_helper(output: Path) -> Path:
             "swiftc",
             "-O",
             "-parse-as-library",
+            "-framework",
+            "AppKit",
             "-framework",
             "AVFoundation",
             "-framework",

@@ -160,7 +160,7 @@ The result is fail-closed: `inexpressible` means the complete finite bound was
 checked, while `budget_exhausted` means that search stopped before the bound
 was certified. This is an execution/compiler foundation only. It does not yet
 show that the frozen controller can learn arbitrary recipes, discover useful
-instruction sequences efficiently from Brain Workshop outcomes, or grow an
+instruction sequences efficiently from Neural Workshop outcomes, or grow an
 unbounded program library. The next audit must compare this compiler against
 stochastic proposal search under matched verifier bits, then test retention and
 held-out transfer when a discovered sequence is stored as an external file.

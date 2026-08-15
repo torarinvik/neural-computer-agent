@@ -48,7 +48,7 @@ class RenderedBrainWorkshopConfig:
         if not self.streams or len(set(self.streams)) != len(self.streams):
             raise ValueError("rendered streams must be non-empty and unique")
         if any(stream not in SUPPORTED_RENDERED_STREAMS for stream in self.streams):
-            raise ValueError("unsupported rendered Brain Workshop stream")
+            raise ValueError("unsupported rendered Neural Workshop stream")
         if not 2 <= self.symbol_count <= len(_GRID_POSITIONS):
             raise ValueError("rendered symbol count must lie between two and eight")
         if self.frame_size < 18 or self.frame_size % 3:

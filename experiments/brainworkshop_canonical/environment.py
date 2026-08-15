@@ -1,4 +1,4 @@
-"""A small rendered-event Brain Workshop verifier for the canonical runtime.
+"""A small rendered-event Neural Workshop verifier for the canonical runtime.
 
 The verifier owns the hidden n-back target and exposes only a raw symbol
 observation followed by a deterministic scalar outcome.  The event encoder is

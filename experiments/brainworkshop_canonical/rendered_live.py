@@ -1,4 +1,4 @@
-"""Source-preserving rendered Brain Workshop on the production live tick."""
+"""Source-preserving rendered Neural Workshop on the production live tick."""
 
 from __future__ import annotations
 
@@ -106,7 +106,7 @@ class RenderedBrainWorkshopLiveDevice:
 
     def emit(self, action: torch.Tensor, receipt: LiveActionReceipt) -> None:
         if self._pending_events is None or self.verifier.done:
-            raise RuntimeError("rendered Brain Workshop action has no stimulus")
+            raise RuntimeError("rendered Neural Workshop action has no stimulus")
         executed = action
         if self.action_permutation is not None:
             executed = torch.tensor(
@@ -509,7 +509,7 @@ class FrozenControllerProgramMachine(SourcePreservingTemporalMachine):
     history, receipt binding, and execution of the external file. It has no
     task-updated parameters. Temporal addressing, relation computation, source
     conditioning, and action intention weights are capability-file contents;
-    Brain Workshop feedback may update those file tensors and their optimizer,
+    Neural Workshop feedback may update those file tensors and their optimizer,
     but never the controller/executor contract.
 
     A production meta-trained controller can replace this parameter-free

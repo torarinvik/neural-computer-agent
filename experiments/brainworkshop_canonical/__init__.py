@@ -1,4 +1,4 @@
-"""Canonical Brain Workshop pressure tests for the production runtime."""
+"""Canonical Neural Workshop pressure tests for the production runtime."""
 
 from .controller_pretraining import (
     TemporalControllerPretrainingReport,

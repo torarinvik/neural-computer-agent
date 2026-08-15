@@ -1,4 +1,4 @@
-"""Bounded human-parity Position N-Back physical pilot."""
+"""Optional human-parity Position N-Back I/O against Neural Workshop's window."""
 
 from __future__ import annotations
 

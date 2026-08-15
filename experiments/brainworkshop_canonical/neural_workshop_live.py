@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import importlib
 import math
+import os
 import random
 import sys
 import time
@@ -43,7 +44,7 @@ from .rendered_live import SourcePreservingTemporalMachine
 NEURAL_WORKSHOP_LIVE_SCHEMA = "neural-computer.neural-workshop-live.v1"
 _ACTION_INTERVENTIONS = {"normal", "passive", "random", "reversed"}
 _REWARD_INTERVENTIONS = {"normal", "missing", "shuffled"}
-# These keys are Brain Workshop internals. A Dual (or Position) observation
+# These keys are Neural Workshop internals. A Dual (or Position) observation
 # that carries them is a hidden channel, not a public sensorimotor stream.
 _PRIVILEGED_OBSERVATION_KEYS = frozenset(
     {
@@ -119,6 +120,7 @@ class NeuralWorkshopLiveConfig:
     audio_encoder_seed: int = 3_017
     game_mode: int = 10
     action_ports: int = 1
+    visible: bool = False
     schema: str = NEURAL_WORKSHOP_LIVE_SCHEMA
 
     def validate(self) -> NeuralWorkshopLiveConfig:
@@ -670,22 +672,24 @@ def build_neural_workshop_environment(
     *,
     seed: int,
 ) -> tuple[NeuralWorkshopEnvironment, Any]:
-    """Configure a manual Position N-Back session outside learner visibility."""
+    """Configure a Neural Workshop gym session from constructor knobs."""
 
     config.validate()
+    if config.visible:
+        os.environ["NW_HEADLESS"] = "0"
     module = _load_module(directory)
     environment = module.NeuralWorkshopEnv(
-        seed=seed, game_mode=config.game_mode, num_trials=config.trials
+        seed=seed,
+        game_mode=config.game_mode,
+        num_trials=config.trials,
+        n_back=config.n_back,
+        grid_size=config.grid_size,
+        active_cells=config.active_cells,
+        mute_music=True,
+        mute_applause=True,
+        visible=config.visible,
     )
     bw = module.bw
-    bw.cfg.GRID_SIZE = config.grid_size
-    bw.cfg.ACTIVE_POSITION_CELLS = config.active_cells
-    bw.cfg.POSITION_CELL_COUNT = config.active_cells
-    bw.cfg.MANUAL = True
-    bw.mode.manual = True
-    bw.mode.back = config.n_back
-    bw.cfg.USE_MUSIC = False
-    bw.cfg.USE_APPLAUSE = False
     # The adapter's two-transition transport assumes no blank significant
     # phase. Headless fast mode normally has this property; fail closed if an
     # upstream configuration changes it.

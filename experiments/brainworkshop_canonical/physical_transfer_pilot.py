@@ -1,4 +1,4 @@
-"""Read-only physical transfer evaluation of a mastered task program."""
+"""Optional read-only transfer against Neural Workshop's public window."""
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""Audit three sequential isolated Brain Workshop capability slots.
+"""Audit three sequential isolated Neural Workshop capability slots.
 
 This extends the promoted two-slot rung by appending a third relation-reader
 slot. Every earlier slot is frozen before the next append, and only the
