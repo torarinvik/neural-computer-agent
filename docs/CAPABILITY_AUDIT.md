@@ -7,6 +7,11 @@ file says so.
 
 ## 1. What is verified today
 
+> Since this audit was written, its first prediction has been tested. The
+> sampled-rule baseline in §3 O1 shows the searcher solving 4/4 hand-written
+> rules and 0/15 sampled rules of two or more states. Read §1 as a description
+> of a system that fits its four training rules well.
+
 | Quantity | Value | Where |
 | --- | --- | --- |
 | Frozen controller parameters | 3342 | `temporal_controller_previous_event_seed1001.pt` |
@@ -71,24 +76,40 @@ durable but tiny and hand-curated.
 
 ## 3. Obstacles, ordered by how much they block
 
-### O1 — There is no way to tell whether anything general was learned
+### O1 — Generality was untestable, and the first test fails
 
-Four hand-written rules is not a distribution. With `n_back`, `current_symbol`,
-`changed`, and `onset`, a solver that covers all four is indistinguishable from
-one that fits four special cases, and every promotion standard in `AGENTS.md`
-is powerless against that: held-out *seeds* re-sample episodes of a rule the
-system has already seen, never a rule it has not.
+*Status: the measurement now exists, and it is negative.*
 
-This is first not because it is the deepest problem but because **no fix to
-anything below is measurable without it**.
+Four hand-written rules is not a distribution. A solver covering all four is
+indistinguishable from one fitting four special cases, and every promotion
+standard in `AGENTS.md` was powerless against that: held-out *seeds* re-sample
+episodes of a rule already seen, never a rule unseen.
 
-Resolved when: tasks are sampled from a compositional rule grammar (predicates
-over history, closed under negation, conjunction, delay), with whole rule
-families held out, and bits-to-threshold is reported on rules never trained on.
+`rule_automata.py` replaces the rule list with the general class of
+finite-state rules over the symbol stream, sampled rather than written. Rules
+carry canonical identity (minimise, relabel, digest), a ground-truth
+complexity axis (minimal state count), and a digest-stable held-out split. The
+class is defined independently of what the controller can express, so it can
+falsify. The four hand-written rules embed exactly, at 1, 2, 4, and 4 states.
 
-First experiment: a rule generator plus a held-out-family split; re-run the
-existing leases inside it as a baseline. Cheap — the environment already has
-the scoring machinery, and the generator replaces four `if` branches.
+The baseline
+(`session_records/brainworkshop_sampled_rule_baseline_2026-08-15/`):
+
+| Rules | Solved |
+| --- | ---: |
+| Hand-written | **4 / 4** |
+| Sampled, 1 state | 2 / 3 |
+| Sampled, 2-6 states | **0 / 15** |
+
+Mean gain over a never-press constant policy on multi-state sampled rules:
+**+0.049**. The failure does not track complexity: `onset` is a 2-state rule
+that needed a whole lease, `changed` and `n_back-1` are 4-state rules solved by
+one retrieve or invert, and sampled 2-state rules are not solved at all. The
+searcher is tuned to four particular rules.
+
+Remaining: the diagnostic cannot yet separate **inexpressible at this
+controller geometry** from **unreachable by this grammar**. That separation is
+O6, and it is now the most informative thing to measure.
 
 ### O2 — Composition only repeats one primitive
 
@@ -165,13 +186,21 @@ different frontend of the same modality, without relearning.
 
 ## 4. Recommended order
 
-1. **O1** — rule generator with held-out families. Everything else is
-   unmeasurable without it.
-2. **O4** — the accumulation curve over a held-out rule sequence. This is the
-   project's actual thesis, and after O1 it is mostly wiring.
-3. **O2** — heterogeneous composition, ported from the executive family.
-4. **O3** — learned proposer, evaluated on held-out families.
-5. **O7**, **O5**, **O6** in whichever order the results make urgent.
+1. ~~**O1** — rule generator with held-out families.~~ **Done**, and the
+   baseline is 0/15 on multi-state sampled rules.
+2. **O6 first, now** — separate *inexpressible* from *unsearchable*. Take the
+   sampled rules the grammar failed and ask whether any program at the current
+   controller geometry solves them, by exhaustive check rather than by search.
+   The answer decides everything after it: if they are expressible, the work is
+   O3 (a proposer); if they are not, the work is a blueprint change with the
+   weight-reset control from `AGENTS.md`.
+3. **O2** — heterogeneous composition, ported from the executive family. A
+   library that cannot combine its own parts cannot climb this axis.
+4. **O4** — the accumulation curve over a held-out rule sequence: does rule
+   N+1 get cheaper as the library grows? This is the project's actual thesis
+   and it is now measurable.
+5. **O3** — learned proposer, evaluated on held-out rule families.
+6. **O7**, **O5** as the results make urgent.
 
 The honest summary: the mechanism is sound and unusually well controlled, the
 expressive substrate is already Turing-complete, and the missing pieces are

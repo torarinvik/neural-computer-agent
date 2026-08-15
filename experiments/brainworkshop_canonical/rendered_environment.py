@@ -46,12 +46,31 @@ class RenderedBrainWorkshopConfig:
     neutral_true_negative_absent: bool = False
     match_rule: str = "n_back"
     target_symbol: int = 0
+    # A sampled finite-state rule, used when match_rule is "automaton". The
+    # verifier holds it; no part of it reaches the learner.
+    rule: object | None = None
 
     def validate(self) -> RenderedBrainWorkshopConfig:
-        if self.match_rule not in {"n_back", "current_symbol", "changed", "onset"}:
+        if self.match_rule not in {
+            "n_back",
+            "current_symbol",
+            "changed",
+            "onset",
+            "automaton",
+        }:
             raise ValueError(
-                "rendered match_rule must be n_back, current_symbol, changed, or onset"
+                "rendered match_rule must be n_back, current_symbol, changed, "
+                "onset, or automaton"
             )
+        if self.match_rule == "automaton":
+            if self.rule is None:
+                raise ValueError("the automaton task needs a sampled rule")
+            if getattr(self.rule, "symbol_count", None) != self.symbol_count:
+                raise ValueError("rule alphabet does not match the symbol count")
+            if self.steps < 8:
+                raise ValueError("automaton task needs at least eight steps")
+        elif self.rule is not None:
+            raise ValueError("only the automaton task carries a sampled rule")
         if self.match_rule == "current_symbol":
             if self.steps < 8:
                 raise ValueError("current-symbol task needs at least eight steps")
@@ -148,6 +167,19 @@ def _generate_current_symbols(
     return symbols, flags
 
 
+def _generate_automaton_symbols(
+    config: RenderedBrainWorkshopConfig,
+    generator: torch.Generator,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """Uniform symbols; the sampled rule supplies the expected presses."""
+
+    symbols = torch.randint(
+        0, config.symbol_count, (config.steps,), generator=generator
+    )
+    expected = torch.tensor(config.rule.expected(symbols), dtype=torch.bool)
+    return symbols, expected
+
+
 def _generate_onset_symbols(
     config: RenderedBrainWorkshopConfig,
     generator: torch.Generator,
@@ -228,6 +260,8 @@ class RenderedBrainWorkshopVerifier:
                 symbols, matches = _generate_current_symbols(self.config, generator)
             elif self.config.match_rule == "onset":
                 symbols, matches = _generate_onset_symbols(self.config, generator)
+            elif self.config.match_rule == "automaton":
+                symbols, matches = _generate_automaton_symbols(self.config, generator)
             else:
                 symbols, matches = _generate_symbols(self.config, generator)
             self._symbols[stream] = symbols
@@ -250,6 +284,8 @@ class RenderedBrainWorkshopVerifier:
             return self.config.steps - 1
         if self.config.match_rule == "onset":
             return self.config.steps - 1
+        if self.config.match_rule == "automaton":
+            return self.config.steps
         return self.config.steps - self.config.n_back
 
     def observation(self) -> RenderedBrainWorkshopObservation:
@@ -285,6 +321,10 @@ class RenderedBrainWorkshopVerifier:
             eligible = torch.tensor([True])
             symbol = int(self._symbols[self.config.streams[0]][self._position])
             expected = int(symbol == int(self.config.target_symbol))
+        elif self.config.match_rule == "automaton":
+            # Every tick is scored: the rule's state carries any warm-up.
+            eligible = torch.tensor([True])
+            expected = int(self._matches[self.config.streams[0]][self._position])
         elif self.config.match_rule == "changed":
             eligible = torch.tensor([self._position >= 1])
             expected = 0
