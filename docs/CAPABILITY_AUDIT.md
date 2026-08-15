@@ -213,15 +213,20 @@ different frontend of the same modality, without relearning.
    ceiling of 0.786, and the solved set is exactly the expressible set. Both
    template polarities were needed. Record:
    `session_records/brainworkshop_template_proposals_2026-08-15/`.
-4. **A program family with state.** 11 of 18 rules need output that depends on
-   accumulated state, not on one lagged comparison, and templates cannot reach
-   them: their ceiling *is* the family's ceiling. `control_flow.py` is already
-   a two-counter machine and is not wired to this controller; wiring it is the
-   largest available win and needs no new theory.
-5. **O3 — the proposer.** No longer worth anything on the current family,
-   which is now saturated by enumeration. It becomes necessary exactly when
-   the family gains state, because that space is not enumerable — 48 programs
-   per rule today, exponential after.
+4. ~~**A program family with state.**~~ **Done** — `counter_state_programs.py`
+   bridges the existing two-counter machine to the rendered stream through a
+   fixed press/input/working-state interface. All 18 sampled rules compile and
+   run at `1.000`, against 7/18 for the temporal family, and so does 2-back at
+   16 states. Record:
+   `session_records/brainworkshop_counter_state_ceiling_2026-08-15/`.
+5. **O3 — the proposer, now the whole problem.** Expressiveness is no longer
+   the constraint anywhere in the rule class; search is. The programs are
+   21-130 instructions, so enumeration would sift 10^50 to 10^472 candidates
+   against a practical reach near 10^9. Nothing incremental closes that. A
+   proposer that infers structure from evidence and picks its next test by
+   expected information is the only remaining route — and unlike a month ago,
+   there is now a task distribution, a complexity axis, and two ceilings to
+   measure it against.
 5. **O4** — the accumulation curve over a held-out rule sequence: does rule
    N+1 get cheaper as the library grows? The project's actual thesis, now
    measurable.
