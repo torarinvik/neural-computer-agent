@@ -7,6 +7,12 @@ file says so.
 
 ## 1. What is verified today
 
+> **Superseded on the architecture question.** `AMODAL_N_TO_M_ARCHITECTURE.md`
+> and this audit both described a repository containing two answers to "what
+> executes a program". `DECISION_CONTROLLER_IS_THE_INTERPRETER.md` settles it:
+> the controller does. The counter-machine bridge is a ceiling, not the path,
+> and it must be re-derived through the controller before it counts.
+>
 > Since this audit was written, its first prediction has been tested. The
 > sampled-rule baseline in §3 O1 shows the searcher solving 4/4 hand-written
 > rules and 0/15 sampled rules of two or more states. Read §1 as a description
@@ -227,15 +233,32 @@ different frontend of the same modality, without relearning.
    expected information is the only remaining route — and unlike a month ago,
    there is now a task distribution, a complexity axis, and two ceilings to
    measure it against.
-5. **O4** — the accumulation curve over a held-out rule sequence: does rule
-   N+1 get cheaper as the library grows? The project's actual thesis, now
-   measurable.
-6. **O2** — heterogeneous composition, which the state-carrying family will
-   need in order to build anything hierarchical.
-7. **O7**, **O5** as the results make urgent.
+6. **The interpreter path.** Decided in
+   `DECISION_CONTROLLER_IS_THE_INTERPRETER.md`: the controller executes
+   programs, so the counter bridge is a ceiling rather than the path and must
+   be re-derived through the controller. A two-way decoder cannot express the
+   micro-operations an interpreter needs, so this requires a new blueprint
+   under the weight-reset terms in `AGENTS.md`. First milestone is a
+   behaviour-preserving re-derivation of an already-verified capability.
+7. **Adaptive evidence allocation.** Roughly 6x on verifier bits by abandoning
+   candidates a sequential test has already decided; an uncommitted estimate
+   put 85% of evidence on candidates that were settled early. The binomial
+   tails are already written in `lease_discrimination`.
+8. **Widen the distribution past the hypothesis class.** The sampled rules are
+   finite-state. A proposer that hypothesises finite-state programs, tested on
+   finite-state rules, would repeat the original failure one level up: it
+   would fit the test. Rules needing unbounded counting are the first
+   addition, since the counter substrate expresses them and finite-state
+   hypotheses do not.
+9. **O4** — the accumulation curve over a held-out rule sequence: does rule
+   N+1 get cheaper as the library grows? The project's actual thesis, still
+   without evidence, and the thing that decides whether interpretation is
+   worth its cost.
+10. **O2** heterogeneous composition, then **O7** and **O5**.
 
 The honest summary: the mechanism is sound and unusually well controlled, the
 expressive substrate is already Turing-complete, and the missing pieces are
 not exotic. What is missing is a task distribution wide enough to falsify a
-generality claim, a library whose parts combine with each other, and something
-that writes programs instead of enumerating them. In that order.
+generality claim, a library whose parts combine with each other, something
+that writes programs instead of enumerating them, and a curve showing that any
+of it accumulates. In that order.
