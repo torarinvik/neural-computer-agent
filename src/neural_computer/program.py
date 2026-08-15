@@ -33,6 +33,7 @@ class ExternalProgramArtifact:
     interpreter_schema: str
     execution_schema: str
     output_schema: str | None = None
+    frontend_digest: str | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.codes, torch.Tensor):
@@ -55,6 +56,18 @@ class ExternalProgramArtifact:
             not isinstance(self.output_schema, str) or not self.output_schema
         ):
             raise ValueError("output_schema must be a non-empty schema string or null")
+        if self.frontend_digest is not None:
+            if (
+                not isinstance(self.frontend_digest, str)
+                or len(self.frontend_digest) != 64
+            ):
+                raise ValueError("program frontend digest must be a SHA-256 hex digest")
+            try:
+                int(self.frontend_digest, 16)
+            except ValueError as error:
+                raise ValueError(
+                    "program frontend digest must be a SHA-256 hex digest"
+                ) from error
 
     @property
     def instruction_width(self) -> int:
@@ -67,7 +80,7 @@ class ExternalProgramArtifact:
     def configuration(self) -> dict[str, Any]:
         """Return metadata without exposing the learned tensor contents."""
 
-        return {
+        configuration = {
             "schema": EXTERNAL_PROGRAM_ARTIFACT_SCHEMA,
             "instruction_width": self.instruction_width,
             "program_length": self.program_length,
@@ -76,6 +89,9 @@ class ExternalProgramArtifact:
             "output_schema": self.output_schema,
             "storage": "opaque_learned_instruction_tensor_v1",
         }
+        if self.frontend_digest is not None:
+            configuration["frontend_digest"] = self.frontend_digest
+        return configuration
 
     def snapshot(self) -> torch.Tensor:
         """Return detached CPU data suitable for external storage."""
@@ -98,6 +114,9 @@ class ExternalProgramArtifact:
         digest.update(str(codes.dtype).encode("utf-8"))
         digest.update(repr(tuple(codes.shape)).encode("utf-8"))
         digest.update(codes.view(torch.uint8).numpy().tobytes())
+        if self.frontend_digest is not None:
+            digest.update(b"frontend\0")
+            digest.update(self.frontend_digest.encode("utf-8"))
         return digest.hexdigest()
 
     def validate_for(
@@ -152,6 +171,7 @@ class ExternalProgramArtifact:
             interpreter_schema=configuration.get("interpreter_schema"),
             execution_schema=configuration.get("execution_schema"),
             output_schema=configuration.get("output_schema"),
+            frontend_digest=configuration.get("frontend_digest"),
         )
         expected_digest = payload.get("sha256")
         if not isinstance(expected_digest, str) or expected_digest != artifact.digest():

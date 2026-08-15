@@ -1,0 +1,57 @@
+{
+  "controls": {
+    "action_reversed_below_threshold": true,
+    "admitted": false,
+    "bank_unchanged": true,
+    "controller_frozen": true,
+    "cross_encoder_below_threshold": true,
+    "delay_slot0_below_threshold": true,
+    "reward_shuffled_below_threshold": true,
+    "zeros_below_threshold": true
+  },
+  "experiment_id": "brainworkshop-current-symbol-bound-frontend-2026-08-15",
+  "optimizer_updates": 0,
+  "replayed_examples": 0,
+  "replication_count": 3,
+  "retention_on_mastered_primitive": "current-symbol frozen hold on unused seeds; zeros remain below threshold",
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "seed_blocks": [
+    [
+      119017,
+      119017
+    ],
+    [
+      120017,
+      120017
+    ],
+    [
+      121017,
+      121017
+    ]
+  ],
+  "source": "in_repository_run",
+  "stable_bits_to_threshold": {
+    "hold_seed119017": 48,
+    "hold_seed120017": 48,
+    "hold_seed121017": 48
+  },
+  "status": "replicated_not_admitted",
+  "transfer_ratio_against_fresh_learner": null,
+  "transfer_ratio_note": "zeros are the unmatched invent file, not a fresh delay learner",
+  "unique_logical_lifetimes_all_arms": 18,
+  "unique_verifier_bits": {
+    "hold_seed119017": 48,
+    "hold_seed120017": 48,
+    "hold_seed121017": 48
+  },
+  "unresolved": {
+    "bank_admission": "prototype-match is not a curated AgentBrain slot",
+    "desktop_dual": "not a trainer and not this experiment",
+    "open_program_induction": "grammar is still retrieve, compose, invent"
+  },
+  "wall_seconds": {
+    "seed119017": 0.13802554202266037,
+    "seed120017": 0.1275924580404535,
+    "seed121017": 0.14625808398704976
+  }
+}

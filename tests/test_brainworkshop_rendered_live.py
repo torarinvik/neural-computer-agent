@@ -250,10 +250,16 @@ def test_pretrained_controller_updates_only_temporal_address_file() -> None:
     assert report.program_file_updates == report.unique_verifier_bits
     assert machine.controller_digest() == controller_before
     assert machine.program_digest() != program_before
+    # The program file owns the temporal address and the prototype template.
+    # Everything inherited from the frozen controller stays untrainable.
+    program_parameters = {"relative_address_logits", "prototype"}
+    assert {
+        name for name, parameter in machine.named_parameters() if parameter.requires_grad
+    } == program_parameters
     assert all(
-        not parameter.requires_grad
+        name in program_parameters or name not in controller_state
         for name, parameter in machine.named_parameters()
-        if name != "relative_address_logits"
+        if parameter.requires_grad
     )
     payload = machine.external_program_payload()
     assert "state" not in payload
@@ -522,6 +528,27 @@ def test_rendered_dual_blank_file_updates_only_the_address_program() -> None:
     assert report["dual_1back_retention"]["program_file_updates"] == 0
     assert report["replayed_examples"] == 0
     assert report["optimizer_updates"] == 0
+
+
+def test_one_row_dual_2back_climb_is_not_a_compose_transfer() -> None:
+    from experiments.brainworkshop_canonical.rendered_dual_transfer_pilot import (
+        run_rendered_dual_learn_transfer,
+    )
+
+    # The climb samples actions, so it reads the ambient generator. Seed it
+    # here and give the 1-back arm enough budget to reach threshold from any
+    # test order rather than only from this module's earlier seeds.
+    torch.manual_seed(99)
+    payload = load_temporal_controller_artifact(
+        Path("artifacts/checkpoints/temporal_controller_previous_event_seed1001.pt")
+    )
+    report = run_rendered_dual_learn_transfer(
+        payload, steps=48, sessions=3, seed=99, learning_rate=0.3
+    )
+    assert report["schema"] == "neural-computer.rendered-dual-learn-transfer.v1"
+    assert report["dual_1back_bits_to_threshold"] is not None
+    assert "not composed execution" in report["transfer_ratio_note"]
+    assert report["replayed_examples"] == 0
 
 
 def test_negative_feedback_updates_a_saturated_policy_without_clamp_dead_zone() -> None:

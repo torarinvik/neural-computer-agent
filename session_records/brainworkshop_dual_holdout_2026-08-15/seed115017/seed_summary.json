@@ -1,0 +1,67 @@
+{
+  "control_flags": {
+    "action_reversed": true,
+    "controller_frozen": true,
+    "fresh": true,
+    "missing_history": true,
+    "wrong_depth": true
+  },
+  "controls": {
+    "action_reversed": {
+      "accuracy": 0.16666666666666666,
+      "audio_events": 60,
+      "controller_frozen": true,
+      "optimizer_updates": 0,
+      "packed_exact_accuracy": 0.05,
+      "program_file_updates": 60,
+      "unique_verifier_bits": 60,
+      "vision_events": 60
+    },
+    "missing_history": {
+      "accuracy": 0.0,
+      "audio_events": 60,
+      "controller_frozen": true,
+      "optimizer_updates": 0,
+      "packed_exact_accuracy": 0.0,
+      "program_file_updates": 22,
+      "unique_verifier_bits": 22,
+      "vision_events": 60
+    },
+    "reward_shuffled": {
+      "accuracy": 0.6666666666666666,
+      "audio_events": 60,
+      "controller_frozen": true,
+      "optimizer_updates": 0,
+      "packed_exact_accuracy": 0.5,
+      "program_file_updates": 24,
+      "unique_verifier_bits": 24,
+      "vision_events": 60
+    },
+    "wrong_depth": {
+      "accuracy": 0.04,
+      "audio_events": 60,
+      "controller_frozen": true,
+      "optimizer_updates": 0,
+      "packed_exact_accuracy": 0.04,
+      "program_file_updates": 0,
+      "unique_verifier_bits": 25,
+      "vision_events": 60
+    }
+  },
+  "dual_1back_bits_to_threshold": 88,
+  "metrics": {
+    "audio_aligned": 1.0,
+    "controller_frozen": 1.0,
+    "dual_1back_accuracy": 0.967741935483871,
+    "dual_1back_bits": 88.0,
+    "dual_1back_reached": 1.0,
+    "dual_1back_retention": 1.0,
+    "optimizer_updates": 0.0,
+    "program_file_updates": 88.0,
+    "replayed_examples": 0.0,
+    "warm_dual_2back": 1.0,
+    "warm_target_learning_bits": 0.0
+  },
+  "seed": 115017,
+  "wall_seconds": 59.49525445897598
+}

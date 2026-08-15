@@ -52,7 +52,7 @@ def run_physical_bank_transfer(
         learning_rate=0.3,
         sample=False,
     )
-    if bank.controller_digest != machine.controller_digest():
+    if not machine.accepts_controller_digest(bank.controller_digest):
         raise ValueError("temporal program bank targets another controller")
     machine.learning_enabled = False
     route_observer = TemporalProgramOutcomeObserver(bank)

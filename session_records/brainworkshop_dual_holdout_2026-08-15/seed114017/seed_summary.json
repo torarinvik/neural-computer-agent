@@ -1,0 +1,67 @@
+{
+  "control_flags": {
+    "action_reversed": true,
+    "controller_frozen": true,
+    "fresh": true,
+    "missing_history": true,
+    "wrong_depth": true
+  },
+  "controls": {
+    "action_reversed": {
+      "accuracy": 0.15,
+      "audio_events": 60,
+      "controller_frozen": true,
+      "optimizer_updates": 0,
+      "packed_exact_accuracy": 0.016666666666666666,
+      "program_file_updates": 60,
+      "unique_verifier_bits": 60,
+      "vision_events": 60
+    },
+    "missing_history": {
+      "accuracy": 0.0,
+      "audio_events": 60,
+      "controller_frozen": true,
+      "optimizer_updates": 0,
+      "packed_exact_accuracy": 0.0,
+      "program_file_updates": 26,
+      "unique_verifier_bits": 26,
+      "vision_events": 60
+    },
+    "reward_shuffled": {
+      "accuracy": 0.46153846153846156,
+      "audio_events": 60,
+      "controller_frozen": true,
+      "optimizer_updates": 0,
+      "packed_exact_accuracy": 0.6153846153846154,
+      "program_file_updates": 26,
+      "unique_verifier_bits": 26,
+      "vision_events": 60
+    },
+    "wrong_depth": {
+      "accuracy": 0.1,
+      "audio_events": 60,
+      "controller_frozen": true,
+      "optimizer_updates": 0,
+      "packed_exact_accuracy": 0.1,
+      "program_file_updates": 0,
+      "unique_verifier_bits": 30,
+      "vision_events": 60
+    }
+  },
+  "dual_1back_bits_to_threshold": 45,
+  "metrics": {
+    "audio_aligned": 1.0,
+    "controller_frozen": 1.0,
+    "dual_1back_accuracy": 1.0,
+    "dual_1back_bits": 45.0,
+    "dual_1back_reached": 1.0,
+    "dual_1back_retention": 1.0,
+    "optimizer_updates": 0.0,
+    "program_file_updates": 45.0,
+    "replayed_examples": 0.0,
+    "warm_dual_2back": 1.0,
+    "warm_target_learning_bits": 0.0
+  },
+  "seed": 114017,
+  "wall_seconds": 48.83935075008776
+}

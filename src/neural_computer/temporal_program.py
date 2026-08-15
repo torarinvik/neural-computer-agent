@@ -48,6 +48,24 @@ RECURSIVE_TEMPORAL_INTERPRETER_SCHEMA = (
 RECURSIVE_TEMPORAL_EXECUTION_SCHEMA = (
     "neural-computer.relative-history-compose.v1"
 )
+PROTOTYPE_MATCH_INTERPRETER_SCHEMA = (
+    "neural-computer.prototype-match-controller.v1"
+)
+PROTOTYPE_MATCH_EXECUTION_SCHEMA = (
+    "neural-computer.prototype-match.v1"
+)
+INTENTION_INVERT_INTERPRETER_SCHEMA = (
+    "neural-computer.intention-invert-controller.v1"
+)
+INTENTION_INVERT_EXECUTION_SCHEMA = (
+    "neural-computer.intention-invert.v1"
+)
+INTENTION_AND_INTERPRETER_SCHEMA = (
+    "neural-computer.intention-and-controller.v1"
+)
+INTENTION_AND_EXECUTION_SCHEMA = (
+    "neural-computer.intention-and.v1"
+)
 UNUSED_TEMPORAL_ADDRESS_LOGIT = -12.0
 
 
@@ -335,22 +353,58 @@ class ExternalTemporalProgramBank:
         return F.normalize(value, dim=0).contiguous()
 
     def _validate_artifact(self, artifact: ExternalProgramArtifact) -> None:
-        artifact.validate_for(
-            instruction_width=self.instruction_width,
-            interpreter_schema=self.interpreter_schema,
-            execution_schema=self.execution_schema,
-            output_schema=self.output_schema,
-        )
+        if artifact.output_schema != self.output_schema:
+            raise ValueError("program artifact output schema is incompatible")
         if (
-            self.execution_schema == TEMPORAL_ADDRESS_EXECUTION_SCHEMA
-            and artifact.program_length != 1
+            artifact.interpreter_schema == TEMPORAL_ADDRESS_INTERPRETER_SCHEMA
+            and artifact.execution_schema == TEMPORAL_ADDRESS_EXECUTION_SCHEMA
         ):
-            raise ValueError("temporal address programs must contain one address row")
+            if artifact.instruction_width != self.instruction_width:
+                raise ValueError("program artifact instruction width is incompatible")
+            if artifact.program_length != 1:
+                raise ValueError("temporal address programs must contain one address row")
+            return
         if (
-            self.execution_schema == RECURSIVE_TEMPORAL_EXECUTION_SCHEMA
-            and artifact.program_length > self.instruction_width
+            artifact.interpreter_schema == RECURSIVE_TEMPORAL_INTERPRETER_SCHEMA
+            and artifact.execution_schema == RECURSIVE_TEMPORAL_EXECUTION_SCHEMA
         ):
-            raise ValueError("recursive temporal program exceeds history capacity")
+            if artifact.instruction_width != self.instruction_width:
+                raise ValueError("program artifact instruction width is incompatible")
+            if artifact.program_length > self.instruction_width:
+                raise ValueError("recursive temporal program exceeds history capacity")
+            return
+        if (
+            artifact.interpreter_schema == PROTOTYPE_MATCH_INTERPRETER_SCHEMA
+            and artifact.execution_schema == PROTOTYPE_MATCH_EXECUTION_SCHEMA
+        ):
+            if artifact.instruction_width != self.context_width:
+                raise ValueError("prototype program width must match event context")
+            if artifact.program_length != 1:
+                raise ValueError("prototype programs must contain one event row")
+            return
+        if (
+            artifact.interpreter_schema == INTENTION_INVERT_INTERPRETER_SCHEMA
+            and artifact.execution_schema == INTENTION_INVERT_EXECUTION_SCHEMA
+        ):
+            if artifact.instruction_width == self.instruction_width:
+                if not 1 <= artifact.program_length <= self.instruction_width:
+                    raise ValueError("invert program exceeds history capacity")
+                return
+            if artifact.instruction_width == self.context_width:
+                if artifact.program_length != 1:
+                    raise ValueError("inverted prototype programs must contain one row")
+                return
+            raise ValueError("invert program width must match address or event context")
+        if (
+            artifact.interpreter_schema == INTENTION_AND_INTERPRETER_SCHEMA
+            and artifact.execution_schema == INTENTION_AND_EXECUTION_SCHEMA
+        ):
+            if artifact.instruction_width != self.context_width:
+                raise ValueError("and program width must match event context")
+            if artifact.program_length != 1:
+                raise ValueError("and programs must contain one prototype row")
+            return
+        raise ValueError("unsupported temporal program interface schemas")
 
     def artifact(self, slot: int) -> ExternalProgramArtifact:
         if not isinstance(slot, int) or not 0 <= slot < self.program_count:
@@ -361,6 +415,7 @@ class ExternalTemporalProgramBank:
             interpreter_schema=source.interpreter_schema,
             execution_schema=source.execution_schema,
             output_schema=source.output_schema,
+            frontend_digest=source.frontend_digest,
         )
 
     def admit(
@@ -413,6 +468,7 @@ class ExternalTemporalProgramBank:
                     interpreter_schema=artifact.interpreter_schema,
                     execution_schema=artifact.execution_schema,
                     output_schema=artifact.output_schema,
+                    frontend_digest=artifact.frontend_digest,
                 )
             )
         else:
@@ -641,6 +697,12 @@ __all__ = [
     "AGENT_BANK_EXTENSION",
     "DEFAULT_AGENT_BANK_FILENAME",
     "EXTERNAL_TEMPORAL_PROGRAM_BANK_SCHEMA",
+    "INTENTION_AND_EXECUTION_SCHEMA",
+    "INTENTION_AND_INTERPRETER_SCHEMA",
+    "INTENTION_INVERT_EXECUTION_SCHEMA",
+    "INTENTION_INVERT_INTERPRETER_SCHEMA",
+    "PROTOTYPE_MATCH_EXECUTION_SCHEMA",
+    "PROTOTYPE_MATCH_INTERPRETER_SCHEMA",
     "RECURSIVE_TEMPORAL_EXECUTION_SCHEMA",
     "RECURSIVE_TEMPORAL_INTERPRETER_SCHEMA",
     "TEMPORAL_ADDRESS_EXECUTION_SCHEMA",

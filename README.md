@@ -120,8 +120,10 @@ updates, 0 controller updates, and 0 replay. The first full rolling-44 window
 scored `0.8864`, every later window remained above `0.80`, and the final window
 was `1.0000`. Rendered causal controls passed across 32 seeds, and the matched
 fresh end-to-end learner required 2.32x as many median verifier bits among
-successful runs. Dual mode remains gated on a human-available audio capture
-path.
+successful runs. Neural Workshop Dual 1-Back acquisition and composed Dual
+2-Back execution are now holdout-promoted on public pixels plus public PCM.
+Desktop ScreenCaptureKit Dual remains optional human-parity I/O, not a
+trainer.
 
 The most recent eviction-transfer audit is also important negative evidence:
 artifact storage, integrity, and lifecycle work, but the learned maintenance

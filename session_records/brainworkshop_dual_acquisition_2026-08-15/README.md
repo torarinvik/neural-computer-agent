@@ -42,9 +42,12 @@ a holdout promotion.
 
 ## Why this is not promoted
 
-- two seeds per substrate, no Dual holdout lease;
+- two seeds per substrate, no Dual holdout lease in this record;
 - Dual 2-Back warm path is composition, not a cheaper 2-Back search;
-- desktop screen-capture Dual still lacks system-audio loopback.
+- desktop screen-capture Dual is optional I/O, not a trainer.
+
+The later unused three-seed lease is
+`session_records/brainworkshop_dual_holdout_2026-08-15/`.
 
 ## Run
 

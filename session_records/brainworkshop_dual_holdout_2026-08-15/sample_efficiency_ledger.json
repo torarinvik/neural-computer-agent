@@ -1,0 +1,54 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment_id": "brainworkshop-dual-holdout-2026-08-15",
+  "status": "promoted_dual_acquisition",
+  "source": "in_repository_run",
+  "seed_blocks": [[113017, 113017], [114017, 114017], [115017, 115017]],
+  "replication_count": 3,
+  "promotion_holdout": "consumed: brainworkshop-dual-holdout-2026-08-15 attempt-1",
+  "unique_verifier_bits": {
+    "dual_1back_seed113017": 29,
+    "dual_1back_seed114017": 45,
+    "dual_1back_seed115017": 88,
+    "warm_dual_2back_seed113017": 21,
+    "warm_dual_2back_seed114017": 20,
+    "warm_dual_2back_seed115017": 24,
+    "fresh_dual_2back_seed113017": 27,
+    "fresh_dual_2back_seed114017": 23,
+    "fresh_dual_2back_seed115017": 56,
+    "campaign_all_arms": 835
+  },
+  "unique_logical_lifetimes_all_arms": 28,
+  "optimizer_updates": 0,
+  "replayed_examples": 0,
+  "wall_seconds": {
+    "seed113017": 45.402704749954864,
+    "seed114017": 48.83935075008776,
+    "seed115017": 59.49525445897598,
+    "campaign": 153.73943608393893
+  },
+  "stable_bits_to_threshold": {
+    "dual_1back_seed113017": 29,
+    "dual_1back_seed114017": 45,
+    "dual_1back_seed115017": 88
+  },
+  "retention_on_mastered_primitive": "Dual 1-back retention 1.000 on all three holdout seeds; composed Dual 2-back 1.000/1.000/1.000 with zero target updates",
+  "transfer_ratio_against_fresh_learner": null,
+  "transfer_ratio_note": "warm Dual 2-back is composed execution with zero target updates, not a same-task bits-to-threshold ratio",
+  "controls": {
+    "packed_exact_match_not_half_credit": true,
+    "public_pcm_not_letter_id": true,
+    "wrong_depth_below_threshold": true,
+    "missing_history_below_threshold": true,
+    "action_reversed_below_threshold": true,
+    "reward_shuffled_is_diagnostic": true,
+    "controller_program_replay_updates": 0
+  },
+  "unresolved": {
+    "desktop_system_audio_loopback": "macOS screen-capture Dual is optional I/O, not a trainer",
+    "autonomous_program_induction": "composition remains PREVIOUS-depth growth, not open program search",
+    "unrestricted_memory_growth": "history growth is a versioned interpreter change, not unbounded",
+    "complete_executive_ISA": "not claimed",
+    "dual_2back_transfer_ratio": "warm Dual 2-back is execution, not a cheaper 2-back climb"
+  }
+}

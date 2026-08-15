@@ -1,0 +1,242 @@
+{
+  "accepted": true,
+  "admitted": false,
+  "bank_sha256": "07319eb13c9cac58bbbe94258548e64f13ba1b3512ca2a01fbdc675c49e2e7c9",
+  "bank_unchanged": true,
+  "controller_sha256": "93a4dbb72953c60b7964546490c202ba9c6f4a4f9b4289de2c3f7db986690537",
+  "elapsed_seconds": 0.41637512494344264,
+  "experiment_id": "brainworkshop-current-symbol-bound-frontend-2026-08-15",
+  "frontend_digest": "1ce405a091b7b0bac7ee4e2c96d027b81188f70baa31db2601057222c0f74b5d",
+  "frontend_shared": true,
+  "minimum_bits": 24,
+  "optimizer_updates": 0,
+  "program_file_updates": 144,
+  "replayed_examples": 0,
+  "replicates": [
+    {
+      "accepted": true,
+      "action_reversed": {
+        "accuracy": 0.0,
+        "arm": "action_reversed",
+        "optimizer_updates": 0,
+        "program_file_updates": 0,
+        "replayed_examples": 0,
+        "unique_verifier_bits": 48
+      },
+      "controller_digest": "59c9ef2b235104e4f0d6bc143ba195fb57a907da9f29b1d5750c39fa22f7687c",
+      "controller_unchanged": true,
+      "cross_encoder": {
+        "accuracy": 0.5,
+        "arm": "cross_encoder",
+        "optimizer_updates": 0,
+        "program_file_updates": 0,
+        "replayed_examples": 0,
+        "unique_verifier_bits": 48
+      },
+      "cross_frontend_digest": "b6d0486292031efd4c6dc28fcd7f322cd5b1c1318d7eb3135bcd70e1297c8221",
+      "delay_slot0": {
+        "accuracy": 0.7916666865348816,
+        "arm": "delay_slot0",
+        "optimizer_updates": 0,
+        "program_file_updates": 0,
+        "replayed_examples": 0,
+        "unique_verifier_bits": 48
+      },
+      "elapsed_seconds": 0.13802554202266037,
+      "experiment_id": "brainworkshop-current-symbol-bound-frontend-2026-08-15",
+      "frontend_digest": "1ce405a091b7b0bac7ee4e2c96d027b81188f70baa31db2601057222c0f74b5d",
+      "hold": {
+        "accuracy": 1.0,
+        "arm": "hold",
+        "optimizer_updates": 0,
+        "program_file_updates": 0,
+        "replayed_examples": 0,
+        "unique_verifier_bits": 48
+      },
+      "hold_seed": 119018,
+      "prototype_norm": 7.168594837188721,
+      "reward_shuffled": {
+        "accuracy": 0.5416666865348816,
+        "arm": "reward_shuffled",
+        "optimizer_updates": 0,
+        "program_file_updates": 0,
+        "replayed_examples": 0,
+        "unique_verifier_bits": 48
+      },
+      "schema": "neural-computer.current-symbol-acquire-replicate.v1",
+      "seed": 119017,
+      "steps": 48,
+      "train": {
+        "accuracy": 0.9583333134651184,
+        "arm": "train",
+        "optimizer_updates": 0,
+        "program_file_updates": 48,
+        "replayed_examples": 0,
+        "unique_verifier_bits": 48
+      },
+      "zeros": {
+        "accuracy": 0.5,
+        "arm": "zeros",
+        "optimizer_updates": 0,
+        "program_file_updates": 0,
+        "replayed_examples": 0,
+        "unique_verifier_bits": 48
+      }
+    },
+    {
+      "accepted": true,
+      "action_reversed": {
+        "accuracy": 0.0,
+        "arm": "action_reversed",
+        "optimizer_updates": 0,
+        "program_file_updates": 0,
+        "replayed_examples": 0,
+        "unique_verifier_bits": 48
+      },
+      "controller_digest": "59c9ef2b235104e4f0d6bc143ba195fb57a907da9f29b1d5750c39fa22f7687c",
+      "controller_unchanged": true,
+      "cross_encoder": {
+        "accuracy": 0.5,
+        "arm": "cross_encoder",
+        "optimizer_updates": 0,
+        "program_file_updates": 0,
+        "replayed_examples": 0,
+        "unique_verifier_bits": 48
+      },
+      "cross_frontend_digest": "5502f208a1ff6daf2389790be4433bb3e5db6700ea882e98cc03ad29060cbb2c",
+      "delay_slot0": {
+        "accuracy": 0.6666666865348816,
+        "arm": "delay_slot0",
+        "optimizer_updates": 0,
+        "program_file_updates": 0,
+        "replayed_examples": 0,
+        "unique_verifier_bits": 48
+      },
+      "elapsed_seconds": 0.1275924580404535,
+      "experiment_id": "brainworkshop-current-symbol-bound-frontend-2026-08-15",
+      "frontend_digest": "1ce405a091b7b0bac7ee4e2c96d027b81188f70baa31db2601057222c0f74b5d",
+      "hold": {
+        "accuracy": 1.0,
+        "arm": "hold",
+        "optimizer_updates": 0,
+        "program_file_updates": 0,
+        "replayed_examples": 0,
+        "unique_verifier_bits": 48
+      },
+      "hold_seed": 120018,
+      "prototype_norm": 7.130251407623291,
+      "reward_shuffled": {
+        "accuracy": 0.5208333134651184,
+        "arm": "reward_shuffled",
+        "optimizer_updates": 0,
+        "program_file_updates": 0,
+        "replayed_examples": 0,
+        "unique_verifier_bits": 48
+      },
+      "schema": "neural-computer.current-symbol-acquire-replicate.v1",
+      "seed": 120017,
+      "steps": 48,
+      "train": {
+        "accuracy": 0.9583333134651184,
+        "arm": "train",
+        "optimizer_updates": 0,
+        "program_file_updates": 48,
+        "replayed_examples": 0,
+        "unique_verifier_bits": 48
+      },
+      "zeros": {
+        "accuracy": 0.5,
+        "arm": "zeros",
+        "optimizer_updates": 0,
+        "program_file_updates": 0,
+        "replayed_examples": 0,
+        "unique_verifier_bits": 48
+      }
+    },
+    {
+      "accepted": true,
+      "action_reversed": {
+        "accuracy": 0.0,
+        "arm": "action_reversed",
+        "optimizer_updates": 0,
+        "program_file_updates": 0,
+        "replayed_examples": 0,
+        "unique_verifier_bits": 48
+      },
+      "controller_digest": "59c9ef2b235104e4f0d6bc143ba195fb57a907da9f29b1d5750c39fa22f7687c",
+      "controller_unchanged": true,
+      "cross_encoder": {
+        "accuracy": 0.5,
+        "arm": "cross_encoder",
+        "optimizer_updates": 0,
+        "program_file_updates": 0,
+        "replayed_examples": 0,
+        "unique_verifier_bits": 48
+      },
+      "cross_frontend_digest": "2c511f472beaa5b5151e817193240553764d2fcba56c45555279373290dd120b",
+      "delay_slot0": {
+        "accuracy": 0.6041666865348816,
+        "arm": "delay_slot0",
+        "optimizer_updates": 0,
+        "program_file_updates": 0,
+        "replayed_examples": 0,
+        "unique_verifier_bits": 48
+      },
+      "elapsed_seconds": 0.14625808398704976,
+      "experiment_id": "brainworkshop-current-symbol-bound-frontend-2026-08-15",
+      "frontend_digest": "1ce405a091b7b0bac7ee4e2c96d027b81188f70baa31db2601057222c0f74b5d",
+      "hold": {
+        "accuracy": 1.0,
+        "arm": "hold",
+        "optimizer_updates": 0,
+        "program_file_updates": 0,
+        "replayed_examples": 0,
+        "unique_verifier_bits": 48
+      },
+      "hold_seed": 121018,
+      "prototype_norm": 7.579500675201416,
+      "reward_shuffled": {
+        "accuracy": 0.5208333134651184,
+        "arm": "reward_shuffled",
+        "optimizer_updates": 0,
+        "program_file_updates": 0,
+        "replayed_examples": 0,
+        "unique_verifier_bits": 48
+      },
+      "schema": "neural-computer.current-symbol-acquire-replicate.v1",
+      "seed": 121017,
+      "steps": 48,
+      "train": {
+        "accuracy": 0.9375,
+        "arm": "train",
+        "optimizer_updates": 0,
+        "program_file_updates": 48,
+        "replayed_examples": 0,
+        "unique_verifier_bits": 48
+      },
+      "zeros": {
+        "accuracy": 0.5,
+        "arm": "zeros",
+        "optimizer_updates": 0,
+        "program_file_updates": 0,
+        "replayed_examples": 0,
+        "unique_verifier_bits": 48
+      }
+    }
+  ],
+  "schema": "neural-computer.current-symbol-acquire-campaign.v1",
+  "seeds": [
+    119017,
+    120017,
+    121017
+  ],
+  "slot0_digest": "90e20193a50fdfa22b75fe722e6a9e131d9ba05d7f7e7d0aedbce9fc1f3c5749",
+  "status": "replicated_not_admitted",
+  "steps": 48,
+  "threshold": 0.8,
+  "unique_verifier_bits": {
+    "hold_seed119017": 48,
+    "hold_seed120017": 48,
+    "hold_seed121017": 48
+  }
+}

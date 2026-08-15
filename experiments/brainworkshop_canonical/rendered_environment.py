@@ -7,8 +7,10 @@ vendor Brain Workshop code, assets, state, or protocol implementation.
 
 from __future__ import annotations
 
+import hashlib
 import math
 from dataclasses import dataclass
+from pathlib import Path
 
 import torch
 from torch import nn
@@ -17,6 +19,7 @@ from neural_computer import AmodalEvent, AmodalEventCollection
 
 RENDERED_BRAINWORKSHOP_SCHEMA = "neural-computer.rendered-brainworkshop.v1"
 RENDERED_ENCODER_SCHEMA = "neural-computer.rendered-brainworkshop-encoders.v1"
+RENDERED_FRONTEND_ARTIFACT_SCHEMA = "neural-computer.rendered-frontend.v1"
 SUPPORTED_RENDERED_STREAMS = ("vision", "audio")
 
 _GRID_POSITIONS = (
@@ -41,9 +44,28 @@ class RenderedBrainWorkshopConfig:
     audio_samples: int = 256
     sample_rate: int = 8_000
     neutral_true_negative_absent: bool = False
+    match_rule: str = "n_back"
+    target_symbol: int = 0
 
     def validate(self) -> RenderedBrainWorkshopConfig:
-        if self.n_back < 1 or self.steps <= self.n_back:
+        if self.match_rule not in {"n_back", "current_symbol", "changed", "onset"}:
+            raise ValueError(
+                "rendered match_rule must be n_back, current_symbol, changed, or onset"
+            )
+        if self.match_rule == "current_symbol":
+            if self.steps < 8:
+                raise ValueError("current-symbol task needs at least eight steps")
+            if not 0 <= self.target_symbol < self.symbol_count:
+                raise ValueError("current-symbol target is outside the symbol set")
+        elif self.match_rule == "changed":
+            if self.steps < 8:
+                raise ValueError("changed-symbol task needs at least eight steps")
+        elif self.match_rule == "onset":
+            if self.steps < 8:
+                raise ValueError("onset task needs at least eight steps")
+            if not 0 <= self.target_symbol < self.symbol_count:
+                raise ValueError("onset target is outside the symbol set")
+        elif self.n_back < 1 or self.steps <= self.n_back:
             raise ValueError("rendered n-back needs target-bearing positive dimensions")
         if not self.streams or len(set(self.streams)) != len(self.streams):
             raise ValueError("rendered streams must be non-empty and unique")
@@ -109,6 +131,47 @@ def _generate_symbols(
     return symbols, flags
 
 
+def _generate_current_symbols(
+    config: RenderedBrainWorkshopConfig,
+    generator: torch.Generator,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    flags = _balanced_flags(config.steps, generator)
+    symbols = torch.randint(
+        config.symbol_count, (config.steps,), generator=generator
+    )
+    target = int(config.target_symbol)
+    for position in range(config.steps):
+        if bool(flags[position]):
+            symbols[position] = target
+        elif int(symbols[position].item()) == target:
+            symbols[position] = (target + 1) % config.symbol_count
+    return symbols, flags
+
+
+def _generate_onset_symbols(
+    config: RenderedBrainWorkshopConfig,
+    generator: torch.Generator,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    target = int(config.target_symbol)
+    off = (target + 1) % config.symbol_count
+    stay = _balanced_flags(config.steps - 1, generator)
+    symbols = torch.empty(config.steps, dtype=torch.long)
+    symbols[0] = torch.randint(2, (), generator=generator)
+    symbols[0] = target if int(symbols[0].item()) == 0 else off
+    for position in range(1, config.steps):
+        symbols[position] = (
+            symbols[position - 1]
+            if bool(stay[position - 1])
+            else (off if int(symbols[position - 1].item()) == target else target)
+        )
+    onset = torch.zeros(config.steps, dtype=torch.bool)
+    for position in range(1, config.steps):
+        onset[position] = bool(symbols[position] == target) and bool(
+            symbols[position - 1] != target
+        )
+    return symbols, onset
+
+
 def render_position(symbol: int, *, size: int) -> torch.Tensor:
     """Render one position as a plain RGB frame with no target annotation."""
 
@@ -161,7 +224,12 @@ class RenderedBrainWorkshopVerifier:
         self._symbols: dict[str, torch.Tensor] = {}
         self._matches: dict[str, torch.Tensor] = {}
         for stream in self.config.streams:
-            symbols, matches = _generate_symbols(self.config, generator)
+            if self.config.match_rule == "current_symbol":
+                symbols, matches = _generate_current_symbols(self.config, generator)
+            elif self.config.match_rule == "onset":
+                symbols, matches = _generate_onset_symbols(self.config, generator)
+            else:
+                symbols, matches = _generate_symbols(self.config, generator)
             self._symbols[stream] = symbols
             self._matches[stream] = matches
         self._position = 0
@@ -176,6 +244,12 @@ class RenderedBrainWorkshopVerifier:
 
     @property
     def eligible_trials(self) -> int:
+        if self.config.match_rule == "current_symbol":
+            return self.config.steps
+        if self.config.match_rule == "changed":
+            return self.config.steps - 1
+        if self.config.match_rule == "onset":
+            return self.config.steps - 1
         return self.config.steps - self.config.n_back
 
     def observation(self) -> RenderedBrainWorkshopObservation:
@@ -207,13 +281,37 @@ class RenderedBrainWorkshopVerifier:
             raise ValueError("rendered keypress action must be int64 with shape [1]")
         if bool(torch.any((action < 0) | (action >= self.action_count))):
             raise ValueError("rendered keypress action is outside the protocol")
-        eligible = torch.tensor([self._position >= self.config.n_back])
-        expected = 0
-        if bool(eligible.item()):
-            offset = self._position - self.config.n_back
-            for bit, stream in enumerate(self.config.streams):
-                if bool(self._matches[stream][offset]):
-                    expected |= 1 << bit
+        if self.config.match_rule == "current_symbol":
+            eligible = torch.tensor([True])
+            symbol = int(self._symbols[self.config.streams[0]][self._position])
+            expected = int(symbol == int(self.config.target_symbol))
+        elif self.config.match_rule == "changed":
+            eligible = torch.tensor([self._position >= 1])
+            expected = 0
+            if bool(eligible.item()):
+                stream = self.config.streams[0]
+                expected = int(
+                    int(self._symbols[stream][self._position])
+                    != int(self._symbols[stream][self._position - 1])
+                )
+        elif self.config.match_rule == "onset":
+            eligible = torch.tensor([self._position >= 1])
+            expected = 0
+            if bool(eligible.item()):
+                stream = self.config.streams[0]
+                current = int(self._symbols[stream][self._position])
+                previous = int(self._symbols[stream][self._position - 1])
+                expected = int(
+                    current == int(self.config.target_symbol) and current != previous
+                )
+        else:
+            eligible = torch.tensor([self._position >= self.config.n_back])
+            expected = 0
+            if bool(eligible.item()):
+                offset = self._position - self.config.n_back
+                for bit, stream in enumerate(self.config.streams):
+                    if bool(self._matches[stream][offset]):
+                        expected |= 1 << bit
         chosen = int(action.item())
         reward = torch.tensor([float(chosen == expected)])
         eligible = eligible & ~torch.tensor(
@@ -281,6 +379,82 @@ class RenderedBrainWorkshopEncoders(nn.Module):
                 for stream in SUPPORTED_RENDERED_STREAMS
             }
         )
+
+    def digest(self) -> str:
+        """Stable digest of the replaceable frontend, not of a task label."""
+
+        hasher = hashlib.sha256()
+        hasher.update(self.schema.encode())
+        hasher.update(str(self.event_width).encode())
+        hasher.update(str(self.source_key_width).encode())
+        for name, parameter in sorted(self.named_parameters()):
+            tensor = parameter.detach().cpu().contiguous()
+            hasher.update(name.encode())
+            hasher.update(str(tensor.dtype).encode())
+            hasher.update(repr(tuple(tensor.shape)).encode())
+            hasher.update(tensor.numpy().tobytes())
+        return hasher.hexdigest()
+
+    @classmethod
+    def seeded(
+        cls,
+        event_width: int,
+        *,
+        source_key_width: int = 4,
+        seed: int,
+    ) -> RenderedBrainWorkshopEncoders:
+        """Build one reproducible frozen frontend. This is an adapter, not a task."""
+
+        with torch.random.fork_rng():
+            torch.manual_seed(int(seed))
+            encoders = cls(event_width, source_key_width=source_key_width)
+        for parameter in encoders.parameters():
+            parameter.requires_grad_(False)
+        return encoders
+
+    def payload(self, *, seed: int | None = None) -> dict[str, object]:
+        state = {name: value.detach().cpu().clone() for name, value in self.state_dict().items()}
+        configuration = {
+            "event_width": self.event_width,
+            "source_key_width": self.source_key_width,
+        }
+        if seed is not None:
+            configuration["seed"] = int(seed)
+        return {
+            "schema": RENDERED_FRONTEND_ARTIFACT_SCHEMA,
+            "configuration": configuration,
+            "state": state,
+            "digest": self.digest(),
+        }
+
+    def save(self, path: Path, *, seed: int | None = None) -> str:
+        path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        torch.save(self.payload(seed=seed), path)
+        return self.digest()
+
+    @classmethod
+    def load(cls, path: Path) -> RenderedBrainWorkshopEncoders:
+        payload = torch.load(Path(path), map_location="cpu", weights_only=True)
+        if (
+            not isinstance(payload, dict)
+            or payload.get("schema") != RENDERED_FRONTEND_ARTIFACT_SCHEMA
+            or not isinstance(payload.get("configuration"), dict)
+            or not isinstance(payload.get("state"), dict)
+            or not isinstance(payload.get("digest"), str)
+        ):
+            raise ValueError("rendered frontend artifact is malformed")
+        configuration = payload["configuration"]
+        encoders = cls(
+            int(configuration["event_width"]),
+            source_key_width=int(configuration["source_key_width"]),
+        )
+        encoders.load_state_dict(payload["state"])
+        for parameter in encoders.parameters():
+            parameter.requires_grad_(False)
+        if encoders.digest() != payload["digest"]:
+            raise ValueError("rendered frontend artifact digest mismatch")
+        return encoders
 
     def encode(
         self,

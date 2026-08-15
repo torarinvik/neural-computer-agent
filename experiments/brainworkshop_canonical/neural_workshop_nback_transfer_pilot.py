@@ -335,7 +335,7 @@ def run_nback_transfer(
         inherited_retention, threshold=threshold, minimum_bits=minimum_bits
     ):
         bank = ExternalTemporalProgramBank.load_bank(source_bank_path)
-        if bank.controller_digest != inherited.controller_digest():
+        if not inherited.accepts_controller_digest(bank.controller_digest):
             raise ValueError("source bank targets another frozen controller")
         stable = inherited_reports[-stable_sessions:]
         context = learned_event_context(

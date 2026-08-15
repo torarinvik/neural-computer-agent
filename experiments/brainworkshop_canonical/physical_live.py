@@ -195,6 +195,12 @@ def compile_macos_keypress_helper(output: Path) -> Path:
     if not source.is_file():
         raise FileNotFoundError(source)
     output.parent.mkdir(parents=True, exist_ok=True)
+    if (
+        output.is_file()
+        and output.stat().st_mtime >= source.stat().st_mtime
+        and output.stat().st_size > 0
+    ):
+        return output
     subprocess.run(
         [
             "clang",
@@ -245,6 +251,12 @@ def compile_macos_av_capture_helper(output: Path) -> Path:
         raise FileNotFoundError(source)
     output = Path(output)
     output.parent.mkdir(parents=True, exist_ok=True)
+    if (
+        output.is_file()
+        and output.stat().st_mtime >= source.stat().st_mtime
+        and output.stat().st_size > 0
+    ):
+        return output
     subprocess.run(
         [
             "swiftc",

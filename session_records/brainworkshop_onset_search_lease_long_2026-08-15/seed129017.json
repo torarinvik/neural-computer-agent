@@ -1,0 +1,338 @@
+{
+  "accepted": true,
+  "action_reversed": {
+    "accuracy": 0.0,
+    "arm": "action_reversed",
+    "optimizer_updates": 0,
+    "program_file_updates": 0,
+    "replayed_examples": 0,
+    "unique_verifier_bits": 191
+  },
+  "controller_digest": "59c9ef2b235104e4f0d6bc143ba195fb57a907da9f29b1d5750c39fa22f7687c",
+  "cross_encoder": {
+    "accuracy": 0.7486910820007324,
+    "arm": "cross_encoder",
+    "optimizer_updates": 0,
+    "program_file_updates": 0,
+    "replayed_examples": 0,
+    "unique_verifier_bits": 191
+  },
+  "cross_frontend_digest": "095f22b7c81131f36fdc29e98650af79a80f0f2e855e86dc0cf384040bcc0b02",
+  "elapsed_seconds": 1.0518591250292957,
+  "experiment_id": "brainworkshop-onset-search-lease-long-2026-08-15",
+  "frontend_digest": "1ce405a091b7b0bac7ee4e2c96d027b81188f70baa31db2601057222c0f74b5d",
+  "frozen_holds": true,
+  "grammar_coverage": {
+    "executed": 5,
+    "illegal_compose": 7,
+    "not_installable": [
+      {
+        "label": "retrieve:2",
+        "reason": "machine cannot load recursive temporal programs"
+      },
+      {
+        "label": "compose:0+0",
+        "reason": "machine cannot load recursive temporal programs"
+      },
+      {
+        "label": "compose:1+1",
+        "reason": "machine cannot load recursive temporal programs"
+      },
+      {
+        "label": "invert:2",
+        "reason": "machine cannot load recursive temporal programs"
+      }
+    ],
+    "proposal_count": 19
+  },
+  "holds": [
+    {
+      "accuracy": 1.0,
+      "seed": 129018,
+      "session": 0,
+      "unique_verifier_bits": 191
+    },
+    {
+      "accuracy": 1.0,
+      "program_file_updates": 0,
+      "seed": 129019,
+      "session": 1,
+      "unique_verifier_bits": 191
+    },
+    {
+      "accuracy": 1.0,
+      "program_file_updates": 0,
+      "seed": 129020,
+      "session": 2,
+      "unique_verifier_bits": 191
+    },
+    {
+      "accuracy": 1.0,
+      "program_file_updates": 0,
+      "seed": 129021,
+      "session": 3,
+      "unique_verifier_bits": 191
+    },
+    {
+      "accuracy": 1.0,
+      "program_file_updates": 0,
+      "seed": 129022,
+      "session": 4,
+      "unique_verifier_bits": 191
+    },
+    {
+      "accuracy": 1.0,
+      "program_file_updates": 0,
+      "seed": 129023,
+      "session": 5,
+      "unique_verifier_bits": 191
+    }
+  ],
+  "invert_slot0": {
+    "accuracy": 0.7486910820007324,
+    "arm": "invert_slot0",
+    "optimizer_updates": 0,
+    "program_file_updates": 0,
+    "replayed_examples": 0,
+    "unique_verifier_bits": 191
+  },
+  "prototype_norm": 3.999164342880249,
+  "prototype_only": {
+    "accuracy": 0.7068063020706177,
+    "arm": "prototype_only",
+    "optimizer_updates": 0,
+    "program_file_updates": 0,
+    "replayed_examples": 0,
+    "unique_verifier_bits": 191
+  },
+  "retrieve_slot0": {
+    "accuracy": 0.2513088881969452,
+    "arm": "retrieve_slot0",
+    "optimizer_updates": 0,
+    "program_file_updates": 0,
+    "replayed_examples": 0,
+    "unique_verifier_bits": 191
+  },
+  "reward_shuffled": {
+    "accuracy": 0.49738219380378723,
+    "arm": "reward_shuffled",
+    "optimizer_updates": 0,
+    "program_file_updates": 0,
+    "replayed_examples": 0,
+    "unique_verifier_bits": 191
+  },
+  "schema": "neural-computer.onset-search-lease-replicate.v1",
+  "search": {
+    "attempts": [
+      {
+        "accepted": false,
+        "accuracy": 0.2513088881969452,
+        "executed": true,
+        "kind": "retrieve",
+        "label": "retrieve:0",
+        "slots": [
+          0
+        ],
+        "unique_verifier_bits": 191
+      },
+      {
+        "accepted": false,
+        "accuracy": 0.2513088881969452,
+        "executed": true,
+        "kind": "retrieve",
+        "label": "retrieve:1",
+        "slots": [
+          1
+        ],
+        "unique_verifier_bits": 191
+      },
+      {
+        "accepted": false,
+        "executed": false,
+        "kind": "retrieve",
+        "label": "retrieve:2",
+        "reason": "machine cannot load recursive temporal programs",
+        "slots": [
+          2
+        ]
+      },
+      {
+        "accepted": false,
+        "executed": false,
+        "kind": "compose",
+        "label": "compose:0+0",
+        "reason": "machine cannot load recursive temporal programs",
+        "slots": [
+          0,
+          0
+        ]
+      },
+      {
+        "accepted": false,
+        "executed": false,
+        "kind": "illegal_compose",
+        "label": "illegal_compose:0+1",
+        "reason": "unequal temporal primitives cannot compose in this family",
+        "slots": [
+          0,
+          1
+        ]
+      },
+      {
+        "accepted": false,
+        "executed": false,
+        "kind": "illegal_compose",
+        "label": "illegal_compose:0+2",
+        "reason": "only temporal-address primitives can compose in this family",
+        "slots": [
+          0,
+          2
+        ]
+      },
+      {
+        "accepted": false,
+        "executed": false,
+        "kind": "illegal_compose",
+        "label": "illegal_compose:1+0",
+        "reason": "unequal temporal primitives cannot compose in this family",
+        "slots": [
+          1,
+          0
+        ]
+      },
+      {
+        "accepted": false,
+        "executed": false,
+        "kind": "compose",
+        "label": "compose:1+1",
+        "reason": "machine cannot load recursive temporal programs",
+        "slots": [
+          1,
+          1
+        ]
+      },
+      {
+        "accepted": false,
+        "executed": false,
+        "kind": "illegal_compose",
+        "label": "illegal_compose:1+2",
+        "reason": "only temporal-address primitives can compose in this family",
+        "slots": [
+          1,
+          2
+        ]
+      },
+      {
+        "accepted": false,
+        "executed": false,
+        "kind": "illegal_compose",
+        "label": "illegal_compose:2+0",
+        "reason": "only temporal-address primitives can compose in this family",
+        "slots": [
+          2,
+          0
+        ]
+      },
+      {
+        "accepted": false,
+        "executed": false,
+        "kind": "illegal_compose",
+        "label": "illegal_compose:2+1",
+        "reason": "only temporal-address primitives can compose in this family",
+        "slots": [
+          2,
+          1
+        ]
+      },
+      {
+        "accepted": false,
+        "executed": false,
+        "kind": "illegal_compose",
+        "label": "illegal_compose:2+2",
+        "reason": "only temporal-address primitives can compose in this family",
+        "slots": [
+          2,
+          2
+        ]
+      },
+      {
+        "accepted": false,
+        "accuracy": 0.7486910820007324,
+        "executed": true,
+        "kind": "invert",
+        "label": "invert:0",
+        "slots": [
+          0
+        ],
+        "unique_verifier_bits": 191
+      },
+      {
+        "accepted": false,
+        "accuracy": 0.7486910820007324,
+        "executed": true,
+        "kind": "invert",
+        "label": "invert:1",
+        "slots": [
+          1
+        ],
+        "unique_verifier_bits": 191
+      },
+      {
+        "accepted": false,
+        "executed": false,
+        "kind": "invert",
+        "label": "invert:2",
+        "reason": "machine cannot load recursive temporal programs",
+        "slots": [
+          2
+        ]
+      },
+      {
+        "accepted": true,
+        "accuracy": 1.0,
+        "acquire_accuracy": 0.7486910820007324,
+        "acquire_unique_verifier_bits": 191,
+        "executed": true,
+        "frontend_digest": "1ce405a091b7b0bac7ee4e2c96d027b81188f70baa31db2601057222c0f74b5d",
+        "kind": "and",
+        "label": "and:0",
+        "slots": [
+          0
+        ],
+        "unique_verifier_bits": 191
+      }
+    ],
+    "bank_controller_digest": "59c9ef2b235104e4f0d6bc143ba195fb57a907da9f29b1d5750c39fa22f7687c",
+    "controller_digest": "59c9ef2b235104e4f0d6bc143ba195fb57a907da9f29b1d5750c39fa22f7687c",
+    "executed": 5,
+    "illegal_compose": 7,
+    "proposal_count": 19,
+    "schema": "neural-computer.temporal-program-search.v1",
+    "winner": {
+      "accepted": true,
+      "accuracy": 1.0,
+      "acquire_accuracy": 0.7486910820007324,
+      "acquire_unique_verifier_bits": 191,
+      "executed": true,
+      "frontend_digest": "1ce405a091b7b0bac7ee4e2c96d027b81188f70baa31db2601057222c0f74b5d",
+      "kind": "and",
+      "label": "and:0",
+      "slots": [
+        0
+      ],
+      "unique_verifier_bits": 191
+    }
+  },
+  "seed": 129017,
+  "sessions": 6,
+  "stable_bits_to_threshold": 191,
+  "steps": 192,
+  "zeros": {
+    "accuracy": 0.7486910820007324,
+    "arm": "zeros",
+    "optimizer_updates": 0,
+    "program_file_updates": 0,
+    "replayed_examples": 0,
+    "unique_verifier_bits": 191
+  }
+}

@@ -257,6 +257,86 @@ def run_rendered_dual_transfer(
     }
 
 
+def run_rendered_dual_learn_transfer(
+    controller_payload: dict[str, object],
+    *,
+    steps: int = 24,
+    sessions: int = 4,
+    seed: int = 99_017,
+    learning_rate: float = 0.3,
+    threshold: float = 0.8,
+    minimum_bits: int = 8,
+) -> dict[str, object]:
+    """Same-task Dual 2-back climb after 1-back, without composing.
+
+    This is not composed execution. A one-row file that mastered 1-back
+    keeps learning on 2-back. A fresh one-row file climbs 2-back alone.
+    """
+
+    started = perf_counter()
+    warm = _new_machine(controller_payload, learning_rate=learning_rate)
+    encoders = _encoders(warm)
+    dual_1back = _train_sessions(
+        warm,
+        encoders,
+        n_back=1,
+        steps=steps,
+        seed=seed,
+        sessions=sessions,
+        threshold=threshold,
+        minimum_bits=minimum_bits,
+    )
+    warm_2back = _train_sessions(
+        warm,
+        encoders,
+        n_back=2,
+        steps=steps,
+        seed=seed + 200,
+        sessions=sessions,
+        threshold=threshold,
+        minimum_bits=minimum_bits,
+    )
+    fresh = _new_machine(controller_payload, learning_rate=learning_rate)
+    fresh_2back = _train_sessions(
+        fresh,
+        _encoders(fresh),
+        n_back=2,
+        steps=steps,
+        seed=seed + 300,
+        sessions=sessions,
+        threshold=threshold,
+        minimum_bits=minimum_bits,
+    )
+    warm_bits = _bits_to_threshold(
+        dual_1back, threshold=threshold, minimum_bits=minimum_bits
+    )
+    warm_2back_bits = _bits_to_threshold(
+        warm_2back, threshold=threshold, minimum_bits=minimum_bits
+    )
+    fresh_bits = _bits_to_threshold(
+        fresh_2back, threshold=threshold, minimum_bits=minimum_bits
+    )
+    ratio = None
+    if warm_2back_bits and fresh_bits:
+        ratio = float(fresh_bits) / float(warm_2back_bits)
+    return {
+        "schema": "neural-computer.rendered-dual-learn-transfer.v1",
+        "controller_digest": warm.controller_digest(),
+        "dual_1back_bits_to_threshold": warm_bits,
+        "warm_dual_2back_train": warm_2back,
+        "warm_dual_2back_bits_to_threshold": warm_2back_bits,
+        "fresh_dual_2back_train": fresh_2back,
+        "fresh_dual_2back_bits_to_threshold": fresh_bits,
+        "transfer_ratio_against_fresh_learner": ratio,
+        "transfer_ratio_note": (
+            "same-task Dual 2-back climb on a one-row file; not composed execution"
+        ),
+        "optimizer_updates": 0,
+        "replayed_examples": 0,
+        "wall_seconds": perf_counter() - started,
+    }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     repository = Path(__file__).parents[2]
@@ -264,6 +344,11 @@ def main() -> None:
     parser.add_argument("--sessions", type=int, default=6)
     parser.add_argument("--seed", type=int, default=99_017)
     parser.add_argument("--program-learning-rate", type=float, default=0.3)
+    parser.add_argument(
+        "--learn-2back",
+        action="store_true",
+        help="same-task Dual 2-back climb after 1-back instead of compose execute",
+    )
     parser.add_argument("--report-out", type=Path, default=None)
     parser.add_argument(
         "--controller-artifact",
@@ -274,7 +359,12 @@ def main() -> None:
         ),
     )
     arguments = parser.parse_args()
-    report = run_rendered_dual_transfer(
+    runner = (
+        run_rendered_dual_learn_transfer
+        if arguments.learn_2back
+        else run_rendered_dual_transfer
+    )
+    report = runner(
         load_temporal_controller_artifact(arguments.controller_artifact),
         steps=arguments.steps,
         sessions=arguments.sessions,

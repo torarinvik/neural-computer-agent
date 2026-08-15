@@ -14,6 +14,7 @@ import math
 import struct
 import subprocess
 import tempfile
+import time
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -661,16 +662,29 @@ def discover_sck_window(
 ) -> MacOSWindowState:
     """Pick the largest on-screen window matching a public title."""
 
-    rows = query_sck_windows(executable, process_id=process_id)
     needle = title_contains.casefold()
-    matches = [
-        row
-        for row in rows
-        if needle in str(row.get("title") or "").casefold()
-    ]
+    rows: list[dict[str, object]] = []
+    matches: list[dict[str, object]] = []
+    last_error: Exception | None = None
+    for _ in range(8):
+        try:
+            rows = query_sck_windows(executable, process_id=process_id)
+        except RuntimeError as error:
+            last_error = error
+            time.sleep(0.1)
+            continue
+        matches = [
+            row
+            for row in rows
+            if needle in str(row.get("title") or "").casefold()
+        ]
+        if matches or (process_id is not None and rows):
+            break
+        time.sleep(0.1)
     if not matches and process_id is None:
+        detail = "" if last_error is None else f" ({last_error})"
         raise RuntimeError(
-            f"ScreenCaptureKit saw no on-screen window titled {title_contains!r}"
+            f"ScreenCaptureKit saw no on-screen window titled {title_contains!r}{detail}"
         )
     if not matches:
         matches = list(rows)
@@ -815,6 +829,36 @@ class MacOSApplicationWindow:
             raise RuntimeError("target application moved outside the locked capture")
         self._cached_state = state
         return state
+
+    def activate(self) -> None:
+        """Bring the Dual window frontmost after capture helper AppKit init."""
+
+        process_id = self.state().process_id
+        subprocess.run(
+            [
+                "osascript",
+                "-e",
+                (
+                    "tell application \"System Events\" to set frontmost of "
+                    f"first process whose unix id is {int(process_id)} to true"
+                ),
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        self._cached_state = None
+        deadline = time.monotonic() + 1.5
+        last_error: Exception | None = None
+        while time.monotonic() < deadline:
+            try:
+                self.require_fast_frontmost(process_id)
+                return
+            except RuntimeError as error:
+                last_error = error
+                time.sleep(0.05)
+        if last_error is not None:
+            raise last_error
 
     def require_fast_frontmost(self, process_id: int) -> None:
         """Verify the guarded process via native LaunchServices commands."""

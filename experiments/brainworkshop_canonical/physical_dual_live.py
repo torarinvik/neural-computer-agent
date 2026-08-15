@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import subprocess
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -24,6 +25,7 @@ from neural_computer import (
     CapturedScreenFrame,
     CognitiveTickRuntime,
     DiscreteKeyChordOutput,
+    ExternalTemporalProgramBank,
     HumanParityLiveDevice,
     LiveActionReceipt,
     MacOSApplicationWindow,
@@ -339,6 +341,22 @@ def run_physical_dual_lifetime(
         results = []
         if start_session:
             results.append(runtime.tick(time.monotonic()))
+            window.activate()
+            # pyglet Dual ignores Space until the window has mouse focus.
+            state = window.state()
+            click_x = state.bounds[0] + state.bounds[2] // 2
+            click_y = state.bounds[1] + state.bounds[3] // 2
+            subprocess.run(
+                [
+                    "osascript",
+                    "-e",
+                    f'tell application "System Events" to click at {{{click_x}, {click_y}}}',
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            time.sleep(0.2)
             if config.keypress_helper is None:
                 window.press((" ",))
             else:
@@ -433,6 +451,48 @@ def run_physical_dual_lifetime(
         total_seconds_p50=latency_percentile(0.50),
         total_seconds_p99=latency_percentile(0.99),
     )
+
+
+def inherit_bank_program(
+    machine: SourcePreservingTemporalMachine,
+    bank_path: Path,
+    *,
+    slot: int = 0,
+    learn: bool = False,
+) -> dict[str, Any]:
+    """Load an admitted temporal address file onto Dual I/O.
+
+    Packed Dual actions are a runtime decoder adapter. They do not change
+    the frozen controller digest, so ``AgentBrain.bank`` loads exactly.
+    The curated bank is not mutated.
+    """
+
+    bank = ExternalTemporalProgramBank.load_bank(bank_path)
+    if slot < 0 or slot >= bank.program_count:
+        raise ValueError(f"bank slot {slot} is outside {bank.program_count} programs")
+    artifact = bank.artifact(slot)
+    if not machine.accepts_controller_digest(bank.controller_digest):
+        raise ValueError("bank program targets another frozen controller")
+    from .bank_program import install_temporal_artifact
+
+    install_temporal_artifact(machine, bank, artifact)
+    machine.learning_enabled = bool(learn)
+    machine.sample = bool(learn)
+    binding = (
+        "exact"
+        if bank.controller_digest == machine.controller_digest()
+        else "historical_controller_alias"
+    )
+    return {
+        "bank": str(bank_path),
+        "slot": slot,
+        "bank_digest": bank.digest(),
+        "bank_controller_digest": bank.controller_digest,
+        "machine_controller_digest": machine.controller_digest(),
+        "inherited_program_digest": artifact.digest(),
+        "program_length": artifact.program_length,
+        "controller_binding": binding,
+    }
 
 
 def _load_composed_previous(
@@ -561,6 +621,30 @@ def main() -> None:
     parser.add_argument("--sessions", type=int, default=1)
     parser.add_argument("--n-back", type=int, default=1)
     parser.add_argument("--compose-depth", type=int, default=None)
+    parser.add_argument(
+        "--bank",
+        type=Path,
+        default=(
+            repository / "artifacts/checkpoints/AgentBrain.bank"
+        ),
+        help="continue this temporal bank instead of composing PREVIOUS",
+    )
+    parser.add_argument(
+        "--bank-slot",
+        type=int,
+        default=1,
+        help="temporal bank slot; 0 is Position 1-back, 1 is gym Dual 1-back",
+    )
+    parser.add_argument(
+        "--search",
+        action="store_true",
+        help="select the Dual file from the bank on rendered Dual, then execute",
+    )
+    parser.add_argument(
+        "--previous",
+        action="store_true",
+        help="ignore --bank and execute the composed PREVIOUS file",
+    )
     parser.add_argument("--then-compose-2back", action="store_true")
     parser.add_argument("--start-session", action="store_true")
     parser.add_argument(
@@ -641,8 +725,54 @@ def main() -> None:
             if arguments.compose_depth is None
             else arguments.compose_depth
         )
-        if not learn:
-            _load_composed_previous(machine, depth=depth)
+        inheritance: dict[str, Any] | None = None
+        if arguments.search and arguments.previous:
+            raise ValueError("--search cannot be combined with --previous")
+        if arguments.search and learn:
+            raise ValueError("desktop Dual search executes a selected file; it is not a trainer")
+        if arguments.previous:
+            if not learn:
+                _load_composed_previous(machine, depth=depth)
+        elif arguments.search:
+            from .execute_bank_slot import search_and_install
+
+            bank = ExternalTemporalProgramBank.load_bank(arguments.bank)
+            search = search_and_install(
+                machine,
+                bank,
+                n_back=arguments.n_back,
+                steps=24,
+                seed=77,
+            )
+            winner = search["winner"]
+            if winner["kind"] == "retrieve":
+                inheritance = inherit_bank_program(
+                    machine,
+                    arguments.bank,
+                    slot=int(winner["slots"][0]),
+                    learn=False,
+                )
+            else:
+                inheritance = {
+                    "bank": str(arguments.bank),
+                    "slot": list(winner["slots"]),
+                    "program_length": int(
+                        getattr(machine, "composition_depth", 1)
+                    ),
+                    "bank_controller_digest": bank.controller_digest,
+                    "machine_controller_digest": machine.controller_digest(),
+                    "controller_binding": "exact",
+                }
+            inheritance["search"] = search
+            depth = int(inheritance["program_length"])
+        else:
+            inheritance = inherit_bank_program(
+                machine,
+                arguments.bank,
+                slot=arguments.bank_slot,
+                learn=learn,
+            )
+            depth = int(inheritance["program_length"])
         arms = []
         for session in range(arguments.sessions):
             lifetime = run_physical_dual_lifetime(
@@ -663,11 +793,19 @@ def main() -> None:
                 )
             )
         if arguments.then_compose_2back:
-            if not learn:
-                raise ValueError("--then-compose-2back requires --mode learn")
-            composed = compose_recursive_temporal_program(
-                machine.admitted_program_artifact(), 2
-            )
+            if arguments.previous:
+                if not learn:
+                    raise ValueError("--then-compose-2back with --previous needs learn")
+                composed = compose_recursive_temporal_program(
+                    machine.admitted_program_artifact(), 2
+                )
+            else:
+                from .bank_program import compose_admitted_temporal
+
+                composed = compose_admitted_temporal(
+                    ExternalTemporalProgramBank.load_bank(arguments.bank),
+                    (arguments.bank_slot, arguments.bank_slot),
+                )
             machine.load_recursive_program_artifact(
                 composed, controller_digest=machine.controller_digest()
             )
@@ -696,6 +834,7 @@ def main() -> None:
             "program_digest": machine.program_digest(),
             "optimizer_updates": machine.optimizer_updates,
             "program_file_updates": getattr(machine, "program_file_updates", 0),
+            "inheritance": inheritance,
             "arms": arms,
         }
     text = json.dumps(report, indent=2, sort_keys=True) + "\n"

@@ -53,10 +53,15 @@ def test_temporal_controller_artifact_round_trip(tmp_path: Path) -> None:
 
     recursive = build_recursive_temporal_program_machine(loaded)
     grown = build_recursive_temporal_program_machine(loaded, max_history=8)
-    assert recursive.legacy_controller_digest() == machine.controller_digest()
-    assert recursive.controller_digest() != machine.controller_digest()
+    dual = build_recursive_temporal_program_machine(
+        loaded, max_sources=2, pack_source_actions=True
+    )
+    assert recursive.controller_digest() == machine.controller_digest()
+    assert dual.controller_digest() == machine.controller_digest()
+    assert dual.accepts_controller_digest(machine.controller_digest())
     assert recursive.composition_depth == 1
     assert grown.max_history == 8
+    assert grown.controller_digest() != machine.controller_digest()
     assert grown.legacy_controller_digest() != machine.controller_digest()
     assert all(
         torch.equal(

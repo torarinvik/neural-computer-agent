@@ -1,0 +1,113 @@
+{
+  "action_count": 4,
+  "controller_digest": "4eb2509133775196cff5b3d01d737fb57c03303fa20f67a98702f80bead846cd",
+  "controls": {
+    "action_reversed": {
+      "accuracy": 0.15,
+      "audio_events": 60,
+      "controller_frozen": true,
+      "optimizer_updates": 0,
+      "packed_exact_accuracy": 0.016666666666666666,
+      "program_file_updates": 60,
+      "unique_verifier_bits": 60,
+      "vision_events": 60
+    },
+    "missing_history": {
+      "accuracy": 0.0,
+      "audio_events": 60,
+      "controller_frozen": true,
+      "optimizer_updates": 0,
+      "packed_exact_accuracy": 0.0,
+      "program_file_updates": 26,
+      "unique_verifier_bits": 26,
+      "vision_events": 60
+    },
+    "reward_shuffled": {
+      "accuracy": 0.46153846153846156,
+      "audio_events": 60,
+      "controller_frozen": true,
+      "optimizer_updates": 0,
+      "packed_exact_accuracy": 0.6153846153846154,
+      "program_file_updates": 26,
+      "unique_verifier_bits": 26,
+      "vision_events": 60
+    },
+    "wrong_depth": {
+      "accuracy": 0.1,
+      "audio_events": 60,
+      "controller_frozen": true,
+      "optimizer_updates": 0,
+      "packed_exact_accuracy": 0.1,
+      "program_file_updates": 0,
+      "unique_verifier_bits": 30,
+      "vision_events": 60
+    }
+  },
+  "decoder_key_count": 2,
+  "dual_1back_bits_to_threshold": 45,
+  "dual_1back_retention": {
+    "accuracy": 1.0,
+    "audio_events": 60,
+    "controller_frozen": true,
+    "optimizer_updates": 0,
+    "packed_exact_accuracy": 1.0,
+    "program_file_updates": 0,
+    "unique_verifier_bits": 25,
+    "vision_events": 60
+  },
+  "dual_1back_train": [
+    {
+      "accuracy": 0.7708333333333334,
+      "audio_events": 60,
+      "controller_frozen": true,
+      "optimizer_updates": 0,
+      "packed_exact_accuracy": 0.75,
+      "program_file_updates": 24,
+      "session": 0,
+      "unique_verifier_bits": 24,
+      "vision_events": 60
+    },
+    {
+      "accuracy": 1.0,
+      "audio_events": 60,
+      "controller_frozen": true,
+      "optimizer_updates": 0,
+      "packed_exact_accuracy": 1.0,
+      "program_file_updates": 21,
+      "session": 1,
+      "unique_verifier_bits": 21,
+      "vision_events": 60
+    }
+  ],
+  "fresh_dual_2back_bits_to_threshold": 23,
+  "fresh_dual_2back_train": [
+    {
+      "accuracy": 0.8260869565217391,
+      "audio_events": 60,
+      "controller_frozen": true,
+      "optimizer_updates": 0,
+      "packed_exact_accuracy": 0.8260869565217391,
+      "program_file_updates": 23,
+      "session": 0,
+      "unique_verifier_bits": 23,
+      "vision_events": 60
+    }
+  ],
+  "optimizer_updates": 0,
+  "replayed_examples": 0,
+  "schema": "neural-computer.neural-workshop-dual-acquisition.v1",
+  "transfer_ratio_against_fresh_learner": null,
+  "transfer_ratio_note": "warm Dual 2-back is composed execution with zero target updates; fresh Dual 2-back is a same-task climb",
+  "wall_seconds": 48.83935075008776,
+  "warm_dual_2back": {
+    "accuracy": 1.0,
+    "audio_events": 60,
+    "controller_frozen": true,
+    "optimizer_updates": 0,
+    "packed_exact_accuracy": 1.0,
+    "program_file_updates": 0,
+    "unique_verifier_bits": 20,
+    "vision_events": 60
+  },
+  "warm_target_learning_bits": 0
+}

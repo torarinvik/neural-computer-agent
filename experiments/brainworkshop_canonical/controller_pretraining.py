@@ -335,6 +335,8 @@ def build_recursive_temporal_program_machine(
         learning_rate=learning_rate,
         sample=sample,
         pack_source_actions=pack_source_actions,
+        identity_max_sources=validated.max_sources,
+        identity_action_count=validated.action_count,
         controller_state=controller_state,
         program_prior=program_prior,
         initialize_program_from_prior=False,

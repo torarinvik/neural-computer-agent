@@ -47,6 +47,22 @@ def test_external_program_artifact_round_trips_with_stable_digest() -> None:
     assert torch.equal(restored.codes, artifact.codes)
     assert restored.digest() == artifact.digest()
     assert payload["codes"].device.type == "cpu"
+    assert "frontend_digest" not in artifact.configuration()
+
+
+def test_frontend_digest_changes_only_bound_program_identity() -> None:
+    unbound = _artifact()
+    bound = ExternalProgramArtifact(
+        codes=unbound.codes.clone(),
+        interpreter_schema=unbound.interpreter_schema,
+        execution_schema=unbound.execution_schema,
+        output_schema=unbound.output_schema,
+        frontend_digest="ab" * 32,
+    )
+    assert unbound.digest() != bound.digest()
+    restored = ExternalProgramArtifact.from_payload(bound.payload())
+    assert restored.frontend_digest == "ab" * 32
+    assert restored.digest() == bound.digest()
 
 
 def test_external_program_artifact_rejects_tampered_tensor() -> None:

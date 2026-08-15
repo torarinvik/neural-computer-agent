@@ -261,19 +261,84 @@ PYTHONPATH=src .venv/bin/python \
   -m experiments.brainworkshop_canonical.physical_dual_live \
   --mode probe --seconds 8 --prepare-nback 1
 
-# Watch frozen Dual 1-back execute, then blank-file learn, then composed 2-back.
+# Continue AgentBrain.bank on Dual I/O. Packed A/L keys are an adapter;
+# the controller digest matches the Position gym machine.
 PYTHONPATH=src .venv/bin/python \
   -m experiments.brainworkshop_canonical.physical_dual_live \
-  --mode execute --n-back 1 --seconds 25 --start-session --prepare-nback 1
+  --mode execute --n-back 1 --seconds 25 --start-session --prepare-nback 1 \
+  --bank artifacts/checkpoints/AgentBrain.bank --bank-slot 1
 
 PYTHONPATH=src .venv/bin/python \
   -m experiments.brainworkshop_canonical.physical_dual_live \
-  --mode learn --n-back 1 --seconds 45 --sessions 1 --then-compose-2back
+  --mode learn --n-back 1 --seconds 45 --sessions 1 \
+  --bank artifacts/checkpoints/AgentBrain.bank
 ```
 
 A screen-only capture is still Position N-Back. These desktop Dual
 sessions are optional I/O, not a second trainer and not a holdout
 promotion. Measured Dual public-PCM training is the Neural Workshop gym.
+Gym Dual and desktop Dual must keep the same controller digest as
+`AgentBrain.bank`. `--previous` is only the constructed PREVIOUS compose.
+
+`execute_bank_slot.py` runs one admitted slot frozen on Dual I/O. Slot 1
+scored `1.000` on rendered Dual 1-back (47 bits) and Neural Workshop Dual
+1-back (28 bits, 60/60 audio=vision) with digest `59c9ef2b` and slot 0
+unchanged. `--search` selects the Dual file from the bank instead of a
+hardcoded slot. Desktop Dual `--search` uses the same searcher, then
+executes; it is still not a trainer.
+
+```bash
+PYTHONPATH=src .venv/bin/python \
+  -m experiments.brainworkshop_canonical.execute_bank_slot \
+  --search --neural-workshop /absolute/path/to/neural-workshop
+```
+
+`program_search.py` proposes retrieve, then same-primitive compose, then
+a zeroed prototype-match invent if the bank has no such file. Unequal or
+non-address primitives are recorded and never executed. On rendered Dual
+2-back the searcher first rejected 1-back retrieves and accepted
+`compose:0+0`. That child is now slot 2; a later search retrieves slot 2
+at `1.000` and does not recompose. New composed admits store parent
+slots and digests; the curated slot 2 lineage is inferred from the
+same primitive. Unused current-symbol seeds 116017-118017 held a
+learned prototype at `1.000` and did not write the bank. Prototype-match is a non-delay
+operator (current event versus a stored template). Invent zeros fail
+frozen; a short acquire lifetime can hold current-symbol without
+rewriting `AgentBrain.bank`. Admit requires a frontend digest because
+the template is encoder-specific. `rendered_frontend_seed1001.pt` is
+the frozen adapter used by unused seeds 119017-121017. A later search
+lease on 122017-124017 invented the bound template after delay
+retrieves failed and held six frozen sessions. That campaign did not
+write the bank. Search now tries invert of admitted files and always
+invents a fresh prototype last. Changed-symbol is solved by invert of
+a 1-back delay file. That invert can be admitted as a child and later
+retrieved. And combines invert(delay) with a prototype on one tick.
+Onset search acquires the prototype from invert-labeled events, then
+executes the AND. That is still a closed grammar, not open program
+induction.
+
+`onset_acquire.py` leases that AND on unused seeds. At 48 steps
+(125017-127017) search selected `and` and held `1.000` for six frozen
+sessions, but the single-family prototype-only control reached `0.830`
+on one seed, so that campaign is rejected: with 47 eligible trials the
+`0.8` threshold cannot separate a base-rate near-miss from a two-family
+solution. Changing episode length only, on the fresh block
+128017-130017 at 192 steps, every single-family control stays at or
+below `0.759` while the AND holds `1.000` for six sessions. Neither
+campaign writes `AgentBrain.bank`, and no AND child is admitted. On the
+prototype-capable machine the depth-2 files (retrieve slot 2, both
+composes, invert slot 2) are proposed but cannot be installed, so
+search covers retrieve {0,1}, invert {0,1}, and, and invent.
+
+```bash
+PYTHONPATH=src .venv/bin/python \
+  -m experiments.brainworkshop_canonical.program_search
+PYTHONPATH=src .venv/bin/python \
+  -m experiments.brainworkshop_canonical.program_search \
+  --match-rule current_symbol --steps 24
+PYTHONPATH=src .venv/bin/python \
+  -m experiments.brainworkshop_canonical.onset_acquire --long
+```
 
 ## Neural Workshop live curriculum
 
@@ -506,6 +571,23 @@ composed Dual 2-Back at `1.000` / `0.944`. Reward-shuffled, reversed, and
 missing-history controls stayed below threshold. This is Dual acquisition
 and composition, not a holdout promotion. Evidence:
 `session_records/brainworkshop_dual_acquisition_2026-08-15/`.
+
+`dual_promotion.py` freezes that protocol and consumes a one-use holdout
+on unused seeds 113017, 114017, and 115017. Dual 1-Back reached a stable
+prefix at 29/45/88 bits, retained `1.000`, and executed composed Dual
+2-Back at `1.000` with zero target updates. Wrong-depth packed scores
+were `0.086/0.100/0.040`; missing history stayed at `0.000`; reversed
+actions stayed at `0.017/0.017/0.050`. The gate does not score a Dual
+2-Back bits-to-threshold transfer ratio. The record re-evaluates as
+eligible against `holdout-ledger.jsonl`. Evidence:
+`session_records/brainworkshop_dual_holdout_2026-08-15/`.
+
+```bash
+PYTHONPATH=src .venv/bin/python \
+  -m experiments.brainworkshop_canonical.dual_promotion \
+  --neural-workshop /absolute/path/to/neural-workshop \
+  --claim-holdout
+```
 
 In the seed-94017-v2 run, a warm 1-back/2-back bank rebound 3-cell 2-back in
 one `try_existing` session at `1.000` (24 bits). New 2-cell 3-back still had

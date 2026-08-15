@@ -1,0 +1,18 @@
+{
+  "schema": "neural-computer.current-symbol-same-frontend-transfer.v1",
+  "experiment_id": "brainworkshop-current-symbol-bound-frontend-2026-08-15",
+  "note": "post-campaign analysis; not part of the frozen three-seed gate",
+  "train_seed": 119017,
+  "train_accuracy": 0.9583333134651184,
+  "frontend_digest": "1ce405a091b7b0bac7ee4e2c96d027b81188f70baa31db2601057222c0f74b5d",
+  "controller_digest": "59c9ef2b235104e4f0d6bc143ba195fb57a907da9f29b1d5750c39fa22f7687c",
+  "holds": {
+    "119018": 1.0,
+    "120017": 1.0,
+    "120018": 1.0,
+    "121017": 1.0,
+    "121018": 1.0
+  },
+  "program_file_updates_on_holds": 0,
+  "admitted": false
+}

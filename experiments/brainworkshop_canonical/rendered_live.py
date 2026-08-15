@@ -176,6 +176,8 @@ class SourcePreservingTemporalMachine(nn.Module):
         sample: bool = True,
         action_delay_seconds: float = 0.0,
         pack_source_actions: bool = False,
+        identity_max_sources: int | None = None,
+        identity_action_count: int | None = None,
     ) -> None:
         super().__init__()
         if min(
@@ -202,6 +204,16 @@ class SourcePreservingTemporalMachine(nn.Module):
         self.action_count = (
             1 << int(max_sources) if self.pack_source_actions else int(action_count)
         )
+        # Adapter capacity (extra sources, packed keys) is runtime I/O.
+        # Bank identity stays the frozen controller artifact geometry.
+        self._identity_max_sources = (
+            int(max_sources) if identity_max_sources is None else int(identity_max_sources)
+        )
+        self._identity_action_count = (
+            int(action_count) if identity_action_count is None else int(identity_action_count)
+        )
+        if self._identity_max_sources < 1 or self._identity_action_count < 2:
+            raise ValueError("controller identity geometry is invalid")
         self.intention_width = int(intention_width)
         self.output_key = "keypress"
         self.sample = bool(sample)
@@ -209,6 +221,10 @@ class SourcePreservingTemporalMachine(nn.Module):
         self.learning_enabled = True
         self.reset_history_each_tick = False
         self.relative_address_logits = nn.Parameter(torch.zeros(max_history))
+        self.prototype = nn.Parameter(torch.zeros(event_width))
+        self._execution_schema = "neural-computer.relative-history-select.v1"
+        self._invert_intention = False
+        self._combine_and = False
         self.relation = nn.Sequential(
             nn.Linear(event_width * 4, hidden),
             nn.GELU(),
@@ -289,7 +305,11 @@ class SourcePreservingTemporalMachine(nn.Module):
             present[:, : len(newest_first)] = True
         return history, present
 
-    def _source_relation(self, credit: _SourceTemporalCredit) -> torch.Tensor:
+    def _retrieved_event(
+        self, credit: _SourceTemporalCredit, *, prototype: bool
+    ) -> torch.Tensor:
+        if prototype:
+            return self.prototype.unsqueeze(0).expand_as(credit.current)
         if credit.address_index is None:
             address = self.relative_address_logits.unsqueeze(0)
             address = address.masked_fill(
@@ -303,12 +323,25 @@ class SourcePreservingTemporalMachine(nn.Module):
             weights = address.softmax(dim=1) * credit.history_present.to(
                 address.dtype
             )
-            retrieved = (weights.unsqueeze(-1) * credit.history).sum(dim=1)
-        else:
-            gather_index = credit.address_index[:, None, None].expand(
-                -1, 1, self.event_width
+            return (weights.unsqueeze(-1) * credit.history).sum(dim=1)
+        gather_index = credit.address_index[:, None, None].expand(
+            -1, 1, self.event_width
+        )
+        return credit.history.gather(1, gather_index).squeeze(1)
+
+    def _source_relation(
+        self,
+        credit: _SourceTemporalCredit,
+        *,
+        retrieved: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        if retrieved is None:
+            use_prototype = (
+                getattr(self, "_execution_schema", "")
+                == "neural-computer.prototype-match.v1"
+                and not self._combine_and
             )
-            retrieved = credit.history.gather(1, gather_index).squeeze(1)
+            retrieved = self._retrieved_event(credit, prototype=use_prototype)
         relation = self.relation(
             torch.cat(
                 (
@@ -321,6 +354,19 @@ class SourcePreservingTemporalMachine(nn.Module):
             )
         )
         return self.source_conditioner(torch.cat((relation, credit.source_key), dim=-1))
+
+    def _and_match_logits(
+        self, delay_logits: torch.Tensor, proto_logits: torch.Tensor
+    ) -> torch.Tensor:
+        delay = (
+            torch.flip(delay_logits, dims=[-1])
+            if self._invert_intention
+            else delay_logits
+        )
+        match = (
+            delay.softmax(dim=-1)[:, 1:2] * proto_logits.softmax(dim=-1)[:, 1:2]
+        ).clamp(1e-6, 1.0 - 1e-6)
+        return torch.cat((torch.log1p(-match), torch.log(match)), dim=-1)
 
     def _prepare_credit(
         self, credit: _MultistreamCreditState
@@ -345,6 +391,35 @@ class SourcePreservingTemporalMachine(nn.Module):
     ) -> tuple[IntentEvent, torch.Tensor]:
         if not credit.sources:
             raise ValueError("multistream credit needs at least one source")
+        if self._combine_and:
+            if self.pack_source_actions:
+                raise ValueError("and combinator needs unpacked actions")
+            delay_conditioned = []
+            delay_logits = []
+            proto_logits = []
+            for source in credit.sources:
+                delay_ret = self._retrieved_event(source, prototype=False)
+                proto_ret = self._retrieved_event(source, prototype=True)
+                delay_cond = self._source_relation(source, retrieved=delay_ret)
+                proto_cond = self._source_relation(source, retrieved=proto_ret)
+                delay_conditioned.append(delay_cond)
+                delay_logits.append(self.decoder(IntentEvent(delay_cond)))
+                proto_logits.append(self.decoder(IntentEvent(proto_cond)))
+            composite = torch.stack(delay_conditioned, dim=1).sum(dim=1)
+            composite = composite / (len(delay_conditioned) ** 0.5)
+            stacked_delay = torch.stack(delay_logits, dim=0).mean(dim=0)
+            if self.learning_enabled:
+                delay = (
+                    torch.flip(stacked_delay, dims=[-1])
+                    if self._invert_intention
+                    else stacked_delay
+                )
+                return IntentEvent(composite), delay
+            logits = self._and_match_logits(
+                stacked_delay,
+                torch.stack(proto_logits, dim=0).mean(dim=0),
+            )
+            return IntentEvent(composite), logits
         conditioned = torch.stack(
             [self._source_relation(source) for source in credit.sources],
             dim=1,
@@ -354,7 +429,10 @@ class SourcePreservingTemporalMachine(nn.Module):
         composite = conditioned.sum(dim=1) / len(credit.sources) ** 0.5
         intention = IntentEvent(composite)
         if not self.pack_source_actions:
-            return intention, self.decoder(intention)
+            logits = self.decoder(intention)
+            if self._invert_intention:
+                logits = torch.flip(logits, dims=[-1])
+            return intention, logits
         ordered = self._ordered_sources(credit)
         if self.action_count != 1 << len(ordered):
             raise ValueError("packed source actions do not match the live source count")
@@ -363,9 +441,14 @@ class SourcePreservingTemporalMachine(nn.Module):
         ]
         packed = []
         for action in range(self.action_count):
+            mapped = (
+                action ^ ((1 << len(ordered)) - 1)
+                if self._invert_intention
+                else action
+            )
             term = None
             for index, logits in enumerate(bit_logits):
-                log_probability = logits.log_softmax(dim=-1)[:, (action >> index) & 1]
+                log_probability = logits.log_softmax(dim=-1)[:, (mapped >> index) & 1]
                 term = log_probability if term is None else term + log_probability
             packed.append(term)
         return intention, torch.stack(packed, dim=1)
@@ -620,7 +703,12 @@ class PretrainedControllerProgramMachine(SourcePreservingTemporalMachine):
         learning_rate = float(kwargs.get("learning_rate", 3e-3))
         super().__init__(*args, **kwargs)
         named = dict(self.named_parameters())
-        controller_names = set(named) - {self._PROGRAM_PARAMETER}
+        controller_names = set(named) - {self._PROGRAM_PARAMETER, "prototype"}
+        controller_state = {
+            name: value
+            for name, value in controller_state.items()
+            if name != "prototype"
+        }
         if set(controller_state) != controller_names:
             raise ValueError("controller artifact parameter names do not match")
         if program_prior.shape != self.relative_address_logits.shape:
@@ -642,9 +730,9 @@ class PretrainedControllerProgramMachine(SourcePreservingTemporalMachine):
             "inherited_program_prior", program_prior.detach().clone()
         )
         for name, parameter in self.named_parameters():
-            parameter.requires_grad_(name == self._PROGRAM_PARAMETER)
+            parameter.requires_grad_(name in {self._PROGRAM_PARAMETER, "prototype"})
         self.optimizer = torch.optim.Adam(
-            (self.relative_address_logits,), lr=learning_rate
+            (self.relative_address_logits, self.prototype), lr=learning_rate
         )
         self.program_file_updates = 0
         self._frozen_controller_digest = self.controller_digest()
@@ -659,26 +747,55 @@ class PretrainedControllerProgramMachine(SourcePreservingTemporalMachine):
         digest.update(repr(tuple(tensor.shape)).encode())
         digest.update(tensor.numpy().tobytes())
 
-    def controller_digest(self) -> str:
+    def _controller_geometry_digest(
+        self, *, max_sources: int, action_count: int
+    ) -> str:
         digest = hashlib.sha256()
         description = (
             "neural-computer.pretrained-temporal-controller.v2",
             self.event_width,
             self.source_key_width,
             self.max_history,
-            self.max_sources,
-            self.action_count,
+            max_sources,
+            action_count,
             self.intention_width,
             self.output_key,
         )
         digest.update(repr(description).encode())
         for name, value in sorted(self.named_parameters()):
-            if name != self._PROGRAM_PARAMETER:
+            if name not in {self._PROGRAM_PARAMETER, "prototype"}:
                 self._update_tensor_digest(digest, name, value)
         self._update_tensor_digest(
             digest, "inherited_program_prior", self.inherited_program_prior
         )
         return digest.hexdigest()
+
+    def controller_digest(self) -> str:
+        return self._controller_geometry_digest(
+            max_sources=self._identity_max_sources,
+            action_count=self._identity_action_count,
+        )
+
+    def runtime_controller_digest(self) -> str:
+        return self._controller_geometry_digest(
+            max_sources=self.max_sources,
+            action_count=self.action_count,
+        )
+
+    @staticmethod
+    def _recursive_wrap_digest(legacy_digest: str) -> str:
+        digest = hashlib.sha256()
+        digest.update(legacy_digest.encode())
+        digest.update(b"neural-computer.recursive-relative-history-executor.v1")
+        return digest.hexdigest()
+
+    def historical_controller_digests(self) -> frozenset[str]:
+        return frozenset()
+
+    def accepts_controller_digest(self, digest: str) -> bool:
+        return digest == self.controller_digest() or digest in (
+            self.historical_controller_digests()
+        )
 
     def admitted_program_artifact(self):
         """Snapshot the learned address file for verifier-gated admission.
@@ -720,8 +837,19 @@ class PretrainedControllerProgramMachine(SourcePreservingTemporalMachine):
 
         if not isinstance(artifact, ExternalProgramArtifact):
             raise TypeError("admitted temporal program must be an external artifact")
-        if controller_digest != self._frozen_controller_digest:
+        if not self.accepts_controller_digest(controller_digest):
             raise ValueError("admitted temporal program bank targets another controller")
+        from neural_computer.temporal_program import (
+            PROTOTYPE_MATCH_EXECUTION_SCHEMA,
+            PROTOTYPE_MATCH_INTERPRETER_SCHEMA,
+        )
+
+        if (
+            artifact.interpreter_schema == PROTOTYPE_MATCH_INTERPRETER_SCHEMA
+            and artifact.execution_schema == PROTOTYPE_MATCH_EXECUTION_SCHEMA
+        ):
+            self.load_prototype_artifact(artifact, controller_digest=controller_digest)
+            return
         artifact.validate_for(
             instruction_width=self.max_history,
             interpreter_schema=TEMPORAL_ADDRESS_INTERPRETER_SCHEMA,
@@ -734,6 +862,42 @@ class PretrainedControllerProgramMachine(SourcePreservingTemporalMachine):
             self.relative_address_logits.copy_(
                 artifact.codes[0].to(self.relative_address_logits)
             )
+        self._execution_schema = TEMPORAL_ADDRESS_EXECUTION_SCHEMA
+        self.learning_enabled = False
+        self.sample = False
+        self.assert_controller_frozen()
+
+    def load_prototype_artifact(
+        self,
+        artifact,
+        *,
+        controller_digest: str,
+    ) -> None:
+        from neural_computer.program import ExternalProgramArtifact
+        from neural_computer.temporal_program import (
+            PROTOTYPE_MATCH_EXECUTION_SCHEMA,
+            PROTOTYPE_MATCH_INTERPRETER_SCHEMA,
+            TEMPORAL_ADDRESS_OUTPUT_SCHEMA,
+        )
+
+        if not isinstance(artifact, ExternalProgramArtifact):
+            raise TypeError("prototype program must be an external artifact")
+        if not self.accepts_controller_digest(controller_digest):
+            raise ValueError("prototype program targets another frozen controller")
+        artifact.validate_for(
+            instruction_width=self.event_width,
+            interpreter_schema=PROTOTYPE_MATCH_INTERPRETER_SCHEMA,
+            execution_schema=PROTOTYPE_MATCH_EXECUTION_SCHEMA,
+            output_schema=TEMPORAL_ADDRESS_OUTPUT_SCHEMA,
+        )
+        if artifact.codes.shape != (1, self.event_width):
+            raise ValueError("prototype program has the wrong shape")
+        with torch.no_grad():
+            self.prototype.copy_(artifact.codes[0].to(self.prototype))
+        self._execution_schema = PROTOTYPE_MATCH_EXECUTION_SCHEMA
+        self._frontend_digest = artifact.frontend_digest
+        if hasattr(self, "composition_depth"):
+            self.composition_depth = 1
         self.learning_enabled = False
         self.sample = False
         self.assert_controller_frozen()
@@ -782,7 +946,102 @@ class PretrainedControllerProgramMachine(SourcePreservingTemporalMachine):
                 )
         return _MultistreamCreditState(tuple(prepared))
 
+    def _learn_prototype(self, outcomes: tuple[ResolvedLiveOutcome, ...]) -> None:
+        """Update only the current-event template from action-level credit."""
+
+        self.assert_controller_frozen()
+        losses: list[torch.Tensor] = []
+        for resolved in outcomes:
+            present = resolved.event.present
+            self.unique_outcome_bits += int(present.sum().item())
+            if not bool(present.any()):
+                continue
+            credit = resolved.proposal.credit_state
+            if not isinstance(credit, _MultistreamCreditState):
+                raise TypeError("rendered proposal has incompatible credit state")
+            _intention, logits = self._forward_credit(credit)
+            log_probabilities = logits.log_softmax(dim=-1)
+            selected = log_probabilities.gather(
+                1,
+                resolved.receipt.action.to(torch.long).unsqueeze(-1),
+            ).squeeze(-1)
+            selected_mask = torch.nn.functional.one_hot(
+                resolved.receipt.action.to(torch.long),
+                num_classes=self.action_count,
+            ).to(torch.bool)
+            other = torch.logsumexp(
+                log_probabilities.masked_fill(selected_mask, -torch.inf),
+                dim=-1,
+            )
+            reward = resolved.event.reward
+            losses.append(
+                -(reward * selected + (1.0 - reward) * other)[present].mean()
+            )
+        if not losses or not self.learning_enabled:
+            return
+        loss = torch.stack(losses).mean()
+        self.optimizer.zero_grad(set_to_none=True)
+        loss.backward()
+        if self.relative_address_logits.grad is not None:
+            self.relative_address_logits.grad = None
+        torch.nn.utils.clip_grad_norm_((self.prototype,), max_norm=1.0)
+        self.optimizer.step()
+        self.program_file_updates += 1
+        self.model_version += 1
+        self.last_loss = float(loss.detach())
+        self.assert_controller_frozen()
+
+    def _learn_and(self, outcomes: tuple[ResolvedLiveOutcome, ...]) -> None:
+        """Set the template from events on invert-match plus positive reward."""
+
+        self.assert_controller_frozen()
+        if not self.learning_enabled:
+            return
+        updated = False
+        for resolved in outcomes:
+            present = resolved.event.present
+            self.unique_outcome_bits += int(present.sum().item())
+            if not bool(present.any()):
+                continue
+            credit = resolved.proposal.credit_state
+            if not isinstance(credit, _MultistreamCreditState):
+                raise TypeError("rendered proposal has incompatible credit state")
+            if self.pack_source_actions:
+                raise ValueError("and combinator needs unpacked actions")
+            reward = float(resolved.event.reward.reshape(-1)[0].item())
+            if reward <= 0.5:
+                continue
+            for source in credit.sources:
+                delay_ret = self._retrieved_event(source, prototype=False)
+                delay_logits = self.decoder(
+                    IntentEvent(self._source_relation(source, retrieved=delay_ret))
+                )
+                if self._invert_intention:
+                    delay_logits = torch.flip(delay_logits, dims=[-1])
+                if int(delay_logits.argmax(dim=-1).reshape(-1)[0].item()) != 1:
+                    continue
+                current = source.current.detach().reshape(-1)
+                if current.shape != self.prototype.shape:
+                    continue
+                with torch.no_grad():
+                    self.prototype.data.copy_(0.7 * self.prototype.data + 0.3 * current)
+                updated = True
+        if not updated or not self.learning_enabled:
+            return
+        self.program_file_updates += 1
+        self.model_version += 1
+        self.last_loss = 0.0
+        self.assert_controller_frozen()
+
     def _learn(self, outcomes: tuple[ResolvedLiveOutcome, ...]) -> None:
+        if getattr(self, "_combine_and", False):
+            self._learn_and(outcomes)
+            return
+        if getattr(self, "_execution_schema", "") == (
+            "neural-computer.prototype-match.v1"
+        ):
+            self._learn_prototype(outcomes)
+            return
         self.assert_controller_frozen()
         losses: list[torch.Tensor] = []
         for resolved in outcomes:
@@ -890,13 +1149,18 @@ class RecursiveTemporalProgramMachine(PretrainedControllerProgramMachine):
         super().__init__(*args, **kwargs)
 
     def legacy_controller_digest(self) -> str:
-        return PretrainedControllerProgramMachine.controller_digest(self)
+        return self.runtime_controller_digest()
 
     def controller_digest(self) -> str:
-        digest = hashlib.sha256()
-        digest.update(self.legacy_controller_digest().encode())
-        digest.update(b"neural-computer.recursive-relative-history-executor.v1")
-        return digest.hexdigest()
+        return PretrainedControllerProgramMachine.controller_digest(self)
+
+    def historical_controller_digests(self) -> frozenset[str]:
+        aliases = {self._recursive_wrap_digest(self.controller_digest())}
+        runtime = self.runtime_controller_digest()
+        if runtime != self.controller_digest():
+            aliases.add(runtime)
+            aliases.add(self._recursive_wrap_digest(runtime))
+        return frozenset(aliases)
 
     def program_digest(self) -> str:
         digest = hashlib.sha256()
@@ -943,7 +1207,7 @@ class RecursiveTemporalProgramMachine(PretrainedControllerProgramMachine):
 
         if not isinstance(artifact, ExternalProgramArtifact):
             raise TypeError("legacy temporal primitive must be an external artifact")
-        if controller_digest != self.legacy_controller_digest():
+        if not self.accepts_controller_digest(controller_digest):
             raise ValueError("legacy primitive targets another frozen controller")
         artifact.validate_for(
             instruction_width=self.max_history,
@@ -978,7 +1242,7 @@ class RecursiveTemporalProgramMachine(PretrainedControllerProgramMachine):
 
         if not isinstance(artifact, ExternalProgramArtifact):
             raise TypeError("recursive temporal program must be an external artifact")
-        if controller_digest != self._frozen_controller_digest:
+        if not self.accepts_controller_digest(controller_digest):
             raise ValueError("recursive program targets another frozen controller")
 
         if artifact.instruction_width < self.max_history:
@@ -999,6 +1263,7 @@ class RecursiveTemporalProgramMachine(PretrainedControllerProgramMachine):
                 artifact.codes[0].to(self.relative_address_logits)
             )
         self.composition_depth = artifact.program_length
+        self._execution_schema = RECURSIVE_TEMPORAL_EXECUTION_SCHEMA
         self.learning_enabled = False
         self.sample = False
         self.assert_controller_frozen()
@@ -1057,6 +1322,14 @@ class RecursiveTemporalProgramMachine(PretrainedControllerProgramMachine):
         return _MultistreamCreditState(tuple(prepared))
 
     def _learn(self, outcomes: tuple[ResolvedLiveOutcome, ...]) -> None:
+        if getattr(self, "_combine_and", False):
+            self._learn_and(outcomes)
+            return
+        if getattr(self, "_execution_schema", "") == (
+            "neural-computer.prototype-match.v1"
+        ):
+            self._learn_prototype(outcomes)
+            return
         self.assert_controller_frozen()
         losses: list[torch.Tensor] = []
         for resolved in outcomes:

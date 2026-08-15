@@ -11,6 +11,7 @@ from experiments.brainworkshop_canonical.physical_dual_live import (
     PhysicalDualBrainWorkshopConfig,
     dual_feedback_reader,
     dual_key_chords,
+    inherit_bank_program,
 )
 from experiments.brainworkshop_canonical.physical_live import (
     compile_macos_av_capture_helper,
@@ -322,3 +323,38 @@ def test_screencapturekit_helper_compiles(tmp_path: Path) -> None:
     helper = compile_macos_av_capture_helper(tmp_path / "macos-window-av-capture")
     assert helper.is_file()
     assert helper.stat().st_size > 0
+
+
+def test_inherit_agent_brain_onto_dual_does_not_mutate_the_bank() -> None:
+    from experiments.brainworkshop_canonical.controller_pretraining import (
+        build_recursive_temporal_program_machine,
+        load_temporal_controller_artifact,
+    )
+    from neural_computer import ExternalTemporalProgramBank
+
+    repository = Path(__file__).resolve().parents[1]
+    bank_path = repository / "artifacts/checkpoints/AgentBrain.bank"
+    controller = repository / (
+        "artifacts/checkpoints/temporal_controller_previous_event_seed1001.pt"
+    )
+    before = ExternalTemporalProgramBank.load_bank(bank_path)
+    before_digest = before.digest()
+    machine = build_recursive_temporal_program_machine(
+        load_temporal_controller_artifact(controller),
+        sample=True,
+        max_sources=2,
+        pack_source_actions=True,
+    )
+    inherited = inherit_bank_program(machine, bank_path, slot=0, learn=True)
+    after = ExternalTemporalProgramBank.load_bank(bank_path)
+
+    assert inherited["controller_binding"] == "exact"
+    assert inherited["inherited_program_digest"] == before.artifact(0).digest()
+    assert machine.controller_digest() == before.controller_digest
+    assert machine.accepts_controller_digest(before.controller_digest)
+    assert torch.equal(
+        machine.relative_address_logits.detach().cpu(),
+        before.artifact(0).codes[0].cpu(),
+    )
+    assert after.digest() == before_digest
+    assert machine.learning_enabled is True

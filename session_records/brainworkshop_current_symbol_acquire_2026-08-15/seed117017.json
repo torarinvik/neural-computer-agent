@@ -1,0 +1,60 @@
+{
+  "accepted": true,
+  "action_reversed": {
+    "accuracy": 0.0,
+    "arm": "action_reversed",
+    "optimizer_updates": 0,
+    "program_file_updates": 0,
+    "replayed_examples": 0,
+    "unique_verifier_bits": 48
+  },
+  "controller_digest": "59c9ef2b235104e4f0d6bc143ba195fb57a907da9f29b1d5750c39fa22f7687c",
+  "controller_unchanged": true,
+  "delay_slot0": {
+    "accuracy": 0.75,
+    "arm": "delay_slot0",
+    "optimizer_updates": 0,
+    "program_file_updates": 0,
+    "replayed_examples": 0,
+    "unique_verifier_bits": 48
+  },
+  "elapsed_seconds": 0.10648741701152176,
+  "experiment_id": "brainworkshop-current-symbol-acquire-2026-08-15",
+  "hold": {
+    "accuracy": 1.0,
+    "arm": "hold",
+    "optimizer_updates": 0,
+    "program_file_updates": 0,
+    "replayed_examples": 0,
+    "unique_verifier_bits": 48
+  },
+  "hold_seed": 117018,
+  "prototype_norm": 5.500107765197754,
+  "reward_shuffled": {
+    "accuracy": 0.5208333134651184,
+    "arm": "reward_shuffled",
+    "optimizer_updates": 0,
+    "program_file_updates": 0,
+    "replayed_examples": 0,
+    "unique_verifier_bits": 48
+  },
+  "schema": "neural-computer.current-symbol-acquire-replicate.v1",
+  "seed": 117017,
+  "steps": 48,
+  "train": {
+    "accuracy": 0.9583333134651184,
+    "arm": "train",
+    "optimizer_updates": 0,
+    "program_file_updates": 48,
+    "replayed_examples": 0,
+    "unique_verifier_bits": 48
+  },
+  "zeros": {
+    "accuracy": 0.5,
+    "arm": "zeros",
+    "optimizer_updates": 0,
+    "program_file_updates": 0,
+    "replayed_examples": 0,
+    "unique_verifier_bits": 48
+  }
+}

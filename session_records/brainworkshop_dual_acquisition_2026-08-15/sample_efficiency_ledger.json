@@ -46,8 +46,8 @@
     "controller_program_replay_updates": 0
   },
   "unresolved": {
-    "promotion_holdout": "not consumed",
-    "desktop_system_audio_loopback": "macOS screen-capture Dual still lacks clean system-audio input",
+    "promotion_holdout": "closed in brainworkshop-dual-holdout-2026-08-15",
+    "desktop_system_audio_loopback": "macOS screen-capture Dual is optional I/O, not a trainer",
     "founding_header_holdout": "closed in brainworkshop-founding-holdout-2026-08-15"
   }
 }

@@ -38,9 +38,26 @@ The primary file contains immutable admitted temporal programs, their frozen
 controller binding, admission records, and opaque learned-event routing/reward
 evidence. `AgentBrain.bank.sha256` is adjacent integrity metadata. Loading the
 bank can add separately verified programs and route evidence without mutating
-the instruction tensors of already admitted skills. Version 1 is specifically
+the instruction tensors of already admitted skills. Dual gym and desktop Dual
+load this same controller digest; packed two-source actions are an adapter,
+not a second brain. Slot 0 remains the promoted Position 1-back file
+(`90e20193…`). Slot 1 is a gym Dual 1-back address file admitted from
+public Dual pixels and PCM without rewriting slot 0. Slot 2 is the
+same-primitive compose of slot 0 with itself (depth 2). Search on Dual
+2-back now retrieves slot 2 instead of recomposing. The primitive files
+remain different instruction tensors. Prototype-match is a search
+operator, not an admitted slot. A prototype file also needs a frontend
+digest; unbound templates cannot enter the bank.
+
+`rendered_frontend_seed1001.pt` is a frozen rendered vision/audio
+adapter for that binding. Its content digest is `1ce405a0…`. It does
+not resize the controller. A bound current-symbol template can hold
+across unused seeds on this frontend and fails on a different encoder.
+It is not an admitted AgentBrain slot. Version 1 is specifically
 a temporal-program memory bank; provisional program optimizer checkpoints stay
-outside it until admission succeeds.
+outside it until admission succeeds. Open program induction is not claimed.
+Same-primitive composition (slot 1 then slot 1) is a bank operation; unequal
+primitives still fail closed.
 
 The canonical bank was subsequently resumed for a twelve-lifetime, three-cell
 read-only retention rung. It accumulated 40 additional reward-attributed route

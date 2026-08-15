@@ -78,7 +78,7 @@ def run_recursive_transfer(
     machine = build_recursive_temporal_program_machine(
         controller_payload, sample=False
     )
-    if source_bank.controller_digest != machine.legacy_controller_digest():
+    if not machine.accepts_controller_digest(source_bank.controller_digest):
         raise ValueError("source primitive targets another legacy controller")
     machine.load_legacy_primitive_artifact(
         source_artifact, controller_digest=source_bank.controller_digest

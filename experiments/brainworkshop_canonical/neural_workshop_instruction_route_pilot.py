@@ -157,7 +157,7 @@ def run_instruction_route(
     machine = build_recursive_temporal_program_machine(
         controller_payload, sample=False
     )
-    if source_bank.controller_digest != machine.controller_digest():
+    if not machine.accepts_controller_digest(source_bank.controller_digest):
         raise ValueError("source recursive programs target another controller")
     controller_before = machine.controller_digest()
     started = time.perf_counter()

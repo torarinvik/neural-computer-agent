@@ -86,7 +86,7 @@ def admit_physical_training_program(
     machine.assert_controller_frozen()
     if bank_path.exists():
         bank = ExternalTemporalProgramBank.load_bank(bank_path)
-        if bank.controller_digest != machine.controller_digest():
+        if not machine.accepts_controller_digest(bank.controller_digest):
             raise ValueError("physical temporal program bank targets another controller")
         if bank.context_width != machine.event_width:
             raise ValueError("physical temporal program bank context width changed")

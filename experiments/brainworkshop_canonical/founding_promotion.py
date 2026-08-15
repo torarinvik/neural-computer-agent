@@ -379,7 +379,7 @@ def run_founding_controls(
     machine = build_recursive_temporal_program_machine(
         controller_payload, sample=False
     )
-    if bank.controller_digest != machine.controller_digest():
+    if not machine.accepts_controller_digest(bank.controller_digest):
         raise ValueError("founding bank targets another controller")
 
     controls = {

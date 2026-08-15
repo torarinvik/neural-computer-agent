@@ -1,0 +1,63 @@
+{
+  "controls": {
+    "action_reversed_below_threshold": true,
+    "admitted": false,
+    "bank_unchanged": true,
+    "controller_frozen": true,
+    "cross_encoder_below_threshold": true,
+    "frontend_bound": true,
+    "frozen_holds": true,
+    "invert_slot0_below_threshold": true,
+    "prototype_only_below_threshold": false,
+    "retrieve_slot0_below_threshold": true,
+    "reward_shuffled_below_threshold": true,
+    "zeros_below_threshold": true
+  },
+  "experiment_id": "brainworkshop-onset-search-lease-2026-08-15",
+  "optimizer_updates": 0,
+  "replayed_examples": 0,
+  "replication_count": 3,
+  "retention_on_mastered_primitive": "onset AND child held frozen for the lease sessions with zero program file updates after acquire",
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "seed_blocks": [
+    [
+      125017,
+      125023
+    ],
+    [
+      126017,
+      126023
+    ],
+    [
+      127017,
+      127023
+    ]
+  ],
+  "source": "in_repository_run",
+  "stable_bits_to_threshold": {
+    "seed125017": 47,
+    "seed126017": 47,
+    "seed127017": 47
+  },
+  "status": "rejected",
+  "transfer_ratio_against_fresh_learner": null,
+  "transfer_ratio_note": "retrieve, invert, and prototype-only are single-family reject controls, not a fresh-learner climb",
+  "unique_logical_lifetimes_all_arms": 42,
+  "unique_verifier_bits": {
+    "hold_seed125017": 282,
+    "hold_seed126017": 282,
+    "hold_seed127017": 282
+  },
+  "unresolved": {
+    "bank_admission": "the AND child is not a curated AgentBrain slot",
+    "depth_two_coverage": "the prototype-capable machine cannot install recursive depth-2 files, so retrieve slot 2, compose, and invert slot 2 were proposed but not executed",
+    "dual_2back_transfer": "not this experiment",
+    "learned_proposer": "search still enumerates the closed grammar",
+    "open_program_induction": "grammar is still retrieve, compose, invert, and, invent"
+  },
+  "wall_seconds": {
+    "seed125017": 0.2737980830715969,
+    "seed126017": 0.26977479201741517,
+    "seed127017": 0.272968125063926
+  }
+}

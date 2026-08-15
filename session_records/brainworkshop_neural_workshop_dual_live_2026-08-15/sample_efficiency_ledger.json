@@ -40,6 +40,6 @@
   "unresolved": {
     "promotion_holdout": "not consumed",
     "dual_acquisition_from_blank_file": "closed in brainworkshop-dual-acquisition-2026-08-15",
-    "desktop_system_audio_loopback": "macOS screen-capture Dual still lacks clean system-audio input"
+    "desktop_system_audio_loopback": "macOS screen-capture Dual is optional I/O, not a trainer"
   }
 }

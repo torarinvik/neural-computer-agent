@@ -230,7 +230,7 @@ def run_autonomous_founding(
     machine = build_recursive_temporal_program_machine(
         controller_payload, sample=False
     )
-    if source_bank.controller_digest != machine.controller_digest():
+    if not machine.accepts_controller_digest(source_bank.controller_digest):
         raise ValueError("source instruction bank targets another controller")
     controller_before = machine.controller_digest()
     warm_bank = ExternalTemporalProgramBank.from_payload(source_bank.payload())

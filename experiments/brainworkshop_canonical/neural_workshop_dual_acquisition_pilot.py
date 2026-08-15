@@ -172,6 +172,18 @@ def run_neural_workshop_dual_acquisition(
         )
     )
     primitive = warm.admitted_program_artifact()
+    wrong_depth = _summary(
+        _run_session(
+            warm,
+            neural_workshop_directory,
+            n_back=2,
+            trials=trials,
+            seed=seed + 150,
+            learn=False,
+            sample=False,
+            visible=visible,
+        )
+    )
     warm.load_recursive_program_artifact(
         compose_recursive_temporal_program(primitive, 2),
         controller_digest=warm.controller_digest(),
@@ -273,6 +285,7 @@ def run_neural_workshop_dual_acquisition(
             "fresh Dual 2-back is a same-task climb"
         ),
         "controls": {
+            "wrong_depth": wrong_depth,
             "reward_shuffled": shuffled,
             "action_reversed": reversed_actions,
             "missing_history": missing_history,

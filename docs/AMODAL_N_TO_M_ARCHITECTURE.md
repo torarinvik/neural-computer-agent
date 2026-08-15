@@ -382,11 +382,54 @@ encoder emits a second amodal event; the frozen two-way decoder packs one
 match bit per bound source onto the two public ports. Privileged keys fail
 closed. Frozen `PREVIOUS` composition scored `1.000` on Dual 1-back and
 2-back across two 60-trial seeds, with a wrong-depth control near `0.10`.
-This qualifies Dual as a learner-visible I/O path. A blank address file now
+This qualifies Dual as a learner-visible I/O path. Packed Dual actions are
+a runtime decoder adapter: they do not mint a second controller identity.
+Position gym, Dual gym, and desktop Dual share the frozen pretrained
+controller digest used by `AgentBrain.bank`. That bank now holds Position
+1-back in slot 0 and a separately admitted gym Dual 1-back file in slot 1.
+Same-primitive composition is a bank operation; unequal primitives and
+non-address files fail closed. A bank-driven searcher now tries retrieve,
+then legal compose, then a zeroed prototype-match invent if the bank has
+no such operator, without a task id. Composed children can be admitted
+beside one-row primitives on the same digest; Dual 2-back then retrieves
+the child instead of recomposing. Prototype-match compares the current
+event to a stored event-width template. A short acquire lifetime can
+move that template off zeros on current-symbol and hold on a fresh
+seed, with zeros remaining at chance. Unused seeds 116017-118017
+replicated that hold at `1.000` on 48 bits each; zeros, reverse,
+shuffle, and delay slot 0 stayed below threshold. The bank was not
+written. A prototype file lives in one frontend's event space: admit
+requires a frontend digest, and a bound file fails closed on a
+different encoder. Delay-address files stay frontend-agnostic. A
+frozen rendered frontend `rendered_frontend_seed1001.pt` now exists as
+an adapter. Unused seeds 119017-121017 acquired current-symbol against
+that one frontend and held at `1.000`; a later same-file transfer
+across those seeds also scored `1.000`. A later unused search lease
+(122017-124017) invented that operator after delay retrieves failed,
+bound the learned template to the frontend digest, and held `1.000`
+for six frozen sessions per seed (288 bits; first stable prefix 48).
+The bank was not written. Dual execute and desktop Dual can now select
+a file by search instead of a hardcoded slot. Search now also proposes
+invert of an admitted file and always invents a fresh prototype last.
+A changed-symbol verifier rejects delay retrieves and accepts invert
+of the 1-back file. Invert can be admitted as a select-then-invert
+child with parent lineage; later search retrieves that child instead
+of re-inverting. And combines invert(delay) with a prototype
+on the same event. During acquire it acts as invert so verifier
+rewards label change trials, then sets the prototype from those
+positive events. Onset rejects retrieve and invert alone; search
+accepts `and` after that acquire. An AND child can be admitted with
+parent lineage. That is a larger closed grammar, not open program
+induction. A blank address file now
 also acquires Dual 1-back on both the rendered device and Neural Workshop
 public PCM, retains it, and executes a one-step composition on Dual 2-back.
-Mixed Dual labels are packed exact-match credit, not half-credit. This does
-not qualify a measured desktop Dual lifetime or autonomous program induction.
+Mixed Dual labels are packed exact-match credit, not half-credit. An unused
+three-seed Neural Workshop holdout then promoted that Dual acquisition
+claim: Dual 1-back reached a stable prefix at 29/45/88 bits, retained
+`1.000`, and executed composed Dual 2-back at `1.000`, with wrong-depth,
+missing-history, and reversal controls below threshold. That Dual lease is
+consumed. It does not qualify a Dual 2-back bits-to-threshold transfer
+ratio, a measured desktop Dual lifetime, or autonomous program induction.
 A later unused three-seed holdout promoted header transfer and first-time
 depth invention on Neural Workshop: same-slot 3-cell 3-back retrieve was
 `3.88×` cheaper than a matched climb, and first-time 2-cell 3-back compose

@@ -33,7 +33,7 @@ keys.
 - two seeds, no holdout lease;
 - execution of an existing temporal program. Blank-file Dual acquisition
   is in `session_records/brainworkshop_dual_acquisition_2026-08-15/`;
-- desktop screen-capture Dual still lacks a clean system-audio loopback.
+- desktop screen-capture Dual is optional I/O against Neural Workshop, not a trainer.
 
 Retain the blueprint. Do not treat an isolated threshold as mastery.
 
