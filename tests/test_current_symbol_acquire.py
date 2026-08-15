@@ -67,7 +67,7 @@ def test_unused_seed_campaign_does_not_write_the_bank(tmp_path: Path) -> None:
         BANK,
         tmp_path,
         seeds=HOLDOUT_SEEDS,
-        steps=24,
+        steps=448,
     )
     assert sha256_file(BANK) == before
     assert campaign["bank_unchanged"]
@@ -150,16 +150,15 @@ def test_search_lease_binds_frontend_and_does_not_write_the_bank(
     frontend = (
         REPOSITORY / "artifacts/checkpoints/rendered_frontend_seed1001.pt"
     )
-    # 192 steps, not 24. Since `and` entered the grammar ahead of `invent`,
-    # a short episode lets an AND scrape past 0.8 on the base rate before
-    # the searcher ever reaches invent. The threshold only separates the two
-    # families once there are enough eligible trials.
+    # 448 steps, not 24. Since `and` entered the grammar ahead of `invent`,
+    # a short episode lets an AND scrape past 0.8 on the base rate before the
+    # searcher ever reaches invent, and 448 is past the trial floor.
     campaign = run_search_lease(
         CONTROLLER,
         BANK,
         tmp_path,
         seeds=SEARCH_LEASE_SEEDS,
-        steps=192,
+        steps=448,
         sessions=3,
         frontend_path=frontend,
     )
@@ -175,3 +174,20 @@ def test_search_lease_binds_frontend_and_does_not_write_the_bank(
         assert row["zeros"]["accuracy"] < 0.8
         assert row["delay_slot0"]["accuracy"] < 0.8
         assert row["cross_encoder"]["accuracy"] < 0.8
+
+
+def test_a_short_campaign_cannot_be_accepted(tmp_path: Path) -> None:
+    import pytest as _pytest
+
+    with _pytest.raises(ValueError, match="too short to discriminate"):
+        run_campaign(CONTROLLER, BANK, tmp_path, seeds=HOLDOUT_SEEDS, steps=24)
+    campaign = run_campaign(
+        CONTROLLER,
+        BANK,
+        tmp_path,
+        seeds=HOLDOUT_SEEDS,
+        steps=24,
+        enforce_discrimination=False,
+    )
+    assert campaign["discrimination"]["discriminating"] is False
+    assert campaign["accepted"] is False

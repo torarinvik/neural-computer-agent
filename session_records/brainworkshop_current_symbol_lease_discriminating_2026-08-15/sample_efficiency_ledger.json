@@ -1,0 +1,59 @@
+{
+  "controls": {
+    "action_reversed_below_threshold": true,
+    "admitted": false,
+    "bank_unchanged": true,
+    "cross_encoder_below_threshold": true,
+    "delay_slot0_below_threshold": true,
+    "discriminating_episode": true,
+    "frontend_bound": true,
+    "near_miss_pass_probability": 0.0060976975207228615,
+    "reward_shuffled_below_threshold": true,
+    "zeros_below_threshold": true
+  },
+  "experiment_id": "brainworkshop-current-symbol-search-lease-2026-08-15",
+  "optimizer_updates": 0,
+  "replayed_examples": 0,
+  "replication_count": 3,
+  "retention_on_mastered_primitive": "search-invented prototype bound to curated frontend; stable hold prefix on unused seeds",
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "seed_blocks": [
+    [
+      131017,
+      131017
+    ],
+    [
+      132017,
+      132017
+    ],
+    [
+      133017,
+      133017
+    ]
+  ],
+  "source": "in_repository_run",
+  "stable_bits_to_threshold": {
+    "seed131017": 448,
+    "seed132017": 448,
+    "seed133017": 448
+  },
+  "status": "replicated_not_admitted",
+  "transfer_ratio_against_fresh_learner": null,
+  "transfer_ratio_note": "zeros and delay slot 0 are reject controls, not a Dual climb",
+  "unique_logical_lifetimes_all_arms": 33,
+  "unique_verifier_bits": {
+    "hold_seed131017": 2688,
+    "hold_seed132017": 2688,
+    "hold_seed133017": 2688
+  },
+  "unresolved": {
+    "bank_admission": "bound prototype is not a curated AgentBrain slot",
+    "dual_2back_transfer": "not this experiment",
+    "open_program_induction": "grammar is still retrieve, compose, invent"
+  },
+  "wall_seconds": {
+    "seed131017": 3.015430915984325,
+    "seed132017": 3.0142378750024363,
+    "seed133017": 2.999852165929042
+  }
+}

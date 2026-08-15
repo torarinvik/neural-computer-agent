@@ -317,17 +317,25 @@ Onset search acquires the prototype from invert-labeled events, then
 executes the AND. That is still a closed grammar, not open program
 induction.
 
-`onset_acquire.py` leases that AND on unused seeds. At 48 steps
-(125017-127017) search selected `and` and held `1.000` for six frozen
-sessions, but the single-family prototype-only control reached `0.830`
-on one seed, so that campaign is rejected: with 47 eligible trials the
-`0.8` threshold cannot separate a base-rate near-miss from a two-family
-solution. Changing episode length only, on the fresh block
-128017-130017 at 192 steps, every single-family control stays at or
-below `0.759` while the AND holds `1.000` for six sessions. Neither
-campaign writes `AgentBrain.bank`, and no AND child is admitted. On the
-prototype-capable machine the depth-2 files (retrieve slot 2, both
-composes, invert slot 2) are proposed but cannot be installed, so
+`onset_acquire.py` leases that AND on unused seeds. A fixed `0.8` gate
+means nothing without enough eligible trials: on these tasks the
+strongest wrong answer is a single-family policy at the rule's base
+rate near `0.75`, which reaches `0.8` by luck 22.8% of the time over 47
+trials and 5.9% over 191. `lease_discrimination.py` states that as a
+binomial upper tail and fails a campaign closed below the floor of 411
+eligible trials; `seed_ledger.py` holds every consumed block and
+compares the seven lifetimes each replicate burns. Both are recorded in
+every campaign as `discrimination`.
+
+The standing results run at 448 steps on pre-registered fresh blocks and
+write nothing to `AgentBrain.bank`: onset selects `and` on 134017-136017
+with every single-family control at or below `0.779`, and current-symbol
+selects `invent` on 131017-133017. Both score perfectly on every held
+session, which is what carries the claim; the earlier 48-step onset
+campaign (rejected on a `0.830` control) and the 192-step and 48-step
+current-symbol campaigns sit below the floor and are marked superseded.
+On the prototype-capable machine the depth-2 files (retrieve slot 2,
+both composes, invert slot 2) are proposed but cannot be installed, so
 search covers retrieve {0,1}, invert {0,1}, and, and invent.
 
 ```bash
@@ -337,7 +345,10 @@ PYTHONPATH=src .venv/bin/python \
   -m experiments.brainworkshop_canonical.program_search \
   --match-rule current_symbol --steps 24
 PYTHONPATH=src .venv/bin/python \
-  -m experiments.brainworkshop_canonical.onset_acquire --long
+  -m experiments.brainworkshop_canonical.onset_acquire --arm discriminating
+PYTHONPATH=src .venv/bin/python \
+  -m experiments.brainworkshop_canonical.current_symbol_acquire \
+  --discriminating-lease
 ```
 
 ## Neural Workshop live curriculum

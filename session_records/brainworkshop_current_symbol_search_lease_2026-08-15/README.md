@@ -45,3 +45,11 @@ measured prefix. All later holds stayed at `1.000`.
 - grammar is still retrieve, compose, invent;
 - not a Dual 2-back bits-to-threshold transfer;
 - not desktop Dual.
+
+## Superseded
+
+`brainworkshop_current_symbol_lease_discriminating_2026-08-15` is the standing
+result for this claim: a fresh block (131017-133017) at 448 eligible trials,
+pre-registered, winner `invent` at `1.000` on every seed. This record's seeds
+are spent and its length is below the trial floor, so it is history, not
+evidence.

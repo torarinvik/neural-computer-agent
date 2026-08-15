@@ -1,6 +1,7 @@
 # Onset search lease, 192 steps (2026-08-15)
 
-Status: **replicated, not admitted**.
+Status: **replicated, not admitted** at the time of measurement; below the
+trial floor adopted afterwards. See Superseded.
 
 Unused seeds 128017, 129017, and 130017 ran the same closed-grammar search on
 the public onset rule with episode length as the only change from
@@ -51,3 +52,13 @@ prototype-capable machine, which does not load recursive depth-2 files.
 - no learned proposer; the search still enumerates the closed grammar;
 - no coverage of depth-2 files on this machine;
 - no new operator types beyond retrieve, compose, invert, and, invent.
+
+## Superseded
+
+At 191 eligible trials a `0.75` policy still reaches `0.8` about 5.9% of the
+time, so this campaign sits below the 1% floor later stated in
+`PREREGISTRATION_discriminating_leases_2026-08-15.md` and is no longer
+accepted under it. Its measured numbers are unchanged and its conclusion was
+reproduced on a fresh block at 447 eligible trials in
+`brainworkshop_onset_lease_discriminating_2026-08-15`, which is the standing
+onset result.

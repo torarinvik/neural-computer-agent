@@ -11,13 +11,15 @@ from experiments.brainworkshop_canonical.current_symbol_acquire import (
 )
 from experiments.brainworkshop_canonical.dual_promotion import KNOWN_USED_SEEDS
 from experiments.brainworkshop_canonical.onset_acquire import (
-    LONG_LEASE_ID,
+    DISCRIMINATING_BLOCK,
+    DISCRIMINATING_LEASE_ID,
+    DISCRIMINATING_STEPS,
     LONG_LEASE_SEEDS,
-    LONG_STEPS,
     ONSET_LEASE_SEEDS,
     assert_unused_onset_seeds,
     run_onset_lease,
 )
+from experiments.brainworkshop_canonical.seed_ledger import block
 from neural_computer.promotion import sha256_file
 
 REPOSITORY = Path(__file__).resolve().parents[1]
@@ -62,12 +64,12 @@ def test_onset_lease_selects_and_and_does_not_write_the_bank(tmp_path: Path) -> 
         CONTROLLER,
         BANK,
         tmp_path,
-        seeds=LONG_LEASE_SEEDS,
-        steps=LONG_STEPS,
+        seeds=block(DISCRIMINATING_BLOCK),
+        steps=DISCRIMINATING_STEPS,
         sessions=3,
         frontend_path=FRONTEND,
-        experiment_id=LONG_LEASE_ID,
-        additional_used=frozenset(ONSET_LEASE_SEEDS),
+        experiment_id=DISCRIMINATING_LEASE_ID,
+        block_name=DISCRIMINATING_BLOCK,
     )
     assert sha256_file(BANK) == before
     assert campaign["bank_unchanged"]
@@ -76,6 +78,8 @@ def test_onset_lease_selects_and_and_does_not_write_the_bank(tmp_path: Path) -> 
     assert campaign["status"] == "replicated_not_admitted"
     assert campaign["frontend_shared"]
     assert campaign["winner_kinds"] == ["and", "and", "and"]
+    assert campaign["discrimination"]["discriminating"] is True
+    assert float(campaign["discrimination"]["near_miss_pass_probability"]) <= 0.01
     for row in campaign["replicates"]:
         winner = row["search"]["winner"]
         assert winner["kind"] == "and"
@@ -100,3 +104,33 @@ def test_onset_lease_selects_and_and_does_not_write_the_bank(tmp_path: Path) -> 
         ]
         assert executed
         assert all(item["accuracy"] < 0.8 for item in executed)
+
+
+def test_a_campaign_below_the_trial_floor_is_refused(tmp_path: Path) -> None:
+    # The 48-step arm is exactly what the floor exists to stop.
+    with pytest.raises(ValueError, match="too short to discriminate"):
+        run_onset_lease(
+            CONTROLLER,
+            BANK,
+            tmp_path,
+            seeds=ONSET_LEASE_SEEDS,
+            steps=48,
+            sessions=3,
+            frontend_path=FRONTEND,
+            block_name="onset_lease_48",
+        )
+    # Reproducing a historical record is still allowed, and is not accepted.
+    campaign = run_onset_lease(
+        CONTROLLER,
+        BANK,
+        tmp_path,
+        seeds=LONG_LEASE_SEEDS,
+        steps=192,
+        sessions=3,
+        frontend_path=FRONTEND,
+        block_name="onset_lease_192",
+        enforce_discrimination=False,
+    )
+    assert campaign["discrimination"]["discriminating"] is False
+    assert campaign["accepted"] is False
+    assert campaign["status"] == "rejected"

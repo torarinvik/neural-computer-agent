@@ -53,3 +53,10 @@ machine, not the depth-2 files.
 - depth-2 files were proposed but not executable on this machine;
 - the AND prototype is bound to `1ce405a0…` and does not survive a frontend
   swap.
+
+## Superseded
+
+`brainworkshop_onset_lease_discriminating_2026-08-15` is the standing onset
+result: a fresh block (134017-136017) at 447 eligible trials, pre-registered,
+winner `and` at `1.000` on every seed with every control below `0.8`. This
+campaign stays rejected, and it is the reason the trial floor exists.

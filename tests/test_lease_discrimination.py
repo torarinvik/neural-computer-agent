@@ -60,3 +60,30 @@ def test_assert_refuses_a_campaign_that_cannot_discriminate() -> None:
         assert_discriminating(383, threshold=0.8)
     report = assert_discriminating(447, threshold=0.8)
     assert report["discriminating"] is True
+
+
+def test_the_tail_matches_exact_integer_arithmetic_and_survives_big_counts() -> None:
+    from math import ceil, comb
+
+    for trials, rate, threshold in (
+        (47, 0.75, 0.8),
+        (191, 0.75, 0.8),
+        (120, 0.3, 0.8),
+        (447, 0.78, 0.8),
+        (500, 0.5, 0.5),
+    ):
+        exact = sum(
+            comb(trials, hits) * rate**hits * (1.0 - rate) ** (trials - hits)
+            for hits in range(ceil(threshold * trials), trials + 1)
+        )
+        assert binomial_upper_tail(trials, rate, threshold) == pytest.approx(
+            exact, abs=1e-12
+        )
+    # The binomial coefficient overflows a float well before the trial count
+    # a floor against a 0.78 near miss would ask for.
+    assert 0.0 < binomial_upper_tail(3000, 0.78, 0.8) < 1.0
+
+
+def test_a_closer_near_miss_costs_far_more_trials() -> None:
+    assert required_eligible_trials(0.8, 0.75, 0.01) == 411
+    assert required_eligible_trials(0.8, 0.78, 0.01) == 2326

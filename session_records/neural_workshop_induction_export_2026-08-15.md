@@ -93,7 +93,43 @@ install recursive depth-2 files, so search covered retrieve {0,1}, invert {0,1},
 `and`, and invent; retrieve slot 2, both composes, and invert slot 2 were
 proposed but not executed.
 
-### Stale record: current-symbol search lease
+### Trial floor (adopted 2026-08-15)
+
+A `0.8` gate says nothing without enough eligible trials. The strongest wrong
+answer here is a single-family policy at the rule's base rate near `0.75`,
+which reaches `0.8` by luck 22.8% of the time over 47 trials, 5.9% over 191,
+and 0.66% over 447. The floor is now stated as a binomial upper tail
+(`alpha = 0.01`, near miss `threshold - 0.05`), which requires 411 eligible
+trials, and campaigns below it fail closed. Seed blocks live in one ledger
+that compares all seven lifetimes a replicate burns.
+
+Caveat recorded with the results: the floor is stated against a `0.75` near
+miss. The onset prototype-only control was observed at `0.779`; a policy whose
+true rate is `0.78` would still cross `0.8` about 15.6% of the time at 447
+trials, and moving the floor to cover that costs 2326 trials. What carries
+both standing claims is the winner-control gap and perfect holds, not the
+control margins.
+
+### Standing leases (pre-registered, fresh blocks, 448 steps)
+
+Pre-registration committed before either ran:
+`session_records/PREREGISTRATION_discriminating_leases_2026-08-15.md`.
+
+Current-symbol, block 131017-133017: winner `invent` at `1.000`, six frozen
+holds (2688 bits, stable prefix 448), delay slot 0 `0.701`-`0.730`,
+cross-encoder `0.500`. Status `replicated_not_admitted`. Record:
+`session_records/brainworkshop_current_symbol_lease_discriminating_2026-08-15/`.
+
+Onset, block 134017-136017: winner `and` at `1.000`, six frozen holds (2682
+bits, stable prefix 447), retrieve slot 0 `0.251`, invert slot 0 `0.749`,
+prototype only `0.729`-`0.779`. Status `replicated_not_admitted`. Record:
+`session_records/brainworkshop_onset_lease_discriminating_2026-08-15/`.
+
+Both left `AgentBrain.bank` byte identical and admitted nothing. The 48-step
+and 192-step onset campaigns and the 122017-124017 current-symbol lease are
+marked superseded in their own records.
+
+### Superseded record: current-symbol search lease
 
 The recorded 122017-124017 lease claims `invent` on every seed, but that record
 predates `and` entering the grammar ahead of `invent`. Re-running it under the
@@ -151,8 +187,8 @@ refused.
 
 ## Next (in order)
 
-1. Decide the episode-length floor for lease acceptance, then re-run or retire
-   the stale current-symbol search-lease record and its failing test.
+1. Gate on the winner-minus-best-control margin rather than on both sides
+   crossing a fixed constant; that is what the `0.779` control makes urgent.
 2. A proposer that ranks invert/and/invent instead of full enumeration.
 3. Dual 2-back same-task learn transfer on unused seeds, if that axis is next.
 4. Doom / semantic teacher only much later, and only with authenticated public

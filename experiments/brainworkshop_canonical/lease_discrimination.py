@@ -15,7 +15,7 @@ of reaching 0.8 by luck. At 47 trials that chance is 22.8%, which is why the
 from __future__ import annotations
 
 from functools import cache
-from math import ceil, comb
+from math import ceil, exp, fsum, lgamma, log
 
 # A pass must be at most this likely to come from a policy whose true
 # accuracy is `threshold - NEAR_MISS_MARGIN`.
@@ -33,8 +33,23 @@ def binomial_upper_tail(trials: int, rate: float, threshold: float) -> float:
     needed = ceil(threshold * trials)
     if needed > trials:
         return 0.0
-    return sum(
-        comb(trials, hits) * rate**hits * (1.0 - rate) ** (trials - hits)
+    if rate <= 0.0:
+        return 1.0 if needed <= 0 else 0.0
+    if rate >= 1.0:
+        return 1.0 if needed <= trials else 0.0
+    # In log space: the binomial coefficient alone overflows a float long
+    # before the trial counts a tight floor asks for.
+    log_rate = log(rate)
+    log_miss = log(1.0 - rate)
+    log_trials = lgamma(trials + 1)
+    return fsum(
+        exp(
+            log_trials
+            - lgamma(hits + 1)
+            - lgamma(trials - hits + 1)
+            + hits * log_rate
+            + (trials - hits) * log_miss
+        )
         for hits in range(needed, trials + 1)
     )
 
