@@ -47,8 +47,8 @@
     "controller_program_replay_updates": 0
   },
   "unresolved": {
-    "dual_nback_physical": "two public action ports not yet wired",
-    "promotion_holdout": "not consumed",
-    "first_time_depth_invention": "no sample-efficiency win versus fresh climb"
+    "dual_nback_physical": "closed in brainworkshop-neural-workshop-dual-live-2026-08-15",
+    "promotion_holdout": "founding header transfer and first-time depth consumed in brainworkshop-founding-holdout-2026-08-15",
+    "first_time_depth_invention": "closed in brainworkshop-founding-holdout-2026-08-15 after skip-shallower"
   }
 }

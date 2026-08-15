@@ -1,0 +1,26 @@
+{
+  "action_reversed": {
+    "accuracy": 0.0,
+    "controller_frozen": true,
+    "program_file_updates": 0,
+    "unique_verifier_bits": 60
+  },
+  "missing_history": {
+    "accuracy": 0.0,
+    "controller_frozen": true,
+    "program_file_updates": 0,
+    "unique_verifier_bits": 16
+  },
+  "reward_shuffled": {
+    "accuracy": 1.0,
+    "controller_frozen": true,
+    "program_file_updates": 0,
+    "unique_verifier_bits": 28
+  },
+  "wrong_depth": {
+    "accuracy": 0.19444444444444445,
+    "controller_frozen": true,
+    "program_file_updates": 0,
+    "unique_verifier_bits": 36
+  }
+}

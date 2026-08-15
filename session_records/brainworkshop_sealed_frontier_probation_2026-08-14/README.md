@@ -53,7 +53,11 @@ policy, then 65 versus 127 (`1.95×`) after skip-shallower on seed 97017.
 ## Why this is not promoted
 
 - two seeds on Dual/founding, not a holdout population;
-- no external promotion lease;
-- Neural Workshop Dual audio is still absent from the public framebuffer.
+- no external promotion lease in this record. Founding header transfer
+  and first-time depth later consumed their lease in
+  `session_records/brainworkshop_founding_holdout_2026-08-15/`;
+- Neural Workshop Dual audio was still absent from the public framebuffer
+  when this record was written. That hole is closed in
+  `session_records/brainworkshop_neural_workshop_dual_live_2026-08-15/`.
 
 Retain the blueprint. Do not treat an isolated threshold as mastery.

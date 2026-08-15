@@ -26,6 +26,13 @@ observations. The bank fails closed through an adjacent file checksum and
 internal artifact/router digests. Evidence and limits are in
 `session_records/brainworkshop_physical_program_bank_2026-08-14/`.
 
+`neural_workshop_instruction_route_seed81017.bank` is the frozen 2-cell
+1-back/2-back instruction-route source used by founding and header-transfer
+measurements. Its SHA-256 is
+`fb43f74caafa314a31951c56e8412179d91721499c275af98f8d9824ea0ee633`. The bank
+binds two immutable recursive files to public Neural Workshop headers. It is
+not a promoted founding result by itself.
+
 `AgentBrain.bank` is the canonical resumable name for that verified brain.
 The primary file contains immutable admitted temporal programs, their frozen
 controller binding, admission records, and opaque learned-event routing/reward

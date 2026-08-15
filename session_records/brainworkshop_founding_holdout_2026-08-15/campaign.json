@@ -1,0 +1,231 @@
+{
+  "configuration_digest": "d9d80ff1e24c5dd099984eeacafbec367efd5abdd9b410e20b9da4d2a909e3df",
+  "controller_sha256": "93a4dbb72953c60b7964546490c202ba9c6f4a4f9b4289de2c3f7db986690537",
+  "controls": {
+    "action_reversed": true,
+    "controller_frozen": true,
+    "fresh": true,
+    "missing_history": true,
+    "wrong_depth": true
+  },
+  "development_manifest_digest": "c6b261ac34a6e610a3be972546cc9c01f112558bb05a7486c895d7c9d37db3ee",
+  "experiment_id": "brainworkshop-founding-holdout-2026-08-15",
+  "first_time_depth": {
+    "eligible": true,
+    "reasons": []
+  },
+  "git_commit": "5bff8d025a9f1f63aba1af7f2bf758765f1062d6",
+  "header_transfer": {
+    "eligible": true,
+    "reasons": []
+  },
+  "holdout_claimed": true,
+  "holdout_id": "brainworkshop-founding-holdout-2026-08-15",
+  "promotion_manifest_digest": "d0d98eef394d93d7b982cffd7904c11efa6ae65661dcba9dcf75aba7a2fbb19f",
+  "protocol": "skip-shallower-after-nearest-depth-miss",
+  "replicates": [
+    {
+      "bank_sha256": "41f385f3bbb14987174e2f4bbf311fee7d90d64eda53dde54deeddb83eefa090",
+      "control_flags": {
+        "action_reversed": true,
+        "controller_frozen": true,
+        "fresh": true,
+        "missing_history": true,
+        "wrong_depth": true
+      },
+      "controls": {
+        "action_reversed": {
+          "accuracy": 0.0,
+          "controller_frozen": true,
+          "program_file_updates": 0,
+          "unique_verifier_bits": 59
+        },
+        "missing_history": {
+          "accuracy": 0.0,
+          "controller_frozen": true,
+          "program_file_updates": 0,
+          "unique_verifier_bits": 25
+        },
+        "reward_shuffled": {
+          "accuracy": 0.9583333333333334,
+          "controller_frozen": true,
+          "program_file_updates": 0,
+          "unique_verifier_bits": 24
+        },
+        "wrong_depth": {
+          "accuracy": 0.29411764705882354,
+          "controller_frozen": true,
+          "program_file_updates": 0,
+          "unique_verifier_bits": 34
+        }
+      },
+      "founding": {
+        "depth_fresh_bits": 116,
+        "depth_fresh_over_warm": 1.4146341463414633,
+        "depth_target": "2-cell 3-back",
+        "depth_warm_bits": 82,
+        "header_fresh_bits": 97,
+        "header_fresh_over_warm": 4.217391304347826,
+        "header_target": "3-cell 3-back",
+        "header_warm_bits": 23
+      },
+      "metrics": {
+        "controller_frozen": 1.0,
+        "depth_accuracy": 0.9714285714285714,
+        "depth_composed": 1.0,
+        "depth_fresh_bits": 116.0,
+        "depth_fresh_over_warm": 1.4146341463414633,
+        "depth_warm_bits": 82.0,
+        "header_accuracy": 1.0,
+        "header_fresh_bits": 97.0,
+        "header_fresh_over_warm": 4.217391304347826,
+        "header_retrieved": 1.0,
+        "header_warm_bits": 23.0,
+        "optimizer_updates": 0.0,
+        "program_file_updates": 0.0,
+        "replayed_examples": 0.0,
+        "retention_min": 0.967741935483871
+      },
+      "seed": 110017,
+      "wall_seconds": 73.78930079203565
+    },
+    {
+      "bank_sha256": "559ee98437b041ac218d2d1fc42a4ac0dd8e4d7473e9eec25145fb18a9f6fa81",
+      "control_flags": {
+        "action_reversed": true,
+        "controller_frozen": true,
+        "fresh": true,
+        "missing_history": true,
+        "wrong_depth": true
+      },
+      "controls": {
+        "action_reversed": {
+          "accuracy": 0.0,
+          "controller_frozen": true,
+          "program_file_updates": 0,
+          "unique_verifier_bits": 60
+        },
+        "missing_history": {
+          "accuracy": 0.0,
+          "controller_frozen": true,
+          "program_file_updates": 0,
+          "unique_verifier_bits": 16
+        },
+        "reward_shuffled": {
+          "accuracy": 1.0,
+          "controller_frozen": true,
+          "program_file_updates": 0,
+          "unique_verifier_bits": 28
+        },
+        "wrong_depth": {
+          "accuracy": 0.19444444444444445,
+          "controller_frozen": true,
+          "program_file_updates": 0,
+          "unique_verifier_bits": 36
+        }
+      },
+      "founding": {
+        "depth_fresh_bits": 119,
+        "depth_fresh_over_warm": 1.676056338028169,
+        "depth_target": "2-cell 3-back",
+        "depth_warm_bits": 71,
+        "header_fresh_bits": 82,
+        "header_fresh_over_warm": 4.1,
+        "header_target": "3-cell 3-back",
+        "header_warm_bits": 20
+      },
+      "metrics": {
+        "controller_frozen": 1.0,
+        "depth_accuracy": 1.0,
+        "depth_composed": 1.0,
+        "depth_fresh_bits": 119.0,
+        "depth_fresh_over_warm": 1.676056338028169,
+        "depth_warm_bits": 71.0,
+        "header_accuracy": 1.0,
+        "header_fresh_bits": 82.0,
+        "header_fresh_over_warm": 4.1,
+        "header_retrieved": 1.0,
+        "header_warm_bits": 20.0,
+        "optimizer_updates": 0.0,
+        "program_file_updates": 0.0,
+        "replayed_examples": 0.0,
+        "retention_min": 1.0
+      },
+      "seed": 111017,
+      "wall_seconds": 72.37904716597404
+    },
+    {
+      "bank_sha256": "a9e5c36c70a2e1ac27c837ce07976110df19c0078f85ae12f3a93881de3cd3ce",
+      "control_flags": {
+        "action_reversed": true,
+        "controller_frozen": true,
+        "fresh": true,
+        "missing_history": true,
+        "wrong_depth": true
+      },
+      "controls": {
+        "action_reversed": {
+          "accuracy": 0.0,
+          "controller_frozen": true,
+          "program_file_updates": 0,
+          "unique_verifier_bits": 58
+        },
+        "missing_history": {
+          "accuracy": 0.0,
+          "controller_frozen": true,
+          "program_file_updates": 0,
+          "unique_verifier_bits": 25
+        },
+        "reward_shuffled": {
+          "accuracy": 1.0,
+          "controller_frozen": true,
+          "program_file_updates": 0,
+          "unique_verifier_bits": 18
+        },
+        "wrong_depth": {
+          "accuracy": 0.2647058823529412,
+          "controller_frozen": true,
+          "program_file_updates": 0,
+          "unique_verifier_bits": 34
+        }
+      },
+      "founding": {
+        "depth_fresh_bits": 125,
+        "depth_fresh_over_warm": 1.8656716417910448,
+        "depth_target": "2-cell 3-back",
+        "depth_warm_bits": 67,
+        "header_fresh_bits": 89,
+        "header_fresh_over_warm": 3.423076923076923,
+        "header_target": "3-cell 3-back",
+        "header_warm_bits": 26
+      },
+      "metrics": {
+        "controller_frozen": 1.0,
+        "depth_accuracy": 1.0,
+        "depth_composed": 1.0,
+        "depth_fresh_bits": 125.0,
+        "depth_fresh_over_warm": 1.8656716417910448,
+        "depth_warm_bits": 67.0,
+        "header_accuracy": 0.9230769230769231,
+        "header_fresh_bits": 89.0,
+        "header_fresh_over_warm": 3.423076923076923,
+        "header_retrieved": 1.0,
+        "header_warm_bits": 26.0,
+        "optimizer_updates": 0.0,
+        "program_file_updates": 0.0,
+        "replayed_examples": 0.0,
+        "retention_min": 0.9545454545454546
+      },
+      "seed": 112017,
+      "wall_seconds": 72.74474637489766
+    }
+  ],
+  "schema": "neural-computer.founding-holdout-campaign.v1",
+  "seeds": [
+    110017,
+    111017,
+    112017
+  ],
+  "source_bank_sha256": "fb43f74caafa314a31951c56e8412179d91721499c275af98f8d9824ea0ee633",
+  "wall_seconds": 288.0587001660606
+}

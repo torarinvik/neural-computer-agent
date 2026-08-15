@@ -1,0 +1,65 @@
+{
+  "bank_sha256": "a9e5c36c70a2e1ac27c837ce07976110df19c0078f85ae12f3a93881de3cd3ce",
+  "control_flags": {
+    "action_reversed": true,
+    "controller_frozen": true,
+    "fresh": true,
+    "missing_history": true,
+    "wrong_depth": true
+  },
+  "controls": {
+    "action_reversed": {
+      "accuracy": 0.0,
+      "controller_frozen": true,
+      "program_file_updates": 0,
+      "unique_verifier_bits": 58
+    },
+    "missing_history": {
+      "accuracy": 0.0,
+      "controller_frozen": true,
+      "program_file_updates": 0,
+      "unique_verifier_bits": 25
+    },
+    "reward_shuffled": {
+      "accuracy": 1.0,
+      "controller_frozen": true,
+      "program_file_updates": 0,
+      "unique_verifier_bits": 18
+    },
+    "wrong_depth": {
+      "accuracy": 0.2647058823529412,
+      "controller_frozen": true,
+      "program_file_updates": 0,
+      "unique_verifier_bits": 34
+    }
+  },
+  "founding": {
+    "depth_fresh_bits": 125,
+    "depth_fresh_over_warm": 1.8656716417910448,
+    "depth_target": "2-cell 3-back",
+    "depth_warm_bits": 67,
+    "header_fresh_bits": 89,
+    "header_fresh_over_warm": 3.423076923076923,
+    "header_target": "3-cell 3-back",
+    "header_warm_bits": 26
+  },
+  "metrics": {
+    "controller_frozen": 1.0,
+    "depth_accuracy": 1.0,
+    "depth_composed": 1.0,
+    "depth_fresh_bits": 125.0,
+    "depth_fresh_over_warm": 1.8656716417910448,
+    "depth_warm_bits": 67.0,
+    "header_accuracy": 0.9230769230769231,
+    "header_fresh_bits": 89.0,
+    "header_fresh_over_warm": 3.423076923076923,
+    "header_retrieved": 1.0,
+    "header_warm_bits": 26.0,
+    "optimizer_updates": 0.0,
+    "program_file_updates": 0.0,
+    "replayed_examples": 0.0,
+    "retention_min": 0.9545454545454546
+  },
+  "seed": 112017,
+  "wall_seconds": 72.74474637489766
+}
