@@ -3,14 +3,17 @@
   "bank_unchanged": true,
   "composite_cost_ratio": 0.8780487804878049,
   "composite_labelled_steps_control": 18368,
+  "composite_labelled_steps_factored": 14112,
   "composite_labelled_steps_growing": 16128,
   "composites": 14,
   "composites_solved_from_library": 4,
+  "composites_solved_from_parts": 4,
   "control": {
     "from_library": 0,
     "identified": 9,
     "labelled_steps": 22176,
     "library_size": 0,
+    "mode": "none",
     "of": 18,
     "tasks": [
       {
@@ -230,16 +233,245 @@
         "true_state_count": 6
       }
     ],
-    "used_library": false
+    "used_library": "none"
   },
-  "elapsed_seconds": 671.1882464999799,
+  "elapsed_seconds": 187.58942162489984,
   "episode_steps": 16,
   "experiment_id": "brainworkshop-composition-accumulation-2026-08-15",
+  "factored": {
+    "from_library": 4,
+    "identified": 11,
+    "labelled_steps": 17920,
+    "library_size": 8,
+    "mode": "factored",
+    "of": 18,
+    "tasks": [
+      {
+        "episodes": 112,
+        "held_out_accuracy": null,
+        "identified": false,
+        "kind": "primitive",
+        "label": null,
+        "labelled_steps": 1792,
+        "parts_in_library": 0,
+        "source": null,
+        "state_count": null,
+        "true_state_count": 2
+      },
+      {
+        "episodes": 7,
+        "held_out_accuracy": 1.0,
+        "identified": true,
+        "kind": "primitive",
+        "label": "induce",
+        "labelled_steps": 112,
+        "parts_in_library": 0,
+        "source": "induced",
+        "state_count": 3,
+        "true_state_count": 3
+      },
+      {
+        "episodes": 7,
+        "held_out_accuracy": 1.0,
+        "identified": true,
+        "kind": "primitive",
+        "label": "induce",
+        "labelled_steps": 112,
+        "parts_in_library": 0,
+        "source": "induced",
+        "state_count": 2,
+        "true_state_count": 2
+      },
+      {
+        "episodes": 112,
+        "held_out_accuracy": null,
+        "identified": false,
+        "kind": "primitive",
+        "label": null,
+        "labelled_steps": 1792,
+        "parts_in_library": 0,
+        "source": null,
+        "state_count": null,
+        "true_state_count": 3
+      },
+      {
+        "episodes": 112,
+        "held_out_accuracy": null,
+        "identified": false,
+        "kind": "composite",
+        "label": null,
+        "labelled_steps": 1792,
+        "parts_in_library": 0,
+        "source": null,
+        "state_count": null,
+        "true_state_count": 6
+      },
+      {
+        "episodes": 112,
+        "held_out_accuracy": null,
+        "identified": false,
+        "kind": "composite",
+        "label": null,
+        "labelled_steps": 1792,
+        "parts_in_library": 0,
+        "source": null,
+        "state_count": null,
+        "true_state_count": 5
+      },
+      {
+        "episodes": 28,
+        "held_out_accuracy": 1.0,
+        "identified": true,
+        "kind": "composite",
+        "label": "induce",
+        "labelled_steps": 448,
+        "parts_in_library": 0,
+        "source": "induced",
+        "state_count": 6,
+        "true_state_count": 6
+      },
+      {
+        "episodes": 28,
+        "held_out_accuracy": 1.0,
+        "identified": true,
+        "kind": "composite",
+        "label": "fit:1+2",
+        "labelled_steps": 448,
+        "parts_in_library": 0,
+        "source": "library",
+        "state_count": 12,
+        "true_state_count": 4
+      },
+      {
+        "episodes": 28,
+        "held_out_accuracy": 1.0,
+        "identified": true,
+        "kind": "composite",
+        "label": "fit:1+2",
+        "labelled_steps": 448,
+        "parts_in_library": 0,
+        "source": "library",
+        "state_count": 12,
+        "true_state_count": 4
+      },
+      {
+        "episodes": 112,
+        "held_out_accuracy": null,
+        "identified": false,
+        "kind": "composite",
+        "label": null,
+        "labelled_steps": 1792,
+        "parts_in_library": 0,
+        "source": null,
+        "state_count": null,
+        "true_state_count": 5
+      },
+      {
+        "episodes": 112,
+        "held_out_accuracy": null,
+        "identified": false,
+        "kind": "composite",
+        "label": null,
+        "labelled_steps": 1792,
+        "parts_in_library": 0,
+        "source": null,
+        "state_count": null,
+        "true_state_count": 6
+      },
+      {
+        "episodes": 7,
+        "held_out_accuracy": 1.0,
+        "identified": true,
+        "kind": "composite",
+        "label": "fit:0+1",
+        "labelled_steps": 112,
+        "parts_in_library": 0,
+        "source": "library",
+        "state_count": 6,
+        "true_state_count": 3
+      },
+      {
+        "episodes": 28,
+        "held_out_accuracy": 1.0,
+        "identified": true,
+        "kind": "composite",
+        "label": "induce",
+        "labelled_steps": 448,
+        "parts_in_library": 0,
+        "source": "induced",
+        "state_count": 5,
+        "true_state_count": 5
+      },
+      {
+        "episodes": 7,
+        "held_out_accuracy": 1.0,
+        "identified": true,
+        "kind": "composite",
+        "label": "fit:-1+4",
+        "labelled_steps": 112,
+        "parts_in_library": 0,
+        "source": "library",
+        "state_count": 5,
+        "true_state_count": 5
+      },
+      {
+        "episodes": 112,
+        "held_out_accuracy": null,
+        "identified": false,
+        "kind": "composite",
+        "label": null,
+        "labelled_steps": 1792,
+        "parts_in_library": 0,
+        "source": null,
+        "state_count": null,
+        "true_state_count": 8
+      },
+      {
+        "episodes": 56,
+        "held_out_accuracy": 1.0,
+        "identified": true,
+        "kind": "composite",
+        "label": "induce",
+        "labelled_steps": 896,
+        "parts_in_library": 0,
+        "source": "induced",
+        "state_count": 7,
+        "true_state_count": 7
+      },
+      {
+        "episodes": 112,
+        "held_out_accuracy": 1.0,
+        "identified": true,
+        "kind": "composite",
+        "label": "induce",
+        "labelled_steps": 1792,
+        "parts_in_library": 0,
+        "source": "induced",
+        "state_count": 6,
+        "true_state_count": 6
+      },
+      {
+        "episodes": 28,
+        "held_out_accuracy": 1.0,
+        "identified": true,
+        "kind": "composite",
+        "label": "induce",
+        "labelled_steps": 448,
+        "parts_in_library": 0,
+        "source": "induced",
+        "state_count": 6,
+        "true_state_count": 6
+      }
+    ],
+    "used_library": "factored"
+  },
+  "factored_cost_ratio": 0.7682926829268293,
   "growing": {
     "from_library": 4,
     "identified": 9,
     "labelled_steps": 19936,
     "library_size": 9,
+    "mode": "products",
     "of": 18,
     "tasks": [
       {
@@ -459,7 +691,7 @@
         "true_state_count": 6
       }
     ],
-    "used_library": true
+    "used_library": "products"
   },
   "ladder": [
     7,

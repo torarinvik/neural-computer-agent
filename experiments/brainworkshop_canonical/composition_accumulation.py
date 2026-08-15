@@ -57,6 +57,7 @@ from .identification_ceiling import (
     held_out_accuracy,
     infer_machine,
 )
+from .machine_factorization import factorize
 from .prototype_templates import cluster_events, observe_events
 from .rendered_environment import RenderedBrainWorkshopConfig
 from .rule_automata import RuleAutomaton
@@ -103,6 +104,85 @@ def library_candidates(
     return tuple(candidates)
 
 
+TRIVIAL_PART_CACHE: dict[int, RuleAutomaton] = {}
+
+
+def trivial_part(symbol_count: int) -> RuleAutomaton:
+    """A one-state component, so a single part can be used on its own."""
+
+    if symbol_count not in TRIVIAL_PART_CACHE:
+        TRIVIAL_PART_CACHE[symbol_count] = RuleAutomaton(
+            symbol_count=symbol_count,
+            transitions=((0,) * symbol_count,),
+            outputs=((0,) * symbol_count,),
+        ).validate()
+    return TRIVIAL_PART_CACHE[symbol_count]
+
+
+def fit_output_table(
+    left: RuleAutomaton, right: RuleAutomaton, traces
+) -> dict[tuple[int, int, int], int] | None:
+    """Fill the output table two components imply, or None on a conflict.
+
+    This is the step that replaces enumerating combiners. Every observation
+    names one cell, so the table is *read off* the evidence in linear time
+    instead of being guessed from a list an experimenter wrote. It can express
+    any output function of the two blocks and the symbol, of which `and`, `or`
+    and `xor` are three.
+    """
+
+    table: dict[tuple[int, int, int], int] = {}
+    for trace in traces:
+        first = 0
+        second = 0
+        for position, symbol in enumerate(trace.symbols):
+            if trace.eligible[position]:
+                cell = (first, second, int(symbol))
+                want = int(trace.outputs[position])
+                seen = table.get(cell)
+                if seen is None:
+                    table[cell] = want
+                elif seen != want:
+                    return None
+            first = int(left.transitions[first][int(symbol)])
+            second = int(right.transitions[second][int(symbol)])
+    return table
+
+
+def table_accuracy(
+    left: RuleAutomaton,
+    right: RuleAutomaton,
+    table: dict[tuple[int, int, int], int],
+    trace,
+) -> float:
+    """How well a fitted pair predicts an episode it was not fitted on."""
+
+    first = 0
+    second = 0
+    hits = 0
+    trials = 0
+    for position, symbol in enumerate(trace.symbols):
+        if trace.eligible[position]:
+            trials += 1
+            if table.get((first, second, int(symbol)), 0) == int(
+                trace.outputs[position]
+            ):
+                hits += 1
+        first = int(left.transitions[first][int(symbol)])
+        second = int(right.transitions[second][int(symbol)])
+    return hits / trials if trials else 0.0
+
+
+def parts_of(machine: RuleAutomaton) -> tuple[RuleAutomaton, ...]:
+    """The components a machine decomposes into, or the machine itself."""
+
+    found = factorize(machine)
+    if not found:
+        return (machine,)
+    best = found[0]
+    return (best.left, best.right)
+
+
 def _fits(machine: RuleAutomaton, traces) -> bool:
     """Whether a candidate reproduces every labelled step it has been shown."""
 
@@ -117,7 +197,7 @@ def learn_one_task(
     *,
     seed: int,
     library: tuple[RuleAutomaton, ...],
-    use_library: bool,
+    use_library: str,
     node_budget: int = NODE_BUDGET,
 ) -> dict[str, Any]:
     """Climb the evidence ladder until the task is identified, or give up."""
@@ -128,7 +208,9 @@ def learn_one_task(
         payload, encoders, bank, evaluation, clusters, seed=seed + 1
     )
     short = replace(evaluation, steps=EPISODE_STEPS).validate()
-    candidates = library_candidates(library) if use_library else ()
+    candidates = (
+        library_candidates(library) if use_library == "products" else ()
+    )
     traces: list[Any] = []
     collected = 0
     for rung in LADDER:
@@ -160,6 +242,29 @@ def learn_one_task(
                     "state_count": candidate.state_count,
                     "machine": candidate,
                 }
+        if use_library == "factored" and library:
+            pool = (trivial_part(rule.symbol_count), *library)
+            for left in range(len(pool)):
+                for right in range(left, len(pool)):
+                    table = fit_output_table(pool[left], pool[right], traces)
+                    if table is None:
+                        continue
+                    accuracy = table_accuracy(
+                        pool[left], pool[right], table, held_out
+                    )
+                    if accuracy == 1.0:
+                        return {
+                            "identified": True,
+                            "source": "library",
+                            "label": f"fit:{left - 1}+{right - 1}",
+                            "labelled_steps": spent,
+                            "episodes": collected,
+                            "held_out_accuracy": accuracy,
+                            "state_count": (
+                                pool[left].state_count * pool[right].state_count
+                            ),
+                            "machine": None,
+                        }
         machine = infer_machine(tuple(traces), node_budget=node_budget)
         if machine is not None:
             accuracy = held_out_accuracy(machine, held_out)
@@ -192,7 +297,7 @@ def run_arm(
     bank: ExternalTemporalProgramBank,
     curriculum,
     *,
-    use_library: bool,
+    use_library: str,
     seed: int,
     node_budget: int = NODE_BUDGET,
 ) -> dict[str, Any]:
@@ -220,13 +325,22 @@ def run_arm(
             if any(item.digest() == part for item in library)
         )
         rows.append(result)
-        novel = machine is not None and all(
-            item.digest() != machine.digest() for item in library
-        )
-        if use_library and novel:
-            library.append(machine)
+        if use_library == "products" and machine is not None:
+            if all(item.digest() != machine.digest() for item in library):
+                library.append(machine)
+        elif use_library == "factored" and machine is not None:
+            # Store the solution *and* its parts. Storing only the parts was
+            # tried first and lost: nine whole machines collapse to three
+            # distinct components, and three components cannot span the task
+            # space. Factoring is meant to extend the vocabulary, not replace
+            # it, so the library keeps both and the pool strictly contains
+            # what the products arm has.
+            for item in (machine, *parts_of(machine)):
+                if all(held.digest() != item.digest() for held in library):
+                    library.append(item)
     return {
         "used_library": use_library,
+        "mode": use_library,
         "library_size": len(library),
         "identified": sum(1 for row in rows if row["identified"]),
         "of": len(rows),
@@ -262,11 +376,15 @@ def run_composition_accumulation(
     started = time.perf_counter()
     growing = run_arm(
         payload, encoders, bank, curriculum,
-        use_library=True, seed=seed, node_budget=node_budget,
+        use_library="products", seed=seed, node_budget=node_budget,
+    )
+    factored = run_arm(
+        payload, encoders, bank, curriculum,
+        use_library="factored", seed=seed, node_budget=node_budget,
     )
     control = run_arm(
         payload, encoders, bank, curriculum,
-        use_library=False, seed=seed, node_budget=node_budget,
+        use_library="none", seed=seed, node_budget=node_budget,
     )
     after = sha256_file(bank_path)
     if after != before:
@@ -295,7 +413,28 @@ def run_composition_accumulation(
         "primitives": len(pool),
         "composites": len(composites),
         "growing": growing,
+        "factored": factored,
         "control": control,
+        "composite_labelled_steps_factored": sum(
+            int(row["labelled_steps"])
+            for row in factored["tasks"]
+            if row["kind"] == "composite"
+        ),
+        "factored_cost_ratio": (
+            sum(
+                int(row["labelled_steps"])
+                for row in factored["tasks"]
+                if row["kind"] == "composite"
+            )
+            / fixed_steps
+            if fixed_steps
+            else None
+        ),
+        "composites_solved_from_parts": sum(
+            1
+            for row in factored["tasks"]
+            if row["kind"] == "composite" and row["source"] == "library"
+        ),
         "composite_labelled_steps_growing": grown_steps,
         "composite_labelled_steps_control": fixed_steps,
         "composite_cost_ratio": (
@@ -364,7 +503,15 @@ def main() -> None:
             {
                 "bank_unchanged": report["bank_unchanged"],
                 "growing": f"{report['growing']['identified']}/{report['growing']['of']}",
+                "factored": f"{report['factored']['identified']}/{report['factored']['of']}",
                 "control": f"{report['control']['identified']}/{report['control']['of']}",
+                "composite_steps_factored": report[
+                    "composite_labelled_steps_factored"
+                ],
+                "factored_cost_ratio": report["factored_cost_ratio"],
+                "composites_solved_from_parts": report[
+                    "composites_solved_from_parts"
+                ],
                 "composite_steps_growing": report["composite_labelled_steps_growing"],
                 "composite_steps_control": report["composite_labelled_steps_control"],
                 "composite_cost_ratio": report["composite_cost_ratio"],
