@@ -42,3 +42,7 @@ wandb/
 # Nested session sweeps (session_records/<run>/<arm>/raw/). Selected evidence
 # reports are force-added alongside promoted milestones.
 /session_records/*/*/raw/
+
+# Scratch libraries grown by curriculum diagnostics. The curated bank lives in
+# artifacts/checkpoints and is never written by these runs.
+/artifacts/scratch/

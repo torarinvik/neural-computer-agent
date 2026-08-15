@@ -93,5 +93,35 @@ interpretation does not bend that curve, the honest conclusion is that the
 external-program story is decoration and the capability lives in the network
 after all.
 
-That curve does not exist yet. Until it does, this decision is a bet with a
-stated price, not a result.
+## The curve, measured (2026-08-15)
+
+It exists now, for the pre-interpreter path:
+`session_records/brainworkshop_accumulation_curve_2026-08-15/`. Eighteen
+sampled rules learned in sequence, once with the library growing and once with
+it restored before every rule.
+
+**The curve bends the wrong way.** The growing arm spent 1432 verifier
+episodes against the control's 886 -- a cost ratio of **1.616** -- and gated
+exactly the same 7 of 18 rules. Reuse does happen and is worth 2.3x to 4.8x
+where it fires, but it fires only as `retrieve` of an exact behavioural
+duplicate: across the whole curriculum there were zero composes, zero inverts
+of a learned file, and zero ANDs over a learned file.
+
+The loss is arithmetic rather than noise. Proposals run in a fixed order, so
+growing the library from 3 files to 7 grew the pre-invention prefix from 18
+proposals to 69. Eleven rules are inexpressible in this family and therefore
+execute the whole list every time (120 episodes against the control's 67). The
+tax is paid eleven times, the saving collected three.
+
+This does not falsify the decision, because the interpreter was not in either
+arm. It does three other things:
+
+1. It sets the number an interpreter has to beat: **1.616, with reuse confined
+   to exact duplicates.**
+2. It relocates the bottleneck. Not representation -- the counter bridge
+   closed that at 18/18. Not the controller -- it never ran differently
+   between arms. The searcher has no way to decide what to try, so every
+   admitted file becomes one more thing to execute blindly.
+3. It reorders the work. An interpreter makes programs longer and the search
+   space larger. Building more of one before the proposer exists adds load to
+   the component the curve just identified as the failure.
