@@ -236,6 +236,41 @@ def compile_macos_capture_helper(output: Path) -> Path:
     return output
 
 
+def compile_macos_av_capture_helper(output: Path) -> Path:
+    """Compile the ScreenCaptureKit window tap that also emits public PCM."""
+
+    source = Path(__file__).parents[2] / "tools" / "macos_window_av_capture.swift"
+    if not source.is_file():
+        raise FileNotFoundError(source)
+    output = Path(output)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    subprocess.run(
+        [
+            "swiftc",
+            "-O",
+            "-parse-as-library",
+            "-framework",
+            "AVFoundation",
+            "-framework",
+            "CoreGraphics",
+            "-framework",
+            "CoreImage",
+            "-framework",
+            "CoreMedia",
+            "-framework",
+            "CoreVideo",
+            "-framework",
+            "ScreenCaptureKit",
+            str(source),
+            "-o",
+            str(output),
+        ],
+        check=True,
+        capture_output=True,
+    )
+    return output
+
+
 def run_physical_brainworkshop_lifetime(
     machine: SourcePreservingTemporalMachine,
     config: PhysicalBrainWorkshopConfig,

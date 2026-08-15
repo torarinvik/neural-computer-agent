@@ -30,6 +30,8 @@ from .live import LiveActionReceipt, LiveInputBatch, LiveOutcomeEvent
 PUBLIC_OBSERVATION_EVIDENCE_SCHEMA = "neural-computer.public-observation-evidence.v1"
 EVIDENCE_BOUND_OUTCOME_SCHEMA = "neural-computer.evidence-bound-outcome.v1"
 CAPTURED_SCREEN_FRAME_SCHEMA = "neural-computer.captured-screen-frame.v1"
+NCA1_CAPTURE_MAGIC = b"NCA1"
+NCA1_CAPTURE_HEADER = struct.Struct("<4sIIIIIHHII")
 
 
 @dataclass(frozen=True)
@@ -70,6 +72,36 @@ def _pixel_digest(rgb: torch.Tensor) -> str:
     return hashlib.sha256(shape + b":" + pixels.numpy().tobytes()).hexdigest()
 
 
+def _audio_digest(
+    pcm: bytes,
+    *,
+    rate: int,
+    channels: int,
+    sample_width: int,
+) -> str:
+    header = f"{rate}x{channels}x{sample_width}:{len(pcm)}".encode()
+    return hashlib.sha256(header + b":" + pcm).hexdigest()
+
+
+def pcm_rms(pcm: bytes, *, sample_width: int) -> float:
+    """Root-mean-square of public PCM in [-1, 1]."""
+
+    if not pcm or sample_width not in {1, 2}:
+        return 0.0
+    raw = bytearray(pcm)
+    if sample_width == 1:
+        wave = torch.frombuffer(raw, dtype=torch.uint8).to(torch.float32)
+        wave = (wave - 128.0) / 128.0
+    else:
+        if len(raw) % 2:
+            raw = raw[: len(raw) - 1]
+        if not raw:
+            return 0.0
+        wave = torch.frombuffer(raw, dtype=torch.int16).to(torch.float32)
+        wave = wave / 32768.0
+    return float(wave.square().mean().sqrt())
+
+
 @dataclass(frozen=True)
 class CapturedScreenFrame:
     """Exact public pixels plus audit-only capture provenance.
@@ -85,6 +117,12 @@ class CapturedScreenFrame:
     application: str
     title: str
     bounds: tuple[int, int, int, int]
+    audio_pcm: bytes | None = None
+    audio_rate: int | None = None
+    audio_channels: int | None = None
+    audio_sample_width: int | None = None
+    audio_digest: str | None = None
+    audio_stream_active: bool = False
     schema: str = CAPTURED_SCREEN_FRAME_SCHEMA
 
     @classmethod
@@ -107,6 +145,43 @@ class CapturedScreenFrame:
             bounds=bounds,
         ).validate()
 
+    @classmethod
+    def from_public(
+        cls,
+        rgb: torch.Tensor,
+        *,
+        captured_at: float,
+        application: str,
+        title: str,
+        bounds: tuple[int, int, int, int],
+        audio_pcm: bytes,
+        audio_rate: int,
+        audio_channels: int,
+        audio_sample_width: int,
+        audio_stream_active: bool,
+    ) -> CapturedScreenFrame:
+        pixels = rgb.detach().to(device="cpu", dtype=torch.uint8).contiguous()
+        pcm = bytes(audio_pcm)
+        return cls(
+            rgb=pixels,
+            captured_at=float(captured_at),
+            digest=_pixel_digest(pixels),
+            application=application,
+            title=title,
+            bounds=bounds,
+            audio_pcm=pcm,
+            audio_rate=int(audio_rate),
+            audio_channels=int(audio_channels),
+            audio_sample_width=int(audio_sample_width),
+            audio_digest=_audio_digest(
+                pcm,
+                rate=int(audio_rate),
+                channels=int(audio_channels),
+                sample_width=int(audio_sample_width),
+            ),
+            audio_stream_active=bool(audio_stream_active),
+        ).validate()
+
     def validate(self) -> CapturedScreenFrame:
         if self.schema != CAPTURED_SCREEN_FRAME_SCHEMA:
             raise ValueError(f"unsupported captured-frame schema: {self.schema}")
@@ -122,6 +197,34 @@ class CapturedScreenFrame:
             raise ValueError("captured frame needs positive window bounds")
         if self.digest != _pixel_digest(self.rgb):
             raise ValueError("captured frame digest does not match its pixels")
+        audio_fields = (
+            self.audio_pcm,
+            self.audio_rate,
+            self.audio_channels,
+            self.audio_sample_width,
+            self.audio_digest,
+        )
+        if all(field is None for field in audio_fields):
+            return self
+        if any(field is None for field in audio_fields):
+            raise ValueError("public audio fields must be complete or all absent")
+        if (
+            self.audio_rate is None
+            or self.audio_channels is None
+            or self.audio_sample_width is None
+            or min(self.audio_rate, self.audio_channels, self.audio_sample_width) < 1
+        ):
+            raise ValueError("public audio metadata must be positive")
+        if not isinstance(self.audio_pcm, (bytes, bytearray)):
+            raise TypeError("public audio PCM must be bytes")
+        expected = _audio_digest(
+            bytes(self.audio_pcm),
+            rate=self.audio_rate,
+            channels=self.audio_channels,
+            sample_width=self.audio_sample_width,
+        )
+        if self.audio_digest != expected:
+            raise ValueError("captured audio digest does not match its PCM")
         return self
 
 
@@ -134,6 +237,7 @@ class PublicObservationEvidence:
     ended_at: float
     region: NormalizedRegion
     source: str = "public-screen"
+    audio_digests: tuple[str, ...] = ()
     schema: str = PUBLIC_OBSERVATION_EVIDENCE_SCHEMA
 
     def validate(self) -> PublicObservationEvidence:
@@ -414,6 +518,7 @@ class VisibleColorOutcomeReader:
         if archive_directory is not None:
             archive_directory.mkdir(parents=True, exist_ok=True)
         self._digests: list[str] = []
+        self._audio_digests: list[str] = []
         self._started_at = 0.0
         self._negative_seen = False
         self._positive_seen = False
@@ -421,6 +526,7 @@ class VisibleColorOutcomeReader:
 
     def reset(self, frame: CapturedScreenFrame) -> None:
         self._digests = []
+        self._audio_digests = []
         self._started_at = frame.captured_at
         self._negative_seen = False
         self._positive_seen = False
@@ -434,6 +540,8 @@ class VisibleColorOutcomeReader:
         ):
             raise ValueError("public feedback frames must be chronological")
         self._digests.append(frame.digest)
+        if frame.audio_digest is not None:
+            self._audio_digests.append(frame.audio_digest)
         self._last_observed_at = frame.captured_at
         if self.archive_directory is not None:
             path = self.archive_directory / f"{frame.digest}.png"
@@ -471,6 +579,7 @@ class VisibleColorOutcomeReader:
             started_at=self._started_at,
             ended_at=frame.captured_at,
             region=self.region,
+            audio_digests=tuple(self._audio_digests),
         ).validate()
         return EvidenceBoundOutcome(
             receipt_id=receipt.receipt_id,
@@ -898,6 +1007,240 @@ class NativeMacOSWindowCapture:
             application=state.application,
             title=state.title,
             bounds=state.bounds,
+        )
+
+    def close(self) -> None:
+        process = self._process
+        self._process = None
+        if process is None:
+            return
+        if process.stdin is not None:
+            process.stdin.close()
+        try:
+            process.wait(timeout=1.0)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.wait(timeout=1.0)
+
+    def __enter__(self) -> Self:
+        return self
+
+    def __exit__(self, *_error: object) -> None:
+        self.close()
+
+
+def parse_nca1_message(payload: bytes) -> dict[str, object]:
+    """Decode one public AV snapshot from the ScreenCaptureKit helper."""
+
+    if len(payload) < NCA1_CAPTURE_HEADER.size:
+        raise ValueError("NCA1 capture message is truncated")
+    (
+        magic,
+        version,
+        width,
+        height,
+        rgb_nbytes,
+        sample_rate,
+        channels,
+        sample_width,
+        pcm_nbytes,
+        flags,
+    ) = NCA1_CAPTURE_HEADER.unpack_from(payload)
+    if magic != NCA1_CAPTURE_MAGIC:
+        raise ValueError("capture message magic is not NCA1")
+    if version != 1:
+        raise ValueError(f"unsupported NCA1 capture version: {version}")
+    expected = NCA1_CAPTURE_HEADER.size + int(rgb_nbytes) + int(pcm_nbytes)
+    if len(payload) != expected:
+        raise ValueError("NCA1 capture payload length does not match the header")
+    if min(width, height) < 1 or int(rgb_nbytes) != int(width) * int(height) * 3:
+        raise ValueError("NCA1 RGB payload does not match the declared size")
+    if min(sample_rate, channels, sample_width) < 1:
+        raise ValueError("NCA1 audio metadata must be positive")
+    rgb_start = NCA1_CAPTURE_HEADER.size
+    rgb_end = rgb_start + int(rgb_nbytes)
+    return {
+        "width": int(width),
+        "height": int(height),
+        "rgb": payload[rgb_start:rgb_end],
+        "sample_rate": int(sample_rate),
+        "channels": int(channels),
+        "sample_width": int(sample_width),
+        "pcm": payload[rgb_end : rgb_end + int(pcm_nbytes)],
+        "audio_stream_active": bool(int(flags) & 1),
+    }
+
+
+def encode_nca1_message(
+    *,
+    width: int,
+    height: int,
+    rgb: bytes,
+    pcm: bytes,
+    sample_rate: int = 48_000,
+    channels: int = 1,
+    sample_width: int = 2,
+    audio_stream_active: bool = True,
+) -> bytes:
+    """Encode one helper snapshot. Used by tests and discarded diagnostics."""
+
+    header = NCA1_CAPTURE_HEADER.pack(
+        NCA1_CAPTURE_MAGIC,
+        1,
+        int(width),
+        int(height),
+        len(rgb),
+        int(sample_rate),
+        int(channels),
+        int(sample_width),
+        len(pcm),
+        1 if audio_stream_active else 0,
+    )
+    return header + bytes(rgb) + bytes(pcm)
+
+
+class PublicWaveformEncoder(nn.Module):
+    """Frozen public-PCM projection. Letter IDs are not inputs."""
+
+    def __init__(
+        self,
+        event_width: int,
+        *,
+        source_key_width: int = 4,
+        seed: int = 3_017,
+    ) -> None:
+        super().__init__()
+        if min(event_width, source_key_width) < 1:
+            raise ValueError("waveform encoder dimensions must be positive")
+        self.event_width = int(event_width)
+        self.source_key_width = int(source_key_width)
+        self.pool = nn.AdaptiveAvgPool1d(256)
+        self.projection = nn.Linear(256, self.event_width, bias=False)
+        self.normalization = nn.LayerNorm(self.event_width)
+        with torch.random.fork_rng():
+            torch.manual_seed(seed)
+            nn.init.orthogonal_(self.projection.weight)
+            self.source_key = nn.Parameter(torch.randn(self.source_key_width))
+        self.requires_grad_(False)
+        self.emitted_payloads: list[torch.Tensor] = []
+
+    def encode(self, frame: CapturedScreenFrame) -> AmodalEvent:
+        if (
+            frame.audio_pcm is None
+            or frame.audio_rate is None
+            or frame.audio_channels is None
+            or frame.audio_sample_width is None
+        ):
+            raise ValueError("public waveform encoder is missing PCM")
+        raw = bytearray(frame.audio_pcm)
+        width = int(frame.audio_sample_width)
+        channels = max(int(frame.audio_channels), 1)
+        if width == 1:
+            wave = torch.frombuffer(raw, dtype=torch.uint8).to(torch.float32)
+            wave = (wave - 128.0) / 128.0
+        elif width == 2:
+            if len(raw) % 2:
+                raw = raw[: len(raw) - 1]
+            wave = torch.frombuffer(raw, dtype=torch.int16).to(torch.float32)
+            wave = wave / 32768.0
+        else:
+            raise ValueError("unsupported public audio sample width")
+        if wave.numel() < channels:
+            raise ValueError("public audio waveform is empty")
+        usable = wave.numel() - (wave.numel() % channels)
+        wave = wave[:usable].reshape(-1, channels).mean(dim=1)
+        payload = self.normalization(
+            self.projection(self.pool(wave.reshape(1, 1, -1)).flatten(1))
+        )
+        self.emitted_payloads.append(payload[0].detach().cpu().clone())
+        return AmodalEvent(
+            payload=payload,
+            source_key=self.source_key.detach().reshape(1, -1),
+            timestamp=torch.tensor([frame.captured_at], dtype=payload.dtype),
+            confidence=torch.ones(1, dtype=payload.dtype),
+        ).validate()
+
+
+class NativeMacOSWindowAVCapture:
+    """Persistent ScreenCaptureKit window tap: public RGB plus public PCM."""
+
+    def __init__(
+        self,
+        window: MacOSApplicationWindow,
+        executable: Path,
+        *,
+        require_audio: bool = True,
+    ) -> None:
+        if not executable.is_file():
+            raise ValueError("native macOS AV capture helper does not exist")
+        self.window = window
+        self.executable = executable
+        self.require_audio = bool(require_audio)
+        self._process: subprocess.Popen[bytes] | None = None
+        self._state: MacOSWindowState | None = None
+
+    @staticmethod
+    def _read_exact(stream, count: int) -> bytes:
+        chunks = bytearray()
+        while len(chunks) < count:
+            chunk = stream.read(count - len(chunks))
+            if not chunk:
+                raise RuntimeError("native macOS AV capture stream ended early")
+            chunks.extend(chunk)
+        return bytes(chunks)
+
+    def _start(self) -> None:
+        state = self.window.state()
+        self.window.lock_bounds(state.bounds)
+        self._state = state
+        self._process = subprocess.Popen(
+            [
+                str(self.executable),
+                *(str(value) for value in state.bounds),
+                str(state.process_id),
+            ],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+
+    def capture(self, now: float) -> CapturedScreenFrame:
+        if self._process is None:
+            self._start()
+        process = self._process
+        state = self._state
+        if (
+            process is None
+            or process.stdin is None
+            or process.stdout is None
+            or state is None
+        ):
+            raise RuntimeError("native macOS AV capture transport is unavailable")
+        process.stdin.write(b"\n")
+        process.stdin.flush()
+        header = self._read_exact(process.stdout, NCA1_CAPTURE_HEADER.size)
+        unpacked = NCA1_CAPTURE_HEADER.unpack(header)
+        rgb_nbytes = int(unpacked[4])
+        pcm_nbytes = int(unpacked[8])
+        body = self._read_exact(process.stdout, rgb_nbytes + pcm_nbytes)
+        message = parse_nca1_message(header + body)
+        if self.require_audio and not bool(message["audio_stream_active"]):
+            raise RuntimeError("ScreenCaptureKit window audio tap is inactive")
+        rgb = torch.frombuffer(bytearray(message["rgb"]), dtype=torch.uint8)
+        frame = rgb.reshape(
+            int(message["height"]), int(message["width"]), 3
+        ).permute(2, 0, 1).contiguous()
+        return CapturedScreenFrame.from_public(
+            frame,
+            captured_at=now,
+            application=state.application,
+            title=state.title,
+            bounds=state.bounds,
+            audio_pcm=bytes(message["pcm"]),
+            audio_rate=int(message["sample_rate"]),
+            audio_channels=int(message["channels"]),
+            audio_sample_width=int(message["sample_width"]),
+            audio_stream_active=bool(message["audio_stream_active"]),
         )
 
     def close(self) -> None:

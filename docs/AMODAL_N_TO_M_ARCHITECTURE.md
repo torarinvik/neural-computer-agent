@@ -370,8 +370,28 @@ rolling-44 threshold at bit 44 and finished at `1.0000` over the final 44
 outcomes. Normal learning passed 32/32 rendered seeds while frozen,
 reward-shuffled, action-reversed, and missing-history controls passed 0/32.
 This establishes bounded two-cell Position 1-Back acquisition and retention,
-not larger grids, general program induction, or dual-stream operation; system
-audio parity is still missing.
+not larger grids, general program induction, or Dual acquisition from a blank
+file. Desktop Dual now has a ScreenCaptureKit window tap that publishes
+public PCM; missing or silent audio fails closed. That is an I/O path, not
+a measured desktop Dual lifetime.
+
+A separate Neural Workshop Dual path now publishes the queued stimulus
+waveform on the public observation, never a letter ID. A replaceable audio
+encoder emits a second amodal event; the frozen two-way decoder packs one
+match bit per bound source onto the two public ports. Privileged keys fail
+closed. Frozen `PREVIOUS` composition scored `1.000` on Dual 1-back and
+2-back across two 60-trial seeds, with a wrong-depth control near `0.10`.
+This qualifies Dual as a learner-visible I/O path. A blank address file now
+also acquires Dual 1-back on both the rendered device and Neural Workshop
+public PCM, retains it, and executes a one-step composition on Dual 2-back.
+Mixed Dual labels are packed exact-match credit, not half-credit. This does
+not qualify a measured desktop Dual lifetime or autonomous program induction.
+A later unused three-seed holdout promoted header transfer and first-time
+depth invention on Neural Workshop: same-slot 3-cell 3-back retrieve was
+`3.88×` cheaper than a matched climb, and first-time 2-cell 3-back compose
+was `1.64×` cheaper, with wrong-depth, missing-history, and reversal
+controls below threshold. That lease is consumed. It does not claim
+open program search or desktop Dual.
 
 The production bank boundary and its physical-campaign handoff are implemented,
 including stable admission, duplicate reuse, opaque reward routing, frozen

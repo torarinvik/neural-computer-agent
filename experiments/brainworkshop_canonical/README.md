@@ -246,19 +246,29 @@ the visible sequence, and Brain Workshop scored 100 twice with unchanged
 controller and program digests. This remains sub-minute probation pending a
 roughly three-minute three-cell retention run; see
 `session_records/brainworkshop_physical_3cell_transfer_probation_2026-08-14/`.
-Dual N-Back remains blocked on a human-parity audio input: this Mac currently
-exposes only its microphone, not a clean system-audio loopback. Until that
-device is present, a screen-only run must be labeled Position N-Back rather
-than dual.
+Desktop Dual now has a ScreenCaptureKit window tap that publishes public
+PCM beside the RGB crop. Missing or silent Dual audio fails closed. A
+screen-only capture is still Position N-Back. Calibrate the tap with:
+
+```bash
+PYTHONPATH=src .venv/bin/python \
+  -m experiments.brainworkshop_canonical.physical_dual_live \
+  --seconds 8
+```
+
+The Brain Workshop Dual window must be frontmost. This is an I/O
+calibration, not a Dual mastery claim. Neural Workshop Dual remains the
+measured public-PCM path.
 
 ### Neural Workshop live curriculum
 
 `neural_workshop_live.py` replaces slow macOS capture and key injection with
 Neural Workshop's headless public boundary. It still feeds rendered RGBA pixels
-through a frozen visual adapter, maps opaque decoder actions to the public
-position port, authenticates every visible scalar against the environment's
+through a frozen visual adapter, maps opaque decoder actions to one or two
+public ports, authenticates every visible scalar against the environment's
 immutable frame archive and receipt ledger, and drains correct-rejection
-silence as absent evidence. Signed public scalars remain in the audit report;
+silence as absent evidence. Dual also encodes the public stimulus waveform
+as a second amodal event. Signed public scalars remain in the audit report;
 only the learner input maps `[-1, +1]` to Bernoulli credit `[0, 1]`.
 
 The resumable curriculum fixes Position 1-Back and the visible 3x3 board while
@@ -427,8 +437,8 @@ PYTHONPATH=src .venv/bin/python \
 `neural_workshop_sealed_frontier_pilot.py` discovers the one-step address
 by outcome-only search, composes 2-back, misses 5-back at history 4, grows
 history to 8 without changing relation weights, verifies 5-back, and runs
-the same files on rendered audio. Dual N-Back still needs a four-way
-decoder. Evidence is probation in
+the same files on rendered audio. Dual N-Back keeps the frozen two-way
+decoder and packs one match bit per source. Evidence is probation in
 `session_records/brainworkshop_sealed_frontier_probation_2026-08-14/`.
 
 ```bash
@@ -452,6 +462,36 @@ PYTHONPATH=src .venv/bin/python \
   --report-out /tmp/rendered-dual-nback.json
 ```
 
+`neural_workshop_dual_live_pilot.py` is the Neural Workshop Dual path.
+Position is the public play-field crop. Audio is the queued stimulus
+waveform (`audio_pcm`), not a letter ID. Each stream binds separately; the
+frozen two-way decoder packs bits onto the two public ports. Letter IDs and
+other privileged keys fail closed.
+
+```bash
+PYTHONPATH=src .venv/bin/python \
+  -m experiments.brainworkshop_canonical.neural_workshop_dual_live_pilot \
+  --neural-workshop /absolute/path/to/neural-workshop \
+  --trials 60 --seed 98017
+```
+
+On seeds 98017 and 98117 the same frozen `PREVIOUS` composition scored
+`1.000` on Dual 1-Back and Dual 2-Back. The wrong-depth control scored
+`0.091` and `0.109`. Each stimulus produced one vision event and one audio
+event. Controller, program, and replay updates were zero. Evidence:
+`session_records/brainworkshop_neural_workshop_dual_live_2026-08-15/`.
+
+`rendered_dual_transfer_pilot.py` and
+`neural_workshop_dual_acquisition_pilot.py` start from a uniform address
+file. Mixed Dual feedback is packed exact-match credit, not half-credit.
+Rendered seeds 99017/99117 mastered Dual 1-Back at 47 and 94 bits, retained
+`1.000`, and executed composed Dual 2-Back at `1.000`. Neural Workshop seeds
+99117/99217 mastered at 95 and 49 bits, retained `1.000`, and executed
+composed Dual 2-Back at `1.000` / `0.944`. Reward-shuffled, reversed, and
+missing-history controls stayed below threshold. This is Dual acquisition
+and composition, not a holdout promotion. Evidence:
+`session_records/brainworkshop_dual_acquisition_2026-08-15/`.
+
 In the seed-94017-v2 run, a warm 1-back/2-back bank rebound 3-cell 2-back in
 one `try_existing` session at `1.000` (24 bits). New 2-cell 3-back still had
 to fail the two existing files and compose: 117 warm bits versus 119 fresh,
@@ -459,8 +499,25 @@ a tie. After that compose, 3-cell 3-back retrieved by the same-slot
 invariant at `0.900` with 20 bits versus 85 fresh, a `4.25×` fresh/warm
 ratio. Source 1-back, 2-back, and 3-back then retrieved exactly and scored
 `1.000/1.000/0.943`. Controller, program, and replay updates stayed zero.
-First-time depth invention is not cheaper than a matched climb; header
-variants of a verified depth are.
+After skip-shallower, seed 97017 first-time 3-back was 65 versus 127
+(`1.95×`) and header transfer remained `3.46×`. That pair is development
+probation.
+
+`founding_promotion.py` freezes those gates and consumes a one-use holdout
+on unused seeds 110017, 111017, and 112017. Header transfer retrieved by
+the same-slot invariant at 23/20/26 warm bits versus 97/82/89 fresh
+(`4.22×/4.10×/3.42×`). First-time 2-cell 3-back composed at 82/71/67
+versus 116/119/125 (`1.41×/1.68×/1.87×`). Wrong-depth, missing-history,
+and reversed-action controls stayed below threshold. Both records
+re-evaluate as eligible against `holdout-ledger.jsonl`. Evidence:
+`session_records/brainworkshop_founding_holdout_2026-08-15/`.
+
+```bash
+PYTHONPATH=src .venv/bin/python \
+  -m experiments.brainworkshop_canonical.founding_promotion \
+  --neural-workshop /absolute/path/to/neural-workshop \
+  --claim-holdout
+```
 
 ## Promoted frontier
 
@@ -525,13 +582,9 @@ Evidence:
 
 ## Current bottleneck
 
-`rendered_dual_nback_pilot.py` keeps the frozen two-way decoder and packs
-one match bit per source. Seed 96017 scored `1.000` on rendered Dual 1-Back
-and Dual 2-Back, with a wrong-depth control at `0.261`. No four-way head was
-trained.
-
-On seed 97017 the skip-shallower policy made first-time 3-back 65 warm bits
-versus 127 fresh (`1.95×`). Header transfer replicated at `3.46×`. Dual
-2-Back replicated at `0.957`. Physical Neural Workshop Dual is still not a
-learner-visible audio stream: the public observation is pixels only.
-Promotion still needs a holdout population.
+Header transfer and first-time depth invention are now holdout-promoted on
+Neural Workshop. Dual I/O and Dual acquisition remain measured probation
+on two substrates. Desktop Dual has a ScreenCaptureKit PCM tap and a
+fail-closed two-port adapter, but no measured live Dual lifetime yet. The
+architecture still does not claim autonomous general program induction,
+unrestricted memory growth, or a complete executive ISA.
