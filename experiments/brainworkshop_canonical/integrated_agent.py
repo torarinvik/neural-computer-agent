@@ -74,7 +74,11 @@ from .current_symbol_acquire import FRONTEND_SEED, THRESHOLD, _machine, curated_
 from .identification_ceiling import Trace, episode_trace
 from .lease_discrimination import DISCRIMINATION_ALPHA, binomial_upper_tail
 from .noise_tolerant_induction import induce_noise_tolerant
-from .prototype_templates import cluster_events, observe_events
+from .prototype_templates import (
+    cluster_events,
+    estimated_tolerance,
+    observe_events,
+)
 from .rule_automata import RuleAutomaton, positive_rate
 
 EXPERIMENT_ID = "brainworkshop-integrated-agent-2026-08-15"
@@ -298,9 +302,23 @@ def discover_alphabet(encoders, config, *, seed: int) -> torch.Tensor:
     later task speaks it. This costs no reward: the stimulus stream is drawn
     independently of the rule, and clustering reads only the frontend's own
     events.
+
+    The tolerance is measured rather than assumed. A fixed 0.5 is correct only
+    in a room where the same symbol renders identically every time; under pixel
+    noise the within-stimulus spread passes it and every symbol shatters. When
+    the stimuli genuinely overlap the estimator returns nothing, and this
+    raises rather than clustering at a number it made up.
     """
 
-    return cluster_events(observe_events(encoders, config, seed=seed))
+    events = observe_events(encoders, config, seed=seed)
+    tolerance = estimated_tolerance(events)
+    if tolerance is None:
+        raise ValueError("the stimuli do not separate into an alphabet")
+    # The cap is deliberately far above any alphabet being tried. At the
+    # default of eight, an eight-symbol room whose stimuli had actually
+    # shattered still reported eight letters, and the saturated count read as
+    # success.
+    return cluster_events(events, tolerance=tolerance, maximum_clusters=32)
 
 
 def solve_task(
@@ -316,8 +334,14 @@ def solve_task(
     ladder: tuple[int, ...] = PROBE_LADDER,
     induction_from: int = INDUCTION_LADDER_INDEX,
     corrupt=None,
+    config_for=_config,
 ) -> tuple[TaskOutcome, InducedProgramRecord | None]:
-    """Walk the ladder until something explains the task, then confirm it."""
+    """Walk the ladder until something explains the task, then confirm it.
+
+    `config_for` is how the environment is varied without varying the agent.
+    The widening sweep passes one that renders a larger alphabet or adds pixel
+    noise; nothing in the loop below knows which.
+    """
 
     outcome = TaskOutcome(
         rule_digest=rule.digest(),
@@ -325,10 +349,10 @@ def solve_task(
         repeat_index=repeat_index,
         library_size_before=library.record_count,
     )
-    probe_config = _config(rule, PROBE_STEPS)
+    probe_config = config_for(rule, PROBE_STEPS)
     alphabet = int(clusters.shape[0])
 
-    full = _config(rule, CONFIRMATION_STEPS)
+    full = config_for(rule, CONFIRMATION_STEPS)
 
     def confirm(record: InducedProgramRecord, attempt: int) -> tuple[float, str]:
         """Run a candidate in the environment on episodes it never saw.
@@ -551,6 +575,7 @@ def run_arm(
     frontend_digest: str,
     library_path: Path | None = None,
     corrupt=None,
+    config_for=_config,
 ) -> dict[str, Any]:
     """One pass over the task stream. `grow=False` forgets between tasks."""
 
@@ -574,6 +599,7 @@ def run_arm(
             seed=seed + TASK_SEED_STRIDE * position,
             repeat_index=repeat,
             corrupt=corrupt,
+            config_for=config_for,
         )
         if record is not None:
             admit(

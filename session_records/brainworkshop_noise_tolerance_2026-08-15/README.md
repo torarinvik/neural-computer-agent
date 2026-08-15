@@ -111,3 +111,59 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/test_noise_tolerant_induction.py
 ```
 
 About one minute. The calibration sweeps are `calibration.txt` in this record.
+
+---
+
+## Addendum: rare positives, 2026-08-15
+
+The record above says class imbalance is unhandled and names the case: a
+threshold rule whose positives are rare collapses to a machine that never
+presses. That is now measured properly and fixed.
+
+**The failure, at the rate it actually happens.** Threshold-6 over sixteen-step
+episodes presses on **2.2%** of steps. Fewest-disagreements returns the
+one-state never-press machine: accuracy **0.963**, recall **0.000**, balanced
+accuracy **0.500**, which is chance. The earlier note under-stated this because
+it was measured on forty-eight-step episodes, where the threshold is crossed
+early and positives are not rare at all.
+
+**Balancing the classes fixes it.** Pricing each label's mistakes by the
+inverse of how often it occurs recovers threshold-6 at balanced accuracy
+**0.883** and threshold-5 at **0.957**. On a balanced task it is not merely
+similar but *identical* -- the same machine digest at every state count and
+noise level tested -- because equal class frequencies give equal weights.
+
+**And it is not free.** Given random labels that are 5% ones, the balanced
+objective returns an **eight-state** machine where the plain one honestly
+returns one. It buys structure in skewed noise, which is the failure the plain
+objective is immune to.
+
+**So neither is a prior worth committing to.** Both are fitted and held-out
+evidence chooses, judged by balanced accuracy -- the measure that is not fooled
+by either failure, since chance is 0.5 for the never-press machine and for the
+noise-fitted one alike.
+
+| task | plain | balanced | validated |
+| --- | :--: | :--: | :--: |
+| threshold-5, 16-step episodes | 0.500 | 0.957 | **0.957** |
+| threshold-6, 16-step episodes | 0.500 | 0.883 | **0.883** |
+| random labels, 5% ones | 0.500 | 0.461 | **0.500** |
+| random labels, 50/50 | 0.500 | 0.500 | **0.500** |
+| sampled 3-state, 10% noise | 1.000 | 1.000 | **1.000** |
+| sampled 5-state, 10% noise | 1.000 | 1.000 | **1.000** |
+
+Balanced accuracy on clean held-out episodes. The validated column is never
+worse than the better of the two, on any row tested.
+
+`induce_noise_tolerant` still defaults to the plain objective, so every number
+in the record above is unchanged. `induce_validated` is the one that chooses.
+
+**What is still not fixed.** Threshold-8 over sixteen-step episodes presses on
+**0.1%** of steps -- about five positive examples in the whole corpus -- and
+neither objective recovers it. That is a sample-size limit rather than an
+objective one, and no reweighting reaches it.
+
+**The agent does not use this yet.** `integrated_agent` calls
+`induce_noise_tolerant`, and it excludes rare-positive tasks from its headline
+by flagging them as clearable by a constant policy. Wiring `induce_validated`
+in would let it learn them instead of setting them aside.

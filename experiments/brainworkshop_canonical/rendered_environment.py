@@ -49,6 +49,13 @@ class RenderedBrainWorkshopConfig:
     # A sampled finite-state rule, used when match_rule is "automaton". The
     # verifier holds it; no part of it reaches the learner.
     rule: object | None = None
+    # Per-observation pixel noise, as a standard deviation on the rendered
+    # frame. Zero by default, so every earlier configuration renders exactly
+    # what it rendered before. Drawn fresh at each observation rather than once
+    # per symbol: the point is that the same symbol does not look the same
+    # twice, which is what every clustering and matching step in this
+    # repository has so far been spared.
+    frame_noise: float = 0.0
 
     def validate(self) -> RenderedBrainWorkshopConfig:
         if self.match_rule not in {
@@ -96,6 +103,8 @@ class RenderedBrainWorkshopConfig:
             raise ValueError("frame size must be divisible by three and at least 18")
         if self.audio_samples < 32 or self.sample_rate < 1_000:
             raise ValueError("rendered audio dimensions are too small")
+        if not 0.0 <= self.frame_noise < 1.0:
+            raise ValueError("frame noise must be a non-negative fraction below one")
         return self
 
     @property
@@ -267,6 +276,9 @@ class RenderedBrainWorkshopVerifier:
             self._symbols[stream] = symbols
             self._matches[stream] = matches
         self._position = 0
+        # A separate stream, so turning noise on does not shift the symbol
+        # sequence a seed produces and make noisy and clean runs incomparable.
+        self._noise = torch.Generator().manual_seed(seed + 977)
 
     @property
     def done(self) -> bool:
@@ -292,9 +304,11 @@ class RenderedBrainWorkshopVerifier:
         if self.done:
             raise RuntimeError("rendered verifier has no remaining observation")
         vision = (
-            render_position(
-                int(self._symbols["vision"][self._position]),
-                size=self.config.frame_size,
+            self._corrupt(
+                render_position(
+                    int(self._symbols["vision"][self._position]),
+                    size=self.config.frame_size,
+                )
             )
             if "vision" in self.config.streams
             else None
@@ -309,6 +323,14 @@ class RenderedBrainWorkshopVerifier:
             else None
         )
         return RenderedBrainWorkshopObservation(vision=vision, audio=audio)
+
+    def _corrupt(self, frame: torch.Tensor) -> torch.Tensor:
+        """Add this observation's pixel noise, if the config asked for any."""
+
+        if self.config.frame_noise <= 0.0:
+            return frame
+        noise = torch.randn(frame.shape, generator=self._noise)
+        return (frame + self.config.frame_noise * noise).clamp(0.0, 1.0)
 
     def score(self, action: torch.Tensor) -> RenderedBrainWorkshopStep:
         if self.done:

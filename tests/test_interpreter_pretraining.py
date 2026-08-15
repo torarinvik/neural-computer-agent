@@ -6,6 +6,7 @@ import pytest
 import torch
 
 from experiments.brainworkshop_canonical.interpreter_controller import (
+    OPERATOR_NAMES,
     one_back_program,
     operator_handles,
     run_tick,
@@ -72,7 +73,10 @@ def test_operators_invented_after_freezing_still_interpret() -> None:
         program = program.with_operator(
             f"invented_{index}", operator_handles(encoders.event_width, seed=500 + index)[0]
         )
-    assert program.handles.shape[0] == 16
+    # Relative, not absolute: the base operator table itself grows as the
+    # machine is taught to do more, and hard-coding its size would make that
+    # growth read as a regression.
+    assert program.handles.shape[0] == len(OPERATOR_NAMES) + 10
     accuracy, _ = _interpret(program, encoders, controller)
     assert accuracy == pytest.approx(1.0)
     assert controller.digest() == before

@@ -137,13 +137,24 @@ predicts the evidence, not because anything establishes it is the same rule.
 Two rules that agree over sixty-four labels and diverge later would be confused,
 and only confirmation would catch it.
 
-**The pool is six rules over one alphabet and one frontend.** Nothing here
-shows the mechanism survives a different modality, a wider alphabet, or noisier
-stimuli.
+**The pool is six rules over one alphabet and one frontend.**
+`brainworkshop_environment_widening_2026-08-15` since took this apart: the
+alphabet may be doubled to eight and the stimuli may carry pixel noise up to
+0.10 with every task still solved and accumulation still paying, but only after
+the fixed clustering tolerance was replaced by a measured one. A different
+modality is still untested.
 
 **The controller still executes none of this.** Presses come from the counter
-executor. `DECISION_CONTROLLER_IS_THE_INTERPRETER.md` remains untested by this
-record, and the accumulation curve now bends without it.
+executor. `brainworkshop_interpreted_machine_2026-08-15` shows the frozen
+interpreter controller can run these programs exactly -- 18/18 at 1.000, with
+its digest unchanged -- so the connection is now known to be possible and is
+still not made here.
+
+**Rare positives are set aside rather than learned.** A task whose positives
+are rare is flagged as clearable by a constant policy and excluded from the
+headline, which keeps the number honest but leaves the task unsolved. The
+addendum to `brainworkshop_noise_tolerance_2026-08-15` fixes the induction side
+with `induce_validated`; this loop still calls `induce_noise_tolerant`.
 
 ## Reproducing
 

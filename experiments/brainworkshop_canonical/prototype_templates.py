@@ -30,6 +30,69 @@ from .rendered_environment import (
 DEFAULT_TOLERANCE = 0.5
 DEFAULT_MAXIMUM_CLUSTERS = 8
 DEFAULT_MAXIMUM_SUBSET = 4
+# A gap has to be this large, relative to where the far mode begins, before it
+# is read as the boundary between "same stimulus" and "different stimulus".
+#
+# Swept over 63 cases -- three alphabet sizes, seven noise levels, three
+# observation seeds -- against the failure that actually matters, which is not
+# refusing to name an alphabet but naming the *wrong* one and corrupting
+# everything downstream in silence:
+#
+#   margin   exact   wrong but accepted   refused
+#     0.30      37                    0        26
+#     0.25      38                    0        25
+#     0.20      38                    0        25
+#     0.15      42                    2        19
+#     0.10      44                    5        14
+#     0.05      45                    7        11
+#
+# Loosening to 0.15 buys four more readable rooms and two silent corruptions.
+# 0.25 and 0.20 are indistinguishable on this evidence, so the more
+# conservative one stays.
+SEPARATION_MARGIN = 0.25
+
+
+def estimated_tolerance(
+    events: torch.Tensor, *, margin: float = SEPARATION_MARGIN
+) -> float | None:
+    """The distance below which two observations are the same stimulus.
+
+    `DEFAULT_TOLERANCE` is a fixed 0.5, and that is fine in a room where the
+    same symbol renders identically every time: the largest within-cluster
+    distance is 0.001 and the smallest between-cluster distance is 4.64. Add
+    pixel noise and the within-cluster spread passes 0.5 at a noise level of
+    0.05, every symbol shatters into several clusters, and the alphabet comes
+    out the wrong size -- after which nothing downstream can recover, because
+    the traces are written in a language the stored programs do not speak.
+
+    This is the third fixed constant in this session that had to become
+    relative to the noise, and the shape is always the same: measure the noise
+    instead of assuming it. Pairwise distances are bimodal -- pairs of the same
+    stimulus, and pairs of different ones -- so the boundary is the largest gap
+    between the two modes, and the tolerance is its midpoint.
+
+    Returns `None` when the modes do not separate, which is not a failure of
+    the estimator but the honest answer: at a noise level of 0.2 the gap falls
+    to 0.15 against a far mode starting at 5.5, the stimuli genuinely overlap,
+    and an agent that picked a number anyway would be guessing.
+    """
+
+    if events.ndim != 2 or events.shape[0] < 2:
+        raise ValueError("estimating a tolerance needs at least two observations")
+    distances = torch.cdist(events, events)
+    off_diagonal = distances[
+        ~torch.eye(events.shape[0], dtype=torch.bool, device=events.device)
+    ]
+    ordered = off_diagonal.sort().values
+    gaps = ordered[1:] - ordered[:-1]
+    if gaps.numel() == 0:
+        return None
+    index = int(gaps.argmax())
+    below = float(ordered[index])
+    above = float(ordered[index + 1])
+    if above <= 0.0 or (above - below) < margin * above:
+        return None
+    return 0.5 * (below + above)
 
 
 def observe_events(

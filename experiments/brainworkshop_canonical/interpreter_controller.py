@@ -40,7 +40,29 @@ INTERPRETER_STATUS = ("halted", "budget_exhausted", "invalid_operand")
 # Operator identities are opaque to the controller: they are rows in a table
 # the program carries. These names exist for records and tests, never as
 # controller features.
-OPERATOR_NAMES = ("advance", "jump", "store", "emit_match", "emit", "halt")
+#
+# `load_const` and `halt_at` were added after the controller was frozen, which
+# is the invariant this whole design turns on: they are two more rows in a
+# table the program carries, and the controller's parameters and digest are
+# untouched by their existence.
+#
+# They are also exactly what a finite-state rule needs, without anything about
+# such rules being built in. `load_const` puts one of the program's own data
+# rows into the workspace, so the only condition the controller was ever taught
+# -- does the current event match the workspace? -- becomes "is this symbol
+# the one this instruction is asking about". `halt_at` ends the tick with the
+# program counter parked somewhere chosen, which puts the machine's state in
+# the pointer and the pointer outside the network.
+OPERATOR_NAMES = (
+    "advance",
+    "jump",
+    "store",
+    "emit_match",
+    "emit",
+    "halt",
+    "load_const",
+    "halt_at",
+)
 
 
 @dataclass(frozen=True)
@@ -50,10 +72,17 @@ class InterpretedProgram:
     handles: torch.Tensor          # [operators, event_width]
     operators: tuple[str, ...]     # names, for records only
     instructions: torch.Tensor     # [rows, event_width] opaque instruction data
-    operator_index: tuple[int, ...]  # which handle each row names
+    operator_index: tuple[int, ...]  # which handle each row names when met
     operands: tuple[int, ...]      # one integer operand per row
     workspace_slots: int
     microstep_budget: int = 64
+    # Which handle a row names when its condition is *not* met. Defaults to the
+    # met case, so every program written before conditions existed keeps its
+    # behaviour exactly.
+    alternate_index: tuple[int, ...] | None = None
+    # Program data: opaque rows a `load_const` instruction can place into the
+    # workspace. Not instructions, not weights, and not read by the controller.
+    constants: torch.Tensor | None = None
     schema: str = INTERPRETER_PROGRAM_SCHEMA
 
     def validate(self) -> InterpretedProgram:
@@ -79,6 +108,19 @@ class InterpretedProgram:
             raise ValueError("operator names must cover the handle table")
         if any(not 0 <= index < self.handles.shape[0] for index in self.operator_index):
             raise ValueError("instruction names an operator outside the table")
+        if self.alternate_index is not None:
+            if len(self.alternate_index) != rows:
+                raise ValueError("every row needs an unmet-condition operator")
+            if any(
+                not 0 <= index < self.handles.shape[0]
+                for index in self.alternate_index
+            ):
+                raise ValueError("instruction names an operator outside the table")
+        if self.constants is not None:
+            if self.constants.ndim != 2 or self.constants.shape[1] != width:
+                raise ValueError("program constants must be rows of handle width")
+            if not bool(torch.isfinite(self.constants).all()):
+                raise ValueError("program constants must be finite")
         if self.workspace_slots < 1 or self.microstep_budget < 1:
             raise ValueError("workspace and budget must be positive")
         return self
@@ -86,6 +128,13 @@ class InterpretedProgram:
     @property
     def event_width(self) -> int:
         return int(self.handles.shape[1])
+
+    def unmet_index(self, row: int) -> int:
+        """The operator this row names when its condition does not hold."""
+
+        if self.alternate_index is None:
+            return int(self.operator_index[row])
+        return int(self.alternate_index[row])
 
     def with_operator(self, name: str, handle: torch.Tensor) -> InterpretedProgram:
         """Add an operator. The controller must be unaffected by this."""
@@ -98,6 +147,8 @@ class InterpretedProgram:
             operands=self.operands,
             workspace_slots=self.workspace_slots,
             microstep_budget=self.microstep_budget,
+            alternate_index=self.alternate_index,
+            constants=self.constants,
         ).validate()
 
 
@@ -164,10 +215,34 @@ class InterpreterController(nn.Module):
         return hasher.hexdigest()
 
 
-def resolve_operator(intention: torch.Tensor, handles: torch.Tensor) -> int:
-    """Content addressing: the nearest handle wins."""
+def resolve_operator(
+    intention: torch.Tensor,
+    handles: torch.Tensor,
+    *,
+    among: tuple[int, ...] | None = None,
+) -> int:
+    """Content addressing: the nearest handle wins.
 
-    return int((handles @ intention.reshape(-1)).argmax().item())
+    `among` restricts the comparison to a subset of the table. It changes
+    nothing about how operators are identified -- the intention is still
+    matched against handles, and nothing enumerates opcodes -- but it lets the
+    runtime rule out operators the instruction being read does not name.
+
+    That distinction is not cosmetic. Measured over every row of a compiled
+    Mealy machine under both branch outcomes, the controller chose the wrong
+    *field* of an instruction zero times and resolved to a handle in neither
+    field 504 times. Every interpretation error was an operator the row could
+    not have meant.
+    """
+
+    scores = handles @ intention.reshape(-1)
+    if among is None:
+        return int(scores.argmax().item())
+    candidates = tuple(dict.fromkeys(int(index) for index in among))
+    if not candidates:
+        raise ValueError("resolution needs at least one candidate operator")
+    best = max(candidates, key=lambda index: float(scores[index]))
+    return int(best)
 
 
 @dataclass
@@ -175,6 +250,10 @@ class TickResult:
     press: int | None
     status: str
     microsteps: int
+    # Where the next tick should resume. A tick that ends any other way parks
+    # at zero, so every program written before the pointer was external keeps
+    # its behaviour exactly.
+    next_pointer: int = 0
 
 
 def run_tick(
@@ -185,36 +264,80 @@ def run_tick(
     *,
     mode: str = "teacher",
     match_tolerance: float = 0.5,
+    start_pointer: int = 0,
+    resolve_within_instruction: bool = False,
 ) -> TickResult:
-    """Interpret one environment tick, fail-closed on budget exhaustion."""
+    """Interpret one environment tick, fail-closed on budget exhaustion.
+
+    `resolve_within_instruction` narrows content addressing to the two
+    operators the current row actually names. Off by default, so every earlier
+    program and every earlier measurement is unchanged; the record compares the
+    two settings rather than quietly switching.
+    """
 
     program.validate()
     if mode not in ("teacher", "learned"):
         raise ValueError("interpreter mode must be teacher or learned")
     if mode == "learned" and controller is None:
         raise ValueError("learned mode needs a controller")
-    pointer = 0
+    pointer = int(start_pointer)
     press: int | None = None
     for step in range(program.microstep_budget):
         if not 0 <= pointer < program.instructions.shape[0]:
             return TickResult(None, "invalid_operand", step)
         instruction = program.instructions[pointer]
+        summary = workspace.mean(dim=0)
         if mode == "teacher":
-            # The instruction names its own operator; this exercises the
-            # machinery without asking an untrained network to interpret.
-            operator = int(program.operator_index[pointer])
+            # Teacher mode evaluates the *same* condition the controller was
+            # trained to evaluate -- does the current event match what is in
+            # the workspace -- and then reads the operator off the instruction
+            # rather than asking a network. That is what makes teacher mode a
+            # behaviour reference for learned mode instead of a different
+            # machine. Unconditional rows name the same operator in both
+            # fields, so this changes nothing for programs written before
+            # conditions existed.
+            met = (
+                float(torch.linalg.vector_norm(event.reshape(-1) - summary))
+                <= match_tolerance
+            )
+            operator = (
+                int(program.operator_index[pointer])
+                if met
+                else program.unmet_index(pointer)
+            )
         else:
-            summary = workspace.mean(dim=0)
             intention = controller(
                 event.reshape(1, -1),
                 instruction.reshape(1, -1),
                 summary.reshape(1, -1),
             )
-            operator = resolve_operator(intention, program.handles)
+            operator = resolve_operator(
+                intention,
+                program.handles,
+                among=(
+                    (int(program.operator_index[pointer]), program.unmet_index(pointer))
+                    if resolve_within_instruction
+                    else None
+                ),
+            )
         name = program.operators[operator]
         operand = int(program.operands[pointer])
         if name == "halt":
             return TickResult(press, "halted", step + 1)
+        if name == "halt_at":
+            # The machine's state lives in the pointer, and the pointer lives
+            # out here rather than in any network.
+            if not 0 <= operand < program.instructions.shape[0]:
+                return TickResult(None, "invalid_operand", step + 1)
+            return TickResult(press, "halted", step + 1, operand)
+        if name == "load_const":
+            if program.constants is None or not (
+                0 <= operand < program.constants.shape[0]
+            ):
+                return TickResult(None, "invalid_operand", step + 1)
+            workspace[0] = program.constants[operand]
+            pointer += 1
+            continue
         if name == "advance":
             pointer += 1
         elif name == "jump":

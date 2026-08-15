@@ -5,11 +5,14 @@ import torch
 
 from experiments.brainworkshop_canonical.adversarial_probes import (
     count_parity,
+    count_threshold,
     running_majority,
 )
 from experiments.brainworkshop_canonical.identification_ceiling import Trace
 from experiments.brainworkshop_canonical.noise_tolerant_induction import (
+    balanced_accuracy,
     induce_noise_tolerant,
+    induce_validated,
 )
 from experiments.brainworkshop_canonical.prefix_denoising import (
     denoise,
@@ -163,3 +166,102 @@ def test_denoise_rejects_impossible_settings() -> None:
     with pytest.raises(ValueError, match="room on both sides"):
         denoise((), margin=0.5)
     assert denoise(()).traces == ()
+
+
+def _random_labels(p_one, seed, count=112, length=48, symbols=4):
+    generator = torch.Generator().manual_seed(seed)
+    produced = []
+    for _ in range(count):
+        stream = torch.randint(0, symbols, (length,), generator=generator).tolist()
+        labels = (torch.rand(length, generator=generator) < p_one).long().tolist()
+        produced.append(
+            Trace(
+                symbols=tuple(stream),
+                outputs=tuple(labels),
+                eligible=tuple([True] * length),
+                symbol_count=symbols,
+            )
+        )
+    return tuple(produced)
+
+
+def test_rare_positives_defeat_the_plain_objective() -> None:
+    """The failure the noise-tolerance record named and did not fix.
+
+    A threshold rule that fires late in a short episode presses on 2% of steps.
+    Fewest-disagreements then prefers the machine that never presses: 0.963
+    accuracy, and no capability whatsoever.
+    """
+
+    rule = count_threshold(0, 6)
+    evidence = _traces(rule, 11, 112, 16)
+    plain = induce_noise_tolerant(evidence, balanced=False)
+    assert plain is not None
+    assert plain.machine.state_count == 1
+    # Chance, stated as chance rather than hidden behind an accuracy.
+    assert balanced_accuracy(plain.machine, _traces(rule, 99, 20, 16)) == pytest.approx(
+        0.5, abs=0.02
+    )
+
+
+def test_balancing_the_classes_recovers_them_and_costs_nothing_when_balanced() -> None:
+    rule = count_threshold(0, 6)
+    balanced = induce_noise_tolerant(_traces(rule, 11, 112, 16), balanced=True)
+    assert balanced is not None
+    assert balanced_accuracy(balanced.machine, _traces(rule, 99, 20, 16)) > 0.85
+
+    # And on a balanced task the two objectives agree exactly, because equal
+    # class frequencies give equal weights.
+    for state_count in (3, 5):
+        sampled = sample_rule(
+            symbol_count=4, state_count=state_count, seed=7000 + 100 * state_count
+        )
+        assert sampled is not None
+        evidence = _traces(sampled.expected, 11, 112, 48, 0.10)
+        both = [
+            induce_noise_tolerant(evidence, balanced=flag) for flag in (False, True)
+        ]
+        assert all(fit is not None for fit in both)
+        assert both[0].machine.digest() == both[1].machine.digest()
+
+
+def test_balancing_alone_buys_structure_in_skewed_noise() -> None:
+    """Why balancing is not simply switched on."""
+
+    evidence = _random_labels(0.05, 5)
+    balanced = induce_noise_tolerant(evidence, balanced=True)
+    plain = induce_noise_tolerant(evidence, balanced=False)
+    assert plain is not None and balanced is not None
+    assert plain.machine.state_count == 1
+    assert balanced.machine.state_count > 1
+
+
+def test_held_out_evidence_picks_the_right_objective_each_time() -> None:
+    """Neither objective is a prior worth committing to, so nothing is."""
+
+    rule = count_threshold(0, 6)
+    chosen = induce_validated(
+        _traces(rule, 11, 112, 16), _traces(rule, 55, 28, 16)
+    )
+    assert chosen is not None
+    assert balanced_accuracy(chosen.machine, _traces(rule, 99, 20, 16)) > 0.85
+
+    # Skewed noise: the balanced fit is refused and the honest one kept.
+    kept = induce_validated(_random_labels(0.05, 5), _random_labels(0.05, 77))
+    assert kept is not None
+    assert kept.machine.state_count == 1
+
+    # A balanced task is unaffected.
+    sampled = sample_rule(symbol_count=4, state_count=4, seed=7400)
+    assert sampled is not None
+    same = induce_validated(
+        _traces(sampled.expected, 11, 112, 48, 0.10),
+        _traces(sampled.expected, 55, 28, 48, 0.10),
+    )
+    assert same is not None
+    assert _clean_accuracy(same.machine, sampled.expected, 99) == 1.0
+
+
+def test_choosing_needs_something_to_choose_on() -> None:
+    with pytest.raises(ValueError, match="held-out evidence"):
+        induce_validated(_traces(count_threshold(0, 3), 11, 8, 16), ())
