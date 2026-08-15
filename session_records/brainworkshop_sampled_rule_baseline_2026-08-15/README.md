@@ -37,13 +37,24 @@ So the searcher is not weak in proportion to complexity. It is tuned to four
 particular rules — which is exactly what the seed-holdout protocol could never
 detect, because holding out seeds re-samples episodes of a rule already seen.
 
-Two candidate explanations remain open and the diagnostic does not separate
+Three candidate explanations remain open and the diagnostic does not separate
 them:
 
 - **inexpressible.** With `max_history = 4` and 20 trainable numbers, most
   finite-state rules may have no representation at this controller geometry.
 - **unsearchable.** The grammar's five operators and hand-written ordering may
   simply not reach them.
+- **under-acquired.** Each proposal gets one acquire lifetime, the same budget
+  the leases use. That sufficed for rules whose structure matches an operator;
+  it may not for rules that need a template the acquire rule never forms.
+
+The third was the cheapest to rule out, and it is ruled out. Repeating four of
+the failures with eight acquire lifetimes instead of one moved nothing: two
+rules were unchanged (`0.663`, `0.580`) and two got *worse* (`0.795` to
+`0.558`, `0.641` to `0.542`), because more reward-weighted averaging pulls the
+template toward the mean event rather than toward a state-dependent one. More
+experience does not help, which is itself evidence that the missing thing is
+structural rather than statistical.
 
 Telling these apart is the point of the audit's O6, and `program_search.py`
 already warns that an inexpressible target looks exactly like slow search.
