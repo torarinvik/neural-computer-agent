@@ -1,0 +1,257 @@
+{
+  "bank_sha256": "07319eb13c9cac58bbbe94258548e64f13ba1b3512ca2a01fbdc675c49e2e7c9",
+  "bank_unchanged": true,
+  "elapsed_seconds": 11.945559416897595,
+  "episodes_spent": 28,
+  "exactly_correct": 9,
+  "experiment_id": "brainworkshop-induced-counter-program-2026-08-15",
+  "node_budget": 500000,
+  "note": "programs are induced from the agent's own per-step reward and its own event clusters; no rule is read and nothing is admitted",
+  "of": 18,
+  "rules": [
+    {
+      "accuracy": 1.0,
+      "counters": 7,
+      "episodes_spent": 2,
+      "executor_statuses": "halted",
+      "identified": true,
+      "inferred_state_count": 1,
+      "instructions": 21,
+      "reason": null,
+      "rule_digest": "1e4217f47e9a869bfc992ea8738daf02c459a69846613ca031d2382ad34652ae",
+      "scored": 448,
+      "solved": true,
+      "true_state_count": 1
+    },
+    {
+      "accuracy": 1.0,
+      "counters": 7,
+      "episodes_spent": 2,
+      "executor_statuses": "halted",
+      "identified": true,
+      "inferred_state_count": 1,
+      "instructions": 22,
+      "reason": null,
+      "rule_digest": "6442d46fe914f82420f9d4bc29955419aa4134f8b25e44ff3736d4b443bae5b8",
+      "scored": 448,
+      "solved": true,
+      "true_state_count": 1
+    },
+    {
+      "accuracy": 1.0,
+      "counters": 7,
+      "episodes_spent": 2,
+      "executor_statuses": "halted",
+      "identified": true,
+      "inferred_state_count": 1,
+      "instructions": 22,
+      "reason": null,
+      "rule_digest": "77923ffc65fd84f308a7a7d91d37506118c69d39d8d13a38649b6cf5f320aa1f",
+      "scored": 448,
+      "solved": true,
+      "true_state_count": 1
+    },
+    {
+      "accuracy": 0.9977678571428571,
+      "counters": 9,
+      "episodes_spent": 2,
+      "executor_statuses": "halted",
+      "identified": true,
+      "inferred_state_count": 2,
+      "instructions": 43,
+      "reason": null,
+      "rule_digest": "40209939abcfb32261d7fd293f732aa27a4e1e4a329a4db3e62b80ecf851426e",
+      "scored": 448,
+      "solved": true,
+      "true_state_count": 2
+    },
+    {
+      "accuracy": 1.0,
+      "counters": 9,
+      "episodes_spent": 2,
+      "executor_statuses": "halted",
+      "identified": true,
+      "inferred_state_count": 2,
+      "instructions": 43,
+      "reason": null,
+      "rule_digest": "e03e28ee60035a4bd2d304e1315be8ba046a97c1e0adf2abe7407ecc4373e022",
+      "scored": 448,
+      "solved": true,
+      "true_state_count": 2
+    },
+    {
+      "accuracy": 1.0,
+      "counters": 9,
+      "episodes_spent": 2,
+      "executor_statuses": "halted",
+      "identified": true,
+      "inferred_state_count": 2,
+      "instructions": 43,
+      "reason": null,
+      "rule_digest": "45536c2a39f511436d45a8a58068da3e7ea543cbbe78fa231bde0778361b1b31",
+      "scored": 448,
+      "solved": true,
+      "true_state_count": 2
+    },
+    {
+      "accuracy": 1.0,
+      "counters": 11,
+      "episodes_spent": 2,
+      "executor_statuses": "halted",
+      "identified": true,
+      "inferred_state_count": 3,
+      "instructions": 65,
+      "reason": null,
+      "rule_digest": "91dcaa5908f08933be2923b6fe618be73ffd73d5ae05587f08f5e5e8c3956e42",
+      "scored": 448,
+      "solved": true,
+      "true_state_count": 3
+    },
+    {
+      "accuracy": 1.0,
+      "counters": 11,
+      "episodes_spent": 2,
+      "executor_statuses": "halted",
+      "identified": true,
+      "inferred_state_count": 3,
+      "instructions": 66,
+      "reason": null,
+      "rule_digest": "f7fd2186d1cdafa83a5a54076bece60fd31b320075e0ad91d6741287d822abbe",
+      "scored": 448,
+      "solved": true,
+      "true_state_count": 3
+    },
+    {
+      "accuracy": 1.0,
+      "counters": 11,
+      "episodes_spent": 2,
+      "executor_statuses": "halted",
+      "identified": true,
+      "inferred_state_count": 3,
+      "instructions": 63,
+      "reason": null,
+      "rule_digest": "28e7afca5b6daa93268d50a0c39ba8ed2d0ce04da655e82eb9f4ec21f1b8aee4",
+      "scored": 448,
+      "solved": true,
+      "true_state_count": 3
+    },
+    {
+      "accuracy": 1.0,
+      "counters": 13,
+      "episodes_spent": 2,
+      "executor_statuses": "halted",
+      "identified": true,
+      "inferred_state_count": 4,
+      "instructions": 81,
+      "reason": null,
+      "rule_digest": "1cc72fa9324a646f048e53a4c19604f0126a3f5ba0074dc5a483084c479ea858",
+      "scored": 448,
+      "solved": true,
+      "true_state_count": 4
+    },
+    {
+      "accuracy": null,
+      "episodes_spent": 1,
+      "identified": false,
+      "reason": "no machine consistent with the trace within budget",
+      "rule_digest": "60a9169e6cd046dc35dbfba08ebf4e00d41b4fe795c137c51cda12981f0d3a30",
+      "solved": false,
+      "true_state_count": 4
+    },
+    {
+      "accuracy": null,
+      "episodes_spent": 1,
+      "identified": false,
+      "reason": "no machine consistent with the trace within budget",
+      "rule_digest": "18def25b253b7f942ac9cfbe1f2f444a2affb39867ff817e80796e1525b7e491",
+      "solved": false,
+      "true_state_count": 4
+    },
+    {
+      "accuracy": null,
+      "episodes_spent": 1,
+      "identified": false,
+      "reason": "no machine consistent with the trace within budget",
+      "rule_digest": "7fb4eaf156db5a48d051c3cd8bfd0919a3f784d5a86fd25e09283791682c0adc",
+      "solved": false,
+      "true_state_count": 5
+    },
+    {
+      "accuracy": null,
+      "episodes_spent": 1,
+      "identified": false,
+      "reason": "no machine consistent with the trace within budget",
+      "rule_digest": "073e1cb64c6962213bfbbe94332d4f85d0c94920961d062f27959b570191558a",
+      "solved": false,
+      "true_state_count": 5
+    },
+    {
+      "accuracy": null,
+      "episodes_spent": 1,
+      "identified": false,
+      "reason": "no machine consistent with the trace within budget",
+      "rule_digest": "a9c5fe7dc00e22f74518b8800f8f3abecc66a2bfca5b996c62823ec9f5412d15",
+      "solved": false,
+      "true_state_count": 5
+    },
+    {
+      "accuracy": null,
+      "episodes_spent": 1,
+      "identified": false,
+      "reason": "no machine consistent with the trace within budget",
+      "rule_digest": "a9eeb64c26e8dbdebffcf4517765c9a47520f1212694282145c75152a7310aa2",
+      "solved": false,
+      "true_state_count": 6
+    },
+    {
+      "accuracy": null,
+      "episodes_spent": 1,
+      "identified": false,
+      "reason": "no machine consistent with the trace within budget",
+      "rule_digest": "35fce98103ee29bfd37886c5b921ad87915c9905ece349a8eca65579a1b253a8",
+      "solved": false,
+      "true_state_count": 6
+    },
+    {
+      "accuracy": null,
+      "episodes_spent": 1,
+      "identified": false,
+      "reason": "no machine consistent with the trace within budget",
+      "rule_digest": "f64128d8ad78b611fe0ffce0c3f05b5a06f053db54913119e85103b4b44dcaea",
+      "solved": false,
+      "true_state_count": 6
+    }
+  ],
+  "schema": "neural-computer.induced-counter-program.v1",
+  "seed": 41,
+  "solved": 10,
+  "solved_by_state_count": {
+    "1": {
+      "of": 3,
+      "solved": 3
+    },
+    "2": {
+      "of": 3,
+      "solved": 3
+    },
+    "3": {
+      "of": 3,
+      "solved": 3
+    },
+    "4": {
+      "of": 3,
+      "solved": 1
+    },
+    "5": {
+      "of": 3,
+      "solved": 0
+    },
+    "6": {
+      "of": 3,
+      "solved": 0
+    }
+  },
+  "status": "diagnostic",
+  "steps": 448,
+  "threshold": 0.8
+}
