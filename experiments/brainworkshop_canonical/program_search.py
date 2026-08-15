@@ -35,13 +35,28 @@ class ProgramProposal:
     slots: tuple[int, ...]
     artifact: ExternalProgramArtifact | None
     reason: str | None = None
+    # A fully specified template needs no acquire lifetime; the searcher
+    # installs it and evaluates it directly.
+    template: torch.Tensor | None = None
+    template_label: tuple[int, ...] | None = None
+    # A template answers a rule either as stated or flipped; both are one
+    # hypothesis about which events matter, so both are offered.
+    invert_intention: bool = False
 
     def label(self) -> str:
         joined = "+".join(str(slot) for slot in self.slots)
-        return f"{self.kind}:{joined}"
+        base = f"{self.kind}:{joined}"
+        if self.template_label is None:
+            return base
+        clusters = "+".join(str(index) for index in self.template_label)
+        polarity = "~" if self.invert_intention else ""
+        return f"{base}[{polarity}{clusters}]"
 
 
-def propose_from_bank(bank: ExternalTemporalProgramBank) -> tuple[ProgramProposal, ...]:
+def propose_from_bank(
+    bank: ExternalTemporalProgramBank,
+    templates: tuple[tuple[tuple[int, ...], torch.Tensor], ...] = (),
+) -> tuple[ProgramProposal, ...]:
     """Enumerate retrieve, compose, invert, and invent last.
 
     Retrieve is tried before compose. Unequal or non-address primitives are
@@ -104,6 +119,40 @@ def propose_from_bank(bank: ExternalTemporalProgramBank) -> tuple[ProgramProposa
             prototype_match_artifact(bank.context_width),
         )
     )
+    # Observed templates are appended, never inserted: an earlier winner stays
+    # the winner, so every recorded campaign is unaffected. Within the tail,
+    # simpler hypotheses come first because the templates arrive that way.
+    for invert in (False, True):
+        for subset, template in templates:
+            proposals.append(
+                ProgramProposal(
+                    "invent",
+                    (),
+                    prototype_match_artifact(bank.context_width, prototype=template),
+                    template=template,
+                    template_label=subset,
+                    invert_intention=invert,
+                )
+            )
+    for slot in range(bank.program_count):
+        parent = bank.artifact(slot)
+        if parent.execution_schema == INTENTION_INVERT_EXECUTION_SCHEMA:
+            delay = parent
+        else:
+            try:
+                delay = invert_artifact(parent)
+            except ValueError:
+                continue
+        for subset, template in templates:
+            proposals.append(
+                ProgramProposal(
+                    "and",
+                    (slot,),
+                    delay,
+                    template=template,
+                    template_label=subset,
+                )
+            )
     return tuple(proposals)
 
 
@@ -126,6 +175,11 @@ def install_proposal(
         machine.sample = False
         with torch.no_grad():
             machine.prototype.zero_()
+    if proposal.template is not None and hasattr(machine, "prototype"):
+        with torch.no_grad():
+            machine.prototype.copy_(proposal.template.to(machine.prototype))
+    if proposal.invert_intention and hasattr(machine, "_invert_intention"):
+        machine._invert_intention = True
 
 
 def search_temporal_programs(
@@ -137,6 +191,7 @@ def search_temporal_programs(
     minimum_bits: int = 8,
     acquire: ProposalEvaluator | None = None,
     encoders=None,
+    templates: tuple[tuple[tuple[int, ...], torch.Tensor], ...] = (),
 ) -> dict[str, Any]:
     """Try existing files, then legal composes, then invent, until one gates.
 
@@ -145,7 +200,7 @@ def search_temporal_programs(
     before the frozen evaluation. That is still a closed grammar.
     """
 
-    proposals = propose_from_bank(bank)
+    proposals = propose_from_bank(bank, templates)
     attempts: list[dict[str, Any]] = []
     winner: dict[str, Any] | None = None
     for proposal in proposals:
@@ -177,7 +232,11 @@ def search_temporal_programs(
             continue
         acquired = None
         bound = None
-        if proposal.kind in {"invent", "and"} and acquire is not None:
+        if (
+            proposal.kind in {"invent", "and"}
+            and acquire is not None
+            and proposal.template is None
+        ):
             acquired = acquire(proposal)
             if proposal.kind == "invent" and encoders is not None:
                 bound = bind_live_prototype(machine, encoders)
@@ -202,7 +261,7 @@ def search_temporal_programs(
         if bound is not None:
             row["frontend_digest"] = bound.frontend_digest
         elif (
-            proposal.kind == "and"
+            proposal.kind in {"and", "invent"}
             and encoders is not None
             and hasattr(machine, "prototype")
         ):
@@ -217,6 +276,7 @@ def search_temporal_programs(
         "executed": sum(1 for row in attempts if row["executed"]),
         "illegal_compose": sum(1 for row in attempts if row["kind"] == "illegal_compose"),
         "winner": winner,
+        "templates_offered": len(templates),
         "attempts": attempts,
         "controller_digest": machine.controller_digest(),
         "bank_controller_digest": bank.controller_digest,

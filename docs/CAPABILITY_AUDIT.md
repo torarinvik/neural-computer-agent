@@ -208,13 +208,20 @@ different frontend of the same modality, without relearning.
    baseline is 0/15 on multi-state sampled rules.
 2. ~~**O6** — separate inexpressible from unsearchable.~~ **Done.** Not the
    geometry: 0/18 rules are memory-blocked. Two deficits instead, both real.
-3. **A program family with state.** 11 of 18 rules need output that depends on
-   accumulated state, not on one lagged comparison. `control_flow.py` is
-   already a two-counter machine and is not wired to this controller; wiring
-   it is the largest available win and needs no new theory.
-4. **O3 — the proposer.** Worth 5 rules immediately, before any new operator,
-   and its value grows with the family it searches. Note these two compound:
-   a richer family without a proposer enlarges a space nothing can search.
+3. ~~**Candidate templates.**~~ **Done** — the searcher now saturates its own
+   family: 7/18 solved against a ceiling of 7, mean accuracy 0.782 against a
+   ceiling of 0.786, and the solved set is exactly the expressible set. Both
+   template polarities were needed. Record:
+   `session_records/brainworkshop_template_proposals_2026-08-15/`.
+4. **A program family with state.** 11 of 18 rules need output that depends on
+   accumulated state, not on one lagged comparison, and templates cannot reach
+   them: their ceiling *is* the family's ceiling. `control_flow.py` is already
+   a two-counter machine and is not wired to this controller; wiring it is the
+   largest available win and needs no new theory.
+5. **O3 — the proposer.** No longer worth anything on the current family,
+   which is now saturated by enumeration. It becomes necessary exactly when
+   the family gains state, because that space is not enumerable — 48 programs
+   per rule today, exponential after.
 5. **O4** — the accumulation curve over a held-out rule sequence: does rule
    N+1 get cheaper as the library grows? The project's actual thesis, now
    measurable.

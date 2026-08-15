@@ -31,6 +31,7 @@ from .current_symbol_acquire import (
     curated_frontend,
 )
 from .program_search import search_temporal_programs
+from .prototype_templates import observed_templates
 from .rendered_environment import RenderedBrainWorkshopConfig
 from .rendered_live import run_rendered_live_lifetime
 from .rule_automata import known_rule, positive_rate, sample_rule
@@ -52,6 +53,7 @@ def _run_one(
     *,
     seed: int,
     steps: int,
+    use_templates: bool = False,
 ) -> dict[str, Any]:
     config = RenderedBrainWorkshopConfig(
         n_back=1,
@@ -87,6 +89,10 @@ def _run_one(
             "unique_verifier_bits": report.unique_verifier_bits,
         }
 
+    # One observation pass, before any verifier outcome is read.
+    templates = (
+        observed_templates(encoders, config, seed=seed) if use_templates else ()
+    )
     search = search_temporal_programs(
         bank,
         machine,
@@ -95,6 +101,7 @@ def _run_one(
         minimum_bits=MINIMUM_BITS,
         acquire=acquire,
         encoders=encoders,
+        templates=templates,
     )
     winner = search["winner"]
     best = max(
@@ -108,6 +115,9 @@ def _run_one(
         "positive_rate": rate,
         "constant_policy_accuracy": max(rate, 1.0 - rate),
         "winner_kind": winner["kind"] if winner else None,
+        "winner_label": winner["label"] if winner else None,
+        "templates_offered": int(search["templates_offered"]),
+        "programs_executed": int(search["executed"]),
         "best_executed_accuracy": best,
         "solved": winner is not None,
     }
@@ -124,6 +134,7 @@ def run_baseline(
     steps: int = STEPS,
     seed: int = DEVELOPMENT_SEED,
     frontend_path: Path | None = None,
+    use_templates: bool = False,
 ) -> dict[str, Any]:
     """Sweep sampled rules by complexity. Never writes the bank."""
 
@@ -145,7 +156,15 @@ def run_baseline(
             if rule is None:
                 continue
             rows.append(
-                _run_one(payload, bank, encoders, rule, seed=seed, steps=steps)
+                _run_one(
+                    payload,
+                    bank,
+                    encoders,
+                    rule,
+                    seed=seed,
+                    steps=steps,
+                    use_templates=use_templates,
+                )
             )
     # The four hand-written rules, for comparison on the same axis.
     hand_rows: list[dict[str, Any]] = []
@@ -156,7 +175,15 @@ def run_baseline(
         ("n_back", {"n_back": 1}),
     ):
         rule = known_rule(name, symbol_count=symbol_count, **kwargs)
-        row = _run_one(payload, bank, encoders, rule, seed=seed, steps=steps)
+        row = _run_one(
+            payload,
+            bank,
+            encoders,
+            rule,
+            seed=seed,
+            steps=steps,
+            use_templates=use_templates,
+        )
         row["hand_written_rule"] = name + (
             f"-{kwargs['n_back']}" if kwargs else ""
         )
@@ -172,6 +199,7 @@ def run_baseline(
         "schema": "neural-computer.sampled-rule-baseline.v1",
         "experiment_id": EXPERIMENT_ID,
         "status": "diagnostic",
+        "template_proposals": use_templates,
         "note": (
             "development seed, already consumed; nothing admitted and no "
             "holdout claim"
@@ -238,13 +266,27 @@ def main() -> None:
         ),
     )
     parser.add_argument("--steps", type=int, default=STEPS)
+    parser.add_argument(
+        "--with-templates",
+        action="store_true",
+        help="offer observed prototype templates as proposals",
+    )
     arguments = parser.parse_args()
+    if arguments.with_templates and arguments.output_dir == (
+        repository / "session_records" / "brainworkshop_sampled_rule_baseline_2026-08-15"
+    ):
+        arguments.output_dir = (
+            repository
+            / "session_records"
+            / "brainworkshop_template_proposals_2026-08-15"
+        )
     report = run_baseline(
         arguments.controller_artifact,
         arguments.bank,
         arguments.output_dir,
         steps=arguments.steps,
         frontend_path=arguments.frontend,
+        use_templates=arguments.with_templates,
     )
     print(
         json.dumps(

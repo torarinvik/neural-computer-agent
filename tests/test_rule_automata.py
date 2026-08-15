@@ -184,3 +184,69 @@ def test_the_automaton_task_validates_its_rule() -> None:
         RenderedBrainWorkshopConfig(
             steps=32, streams=("vision",), symbol_count=4, rule=rule
         ).validate()
+
+
+def test_observed_templates_come_only_from_what_the_learner_can_see() -> None:
+    from pathlib import Path
+
+    from experiments.brainworkshop_canonical.prototype_templates import (
+        candidate_templates,
+        cluster_events,
+        observe_events,
+        observed_templates,
+    )
+    from experiments.brainworkshop_canonical.rendered_environment import (
+        RenderedBrainWorkshopEncoders,
+    )
+
+    repository = Path(__file__).resolve().parents[1]
+    encoders = RenderedBrainWorkshopEncoders.load(
+        repository / "artifacts/checkpoints/rendered_frontend_seed1001.pt"
+    )
+    rule = sample_rule(symbol_count=4, state_count=3, seed=1234)
+    assert rule is not None
+    config = RenderedBrainWorkshopConfig(
+        n_back=1,
+        steps=64,
+        streams=("vision",),
+        symbol_count=4,
+        match_rule="automaton",
+        rule=rule,
+    )
+    events = observe_events(encoders, config, seed=5)
+    assert events.shape == (64, encoders.event_width)
+    # The alphabet is discovered from the stream, not supplied.
+    clusters = cluster_events(events)
+    assert clusters.shape[0] == 4
+    templates = candidate_templates(clusters, maximum_subset=4)
+    assert len(templates) == 15
+    assert templates[0][0] == (0,)  # simplest hypotheses first
+    assert all(
+        template.shape == (encoders.event_width,) for _, template in templates
+    )
+    assert len(observed_templates(encoders, config, seed=5)) == 15
+
+
+def test_templates_are_appended_so_an_earlier_winner_still_wins() -> None:
+    from pathlib import Path
+
+    from experiments.brainworkshop_canonical.program_search import propose_from_bank
+    from neural_computer import ExternalTemporalProgramBank
+
+    repository = Path(__file__).resolve().parents[1]
+    bank = ExternalTemporalProgramBank.load_bank(
+        repository / "artifacts/checkpoints/AgentBrain.bank"
+    )
+    plain = propose_from_bank(bank)
+    templates = ((0,), torch.zeros(bank.context_width)), ((1,), torch.ones(bank.context_width))
+    widened = propose_from_bank(bank, templates)
+    assert len(widened) > len(plain)
+    # Every original proposal keeps its position, so no recorded winner moves.
+    assert [item.label() for item in widened[: len(plain)]] == [
+        item.label() for item in plain
+    ]
+    tail = widened[len(plain) :]
+    assert all(item.template is not None for item in tail)
+    # Both polarities are offered.
+    assert any(item.invert_intention for item in tail)
+    assert any(not item.invert_intention for item in tail)
