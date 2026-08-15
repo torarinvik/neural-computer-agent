@@ -144,7 +144,19 @@ def infer_machine(
         machine = _consistent_machine(episodes, states, node_budget)
         if machine is not None:
             return machine
-    return None
+    # Exact search wins on a few long episodes at small state counts and
+    # stalls past four. Evidence-driven merging is the complement: it needs a
+    # prefix tree that branches, so it fails on one long chain and succeeds on
+    # many short ones. Neither dominates, so both are tried.
+    from .evidence_merging import infer_by_merging
+
+    merged = infer_by_merging(episodes, max_states=max_states * 8)
+    if merged is None or merged.state_count > max_states:
+        # A merge that ends with one state per few observations has explained
+        # nothing; it is the failure mode, not an answer. The same complexity
+        # bound the exact search uses decides that.
+        return None
+    return merged
 
 
 class _BudgetExhausted(Exception):

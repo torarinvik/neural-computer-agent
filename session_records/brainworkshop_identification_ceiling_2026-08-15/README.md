@@ -75,12 +75,17 @@ finish under a budget twenty times larger. Eight episodes instead of one does
 not help, which rules out thin evidence as the explanation.
 
 This is Gold's 1978 result -- inferring a minimal automaton from a passive
-sample is NP-hard -- met in practice. It is also the argument for the next
-step. Angluin's L* buys polynomial guarantees by asking *active* queries
-rather than observing harder, and the agent currently only observes: it runs
-whatever program is installed and reads what comes back. Choosing an action
-sequence *in order to disambiguate* is the move that turns an intractable
-problem into a tractable one, and nothing in this architecture does it yet.
+sample is NP-hard -- met in practice.
+
+> **Amended the same day.** The conclusion drawn here, that the fix must be
+> active querying, was wrong on both halves. The environment generates its
+> whole symbol stream from a seed before the first action and never consults
+> the action, so there are no membership queries to make: active learning has
+> nothing to grip on. And the boundary is not informational at all. The same
+> 448 labelled steps identify five- and six-state rules when they arrive as
+> **28 episodes of 16 steps** instead of one episode of 448. See
+> `PROVENANCE.md` in `brainworkshop_induced_counter_program_2026-08-15/`. What
+> looked like a hard limit was the shape of the sample.
 
 ## The obvious tool that does not work here
 

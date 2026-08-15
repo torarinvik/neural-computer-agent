@@ -42,6 +42,7 @@ from __future__ import annotations
 import argparse
 import json
 import time
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -81,16 +82,35 @@ def induce_program(
     *,
     seed: int,
     node_budget: int = NODE_BUDGET,
+    learning_episodes: int = 1,
+    learning_steps: int | None = None,
 ) -> dict[str, Any]:
-    """Feedback in, executed counter program out. Reads no rule."""
+    """Feedback in, executed counter program out. Reads no rule.
+
+    `learning_episodes` and `learning_steps` set how the feedback budget is
+    *segmented*. That turns out to matter more than how large it is: the same
+    number of labelled steps identifies every rule when it arrives as many
+    short episodes and less than half of them when it arrives as one long one.
+    """
 
     clusters = cluster_events(observe_events(encoders, config, seed=seed))
-    trace = episode_trace(payload, encoders, bank, config, clusters, seed=seed)
-    machine = infer_machine(trace, node_budget=node_budget)
+    if learning_steps is None:
+        traces = (episode_trace(payload, encoders, bank, config, clusters, seed=seed),)
+        spent = 1
+    else:
+        short = replace(config, steps=int(learning_steps)).validate()
+        traces = tuple(
+            episode_trace(
+                payload, encoders, bank, short, clusters, seed=seed + 1000 + index
+            )
+            for index in range(int(learning_episodes))
+        )
+        spent = int(learning_episodes)
+    machine = infer_machine(traces, node_budget=node_budget)
     if machine is None:
         return {
             "identified": False,
-            "episodes_spent": 1,
+            "episodes_spent": spent,
             "accuracy": None,
             "solved": False,
             "reason": "no machine consistent with the trace within budget",
@@ -118,7 +138,10 @@ def induce_program(
     accuracy = float(executed["accuracy"])
     return {
         "identified": True,
-        "episodes_spent": EPISODES_PER_RULE,
+        "episodes_spent": spent + 1,
+        "learning_episodes": spent,
+        "learning_steps": learning_steps,
+        "feedback_steps": sum(len(item.symbols) for item in traces),
         "inferred_state_count": machine.state_count,
         "instructions": len(program.instructions),
         "counters": program.counter_count,
@@ -139,6 +162,8 @@ def run_induction(
     seed: int = DEVELOPMENT_SEED,
     steps: int = STEPS,
     node_budget: int = NODE_BUDGET,
+    learning_episodes: int = 1,
+    learning_steps: int | None = None,
 ) -> dict[str, Any]:
     """Every sampled rule, learned rather than compiled from the answer."""
 
@@ -153,7 +178,14 @@ def run_induction(
     for rule in curriculum_rules():
         config = _config(rule, steps)
         row = induce_program(
-            payload, encoders, bank, config, seed=seed, node_budget=node_budget
+            payload,
+            encoders,
+            bank,
+            config,
+            seed=seed,
+            node_budget=node_budget,
+            learning_episodes=learning_episodes,
+            learning_steps=learning_steps,
         )
         # Recorded for reading the table, never consulted by the pipeline.
         row["true_state_count"] = rule.state_count
@@ -178,6 +210,9 @@ def run_induction(
         "steps": steps,
         "threshold": THRESHOLD,
         "node_budget": node_budget,
+        "learning_episodes": learning_episodes,
+        "learning_steps": learning_steps,
+        "feedback_steps": sum(int(row.get("feedback_steps", 0)) for row in rows),
         "rules": rows,
         "solved": len(solved),
         "exactly_correct": len(perfect),
@@ -241,6 +276,8 @@ def main() -> None:
         ),
     )
     parser.add_argument("--node-budget", type=int, default=NODE_BUDGET)
+    parser.add_argument("--learning-episodes", type=int, default=1)
+    parser.add_argument("--learning-steps", type=int, default=None)
     arguments = parser.parse_args()
     report = run_induction(
         arguments.controller_artifact,
@@ -248,6 +285,8 @@ def main() -> None:
         arguments.output_dir,
         frontend_path=arguments.frontend,
         node_budget=arguments.node_budget,
+        learning_episodes=arguments.learning_episodes,
+        learning_steps=arguments.learning_steps,
     )
     print(
         json.dumps(
