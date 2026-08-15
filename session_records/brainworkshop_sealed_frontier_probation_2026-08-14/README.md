@@ -16,8 +16,10 @@ holes on the live Position N-Back line.
    to 8 as a versioned interpreter with unchanged relation weights, and
    five-back verifies.
 4. The same primitive and its two-step composition execute on rendered
-   audio, a second substrate. Dual N-Back is still blocked: it needs a
-   four-way decoder.
+   audio, a second substrate.
+5. Dual N-Back uses the same two-way decoder once per source and packs
+   bits. Seed 96017 scored `1.000` on Dual 1-Back and Dual 2-Back. A
+   one-step program on 2-back scored `0.261`.
 
 A related one-seed founding comparison (header variants of a known depth)
 is archived beside this report as `founding_report.json`.
@@ -48,7 +50,7 @@ Source 1/2/3-back retained `1.000/1.000/0.943`.
 
 - one seed per campaign;
 - no external promotion population or holdout lease;
-- Dual N-Back is still unimplemented;
+- Dual N-Back on the physical Neural Workshop still needs two public ports;
 - first-time depth invention is not cheaper than a matched climb.
 
 Retain the blueprint. Do not treat an isolated threshold as mastery.

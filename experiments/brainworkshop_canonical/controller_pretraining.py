@@ -291,6 +291,8 @@ def build_recursive_temporal_program_machine(
     learning_rate: float = 3e-3,
     sample: bool = False,
     max_history: int | None = None,
+    max_sources: int | None = None,
+    pack_source_actions: bool = False,
 ) -> RecursiveTemporalProgramMachine:
     """Reuse a verified controller artifact behind the recursive interpreter."""
 
@@ -310,8 +312,11 @@ def build_recursive_temporal_program_machine(
     ):
         raise TypeError("controller artifact cannot build a recursive machine")
     history = validated.max_history if max_history is None else int(max_history)
+    sources = validated.max_sources if max_sources is None else int(max_sources)
     if history < validated.max_history:
         raise ValueError("cannot shrink a frozen temporal history")
+    if sources < validated.max_sources:
+        raise ValueError("cannot shrink frozen source capacity")
     if isinstance(program_prior, torch.Tensor) and program_prior.numel() < history:
         program_prior = torch.cat(
             (
@@ -323,31 +328,34 @@ def build_recursive_temporal_program_machine(
         validated.event_width,
         source_key_width=validated.source_key_width,
         max_history=history,
-        max_sources=validated.max_sources,
+        max_sources=sources,
         action_count=validated.action_count,
         intention_width=validated.intention_width,
         hidden=hidden,
         learning_rate=learning_rate,
         sample=sample,
+        pack_source_actions=pack_source_actions,
         controller_state=controller_state,
         program_prior=program_prior,
         initialize_program_from_prior=False,
     )
-    if max_history is None and machine.legacy_controller_digest() != payload.get(
+    resized = (
+        max_history is not None
+        or max_sources is not None
+        or pack_source_actions
+    )
+    if not resized and machine.legacy_controller_digest() != payload.get(
         "controller_digest"
     ):
         raise ValueError("recursive machine changed the legacy controller weights")
-    if max_history is not None:
-        grown = build_recursive_temporal_program_machine(
+    if resized:
+        reference = build_recursive_temporal_program_machine(
             payload, learning_rate=learning_rate, sample=sample
         )
         if any(
-            not torch.equal(
-                machine.state_dict()[name], grown.state_dict()[name]
-            )
-            for name, value in grown.named_parameters()
-            if name != "relative_address_logits"
-            and name in machine.state_dict()
+            not torch.equal(machine.state_dict()[name], reference.state_dict()[name])
+            for name, _value in reference.named_parameters()
+            if name != "relative_address_logits" and name in machine.state_dict()
         ):
             raise ValueError("capacity growth changed frozen relation weights")
     return machine

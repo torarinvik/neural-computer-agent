@@ -175,6 +175,7 @@ class SourcePreservingTemporalMachine(nn.Module):
         learning_rate: float = 3e-3,
         sample: bool = True,
         action_delay_seconds: float = 0.0,
+        pack_source_actions: bool = False,
     ) -> None:
         super().__init__()
         if min(
@@ -195,7 +196,12 @@ class SourcePreservingTemporalMachine(nn.Module):
         self.source_key_width = int(source_key_width)
         self.max_history = int(max_history)
         self.max_sources = int(max_sources)
-        self.action_count = int(action_count)
+        self.pack_source_actions = bool(pack_source_actions)
+        decoder_actions = 2 if self.pack_source_actions else int(action_count)
+        self.decoder_action_count = decoder_actions
+        self.action_count = (
+            1 << int(max_sources) if self.pack_source_actions else int(action_count)
+        )
         self.intention_width = int(intention_width)
         self.output_key = "keypress"
         self.sample = bool(sample)
@@ -213,10 +219,11 @@ class SourcePreservingTemporalMachine(nn.Module):
             nn.GELU(),
             nn.Linear(hidden, intention_width),
         )
-        self.decoder = KeypressDecoder(intention_width, action_count, hidden=hidden)
+        self.decoder = KeypressDecoder(intention_width, decoder_actions, hidden=hidden)
         self.optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate)
         self._histories: dict[tuple[float, ...], list[torch.Tensor]] = {}
         self._bound_source_identities: set[tuple[float, ...]] | None = None
+        self._bound_source_order: tuple[tuple[float, ...], ...] = ()
         self.model_version = 0
         self.optimizer_updates = 0
         self.unique_outcome_bits = 0
@@ -244,13 +251,18 @@ class SourcePreservingTemporalMachine(nn.Module):
 
         if source_keys is None:
             self._bound_source_identities = None
+            self._bound_source_order = ()
             return
-        identities = {self._identity(key) for key in source_keys}
+        ordered = tuple(self._identity(key) for key in source_keys)
+        identities = set(ordered)
         if not identities:
             raise ValueError("executable source binding cannot be empty")
+        if len(identities) != len(ordered):
+            raise ValueError("executable source binding cannot repeat a source")
         if len(identities) > self.max_sources:
             raise ValueError("executable source binding exceeds fixed source capacity")
         self._bound_source_identities = identities
+        self._bound_source_order = ordered
 
     def _history_tensors(
         self,
@@ -317,6 +329,16 @@ class SourcePreservingTemporalMachine(nn.Module):
 
         return credit
 
+    def _ordered_sources(
+        self, credit: _MultistreamCreditState
+    ) -> tuple[_SourceTemporalCredit, ...]:
+        if not self._bound_source_order:
+            return credit.sources
+        rank = {identity: index for index, identity in enumerate(self._bound_source_order)}
+        return tuple(
+            sorted(credit.sources, key=lambda source: rank[self._identity(source.source_key)])
+        )
+
     def _forward_credit(
         self,
         credit: _MultistreamCreditState,
@@ -331,7 +353,22 @@ class SourcePreservingTemporalMachine(nn.Module):
         # source-conditioned nonlinear vectors remain separately computed.
         composite = conditioned.sum(dim=1) / len(credit.sources) ** 0.5
         intention = IntentEvent(composite)
-        return intention, self.decoder(intention)
+        if not self.pack_source_actions:
+            return intention, self.decoder(intention)
+        ordered = self._ordered_sources(credit)
+        if self.action_count != 1 << len(ordered):
+            raise ValueError("packed source actions do not match the live source count")
+        bit_logits = [
+            self.decoder(IntentEvent(self._source_relation(source))) for source in ordered
+        ]
+        packed = []
+        for action in range(self.action_count):
+            term = None
+            for index, logits in enumerate(bit_logits):
+                log_probability = logits.log_softmax(dim=-1)[:, (action >> index) & 1]
+                term = log_probability if term is None else term + log_probability
+            packed.append(term)
+        return intention, torch.stack(packed, dim=1)
 
     def _learn(self, outcomes: tuple[ResolvedLiveOutcome, ...]) -> None:
         losses: list[torch.Tensor] = []
@@ -1166,8 +1203,14 @@ def run_rendered_live_lifetime(
     machine.reset_history_each_tick = bool(reset_history_each_tick)
     bind = getattr(machine, "bind_executable_sources", None)
     remaining = [stream for stream in config.streams if stream not in drop_streams]
-    if bind is not None and remaining and machine.max_sources == 1:
-        bind((encoders.source_keys[remaining[0]].detach().reshape(1, -1),))
+    if bind is not None and remaining:
+        keys = tuple(
+            encoders.source_keys[stream].detach().reshape(1, -1) for stream in remaining
+        )
+        if getattr(machine, "pack_source_actions", False):
+            bind(keys)
+        elif machine.max_sources == 1:
+            bind(keys[:1])
     runtime = CognitiveTickRuntime(
         device,
         machine,

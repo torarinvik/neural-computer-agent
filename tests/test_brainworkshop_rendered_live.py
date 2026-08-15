@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 from dataclasses import fields
+from pathlib import Path
 
 import pytest
 import torch
@@ -18,6 +19,10 @@ from experiments.brainworkshop_canonical import (
     render_position,
     run_rendered_live_lifetime,
 )
+from experiments.brainworkshop_canonical.controller_pretraining import (
+    build_recursive_temporal_program_machine,
+    load_temporal_controller_artifact,
+)
 from neural_computer import (
     TEMPORAL_ADDRESS_EXECUTION_SCHEMA,
     TEMPORAL_ADDRESS_INTERPRETER_SCHEMA,
@@ -26,6 +31,7 @@ from neural_computer import (
     AmodalEventCollection,
     ExternalProgramArtifact,
     compose_recursive_temporal_program,
+    one_hot_temporal_address_artifact,
     recursive_temporal_primitive,
 )
 
@@ -448,6 +454,54 @@ def test_bound_program_ignores_extra_bus_sources() -> None:
         )
     assert all(torch.equal(left, right) for left, right in zip(play_only, both, strict=True))
     assert len(machine._histories) == 1
+
+
+def test_packed_dual_nback_uses_frozen_binary_decoder() -> None:
+    payload = load_temporal_controller_artifact(
+        Path("artifacts/checkpoints/temporal_controller_previous_event_seed1001.pt")
+    )
+    machine = build_recursive_temporal_program_machine(
+        payload, sample=False, max_sources=2, pack_source_actions=True
+    )
+    primitive = recursive_temporal_primitive(
+        one_hot_temporal_address_artifact(0, machine.max_history)
+    )
+    machine.load_recursive_program_artifact(
+        primitive, controller_digest=machine.controller_digest()
+    )
+    encoders = RenderedBrainWorkshopEncoders(
+        machine.event_width, source_key_width=machine.source_key_width
+    )
+    for parameter in encoders.parameters():
+        parameter.requires_grad_(False)
+
+    one = run_rendered_live_lifetime(
+        machine,
+        encoders,
+        RenderedBrainWorkshopConfig(n_back=1, steps=24, streams=("vision", "audio")),
+        seed=61,
+        learn=False,
+        sample=False,
+    )
+    machine.load_recursive_program_artifact(
+        compose_recursive_temporal_program(primitive, 2),
+        controller_digest=machine.controller_digest(),
+    )
+    two = run_rendered_live_lifetime(
+        machine,
+        encoders,
+        RenderedBrainWorkshopConfig(n_back=2, steps=24, streams=("vision", "audio")),
+        seed=62,
+        learn=False,
+        sample=False,
+    )
+
+    assert machine.action_count == 4
+    assert machine.decoder.key_count == 2
+    assert one.eligible_accuracy >= 0.8
+    assert two.eligible_accuracy >= 0.8
+    assert one.optimizer_updates == 0
+    assert two.optimizer_updates == 0
 
 
 def test_negative_feedback_updates_a_saturated_policy_without_clamp_dead_zone() -> None:

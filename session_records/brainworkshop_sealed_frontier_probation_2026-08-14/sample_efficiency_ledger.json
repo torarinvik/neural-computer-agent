@@ -12,6 +12,8 @@
     "warm_audio_1back": 59,
     "warm_audio_2back": 58,
     "fresh_audio_1back": 59,
+    "dual_1back": 47,
+    "dual_2back": 46,
     "founding_warm_3cell_3back": 20,
     "founding_fresh_3cell_3back": 85,
     "founding_warm_2cell_3back": 117,
@@ -34,11 +36,12 @@
     "capacity_miss_at_history_4": true,
     "five_back_after_growth": true,
     "audio_substrate_warm_1_and_2_back": true,
+    "dual_packed_binary_decoder": true,
     "no_gifted_previous_file": true,
     "controller_program_replay_updates": 0
   },
   "unresolved": {
-    "dual_nback": "requires four-way decoder",
+    "dual_nback_physical": "two public action ports not yet wired",
     "promotion_holdout": "not consumed",
     "first_time_depth_invention": "no sample-efficiency win versus fresh climb"
   }

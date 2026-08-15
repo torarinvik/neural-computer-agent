@@ -446,6 +446,12 @@ The same primitive and two-step child scored `1.000` on rendered audio
 bits were tied; the transfer claim is execution on a new substrate, not a
 cheaper discovery.
 
+```bash
+PYTHONPATH=src .venv/bin/python \
+  -m experiments.brainworkshop_canonical.rendered_dual_nback_pilot \
+  --report-out /tmp/rendered-dual-nback.json
+```
+
 In the seed-94017-v2 run, a warm 1-back/2-back bank rebound 3-cell 2-back in
 one `try_existing` session at `1.000` (24 bits). New 2-cell 3-back still had
 to fail the two existing files and compose: 117 warm bits versus 119 fresh,
@@ -519,7 +525,11 @@ Evidence:
 
 ## Current bottleneck
 
-The live language is a discovered one-step address, `PREVIOUS^n` composition,
-header routing, and a versioned history grow. Dual N-Back still needs a
-four-way decoder. First-time depth invention is not cheaper than a fresh
-climb. These live Neural Workshop results remain one-seed probation.
+`rendered_dual_nback_pilot.py` keeps the frozen two-way decoder and packs
+one match bit per source. Seed 96017 scored `1.000` on rendered Dual 1-Back
+and Dual 2-Back, with a wrong-depth control at `0.261`. No four-way head was
+trained.
+
+The remaining gaps are first-time depth invention (still a tie versus a
+fresh climb) and promotion (one seed, no holdout). Dual on physical Neural
+Workshop still needs two public action ports.
