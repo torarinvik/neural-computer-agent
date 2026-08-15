@@ -1,0 +1,35 @@
+{
+  "schema": "neural-computer.dual-acquisition.v1",
+  "status": "probation_dual_acquisition",
+  "controller_digest": "4eb2509133775196cff5b3d01d737fb57c03303fa20f67a98702f80bead846cd",
+  "action_count": 4,
+  "decoder_key_count": 2,
+  "optimizer_updates": 0,
+  "replayed_examples": 0,
+  "rendered": {
+    "99017": "rendered_seed99017.json",
+    "99117": "rendered_seed99117.json"
+  },
+  "neural_workshop": {
+    "99117": "neural_workshop_seed99117.json",
+    "99217": "neural_workshop_seed99217.json"
+  },
+  "dual_1back_bits_to_threshold": {
+    "rendered_99017": 47,
+    "rendered_99117": 94,
+    "neural_workshop_99117": 95,
+    "neural_workshop_99217": 49
+  },
+  "dual_1back_retention": {
+    "rendered_99017": 1.0,
+    "rendered_99117": 1.0,
+    "neural_workshop_99117": 1.0,
+    "neural_workshop_99217": 1.0
+  },
+  "warm_dual_2back": {
+    "rendered_99017": 1.0,
+    "rendered_99117": 1.0,
+    "neural_workshop_99117": 1.0,
+    "neural_workshop_99217": 0.9444444444444444
+  }
+}

@@ -11,6 +11,7 @@ from experiments.brainworkshop_canonical.neural_workshop_curriculum_pilot import
     rung_mastered,
 )
 from experiments.brainworkshop_canonical.neural_workshop_live import (
+    NeuralWorkshopAudioEncoder,
     NeuralWorkshopInstructionEncoder,
     NeuralWorkshopIntervention,
     NeuralWorkshopLiveConfig,
@@ -23,7 +24,13 @@ from experiments.brainworkshop_canonical.rendered_live import (
 )
 
 
-def _observation(sequence: int, *, outcome: dict[str, Any] | None = None, done=False):
+def _observation(
+    sequence: int,
+    *,
+    outcome: dict[str, Any] | None = None,
+    done=False,
+    audio: bool = False,
+):
     width = height = 16
     pixels = bytearray([255] * (width * height * 4))
     offset = ((sequence * 3) % (width * height)) * 4
@@ -38,6 +45,11 @@ def _observation(sequence: int, *, outcome: dict[str, Any] | None = None, done=F
     }
     if outcome is not None:
         result["outcome"] = outcome
+    if audio:
+        result["audio_pcm"] = bytes([0, 16] * 128)
+        result["audio_rate"] = 8_000
+        result["audio_channels"] = 1
+        result["audio_sample_width"] = 2
     return result
 
 
@@ -357,3 +369,184 @@ def test_live_adapter_records_instruction_events_without_controller_input() -> N
     assert len(report.instruction_payloads) == 2
     assert report.input_events == 4
     assert machine.max_sources == 1
+    assert report.audio_payloads == ()
+
+
+class _DualEnvironment(_Environment):
+    n_actions = 2
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._current = _observation(1, audio=True)
+
+    def advance(self):
+        observation = super().advance()
+        if observation.get("done"):
+            return observation
+        self._current = _observation(
+            int(observation["frame_seq"]),
+            outcome=observation.get("outcome"),
+            audio=True,
+        )
+        return self._current
+
+
+def test_dual_adapter_encodes_public_pcm_and_packs_two_ports() -> None:
+    environment = _DualEnvironment()
+    machine = SourcePreservingTemporalMachine(
+        8,
+        source_key_width=4,
+        max_history=3,
+        max_sources=2,
+        action_count=2,
+        sample=False,
+        pack_source_actions=True,
+    )
+    report = run_neural_workshop_live_lifetime(
+        machine,
+        NeuralWorkshopLiveConfig(
+            active_cells=2,
+            trials=2,
+            event_width=8,
+            source_key_width=4,
+            image_size=8,
+            crop=(0.0, 0.40, 1.0, 1.0),
+            instruction_crop=(0.0, 0.0, 1.0, 0.20),
+            instruction_image_size=8,
+            instruction_pool_size=4,
+            game_mode=2,
+            action_ports=2,
+        ),
+        seed=13,
+        environment=environment,
+        verifier=lambda *args, **kwargs: True,
+        learn=False,
+        sample=False,
+    )
+
+    assert machine.action_count == 4
+    assert len(report.audio_payloads) == len(report.event_payloads) == 2
+    assert report.input_events == 6
+    assert report.emitted_actions == 2
+    assert all(0 <= action < 4 for action in report.actions)
+
+
+def test_dual_mixed_public_scalar_is_not_half_credit() -> None:
+    environment = _DualEnvironment()
+
+    def advance(self):
+        observation = _Environment.advance(self)
+        if observation.get("outcome") is not None:
+            observation = dict(observation)
+            observation["outcome"] = dict(observation["outcome"])
+            observation["outcome"]["scalar"] = 0.0
+        if observation.get("done"):
+            self._current = observation
+            return observation
+        self._current = _observation(
+            int(observation["frame_seq"]),
+            outcome=observation.get("outcome"),
+            audio=True,
+        )
+        return self._current
+
+    environment.advance = advance.__get__(environment, _DualEnvironment)
+    machine = SourcePreservingTemporalMachine(
+        8,
+        source_key_width=4,
+        max_history=3,
+        max_sources=2,
+        action_count=2,
+        sample=False,
+        pack_source_actions=True,
+    )
+    report = run_neural_workshop_live_lifetime(
+        machine,
+        NeuralWorkshopLiveConfig(
+            active_cells=2,
+            trials=2,
+            event_width=8,
+            source_key_width=4,
+            image_size=8,
+            crop=(0.0, 0.40, 1.0, 1.0),
+            instruction_crop=(0.0, 0.0, 1.0, 0.20),
+            instruction_image_size=8,
+            instruction_pool_size=4,
+            game_mode=2,
+            action_ports=2,
+        ),
+        seed=13,
+        environment=environment,
+        verifier=lambda *args, **kwargs: True,
+        learn=False,
+        sample=False,
+    )
+
+    assert report.signed_scalars == (0.0,)
+    assert report.verifier_rewards == (0.5,)
+    assert report.rewards == (0.0,)
+
+
+def test_dual_fails_closed_without_public_pcm() -> None:
+    environment = _Environment()
+    environment.n_actions = 2
+    machine = SourcePreservingTemporalMachine(
+        8,
+        source_key_width=4,
+        max_history=3,
+        max_sources=2,
+        action_count=2,
+        sample=False,
+        pack_source_actions=True,
+    )
+    with pytest.raises(ValueError, match="missing PCM"):
+        run_neural_workshop_live_lifetime(
+            machine,
+            NeuralWorkshopLiveConfig(
+                active_cells=2,
+                trials=2,
+                event_width=8,
+                source_key_width=4,
+                image_size=8,
+                crop=(0.0, 0.40, 1.0, 1.0),
+                instruction_crop=(0.0, 0.0, 1.0, 0.20),
+                instruction_image_size=8,
+                instruction_pool_size=4,
+                game_mode=2,
+                action_ports=2,
+            ),
+            seed=13,
+            environment=environment,
+            verifier=lambda *args, **kwargs: True,
+            learn=False,
+            sample=False,
+        )
+
+
+def test_dual_rejects_letter_ids_and_distinguishes_waveforms() -> None:
+    config = NeuralWorkshopLiveConfig(
+        event_width=8,
+        source_key_width=4,
+        game_mode=2,
+        action_ports=2,
+    )
+    encoder = NeuralWorkshopAudioEncoder(config)
+    vision = NeuralWorkshopRGBAEncoder(config, seed=3)
+    a = _observation(1, audio=True)
+    b = _observation(2, audio=True)
+    # Distinct temporal envelopes, not a mere amplitude scale that LayerNorm
+    # would erase.
+    b["audio_pcm"] = bytes(
+        ((index % 32) * 8) % 256 if index % 2 == 0 else 0 for index in range(256)
+    )
+    leaked = dict(a)
+    leaked["letter"] = 4
+    with pytest.raises(ValueError, match="privileged keys"):
+        encoder.encode(leaked)
+    with pytest.raises(ValueError, match="privileged keys"):
+        vision.encode(leaked)
+    first = encoder.encode(a).payload.detach().clone()
+    second = encoder.encode(b).payload.detach().clone()
+    same = encoder.encode(a).payload.detach().clone()
+    assert torch.allclose(first, same, atol=1e-6)
+    assert float(torch.linalg.vector_norm(first - second)) > 0.05

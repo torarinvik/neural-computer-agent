@@ -504,6 +504,26 @@ def test_packed_dual_nback_uses_frozen_binary_decoder() -> None:
     assert two.optimizer_updates == 0
 
 
+def test_rendered_dual_blank_file_updates_only_the_address_program() -> None:
+    from experiments.brainworkshop_canonical.rendered_dual_transfer_pilot import (
+        run_rendered_dual_transfer,
+    )
+
+    payload = load_temporal_controller_artifact(
+        Path("artifacts/checkpoints/temporal_controller_previous_event_seed1001.pt")
+    )
+    report = run_rendered_dual_transfer(
+        payload, steps=12, sessions=1, seed=99, learning_rate=0.3
+    )
+
+    assert report["action_count"] == 4
+    assert report["decoder_key_count"] == 2
+    assert report["dual_1back_train"][0]["program_file_updates"] >= 1
+    assert report["dual_1back_retention"]["program_file_updates"] == 0
+    assert report["replayed_examples"] == 0
+    assert report["optimizer_updates"] == 0
+
+
 def test_negative_feedback_updates_a_saturated_policy_without_clamp_dead_zone() -> None:
     torch.manual_seed(43)
     machine = SourcePreservingTemporalMachine(

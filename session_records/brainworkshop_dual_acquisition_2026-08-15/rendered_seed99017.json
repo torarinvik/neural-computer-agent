@@ -1,0 +1,63 @@
+{
+  "action_count": 4,
+  "controller_digest": "4eb2509133775196cff5b3d01d737fb57c03303fa20f67a98702f80bead846cd",
+  "controls": {
+    "action_reversed": {
+      "accuracy": 0.12765957415103912,
+      "unique_verifier_bits": 47
+    },
+    "missing_history": {
+      "accuracy": 0.23404255509376526,
+      "unique_verifier_bits": 47
+    },
+    "reward_shuffled": {
+      "accuracy": 0.5957446694374084,
+      "unique_verifier_bits": 47
+    }
+  },
+  "decoder_key_count": 2,
+  "dual_1back_bits_to_threshold": 47,
+  "dual_1back_retention": {
+    "accuracy": 1.0,
+    "program_file_updates": 0,
+    "unique_verifier_bits": 47
+  },
+  "dual_1back_train": [
+    {
+      "accuracy": 0.8510638475418091,
+      "optimizer_updates": 0,
+      "program_file_updates": 47,
+      "session": 0,
+      "unique_verifier_bits": 47
+    }
+  ],
+  "fresh_dual_2back_bits_to_threshold": 92,
+  "fresh_dual_2back_train": [
+    {
+      "accuracy": 0.695652186870575,
+      "optimizer_updates": 0,
+      "program_file_updates": 46,
+      "session": 0,
+      "unique_verifier_bits": 46
+    },
+    {
+      "accuracy": 0.804347813129425,
+      "optimizer_updates": 0,
+      "program_file_updates": 46,
+      "session": 1,
+      "unique_verifier_bits": 46
+    }
+  ],
+  "optimizer_updates": 0,
+  "replayed_examples": 0,
+  "schema": "neural-computer.rendered-dual-transfer.v1",
+  "transfer_ratio_against_fresh_learner": null,
+  "transfer_ratio_note": "warm Dual 2-back is composed execution with zero target updates; fresh Dual 2-back is a same-task climb",
+  "wall_seconds": 0.7158276670379564,
+  "warm_dual_2back": {
+    "accuracy": 1.0,
+    "program_file_updates": 0,
+    "unique_verifier_bits": 46
+  },
+  "warm_target_learning_bits": 0
+}

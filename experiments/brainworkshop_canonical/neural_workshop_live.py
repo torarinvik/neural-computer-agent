@@ -2,10 +2,14 @@
 
 The adapter is deliberately the only component that knows the environment's
 transport protocol.  The cognitive machine receives one learned event tensor
-per public stimulus frame, emits one of two opaque actions, and later receives
+per public stimulus stream, emits packed opaque actions, and later receives
 an exact-once scalar outcome bound to that action's receipt.  Grid settings,
-phase scheduling, framebuffer bytes, and verifier evidence never enter the
-controller.
+phase scheduling, framebuffer bytes, letter IDs, and verifier evidence never
+enter the controller.
+
+Position uses the public RGBA crop. Dual adds the public stimulus waveform
+(`audio_pcm`) as a second separately bound event and packs two ports. Missing
+PCM or privileged keys fail closed.
 """
 
 from __future__ import annotations
@@ -39,6 +43,21 @@ from .rendered_live import SourcePreservingTemporalMachine
 NEURAL_WORKSHOP_LIVE_SCHEMA = "neural-computer.neural-workshop-live.v1"
 _ACTION_INTERVENTIONS = {"normal", "passive", "random", "reversed"}
 _REWARD_INTERVENTIONS = {"normal", "missing", "shuffled"}
+# These keys are Brain Workshop internals. A Dual (or Position) observation
+# that carries them is a hidden channel, not a public sensorimotor stream.
+_PRIVILEGED_OBSERVATION_KEYS = frozenset(
+    {
+        "audio",
+        "captured_audio",
+        "correct_action",
+        "current_stim",
+        "letter",
+        "modalities",
+        "n_back",
+        "phase",
+        "stim",
+    }
+)
 
 
 @dataclass(frozen=True)
@@ -97,6 +116,9 @@ class NeuralWorkshopLiveConfig:
     instruction_image_size: int = 96
     instruction_pool_size: int = 32
     instruction_encoder_seed: int = 2_041
+    audio_encoder_seed: int = 3_017
+    game_mode: int = 10
+    action_ports: int = 1
     schema: str = NEURAL_WORKSHOP_LIVE_SCHEMA
 
     def validate(self) -> NeuralWorkshopLiveConfig:
@@ -112,8 +134,12 @@ class NeuralWorkshopLiveConfig:
             self.image_size,
             self.instruction_image_size,
             self.instruction_pool_size,
+            self.game_mode,
+            self.action_ports,
         ) < 1:
             raise ValueError("Neural Workshop dimensions must be positive")
+        if self.action_ports not in (1, 2):
+            raise ValueError("Neural Workshop live currently supports one or two ports")
         if self.active_cells > self.grid_size * self.grid_size:
             raise ValueError("active cells cannot exceed the visible grid")
         _validate_crop(self.crop, name="frame crop")
@@ -164,6 +190,7 @@ class NeuralWorkshopLiveReport:
     evidence_digests: tuple[tuple[str, ...], ...]
     event_payloads: tuple[tuple[float, ...], ...]
     instruction_payloads: tuple[tuple[float, ...], ...]
+    audio_payloads: tuple[tuple[float, ...], ...]
     ticks: int
     deadline_misses: int
     wall_seconds: float
@@ -235,6 +262,12 @@ class NeuralWorkshopRGBAEncoder(nn.Module):
         required = {"frame_seq", "timestamp_ns", "width", "height", "rgba", "done"}
         if not required.issubset(observation):
             raise ValueError("Neural Workshop observation is incomplete")
+        leaked = _PRIVILEGED_OBSERVATION_KEYS.intersection(observation)
+        if leaked:
+            raise ValueError(
+                "Neural Workshop observation leaked privileged keys: "
+                + ", ".join(sorted(leaked))
+            )
         width = observation["width"]
         height = observation["height"]
         rgba = observation["rgba"]
@@ -271,6 +304,69 @@ class NeuralWorkshopRGBAEncoder(nn.Module):
         background = pixels.flatten(2).median(dim=2).values[:, :, None, None]
         pixels = (pixels - background).abs()
         payload = self.normalization(self.projection(self.pool(pixels).flatten(1)))
+        self.emitted_payloads.append(payload[0].detach().cpu().clone())
+        timestamp = float(observation["timestamp_ns"]) / 1_000_000_000.0
+        event = AmodalEvent(
+            payload=payload,
+            source_key=self.source_key.detach().reshape(1, -1),
+            timestamp=torch.tensor([timestamp], dtype=payload.dtype),
+            confidence=torch.ones(1, dtype=payload.dtype),
+        )
+        return AmodalEventCollection.from_events((event,), width=self.event_width)
+
+
+class NeuralWorkshopAudioEncoder(nn.Module):
+    """Frozen public-waveform projection into one amodal event.
+
+    It consumes only PCM samples from the environment's public observation.
+    Letter IDs, modality names, and correct actions are not inputs.
+    """
+
+    def __init__(self, config: NeuralWorkshopLiveConfig, *, seed: int | None = None) -> None:
+        super().__init__()
+        config.validate()
+        self.event_width = config.event_width
+        self.source_key_width = config.source_key_width
+        self.pool = nn.AdaptiveAvgPool1d(256)
+        self.projection = nn.Linear(256, self.event_width, bias=False)
+        self.normalization = nn.LayerNorm(self.event_width)
+        with torch.random.fork_rng():
+            torch.manual_seed(config.audio_encoder_seed if seed is None else seed)
+            nn.init.orthogonal_(self.projection.weight)
+            self.source_key = nn.Parameter(torch.randn(self.source_key_width))
+        self.requires_grad_(False)
+        self.emitted_payloads: list[torch.Tensor] = []
+
+    def encode(self, observation: dict[str, Any]) -> AmodalEventCollection:
+        leaked = _PRIVILEGED_OBSERVATION_KEYS.intersection(observation)
+        if leaked:
+            raise ValueError(
+                "Neural Workshop audio observation leaked privileged keys: "
+                + ", ".join(sorted(leaked))
+            )
+        pcm = observation.get("audio_pcm")
+        if not isinstance(pcm, (bytes, bytearray)) or not pcm:
+            raise ValueError("Neural Workshop audio observation is missing PCM")
+        width = int(observation.get("audio_sample_width") or 2)
+        channels = max(int(observation.get("audio_channels") or 1), 1)
+        raw = bytearray(pcm)
+        if width == 1:
+            wave = torch.frombuffer(raw, dtype=torch.uint8).to(torch.float32)
+            wave = (wave - 128.0) / 128.0
+        elif width == 2:
+            if len(raw) % 2:
+                raw = raw[: len(raw) - 1]
+            wave = torch.frombuffer(raw, dtype=torch.int16).to(torch.float32)
+            wave = wave / 32768.0
+        else:
+            raise ValueError("unsupported public audio sample width")
+        if wave.numel() < channels:
+            raise ValueError("public audio waveform is empty")
+        usable = wave.numel() - (wave.numel() % channels)
+        wave = wave[:usable].reshape(-1, channels).mean(dim=1)
+        payload = self.normalization(
+            self.projection(self.pool(wave.reshape(1, 1, -1)).flatten(1))
+        )
         self.emitted_payloads.append(payload[0].detach().cpu().clone())
         timestamp = float(observation["timestamp_ns"]) / 1_000_000_000.0
         event = AmodalEvent(
@@ -366,19 +462,27 @@ class NeuralWorkshopLiveDevice:
         verifier: Any,
         intervention: NeuralWorkshopIntervention | None = None,
         instruction_encoder: NeuralWorkshopInstructionEncoder | None = None,
+        audio_encoder: NeuralWorkshopAudioEncoder | None = None,
     ) -> None:
-        if environment.n_actions != 1:
-            raise ValueError("first live rung requires Position-only one-port mode")
+        if environment.n_actions not in (1, 2):
+            raise ValueError("Neural Workshop live supports one or two action ports")
+        if audio_encoder is None and environment.n_actions != 1:
+            raise ValueError("two-port Dual requires a public audio encoder")
+        if audio_encoder is not None and environment.n_actions != 2:
+            raise ValueError("audio encoder requires the two-port Dual surface")
         if (
             instruction_encoder is not None
             and instruction_encoder.event_width != encoder.event_width
         ):
             raise ValueError("instruction encoder width must match the play-field encoder")
-        if instruction_encoder is encoder:
+        if audio_encoder is not None and audio_encoder.event_width != encoder.event_width:
+            raise ValueError("audio encoder width must match the play-field encoder")
+        if instruction_encoder is encoder or audio_encoder is encoder:
             raise ValueError("instruction encoder must be a separate frontend")
         self.environment = environment
         self.encoder = encoder
         self.instruction_encoder = instruction_encoder
+        self.audio_encoder = audio_encoder
         self.event_width = encoder.event_width
         self.verifier = verifier
         self.intervention = (
@@ -440,7 +544,13 @@ class NeuralWorkshopLiveDevice:
             if not -1.0 <= signed <= 1.0:
                 raise ValueError("verified scalar lies outside [-1, 1]")
             verifier_reward = (signed + 1.0) / 2.0
-            learner_reward = verifier_reward
+            # One public Dual trial paints two labels. The packed action is
+            # correct only when every visible label is positive. Mixed 0.0
+            # must not become half-credit on a four-way head.
+            if self.environment.n_actions > 1:
+                learner_reward = 1.0 if signed >= 1.0 - 1e-6 else 0.0
+            else:
+                learner_reward = verifier_reward
             present = True
             if self.intervention.reward == "shuffled":
                 learner_reward = float(self._random.randrange(2))
@@ -483,14 +593,16 @@ class NeuralWorkshopLiveDevice:
         self._outcomes.clear()
         if self._event_pending:
             play = self.encoder.encode(self._observation)
-            if self.instruction_encoder is None:
-                events = play
-            else:
-                header = self.instruction_encoder.encode(self._observation)
-                events = AmodalEventCollection.from_events(
-                    (_event_at(play, 0), _event_at(header, 0)),
-                    width=self.event_width,
-                )
+            pieces = [_event_at(play, 0)]
+            if self.audio_encoder is not None:
+                pieces.append(_event_at(self.audio_encoder.encode(self._observation), 0))
+            if self.instruction_encoder is not None:
+                pieces.append(_event_at(self.instruction_encoder.encode(self._observation), 0))
+            events = (
+                play
+                if len(pieces) == 1
+                else AmodalEventCollection.from_events(pieces, width=self.event_width)
+            )
             self._event_pending = False
         else:
             events = AmodalEventCollection.empty(1, self.event_width)
@@ -500,21 +612,24 @@ class NeuralWorkshopLiveDevice:
         if self._advance_pending or self._environment_receipts:
             raise RuntimeError("Neural Workshop permits one action per stimulus")
         opaque = int(action.item())
-        if opaque not in (0, 1):
-            raise ValueError("Position-only decoder must emit action zero or one")
+        ports = self.environment.n_actions
+        action_space = 1 << ports
+        if not 0 <= opaque < action_space:
+            raise ValueError("decoder action is outside the public port packing")
         executed = opaque
         execution_probability = float(receipt.propensity.item())
         if self.intervention.action == "passive":
             executed = 0
             execution_probability = 1.0
         elif self.intervention.action == "random":
-            executed = self._random.randrange(2)
-            execution_probability = 0.5
+            executed = self._random.randrange(action_space)
+            execution_probability = 1.0 / action_space
         elif self.intervention.action == "reversed":
-            executed = 1 - opaque
+            executed = (action_space - 1) ^ opaque
         probability = max(execution_probability, torch.finfo(torch.float32).tiny)
+        pressed = [index for index in range(ports) if (executed >> index) & 1]
         environment_receipt = self.environment.act(
-            [] if executed == 0 else [0], logp=math.log(probability)
+            pressed, logp=math.log(probability)
         )
         if not environment_receipt.get("ok"):
             raise RuntimeError("Neural Workshop rejected an in-window action")
@@ -560,7 +675,7 @@ def build_neural_workshop_environment(
     config.validate()
     module = _load_module(directory)
     environment = module.NeuralWorkshopEnv(
-        seed=seed, game_mode=10, num_trials=config.trials
+        seed=seed, game_mode=config.game_mode, num_trials=config.trials
     )
     bw = module.bw
     bw.cfg.GRID_SIZE = config.grid_size
@@ -585,6 +700,11 @@ def build_neural_workshop_environment(
     if observation.get("done"):
         environment.close()
         raise RuntimeError("Neural Workshop ended during reset")
+    if environment.n_actions != config.action_ports:
+        environment.close()
+        raise RuntimeError(
+            "Neural Workshop port count does not match the live adapter"
+        )
     return environment, module.verify_public_outcome
 
 
@@ -611,7 +731,8 @@ def run_neural_workshop_live_lifetime(
     config.validate()
     if tick_seconds <= 0.0:
         raise ValueError("tick duration must be positive")
-    if machine.event_width != config.event_width or machine.action_count != 2:
+    expected_actions = 1 << config.action_ports
+    if machine.event_width != config.event_width or machine.action_count != expected_actions:
         raise ValueError("machine is incompatible with the Neural Workshop adapter")
     machine.reset_history()
     machine.learning_enabled = bool(learn)
@@ -622,15 +743,22 @@ def run_neural_workshop_live_lifetime(
     machine.reset_history_each_tick = intervention.reset_history_each_tick
     encoder = NeuralWorkshopRGBAEncoder(config, seed=seed)
     instruction_encoder = NeuralWorkshopInstructionEncoder(config)
+    audio_encoder = (
+        NeuralWorkshopAudioEncoder(config) if config.action_ports == 2 else None
+    )
     bind = getattr(machine, "bind_executable_sources", None)
     if bind is not None:
-        bind((encoder.source_key.detach().reshape(1, -1),))
+        keys = [encoder.source_key.detach().reshape(1, -1)]
+        if audio_encoder is not None:
+            keys.append(audio_encoder.source_key.detach().reshape(1, -1))
+        bind(tuple(keys))
     device = NeuralWorkshopLiveDevice(
         environment,
         encoder,
         verifier,
         intervention,
         instruction_encoder=instruction_encoder,
+        audio_encoder=audio_encoder,
     )
     runtime = CognitiveTickRuntime(
         device, machine, {"keypress": device}, max_tick_seconds=max_tick_seconds
@@ -717,6 +845,12 @@ def run_neural_workshop_live_lifetime(
             tuple(float(value) for value in payload)
             for payload in instruction_encoder.emitted_payloads
         ),
+        audio_payloads=tuple(
+            tuple(float(value) for value in payload)
+            for payload in (
+                audio_encoder.emitted_payloads if audio_encoder is not None else ()
+            )
+        ),
         ticks=len(results),
         deadline_misses=sum(int(item.deadline_missed) for item in results),
         wall_seconds=wall_seconds,
@@ -729,6 +863,7 @@ def run_neural_workshop_live_lifetime(
 __all__ = [
     "NEURAL_WORKSHOP_LIVE_SCHEMA",
     "AuthenticatedNeuralWorkshopOutcome",
+    "NeuralWorkshopAudioEncoder",
     "NeuralWorkshopEnvironment",
     "NeuralWorkshopInstructionEncoder",
     "NeuralWorkshopIntervention",

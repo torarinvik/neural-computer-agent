@@ -1,0 +1,46 @@
+{
+  "action_count": 4,
+  "controller_digest": "4eb2509133775196cff5b3d01d737fb57c03303fa20f67a98702f80bead846cd",
+  "decoder_key_count": 2,
+  "dual_1back": {
+    "accuracy": 1.0,
+    "audio_events": 60,
+    "composition_depth": 1,
+    "controller_frozen": true,
+    "label": "dual-1back",
+    "n_back": 1,
+    "optimizer_updates": 0,
+    "program_file_updates": 0,
+    "unique_verifier_bits": 20,
+    "vision_events": 60
+  },
+  "dual_2back": {
+    "accuracy": 1.0,
+    "audio_events": 60,
+    "composition_depth": 2,
+    "controller_frozen": true,
+    "label": "dual-2back",
+    "n_back": 2,
+    "optimizer_updates": 0,
+    "program_file_updates": 0,
+    "unique_verifier_bits": 20,
+    "vision_events": 60
+  },
+  "max_sources": 2,
+  "optimizer_updates": 0,
+  "replayed_examples": 0,
+  "schema": "neural-computer.neural-workshop-dual-live.v1",
+  "wall_seconds": 16.420722499955446,
+  "wrong_depth_control": {
+    "accuracy": 0.109375,
+    "audio_events": 60,
+    "composition_depth": 1,
+    "controller_frozen": true,
+    "label": "wrong-depth",
+    "n_back": 2,
+    "optimizer_updates": 0,
+    "program_file_updates": 0,
+    "unique_verifier_bits": 32,
+    "vision_events": 60
+  }
+}

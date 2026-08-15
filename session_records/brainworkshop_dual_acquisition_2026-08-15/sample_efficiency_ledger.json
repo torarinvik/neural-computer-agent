@@ -1,0 +1,53 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment_id": "brainworkshop-dual-acquisition-2026-08-15",
+  "status": "probation_dual_acquisition",
+  "source": "in_repository_run",
+  "seed_blocks": [[99017, 99017], [99117, 99117], [99217, 99217]],
+  "replication_count": 2,
+  "unique_verifier_bits": {
+    "rendered_dual_1back_seed99017": 47,
+    "rendered_dual_1back_seed99117": 94,
+    "rendered_warm_dual_2back_seed99017": 46,
+    "rendered_warm_dual_2back_seed99117": 46,
+    "rendered_fresh_dual_2back_seed99017": 92,
+    "rendered_fresh_dual_2back_seed99117": 46,
+    "nw_dual_1back_seed99117": 95,
+    "nw_dual_1back_seed99217": 49,
+    "nw_warm_dual_2back_seed99117": 27,
+    "nw_warm_dual_2back_seed99217": 18,
+    "nw_fresh_dual_2back_seed99117": 49,
+    "nw_fresh_dual_2back_seed99217": 51
+  },
+  "unique_logical_lifetimes_all_arms": 24,
+  "optimizer_updates": 0,
+  "replayed_examples": 0,
+  "wall_seconds": {
+    "rendered_seed99017": 0.7158276670379564,
+    "rendered_seed99117": 0.6795729170553386,
+    "neural_workshop_seed99117": 60.190735541982576,
+    "neural_workshop_seed99217": 49.49907691706903
+  },
+  "stable_bits_to_threshold": {
+    "rendered_dual_1back_seed99017": 47,
+    "rendered_dual_1back_seed99117": 94,
+    "nw_dual_1back_seed99117": 95,
+    "nw_dual_1back_seed99217": 49
+  },
+  "retention_on_mastered_primitive": "Dual 1-back retention 1.000 on all four seeds; composed Dual 2-back 1.000/1.000 rendered and 1.000/0.944 Neural Workshop",
+  "transfer_ratio_against_fresh_learner": null,
+  "transfer_ratio_note": "warm Dual 2-back is composed execution with zero target updates, not a same-task bits-to-threshold ratio",
+  "controls": {
+    "packed_exact_match_not_half_credit": true,
+    "public_pcm_not_letter_id": true,
+    "reward_shuffled_below_threshold": true,
+    "action_reversed_below_threshold": true,
+    "missing_history_below_threshold": true,
+    "controller_program_replay_updates": 0
+  },
+  "unresolved": {
+    "promotion_holdout": "not consumed",
+    "desktop_system_audio_loopback": "macOS screen-capture Dual still lacks clean system-audio input",
+    "founding_header_holdout": "closed in brainworkshop-founding-holdout-2026-08-15"
+  }
+}
