@@ -70,9 +70,12 @@ abstraction. Prototypes bind to a frontend digest and score at chance across a
 frontend swap — every lease records `cross_encoder` at 0.500 (current-symbol)
 or the base rate 0.749 (onset). No representation is learned or shared.
 
-**Memory is a 4-tick window plus a 3-slot library.** `max_history = 4` bounds
-every temporal relation the controller can address in one tick. The bank is
-durable but tiny and hand-curated.
+**Memory is a 4-tick window plus a 3-slot library** — and the window is barely
+used. `max_history = 4` bounds every temporal relation the controller can
+address in one tick, but the enumeration in §3 O1 shows the whole program
+family scoring `-0.003` against a memoryless policy on sampled rules. The
+limit that bites is not how far back the machine can see; it is that the only
+thing it can do with what it sees is test equality against one lagged symbol.
 
 ## 3. Obstacles, ordered by how much they block
 
@@ -107,9 +110,24 @@ that needed a whole lease, `changed` and `n_back-1` are 4-state rules solved by
 one retrieve or invert, and sampled 2-state rules are not solved at all. The
 searcher is tuned to four particular rules.
 
-Remaining: the diagnostic cannot yet separate **inexpressible at this
-controller geometry** from **unreachable by this grammar**. That separation is
-O6, and it is now the most informative thing to measure.
+That separation has since been measured by enumeration
+(`session_records/brainworkshop_rule_expressiveness_2026-08-15/`), and it
+refutes the geometry hypothesis:
+
+| | Mean over 18 sampled rules |
+| --- | ---: |
+| Memoryless (`w=1`) ceiling | 0.789 |
+| **Current program family ceiling** | **0.786** |
+| Window-5 ceiling | 0.931 |
+| Search achieved | 0.680 |
+
+**Zero** rules are blocked by memory: every one has a window-5 ceiling of at
+least `0.830`. **Seven** are expressible by programs the machine already
+supports, and search found **two**. And the family's entire ceiling is
+`-0.003` against a memoryless policy — carrying a four-tick history buys
+nothing, because the only thing the family can do with history is test
+equality against one lagged symbol. The hand-written four are exactly the
+rules for which that one operation is the answer.
 
 ### O2 — Composition only repeats one primitive
 
@@ -188,19 +206,21 @@ different frontend of the same modality, without relearning.
 
 1. ~~**O1** — rule generator with held-out families.~~ **Done**, and the
    baseline is 0/15 on multi-state sampled rules.
-2. **O6 first, now** — separate *inexpressible* from *unsearchable*. Take the
-   sampled rules the grammar failed and ask whether any program at the current
-   controller geometry solves them, by exhaustive check rather than by search.
-   The answer decides everything after it: if they are expressible, the work is
-   O3 (a proposer); if they are not, the work is a blueprint change with the
-   weight-reset control from `AGENTS.md`.
-3. **O2** — heterogeneous composition, ported from the executive family. A
-   library that cannot combine its own parts cannot climb this axis.
-4. **O4** — the accumulation curve over a held-out rule sequence: does rule
-   N+1 get cheaper as the library grows? This is the project's actual thesis
-   and it is now measurable.
-5. **O3** — learned proposer, evaluated on held-out rule families.
-6. **O7**, **O5** as the results make urgent.
+2. ~~**O6** — separate inexpressible from unsearchable.~~ **Done.** Not the
+   geometry: 0/18 rules are memory-blocked. Two deficits instead, both real.
+3. **A program family with state.** 11 of 18 rules need output that depends on
+   accumulated state, not on one lagged comparison. `control_flow.py` is
+   already a two-counter machine and is not wired to this controller; wiring
+   it is the largest available win and needs no new theory.
+4. **O3 — the proposer.** Worth 5 rules immediately, before any new operator,
+   and its value grows with the family it searches. Note these two compound:
+   a richer family without a proposer enlarges a space nothing can search.
+5. **O4** — the accumulation curve over a held-out rule sequence: does rule
+   N+1 get cheaper as the library grows? The project's actual thesis, now
+   measurable.
+6. **O2** — heterogeneous composition, which the state-carrying family will
+   need in order to build anything hierarchical.
+7. **O7**, **O5** as the results make urgent.
 
 The honest summary: the mechanism is sound and unusually well controlled, the
 expressive substrate is already Turing-complete, and the missing pieces are

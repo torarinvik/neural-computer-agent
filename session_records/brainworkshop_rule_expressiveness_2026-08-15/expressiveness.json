@@ -1,0 +1,424 @@
+{
+  "bank_sha256": "07319eb13c9cac58bbbe94258548e64f13ba1b3512ca2a01fbdc675c49e2e7c9",
+  "bank_unchanged": true,
+  "elapsed_seconds": 316.19975404208526,
+  "experiment_id": "brainworkshop-rule-expressiveness-2026-08-15",
+  "hand_written": [
+    {
+      "expressible": true,
+      "hand_written_rule": "current_symbol",
+      "machine_best_program": "prototype (0,)",
+      "machine_ceiling": 1.0,
+      "programs_evaluated": 98,
+      "reachable_by_any_window_policy": true,
+      "rule_digest": "2275b9ece110befb6a763d7fa3fe405587b871db25e7f50df7e576273bcc1f9c",
+      "state_count": 1,
+      "verdict": "expressible",
+      "window_ceilings": {
+        "1": 1.0,
+        "2": 1.0,
+        "3": 1.0,
+        "4": 1.0,
+        "5": 1.0
+      }
+    },
+    {
+      "expressible": true,
+      "hand_written_rule": "onset",
+      "machine_best_program": "and(invert address 0, prototype (0,))",
+      "machine_ceiling": 1.0,
+      "programs_evaluated": 98,
+      "reachable_by_any_window_policy": true,
+      "rule_digest": "72830538f00df609d254032b90ec40716f1969322b9a0434eda007c603359ee5",
+      "state_count": 2,
+      "verdict": "expressible",
+      "window_ceilings": {
+        "1": 0.938925,
+        "2": 1.0,
+        "3": 1.0,
+        "4": 1.0,
+        "5": 1.0
+      }
+    },
+    {
+      "expressible": true,
+      "hand_written_rule": "changed",
+      "machine_best_program": "invert address 0",
+      "machine_ceiling": 1.0,
+      "programs_evaluated": 98,
+      "reachable_by_any_window_policy": true,
+      "rule_digest": "09f4994f885d878a3fde83d8121ae93a367406ae5e80ddfcce7f20ffc5d92b46",
+      "state_count": 4,
+      "verdict": "expressible",
+      "window_ceilings": {
+        "1": 0.749625,
+        "2": 1.0,
+        "3": 1.0,
+        "4": 1.0,
+        "5": 1.0
+      }
+    },
+    {
+      "expressible": true,
+      "hand_written_rule": "n_back",
+      "machine_best_program": "address 0",
+      "machine_ceiling": 1.0,
+      "programs_evaluated": 98,
+      "reachable_by_any_window_policy": true,
+      "rule_digest": "619098a42f6379c0399a070e4ac01a6be7fdf824b51b4378915822a6c9645498",
+      "state_count": 4,
+      "verdict": "expressible",
+      "window_ceilings": {
+        "1": 0.74965,
+        "2": 1.0,
+        "3": 1.0,
+        "4": 1.0,
+        "5": 1.0
+      }
+    }
+  ],
+  "note": "development seed, already consumed; nothing admitted",
+  "sampled": [
+    {
+      "expressible": true,
+      "hand_written_rule": null,
+      "machine_best_program": "prototype (2,)",
+      "machine_ceiling": 1.0,
+      "programs_evaluated": 98,
+      "reachable_by_any_window_policy": true,
+      "rule_digest": "1e4217f47e9a869bfc992ea8738daf02c459a69846613ca031d2382ad34652ae",
+      "state_count": 1,
+      "verdict": "expressible",
+      "window_ceilings": {
+        "1": 1.0,
+        "2": 1.0,
+        "3": 1.0,
+        "4": 1.0,
+        "5": 1.0
+      }
+    },
+    {
+      "expressible": true,
+      "hand_written_rule": null,
+      "machine_best_program": "invert prototype (1, 3)",
+      "machine_ceiling": 1.0,
+      "programs_evaluated": 98,
+      "reachable_by_any_window_policy": true,
+      "rule_digest": "6442d46fe914f82420f9d4bc29955419aa4134f8b25e44ff3736d4b443bae5b8",
+      "state_count": 1,
+      "verdict": "expressible",
+      "window_ceilings": {
+        "1": 1.0,
+        "2": 1.0,
+        "3": 1.0,
+        "4": 1.0,
+        "5": 1.0
+      }
+    },
+    {
+      "expressible": true,
+      "hand_written_rule": null,
+      "machine_best_program": "prototype (2, 3)",
+      "machine_ceiling": 1.0,
+      "programs_evaluated": 98,
+      "reachable_by_any_window_policy": true,
+      "rule_digest": "77923ffc65fd84f308a7a7d91d37506118c69d39d8d13a38649b6cf5f320aa1f",
+      "state_count": 1,
+      "verdict": "expressible",
+      "window_ceilings": {
+        "1": 1.0,
+        "2": 1.0,
+        "3": 1.0,
+        "4": 1.0,
+        "5": 1.0
+      }
+    },
+    {
+      "expressible": true,
+      "hand_written_rule": null,
+      "machine_best_program": "invert prototype (1, 3)",
+      "machine_ceiling": 0.8303571343421936,
+      "programs_evaluated": 98,
+      "reachable_by_any_window_policy": true,
+      "rule_digest": "40209939abcfb32261d7fd293f732aa27a4e1e4a329a4db3e62b80ecf851426e",
+      "state_count": 2,
+      "verdict": "expressible",
+      "window_ceilings": {
+        "1": 0.7987,
+        "2": 0.950148753718843,
+        "3": 0.9885994299714985,
+        "4": 0.9968247618571393,
+        "5": 0.9992749274927493
+      }
+    },
+    {
+      "expressible": true,
+      "hand_written_rule": null,
+      "machine_best_program": "invert prototype (3,)",
+      "machine_ceiling": 0.8950892686843872,
+      "programs_evaluated": 98,
+      "reachable_by_any_window_policy": true,
+      "rule_digest": "e03e28ee60035a4bd2d304e1315be8ba046a97c1e0adf2abe7407ecc4373e022",
+      "state_count": 2,
+      "verdict": "expressible",
+      "window_ceilings": {
+        "1": 0.8747,
+        "2": 0.9360734018350458,
+        "3": 0.9701985099254963,
+        "4": 0.9845988449133685,
+        "5": 0.9925242524252426
+      }
+    },
+    {
+      "expressible": false,
+      "hand_written_rule": null,
+      "machine_best_program": "prototype (2,)",
+      "machine_ceiling": 0.7901785969734192,
+      "programs_evaluated": 98,
+      "reachable_by_any_window_policy": true,
+      "rule_digest": "45536c2a39f511436d45a8a58068da3e7ea543cbbe78fa231bde0778361b1b31",
+      "state_count": 2,
+      "verdict": "expressible_window_but_not_by_this_program_family",
+      "window_ceilings": {
+        "1": 0.90165,
+        "2": 0.9742493562339058,
+        "3": 0.9937996899844992,
+        "4": 0.9983248743655774,
+        "5": 0.9996749674967497
+      }
+    },
+    {
+      "expressible": false,
+      "hand_written_rule": null,
+      "machine_best_program": "invert prototype (2,)",
+      "machine_ceiling": 0.7254464030265808,
+      "programs_evaluated": 98,
+      "reachable_by_any_window_policy": true,
+      "rule_digest": "91dcaa5908f08933be2923b6fe618be73ffd73d5ae05587f08f5e5e8c3956e42",
+      "state_count": 3,
+      "verdict": "expressible_window_but_not_by_this_program_family",
+      "window_ceilings": {
+        "1": 0.7367,
+        "2": 0.7669941748543714,
+        "3": 0.8344667233361668,
+        "4": 0.8742655699177438,
+        "5": 0.9100660066006601
+      }
+    },
+    {
+      "expressible": true,
+      "hand_written_rule": null,
+      "machine_best_program": "prototype (2, 3)",
+      "machine_ceiling": 0.8035714030265808,
+      "programs_evaluated": 98,
+      "reachable_by_any_window_policy": true,
+      "rule_digest": "f7fd2186d1cdafa83a5a54076bece60fd31b320075e0ad91d6741287d822abbe",
+      "state_count": 3,
+      "verdict": "expressible",
+      "window_ceilings": {
+        "1": 0.7751,
+        "2": 0.8382959573989349,
+        "3": 0.8822441122056103,
+        "4": 0.9184438832912468,
+        "5": 0.9434193419341934
+      }
+    },
+    {
+      "expressible": false,
+      "hand_written_rule": null,
+      "machine_best_program": "invert prototype (2,)",
+      "machine_ceiling": 0.703125,
+      "programs_evaluated": 98,
+      "reachable_by_any_window_policy": true,
+      "rule_digest": "28e7afca5b6daa93268d50a0c39ba8ed2d0ce04da655e82eb9f4ec21f1b8aee4",
+      "state_count": 3,
+      "verdict": "expressible_window_but_not_by_this_program_family",
+      "window_ceilings": {
+        "1": 0.727175,
+        "2": 0.7740193504837621,
+        "3": 0.836016800840042,
+        "4": 0.8756156711753381,
+        "5": 0.9098909890989099
+      }
+    },
+    {
+      "expressible": false,
+      "hand_written_rule": null,
+      "machine_best_program": "prototype (0, 1)",
+      "machine_ceiling": 0.7299107313156128,
+      "programs_evaluated": 98,
+      "reachable_by_any_window_policy": true,
+      "rule_digest": "1cc72fa9324a646f048e53a4c19604f0126a3f5ba0074dc5a483084c479ea858",
+      "state_count": 4,
+      "verdict": "expressible_window_but_not_by_this_program_family",
+      "window_ceilings": {
+        "1": 0.725375,
+        "2": 0.7526938173454336,
+        "3": 0.8045152257612881,
+        "4": 0.8675400655049129,
+        "5": 0.902065206520652
+      }
+    },
+    {
+      "expressible": false,
+      "hand_written_rule": null,
+      "machine_best_program": "invert prototype (2, 3)",
+      "machine_ceiling": 0.5803571343421936,
+      "programs_evaluated": 98,
+      "reachable_by_any_window_policy": true,
+      "rule_digest": "60a9169e6cd046dc35dbfba08ebf4e00d41b4fe795c137c51cda12981f0d3a30",
+      "state_count": 4,
+      "verdict": "expressible_window_but_not_by_this_program_family",
+      "window_ceilings": {
+        "1": 0.606325,
+        "2": 0.7169429235730893,
+        "3": 0.7939396969848492,
+        "4": 0.8496887266544991,
+        "5": 0.894039403940394
+      }
+    },
+    {
+      "expressible": true,
+      "hand_written_rule": null,
+      "machine_best_program": "prototype (2, 3)",
+      "machine_ceiling": 0.8035714030265808,
+      "programs_evaluated": 98,
+      "reachable_by_any_window_policy": true,
+      "rule_digest": "18def25b253b7f942ac9cfbe1f2f444a2affb39867ff817e80796e1525b7e491",
+      "state_count": 4,
+      "verdict": "expressible",
+      "window_ceilings": {
+        "1": 0.795375,
+        "2": 0.832420810520263,
+        "3": 0.8996949847492375,
+        "4": 0.9551966397479811,
+        "5": 0.9714471447144715
+      }
+    },
+    {
+      "expressible": false,
+      "hand_written_rule": null,
+      "machine_best_program": "prototype (1,)",
+      "machine_ceiling": 0.7098214030265808,
+      "programs_evaluated": 98,
+      "reachable_by_any_window_policy": true,
+      "rule_digest": "7fb4eaf156db5a48d051c3cd8bfd0919a3f784d5a86fd25e09283791682c0adc",
+      "state_count": 5,
+      "verdict": "expressible_window_but_not_by_this_program_family",
+      "window_ceilings": {
+        "1": 0.690025,
+        "2": 0.7431185779644491,
+        "3": 0.7805390269513476,
+        "4": 0.8116108708153111,
+        "5": 0.8394339433943394
+      }
+    },
+    {
+      "expressible": false,
+      "hand_written_rule": null,
+      "machine_best_program": "prototype (1, 3)",
+      "machine_ceiling": 0.765625,
+      "programs_evaluated": 98,
+      "reachable_by_any_window_policy": true,
+      "rule_digest": "073e1cb64c6962213bfbbe94332d4f85d0c94920961d062f27959b570191558a",
+      "state_count": 5,
+      "verdict": "expressible_window_but_not_by_this_program_family",
+      "window_ceilings": {
+        "1": 0.72475,
+        "2": 0.774494362359059,
+        "3": 0.8077153857692885,
+        "4": 0.8442883216241218,
+        "5": 0.8692869286928693
+      }
+    },
+    {
+      "expressible": false,
+      "hand_written_rule": null,
+      "machine_best_program": "invert prototype (2,)",
+      "machine_ceiling": 0.7142857313156128,
+      "programs_evaluated": 98,
+      "reachable_by_any_window_policy": true,
+      "rule_digest": "a9c5fe7dc00e22f74518b8800f8f3abecc66a2bfca5b996c62823ec9f5412d15",
+      "state_count": 5,
+      "verdict": "expressible_window_but_not_by_this_program_family",
+      "window_ceilings": {
+        "1": 0.7283,
+        "2": 0.7526438160954024,
+        "3": 0.7798139906995349,
+        "4": 0.805585418906418,
+        "5": 0.8302580258025802
+      }
+    },
+    {
+      "expressible": false,
+      "hand_written_rule": null,
+      "machine_best_program": "invert prototype (2, 3)",
+      "machine_ceiling": 0.7477678656578064,
+      "programs_evaluated": 98,
+      "reachable_by_any_window_policy": true,
+      "rule_digest": "a9eeb64c26e8dbdebffcf4517765c9a47520f1212694282145c75152a7310aa2",
+      "state_count": 6,
+      "verdict": "expressible_window_but_not_by_this_program_family",
+      "window_ceilings": {
+        "1": 0.75355,
+        "2": 0.8274456861421535,
+        "3": 0.9243712185609281,
+        "4": 0.9442208165612421,
+        "5": 0.9644214421442144
+      }
+    },
+    {
+      "expressible": false,
+      "hand_written_rule": null,
+      "machine_best_program": "invert prototype (0, 1)",
+      "machine_ceiling": 0.6294642686843872,
+      "programs_evaluated": 98,
+      "reachable_by_any_window_policy": true,
+      "rule_digest": "35fce98103ee29bfd37886c5b921ad87915c9905ece349a8eca65579a1b253a8",
+      "state_count": 6,
+      "verdict": "expressible_window_but_not_by_this_program_family",
+      "window_ceilings": {
+        "1": 0.645375,
+        "2": 0.7119677991949799,
+        "3": 0.7736136806840342,
+        "4": 0.8246868515138636,
+        "5": 0.8571857185718572
+      }
+    },
+    {
+      "expressible": false,
+      "hand_written_rule": null,
+      "machine_best_program": "prototype (3,)",
+      "machine_ceiling": 0.7142857313156128,
+      "programs_evaluated": 98,
+      "reachable_by_any_window_policy": true,
+      "rule_digest": "f64128d8ad78b611fe0ffce0c3f05b5a06f053db54913119e85103b4b44dcaea",
+      "state_count": 6,
+      "verdict": "expressible_window_but_not_by_this_program_family",
+      "window_ceilings": {
+        "1": 0.72185,
+        "2": 0.7727943198579964,
+        "3": 0.8119405970298514,
+        "4": 0.8486386478985924,
+        "5": 0.878012801280128
+      }
+    }
+  ],
+  "schema": "neural-computer.rule-expressiveness.v1",
+  "seed": 41,
+  "status": "diagnostic",
+  "steps": 448,
+  "threshold": 0.8,
+  "verdicts": {
+    "expressible": 7,
+    "expressible_window_but_not_by_this_program_family": 11
+  },
+  "window_probe_steps": 40000,
+  "windows": [
+    1,
+    2,
+    3,
+    4,
+    5
+  ]
+}
