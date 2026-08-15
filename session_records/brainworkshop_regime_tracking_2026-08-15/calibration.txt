@@ -1,0 +1,39 @@
+=== final (alpha=1e-8) ===
+A) FALSE ALARM RATE: stationary streams of 48 episodes
+   noise 0.0  : 3 false change-points over 27 stationary streams  (0.11 per stream)
+   noise 0.02 : 1 false change-points over 27 stationary streams  (0.04 per stream)
+   noise 0.05 : 1 false change-points over 27 stationary streams  (0.04 per stream)
+   noise 0.1  : 1 false change-points over 27 stationary streams  (0.04 per stream)
+
+B) DETECTION: A->B at episode 24, over rule pairs
+   noise 0.0  : detected 8/8, exactly at 24: 8/8, spurious extra: 2
+   noise 0.05 : detected 8/8, exactly at 24: 8/8, spurious extra: 0
+   noise 0.1  : detected 8/8, exactly at 24: 8/8, spurious extra: 0
+
+C) RETURN RECOGNITION: A->B->A, fits vs regimes
+   noise 0.0  : 8/8 streams reused a regime; mean fits 2.12 for 3 regimes
+   noise 0.05 : 7/8 streams reused a regime; mean fits 2.12 for 3 regimes
+   noise 0.1  : 7/8 streams reused a regime; mean fits 2.12 for 3 regimes
+
+=== threshold sweep ===
+alpha    | false alarms/stream | detected | exact@24 | reuse
+0.001    |               0.25 | 24/24   | 24/24    | 22/24
+1e-05    |               0.09 | 24/24   | 24/24    | 22/24
+1e-08    |               0.06 | 24/24   | 24/24    | 22/24
+
+=== before noise-relative thresholds ===
+A) FALSE ALARM RATE: stationary streams of 48 episodes
+   noise 0.0  : 8 false change-points over 27 stationary streams  (0.30 per stream)
+   noise 0.02 : 10 false change-points over 27 stationary streams  (0.37 per stream)
+   noise 0.05 : 22 false change-points over 27 stationary streams  (0.81 per stream)
+   noise 0.1  : 13 false change-points over 27 stationary streams  (0.48 per stream)
+
+B) DETECTION: A->B at episode 24, over rule pairs
+   noise 0.0  : detected 8/8, exactly at 24: 8/8, spurious extra: 3
+   noise 0.05 : detected 8/8, exactly at 24: 8/8, spurious extra: 8
+   noise 0.1  : detected 8/8, exactly at 24: 8/8, spurious extra: 3
+
+C) RETURN RECOGNITION: A->B->A, fits vs regimes
+   noise 0.0  : 9/8 streams reused a regime; mean fits 2.38 for 3 regimes
+   noise 0.05 : 8/8 streams reused a regime; mean fits 3.12 for 3 regimes
+   noise 0.1  : 0/8 streams reused a regime; mean fits 3.62 for 3 regimes
