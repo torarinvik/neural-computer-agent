@@ -66,8 +66,13 @@ class InterpretedProgram:
         rows = self.instructions.shape[0]
         if rows < 1:
             raise ValueError("an interpreted program needs at least one row")
-        if self.instructions.shape[1] != self.handles.shape[1]:
-            raise ValueError("instruction width must match the handle width")
+        width = int(self.handles.shape[1])
+        if self.instructions.shape[1] not in (width, 2 * width):
+            raise ValueError(
+                "instruction width must be one or two handle widths: a single "
+                "field names an operator outright, a pair names one for a met "
+                "condition and one for an unmet condition"
+            )
         if len(self.operator_index) != rows or len(self.operands) != rows:
             raise ValueError("every row needs an operator and an operand")
         if len(self.operators) != self.handles.shape[0]:
@@ -114,11 +119,15 @@ class InterpreterController(nn.Module):
     these parameters.
     """
 
-    def __init__(self, event_width: int, *, hidden: int = 32) -> None:
+    def __init__(self, event_width: int, *, hidden: int = 64) -> None:
         super().__init__()
         self.event_width = int(event_width)
+        # event, primary field, alternate field, workspace summary, and the
+        # elementwise difference that a condition turns on.
         self.read = nn.Sequential(
-            nn.Linear(event_width * 3, hidden),
+            nn.Linear(event_width * 5, hidden),
+            nn.GELU(),
+            nn.Linear(hidden, hidden),
             nn.GELU(),
             nn.Linear(hidden, event_width),
         )
@@ -129,7 +138,19 @@ class InterpreterController(nn.Module):
         instruction: torch.Tensor,
         workspace_summary: torch.Tensor,
     ) -> torch.Tensor:
-        joined = torch.cat((event, instruction, workspace_summary), dim=-1)
+        width = self.event_width
+        if instruction.shape[-1] == width:
+            # A single field names its operator whatever the condition says.
+            instruction = torch.cat((instruction, instruction), dim=-1)
+        joined = torch.cat(
+            (
+                event,
+                instruction,
+                workspace_summary,
+                (event - workspace_summary).abs(),
+            ),
+            dim=-1,
+        )
         intention = self.read(joined)
         return intention / intention.norm(dim=-1, keepdim=True).clamp_min(1e-6)
 
@@ -233,9 +254,10 @@ def one_back_program(event_width: int, *, seed: int, budget: int = 64) -> Interp
     names = OPERATOR_NAMES
     rows = ("emit_match", "store", "halt")
     operands = (0, 0, 0)
-    with torch.random.fork_rng():
-        torch.manual_seed(int(seed) + 1)
-        instructions = torch.randn(len(rows), event_width)
+    # Instructions carry their operator's handle in both fields: this program
+    # is unconditional, so the met and unmet cases name the same operator.
+    chosen = torch.stack([handles[names.index(row)] for row in rows])
+    instructions = torch.cat((chosen, chosen), dim=1)
     return InterpretedProgram(
         handles=handles,
         operators=names,

@@ -1,0 +1,137 @@
+{
+  "artifact_sha256": "97fdae14165aaefa67df943de1ae2fed41c4608386d8ffc54d4ac407c75d46c5",
+  "batch": 256,
+  "controller_digest": "23114d74c20de7224883d37a194d713158454ef522f25bd7e819c36ae8e299b1",
+  "event_width": 16,
+  "held_out_handles": [
+    {
+      "accuracy": 1.0,
+      "chance": 0.5,
+      "condition_met": 1.0,
+      "condition_unmet": 1.0,
+      "operators": 2
+    },
+    {
+      "accuracy": 1.0,
+      "chance": 0.25,
+      "condition_met": 1.0,
+      "condition_unmet": 1.0,
+      "operators": 4
+    },
+    {
+      "accuracy": 1.0,
+      "chance": 0.125,
+      "condition_met": 1.0,
+      "condition_unmet": 1.0,
+      "operators": 8
+    },
+    {
+      "accuracy": 1.0,
+      "chance": 0.0625,
+      "condition_met": 1.0,
+      "condition_unmet": 1.0,
+      "operators": 16
+    },
+    {
+      "accuracy": 1.0,
+      "chance": 0.03125,
+      "condition_met": 1.0,
+      "condition_unmet": 1.0,
+      "operators": 32
+    }
+  ],
+  "hidden": 64,
+  "learning_rate": 0.003,
+  "loss_curve": [
+    {
+      "loss": 3.5475664138793945,
+      "step": 0
+    },
+    {
+      "loss": 0.07152844965457916,
+      "step": 200
+    },
+    {
+      "loss": 0.02645392157137394,
+      "step": 400
+    },
+    {
+      "loss": 0.02007429301738739,
+      "step": 600
+    },
+    {
+      "loss": 0.016972174867987633,
+      "step": 800
+    },
+    {
+      "loss": 0.01790478080511093,
+      "step": 1000
+    },
+    {
+      "loss": 0.015452754683792591,
+      "step": 1200
+    },
+    {
+      "loss": 0.015483603812754154,
+      "step": 1400
+    },
+    {
+      "loss": 0.016227805987000465,
+      "step": 1600
+    },
+    {
+      "loss": 0.01580221764743328,
+      "step": 1800
+    },
+    {
+      "loss": 0.017205318436026573,
+      "step": 2000
+    },
+    {
+      "loss": 0.015625176951289177,
+      "step": 2200
+    },
+    {
+      "loss": 0.016892511397600174,
+      "step": 2400
+    },
+    {
+      "loss": 0.016465093940496445,
+      "step": 2600
+    },
+    {
+      "loss": 0.01571047492325306,
+      "step": 2800
+    },
+    {
+      "loss": 0.01382016483694315,
+      "step": 3000
+    },
+    {
+      "loss": 0.016825899481773376,
+      "step": 3200
+    },
+    {
+      "loss": 0.016615314409136772,
+      "step": 3400
+    },
+    {
+      "loss": 0.01786075346171856,
+      "step": 3600
+    },
+    {
+      "loss": 0.017256153747439384,
+      "step": 3800
+    },
+    {
+      "loss": 0.01711881533265114,
+      "step": 3999
+    }
+  ],
+  "operators_seen_in_training": 8,
+  "parameters": 10384,
+  "schema": "neural-computer.interpreter-controller.v1",
+  "seed": 1001,
+  "steps": 4000,
+  "wall_seconds": 2.916166750015691
+}
