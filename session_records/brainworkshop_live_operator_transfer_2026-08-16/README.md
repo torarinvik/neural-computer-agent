@@ -1,45 +1,54 @@
-# Live operator staging across Workshop and two rendered mazes (2026-08-16)
+# Live operator transfer across Workshop and two rendered mazes (2026-08-16)
 
 Status: **development diagnostic; no holdout, promotion, or curated-bank
 admission**.
 
-This is the first audit that puts the verifier-gated operator boundary through
-the real public loop:
+This audit runs one canonical agent through the real public path:
 
 ```text
-rendered Workshop frame -> learned event tensors -> one controller
--> rendered source maze -> rendered target maze -> rendered Workshop frame
+rendered Workshop -> learned event tensors -> one controller
+-> rendered source maze -> rendered target maze -> rendered Workshop
 ```
 
-The same `CanonicalBrainWorkshopAgent` instance was used for all four stages.
-The maze wrappers received only learned event tensors, opaque feedback, and a
-task-local world model.  Source-maze successor facts were not copied into the
-target maze.  The operator candidate was staged only from source-maze scalar
-returns, with a stable-prefix gate and a digest retention probe.
+The controller receives only learned event tensors, opaque feedback, and its
+own memory. The source maze's successor table is not copied to the target.
+The candidate operator is admitted only after 40 source evaluation outcomes
+pass the stable-prefix gate and a digest retention probe. The matched control
+uses the same seeds, Workshop warm-up, source-maze budget, and target budget,
+but receives no operator in the target maze.
 
-## Development result
+## Three-replicate development result
 
-| check | result |
+| measure | result |
 | --- | --- |
-| one core across Workshop/source/target/Workshop | **yes** |
-| controller parameters unchanged | **yes** |
-| source admission evidence | 4 eligible checkpoints |
-| stable-prefix admission | **rejected** (`insufficient-stable-evidence`) |
-| target operator use | **none** (fail-closed) |
-| Workshop after maze | 4 verifier bits, 0.25 accuracy |
+| source candidates admitted | **3 / 3** |
+| stable-prefix indices | **14, 11, 17** (of 40 outcomes) |
+| one core across all four stages | **3 / 3** |
+| controller unchanged | **3 / 3** |
+| admitted target final return | **1.000, 1.000, 1.000** |
+| matched no-operator final return | **0.000, 0.000, 0.000** |
+| target stable bits to threshold | **1,922; 2,163; 1,763** |
+| positive final-return advantage | **+1.000 in every replicate** |
 
-The source curve was `0.000, 0.000, 0.724, 0.545`; it never met the 0.70
-stable-prefix requirement.  The target maze therefore received no unverified
-operator.  This proves the live boundary and safe refusal, not positive
-Workshop-to-maze operator transfer.  The gate must not be relaxed to make this
-run pass.
+The earlier live run was correctly rejected because its source evidence was
+unstable. Two fixes made the evidence and planner faithful without relaxing
+the gate: evaluation now retains each authenticated episode outcome, and the
+terminal rendered frame is recorded so a rewarded arrival becomes a learned
+goal. The planner also holds at a known rewarded goal instead of drawing a
+random action there.
+
+This is strong development evidence that a verifier-gated, world-independent
+planning operator reduces target-maze experience in the actual rendered loop.
+It is not yet a promotion claim: the operator control-flow remains
+hand-specified, the seed block is not a reserved holdout, and the target
+control did not itself reach the threshold.
 
 ## Next step
 
-Keep this as a negative live control.  Improve the rendered maze evidence and
-run a matched admitted-versus-fresh development battery only after a source
-operator earns a stable prefix under ordinary controls.  Do not spend reserved
-holdout seeds or admit anything to the curated bank from this record.
+Freeze this development contract and run the preregistered controls (fresh,
+action-shuffled, missing-evidence, poisoned, reversal, and exact-equivalence)
+before considering any holdout amendment. Do not admit this artifact to the
+curated bank yet.
 
 ## Reproduction
 
@@ -47,6 +56,6 @@ holdout seeds or admit anything to the curated bank from this record.
 PYTHONPATH=src .venv/bin/python -m experiments.brainworkshop_canonical.live_operator_transfer \
   --neural-workshop '/Users/torarinvikbjarko/Documents/Coding Projects/Python Projects/neural-workshop' \
   --output session_records/brainworkshop_live_operator_transfer_2026-08-16 \
-  --replicates 1 --trials 12 --source-maze-training-episodes 8 \
-  --target-maze-training-episodes 4 --maze-evaluation-episodes 2 --maze-steps 20
+  --replicates 3 --trials 4 --source-maze-training-episodes 40 \
+  --target-maze-training-episodes 40 --maze-evaluation-episodes 2 --maze-steps 20
 ```

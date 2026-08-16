@@ -258,5 +258,7 @@ def test_live_operator_transfer_stages_candidate_inside_rendered_loop(
     assert row["operator_admission"]["observations"] == 1
     assert row["operator_admission"]["reason"] == "insufficient-stable-evidence"
     assert row["target_maze"]["operator_digest"] is None
+    assert row["matched_control"]["target_maze"]["operator_digest"] is None
+    assert row["matched_control"]["controller_unchanged"]
     assert row["live_workshop_after"]["controller_frozen"]
     assert (tmp_path / "report" / "live_operator_transfer.json").is_file()

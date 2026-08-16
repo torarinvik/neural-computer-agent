@@ -41,3 +41,13 @@ def test_maze_verifier_moves_only_through_open_cells() -> None:
     after = verifier.observation()
     assert before.shape == after.shape == (3, 42, 42)
     assert outcome.reward.shape == outcome.eligible.shape == (1,)
+
+
+def test_terminal_maze_frame_remains_public_for_reward_attribution() -> None:
+    task = sample_maze_task(seed=7103, minimum_distance=2)
+    assert task is not None
+    verifier = MazeVerifier(task, steps=1)
+    verifier.observation()
+    verifier.score(torch.tensor([0], dtype=torch.long))
+    assert verifier.done
+    assert verifier.observation().shape == (3, 42, 42)

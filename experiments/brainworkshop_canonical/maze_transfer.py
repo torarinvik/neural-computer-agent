@@ -229,6 +229,10 @@ class SharedAmodalMazeAgent:
         goals = self.model.goals()
         if self.mode == "fresh":
             return int(torch.randint(ACTION_COUNT, (1,), generator=self._generator).item())
+        if symbol in goals:
+            holding = self.model.holding_action(symbol)
+            if holding is not None:
+                return holding
         if self.mode == "stale_world_model":
             route = plan_to(self.model, symbol, goals)
             if route is not None and route.actions:
@@ -289,12 +293,11 @@ def _run_episode(
         reward = float(outcome.reward.item())
         delivered_reward = 0.0 if reward_shuffled else reward
         total += reward
-        if not verifier.done:
-            agent.deliver_feedback(chosen, delivered_reward, present=not reward_shuffled)
-            following = agent.observe(verifier.observation())
-            agent.model.observe(current, chosen, following, int(delivered_reward > 0.0))
-        else:
-            agent.deliver_feedback(chosen, delivered_reward, present=not reward_shuffled)
+        agent.deliver_feedback(chosen, delivered_reward, present=not reward_shuffled)
+        # The terminal render is valid public evidence.  Record the final
+        # transition too, so a paid arrival can establish a goal in the model.
+        following = agent.observe(verifier.observation())
+        agent.model.observe(current, chosen, following, int(delivered_reward > 0.0))
     return total / steps
 
 
@@ -313,6 +316,31 @@ def _evaluate(
     episodes: int,
     steps: int,
 ) -> float:
+    return _evaluate_with_returns(
+        agent,
+        task,
+        seed=seed,
+        episodes=episodes,
+        steps=steps,
+    )[0]
+
+
+def _evaluate_with_returns(
+    agent: SharedAmodalMazeAgent,
+    task: MazeTask,
+    *,
+    seed: int,
+    episodes: int,
+    steps: int,
+) -> tuple[float, tuple[float, ...]]:
+    """Return an aggregate score plus each authenticated episode score.
+
+    The aggregate retains the historical optimum-weighted normalization used
+    by the learning curves.  The per-episode values preserve the verifier
+    evidence granularity needed by a stable-prefix admission gate; reducing a
+    noisy checkpoint to one mean can otherwise hide contradictory outcomes.
+    """
+
     saved_model = agent.model
     agent.model = copy.deepcopy(saved_model)
     starts = _starts(task, seed=seed, count=episodes)
@@ -327,8 +355,14 @@ def _evaluate(
         for start in starts
     ]
     agent.model = saved_model
-    optimum = sum(task.with_start(start).optimal_return(steps) for start in starts) / len(starts)
-    return (sum(returns) / len(returns)) / optimum if optimum > 0.0 else 0.0
+    optima = tuple(task.with_start(start).optimal_return(steps) for start in starts)
+    optimum = sum(optima) / len(optima)
+    normalized = (sum(returns) / len(returns)) / optimum if optimum > 0.0 else 0.0
+    episode_returns = tuple(
+        reward / optimum_for_start if optimum_for_start > 0.0 else 0.0
+        for reward, optimum_for_start in zip(returns, optima)
+    )
+    return normalized, episode_returns
 
 
 def run_arm(
@@ -382,7 +416,7 @@ def run_arm(
         prefix = episode + 1
         if prefix not in checkpoints:
             continue
-        normalized = _evaluate(
+        normalized, evaluation_returns = _evaluate_with_returns(
             agent,
             task,
             seed=seed + 20_000 + prefix,
@@ -395,6 +429,7 @@ def run_arm(
                 "training_episodes": prefix,
                 "unique_verifier_bits": verifier_bits,
                 "normalized_return": normalized,
+                "evaluation_returns": list(evaluation_returns),
                 "model_coverage": agent.model.coverage,
             }
         )
@@ -580,6 +615,7 @@ def _run_cross_task_maze(
     evaluation_episodes: int,
     steps: int,
     initial_verifier_bits: int,
+    evaluation_seed: int | None = None,
 ) -> dict[str, Any]:
     """Train and evaluate the maze stage while retaining the same core."""
 
@@ -587,7 +623,7 @@ def _run_cross_task_maze(
     checkpoints = tuple(
         range(CHECKPOINT_STRIDE, training_episodes + 1, CHECKPOINT_STRIDE)
     )
-    curve: list[dict[str, float | int]] = []
+    curve: list[dict[str, Any]] = []
     verifier_bits = int(initial_verifier_bits)
     started = time.perf_counter()
     for episode in range(training_episodes):
@@ -602,10 +638,14 @@ def _run_cross_task_maze(
         prefix = episode + 1
         if prefix not in checkpoints:
             continue
-        normalized = _evaluate(
+        normalized, evaluation_returns = _evaluate_with_returns(
             agent,
             task,
-            seed=seed + 20_000 + prefix,
+            seed=(
+                seed + 20_000 + prefix
+                if evaluation_seed is None
+                else evaluation_seed
+            ),
             episodes=evaluation_episodes,
             steps=steps,
         )
@@ -615,6 +655,7 @@ def _run_cross_task_maze(
                 "training_episodes": prefix,
                 "unique_verifier_bits": verifier_bits,
                 "normalized_return": normalized,
+                "evaluation_returns": list(evaluation_returns),
                 "model_coverage": agent.model.coverage,
             }
         )

@@ -368,6 +368,23 @@ PYTHONPATH=src .venv/bin/python \
   --output /tmp/neural-workshop-live-cross-task
 ```
 
+`live_operator_transfer.py` extends that path with a verifier-gated planning
+operator: Workshop -> rendered source maze -> rendered target maze ->
+Workshop. In the three-replicate development run, all source candidates passed
+the stable-prefix and retention gates; admitted target returns were `1.0,
+1.0, 1.0`, while the matched no-operator controls stayed at `0.0, 0.0, 0.0`.
+This is real rendered-loop transfer evidence, but the operator is still
+hand-specified and the seed block is not a holdout or curated-bank admission.
+
+```bash
+PYTHONPATH=src .venv/bin/python \
+  -m experiments.brainworkshop_canonical.live_operator_transfer \
+  --neural-workshop /absolute/path/to/neural-workshop \
+  --output session_records/brainworkshop_live_operator_transfer_2026-08-16 \
+  --replicates 3 --trials 4 --source-maze-training-episodes 40 \
+  --target-maze-training-episodes 40 --maze-evaluation-episodes 2 --maze-steps 20
+```
+
 `neural_workshop_live.py` replaces slow macOS capture and key injection with
 Neural Workshop's headless public boundary. It still feeds rendered RGBA pixels
 through a frozen visual adapter, maps opaque decoder actions to one or two

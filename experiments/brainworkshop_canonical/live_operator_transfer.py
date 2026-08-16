@@ -51,6 +51,7 @@ def _maze_stage(
     evaluation_episodes: int,
     steps: int,
     initial_verifier_bits: int,
+    evaluation_seed: int | None = None,
 ) -> dict[str, Any]:
     dictionary = build_event_dictionary(task, encoders)
     maze_agent = SharedAmodalMazeAgent(
@@ -68,6 +69,7 @@ def _maze_stage(
         evaluation_episodes=evaluation_episodes,
         steps=steps,
         initial_verifier_bits=initial_verifier_bits,
+        evaluation_seed=evaluation_seed,
     )
     return {
         "report": report,
@@ -85,8 +87,8 @@ def run_live_operator_transfer(
     seed: int = DEVELOPMENT_SEED,
     replicates: int = 1,
     trials: int = 12,
-    source_maze_training_episodes: int = 4,
-    target_maze_training_episodes: int = 4,
+    source_maze_training_episodes: int = 40,
+    target_maze_training_episodes: int = 40,
     maze_evaluation_episodes: int = 2,
     maze_steps: int = 20,
 ) -> dict[str, Any]:
@@ -158,6 +160,7 @@ def run_live_operator_transfer(
             evaluation_episodes=maze_evaluation_episodes,
             steps=maze_steps,
             initial_verifier_bits=live_before.unique_verifier_bits,
+            evaluation_seed=base_seed + 20_000,
         )
         stager = VerifiedPlanningOperatorStager(
             threshold=0.70,
@@ -165,7 +168,8 @@ def run_live_operator_transfer(
             min_stable_observations=2,
         )
         for checkpoint in source_stage["report"]["curve"]:
-            stager.observe(candidate, checkpoint["normalized_return"])
+            for outcome in checkpoint["evaluation_returns"]:
+                stager.observe(candidate, outcome)
         admission = stager.admit_verified(
             candidate,
             lambda retained, digest=candidate.digest: retained.digest == digest,
@@ -181,6 +185,7 @@ def run_live_operator_transfer(
             evaluation_episodes=maze_evaluation_episodes,
             steps=maze_steps,
             initial_verifier_bits=source_stage["report"]["unique_verifier_bits"],
+            evaluation_seed=base_seed + 30_000,
         )
         environment_after, verifier_after = build_neural_workshop_environment(
             neural_workshop,
@@ -195,6 +200,65 @@ def run_live_operator_transfer(
             verifier=verifier_after,
             sample=False,
         )
+        # Matched control: identical public seeds, Workshop warm-up, source
+        # maze evidence, and target budget, but no operator is supplied after
+        # the source stage.  This isolates the causal value of the admitted
+        # artifact from simply spending more maze experience.
+        matched_agent = _new_agent(base_seed, config.event_width)
+        matched_environment, matched_verifier = build_neural_workshop_environment(
+            neural_workshop,
+            config,
+            seed=seed + 40_000 + replicate,
+        )
+        matched_live_before = run_canonical_neural_workshop_live_lifetime(
+            matched_agent,
+            config,
+            seed=seed + 50_000 + replicate,
+            environment=matched_environment,
+            verifier=matched_verifier,
+            sample=False,
+        )
+        matched_source = _maze_stage(
+            matched_agent,
+            encoders,
+            source,
+            operator=candidate,
+            mode="workshop_warm",
+            seed=base_seed,
+            training_episodes=source_maze_training_episodes,
+            evaluation_episodes=maze_evaluation_episodes,
+            steps=maze_steps,
+            initial_verifier_bits=matched_live_before.unique_verifier_bits,
+            evaluation_seed=base_seed + 20_000,
+        )
+        matched_target = _maze_stage(
+            matched_agent,
+            encoders,
+            target,
+            operator=None,
+            mode="fresh",
+            seed=base_seed + 1_000,
+            training_episodes=target_maze_training_episodes,
+            evaluation_episodes=maze_evaluation_episodes,
+            steps=maze_steps,
+            initial_verifier_bits=matched_source["report"]["unique_verifier_bits"],
+            evaluation_seed=base_seed + 30_000,
+        )
+        matched_environment_after, matched_verifier_after = (
+            build_neural_workshop_environment(
+                neural_workshop,
+                config,
+                seed=seed + 60_000 + replicate,
+            )
+        )
+        matched_live_after = run_canonical_neural_workshop_live_lifetime(
+            matched_agent,
+            config,
+            seed=seed + 70_000 + replicate,
+            environment=matched_environment_after,
+            verifier=matched_verifier_after,
+            sample=False,
+        )
         rows.append(
             {
                 "replicate": replicate,
@@ -204,6 +268,18 @@ def run_live_operator_transfer(
                 "source_maze": source_stage,
                 "target_maze": target_stage,
                 "live_workshop_after": live_after.as_dict(),
+                "matched_control": {
+                    "live_workshop_before": matched_live_before.as_dict(),
+                    "source_maze": matched_source,
+                    "target_maze": matched_target,
+                    "live_workshop_after": matched_live_after.as_dict(),
+                    "controller_unchanged": (
+                        matched_live_before.controller_digest_after
+                        == matched_source["controller_digest_after"]
+                        == matched_target["controller_digest_after"]
+                        == matched_live_after.controller_digest_after
+                    ),
+                },
                 "operator_admission": admission.__dict__,
                 "same_core_instance": (
                     source_stage["same_core_instance"]
@@ -217,6 +293,23 @@ def run_live_operator_transfer(
                 ),
             }
         )
+    final_advantages: list[float | None] = []
+    for row in rows:
+        if not row["operator_admission"]["accepted"]:
+            final_advantages.append(None)
+            continue
+        admitted_return = float(
+            row["target_maze"]["report"]["curve"][-1]["normalized_return"]
+        )
+        control_return = float(
+            row["matched_control"]["target_maze"]["report"]["curve"][-1][
+                "normalized_return"
+            ]
+        )
+        final_advantages.append(admitted_return - control_return)
+    admitted_advantages = [
+        advantage for advantage in final_advantages if advantage is not None
+    ]
     report = {
         "schema": LIVE_OPERATOR_TRANSFER_SCHEMA,
         "experiment_id": LIVE_OPERATOR_TRANSFER_EXPERIMENT_ID,
@@ -239,6 +332,15 @@ def run_live_operator_transfer(
         "controller_unchanged_for_all_replicates": all(
             bool(row["controller_unchanged"]) for row in rows
         ),
+        "matched_control_controller_unchanged_for_all_replicates": all(
+            bool(row["matched_control"]["controller_unchanged"]) for row in rows
+        ),
+        "admitted_replicate_count": sum(
+            bool(row["operator_admission"]["accepted"]) for row in rows
+        ),
+        "target_final_return_advantage_against_no_operator": final_advantages,
+        "positive_transfer_for_all_admitted_replicates": bool(admitted_advantages)
+        and all(advantage > 0.0 for advantage in admitted_advantages),
         "claim_status": "development_diagnostic",
     }
     output_directory.mkdir(parents=True, exist_ok=True)
@@ -260,8 +362,8 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=DEVELOPMENT_SEED)
     parser.add_argument("--replicates", type=int, default=1)
     parser.add_argument("--trials", type=int, default=12)
-    parser.add_argument("--source-maze-training-episodes", type=int, default=4)
-    parser.add_argument("--target-maze-training-episodes", type=int, default=4)
+    parser.add_argument("--source-maze-training-episodes", type=int, default=40)
+    parser.add_argument("--target-maze-training-episodes", type=int, default=40)
     parser.add_argument("--maze-evaluation-episodes", type=int, default=2)
     parser.add_argument("--maze-steps", type=int, default=20)
     arguments = parser.parse_args()

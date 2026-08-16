@@ -275,8 +275,9 @@ class MazeVerifier:
         return self._position >= self.steps
 
     def observation(self) -> torch.Tensor:
-        if self.done:
-            raise RuntimeError("maze episode is complete")
+        # A terminal frame is still a public pixel observation.  Exposing it
+        # lets the learner attribute the final action-conditioned transition
+        # and its scalar reward without leaking the hidden goal or coordinates.
         return render_maze(self.task, self._place, size=self.frame_size)
 
     def score(self, action: torch.Tensor) -> MazeStep:
