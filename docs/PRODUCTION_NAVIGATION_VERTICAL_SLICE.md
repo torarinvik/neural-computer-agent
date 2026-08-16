@@ -50,8 +50,12 @@ the controller only through a caller-supplied feedback encoder.
   prefix-sensitive global covariance with an action-labelled transition graph
   over learned event states. On a bounded rendered fixture it improved return
   over the episode-local scorer with zero confident identity errors and
-  abstained on reversal and ambiguity controls. This remains a development
-  signal, not a promotion or holdout result.
+  abstained on reversal and ambiguity controls. The first composition through
+  the real rendered relational-navigation loop is now recorded in
+  `session_records/brainworkshop_integrated_navigation_v3_2026-08-16`: it
+  preserved the low-confident-error behavior, but abstained on 95--100% of
+  steps and fell below the episode-local scorer. This is a development failure
+  to promote, not a holdout result.
 
 ## Deliberate limits
 
@@ -61,10 +65,11 @@ not silently copied into the curated bank. The current self-model remains
 rejected by the adversarial audit, and no navigation artifact is promoted by
 this adapter.
 
-The next production step is to harden the v3 graph against true crossings,
-occlusion, corrupted persistent memory, and near-equivalent causal mimics,
-then rerun it on fresh pixel rerenders with matched shuffled-action and
-fresh-learner controls before any bank admission. The assignment gate and
-artifacts are still an interface seam, not a promoted identity model; the
-current diagnostics use bounded two-track fixtures and their artifacts are not
-in the curated bank.
+The next production step is to improve v3 applicability without weakening its
+abstention rule: handle common merge/birth histories through explicit missing
+evidence and fresh relearning, then harden against true crossings, occlusion,
+corrupted persistent memory, and near-equivalent causal mimics. Rerun on fresh
+pixel rerenders with matched shuffled-action and fresh-learner controls before
+any bank admission. The assignment gate and artifacts are still an interface
+seam, not a promoted identity model; the current diagnostics and their
+artifacts are not in the curated bank.

@@ -56,11 +56,13 @@ from __future__ import annotations
 import argparse
 import json
 import time
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
 import torch
 
+from neural_computer.identity import PersistentCausalIdentityV3
 from neural_computer.promotion import sha256_file
 
 from .controller_pretraining import load_temporal_controller_artifact
@@ -175,28 +177,72 @@ class SearchedReader:
     measured, wired together and paying their own way.
     """
 
-    def __init__(self, reader: SlotReader, successor=None) -> None:
+    def __init__(
+        self,
+        reader: SlotReader,
+        successor=None,
+        *,
+        persistent_identity: PersistentCausalIdentityV3 | None = None,
+        episode_id: object | None = None,
+        action_count: int | None = None,
+    ) -> None:
         self.reader = reader
         self.successor = successor
+        self.persistent_identity = persistent_identity
+        self.episode_id = episode_id
+        self.action_count = int(action_count) if action_count is not None else None
         self.tracker: Tracker | None = None
         self.own: int | None = None
         self._pending: list[tuple[int, int]] = []
         self._histories: list[TrackHistory] = []
         self._readings: list[Any] = []
         self._actions: list[int] = []
+        self._event_history: list[torch.Tensor] = []
+        self._event_presence: list[torch.Tensor] = []
+        self._action_history: list[torch.Tensor] = []
 
     @property
     def oriented(self) -> bool:
         return self.own is not None
 
     def observe(self, frame: torch.Tensor, *, last_action: int | None) -> None:
-        parts = self.reader.read(frame)
+        if self.persistent_identity is not None:
+            parts, events = self.reader.read_with_events(frame)
+        else:
+            parts = self.reader.read(frame)
+            events = None
         self._readings.append(parts)
         if self.tracker is None:
             self.tracker = Tracker.started(parts)
             self._histories = [TrackHistory() for _ in range(self.tracker.count)]
+            if events is not None:
+                self._event_history.append(events.detach().clone())
+                self._event_presence.append(
+                    torch.ones(self.tracker.count, dtype=torch.bool)
+                )
         else:
-            self.tracker.update(parts, action=last_action)
+            previous_count = self.tracker.count
+            mapping = self.tracker.update(parts, action=last_action)
+            if events is not None and self.tracker.count > previous_count:
+                # A marker can separate after two objects coincided.  Keep a
+                # rectangular learned-event history, but mark the newly born
+                # track as missing in earlier frames instead of inventing a
+                # zero event.  The identity artifact will then abstain safely.
+                for index, prior in enumerate(self._event_history):
+                    missing = torch.zeros(
+                        (self.tracker.count - prior.shape[0], prior.shape[1]),
+                        dtype=prior.dtype,
+                    )
+                    self._event_history[index] = torch.cat((prior, missing), dim=0)
+                    self._event_presence[index] = torch.cat(
+                        (
+                            self._event_presence[index],
+                            torch.zeros(
+                                self.tracker.count - prior.shape[0], dtype=torch.bool
+                            ),
+                        ),
+                        dim=0,
+                    )
             while len(self._histories) < self.tracker.count:
                 self._histories.append(TrackHistory())
             for track, (symbol, action) in enumerate(self._pending):
@@ -204,6 +250,19 @@ class SearchedReader:
                     self._histories[track].observe(
                         symbol, action, self.tracker.symbols[track]
                     )
+            if events is not None:
+                self._event_history.append(events[list(mapping)].detach().clone())
+                self._event_presence.append(
+                    torch.ones(self.tracker.count, dtype=torch.bool)
+                )
+                if last_action is not None:
+                    if self.action_count is None:
+                        raise ValueError(
+                            "persistent identity needs an action_count for opaque actions"
+                        )
+                    feature = torch.zeros(self.action_count, dtype=events.dtype)
+                    feature[int(last_action)] = 1.0
+                    self._action_history.append(feature)
         self._pending = []
 
     def record(self, action: int) -> None:
@@ -235,6 +294,26 @@ class SearchedReader:
         """
 
         required = MINIMUM_CONTRASTS if minimum_contrasts is None else minimum_contrasts
+        if self.persistent_identity is not None:
+            if len(self._event_history) < self.persistent_identity.minimum_history:
+                return False
+            if len(self._action_history) != len(self._event_history) - 1:
+                return False
+            assignment = self.persistent_identity.resolve(
+                torch.stack(self._event_history).unsqueeze(0),
+                torch.stack(self._action_history).unsqueeze(0),
+                event_present=torch.stack(self._event_presence).unsqueeze(0),
+                episode_id=self.episode_id,
+            )
+            if bool(assignment.abstained[0]):
+                self.own = None
+                return False
+            selected = int(assignment.selected_slot[0].item())
+            if self.tracker is None or selected >= self.tracker.count:
+                self.own = None
+                return False
+            self.own = selected
+            return True
         if len(self._readings) < 3:
             return False
         trace = beam_track(
@@ -329,6 +408,10 @@ def run_integrated_episode(
     alphabet: int,
     seed: int,
     self_model=None,
+    persistent_identity: PersistentCausalIdentityV3 | None = None,
+    episode_id: object | None = None,
+    identity_diagnostics: dict[str, int] | None = None,
+    episode_local_identity: bool = False,
 ) -> tuple[float, int, float]:
     """One episode: the score, the orientation cost, and how often it was right.
 
@@ -341,8 +424,16 @@ def run_integrated_episode(
     )
     generator = torch.Generator().manual_seed(int(seed))
     searched = (
-        SearchedReader(reader, successor=self_model)
+        SearchedReader(
+            reader,
+            successor=self_model,
+            persistent_identity=persistent_identity,
+            episode_id=episode_id,
+            action_count=task.action_count,
+        )
         if arm == "integrated"
+        or persistent_identity is not None
+        or episode_local_identity
         else None
     )
     total = 0.0
@@ -368,6 +459,19 @@ def run_integrated_episode(
             cluster_of_place[verifier.place]
         ):
             correct += 1
+        if identity_diagnostics is not None:
+            if configuration is None:
+                identity_diagnostics["abstentions"] = (
+                    identity_diagnostics.get("abstentions", 0) + 1
+                )
+            else:
+                identity_diagnostics["assigned_steps"] = (
+                    identity_diagnostics.get("assigned_steps", 0) + 1
+                )
+                if int(configuration[0]) != int(cluster_of_place[verifier.place]):
+                    identity_diagnostics["confident_wrong"] = (
+                        identity_diagnostics.get("confident_wrong", 0) + 1
+                    )
         if arm == "random" or configuration is None:
             action = None
             if configuration is None and searched is not None and PROBE != "random":
@@ -660,6 +764,11 @@ def run_integrated_navigation(
     explore_episodes: int = EXPLORE_EPISODES,
     starts: int = 6,
     discount: float = DEFAULT_DISCOUNT,
+    persistent_identity_factory: Callable[[], PersistentCausalIdentityV3] | None = None,
+    persistent_identity_factories: dict[
+        str, Callable[[], PersistentCausalIdentityV3]
+    ] | None = None,
+    include_episode_local: bool = False,
 ) -> dict[str, Any]:
     before = sha256_file(bank_path)
     payload = load_temporal_controller_artifact(controller_path)
@@ -699,8 +808,28 @@ def run_integrated_navigation(
         models["random"] = models["told_all"]
         selves["random"] = None
 
+        factories = dict(persistent_identity_factories or {})
+        if persistent_identity_factory is not None:
+            if "persistent_v3" in factories:
+                raise ValueError("persistent_v3 factory was provided twice")
+            factories["persistent_v3"] = persistent_identity_factory
+        if any(arm in ARMS for arm in factories):
+            raise ValueError("persistent identity arm names must be new arms")
+        extra_arms = (("episode_local",) if include_episode_local else ())
+        evaluation_arms = ARMS + extra_arms + tuple(factories)
+        if "episode_local" in factories:
+            raise ValueError("episode_local is reserved for the local scorer")
+        if include_episode_local:
+            models["episode_local"] = models["integrated"]
+            selves["episode_local"] = None
+        for arm in factories:
+            models[arm] = models["integrated"]
+            selves[arm] = None
+        persistent_identities = {arm: factory() for arm, factory in factories.items()}
+
         stored = {}
-        for arm, model in models.items():
+        for arm in evaluation_arms:
+            model = models[arm]
             policies = [
                 greedy_policy(
                     model,
@@ -738,10 +867,14 @@ def run_integrated_navigation(
                 "told_coverage": models["told_all"].coverage,
             }
             ceilings, floors = [], []
-            scored: dict[str, list[float]] = {arm: [] for arm in ARMS}
+            scored: dict[str, list[float]] = {arm: [] for arm in evaluation_arms}
             spends: list[int] = []
             rights: list[float] = []
-            for start, target in pairs:
+            identity_diagnostics = {
+                arm: {"abstentions": 0, "assigned_steps": 0, "confident_wrong": 0}
+                for arm in persistent_identities
+            }
+            for pair_index, (start, target) in enumerate(pairs):
                 ceilings.append(
                     joint_ceiling(
                         task, circuit, start=start, target=target,
@@ -754,7 +887,7 @@ def run_integrated_navigation(
                         relation=relation, steps=steps, best=False,
                     )
                 )
-                for arm in ARMS:
+                for arm in evaluation_arms:
                     value, spent, right = run_integrated_episode(
                         reader,
                         task,
@@ -774,6 +907,14 @@ def run_integrated_navigation(
                             if REMEMBER_SELF and arm == "integrated"
                             else None
                         ),
+                        persistent_identity=persistent_identities.get(arm),
+                        episode_id=(
+                            (index, relation, pair_index)
+                            if arm in persistent_identities
+                            else None
+                        ),
+                        identity_diagnostics=identity_diagnostics.get(arm),
+                        episode_local_identity=arm == "episode_local",
                     )
                     scored[arm].append(value)
                     if arm == "integrated":
@@ -783,7 +924,21 @@ def run_integrated_navigation(
             entry["identification_accuracy"] = (
                 sum(rights) / len(rights) if rights else 0.0
             )
-            for arm in ARMS:
+            for arm, diagnostics in identity_diagnostics.items():
+                denominator = max(
+                    1,
+                    diagnostics["abstentions"] + diagnostics["assigned_steps"],
+                )
+                entry[f"{arm}_abstention_rate"] = (
+                    diagnostics["abstentions"] / denominator
+                )
+                entry[f"{arm}_confident_wrong_rate"] = (
+                    diagnostics["confident_wrong"] / denominator
+                )
+                entry[f"{arm}_quarantine_count"] = int(
+                    persistent_identities[arm].quarantine_count
+                )
+            for arm in evaluation_arms:
                 entry[arm] = sum(scored[arm]) / len(scored[arm])
                 fractions = [
                     (value - floor) / (ceiling - floor)
@@ -805,8 +960,17 @@ def run_integrated_navigation(
         if not chosen:
             return {}
         summary: dict[str, Any] = {"relations": len(chosen)}
-        for key in (*ARMS, *(f"{arm}_fraction" for arm in ARMS), "optimal"):
+        factories = dict(persistent_identity_factories or {})
+        if persistent_identity_factory is not None:
+            factories["persistent_v3"] = persistent_identity_factory
+        extra_arms = (("episode_local",) if include_episode_local else ())
+        evaluation_arms = ARMS + extra_arms + tuple(factories)
+        for key in (*evaluation_arms, *(f"{arm}_fraction" for arm in evaluation_arms), "optimal"):
             summary[key] = sum(float(row[key]) for row in chosen) / len(chosen)
+        for arm in factories:
+            for suffix in ("abstention_rate", "confident_wrong_rate", "quarantine_count"):
+                key = f"{arm}_{suffix}"
+                summary[key] = sum(float(row[key]) for row in chosen) / len(chosen)
         for key in ("orientation_steps", "identification_accuracy"):
             summary[key] = sum(float(row[key]) for row in chosen) / len(chosen)
         return summary

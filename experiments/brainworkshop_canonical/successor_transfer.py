@@ -207,14 +207,27 @@ class SlotReader:
     encoders: Any
     clusters: torch.Tensor
 
-    def read(self, frame: torch.Tensor):
+    def read_with_events(self, frame: torch.Tensor):
+        """Read slots and retain the learned event vectors at the same seam.
+
+        The ordinary ``read`` API intentionally exposes only the small symbol
+        used by the development navigation models.  The external identity
+        artifact, however, needs the learned event tensors themselves.  Doing
+        both operations here avoids encoding the same rendered frame twice in
+        the live loop and keeps that artifact outside the controller.
+        """
+
         parts = scene_parts(frame)
         events = encode_slots(self.encoders, frame)
         symbols = [int(index) for index in nearest_cluster(events, self.clusters)]
         return tuple(
             (centroid, symbol)
             for (centroid, _), symbol in zip(parts, symbols, strict=True)
-        )
+        ), events
+
+    def read(self, frame: torch.Tensor):
+        parts, _ = self.read_with_events(frame)
+        return parts
 
     @property
     def alphabet(self) -> int:

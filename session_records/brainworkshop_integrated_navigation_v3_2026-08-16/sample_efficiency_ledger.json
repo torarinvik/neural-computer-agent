@@ -1,0 +1,37 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment_id": "brainworkshop-integrated-navigation-persistent-identity-v3-2026-08-16",
+  "status": "development_composition_diagnostic_not_promoted",
+  "source": "integrated_navigation.json and persistent_identity_v3_navigation.json",
+  "seed_blocks": [],
+  "replication_count": 1,
+  "unique_verifier_bits": {
+    "model_exploration": 6400,
+    "relation_evaluation_all_five_arms": 14400,
+    "total": 20800
+  },
+  "unique_logical_lifetimes_all_arms": 1052,
+  "optimizer_updates": 0,
+  "replayed_examples": 2080,
+  "replay_unit": "episode histories revisited by the fixed self-model re-fitting loop",
+  "wall_seconds": 115.93380437500309,
+  "latency": "not measured separately from this development diagnostic",
+  "stable_bits_to_threshold": null,
+  "retention_on_mastered_primitive": "not claimed",
+  "transfer_ratio_against_fresh_learner": null,
+  "controls": {
+    "episode_local_scorer": true,
+    "told_all_oracle": true,
+    "random_action": true,
+    "stale_persistent_model": true,
+    "missing_track_history_abstention": true,
+    "action_shuffled": false,
+    "missing_evidence_rerender": false,
+    "corrupted_memory": false,
+    "fresh_learner": false,
+    "true_crossing_and_occlusion": false,
+    "agent_bank_unchanged": true,
+    "reserved_holdout_untouched": true
+  },
+  "claim_boundary": "Development-only composition diagnostic. Persistent identity v3 was wired through rendered learned events and the live navigation policy loop, but it abstained too often and did not beat the episode-local scorer. No promotion, holdout, retention, transfer, or curated-bank admission claim is made."
+}
