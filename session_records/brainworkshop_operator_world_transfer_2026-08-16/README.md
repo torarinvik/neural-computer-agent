@@ -23,10 +23,15 @@ the same 5 evaluation checkpoints in every arm.
 | raw_successor | source-world successor policies/features | world-specific inheritance control |
 
 The threshold is a normalized return of 0.75 that must remain satisfied at
-every later measured prefix. A verifier emits one binary arrival outcome per
-step, so the record reports distinct verifier bits, logical lifetimes,
+every later measured prefix. Before transfer, the source-world probe now
+stages the candidate through a verifier-gated admission receipt: missing
+evidence is skipped, a stable prefix is required, and a retention probe must
+preserve the candidate digest. A later below-threshold observation quarantines
+the candidate and freezes further updates. This is local development staging,
+not admission to the curated bank. A verifier emits one binary arrival outcome
+per step, so the record reports distinct verifier bits, logical lifetimes,
 optimizer updates, replay, wall time, decision latency, and stable bits to
-threshold separately for every arm.
+threshold separately for every target arm and the source admission probe.
 
 ## Development result
 
@@ -40,11 +45,13 @@ Across three matched source/target pairs:
 | raw successor artifact | 0.292 | none |
 | corrupted artifact | 0.000 | none |
 
-The development transfer ratio against the fresh learner is **0.833**. This
-is evidence that the generic exploration/planning control-flow can be reused
-without carrying the old transition model, while raw successor features fail
-under the world change. It is not yet evidence for the rendered amodal
-runtime: the stream is a finite event abstraction, and the operator bundle is
+The development transfer ratio against the fresh learner is **0.833**. All
+three source candidates passed the stable-prefix and retention gates (five
+eligible observations each; stable prefix at observation 0). This is evidence
+that the generic exploration/planning control-flow can be reused without
+carrying the old transition model, while raw successor features fail under the
+world change. It is not yet evidence for the rendered amodal runtime: the
+stream is a finite event abstraction, and the operator bundle is still
 hand-specified rather than learned from a held-out operator-discovery task.
 
 The irrelevant arm is intentionally identical in behavior to the fresh arm;
@@ -54,7 +61,8 @@ gain. The corrupted arm's failure is a safety check, not a tuning target.
 ## Decision and next step
 
 Keep the operator-bundle boundary and reject raw successor-feature inheritance
-across changed dynamics. Do **not** promote or admit the bundle. The next
+across changed dynamics. Keep the stager as a development safety boundary but
+do **not** promote or admit the bundle to the curated bank. The next
 experiment should freeze this contract, reserve a new seed block, and repeat
 the comparison with learned event streams plus a within-lifetime dynamics
 reversal so invalidation/recovery is measured rather than only serialized in

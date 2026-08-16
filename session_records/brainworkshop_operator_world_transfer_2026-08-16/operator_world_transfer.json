@@ -1,7 +1,7 @@
 {
   "accounting": {
     "corrupted": {
-      "latency_ms_per_decision": 0.0003165671875,
+      "latency_ms_per_decision": 0.0005294302083333333,
       "optimizer_updates": 0,
       "replayed_examples": 0,
       "retention_on_mastered_primitive": "not_claimed",
@@ -12,10 +12,10 @@
       ],
       "unique_logical_lifetimes": 180,
       "unique_verifier_bits": 2880,
-      "wall_seconds": 0.005560916964896023
+      "wall_seconds": 0.00965620786882937
     },
     "fresh": {
-      "latency_ms_per_decision": 0.0009787828124999999,
+      "latency_ms_per_decision": 0.0015211546875000005,
       "optimizer_updates": 0,
       "replayed_examples": 0,
       "retention_on_mastered_primitive": "not_claimed",
@@ -26,10 +26,10 @@
       ],
       "unique_logical_lifetimes": 180,
       "unique_verifier_bits": 2880,
-      "wall_seconds": 0.0080677499063313
+      "wall_seconds": 0.012663625064305961
     },
     "irrelevant": {
-      "latency_ms_per_decision": 0.0009558750000000001,
+      "latency_ms_per_decision": 0.0015823661458333339,
       "optimizer_updates": 0,
       "replayed_examples": 0,
       "retention_on_mastered_primitive": "not_claimed",
@@ -40,10 +40,10 @@
       ],
       "unique_logical_lifetimes": 180,
       "unique_verifier_bits": 2880,
-      "wall_seconds": 0.00793795904610306
+      "wall_seconds": 0.012987500987946987
     },
     "raw_successor": {
-      "latency_ms_per_decision": 0.051032652604166666,
+      "latency_ms_per_decision": 0.081483109375,
       "optimizer_updates": 0,
       "replayed_examples": 0,
       "retention_on_mastered_primitive": "not_claimed",
@@ -54,10 +54,10 @@
       ],
       "unique_logical_lifetimes": 180,
       "unique_verifier_bits": 2880,
-      "wall_seconds": 0.15492408291902393
+      "wall_seconds": 0.24712524993810803
     },
     "reusable": {
-      "latency_ms_per_decision": 0.0010883958333333334,
+      "latency_ms_per_decision": 0.001739047916666667,
       "optimizer_updates": 0,
       "replayed_examples": 0,
       "retention_on_mastered_primitive": "not_claimed",
@@ -68,7 +68,7 @@
       ],
       "unique_logical_lifetimes": 180,
       "unique_verifier_bits": 2880,
-      "wall_seconds": 0.009182457928545773
+      "wall_seconds": 0.013433750020340085
     }
   },
   "claim_status": "development_diagnostic",
@@ -116,14 +116,14 @@
             }
           ],
           "final_model_coverage": 0.3333333333333333,
-          "latency_ms_per_decision": 0.000318059375,
+          "latency_ms_per_decision": 0.0004945421875000001,
           "optimizer_updates": 0,
           "replayed_examples": 0,
           "retention_on_mastered_primitive": "not_claimed",
           "stable_bits_to_threshold": null,
           "unique_logical_lifetimes": 60,
           "unique_verifier_bits": 960,
-          "wall_seconds": 0.001852208049967885
+          "wall_seconds": 0.0028466249350458384
         },
         "fresh": {
           "arm": "fresh",
@@ -162,14 +162,14 @@
             }
           ],
           "final_model_coverage": 0.7777777777777778,
-          "latency_ms_per_decision": 0.0009326953125,
+          "latency_ms_per_decision": 0.0013711671875000003,
           "optimizer_updates": 0,
           "replayed_examples": 0,
           "retention_on_mastered_primitive": "not_claimed",
           "stable_bits_to_threshold": 192,
           "unique_logical_lifetimes": 60,
           "unique_verifier_bits": 960,
-          "wall_seconds": 0.002626249915920198
+          "wall_seconds": 0.00389020808506757
         },
         "irrelevant": {
           "arm": "irrelevant",
@@ -208,14 +208,14 @@
             }
           ],
           "final_model_coverage": 0.7777777777777778,
-          "latency_ms_per_decision": 0.0009037875,
+          "latency_ms_per_decision": 0.0013738359375000003,
           "optimizer_updates": 0,
           "replayed_examples": 0,
           "retention_on_mastered_primitive": "not_claimed",
           "stable_bits_to_threshold": 192,
           "unique_logical_lifetimes": 60,
           "unique_verifier_bits": 960,
-          "wall_seconds": 0.0026196669787168503
+          "wall_seconds": 0.0038659590063616633
         },
         "raw_successor": {
           "arm": "raw_successor",
@@ -254,14 +254,14 @@
             }
           ],
           "final_model_coverage": 0.9444444444444444,
-          "latency_ms_per_decision": 0.0512117203125,
+          "latency_ms_per_decision": 0.077019278125,
           "optimizer_updates": 0,
           "replayed_examples": 0,
           "retention_on_mastered_primitive": "not_claimed",
           "stable_bits_to_threshold": null,
           "unique_logical_lifetimes": 60,
           "unique_verifier_bits": 960,
-          "wall_seconds": 0.052007458987645805
+          "wall_seconds": 0.07778449996840209
         },
         "reusable": {
           "arm": "reusable",
@@ -300,15 +300,24 @@
             }
           ],
           "final_model_coverage": 1.0,
-          "latency_ms_per_decision": 0.001086540625,
+          "latency_ms_per_decision": 0.0016704734375000002,
           "optimizer_updates": 0,
           "replayed_examples": 0,
           "retention_on_mastered_primitive": "not_claimed",
           "stable_bits_to_threshold": 192,
           "unique_logical_lifetimes": 60,
           "unique_verifier_bits": 960,
-          "wall_seconds": 0.0033631250262260437
+          "wall_seconds": 0.004309250041842461
         }
+      },
+      "operator_admission": {
+        "accepted": true,
+        "candidate_digest": "f6fc3b88649852594a140b75d58bb264974d1805fe87de87410b47ce36bb21f8",
+        "observations": 5,
+        "quarantined": false,
+        "reason": "admitted",
+        "schema": "neural-computer.verified-operator-stager.v1",
+        "stable_prefix": 0
       },
       "operator_bundle": {
         "digest": "f6fc3b88649852594a140b75d58bb264974d1805fe87de87410b47ce36bb21f8",
@@ -319,6 +328,52 @@
         "source_family": "ring-v1",
         "verified_world_seed": 9000,
         "version": 1
+      },
+      "operator_source_probe": {
+        "arm": "reusable",
+        "artifact_digest": null,
+        "bundle_digest": "f6fc3b88649852594a140b75d58bb264974d1805fe87de87410b47ce36bb21f8",
+        "curve": [
+          {
+            "coverage": 0.6666666666666666,
+            "normalized_return": 0.9296875,
+            "training_episodes": 4,
+            "unique_verifier_bits": 192
+          },
+          {
+            "coverage": 0.9444444444444444,
+            "normalized_return": 0.9821428571428571,
+            "training_episodes": 8,
+            "unique_verifier_bits": 384
+          },
+          {
+            "coverage": 0.9444444444444444,
+            "normalized_return": 0.9666666666666667,
+            "training_episodes": 12,
+            "unique_verifier_bits": 576
+          },
+          {
+            "coverage": 1.0,
+            "normalized_return": 1.0,
+            "training_episodes": 16,
+            "unique_verifier_bits": 768
+          },
+          {
+            "coverage": 1.0,
+            "normalized_return": 1.0,
+            "training_episodes": 20,
+            "unique_verifier_bits": 960
+          }
+        ],
+        "final_model_coverage": 1.0,
+        "latency_ms_per_decision": 0.003258479687500001,
+        "optimizer_updates": 0,
+        "replayed_examples": 0,
+        "retention_on_mastered_primitive": "not_claimed",
+        "stable_bits_to_threshold": 192,
+        "unique_logical_lifetimes": 60,
+        "unique_verifier_bits": 960,
+        "wall_seconds": 0.007991041988134384
       },
       "raw_successor_digest": "93f4dc9b7319d30cd34cb3d5407b9dcedd05b5a86321fc0a5cdca50841c26fea",
       "replicate": 0,
@@ -366,14 +421,14 @@
             }
           ],
           "final_model_coverage": 0.3333333333333333,
-          "latency_ms_per_decision": 0.000313821875,
+          "latency_ms_per_decision": 0.0005516343750000001,
           "optimizer_updates": 0,
           "replayed_examples": 0,
           "retention_on_mastered_primitive": "not_claimed",
           "stable_bits_to_threshold": null,
           "unique_logical_lifetimes": 60,
           "unique_verifier_bits": 960,
-          "wall_seconds": 0.001862625009380281
+          "wall_seconds": 0.00364808295853436
         },
         "fresh": {
           "arm": "fresh",
@@ -412,14 +467,14 @@
             }
           ],
           "final_model_coverage": 0.8888888888888888,
-          "latency_ms_per_decision": 0.0010285437499999999,
+          "latency_ms_per_decision": 0.0017337609375000004,
           "optimizer_updates": 0,
           "replayed_examples": 0,
           "retention_on_mastered_primitive": "not_claimed",
           "stable_bits_to_threshold": 384,
           "unique_logical_lifetimes": 60,
           "unique_verifier_bits": 960,
-          "wall_seconds": 0.002732124994508922
+          "wall_seconds": 0.004682249971665442
         },
         "irrelevant": {
           "arm": "irrelevant",
@@ -458,14 +513,14 @@
             }
           ],
           "final_model_coverage": 0.8888888888888888,
-          "latency_ms_per_decision": 0.001003896875,
+          "latency_ms_per_decision": 0.0017257875000000005,
           "optimizer_updates": 0,
           "replayed_examples": 0,
           "retention_on_mastered_primitive": "not_claimed",
           "stable_bits_to_threshold": 384,
           "unique_logical_lifetimes": 60,
           "unique_verifier_bits": 960,
-          "wall_seconds": 0.0026834170566871762
+          "wall_seconds": 0.00458554201759398
         },
         "raw_successor": {
           "arm": "raw_successor",
@@ -504,14 +559,14 @@
             }
           ],
           "final_model_coverage": 0.9444444444444444,
-          "latency_ms_per_decision": 0.050967234375,
+          "latency_ms_per_decision": 0.08638896874999999,
           "optimizer_updates": 0,
           "replayed_examples": 0,
           "retention_on_mastered_primitive": "not_claimed",
           "stable_bits_to_threshold": null,
           "unique_logical_lifetimes": 60,
           "unique_verifier_bits": 960,
-          "wall_seconds": 0.05141408299095929
+          "wall_seconds": 0.0872024999698624
         },
         "reusable": {
           "arm": "reusable",
@@ -550,15 +605,24 @@
             }
           ],
           "final_model_coverage": 1.0,
-          "latency_ms_per_decision": 0.0011047328125000002,
+          "latency_ms_per_decision": 0.0018904234375000002,
           "optimizer_updates": 0,
           "replayed_examples": 0,
           "retention_on_mastered_primitive": "not_claimed",
           "stable_bits_to_threshold": 192,
           "unique_logical_lifetimes": 60,
           "unique_verifier_bits": 960,
-          "wall_seconds": 0.0028366659535095096
+          "wall_seconds": 0.004830208024941385
         }
+      },
+      "operator_admission": {
+        "accepted": true,
+        "candidate_digest": "4659b9d356df59d112d4cb3c756918599eaec5f4a6400d5f847dc45e77c5619f",
+        "observations": 5,
+        "quarantined": false,
+        "reason": "admitted",
+        "schema": "neural-computer.verified-operator-stager.v1",
+        "stable_prefix": 0
       },
       "operator_bundle": {
         "digest": "4659b9d356df59d112d4cb3c756918599eaec5f4a6400d5f847dc45e77c5619f",
@@ -569,6 +633,52 @@
         "source_family": "ring-v1",
         "verified_world_seed": 9037,
         "version": 1
+      },
+      "operator_source_probe": {
+        "arm": "reusable",
+        "artifact_digest": null,
+        "bundle_digest": "4659b9d356df59d112d4cb3c756918599eaec5f4a6400d5f847dc45e77c5619f",
+        "curve": [
+          {
+            "coverage": 0.8888888888888888,
+            "normalized_return": 0.9142857142857143,
+            "training_episodes": 4,
+            "unique_verifier_bits": 192
+          },
+          {
+            "coverage": 1.0,
+            "normalized_return": 1.0,
+            "training_episodes": 8,
+            "unique_verifier_bits": 384
+          },
+          {
+            "coverage": 1.0,
+            "normalized_return": 1.0,
+            "training_episodes": 12,
+            "unique_verifier_bits": 576
+          },
+          {
+            "coverage": 1.0,
+            "normalized_return": 1.0,
+            "training_episodes": 16,
+            "unique_verifier_bits": 768
+          },
+          {
+            "coverage": 1.0,
+            "normalized_return": 1.0,
+            "training_episodes": 20,
+            "unique_verifier_bits": 960
+          }
+        ],
+        "final_model_coverage": 1.0,
+        "latency_ms_per_decision": 0.0017348375000000005,
+        "optimizer_updates": 0,
+        "replayed_examples": 0,
+        "retention_on_mastered_primitive": "not_claimed",
+        "stable_bits_to_threshold": 192,
+        "unique_logical_lifetimes": 60,
+        "unique_verifier_bits": 960,
+        "wall_seconds": 0.004405083949677646
       },
       "raw_successor_digest": "8c828af73ce773e6ea80c61dd34eaeae186faedb0095feb589653421252321d2",
       "replicate": 1,
@@ -616,14 +726,14 @@
             }
           ],
           "final_model_coverage": 0.3333333333333333,
-          "latency_ms_per_decision": 0.0003178203125,
+          "latency_ms_per_decision": 0.0005421140625,
           "optimizer_updates": 0,
           "replayed_examples": 0,
           "retention_on_mastered_primitive": "not_claimed",
           "stable_bits_to_threshold": null,
           "unique_logical_lifetimes": 60,
           "unique_verifier_bits": 960,
-          "wall_seconds": 0.0018460839055478573
+          "wall_seconds": 0.0031614999752491713
         },
         "fresh": {
           "arm": "fresh",
@@ -662,14 +772,14 @@
             }
           ],
           "final_model_coverage": 0.8333333333333334,
-          "latency_ms_per_decision": 0.0009751093750000002,
+          "latency_ms_per_decision": 0.0014585359375000003,
           "optimizer_updates": 0,
           "replayed_examples": 0,
           "retention_on_mastered_primitive": "not_claimed",
           "stable_bits_to_threshold": 192,
           "unique_logical_lifetimes": 60,
           "unique_verifier_bits": 960,
-          "wall_seconds": 0.0027093749959021807
+          "wall_seconds": 0.004091167007572949
         },
         "irrelevant": {
           "arm": "irrelevant",
@@ -708,14 +818,14 @@
             }
           ],
           "final_model_coverage": 0.8333333333333334,
-          "latency_ms_per_decision": 0.0009599406250000002,
+          "latency_ms_per_decision": 0.0016474750000000002,
           "optimizer_updates": 0,
           "replayed_examples": 0,
           "retention_on_mastered_primitive": "not_claimed",
           "stable_bits_to_threshold": 192,
           "unique_logical_lifetimes": 60,
           "unique_verifier_bits": 960,
-          "wall_seconds": 0.0026348750106990337
+          "wall_seconds": 0.004535999963991344
         },
         "raw_successor": {
           "arm": "raw_successor",
@@ -754,14 +864,14 @@
             }
           ],
           "final_model_coverage": 0.7222222222222222,
-          "latency_ms_per_decision": 0.050919003124999994,
+          "latency_ms_per_decision": 0.08104108125000001,
           "optimizer_updates": 0,
           "replayed_examples": 0,
           "retention_on_mastered_primitive": "not_claimed",
           "stable_bits_to_threshold": null,
           "unique_logical_lifetimes": 60,
           "unique_verifier_bits": 960,
-          "wall_seconds": 0.05150254094041884
+          "wall_seconds": 0.08213824999984354
         },
         "reusable": {
           "arm": "reusable",
@@ -800,15 +910,24 @@
             }
           ],
           "final_model_coverage": 1.0,
-          "latency_ms_per_decision": 0.0010739140625,
+          "latency_ms_per_decision": 0.0016562468750000003,
           "optimizer_updates": 0,
           "replayed_examples": 0,
           "retention_on_mastered_primitive": "not_claimed",
           "stable_bits_to_threshold": 192,
           "unique_logical_lifetimes": 60,
           "unique_verifier_bits": 960,
-          "wall_seconds": 0.0029826669488102198
+          "wall_seconds": 0.00429429195355624
         }
+      },
+      "operator_admission": {
+        "accepted": true,
+        "candidate_digest": "4305fd766f927df2cf2447aaa1041deceb9c1bb51e3c2c9771ed6ee9a653ede3",
+        "observations": 5,
+        "quarantined": false,
+        "reason": "admitted",
+        "schema": "neural-computer.verified-operator-stager.v1",
+        "stable_prefix": 0
       },
       "operator_bundle": {
         "digest": "4305fd766f927df2cf2447aaa1041deceb9c1bb51e3c2c9771ed6ee9a653ede3",
@@ -820,6 +939,52 @@
         "verified_world_seed": 9074,
         "version": 1
       },
+      "operator_source_probe": {
+        "arm": "reusable",
+        "artifact_digest": null,
+        "bundle_digest": "4305fd766f927df2cf2447aaa1041deceb9c1bb51e3c2c9771ed6ee9a653ede3",
+        "curve": [
+          {
+            "coverage": 0.6111111111111112,
+            "normalized_return": 0.8541666666666666,
+            "training_episodes": 4,
+            "unique_verifier_bits": 192
+          },
+          {
+            "coverage": 0.7222222222222222,
+            "normalized_return": 0.9510416666666667,
+            "training_episodes": 8,
+            "unique_verifier_bits": 384
+          },
+          {
+            "coverage": 0.9444444444444444,
+            "normalized_return": 0.9732142857142857,
+            "training_episodes": 12,
+            "unique_verifier_bits": 576
+          },
+          {
+            "coverage": 1.0,
+            "normalized_return": 1.0,
+            "training_episodes": 16,
+            "unique_verifier_bits": 768
+          },
+          {
+            "coverage": 1.0,
+            "normalized_return": 1.0,
+            "training_episodes": 20,
+            "unique_verifier_bits": 960
+          }
+        ],
+        "final_model_coverage": 1.0,
+        "latency_ms_per_decision": 0.0018535078125000003,
+        "optimizer_updates": 0,
+        "replayed_examples": 0,
+        "retention_on_mastered_primitive": "not_claimed",
+        "stable_bits_to_threshold": 192,
+        "unique_logical_lifetimes": 60,
+        "unique_verifier_bits": 960,
+        "wall_seconds": 0.004779833019711077
+      },
       "raw_successor_digest": "1231893f7dc82250d6674a21902f8ac024e5ed8f463e5940baefd42dcc3d641f",
       "replicate": 2,
       "source_world_digest": "0ed0e72ae0ba9419531aa8d44bd0db25e1b9b84d308d5fc4056f7be40a087f32",
@@ -829,7 +994,7 @@
     }
   ],
   "schema": "neural-computer.operator-world-transfer.v1",
-  "seconds": 0.20546370896045119,
+  "seconds": 0.3476219169097021,
   "seed": 41,
   "stable_threshold": 0.75,
   "transfer_ratio_against_fresh_learner": 0.8333333333333334
