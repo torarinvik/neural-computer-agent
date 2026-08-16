@@ -35,6 +35,10 @@ the controller only through a caller-supplied feedback encoder.
   goal-state candidates from learned evidence. A low-margin assignment emits no
   action rather than guessing, and the selected slot is retained only in
   receipt-local credit metadata.
+- The versioned `ExternalCausalIdentityArtifact` can derive that evidence from
+  bound learned event histories and opaque action/intention features without
+  exposing raw modality formats to the controller. Its rendered integration
+  remains a diagnostic, not a promoted identity learner.
 
 ## Deliberate limits
 
@@ -44,9 +48,9 @@ not silently copied into the curated bank. The current self-model remains
 rejected by the adversarial audit, and no navigation artifact is promoted by
 this adapter.
 
-The next production step is to supply a temporary external transition/self
-artifact through this boundary, run valid pixel-level controls, and compare its
-stable learning curve with a matched fresh learner before any bank admission.
-The assignment gate is an interface seam, not a promoted identity model; the
-collision diagnostic remains synthetic and its artifact is not in the curated
-bank.
+The next production step is to run the artifact on fresh pixel rerenders with
+crossings and occlusion, plus matched shuffled-action and fresh-learner
+controls, and compare stable learning curves before any bank admission. The
+assignment gate and artifact are still an interface seam, not a promoted
+identity model; the current diagnostic uses synthetic feeder action features
+and its artifact is not in the curated bank.

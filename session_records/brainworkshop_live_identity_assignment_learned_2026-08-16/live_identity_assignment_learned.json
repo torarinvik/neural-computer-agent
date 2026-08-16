@@ -1,0 +1,107 @@
+{
+  "artifact": {
+    "behavior": "centered-action-event-cross-covariance_v1",
+    "epsilon": 1e-08,
+    "minimum_history": 4,
+    "schema": "neural-computer.external-causal-identity-artifact.v1"
+  },
+  "bank_digest_after": "07319eb13c9cac58bbbe94258548e64f13ba1b3512ca2a01fbdc675c49e2e7c9",
+  "bank_digest_before": "07319eb13c9cac58bbbe94258548e64f13ba1b3512ca2a01fbdc675c49e2e7c9",
+  "bank_unchanged": true,
+  "claim_boundary": "Frozen rendered pixels and bound learned event tracks feed an external action-conditioned evidence artifact. Opaque action features are synthetic feeder inputs; there is no identity holdout, verifier-bit, transfer, promotion, or bank-admission claim.",
+  "claim_status": "learned_event_identity_interface_diagnostic",
+  "constant_action_abstentions": 8,
+  "constant_action_evidence": [
+    [
+      0.0,
+      0.0
+    ],
+    [
+      0.0,
+      0.0
+    ],
+    [
+      0.0,
+      0.0
+    ],
+    [
+      0.0,
+      0.0
+    ],
+    [
+      0.0,
+      0.0
+    ],
+    [
+      0.0,
+      0.0
+    ],
+    [
+      0.0,
+      0.0
+    ],
+    [
+      0.0,
+      0.0
+    ]
+  ],
+  "experiment_id": "brainworkshop-live-identity-assignment-learned-2026-08-16",
+  "frontend_digest_after": "bfff11bcf1560314a9f32d8bd3799b046921d7c5644ea7534ff53408bd69d31e",
+  "frontend_digest_before": "bfff11bcf1560314a9f32d8bd3799b046921d7c5644ea7534ff53408bd69d31e",
+  "frontend_unchanged": true,
+  "learned_emissions": 5,
+  "learned_evidence": [
+    [
+      0.0,
+      0.0
+    ],
+    [
+      0.0,
+      0.0
+    ],
+    [
+      0.0,
+      0.0
+    ],
+    [
+      0.5567116141319275,
+      0.0
+    ],
+    [
+      0.19763757288455963,
+      0.0
+    ],
+    [
+      0.24872834980487823,
+      0.0
+    ],
+    [
+      0.3382515013217926,
+      0.0
+    ],
+    [
+      0.24334929883480072,
+      0.0
+    ]
+  ],
+  "optimizer_updates": 0,
+  "passive_abstentions": 8,
+  "positions_are_feeder_only": true,
+  "replayed_examples": 24,
+  "schema": "neural-computer.live-identity-assignment-learned.v1",
+  "seed": 43,
+  "selected_slots": [
+    null,
+    null,
+    null,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "steps": 8,
+  "unique_logical_lifetimes": 0,
+  "unique_verifier_bits": 0,
+  "wall_seconds": 0.04862391692586243
+}

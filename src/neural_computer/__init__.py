@@ -408,7 +408,9 @@ from .human_io import (
     query_sck_windows,
 )
 from .identity import (
+    EXTERNAL_CAUSAL_IDENTITY_ARTIFACT_SCHEMA,
     EXTERNAL_IDENTITY_ASSIGNMENT_SCHEMA,
+    ExternalCausalIdentityArtifact,
     ExternalCausalIdentityAssignment,
     ExternalIdentityAssignment,
 )
@@ -1099,6 +1101,7 @@ __all__ = [
     "EXTERNAL_CAPABILITY_SCHEMA",
     "EXTERNAL_CAPABILITY_SHARED_RESIDUAL_SCHEMA",
     "EXTERNAL_CAPABILITY_SLOT_BINDING_SCHEMA",
+    "EXTERNAL_CAUSAL_IDENTITY_ARTIFACT_SCHEMA",
     "EXTERNAL_CONTEXTUAL_EVIDENCE_CALIBRATOR_SCHEMA",
     "EXTERNAL_CONTEXTUAL_TRANSITION_EVIDENCE_STATISTICS_SCHEMA",
     "EXTERNAL_CONTEXT_ADDRESS_RESOLVER_SCHEMA",
@@ -1483,6 +1486,7 @@ __all__ = [
     "ExternalCapabilityReusableComputeLibrary",
     "ExternalCapabilitySharedResidualBank",
     "ExternalCapabilityState",
+    "ExternalCausalIdentityArtifact",
     "ExternalCausalIdentityAssignment",
     "ExternalComputeCandidateScreen",
     "ExternalContextAddressResolver",

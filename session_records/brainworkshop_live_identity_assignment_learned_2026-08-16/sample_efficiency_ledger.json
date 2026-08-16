@@ -1,0 +1,27 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment_id": "brainworkshop-live-identity-assignment-learned-2026-08-16",
+  "status": "interface_learned_event_diagnostic_not_promoted",
+  "source": "live_identity_assignment_learned.json",
+  "seed_blocks": [],
+  "replication_count": 0,
+  "unique_verifier_bits": 0,
+  "unique_logical_lifetimes": 0,
+  "optimizer_updates": 0,
+  "replayed_examples": 24,
+  "wall_seconds": 0.0486239169,
+  "latency": "not measured separately from interface diagnostic",
+  "stable_bits_to_threshold": null,
+  "retention_on_mastered_primitive": "not_claimed",
+  "transfer_ratio_against_fresh_learner": null,
+  "controls": {
+    "rendered_rgb_frontend": true,
+    "separate_bound_event_tracks": true,
+    "learned_event_action_evidence": true,
+    "passive_zero_evidence_abstention": true,
+    "constant_action_abstention": true,
+    "frontend_digest_unchanged": true,
+    "curated_bank_unchanged": true
+  },
+  "claim_boundary": "External learned-event identity evidence and fail-closed gate only; synthetic feeder action features, no holdout, no verifier bits, no transfer, no promotion, and no curated-bank admission."
+}
