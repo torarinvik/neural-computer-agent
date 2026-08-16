@@ -282,10 +282,14 @@ def _run_episode(
     start: int,
     steps: int,
     reward_shuffled: bool,
+    watch_label: str | None = None,
 ) -> float:
     verifier = MazeVerifier(task.with_start(start), steps=steps, frame_size=task.grid_size * 6)
     agent.reset_episode()
     total = 0.0
+    if watch_label is not None:
+        print(f"\n[{watch_label}] start={start}")
+        print(_ascii_maze(task, verifier._place))
     while not verifier.done:
         current = agent.observe(verifier.observation())
         chosen = agent.choose_action(current)
@@ -298,7 +302,35 @@ def _run_episode(
         # transition too, so a paid arrival can establish a goal in the model.
         following = agent.observe(verifier.observation())
         agent.model.observe(current, chosen, following, int(delivered_reward > 0.0))
+        if watch_label is not None:
+            print(
+                f"[{watch_label}] step={verifier._position}/{steps} "
+                f"action={chosen} reward={reward:.1f}"
+            )
+            print(_ascii_maze(task, verifier._place))
     return total / steps
+
+
+def _ascii_maze(task: MazeTask, place: int) -> str:
+    """Render a diagnostic-only maze view outside the controller boundary."""
+
+    task.validate()
+    if not 0 <= place < task.place_count:
+        raise ValueError("maze viewer place is outside the open-cell set")
+    occupied = {position: index for index, position in enumerate(task.open_positions)}
+    rows: list[str] = []
+    for row in range(task.grid_size):
+        cells: list[str] = []
+        for column in range(task.grid_size):
+            position = (row, column)
+            if task.walls[row][column]:
+                cells.append("#")
+            elif occupied[position] == place:
+                cells.append("A")
+            else:
+                cells.append(".")
+        rows.append("".join(cells))
+    return "\n".join(rows)
 
 
 def _stable_bits(curve: list[dict[str, float | int]]) -> int | None:
@@ -616,6 +648,7 @@ def _run_cross_task_maze(
     steps: int,
     initial_verifier_bits: int,
     evaluation_seed: int | None = None,
+    watch_label: str | None = None,
 ) -> dict[str, Any]:
     """Train and evaluate the maze stage while retaining the same core."""
 
@@ -633,6 +666,11 @@ def _run_cross_task_maze(
             start=starts[episode],
             steps=steps,
             reward_shuffled=False,
+            watch_label=(
+                None
+                if watch_label is None
+                else f"{watch_label} train={episode + 1}"
+            ),
         )
         verifier_bits += steps
         prefix = episode + 1

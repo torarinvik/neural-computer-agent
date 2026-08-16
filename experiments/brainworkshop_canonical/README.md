@@ -385,6 +385,11 @@ PYTHONPATH=src .venv/bin/python \
   --target-maze-training-episodes 40 --maze-evaluation-episodes 2 --maze-steps 20
 ```
 
+To watch one primary run, add `--visible --watch` and use
+`--replicates 1`: the Workshop phases open the public Neural Workshop window,
+while source/target maze actions are printed as an external ASCII trace. The
+matched control remains headless.
+
 `neural_workshop_live.py` replaces slow macOS capture and key injection with
 Neural Workshop's headless public boundary. It still feeds rendered RGBA pixels
 through a frozen visual adapter, maps opaque decoder actions to one or two

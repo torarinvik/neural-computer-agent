@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -52,6 +53,7 @@ def _maze_stage(
     steps: int,
     initial_verifier_bits: int,
     evaluation_seed: int | None = None,
+    watch_label: str | None = None,
 ) -> dict[str, Any]:
     dictionary = build_event_dictionary(task, encoders)
     maze_agent = SharedAmodalMazeAgent(
@@ -70,6 +72,7 @@ def _maze_stage(
         steps=steps,
         initial_verifier_bits=initial_verifier_bits,
         evaluation_seed=evaluation_seed,
+        watch_label=watch_label,
     )
     return {
         "report": report,
@@ -91,6 +94,8 @@ def run_live_operator_transfer(
     target_maze_training_episodes: int = 40,
     maze_evaluation_episodes: int = 2,
     maze_steps: int = 20,
+    visible: bool = False,
+    watch: bool = False,
 ) -> dict[str, Any]:
     """Run live Workshop -> source maze -> target maze -> Workshop."""
 
@@ -110,8 +115,9 @@ def run_live_operator_transfer(
             trials=trials,
             event_width=EVENT_WIDTH,
             action_ports=1,
-            visible=False,
+            visible=visible,
         )
+        matched_config = replace(config, visible=False)
         base_seed = seed + replicate * 1_000
         agent = _new_agent(base_seed, config.event_width)
         environment, verifier = build_neural_workshop_environment(
@@ -127,6 +133,8 @@ def run_live_operator_transfer(
             verifier=verifier,
             sample=False,
         )
+        if watch:
+            print(f"[replicate {replicate}] Workshop before maze complete")
         source_seed = seed + 10_000 + replicate
         target_seed = seed + 20_000 + replicate
         source = sample_maze_task(
@@ -161,6 +169,7 @@ def run_live_operator_transfer(
             steps=maze_steps,
             initial_verifier_bits=live_before.unique_verifier_bits,
             evaluation_seed=base_seed + 20_000,
+            watch_label=(f"replicate {replicate} source maze" if watch else None),
         )
         stager = VerifiedPlanningOperatorStager(
             threshold=0.70,
@@ -186,10 +195,11 @@ def run_live_operator_transfer(
             steps=maze_steps,
             initial_verifier_bits=source_stage["report"]["unique_verifier_bits"],
             evaluation_seed=base_seed + 30_000,
+            watch_label=(f"replicate {replicate} target maze" if watch else None),
         )
         environment_after, verifier_after = build_neural_workshop_environment(
             neural_workshop,
-            config,
+            matched_config,
             seed=seed + 60_000 + replicate,
         )
         live_after = run_canonical_neural_workshop_live_lifetime(
@@ -207,12 +217,12 @@ def run_live_operator_transfer(
         matched_agent = _new_agent(base_seed, config.event_width)
         matched_environment, matched_verifier = build_neural_workshop_environment(
             neural_workshop,
-            config,
+            matched_config,
             seed=seed + 40_000 + replicate,
         )
         matched_live_before = run_canonical_neural_workshop_live_lifetime(
             matched_agent,
-            config,
+            matched_config,
             seed=seed + 50_000 + replicate,
             environment=matched_environment,
             verifier=matched_verifier,
@@ -247,18 +257,20 @@ def run_live_operator_transfer(
         matched_environment_after, matched_verifier_after = (
             build_neural_workshop_environment(
                 neural_workshop,
-                config,
+                matched_config,
                 seed=seed + 60_000 + replicate,
             )
         )
         matched_live_after = run_canonical_neural_workshop_live_lifetime(
             matched_agent,
-            config,
+            matched_config,
             seed=seed + 70_000 + replicate,
             environment=matched_environment_after,
             verifier=matched_verifier_after,
             sample=False,
         )
+        if watch:
+            print(f"[replicate {replicate}] Workshop after maze complete")
         rows.append(
             {
                 "replicate": replicate,
@@ -366,6 +378,16 @@ def main() -> None:
     parser.add_argument("--target-maze-training-episodes", type=int, default=40)
     parser.add_argument("--maze-evaluation-episodes", type=int, default=2)
     parser.add_argument("--maze-steps", type=int, default=20)
+    parser.add_argument(
+        "--visible",
+        action="store_true",
+        help="show the primary Neural Workshop window (control stays headless)",
+    )
+    parser.add_argument(
+        "--watch",
+        action="store_true",
+        help="print the primary source/target maze as an external ASCII trace",
+    )
     arguments = parser.parse_args()
     print(
         json.dumps(
@@ -379,6 +401,8 @@ def main() -> None:
                 target_maze_training_episodes=arguments.target_maze_training_episodes,
                 maze_evaluation_episodes=arguments.maze_evaluation_episodes,
                 maze_steps=arguments.maze_steps,
+                visible=arguments.visible,
+                watch=arguments.watch,
             ),
             indent=2,
             sort_keys=True,

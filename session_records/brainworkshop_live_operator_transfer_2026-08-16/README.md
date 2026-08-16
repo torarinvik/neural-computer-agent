@@ -59,3 +59,7 @@ PYTHONPATH=src .venv/bin/python -m experiments.brainworkshop_canonical.live_oper
   --replicates 3 --trials 4 --source-maze-training-episodes 40 \
   --target-maze-training-episodes 40 --maze-evaluation-episodes 2 --maze-steps 20
 ```
+
+For a live watch instead of the three-replicate audit, use one replicate with
+`--visible --watch`. The primary Workshop sessions open the public window; the
+maze stages print an external ASCII trace. The matched control stays headless.
