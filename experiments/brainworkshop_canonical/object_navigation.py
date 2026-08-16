@@ -532,14 +532,6 @@ def measure_goals(
         "episodes": len(optimal),
     }
 
-    # Scoring-side: which slot cluster each place renders to, so a *told*
-    # goal can be expressed in the agent's own alphabet. Used only to hand
-    # the agent an instruction it would otherwise have had to work out.
-    goal_cluster = tuple(
-    slot_front.read(render_scene(place, place, size=FRAME_SIZE))[0]
-    for place in range(PLACE_COUNT)
-    )
-
 
 def run_object_navigation(
     controller_path: Path,

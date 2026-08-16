@@ -73,20 +73,35 @@ def _draw(frame: torch.Tensor, place: int, *, size: int) -> None:
     ] = torch.tensor(MARKER_COLOUR).view(3, 1, 1)
 
 
-def render_scene(agent: int, goal: int, *, size: int = 36) -> torch.Tensor:
-    """The grid, with a marker where the agent is and one where it should be.
+def render_markers(places, *, size: int = 36) -> torch.Tensor:
+    """The grid, with a marker at each of `places`.
 
-    When the two coincide there is one marker, which is what "arrived" looks
-    like from outside and is the same thing the reward is about.
+    Any number of them, all the same colour, drawn in the order given so that
+    overlapping markers coincide rather than occlude. Two markers on one place
+    is one marker, which is what "arrived" looks like from outside and is the
+    same thing the reward is about.
     """
 
-    for place in (agent, goal):
+    ordered = [int(place) for place in places]
+    if not ordered:
+        raise ValueError("a scene needs at least one marker")
+    for place in ordered:
         if not 0 <= place < PLACE_COUNT:
             raise ValueError("a marker is outside the grid")
     frame = _grid(size)
-    _draw(frame, goal, size=size)
-    _draw(frame, agent, size=size)
+    for place in ordered:
+        _draw(frame, place, size=size)
     return frame
+
+
+def render_scene(agent: int, goal: int, *, size: int = 36) -> torch.Tensor:
+    """The grid, with a marker where the agent is and one where it should be.
+
+    The two-marker case, kept as its own name because it is the one every
+    earlier measurement was taken on and the pixels must not move.
+    """
+
+    return render_markers((goal, agent), size=size)
 
 
 def _components(mask: torch.Tensor) -> list[list[tuple[int, int]]]:
@@ -116,12 +131,14 @@ def _components(mask: torch.Tensor) -> list[list[tuple[int, int]]]:
     return regions
 
 
-def scene_slots(frame: torch.Tensor, *, tolerance: float = 0.12):
-    """One isolated frame per marker, ordered by position and nothing else.
+def scene_parts(frame: torch.Tensor, *, tolerance: float = 0.12):
+    """`(centroid, isolated frame)` per marker, ordered by position only.
 
-    Ordering by position means the slot index flips as the agent moves past the
+    Ordering by position means the index flips as the agent moves past the
     goal, so it cannot stand in for identity. That is the point: a slot is a
-    thing in the scene, not a role in the task.
+    thing in the scene, not a role in the task. The centroid is *where* the
+    part is on the image plane, which is not an identity either -- it is what
+    an aligner needs in order to work one out.
     """
 
     if frame.ndim != 3 or frame.shape[0] != 3:
@@ -129,7 +146,7 @@ def scene_slots(frame: torch.Tensor, *, tolerance: float = 0.12):
     size = int(frame.shape[-1])
     reference = torch.tensor(MARKER_COLOUR).view(3, 1, 1)
     mask = (frame - reference).abs().sum(dim=0) <= tolerance
-    slots = []
+    parts = []
     for region in _components(mask):
         centroid = (
             sum(y for y, _ in region) / len(region),
@@ -138,9 +155,15 @@ def scene_slots(frame: torch.Tensor, *, tolerance: float = 0.12):
         isolated = _grid(size)
         for y, x in region:
             isolated[:, y, x] = reference.reshape(3)
-        slots.append((centroid, isolated))
-    slots.sort(key=lambda item: item[0])
-    return tuple(isolated for _, isolated in slots)
+        parts.append((centroid, isolated))
+    parts.sort(key=lambda item: item[0])
+    return tuple(parts)
+
+
+def scene_slots(frame: torch.Tensor, *, tolerance: float = 0.12):
+    """One isolated frame per marker, ordered by position and nothing else."""
+
+    return tuple(isolated for _, isolated in scene_parts(frame, tolerance=tolerance))
 
 
 def encode_slots(encoders, frame: torch.Tensor) -> torch.Tensor:
