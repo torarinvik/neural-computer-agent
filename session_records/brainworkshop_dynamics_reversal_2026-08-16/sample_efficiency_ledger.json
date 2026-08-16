@@ -1,0 +1,38 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment_id": "brainworkshop-dynamics-reversal-2026-08-16",
+  "status": "development_diagnostic_not_promoted",
+  "source": "dynamics_reversal.json",
+  "seed_blocks": [],
+  "replication_count": 3,
+  "unique_verifier_bits": {
+    "recovery": 2304,
+    "mixed_model_control": 2304
+  },
+  "unique_logical_lifetimes_all_arms": 360,
+  "optimizer_updates": 0,
+  "replayed_examples": 0,
+  "wall_seconds": 0.0188665830,
+  "latency": {
+    "unit": "milliseconds per decision",
+    "by_arm": {
+      "recovery": 0.0010296354,
+      "mixed_model_control": 0.0017291771
+    }
+  },
+  "stable_bits_to_threshold": {
+    "threshold": 0.75,
+    "by_arm": {
+      "recovery": [384, 384, 384],
+      "mixed_model_control": [512, 512, 512]
+    }
+  },
+  "retention_on_mastered_primitive": "not_claimed",
+  "transfer_ratio_against_fresh_learner": null,
+  "controls": {
+    "mixed_model_inheritance": true,
+    "within_lifetime_reversal": true,
+    "agent_bank_unchanged": true
+  },
+  "claim_boundary": "Development synthetic reversal diagnostic only; no rendered-stream holdout, runtime, promotion, or curated-bank admission claim."
+}
