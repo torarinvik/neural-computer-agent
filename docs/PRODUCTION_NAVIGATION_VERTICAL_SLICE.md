@@ -66,6 +66,13 @@ the controller only through a caller-supplied feedback encoder.
   a verified control-flow operator across changed dynamics while a raw
   source-world successor artifact fails. Cross-frontend and symbol-remapping
   transfer remain open.
+- The shared-agent maze audit in
+  `session_records/brainworkshop_shared_agent_maze_transfer_2026-08-16` runs
+  the existing Neural Workshop agent through a rendered, hidden-goal maze on
+  the same controller/event/intention boundary. The Workshop-warm arm beats
+  the fresh maze curve in both development replicates, while a stale source
+  maze map fails; the fresh arm never reaches the provisional stable threshold,
+  so no transfer ratio or promotion is claimed.
 
 ## Deliberate limits
 
@@ -83,6 +90,9 @@ pixel rerenders with matched shuffled-action and fresh-learner controls before
 any bank admission. In parallel, carry the belief/mask through the learned
 event bus so ambiguity is preserved at the identity seam rather than collapsed
 into a slot guess. Then run the explicit cross-frontend and symbol-remapping
-cells before claiming broad generalization. The assignment gate and artifacts
-are still an interface seam, not a promoted identity model; the current
-diagnostics and their artifacts are not in the curated bank.
+cells before claiming broad generalization. For Maze, the next gate is a
+measured Workshop planning artifact and more held-out maze replicates, with
+stable warm-vs-fresh advantage and no reward-shuffled leakage. The assignment
+gate, maze audit, and their artifacts are still development seams, not
+promoted identity or planning models; the current diagnostics and their
+artifacts are not in the curated bank.

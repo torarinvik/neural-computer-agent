@@ -1,0 +1,49 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment_id": "brainworkshop-shared-agent-maze-transfer-2026-08-16",
+  "status": "development_diagnostic_not_promoted",
+  "source": "maze_transfer.json",
+  "seed_blocks": [],
+  "replication_count": 2,
+  "unique_verifier_bits": {
+    "workshop_warm": 1152,
+    "fresh": 1120,
+    "stale_world_model": 1120,
+    "reward_shuffled": 1152,
+    "total": 4544
+  },
+  "unique_logical_lifetimes": {
+    "workshop_warm": 40,
+    "fresh": 40,
+    "stale_world_model": 40,
+    "reward_shuffled": 40,
+    "total": 160
+  },
+  "optimizer_updates": 0,
+  "replayed_examples": 0,
+  "wall_seconds": 20.41503070795443,
+  "latency": "controller and maze decision latency are recorded in maze_transfer.json",
+  "stable_bits_to_threshold": {
+    "workshop_warm": [null, 436],
+    "fresh": [null, null],
+    "stale_world_model": [null, null],
+    "reward_shuffled": [null, null]
+  },
+  "retention_on_mastered_primitive": "not claimed",
+  "transfer_ratio_against_fresh_learner": null,
+  "controls": {
+    "same_agent_workshop_to_maze": true,
+    "development_event_dictionary_probe": true,
+    "changed_target_maze": true,
+    "fresh_learner": true,
+    "stale_source_world_model": true,
+    "reward_shuffled": true,
+    "cross_frontend": false,
+    "symbol_remapping": false,
+    "partial_observability": false,
+    "occlusion": false,
+    "dynamic_obstacles": false,
+    "reserved_holdout_untouched": true
+  },
+  "claim_boundary": "Development-only same-agent planning composition. The warm operator improves the development learning curve, but the fresh arm never reaches a stable threshold, so no transfer ratio or promotion is claimed."
+}
