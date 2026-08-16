@@ -1,0 +1,41 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment_id": "brainworkshop-perceptual-aliasing-2026-08-16",
+  "status": "development_diagnostic_not_promoted",
+  "source": "perceptual_aliasing.json",
+  "seed_blocks": [],
+  "replication_count": 3,
+  "unique_verifier_bits": {
+    "merged": 14400,
+    "history": 13800,
+    "corrupted_history": 13800
+  },
+  "unique_logical_lifetimes_all_arms": 3744,
+  "optimizer_updates": 0,
+  "replayed_examples": 0,
+  "wall_seconds": 0.1569668751,
+  "latency": {
+    "unit": "milliseconds per prediction",
+    "by_arm": {
+      "merged": 0.0006534057,
+      "history": 0.0006914493,
+      "corrupted_history": 0.0007451784
+    }
+  },
+  "stable_bits_to_threshold": {
+    "threshold": 0.95,
+    "by_arm": {
+      "merged": [null, null, null],
+      "history": [920, 1840, 2760],
+      "corrupted_history": [null, null, null]
+    }
+  },
+  "retention_on_mastered_primitive": "not_claimed",
+  "transfer_ratio_against_fresh_learner": null,
+  "controls": {
+    "current_symbol_merge": true,
+    "corrupted_history": true,
+    "agent_bank_unchanged": true
+  },
+  "claim_boundary": "Development finite-event aliasing diagnostic only; no rendered-stream holdout, runtime, promotion, or curated-bank admission claim."
+}
