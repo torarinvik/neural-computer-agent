@@ -41,6 +41,11 @@ the controller only through a caller-supplied feedback encoder.
   requires both a top-two margin and a minimum absolute evidence score, so a
   weak but high-margin signal still abstains. Its rendered integration remains
   a diagnostic, not a promoted identity learner.
+- `PersistentCausalIdentityV2` persists the action-conditioned event dynamics,
+  rebinds them to current tracks, and freezes them on contradiction or missing
+  evidence until fresh episodes relearn a replacement. Its first closed-loop
+  diagnostic quarantined safely but did not beat the episode-local scorer, so
+  the reserved integrated holdout remains untouched.
 
 ## Deliberate limits
 
@@ -50,9 +55,9 @@ not silently copied into the curated bank. The current self-model remains
 rejected by the adversarial audit, and no navigation artifact is promoted by
 this adapter.
 
-The next production step is to run the artifact on fresh pixel rerenders with
-crossings and occlusion, plus matched shuffled-action and fresh-learner
-controls, and compare stable learning curves before any bank admission. The
-assignment gate and artifact are still an interface seam, not a promoted
-identity model; the current diagnostic uses synthetic feeder action features
-and its artifact is not in the curated bank.
+The next production step is to improve the persistent artifact's
+state-conditioned causal signature, then rerun it on fresh pixel rerenders
+with crossings and occlusion, plus matched shuffled-action and fresh-learner
+controls, before any bank admission. The assignment gate and artifacts are
+still an interface seam, not a promoted identity model; the current diagnostic
+uses a bounded two-track fixture and its artifacts are not in the curated bank.

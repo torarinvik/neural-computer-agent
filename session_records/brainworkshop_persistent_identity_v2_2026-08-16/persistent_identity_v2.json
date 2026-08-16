@@ -1,0 +1,629 @@
+{
+  "arms": {
+    "episode_local": {
+      "abstention_rate": 0.375,
+      "arm": "episode_local",
+      "confidently_wrong": 0,
+      "episodes": [
+        {
+          "confidently_wrong": 0,
+          "controlled_slot": 0,
+          "episode": 0,
+          "identity_abstentions": 3,
+          "primary_emissions": 5,
+          "probe_emissions": 3,
+          "reasons": [
+            "insufficient_history",
+            "insufficient_history",
+            "insufficient_history",
+            "local_evidence",
+            "local_evidence",
+            "local_evidence",
+            "local_evidence",
+            "local_evidence"
+          ],
+          "reverse": false,
+          "reward": 4.0,
+          "selected_slots": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "statuses": [
+            "warmup",
+            "warmup",
+            "warmup",
+            "episode_local",
+            "episode_local",
+            "episode_local",
+            "episode_local",
+            "episode_local"
+          ],
+          "steps": 8
+        },
+        {
+          "confidently_wrong": 0,
+          "controlled_slot": 1,
+          "episode": 1,
+          "identity_abstentions": 3,
+          "primary_emissions": 5,
+          "probe_emissions": 3,
+          "reasons": [
+            "insufficient_history",
+            "insufficient_history",
+            "insufficient_history",
+            "local_evidence",
+            "local_evidence",
+            "local_evidence",
+            "local_evidence",
+            "local_evidence"
+          ],
+          "reverse": false,
+          "reward": 1.0,
+          "selected_slots": [
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "statuses": [
+            "warmup",
+            "warmup",
+            "warmup",
+            "episode_local",
+            "episode_local",
+            "episode_local",
+            "episode_local",
+            "episode_local"
+          ],
+          "steps": 8
+        },
+        {
+          "confidently_wrong": 0,
+          "controlled_slot": 0,
+          "episode": 2,
+          "identity_abstentions": 3,
+          "primary_emissions": 5,
+          "probe_emissions": 3,
+          "reasons": [
+            "insufficient_history",
+            "insufficient_history",
+            "insufficient_history",
+            "local_evidence",
+            "local_evidence",
+            "local_evidence",
+            "local_evidence",
+            "local_evidence"
+          ],
+          "reverse": false,
+          "reward": 4.0,
+          "selected_slots": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "statuses": [
+            "warmup",
+            "warmup",
+            "warmup",
+            "episode_local",
+            "episode_local",
+            "episode_local",
+            "episode_local",
+            "episode_local"
+          ],
+          "steps": 8
+        }
+      ],
+      "identity_abstentions": 9,
+      "integrated_return": 0.375,
+      "persistent_status": null,
+      "persistent_support": null,
+      "primary_emissions": 15,
+      "probe_emissions": 9,
+      "quarantine_count": null,
+      "steps": 24,
+      "total_reward": 9.0
+    },
+    "no_persistent": {
+      "abstention_rate": 0.0,
+      "arm": "no_persistent",
+      "confidently_wrong": 0,
+      "episodes": [
+        {
+          "confidently_wrong": 0,
+          "controlled_slot": 0,
+          "episode": 0,
+          "identity_abstentions": 0,
+          "primary_emissions": 8,
+          "probe_emissions": 0,
+          "reasons": [],
+          "reverse": false,
+          "reward": 2.0,
+          "selected_slots": [],
+          "statuses": [],
+          "steps": 8
+        },
+        {
+          "confidently_wrong": 0,
+          "controlled_slot": 1,
+          "episode": 1,
+          "identity_abstentions": 0,
+          "primary_emissions": 8,
+          "probe_emissions": 0,
+          "reasons": [],
+          "reverse": false,
+          "reward": 2.0,
+          "selected_slots": [],
+          "statuses": [],
+          "steps": 8
+        },
+        {
+          "confidently_wrong": 0,
+          "controlled_slot": 0,
+          "episode": 2,
+          "identity_abstentions": 0,
+          "primary_emissions": 8,
+          "probe_emissions": 0,
+          "reasons": [],
+          "reverse": false,
+          "reward": 2.0,
+          "selected_slots": [],
+          "statuses": [],
+          "steps": 8
+        }
+      ],
+      "identity_abstentions": 0,
+      "integrated_return": 0.25,
+      "persistent_status": null,
+      "persistent_support": null,
+      "primary_emissions": 24,
+      "probe_emissions": 0,
+      "quarantine_count": null,
+      "steps": 24,
+      "total_reward": 6.0
+    },
+    "oracle": {
+      "abstention_rate": 0.0,
+      "arm": "oracle",
+      "confidently_wrong": 0,
+      "episodes": [
+        {
+          "confidently_wrong": 0,
+          "controlled_slot": 0,
+          "episode": 0,
+          "identity_abstentions": 0,
+          "primary_emissions": 8,
+          "probe_emissions": 0,
+          "reasons": [
+            "evaluation_only",
+            "evaluation_only",
+            "evaluation_only",
+            "evaluation_only",
+            "evaluation_only",
+            "evaluation_only",
+            "evaluation_only",
+            "evaluation_only"
+          ],
+          "reverse": false,
+          "reward": 2.0,
+          "selected_slots": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "statuses": [
+            "oracle",
+            "oracle",
+            "oracle",
+            "oracle",
+            "oracle",
+            "oracle",
+            "oracle",
+            "oracle"
+          ],
+          "steps": 8
+        },
+        {
+          "confidently_wrong": 0,
+          "controlled_slot": 1,
+          "episode": 1,
+          "identity_abstentions": 0,
+          "primary_emissions": 8,
+          "probe_emissions": 0,
+          "reasons": [
+            "evaluation_only",
+            "evaluation_only",
+            "evaluation_only",
+            "evaluation_only",
+            "evaluation_only",
+            "evaluation_only",
+            "evaluation_only",
+            "evaluation_only"
+          ],
+          "reverse": false,
+          "reward": 2.0,
+          "selected_slots": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "statuses": [
+            "oracle",
+            "oracle",
+            "oracle",
+            "oracle",
+            "oracle",
+            "oracle",
+            "oracle",
+            "oracle"
+          ],
+          "steps": 8
+        },
+        {
+          "confidently_wrong": 0,
+          "controlled_slot": 0,
+          "episode": 2,
+          "identity_abstentions": 0,
+          "primary_emissions": 8,
+          "probe_emissions": 0,
+          "reasons": [
+            "evaluation_only",
+            "evaluation_only",
+            "evaluation_only",
+            "evaluation_only",
+            "evaluation_only",
+            "evaluation_only",
+            "evaluation_only",
+            "evaluation_only"
+          ],
+          "reverse": false,
+          "reward": 2.0,
+          "selected_slots": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "statuses": [
+            "oracle",
+            "oracle",
+            "oracle",
+            "oracle",
+            "oracle",
+            "oracle",
+            "oracle",
+            "oracle"
+          ],
+          "steps": 8
+        }
+      ],
+      "identity_abstentions": 0,
+      "integrated_return": 0.25,
+      "persistent_status": null,
+      "persistent_support": null,
+      "primary_emissions": 24,
+      "probe_emissions": 0,
+      "quarantine_count": null,
+      "steps": 24,
+      "total_reward": 6.0
+    },
+    "persistent_v2": {
+      "abstention_rate": 0.7083333333333334,
+      "arm": "persistent_v2",
+      "confidently_wrong": 0,
+      "detection_delay_steps": 6,
+      "episodes": [
+        {
+          "confidently_wrong": 0,
+          "controlled_slot": 0,
+          "episode": 0,
+          "identity_abstentions": 5,
+          "primary_emissions": 3,
+          "probe_emissions": 5,
+          "reasons": [
+            "insufficient_history",
+            "insufficient_history",
+            "insufficient_history",
+            "high_confidence_assignment",
+            "high_confidence_assignment",
+            "high_confidence_assignment",
+            "low_applicability_or_margin",
+            "quarantined_relearning"
+          ],
+          "reverse": false,
+          "reward": 3.0,
+          "selected_slots": [
+            0,
+            0,
+            0
+          ],
+          "statuses": [
+            "warmup",
+            "warmup",
+            "warmup",
+            "active",
+            "active",
+            "active",
+            "quarantined",
+            "quarantined"
+          ],
+          "steps": 8
+        },
+        {
+          "confidently_wrong": 0,
+          "controlled_slot": 1,
+          "episode": 1,
+          "identity_abstentions": 4,
+          "primary_emissions": 4,
+          "probe_emissions": 4,
+          "reasons": [
+            "insufficient_history",
+            "insufficient_history",
+            "insufficient_history",
+            "relearned_requires_confirmation",
+            "relearned_requires_confirmation",
+            "relearned_requires_confirmation",
+            "relearned_requires_confirmation",
+            "relearned_requires_confirmation"
+          ],
+          "reverse": false,
+          "reward": 2.0,
+          "selected_slots": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "statuses": [
+            "warmup",
+            "warmup",
+            "warmup",
+            "active",
+            "active",
+            "active",
+            "active",
+            "active"
+          ],
+          "steps": 8
+        },
+        {
+          "confidently_wrong": 0,
+          "controlled_slot": 0,
+          "episode": 2,
+          "identity_abstentions": 8,
+          "primary_emissions": 0,
+          "probe_emissions": 8,
+          "reasons": [
+            "insufficient_history",
+            "insufficient_history",
+            "insufficient_history",
+            "low_applicability_or_margin",
+            "recovery_evidence_insufficient",
+            "recovery_evidence_insufficient",
+            "quarantined_relearning",
+            "quarantined_relearning"
+          ],
+          "reverse": false,
+          "reward": 2.0,
+          "selected_slots": [],
+          "statuses": [
+            "warmup",
+            "warmup",
+            "warmup",
+            "quarantined",
+            "quarantined",
+            "quarantined",
+            "quarantined",
+            "quarantined"
+          ],
+          "steps": 8
+        }
+      ],
+      "identity_abstentions": 17,
+      "integrated_return": 0.2916666666666667,
+      "persistent_status": "quarantined",
+      "persistent_support": 2,
+      "post_recovery_return": 0.25,
+      "primary_emissions": 7,
+      "probe_emissions": 17,
+      "quarantine_count": 2,
+      "recovery_delay_steps": 5,
+      "steps": 24,
+      "total_reward": 7.0
+    }
+  },
+  "artifact": {
+    "assignment_gate": {
+      "behavior": "opaque-causal-evidence_top-slot_with_explicit_abstention_v1",
+      "margin": 0.15,
+      "minimum_evidence": 0.2,
+      "schema": "neural-computer.external-identity-assignment.v1"
+    },
+    "behavior": "persistent-action-conditioned-dynamics_rebind-quarantine-relearn_v2",
+    "epsilon": 1e-08,
+    "local_artifact": {
+      "behavior": "centered-action-event-cross-covariance_v1",
+      "epsilon": 1e-08,
+      "minimum_history": 4,
+      "schema": "neural-computer.external-causal-identity-artifact.v1"
+    },
+    "margin": 0.15,
+    "minimum_evidence": 0.2,
+    "minimum_history": 4,
+    "minimum_similarity": 0.65,
+    "recovery_episodes": 2,
+    "schema": "neural-computer.persistent-causal-identity.v2"
+  },
+  "bank_digest_after": "07319eb13c9cac58bbbe94258548e64f13ba1b3512ca2a01fbdc675c49e2e7c9",
+  "bank_digest_before": "07319eb13c9cac58bbbe94258548e64f13ba1b3512ca2a01fbdc675c49e2e7c9",
+  "bank_unchanged": true,
+  "claim_boundary": "The real amodal live tick contract, receipt-linked feedback, rendered learned events, and persistent causal identity state are exercised together. This is not a holdout or promotion: the marker fixture has fixed two-track binding within each episode, action decoding is deterministic, and no curated-bank or persistent self-model admission is claimed.",
+  "claim_status": "development_closed_loop_diagnostic_not_promoted",
+  "controls": {
+    "action_shuffled_abstained": true,
+    "action_shuffled_status": "quarantined",
+    "birth_death_single_track_assigned": true,
+    "crossing_track_order_abstained": true,
+    "exact_equivalence_abstained": true,
+    "exact_equivalence_support": 0,
+    "initial_assignment": 0,
+    "missing_evidence_abstained": true,
+    "missing_evidence_status": "quarantined",
+    "partial_mimic_abstained": true,
+    "poisoned_recovery_abstained": false,
+    "poisoned_recovery_status": "active"
+  },
+  "episodes": 3,
+  "experiment_id": "brainworkshop-persistent-identity-v2-2026-08-16",
+  "frontend_digest_after": "bfff11bcf1560314a9f32d8bd3799b046921d7c5644ea7534ff53408bd69d31e",
+  "frontend_digest_before": "bfff11bcf1560314a9f32d8bd3799b046921d7c5644ea7534ff53408bd69d31e",
+  "frontend_unchanged": true,
+  "optimizer_updates": 0,
+  "persistent_advantage_over_episode_local": -0.08333333333333331,
+  "replayed_examples": 120,
+  "schema": "neural-computer.persistent-identity-v2-closed-loop.v1",
+  "seed": 47,
+  "stale_persistent_arm": {
+    "abstention_rate": 0.875,
+    "arm": "persistent_v2",
+    "confidently_wrong": 0,
+    "detection_delay_steps": 6,
+    "episodes": [
+      {
+        "confidently_wrong": 0,
+        "controlled_slot": 0,
+        "episode": 0,
+        "identity_abstentions": 5,
+        "primary_emissions": 3,
+        "probe_emissions": 5,
+        "reasons": [
+          "insufficient_history",
+          "insufficient_history",
+          "insufficient_history",
+          "high_confidence_assignment",
+          "high_confidence_assignment",
+          "high_confidence_assignment",
+          "low_applicability_or_margin",
+          "quarantined_relearning"
+        ],
+        "reverse": false,
+        "reward": 3.0,
+        "selected_slots": [
+          0,
+          0,
+          0
+        ],
+        "statuses": [
+          "warmup",
+          "warmup",
+          "warmup",
+          "active",
+          "active",
+          "active",
+          "quarantined",
+          "quarantined"
+        ],
+        "steps": 8
+      },
+      {
+        "confidently_wrong": 0,
+        "controlled_slot": 1,
+        "episode": 1,
+        "identity_abstentions": 8,
+        "primary_emissions": 0,
+        "probe_emissions": 8,
+        "reasons": [
+          "insufficient_history",
+          "insufficient_history",
+          "insufficient_history",
+          "relearned_requires_confirmation",
+          "low_applicability_or_margin",
+          "quarantined_relearning",
+          "quarantined_relearning",
+          "quarantined_relearning"
+        ],
+        "reverse": true,
+        "reward": 2.0,
+        "selected_slots": [],
+        "statuses": [
+          "warmup",
+          "warmup",
+          "warmup",
+          "active",
+          "quarantined",
+          "quarantined",
+          "quarantined",
+          "quarantined"
+        ],
+        "steps": 8
+      },
+      {
+        "confidently_wrong": 0,
+        "controlled_slot": 0,
+        "episode": 2,
+        "identity_abstentions": 8,
+        "primary_emissions": 0,
+        "probe_emissions": 8,
+        "reasons": [
+          "insufficient_history",
+          "insufficient_history",
+          "insufficient_history",
+          "relearned_requires_confirmation",
+          "low_applicability_or_margin",
+          "recovery_evidence_insufficient",
+          "quarantined_relearning",
+          "quarantined_relearning"
+        ],
+        "reverse": false,
+        "reward": 2.0,
+        "selected_slots": [],
+        "statuses": [
+          "warmup",
+          "warmup",
+          "warmup",
+          "active",
+          "quarantined",
+          "quarantined",
+          "quarantined",
+          "quarantined"
+        ],
+        "steps": 8
+      }
+    ],
+    "identity_abstentions": 21,
+    "integrated_return": 0.2916666666666667,
+    "persistent_status": "quarantined",
+    "persistent_support": 2,
+    "post_recovery_return": 0.25,
+    "primary_emissions": 3,
+    "probe_emissions": 21,
+    "quarantine_count": 3,
+    "recovery_delay_steps": 5,
+    "steps": 24,
+    "total_reward": 7.0
+  },
+  "steps": 8,
+  "unique_logical_lifetimes": 15,
+  "unique_verifier_bits": 120,
+  "wall_seconds": 0.5070148749509826
+}
