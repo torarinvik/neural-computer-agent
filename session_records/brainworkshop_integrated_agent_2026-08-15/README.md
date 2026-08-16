@@ -137,6 +137,14 @@ predicts the evidence, not because anything establishes it is the same rule.
 Two rules that agree over sixty-four labels and diverge later would be confused,
 and only confirmation would catch it.
 
+**Every bit of the 0.487 is exact repeats.** That makes this store a cache
+rather than a library: a task it has not seen before costs exactly what a fresh
+agent pays, however much it holds.
+`brainworkshop_compositional_transfer_2026-08-15` addresses that directly --
+asking the library what it can *build* rather than what it holds takes a
+never-seen composite to 0.29 of control -- but `compose` is off in this loop and
+none of the admitted programs above were reached that way.
+
 **The pool is six rules over one alphabet and one frontend.**
 `brainworkshop_environment_widening_2026-08-15` since took this apart: the
 alphabet may be doubled to eight and the stimuli may carry pixel noise up to

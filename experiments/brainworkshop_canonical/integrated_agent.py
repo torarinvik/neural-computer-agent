@@ -61,6 +61,7 @@ from neural_computer.induced_library import (
 from neural_computer.promotion import sha256_file
 
 from .accumulation_curve import _config, curriculum_rules
+from .compositional_recognition import composed_machine, search_compositions
 from .controller_pretraining import load_temporal_controller_artifact
 from .counter_state_programs import (
     compile_rule as compile_automaton,
@@ -129,6 +130,10 @@ class TaskOutcome:
     admission_reason: str | None = None
     executor_statuses: str | None = None
     false_recognitions: int = 0
+    composition_hypotheses: int = 0
+    composed_from: list[int] = field(default_factory=list)
+    combiner: str | None = None
+    candidate_label: str | None = None
 
     @property
     def acquisition_steps(self) -> int:
@@ -335,6 +340,8 @@ def solve_task(
     induction_from: int = INDUCTION_LADDER_INDEX,
     corrupt=None,
     config_for=_config,
+    compose: bool = False,
+    correct_for_multiplicity: bool = False,
 ) -> tuple[TaskOutcome, InducedProgramRecord | None]:
     """Walk the ladder until something explains the task, then confirm it.
 
@@ -385,7 +392,10 @@ def solve_task(
     # A recognition that fails confirmation is information, not a dead end. The
     # slot is refused for this task and the ladder resumes, which is what makes
     # a false recognition cost evidence rather than cost the task.
-    refused: set[int] = set()
+    refused_slots: set[int] = set()
+    # A composed candidate is not a slot, so refusals are tracked by the label
+    # of the hypothesis rather than by where it came from.
+    refused_labels: set[str] = set()
     attempt = 0
     for rung, budget in enumerate(ladder):
         while len(traces) < budget:
@@ -407,12 +417,53 @@ def solve_task(
         candidate: InducedProgramRecord | None = None
         source = ""
         slot: int | None = None
-        found = recognise(library, traces, exclude=frozenset(refused))
-        if found is not None:
-            slot, _ = found
-            candidate = library.record(slot)
-            source = "recognised"
-        elif rung >= induction_from:
+        found = None
+        if compose:
+            # The library is asked what it can *build*, not only what it holds.
+            # Every pair of records under every combiner is one elementwise
+            # merge of two cached press vectors, so this costs no episode and
+            # no program execution -- but it multiplies the hypotheses, and the
+            # threshold rises with their number to match.
+            offer, search = search_compositions(
+                library,
+                traces,
+                exclude=frozenset(refused_slots),
+                correct_for_multiplicity=correct_for_multiplicity,
+            )
+            outcome.composition_hypotheses = int(search["hypotheses"])
+            if offer is not None and offer.label() not in refused_labels:
+                built = composed_machine(library, offer)
+                if built is not None:
+                    if offer.kind == "single":
+                        slot = offer.slots[0]
+                        candidate = library.record(slot)
+                        source = "recognised"
+                    else:
+                        candidate = _record_for(
+                            built,
+                            alphabet=alphabet,
+                            provenance={
+                                "source": "composed",
+                                "parts": list(offer.slots),
+                                "combiner": offer.combiner,
+                                "probe_episodes": len(traces),
+                                "hypotheses_examined": int(search["hypotheses"]),
+                                "states": built.state_count,
+                                "machine": built.payload(),
+                            },
+                        )
+                        source = "composed"
+                        outcome.composed_from = list(offer.slots)
+                        outcome.combiner = offer.combiner
+                    outcome.candidate_label = offer.label()
+        else:
+            found = recognise(library, traces, exclude=frozenset(refused_slots))
+            if found is not None:
+                slot, _ = found
+                candidate = library.record(slot)
+                source = "recognised"
+                outcome.candidate_label = f"slot {slot}"
+        if candidate is None and rung >= induction_from:
             fit = induce_noise_tolerant(tuple(traces))
             if fit is not None:
                 outcome.fit_error_rate = fit.error_rate
@@ -457,8 +508,11 @@ def solve_task(
             outcome.solved = True
             return outcome, candidate
         outcome.reproduces = False
-        if source == "recognised" and slot is not None:
-            refused.add(slot)
+        if source in ("recognised", "composed"):
+            if slot is not None:
+                refused_slots.add(slot)
+            if outcome.candidate_label:
+                refused_labels.add(outcome.candidate_label)
             outcome.false_recognitions += 1
         else:
             # An induced hypothesis that fails confirmation is refuted by more
@@ -501,6 +555,38 @@ def admit(
     outcome.admission_reason = "admitted"
     if library_path is not None:
         library.save(library_path)
+
+
+def noisy_feedback(rate: float, seed: int):
+    """Flip a fraction of each probe's labels, rather than destroying them.
+
+    Shuffling is the missing-evidence control and answers whether the agent is
+    reading its reward at all. This is the different and harder question: does
+    composition survive a verifier that is merely *unreliable*? The noise
+    tolerance record establishes that induction does, up to one label in five;
+    composition has to be asked separately, because it is scored by a test that
+    does not move when the evidence gets dirtier.
+    """
+
+    if not 0.0 <= rate < 1.0:
+        raise ValueError("a feedback noise rate is a fraction below one")
+
+    def corrupt(trace: Trace, index: int) -> Trace:
+        generator = torch.Generator().manual_seed(int(seed) + 7919 * int(index))
+        flips = (
+            torch.rand(len(trace.outputs), generator=generator) < rate
+        ).tolist()
+        return Trace(
+            symbols=trace.symbols,
+            outputs=tuple(
+                value ^ int(flip)
+                for value, flip in zip(trace.outputs, flips, strict=True)
+            ),
+            eligible=trace.eligible,
+            symbol_count=trace.symbol_count,
+        )
+
+    return corrupt
 
 
 def shuffled_feedback(seed: int):
@@ -576,6 +662,7 @@ def run_arm(
     library_path: Path | None = None,
     corrupt=None,
     config_for=_config,
+    compose: bool = False,
 ) -> dict[str, Any]:
     """One pass over the task stream. `grow=False` forgets between tasks."""
 
@@ -600,6 +687,7 @@ def run_arm(
             repeat_index=repeat,
             corrupt=corrupt,
             config_for=config_for,
+            compose=compose,
         )
         if record is not None:
             admit(
@@ -630,6 +718,7 @@ def run_arm(
             int(row["acquisition_steps"]) for row in hard
         ),
         "recognised": sum(1 for row in rows if row["source"] == "recognised"),
+        "composed": sum(1 for row in rows if row["source"] == "composed"),
         "induced": sum(1 for row in rows if row["source"] == "induced"),
         "admitted": sum(1 for row in rows if row["admitted"]),
         "final_library_size": library.record_count,

@@ -1,0 +1,740 @@
+{
+  "corrected": {
+    "buildable_correct": 95,
+    "buildable_missed": 97,
+    "buildable_wrong": 0,
+    "foreign_wrong": 0,
+    "unbuildable_wrong": 0
+  },
+  "experiment_id": "brainworkshop-composition-adversarial-2026-08-15",
+  "library_sizes": [
+    4,
+    8,
+    16,
+    24
+  ],
+  "max_hypotheses": 852,
+  "noise_levels": [
+    0.0,
+    0.05,
+    0.1,
+    0.2
+  ],
+  "rows": [
+    {
+      "buildable": {
+        "adopted": 12,
+        "correct": 12,
+        "missed": 0,
+        "wrong": 0
+      },
+      "corrected": true,
+      "foreign_operator": {
+        "adopted": 0,
+        "refused": 12,
+        "wrong": 0
+      },
+      "library_size": 4,
+      "max_hypotheses": 22,
+      "noise": 0.0,
+      "unbuildable": {
+        "adopted": 0,
+        "refused": 12,
+        "wrong": 0
+      }
+    },
+    {
+      "buildable": {
+        "adopted": 12,
+        "correct": 12,
+        "missed": 0,
+        "wrong": 0
+      },
+      "corrected": false,
+      "foreign_operator": {
+        "adopted": 2,
+        "refused": 10,
+        "wrong": 0
+      },
+      "library_size": 4,
+      "max_hypotheses": 22,
+      "noise": 0.0,
+      "unbuildable": {
+        "adopted": 0,
+        "refused": 12,
+        "wrong": 0
+      }
+    },
+    {
+      "buildable": {
+        "adopted": 12,
+        "correct": 12,
+        "missed": 0,
+        "wrong": 0
+      },
+      "corrected": true,
+      "foreign_operator": {
+        "adopted": 0,
+        "refused": 12,
+        "wrong": 0
+      },
+      "library_size": 4,
+      "max_hypotheses": 22,
+      "noise": 0.05,
+      "unbuildable": {
+        "adopted": 0,
+        "refused": 12,
+        "wrong": 0
+      }
+    },
+    {
+      "buildable": {
+        "adopted": 12,
+        "correct": 12,
+        "missed": 0,
+        "wrong": 0
+      },
+      "corrected": false,
+      "foreign_operator": {
+        "adopted": 0,
+        "refused": 12,
+        "wrong": 0
+      },
+      "library_size": 4,
+      "max_hypotheses": 22,
+      "noise": 0.05,
+      "unbuildable": {
+        "adopted": 0,
+        "refused": 12,
+        "wrong": 0
+      }
+    },
+    {
+      "buildable": {
+        "adopted": 2,
+        "correct": 2,
+        "missed": 10,
+        "wrong": 0
+      },
+      "corrected": true,
+      "foreign_operator": {
+        "adopted": 0,
+        "refused": 12,
+        "wrong": 0
+      },
+      "library_size": 4,
+      "max_hypotheses": 22,
+      "noise": 0.1,
+      "unbuildable": {
+        "adopted": 0,
+        "refused": 12,
+        "wrong": 0
+      }
+    },
+    {
+      "buildable": {
+        "adopted": 9,
+        "correct": 9,
+        "missed": 3,
+        "wrong": 0
+      },
+      "corrected": false,
+      "foreign_operator": {
+        "adopted": 0,
+        "refused": 12,
+        "wrong": 0
+      },
+      "library_size": 4,
+      "max_hypotheses": 22,
+      "noise": 0.1,
+      "unbuildable": {
+        "adopted": 0,
+        "refused": 12,
+        "wrong": 0
+      }
+    },
+    {
+      "buildable": {
+        "adopted": 0,
+        "correct": 0,
+        "missed": 12,
+        "wrong": 0
+      },
+      "corrected": true,
+      "foreign_operator": {
+        "adopted": 0,
+        "refused": 12,
+        "wrong": 0
+      },
+      "library_size": 4,
+      "max_hypotheses": 22,
+      "noise": 0.2,
+      "unbuildable": {
+        "adopted": 0,
+        "refused": 12,
+        "wrong": 0
+      }
+    },
+    {
+      "buildable": {
+        "adopted": 0,
+        "correct": 0,
+        "missed": 12,
+        "wrong": 0
+      },
+      "corrected": false,
+      "foreign_operator": {
+        "adopted": 0,
+        "refused": 12,
+        "wrong": 0
+      },
+      "library_size": 4,
+      "max_hypotheses": 22,
+      "noise": 0.2,
+      "unbuildable": {
+        "adopted": 0,
+        "refused": 12,
+        "wrong": 0
+      }
+    },
+    {
+      "buildable": {
+        "adopted": 12,
+        "correct": 12,
+        "missed": 0,
+        "wrong": 0
+      },
+      "corrected": true,
+      "foreign_operator": {
+        "adopted": 0,
+        "refused": 12,
+        "wrong": 0
+      },
+      "library_size": 8,
+      "max_hypotheses": 92,
+      "noise": 0.0,
+      "unbuildable": {
+        "adopted": 0,
+        "refused": 12,
+        "wrong": 0
+      }
+    },
+    {
+      "buildable": {
+        "adopted": 12,
+        "correct": 12,
+        "missed": 0,
+        "wrong": 0
+      },
+      "corrected": false,
+      "foreign_operator": {
+        "adopted": 3,
+        "refused": 9,
+        "wrong": 0
+      },
+      "library_size": 8,
+      "max_hypotheses": 92,
+      "noise": 0.0,
+      "unbuildable": {
+        "adopted": 0,
+        "refused": 12,
+        "wrong": 0
+      }
+    },
+    {
+      "buildable": {
+        "adopted": 12,
+        "correct": 12,
+        "missed": 0,
+        "wrong": 0
+      },
+      "corrected": true,
+      "foreign_operator": {
+        "adopted": 0,
+        "refused": 12,
+        "wrong": 0
+      },
+      "library_size": 8,
+      "max_hypotheses": 92,
+      "noise": 0.05,
+      "unbuildable": {
+        "adopted": 0,
+        "refused": 12,
+        "wrong": 0
+      }
+    },
+    {
+      "buildable": {
+        "adopted": 12,
+        "correct": 12,
+        "missed": 0,
+        "wrong": 0
+      },
+      "corrected": false,
+      "foreign_operator": {
+        "adopted": 0,
+        "refused": 12,
+        "wrong": 0
+      },
+      "library_size": 8,
+      "max_hypotheses": 92,
+      "noise": 0.05,
+      "unbuildable": {
+        "adopted": 0,
+        "refused": 12,
+        "wrong": 0
+      }
+    },
+    {
+      "buildable": {
+        "adopted": 1,
+        "correct": 1,
+        "missed": 11,
+        "wrong": 0
+      },
+      "corrected": true,
+      "foreign_operator": {
+        "adopted": 0,
+        "refused": 12,
+        "wrong": 0
+      },
+      "library_size": 8,
+      "max_hypotheses": 92,
+      "noise": 0.1,
+      "unbuildable": {
+        "adopted": 0,
+        "refused": 12,
+        "wrong": 0
+      }
+    },
+    {
+      "buildable": {
+        "adopted": 9,
+        "correct": 9,
+        "missed": 3,
+        "wrong": 0
+      },
+      "corrected": false,
+      "foreign_operator": {
+        "adopted": 0,
+        "refused": 12,
+        "wrong": 0
+      },
+      "library_size": 8,
+      "max_hypotheses": 92,
+      "noise": 0.1,
+      "unbuildable": {
+        "adopted": 0,
+        "refused": 12,
+        "wrong": 0
+      }
+    },
+    {
+      "buildable": {
+        "adopted": 0,
+        "correct": 0,
+        "missed": 12,
+        "wrong": 0
+      },
+      "corrected": true,
+      "foreign_operator": {
+        "adopted": 0,
+        "refused": 12,
+        "wrong": 0
+      },
+      "library_size": 8,
+      "max_hypotheses": 92,
+      "noise": 0.2,
+      "unbuildable": {
+        "adopted": 0,
+        "refused": 12,
+        "wrong": 0
+      }
+    },
+    {
+      "buildable": {
+        "adopted": 0,
+        "correct": 0,
+        "missed": 12,
+        "wrong": 0
+      },
+      "corrected": false,
+      "foreign_operator": {
+        "adopted": 0,
+        "refused": 12,
+        "wrong": 0
+      },
+      "library_size": 8,
+      "max_hypotheses": 92,
+      "noise": 0.2,
+      "unbuildable": {
+        "adopted": 0,
+        "refused": 12,
+        "wrong": 0
+      }
+    },
+    {
+      "buildable": {
+        "adopted": 12,
+        "correct": 12,
+        "missed": 0,
+        "wrong": 0
+      },
+      "corrected": true,
+      "foreign_operator": {
+        "adopted": 0,
+        "refused": 12,
+        "wrong": 0
+      },
+      "library_size": 16,
+      "max_hypotheses": 376,
+      "noise": 0.0,
+      "unbuildable": {
+        "adopted": 0,
+        "refused": 12,
+        "wrong": 0
+      }
+    },
+    {
+      "buildable": {
+        "adopted": 12,
+        "correct": 12,
+        "missed": 0,
+        "wrong": 0
+      },
+      "corrected": false,
+      "foreign_operator": {
+        "adopted": 2,
+        "refused": 10,
+        "wrong": 0
+      },
+      "library_size": 16,
+      "max_hypotheses": 376,
+      "noise": 0.0,
+      "unbuildable": {
+        "adopted": 0,
+        "refused": 12,
+        "wrong": 0
+      }
+    },
+    {
+      "buildable": {
+        "adopted": 9,
+        "correct": 9,
+        "missed": 3,
+        "wrong": 0
+      },
+      "corrected": true,
+      "foreign_operator": {
+        "adopted": 0,
+        "refused": 12,
+        "wrong": 0
+      },
+      "library_size": 16,
+      "max_hypotheses": 376,
+      "noise": 0.05,
+      "unbuildable": {
+        "adopted": 0,
+        "refused": 12,
+        "wrong": 0
+      }
+    },
+    {
+      "buildable": {
+        "adopted": 12,
+        "correct": 12,
+        "missed": 0,
+        "wrong": 0
+      },
+      "corrected": false,
+      "foreign_operator": {
+        "adopted": 0,
+        "refused": 12,
+        "wrong": 0
+      },
+      "library_size": 16,
+      "max_hypotheses": 376,
+      "noise": 0.05,
+      "unbuildable": {
+        "adopted": 0,
+        "refused": 12,
+        "wrong": 0
+      }
+    },
+    {
+      "buildable": {
+        "adopted": 1,
+        "correct": 1,
+        "missed": 11,
+        "wrong": 0
+      },
+      "corrected": true,
+      "foreign_operator": {
+        "adopted": 0,
+        "refused": 12,
+        "wrong": 0
+      },
+      "library_size": 16,
+      "max_hypotheses": 376,
+      "noise": 0.1,
+      "unbuildable": {
+        "adopted": 0,
+        "refused": 12,
+        "wrong": 0
+      }
+    },
+    {
+      "buildable": {
+        "adopted": 9,
+        "correct": 9,
+        "missed": 3,
+        "wrong": 0
+      },
+      "corrected": false,
+      "foreign_operator": {
+        "adopted": 0,
+        "refused": 12,
+        "wrong": 0
+      },
+      "library_size": 16,
+      "max_hypotheses": 376,
+      "noise": 0.1,
+      "unbuildable": {
+        "adopted": 0,
+        "refused": 12,
+        "wrong": 0
+      }
+    },
+    {
+      "buildable": {
+        "adopted": 0,
+        "correct": 0,
+        "missed": 12,
+        "wrong": 0
+      },
+      "corrected": true,
+      "foreign_operator": {
+        "adopted": 0,
+        "refused": 12,
+        "wrong": 0
+      },
+      "library_size": 16,
+      "max_hypotheses": 376,
+      "noise": 0.2,
+      "unbuildable": {
+        "adopted": 0,
+        "refused": 12,
+        "wrong": 0
+      }
+    },
+    {
+      "buildable": {
+        "adopted": 0,
+        "correct": 0,
+        "missed": 12,
+        "wrong": 0
+      },
+      "corrected": false,
+      "foreign_operator": {
+        "adopted": 0,
+        "refused": 12,
+        "wrong": 0
+      },
+      "library_size": 16,
+      "max_hypotheses": 376,
+      "noise": 0.2,
+      "unbuildable": {
+        "adopted": 0,
+        "refused": 12,
+        "wrong": 0
+      }
+    },
+    {
+      "buildable": {
+        "adopted": 12,
+        "correct": 12,
+        "missed": 0,
+        "wrong": 0
+      },
+      "corrected": true,
+      "foreign_operator": {
+        "adopted": 0,
+        "refused": 12,
+        "wrong": 0
+      },
+      "library_size": 24,
+      "max_hypotheses": 852,
+      "noise": 0.0,
+      "unbuildable": {
+        "adopted": 0,
+        "refused": 12,
+        "wrong": 0
+      }
+    },
+    {
+      "buildable": {
+        "adopted": 12,
+        "correct": 12,
+        "missed": 0,
+        "wrong": 0
+      },
+      "corrected": false,
+      "foreign_operator": {
+        "adopted": 3,
+        "refused": 9,
+        "wrong": 0
+      },
+      "library_size": 24,
+      "max_hypotheses": 852,
+      "noise": 0.0,
+      "unbuildable": {
+        "adopted": 0,
+        "refused": 12,
+        "wrong": 0
+      }
+    },
+    {
+      "buildable": {
+        "adopted": 9,
+        "correct": 9,
+        "missed": 3,
+        "wrong": 0
+      },
+      "corrected": true,
+      "foreign_operator": {
+        "adopted": 0,
+        "refused": 12,
+        "wrong": 0
+      },
+      "library_size": 24,
+      "max_hypotheses": 852,
+      "noise": 0.05,
+      "unbuildable": {
+        "adopted": 0,
+        "refused": 12,
+        "wrong": 0
+      }
+    },
+    {
+      "buildable": {
+        "adopted": 12,
+        "correct": 12,
+        "missed": 0,
+        "wrong": 0
+      },
+      "corrected": false,
+      "foreign_operator": {
+        "adopted": 0,
+        "refused": 12,
+        "wrong": 0
+      },
+      "library_size": 24,
+      "max_hypotheses": 852,
+      "noise": 0.05,
+      "unbuildable": {
+        "adopted": 0,
+        "refused": 12,
+        "wrong": 0
+      }
+    },
+    {
+      "buildable": {
+        "adopted": 1,
+        "correct": 1,
+        "missed": 11,
+        "wrong": 0
+      },
+      "corrected": true,
+      "foreign_operator": {
+        "adopted": 0,
+        "refused": 12,
+        "wrong": 0
+      },
+      "library_size": 24,
+      "max_hypotheses": 852,
+      "noise": 0.1,
+      "unbuildable": {
+        "adopted": 0,
+        "refused": 12,
+        "wrong": 0
+      }
+    },
+    {
+      "buildable": {
+        "adopted": 9,
+        "correct": 9,
+        "missed": 3,
+        "wrong": 0
+      },
+      "corrected": false,
+      "foreign_operator": {
+        "adopted": 0,
+        "refused": 12,
+        "wrong": 0
+      },
+      "library_size": 24,
+      "max_hypotheses": 852,
+      "noise": 0.1,
+      "unbuildable": {
+        "adopted": 0,
+        "refused": 12,
+        "wrong": 0
+      }
+    },
+    {
+      "buildable": {
+        "adopted": 0,
+        "correct": 0,
+        "missed": 12,
+        "wrong": 0
+      },
+      "corrected": true,
+      "foreign_operator": {
+        "adopted": 0,
+        "refused": 12,
+        "wrong": 0
+      },
+      "library_size": 24,
+      "max_hypotheses": 852,
+      "noise": 0.2,
+      "unbuildable": {
+        "adopted": 0,
+        "refused": 12,
+        "wrong": 0
+      }
+    },
+    {
+      "buildable": {
+        "adopted": 0,
+        "correct": 0,
+        "missed": 12,
+        "wrong": 0
+      },
+      "corrected": false,
+      "foreign_operator": {
+        "adopted": 0,
+        "refused": 12,
+        "wrong": 0
+      },
+      "library_size": 24,
+      "max_hypotheses": 852,
+      "noise": 0.2,
+      "unbuildable": {
+        "adopted": 0,
+        "refused": 12,
+        "wrong": 0
+      }
+    }
+  ],
+  "schema": "neural-computer.composition-adversarial.v1",
+  "seconds": 23.049079750082456,
+  "seed": 41,
+  "targets_per_cell": 12,
+  "uncorrected": {
+    "buildable_correct": 132,
+    "buildable_missed": 60,
+    "buildable_wrong": 0,
+    "foreign_wrong": 0,
+    "unbuildable_wrong": 0
+  }
+}
