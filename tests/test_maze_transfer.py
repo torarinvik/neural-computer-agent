@@ -43,4 +43,6 @@ def test_cross_task_transfer_reuses_one_agent_in_both_directions(tmp_path) -> No
     assert same_agent["controller_unchanged"]
     assert same_agent["workshop_before_maze"]["lifetimes"] == 1
     assert same_agent["workshop_after_maze"]["lifetimes"] == 1
+    assert "maze_only_shared_operator" in report["replicates"][0]
+    assert report["replicates"][0]["maze_only_shared_operator"]["curve"]
     assert (tmp_path / "cross_task_transfer.json").is_file()

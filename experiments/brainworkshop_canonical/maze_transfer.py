@@ -707,6 +707,36 @@ def run_cross_task_transfer(
         )
         controller_after_workshop_again = maze_agent.controller_digest
 
+        # Matched control: it gets the same world-independent maze operator,
+        # frontend, controller seed, and maze budget, but no Workshop phase.
+        # This isolates the value of the cross-task experience from the value
+        # of the operator itself.
+        matched_core = CanonicalBrainWorkshopAgent(
+            symbol_count=4,
+            event_width=EVENT_WIDTH,
+            intention_width=ACTION_COUNT,
+            feedback_width=8,
+            n_back=1,
+            reader_kind="context",
+            seed=seed + replicate * 1_000,
+        )
+        matched_maze_agent = SharedAmodalMazeAgent(
+            matched_core,
+            encoders,
+            dictionary,
+            mode="workshop_warm",
+            operator=verified_bundle(world_seed=seed + 10_000 + replicate),
+        )
+        matched_no_workshop = _run_cross_task_maze(
+            matched_maze_agent,
+            target,
+            seed=seed + replicate * 1_000,
+            training_episodes=training_episodes,
+            evaluation_episodes=evaluation_episodes,
+            steps=steps,
+            initial_verifier_bits=0,
+        )
+
         fresh_result = run_arm(
             target,
             encoders,
@@ -745,18 +775,36 @@ def run_cross_task_transfer(
                     "maze": maze,
                     "workshop_after_maze": workshop_after,
                 },
+                "maze_only_shared_operator": matched_no_workshop,
                 "fresh_maze": fresh_result,
             }
         )
 
     same = [row["same_agent"] for row in rows]
+    matched = [row["maze_only_shared_operator"] for row in rows]
     fresh = [row["fresh_maze"] for row in rows]
     warm_bits = [item["maze"]["stable_bits_to_threshold"] for item in same]
+    matched_bits = [item["stable_bits_to_threshold"] for item in matched]
     fresh_bits = [item["stable_bits_to_threshold"] for item in fresh]
     ratios = [
         float(warm) / float(cold)
+        for warm, cold in zip(warm_bits, matched_bits)
+        if warm is not None and cold not in (None, 0)
+    ]
+    random_ratios = [
+        float(warm) / float(cold)
         for warm, cold in zip(warm_bits, fresh_bits)
         if warm is not None and cold not in (None, 0)
+    ]
+
+    def final_return(payload: dict[str, Any]) -> float | None:
+        curve = payload.get("curve", [])
+        return None if not curve else float(curve[-1]["normalized_return"])
+
+    final_advantages = [
+        final_return(warm["maze"]) - final_return(control)
+        for warm, control in zip(same, matched)
+        if final_return(warm["maze"]) is not None and final_return(control) is not None
     ]
     report = {
         "schema": CROSS_TASK_TRANSFER_SCHEMA,
@@ -775,8 +823,18 @@ def run_cross_task_transfer(
             "maze_facts_task_local": True,
             "workshop_verifier_state_task_local": True,
         },
-        "maze_transfer_ratio_against_fresh": (
+        "maze_transfer_ratio_against_no_workshop": (
             sum(ratios) / len(ratios) if ratios else None
+        ),
+        "maze_transfer_ratio_against_random_fresh": (
+            sum(random_ratios) / len(random_ratios)
+            if random_ratios
+            else None
+        ),
+        "maze_final_return_advantage_against_no_workshop": (
+            sum(final_advantages) / len(final_advantages)
+            if final_advantages
+            else None
         ),
         "workshop_post_maze_mean_accuracy": [
             item["workshop_after_maze"]["mean_accuracy"] for item in same
