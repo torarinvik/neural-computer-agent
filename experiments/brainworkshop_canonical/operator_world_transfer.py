@@ -31,9 +31,10 @@ import copy
 import hashlib
 import json
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Literal
+from typing import Any, Literal
 
 import torch
 
@@ -673,7 +674,7 @@ def run_transfer(
             stager.observe(candidate_bundle, checkpoint["normalized_return"])
         admission = stager.admit_verified(
             candidate_bundle,
-            lambda retained: retained.digest == candidate_bundle.digest,
+            lambda retained, digest=candidate_bundle.digest: retained.digest == digest,
         )
         if not admission.accepted:
             raise RuntimeError("source-world operator failed its stable-prefix gate")

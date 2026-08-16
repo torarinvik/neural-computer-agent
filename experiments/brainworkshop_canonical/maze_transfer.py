@@ -155,9 +155,13 @@ class SharedAmodalMazeAgent:
             if initial_model is None
             else copy.deepcopy(initial_model)
         )
-        self.core.runtime.register_decoder(
-            "maze_action", MazeActionDecoder(core.controller.intention_width)
-        )
+        # A single canonical core may cross multiple rendered maze episodes.
+        # Reuse the protocol decoder when rebinding the frontend instead of
+        # trying to register a duplicate name on the shared intention bus.
+        if "maze_action" not in self.core.runtime.output_bus.decoders:
+            self.core.runtime.register_decoder(
+                "maze_action", MazeActionDecoder(core.controller.intention_width)
+            )
         self.action_intentions = torch.eye(
             core.controller.intention_width, dtype=torch.float32
         )[:ACTION_COUNT]

@@ -9,6 +9,9 @@ from experiments.brainworkshop_canonical.canonical_live_machine import (
 from experiments.brainworkshop_canonical.cross_task_live_transfer import (
     run_live_cross_task_transfer,
 )
+from experiments.brainworkshop_canonical.live_operator_transfer import (
+    run_live_operator_transfer,
+)
 from experiments.brainworkshop_canonical.maze_environment import sample_maze_task
 from experiments.brainworkshop_canonical.maze_transfer import (
     EVENT_WIDTH,
@@ -216,3 +219,44 @@ def test_live_cross_task_runner_reuses_core_after_public_live_session(
     assert row["live_workshop_after_maze"]["controller_frozen"]
     assert report["live_workshop_survives_maze_for_all_replicates"]
     assert (tmp_path / "report" / "live_cross_task_transfer.json").is_file()
+
+
+def test_live_operator_transfer_stages_candidate_inside_rendered_loop(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    def verifier(outcome, rgba, width, height, *, archive, receipt_ledger):
+        del rgba, width, height, archive, receipt_ledger
+        return outcome["receipt_id"] in {101, 102}
+
+    def build(_directory, _config, *, seed):
+        del seed
+        return _Environment(), verifier
+
+    import experiments.brainworkshop_canonical.live_operator_transfer as module
+
+    monkeypatch.setattr(module, "build_neural_workshop_environment", build)
+    report = run_live_operator_transfer(
+        Path(tmp_path),
+        tmp_path / "report",
+        seed=97,
+        replicates=1,
+        trials=2,
+        source_maze_training_episodes=2,
+        target_maze_training_episodes=2,
+        maze_evaluation_episodes=1,
+        maze_steps=8,
+    )
+    assert report["claim_status"] == "development_diagnostic"
+    # The tiny fake maze does not earn a stable source prefix.  The important
+    # live-loop property is fail-closed rebinding: no unverified operator is
+    # sent to the target maze.
+    assert not report["all_candidates_admitted"]
+    assert report["controller_unchanged_for_all_replicates"]
+    row = report["replicates"][0]
+    assert row["same_core_instance"]
+    assert row["operator_admission"]["observations"] == 1
+    assert row["operator_admission"]["reason"] == "insufficient-stable-evidence"
+    assert row["target_maze"]["operator_digest"] is None
+    assert row["live_workshop_after"]["controller_frozen"]
+    assert (tmp_path / "report" / "live_operator_transfer.json").is_file()

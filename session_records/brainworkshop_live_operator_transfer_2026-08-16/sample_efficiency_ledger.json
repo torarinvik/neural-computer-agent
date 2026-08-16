@@ -1,0 +1,54 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment_id": "brainworkshop-live-operator-transfer-2026-08-16",
+  "status": "development_diagnostic_not_promoted",
+  "source": "live_operator_transfer.json",
+  "seed_blocks": [],
+  "replication_count": 1,
+  "unique_verifier_bits": {
+    "live_workshop_before": 6,
+    "source_maze": 326,
+    "target_maze": 486,
+    "live_workshop_after": 4
+  },
+  "unique_logical_lifetimes": {
+    "live_workshop_before": 12,
+    "source_maze": 16,
+    "target_maze": 8,
+    "live_workshop_after": 12
+  },
+  "operator_admission_eligible_checkpoints": 4,
+  "optimizer_updates": 0,
+  "replayed_examples": 0,
+  "wall_seconds": {
+    "live_workshop_before": 1.1070436250,
+    "source_maze": 0.5084011670,
+    "target_maze": 0.2532363341,
+    "live_workshop_after": 0.9949976250,
+    "total": 2.8636787510
+  },
+  "latency": {
+    "unit": "seconds per live Workshop tick",
+    "live_workshop_before_p50": 0.0836085000,
+    "live_workshop_before_p99": 0.1482165419,
+    "live_workshop_after_p50": 0.0710639161,
+    "live_workshop_after_p99": 0.1328665839,
+    "maze_decision_latency": "not instrumented in this diagnostic"
+  },
+  "stable_bits_to_threshold": {
+    "threshold": 0.70,
+    "source_maze": null,
+    "target_maze": null,
+    "operator_admission": null
+  },
+  "retention_on_mastered_primitive": "not_claimed",
+  "transfer_ratio_against_fresh_learner": null,
+  "controls": {
+    "stable_prefix_gate": true,
+    "retention_probe": true,
+    "missing_or_insufficient_evidence_fail_closed": true,
+    "controller_digest_unchanged": true,
+    "agent_bank_unchanged": true
+  },
+  "claim_boundary": "Real rendered Workshop and maze continuity plus fail-closed operator staging only; no positive live transfer, holdout, promotion, retention, or curated-bank admission claim."
+}
