@@ -13,12 +13,13 @@ history, then supplied a score to the existing fail-closed identity gate.
 
 | path | result |
 | --- | ---: |
-| learned event/action evidence | 5/8 opaque proposals; 3 warm-up/tie abstentions |
+| learned event/action evidence | 4/8 opaque proposals; 4 warm-up/weak-evidence abstentions |
 | passive zero-evidence control | 8/8 explicit abstentions |
 | constant-action control | 8/8 explicit abstentions; all evidence `[0, 0]` |
 
-After the minimum four-frame history, the artifact selected slot 0 whenever
-the score margin cleared the 0.15 gate. The frontend digest and curated
+After the minimum four-frame history, the artifact selected slot 0 only when
+both the 0.15 score margin and the 0.20 minimum-evidence gate cleared. The
+frontend digest and curated
 `AgentBrain.bank` digest were unchanged. No verifier bits, logical lifetimes,
 optimizer updates, or bank writes were claimed.
 
@@ -26,7 +27,8 @@ optimizer updates, or bank writes were claimed.
 
 This establishes only that a replaceable external artifact can turn bound
 learned event histories into opaque identity evidence and preserve explicit
-abstention. The position sequence and one-hot action features are synthetic
+abstention, including when the top slot has a weak absolute score. The
+position sequence and one-hot action features are synthetic
 feeder inputs, not learner-visible coordinates or a behavioral holdout. Slot
 order never crosses in this diagnostic. It does not establish causal identity
 learning, transfer, retention, promotion, or a return advantage. The next

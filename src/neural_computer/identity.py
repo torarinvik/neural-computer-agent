@@ -66,16 +66,24 @@ class ExternalCausalIdentityAssignment:
 
     schema = EXTERNAL_IDENTITY_ASSIGNMENT_SCHEMA
 
-    def __init__(self, *, margin: float = 0.15) -> None:
+    def __init__(
+        self, *, margin: float = 0.15, minimum_evidence: float = 0.0
+    ) -> None:
         if not torch.isfinite(torch.tensor(margin)) or margin < 0.0:
             raise ValueError("identity assignment margin must be finite and nonnegative")
+        if not torch.isfinite(torch.tensor(minimum_evidence)) or minimum_evidence < 0.0:
+            raise ValueError(
+                "identity assignment minimum evidence must be finite and nonnegative"
+            )
         self.margin = float(margin)
+        self.minimum_evidence = float(minimum_evidence)
 
     def configuration(self) -> dict[str, float | str]:
         return {
             "schema": self.schema,
             "behavior": "opaque-causal-evidence_top-slot_with_explicit_abstention_v1",
             "margin": self.margin,
+            "minimum_evidence": self.minimum_evidence,
         }
 
     def resolve(self, evidence: torch.Tensor) -> ExternalIdentityAssignment:
@@ -91,7 +99,7 @@ class ExternalCausalIdentityAssignment:
             margin = torch.full_like(confidence, float("inf"))
         else:
             margin = values[:, 0] - values[:, 1]
-        abstained = margin < self.margin
+        abstained = (margin < self.margin) | (values[:, 0] < self.minimum_evidence)
         return ExternalIdentityAssignment(
             selected_slot=selected,
             confidence=confidence,

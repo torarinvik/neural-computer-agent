@@ -37,8 +37,10 @@ the controller only through a caller-supplied feedback encoder.
   receipt-local credit metadata.
 - The versioned `ExternalCausalIdentityArtifact` can derive that evidence from
   bound learned event histories and opaque action/intention features without
-  exposing raw modality formats to the controller. Its rendered integration
-  remains a diagnostic, not a promoted identity learner.
+  exposing raw modality formats to the controller. The assignment gate now
+  requires both a top-two margin and a minimum absolute evidence score, so a
+  weak but high-margin signal still abstains. Its rendered integration remains
+  a diagnostic, not a promoted identity learner.
 
 ## Deliberate limits
 

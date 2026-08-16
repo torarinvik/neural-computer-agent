@@ -5,6 +5,12 @@
     "minimum_history": 4,
     "schema": "neural-computer.external-causal-identity-artifact.v1"
   },
+  "assignment_gate": {
+    "behavior": "opaque-causal-evidence_top-slot_with_explicit_abstention_v1",
+    "margin": 0.15,
+    "minimum_evidence": 0.2,
+    "schema": "neural-computer.external-identity-assignment.v1"
+  },
   "bank_digest_after": "07319eb13c9cac58bbbe94258548e64f13ba1b3512ca2a01fbdc675c49e2e7c9",
   "bank_digest_before": "07319eb13c9cac58bbbe94258548e64f13ba1b3512ca2a01fbdc675c49e2e7c9",
   "bank_unchanged": true,
@@ -49,7 +55,7 @@
   "frontend_digest_after": "bfff11bcf1560314a9f32d8bd3799b046921d7c5644ea7534ff53408bd69d31e",
   "frontend_digest_before": "bfff11bcf1560314a9f32d8bd3799b046921d7c5644ea7534ff53408bd69d31e",
   "frontend_unchanged": true,
-  "learned_emissions": 5,
+  "learned_emissions": 4,
   "learned_evidence": [
     [
       0.0,
@@ -95,7 +101,7 @@
     null,
     null,
     0,
-    0,
+    null,
     0,
     0,
     0
@@ -103,5 +109,5 @@
   "steps": 8,
   "unique_logical_lifetimes": 0,
   "unique_verifier_bits": 0,
-  "wall_seconds": 0.04862391692586243
+  "wall_seconds": 0.14465929195284843
 }

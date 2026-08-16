@@ -43,6 +43,14 @@ def test_causal_identity_artifact_abstains_when_action_has_no_variation() -> Non
     assert bool(assignment.abstained[0])
 
 
+def test_identity_assignment_abstains_when_margin_is_high_but_evidence_is_weak() -> None:
+    assignment = ExternalCausalIdentityAssignment(
+        margin=0.1, minimum_evidence=0.2
+    ).resolve(torch.tensor([[0.15, 0.0]]))
+
+    assert bool(assignment.abstained[0])
+
+
 @pytest.mark.parametrize(
     ("events", "actions", "message"),
     [

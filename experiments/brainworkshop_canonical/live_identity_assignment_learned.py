@@ -40,6 +40,7 @@ INTENTION_WIDTH = 2
 FRAME_SIZE = 36
 STEPS = 8
 IDENTITY_MARGIN = 0.15
+IDENTITY_MINIMUM_EVIDENCE = 0.2
 POSITION_SEQUENCE = (0, 1, 2, 1, 0, 2, 1, 0)
 
 
@@ -93,15 +94,24 @@ def run_learned_identity(
     goal_candidates[0, 0] = 1.0
     goal_candidates[1, 0] = -1.0
     learned_machine = _machine(
-        identity_assignment=ExternalCausalIdentityAssignment(margin=IDENTITY_MARGIN),
+        identity_assignment=ExternalCausalIdentityAssignment(
+            margin=IDENTITY_MARGIN,
+            minimum_evidence=IDENTITY_MINIMUM_EVIDENCE,
+        ),
         goal_state_candidates=goal_candidates,
     )
     passive_machine = _machine(
-        identity_assignment=ExternalCausalIdentityAssignment(margin=IDENTITY_MARGIN),
+        identity_assignment=ExternalCausalIdentityAssignment(
+            margin=IDENTITY_MARGIN,
+            minimum_evidence=IDENTITY_MINIMUM_EVIDENCE,
+        ),
         goal_state_candidates=goal_candidates,
     )
     constant_action_machine = _machine(
-        identity_assignment=ExternalCausalIdentityAssignment(margin=IDENTITY_MARGIN),
+        identity_assignment=ExternalCausalIdentityAssignment(
+            margin=IDENTITY_MARGIN,
+            minimum_evidence=IDENTITY_MINIMUM_EVIDENCE,
+        ),
         goal_state_candidates=goal_candidates,
     )
 
@@ -168,6 +178,7 @@ def run_learned_identity(
     report = {
         "schema": LEARNED_IDENTITY_SCHEMA,
         "artifact": artifact.configuration(),
+        "assignment_gate": learned_machine.configuration()["identity_assignment"],
         "experiment_id": EXPERIMENT_ID,
         "seed": seed,
         "steps": steps,
