@@ -778,7 +778,12 @@ def self_log_evidence(
 
 
 def self_posterior(
-    histories: Sequence[TrackHistory], counts, *, alphabet: int
+    histories: Sequence[TrackHistory],
+    counts,
+    *,
+    alphabet: int,
+    applicability_margin: float = 0.25,
+    controllability_weight: float = 2.0,
 ) -> list[float]:
     """A belief over which track is me, rather than a decision.
 
@@ -795,8 +800,39 @@ def self_posterior(
         self_log_evidence(history, counts, alphabet=alphabet)
         for history in histories
     ]
-    best = max(evidence)
-    weights = [2.0 ** (value - best) for value in evidence]
+
+    # Does this model apply here at all? Softmax over log-likelihoods will
+    # always name a winner, however badly every candidate is explained -- which
+    # is how a self model fitted in a different world came to name the wrong
+    # track with full confidence seven times in ten. Compare the best candidate
+    # against what a model that knew nothing would have coded at; if it is not
+    # clearly better, say nothing.
+    uniform = -math.log2(1.0 / max(2, int(alphabet)))
+    steps = max(1, max(len(history.steps) for history in histories))
+    if (max(evidence) / steps) + uniform < applicability_margin:
+        return [1.0 / len(histories)] * len(histories)
+
+    # A remembered self must not overrule what this episode plainly shows. A
+    # model fitted to the distractor predicts the distractor beautifully and
+    # has no internal way to notice -- only controllability does, because the
+    # distractor is the thing the actions do not move. The two are multiplied
+    # rather than one replacing the other, which is what lets a poisoned start
+    # be escaped instead of confirmed.
+    responsive = [
+        max(0.0, history.evidence(alphabet=alphabet).controllability)
+        for history in histories
+    ]
+    # Per step, so the two are on the same scale before they are weighed. The
+    # likelihood grows with the length of the episode and controllability does
+    # not, so adding them directly makes the weight meaningless -- measured, a
+    # weight of four left a poisoned self model winning every episode because
+    # nineteen steps of likelihood swamped a term bounded at one.
+    combined = [
+        steps * ((value / steps) + controllability_weight * response)
+        for value, response in zip(evidence, responsive)
+    ]
+    best = max(combined)
+    weights = [2.0 ** (value - best) for value in combined]
     total = sum(weights) or 1.0
     return [value / total for value in weights]
 

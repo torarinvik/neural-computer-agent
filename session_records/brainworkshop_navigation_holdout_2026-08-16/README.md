@@ -136,6 +136,15 @@ future block tests them.
 **Nothing here is a fresh mechanism.** It is the same code on unspent
 experience, which is the only thing it was supposed to be.
 
+**The historical runners did not instrument the complete required accounting.**
+The block, replicate count, wall time, zero optimizer updates, and unchanged
+bank are known. Exact aggregate verifier bits, logical lifetimes, replay, tick
+latency, and stable bits-to-threshold were not serialized by all five child
+runners. The companion ledger records those fields as unavailable rather than
+reconstructing incomparable units after the fact. Consequently this holdout
+validates the stated orderings but is **not a promotion record** under the
+current accounting standard.
+
 ## Reproducing
 
 ```bash

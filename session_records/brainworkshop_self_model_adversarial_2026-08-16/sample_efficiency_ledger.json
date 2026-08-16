@@ -1,0 +1,30 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment_id": "brainworkshop-self-model-adversarial-2026-08-16",
+  "status": "rejected_current_self_model_safety_on_development_worlds",
+  "source": "in_repository_run",
+  "seed_blocks": [],
+  "replication_count": 3,
+  "unique_verifier_bits": {
+    "current_world_streams": 2400,
+    "alternate_world_streams": 2400,
+    "total": 4800
+  },
+  "unique_logical_lifetimes_all_arms": 240,
+  "optimizer_updates": 0,
+  "replayed_examples": 9600,
+  "wall_seconds": 35.76660479197744,
+  "latency": "not measured separately from the offline diagnostic",
+  "stable_bits_to_threshold": null,
+  "retention_on_mastered_primitive": "not claimed",
+  "transfer_ratio_against_fresh_learner": null,
+  "controls": {
+    "likelihood_only_ablation": true,
+    "transplanted_model": true,
+    "poisoned_initialization": true,
+    "unannounced_dynamics_change": true,
+    "exact_dynamic_mimic": true,
+    "agent_bank_unchanged": true
+  },
+  "claim_boundary": "Development-seed rejection of the current guarded persistent self model as a safe mechanism: it escapes a poisoned fixed point and abstains under exact equivalence, but remains confidently wrong on 15% of episodes immediately after a dynamics change. No holdout, recovery, retention, transfer, admission, or live-runtime claim."
+}

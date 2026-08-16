@@ -1,0 +1,33 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment_id": "brainworkshop-navigation-holdout-2026-08-16",
+  "status": "holdout_claim_survival_not_promotion",
+  "source": "in_repository_run_with_incomplete_historical_child_accounting",
+  "seed_blocks": [
+    [7000017],
+    [7500017],
+    [8000017]
+  ],
+  "replication_count": 3,
+  "unique_verifier_bits": null,
+  "unique_verifier_bits_reason": "not serialized consistently by all five historical child runners",
+  "unique_logical_lifetimes_all_arms": null,
+  "optimizer_updates": 0,
+  "replayed_examples": null,
+  "wall_seconds": 2036.8417419169564,
+  "latency": "not measured separately from the offline holdout",
+  "stable_bits_to_threshold": null,
+  "retention_on_mastered_primitive": "not measured",
+  "transfer_ratio_against_fresh_learner": null,
+  "claims": {
+    "held_in_all_three_replicates": 38,
+    "total": 43
+  },
+  "controls": {
+    "unused_world_seed_block_asserted_before_sampling": true,
+    "thresholds_frozen_from_development": true,
+    "negative_results_retested": true,
+    "agent_bank_unchanged": true
+  },
+  "claim_boundary": "Holdout validation of 43 pre-existing orderings across five navigation diagnostics. Incomplete aggregate experience and latency accounting makes this ineligible for promotion; it validates claim survival only."
+}

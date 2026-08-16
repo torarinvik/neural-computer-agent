@@ -11,6 +11,7 @@ from experiments.brainworkshop_canonical.slot_alignment import (
     displacement_costs,
     identify_roles,
     persistence_costs,
+    self_posterior,
 )
 
 # --- assignment -------------------------------------------------------------
@@ -168,6 +169,67 @@ def test_a_track_that_never_moved_is_the_target() -> None:
 def test_roles_refuse_rather_than_guess_without_evidence() -> None:
     roles = identify_roles([], alphabet=8)
     assert roles.own is None and roles.targets == ()
+
+
+def test_a_self_model_refuses_when_it_explains_no_track() -> None:
+    histories = [
+        _history([(0, 0, 1), (1, 0, 2), (2, 0, 3)]),
+        _history([(4, 1, 5), (5, 1, 6), (6, 1, 7)]),
+    ]
+
+    def incompatible(_symbol: int, _action: int):
+        return {0: 100.0}
+
+    assert self_posterior(histories, incompatible, alphabet=8) == pytest.approx(
+        [0.5, 0.5]
+    )
+
+
+def test_identical_dynamics_produce_abstention_not_a_tie_broken_name() -> None:
+    history = _history([(0, 0, 1), (1, 1, 3), (3, 0, 2), (2, 1, 0)])
+    counts = {
+        (0, 0): {1: 10.0},
+        (1, 1): {3: 10.0},
+        (3, 0): {2: 10.0},
+        (2, 1): {0: 10.0},
+    }
+
+    def successor(symbol: int, action: int):
+        return counts.get((symbol, action))
+
+    assert self_posterior([history, history], successor, alphabet=8) == pytest.approx(
+        [0.5, 0.5]
+    )
+
+
+def test_controllability_breaks_a_likelihood_tie() -> None:
+    table = {(s, a): (s * 3 + a * 5) % 8 for s in range(8) for a in range(4)}
+    agent_steps = []
+    circuit_steps = []
+    place = circuit = 0
+    counts: dict[tuple[int, int], dict[int, float]] = {}
+    for index in range(20):
+        action = index % 4 if index % 5 else (index + 1) % 4
+        after = table[(place, action)]
+        circuit_after = (circuit + 1) % 8
+        agent_steps.append((place, action, after))
+        circuit_steps.append((circuit, action, circuit_after))
+        for symbol, following in ((place, after), (circuit, circuit_after)):
+            cell = counts.setdefault((symbol, action), {})
+            cell[following] = cell.get(following, 0.0) + 20.0
+        place, circuit = after, circuit_after
+
+    histories = [_history(agent_steps), _history(circuit_steps)]
+
+    def successor(symbol: int, action: int):
+        return counts.get((symbol, action))
+
+    likelihood = self_posterior(
+        histories, successor, alphabet=8, controllability_weight=0.0
+    )
+    guarded = self_posterior(histories, successor, alphabet=8)
+    assert guarded[0] > likelihood[0]
+    assert guarded[0] > 0.75
 
 
 # --- search -----------------------------------------------------------------

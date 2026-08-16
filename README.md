@@ -15,13 +15,14 @@ counterfactual labels for actions it did not attempt.
 
 ## Canonical architecture
 
-**The authoritative statement of the end goal and of where every kind of
-knowledge is allowed to live is
-[docs/DYNAMIC_BRAIN_ARCHITECTURE.md](docs/DYNAMIC_BRAIN_ARCHITECTURE.md).**
-Its non-negotiable rule: skills and information are stored in the external,
-unboundedly growing memory bank — never burned into the weights of the
-controller, the encoders, or the decoders, which all stay fixed-size. Any
-result that stores skill in weights is a recorded transitional violation.
+**The normative architecture and machine boundary are defined by
+[docs/AMODAL_N_TO_M_ARCHITECTURE.md](docs/AMODAL_N_TO_M_ARCHITECTURE.md).**
+[docs/DYNAMIC_BRAIN_ARCHITECTURE.md](docs/DYNAMIC_BRAIN_ARCHITECTURE.md) is the
+compatible vision and knowledge-placement rationale; it does not override the
+normative interface. Its non-negotiable storage rule is retained: durable
+skills and information live in the external, unboundedly growing memory bank,
+never in the fixed controller, encoder, or decoder weights. Any result that
+stores task content in those weights is a recorded transitional violation.
 
 The target is an **amodal N-to-M neural computer**:
 The repository is intentionally centered on one architecture:

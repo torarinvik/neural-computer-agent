@@ -1,0 +1,30 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment_id": "brainworkshop-integrated-navigation-2026-08-16",
+  "status": "development_diagnostic_self_model_later_rejected_adversarially",
+  "source": "reconstructed_from_fixed_in_repository_loops",
+  "seed_blocks": [],
+  "replication_count": 4,
+  "unique_verifier_bits": {
+    "model_exploration": 6400,
+    "relation_evaluation": 8640,
+    "total": 15040
+  },
+  "unique_logical_lifetimes_all_arms": 764,
+  "optimizer_updates": 0,
+  "replayed_examples": 2080,
+  "replay_unit": "episode histories revisited by alternating self-model re-fitting",
+  "wall_seconds": 107.81982595799491,
+  "latency": "not measured separately from the offline diagnostic",
+  "stable_bits_to_threshold": null,
+  "retention_on_mastered_primitive": "not claimed",
+  "transfer_ratio_against_fresh_learner": null,
+  "controls": {
+    "told_identity": true,
+    "random_action": true,
+    "cut_selected_by_description_length": true,
+    "agent_bank_unchanged": true,
+    "later_self_model_adversarial_audit": "failed dynamics-change safety"
+  },
+  "claim_boundary": "Development-seed integrated navigation diagnostic. The fixed self model improved held-out-relation return in this run, but a later adversarial audit rejected it as safe under dynamics change. No promotion, retention, matched-fresh transfer, admission, or live-runtime claim."
+}

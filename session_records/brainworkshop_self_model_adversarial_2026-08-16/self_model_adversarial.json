@@ -1,0 +1,260 @@
+{
+  "ablations": {
+    "guarded_honest": {
+      "abstained": 0.00833333333333334,
+      "confidently_wrong": 0.10833333333333334,
+      "named": 0.9916666666666667,
+      "precision": 0.8912393162393162
+    },
+    "guarded_poisoned": {
+      "abstained": 0.0,
+      "confidently_wrong": 0.18333333333333335,
+      "named": 1.0,
+      "precision": 0.8166666666666668
+    },
+    "likelihood_only_honest": {
+      "abstained": 0.00833333333333334,
+      "confidently_wrong": 0.075,
+      "named": 0.9916666666666667,
+      "precision": 0.9247863247863247
+    },
+    "likelihood_only_poisoned": {
+      "abstained": 0.0,
+      "confidently_wrong": 1.0,
+      "named": 1.0,
+      "precision": 0.0
+    }
+  },
+  "accounting": {
+    "latency": "not measured separately from the offline diagnostic",
+    "optimizer_updates": 0,
+    "replayed_examples": 9600,
+    "retention_on_mastered_primitives": "not claimed",
+    "stable_bits_to_threshold": null,
+    "transfer_ratio_against_fresh_learner": null,
+    "unique_logical_lifetimes": 240,
+    "unique_verifier_bits": 4800,
+    "wall_seconds": 35.76660479197744
+  },
+  "agent_bank_sha256": "07319eb13c9cac58bbbe94258548e64f13ba1b3512ca2a01fbdc675c49e2e7c9",
+  "agent_bank_unchanged": true,
+  "conditions": {
+    "honest": {
+      "abstained": 0.00833333333333334,
+      "confidently_wrong": 0.10833333333333334,
+      "named": 0.9916666666666667,
+      "precision": 0.8912393162393162
+    },
+    "mimicked": {
+      "abstained": 1.0,
+      "confidently_wrong": 0.0,
+      "named": 0.0,
+      "precision": 0.0
+    },
+    "poisoned": {
+      "abstained": 0.0,
+      "confidently_wrong": 0.18333333333333335,
+      "named": 1.0,
+      "precision": 0.8166666666666668
+    },
+    "reversed": {
+      "abstained": 0.8250000000000001,
+      "confidently_wrong": 0.15,
+      "named": 0.17500000000000002,
+      "precision": 0.07142857142857142
+    },
+    "transplanted": {
+      "abstained": 0.975,
+      "confidently_wrong": 0.008333333333333333,
+      "named": 0.025000000000000005,
+      "precision": 0.5
+    }
+  },
+  "confident_at": 0.75,
+  "experiment_id": "brainworkshop-self-model-adversarial-2026-08-16",
+  "explore_episodes": 40,
+  "rows": [
+    {
+      "ablation": {
+        "guarded_honest": {
+          "abstained": 0.0,
+          "confidently_wrong": 0.075,
+          "named": 1.0,
+          "precision": 0.925
+        },
+        "guarded_poisoned": {
+          "abstained": 0.0,
+          "confidently_wrong": 0.15,
+          "named": 1.0,
+          "precision": 0.85
+        },
+        "likelihood_only_honest": {
+          "abstained": 0.025000000000000022,
+          "confidently_wrong": 0.025,
+          "named": 0.975,
+          "precision": 0.9743589743589743
+        },
+        "likelihood_only_poisoned": {
+          "abstained": 0.0,
+          "confidently_wrong": 1.0,
+          "named": 1.0,
+          "precision": 0.0
+        }
+      },
+      "honest": {
+        "abstained": 0.0,
+        "confidently_wrong": 0.075,
+        "named": 1.0,
+        "precision": 0.925
+      },
+      "mimicked": {
+        "abstained": 1.0,
+        "confidently_wrong": 0.0,
+        "named": 0.0,
+        "precision": 0.0
+      },
+      "poisoned": {
+        "abstained": 0.0,
+        "confidently_wrong": 0.15,
+        "named": 1.0,
+        "precision": 0.85
+      },
+      "reversed": {
+        "abstained": 0.95,
+        "confidently_wrong": 0.05,
+        "named": 0.05,
+        "precision": 0.0
+      },
+      "task": 0,
+      "transplanted": {
+        "abstained": 1.0,
+        "confidently_wrong": 0.0,
+        "named": 0.0,
+        "precision": 0.0
+      }
+    },
+    {
+      "ablation": {
+        "guarded_honest": {
+          "abstained": 0.0,
+          "confidently_wrong": 0.2,
+          "named": 1.0,
+          "precision": 0.8
+        },
+        "guarded_poisoned": {
+          "abstained": 0.0,
+          "confidently_wrong": 0.25,
+          "named": 1.0,
+          "precision": 0.75
+        },
+        "likelihood_only_honest": {
+          "abstained": 0.0,
+          "confidently_wrong": 0.125,
+          "named": 1.0,
+          "precision": 0.875
+        },
+        "likelihood_only_poisoned": {
+          "abstained": 0.0,
+          "confidently_wrong": 1.0,
+          "named": 1.0,
+          "precision": 0.0
+        }
+      },
+      "honest": {
+        "abstained": 0.0,
+        "confidently_wrong": 0.2,
+        "named": 1.0,
+        "precision": 0.8
+      },
+      "mimicked": {
+        "abstained": 1.0,
+        "confidently_wrong": 0.0,
+        "named": 0.0,
+        "precision": 0.0
+      },
+      "poisoned": {
+        "abstained": 0.0,
+        "confidently_wrong": 0.25,
+        "named": 1.0,
+        "precision": 0.75
+      },
+      "reversed": {
+        "abstained": 0.65,
+        "confidently_wrong": 0.275,
+        "named": 0.35,
+        "precision": 0.21428571428571427
+      },
+      "task": 1,
+      "transplanted": {
+        "abstained": 0.95,
+        "confidently_wrong": 0.025,
+        "named": 0.05,
+        "precision": 0.5
+      }
+    },
+    {
+      "ablation": {
+        "guarded_honest": {
+          "abstained": 0.025000000000000022,
+          "confidently_wrong": 0.05,
+          "named": 0.975,
+          "precision": 0.9487179487179487
+        },
+        "guarded_poisoned": {
+          "abstained": 0.0,
+          "confidently_wrong": 0.15,
+          "named": 1.0,
+          "precision": 0.85
+        },
+        "likelihood_only_honest": {
+          "abstained": 0.0,
+          "confidently_wrong": 0.075,
+          "named": 1.0,
+          "precision": 0.925
+        },
+        "likelihood_only_poisoned": {
+          "abstained": 0.0,
+          "confidently_wrong": 1.0,
+          "named": 1.0,
+          "precision": 0.0
+        }
+      },
+      "honest": {
+        "abstained": 0.025000000000000022,
+        "confidently_wrong": 0.05,
+        "named": 0.975,
+        "precision": 0.9487179487179487
+      },
+      "mimicked": {
+        "abstained": 1.0,
+        "confidently_wrong": 0.0,
+        "named": 0.0,
+        "precision": 0.0
+      },
+      "poisoned": {
+        "abstained": 0.0,
+        "confidently_wrong": 0.15,
+        "named": 1.0,
+        "precision": 0.85
+      },
+      "reversed": {
+        "abstained": 0.875,
+        "confidently_wrong": 0.125,
+        "named": 0.125,
+        "precision": 0.0
+      },
+      "task": 2,
+      "transplanted": {
+        "abstained": 0.975,
+        "confidently_wrong": 0.0,
+        "named": 0.025,
+        "precision": 1.0
+      }
+    }
+  ],
+  "schema": "neural-computer.self-model-adversarial.v1",
+  "seconds": 35.76660479197744,
+  "seed": 41,
+  "tasks": 3,
+  "world_seed": 9000
+}

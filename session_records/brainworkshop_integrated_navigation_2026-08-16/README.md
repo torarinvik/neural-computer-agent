@@ -98,6 +98,15 @@ these two markers is doing it.
 was spent on the five component records. A fresh block, with the success
 criterion written before the run, is what this needs before it counts.
 
+> **Adversarial correction, later the same day.** The current soft self model
+> is not ready for that holdout. A guard against out-of-world likelihoods and
+> a controllability term escape a deliberately poisoned initialization, but
+> after an unannounced dynamics change the model abstains on 82.5% of episodes
+> and is confidently wrong on 15.0%; among the episodes it names, precision is
+> only 7.1%. See `brainworkshop_self_model_adversarial_2026-08-16`. The
+> integrated return above remains a reproducible development diagnostic, not
+> evidence that this self model is safe to persist or admit.
+
 ## Two obvious fixes, both measured, both worse
 
 The diagnosis suggests waiting for better evidence before committing, and
@@ -172,3 +181,13 @@ About a minute.
 ```bash
 PYTHONPATH=src .venv/bin/python -m pytest tests/test_integrated_navigation.py -q
 ```
+
+## Accounting status
+
+The companion `sample_efficiency_ledger.json` reconstructs the counts that are
+exactly derivable from the fixed loops: 15,040 unique scalar verifier outcomes,
+764 logical lifetimes including the cut-selection walks, zero optimizer
+updates, and 2,080 replayed episode histories in the self-model re-fitting
+passes. Tick latency and a stable bits-to-threshold were not measured, so this
+record is explicitly ineligible for promotion even apart from its development
+seed and the later adversarial rejection.

@@ -1,6 +1,8 @@
 # Documentation
 
 - `AMODAL_N_TO_M_ARCHITECTURE.md`: normative architecture and machine boundary.
+- `DYNAMIC_BRAIN_ARCHITECTURE.md`: compatible vision and knowledge-placement
+  rationale; subordinate to the normative amodal boundary.
 - `POLICY_FREE_CONTINUAL_LEARNING.md`: what may learn and where knowledge lives.
 - `RECIPE_EXPRESSIBILITY.md`: retained program/recipe evidence and open limits.
 - `PROMOTION_FIREWALL.md`: machine-checkable promotion and holdout rules.

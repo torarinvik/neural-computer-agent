@@ -1,10 +1,11 @@
-# The Dynamic Brain: canonical vision-to-architecture mapping
+# The Dynamic Brain: vision and knowledge-placement rationale
 
-This document is the authoritative statement of what this repository is
-building and where every kind of knowledge is allowed to live. When any
-experiment, doc, or result appears to conflict with this document, this
-document wins, and the conflict must be recorded as a transitional
-violation (see "Current violations" below).
+This document explains what the repository is building and why durable task
+content belongs in an external bank. `AMODAL_N_TO_M_ARCHITECTURE.md` is the
+normative architecture and machine boundary. If this historical rationale
+conflicts with that document, the amodal architecture wins and the conflict
+must be recorded as a transitional violation (see "Current violations"
+below).
 
 ## The problem being solved
 

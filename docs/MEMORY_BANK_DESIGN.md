@@ -4,9 +4,11 @@ Grounded in a four-track literature review (2026-08-07): modular neural
 representations; program-like skill libraries; context-as-program
 conditioning; and the theory of compositional reuse (full agent reports
 preserved in the session transcript). This document lays out the option
-space, the convergent findings, and the chosen design. It extends
-`DYNAMIC_BRAIN_ARCHITECTURE.md`; where they conflict, that document's
-storage rule wins.
+space, the convergent findings, and the chosen design. It elaborates the bank
+discipline in `DYNAMIC_BRAIN_ARCHITECTURE.md`; where any documents conflict,
+`AMODAL_N_TO_M_ARCHITECTURE.md` defines the normative boundary. The Dynamic
+Brain storage rule remains a compatible design rationale, not a second source
+of architectural authority.
 
 ## The requirement
 
