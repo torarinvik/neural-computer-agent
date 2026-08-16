@@ -637,6 +637,33 @@ explanation-target result is structurally our decode-audit/parts-recovery
 discipline — demanding the system expose *which* relation it used, not only
 the answer, is measured there to be worth generalisation, not just hygiene.
 
+### S8 outcome, measured 2026-08-16
+
+Run in `brainworkshop_relational_transfer_2026-08-16`, replicated at two seeds
+and two task counts.
+
+- **CORRECTED — the caveat was mis-stated, and the correction is the result.**
+  A vector over places is any *subset* of places, so disjunction and avoidance
+  were always expressible. What it cannot express is a goal whose satisfying
+  set **moves**. Relations to a moving target is the case that needs pairs, and
+  it is the case that was built.
+- **CONFIRMED — Relation Networks' bias transfers without the network.** One
+  shared function over pairs is, at this scale, a cumulant matrix.
+  `successor_features`, GPI and the library all took it unmodified.
+- **CONFIRMED — pairs are necessary.** The place representation scores
+  0.296-0.386 of optimal against 0.806-0.963 for pairs, barely above acting
+  blindly, even when handed the best place-vector the goal admits.
+- **CONFIRMED — PGM's warning, reproduced exactly.** Every earlier split here
+  was interpolation, and stitching matched re-solving on all of them. Split by
+  held-out *relation* instead and the same machinery loses 0.16 of optimal
+  (0.806 against 0.959 re-solved), worst on `diagonal` where the stored
+  policies have almost no occupancy to offer.
+- **METHOD — the constant-answer trap in a new costume.** Three candidate
+  relations (`above`, `left_of`, `far`) are satisfied 0.625 of the time by one
+  fixed place, and the place control scored 1.000 on `above`. Guarded now by
+  `constant_place_rate`, which is the pair-space version of the rule sampler's
+  existing constant-rate gate.
+
 ## S9. One controller, many tasks (the standing integration question)
 
 **CONTRADICTS (in emphasis) — Gato is the opposite bet, and its cost is
@@ -669,11 +696,12 @@ needs no actions.
 2. ~~**Un-gated curiosity has a predicted failure we can already reproduce**~~
    (S6): **done and confirmed**. The `random_walk` distractor degrades the
    ungated arm and leaves the gated arm untouched.
-3. **Pairwise cumulants are the exit from "goals are places"** (S8): a
-   relation table over slot pairs, then `w` over relations — no new learning
-   machinery.
-4. **Our next generalisation claim needs a held-out-relation regime** (S8):
-   PGM says interpolation splits flatter; ours are interpolation splits.
+3. ~~**Pairwise cumulants are the exit from "goals are places"**~~ (S8):
+   **done**, and the caveat needed correcting first — see the S8 outcome. The
+   ceiling was never "places", it was that the satisfying set must be constant.
+4. ~~**Our next generalisation claim needs a held-out-relation regime**~~ (S8):
+   **done and confirmed**. Interpolation splits flatter it; the relation split
+   costs 0.16 of optimal.
 5. **The value-equivalence doctrine retroactively names two of our choices**
    (S7): psi instead of an observation model, and dynamics-compression
    instead of reconstruction for the cut. Cite it in both records when they
