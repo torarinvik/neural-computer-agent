@@ -76,6 +76,12 @@ from .slot_alignment import Tracker
 EXPERIMENT_ID = "brainworkshop-learned-decomposition-2026-08-16"
 LEARNED_DECOMPOSITION_SCHEMA = "neural-computer.learned-decomposition.v1"
 DEVELOPMENT_SEED = 41
+# Worlds are drawn from here. Defaulting to the development value keeps
+# every recorded diagnostic reproducing exactly; a holdout run passes a seed
+# from an unused block so the *worlds* are unseen and not merely the
+# exploration randomness.
+DEVELOPMENT_WORLD_SEED = 9000
+WORLD_SEED_STRIDE = 37
 FRAME_SIZE = 36
 EPISODE_STEPS = 40
 
@@ -353,6 +359,7 @@ def run_learned_decomposition(
     *,
     frontend_path: Path | None = None,
     seed: int = DEVELOPMENT_SEED,
+    world_seed: int = DEVELOPMENT_WORLD_SEED,
     tasks: int = 4,
     episodes: int = 4,
     steps: int = EPISODE_STEPS,
@@ -366,7 +373,7 @@ def run_learned_decomposition(
     started = time.perf_counter()
     rows: list[dict[str, Any]] = []
     for index in range(tasks):
-        task = sample_navigation_task(seed=9000 + 37 * index)
+        task = sample_navigation_task(seed=world_seed + WORLD_SEED_STRIDE * index)
         if task is None:
             continue
         generator = torch.Generator().manual_seed(seed + index)
@@ -432,6 +439,7 @@ def run_learned_decomposition(
         "schema": LEARNED_DECOMPOSITION_SCHEMA,
         "experiment_id": EXPERIMENT_ID,
         "seed": seed,
+        "world_seed": world_seed,
         "tasks": len(rows),
         "episodes_per_task": episodes,
         "episode_steps": steps,
@@ -479,6 +487,9 @@ def main() -> None:
         ),
     )
     parser.add_argument("--seed", type=int, default=DEVELOPMENT_SEED)
+    parser.add_argument(
+        "--world-seed", type=int, default=DEVELOPMENT_WORLD_SEED
+    )
     parser.add_argument("--tasks", type=int, default=4)
     parser.add_argument("--episodes", type=int, default=4)
     arguments = parser.parse_args()
@@ -488,6 +499,7 @@ def main() -> None:
         arguments.output,
         frontend_path=arguments.frontend,
         seed=arguments.seed,
+        world_seed=arguments.world_seed,
         tasks=arguments.tasks,
         episodes=arguments.episodes,
     )

@@ -1,7 +1,42 @@
 # Which one am I, when something else is moving too (2026-08-16)
 
-Status: **diagnostic**, on the already-consumed development seed. Nothing
-admitted; `AgentBrain.bank` unchanged at `07319eb1`.
+Status: **diagnostic, and partly withdrawn.** See
+`brainworkshop_navigation_holdout_2026-08-16`. Nothing admitted;
+`AgentBrain.bank` unchanged at `07319eb1`.
+
+> ## Correction, 2026-08-16, after holdout
+>
+> **The headline below does not survive unseen worlds.** Four of this record's
+> twelve claims failed on three worlds from an unspent block. Searching over
+> correspondences does *not* find the agent more often than elimination:
+>
+> | condition | search | persistence | claimed below |
+> | --- | ---: | ---: | --- |
+> | random_walk | 0.578 | 0.557 | 0.617 vs 0.445 |
+> | cycling | 0.609 | **0.615** | 0.625 vs 0.523 |
+>
+> Search is unchanged; elimination got luckier. Persistence wins the cycling
+> condition outright, and on one world search loses the two-marker control.
+> Read every "1.3x" and "finds me" number below as development-seed only.
+>
+> **What survived is a different and better claim.** Identification accuracy is
+> scored on the final frame; the *model* is what anything downstream uses, and
+> there the ordering held in all six cells (three worlds x two conditions):
+>
+> | condition | hybrid model | persistence model |
+> | --- | ---: | ---: |
+> | random_walk | **0.667** | 0.484 |
+> | cycling | **0.693** | 0.492 |
+>
+> A coherent track feeds coherent *transitions* even on episodes where the
+> final naming is wrong; elimination that happens to be right on the last
+> frame has been mixing two objects together all the way through. That is the
+> mechanism this record should have measured, and it is worth 0.18 of model
+> accuracy rather than the 0.17 of identification accuracy claimed here.
+>
+> Track fidelity also held everywhere -- search 0.665-0.725 against greedy
+> alignment 0.583-0.586 -- so the correspondence beam does what it was built
+> to do. It simply does not convert into naming yourself correctly.
 
 The caveat this attacks, quoted from the object-navigation record:
 

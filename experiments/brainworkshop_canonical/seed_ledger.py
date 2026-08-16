@@ -34,6 +34,13 @@ BLOCKS: dict[str, tuple[int, ...]] = {
     # than the integrated agent's, so it is placed above that block with the
     # same clearance.
     "compositional_transfer_holdout": (5_000_017, 5_500_017, 6_000_017),
+    # The navigation family -- successor transfer, learned decomposition,
+    # object identity, curious exploration, relational transfer -- draws its
+    # *worlds* from a seed too, striding 37 per task. Every recorded
+    # measurement of those five was taken at the development world seed, so
+    # none of them is a holdout until the worlds themselves are unseen. Placed
+    # above composition with the same clearance.
+    "navigation_family_holdout": (7_000_017, 7_500_017, 8_000_017),
 }
 
 # One replicate of the integrated agent consumes `stride * tasks` seeds plus

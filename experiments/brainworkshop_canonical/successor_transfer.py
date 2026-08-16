@@ -76,6 +76,12 @@ from .world_model import WorldModel
 EXPERIMENT_ID = "brainworkshop-successor-transfer-2026-08-16"
 SUCCESSOR_TRANSFER_SCHEMA = "neural-computer.successor-transfer.v1"
 DEVELOPMENT_SEED = 41
+# Worlds are drawn from here. Defaulting to the development value keeps
+# every recorded diagnostic reproducing exactly; a holdout run passes a seed
+# from an unused block so the *worlds* are unseen and not merely the
+# exploration randomness.
+DEVELOPMENT_WORLD_SEED = 9000
+WORLD_SEED_STRIDE = 37
 EPISODE_STEPS = 20
 EXPLORE_EPISODES = 24
 FRAME_SIZE = 36
@@ -549,6 +555,7 @@ def run_successor_transfer(
     *,
     frontend_path: Path | None = None,
     seed: int = DEVELOPMENT_SEED,
+    world_seed: int = DEVELOPMENT_WORLD_SEED,
     tasks: int = 8,
     steps: int = EPISODE_STEPS,
     explore_episodes: int = EXPLORE_EPISODES,
@@ -566,7 +573,7 @@ def run_successor_transfer(
     rows: list[dict[str, Any]] = []
     accumulation: list[list[dict[str, Any]]] = []
     for index in range(tasks):
-        task = sample_navigation_task(seed=9000 + 37 * index)
+        task = sample_navigation_task(seed=world_seed + WORLD_SEED_STRIDE * index)
         if task is None:
             continue
 
@@ -747,6 +754,7 @@ def run_successor_transfer(
         "schema": SUCCESSOR_TRANSFER_SCHEMA,
         "experiment_id": EXPERIMENT_ID,
         "seed": seed,
+        "world_seed": world_seed,
         "tasks": len(rows),
         "episode_steps": steps,
         "explore_episodes": explore_episodes,
@@ -826,6 +834,9 @@ def main() -> None:
         ),
     )
     parser.add_argument("--seed", type=int, default=DEVELOPMENT_SEED)
+    parser.add_argument(
+        "--world-seed", type=int, default=DEVELOPMENT_WORLD_SEED
+    )
     parser.add_argument("--tasks", type=int, default=8)
     parser.add_argument("--explore-episodes", type=int, default=EXPLORE_EPISODES)
     arguments = parser.parse_args()
@@ -835,6 +846,7 @@ def main() -> None:
         arguments.output,
         frontend_path=arguments.frontend,
         seed=arguments.seed,
+        world_seed=arguments.world_seed,
         tasks=arguments.tasks,
         explore_episodes=arguments.explore_episodes,
     )

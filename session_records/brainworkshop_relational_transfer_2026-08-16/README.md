@@ -1,7 +1,31 @@
 # Being asked for a relation nobody ever paid you for (2026-08-16)
 
-Status: **diagnostic**, replicated at two seeds and two task counts. Nothing
-admitted; `AgentBrain.bank` unchanged at `07319eb1`.
+Status: **diagnostic**, replicated at two seeds and two task counts, and
+**one sub-claim withdrawn** after holdout -- see
+`brainworkshop_navigation_holdout_2026-08-16`. Nothing admitted;
+`AgentBrain.bank` unchanged at `07319eb1`.
+
+> ## Correction, 2026-08-16, after holdout
+>
+> Five of this record's six claims held on three worlds from an unspent block.
+> The exception is **the size of the PGM cost**. Per world:
+>
+> | world | gpi | replan | gap |
+> | --- | ---: | ---: | ---: |
+> | 7000017 | 0.868 | 0.865 | **-0.002** |
+> | 7500017 | 0.808 | 0.857 | +0.049 |
+> | 8000017 | 0.778 | 0.972 | +0.194 |
+>
+> Mean +0.080 against the **0.16** reported below, clearing this record's own
+> 0.05 bar in one world of three. The finding is directionally right, much
+> weaker, and far noisier than stated. The section below explains its
+> non-reproduction at two tasks as a task-count effect; the holdout says it
+> varies by **world**, which is a worse explanation than the one written.
+>
+> Everything else survived all three worlds, including the load-bearing one:
+> pairs remain necessary (place control **0.336** against 0.296 random, versus
+> 0.818 for pairs), and a relation never rewarded still transfers at 0.818
+> against 0.446 for the best stored policy.
 
 ## A correction before the result
 

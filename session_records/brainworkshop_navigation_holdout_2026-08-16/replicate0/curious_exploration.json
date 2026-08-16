@@ -1,0 +1,1648 @@
+{
+  "agent_bank_sha256": "07319eb13c9cac58bbbe94258548e64f13ba1b3512ca2a01fbdc675c49e2e7c9",
+  "agent_bank_unchanged": true,
+  "budget_steps": 60,
+  "conditions": {
+    "none": {
+      "curious": {
+        "coverage": 1.0,
+        "distinct_readings": 26.5,
+        "downstream_fraction": 0.9381187343358396,
+        "downstream_random": 0.136328125,
+        "model_accuracy": 1.0,
+        "reached_threshold": 4,
+        "steps_to_threshold": 40.0,
+        "tasks": 4
+      },
+      "curious_bandit": {
+        "coverage": 1.0,
+        "distinct_readings": 26.25,
+        "downstream_fraction": 0.9381187343358396,
+        "downstream_random": 0.136328125,
+        "model_accuracy": 1.0,
+        "reached_threshold": 4,
+        "steps_to_threshold": 40.0,
+        "tasks": 4
+      },
+      "curious_g50": {
+        "coverage": 1.0,
+        "distinct_readings": 26.25,
+        "downstream_fraction": 0.9381187343358396,
+        "downstream_random": 0.136328125,
+        "model_accuracy": 1.0,
+        "reached_threshold": 4,
+        "steps_to_threshold": 40.0,
+        "tasks": 4
+      },
+      "curious_g99": {
+        "coverage": 1.0,
+        "distinct_readings": 26.5,
+        "downstream_fraction": 0.9381187343358396,
+        "downstream_random": 0.136328125,
+        "model_accuracy": 1.0,
+        "reached_threshold": 4,
+        "steps_to_threshold": 40.0,
+        "tasks": 4
+      },
+      "curious_ungated": {
+        "coverage": 0.9921875,
+        "distinct_readings": 23.5,
+        "downstream_fraction": 0.9002692277568922,
+        "downstream_random": 0.136328125,
+        "model_accuracy": 1.0,
+        "reached_threshold": 4,
+        "steps_to_threshold": 42.5,
+        "tasks": 4
+      },
+      "optimistic": {
+        "coverage": 0.8828125,
+        "distinct_readings": 21.75,
+        "downstream_fraction": 0.7946360040726816,
+        "downstream_random": 0.136328125,
+        "model_accuracy": 1.0,
+        "reached_threshold": 2,
+        "steps_to_threshold": 57.5,
+        "tasks": 4
+      },
+      "uniform": {
+        "coverage": 0.8359375,
+        "distinct_readings": 22.5,
+        "downstream_fraction": 0.7338766838972431,
+        "downstream_random": 0.136328125,
+        "model_accuracy": 1.0,
+        "reached_threshold": 2,
+        "steps_to_threshold": 57.5,
+        "tasks": 4
+      }
+    },
+    "random_walk": {
+      "curious": {
+        "coverage": 1.0,
+        "distinct_readings": 42.25,
+        "downstream_fraction": 0.9381187343358396,
+        "downstream_random": 0.136328125,
+        "model_accuracy": 1.0,
+        "reached_threshold": 4,
+        "steps_to_threshold": 40.0,
+        "tasks": 4
+      },
+      "curious_bandit": {
+        "coverage": 1.0,
+        "distinct_readings": 41.5,
+        "downstream_fraction": 0.9381187343358396,
+        "downstream_random": 0.136328125,
+        "model_accuracy": 1.0,
+        "reached_threshold": 4,
+        "steps_to_threshold": 40.0,
+        "tasks": 4
+      },
+      "curious_g50": {
+        "coverage": 1.0,
+        "distinct_readings": 40.75,
+        "downstream_fraction": 0.9381187343358396,
+        "downstream_random": 0.136328125,
+        "model_accuracy": 1.0,
+        "reached_threshold": 4,
+        "steps_to_threshold": 40.0,
+        "tasks": 4
+      },
+      "curious_g99": {
+        "coverage": 1.0,
+        "distinct_readings": 41.75,
+        "downstream_fraction": 0.9381187343358396,
+        "downstream_random": 0.136328125,
+        "model_accuracy": 1.0,
+        "reached_threshold": 4,
+        "steps_to_threshold": 40.0,
+        "tasks": 4
+      },
+      "curious_ungated": {
+        "coverage": 0.9765625,
+        "distinct_readings": 39.5,
+        "downstream_fraction": 0.8424087562656641,
+        "downstream_random": 0.136328125,
+        "model_accuracy": 1.0,
+        "reached_threshold": 4,
+        "steps_to_threshold": 47.5,
+        "tasks": 4
+      },
+      "optimistic": {
+        "coverage": 0.8828125,
+        "distinct_readings": 39.75,
+        "downstream_fraction": 0.7946360040726816,
+        "downstream_random": 0.136328125,
+        "model_accuracy": 1.0,
+        "reached_threshold": 2,
+        "steps_to_threshold": 57.5,
+        "tasks": 4
+      },
+      "uniform": {
+        "coverage": 0.8359375,
+        "distinct_readings": 40.75,
+        "downstream_fraction": 0.7338766838972431,
+        "downstream_random": 0.136328125,
+        "model_accuracy": 1.0,
+        "reached_threshold": 2,
+        "steps_to_threshold": 57.5,
+        "tasks": 4
+      }
+    }
+  },
+  "discount_family": [
+    0.5,
+    0.8,
+    0.95,
+    0.99
+  ],
+  "episode_steps": 10,
+  "episodes": 6,
+  "experiment_id": "brainworkshop-curious-exploration-2026-08-16",
+  "rows": [
+    {
+      "arm": "uniform",
+      "bandit_counts": [],
+      "bandit_means": [],
+      "condition": "none",
+      "coverage": 0.84375,
+      "curve": [
+        0.3125,
+        0.46875,
+        0.5625,
+        0.65625,
+        0.78125,
+        0.84375
+      ],
+      "distinct_readings": 22,
+      "downstream": {
+        "fraction": 0.9953125,
+        "gpi": 0.73125,
+        "optimal": 0.734375
+      },
+      "downstream_random": 0.16875,
+      "model_accuracy": 1.0,
+      "steps_to_threshold": null,
+      "task": 0
+    },
+    {
+      "arm": "optimistic",
+      "bandit_counts": [],
+      "bandit_means": [],
+      "condition": "none",
+      "coverage": 0.8125,
+      "curve": [
+        0.3125,
+        0.59375,
+        0.78125,
+        0.8125,
+        0.8125,
+        0.8125
+      ],
+      "distinct_readings": 19,
+      "downstream": {
+        "fraction": 0.8240679824561403,
+        "gpi": 0.571875,
+        "optimal": 0.734375
+      },
+      "downstream_random": 0.16875,
+      "model_accuracy": 1.0,
+      "steps_to_threshold": null,
+      "task": 0
+    },
+    {
+      "arm": "curious_g50",
+      "bandit_counts": [],
+      "bandit_means": [],
+      "condition": "none",
+      "coverage": 1.0,
+      "curve": [
+        0.3125,
+        0.59375,
+        0.8125,
+        0.90625,
+        0.96875,
+        1.0
+      ],
+      "distinct_readings": 25,
+      "downstream": {
+        "fraction": 0.996875,
+        "gpi": 0.7328125,
+        "optimal": 0.734375
+      },
+      "downstream_random": 0.16875,
+      "model_accuracy": 1.0,
+      "steps_to_threshold": 40,
+      "task": 0
+    },
+    {
+      "arm": "curious",
+      "bandit_counts": [],
+      "bandit_means": [],
+      "condition": "none",
+      "coverage": 1.0,
+      "curve": [
+        0.3125,
+        0.59375,
+        0.8125,
+        0.90625,
+        1.0,
+        1.0
+      ],
+      "distinct_readings": 26,
+      "downstream": {
+        "fraction": 0.996875,
+        "gpi": 0.7328125,
+        "optimal": 0.734375
+      },
+      "downstream_random": 0.16875,
+      "model_accuracy": 1.0,
+      "steps_to_threshold": 40,
+      "task": 0
+    },
+    {
+      "arm": "curious_g99",
+      "bandit_counts": [],
+      "bandit_means": [],
+      "condition": "none",
+      "coverage": 1.0,
+      "curve": [
+        0.3125,
+        0.59375,
+        0.8125,
+        0.90625,
+        1.0,
+        1.0
+      ],
+      "distinct_readings": 26,
+      "downstream": {
+        "fraction": 0.996875,
+        "gpi": 0.7328125,
+        "optimal": 0.734375
+      },
+      "downstream_random": 0.16875,
+      "model_accuracy": 1.0,
+      "steps_to_threshold": 40,
+      "task": 0
+    },
+    {
+      "arm": "curious_ungated",
+      "bandit_counts": [],
+      "bandit_means": [],
+      "condition": "none",
+      "coverage": 1.0,
+      "curve": [
+        0.3125,
+        0.5625,
+        0.75,
+        0.875,
+        0.96875,
+        1.0
+      ],
+      "distinct_readings": 24,
+      "downstream": {
+        "fraction": 0.996875,
+        "gpi": 0.7328125,
+        "optimal": 0.734375
+      },
+      "downstream_random": 0.16875,
+      "model_accuracy": 1.0,
+      "steps_to_threshold": 50,
+      "task": 0
+    },
+    {
+      "arm": "curious_bandit",
+      "bandit_counts": [
+        2,
+        1,
+        1,
+        2
+      ],
+      "bandit_means": [
+        6.0,
+        9.0,
+        7.0,
+        2.0
+      ],
+      "condition": "none",
+      "coverage": 1.0,
+      "curve": [
+        0.3125,
+        0.59375,
+        0.8125,
+        0.90625,
+        0.96875,
+        1.0
+      ],
+      "distinct_readings": 25,
+      "downstream": {
+        "fraction": 0.996875,
+        "gpi": 0.7328125,
+        "optimal": 0.734375
+      },
+      "downstream_random": 0.16875,
+      "model_accuracy": 1.0,
+      "steps_to_threshold": 40,
+      "task": 0
+    },
+    {
+      "arm": "uniform",
+      "bandit_counts": [],
+      "bandit_means": [],
+      "condition": "random_walk",
+      "coverage": 0.84375,
+      "curve": [
+        0.3125,
+        0.46875,
+        0.5625,
+        0.65625,
+        0.78125,
+        0.84375
+      ],
+      "distinct_readings": 44,
+      "downstream": {
+        "fraction": 0.9953125,
+        "gpi": 0.73125,
+        "optimal": 0.734375
+      },
+      "downstream_random": 0.16875,
+      "model_accuracy": 1.0,
+      "steps_to_threshold": null,
+      "task": 0
+    },
+    {
+      "arm": "optimistic",
+      "bandit_counts": [],
+      "bandit_means": [],
+      "condition": "random_walk",
+      "coverage": 0.8125,
+      "curve": [
+        0.3125,
+        0.59375,
+        0.78125,
+        0.8125,
+        0.8125,
+        0.8125
+      ],
+      "distinct_readings": 39,
+      "downstream": {
+        "fraction": 0.8240679824561403,
+        "gpi": 0.571875,
+        "optimal": 0.734375
+      },
+      "downstream_random": 0.16875,
+      "model_accuracy": 1.0,
+      "steps_to_threshold": null,
+      "task": 0
+    },
+    {
+      "arm": "curious_g50",
+      "bandit_counts": [],
+      "bandit_means": [],
+      "condition": "random_walk",
+      "coverage": 1.0,
+      "curve": [
+        0.3125,
+        0.59375,
+        0.8125,
+        0.90625,
+        0.96875,
+        1.0
+      ],
+      "distinct_readings": 36,
+      "downstream": {
+        "fraction": 0.996875,
+        "gpi": 0.7328125,
+        "optimal": 0.734375
+      },
+      "downstream_random": 0.16875,
+      "model_accuracy": 1.0,
+      "steps_to_threshold": 40,
+      "task": 0
+    },
+    {
+      "arm": "curious",
+      "bandit_counts": [],
+      "bandit_means": [],
+      "condition": "random_walk",
+      "coverage": 1.0,
+      "curve": [
+        0.3125,
+        0.59375,
+        0.8125,
+        0.90625,
+        1.0,
+        1.0
+      ],
+      "distinct_readings": 44,
+      "downstream": {
+        "fraction": 0.996875,
+        "gpi": 0.7328125,
+        "optimal": 0.734375
+      },
+      "downstream_random": 0.16875,
+      "model_accuracy": 1.0,
+      "steps_to_threshold": 40,
+      "task": 0
+    },
+    {
+      "arm": "curious_g99",
+      "bandit_counts": [],
+      "bandit_means": [],
+      "condition": "random_walk",
+      "coverage": 1.0,
+      "curve": [
+        0.3125,
+        0.59375,
+        0.8125,
+        0.90625,
+        1.0,
+        1.0
+      ],
+      "distinct_readings": 44,
+      "downstream": {
+        "fraction": 0.996875,
+        "gpi": 0.7328125,
+        "optimal": 0.734375
+      },
+      "downstream_random": 0.16875,
+      "model_accuracy": 1.0,
+      "steps_to_threshold": 40,
+      "task": 0
+    },
+    {
+      "arm": "curious_ungated",
+      "bandit_counts": [],
+      "bandit_means": [],
+      "condition": "random_walk",
+      "coverage": 1.0,
+      "curve": [
+        0.3125,
+        0.59375,
+        0.6875,
+        0.71875,
+        0.875,
+        1.0
+      ],
+      "distinct_readings": 37,
+      "downstream": {
+        "fraction": 0.996875,
+        "gpi": 0.7328125,
+        "optimal": 0.734375
+      },
+      "downstream_random": 0.16875,
+      "model_accuracy": 1.0,
+      "steps_to_threshold": 60,
+      "task": 0
+    },
+    {
+      "arm": "curious_bandit",
+      "bandit_counts": [
+        2,
+        1,
+        1,
+        2
+      ],
+      "bandit_means": [
+        6.0,
+        9.0,
+        7.0,
+        2.0
+      ],
+      "condition": "random_walk",
+      "coverage": 1.0,
+      "curve": [
+        0.3125,
+        0.59375,
+        0.8125,
+        0.90625,
+        0.96875,
+        1.0
+      ],
+      "distinct_readings": 41,
+      "downstream": {
+        "fraction": 0.996875,
+        "gpi": 0.7328125,
+        "optimal": 0.734375
+      },
+      "downstream_random": 0.16875,
+      "model_accuracy": 1.0,
+      "steps_to_threshold": 40,
+      "task": 0
+    },
+    {
+      "arm": "uniform",
+      "bandit_counts": [],
+      "bandit_means": [],
+      "condition": "none",
+      "coverage": 0.9375,
+      "curve": [
+        0.25,
+        0.53125,
+        0.65625,
+        0.78125,
+        0.90625,
+        0.9375
+      ],
+      "distinct_readings": 25,
+      "downstream": {
+        "fraction": 0.6853422619047619,
+        "gpi": 0.5328125,
+        "optimal": 0.8046875
+      },
+      "downstream_random": 0.0890625,
+      "model_accuracy": 1.0,
+      "steps_to_threshold": 50,
+      "task": 1
+    },
+    {
+      "arm": "optimistic",
+      "bandit_counts": [],
+      "bandit_means": [],
+      "condition": "none",
+      "coverage": 0.84375,
+      "curve": [
+        0.3125,
+        0.59375,
+        0.8125,
+        0.84375,
+        0.84375,
+        0.84375
+      ],
+      "distinct_readings": 20,
+      "downstream": {
+        "fraction": 0.6719102443609023,
+        "gpi": 0.5203125,
+        "optimal": 0.8046875
+      },
+      "downstream_random": 0.0890625,
+      "model_accuracy": 1.0,
+      "steps_to_threshold": null,
+      "task": 1
+    },
+    {
+      "arm": "curious_g50",
+      "bandit_counts": [],
+      "bandit_means": [],
+      "condition": "none",
+      "coverage": 1.0,
+      "curve": [
+        0.3125,
+        0.59375,
+        0.875,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "distinct_readings": 24,
+      "downstream": {
+        "fraction": 0.8888236215538847,
+        "gpi": 0.725,
+        "optimal": 0.8046875
+      },
+      "downstream_random": 0.0890625,
+      "model_accuracy": 1.0,
+      "steps_to_threshold": 40,
+      "task": 1
+    },
+    {
+      "arm": "curious",
+      "bandit_counts": [],
+      "bandit_means": [],
+      "condition": "none",
+      "coverage": 1.0,
+      "curve": [
+        0.3125,
+        0.59375,
+        0.875,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "distinct_readings": 24,
+      "downstream": {
+        "fraction": 0.8888236215538847,
+        "gpi": 0.725,
+        "optimal": 0.8046875
+      },
+      "downstream_random": 0.0890625,
+      "model_accuracy": 1.0,
+      "steps_to_threshold": 40,
+      "task": 1
+    },
+    {
+      "arm": "curious_g99",
+      "bandit_counts": [],
+      "bandit_means": [],
+      "condition": "none",
+      "coverage": 1.0,
+      "curve": [
+        0.3125,
+        0.59375,
+        0.875,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "distinct_readings": 24,
+      "downstream": {
+        "fraction": 0.8888236215538847,
+        "gpi": 0.725,
+        "optimal": 0.8046875
+      },
+      "downstream_random": 0.0890625,
+      "model_accuracy": 1.0,
+      "steps_to_threshold": 40,
+      "task": 1
+    },
+    {
+      "arm": "curious_ungated",
+      "bandit_counts": [],
+      "bandit_means": [],
+      "condition": "none",
+      "coverage": 1.0,
+      "curve": [
+        0.3125,
+        0.59375,
+        0.875,
+        0.96875,
+        0.96875,
+        1.0
+      ],
+      "distinct_readings": 19,
+      "downstream": {
+        "fraction": 0.8888236215538847,
+        "gpi": 0.725,
+        "optimal": 0.8046875
+      },
+      "downstream_random": 0.0890625,
+      "model_accuracy": 1.0,
+      "steps_to_threshold": 40,
+      "task": 1
+    },
+    {
+      "arm": "curious_bandit",
+      "bandit_counts": [
+        2,
+        2,
+        1,
+        1
+      ],
+      "bandit_means": [
+        5.0,
+        4.5,
+        9.0,
+        4.0
+      ],
+      "condition": "none",
+      "coverage": 1.0,
+      "curve": [
+        0.3125,
+        0.59375,
+        0.875,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "distinct_readings": 24,
+      "downstream": {
+        "fraction": 0.8888236215538847,
+        "gpi": 0.725,
+        "optimal": 0.8046875
+      },
+      "downstream_random": 0.0890625,
+      "model_accuracy": 1.0,
+      "steps_to_threshold": 40,
+      "task": 1
+    },
+    {
+      "arm": "uniform",
+      "bandit_counts": [],
+      "bandit_means": [],
+      "condition": "random_walk",
+      "coverage": 0.9375,
+      "curve": [
+        0.25,
+        0.53125,
+        0.65625,
+        0.78125,
+        0.90625,
+        0.9375
+      ],
+      "distinct_readings": 40,
+      "downstream": {
+        "fraction": 0.6853422619047619,
+        "gpi": 0.5328125,
+        "optimal": 0.8046875
+      },
+      "downstream_random": 0.0890625,
+      "model_accuracy": 1.0,
+      "steps_to_threshold": 50,
+      "task": 1
+    },
+    {
+      "arm": "optimistic",
+      "bandit_counts": [],
+      "bandit_means": [],
+      "condition": "random_walk",
+      "coverage": 0.84375,
+      "curve": [
+        0.3125,
+        0.59375,
+        0.8125,
+        0.84375,
+        0.84375,
+        0.84375
+      ],
+      "distinct_readings": 37,
+      "downstream": {
+        "fraction": 0.6719102443609023,
+        "gpi": 0.5203125,
+        "optimal": 0.8046875
+      },
+      "downstream_random": 0.0890625,
+      "model_accuracy": 1.0,
+      "steps_to_threshold": null,
+      "task": 1
+    },
+    {
+      "arm": "curious_g50",
+      "bandit_counts": [],
+      "bandit_means": [],
+      "condition": "random_walk",
+      "coverage": 1.0,
+      "curve": [
+        0.3125,
+        0.59375,
+        0.875,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "distinct_readings": 44,
+      "downstream": {
+        "fraction": 0.8888236215538847,
+        "gpi": 0.725,
+        "optimal": 0.8046875
+      },
+      "downstream_random": 0.0890625,
+      "model_accuracy": 1.0,
+      "steps_to_threshold": 40,
+      "task": 1
+    },
+    {
+      "arm": "curious",
+      "bandit_counts": [],
+      "bandit_means": [],
+      "condition": "random_walk",
+      "coverage": 1.0,
+      "curve": [
+        0.3125,
+        0.59375,
+        0.875,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "distinct_readings": 43,
+      "downstream": {
+        "fraction": 0.8888236215538847,
+        "gpi": 0.725,
+        "optimal": 0.8046875
+      },
+      "downstream_random": 0.0890625,
+      "model_accuracy": 1.0,
+      "steps_to_threshold": 40,
+      "task": 1
+    },
+    {
+      "arm": "curious_g99",
+      "bandit_counts": [],
+      "bandit_means": [],
+      "condition": "random_walk",
+      "coverage": 1.0,
+      "curve": [
+        0.3125,
+        0.59375,
+        0.875,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "distinct_readings": 41,
+      "downstream": {
+        "fraction": 0.8888236215538847,
+        "gpi": 0.725,
+        "optimal": 0.8046875
+      },
+      "downstream_random": 0.0890625,
+      "model_accuracy": 1.0,
+      "steps_to_threshold": 40,
+      "task": 1
+    },
+    {
+      "arm": "curious_ungated",
+      "bandit_counts": [],
+      "bandit_means": [],
+      "condition": "random_walk",
+      "coverage": 0.96875,
+      "curve": [
+        0.3125,
+        0.59375,
+        0.875,
+        0.9375,
+        0.9375,
+        0.96875
+      ],
+      "distinct_readings": 41,
+      "downstream": {
+        "fraction": 0.6853422619047619,
+        "gpi": 0.5328125,
+        "optimal": 0.8046875
+      },
+      "downstream_random": 0.0890625,
+      "model_accuracy": 1.0,
+      "steps_to_threshold": 40,
+      "task": 1
+    },
+    {
+      "arm": "curious_bandit",
+      "bandit_counts": [
+        2,
+        2,
+        1,
+        1
+      ],
+      "bandit_means": [
+        5.0,
+        4.5,
+        9.0,
+        4.0
+      ],
+      "condition": "random_walk",
+      "coverage": 1.0,
+      "curve": [
+        0.3125,
+        0.59375,
+        0.875,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "distinct_readings": 43,
+      "downstream": {
+        "fraction": 0.8888236215538847,
+        "gpi": 0.725,
+        "optimal": 0.8046875
+      },
+      "downstream_random": 0.0890625,
+      "model_accuracy": 1.0,
+      "steps_to_threshold": 40,
+      "task": 1
+    },
+    {
+      "arm": "uniform",
+      "bandit_counts": [],
+      "bandit_means": [],
+      "condition": "none",
+      "coverage": 0.9375,
+      "curve": [
+        0.28125,
+        0.46875,
+        0.65625,
+        0.78125,
+        0.8125,
+        0.9375
+      ],
+      "distinct_readings": 23,
+      "downstream": {
+        "fraction": 0.7219572368421052,
+        "gpi": 0.478125,
+        "optimal": 0.725
+      },
+      "downstream_random": 0.1484375,
+      "model_accuracy": 1.0,
+      "steps_to_threshold": 60,
+      "task": 2
+    },
+    {
+      "arm": "optimistic",
+      "bandit_counts": [],
+      "bandit_means": [],
+      "condition": "none",
+      "coverage": 0.96875,
+      "curve": [
+        0.3125,
+        0.625,
+        0.78125,
+        0.875,
+        0.90625,
+        0.96875
+      ],
+      "distinct_readings": 22,
+      "downstream": {
+        "fraction": 0.7219572368421052,
+        "gpi": 0.478125,
+        "optimal": 0.725
+      },
+      "downstream_random": 0.1484375,
+      "model_accuracy": 1.0,
+      "steps_to_threshold": 50,
+      "task": 2
+    },
+    {
+      "arm": "curious_g50",
+      "bandit_counts": [],
+      "bandit_means": [],
+      "condition": "none",
+      "coverage": 1.0,
+      "curve": [
+        0.3125,
+        0.625,
+        0.84375,
+        0.9375,
+        0.96875,
+        1.0
+      ],
+      "distinct_readings": 30,
+      "downstream": {
+        "fraction": 0.8733552631578947,
+        "gpi": 0.625,
+        "optimal": 0.725
+      },
+      "downstream_random": 0.1484375,
+      "model_accuracy": 1.0,
+      "steps_to_threshold": 40,
+      "task": 2
+    },
+    {
+      "arm": "curious",
+      "bandit_counts": [],
+      "bandit_means": [],
+      "condition": "none",
+      "coverage": 1.0,
+      "curve": [
+        0.3125,
+        0.625,
+        0.84375,
+        0.9375,
+        0.96875,
+        1.0
+      ],
+      "distinct_readings": 30,
+      "downstream": {
+        "fraction": 0.8733552631578947,
+        "gpi": 0.625,
+        "optimal": 0.725
+      },
+      "downstream_random": 0.1484375,
+      "model_accuracy": 1.0,
+      "steps_to_threshold": 40,
+      "task": 2
+    },
+    {
+      "arm": "curious_g99",
+      "bandit_counts": [],
+      "bandit_means": [],
+      "condition": "none",
+      "coverage": 1.0,
+      "curve": [
+        0.3125,
+        0.625,
+        0.84375,
+        0.9375,
+        0.96875,
+        1.0
+      ],
+      "distinct_readings": 30,
+      "downstream": {
+        "fraction": 0.8733552631578947,
+        "gpi": 0.625,
+        "optimal": 0.725
+      },
+      "downstream_random": 0.1484375,
+      "model_accuracy": 1.0,
+      "steps_to_threshold": 40,
+      "task": 2
+    },
+    {
+      "arm": "curious_ungated",
+      "bandit_counts": [],
+      "bandit_means": [],
+      "condition": "none",
+      "coverage": 0.96875,
+      "curve": [
+        0.3125,
+        0.625,
+        0.84375,
+        0.90625,
+        0.96875,
+        0.96875
+      ],
+      "distinct_readings": 25,
+      "downstream": {
+        "fraction": 0.7219572368421052,
+        "gpi": 0.478125,
+        "optimal": 0.725
+      },
+      "downstream_random": 0.1484375,
+      "model_accuracy": 1.0,
+      "steps_to_threshold": 40,
+      "task": 2
+    },
+    {
+      "arm": "curious_bandit",
+      "bandit_counts": [
+        2,
+        2,
+        1,
+        1
+      ],
+      "bandit_means": [
+        5.5,
+        5.5,
+        7.0,
+        3.0
+      ],
+      "condition": "none",
+      "coverage": 1.0,
+      "curve": [
+        0.3125,
+        0.625,
+        0.84375,
+        0.9375,
+        0.96875,
+        1.0
+      ],
+      "distinct_readings": 30,
+      "downstream": {
+        "fraction": 0.8733552631578947,
+        "gpi": 0.625,
+        "optimal": 0.725
+      },
+      "downstream_random": 0.1484375,
+      "model_accuracy": 1.0,
+      "steps_to_threshold": 40,
+      "task": 2
+    },
+    {
+      "arm": "uniform",
+      "bandit_counts": [],
+      "bandit_means": [],
+      "condition": "random_walk",
+      "coverage": 0.9375,
+      "curve": [
+        0.28125,
+        0.46875,
+        0.65625,
+        0.78125,
+        0.8125,
+        0.9375
+      ],
+      "distinct_readings": 40,
+      "downstream": {
+        "fraction": 0.7219572368421052,
+        "gpi": 0.478125,
+        "optimal": 0.725
+      },
+      "downstream_random": 0.1484375,
+      "model_accuracy": 1.0,
+      "steps_to_threshold": 60,
+      "task": 2
+    },
+    {
+      "arm": "optimistic",
+      "bandit_counts": [],
+      "bandit_means": [],
+      "condition": "random_walk",
+      "coverage": 0.96875,
+      "curve": [
+        0.3125,
+        0.625,
+        0.78125,
+        0.875,
+        0.90625,
+        0.96875
+      ],
+      "distinct_readings": 41,
+      "downstream": {
+        "fraction": 0.7219572368421052,
+        "gpi": 0.478125,
+        "optimal": 0.725
+      },
+      "downstream_random": 0.1484375,
+      "model_accuracy": 1.0,
+      "steps_to_threshold": 50,
+      "task": 2
+    },
+    {
+      "arm": "curious_g50",
+      "bandit_counts": [],
+      "bandit_means": [],
+      "condition": "random_walk",
+      "coverage": 1.0,
+      "curve": [
+        0.3125,
+        0.625,
+        0.84375,
+        0.9375,
+        0.96875,
+        1.0
+      ],
+      "distinct_readings": 42,
+      "downstream": {
+        "fraction": 0.8733552631578947,
+        "gpi": 0.625,
+        "optimal": 0.725
+      },
+      "downstream_random": 0.1484375,
+      "model_accuracy": 1.0,
+      "steps_to_threshold": 40,
+      "task": 2
+    },
+    {
+      "arm": "curious",
+      "bandit_counts": [],
+      "bandit_means": [],
+      "condition": "random_walk",
+      "coverage": 1.0,
+      "curve": [
+        0.3125,
+        0.625,
+        0.84375,
+        0.9375,
+        0.96875,
+        1.0
+      ],
+      "distinct_readings": 42,
+      "downstream": {
+        "fraction": 0.8733552631578947,
+        "gpi": 0.625,
+        "optimal": 0.725
+      },
+      "downstream_random": 0.1484375,
+      "model_accuracy": 1.0,
+      "steps_to_threshold": 40,
+      "task": 2
+    },
+    {
+      "arm": "curious_g99",
+      "bandit_counts": [],
+      "bandit_means": [],
+      "condition": "random_walk",
+      "coverage": 1.0,
+      "curve": [
+        0.3125,
+        0.625,
+        0.84375,
+        0.9375,
+        0.96875,
+        1.0
+      ],
+      "distinct_readings": 42,
+      "downstream": {
+        "fraction": 0.8733552631578947,
+        "gpi": 0.625,
+        "optimal": 0.725
+      },
+      "downstream_random": 0.1484375,
+      "model_accuracy": 1.0,
+      "steps_to_threshold": 40,
+      "task": 2
+    },
+    {
+      "arm": "curious_ungated",
+      "bandit_counts": [],
+      "bandit_means": [],
+      "condition": "random_walk",
+      "coverage": 0.96875,
+      "curve": [
+        0.3125,
+        0.625,
+        0.84375,
+        0.96875,
+        0.96875,
+        0.96875
+      ],
+      "distinct_readings": 38,
+      "downstream": {
+        "fraction": 0.7219572368421052,
+        "gpi": 0.478125,
+        "optimal": 0.725
+      },
+      "downstream_random": 0.1484375,
+      "model_accuracy": 1.0,
+      "steps_to_threshold": 40,
+      "task": 2
+    },
+    {
+      "arm": "curious_bandit",
+      "bandit_counts": [
+        2,
+        2,
+        1,
+        1
+      ],
+      "bandit_means": [
+        5.5,
+        5.5,
+        7.0,
+        3.0
+      ],
+      "condition": "random_walk",
+      "coverage": 1.0,
+      "curve": [
+        0.3125,
+        0.625,
+        0.84375,
+        0.9375,
+        0.96875,
+        1.0
+      ],
+      "distinct_readings": 42,
+      "downstream": {
+        "fraction": 0.8733552631578947,
+        "gpi": 0.625,
+        "optimal": 0.725
+      },
+      "downstream_random": 0.1484375,
+      "model_accuracy": 1.0,
+      "steps_to_threshold": 40,
+      "task": 2
+    },
+    {
+      "arm": "uniform",
+      "bandit_counts": [],
+      "bandit_means": [],
+      "condition": "none",
+      "coverage": 0.625,
+      "curve": [
+        0.25,
+        0.5,
+        0.53125,
+        0.59375,
+        0.59375,
+        0.625
+      ],
+      "distinct_readings": 20,
+      "downstream": {
+        "fraction": 0.5328947368421053,
+        "gpi": 0.4015625,
+        "optimal": 0.85
+      },
+      "downstream_random": 0.1390625,
+      "model_accuracy": 1.0,
+      "steps_to_threshold": null,
+      "task": 3
+    },
+    {
+      "arm": "optimistic",
+      "bandit_counts": [],
+      "bandit_means": [],
+      "condition": "none",
+      "coverage": 0.90625,
+      "curve": [
+        0.3125,
+        0.46875,
+        0.625,
+        0.71875,
+        0.8125,
+        0.90625
+      ],
+      "distinct_readings": 26,
+      "downstream": {
+        "fraction": 0.960608552631579,
+        "gpi": 0.8125,
+        "optimal": 0.85
+      },
+      "downstream_random": 0.1390625,
+      "model_accuracy": 1.0,
+      "steps_to_threshold": 60,
+      "task": 3
+    },
+    {
+      "arm": "curious_g50",
+      "bandit_counts": [],
+      "bandit_means": [],
+      "condition": "none",
+      "coverage": 1.0,
+      "curve": [
+        0.3125,
+        0.53125,
+        0.78125,
+        0.90625,
+        0.96875,
+        1.0
+      ],
+      "distinct_readings": 26,
+      "downstream": {
+        "fraction": 0.993421052631579,
+        "gpi": 0.84375,
+        "optimal": 0.85
+      },
+      "downstream_random": 0.1390625,
+      "model_accuracy": 1.0,
+      "steps_to_threshold": 40,
+      "task": 3
+    },
+    {
+      "arm": "curious",
+      "bandit_counts": [],
+      "bandit_means": [],
+      "condition": "none",
+      "coverage": 1.0,
+      "curve": [
+        0.3125,
+        0.53125,
+        0.78125,
+        0.9375,
+        0.96875,
+        1.0
+      ],
+      "distinct_readings": 26,
+      "downstream": {
+        "fraction": 0.993421052631579,
+        "gpi": 0.84375,
+        "optimal": 0.85
+      },
+      "downstream_random": 0.1390625,
+      "model_accuracy": 1.0,
+      "steps_to_threshold": 40,
+      "task": 3
+    },
+    {
+      "arm": "curious_g99",
+      "bandit_counts": [],
+      "bandit_means": [],
+      "condition": "none",
+      "coverage": 1.0,
+      "curve": [
+        0.3125,
+        0.53125,
+        0.78125,
+        0.9375,
+        0.96875,
+        1.0
+      ],
+      "distinct_readings": 26,
+      "downstream": {
+        "fraction": 0.993421052631579,
+        "gpi": 0.84375,
+        "optimal": 0.85
+      },
+      "downstream_random": 0.1390625,
+      "model_accuracy": 1.0,
+      "steps_to_threshold": 40,
+      "task": 3
+    },
+    {
+      "arm": "curious_ungated",
+      "bandit_counts": [],
+      "bandit_means": [],
+      "condition": "none",
+      "coverage": 1.0,
+      "curve": [
+        0.3125,
+        0.53125,
+        0.78125,
+        0.90625,
+        1.0,
+        1.0
+      ],
+      "distinct_readings": 26,
+      "downstream": {
+        "fraction": 0.993421052631579,
+        "gpi": 0.84375,
+        "optimal": 0.85
+      },
+      "downstream_random": 0.1390625,
+      "model_accuracy": 1.0,
+      "steps_to_threshold": 40,
+      "task": 3
+    },
+    {
+      "arm": "curious_bandit",
+      "bandit_counts": [
+        2,
+        1,
+        2,
+        1
+      ],
+      "bandit_means": [
+        5.5,
+        7.0,
+        4.5,
+        5.0
+      ],
+      "condition": "none",
+      "coverage": 1.0,
+      "curve": [
+        0.3125,
+        0.53125,
+        0.78125,
+        0.9375,
+        0.96875,
+        1.0
+      ],
+      "distinct_readings": 26,
+      "downstream": {
+        "fraction": 0.993421052631579,
+        "gpi": 0.84375,
+        "optimal": 0.85
+      },
+      "downstream_random": 0.1390625,
+      "model_accuracy": 1.0,
+      "steps_to_threshold": 40,
+      "task": 3
+    },
+    {
+      "arm": "uniform",
+      "bandit_counts": [],
+      "bandit_means": [],
+      "condition": "random_walk",
+      "coverage": 0.625,
+      "curve": [
+        0.25,
+        0.5,
+        0.53125,
+        0.59375,
+        0.59375,
+        0.625
+      ],
+      "distinct_readings": 39,
+      "downstream": {
+        "fraction": 0.5328947368421053,
+        "gpi": 0.4015625,
+        "optimal": 0.85
+      },
+      "downstream_random": 0.1390625,
+      "model_accuracy": 1.0,
+      "steps_to_threshold": null,
+      "task": 3
+    },
+    {
+      "arm": "optimistic",
+      "bandit_counts": [],
+      "bandit_means": [],
+      "condition": "random_walk",
+      "coverage": 0.90625,
+      "curve": [
+        0.3125,
+        0.46875,
+        0.625,
+        0.71875,
+        0.8125,
+        0.90625
+      ],
+      "distinct_readings": 42,
+      "downstream": {
+        "fraction": 0.960608552631579,
+        "gpi": 0.8125,
+        "optimal": 0.85
+      },
+      "downstream_random": 0.1390625,
+      "model_accuracy": 1.0,
+      "steps_to_threshold": 60,
+      "task": 3
+    },
+    {
+      "arm": "curious_g50",
+      "bandit_counts": [],
+      "bandit_means": [],
+      "condition": "random_walk",
+      "coverage": 1.0,
+      "curve": [
+        0.3125,
+        0.53125,
+        0.78125,
+        0.90625,
+        0.96875,
+        1.0
+      ],
+      "distinct_readings": 41,
+      "downstream": {
+        "fraction": 0.993421052631579,
+        "gpi": 0.84375,
+        "optimal": 0.85
+      },
+      "downstream_random": 0.1390625,
+      "model_accuracy": 1.0,
+      "steps_to_threshold": 40,
+      "task": 3
+    },
+    {
+      "arm": "curious",
+      "bandit_counts": [],
+      "bandit_means": [],
+      "condition": "random_walk",
+      "coverage": 1.0,
+      "curve": [
+        0.3125,
+        0.53125,
+        0.78125,
+        0.9375,
+        0.96875,
+        1.0
+      ],
+      "distinct_readings": 40,
+      "downstream": {
+        "fraction": 0.993421052631579,
+        "gpi": 0.84375,
+        "optimal": 0.85
+      },
+      "downstream_random": 0.1390625,
+      "model_accuracy": 1.0,
+      "steps_to_threshold": 40,
+      "task": 3
+    },
+    {
+      "arm": "curious_g99",
+      "bandit_counts": [],
+      "bandit_means": [],
+      "condition": "random_walk",
+      "coverage": 1.0,
+      "curve": [
+        0.3125,
+        0.53125,
+        0.78125,
+        0.9375,
+        0.96875,
+        1.0
+      ],
+      "distinct_readings": 40,
+      "downstream": {
+        "fraction": 0.993421052631579,
+        "gpi": 0.84375,
+        "optimal": 0.85
+      },
+      "downstream_random": 0.1390625,
+      "model_accuracy": 1.0,
+      "steps_to_threshold": 40,
+      "task": 3
+    },
+    {
+      "arm": "curious_ungated",
+      "bandit_counts": [],
+      "bandit_means": [],
+      "condition": "random_walk",
+      "coverage": 0.96875,
+      "curve": [
+        0.3125,
+        0.53125,
+        0.75,
+        0.875,
+        0.96875,
+        0.96875
+      ],
+      "distinct_readings": 42,
+      "downstream": {
+        "fraction": 0.9654605263157895,
+        "gpi": 0.8171875,
+        "optimal": 0.85
+      },
+      "downstream_random": 0.1390625,
+      "model_accuracy": 1.0,
+      "steps_to_threshold": 50,
+      "task": 3
+    },
+    {
+      "arm": "curious_bandit",
+      "bandit_counts": [
+        2,
+        1,
+        2,
+        1
+      ],
+      "bandit_means": [
+        5.5,
+        7.0,
+        4.5,
+        5.0
+      ],
+      "condition": "random_walk",
+      "coverage": 1.0,
+      "curve": [
+        0.3125,
+        0.53125,
+        0.78125,
+        0.9375,
+        0.96875,
+        1.0
+      ],
+      "distinct_readings": 40,
+      "downstream": {
+        "fraction": 0.993421052631579,
+        "gpi": 0.84375,
+        "optimal": 0.85
+      },
+      "downstream_random": 0.1390625,
+      "model_accuracy": 1.0,
+      "steps_to_threshold": 40,
+      "task": 3
+    }
+  ],
+  "schema": "neural-computer.curious-exploration.v1",
+  "seconds": 218.73623358400073,
+  "seed": 99810,
+  "tasks": 4,
+  "threshold": 0.9,
+  "world_seed": 7000017
+}
