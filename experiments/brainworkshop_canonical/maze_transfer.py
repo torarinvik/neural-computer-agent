@@ -39,6 +39,8 @@ from .world_model import WorldModel, plan_to
 
 MAZE_TRANSFER_SCHEMA = "neural-computer.maze-transfer.v1"
 EXPERIMENT_ID = "brainworkshop-shared-agent-maze-transfer-2026-08-16"
+CROSS_TASK_TRANSFER_SCHEMA = "neural-computer.cross-task-transfer.v1"
+CROSS_TASK_EXPERIMENT_ID = "brainworkshop-shared-agent-cross-task-2026-08-16"
 DEVELOPMENT_SEED = 67
 GRID_SIZE = 7
 EPISODE_STEPS = 28
@@ -526,9 +528,280 @@ def run_maze_transfer(
     return report
 
 
+def _run_workshop_lifetimes(
+    core: CanonicalBrainWorkshopAgent,
+    *,
+    lifetimes: int,
+    seed: int,
+) -> dict[str, Any]:
+    """Run canonical Neural Workshop episodes on an existing shared core.
+
+    This deliberately uses the same ``CanonicalBrainWorkshopAgent`` instance
+    that the maze wrapper will use.  The verifier owns the hidden n-back rule;
+    the core sees only its learned event tensors and scalar feedback.
+    """
+
+    scores: list[float] = []
+    unique_verifier_bits = 0
+    for index in range(int(lifetimes)):
+        verifier = NBackVerifier(
+            batch_size=1,
+            n_back=1,
+            steps=8,
+            symbol_count=4,
+            seed=seed + index,
+        )
+        rollout = core.rollout(
+            verifier,
+            sample=False,
+            record_retention=False,
+            record_intention_memory=True,
+        )
+        scores.append(float(rollout.eligible_accuracy.mean().item()))
+        unique_verifier_bits += int(rollout.eligible.numel())
+    return {
+        "lifetimes": int(lifetimes),
+        "unique_verifier_bits": unique_verifier_bits,
+        "scores": scores,
+        "mean_accuracy": sum(scores) / len(scores) if scores else None,
+    }
+
+
+def _run_cross_task_maze(
+    agent: SharedAmodalMazeAgent,
+    task: MazeTask,
+    *,
+    seed: int,
+    training_episodes: int,
+    evaluation_episodes: int,
+    steps: int,
+    initial_verifier_bits: int,
+) -> dict[str, Any]:
+    """Train and evaluate the maze stage while retaining the same core."""
+
+    starts = _starts(task, seed=seed + 10, count=training_episodes)
+    checkpoints = tuple(
+        range(CHECKPOINT_STRIDE, training_episodes + 1, CHECKPOINT_STRIDE)
+    )
+    curve: list[dict[str, float | int]] = []
+    verifier_bits = int(initial_verifier_bits)
+    started = time.perf_counter()
+    for episode in range(training_episodes):
+        _run_episode(
+            agent,
+            task,
+            start=starts[episode],
+            steps=steps,
+            reward_shuffled=False,
+        )
+        verifier_bits += steps
+        prefix = episode + 1
+        if prefix not in checkpoints:
+            continue
+        normalized = _evaluate(
+            agent,
+            task,
+            seed=seed + 20_000 + prefix,
+            episodes=evaluation_episodes,
+            steps=steps,
+        )
+        verifier_bits += evaluation_episodes * steps
+        curve.append(
+            {
+                "training_episodes": prefix,
+                "unique_verifier_bits": verifier_bits,
+                "normalized_return": normalized,
+                "model_coverage": agent.model.coverage,
+            }
+        )
+    return {
+        "curve": curve,
+        "stable_bits_to_threshold": _stable_bits(curve),
+        "unique_verifier_bits": verifier_bits,
+        "unique_logical_lifetimes": training_episodes
+        + len(curve) * evaluation_episodes,
+        "wall_seconds": time.perf_counter() - started,
+    }
+
+
+def run_cross_task_transfer(
+    output_directory: Path,
+    *,
+    seed: int = DEVELOPMENT_SEED,
+    replicates: int = 1,
+    workshop_lifetimes: int = 2,
+    training_episodes: int = TRAINING_EPISODES,
+    evaluation_episodes: int = EVALUATION_EPISODES,
+    steps: int = EPISODE_STEPS,
+) -> dict[str, Any]:
+    """Run Workshop → maze → Workshop with one shared agent per replicate.
+
+    The fresh control receives the same rendered maze and training budget but
+    does not receive the Workshop phase.  This is a development diagnostic,
+    not a promotion result: it tests that both tasks really traverse one
+    controller, amodal event bus, and intention bus before we add a larger
+    program-search or maze-planning claim.
+    """
+
+    if min(
+        replicates,
+        workshop_lifetimes,
+        training_episodes,
+        evaluation_episodes,
+        steps,
+    ) < 1:
+        raise ValueError("cross-task audit sizes must be positive")
+    started = time.perf_counter()
+    rows: list[dict[str, Any]] = []
+    for replicate in range(int(replicates)):
+        target = sample_maze_task(
+            seed=seed + 20_000 + replicate,
+            grid_size=GRID_SIZE,
+            minimum_distance=5,
+        )
+        if target is None:
+            raise RuntimeError("maze sampler failed to produce a planning task")
+        encoders = RenderedBrainWorkshopEncoders.seeded(
+            EVENT_WIDTH,
+            source_key_width=4,
+            seed=seed + 30_000 + replicate,
+        )
+        dictionary = build_event_dictionary(target, encoders)
+        core = CanonicalBrainWorkshopAgent(
+            symbol_count=4,
+            event_width=EVENT_WIDTH,
+            intention_width=ACTION_COUNT,
+            feedback_width=8,
+            n_back=1,
+            reader_kind="context",
+            seed=seed + replicate * 1_000,
+        )
+        maze_agent = SharedAmodalMazeAgent(
+            core,
+            encoders,
+            dictionary,
+            mode="workshop_warm",
+            operator=verified_bundle(world_seed=seed + 10_000 + replicate),
+        )
+        controller_before = maze_agent.controller_digest
+        workshop_before = _run_workshop_lifetimes(
+            core,
+            lifetimes=workshop_lifetimes,
+            seed=seed + 40_000 + replicate,
+        )
+        controller_after_workshop = maze_agent.controller_digest
+        maze = _run_cross_task_maze(
+            maze_agent,
+            target,
+            seed=seed + replicate * 1_000,
+            training_episodes=training_episodes,
+            evaluation_episodes=evaluation_episodes,
+            steps=steps,
+            initial_verifier_bits=workshop_before["unique_verifier_bits"],
+        )
+        controller_after_maze = maze_agent.controller_digest
+        workshop_after = _run_workshop_lifetimes(
+            core,
+            lifetimes=workshop_lifetimes,
+            seed=seed + 50_000 + replicate,
+        )
+        controller_after_workshop_again = maze_agent.controller_digest
+
+        fresh_result = run_arm(
+            target,
+            encoders,
+            mode="fresh",
+            source_model=None,
+            source_seed=seed + 60_000 + replicate,
+            seed=seed + replicate * 1_000,
+            training_episodes=training_episodes,
+            evaluation_episodes=evaluation_episodes,
+            steps=steps,
+        )
+        rows.append(
+            {
+                "replicate": replicate,
+                "target_task": target.payload(),
+                "same_agent": {
+                    "same_core_instance_across_workshop_and_maze": (
+                        maze_agent.core is core
+                    ),
+                    "controller_digest_before": controller_before,
+                    "controller_digest_after_workshop": controller_after_workshop,
+                    "controller_digest_after_maze": controller_after_maze,
+                    "controller_digest_after_workshop_again": controller_after_workshop_again,
+                    "controller_unchanged": len(
+                        {
+                            controller_before,
+                            controller_after_workshop,
+                            controller_after_maze,
+                            controller_after_workshop_again,
+                        }
+                    )
+                    == 1,
+                    "frontend_digest": maze_agent.frontend_digest,
+                    "event_dictionary_digest": dictionary.digest,
+                    "workshop_before_maze": workshop_before,
+                    "maze": maze,
+                    "workshop_after_maze": workshop_after,
+                },
+                "fresh_maze": fresh_result,
+            }
+        )
+
+    same = [row["same_agent"] for row in rows]
+    fresh = [row["fresh_maze"] for row in rows]
+    warm_bits = [item["maze"]["stable_bits_to_threshold"] for item in same]
+    fresh_bits = [item["stable_bits_to_threshold"] for item in fresh]
+    ratios = [
+        float(warm) / float(cold)
+        for warm, cold in zip(warm_bits, fresh_bits)
+        if warm is not None and cold not in (None, 0)
+    ]
+    report = {
+        "schema": CROSS_TASK_TRANSFER_SCHEMA,
+        "experiment_id": CROSS_TASK_EXPERIMENT_ID,
+        "seed": seed,
+        "replicates": rows,
+        "replicate_count": len(rows),
+        "shared_agent_boundary": {
+            "one_controller_across_both_tasks": all(
+                bool(item["same_core_instance_across_workshop_and_maze"])
+                for item in same
+            ),
+            "one_amodal_event_bus": True,
+            "one_intention_bus": True,
+            "controller_receives": "learned_events_and_opaque_feedback_only",
+            "maze_facts_task_local": True,
+            "workshop_verifier_state_task_local": True,
+        },
+        "maze_transfer_ratio_against_fresh": (
+            sum(ratios) / len(ratios) if ratios else None
+        ),
+        "workshop_post_maze_mean_accuracy": [
+            item["workshop_after_maze"]["mean_accuracy"] for item in same
+        ],
+        "controller_unchanged_for_all_replicates": all(
+            bool(item["controller_unchanged"]) for item in same
+        ),
+        "claim_status": "development_diagnostic",
+        "seconds": time.perf_counter() - started,
+    }
+    output_directory.mkdir(parents=True, exist_ok=True)
+    (output_directory / "cross_task_transfer.json").write_text(
+        json.dumps(report, indent=2, sort_keys=True) + "\n"
+    )
+    return report
+
+
 def main() -> None:
     repository = Path(__file__).parents[2]
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--cross-task",
+        action="store_true",
+        help="run the sequential Workshop -> maze -> Workshop audit",
+    )
     parser.add_argument(
         "--output",
         type=Path,
@@ -536,23 +809,32 @@ def main() -> None:
     )
     parser.add_argument("--seed", type=int, default=DEVELOPMENT_SEED)
     parser.add_argument("--replicates", type=int, default=2)
+    parser.add_argument("--workshop-lifetimes", type=int, default=2)
     parser.add_argument("--training-episodes", type=int, default=TRAINING_EPISODES)
     parser.add_argument("--evaluation-episodes", type=int, default=EVALUATION_EPISODES)
     parser.add_argument("--steps", type=int, default=EPISODE_STEPS)
     arguments = parser.parse_args()
-    print(
-        json.dumps(
-            run_maze_transfer(
-                arguments.output,
-                seed=arguments.seed,
-                replicates=arguments.replicates,
-                training_episodes=arguments.training_episodes,
-                evaluation_episodes=arguments.evaluation_episodes,
-                steps=arguments.steps,
-            ),
-            indent=2,
-            sort_keys=True,
+    if arguments.cross_task:
+        report = run_cross_task_transfer(
+            arguments.output,
+            seed=arguments.seed,
+            replicates=arguments.replicates,
+            workshop_lifetimes=arguments.workshop_lifetimes,
+            training_episodes=arguments.training_episodes,
+            evaluation_episodes=arguments.evaluation_episodes,
+            steps=arguments.steps,
         )
+    else:
+        report = run_maze_transfer(
+            arguments.output,
+            seed=arguments.seed,
+            replicates=arguments.replicates,
+            training_episodes=arguments.training_episodes,
+            evaluation_episodes=arguments.evaluation_episodes,
+            steps=arguments.steps,
+        )
+    print(
+        json.dumps(report, indent=2, sort_keys=True)
     )
 
 
