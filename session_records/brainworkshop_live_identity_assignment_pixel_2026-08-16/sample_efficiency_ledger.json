@@ -1,0 +1,26 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment_id": "brainworkshop-live-identity-assignment-pixel-2026-08-16",
+  "status": "interface_pixel_diagnostic_not_promoted",
+  "source": "live_identity_assignment_pixel.json",
+  "seed_blocks": [],
+  "replication_count": 0,
+  "unique_verifier_bits": 0,
+  "unique_logical_lifetimes": 0,
+  "optimizer_updates": 0,
+  "replayed_examples": 24,
+  "wall_seconds": 0.0487875410,
+  "latency": "not measured separately from interface diagnostic",
+  "stable_bits_to_threshold": null,
+  "retention_on_mastered_primitive": "not_claimed",
+  "transfer_ratio_against_fresh_learner": null,
+  "controls": {
+    "rendered_rgb_frontend": true,
+    "separate_event_tensors": true,
+    "no_assignment_control": true,
+    "equal_evidence_abstention": true,
+    "frontend_digest_unchanged": true,
+    "curated_bank_unchanged": true
+  },
+  "claim_boundary": "Rendered-pixel transport and fail-closed interface only; caller evidence is not learned here, so no identity-learning, holdout, promotion, transfer, or curated-bank admission claim."
+}

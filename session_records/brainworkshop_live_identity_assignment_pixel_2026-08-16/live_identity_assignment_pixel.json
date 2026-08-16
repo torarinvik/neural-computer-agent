@@ -1,0 +1,32 @@
+{
+  "ambiguous_abstentions": 8,
+  "assignment_emissions": 8,
+  "bank_digest_after": "07319eb13c9cac58bbbe94258548e64f13ba1b3512ca2a01fbdc675c49e2e7c9",
+  "bank_digest_before": "07319eb13c9cac58bbbe94258548e64f13ba1b3512ca2a01fbdc675c49e2e7c9",
+  "bank_unchanged": true,
+  "claim_boundary": "Rendered-pixel transport and abstention only; caller evidence is not learned here, so no identity-learning, holdout, promotion, or curated-bank admission claim.",
+  "claim_status": "interface_pixel_diagnostic",
+  "event_counts": [
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2
+  ],
+  "experiment_id": "brainworkshop-live-identity-assignment-pixel-2026-08-16",
+  "frontend_digest_after": "bfff11bcf1560314a9f32d8bd3799b046921d7c5644ea7534ff53408bd69d31e",
+  "frontend_digest_before": "bfff11bcf1560314a9f32d8bd3799b046921d7c5644ea7534ff53408bd69d31e",
+  "frontend_unchanged": true,
+  "no_assignment_emissions": 8,
+  "optimizer_updates": 0,
+  "replayed_examples": 24,
+  "schema": "neural-computer.live-identity-assignment-pixel.v1",
+  "seed": 41,
+  "steps": 8,
+  "unique_logical_lifetimes": 0,
+  "unique_verifier_bits": 0,
+  "wall_seconds": 0.048787540988996625
+}
