@@ -41,6 +41,10 @@ BLOCKS: dict[str, tuple[int, ...]] = {
     # none of them is a holdout until the worlds themselves are unseen. Placed
     # above composition with the same clearance.
     "navigation_family_holdout": (7_000_017, 7_500_017, 8_000_017),
+    # Reserved for the integrated self-model claim. It is registered so a
+    # future run cannot accidentally reuse it, but remains unconsumed while
+    # the current mechanism fails the development safety gate.
+    "integrated_self_model_holdout": (9_000_017, 9_500_017, 10_000_017),
 }
 
 # One replicate of the integrated agent consumes `stride * tasks` seeds plus
