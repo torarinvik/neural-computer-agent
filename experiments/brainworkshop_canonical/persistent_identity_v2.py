@@ -173,7 +173,11 @@ def _pixel_events(
     encoders: RenderedBrainWorkshopEncoders,
     frame: torch.Tensor,
 ) -> AmodalEventCollection:
-    payload = encoders.vision(torch.stack(scene_slots(frame)))
+    # The diagnostic frontend is frozen.  Inference mode avoids constructing
+    # an autograd graph for every rendered tick, which otherwise dominates
+    # short closed-loop development runs without changing any tensor value.
+    with torch.inference_mode():
+        payload = encoders.vision(torch.stack(scene_slots(frame)))
     return AmodalEventCollection.from_events(
         [
             AmodalEvent(payload=payload[index : index + 1])
@@ -259,8 +263,15 @@ def _run_arm(
         local_artifact = (
             ExternalCausalIdentityArtifact() if arm == "episode_local" else local_artifact
         )
-        event_history: list[torch.Tensor] = []
-        action_history: list[torch.Tensor] = []
+        # Fixed-size buffers keep the short history view allocation-free.  The
+        # earlier list/stack path copied the complete prefix on every tick,
+        # turning a long development episode into an avoidable O(T^2) cost.
+        event_history = torch.empty(
+            steps, 2, EVENT_WIDTH, dtype=torch.float32
+        )
+        action_history = torch.empty(
+            max(1, steps), INTENTION_WIDTH, dtype=torch.float32
+        )
         pending: tuple[str, LiveActionReceipt, object, float] | None = None
         episode_row = {
             "episode": episode,
@@ -277,15 +288,15 @@ def _run_arm(
         }
         for step in range(int(steps)):
             events = _pixel_events(encoders, world.frame())
-            event_history.append(events.payload.squeeze(0).detach())
-            history = torch.stack(event_history).unsqueeze(0)
+            event_history[step].copy_(events.payload.squeeze(0))
+            history = event_history[: step + 1].unsqueeze(0)
             if arm == "oracle":
                 identity_evidence = torch.zeros(1, 2)
                 identity_evidence[0, world.controlled_slot] = 3.0
                 episode_row["statuses"].append("oracle")
                 episode_row["reasons"].append("evaluation_only")
             elif history.shape[1] >= 4:
-                actions = torch.stack(action_history).unsqueeze(0)
+                actions = action_history[:step].unsqueeze(0)
                 if arm == "persistent_v2":
                     assert persistent is not None
                     persistent.resolve(history, actions, episode_id=episode)
@@ -360,7 +371,7 @@ def _run_arm(
             episode_row["steps"] = step + 1
             totals["reward"] += reward
             totals["steps"] += 1
-            action_history.append(proposal.action.squeeze(0).detach())
+            action_history[step].copy_(proposal.action.squeeze(0))
             receipt_id += 1
             receipt = LiveActionReceipt(
                 receipt_id=receipt_id,
