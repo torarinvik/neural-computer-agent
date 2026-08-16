@@ -201,7 +201,7 @@ they remain recoverable from Git history.
 | Path | Purpose |
 | --- | --- |
 | `src/neural_computer/` | Production amodal runtime, memory, interpreter, and lifecycle contracts |
-| `experiments/brainworkshop_canonical/` | N-back frontier; Neural Workshop is the only gym |
+| `experiments/brainworkshop_canonical/` | Neural Workshop acquisition and shared-agent Maze/planning audits |
 | `experiments/recipe_expressibility/` | Program composition and control-flow audits |
 | `tests/` | Production and retained frontier tests |
 | `session_records/` | Curated promoted evidence and decisive current rejections |
@@ -213,6 +213,12 @@ they remain recoverable from Git history.
 ./scripts/test_canonical.sh
 ./scripts/lint_canonical.sh
 ```
+
+`test_canonical.sh` runs the fast contract/regression suite by default.
+Historical and current multi-minute research audits are retained, marked as
+campaign tests, and run explicitly with `./scripts/test_campaign.sh`. Use
+`./scripts/test_canonical.sh all` for the complete suite when a release or
+holdout gate requires it.
 
 Run the promoted bounded n-back growth audit with:
 

@@ -22,3 +22,6 @@ pythonpath = ["src", "."]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 addopts = "-ra"
+markers = [
+    "campaign: long-running archived research audit; excluded from the fast suite",
+]
