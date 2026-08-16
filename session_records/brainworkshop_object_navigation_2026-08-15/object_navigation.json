@@ -1,0 +1,238 @@
+{
+  "agent_bank_sha256": "07319eb13c9cac58bbbe94258548e64f13ba1b3512ca2a01fbdc675c49e2e7c9",
+  "agent_bank_unchanged": true,
+  "episode_steps": 20,
+  "experiment_id": "brainworkshop-object-navigation-2026-08-15",
+  "explore_episodes": 24,
+  "held_out_goals": 4,
+  "held_out_object": 0.5689453125,
+  "held_out_optimal": 0.645703125,
+  "held_out_random": 0.1162109375,
+  "held_out_scene": 0.1251953125,
+  "held_out_told": 0.5921875,
+  "held_out_wrong_goal": 0.13515625,
+  "mean_goals_identified": 24.0,
+  "mean_scene_alphabet": 36.0,
+  "mean_slot_alphabet": 8.0,
+  "rows": [
+    {
+      "explore_episodes": 24,
+      "goals_identified": 24,
+      "held_out_goals": {
+        "episodes": 32,
+        "object": 0.6640625,
+        "optimal": 0.7375,
+        "random": 0.14375,
+        "scene": 0.1203125,
+        "told": 0.6984374999999999,
+        "wrong_goal": 0.2265625
+      },
+      "model_coverage": 1.0,
+      "scene_alphabet": 36,
+      "slot_alphabet": 8,
+      "task": 0,
+      "trained_goals": {
+        "episodes": 32,
+        "object": 0.625,
+        "optimal": 0.69375,
+        "random": 0.10625,
+        "scene": 0.4796875,
+        "told": 0.6546875,
+        "wrong_goal": 0.0953125
+      }
+    },
+    {
+      "explore_episodes": 24,
+      "goals_identified": 24,
+      "held_out_goals": {
+        "episodes": 32,
+        "object": 0.671875,
+        "optimal": 0.7328125,
+        "random": 0.1375,
+        "scene": 0.1171875,
+        "told": 0.69375,
+        "wrong_goal": 0.12343749999999999
+      },
+      "model_coverage": 1.0,
+      "scene_alphabet": 36,
+      "slot_alphabet": 8,
+      "task": 1,
+      "trained_goals": {
+        "episodes": 32,
+        "object": 0.66875,
+        "optimal": 0.7359375,
+        "random": 0.1125,
+        "scene": 0.68125,
+        "told": 0.696875,
+        "wrong_goal": 0.1984375
+      }
+    },
+    {
+      "explore_episodes": 24,
+      "goals_identified": 24,
+      "held_out_goals": {
+        "episodes": 32,
+        "object": 0.80625,
+        "optimal": 0.846875,
+        "random": 0.125,
+        "scene": 0.215625,
+        "told": 0.846875,
+        "wrong_goal": 0.1890625
+      },
+      "model_coverage": 1.0,
+      "scene_alphabet": 36,
+      "slot_alphabet": 8,
+      "task": 2,
+      "trained_goals": {
+        "episodes": 32,
+        "object": 0.8015625,
+        "optimal": 0.84375,
+        "random": 0.125,
+        "scene": 0.79375,
+        "told": 0.84375,
+        "wrong_goal": 0.103125
+      }
+    },
+    {
+      "explore_episodes": 24,
+      "goals_identified": 24,
+      "held_out_goals": {
+        "episodes": 32,
+        "object": 0.3890625,
+        "optimal": 0.4546875,
+        "random": 0.096875,
+        "scene": 0.1296875,
+        "told": 0.3984375,
+        "wrong_goal": 0.10625
+      },
+      "model_coverage": 1.0,
+      "scene_alphabet": 36,
+      "slot_alphabet": 8,
+      "task": 3,
+      "trained_goals": {
+        "episodes": 32,
+        "object": 0.5890625,
+        "optimal": 0.7234375,
+        "random": 0.153125,
+        "scene": 0.3984375,
+        "told": 0.6109375,
+        "wrong_goal": 0.1265625
+      }
+    },
+    {
+      "explore_episodes": 24,
+      "goals_identified": 24,
+      "held_out_goals": {
+        "episodes": 32,
+        "object": 0.5328125,
+        "optimal": 0.6109375,
+        "random": 0.10781249999999999,
+        "scene": 0.0984375,
+        "told": 0.55,
+        "wrong_goal": 0.0875
+      },
+      "model_coverage": 0.9375,
+      "scene_alphabet": 36,
+      "slot_alphabet": 8,
+      "task": 4,
+      "trained_goals": {
+        "episodes": 32,
+        "object": 0.671875,
+        "optimal": 0.6984374999999999,
+        "random": 0.1421875,
+        "scene": 0.684375,
+        "told": 0.6984374999999999,
+        "wrong_goal": 0.109375
+      }
+    },
+    {
+      "explore_episodes": 24,
+      "goals_identified": 24,
+      "held_out_goals": {
+        "episodes": 32,
+        "object": 0.34375,
+        "optimal": 0.4515625,
+        "random": 0.0921875,
+        "scene": 0.11875,
+        "told": 0.35625,
+        "wrong_goal": 0.128125
+      },
+      "model_coverage": 1.0,
+      "scene_alphabet": 36,
+      "slot_alphabet": 8,
+      "task": 5,
+      "trained_goals": {
+        "episodes": 32,
+        "object": 0.675,
+        "optimal": 0.7421875,
+        "random": 0.1578125,
+        "scene": 0.690625,
+        "told": 0.703125,
+        "wrong_goal": 0.2640625
+      }
+    },
+    {
+      "explore_episodes": 24,
+      "goals_identified": 24,
+      "held_out_goals": {
+        "episodes": 32,
+        "object": 0.4796875,
+        "optimal": 0.6015625,
+        "random": 0.1109375,
+        "scene": 0.0390625,
+        "told": 0.503125,
+        "wrong_goal": 0.04375
+      },
+      "model_coverage": 1.0,
+      "scene_alphabet": 36,
+      "slot_alphabet": 8,
+      "task": 6,
+      "trained_goals": {
+        "episodes": 32,
+        "object": 0.5953125,
+        "optimal": 0.69375,
+        "random": 0.1390625,
+        "scene": 0.55,
+        "told": 0.6234375,
+        "wrong_goal": 0.078125
+      }
+    },
+    {
+      "explore_episodes": 24,
+      "goals_identified": 24,
+      "held_out_goals": {
+        "episodes": 32,
+        "object": 0.6640625,
+        "optimal": 0.7296875,
+        "random": 0.115625,
+        "scene": 0.16249999999999998,
+        "told": 0.690625,
+        "wrong_goal": 0.17656249999999998
+      },
+      "model_coverage": 1.0,
+      "scene_alphabet": 36,
+      "slot_alphabet": 8,
+      "task": 7,
+      "trained_goals": {
+        "episodes": 32,
+        "object": 0.7078125,
+        "optimal": 0.734375,
+        "random": 0.134375,
+        "scene": 0.6671875,
+        "told": 0.734375,
+        "wrong_goal": 0.153125
+      }
+    }
+  ],
+  "schema": "neural-computer.object-navigation.v1",
+  "seconds": 121.52307449991349,
+  "seed": 41,
+  "tasks": 8,
+  "trained_object": 0.666796875,
+  "trained_optimal": 0.733203125,
+  "trained_random": 0.1337890625,
+  "trained_scene": 0.6181640625,
+  "trained_told": 0.695703125,
+  "trained_wrong_goal": 0.141015625,
+  "training_goals": 4
+}
