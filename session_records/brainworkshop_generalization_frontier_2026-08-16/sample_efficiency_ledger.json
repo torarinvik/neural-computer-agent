@@ -1,0 +1,42 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment_id": "brainworkshop-operator-world-transfer-2026-08-16",
+  "status": "development_transfer_diagnostic_not_promoted",
+  "source": "operator_world_transfer.json",
+  "seed_blocks": [],
+  "replication_count": 2,
+  "unique_verifier_bits": {
+    "per_arm": 768,
+    "arms": 5,
+    "total": 3840
+  },
+  "unique_logical_lifetimes": {
+    "per_arm": 48,
+    "arms": 5,
+    "total": 240
+  },
+  "optimizer_updates": 0,
+  "replayed_examples": 0,
+  "wall_seconds": 0.06409083295147866,
+  "latency": "decision latency measured in operator_world_transfer.json",
+  "stable_bits_to_threshold": {
+    "reusable": [128, 128],
+    "fresh": [128, 256],
+    "raw_successor": [null, null]
+  },
+  "retention_on_mastered_primitive": "not claimed",
+  "transfer_ratio_against_fresh_learner": 0.75,
+  "controls": {
+    "changed_target_dynamics": true,
+    "fresh_learner": true,
+    "irrelevant_operator": true,
+    "corrupted_operator": true,
+    "raw_source_successor": true,
+    "cross_frontend": false,
+    "symbol_remapping": false,
+    "larger_action_space": false,
+    "occlusion": false,
+    "reserved_holdout_untouched": true
+  },
+  "claim_boundary": "Development-only world/dynamics transfer diagnostic. The reusable control-flow operator transfers while a raw source-world successor model fails, but cross-frontend, symbol, occlusion, and broad multimodal generalization remain untested."
+}

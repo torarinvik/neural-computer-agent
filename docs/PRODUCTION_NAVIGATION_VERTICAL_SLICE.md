@@ -61,6 +61,11 @@ the controller only through a caller-supplied feedback encoder.
   explicit context hypotheses for aliased learned events and improves useful
   prediction coverage under missing evidence. It is still symbolic-fixture
   evidence, not controller or navigation integration.
+- The generalization frontier audit in
+  `session_records/brainworkshop_generalization_frontier_2026-08-16` transfers
+  a verified control-flow operator across changed dynamics while a raw
+  source-world successor artifact fails. Cross-frontend and symbol-remapping
+  transfer remain open.
 
 ## Deliberate limits
 
@@ -77,6 +82,7 @@ corrupted persistent memory, and near-equivalent causal mimics. Rerun on fresh
 pixel rerenders with matched shuffled-action and fresh-learner controls before
 any bank admission. In parallel, carry the belief/mask through the learned
 event bus so ambiguity is preserved at the identity seam rather than collapsed
-into a slot guess. The assignment gate and artifacts are still an interface
-seam, not a promoted identity model; the current diagnostics and their
-artifacts are not in the curated bank.
+into a slot guess. Then run the explicit cross-frontend and symbol-remapping
+cells before claiming broad generalization. The assignment gate and artifacts
+are still an interface seam, not a promoted identity model; the current
+diagnostics and their artifacts are not in the curated bank.

@@ -1,0 +1,461 @@
+{
+  "accounting": {
+    "corrupted": {
+      "latency_ms_per_decision": 0.0003226588541666666,
+      "optimizer_updates": 0,
+      "replayed_examples": 0,
+      "retention_on_mastered_primitive": "not_claimed",
+      "stable_bits_to_threshold": [
+        null,
+        null
+      ],
+      "unique_logical_lifetimes": 48,
+      "unique_verifier_bits": 768,
+      "wall_seconds": 0.0014141660649329424
+    },
+    "fresh": {
+      "latency_ms_per_decision": 0.0010449192708333335,
+      "optimizer_updates": 0,
+      "replayed_examples": 0,
+      "retention_on_mastered_primitive": "not_claimed",
+      "stable_bits_to_threshold": [
+        128,
+        256
+      ],
+      "unique_logical_lifetimes": 48,
+      "unique_verifier_bits": 768,
+      "wall_seconds": 0.0021286250557750463
+    },
+    "irrelevant": {
+      "latency_ms_per_decision": 0.0010689218750000002,
+      "optimizer_updates": 0,
+      "replayed_examples": 0,
+      "retention_on_mastered_primitive": "not_claimed",
+      "stable_bits_to_threshold": [
+        128,
+        256
+      ],
+      "unique_logical_lifetimes": 48,
+      "unique_verifier_bits": 768,
+      "wall_seconds": 0.002106957952491939
+    },
+    "raw_successor": {
+      "latency_ms_per_decision": 0.051930679687499995,
+      "optimizer_updates": 0,
+      "replayed_examples": 0,
+      "retention_on_mastered_primitive": "not_claimed",
+      "stable_bits_to_threshold": [
+        null,
+        null
+      ],
+      "unique_logical_lifetimes": 48,
+      "unique_verifier_bits": 768,
+      "wall_seconds": 0.042112542083486915
+    },
+    "reusable": {
+      "latency_ms_per_decision": 0.0011484140625000003,
+      "optimizer_updates": 0,
+      "replayed_examples": 0,
+      "retention_on_mastered_primitive": "not_claimed",
+      "stable_bits_to_threshold": [
+        128,
+        128
+      ],
+      "unique_logical_lifetimes": 48,
+      "unique_verifier_bits": 768,
+      "wall_seconds": 0.0027948329225182533
+    }
+  },
+  "claim_status": "development_diagnostic",
+  "experiment_id": "brainworkshop-operator-world-transfer-2026-08-16",
+  "operator_bundle_is_world_independent": true,
+  "raw_successor_expected_to_transfer": false,
+  "replicate_count": 2,
+  "replicates": [
+    {
+      "arms": {
+        "corrupted": {
+          "arm": "corrupted",
+          "artifact_digest": null,
+          "bundle_digest": "d56f6bcd20e3520c2c1b0aa38edbf553aaf928ba6a576e1ac57ac9d1dc924255",
+          "curve": [
+            {
+              "coverage": 0.2222222222222222,
+              "normalized_return": 0.0,
+              "training_episodes": 4,
+              "unique_verifier_bits": 128
+            },
+            {
+              "coverage": 0.3333333333333333,
+              "normalized_return": 0.0,
+              "training_episodes": 8,
+              "unique_verifier_bits": 256
+            },
+            {
+              "coverage": 0.3333333333333333,
+              "normalized_return": 0.0,
+              "training_episodes": 12,
+              "unique_verifier_bits": 384
+            }
+          ],
+          "final_model_coverage": 0.3333333333333333,
+          "latency_ms_per_decision": 0.0003215572916666666,
+          "optimizer_updates": 0,
+          "replayed_examples": 0,
+          "retention_on_mastered_primitive": "not_claimed",
+          "stable_bits_to_threshold": null,
+          "unique_logical_lifetimes": 24,
+          "unique_verifier_bits": 384,
+          "wall_seconds": 0.0007071660365909338
+        },
+        "fresh": {
+          "arm": "fresh",
+          "artifact_digest": null,
+          "bundle_digest": null,
+          "curve": [
+            {
+              "coverage": 0.7222222222222222,
+              "normalized_return": 0.9041666666666667,
+              "training_episodes": 4,
+              "unique_verifier_bits": 128
+            },
+            {
+              "coverage": 0.7222222222222222,
+              "normalized_return": 0.9375,
+              "training_episodes": 8,
+              "unique_verifier_bits": 256
+            },
+            {
+              "coverage": 0.7777777777777778,
+              "normalized_return": 0.9375,
+              "training_episodes": 12,
+              "unique_verifier_bits": 384
+            }
+          ],
+          "final_model_coverage": 0.7777777777777778,
+          "latency_ms_per_decision": 0.0009312447916666669,
+          "optimizer_updates": 0,
+          "replayed_examples": 0,
+          "retention_on_mastered_primitive": "not_claimed",
+          "stable_bits_to_threshold": 128,
+          "unique_logical_lifetimes": 24,
+          "unique_verifier_bits": 384,
+          "wall_seconds": 0.0010289170313626528
+        },
+        "irrelevant": {
+          "arm": "irrelevant",
+          "artifact_digest": null,
+          "bundle_digest": "454749fe7b5cd43b532abce948915b2132349d0c556793aa3b6e76562415e63f",
+          "curve": [
+            {
+              "coverage": 0.7222222222222222,
+              "normalized_return": 0.9041666666666667,
+              "training_episodes": 4,
+              "unique_verifier_bits": 128
+            },
+            {
+              "coverage": 0.7222222222222222,
+              "normalized_return": 0.9375,
+              "training_episodes": 8,
+              "unique_verifier_bits": 256
+            },
+            {
+              "coverage": 0.7777777777777778,
+              "normalized_return": 0.9375,
+              "training_episodes": 12,
+              "unique_verifier_bits": 384
+            }
+          ],
+          "final_model_coverage": 0.7777777777777778,
+          "latency_ms_per_decision": 0.0009431979166666667,
+          "optimizer_updates": 0,
+          "replayed_examples": 0,
+          "retention_on_mastered_primitive": "not_claimed",
+          "stable_bits_to_threshold": 128,
+          "unique_logical_lifetimes": 24,
+          "unique_verifier_bits": 384,
+          "wall_seconds": 0.0010010829428210855
+        },
+        "raw_successor": {
+          "arm": "raw_successor",
+          "artifact_digest": "93f4dc9b7319d30cd34cb3d5407b9dcedd05b5a86321fc0a5cdca50841c26fea",
+          "bundle_digest": null,
+          "curve": [
+            {
+              "coverage": 0.4444444444444444,
+              "normalized_return": 0.75,
+              "training_episodes": 4,
+              "unique_verifier_bits": 128
+            },
+            {
+              "coverage": 0.6111111111111112,
+              "normalized_return": 0.0,
+              "training_episodes": 8,
+              "unique_verifier_bits": 256
+            },
+            {
+              "coverage": 0.7777777777777778,
+              "normalized_return": 0.25,
+              "training_episodes": 12,
+              "unique_verifier_bits": 384
+            }
+          ],
+          "final_model_coverage": 0.7777777777777778,
+          "latency_ms_per_decision": 0.05253821354166666,
+          "optimizer_updates": 0,
+          "replayed_examples": 0,
+          "retention_on_mastered_primitive": "not_claimed",
+          "stable_bits_to_threshold": null,
+          "unique_logical_lifetimes": 24,
+          "unique_verifier_bits": 384,
+          "wall_seconds": 0.021431584027595818
+        },
+        "reusable": {
+          "arm": "reusable",
+          "artifact_digest": null,
+          "bundle_digest": "f6fc3b88649852594a140b75d58bb264974d1805fe87de87410b47ce36bb21f8",
+          "curve": [
+            {
+              "coverage": 0.7777777777777778,
+              "normalized_return": 0.984375,
+              "training_episodes": 4,
+              "unique_verifier_bits": 128
+            },
+            {
+              "coverage": 0.8888888888888888,
+              "normalized_return": 0.9666666666666667,
+              "training_episodes": 8,
+              "unique_verifier_bits": 256
+            },
+            {
+              "coverage": 1.0,
+              "normalized_return": 1.0,
+              "training_episodes": 12,
+              "unique_verifier_bits": 384
+            }
+          ],
+          "final_model_coverage": 1.0,
+          "latency_ms_per_decision": 0.0011392864583333335,
+          "optimizer_updates": 0,
+          "replayed_examples": 0,
+          "retention_on_mastered_primitive": "not_claimed",
+          "stable_bits_to_threshold": 128,
+          "unique_logical_lifetimes": 24,
+          "unique_verifier_bits": 384,
+          "wall_seconds": 0.0016874580178409815
+        }
+      },
+      "operator_bundle": {
+        "digest": "f6fc3b88649852594a140b75d58bb264974d1805fe87de87410b47ce36bb21f8",
+        "exploration": "untried_first",
+        "invalidation": "rebuild_on_mismatch",
+        "planning": "safe_known_route",
+        "schema": "neural-computer.verified-operator-bundle.v1",
+        "source_family": "ring-v1",
+        "verified_world_seed": 9000,
+        "version": 1
+      },
+      "raw_successor_digest": "93f4dc9b7319d30cd34cb3d5407b9dcedd05b5a86321fc0a5cdca50841c26fea",
+      "replicate": 0,
+      "source_world_digest": "201b4272d04aa77aab82cfa3ef7edf5d5d5f7c258cbe3db81c9265a347bdd523",
+      "source_world_seed": 9000,
+      "target_world_digest": "ca42498c77ee6e2535638c3bd46f80cb5ebcb3ef0c0827294f91e7a9bd19d28c",
+      "target_world_seed": 12000
+    },
+    {
+      "arms": {
+        "corrupted": {
+          "arm": "corrupted",
+          "artifact_digest": null,
+          "bundle_digest": "7198216f917ea466d84973c1fc5773f8b37e431030ad5767cf882e388c72d162",
+          "curve": [
+            {
+              "coverage": 0.16666666666666666,
+              "normalized_return": 0.0,
+              "training_episodes": 4,
+              "unique_verifier_bits": 128
+            },
+            {
+              "coverage": 0.3333333333333333,
+              "normalized_return": 0.0,
+              "training_episodes": 8,
+              "unique_verifier_bits": 256
+            },
+            {
+              "coverage": 0.3333333333333333,
+              "normalized_return": 0.0,
+              "training_episodes": 12,
+              "unique_verifier_bits": 384
+            }
+          ],
+          "final_model_coverage": 0.3333333333333333,
+          "latency_ms_per_decision": 0.00032376041666666664,
+          "optimizer_updates": 0,
+          "replayed_examples": 0,
+          "retention_on_mastered_primitive": "not_claimed",
+          "stable_bits_to_threshold": null,
+          "unique_logical_lifetimes": 24,
+          "unique_verifier_bits": 384,
+          "wall_seconds": 0.0007070000283420086
+        },
+        "fresh": {
+          "arm": "fresh",
+          "artifact_digest": null,
+          "bundle_digest": null,
+          "curve": [
+            {
+              "coverage": 0.6666666666666666,
+              "normalized_return": 0.6541666666666667,
+              "training_episodes": 4,
+              "unique_verifier_bits": 128
+            },
+            {
+              "coverage": 0.8888888888888888,
+              "normalized_return": 1.0,
+              "training_episodes": 8,
+              "unique_verifier_bits": 256
+            },
+            {
+              "coverage": 0.8888888888888888,
+              "normalized_return": 0.9666666666666667,
+              "training_episodes": 12,
+              "unique_verifier_bits": 384
+            }
+          ],
+          "final_model_coverage": 0.8888888888888888,
+          "latency_ms_per_decision": 0.0011585937500000001,
+          "optimizer_updates": 0,
+          "replayed_examples": 0,
+          "retention_on_mastered_primitive": "not_claimed",
+          "stable_bits_to_threshold": 256,
+          "unique_logical_lifetimes": 24,
+          "unique_verifier_bits": 384,
+          "wall_seconds": 0.0010997080244123936
+        },
+        "irrelevant": {
+          "arm": "irrelevant",
+          "artifact_digest": null,
+          "bundle_digest": "454749fe7b5cd43b532abce948915b2132349d0c556793aa3b6e76562415e63f",
+          "curve": [
+            {
+              "coverage": 0.6666666666666666,
+              "normalized_return": 0.6541666666666667,
+              "training_episodes": 4,
+              "unique_verifier_bits": 128
+            },
+            {
+              "coverage": 0.8888888888888888,
+              "normalized_return": 1.0,
+              "training_episodes": 8,
+              "unique_verifier_bits": 256
+            },
+            {
+              "coverage": 0.8888888888888888,
+              "normalized_return": 0.9666666666666667,
+              "training_episodes": 12,
+              "unique_verifier_bits": 384
+            }
+          ],
+          "final_model_coverage": 0.8888888888888888,
+          "latency_ms_per_decision": 0.0011946458333333336,
+          "optimizer_updates": 0,
+          "replayed_examples": 0,
+          "retention_on_mastered_primitive": "not_claimed",
+          "stable_bits_to_threshold": 256,
+          "unique_logical_lifetimes": 24,
+          "unique_verifier_bits": 384,
+          "wall_seconds": 0.0011058750096708536
+        },
+        "raw_successor": {
+          "arm": "raw_successor",
+          "artifact_digest": "8c828af73ce773e6ea80c61dd34eaeae186faedb0095feb589653421252321d2",
+          "bundle_digest": null,
+          "curve": [
+            {
+              "coverage": 0.5555555555555556,
+              "normalized_return": 0.5,
+              "training_episodes": 4,
+              "unique_verifier_bits": 128
+            },
+            {
+              "coverage": 0.8888888888888888,
+              "normalized_return": 0.25,
+              "training_episodes": 8,
+              "unique_verifier_bits": 256
+            },
+            {
+              "coverage": 0.8888888888888888,
+              "normalized_return": 0.0,
+              "training_episodes": 12,
+              "unique_verifier_bits": 384
+            }
+          ],
+          "final_model_coverage": 0.8888888888888888,
+          "latency_ms_per_decision": 0.051323145833333327,
+          "optimizer_updates": 0,
+          "replayed_examples": 0,
+          "retention_on_mastered_primitive": "not_claimed",
+          "stable_bits_to_threshold": null,
+          "unique_logical_lifetimes": 24,
+          "unique_verifier_bits": 384,
+          "wall_seconds": 0.020680958055891097
+        },
+        "reusable": {
+          "arm": "reusable",
+          "artifact_digest": null,
+          "bundle_digest": "4659b9d356df59d112d4cb3c756918599eaec5f4a6400d5f847dc45e77c5619f",
+          "curve": [
+            {
+              "coverage": 0.8888888888888888,
+              "normalized_return": 0.984375,
+              "training_episodes": 4,
+              "unique_verifier_bits": 128
+            },
+            {
+              "coverage": 1.0,
+              "normalized_return": 1.0,
+              "training_episodes": 8,
+              "unique_verifier_bits": 256
+            },
+            {
+              "coverage": 1.0,
+              "normalized_return": 1.0,
+              "training_episodes": 12,
+              "unique_verifier_bits": 384
+            }
+          ],
+          "final_model_coverage": 1.0,
+          "latency_ms_per_decision": 0.001157541666666667,
+          "optimizer_updates": 0,
+          "replayed_examples": 0,
+          "retention_on_mastered_primitive": "not_claimed",
+          "stable_bits_to_threshold": 128,
+          "unique_logical_lifetimes": 24,
+          "unique_verifier_bits": 384,
+          "wall_seconds": 0.0011073749046772718
+        }
+      },
+      "operator_bundle": {
+        "digest": "4659b9d356df59d112d4cb3c756918599eaec5f4a6400d5f847dc45e77c5619f",
+        "exploration": "untried_first",
+        "invalidation": "rebuild_on_mismatch",
+        "planning": "safe_known_route",
+        "schema": "neural-computer.verified-operator-bundle.v1",
+        "source_family": "ring-v1",
+        "verified_world_seed": 9037,
+        "version": 1
+      },
+      "raw_successor_digest": "8c828af73ce773e6ea80c61dd34eaeae186faedb0095feb589653421252321d2",
+      "replicate": 1,
+      "source_world_digest": "7c2dd39598419d02c5441f60f96d33a54cf7e487fc247b085ce9742f3aa0c733",
+      "source_world_seed": 9037,
+      "target_world_digest": "ad5521a73d526efcf48292d67b1c8fd90ff03087df1fede43eaf022612dc01e0",
+      "target_world_seed": 12037
+    }
+  ],
+  "schema": "neural-computer.operator-world-transfer.v1",
+  "seconds": 0.06409083295147866,
+  "seed": 41,
+  "stable_threshold": 0.75,
+  "transfer_ratio_against_fresh_learner": 0.75
+}
