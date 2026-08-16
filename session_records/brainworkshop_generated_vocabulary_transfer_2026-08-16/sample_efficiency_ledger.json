@@ -1,0 +1,45 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment_id": "brainworkshop-generated-vocabulary-transfer-2026-08-16",
+  "status": "development_diagnostic_not_promoted",
+  "source": "generated_vocabulary_transfer.json",
+  "seed_blocks": [],
+  "replication_count": 3,
+  "unique_verifier_bits": {
+    "retained": 768,
+    "fresh": 1344,
+    "irrelevant": 768,
+    "corrupted": 768
+  },
+  "unique_logical_lifetimes_all_arms": 48,
+  "optimizer_updates": 0,
+  "replayed_examples": 0,
+  "wall_seconds": 0.0021722094,
+  "latency": {
+    "unit": "milliseconds per event",
+    "by_arm": {
+      "retained": 0.0006483283,
+      "fresh": 0.0006178387,
+      "irrelevant": 0.0007033973,
+      "corrupted": 0.0008588334
+    }
+  },
+  "stable_bits_to_threshold": {
+    "threshold": 0.95,
+    "by_arm": {
+      "retained": [64, 64, 64],
+      "fresh": [256, 256, 256],
+      "irrelevant": [null, null, null],
+      "corrupted": [null, null, null]
+    }
+  },
+  "retention_on_mastered_primitive": "not_claimed",
+  "transfer_ratio_against_fresh_learner": 0.25,
+  "controls": {
+    "irrelevant_vocabulary": true,
+    "corrupted_artifact": true,
+    "fresh_verification_before_admission": true,
+    "agent_bank_unchanged": true
+  },
+  "claim_boundary": "Development finite-event diagnostic only; no rendered-stream holdout, runtime, promotion, or curated-bank admission claim."
+}
