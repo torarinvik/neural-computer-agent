@@ -407,6 +407,11 @@ from .human_io import (
     pcm_rms,
     query_sck_windows,
 )
+from .identity import (
+    EXTERNAL_IDENTITY_ASSIGNMENT_SCHEMA,
+    ExternalCausalIdentityAssignment,
+    ExternalIdentityAssignment,
+)
 from .induced_library import (
     INDUCED_LIBRARY_EXTENSION,
     INDUCED_PROGRAM_LIBRARY_SCHEMA,
@@ -1138,6 +1143,7 @@ __all__ = [
     "EXTERNAL_GOAL_REPRESENTATION_ALIGNMENT_VERIFICATION_SCHEMA",
     "EXTERNAL_GOAL_REPRESENTATION_RANDOM_FEATURE_ALIGNMENT_SCHEMA",
     "EXTERNAL_GOAL_REPRESENTATION_RANDOM_FEATURE_GROWTH_SCHEMA",
+    "EXTERNAL_IDENTITY_ASSIGNMENT_SCHEMA",
     "EXTERNAL_INTENTION_ADMISSION_SCHEMA",
     "EXTERNAL_INTENTION_CONSOLIDATION_SCHEMA",
     "EXTERNAL_INTENTION_EXPLORATION_SCHEMA",
@@ -1477,6 +1483,7 @@ __all__ = [
     "ExternalCapabilityReusableComputeLibrary",
     "ExternalCapabilitySharedResidualBank",
     "ExternalCapabilityState",
+    "ExternalCausalIdentityAssignment",
     "ExternalComputeCandidateScreen",
     "ExternalContextAddressResolver",
     "ExternalContextResolution",
@@ -1541,6 +1548,7 @@ __all__ = [
     "ExternalGoalRepresentationRandomFeatureAlignmentStatistics",
     "ExternalGoalRepresentationRandomFeatureGrowthReceipt",
     "ExternalGrowthPrior",
+    "ExternalIdentityAssignment",
     "ExternalIntentionAdmissionReceipt",
     "ExternalIntentionCompositionExplorer",
     "ExternalIntentionConsolidationReceipt",

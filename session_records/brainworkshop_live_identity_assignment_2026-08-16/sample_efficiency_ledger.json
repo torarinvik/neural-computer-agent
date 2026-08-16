@@ -1,0 +1,22 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment_id": "brainworkshop-live-identity-assignment-2026-08-16",
+  "status": "interface_diagnostic_not_promoted",
+  "source": "live_identity_assignment.json",
+  "seed_blocks": [],
+  "replication_count": 0,
+  "unique_verifier_bits": 0,
+  "unique_logical_lifetimes": 0,
+  "optimizer_updates": 0,
+  "replayed_examples": 0,
+  "wall_seconds": 0.0,
+  "latency": "not measured separately from unit tests",
+  "stable_bits_to_threshold": null,
+  "retention_on_mastered_primitive": "not_claimed",
+  "transfer_ratio_against_fresh_learner": null,
+  "controls": {
+    "equal_evidence_abstention": true,
+    "bank_unchanged": true
+  },
+  "claim_boundary": "No experience accounting claim; this is a transport/interface diagnostic only."
+}

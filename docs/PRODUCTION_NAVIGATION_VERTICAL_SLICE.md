@@ -6,6 +6,7 @@ The first live production boundary for navigation is now explicit in
 ```text
 learned event collection
         -> frozen amodal controller state
+        -> external causal identity assignment (or explicit abstention)
         -> external factual transition search
         -> opaque learned intention
         -> replaceable protocol decoder
@@ -30,6 +31,10 @@ the controller only through a caller-supplied feedback encoder.
 - The production adapter has no access to verifier coordinates, task/rule IDs,
   cluster maps, or scoring oracles. A source-level guard and focused tests
   enforce that boundary.
+- A caller-owned `ExternalCausalIdentityAssignment` may select among opaque
+  goal-state candidates from learned evidence. A low-margin assignment emits no
+  action rather than guessing, and the selected slot is retained only in
+  receipt-local credit metadata.
 
 ## Deliberate limits
 
@@ -42,3 +47,6 @@ this adapter.
 The next production step is to supply a temporary external transition/self
 artifact through this boundary, run valid pixel-level controls, and compare its
 stable learning curve with a matched fresh learner before any bank admission.
+The assignment gate is an interface seam, not a promoted identity model; the
+collision diagnostic remains synthetic and its artifact is not in the curated
+bank.

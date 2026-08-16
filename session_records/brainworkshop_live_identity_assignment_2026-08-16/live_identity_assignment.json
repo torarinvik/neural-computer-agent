@@ -1,0 +1,22 @@
+{
+  "schema": "neural-computer.live-identity-assignment-interface.v1",
+  "experiment_id": "brainworkshop-live-identity-assignment-2026-08-16",
+  "status": "interface_diagnostic_not_promoted",
+  "source": "tests/test_navigation_runtime.py",
+  "unique_verifier_bits": 0,
+  "unique_logical_lifetimes": 0,
+  "optimizer_updates": 0,
+  "replayed_examples": 0,
+  "stable_bits_to_threshold": null,
+  "retention_on_mastered_primitive": "not_claimed",
+  "transfer_ratio_against_fresh_learner": null,
+  "controls": {
+    "high_margin_selection": true,
+    "equal_evidence_abstention": true,
+    "receipt_local_identity_credit": true,
+    "protocol_feedback_width_guard": true,
+    "production_oracle_source_guard": true,
+    "curated_bank_unchanged": true
+  },
+  "claim_boundary": "Interface contract only; no pixel-level rerender, learned assignment behavior, holdout, promotion, transfer, or curated-bank admission claim."
+}

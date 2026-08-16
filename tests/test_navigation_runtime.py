@@ -11,6 +11,7 @@ from neural_computer import (
     AmodalEvent,
     AmodalEventCollection,
     ControllerFeedback,
+    ExternalCausalIdentityAssignment,
     ExternalModelBasedPlanner,
     LiveActionReceipt,
     LiveOutcomeEvent,
@@ -152,6 +153,61 @@ def test_policy_free_machine_requires_a_protocol_to_feedback_encoder() -> None:
         assert "feedback encoder" in str(error)
     else:
         raise AssertionError("protocol action bypassed the feedback encoder")
+
+
+def test_identity_assignment_selects_opaque_goal_state_and_is_credited() -> None:
+    baseline, events = _machine()
+    state_width = baseline.runtime.planner.model.state_width
+    goals = torch.zeros(2, state_width)
+    goals[0, 0] = 1.0
+    goals[1, 0] = -1.0
+    machine = PolicyFreeAmodalLiveMachine(
+        baseline.runtime,
+        baseline.decoder,
+        goal_state=goals[:1].clone(),
+        goal_state_candidates=goals,
+        identity_assignment=ExternalCausalIdentityAssignment(margin=0.2),
+        candidate_intentions=baseline.candidate_intentions,
+        output_key="opaque",
+    )
+    proposals = machine.tick(
+        events,
+        (),
+        now=0.0,
+        elapsed=0.0,
+        identity_evidence=torch.tensor([[3.0, 0.0]]),
+    )
+    assert len(proposals) == 1
+    assert machine.last_output is not None
+    assert torch.equal(machine.last_output.goal_state, goals[:1])
+    assert machine.last_identity_assignment is not None
+    assert not bool(machine.last_identity_assignment.abstained[0])
+    assert proposals[0].credit_state.identity_slot_id == 0
+
+
+def test_identity_assignment_abstains_without_emitting_a_guessed_action() -> None:
+    baseline, events = _machine()
+    state_width = baseline.runtime.planner.model.state_width
+    machine = PolicyFreeAmodalLiveMachine(
+        baseline.runtime,
+        baseline.decoder,
+        goal_state=torch.zeros(1, state_width),
+        goal_state_candidates=torch.zeros(2, state_width),
+        identity_assignment=ExternalCausalIdentityAssignment(margin=0.2),
+        candidate_intentions=baseline.candidate_intentions,
+        output_key="opaque",
+    )
+    proposals = machine.tick(
+        events,
+        (),
+        now=0.0,
+        elapsed=0.0,
+        identity_evidence=torch.tensor([[1.0, 1.0]]),
+    )
+    assert proposals == ()
+    assert machine.last_output is None
+    assert machine.last_identity_assignment is not None
+    assert bool(machine.last_identity_assignment.abstained[0])
 
 
 def test_production_slice_has_no_navigation_oracle_dependency() -> None:
