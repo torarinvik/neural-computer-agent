@@ -45,6 +45,12 @@ class RuleAutomaton:
     symbol_count: int
     transitions: tuple[tuple[int, ...], ...]
     outputs: tuple[tuple[int, ...], ...]
+    # How many actions the output alphabet ranges over. Two is press-or-not,
+    # which is what every rule in this repository was until now and what this
+    # still defaults to, so nothing binary changes. Above two, an output is a
+    # *choice*, and the feedback the agent gets from a wrong one stops being
+    # equivalent to the right one -- which is the whole point.
+    action_count: int = 2
     schema: str = RULE_AUTOMATON_SCHEMA
 
     @property
@@ -56,6 +62,8 @@ class RuleAutomaton:
             raise ValueError("unsupported rule automaton schema")
         if self.symbol_count < 2:
             raise ValueError("a rule automaton needs at least two symbols")
+        if self.action_count < 2:
+            raise ValueError("a rule automaton needs at least two actions")
         if not self.transitions or len(self.transitions) != len(self.outputs):
             raise ValueError("rule automaton rows are inconsistent")
         for row, out in zip(self.transitions, self.outputs, strict=True):
@@ -63,8 +71,8 @@ class RuleAutomaton:
                 raise ValueError("rule automaton rows must cover every symbol")
             if any(not 0 <= state < self.state_count for state in row):
                 raise ValueError("rule automaton transition leaves the state set")
-            if any(bit not in (0, 1) for bit in out):
-                raise ValueError("rule automaton output must be a press bit")
+            if any(not 0 <= int(bit) < self.action_count for bit in out):
+                raise ValueError("rule automaton output is outside the action set")
         return self
 
     def expected(self, symbols: torch.Tensor | list[int]) -> list[int]:
@@ -83,12 +91,17 @@ class RuleAutomaton:
 
     def payload(self) -> dict[str, object]:
         self.validate()
-        return {
+        payload = {
             "schema": self.schema,
             "symbol_count": self.symbol_count,
             "transitions": [list(row) for row in self.transitions],
             "outputs": [list(row) for row in self.outputs],
         }
+        # Written only when it is not the binary default, so every digest
+        # recorded before actions were a choice still means what it meant.
+        if self.action_count != 2:
+            payload["action_count"] = self.action_count
+        return payload
 
     def digest(self) -> str:
         """Canonical identity: minimise, relabel, then hash."""
@@ -166,6 +179,7 @@ def minimize(automaton: RuleAutomaton) -> RuleAutomaton:
         symbol_count=automaton.symbol_count,
         transitions=merged_transitions,
         outputs=merged_outputs,
+        action_count=automaton.action_count,
     ).validate()
 
 
@@ -185,6 +199,7 @@ def canonicalize(automaton: RuleAutomaton) -> RuleAutomaton:
                 order.append(target)
     index = {state: number for number, state in enumerate(order)}
     return RuleAutomaton(
+        action_count=reduced.action_count,
         symbol_count=reduced.symbol_count,
         transitions=tuple(
             tuple(index[int(reduced.transitions[state][symbol])] for symbol in range(reduced.symbol_count))
@@ -214,11 +229,38 @@ def positive_rate(
     return presses / total if total else 0.0
 
 
+def best_constant_rate(
+    automaton: RuleAutomaton, *, seed: int, steps: int = 512, episodes: int = 8
+) -> float:
+    """How well the best single fixed action does, on uniform symbol streams.
+
+    `positive_rate` answers this for two actions only, and answers it
+    obliquely: a press rate of 0.9 means "always press" scores 0.9. With more
+    than two actions the majority action is what a learner has to beat, and it
+    is no longer read off a single number. This is the baseline every
+    multi-action result has to be reported against.
+    """
+
+    generator = torch.Generator().manual_seed(int(seed))
+    counts = [0] * automaton.action_count
+    total = 0
+    for _ in range(episodes):
+        symbols = torch.randint(
+            0, automaton.symbol_count, (steps,), generator=generator
+        )
+        for action in automaton.expected(symbols):
+            counts[int(action)] += 1
+            total += 1
+    return max(counts) / total if total else 0.0
+
+
 def sample_rule(
     *,
     symbol_count: int,
     state_count: int,
     seed: int,
+    action_count: int = 2,
+    maximum_constant_rate: float | None = None,
     minimum_positive_rate: float = 0.15,
     maximum_positive_rate: float = 0.85,
     attempts: int = 256,
@@ -233,23 +275,40 @@ def sample_rule(
 
     if state_count < 1:
         raise ValueError("a rule needs at least one state")
+    if action_count < 2:
+        raise ValueError("a rule needs at least two actions")
     generator = torch.Generator().manual_seed(int(seed))
     for attempt in range(attempts):
         transitions = torch.randint(
             0, state_count, (state_count, symbol_count), generator=generator
         )
-        outputs = torch.randint(0, 2, (state_count, symbol_count), generator=generator)
+        outputs = torch.randint(
+            0, action_count, (state_count, symbol_count), generator=generator
+        )
         candidate = RuleAutomaton(
             symbol_count=symbol_count,
             transitions=tuple(tuple(int(v) for v in row) for row in transitions),
             outputs=tuple(tuple(int(v) for v in row) for row in outputs),
+            action_count=action_count,
         )
         reduced = canonicalize(candidate)
         if reduced.state_count != state_count:
             continue
-        rate = positive_rate(reduced, seed=seed + attempt)
-        if not minimum_positive_rate <= rate <= maximum_positive_rate:
-            continue
+        if maximum_constant_rate is None:
+            # The historical window, kept exactly so every rule sampled before
+            # actions were a choice is sampled the same way now.
+            rate = positive_rate(reduced, seed=seed + attempt)
+            if not minimum_positive_rate <= rate <= maximum_positive_rate:
+                continue
+        else:
+            # The measurable quantity at any action count: what a learner has
+            # to beat is the best single fixed answer. Applied at two actions
+            # as well -- a first version applied it only above two, which let
+            # binary rules into a comparison at constant rates up to 0.835
+            # while three-action rules were held to 0.6, and made the binary
+            # column incomparable with the rest.
+            if best_constant_rate(reduced, seed=seed + attempt) > maximum_constant_rate:
+                continue
         return reduced
     return None
 

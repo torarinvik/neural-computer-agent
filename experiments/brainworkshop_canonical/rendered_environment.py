@@ -109,6 +109,16 @@ class RenderedBrainWorkshopConfig:
 
     @property
     def action_count(self) -> int:
+        """How many responses the protocol allows.
+
+        For the sampled-rule task this is the rule's own action set, which is
+        two unless the rule was drawn with more -- so every binary rule keeps
+        the two-action protocol it always had, and a multi-action rule brings
+        its own without the verifier needing to be told separately.
+        """
+
+        if self.match_rule == "automaton" and self.rule is not None:
+            return int(getattr(self.rule, "action_count", 2))
         return 1 << len(self.streams)
 
 
@@ -185,7 +195,9 @@ def _generate_automaton_symbols(
     symbols = torch.randint(
         0, config.symbol_count, (config.steps,), generator=generator
     )
-    expected = torch.tensor(config.rule.expected(symbols), dtype=torch.bool)
+    # Long rather than bool: an expected *action* is not a flag once there are
+    # more than two of them, and the n-back path keeps its own bool tensors.
+    expected = torch.tensor(config.rule.expected(symbols), dtype=torch.long)
     return symbols, expected
 
 

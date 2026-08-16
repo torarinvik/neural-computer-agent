@@ -110,6 +110,10 @@ class InducedProgramRecord:
     alphabet: int
     signature: tuple[int, ...]
     provenance: dict[str, Any] = field(default_factory=dict)
+    # How many answers this program can give. Two -- press or not -- is what
+    # every record written before answers were a choice holds, and what this
+    # still defaults to, so those files load and digest exactly as they did.
+    action_count: int = 2
     schema: str = INDUCED_PROGRAM_RECORD_SCHEMA
 
     def validate(self) -> InducedProgramRecord:
@@ -124,15 +128,17 @@ class InducedProgramRecord:
             raise ValueError("an induced program needs at least two symbols")
         if not self.signature:
             raise ValueError("an induced program record needs a signature")
-        if any(bit not in (0, 1) for bit in self.signature):
-            raise ValueError("a signature is a press bit per canonical step")
+        if self.action_count < 2:
+            raise ValueError("an induced program needs at least two actions")
+        if any(not 0 <= int(bit) < self.action_count for bit in self.signature):
+            raise ValueError("a signature step is outside the action set")
         if not isinstance(self.provenance, dict):
             raise TypeError("provenance must be a mapping")
         return self
 
     def payload(self) -> dict[str, Any]:
         self.validate()
-        return {
+        payload = {
             "schema": self.schema,
             "program": self.program.payload(),
             "initial_counters": list(self.initial_counters),
@@ -140,6 +146,12 @@ class InducedProgramRecord:
             "signature": list(self.signature),
             "provenance": json.loads(json.dumps(self.provenance, sort_keys=True)),
         }
+        # Written only when it is not the binary default, so every record and
+        # every library digest recorded before answers were a choice is
+        # byte-identical to what it was.
+        if self.action_count != 2:
+            payload["action_count"] = self.action_count
+        return payload
 
     @classmethod
     def from_payload(cls, payload: object) -> InducedProgramRecord:
@@ -153,6 +165,7 @@ class InducedProgramRecord:
             alphabet=int(payload["alphabet"]),
             signature=tuple(int(bit) for bit in payload["signature"]),
             provenance=dict(payload.get("provenance") or {}),
+            action_count=int(payload.get("action_count", 2)),
         ).validate()
 
     def digest(self) -> str:
