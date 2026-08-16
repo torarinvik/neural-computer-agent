@@ -7,6 +7,7 @@ import pytest
 
 from experiments.brainworkshop_canonical.self_model_adversarial import (
     CONDITIONS,
+    MIMIC_VARIANTS,
     run_self_model_adversarial,
 )
 from neural_computer.promotion import sha256_file
@@ -44,6 +45,25 @@ def test_adversarial_audit_is_accounted_and_fails_closed(tmp_path) -> None:
         "likelihood_only_honest",
         "likelihood_only_poisoned",
     }
+    assert set(report["baseline_arms"]) == {
+        "episodic_identity",
+        "remembered_likelihood_only",
+        "remembered_likelihood_gated",
+        "remembered_likelihood_controllable",
+    }
+    assert set(report["near_mimics"]) == set(MIMIC_VARIANTS)
+    assert report["mechanism"] == {
+        "applicability_margin": 0.25,
+        "controllability_weight": 2.0,
+        "frozen_for_holdout": True,
+    }
+    assert report["poisoned_recovery"][0]["confidently_wrong"] == 1.0
+    assert report["poisoned_recovery"][-1]["confidently_wrong"] <= 1.0
+    reversal = report["rows"][0]["reversal_stream"]
+    assert reversal["detected"]
+    assert reversal["recovered"]
+    assert reversal["detection_events"]
+    assert reversal["recovery_events"]
     # Exact observational equivalence has no evidence-supported identity.
     assert report["conditions"]["mimicked"]["abstained"] == 1.0
     assert report["conditions"]["mimicked"]["confidently_wrong"] == 0.0

@@ -12,8 +12,8 @@
   },
   "unique_logical_lifetimes_all_arms": 240,
   "optimizer_updates": 0,
-  "replayed_examples": 9600,
-  "wall_seconds": 35.76660479197744,
+  "replayed_examples": 19740,
+  "wall_seconds": 75.65117166703567,
   "latency": "not measured separately from the offline diagnostic",
   "stable_bits_to_threshold": null,
   "retention_on_mastered_primitive": "not claimed",
@@ -23,8 +23,14 @@
     "transplanted_model": true,
     "poisoned_initialization": true,
     "unannounced_dynamics_change": true,
+    "causal_quarantine_and_recovery": true,
     "exact_dynamic_mimic": true,
+    "delayed_mimic": true,
+    "partial_mimic": true,
+    "stochastic_mimic": true,
+    "independent_controller_distractor": true,
+    "explicit_baseline_arms": true,
     "agent_bank_unchanged": true
   },
-  "claim_boundary": "Development-seed rejection of the current guarded persistent self model as a safe mechanism: it escapes a poisoned fixed point and abstains under exact equivalence, but remains confidently wrong on 15% of episodes immediately after a dynamics change. No holdout, recovery, retention, transfer, admission, or live-runtime claim."
+  "claim_boundary": "Development-seed rejection of the current guarded persistent self model as a safe mechanism: it escapes a poisoned fixed point, detects and retries after unannounced dynamics changes, and abstains under exact equivalence, but remains confidently wrong on 9.2% of the causal reversal stream after recovery and 13.3% under partial mimicry. No holdout, retention, transfer, admission, or live-runtime claim."
 }

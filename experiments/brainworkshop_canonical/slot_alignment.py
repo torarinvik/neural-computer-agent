@@ -70,6 +70,11 @@ from itertools import product
 from typing import Any
 
 SLOT_ALIGNMENT_SCHEMA = "neural-computer.slot-alignment.v1"
+# Frozen on the development self-model audit. Future holdout runs must use
+# these values unchanged; changing them creates a new mechanism, not a
+# replication.
+SELF_APPLICABILITY_MARGIN = 0.25
+SELF_CONTROLLABILITY_WEIGHT = 2.0
 
 # Enumerating every track-to-part map costs parts ** tracks. Scenes here hold a
 # handful of markers; the guard is so that a caller who wires this to a richer
@@ -782,8 +787,8 @@ def self_posterior(
     counts,
     *,
     alphabet: int,
-    applicability_margin: float = 0.25,
-    controllability_weight: float = 2.0,
+    applicability_margin: float = SELF_APPLICABILITY_MARGIN,
+    controllability_weight: float = SELF_CONTROLLABILITY_WEIGHT,
 ) -> list[float]:
     """A belief over which track is me, rather than a decision.
 
@@ -952,6 +957,8 @@ def identify_roles(
 
 __all__ = [
     "MAXIMUM_TRACKS",
+    "SELF_APPLICABILITY_MARGIN",
+    "SELF_CONTROLLABILITY_WEIGHT",
     "SLOT_ALIGNMENT_SCHEMA",
     "SYMBOL_CHANGE_WEIGHT",
     "UNTRIED_INFORMATION",

@@ -18,7 +18,7 @@ Three development worlds, forty twenty-step episodes per distinct stream.
 | --- | ---: | ---: | ---: | ---: |
 | honest | 0.992 | 0.008 | 0.891 | 0.108 |
 | transplanted model | 0.025 | **0.975** | 0.500 | 0.008 |
-| dynamics changed | 0.175 | 0.825 | **0.071** | **0.150** |
+| dynamics changed, causal quarantine/recovery | 0.800 | 0.200 | **0.885** | **0.092** |
 | poisoned initialization | 1.000 | 0.000 | 0.817 | 0.183 |
 | exact dynamic mimic | 0.000 | **1.000** | n/a | **0.000** |
 
@@ -26,11 +26,26 @@ Two controls work for the intended reason. A model from an unrelated world
 mostly refuses to name anything, and two dynamically identical tracks produce
 complete abstention rather than a tie-broken 50% "accuracy".
 
-The changed-world condition fails the safety claim. The model usually
-abstains, but when it does name a track it is wrong almost every time. A 15%
-confident-error rate is not usable by a downstream world model. This run tests
-the frozen model immediately after the change; it does **not** claim online
-recovery, because no causal invalidation-and-relearning mechanism exists yet.
+The causal reversal now fits before the change, scores each post-change episode
+against the live model, quarantines on applicability collapse, and rebuilds
+from post-change evidence only. It detects the first failure in post-change
+episodes 0, 1, and 0 across the three worlds, and first recovery occurs at
+episodes 1, 2, and 1. The mechanism can re-enter quarantine, but it still has a
+9.2% confidently-wrong rate after recovery and therefore fails the safety gate.
+Detection and recovery are measured, not claimed as solved.
+
+The near-mimic controls are deliberately harder than exact symmetry:
+
+| control | named | abstained | precision when named | confidently wrong |
+| --- | ---: | ---: | ---: | ---: |
+| delayed copy | 0.975 | 0.025 | 0.906 | 0.092 |
+| partial response | 0.983 | 0.017 | 0.865 | **0.133** |
+| stochastic copy | 0.983 | 0.017 | 0.907 | 0.092 |
+| independent controller | 1.000 | 0.000 | 0.958 | 0.042 |
+
+These controls show that exact-mimic abstention does not generalize to
+near-equivalent causal ambiguity. They remain diagnostics, not promotion
+claims.
 
 ## What the new terms bought, and cost
 
@@ -40,6 +55,17 @@ The exact pre-audit likelihood posterior is retained as an ablation.
 | --- | ---: | ---: | ---: |
 | likelihood only | **0.925** | **0.000** | **1.000** |
 | applicability guard + controllability | 0.891 | **0.817** | 0.183 |
+
+The complete baseline ladder is recorded in the JSON report: episodic identity
+only; remembered likelihood; likelihood plus applicability gating; and the
+full likelihood-plus-controllability mechanism. The honest precisions are
+0.792, 0.925, 0.933, and 0.891 respectively. The poisoned confidently-wrong
+rates are 1.000, 1.000, 1.000, and 0.183.
+
+Starting from the poisoned posterior and applying the guarded update repeatedly
+reduces confidently-wrong from 1.000 to 0.817 after six passes, but never to a
+safe zero-error condition. This is recovery from a poisoned initialization as a
+measured curve, not a success claim.
 
 The old posterior is a self-confirming loop: start it on the wrong track and
 six re-fitting passes leave every episode confidently wrong. The guarded
@@ -57,8 +83,8 @@ further tuning on a future holdout block.
 - unique verifier bits: 4,800;
 - unique logical lifetimes: 240;
 - optimizer updates: 0;
-- replayed episode histories: 9,600;
-- wall time: 35.77 seconds;
+- replayed episode histories: 19,740;
+- wall time: 75.65 seconds;
 - stable bits-to-threshold: not applicable; no mastery threshold;
 - primitive retention: not claimed;
 - transfer ratio against a fresh learner: not claimed.
@@ -77,17 +103,20 @@ for its actual meaning, and the bank digest is asserted before and after the
 run.
 
 The earlier reversal arm retrospectively re-fitted one model over episodes
-from both worlds. That is not change detection. It was replaced with the
-causal question this mechanism can currently answer: what does the frozen
-self model believe on the first post-change episodes, before hindsight?
+from both worlds. That is not change detection. It is now a causal stream with
+frozen pre-change weights, explicit quarantine, post-change-only rebuilding,
+per-episode detection/recovery events, and repeated invalidation when the
+replacement becomes inapplicable. Exact and near-mimic transforms are
+recomputed from synthetic traces without paying new verifier interactions.
 
 ## Claim boundary and next gate
 
 This does not spend a holdout block and does not justify promotion, admission,
-or persistent use in the live runtime. The next mechanism must explicitly
-invalidate or quarantine a self model when its predictive evidence collapses,
-then measure detection and recovery online. Only a frozen mechanism with a
-pre-registered confident-error gate should receive new holdout worlds.
+or persistent use in the live runtime. The current mechanism detects some
+changes and escapes the poisoned fixed point, but its post-recovery confident
+errors and near-mimic failures are too large for a downstream world model.
+Only a new frozen mechanism with a pre-registered confident-error gate should
+receive new holdout worlds.
 
 ## Reproducing
 

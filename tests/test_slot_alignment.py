@@ -185,6 +185,20 @@ def test_a_self_model_refuses_when_it_explains_no_track() -> None:
     )
 
 
+def test_self_posterior_is_a_normalized_nonnegative_belief() -> None:
+    histories = [
+        _history([(0, 0, 1), (1, 1, 2), (2, 0, 3)]),
+        _history([(4, 0, 4), (4, 1, 4), (4, 0, 4)]),
+    ]
+
+    def successor(symbol: int, action: int):
+        return {(0, 0): {1: 5.0}, (1, 1): {2: 5.0}}.get((symbol, action))
+
+    posterior = self_posterior(histories, successor, alphabet=8)
+    assert all(value >= 0.0 for value in posterior)
+    assert sum(posterior) == pytest.approx(1.0)
+
+
 def test_identical_dynamics_produce_abstention_not_a_tie_broken_name() -> None:
     history = _history([(0, 0, 1), (1, 1, 3), (3, 0, 2), (2, 1, 0)])
     counts = {
