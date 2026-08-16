@@ -162,6 +162,55 @@ def test_a_negative_weight_makes_the_stored_policies_wrong() -> None:
     assert sum(stitched_values) > sum(best_single)
 
 
+def test_one_store_serves_every_mixing_weight_exactly() -> None:
+    """Why Agent57's two value heads have nothing to do here.
+
+    Agent57 splits Q into extrinsic and intrinsic heads because one shared
+    function approximator cannot hold two reward scales at once -- their
+    ablation drops a game to random-policy scores without it. That is a fact
+    about representational interference, and psi in cumulant space has none:
+    value is linear in the task, so a single stored occupancy answers
+    `w_e + beta * w_i` exactly, for every beta, with no second store and
+    nothing recomputed.
+    """
+
+    model = _world(9)
+    places = model.place_count
+    policy = greedy_policy(model, reach(places, 2), discount=DISCOUNT)
+    psi = successor_features(model, policy, discount=DISCOUNT)
+    extrinsic = reach(places, 2)
+    intrinsic = torch.rand(places, dtype=torch.float64)
+    for beta in (0.0, 0.25, 1.0, 4.0, 100.0):
+        combined = policy_values(psi, policy, extrinsic + beta * intrinsic)
+        separate = [
+            a + beta * b
+            for a, b in zip(
+                policy_values(psi, policy, extrinsic),
+                policy_values(psi, policy, intrinsic),
+            )
+        ]
+        assert combined == pytest.approx(separate, abs=1e-9)
+
+
+def test_a_one_hot_task_has_the_same_policy_at_every_discount() -> None:
+    """Why a family of horizons had nothing to choose between.
+
+    In a deterministic world the greedy policy for "be at place p" is the
+    shortest route to p, and shortest is shortest at any discount in (0, 1).
+    So a policy family parameterised by horizon is degenerate here by
+    construction, not by this world happening to be small -- a family that
+    differs has to differ in its *cumulants*.
+    """
+
+    model = _world(3)
+    for place in range(model.place_count):
+        policies = {
+            greedy_policy(model, reach(model.place_count, place), discount=discount)
+            for discount in (0.5, 0.8, 0.95, 0.99)
+        }
+        assert len(policies) == 1
+
+
 def test_improvement_needs_something_stored() -> None:
     with pytest.raises(ValueError, match="needs a stored policy"):
         generalised_policy_improvement([], 0, reach(4, 1))

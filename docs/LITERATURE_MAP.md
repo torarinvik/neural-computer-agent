@@ -560,6 +560,35 @@ lifetime. Our seed-ledger discipline (never re-spend experience) and the
 per-episode intersection rule in `identify_goal` are the two timescales in
 primitive form.
 
+### S6 outcome, measured 2026-08-16
+
+Run in `brainworkshop_curious_exploration_2026-08-16`. Four mechanisms went in;
+the entries above should be read against what came out.
+
+- **CONFIRMED — novelty as a weight vector.** Coverage 0.802 -> 0.984 at a
+  60-step budget, downstream 0.845 -> 0.916 on held-out goals. Successor
+  features made it cheap for the predicted reason: the task changes every step
+  and the occupancies do not.
+- **CONFIRMED — the noisy television, and the gate.** The ungated arm loses
+  0.984 -> 0.938 coverage and 10 steps under a random-walk distractor; the
+  gated arm is bit-identical across both conditions. The prediction written
+  above was correct, and the controllability measure from the identity record
+  is what supplies the gate.
+- **PARTLY WITHDRAWN — most of the gain is optimism.** Trying an untried
+  action, then wandering, gets 0.922 alone. Novelty is worth 0.062 of the
+  0.182 gained over uniform. The mechanism works; the effect is small on a
+  32-cell world.
+- **CONTRADICTED — Agent57's split heads have nothing to do here.** Their
+  ablation is about representational interference in a shared approximator.
+  Value is linear in the task, so one psi answers `w_e + beta*w_i` exactly for
+  every beta. Asserted as a test; there is no arm to run.
+- **CONTRADICTED — the policy family is degenerate.** Discounts 0.5, 0.95 and
+  0.99 give identical coverage, because in a deterministic world the greedy
+  policy for "be at place p" is the shortest route at any discount (8 of 8
+  base tasks). A family that differs must differ in its **cumulants**, not its
+  horizon -- which is what the Option Keyboard actually varies, and points
+  straight at S8.
+
 ## S7. The model is value-blind and the planner is exact — is that the right
 corner? (world_model.py, successor_features.py)
 
@@ -634,12 +663,12 @@ needs no actions.
 
 ## What this changes (second sweep)
 
-1. **Exploration is the nearest actionable item** (S6): novelty cumulants +
-   GPI + a two-store split is a complete tabular Agent57 skeleton, every part
-   of which exists in the repo today.
-2. **Un-gated curiosity has a predicted failure we can already reproduce**
-   (S6): the `random_walk` distractor is the noisy TV. Gate novelty by the
-   matched-contrast controllability we shipped in `slot_alignment`.
+1. ~~**Exploration is the nearest actionable item**~~ (S6): **done**, see the
+   S6 outcome above. Novelty-as-`w` confirmed; the split heads and the horizon
+   family did not survive contact.
+2. ~~**Un-gated curiosity has a predicted failure we can already reproduce**~~
+   (S6): **done and confirmed**. The `random_walk` distractor degrades the
+   ungated arm and leaves the gated arm untouched.
 3. **Pairwise cumulants are the exit from "goals are places"** (S8): a
    relation table over slot pairs, then `w` over relations — no new learning
    machinery.
