@@ -16,28 +16,87 @@ Four worlds, twenty-step episodes, six relations, three of which were never a
 reward. Normalised so the worst achievable is 0 and exact finite-horizon
 optimal is 1.
 
-| | integrated | told_all | random | orientation | identification right |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| trained relations | **0.644** | 0.963 | 0.310 | 3.6 / 20 | 0.524 |
-| held-out relations | **0.520** | 0.806 | 0.265 | 3.6 / 20 | 0.471 |
+| | integrated | told_all | random | identification right |
+| --- | ---: | ---: | ---: | ---: |
+| trained relations | **0.598** | 0.865 | 0.310 | 0.542 |
+| held-out relations | **0.610** | 0.773 | 0.265 | 0.515 |
 
-**Taking away the oracles costs about a third of optimal.** 0.963 falls to
-0.644, and 0.806 falls to 0.520. The integrated agent is still twice
-acting-blindly, so it works -- but the per-axis records overstate it by
-roughly 0.3, and that gap is the honest position of the system.
+**Taking away the oracles costs about a quarter of optimal**, with the self
+model in place: 0.865 falls to 0.598 and 0.773 to 0.610. Without it the same
+agent scores 0.557 and 0.537, so a third of the gap is closed by remembering
+who it was last episode and the rest is still open. The integrated agent is
+roughly twice acting-blindly either way -- it works, and the per-axis records
+overstate it.
 
 **Selecting the cut is free.** Description length chose components in every
 task of every world, which is what the decomposition record predicted, so the
 whole of the shortfall is identification.
 
-**The agent knows which marker it is about half the time.** 0.524 and 0.471 of
-scored steps. It also spends 3.6 of 20 steps oriented at nothing, acting at
-random while the correspondence search gathers enough history to say anything,
-and those steps are charged rather than run off the clock.
+**The agent knows which marker it is about half the time**, online, and the
+next section is about why that is the number to look at rather than the 0.92 it
+reaches offline.
 
 The model it builds is only slightly worse than the oracled one -- coverage
 0.954 against 0.978 -- so the damage is not mainly in what it learns. It is in
 not knowing, at each step, which configuration it is in.
+
+> An earlier version of this run let the exploration policy consult the oracle
+> to decide which action was untried, which chose the integrated arm's
+> trajectory for it. Fixed: the policy is keyed on the raw reading, which needs
+> no identification. That moved every arm, `told_all` included, from 0.963 to
+> 0.865 on trained relations -- so the numbers here are lower than the ones in
+> the sweep tables below, which were taken before the fix and are kept as
+> relative comparisons rather than absolutes.
+
+## Identity as a persistent cause: the one thing that worked
+
+Every mechanism up to here re-derived "which marker am I" from a single
+episode's evidence, while the world stayed the same world across all forty.
+Carrying a **self model** across episodes -- my place, under my action -- and
+re-fitting it by alternating "which track was me" with "what do I do" over
+frames already collected changes that. No new experience is spent; it is
+arithmetic over experience already paid for.
+
+It only works **soft**. Both variants were run:
+
+| variant | identification, by re-fitting pass |
+| --- | --- |
+| hard: name a track, learn its dynamics | 0.47 0.47 0.47 0.47 0.47 0.47 |
+| | 0.42 0.42 0.42 0.42 0.42 0.42 |
+| | 0.53 0.53 0.53 0.53 0.53 0.53 |
+| **soft: weight by posterior** | **0.88 0.93 0.95 0.95 0.95 0.95** |
+| | **0.78 0.82 0.85 0.85 0.85 0.88** |
+| | **0.90 0.90 0.93 0.93 0.93 0.93** |
+
+**The hard loop never moves.** It reaches its fixed point in one pass, because
+a model learned from a wrong naming re-confirms that naming -- a self-confirming
+identity loop. Weighting each episode by a likelihood-derived posterior lets an
+ambiguous episode contribute almost nothing instead of a confident mistake, and
+identification climbs from **0.47 to 0.92**.
+
+Thresholded agreement was replaced by likelihood for the same reason: a track
+seen twice and agreeing twice is not the claim a track seen twenty times and
+agreeing eighteen makes, and a ratio cannot tell them apart.
+
+### And it only partly reaches the behaviour
+
+| self model | trained | held out | identification, online |
+| --- | ---: | ---: | ---: |
+| none | 0.557 | 0.537 | 0.481 |
+| hard | 0.612 | 0.536 | 0.547 |
+| **soft posterior** | 0.598 | **0.610** | 0.542 |
+
+Held-out return improves by 0.073, about a quarter of the remaining distance to
+the oracled arm. But **online identification moves only 0.48 to 0.54**, against
+0.92 offline, and that gap is the honest headline. The self model is learned
+well; applying it inside a *fresh* episode still needs enough within-episode
+history to score the tracks against, and the early steps of an episode do not
+have it. Knowing what I do is not the same as knowing, right now, which of
+these two markers is doing it.
+
+**This is a development-seed result and is not held out.** The holdout block
+was spent on the five component records. A fresh block, with the success
+criterion written before the run, is what this needs before it counts.
 
 ## Two obvious fixes, both measured, both worse
 
@@ -89,10 +148,14 @@ component records; this has not been held out and should be.
 one compounding rather than four. Cut selection is free and exploration and the
 goal language were never oracled.
 
-**The orientation protocol is crude**: act at random until the search says
-something. A probe policy designed to *disambiguate* -- take the action whose
-outcome most separates the candidate correspondences -- is the obvious thing
-and is not tried here.
+**Designing the probe does not work, and four attempts say so.** Choosing the
+action whose outcome most separates the surviving correspondences scores 0.640
+against random's 0.644; adding a term for unpredictable outcomes drops it to
+0.573; seeking untried actions alone gives 0.577; and seeking *matched
+contrasts* -- the thing controllability is actually measured from -- gives
+0.642. Random probing is already near-optimal, because a matched contrast needs
+the same place left by two different actions, and every systematic policy
+produces fewer of those than chance does. The bottleneck was never the policy.
 
 **`told_all` is itself a development-seed number** from the relational record,
 whose held-out sub-claim the holdout weakened. The 0.3 gap is against a

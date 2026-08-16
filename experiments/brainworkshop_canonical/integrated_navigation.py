@@ -28,6 +28,21 @@ same agent as `told_all` and reporting both would have dressed one number as
 two. What the cut selection is worth is reported instead as the bits it
 scored and the cut it chose, which is the honest form of "this step was free".
 
+**Identity is a persistent cause, not an episode-local puzzle.** Every
+mechanism before this re-derived "which marker am I" from one episode's
+evidence, while the world stayed the same world across all forty. The self
+model here accumulates across episodes and is re-fitted by alternating "which
+track was me" with "what do I do" over the frames already collected -- no new
+experience, only arithmetic over experience already paid for.
+
+That has to be **soft**, and the hard version is kept so the reason stays
+measurable. Name the wrong track once, learn its dynamics, and that model names
+it again: the hard loop reaches its fixed point after a single pass and never
+moves, at 0.42-0.53 identification. Weighting each episode's contribution by a
+likelihood-derived posterior instead lets an ambiguous episode contribute
+almost nothing rather than a confident mistake, and identification climbs to
+0.85-0.95.
+
 **Orientation is charged.** The correspondence search needs a stretch of
 history before it can say anything, so the agent spends its first steps acting
 randomly and watching. Those steps are scored like any other. An agent that
@@ -66,7 +81,17 @@ from .relational_transfer import (
     joint_ceiling,
     target_circuit,
 )
-from .slot_alignment import Tracker, TrackHistory, beam_track, identify_roles
+from .slot_alignment import (
+    Tracker,
+    TrackHistory,
+    beam_hypotheses,
+    beam_track,
+    contrasting_action,
+    disambiguating_action,
+    identify_by_model,
+    identify_roles,
+    self_posterior,
+)
 from .successor_features import (
     DEFAULT_DISCOUNT,
     generalised_policy_improvement,
@@ -97,6 +122,29 @@ ARMS = ("integrated", "told_all", "random")
 # measured best, which are also the simplest.
 MINIMUM_CONTRASTS = 0
 REORIENT = False
+# Choose probe actions for what they will reveal rather than at random. The
+# beam recovers correspondence at twenty-four steps and not at twelve, and
+# waiting was measured to be the wrong answer -- so buy the steps back by
+# making each one more informative.
+# "disagree" designs a probe to separate correspondences; "contrast" designs
+# one to create the matched pairs controllability is measured from; "random"
+# does neither.
+PROBE = "random"
+# Carry what the agent has learned about its own dynamics from one episode into
+# the next. Every earlier mechanism re-derived identity from scratch each
+# episode, judging only that episode's evidence, while the world stayed the
+# same world all along.
+REMEMBER_SELF = True
+# Passes of alternating "which track was me" and "what do I do", over the
+# episodes already collected. One online pass cannot converge: the model is
+# built from identifications that are half wrong, so it is a mixture and
+# cannot then discriminate. Re-deciding every stored episode against the
+# current model and rebuilding is the ordinary fix, and it costs no new
+# experience -- only arithmetic over experience already paid for.
+SELF_MODEL_PASSES = 6
+# Soft rather than hard. A hard choice reaches its fixed point in one pass and
+# never moves, because a model learned from a wrong naming re-confirms it.
+SOFT_SELF_MODEL = True
 
 
 def select_cut(reader: SlotReader, encoders, task: NavigationTask, *, seed: int):
@@ -127,8 +175,9 @@ class SearchedReader:
     measured, wired together and paying their own way.
     """
 
-    def __init__(self, reader: SlotReader) -> None:
+    def __init__(self, reader: SlotReader, successor=None) -> None:
         self.reader = reader
+        self.successor = successor
         self.tracker: Tracker | None = None
         self.own: int | None = None
         self._pending: list[tuple[int, int]] = []
@@ -199,6 +248,23 @@ class SearchedReader:
                 histories[track].observe(
                     before[track], self._actions[step], after[track]
                 )
+        # A self-model from earlier episodes answers this far better than one
+        # episode's worth of controllability can, and abstains when it has
+        # nothing to say -- which is exactly the first episode.
+        if self.successor is not None:
+            posterior = self_posterior(histories, self.successor, alphabet=alphabet)
+            named = (
+                max(range(len(posterior)), key=lambda i: posterior[i])
+                if posterior
+                else None
+            )
+            if named is not None and named < len(trace[-1]):
+                symbol = int(trace[-1][named])
+                if self.tracker is not None:
+                    for index, value in enumerate(self.tracker.symbols):
+                        if int(value) == symbol:
+                            self.own = index
+                            return True
         roles = identify_roles(histories, alphabet=alphabet)
         if roles.own is None:
             return False
@@ -217,6 +283,20 @@ class SearchedReader:
                 self.own = index
                 return True
         return False
+
+    def probe(self, *, alphabet: int, action_count: int) -> int | None:
+        """An action chosen to separate the correspondences still standing."""
+
+        if len(self._readings) < 2:
+            return None
+        hypotheses = beam_hypotheses(
+            self._readings,
+            self._actions[: len(self._readings) - 1],
+            alphabet=alphabet,
+        )
+        if PROBE == "contrast":
+            return contrasting_action(hypotheses, action_count=action_count)
+        return disambiguating_action(hypotheses, action_count=action_count)
 
     def configuration(self, *, alphabet: int) -> tuple[int, int] | None:
         if self.tracker is None or self.own is None:
@@ -248,6 +328,7 @@ def run_integrated_episode(
     cluster_of_place,
     alphabet: int,
     seed: int,
+    self_model=None,
 ) -> tuple[float, int, float]:
     """One episode: the score, the orientation cost, and how often it was right.
 
@@ -259,7 +340,11 @@ def run_integrated_episode(
         task, circuit, start=start, target=target, relation=relation, steps=steps
     )
     generator = torch.Generator().manual_seed(int(seed))
-    searched = SearchedReader(reader) if arm == "integrated" else None
+    searched = (
+        SearchedReader(reader, successor=self_model)
+        if arm == "integrated"
+        else None
+    )
     total = 0.0
     scored = 0
     spent = 0
@@ -284,9 +369,17 @@ def run_integrated_episode(
         ):
             correct += 1
         if arm == "random" or configuration is None:
-            action = int(
-                torch.randint(0, task.action_count, (1,), generator=generator).item()
-            )
+            action = None
+            if configuration is None and searched is not None and PROBE != "random":
+                action = searched.probe(
+                    alphabet=alphabet, action_count=task.action_count
+                )
+            if action is None:
+                action = int(
+                    torch.randint(
+                        0, task.action_count, (1,), generator=generator
+                    ).item()
+                )
             if configuration is None:
                 spent += 1
         else:
@@ -304,7 +397,7 @@ def run_integrated_episode(
     )
 
 
-def explore(
+def collect(
     reader: SlotReader,
     task: NavigationTask,
     circuit: tuple[int, ...],
@@ -314,11 +407,13 @@ def explore(
     steps: int,
     seed: int,
     cluster_of_place,
-) -> WorldModel:
-    """Build the configuration model, under this arm's identification."""
+):
+    """Walk the world once and keep the frames, so they can be re-read."""
 
-    joint = WorldModel(reader.alphabet * reader.alphabet, task.action_count)
     generator = torch.Generator().manual_seed(int(seed))
+    collected = []
+    tried: set = set()
+    joint = WorldModel(reader.alphabet * reader.alphabet, task.action_count)
     for episode in range(episodes):
         start = int(torch.randint(0, PLACE_COUNT, (1,), generator=generator).item())
         target = int(torch.randint(0, PLACE_COUNT, (1,), generator=generator).item())
@@ -330,37 +425,30 @@ def explore(
             relation=TRAINED_RELATIONS[0],
             steps=steps,
         )
-        searched = SearchedReader(reader) if arm == "integrated" else None
-        last_action: int | None = None
-        previous: int | None = None
+        readings: list[Any] = []
+        actions: list[int] = []
+        oracle: list[int] = []
+        state: int | None = None
         while not verifier.done:
-            frame = verifier.observation()
-            if searched is not None:
-                searched.observe(frame, last_action=last_action)
-                if REORIENT or not searched.oriented:
-                    searched.orient(alphabet=reader.alphabet)
-                configuration = searched.configuration(alphabet=reader.alphabet)
-            else:
-                symbols = [symbol for _, symbol in reader.read(frame)]
-                mine = int(cluster_of_place[verifier.place])
-                others = [symbol for symbol in symbols if symbol != mine]
-                configuration = (mine, others[0] if others else mine)
-            state = (
-                None
-                if configuration is None
-                else joint_state(*configuration, place_count=reader.alphabet)
+            parts = reader.read(verifier.observation())
+            readings.append(parts)
+            oracle.append(int(cluster_of_place[verifier.place]))
+            symbols = [symbol for _, symbol in parts]
+            mine = int(cluster_of_place[verifier.place])
+            others = [symbol for symbol in symbols if symbol != mine]
+            state = joint_state(
+                mine, others[0] if others else mine, place_count=reader.alphabet
             )
-            if previous is not None and state is not None and last_action is not None:
-                joint.observe(previous, last_action, state, 0)
-            fresh = (
-                []
-                if state is None
-                else [
-                    action
-                    for action in range(task.action_count)
-                    if not joint.counts[action][state]
-                ]
-            )
+            # The exploration policy must not consult the oracle, or the arm
+            # that is supposed to work things out gets its trajectory chosen
+            # for it. Keyed on the reading, which needs no identification.
+            seen_key = tuple(sorted(symbols))
+            fresh = [
+                action
+                for action in range(task.action_count)
+                if (seen_key, action) not in tried
+            ]
+
             action = (
                 fresh[episode % len(fresh)]
                 if fresh
@@ -370,12 +458,193 @@ def explore(
                     ).item()
                 )
             )
-            if searched is not None:
-                searched.record(action)
-            previous = state
-            last_action = action
+            actions.append(action)
+            tried.add((seen_key, action))
             verifier.score(torch.tensor([action], dtype=torch.long))
-    return joint
+            if not verifier.done:
+                after_mine = int(cluster_of_place[verifier.place])
+                after_symbols = [
+                    symbol for _, symbol in reader.read(verifier.observation())
+                ]
+                after_others = [s for s in after_symbols if s != after_mine]
+                joint.observe(
+                    state,
+                    action,
+                    joint_state(
+                        after_mine,
+                        after_others[0] if after_others else after_mine,
+                        place_count=reader.alphabet,
+                    ),
+                    0,
+                )
+        collected.append({"readings": readings, "actions": actions, "oracle": oracle})
+    return collected, joint
+
+
+def _episode_tracks(episode, *, alphabet: int):
+    trace = beam_track(
+        episode["readings"], episode["actions"][: len(episode["readings"]) - 1],
+        alphabet=alphabet,
+    )
+    width = max((len(row) for row in trace), default=0)
+    histories = [TrackHistory() for _ in range(width)]
+    for step in range(len(trace) - 1):
+        before, after = trace[step], trace[step + 1]
+        for track in range(min(len(before), len(after))):
+            histories[track].observe(before[track], episode["actions"][step], after[track])
+    return trace, histories
+
+
+def _argmax_successor(counts):
+    """The believed successor, from weighted counts. Bound outside the loop."""
+
+    def successor(symbol: int, action: int):
+        cell = counts(symbol, action) or {}
+        if not cell:
+            return None
+        return max(cell.items(), key=lambda item: item[1])[0]
+
+    return successor
+
+
+def weighted_models(collected, posteriors, *, reader: SlotReader, task: NavigationTask):
+    """Everything the agent believes, weighted by how sure it is who it was.
+
+    Returns the self dynamics -- my place under my action -- and the joint
+    configuration model. An episode the evidence does not settle contributes
+    almost nothing to either, instead of contributing a confident mistake.
+    """
+
+    self_counts: dict[tuple[int, int], dict[int, float]] = {}
+    joint_counts: dict[tuple[int, int], dict[int, float]] = {}
+    for episode, posterior in zip(collected, posteriors):
+        trace = episode["trace"]
+        for track, weight in enumerate(posterior):
+            if weight <= 1e-6:
+                continue
+            for step in range(len(trace) - 1):
+                before, after = trace[step], trace[step + 1]
+                if track >= len(before) or track >= len(after):
+                    continue
+                action = episode["actions"][step]
+                mine, next_mine = int(before[track]), int(after[track])
+                cell = self_counts.setdefault((mine, action), {})
+                cell[next_mine] = cell.get(next_mine, 0.0) + weight
+                others = [int(s) for i, s in enumerate(before) if i != track]
+                next_others = [int(s) for i, s in enumerate(after) if i != track]
+                state = joint_state(
+                    mine, others[0] if others else mine, place_count=reader.alphabet
+                )
+                following = joint_state(
+                    next_mine,
+                    next_others[0] if next_others else next_mine,
+                    place_count=reader.alphabet,
+                )
+                cell = joint_counts.setdefault((state, action), {})
+                cell[following] = cell.get(following, 0.0) + weight
+
+    joint = WorldModel(reader.alphabet * reader.alphabet, task.action_count)
+    for (state, action), cell in joint_counts.items():
+        best = max(cell.items(), key=lambda item: item[1])[0]
+        joint.observe(state, action, best, 0)
+    return (lambda symbol, action: self_counts.get((int(symbol), int(action)))), joint
+
+
+def explore(
+    reader: SlotReader,
+    task: NavigationTask,
+    circuit: tuple[int, ...],
+    *,
+    arm: str,
+    episodes: int,
+    steps: int,
+    seed: int,
+    cluster_of_place,
+    curve: list | None = None,
+):
+    """Build the configuration model and the self model, under this arm."""
+
+    collected, oracled = collect(
+        reader, task, circuit, arm=arm, episodes=episodes, steps=steps,
+        seed=seed, cluster_of_place=cluster_of_place,
+    )
+    if arm != "integrated":
+        return oracled, None
+
+    for episode in collected:
+        trace, histories = _episode_tracks(episode, alphabet=reader.alphabet)
+        episode["trace"] = trace
+        episode["histories"] = histories
+
+    def truth_of(episode) -> int | None:
+        """Scoring-side: which track actually followed the agent."""
+
+        trace = episode["trace"]
+        width = min((len(row) for row in trace), default=0)
+        if not width:
+            return None
+        return max(
+            range(width),
+            key=lambda track: sum(
+                1
+                for step, row in enumerate(trace)
+                if row[track] == episode["oracle"][step]
+            ),
+        )
+
+    # Pass zero: one episode's own evidence, flattened to a soft vote.
+    posteriors = []
+    for episode in collected:
+        width = len(episode["histories"])
+        roles = identify_roles(episode["histories"], alphabet=reader.alphabet)
+        vote = [0.0] * width
+        if roles.own is not None:
+            vote[roles.own] = 1.0
+        elif width:
+            vote = [1.0 / width] * width
+        posteriors.append(vote)
+    self_counts, joint = weighted_models(
+        collected, posteriors, reader=reader, task=task
+    )
+
+    for step in range(int(SELF_MODEL_PASSES)):
+        updated = []
+        for episode in collected:
+            if SOFT_SELF_MODEL:
+                updated.append(
+                    self_posterior(
+                        episode["histories"], self_counts, alphabet=reader.alphabet
+                    )
+                )
+            else:
+                # The hard variant, kept so the failure it causes stays
+                # measurable rather than remembered.
+                width = len(episode["histories"])
+                named = identify_by_model(
+                    episode["histories"], _argmax_successor(self_counts)
+                )
+                vote = [0.0] * width
+                if named is not None:
+                    vote[named] = 1.0
+                elif width:
+                    vote = [1.0 / width] * width
+                updated.append(vote)
+        posteriors = updated
+        self_counts, joint = weighted_models(
+            collected, posteriors, reader=reader, task=task
+        )
+        if curve is not None:
+            right = sum(
+                1
+                for episode, posterior in zip(collected, posteriors)
+                if posterior
+                and max(range(len(posterior)), key=lambda i: posterior[i])
+                == truth_of(episode)
+            )
+            curve.append(
+                {"pass": step, "identified": right / max(1, len(collected))}
+            )
+    return joint, self_counts
 
 
 def run_integrated_navigation(
@@ -413,8 +682,10 @@ def run_integrated_navigation(
         circuit = target_circuit(seed + index)
         chosen_cut, cut_bits = select_cut(reader, encoders, task, seed=seed + index)
 
-        models = {
-            arm: explore(
+        selves: dict[str, Any] = {}
+        models = {}
+        for arm in ("integrated", "told_all"):
+            models[arm], selves[arm] = explore(
                 reader,
                 task,
                 circuit,
@@ -424,10 +695,9 @@ def run_integrated_navigation(
                 seed=seed + 100 * index,
                 cluster_of_place=cluster_of_place,
             )
-            for arm in ("integrated", "told_all")
-        }
         # Acting blindly needs a psi to be handed something, never consults it.
         models["random"] = models["told_all"]
+        selves["random"] = None
 
         stored = {}
         for arm, model in models.items():
@@ -499,6 +769,11 @@ def run_integrated_navigation(
                         cluster_of_place=cluster_of_place,
                         alphabet=reader.alphabet,
                         seed=seed + 31 * index,
+                        self_model=(
+                            selves.get("integrated")
+                            if REMEMBER_SELF and arm == "integrated"
+                            else None
+                        ),
                     )
                     scored[arm].append(value)
                     if arm == "integrated":

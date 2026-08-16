@@ -153,6 +153,9 @@ DISPLACEMENT_SCALE = 1.0e-4
 # decides late.
 PREDICTION_WEIGHT = 1.0e4
 CONFIDENT_REPEATS = 2
+# How much an unpredictable outcome is worth to a probe, against a unit of
+# actual disagreement between surviving correspondences.
+UNTRIED_INFORMATION = 0.5
 
 
 def persistence_costs(
@@ -517,35 +520,24 @@ class _Hypothesis:
     trace: tuple[tuple[int, ...], ...]
 
 
-def beam_track(
+def beam_hypotheses(
     readings: Sequence[Sequence[tuple[Any, int]]],
     actions: Sequence[int],
     *,
     alphabet: int,
     beam: int = 8,
-) -> tuple[tuple[int, ...], ...]:
-    """Correspondence by search, when committing frame by frame cannot work.
+) -> list[_Hypothesis]:
+    """The surviving correspondences, cheapest first, with their code lengths.
 
-    Greedy alignment assumes one thing moves at a time. With a distractor two
-    things move at every step, the assumption is simply false, and -- measured
-    -- the greedy tracker follows the agent barely more than half the time and
-    does not improve with eight times the experience. That is not sparsity; it
-    is the prior being wrong.
-
-    What is still true is that the agent's own marker is the only one whose
-    behaviour is a *consistent function* of place and action. So instead of
-    committing to a correspondence and then learning tables from it, this keeps
-    several correspondences alive and scores each by how cheaply the tables it
-    implies encode what actually happened. The right assignment is the one
-    under which some track turns out to be predictable.
-
-    This is the small, gradient-free relative of the expectation-maximisation
-    trackers -- alternating between "which is which" and "what does each do"
-    rather than solving either first.
+    `beam_track` throws all but the best away. Keeping them is what makes it
+    possible to *act* on the ambiguity rather than wait it out: two
+    correspondences that disagree about which marker the agent is will often
+    disagree about what a particular action does next, and that is a question
+    the agent can go and settle.
     """
 
     if not readings:
-        return ()
+        return []
     width = max(len(frame) for frame in readings)
     if width > MAXIMUM_TRACKS:
         raise ValueError("too many parts to track")
@@ -592,8 +584,257 @@ def beam_track(
                 )
         expanded.sort(key=lambda item: item.bits)
         hypotheses = expanded[: int(beam)]
+    return hypotheses
 
-    return hypotheses[0].trace
+
+def hypothesis_weights(hypotheses: Sequence[_Hypothesis]) -> list[float]:
+    """Posterior over correspondences, from their code lengths."""
+
+    if not hypotheses:
+        return []
+    best = min(item.bits for item in hypotheses)
+    unnormalised = [2.0 ** (-(item.bits - best)) for item in hypotheses]
+    total = sum(unnormalised) or 1.0
+    return [value / total for value in unnormalised]
+
+
+def disambiguating_action(
+    hypotheses: Sequence[_Hypothesis], *, action_count: int
+) -> int | None:
+    """The action whose outcome the surviving correspondences most disagree on.
+
+    Waiting for the ambiguity to resolve itself is measurably the wrong move --
+    a longer orientation costs more than the better answer buys. The
+    alternative is to *design the next probe*: score each action by how much
+    the hypotheses disagree about the reading it will produce, and take the one
+    they disagree on most.
+
+    An action that every surviving correspondence expects to look the same
+    afterwards teaches nothing, however novel the place it leads to. This is
+    the only place in the repository where an action is chosen for what it will
+    *reveal* rather than for what it will earn.
+
+    Returns nothing when no action separates anything -- either because the
+    hypotheses already agree, or because none of them has an opinion yet.
+    """
+
+    if not hypotheses or action_count < 1:
+        return None
+    weights = hypothesis_weights(hypotheses)
+    best_action: int | None = None
+    best_score = 0.0
+    for action in range(int(action_count)):
+        predicted: dict[tuple[int, ...], float] = {}
+        informed = 0.0
+        unknown = 0.0
+        for hypothesis, weight in zip(hypotheses, weights):
+            reading = []
+            known = True
+            for track, symbol in enumerate(hypothesis.symbols):
+                counts = hypothesis.tables[track].get((int(symbol), action))
+                if not counts:
+                    known = False
+                    break
+                reading.append(max(counts.items(), key=lambda item: item[1])[0])
+            if not known:
+                # An outcome nobody can predict is not a disagreement, but it
+                # is the only thing that *creates* one later. Without this term
+                # the probe is silent for exactly the steps it is needed --
+                # measured, it returned nothing for the first seven of twelve,
+                # by which point orientation had already happened.
+                unknown += weight
+                continue
+            informed += weight
+            key = tuple(sorted(reading))
+            predicted[key] = predicted.get(key, 0.0) + weight
+        # Expected disagreement: one minus the chance two draws from the
+        # predicted-reading distribution come out the same.
+        score = UNTRIED_INFORMATION * unknown
+        if informed > 0.0:
+            share = [value / informed for value in predicted.values()]
+            score += informed * (1.0 - sum(value * value for value in share))
+        if score > best_score:
+            best_score = score
+            best_action = action
+    return best_action
+
+
+def contrasting_action(
+    hypotheses: Sequence[_Hypothesis], *, action_count: int
+) -> int | None:
+    """The action that creates a matched contrast, rather than a novel one.
+
+    This is the opposite of a curiosity probe, and the failure of three
+    curiosity-shaped probes is what argues for it. Controllability is measured
+    as a *matched* contrast -- the same place left by two different actions --
+    so what identification needs is not somewhere new but somewhere already
+    visited, left differently this time. Every probe that sought novelty
+    reduced the number of matched pairs and made identification worse.
+
+    Scores each action by how many previous visits to the current symbol used
+    a *different* action, summed over the surviving correspondences: taking it
+    now completes that many contrasts at once.
+    """
+
+    if not hypotheses or action_count < 1:
+        return None
+    weights = hypothesis_weights(hypotheses)
+    best_action: int | None = None
+    best_score = 0.0
+    for action in range(int(action_count)):
+        score = 0.0
+        for hypothesis, weight in zip(hypotheses, weights):
+            for track, symbol in enumerate(hypothesis.symbols):
+                completed = sum(
+                    sum(counts.values())
+                    for (key_symbol, key_action), counts
+                    in hypothesis.tables[track].items()
+                    if key_symbol == int(symbol) and key_action != action
+                )
+                score += weight * completed
+        if score > best_score:
+            best_score = score
+            best_action = action
+    return best_action
+
+
+def model_consistency(
+    history: TrackHistory, successor
+) -> tuple[float, int]:
+    """How much of this track's behaviour matches a model of *my* dynamics.
+
+    The question every earlier mechanism asked was "which of these tracks looks
+    controllable, judging only by this episode". That throws away the fact that
+    the world is the same world it was last episode. A self-model already says
+    where each action takes me; a track that agrees with it is me, and a track
+    that does not is something else.
+
+    `successor(symbol, action)` returns the believed next symbol, or `None`
+    where the model has no opinion. Only the cells it has an opinion about are
+    scored, so a sparse model abstains rather than guessing.
+    """
+
+    agreed = tested = 0
+    for symbol, action, following in history.steps:
+        believed = successor(symbol, action)
+        if believed is None:
+            continue
+        tested += 1
+        agreed += int(int(believed) == int(following))
+    return (agreed / tested if tested else 0.0), tested
+
+
+def identify_by_model(
+    histories: Sequence[TrackHistory],
+    successor,
+    *,
+    minimum_tested: int = 2,
+    minimum_agreement: float = 0.6,
+) -> int | None:
+    """Which track is me, according to what I already know about myself.
+
+    Refuses when the model has too little to say, so the first episode -- when
+    there is no model yet -- falls back to whatever derived the identity before.
+    """
+
+    best: int | None = None
+    best_score = 0.0
+    for index, history in enumerate(histories):
+        agreement, tested = model_consistency(history, successor)
+        if tested < int(minimum_tested) or agreement < float(minimum_agreement):
+            continue
+        score = agreement * tested
+        if score > best_score:
+            best_score = score
+            best = index
+    return best
+
+
+def self_log_evidence(
+    history: TrackHistory, counts, *, alphabet: int, smoothing: float = 0.5
+) -> float:
+    """How probable this track's transitions are under my own dynamics.
+
+    Replaces an agreement threshold with a likelihood, which is what lets
+    evidence of different amounts and different quality be compared. A track
+    seen twice and agreeing twice is not the same claim as one seen twenty
+    times and agreeing eighteen, and a ratio cannot tell them apart.
+
+    `counts(symbol, action)` returns the accumulated successor counts the agent
+    has for itself, or nothing where it has none. Cells with no evidence
+    contribute the uniform code, so a sparse model neither helps nor punishes.
+    """
+
+    width = max(2, int(alphabet))
+    total = 0.0
+    for symbol, action, following in history.steps:
+        seen = counts(symbol, action) or {}
+        observed = sum(seen.values())
+        hits = seen.get(int(following), 0.0)
+        total += math.log2(
+            (hits + smoothing) / (observed + smoothing * width)
+        )
+    return total
+
+
+def self_posterior(
+    histories: Sequence[TrackHistory], counts, *, alphabet: int
+) -> list[float]:
+    """A belief over which track is me, rather than a decision.
+
+    The hard version has a failure that is easy to walk into and hard to see:
+    name the wrong track once, learn its dynamics, and that model then names it
+    again. Measured, the hard loop reaches its fixed point after a single pass
+    and never moves. A posterior lets an ambiguous episode contribute almost
+    nothing to the self-model instead of contributing a confident mistake.
+    """
+
+    if not histories:
+        return []
+    evidence = [
+        self_log_evidence(history, counts, alphabet=alphabet)
+        for history in histories
+    ]
+    best = max(evidence)
+    weights = [2.0 ** (value - best) for value in evidence]
+    total = sum(weights) or 1.0
+    return [value / total for value in weights]
+
+
+def beam_track(
+    readings: Sequence[Sequence[tuple[Any, int]]],
+    actions: Sequence[int],
+    *,
+    alphabet: int,
+    beam: int = 8,
+) -> tuple[tuple[int, ...], ...]:
+    """Correspondence by search, when committing frame by frame cannot work.
+
+    Greedy alignment assumes one thing moves at a time. With a distractor two
+    things move at every step, the assumption is simply false, and -- measured
+    -- the greedy tracker follows the agent barely more than half the time and
+    does not improve with eight times the experience. That is not sparsity; it
+    is the prior being wrong.
+
+    What is still true is that the agent's own marker is the only one whose
+    behaviour is a *consistent function* of place and action. So instead of
+    committing to a correspondence and then learning tables from it, this keeps
+    several correspondences alive and scores each by how cheaply the tables it
+    implies encode what actually happened. The right assignment is the one
+    under which some track turns out to be predictable.
+
+    This is the small, gradient-free relative of the expectation-maximisation
+    trackers -- alternating between "which is which" and "what does each do"
+    rather than solving either first.
+
+    It has a measured limit: on a twelve-step history with two markers both
+    moving it swaps tracks partway and returns a mixture, and it recovers the
+    correspondence at twenty-four. `disambiguating_action` is the attempt to
+    buy those steps back by choosing better ones rather than more.
+    """
+
+    hypotheses = beam_hypotheses(readings, actions, alphabet=alphabet, beam=beam)
+    return hypotheses[0].trace if hypotheses else ()
 
 
 @dataclass(frozen=True)
@@ -677,12 +918,21 @@ __all__ = [
     "MAXIMUM_TRACKS",
     "SLOT_ALIGNMENT_SCHEMA",
     "SYMBOL_CHANGE_WEIGHT",
+    "UNTRIED_INFORMATION",
     "Roles",
     "TrackEvidence",
     "TrackHistory",
     "Tracker",
     "assign",
+    "beam_hypotheses",
+    "contrasting_action",
+    "disambiguating_action",
     "displacement_costs",
+    "hypothesis_weights",
+    "identify_by_model",
     "identify_roles",
+    "model_consistency",
     "persistence_costs",
+    "self_log_evidence",
+    "self_posterior",
 ]
