@@ -46,6 +46,12 @@ the controller only through a caller-supplied feedback encoder.
   evidence until fresh episodes relearn a replacement. Its first closed-loop
   diagnostic quarantined safely but did not beat the episode-local scorer, so
   the reserved integrated holdout remains untouched.
+- `PersistentCausalIdentityV3` is the next development schema. It replaces the
+  prefix-sensitive global covariance with an action-labelled transition graph
+  over learned event states. On a bounded rendered fixture it improved return
+  over the episode-local scorer with zero confident identity errors and
+  abstained on reversal and ambiguity controls. This remains a development
+  signal, not a promotion or holdout result.
 
 ## Deliberate limits
 
@@ -55,9 +61,10 @@ not silently copied into the curated bank. The current self-model remains
 rejected by the adversarial audit, and no navigation artifact is promoted by
 this adapter.
 
-The next production step is to improve the persistent artifact's
-state-conditioned causal signature, then rerun it on fresh pixel rerenders
-with crossings and occlusion, plus matched shuffled-action and fresh-learner
-controls, before any bank admission. The assignment gate and artifacts are
-still an interface seam, not a promoted identity model; the current diagnostic
-uses a bounded two-track fixture and its artifacts are not in the curated bank.
+The next production step is to harden the v3 graph against true crossings,
+occlusion, corrupted persistent memory, and near-equivalent causal mimics,
+then rerun it on fresh pixel rerenders with matched shuffled-action and
+fresh-learner controls before any bank admission. The assignment gate and
+artifacts are still an interface seam, not a promoted identity model; the
+current diagnostics use bounded two-track fixtures and their artifacts are not
+in the curated bank.

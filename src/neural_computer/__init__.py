@@ -411,10 +411,12 @@ from .identity import (
     EXTERNAL_CAUSAL_IDENTITY_ARTIFACT_SCHEMA,
     EXTERNAL_IDENTITY_ASSIGNMENT_SCHEMA,
     EXTERNAL_PERSISTENT_CAUSAL_IDENTITY_V2_SCHEMA,
+    EXTERNAL_PERSISTENT_CAUSAL_IDENTITY_V3_SCHEMA,
     ExternalCausalIdentityArtifact,
     ExternalCausalIdentityAssignment,
     ExternalIdentityAssignment,
     PersistentCausalIdentityV2,
+    PersistentCausalIdentityV3,
 )
 from .induced_library import (
     INDUCED_LIBRARY_EXTENSION,
@@ -1174,6 +1176,7 @@ __all__ = [
     "EXTERNAL_OUTCOME_PROGRAM_ROUTER_SCHEMA",
     "EXTERNAL_OUTCOME_VALUE_SCHEMA",
     "EXTERNAL_PERSISTENT_CAUSAL_IDENTITY_V2_SCHEMA",
+    "EXTERNAL_PERSISTENT_CAUSAL_IDENTITY_V3_SCHEMA",
     "EXTERNAL_PROGRAM_ADMISSION_SCHEMA",
     "EXTERNAL_PROGRAM_ARTIFACT_SCHEMA",
     "EXTERNAL_PROGRAM_CANDIDATE_PROPOSAL_SCHEMA",
@@ -1782,6 +1785,7 @@ __all__ = [
     "PermutationInvariantCapabilityEvictionPolicy",
     "PersistentAppendOnlyContentAddressedMemory",
     "PersistentCausalIdentityV2",
+    "PersistentCausalIdentityV3",
     "PersistentContentAddressedMemory",
     "PersistentOpaqueContextRouteEvidence",
     "PersistentOpaqueDepthEvidence",

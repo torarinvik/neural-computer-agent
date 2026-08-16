@@ -224,6 +224,8 @@ def _run_arm(
     episodes: int = EPISODES,
     steps: int = EPISODE_STEPS,
     reverse_episode: int | None = None,
+    persistent_factory=PersistentCausalIdentityV2,
+    world_factory=_world_for,
 ) -> dict[str, Any]:
     if arm not in {"no_persistent", "episode_local", "persistent_v2", "oracle"}:
         raise ValueError(f"unknown persistent identity arm: {arm}")
@@ -231,7 +233,7 @@ def _run_arm(
     goals[0, 0] = 1.0
     goals[1, 0] = -1.0
     persistent = (
-        PersistentCausalIdentityV2(
+        persistent_factory(
             minimum_similarity=IDENTITY_MINIMUM_SIMILARITY,
             recovery_episodes=RECOVERY_EPISODES,
         )
@@ -251,7 +253,7 @@ def _run_arm(
     episode_rows: list[dict[str, Any]] = []
     receipt_id = 0
     for episode in range(int(episodes)):
-        world = _world_for(
+        world = world_factory(
             episode,
             reverse=reverse_episode is not None and episode == reverse_episode,
         )
@@ -442,10 +444,16 @@ def _run_arm(
     return result
 
 
-def _control_report(encoders: RenderedBrainWorkshopEncoders) -> dict[str, Any]:
+def _control_report(
+    encoders: RenderedBrainWorkshopEncoders,
+    *,
+    model_factory=PersistentCausalIdentityV2,
+    world_factory=_world_for,
+    controlled_slot: int = 0,
+) -> dict[str, Any]:
     """Run controls against already-rendered learned histories."""
 
-    base_world = _world_for(0)
+    base_world = world_factory(0)
     history: list[torch.Tensor] = []
     actions: list[torch.Tensor] = []
     pattern = (
@@ -462,7 +470,7 @@ def _control_report(encoders: RenderedBrainWorkshopEncoders) -> dict[str, Any]:
     events = torch.stack(history).unsqueeze(0)
     action_tensor = torch.stack(actions[:-1]).unsqueeze(0)
     shuffled = action_tensor[:, torch.tensor([3, 0, 6, 2, 5, 1, 4])]
-    model = PersistentCausalIdentityV2(recovery_episodes=2)
+    model = model_factory(recovery_episodes=2)
     initial = model.resolve(events, action_tensor, episode_id=0)
     shuffled_result = model.resolve(events, shuffled, episode_id=1)
     shuffled_status = model.status
@@ -470,27 +478,30 @@ def _control_report(encoders: RenderedBrainWorkshopEncoders) -> dict[str, Any]:
     missing[:, 4, 0] = False
     missing_result = model.resolve(events, action_tensor, event_present=missing, episode_id=2)
     missing_status = model.status
-    equivalent_model = PersistentCausalIdentityV2()
+    equivalent_model = model_factory()
     equivalent = events.clone()
     equivalent[:, :, 1] = equivalent[:, :, 0]
     equivalence_result = equivalent_model.resolve(equivalent, action_tensor, episode_id=0)
     partial = events.clone()
-    partial[:, 1:, 1] = partial[:, 1:, 0]
-    partial[:, 2::2, 1] = events[:, 2::2, 1]
-    partial_model = PersistentCausalIdentityV2()
+    distractor_slot = 1 - int(controlled_slot)
+    partial[:, 1:, distractor_slot] = partial[:, 1:, controlled_slot]
+    partial[:, 2::2, distractor_slot] = events[:, 2::2, distractor_slot]
+    partial_model = model_factory()
     partial_result = partial_model.resolve(partial, action_tensor, episode_id=0)
     crossing = events.clone()
     crossing[:, 4:] = crossing[:, 4:, [1, 0]]
-    crossing_model = PersistentCausalIdentityV2()
+    crossing_model = model_factory()
     crossing_result = crossing_model.resolve(crossing, action_tensor, episode_id=0)
-    birth_death_model = PersistentCausalIdentityV2()
+    birth_death_model = model_factory()
     birth_death_result = birth_death_model.resolve(
-        events[:, :, :1], action_tensor, episode_id=0
+        events[:, :, controlled_slot : controlled_slot + 1],
+        action_tensor,
+        episode_id=0,
     )
-    poisoned_model = PersistentCausalIdentityV2()
+    poisoned_model = model_factory()
     poisoned_events = events.clone()
-    poisoned_events[:, :, 0] = events[:, :, 1]
-    poisoned_events[:, :, 1] = events[:, :, 0]
+    poisoned_events[:, :, controlled_slot] = events[:, :, distractor_slot]
+    poisoned_events[:, :, distractor_slot] = events[:, :, controlled_slot]
     poisoned_model.resolve(poisoned_events, action_tensor, episode_id=0)
     poisoned_recovery = poisoned_model.resolve(events, action_tensor, episode_id=1)
     return {
