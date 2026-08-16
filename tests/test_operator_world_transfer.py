@@ -6,6 +6,7 @@ from experiments.brainworkshop_canonical.operator_world_transfer import (
     SOURCE_WORLD_SEED,
     TARGET_WORLD_SEED,
     VerifiedOperatorBundle,
+    VerifiedPlanningOperatorStager,
     build_raw_successor_artifact,
     corrupted_bundle,
     irrelevant_bundle,
@@ -70,6 +71,41 @@ def test_reusable_update_operator_rebuilds_after_a_contradiction() -> None:
     observe_transition(model, 0, 0, 2, 0, bundle=irrelevant_bundle())
     assert model.successor(0, 0) == 1
     assert model.counts[0][0] == {1: 1, 2: 1}
+
+
+def test_operator_stager_skips_missing_evidence_and_quarantines_reversal() -> None:
+    bundle = verified_bundle(world_seed=SOURCE_WORLD_SEED)
+    stager = VerifiedPlanningOperatorStager(
+        threshold=0.75,
+        min_observations=2,
+        min_stable_observations=2,
+    )
+    stager.observe(bundle, 0.0, eligible=False)
+    assert stager.status(bundle).observations == 0
+    stager.observe(bundle, 1.0)
+    stager.observe(bundle, 1.0)
+    admission = stager.admit_verified(bundle, lambda candidate: candidate.digest == bundle.digest)
+    assert admission.accepted
+    stager.observe(bundle, 0.0)
+    status = stager.status(bundle)
+    assert status.quarantined
+    assert not status.accepted
+    assert status.observations == 2
+
+
+def test_operator_stager_retention_probe_is_a_real_gate() -> None:
+    bundle = verified_bundle(world_seed=SOURCE_WORLD_SEED)
+    stager = VerifiedPlanningOperatorStager(
+        threshold=0.75,
+        min_observations=2,
+        min_stable_observations=2,
+    )
+    stager.observe(bundle, 1.0)
+    stager.observe(bundle, 1.0)
+    rejected = stager.admit_verified(bundle, lambda candidate: False)
+    assert not rejected.accepted
+    accepted = stager.admit_verified(bundle, lambda candidate: True)
+    assert accepted.accepted
 
 
 def test_reusable_operator_reaches_a_stable_prefix_before_fresh() -> None:

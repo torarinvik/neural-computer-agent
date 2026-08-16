@@ -33,7 +33,7 @@ import json
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Callable, Literal
 
 import torch
 
@@ -48,6 +48,7 @@ from .world_model import WorldModel, plan_to
 EXPERIMENT_ID = "brainworkshop-operator-world-transfer-2026-08-16"
 OPERATOR_WORLD_TRANSFER_SCHEMA = "neural-computer.operator-world-transfer.v1"
 OPERATOR_BUNDLE_SCHEMA = "neural-computer.verified-operator-bundle.v1"
+OPERATOR_STAGER_SCHEMA = "neural-computer.verified-operator-stager.v1"
 RAW_SUCCESSOR_SCHEMA = "neural-computer.raw-successor-artifact.v1"
 DEVELOPMENT_SEED = 41
 SOURCE_WORLD_SEED = 9000
@@ -140,6 +141,160 @@ class VerifiedOperatorBundle:
     def payload(self) -> dict[str, Any]:
         self.validate()
         return {**self.__dict__, "digest": self.digest}
+
+
+@dataclass(frozen=True)
+class PlanningOperatorAdmission:
+    """Receipt for a verifier-gated operator admission or rejection."""
+
+    accepted: bool
+    candidate_digest: str
+    observations: int
+    stable_prefix: int | None
+    quarantined: bool
+    reason: str
+    schema: str = OPERATOR_STAGER_SCHEMA
+
+    def validate(self) -> PlanningOperatorAdmission:
+        if self.schema != OPERATOR_STAGER_SCHEMA:
+            raise ValueError("unsupported operator admission schema")
+        if len(self.candidate_digest) != 64:
+            raise ValueError("operator admission digest is malformed")
+        if self.observations < 0:
+            raise ValueError("operator admission observation count is invalid")
+        if self.stable_prefix is not None and not 0 <= self.stable_prefix < self.observations:
+            raise ValueError("operator admission stable prefix is invalid")
+        if not isinstance(self.quarantined, bool):
+            raise TypeError("operator admission quarantine flag must be boolean")
+        if not self.reason:
+            raise ValueError("operator admission reason is missing")
+        return self
+
+
+class VerifiedPlanningOperatorStager:
+    """Stage a reusable control-flow operator from scalar verifier evidence.
+
+    The candidate is opaque to the stager.  Only the candidate digest and
+    eligible scalar outcomes are retained.  Missing evidence is skipped,
+    while a post-admission contradiction quarantines the candidate and freezes
+    all later updates until a caller creates a fresh stager.
+    """
+
+    schema = OPERATOR_STAGER_SCHEMA
+
+    def __init__(
+        self,
+        *,
+        threshold: float = STABLE_THRESHOLD,
+        min_observations: int = 2,
+        min_stable_observations: int = 2,
+    ) -> None:
+        if not 0.0 <= threshold <= 1.0:
+            raise ValueError("operator stager threshold must lie in [0, 1]")
+        if min(min_observations, min_stable_observations) < 1:
+            raise ValueError("operator stager observation gates must be positive")
+        self.threshold = float(threshold)
+        self.min_observations = int(min_observations)
+        self.min_stable_observations = int(min_stable_observations)
+        self._outcomes: dict[str, list[float]] = {}
+        self._quarantined: set[str] = set()
+        self._admitted: set[str] = set()
+
+    def _digest(self, bundle: VerifiedOperatorBundle) -> str:
+        return bundle.validate().digest
+
+    def _stable_prefix(self, digest: str) -> int | None:
+        outcomes = self._outcomes.get(digest, [])
+        if len(outcomes) < self.min_observations:
+            return None
+        cumulative: list[float] = []
+        total = 0.0
+        for index, outcome in enumerate(outcomes):
+            total += outcome
+            cumulative.append(total / float(index + 1))
+        for index, mean in enumerate(cumulative):
+            if (
+                mean >= self.threshold
+                and len(cumulative) - index >= self.min_stable_observations
+                and all(value >= self.threshold for value in cumulative[index:])
+            ):
+                return index
+        return None
+
+    def observe(
+        self,
+        bundle: VerifiedOperatorBundle,
+        outcome: float,
+        *,
+        eligible: bool = True,
+    ) -> None:
+        digest = self._digest(bundle)
+        if not isinstance(eligible, bool):
+            raise TypeError("operator evidence eligibility must be boolean")
+        if not isinstance(outcome, (int, float)) or not 0.0 <= float(outcome) <= 1.0:
+            raise ValueError("operator verifier outcome must lie in [0, 1]")
+        if digest in self._quarantined:
+            return
+        if not eligible:
+            return
+        value = float(outcome)
+        if digest in self._admitted and value < self.threshold:
+            self._quarantined.add(digest)
+            return
+        self._outcomes.setdefault(digest, []).append(value)
+
+    def status(self, bundle: VerifiedOperatorBundle) -> PlanningOperatorAdmission:
+        digest = self._digest(bundle)
+        outcomes = self._outcomes.get(digest, [])
+        stable = self._stable_prefix(digest)
+        accepted = digest in self._admitted and digest not in self._quarantined
+        reason = (
+            "admitted"
+            if accepted
+            else "quarantined"
+            if digest in self._quarantined
+            else "stable-prefix-ready"
+            if stable is not None
+            else "insufficient-stable-evidence"
+        )
+        return PlanningOperatorAdmission(
+            accepted=accepted,
+            candidate_digest=digest,
+            observations=len(outcomes),
+            stable_prefix=stable,
+            quarantined=digest in self._quarantined,
+            reason=reason,
+        ).validate()
+
+    def admit_verified(
+        self,
+        bundle: VerifiedOperatorBundle,
+        retention_probe: Callable[[VerifiedOperatorBundle], bool],
+    ) -> PlanningOperatorAdmission:
+        digest = self._digest(bundle)
+        if not callable(retention_probe):
+            raise TypeError("operator retention probe must be callable")
+        status = self.status(bundle)
+        if status.quarantined or status.stable_prefix is None:
+            return PlanningOperatorAdmission(
+                accepted=False,
+                candidate_digest=digest,
+                observations=status.observations,
+                stable_prefix=status.stable_prefix,
+                quarantined=status.quarantined,
+                reason=status.reason,
+            ).validate()
+        if not bool(retention_probe(bundle)):
+            return PlanningOperatorAdmission(
+                accepted=False,
+                candidate_digest=digest,
+                observations=status.observations,
+                stable_prefix=status.stable_prefix,
+                quarantined=False,
+                reason="retention-probe-rejected",
+            ).validate()
+        self._admitted.add(digest)
+        return self.status(bundle)
 
 
 @dataclass(frozen=True)
@@ -499,7 +654,30 @@ def run_transfer(
         target = sample_ring_world(TARGET_WORLD_SEED + WORLD_SEED_STRIDE * replicate)
         if source.transitions == target.transitions:
             raise AssertionError("source and target worlds must differ")
-        bundle = verified_bundle(world_seed=source.seed)
+        candidate_bundle = verified_bundle(world_seed=source.seed)
+        source_probe = run_arm(
+            source,
+            mode="reusable",
+            bundle=candidate_bundle,
+            artifact=None,
+            seed=seed + 1_000 * replicate,
+            training_episodes=training_episodes,
+            evaluation_episodes=evaluation_episodes,
+        )
+        stager = VerifiedPlanningOperatorStager(
+            threshold=STABLE_THRESHOLD,
+            min_observations=2,
+            min_stable_observations=2,
+        )
+        for checkpoint in source_probe["curve"]:
+            stager.observe(candidate_bundle, checkpoint["normalized_return"])
+        admission = stager.admit_verified(
+            candidate_bundle,
+            lambda retained: retained.digest == candidate_bundle.digest,
+        )
+        if not admission.accepted:
+            raise RuntimeError("source-world operator failed its stable-prefix gate")
+        bundle = candidate_bundle
         raw = build_raw_successor_artifact(source)
         arms = {
             "reusable": run_arm(
@@ -556,6 +734,8 @@ def run_transfer(
                 "source_world_digest": source.digest,
                 "target_world_digest": target.digest,
                 "operator_bundle": bundle.payload(),
+                "operator_admission": admission.__dict__,
+                "operator_source_probe": source_probe,
                 "raw_successor_digest": raw.digest,
                 "arms": arms,
             }
