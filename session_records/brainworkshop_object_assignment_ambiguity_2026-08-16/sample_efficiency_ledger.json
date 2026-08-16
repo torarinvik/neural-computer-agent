@@ -1,0 +1,53 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment_id": "brainworkshop-object-assignment-ambiguity-2026-08-16",
+  "status": "development_diagnostic_not_promoted",
+  "source": "object_assignment_ambiguity.json",
+  "seed_blocks": [],
+  "replication_count": 3,
+  "unique_verifier_bits": {
+    "independent_collision_causal_beam": 4320,
+    "independent_collision_nearest": 4320,
+    "independent_collision_appearance": 4320,
+    "approximate_collision_causal_beam": 4320,
+    "approximate_collision_nearest": 4320,
+    "approximate_collision_appearance": 4320
+  },
+  "unique_logical_lifetimes_all_arms": 720,
+  "optimizer_updates": 0,
+  "replayed_examples": 0,
+  "wall_seconds": 0.1243466254,
+  "latency": {
+    "unit": "milliseconds per prediction",
+    "by_arm": {
+      "independent_collision_causal_beam": 0.0,
+      "independent_collision_nearest": 0.0,
+      "independent_collision_appearance": 0.0,
+      "approximate_collision_causal_beam": 0.0,
+      "approximate_collision_nearest": 0.0,
+      "approximate_collision_appearance": 0.0
+    }
+  },
+  "stable_bits_to_threshold": {
+    "threshold": 0.75,
+    "by_arm": {
+      "independent_collision_causal_beam": [144, 144, 144],
+      "independent_collision_nearest": [null, null, null],
+      "independent_collision_appearance": [null, null, null],
+      "approximate_collision_causal_beam": [144, 144, 144],
+      "approximate_collision_nearest": [null, null, null],
+      "approximate_collision_appearance": [null, null, null]
+    }
+  },
+  "retention_on_mastered_primitive": "not_claimed",
+  "transfer_ratio_against_fresh_learner": null,
+  "controls": {
+    "appearance_collision": true,
+    "crossing_objects": true,
+    "partially_responsive_distractor": true,
+    "nearest_continuity_control": true,
+    "appearance_control": true,
+    "agent_bank_unchanged": true
+  },
+  "claim_boundary": "Development finite-event assignment diagnostic only; no rendered-stream holdout, live-runtime, promotion, or curated-bank admission claim."
+}
