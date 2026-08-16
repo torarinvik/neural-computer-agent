@@ -555,6 +555,11 @@ from .multistream_transition import (
     ExternalMultiStreamTransitionContextResult,
     ExternalMultiStreamTransitionContextRouter,
 )
+from .navigation_runtime import (
+    POLICY_FREE_LIVE_MACHINE_SCHEMA,
+    PolicyFreeAmodalLiveMachine,
+    PolicyFreeLiveCredit,
+)
 from .online_transition import (
     EXTERNAL_GOAL_EVALUATOR_STATISTICS_SCHEMA,
     EXTERNAL_GOAL_REPRESENTATION_ALIGNMENT_SCHEMA,
@@ -1311,6 +1316,7 @@ __all__ = [
     "PERSISTENT_EXTERNAL_SKILL_FRAGMENT_GROWTH_SCHEMA",
     "PERSISTENT_EXTERNAL_SKILL_FRAGMENT_OPERATOR_SCHEMA",
     "PERSISTENT_EXTERNAL_SKILL_FRAGMENT_SERIAL_SCHEMA",
+    "POLICY_FREE_LIVE_MACHINE_SCHEMA",
     "POLICY_FREE_RUNTIME_SCHEMA",
     "PROGRAM_MUTATION_OPERATORS",
     "PROMOTION_SCHEMA",
@@ -1767,7 +1773,9 @@ __all__ = [
     "PersistentOpaqueStateStore",
     "PersistentRouteEvidenceStatus",
     "PersistentSharedBasisContentAddressedMemory",
+    "PolicyFreeAmodalLiveMachine",
     "PolicyFreeAmodalRuntime",
+    "PolicyFreeLiveCredit",
     "PolicyFreeRuntimeOutput",
     "ProjectedScreenPulseFrontend",
     "PromotionDecision",
