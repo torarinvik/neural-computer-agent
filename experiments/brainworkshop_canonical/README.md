@@ -388,7 +388,9 @@ PYTHONPATH=src .venv/bin/python \
 To watch one primary run, add `--visible --watch` and use
 `--replicates 1`: the Workshop phases open the public Neural Workshop window,
 while source/target maze actions are printed as an external ASCII trace. The
-matched control remains headless.
+matched control remains headless. Visible mode pins a watchable 500 ms
+stimulus + 200 ms feedback schedule with 1 ms ticks, so desktop configuration
+files cannot insert blank phases into the one-action transport.
 
 `neural_workshop_live.py` replaces slow macOS capture and key injection with
 Neural Workshop's headless public boundary. It still feeds rendered RGBA pixels

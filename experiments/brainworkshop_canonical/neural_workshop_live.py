@@ -44,6 +44,14 @@ from .rendered_live import SourcePreservingTemporalMachine
 NEURAL_WORKSHOP_LIVE_SCHEMA = "neural-computer.neural-workshop-live.v1"
 _ACTION_INTERVENTIONS = {"normal", "passive", "random", "reversed"}
 _REWARD_INTERVENTIONS = {"normal", "missing", "shuffled"}
+# The external Workshop's desktop defaults leave a long blank phase between
+# stimulus and feedback.  The public live transport has one action receipt
+# per stimulus and therefore needs the two significant phases to be adjacent.
+# Keep the visible run slow enough to watch while making that timing explicit
+# before ``nwenv`` imports its process-global Workshop module.
+_VISIBLE_TICK_MS = "1"
+_VISIBLE_STIMULUS_MS = "500"
+_VISIBLE_TRIAL_MS = "700"
 # These keys are Neural Workshop internals. A Dual (or Position) observation
 # that carries them is a hidden channel, not a public sensorimotor stream.
 _PRIVILEGED_OBSERVATION_KEYS = frozenset(
@@ -677,6 +685,15 @@ def build_neural_workshop_environment(
     config.validate()
     if config.visible:
         os.environ["NW_HEADLESS"] = "0"
+        # ``brainworkshop.py`` reads these only at import time.  Without the
+        # override, macOS visible sessions inherit the user's desktop config
+        # (currently 100 ms ticks and a 3 s trial), producing 23 blank ticks
+        # and an unusable live action window.  Explicit user overrides remain
+        # respected so a deliberately different schedule still fails closed
+        # below with its measured phase plan.
+        os.environ.setdefault("NW_TICK_MS", _VISIBLE_TICK_MS)
+        os.environ.setdefault("NW_STIM_MS", _VISIBLE_STIMULUS_MS)
+        os.environ.setdefault("NW_TRIAL_MS", _VISIBLE_TRIAL_MS)
     module = _load_module(directory)
     environment = module.NeuralWorkshopEnv(
         seed=seed,

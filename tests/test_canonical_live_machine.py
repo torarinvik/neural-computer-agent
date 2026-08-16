@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Any
 
@@ -20,6 +21,7 @@ from experiments.brainworkshop_canonical.maze_transfer import (
 )
 from experiments.brainworkshop_canonical.neural_workshop_live import (
     NeuralWorkshopLiveConfig,
+    build_neural_workshop_environment,
 )
 from experiments.brainworkshop_canonical.operator_world_transfer import verified_bundle
 from experiments.brainworkshop_canonical.rendered_environment import (
@@ -262,3 +264,60 @@ def test_live_operator_transfer_stages_candidate_inside_rendered_loop(
     assert row["matched_control"]["controller_unchanged"]
     assert row["live_workshop_after"]["controller_frozen"]
     assert (tmp_path / "report" / "live_operator_transfer.json").is_file()
+
+
+def test_visible_workshop_sets_zero_blank_watch_schedule(monkeypatch) -> None:
+    """Desktop defaults must not insert an untransportable blank phase."""
+
+    class _FakeWorkshop:
+        n_actions = 1
+
+        def __init__(self, **kwargs):
+            assert kwargs["visible"] is True
+            self.closed = False
+
+        def reset(self, seed):
+            del seed
+            return _observation(1)
+
+        def close(self):
+            self.closed = True
+
+    class _FakeMode:
+        back = 1
+
+    class _FakeBrainworkshop:
+        mode = _FakeMode()
+
+        @staticmethod
+        def plan_current_trial_phases():
+            return {"blank_ticks": 0}
+
+    import experiments.brainworkshop_canonical.neural_workshop_live as module
+
+    monkeypatch.setattr(
+        module,
+        "_load_module",
+        lambda _directory: type(
+            "_FakeModule",
+            (),
+            {
+                "NeuralWorkshopEnv": _FakeWorkshop,
+                "bw": _FakeBrainworkshop,
+                "verify_public_outcome": lambda *_args, **_kwargs: True,
+            },
+        ),
+    )
+    for name in ("NW_HEADLESS", "NW_TICK_MS", "NW_STIM_MS", "NW_TRIAL_MS"):
+        monkeypatch.delenv(name, raising=False)
+
+    environment, _verifier = build_neural_workshop_environment(
+        Path("/tmp/neural-workshop"),
+        NeuralWorkshopLiveConfig(visible=True),
+        seed=1,
+    )
+    assert os.environ["NW_HEADLESS"] == "0"
+    assert os.environ["NW_TICK_MS"] == "1"
+    assert os.environ["NW_STIM_MS"] == "500"
+    assert os.environ["NW_TRIAL_MS"] == "700"
+    environment.close()
