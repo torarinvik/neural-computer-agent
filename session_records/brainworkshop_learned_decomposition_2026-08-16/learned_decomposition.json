@@ -1,0 +1,739 @@
+{
+  "agent_bank_sha256": "07319eb13c9cac58bbbe94258548e64f13ba1b3512ca2a01fbdc675c49e2e7c9",
+  "agent_bank_unchanged": true,
+  "chosen_counts": {
+    "components": 8
+  },
+  "components_chosen": 8,
+  "cuts": {
+    "cells": {
+      "alphabet": 9.0,
+      "description_bits": 334.0308470269836,
+      "error_bits": 374.84363142055344,
+      "parts": 9.0,
+      "scored_tasks": 8,
+      "total_bits": 708.8744784475371
+    },
+    "components": {
+      "alphabet": 8.0,
+      "description_bits": 134.625,
+      "error_bits": 0.0,
+      "parts": 2.0,
+      "scored_tasks": 8,
+      "total_bits": 134.625
+    },
+    "halves_horizontal": {
+      "alphabet": 24.75,
+      "description_bits": 444.8093330313608,
+      "error_bits": 244.9114627864495,
+      "parts": 2.0,
+      "scored_tasks": 8,
+      "total_bits": 689.7207958178103
+    },
+    "halves_vertical": {
+      "alphabet": 24.5,
+      "description_bits": 436.5135327478454,
+      "error_bits": 277.9925144477964,
+      "parts": 2.0,
+      "scored_tasks": 8,
+      "total_bits": 714.5060471956418
+    },
+    "quadrants": {
+      "alphabet": 21.5,
+      "description_bits": 552.0315593713914,
+      "error_bits": 551.1177132392979,
+      "parts": 4.0,
+      "scored_tasks": 8,
+      "total_bits": 1103.1492726106892
+    },
+    "scatter": {
+      "alphabet": 46.5,
+      "description_bits": 769.1986241185183,
+      "error_bits": 108.5632847146064,
+      "parts": 2.0,
+      "scored_tasks": 8,
+      "total_bits": 877.7619088331246
+    },
+    "whole": {
+      "alphabet": 23.25,
+      "description_bits": 315.22431205925915,
+      "error_bits": 44.531642357303205,
+      "parts": 1.0,
+      "scored_tasks": 8,
+      "total_bits": 359.7559544165623
+    }
+  },
+  "episode_steps": 40,
+  "episodes_per_task": 4,
+  "experiment_id": "brainworkshop-learned-decomposition-2026-08-16",
+  "rows": [
+    {
+      "chosen": "components",
+      "cuts": [
+        {
+          "alphabet": 21,
+          "bits_per_step": 2.1138027597122786,
+          "cut": "whole",
+          "description_bits": 294.28526732617695,
+          "error_bits": 43.923174227787605,
+          "parts": 1,
+          "status": "scored",
+          "steps": 160,
+          "total_bits": 338.2084415539646
+        },
+        {
+          "alphabet": 8,
+          "bits_per_step": 0.7875,
+          "cut": "components",
+          "description_bits": 126.0,
+          "error_bits": 0.0,
+          "parts": 2,
+          "status": "scored",
+          "steps": 160,
+          "total_bits": 126.0
+        },
+        {
+          "alphabet": 25,
+          "bits_per_step": 5.108241808752197,
+          "cut": "halves_vertical",
+          "description_bits": 501.53646849567025,
+          "error_bits": 315.78222090468125,
+          "parts": 2,
+          "status": "scored",
+          "steps": 160,
+          "total_bits": 817.3186894003516
+        },
+        {
+          "alphabet": 22,
+          "bits_per_step": 3.428188056827422,
+          "cut": "halves_horizontal",
+          "description_bits": 383.51111920280755,
+          "error_bits": 164.99896988958,
+          "parts": 2,
+          "status": "scored",
+          "steps": 160,
+          "total_bits": 548.5100890923875
+        },
+        {
+          "alphabet": 21,
+          "bits_per_step": 6.890447956984181,
+          "cut": "quadrants",
+          "description_bits": 623.7090740345841,
+          "error_bits": 478.7625990828849,
+          "parts": 4,
+          "status": "scored",
+          "steps": 160,
+          "total_bits": 1102.471673117469
+        },
+        {
+          "alphabet": 9,
+          "bits_per_step": 4.180338595652049,
+          "cut": "cells",
+          "description_bits": 326.50227514855817,
+          "error_bits": 342.3519001557697,
+          "parts": 9,
+          "status": "scored",
+          "steps": 160,
+          "total_bits": 668.8541753043279
+        },
+        {
+          "alphabet": 42,
+          "bits_per_step": 5.190105519424558,
+          "cut": "scatter",
+          "description_bits": 722.5705346523539,
+          "error_bits": 107.84634845557521,
+          "parts": 2,
+          "status": "scored",
+          "steps": 160,
+          "total_bits": 830.4168831079292
+        }
+      ],
+      "task": 0
+    },
+    {
+      "chosen": "components",
+      "cuts": [
+        {
+          "alphabet": 24,
+          "bits_per_step": 2.3784492972490994,
+          "cut": "whole",
+          "description_bits": 320.9473750504809,
+          "error_bits": 59.60451250937503,
+          "parts": 1,
+          "status": "scored",
+          "steps": 160,
+          "total_bits": 380.5518875598559
+        },
+        {
+          "alphabet": 8,
+          "bits_per_step": 0.88125,
+          "cut": "components",
+          "description_bits": 141.0,
+          "error_bits": 0.0,
+          "parts": 2,
+          "status": "scored",
+          "steps": 160,
+          "total_bits": 141.0
+        },
+        {
+          "alphabet": 26,
+          "bits_per_step": 4.377284487518891,
+          "cut": "halves_vertical",
+          "description_bits": 408.938255478275,
+          "error_bits": 291.4272625247477,
+          "parts": 2,
+          "status": "scored",
+          "steps": 160,
+          "total_bits": 700.3655180030227
+        },
+        {
+          "alphabet": 26,
+          "bits_per_step": 4.2891512428037455,
+          "cut": "halves_horizontal",
+          "description_bits": 460.643092377827,
+          "error_bits": 225.62110647077242,
+          "parts": 2,
+          "status": "scored",
+          "steps": 160,
+          "total_bits": 686.2641988485993
+        },
+        {
+          "alphabet": 22,
+          "bits_per_step": 6.744890323188912,
+          "cut": "quadrants",
+          "description_bits": 566.3478155669368,
+          "error_bits": 512.8346361432892,
+          "parts": 4,
+          "status": "scored",
+          "steps": 160,
+          "total_bits": 1079.182451710226
+        },
+        {
+          "alphabet": 9,
+          "bits_per_step": 4.596391252091353,
+          "cut": "cells",
+          "description_bits": 336.0120501528851,
+          "error_bits": 399.4105501817313,
+          "parts": 9,
+          "status": "scored",
+          "steps": 160,
+          "total_bits": 735.4226003346164
+        },
+        {
+          "alphabet": 48,
+          "bits_per_step": 5.794398594498199,
+          "cut": "scatter",
+          "description_bits": 781.8947501009618,
+          "error_bits": 145.20902501875005,
+          "parts": 2,
+          "status": "scored",
+          "steps": 160,
+          "total_bits": 927.1037751197118
+        }
+      ],
+      "task": 1
+    },
+    {
+      "chosen": "components",
+      "cuts": [
+        {
+          "alphabet": 26,
+          "bits_per_step": 2.7321305861695095,
+          "cut": "whole",
+          "description_bits": 376.0351774512873,
+          "error_bits": 61.105716335834195,
+          "parts": 1,
+          "status": "scored",
+          "steps": 160,
+          "total_bits": 437.1408937871215
+        },
+        {
+          "alphabet": 8,
+          "bits_per_step": 0.88125,
+          "cut": "components",
+          "description_bits": 141.0,
+          "error_bits": 0.0,
+          "parts": 2,
+          "status": "scored",
+          "steps": 160,
+          "total_bits": 141.0
+        },
+        {
+          "alphabet": 27,
+          "bits_per_step": 5.170940158602772,
+          "cut": "halves_vertical",
+          "description_bits": 475.48875021634683,
+          "error_bits": 351.86167516009664,
+          "parts": 2,
+          "status": "scored",
+          "steps": 160,
+          "total_bits": 827.3504253764435
+        },
+        {
+          "alphabet": 24,
+          "bits_per_step": 4.097810235019533,
+          "cut": "halves_horizontal",
+          "description_bits": 366.79700005769246,
+          "error_bits": 288.8526375454328,
+          "parts": 2,
+          "status": "scored",
+          "steps": 160,
+          "total_bits": 655.6496376031253
+        },
+        {
+          "alphabet": 21,
+          "bits_per_step": 6.561024150275773,
+          "cut": "quadrants",
+          "description_bits": 518.2934558878937,
+          "error_bits": 531.4704081562301,
+          "parts": 4,
+          "status": "scored",
+          "steps": 160,
+          "total_bits": 1049.7638640441237
+        },
+        {
+          "alphabet": 9,
+          "bits_per_step": 4.536955158314309,
+          "cut": "cells",
+          "description_bits": 358.2015251629813,
+          "error_bits": 367.71130016730825,
+          "parts": 9,
+          "status": "scored",
+          "steps": 160,
+          "total_bits": 725.9128253302895
+        },
+        {
+          "alphabet": 52,
+          "bits_per_step": 6.626761172339019,
+          "cut": "scatter",
+          "description_bits": 912.0703549025746,
+          "error_bits": 148.21143267166838,
+          "parts": 2,
+          "status": "scored",
+          "steps": 160,
+          "total_bits": 1060.281787574243
+        }
+      ],
+      "task": 2
+    },
+    {
+      "chosen": "components",
+      "cuts": [
+        {
+          "alphabet": 19,
+          "bits_per_step": 1.6726214584184116,
+          "cut": "whole",
+          "description_bits": 254.8756508066151,
+          "error_bits": 12.743782540330756,
+          "parts": 1,
+          "status": "scored",
+          "steps": 160,
+          "total_bits": 267.61943334694587
+        },
+        {
+          "alphabet": 8,
+          "bits_per_step": 0.7875,
+          "cut": "components",
+          "description_bits": 126.0,
+          "error_bits": 0.0,
+          "parts": 2,
+          "status": "scored",
+          "steps": 160,
+          "total_bits": 126.0
+        },
+        {
+          "alphabet": 19,
+          "bits_per_step": 2.946999712451487,
+          "cut": "halves_vertical",
+          "description_bits": 305.85078096793814,
+          "error_bits": 165.66917302429982,
+          "parts": 2,
+          "status": "scored",
+          "steps": 160,
+          "total_bits": 471.51995399223796
+        },
+        {
+          "alphabet": 23,
+          "bits_per_step": 4.071205760451312,
+          "cut": "halves_horizontal",
+          "description_bits": 470.45044342992935,
+          "error_bits": 180.94247824228052,
+          "parts": 2,
+          "status": "scored",
+          "steps": 160,
+          "total_bits": 651.3929216722099
+        },
+        {
+          "alphabet": 21,
+          "bits_per_step": 5.380588842903982,
+          "cut": "quadrants",
+          "description_bits": 452.40869454621236,
+          "error_bits": 408.48552031842473,
+          "parts": 4,
+          "status": "scored",
+          "steps": 160,
+          "total_bits": 860.8942148646371
+        },
+        {
+          "alphabet": 9,
+          "bits_per_step": 4.002030314320919,
+          "cut": "cells",
+          "description_bits": 316.9925001442312,
+          "error_bits": 323.33235014711585,
+          "parts": 9,
+          "status": "scored",
+          "steps": 160,
+          "total_bits": 640.324850291347
+        },
+        {
+          "alphabet": 38,
+          "bits_per_step": 4.132742916836824,
+          "cut": "scatter",
+          "description_bits": 629.7513016132302,
+          "error_bits": 31.48756508066151,
+          "parts": 2,
+          "status": "scored",
+          "steps": 160,
+          "total_bits": 661.2388666938917
+        }
+      ],
+      "task": 3
+    },
+    {
+      "chosen": "components",
+      "cuts": [
+        {
+          "alphabet": 25,
+          "bits_per_step": 2.176807588956902,
+          "cut": "whole",
+          "description_bits": 325.06993328423073,
+          "error_bits": 23.21928094887362,
+          "parts": 1,
+          "status": "scored",
+          "steps": 160,
+          "total_bits": 348.28921423310436
+        },
+        {
+          "alphabet": 8,
+          "bits_per_step": 0.825,
+          "cut": "components",
+          "description_bits": 132.0,
+          "error_bits": 0.0,
+          "parts": 2,
+          "status": "scored",
+          "steps": 160,
+          "total_bits": 132.0
+        },
+        {
+          "alphabet": 26,
+          "bits_per_step": 4.641684221664328,
+          "cut": "halves_vertical",
+          "description_bits": 493.54617040481463,
+          "error_bits": 249.12330506147788,
+          "parts": 2,
+          "status": "scored",
+          "steps": 160,
+          "total_bits": 742.6694754662925
+        },
+        {
+          "alphabet": 23,
+          "bits_per_step": 3.336126942592047,
+          "cut": "halves_horizontal",
+          "description_bits": 375.45564235273207,
+          "error_bits": 158.32466846199546,
+          "parts": 2,
+          "status": "scored",
+          "steps": 160,
+          "total_bits": 533.7803108147275
+        },
+        {
+          "alphabet": 20,
+          "bits_per_step": 7.239229558936333,
+          "cut": "quadrants",
+          "description_bits": 544.5629399558077,
+          "error_bits": 613.7137894740055,
+          "parts": 4,
+          "status": "scored",
+          "steps": 160,
+          "total_bits": 1158.2767294298133
+        },
+        {
+          "alphabet": 9,
+          "bits_per_step": 4.378458908242193,
+          "cut": "cells",
+          "description_bits": 316.9925001442312,
+          "error_bits": 383.56092517451975,
+          "parts": 9,
+          "status": "scored",
+          "steps": 160,
+          "total_bits": 700.5534253187509
+        },
+        {
+          "alphabet": 50,
+          "bits_per_step": 5.291115177913804,
+          "cut": "scatter",
+          "description_bits": 790.1398665684615,
+          "error_bits": 56.43856189774724,
+          "parts": 2,
+          "status": "scored",
+          "steps": 160,
+          "total_bits": 846.5784284662087
+        }
+      ],
+      "task": 4
+    },
+    {
+      "chosen": "components",
+      "cuts": [
+        {
+          "alphabet": 21,
+          "bits_per_step": 1.9216388724657079,
+          "cut": "whole",
+          "description_bits": 281.1083150578407,
+          "error_bits": 26.353904536672566,
+          "parts": 1,
+          "status": "scored",
+          "steps": 160,
+          "total_bits": 307.4622195945133
+        },
+        {
+          "alphabet": 8,
+          "bits_per_step": 0.80625,
+          "cut": "components",
+          "description_bits": 129.0,
+          "error_bits": 0.0,
+          "parts": 2,
+          "status": "scored",
+          "steps": 160,
+          "total_bits": 129.0
+        },
+        {
+          "alphabet": 22,
+          "bits_per_step": 3.9577455615406016,
+          "cut": "halves_vertical",
+          "description_bits": 361.2139611096211,
+          "error_bits": 272.02532873687517,
+          "parts": 2,
+          "status": "scored",
+          "steps": 160,
+          "total_bits": 633.2392898464963
+        },
+        {
+          "alphabet": 25,
+          "bits_per_step": 5.311410517054841,
+          "cut": "halves_horizontal",
+          "description_bits": 510.82418087521967,
+          "error_bits": 339.0015018535549,
+          "parts": 2,
+          "status": "scored",
+          "steps": 160,
+          "total_bits": 849.8256827287746
+        },
+        {
+          "alphabet": 22,
+          "bits_per_step": 7.692519542149337,
+          "cut": "quadrants",
+          "description_bits": 584.1855420414859,
+          "error_bits": 646.6175847024081,
+          "parts": 4,
+          "status": "scored",
+          "steps": 160,
+          "total_bits": 1230.803126743894
+        },
+        {
+          "alphabet": 9,
+          "bits_per_step": 4.774699533422483,
+          "cut": "cells",
+          "description_bits": 361.37145016442355,
+          "error_bits": 402.5804751831737,
+          "parts": 9,
+          "status": "scored",
+          "steps": 160,
+          "total_bits": 763.9519253475972
+        },
+        {
+          "alphabet": 42,
+          "bits_per_step": 4.718277744931416,
+          "cut": "scatter",
+          "description_bits": 690.2166301156814,
+          "error_bits": 64.70780907334513,
+          "parts": 2,
+          "status": "scored",
+          "steps": 160,
+          "total_bits": 754.9244391890265
+        }
+      ],
+      "task": 5
+    },
+    {
+      "chosen": "components",
+      "cuts": [
+        {
+          "alphabet": 24,
+          "bits_per_step": 2.407105312878607,
+          "cut": "whole",
+          "description_bits": 293.437600046154,
+          "error_bits": 91.69925001442311,
+          "parts": 1,
+          "status": "scored",
+          "steps": 160,
+          "total_bits": 385.1368500605771
+        },
+        {
+          "alphabet": 8,
+          "bits_per_step": 0.9,
+          "cut": "components",
+          "description_bits": 144.0,
+          "error_bits": 0.0,
+          "parts": 2,
+          "status": "scored",
+          "steps": 160,
+          "total_bits": 144.0
+        },
+        {
+          "alphabet": 24,
+          "bits_per_step": 4.470338438203127,
+          "cut": "halves_vertical",
+          "description_bits": 403.47670006346175,
+          "error_bits": 311.77745004903863,
+          "parts": 2,
+          "status": "scored",
+          "steps": 160,
+          "total_bits": 715.2541501125004
+        },
+        {
+          "alphabet": 26,
+          "bits_per_step": 4.729817466379474,
+          "cut": "halves_horizontal",
+          "description_bits": 441.84133350526264,
+          "error_bits": 314.92946111545314,
+          "parts": 2,
+          "status": "scored",
+          "steps": 160,
+          "total_bits": 756.7707946207158
+        },
+        {
+          "alphabet": 21,
+          "bits_per_step": 7.714007473755198,
+          "cut": "quadrants",
+          "description_bits": 549.039677847345,
+          "error_bits": 685.2015179534867,
+          "parts": 4,
+          "status": "scored",
+          "steps": 160,
+          "total_bits": 1234.2411958008317
+        },
+        {
+          "alphabet": 9,
+          "bits_per_step": 4.338834845724165,
+          "cut": "cells",
+          "description_bits": 297.9729501355774,
+          "error_bits": 396.24062518028904,
+          "parts": 9,
+          "status": "scored",
+          "steps": 160,
+          "total_bits": 694.2135753158664
+        },
+        {
+          "alphabet": 48,
+          "bits_per_step": 5.864210625757214,
+          "cut": "scatter",
+          "description_bits": 714.875200092308,
+          "error_bits": 223.39850002884623,
+          "parts": 2,
+          "status": "scored",
+          "steps": 160,
+          "total_bits": 938.2737001211542
+        }
+      ],
+      "task": 6
+    },
+    {
+      "chosen": "components",
+      "cuts": [
+        {
+          "alphabet": 26,
+          "bits_per_step": 2.5852418449776002,
+          "cut": "whole",
+          "description_bits": 376.0351774512873,
+          "error_bits": 37.603517745128734,
+          "parts": 1,
+          "status": "scored",
+          "steps": 160,
+          "total_bits": 413.63869519641605
+        },
+        {
+          "alphabet": 8,
+          "bits_per_step": 0.8625,
+          "cut": "components",
+          "description_bits": 138.0,
+          "error_bits": 0.0,
+          "parts": 2,
+          "status": "scored",
+          "steps": 160,
+          "total_bits": 138.0
+        },
+        {
+          "alphabet": 27,
+          "bits_per_step": 5.052067971048684,
+          "cut": "halves_vertical",
+          "description_bits": 542.0571752466353,
+          "error_bits": 266.2737001211542,
+          "parts": 2,
+          "status": "scored",
+          "steps": 160,
+          "total_bits": 808.3308753677895
+        },
+        {
+          "alphabet": 29,
+          "bits_per_step": 5.22232956976214,
+          "cut": "halves_horizontal",
+          "description_bits": 548.9518524494156,
+          "error_bits": 286.62087871252675,
+          "parts": 2,
+          "status": "scored",
+          "steps": 160,
+          "total_bits": 835.5727311619423
+        },
+        {
+          "alphabet": 24,
+          "bits_per_step": 6.934755782340749,
+          "cut": "quadrants",
+          "description_bits": 577.7052750908656,
+          "error_bits": 531.8556500836542,
+          "parts": 4,
+          "status": "scored",
+          "steps": 160,
+          "total_bits": 1109.5609251745198
+        },
+        {
+          "alphabet": 9,
+          "bits_per_step": 4.636015314609382,
+          "cut": "cells",
+          "description_bits": 358.2015251629813,
+          "error_bits": 383.56092517451975,
+          "parts": 9,
+          "status": "scored",
+          "steps": 160,
+          "total_bits": 741.762450337501
+        },
+        {
+          "alphabet": 52,
+          "bits_per_step": 6.270483689955201,
+          "cut": "scatter",
+          "description_bits": 912.0703549025746,
+          "error_bits": 91.20703549025747,
+          "parts": 2,
+          "status": "scored",
+          "steps": 160,
+          "total_bits": 1003.2773903928321
+        }
+      ],
+      "task": 7
+    }
+  ],
+  "schema": "neural-computer.learned-decomposition.v1",
+  "seconds": 7.165214916109107,
+  "seed": 41,
+  "tasks": 8
+}
