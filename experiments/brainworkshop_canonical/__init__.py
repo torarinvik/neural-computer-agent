@@ -9,6 +9,11 @@ from .controller_pretraining import (
     save_temporal_controller_artifact,
     save_temporal_controller_report,
 )
+from .canonical_live_machine import (
+    CANONICAL_LIVE_MACHINE_SCHEMA,
+    CanonicalBrainWorkshopLiveMachine,
+    run_canonical_neural_workshop_live_lifetime,
+)
 from .environment import BrainWorkshopEventEncoder, NBackVerifier, NBackVerifierStep
 from .live_session import (
     BrainWorkshopLiveDevice,
@@ -74,8 +79,10 @@ from .trainer import (
 __all__ = [
     "BrainWorkshopEventEncoder",
     "BrainWorkshopLiveDevice",
+    "CANONICAL_LIVE_MACHINE_SCHEMA",
     "CanonicalBrainWorkshopAgent",
     "CanonicalRollout",
+    "CanonicalBrainWorkshopLiveMachine",
     "FrozenControllerProgramMachine",
     "LiveBrainWorkshopLifetime",
     "NBackVerifier",
@@ -117,6 +124,7 @@ __all__ = [
     "retrieve_instruction_program",
     "retrieve_physical_program",
     "run_live_lifetime",
+    "run_canonical_neural_workshop_live_lifetime",
     "run_physical_brainworkshop_lifetime",
     "run_physical_training_campaign",
     "run_rendered_live_lifetime",

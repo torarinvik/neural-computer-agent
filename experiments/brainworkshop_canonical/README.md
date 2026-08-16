@@ -353,6 +353,21 @@ PYTHONPATH=src .venv/bin/python \
 
 ## Neural Workshop live curriculum
 
+`cross_task_live_transfer.py` is the same-agent boundary audit. It drives one
+`CanonicalBrainWorkshopAgent` through the real rendered Workshop event/receipt
+loop, enters a rendered maze through the same controller and intention bus,
+then returns to a second live Workshop session. The maze model and both
+verifiers remain task-local; the controller digest must stay unchanged. This
+is a development diagnostic for architectural continuity, not yet evidence of
+positive Workshop-to-maze sample-efficiency transfer.
+
+```bash
+PYTHONPATH=src .venv/bin/python \
+  -m experiments.brainworkshop_canonical.cross_task_live_transfer \
+  --neural-workshop /absolute/path/to/neural-workshop \
+  --output /tmp/neural-workshop-live-cross-task
+```
+
 `neural_workshop_live.py` replaces slow macOS capture and key injection with
 Neural Workshop's headless public boundary. It still feeds rendered RGBA pixels
 through a frozen visual adapter, maps opaque decoder actions to one or two
