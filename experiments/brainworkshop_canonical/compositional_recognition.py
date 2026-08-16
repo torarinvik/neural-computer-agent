@@ -52,6 +52,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from neural_computer.composition_proposer import LearnedCompositionProposer
 from neural_computer.induced_library import (
     InducedProgramLibrary,
     InducedProgramRecord,
@@ -153,6 +154,7 @@ def search_compositions(
     exclude: frozenset[int] = frozenset(),
     correct_for_multiplicity: bool = False,
     combiners: tuple[str, ...] = SEARCH_COMBINERS,
+    proposer: LearnedCompositionProposer | None = None,
 ) -> tuple[Candidate | None, dict[str, Any]]:
     """The best thing the library can build that the evidence supports.
 
@@ -179,6 +181,7 @@ def search_compositions(
         "alpha": alpha,
         "effective_alpha": alpha,
         "winner": None,
+        "proposal_mode": "exhaustive" if proposer is None else "learned_shortlist",
     }
     if not trials or not library.record_count:
         return None, report
@@ -189,26 +192,41 @@ def search_compositions(
         for slot in usable
     }
 
-    candidates: list[Candidate] = []
-    for slot in usable:
-        candidates.append(
-            Candidate("single", (slot,), None, _hits(predictions[slot], targets), trials)
+    def build_candidate(slot: int) -> Candidate:
+        return Candidate(
+            "single", (slot,), None, _hits(predictions[slot], targets), trials
         )
-    report["singles_examined"] = len(candidates)
-    for position, left in enumerate(usable):
-        for right in usable[position + 1 :]:
-            for combiner in combiners:
-                merged = _merge(predictions[left], predictions[right], combiner)
-                candidates.append(
-                    Candidate(
-                        "pair",
-                        (left, right),
-                        combiner,
-                        _hits(merged, targets),
-                        trials,
-                    )
+
+    def build_pair(left: int, right: int, combiner: str) -> Candidate:
+        merged = _merge(predictions[left], predictions[right], combiner)
+        return Candidate(
+            "pair", (left, right), combiner, _hits(merged, targets), trials
+        )
+
+    candidates: list[Candidate] = []
+    if proposer is None:
+        candidates.extend(build_candidate(slot) for slot in usable)
+        for position, left in enumerate(usable):
+            for right in usable[position + 1 :]:
+                candidates.extend(
+                    build_pair(left, right, combiner) for combiner in combiners
                 )
-    report["pairs_examined"] = len(candidates) - report["singles_examined"]
+    else:
+        proposals, _, budget = proposer.propose(
+            predictions, targets, tuple(usable), combiners
+        )
+        report["proposal_budget"] = budget.payload()
+        for proposal in proposals:
+            if len(proposal) == 1:
+                candidates.append(build_candidate(int(proposal[0])))
+            elif len(proposal) == 3:
+                candidates.append(
+                    build_pair(int(proposal[0]), int(proposal[1]), str(proposal[2]))
+                )
+            else:  # pragma: no cover - proposer contract guard
+                raise ValueError("composition proposer returned an invalid proposal")
+    report["singles_examined"] = sum(candidate.kind == "single" for candidate in candidates)
+    report["pairs_examined"] = sum(candidate.kind == "pair" for candidate in candidates)
     report["hypotheses"] = len(candidates)
 
     # Every candidate examined is a chance to be fooled, so the bar rises with
@@ -224,6 +242,40 @@ def search_compositions(
         if candidate.rate >= threshold
         and binomial_upper_tail(trials, threshold, candidate.rate) <= effective
     ]
+    if not surviving and proposer is not None and proposer.fallback_on_miss:
+        # The learned path is an optimization, not a new admission rule.  If
+        # its shortlist cannot explain the evidence, recover the old complete
+        # search before declaring failure and account for that work explicitly.
+        proposer.mark_fallback()
+        existing = {candidate.label() for candidate in candidates}
+        for slot in usable:
+            candidate = build_candidate(slot)
+            if candidate.label() not in existing:
+                candidates.append(candidate)
+                existing.add(candidate.label())
+        for position, left in enumerate(usable):
+            for right in usable[position + 1 :]:
+                for combiner in combiners:
+                    candidate = build_pair(left, right, combiner)
+                    if candidate.label() not in existing:
+                        candidates.append(candidate)
+                        existing.add(candidate.label())
+        report["fallback_hypotheses"] = len(candidates)
+        report["hypotheses"] = len(candidates)
+        report["singles_examined"] = sum(
+            candidate.kind == "single" for candidate in candidates
+        )
+        report["pairs_examined"] = sum(
+            candidate.kind == "pair" for candidate in candidates
+        )
+        effective = alpha / len(candidates) if correct_for_multiplicity else alpha
+        report["effective_alpha"] = effective
+        surviving = [
+            candidate
+            for candidate in candidates
+            if candidate.rate >= threshold
+            and binomial_upper_tail(trials, threshold, candidate.rate) <= effective
+        ]
     report["survivors"] = len(surviving)
     if not surviving:
         return None, report

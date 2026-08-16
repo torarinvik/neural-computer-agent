@@ -52,6 +52,7 @@ from typing import Any
 import torch
 
 from neural_computer import ExternalTemporalProgramBank
+from neural_computer.composition_proposer import LearnedCompositionProposer
 from neural_computer.induced_library import (
     INDUCED_LIBRARY_EXTENSION,
     InducedProgramLibrary,
@@ -342,6 +343,7 @@ def solve_task(
     config_for=_config,
     compose: bool = False,
     correct_for_multiplicity: bool = False,
+    proposer: LearnedCompositionProposer | None = None,
 ) -> tuple[TaskOutcome, InducedProgramRecord | None]:
     """Walk the ladder until something explains the task, then confirm it.
 
@@ -429,6 +431,7 @@ def solve_task(
                 traces,
                 exclude=frozenset(refused_slots),
                 correct_for_multiplicity=correct_for_multiplicity,
+                proposer=proposer,
             )
             outcome.composition_hypotheses = int(search["hypotheses"])
             if offer is not None and offer.label() not in refused_labels:
@@ -506,8 +509,12 @@ def solve_task(
             outcome.library_slot = slot
             outcome.reproduces = True
             outcome.solved = True
+            if proposer is not None and source == "composed" and outcome.combiner:
+                proposer.observe(outcome.combiner, accepted=True)
             return outcome, candidate
         outcome.reproduces = False
+        if proposer is not None and source == "composed" and outcome.combiner:
+            proposer.observe(outcome.combiner, accepted=False)
         if source in ("recognised", "composed"):
             if slot is not None:
                 refused_slots.add(slot)

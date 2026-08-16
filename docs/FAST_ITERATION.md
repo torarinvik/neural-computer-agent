@@ -51,3 +51,12 @@ widening the first.
 Unmeasured: whether more workers help on a single-GPU box. The GPU reads 99%
 busy during a sweep, so worker scaling past six may be flat. Measure it before
 assuming the ten-worker column above.
+
+## External proposal routing
+
+The compositional search now has a development-only
+`LearnedCompositionProposer`. It shortlists opaque slot/combiner candidates
+from learned prediction agreement and retains exhaustive fallback when the
+shortlist cannot explain the evidence. The first audit reduced 1,520 candidate
+hypotheses to 116 on a held-out pair while preserving the winner; this is CPU
+iteration throughput, not a reduction in verifier experience or a promotion.

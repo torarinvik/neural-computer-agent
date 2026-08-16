@@ -42,6 +42,7 @@ from typing import Any
 import torch
 
 from neural_computer import ExternalTemporalProgramBank
+from neural_computer.composition_proposer import LearnedCompositionProposer
 from neural_computer.induced_library import InducedProgramLibrary
 from neural_computer.promotion import sha256_file
 
@@ -187,6 +188,7 @@ def run_arm(
     correct_for_multiplicity: bool = False,
     part_digests_in_cluster_symbols: dict[str, str] | None = None,
     library_path: Path | None = None,
+    proposer: LearnedCompositionProposer | None = None,
 ) -> dict[str, Any]:
     """One pass over the stream, reporting primitives and composites apart."""
 
@@ -212,6 +214,7 @@ def run_arm(
             corrupt=corrupt,
             compose=compose,
             correct_for_multiplicity=correct_for_multiplicity,
+            proposer=proposer,
         )
         if record is not None:
             admit(library, record, outcome, library_path=library_path)

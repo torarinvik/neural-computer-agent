@@ -1,0 +1,35 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment_id": "brainworkshop-learned-composition-proposer-2026-08-16",
+  "status": "development_proposal_throughput_diagnostic_not_promoted",
+  "source": "learned_proposer.json",
+  "seed_blocks": [],
+  "replication_count": 1,
+  "unique_verifier_bits": 0,
+  "unique_logical_lifetimes": 0,
+  "optimizer_updates": 0,
+  "replayed_examples": 0,
+  "wall_seconds": 0.2782170419814065,
+  "latency": "proposal-search wall time measured; live tick latency not measured",
+  "stable_bits_to_threshold": null,
+  "retention_on_mastered_primitive": "not claimed",
+  "transfer_ratio_against_fresh_learner": null,
+  "proposal_hypotheses": {
+    "exhaustive": 1520,
+    "learned_shortlist": 116,
+    "reduction": 0.9236842105263158,
+    "stranger_fallback": 1550
+  },
+  "controls": {
+    "same_candidate_winner": true,
+    "stranger_no_candidate": true,
+    "exhaustive_fallback": true,
+    "verifier_backed_confirmation_unchanged": true,
+    "fresh_learner": false,
+    "noisy_feedback_campaign": false,
+    "live_navigation": false,
+    "agent_bank_unchanged": true,
+    "reserved_holdout_untouched": true
+  },
+  "claim_boundary": "Development-only proposal-throughput diagnostic. The learned shortlist reduced arithmetic candidate work and preserved a controlled winner, but it does not yet establish lower experience, closed-loop behavioral gain, transfer, or promotion."
+}

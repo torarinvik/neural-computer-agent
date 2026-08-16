@@ -20,6 +20,7 @@ from experiments.brainworkshop_canonical.counter_state_programs import (
     predict_symbols,
 )
 from experiments.brainworkshop_canonical.identification_ceiling import Trace
+from neural_computer.composition_proposer import LearnedCompositionProposer
 from neural_computer.induced_library import (
     InducedProgramLibrary,
     InducedProgramRecord,
@@ -244,3 +245,20 @@ def test_an_empty_library_offers_nothing_rather_than_failing() -> None:
     found, report = search_compositions(_library(_pool()), ())
     assert found is None
     assert report["trials"] == 0
+
+
+def test_learned_proposer_shortlists_and_keeps_confirmation_searchable() -> None:
+    pool = _pool(count=6)
+    library = _library(pool)
+    target = product_rule(pool[0], pool[1], "and")
+    traces = _traces(target, 8)
+    proposer = LearnedCompositionProposer(
+        slot_budget=4, candidate_budget=20, fallback_on_miss=True
+    )
+    found, report = search_compositions(library, traces, proposer=proposer)
+    assert found is not None
+    assert report["proposal_mode"] == "learned_shortlist"
+    assert report["proposal_budget"]["slots_considered"] == 4
+    assert report["hypotheses"] <= 20
+    proposer.observe(found.combiner or "and", accepted=True)
+    assert proposer.configuration()["schema"] == "neural-computer.external-composition-proposer.v1"

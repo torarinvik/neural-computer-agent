@@ -1,0 +1,65 @@
+{
+  "agent_bank_sha256": "07319eb13c9cac58bbbe94258548e64f13ba1b3512ca2a01fbdc675c49e2e7c9",
+  "agent_bank_unchanged": true,
+  "claim_boundary": "The proposer only changes candidate ordering and shortlisting. Verifier-backed confirmation remains mandatory, the stranger control uses exhaustive fallback, and no new program is admitted or written to the curated bank.",
+  "claim_status": "development_proposal_throughput_diagnostic_not_promoted",
+  "exhaustive": {
+    "hypotheses": 1520,
+    "seconds": 0.06578283302951604,
+    "winner": {
+      "combiner": "and",
+      "hits": 128,
+      "kind": "pair",
+      "label": "slot 0 and slot 1",
+      "rate": 1.0,
+      "slots": [
+        0,
+        1
+      ],
+      "trials": 128
+    }
+  },
+  "experiment_id": "brainworkshop-learned-composition-proposer-2026-08-16",
+  "hypothesis_reduction": 0.9236842105263158,
+  "learned_proposer": {
+    "configuration": {
+      "behavior": "opaque-marginal-shortlist_beta-combiner-prior_v1",
+      "candidate_budget": 128,
+      "fallback_on_miss": true,
+      "schema": "neural-computer.external-composition-proposer.v1",
+      "slot_budget": 8
+    },
+    "fallback_hypotheses": null,
+    "hypotheses": 116,
+    "proposal_budget": {
+      "fallback": false,
+      "hypotheses": 116,
+      "slots_considered": 8
+    },
+    "seconds": 0.03600416600238532,
+    "winner": {
+      "combiner": "and",
+      "hits": 128,
+      "kind": "pair",
+      "label": "slot 1 and slot 0",
+      "rate": 1.0,
+      "slots": [
+        1,
+        0
+      ],
+      "trials": 128
+    }
+  },
+  "library_size": 32,
+  "schema": "neural-computer.learned-composition-proposer-audit.v1",
+  "seed": 41,
+  "stranger_control": {
+    "fallback_hypotheses": 1550,
+    "fallback_used": true,
+    "found": null,
+    "hypotheses": 1550,
+    "seconds": 0.05316116695757955
+  },
+  "target": "held_out_pair_slot_0_and_slot_1",
+  "wall_seconds": 0.2782170419814065
+}
