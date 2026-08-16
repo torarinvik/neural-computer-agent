@@ -25,7 +25,6 @@ from neural_computer import (
 )
 
 from .neural_workshop_live import (
-    NeuralWorkshopAudioEncoder,
     NeuralWorkshopEnvironment,
     NeuralWorkshopInstructionEncoder,
     NeuralWorkshopIntervention,
@@ -158,6 +157,7 @@ def run_canonical_neural_workshop_live_lifetime(
     tick_seconds: float = 0.001,
     max_tick_seconds: float | None = None,
     intervention: NeuralWorkshopIntervention | None = None,
+    visible_pacing: bool | None = None,
 ) -> NeuralWorkshopLiveReport:
     """Run one rendered Workshop lifetime on an existing canonical agent."""
 
@@ -170,6 +170,10 @@ def run_canonical_neural_workshop_live_lifetime(
         raise ValueError("canonical agent and live frontend event widths differ")
     if tick_seconds <= 0.0:
         raise ValueError("canonical live tick duration must be positive")
+    if visible_pacing is None:
+        visible_pacing = config.visible
+    if not isinstance(visible_pacing, bool):
+        raise TypeError("visible pacing flag must be boolean or None")
 
     encoder = NeuralWorkshopRGBAEncoder(config, seed=seed)
     instruction_encoder = NeuralWorkshopInstructionEncoder(config)
@@ -179,6 +183,7 @@ def run_canonical_neural_workshop_live_lifetime(
         verifier,
         intervention=intervention,
         instruction_encoder=instruction_encoder,
+        visible_pacing=visible_pacing,
     )
     machine = CanonicalBrainWorkshopLiveMachine(agent, sample=sample)
     runtime = CognitiveTickRuntime(
@@ -218,7 +223,7 @@ def run_canonical_neural_workshop_live_lifetime(
         return total_seconds[index]
 
     accounting = getattr(environment, "accounting", None)
-    snapshot = getattr(accounting, "snapshot", lambda: {})()
+    snapshot = getattr(accounting, "snapshot", dict)()
     logical_trials = int(snapshot.get("logical_trials", len(actions)))
     return NeuralWorkshopLiveReport(
         grid_size=config.grid_size,

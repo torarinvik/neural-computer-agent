@@ -185,6 +185,43 @@ def test_canonical_live_workshop_then_maze_uses_one_core() -> None:
     assert report.controller_digest_before == maze_agent.controller_digest
 
 
+def test_visible_canonical_live_holds_rendered_phases(monkeypatch) -> None:
+    pauses: list[float] = []
+    import experiments.brainworkshop_canonical.neural_workshop_live as live_module
+
+    monkeypatch.setattr(live_module.time, "sleep", pauses.append)
+    agent = CanonicalBrainWorkshopAgent(
+        symbol_count=4,
+        event_width=EVENT_WIDTH,
+        intention_width=4,
+        feedback_width=8,
+        n_back=1,
+        reader_kind="context",
+        seed=72,
+    )
+    report = run_canonical_neural_workshop_live_lifetime(
+        agent,
+        config=NeuralWorkshopLiveConfig(
+            active_cells=2,
+            trials=2,
+            event_width=EVENT_WIDTH,
+            source_key_width=4,
+            image_size=8,
+            crop=(0.0, 0.25, 1.0, 1.0),
+            instruction_crop=(0.0, 0.0, 1.0, 0.20),
+            instruction_image_size=8,
+            instruction_pool_size=4,
+            visible=True,
+        ),
+        seed=72,
+        environment=_Environment(),
+        verifier=lambda *_args, **_kwargs: True,
+        sample=False,
+    )
+    assert report.emitted_actions == 2
+    assert pauses == [0.5, 0.2, 0.5, 0.2]
+
+
 def test_live_cross_task_runner_reuses_core_after_public_live_session(
     tmp_path: Path,
     monkeypatch,

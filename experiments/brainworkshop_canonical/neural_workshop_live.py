@@ -52,6 +52,10 @@ _REWARD_INTERVENTIONS = {"normal", "missing", "shuffled"}
 _VISIBLE_TICK_MS = "1"
 _VISIBLE_STIMULUS_MS = "500"
 _VISIBLE_TRIAL_MS = "700"
+_VISIBLE_STIMULUS_SECONDS = float(_VISIBLE_STIMULUS_MS) / 1_000.0
+_VISIBLE_FEEDBACK_SECONDS = (
+    float(_VISIBLE_TRIAL_MS) - float(_VISIBLE_STIMULUS_MS)
+) / 1_000.0
 # These keys are Neural Workshop internals. A Dual (or Position) observation
 # that carries them is a hidden channel, not a public sensorimotor stream.
 _PRIVILEGED_OBSERVATION_KEYS = frozenset(
@@ -473,6 +477,7 @@ class NeuralWorkshopLiveDevice:
         intervention: NeuralWorkshopIntervention | None = None,
         instruction_encoder: NeuralWorkshopInstructionEncoder | None = None,
         audio_encoder: NeuralWorkshopAudioEncoder | None = None,
+        visible_pacing: bool = False,
     ) -> None:
         if environment.n_actions not in (1, 2):
             raise ValueError("Neural Workshop live supports one or two action ports")
@@ -495,6 +500,9 @@ class NeuralWorkshopLiveDevice:
         self.audio_encoder = audio_encoder
         self.event_width = encoder.event_width
         self.verifier = verifier
+        if not isinstance(visible_pacing, bool):
+            raise TypeError("visible pacing flag must be boolean")
+        self.visible_pacing = visible_pacing
         self.intervention = (
             NeuralWorkshopIntervention() if intervention is None else intervention
         ).validate()
@@ -592,8 +600,16 @@ class NeuralWorkshopLiveDevice:
 
     def poll(self, now: float) -> LiveInputBatch:
         if self._advance_pending:
+            # ``NeuralWorkshopEnv`` is intentionally stepped rather than run
+            # by pyglet's clock.  In a visible session, hold each public phase
+            # on screen so a human can actually watch the same rendered loop;
+            # headless runs retain their fast path.
+            if self.visible_pacing:
+                time.sleep(_VISIBLE_STIMULUS_SECONDS)
             feedback = self.environment.advance()
             self._close_action(feedback)
+            if self.visible_pacing:
+                time.sleep(_VISIBLE_FEEDBACK_SECONDS)
             self._observation = (
                 feedback if bool(feedback["done"]) else self.environment.advance()
             )
@@ -780,6 +796,7 @@ def run_neural_workshop_live_lifetime(
         intervention,
         instruction_encoder=instruction_encoder,
         audio_encoder=audio_encoder,
+        visible_pacing=config.visible,
     )
     runtime = CognitiveTickRuntime(
         device, machine, {"keypress": device}, max_tick_seconds=max_tick_seconds

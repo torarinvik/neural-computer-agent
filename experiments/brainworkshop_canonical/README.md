@@ -390,7 +390,9 @@ To watch one primary run, add `--visible --watch` and use
 while source/target maze actions are printed as an external ASCII trace. The
 matched control remains headless. Visible mode pins a watchable 500 ms
 stimulus + 200 ms feedback schedule with 1 ms ticks, so desktop configuration
-files cannot insert blank phases into the one-action transport.
+files cannot insert blank phases into the one-action transport; the live
+adapter also holds those two rendered phases on screen instead of stepping
+through them at CPU speed.
 
 `neural_workshop_live.py` replaces slow macOS capture and key injection with
 Neural Workshop's headless public boundary. It still feeds rendered RGBA pixels

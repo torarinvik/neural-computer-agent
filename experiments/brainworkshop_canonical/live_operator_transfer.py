@@ -199,7 +199,7 @@ def run_live_operator_transfer(
         )
         environment_after, verifier_after = build_neural_workshop_environment(
             neural_workshop,
-            matched_config,
+            config,
             seed=seed + 60_000 + replicate,
         )
         live_after = run_canonical_neural_workshop_live_lifetime(
