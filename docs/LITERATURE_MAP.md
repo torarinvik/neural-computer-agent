@@ -510,6 +510,148 @@ IQM, which surface exactly the lottery that a battery mean hides.
     necessity protocol — retrieval work in this literature tests whether memory
     *helps*, not whether it is *necessary*.
 
+---
+
+# Second sweep: eight papers against the navigation/object/goal stack (2026-08-16)
+
+User-supplied list, read against the caveats standing after the successor
+transfer, learned decomposition and object identity records. Same labels, same
+caution: mechanism until it runs here.
+
+## S6. The probe policy is uniform and unexamined (successor_transfer caveat)
+
+**MECHANISM — prediction error as the exploration signal.** Burda et al.,
+"Large-Scale Study of Curiosity-Driven Learning" (arXiv:1808.04355): agents
+rewarded purely by forward-model prediction error explore 54 environments with
+no extrinsic reward at all, and in many games the curiosity objective aligns
+with the score. Our tabular analogue is nearly free: the world-model already
+knows which `(place, action)` cells are unvisited and which tables still
+disagree, so "go where the model is wrong" is a `w` vector — visit-count or
+disagreement cumulants fed to the same GPI machinery we just built, no new
+learning rule. That would replace uniform wandering in `explore()` and is
+measurable as coverage per step against the uniform arm.
+
+**PREDICTS — the noisy-TV failure is our `random_walk` distractor.** Their
+headline limitation: prediction-error curiosity is captured by any source of
+irreducible stochasticity (the "TV"). We already built the discriminator the
+fix needs — the matched contrast in `TrackEvidence.controllability` scores a
+random walker at 0.0 precisely because its surprise never resolves. A
+curiosity bonus here must be *controllability-gated* (seek states where the
+model is wrong AND the action matters), or the distractor becomes the most
+interesting thing in the scene. This is a prediction we can test directly:
+un-gated curiosity should chase the distractor; gated should not.
+
+**MECHANISM — Agent57's split, in tabular form.** Badia et al.
+(arXiv:2003.13350) decompose Q into separate extrinsic and intrinsic heads
+combined as `Q^e + beta*Q^i`, keep a *family* of (beta, gamma) policies from
+exploratory to exploitative, and let a sliding-window UCB bandit pick which to
+run. All three pieces have exact tabular counterparts: two psi stores (reward
+occupancy and novelty occupancy) instead of one; beta as a weight in the dot
+product rather than a network parameter; and the bandit is the same binomial
+machinery `integrated_agent` already uses for admission. Their measured
+warning transfers too — a single mixed value function was "on par with a
+random policy" where the split was near-optimal, so if we fold novelty into
+the reward cumulant instead of keeping a second psi, we should expect the
+same collapse.
+
+**CONFIRMS — episodic-vs-lifelong novelty is a distinction we already hit.**
+NGU's episodic memory resets per episode; RND novelty decays over the
+lifetime. Our seed-ledger discipline (never re-spend experience) and the
+per-episode intersection rule in `identify_goal` are the two timescales in
+primitive form.
+
+## S7. The model is value-blind and the planner is exact — is that the right
+corner? (world_model.py, successor_features.py)
+
+**CONFIRMS — models need not predict observations.** MuZero (Schrittwieser et
+al., arXiv:1911.08265): the learned model predicts only reward, value and
+policy — the quantities planning consumes — and matches AlphaZero without ever
+reconstructing a frame. Our psi *is* this claim in closed form: successor
+features are a value-equivalent abstraction (occupancies suffice for any `w`),
+and the learned-decomposition record's criterion — keep the cut that makes
+dynamics cheap to write down, not the one that reconstructs pixels — is the
+same doctrine applied to perception. Worth stating in the records: we did not
+skip the MONet decoder out of poverty; the value-equivalence literature says
+observation reconstruction is not what a model is *for*.
+
+**MECHANISM — plan with the model without trusting it.** I2A (Weber et al.,
+arXiv:1707.06203): imagined rollouts are handed to the policy as *context*,
+not executed as plans, so a wrong model degrades performance gracefully
+instead of catastrophically. Our `plan_to` already refuses to route through
+unknown cells, which is the crude version. The finer version for us: when the
+frontend is noisy (the 0.10 noise ceiling from environment widening), a plan's
+value should be discounted by the evidence count of the cells it crosses —
+counts we already store in `WorldModel.counts` and currently reduce to argmax.
+
+## S8. Goals are vectors over hand-chosen features (successor_transfer caveat:
+"cumulants are hand-chosen")
+
+**MECHANISM — relations as features, without learning the encoder.** Relation
+Networks (Santoro et al., arXiv:1706.01427): relational generalisation comes
+from one shared function applied to every *pair* of objects, summed. The
+architecture is a network; the inductive bias is not. We now have real object
+slots with symbols, so pairwise cumulants are a table, not a module:
+phi(pair) = indicator over (symbol_i, symbol_j) relations — same-place,
+adjacent-column, left-of. A `w` over pair-features makes "be next to the
+marker" or "put A beside B" expressible in exactly the machinery
+`successor_features` already has. This is the cheapest route out of the
+"goals are places" ceiling and the natural next rung after `avoid`.
+
+**PREDICTS — where our generalisation will break.** PGM (Barrett et al.,
+arXiv:1807.04225): networks that interpolate competently fail sharply when a
+held-out *attribute* or attribute-combination appears at test — and auxiliary
+symbolic explanation targets markedly improve generalisation. Two transfers:
+our held-out-goal splits are their "interpolation" regime, the easy one, so a
+claim of compositionality should also show the "held-out relation" regime
+(train on same-place goals, test on adjacency goals). And their
+explanation-target result is structurally our decode-audit/parts-recovery
+discipline — demanding the system expose *which* relation it used, not only
+the answer, is measured there to be worth generalisation, not just hygiene.
+
+## S9. One controller, many tasks (the standing integration question)
+
+**CONTRADICTS (in emphasis) — Gato is the opposite bet, and its cost is
+visible from here.** Reed et al. (arXiv:2205.06175) serialise every modality
+into one token stream and train one transformer on hundreds of tasks; task
+identity arrives by prompt. It is the strongest existing claim for "one
+network, many tasks" — and it buys generality with exactly what AGENTS.md
+forbids us: gradient updates over pooled task data, task identity as
+privileged context, and no per-task verification gate. The useful import is
+not the architecture but the interface lesson: *a task told by context* is
+what our `w` vector and shown-goal scene already are, done compositionally
+rather than by imitation. Gato is the control condition our approach should
+eventually be measured against, not a design to borrow.
+
+**MECHANISM — one compressed event space, if we ever train an encoder.** VAE
+(Kingma & Welling, arXiv:1312.6114) is the standard answer if the frozen
+frontend ever becomes the binding constraint: an encoder trained offline by
+ELBO, then frozen and curated like any other checkpoint, keeps the agent path
+gradient-free. The ELBO's reconstruction term is, however, exactly what MuZero
+and our own decomposition criterion argue is the wrong target — if we train
+an encoder at all, the dynamics-compression objective from
+`learned_decomposition` is the principled one; a VAE is the fallback that
+needs no actions.
+
+## What this changes (second sweep)
+
+1. **Exploration is the nearest actionable item** (S6): novelty cumulants +
+   GPI + a two-store split is a complete tabular Agent57 skeleton, every part
+   of which exists in the repo today.
+2. **Un-gated curiosity has a predicted failure we can already reproduce**
+   (S6): the `random_walk` distractor is the noisy TV. Gate novelty by the
+   matched-contrast controllability we shipped in `slot_alignment`.
+3. **Pairwise cumulants are the exit from "goals are places"** (S8): a
+   relation table over slot pairs, then `w` over relations — no new learning
+   machinery.
+4. **Our next generalisation claim needs a held-out-relation regime** (S8):
+   PGM says interpolation splits flatter; ours are interpolation splits.
+5. **The value-equivalence doctrine retroactively names two of our choices**
+   (S7): psi instead of an observation model, and dynamics-compression
+   instead of reconstruction for the cut. Cite it in both records when they
+   are next touched.
+6. **Plans should be weighted by the evidence under them** (S7): I2A's
+   graceful degradation, in tabular form, from counts we already store.
+
 ## Standing caution
 
 Every claim above is about *other people's systems*. The value of this document
