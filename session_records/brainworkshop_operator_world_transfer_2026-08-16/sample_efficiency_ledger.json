@@ -1,0 +1,48 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment_id": "brainworkshop-operator-world-transfer-2026-08-16",
+  "status": "development_diagnostic_not_promoted",
+  "source": "operator_world_transfer.json",
+  "seed_blocks": [],
+  "replication_count": 3,
+  "unique_verifier_bits": {
+    "reusable": 2880,
+    "fresh": 2880,
+    "irrelevant": 2880,
+    "corrupted": 2880,
+    "raw_successor": 2880
+  },
+  "unique_logical_lifetimes_all_arms": 900,
+  "optimizer_updates": 0,
+  "replayed_examples": 0,
+  "wall_seconds": 0.1856731668,
+  "latency": {
+    "unit": "milliseconds per decision",
+    "by_arm": {
+      "reusable": 0.0010883958,
+      "fresh": 0.0009787828,
+      "irrelevant": 0.0009558750,
+      "corrupted": 0.0003165672,
+      "raw_successor": 0.0510326526
+    }
+  },
+  "stable_bits_to_threshold": {
+    "threshold": 0.75,
+    "by_arm": {
+      "reusable": [192, 192, 192],
+      "fresh": [192, 384, 192],
+      "irrelevant": [192, 384, 192],
+      "corrupted": [null, null, null],
+      "raw_successor": [null, null, null]
+    }
+  },
+  "retention_on_mastered_primitive": "not_claimed",
+  "transfer_ratio_against_fresh_learner": 0.8333333333,
+  "controls": {
+    "irrelevant_inheritance": true,
+    "corrupted_artifact": true,
+    "raw_successor_inheritance": true,
+    "agent_bank_unchanged": true
+  },
+  "claim_boundary": "Development finite-event diagnostic only; no holdout, runtime, promotion, or curated-bank admission claim."
+}

@@ -1,0 +1,836 @@
+{
+  "accounting": {
+    "corrupted": {
+      "latency_ms_per_decision": 0.0003165671875,
+      "optimizer_updates": 0,
+      "replayed_examples": 0,
+      "retention_on_mastered_primitive": "not_claimed",
+      "stable_bits_to_threshold": [
+        null,
+        null,
+        null
+      ],
+      "unique_logical_lifetimes": 180,
+      "unique_verifier_bits": 2880,
+      "wall_seconds": 0.005560916964896023
+    },
+    "fresh": {
+      "latency_ms_per_decision": 0.0009787828124999999,
+      "optimizer_updates": 0,
+      "replayed_examples": 0,
+      "retention_on_mastered_primitive": "not_claimed",
+      "stable_bits_to_threshold": [
+        192,
+        384,
+        192
+      ],
+      "unique_logical_lifetimes": 180,
+      "unique_verifier_bits": 2880,
+      "wall_seconds": 0.0080677499063313
+    },
+    "irrelevant": {
+      "latency_ms_per_decision": 0.0009558750000000001,
+      "optimizer_updates": 0,
+      "replayed_examples": 0,
+      "retention_on_mastered_primitive": "not_claimed",
+      "stable_bits_to_threshold": [
+        192,
+        384,
+        192
+      ],
+      "unique_logical_lifetimes": 180,
+      "unique_verifier_bits": 2880,
+      "wall_seconds": 0.00793795904610306
+    },
+    "raw_successor": {
+      "latency_ms_per_decision": 0.051032652604166666,
+      "optimizer_updates": 0,
+      "replayed_examples": 0,
+      "retention_on_mastered_primitive": "not_claimed",
+      "stable_bits_to_threshold": [
+        null,
+        null,
+        null
+      ],
+      "unique_logical_lifetimes": 180,
+      "unique_verifier_bits": 2880,
+      "wall_seconds": 0.15492408291902393
+    },
+    "reusable": {
+      "latency_ms_per_decision": 0.0010883958333333334,
+      "optimizer_updates": 0,
+      "replayed_examples": 0,
+      "retention_on_mastered_primitive": "not_claimed",
+      "stable_bits_to_threshold": [
+        192,
+        192,
+        192
+      ],
+      "unique_logical_lifetimes": 180,
+      "unique_verifier_bits": 2880,
+      "wall_seconds": 0.009182457928545773
+    }
+  },
+  "claim_status": "development_diagnostic",
+  "experiment_id": "brainworkshop-operator-world-transfer-2026-08-16",
+  "operator_bundle_is_world_independent": true,
+  "raw_successor_expected_to_transfer": false,
+  "replicate_count": 3,
+  "replicates": [
+    {
+      "arms": {
+        "corrupted": {
+          "arm": "corrupted",
+          "artifact_digest": null,
+          "bundle_digest": "d56f6bcd20e3520c2c1b0aa38edbf553aaf928ba6a576e1ac57ac9d1dc924255",
+          "curve": [
+            {
+              "coverage": 0.2222222222222222,
+              "normalized_return": 0.0,
+              "training_episodes": 4,
+              "unique_verifier_bits": 192
+            },
+            {
+              "coverage": 0.3333333333333333,
+              "normalized_return": 0.0,
+              "training_episodes": 8,
+              "unique_verifier_bits": 384
+            },
+            {
+              "coverage": 0.3333333333333333,
+              "normalized_return": 0.0,
+              "training_episodes": 12,
+              "unique_verifier_bits": 576
+            },
+            {
+              "coverage": 0.3333333333333333,
+              "normalized_return": 0.0,
+              "training_episodes": 16,
+              "unique_verifier_bits": 768
+            },
+            {
+              "coverage": 0.3333333333333333,
+              "normalized_return": 0.0,
+              "training_episodes": 20,
+              "unique_verifier_bits": 960
+            }
+          ],
+          "final_model_coverage": 0.3333333333333333,
+          "latency_ms_per_decision": 0.000318059375,
+          "optimizer_updates": 0,
+          "replayed_examples": 0,
+          "retention_on_mastered_primitive": "not_claimed",
+          "stable_bits_to_threshold": null,
+          "unique_logical_lifetimes": 60,
+          "unique_verifier_bits": 960,
+          "wall_seconds": 0.001852208049967885
+        },
+        "fresh": {
+          "arm": "fresh",
+          "artifact_digest": null,
+          "bundle_digest": null,
+          "curve": [
+            {
+              "coverage": 0.7222222222222222,
+              "normalized_return": 0.9208333333333334,
+              "training_episodes": 4,
+              "unique_verifier_bits": 192
+            },
+            {
+              "coverage": 0.7222222222222222,
+              "normalized_return": 0.9520833333333334,
+              "training_episodes": 8,
+              "unique_verifier_bits": 384
+            },
+            {
+              "coverage": 0.7777777777777778,
+              "normalized_return": 0.9208333333333334,
+              "training_episodes": 12,
+              "unique_verifier_bits": 576
+            },
+            {
+              "coverage": 0.7777777777777778,
+              "normalized_return": 0.8583333333333334,
+              "training_episodes": 16,
+              "unique_verifier_bits": 768
+            },
+            {
+              "coverage": 0.7777777777777778,
+              "normalized_return": 1.0,
+              "training_episodes": 20,
+              "unique_verifier_bits": 960
+            }
+          ],
+          "final_model_coverage": 0.7777777777777778,
+          "latency_ms_per_decision": 0.0009326953125,
+          "optimizer_updates": 0,
+          "replayed_examples": 0,
+          "retention_on_mastered_primitive": "not_claimed",
+          "stable_bits_to_threshold": 192,
+          "unique_logical_lifetimes": 60,
+          "unique_verifier_bits": 960,
+          "wall_seconds": 0.002626249915920198
+        },
+        "irrelevant": {
+          "arm": "irrelevant",
+          "artifact_digest": null,
+          "bundle_digest": "454749fe7b5cd43b532abce948915b2132349d0c556793aa3b6e76562415e63f",
+          "curve": [
+            {
+              "coverage": 0.7222222222222222,
+              "normalized_return": 0.9208333333333334,
+              "training_episodes": 4,
+              "unique_verifier_bits": 192
+            },
+            {
+              "coverage": 0.7222222222222222,
+              "normalized_return": 0.9520833333333334,
+              "training_episodes": 8,
+              "unique_verifier_bits": 384
+            },
+            {
+              "coverage": 0.7777777777777778,
+              "normalized_return": 0.9208333333333334,
+              "training_episodes": 12,
+              "unique_verifier_bits": 576
+            },
+            {
+              "coverage": 0.7777777777777778,
+              "normalized_return": 0.8583333333333334,
+              "training_episodes": 16,
+              "unique_verifier_bits": 768
+            },
+            {
+              "coverage": 0.7777777777777778,
+              "normalized_return": 1.0,
+              "training_episodes": 20,
+              "unique_verifier_bits": 960
+            }
+          ],
+          "final_model_coverage": 0.7777777777777778,
+          "latency_ms_per_decision": 0.0009037875,
+          "optimizer_updates": 0,
+          "replayed_examples": 0,
+          "retention_on_mastered_primitive": "not_claimed",
+          "stable_bits_to_threshold": 192,
+          "unique_logical_lifetimes": 60,
+          "unique_verifier_bits": 960,
+          "wall_seconds": 0.0026196669787168503
+        },
+        "raw_successor": {
+          "arm": "raw_successor",
+          "artifact_digest": "93f4dc9b7319d30cd34cb3d5407b9dcedd05b5a86321fc0a5cdca50841c26fea",
+          "bundle_digest": null,
+          "curve": [
+            {
+              "coverage": 0.4444444444444444,
+              "normalized_return": 0.625,
+              "training_episodes": 4,
+              "unique_verifier_bits": 192
+            },
+            {
+              "coverage": 0.6111111111111112,
+              "normalized_return": 0.125,
+              "training_episodes": 8,
+              "unique_verifier_bits": 384
+            },
+            {
+              "coverage": 0.7777777777777778,
+              "normalized_return": 0.375,
+              "training_episodes": 12,
+              "unique_verifier_bits": 576
+            },
+            {
+              "coverage": 0.8888888888888888,
+              "normalized_return": 0.25,
+              "training_episodes": 16,
+              "unique_verifier_bits": 768
+            },
+            {
+              "coverage": 0.9444444444444444,
+              "normalized_return": 0.375,
+              "training_episodes": 20,
+              "unique_verifier_bits": 960
+            }
+          ],
+          "final_model_coverage": 0.9444444444444444,
+          "latency_ms_per_decision": 0.0512117203125,
+          "optimizer_updates": 0,
+          "replayed_examples": 0,
+          "retention_on_mastered_primitive": "not_claimed",
+          "stable_bits_to_threshold": null,
+          "unique_logical_lifetimes": 60,
+          "unique_verifier_bits": 960,
+          "wall_seconds": 0.052007458987645805
+        },
+        "reusable": {
+          "arm": "reusable",
+          "artifact_digest": null,
+          "bundle_digest": "f6fc3b88649852594a140b75d58bb264974d1805fe87de87410b47ce36bb21f8",
+          "curve": [
+            {
+              "coverage": 0.7777777777777778,
+              "normalized_return": 0.9431547619047619,
+              "training_episodes": 4,
+              "unique_verifier_bits": 192
+            },
+            {
+              "coverage": 0.8888888888888888,
+              "normalized_return": 0.9354166666666667,
+              "training_episodes": 8,
+              "unique_verifier_bits": 384
+            },
+            {
+              "coverage": 1.0,
+              "normalized_return": 1.0,
+              "training_episodes": 12,
+              "unique_verifier_bits": 576
+            },
+            {
+              "coverage": 1.0,
+              "normalized_return": 1.0,
+              "training_episodes": 16,
+              "unique_verifier_bits": 768
+            },
+            {
+              "coverage": 1.0,
+              "normalized_return": 1.0,
+              "training_episodes": 20,
+              "unique_verifier_bits": 960
+            }
+          ],
+          "final_model_coverage": 1.0,
+          "latency_ms_per_decision": 0.001086540625,
+          "optimizer_updates": 0,
+          "replayed_examples": 0,
+          "retention_on_mastered_primitive": "not_claimed",
+          "stable_bits_to_threshold": 192,
+          "unique_logical_lifetimes": 60,
+          "unique_verifier_bits": 960,
+          "wall_seconds": 0.0033631250262260437
+        }
+      },
+      "operator_bundle": {
+        "digest": "f6fc3b88649852594a140b75d58bb264974d1805fe87de87410b47ce36bb21f8",
+        "exploration": "untried_first",
+        "invalidation": "rebuild_on_mismatch",
+        "planning": "safe_known_route",
+        "schema": "neural-computer.verified-operator-bundle.v1",
+        "source_family": "ring-v1",
+        "verified_world_seed": 9000,
+        "version": 1
+      },
+      "raw_successor_digest": "93f4dc9b7319d30cd34cb3d5407b9dcedd05b5a86321fc0a5cdca50841c26fea",
+      "replicate": 0,
+      "source_world_digest": "201b4272d04aa77aab82cfa3ef7edf5d5d5f7c258cbe3db81c9265a347bdd523",
+      "source_world_seed": 9000,
+      "target_world_digest": "ca42498c77ee6e2535638c3bd46f80cb5ebcb3ef0c0827294f91e7a9bd19d28c",
+      "target_world_seed": 12000
+    },
+    {
+      "arms": {
+        "corrupted": {
+          "arm": "corrupted",
+          "artifact_digest": null,
+          "bundle_digest": "7198216f917ea466d84973c1fc5773f8b37e431030ad5767cf882e388c72d162",
+          "curve": [
+            {
+              "coverage": 0.16666666666666666,
+              "normalized_return": 0.0,
+              "training_episodes": 4,
+              "unique_verifier_bits": 192
+            },
+            {
+              "coverage": 0.3333333333333333,
+              "normalized_return": 0.0,
+              "training_episodes": 8,
+              "unique_verifier_bits": 384
+            },
+            {
+              "coverage": 0.3333333333333333,
+              "normalized_return": 0.0,
+              "training_episodes": 12,
+              "unique_verifier_bits": 576
+            },
+            {
+              "coverage": 0.3333333333333333,
+              "normalized_return": 0.0,
+              "training_episodes": 16,
+              "unique_verifier_bits": 768
+            },
+            {
+              "coverage": 0.3333333333333333,
+              "normalized_return": 0.0,
+              "training_episodes": 20,
+              "unique_verifier_bits": 960
+            }
+          ],
+          "final_model_coverage": 0.3333333333333333,
+          "latency_ms_per_decision": 0.000313821875,
+          "optimizer_updates": 0,
+          "replayed_examples": 0,
+          "retention_on_mastered_primitive": "not_claimed",
+          "stable_bits_to_threshold": null,
+          "unique_logical_lifetimes": 60,
+          "unique_verifier_bits": 960,
+          "wall_seconds": 0.001862625009380281
+        },
+        "fresh": {
+          "arm": "fresh",
+          "artifact_digest": null,
+          "bundle_digest": null,
+          "curve": [
+            {
+              "coverage": 0.6666666666666666,
+              "normalized_return": 0.7401041666666667,
+              "training_episodes": 4,
+              "unique_verifier_bits": 192
+            },
+            {
+              "coverage": 0.8888888888888888,
+              "normalized_return": 0.9833333333333334,
+              "training_episodes": 8,
+              "unique_verifier_bits": 384
+            },
+            {
+              "coverage": 0.8888888888888888,
+              "normalized_return": 0.9666666666666667,
+              "training_episodes": 12,
+              "unique_verifier_bits": 576
+            },
+            {
+              "coverage": 0.8888888888888888,
+              "normalized_return": 0.95,
+              "training_episodes": 16,
+              "unique_verifier_bits": 768
+            },
+            {
+              "coverage": 0.8888888888888888,
+              "normalized_return": 0.9833333333333334,
+              "training_episodes": 20,
+              "unique_verifier_bits": 960
+            }
+          ],
+          "final_model_coverage": 0.8888888888888888,
+          "latency_ms_per_decision": 0.0010285437499999999,
+          "optimizer_updates": 0,
+          "replayed_examples": 0,
+          "retention_on_mastered_primitive": "not_claimed",
+          "stable_bits_to_threshold": 384,
+          "unique_logical_lifetimes": 60,
+          "unique_verifier_bits": 960,
+          "wall_seconds": 0.002732124994508922
+        },
+        "irrelevant": {
+          "arm": "irrelevant",
+          "artifact_digest": null,
+          "bundle_digest": "454749fe7b5cd43b532abce948915b2132349d0c556793aa3b6e76562415e63f",
+          "curve": [
+            {
+              "coverage": 0.6666666666666666,
+              "normalized_return": 0.7401041666666667,
+              "training_episodes": 4,
+              "unique_verifier_bits": 192
+            },
+            {
+              "coverage": 0.8888888888888888,
+              "normalized_return": 0.9833333333333334,
+              "training_episodes": 8,
+              "unique_verifier_bits": 384
+            },
+            {
+              "coverage": 0.8888888888888888,
+              "normalized_return": 0.9666666666666667,
+              "training_episodes": 12,
+              "unique_verifier_bits": 576
+            },
+            {
+              "coverage": 0.8888888888888888,
+              "normalized_return": 0.95,
+              "training_episodes": 16,
+              "unique_verifier_bits": 768
+            },
+            {
+              "coverage": 0.8888888888888888,
+              "normalized_return": 0.9833333333333334,
+              "training_episodes": 20,
+              "unique_verifier_bits": 960
+            }
+          ],
+          "final_model_coverage": 0.8888888888888888,
+          "latency_ms_per_decision": 0.001003896875,
+          "optimizer_updates": 0,
+          "replayed_examples": 0,
+          "retention_on_mastered_primitive": "not_claimed",
+          "stable_bits_to_threshold": 384,
+          "unique_logical_lifetimes": 60,
+          "unique_verifier_bits": 960,
+          "wall_seconds": 0.0026834170566871762
+        },
+        "raw_successor": {
+          "arm": "raw_successor",
+          "artifact_digest": "8c828af73ce773e6ea80c61dd34eaeae186faedb0095feb589653421252321d2",
+          "bundle_digest": null,
+          "curve": [
+            {
+              "coverage": 0.5555555555555556,
+              "normalized_return": 0.375,
+              "training_episodes": 4,
+              "unique_verifier_bits": 192
+            },
+            {
+              "coverage": 0.8888888888888888,
+              "normalized_return": 0.125,
+              "training_episodes": 8,
+              "unique_verifier_bits": 384
+            },
+            {
+              "coverage": 0.8888888888888888,
+              "normalized_return": 0.25,
+              "training_episodes": 12,
+              "unique_verifier_bits": 576
+            },
+            {
+              "coverage": 0.9444444444444444,
+              "normalized_return": 0.5,
+              "training_episodes": 16,
+              "unique_verifier_bits": 768
+            },
+            {
+              "coverage": 0.9444444444444444,
+              "normalized_return": 0.375,
+              "training_episodes": 20,
+              "unique_verifier_bits": 960
+            }
+          ],
+          "final_model_coverage": 0.9444444444444444,
+          "latency_ms_per_decision": 0.050967234375,
+          "optimizer_updates": 0,
+          "replayed_examples": 0,
+          "retention_on_mastered_primitive": "not_claimed",
+          "stable_bits_to_threshold": null,
+          "unique_logical_lifetimes": 60,
+          "unique_verifier_bits": 960,
+          "wall_seconds": 0.05141408299095929
+        },
+        "reusable": {
+          "arm": "reusable",
+          "artifact_digest": null,
+          "bundle_digest": "4659b9d356df59d112d4cb3c756918599eaec5f4a6400d5f847dc45e77c5619f",
+          "curve": [
+            {
+              "coverage": 0.8888888888888888,
+              "normalized_return": 0.9765625,
+              "training_episodes": 4,
+              "unique_verifier_bits": 192
+            },
+            {
+              "coverage": 1.0,
+              "normalized_return": 1.0,
+              "training_episodes": 8,
+              "unique_verifier_bits": 384
+            },
+            {
+              "coverage": 1.0,
+              "normalized_return": 1.0,
+              "training_episodes": 12,
+              "unique_verifier_bits": 576
+            },
+            {
+              "coverage": 1.0,
+              "normalized_return": 1.0,
+              "training_episodes": 16,
+              "unique_verifier_bits": 768
+            },
+            {
+              "coverage": 1.0,
+              "normalized_return": 1.0,
+              "training_episodes": 20,
+              "unique_verifier_bits": 960
+            }
+          ],
+          "final_model_coverage": 1.0,
+          "latency_ms_per_decision": 0.0011047328125000002,
+          "optimizer_updates": 0,
+          "replayed_examples": 0,
+          "retention_on_mastered_primitive": "not_claimed",
+          "stable_bits_to_threshold": 192,
+          "unique_logical_lifetimes": 60,
+          "unique_verifier_bits": 960,
+          "wall_seconds": 0.0028366659535095096
+        }
+      },
+      "operator_bundle": {
+        "digest": "4659b9d356df59d112d4cb3c756918599eaec5f4a6400d5f847dc45e77c5619f",
+        "exploration": "untried_first",
+        "invalidation": "rebuild_on_mismatch",
+        "planning": "safe_known_route",
+        "schema": "neural-computer.verified-operator-bundle.v1",
+        "source_family": "ring-v1",
+        "verified_world_seed": 9037,
+        "version": 1
+      },
+      "raw_successor_digest": "8c828af73ce773e6ea80c61dd34eaeae186faedb0095feb589653421252321d2",
+      "replicate": 1,
+      "source_world_digest": "7c2dd39598419d02c5441f60f96d33a54cf7e487fc247b085ce9742f3aa0c733",
+      "source_world_seed": 9037,
+      "target_world_digest": "ad5521a73d526efcf48292d67b1c8fd90ff03087df1fede43eaf022612dc01e0",
+      "target_world_seed": 12037
+    },
+    {
+      "arms": {
+        "corrupted": {
+          "arm": "corrupted",
+          "artifact_digest": null,
+          "bundle_digest": "5a2c7285c874197f08a1d75a002ab7f0a9ef7b84a594127c02cf9ca8cb86973d",
+          "curve": [
+            {
+              "coverage": 0.1111111111111111,
+              "normalized_return": 0.0,
+              "training_episodes": 4,
+              "unique_verifier_bits": 192
+            },
+            {
+              "coverage": 0.2222222222222222,
+              "normalized_return": 0.0,
+              "training_episodes": 8,
+              "unique_verifier_bits": 384
+            },
+            {
+              "coverage": 0.2777777777777778,
+              "normalized_return": 0.0,
+              "training_episodes": 12,
+              "unique_verifier_bits": 576
+            },
+            {
+              "coverage": 0.3333333333333333,
+              "normalized_return": 0.0,
+              "training_episodes": 16,
+              "unique_verifier_bits": 768
+            },
+            {
+              "coverage": 0.3333333333333333,
+              "normalized_return": 0.0,
+              "training_episodes": 20,
+              "unique_verifier_bits": 960
+            }
+          ],
+          "final_model_coverage": 0.3333333333333333,
+          "latency_ms_per_decision": 0.0003178203125,
+          "optimizer_updates": 0,
+          "replayed_examples": 0,
+          "retention_on_mastered_primitive": "not_claimed",
+          "stable_bits_to_threshold": null,
+          "unique_logical_lifetimes": 60,
+          "unique_verifier_bits": 960,
+          "wall_seconds": 0.0018460839055478573
+        },
+        "fresh": {
+          "arm": "fresh",
+          "artifact_digest": null,
+          "bundle_digest": null,
+          "curve": [
+            {
+              "coverage": 0.5,
+              "normalized_return": 0.7544642857142857,
+              "training_episodes": 4,
+              "unique_verifier_bits": 192
+            },
+            {
+              "coverage": 0.7777777777777778,
+              "normalized_return": 0.9520833333333334,
+              "training_episodes": 8,
+              "unique_verifier_bits": 384
+            },
+            {
+              "coverage": 0.8333333333333334,
+              "normalized_return": 0.9354166666666667,
+              "training_episodes": 12,
+              "unique_verifier_bits": 576
+            },
+            {
+              "coverage": 0.8333333333333334,
+              "normalized_return": 0.9833333333333334,
+              "training_episodes": 16,
+              "unique_verifier_bits": 768
+            },
+            {
+              "coverage": 0.8333333333333334,
+              "normalized_return": 0.9833333333333334,
+              "training_episodes": 20,
+              "unique_verifier_bits": 960
+            }
+          ],
+          "final_model_coverage": 0.8333333333333334,
+          "latency_ms_per_decision": 0.0009751093750000002,
+          "optimizer_updates": 0,
+          "replayed_examples": 0,
+          "retention_on_mastered_primitive": "not_claimed",
+          "stable_bits_to_threshold": 192,
+          "unique_logical_lifetimes": 60,
+          "unique_verifier_bits": 960,
+          "wall_seconds": 0.0027093749959021807
+        },
+        "irrelevant": {
+          "arm": "irrelevant",
+          "artifact_digest": null,
+          "bundle_digest": "454749fe7b5cd43b532abce948915b2132349d0c556793aa3b6e76562415e63f",
+          "curve": [
+            {
+              "coverage": 0.5,
+              "normalized_return": 0.7544642857142857,
+              "training_episodes": 4,
+              "unique_verifier_bits": 192
+            },
+            {
+              "coverage": 0.7777777777777778,
+              "normalized_return": 0.9520833333333334,
+              "training_episodes": 8,
+              "unique_verifier_bits": 384
+            },
+            {
+              "coverage": 0.8333333333333334,
+              "normalized_return": 0.9354166666666667,
+              "training_episodes": 12,
+              "unique_verifier_bits": 576
+            },
+            {
+              "coverage": 0.8333333333333334,
+              "normalized_return": 0.9833333333333334,
+              "training_episodes": 16,
+              "unique_verifier_bits": 768
+            },
+            {
+              "coverage": 0.8333333333333334,
+              "normalized_return": 0.9833333333333334,
+              "training_episodes": 20,
+              "unique_verifier_bits": 960
+            }
+          ],
+          "final_model_coverage": 0.8333333333333334,
+          "latency_ms_per_decision": 0.0009599406250000002,
+          "optimizer_updates": 0,
+          "replayed_examples": 0,
+          "retention_on_mastered_primitive": "not_claimed",
+          "stable_bits_to_threshold": 192,
+          "unique_logical_lifetimes": 60,
+          "unique_verifier_bits": 960,
+          "wall_seconds": 0.0026348750106990337
+        },
+        "raw_successor": {
+          "arm": "raw_successor",
+          "artifact_digest": "1231893f7dc82250d6674a21902f8ac024e5ed8f463e5940baefd42dcc3d641f",
+          "bundle_digest": null,
+          "curve": [
+            {
+              "coverage": 0.5,
+              "normalized_return": 0.0,
+              "training_episodes": 4,
+              "unique_verifier_bits": 192
+            },
+            {
+              "coverage": 0.6666666666666666,
+              "normalized_return": 0.0,
+              "training_episodes": 8,
+              "unique_verifier_bits": 384
+            },
+            {
+              "coverage": 0.6666666666666666,
+              "normalized_return": 0.25,
+              "training_episodes": 12,
+              "unique_verifier_bits": 576
+            },
+            {
+              "coverage": 0.6666666666666666,
+              "normalized_return": 0.0,
+              "training_episodes": 16,
+              "unique_verifier_bits": 768
+            },
+            {
+              "coverage": 0.7222222222222222,
+              "normalized_return": 0.125,
+              "training_episodes": 20,
+              "unique_verifier_bits": 960
+            }
+          ],
+          "final_model_coverage": 0.7222222222222222,
+          "latency_ms_per_decision": 0.050919003124999994,
+          "optimizer_updates": 0,
+          "replayed_examples": 0,
+          "retention_on_mastered_primitive": "not_claimed",
+          "stable_bits_to_threshold": null,
+          "unique_logical_lifetimes": 60,
+          "unique_verifier_bits": 960,
+          "wall_seconds": 0.05150254094041884
+        },
+        "reusable": {
+          "arm": "reusable",
+          "artifact_digest": null,
+          "bundle_digest": "4305fd766f927df2cf2447aaa1041deceb9c1bb51e3c2c9771ed6ee9a653ede3",
+          "curve": [
+            {
+              "coverage": 0.9444444444444444,
+              "normalized_return": 1.0,
+              "training_episodes": 4,
+              "unique_verifier_bits": 192
+            },
+            {
+              "coverage": 1.0,
+              "normalized_return": 1.0,
+              "training_episodes": 8,
+              "unique_verifier_bits": 384
+            },
+            {
+              "coverage": 1.0,
+              "normalized_return": 1.0,
+              "training_episodes": 12,
+              "unique_verifier_bits": 576
+            },
+            {
+              "coverage": 1.0,
+              "normalized_return": 1.0,
+              "training_episodes": 16,
+              "unique_verifier_bits": 768
+            },
+            {
+              "coverage": 1.0,
+              "normalized_return": 1.0,
+              "training_episodes": 20,
+              "unique_verifier_bits": 960
+            }
+          ],
+          "final_model_coverage": 1.0,
+          "latency_ms_per_decision": 0.0010739140625,
+          "optimizer_updates": 0,
+          "replayed_examples": 0,
+          "retention_on_mastered_primitive": "not_claimed",
+          "stable_bits_to_threshold": 192,
+          "unique_logical_lifetimes": 60,
+          "unique_verifier_bits": 960,
+          "wall_seconds": 0.0029826669488102198
+        }
+      },
+      "operator_bundle": {
+        "digest": "4305fd766f927df2cf2447aaa1041deceb9c1bb51e3c2c9771ed6ee9a653ede3",
+        "exploration": "untried_first",
+        "invalidation": "rebuild_on_mismatch",
+        "planning": "safe_known_route",
+        "schema": "neural-computer.verified-operator-bundle.v1",
+        "source_family": "ring-v1",
+        "verified_world_seed": 9074,
+        "version": 1
+      },
+      "raw_successor_digest": "1231893f7dc82250d6674a21902f8ac024e5ed8f463e5940baefd42dcc3d641f",
+      "replicate": 2,
+      "source_world_digest": "0ed0e72ae0ba9419531aa8d44bd0db25e1b9b84d308d5fc4056f7be40a087f32",
+      "source_world_seed": 9074,
+      "target_world_digest": "60b7a4f7763a3afa0fcaa422be7e7dd30caaaf84f9ec4af3046286a27e00fa55",
+      "target_world_seed": 12074
+    }
+  ],
+  "schema": "neural-computer.operator-world-transfer.v1",
+  "seconds": 0.20546370896045119,
+  "seed": 41,
+  "stable_threshold": 0.75,
+  "transfer_ratio_against_fresh_learner": 0.8333333333333334
+}
