@@ -1,0 +1,61 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment_id": "brainworkshop-object-lifecycle-2026-08-16",
+  "status": "development_diagnostic_not_promoted",
+  "source": "object_lifecycle.json",
+  "seed_blocks": [],
+  "replication_count": 3,
+  "unique_verifier_bits": {
+    "stable_persistent": 7440,
+    "stable_reinitializing": 7440,
+    "stable_zero_missing": 7440,
+    "lifecycle_persistent": 12814,
+    "lifecycle_reinitializing": 12814,
+    "lifecycle_zero_missing": 12814,
+    "occluded_persistent": 12968,
+    "occluded_reinitializing": 12968,
+    "occluded_zero_missing": 12968
+  },
+  "unique_logical_lifetimes_all_arms": 1080,
+  "optimizer_updates": 0,
+  "replayed_examples": 0,
+  "wall_seconds": 0.3112705838,
+  "latency": {
+    "unit": "milliseconds per prediction",
+    "by_arm": {
+      "stable_persistent": 0.0,
+      "stable_reinitializing": 0.0,
+      "stable_zero_missing": 0.0,
+      "lifecycle_persistent": 0.0,
+      "lifecycle_reinitializing": 0.0,
+      "lifecycle_zero_missing": 0.0,
+      "occluded_persistent": 0.0,
+      "occluded_reinitializing": 0.0,
+      "occluded_zero_missing": 0.0
+    }
+  },
+  "stable_bits_to_threshold": {
+    "threshold": 0.75,
+    "by_arm": {
+      "stable_persistent": [248, 248, 248],
+      "stable_reinitializing": [null, null, null],
+      "stable_zero_missing": [248, 248, 248],
+      "lifecycle_persistent": [395, 415, 445],
+      "lifecycle_reinitializing": [null, null, null],
+      "lifecycle_zero_missing": [395, 415, 445],
+      "occluded_persistent": [408, 472, 414],
+      "occluded_reinitializing": [null, null, null],
+      "occluded_zero_missing": [null, null, null]
+    }
+  },
+  "retention_on_mastered_primitive": "not_claimed",
+  "transfer_ratio_against_fresh_learner": null,
+  "controls": {
+    "reinitializing_tracker": true,
+    "zero_missing_tracker": true,
+    "variable_object_count": true,
+    "temporary_occlusion": true,
+    "agent_bank_unchanged": true
+  },
+  "claim_boundary": "Development finite-event lifecycle diagnostic only; unique appearance symbols remain available, so no identity-collision, rendered-stream holdout, runtime, promotion, or curated-bank admission claim."
+}
