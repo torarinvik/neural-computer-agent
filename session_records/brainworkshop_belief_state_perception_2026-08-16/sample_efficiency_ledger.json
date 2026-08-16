@@ -1,0 +1,34 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment_id": "brainworkshop-belief-state-perception-2026-08-16",
+  "status": "development_belief_state_diagnostic_not_promoted",
+  "source": "belief_state_perception.json",
+  "seed_blocks": [],
+  "replication_count": 1,
+  "unique_verifier_bits": {
+    "training": 6144,
+    "evaluation_clean": 960,
+    "evaluation_missing": 761,
+    "total": 7865
+  },
+  "unique_logical_lifetimes": 72,
+  "optimizer_updates": 0,
+  "replayed_examples": 0,
+  "wall_seconds": 0.03246729099191725,
+  "latency": "development CPU prediction time included in wall_seconds; no live tick latency",
+  "stable_bits_to_threshold": null,
+  "retention_on_mastered_primitive": "not claimed",
+  "transfer_ratio_against_fresh_learner": null,
+  "controls": {
+    "merged_current_symbol": true,
+    "hard_history": true,
+    "missing_evidence": true,
+    "explicit_abstention": true,
+    "corrupted_history": false,
+    "shuffled_action": false,
+    "fresh_learner": false,
+    "rendered_navigation_loop": false,
+    "reserved_holdout_untouched": true
+  },
+  "claim_boundary": "Development-only belief-state perception diagnostic. The model improves coverage under missing events in an aliased learned-event fixture, but no controller integration, transfer, retention, or promotion is claimed."
+}

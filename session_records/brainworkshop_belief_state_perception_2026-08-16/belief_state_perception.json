@@ -1,0 +1,56 @@
+{
+  "arms": {
+    "belief_clean": {
+      "accuracy": 1.0,
+      "correct": 878,
+      "coverage": 0.9145833333333333,
+      "eligible": 960,
+      "expected_correct_rate": 0.9145833333333333,
+      "mean_confidence": 0.9636624517231129,
+      "predicted": 878
+    },
+    "belief_missing": {
+      "accuracy": 1.0,
+      "correct": 626,
+      "coverage": 0.8226018396846255,
+      "eligible": 761,
+      "expected_correct_rate": 0.8226018396846255,
+      "mean_confidence": 0.9163913383643219,
+      "predicted": 626
+    },
+    "history_clean": {
+      "accuracy": 0.9608695652173913,
+      "correct": 884,
+      "coverage": 1.0,
+      "eligible": 920,
+      "known": 920
+    },
+    "history_missing": {
+      "accuracy": 0.9501084598698482,
+      "correct": 438,
+      "coverage": 0.6057818659658344,
+      "eligible": 761,
+      "expected_correct_rate": 0.5755584756898817,
+      "predicted": 461
+    },
+    "merged_clean": {
+      "accuracy": 0.896875,
+      "correct": 861,
+      "coverage": 1.0,
+      "eligible": 960,
+      "known": 960
+    }
+  },
+  "claim_boundary": "The belief artifact consumes only learned event symbols and opaque actions. It improves coverage under missing observations in this aliased symbolic fixture, but it is not yet wired into the rendered navigation controller or a fresh-learner holdout.",
+  "claim_status": "development_belief_state_diagnostic_not_promoted",
+  "confidence_floor": 0.8,
+  "context_count": 71,
+  "evaluation_episodes": 40,
+  "experiment_id": "brainworkshop-belief-state-perception-2026-08-16",
+  "missing_evidence_is_not_zero": true,
+  "missing_rate": 0.2,
+  "schema": "neural-computer.belief-state-perception.v1",
+  "seed": 41,
+  "training_episodes": 16,
+  "wall_seconds": 0.03246729099191725
+}

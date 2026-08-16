@@ -56,6 +56,11 @@ the controller only through a caller-supplied feedback encoder.
   preserved the low-confident-error behavior, but abstained on 95--100% of
   steps and fell below the episode-local scorer. This is a development failure
   to promote, not a holdout result.
+- The belief-state perception diagnostic in
+  `session_records/brainworkshop_belief_state_perception_2026-08-16` keeps
+  explicit context hypotheses for aliased learned events and improves useful
+  prediction coverage under missing evidence. It is still symbolic-fixture
+  evidence, not controller or navigation integration.
 
 ## Deliberate limits
 
@@ -70,6 +75,8 @@ abstention rule: handle common merge/birth histories through explicit missing
 evidence and fresh relearning, then harden against true crossings, occlusion,
 corrupted persistent memory, and near-equivalent causal mimics. Rerun on fresh
 pixel rerenders with matched shuffled-action and fresh-learner controls before
-any bank admission. The assignment gate and artifacts are still an interface
+any bank admission. In parallel, carry the belief/mask through the learned
+event bus so ambiguity is preserved at the identity seam rather than collapsed
+into a slot guess. The assignment gate and artifacts are still an interface
 seam, not a promoted identity model; the current diagnostics and their
 artifacts are not in the curated bank.
