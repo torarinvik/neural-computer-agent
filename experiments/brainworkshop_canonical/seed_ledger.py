@@ -30,6 +30,10 @@ BLOCKS: dict[str, tuple[int, ...]] = {
     # block, and far enough apart from each other, that no span can meet
     # another whatever stream length is chosen.
     "integrated_agent_holdout": (3_000_017, 3_500_017, 4_000_017),
+    # Composition walks the same wide per-task stride, and its stream is longer
+    # than the integrated agent's, so it is placed above that block with the
+    # same clearance.
+    "compositional_transfer_holdout": (5_000_017, 5_500_017, 6_000_017),
 }
 
 # One replicate of the integrated agent consumes `stride * tasks` seeds plus

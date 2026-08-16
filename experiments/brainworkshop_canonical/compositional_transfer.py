@@ -186,6 +186,7 @@ def run_arm(
     corrupt=None,
     correct_for_multiplicity: bool = False,
     part_digests_in_cluster_symbols: dict[str, str] | None = None,
+    library_path: Path | None = None,
 ) -> dict[str, Any]:
     """One pass over the stream, reporting primitives and composites apart."""
 
@@ -213,7 +214,7 @@ def run_arm(
             correct_for_multiplicity=correct_for_multiplicity,
         )
         if record is not None:
-            admit(library, record, outcome)
+            admit(library, record, outcome, library_path=library_path)
         row = outcome.payload()
         row["kind"] = kind
         # Verifier-side annotations, for reading the table only.
@@ -291,6 +292,7 @@ def run_transfer(
     frontend_path: Path | None = None,
     seed: int = DEVELOPMENT_SEED,
     composites: int = COMPOSITES_PER_RUN,
+    library_path: Path | None = None,
 ) -> dict[str, Any]:
     """Six arms over one matched stream of primitives and novel composites."""
 
@@ -341,7 +343,13 @@ def run_transfer(
 
     started = time.perf_counter()
     arms = {
-        "composing": arm("composing", stream, grow=True, compose=True),
+        "composing": arm(
+            "composing",
+            stream,
+            grow=True,
+            compose=True,
+            library_path=library_path,
+        ),
         "recognising": arm("recognising", stream, grow=True, compose=False),
         "control": arm("control", stream, grow=False, compose=False),
         "disjoint": arm("disjoint", apart, grow=True, compose=True),

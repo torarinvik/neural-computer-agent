@@ -1,7 +1,9 @@
 # The library pays on tasks it has never seen (2026-08-15)
 
-Status: **diagnostic**, on the already-consumed development seed, three
-replicates over three different worlds. Nothing admitted;
+Status: **held out and admitted.** Three replicates on the previously unspent
+`compositional_transfer_holdout` seed block. Forty-three programs persist under
+`artifacts/checkpoints/composed_programs_seed*.library` and are registered in
+the curated manifest -- **twenty-six of them assembled rather than induced**.
 `AgentBrain.bank` unchanged at `07319eb1`.
 
 The integrated agent's library pays 2.79x and **every bit of it comes from
@@ -9,12 +11,36 @@ exact repeats**. That makes the store a cache. The claim a library is supposed
 to support is much stronger: capability N+1 is cheaper because it is *built
 out of* capabilities 1..N, on a task that has never occurred.
 
-## Result
+## Result, on unspent seeds
 
 Four primitives, then eight composites the agent has never met, each a product
 of two primitives under a boolean combiner. Twenty-four composites across three
 replicates. **No task is clearable by a constant policy**, which is checked and
 reported rather than assumed.
+
+| | holdout | worst replicate |
+| --- | ---: | ---: |
+| Novel composites solved | **24/24** | -- |
+| Solved by *building* them | **24** | -- |
+| Acquisition vs no library | **0.227** | 0.250 |
+| Acquisition vs retrieval-only library | **0.239** | 0.276 |
+| Acquisition when the parts are absent | **0.919** | 0.906 |
+| True combiner recovered | **24/24** | -- |
+| True pair of parts recovered | **23/24** | -- |
+| False recognitions | **0** | -- |
+| Solved under shuffled feedback | **0/24** | -- |
+
+**A composite the agent has never seen costs 0.227 of what a fresh agent pays.**
+When the parts are missing the same mechanism gives 0.919, which is nothing.
+
+Forty-three programs were kept across the three replicates and **twenty-six of
+them were never induced** -- they are products the agent assembled out of files
+it already had, confirmed in the environment, and admitted as files in their own
+right. That is the difference between a library and a cache, on disk.
+
+## The same measurement on the development seed
+
+Run first, and weaker, which is the direction that makes it worth reporting.
 
 | arm | solved | composed | acquisition | vs its control |
 | --- | :--: | ---: | ---: | ---: |
@@ -129,9 +155,19 @@ that it *refuses*, not that it adapts.
 searching triples directly, so a three-part task is only reachable if a
 two-part one was met first. In one replicate that route was not taken.
 
-**Nothing is admitted here.** These runs use scratch libraries on a spent
-development seed. The holdout that admitted programs is
-`brainworkshop_integrated_agent_2026-08-15`, and composition is not in it.
+**The hierarchy result is not held out.** The triples in
+`brainworkshop_hierarchical_transfer_2026-08-15` run on the spent development
+seed with scratch libraries. Only the pairwise result above was measured on
+unspent seeds, so the depth claim is the weaker of the two.
+
+**Neither the adversarial sweep nor the noise arms are held out either.** The
+800-target attack and the 10%-noise arms are development-seed diagnostics; what
+the holdout block establishes is the headline ratio, the disjoint control, the
+shuffled control, and the parts recovery.
+
+**The composed programs are not in `AgentBrain.bank`.** They go to the induced
+library, for the same reason the induced programs did: the temporal family
+cannot express them.
 
 **Still one alphabet, one frontend, one modality**, and the composites are
 Mealy machines like everything else in this session.
